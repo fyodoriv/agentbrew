@@ -1,0 +1,25 @@
+- description: Storybook screenshot command preserves capture and visual verification behavior
+  vars:
+    artifact_path: src/cli-commands/storybook-screenshot/storybook-screenshot.md
+  metadata:
+    artifact: src/cli-commands/storybook-screenshot/storybook-screenshot.md
+    surface: command
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS src/cli-commands/storybook-screenshot/storybook-screenshot.md"
+    - type: contains
+      value: "diagnostic_count=0"
+
+- description: Jenkins status command preserves credential and failure-log behavior
+  vars:
+    artifact_path: src/cli-commands/jenkins-cli/jenkins-status.md
+  metadata:
+    artifact: src/cli-commands/jenkins-cli/jenkins-status.md
+    surface: command
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS src/cli-commands/jenkins-cli/jenkins-status.md"
+    - type: contains
+      value: "diagnostic_count=0"

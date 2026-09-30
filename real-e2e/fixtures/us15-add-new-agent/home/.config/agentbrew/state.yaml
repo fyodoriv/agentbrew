@@ -1,0 +1,23 @@
+schemaVersion: 1
+agents:
+  - name: claude-code
+    detected: true
+    skillsDir: ~/.claude/skills
+    mcpConfig: ~/.claude.json
+    rulesFile: ~/.claude/CLAUDE.md
+    commandsDir: ~/.claude/commands
+    agentsDir: ~/.claude/agents
+    hooksFile: ~/.claude/settings.json
+mcpServers:
+  - name: existing-server
+    command: npx
+    args:
+      - -y
+      - existing-server
+    env:
+      EXISTING_TOKEN: fixture-token
+    source: user
+skillSourceDirs:
+  - label: installed-skills
+    path: ~/.config/agentbrew/installed-skills
+catalogVersion: 0.1.0

@@ -1,0 +1,487 @@
+# Agent definitions — loaded at runtime by src/core/agents.ts
+# Adding a new agent is a YAML edit. No code change, no rebuild.
+#
+# =====================================================================
+# SCHEMA — every field, what it means, what it implies
+# =====================================================================
+# Each agent is an entry in a YAML list. Fields:
+#
+# REQUIRED
+#   name: string — agent identifier. Must be unique across this file and
+#         kebab-case (matches vercel-labs/skills convention). Used as the
+#         key in state.yaml `agents[]` and in CLI output.
+#   skillsDir: string — path to the agent's skills directory. `~` is
+#         expanded at runtime by `expandHome()`. Every supported agent must
+#         have this; it's the minimum agentbrew can do for an agent.
+#
+# OPTIONAL SYNC SURFACES (enable the corresponding sync by setting the field)
+#   rulesFile: string — path to a single rules file. Agentbrew injects its
+#         managed section between markers (see src/sync/rules-sync.ts). May
+#         coexist with rulesDir — windsurf uses both.
+#   rulesDir: string — path to a per-file rules directory (e.g. ~/.cursor/rules/).
+#         One file per rule; agentbrew only touches its own filenames. May
+#         coexist with rulesFile.
+#   commandsDir: string — path to commands directory. Commands are .md files
+#         transformed per-agent on write.
+#   commandTransform: "cursor" | "windsurf" | "gemini" | ... — transform key
+#         resolved by src/core/transforms.ts. Only meaningful when
+#         commandsDir is set.
+#   commandFileExt: string — override default `.md` (e.g. `.toml` for Gemini).
+#         Only meaningful when commandsDir is set.
+#   agentsDir: string — path to sub-agent definitions directory.
+#   agentsDirFormat: "flat" | "subdir" — "flat" writes `<name>.md` (default),
+#         "subdir" writes `<name>/AGENT.md` (Devin-style). Only meaningful
+#         when agentsDir is set.
+#   hooksFile: string — path to hooks config file (e.g. ~/.claude/settings.json).
+#   hooksKey: string — JSON key for the hooks object inside hooksFile. Only
+#         meaningful when hooksFile is set. Defaults to "hooks".
+#   modelConfig: { file, path, format? } — where the agent's default-model
+#         setting lives. `file` is the config file (~-prefixed), `path` is a
+#         dot-separated key path inside it (e.g. "model", "agent.model"),
+#         `format` is "json" (default) or "toml". Enables model-sync: the
+#         Agentfile's `defaultModel` is written here on every sync. Omit for
+#         agents whose model lives in app-managed/UI state (Cursor, Windsurf).
+#
+# OPTIONAL MCP SURFACE (pick exactly ONE of the three access modes)
+#   mcpConfig: string — direct path to the agent's MCP config file.
+#   mcpConfigVscodeExt: { extensionId, filename } — compute the path via a
+#         VS Code extension's globalStorage directory.
+#   mcpConfigVscodeSettings: true — route MCP config through VS Code
+#         settings.json (Copilot).
+#   mcpKey: string — JSON/YAML key for the servers object. Defaults to
+#         "mcpServers". Only meaningful with MCP access enabled.
+#   mcpFormat: "json" | "yaml" | "toml" | "overlay-desktop" — config file
+#         format. Defaults to "json". Only meaningful with MCP access
+#         enabled.
+#   mcpPermissionsConfig: { file } — JSON config file containing
+#         permissions.allow entries for MCP tools (`mcp__<server>__*`).
+#         Set only for agents whose CLI requires explicit MCP allowlist grants.
+#
+# OPTIONAL METADATA
+#   readsFrom: string[] — agent names whose dirs this agent already reads
+#         (e.g. claude-desktop reads ~/.claude/). When every listed agent
+#         is detected, this agent is filtered out of skills/commands/agents
+#         sync to avoid double-writes. MCP stays separate.
+#   experimental: true — skills-only agent with minimal real-world
+#         validation. Implies no rulesFile/rulesDir/commandsDir/agentsDir/
+#         hooksFile/mcpConfig — experimental agents are tested by the
+#         author's laptop only. A dedicated unit test
+#         (src/core/agents.test.ts) enforces the "experimental ⇒ skills-only"
+#         invariant.
+#   supportedSkillFeatures: SkillFeature[] — which SKILL.md frontmatter
+#         features the agent can execute. Values:
+#           allowed-tools — tool-access restrictions in skill frontmatter
+#           context-fork  — `context: fork` (Claude Code only today)
+#           hooks         — lifecycle hooks declared in frontmatter (Claude
+#                           Code + Cline today)
+#         Sourced from the vercel-labs/skills README compatibility matrix.
+#         Omit to use the default ["allowed-tools"] (baseline most agents
+#         satisfy). Set explicitly when an agent supports a non-default
+#         subset (Kiro CLI supports hooks but not allowed-tools). Set to
+#         `[]` ONLY when the agent does not support any advanced features
+#         (Zencoder today). Refresh quarterly alongside competitor research
+#         — see RECURRING.md task `re-research-stale-competitors`.
+#
+# =====================================================================
+# INVARIANTS (enforced by src/core/agents.test.ts)
+# =====================================================================
+#  1. `name` is required, unique, kebab-case.
+#  2. `skillsDir` is required.
+#  3. `agentsDirFormat` requires `agentsDir`.
+#  4. `commandTransform` and `commandFileExt` require `commandsDir`.
+#  5. `hooksKey` requires `hooksFile`.
+#  6. MCP access is at most one of `mcpConfig` / `mcpConfigVscodeExt` /
+#     `mcpConfigVscodeSettings` (never two).
+#  7. `experimental: true` implies skills-only — no other sync-surface field
+#     may be set.
+#  8. Every `readsFrom` name must resolve to another entry in this file.
+#  9. Every `supportedSkillFeatures` value must be a valid SkillFeature.
+#
+# =====================================================================
+# EXAMPLES
+# =====================================================================
+# Minimal (skills-only, experimental):
+#
+#   - name: my-new-agent
+#     skillsDir: ~/.my-new-agent/skills
+#     experimental: true
+#
+# Full-featured stable agent:
+#
+#   - name: my-stable-agent
+#     skillsDir: ~/.my-stable-agent/skills
+#     mcpConfig: ~/.my-stable-agent/mcp.json
+#     mcpKey: mcpServers          # optional; default "mcpServers"
+#     rulesFile: ~/.my-stable-agent/AGENTS.md
+#     commandsDir: ~/.my-stable-agent/commands
+#     commandTransform: cursor    # optional; default: identity
+#     agentsDir: ~/.my-stable-agent/agents
+#     agentsDirFormat: flat       # optional; default: flat
+#     hooksFile: ~/.my-stable-agent/settings.json
+#     hooksKey: hooks             # optional; default "hooks"
+#     hooksFormat: claude-settings # optional; claude-settings | claude-direct | cursor
+#     hooksScope: user             # optional; user | project
+#     supportedSkillFeatures: [allowed-tools, hooks]
+#
+# After adding an entry, run `npm run verify` — the consistency test will
+# fail loudly on any invariant violation.
+
+- name: claude-code
+  skillsDir: ~/.claude/skills
+  mcpConfig: ~/.claude.json
+  mcpPermissionsConfig:
+    file: ~/.claude/settings.json
+  rulesFile: ~/.claude/CLAUDE.md
+  commandsDir: ~/.claude/commands
+  agentsDir: ~/.claude/agents
+  hooksFile: ~/.claude/settings.json
+  hooksFormat: claude-settings
+  modelConfig:
+    file: ~/.claude/settings.json
+    path: model
+  supportedSkillFeatures: [allowed-tools, context-fork, hooks]
+
+- name: cursor
+  skillsDir: ~/.cursor/skills
+  mcpConfig: ~/.cursor/mcp.json
+  mcpPermissionsConfig:
+    file: ~/.cursor/cli-config.json
+  rulesDir: ~/.cursor/rules
+  commandsDir: ~/.cursor/commands
+  # Cursor commands are generated by ai-rules, then normalized to native Cursor format.
+  commandTransform: cursor
+  agentsDir: ~/.cursor/agents
+  hooksFile: ~/.cursor/hooks.json
+  hooksFormat: cursor
+
+- name: windsurf
+  skillsDir: ~/.codeium/windsurf/skills
+  mcpConfig: ~/.codeium/windsurf/mcp_config.json
+  rulesFile: ~/.codeium/windsurf/memories/global_rules.md
+  rulesDir: ~/.windsurf/rules
+  commandsDir: ~/.codeium/windsurf/global_workflows
+  commandTransform: windsurf
+
+- name: augment
+  skillsDir: ~/.augment/skills
+  rulesFile: ~/.augment/guidelines.md
+
+- name: devin
+  skillsDir: ~/.config/devin/skills
+  mcpConfig: ~/.config/devin/config.json
+  mcpKey: mcpServers
+  mcpPermissionsConfig:
+    file: ~/.config/devin/config.json
+  rulesFile: ~/.config/devin/AGENTS.md
+  commandsDir: ~/.config/devin/commands
+  agentsDir: ~/.config/devin/agents
+  agentsDirFormat: subdir
+  hooksFile: .devin/hooks.v1.json
+  hooksFormat: claude-direct
+  hooksScope: project
+  modelConfig:
+    file: ~/.config/devin/config.json
+    path: agent.model
+
+- name: codex
+  skillsDir: ~/.codex/skills
+  mcpConfig: ~/.codex/config.toml
+  mcpFormat: toml
+  mcpKey: mcp_servers
+  rulesFile: ~/.codex/AGENTS.md
+  agentsDir: ~/.codex/agents
+  modelConfig:
+    file: ~/.codex/config.toml
+    path: model
+    format: toml
+
+- name: gemini-cli
+  skillsDir: ~/.gemini/skills
+  mcpConfig: ~/.gemini/settings.json
+  rulesFile: ~/.gemini/GEMINI.md
+  commandsDir: ~/.gemini/commands
+  commandTransform: gemini
+  commandFileExt: .toml
+
+# Claude Desktop app — Cowork mode runs Claude Code's engine and shares ~/.claude/
+# for rules, commands, agents, and skills. MCP servers are the exception: Claude
+# Desktop reads from claude_desktop_config.json, not ~/.claude.json.
+# Detection: ~/Library/Application Support/Claude/ must exist (macOS app data).
+# readsFrom: when claude-code is detected, its dirs already have content — skip
+#   deploying skills/commands/agents to avoid double-writes to the same ~/.claude/ paths.
+- name: claude-desktop
+  skillsDir: ~/Library/Application Support/Claude/skills
+  mcpConfig: ~/Library/Application Support/Claude/claude_desktop_config.json
+  rulesFile: ~/.claude/CLAUDE.md
+  commandsDir: ~/.claude/commands
+  agentsDir: ~/.claude/agents
+  readsFrom:
+    - claude-code
+
+- name: copilot
+  skillsDir: ~/.copilot/skills
+  # rulesFile: user-global AGENTS.md added by slice 3c of
+  # `delegate-rules-to-ai-rules`. ai-rules writes project-local
+  # `AGENTS.md`; agentbrew writes the wrapped content here so Copilot
+  # can read user-global rules once upstream adds support. Until then,
+  # the file exists for consistency with agentbrew's convention and as a
+  # documented upstream-contribution target.
+  rulesFile: ~/.copilot/AGENTS.md
+  mcpConfigVscodeSettings: true
+
+- name: opencode
+  skillsDir: ~/.config/opencode/skills
+  mcpConfig: ~/.config/opencode/opencode.json
+  mcpKey: mcp
+  # opencode 1.14+ rejects the old stdio shape ({command, args}) — it requires
+  # { type: "local", command: ["cmd", ...args] } with `environment` (not `env`),
+  # or { type: "remote", url, headers? }. See OpenCodeAdapter.toEntry.
+  mcpFormat: opencode
+  commandsDir: ~/.config/opencode/commands
+
+- name: kiro
+  skillsDir: ~/.kiro/skills
+  mcpConfig: ~/.kiro/settings/mcp.json
+  # Per vercel-labs/skills README: Kiro CLI supports hooks but not allowed-tools.
+  supportedSkillFeatures: [hooks]
+
+- name: amp
+  skillsDir: ~/.config/amp/skills
+  mcpConfig: ~/.config/amp/settings.json
+  mcpKey: amp.mcpServers
+  # rulesFile: ai-rules writes AGENTS.md for amp; agentbrew deploys the
+  # wrapped output here (parallel to ~/.config/amp/settings.json).
+  # Added by slice 3c of `delegate-rules-to-ai-rules`.
+  rulesFile: ~/.config/amp/AGENTS.md
+  # commandsDir: ai-rules generates commands for amp at
+  # `<project>/.agents/commands/<name>-ai-rules.md`; agentbrew deploys
+  # the wrapped output to a user-level path mirroring `~/.config/amp/`
+  # so amp's CLI picks up agentbrew commands the same way it picks up
+  # rules. Added by slice 5 of `delegate-commands-to-ai-rules` as a
+  # free-capability gain — no native commandTransform code path.
+  commandsDir: ~/.config/amp/commands
+
+- name: goose
+  skillsDir: ~/.config/goose/skills
+  mcpConfig: ~/.config/goose/config.yaml
+  mcpKey: extensions
+  mcpFormat: yaml
+  # rulesFile: ai-rules writes AGENTS.md for goose; agentbrew deploys the
+  # wrapped output here (parallel to ~/.config/goose/config.yaml).
+  # Added by slice 3c of `delegate-rules-to-ai-rules`.
+  rulesFile: ~/.config/goose/AGENTS.md
+
+- name: cline
+  skillsDir: ~/.cline/skills
+  mcpConfigVscodeExt:
+    extensionId: saoudrizwan.claude-dev
+    filename: cline_mcp_settings.json
+  supportedSkillFeatures: [allowed-tools, hooks]
+  # rulesFile: ai-rules writes AGENTS.md for cline; agentbrew deploys the
+  # wrapped output here. Cline reads project-local `.clinerules` today;
+  # this user-global path is an upstream-contribution target.
+  # Added by slice 3c of `delegate-rules-to-ai-rules`.
+  rulesFile: ~/.cline/AGENTS.md
+
+- name: roo-code
+  skillsDir: ~/.roo/skills
+  mcpConfigVscodeExt:
+    extensionId: rooveterinaryinc.roo-cline
+    filename: cline_mcp_settings.json
+  # rulesFile: ai-rules writes AGENTS.md for roo (renamed from roo-code
+  # by rules-agent-map.ts); agentbrew deploys the wrapped output here.
+  # Added by slice 3c of `delegate-rules-to-ai-rules`.
+  rulesFile: ~/.roo/AGENTS.md
+
+# NOTE: the overlay-desktop agent (team desktop app) is provided by
+# the agentbrew-acme team overlay (agents-overlay.yaml + adapters/organization-
+# desktop/), not by core — agentbrew core stays free of organization product surface.
+# `loadAgentDefinitions()` merges overlay agents when a team is active.
+- name: qodo
+  skillsDir: ~/.qodo/skills
+  experimental: true
+
+- name: trae
+  skillsDir: ~/.trae/skills
+  experimental: true
+
+- name: junie
+  skillsDir: ~/.junie/skills
+  experimental: true
+
+- name: continue
+  skillsDir: ~/.continue/skills
+  experimental: true
+
+- name: warp
+  skillsDir: ~/.agents/skills
+  experimental: true
+
+- name: antigravity
+  skillsDir: ~/.gemini/antigravity/skills
+  experimental: true
+
+- name: qwen-code
+  skillsDir: ~/.qwen/skills
+  experimental: true
+
+- name: openhands
+  skillsDir: ~/.openhands/skills
+  experimental: true
+
+- name: kilo
+  skillsDir: ~/.kilocode/skills
+  # rulesFile: ai-rules writes AGENTS.md for kilocode (renamed from kilo
+  # by rules-agent-map.ts); agentbrew deploys the wrapped output here.
+  # Graduated from experimental by slice 3c of `delegate-rules-to-ai-rules`
+  # because adding any non-skills sync surface violates the
+  # "experimental ⇒ skills-only" invariant (src/core/agents.test.ts).
+  # ai-rules upstream lists kilocode in its supported agents, signaling
+  # enough real-world validation to drop the experimental badge.
+  rulesFile: ~/.kilocode/AGENTS.md
+
+- name: droid
+  skillsDir: ~/.factory/skills
+  experimental: true
+
+- name: openclaw
+  skillsDir: ~/.openclaw/skills
+  experimental: true
+
+- name: pi
+  skillsDir: ~/.pi/agent/skills
+  experimental: true
+
+- name: crush
+  skillsDir: ~/.config/crush/skills
+  experimental: true
+
+- name: kode
+  skillsDir: ~/.kode/skills
+  experimental: true
+
+- name: qoder
+  skillsDir: ~/.qoder/skills
+  experimental: true
+
+- name: zencoder
+  skillsDir: ~/.zencoder/skills
+  experimental: true
+  # Per vercel-labs/skills README: Zencoder does NOT support allowed-tools.
+  supportedSkillFeatures: []
+
+- name: cortex
+  skillsDir: ~/.snowflake/cortex/skills
+  experimental: true
+
+- name: mistral-vibe
+  skillsDir: ~/.vibe/skills
+  experimental: true
+
+- name: mux
+  skillsDir: ~/.mux/skills
+  experimental: true
+
+- name: codebuddy
+  skillsDir: ~/.codebuddy/skills
+  experimental: true
+
+- name: kimi-cli
+  skillsDir: ~/.config/agents/skills
+  experimental: true
+
+- name: replit
+  skillsDir: ~/.config/agents/skills
+  experimental: true
+
+- name: universal
+  skillsDir: ~/.config/agents/skills
+  experimental: true
+
+- name: command-code
+  skillsDir: ~/.commandcode/skills
+  experimental: true
+
+- name: iflow-cli
+  skillsDir: ~/.iflow/skills
+  experimental: true
+
+- name: mcpjam
+  skillsDir: ~/.mcpjam/skills
+  experimental: true
+
+- name: trae-cn
+  skillsDir: ~/.trae-cn/skills
+  experimental: true
+
+- name: neovate
+  skillsDir: ~/.neovate/skills
+  experimental: true
+
+- name: pochi
+  skillsDir: ~/.pochi/skills
+  experimental: true
+
+- name: adal
+  skillsDir: ~/.adal/skills
+  experimental: true
+
+- name: aider-desk
+  skillsDir: ~/.aider-desk/skills
+  experimental: true
+
+- name: bob
+  skillsDir: ~/.bob/skills
+  experimental: true
+
+- name: codearts-agent
+  skillsDir: ~/.codeartsdoer/skills
+  experimental: true
+
+- name: codemaker
+  skillsDir: ~/.codemaker/skills
+  experimental: true
+
+- name: codestudio
+  skillsDir: ~/.codestudio/skills
+  experimental: true
+
+- name: deepagents
+  skillsDir: ~/.deepagents/agent/skills
+  experimental: true
+
+- name: dexto
+  skillsDir: ~/.agents/skills
+  experimental: true
+
+- name: firebender
+  skillsDir: ~/.firebender/skills
+  # rulesFile: ai-rules writes AGENTS.md for firebender; agentbrew deploys
+  # the wrapped output here. Graduated from experimental by slice 3c of
+  # `delegate-rules-to-ai-rules` because adding any non-skills sync
+  # surface violates the "experimental ⇒ skills-only" invariant
+  # (src/core/agents.test.ts). ai-rules upstream lists firebender in its
+  # supported agents, signaling enough real-world validation to drop the
+  # experimental badge.
+  rulesFile: ~/.firebender/AGENTS.md
+  # commandsDir: ai-rules generates commands for firebender at
+  # `<project>/.firebender/commands/<name>-ai-rules.mdc`; agentbrew
+  # deploys the wrapped output to a user-level path mirroring
+  # `~/.firebender/`. Added by slice 5 of `delegate-commands-to-ai-rules`
+  # as a free-capability gain — no native commandTransform code path.
+  # The `.mdc` extension matches firebender's expected file shape per
+  # ai-rules' upstream docs.
+  commandsDir: ~/.firebender/commands
+  commandFileExt: .mdc
+
+- name: forgecode
+  skillsDir: ~/.forge/skills
+  experimental: true
+
+- name: rovodev
+  skillsDir: ~/.rovodev/skills
+  experimental: true
+
+- name: tabnine-cli
+  skillsDir: ~/.tabnine/agent/skills
+  experimental: true

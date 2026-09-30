@@ -1,0 +1,106 @@
+---
+description: Never skip tasks that need a web browser — use Playwright MCP or agent-browser
+globs: ["**/TASKS.md"]
+---
+
+# Browser Tasks — Never Skip
+
+**Temporary artifacts:** Session screenshots and saved snapshots go under `~/apps/agent-scratch/screenshots/` (`AGENT_SCREENSHOT_DIR`). Never `$HOME`, `/tmp`, or repo trees.
+
+**NEVER classify a task as "requires human action" or "blocked on external system" if it involves a web UI.** You have browser automation tools. Use them.
+
+## ALWAYS drive the browser yourself
+
+**Never ask the user to open, navigate, paste, or click a URL.** When a task needs a page open, YOU open it. For SSO-gated pages, load the `sso-browser-isolation` skill, use the attach-first workflow: attach to the correct purpose Chrome with `agent-browser connect <port>` or an equivalent CDP attach path, open your own tab, then navigate, snapshot, click, and read results yourself. For non-SSO work, use Playwright MCP or a task-local browser with a random debugging port.
+
+This includes SSO: drive the redirect chain yourself and **poll URL/title plus DOM/snapshot changes for up to 120 seconds** — an SSO flow can auto-complete if the device session is still valid, landing back on the target page with no human action. Navigate, then poll before concluding anything is blocked, and continue early if the DOM changes from the auth screen into the target app.
+
+The **only** browser action you may ask the user to perform is a **physical authenticator approval** (biometric or hardware-key tap) — and only **after** you have already driven the attached or isolated browser all the way to that prompt and confirmed (via polling) it will not auto-complete. Even then, phrase it as "tap the approval that's already on your screen," never "go open this URL."
+
+**SSO handoff screenshots in chat (mandatory):** Before any message asking the user to sign in or approve SSO, capture browser-content + full-desktop PNGs to `~/apps/agent-scratch/screenshots/` and **embed at least the desktop screenshot in that same chat message**. The operator must see the auth screen from chat — not hunt for a hidden window. See `sso-background-work` step 7.
+
+**If SSO still blocks after the initial poll:** load `sso-background-work` — background the blocked task, pick parallel work from TASKS.md, poll auth every 30–60s at task boundaries, resume when the app route loads.
+
+Anti-pattern (do NOT do this): sit in a tight poll loop waiting for SSO. Anti-pattern: "Please open `https://…/dashboard` in the Chrome window and complete SSO, then say done." Correct: attach, poll once, background + parallel work if still blocked, resume when authenticated.
+
+## Available Tools (pick one)
+
+- **Playwright MCP** (`browser_navigate`, `browser_click`, `browser_type`, `browser_snapshot`) — preferred for form-filling and page interaction
+- **agent-browser skill** — preferred for screenshots and data extraction
+- **Org overlay browser skills** — when your team overlay ships SSO login skills, read those first for org-specific hosts; otherwise use attach-first (Mode 1) or a stable headed session (Mode 2).
+
+## Browser Mode Selection (CRITICAL)
+
+Default to attach-first.
+There are three valid browser modes on this host. Pick the narrowest one that fits the task.
+
+### Mode 1 — Attach-first for SSO-gated and dashboard pages
+
+For **Google Docs/Slides/Drive, Jenkins, Jira, or any other SSO-gated UI**, attach to the existing purpose launchd Chrome and work in your own tab:
+
+| Port | Purpose |
+|------|---------|
+| `9223` | dashboard / general SSO |
+| `9224` | debug |
+| `9225` | tooling |
+
+```bash
+PORT=9223
+URL='<target-url>'
+agent-browser connect "$PORT"
+agent-browser tab new
+agent-browser open "$URL"
+agent-browser get url
+agent-browser snapshot > ~/apps/agent-scratch/screenshots/page-snapshot.txt
+```
+
+Preserve the 2026-05-12 tab-stealing fix with per-agent daemons and own-tab discipline. Do not solve tab safety by spawning a timestamp-unique Chrome per SSO task.
+
+### Mode 2 — Stable headed session for true isolation
+
+Use a separate Chrome only when a task truly needs isolation or a human must authenticate in a visible separate window. Use a stable purpose name, not a timestamp, keep the name in your notes, and close it at task end.
+
+```bash
+SESSION_NAME="sso-<purpose>"
+URL='<target-url>'
+agent-browser --headed --session-name "$SESSION_NAME" open "$URL"
+agent-browser --session-name "$SESSION_NAME" get url
+agent-browser --session-name "$SESSION_NAME" snapshot > ~/apps/agent-scratch/screenshots/page-snapshot.txt
+```
+
+### Mode 3 — Task-local non-SSO browser
+
+For non-SSO public pages, throwaway fixtures, and one-off local UI checks, launch a task-local browser with `--remote-debugging-port=0`, read `DevToolsActivePort`, verify the endpoint belongs to the spawned PID, and close it when done. Never hardcode ports `9222`–`9225` for this mode.
+
+### Hard bans
+
+- ❌ asking the user to open/navigate/click a web page
+- ❌ launching Chrome on a launchd-owned profile
+- ❌ setting `AGENT_BROWSER_PROFILE` to a launchd-owned profile
+- ❌ timestamp-unique SSO session names
+- ❌ idle tight-loop SSO polling instead of background + parallel work
+- ❌ `pkill -f remote-debugging-port` / `pkill -f "Google Chrome"`
+- ❌ `rm -rf ~/.agent-browser/*`
+- ✅ attach to purpose Chrome first, stable headed session only when needed, random-port task-local browser for non-SSO
+
+Chrome ProcessSingleton forwards launches against an already-open profile into the running instance (`Opening in existing browser session.`). Agent/browser retries can turn that into a storm of stray windows, so attach to managed Chromes instead of launching at their profiles.
+
+## SSO Auth Flow
+
+1. Attach to the correct purpose Chrome and navigate to the target URL in your own tab.
+2. If the URL is an SSO host (see `sso-background-work` for how hosts are configured) or shows a login page:
+   - Take a snapshot/screenshot
+   - Poll URL/title and DOM/snapshot changes for up to 120 seconds; SSO may auto-complete
+   - If still blocked after initial poll, **background** per `sso-background-work`: record state, do other TASKS.md work, poll auth every 30–60s at boundaries
+   - If physical auth is needed, tell the user: **"Tap the approval that's already on your screen"** — not "go log in"
+3. When auth completes, **resume**: re-navigate if needed, re-run page-zero / verification, continue the original task
+4. Verify auth succeeded: final URL is NOT an SSO host
+
+## Key Rule
+
+If a TASKS.md task involves Jira or any web portal:
+
+1. **DO attempt it** with Playwright/agent-browser
+2. **DO background + parallel work** if SSO blocks after the initial poll — do not idle
+3. **DO NOT** mark it as "requires human action" and move on permanently
+4. **DO NOT** skip it in favor of code-only tasks without resuming when auth completes

@@ -1,0 +1,28 @@
+---
+description: Google Docs edits require surgical MCP ops plus a visual verification loop before claiming done
+alwaysApply: true
+---
+
+# Google Docs editing — IRON LAW
+
+Applies to **every project and every Google Doc** you touch — runbooks, PRDs, RFCs, mirrored design docs, not just one repo.
+
+Before the first GDoc edit in a session, read the **`markdown-for-gdoc`** skill (agentbrew built-in).
+
+## Surgical edits only
+
+Never full-tab-replace an existing GDoc. Use MCP surgical ops (`find_and_replace`, `delete_content_range`, `docs_update_paragraph_style`, `apply_bullets`) with dry-run match counts. Preserve comment anchors; never resolve others' comments or post as the user without per-action approval.
+
+## Every-page visual verification (required after every edit batch)
+
+MCP markdown export and DOM snapshots **misrepresent** lists, headings, bold,
+spacing, clipping, and pagination. After each batch:
+
+1. **`docs_get_structured`** on the edited range — confirm `NORMAL_TEXT` vs `HEADING_*`, list boundaries, no empty styled paragraphs.
+2. **Every-page screenshot sweep** — open the exact live document/tab, return to page 1, and capture and inspect a browser screenshot of every rendered page through the final page. For pageless tabs, screenshot every non-overlapping viewport segment from top to bottom. DOM snapshots, structured reads, and section spot-checks do not satisfy this gate.
+3. **Repair and restart** — fix every safe formatting or presentation issue noticed anywhere in the tab, including outside the edited range. Preserve comments and substantive meaning. After any fix, restart the full screenshot sweep from page 1 because pagination may have changed.
+4. **Review handoff** — repeat until structured checks and every screenshot pass. Only then tell the user the document is ready for review or claim it is updated in Jira, Slack, or comments.
+
+SSO-blocked browser: background auth per `sso-background-work`; keep fixing from structured reads; return to visual check when the doc loads.
+
+Full toolkit and comment protocol: **`markdown-for-gdoc`** skill.

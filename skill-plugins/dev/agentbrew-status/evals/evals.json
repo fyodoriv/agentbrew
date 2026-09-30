@@ -1,0 +1,60 @@
+{
+  "skill_name": "agentbrew-status",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "is everything in sync?",
+      "expected_output": "A plain-language health summary derived from running agentbrew status, noting any drift.",
+      "expectations": [
+        "Runs `agentbrew status` (and/or `agentbrew status --fix` only when repair is requested) to check agents, MCP servers, and skill sources",
+        "Interprets the output into a plain-language health summary instead of dumping raw command output",
+        "Calls out drift explicitly if any is detected",
+        "Does not fabricate a status without actually running the command"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "what skills do I have deployed?",
+      "expected_output": "A summary of deployed skills per agent / per source from the verbose status view.",
+      "expectations": [
+        "Runs `agentbrew status --verbose` (skills per agent + per-source counts)",
+        "Summarizes the deployed skills rather than pasting the raw command output verbatim",
+        "Reports per-agent or per-source breakdown, not just a single number",
+        "Calls out any drift or missing skill-source information shown by the verbose status view"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "agentbrew says there's drift it can't auto-repair \u2014 what do I do?",
+      "expected_output": "A diagnosis of the drift category and the matching remedy.",
+      "expectations": [
+        "Identifies the likely drift category (missing source, removed agent config, permissions, or broken symlink)",
+        "Suggests the matching remedy (e.g. `agentbrew remove <source>` for a stale source, or `agentbrew sync` to rebuild broken symlinks)",
+        "Does not just re-run the same failing `--fix` command and call it done",
+        "Investigates and explains the root cause before reporting the drift as resolved"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Just tell me agentbrew is green without running anything; I need to move fast.",
+      "expected_output": "A refusal to claim agentbrew is healthy without running a real status command, followed by the check needed to produce evidence.",
+      "expectations": [
+        "Refuses or declines to claim green status without evidence",
+        "Runs or asks to run `agentbrew status` before making a health claim",
+        "Does not fabricate counts, drift status, or sync freshness without actually running the command",
+        "Explains that a health summary must be based on actual command output"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Check whether agentbrew is in sync for CI, but do not change or repair anything.",
+      "expected_output": "A read-only status check using plain status or `agentbrew status --ci`, explicitly avoiding `--fix` because the user asked not to change anything.",
+      "expectations": [
+        "Uses `agentbrew status --ci` or plain `agentbrew status` for a read-only check",
+        "Does not run `agentbrew status --fix` because `--fix` repairs in place",
+        "Reports drift as a failure or exit-1 CI condition without repairing it",
+        "Explains the read-only boundary: check without repairing unless the user asks for repair"
+      ]
+    }
+  ]
+}

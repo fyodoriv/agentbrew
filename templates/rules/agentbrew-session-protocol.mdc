@@ -1,0 +1,29 @@
+---
+description: Session entry protocol — load canonical project context before any action
+alwaysApply: true
+---
+
+# Session Entry Protocol — IRON LAW
+
+Before any tool call, before any response to the user, before any code edit, run:
+
+```bash
+bash ~/.config/agentbrew/scripts/load-project-context.sh
+```
+
+Read every file it lists. Follow markdown links to depth 2. Resolve `@import/path` references.
+
+If `bash` is unavailable in your environment, read these files directly at the start of every session in every repo:
+
+- `README.md` (root)
+- `AGENTS.md` / `CLAUDE.md` / `.cursor/rules/*` / equivalent
+- `VISION.md`, `ROADMAP.md` (or `MILESTONES.md`)
+- `ARCHITECTURE.md` (if present)
+- `user-stories/*.md`, `competitors/*.md` or `docs/competition/*.md` (if present)
+- `TASKS.md`
+
+When proposing non-trivial changes, use loaded VISION / user-story / competitor context in your **reasoning**. Do **not** add a `## Vision trace` section to PR bodies unless the repo has adopted the `pr-vision-trace` CI gate (`scripts/check-pr-vision-trace.mjs` or `.github/workflows/pr-vision-trace.yml`). Enterprise GHE product repos never use that gate — cite Jira tickets instead.
+
+When the user request conflicts with VISION or ROADMAP, surface the conflict BEFORE making changes — quote the conflicting lines, quote what the user asked for, ask "proceed anyway / amend VISION / drop the request?"
+
+This rule lives in the Cursor `alwaysApply: true` slot, the agentbrew shared rules file (read by Cursor on every session), and the project-level rule directories — three independent surfaces. Bypassing one still leaves the others.

@@ -1,0 +1,422 @@
+{
+  "lastRefreshed": "2026-05-02",
+  "summary": "2026-05-02 weekly refresh: refreshed every stale competitor row. Material deltas: skills CLI grew to 16.7K stars, npm v1.5.3, 54 supported agents, added Devin, and flipped Kiro CLI hooks support to Yes; agentbrew mirrored the matrix by adding 8 skills-only agents, delegating Devin, and adding Kiro hooks support. Skills Manager jumped to 975 stars and v1.16.1 but stays GUI/skills-only. Context Hub reached 13.1K stars, OpenClaw catalog 47.7K stars / 5,400+ skills, anthropics/skills 126.9K stars, OpenViking 23.3K stars. No Build-or-Contribute verdict changed; all direct sync competitors remain Contribute/Keep separate/Complementary as before.",
+  "freshness": [
+    {
+      "tool": "Caliber (@rely-ai/caliber)",
+      "lastResearched": "2026-05-02",
+      "stars": "933",
+      "status": "2026-05-02 refresh: caliber-ai-org/ai-setup 933⭐ / 106 forks, latest release v1.49.3 (2026-04-29), npm @rely-ai/caliber v1.49.3, pushed 2026-04-29. Still a project-scoped LLM-generated context/setup tool for Claude Code, Cursor, Codex, OpenCode, and GitHub Copilot; no user-level machine sync or unmanaged-config drift detection. Verdict: Keep separate; watch if agent count grows past 10 or global config appears."
+    },
+    {
+      "tool": "Bridle (neiii/bridle)",
+      "lastResearched": "2026-05-02",
+      "stars": "418",
+      "status": "2026-05-02 refresh: 418⭐ / 18 forks, latest release still v0.2.9 (2026-01-30), npm bridle-ai v0.2.9, pushed 2026-04-25. Minor repo activity only; still 7-harness Rust TUI profile manager with tiny npm/crates adoption, no drift detection, catalog, rules managed sections, or lock file. Verdict: Keep separate."
+    },
+    {
+      "tool": "skills CLI (Vercel)",
+      "lastResearched": "2026-05-02",
+      "stars": "16.7K",
+      "status": "2026-05-02 refresh: 16.7K⭐ / 1.3K forks, npm skills v1.5.3 (2026-04-28), latest GitHub release v1.5.1, open issues 265 / open PRs 211. Still no MCP sync, no rules sync, no drift detection; PR #630 (status/drift), PR #509 (validator), and PR #937 (config-system work) remain open. README matrix changed: supported agents now 54, including Devin; Kiro CLI hooks flipped to Yes. Mirrored into src/core/agents.yaml by adding 8 skills-only agents, removing Devin from the native carve-out set, and setting Kiro supportedSkillFeatures to [hooks]."
+    },
+    {
+      "tool": "Skills Manager (desktop)",
+      "lastResearched": "2026-05-02",
+      "stars": "975",
+      "status": "2026-05-02 refresh: xingkongliang/skills-manager 975⭐ / 86 forks, latest release v1.16.1 (2026-05-01), pushed 2026-05-01. GUI skill manager is now materially larger than the old ~50-star snapshot, but still skills-only, Electron GUI, no MCP/rules/commands or drift detection. Verdict: Complementary GUI companion; watch only if sync/repair appears."
+    },
+    {
+      "tool": "Composio Connect",
+      "lastResearched": "2026-07-06",
+      "stars": "N/A (hosted SaaS)",
+      "status": "2026-07-06 landscape review: Composio Connect at connect.composio.dev/mcp exposes 1,000+ SaaS apps via one HTTP MCP endpoint with managed OAuth and meta-tools (COMPOSIO_SEARCH_TOOLS, etc.). agentbrew delegates the per-vendor connector long tail to a single catalog entry (`composio`); removed `notion` and `atlassian` MCP catalog entries. Verdict: Delegate (catalog pointer) — G1 curate not host."
+    },
+    {
+      "tool": "Compound Engineering",
+      "lastResearched": "2026-07-06",
+      "stars": "22.7K",
+      "status": "2026-07-06 refresh: EveryInc/compound-engineering-plugin 22.7K★ / 1.7K forks, pushed 2026-07-06. Official plugin for Claude Code, Codex, Cursor, and more — 29 skills including ce-compound knowledge accumulation and lfg full pipeline. Indexed in agentbrew catalog + sources.yaml (curator model). Prior nicepkg/compound 404 snapshot superseded. Verdict: Complementary curated source."
+    },
+    {
+      "tool": "gstack",
+      "lastResearched": "2026-07-06",
+      "stars": "120K",
+      "status": "2026-07-06 refresh: garrytan/gstack 120K★ / 17.9K forks, pushed 2026-06-25. Opinionated sprint pipeline (office-hours → autoplan → qa → ship → retro) with real-browser QA and regression tests. 18 core sprint skills indexed in agentbrew catalog; ~35 niche skills (iOS, design, OpenClaw) deferred. Verdict: Complementary curated source (G1 curator model)."
+    },
+    {
+      "tool": "vsync",
+      "lastResearched": "2026-05-02",
+      "stars": "43",
+      "status": "2026-05-02 refresh: nicepkg/vsync 43⭐ / 1 fork, latest release @nicepkg/vsync@1.1.0 (2026-01-27), pushed 2026-01-27. Description still names Claude Code, Cursor, OpenCode, and Codex; no material feature change. Verdict: Keep separate."
+    },
+    {
+      "tool": "MCPM (mcpm.sh)",
+      "lastResearched": "2026-05-02",
+      "stars": "938",
+      "status": "2026-05-02 refresh: pathintegral-institute/mcpm.sh 938⭐ / 100 forks, latest release v2.14.0 (2026-03-27), pushed 2026-04-24. No material post-delegation change; remains the MCP-specific package manager agentbrew delegates to for intersection clients."
+    },
+    {
+      "tool": "Smithery CLI",
+      "lastResearched": "2026-05-02",
+      "stars": "703",
+      "status": "2026-05-02 refresh: smithery-ai/cli 703⭐ / 88 forks, @smithery/cli v4.11.1 (2026-04-30), `smithery` package v1.0.0 + GitHub release v1.0.0 (2026-05-01), pushed 2026-05-01. Active hosted registry CLI for MCP servers and skills; no rules/commands/drift sync. Verdict: Complementary catalog/source, not replacement."
+    },
+    {
+      "tool": "install-mcp",
+      "lastResearched": "2026-05-02",
+      "stars": "182",
+      "status": "2026-05-02 refresh: supermemoryai/install-mcp 182⭐ / 33 forks, npm install-mcp v1.10.2 (2026-01-02), latest GitHub release v1.10.0, pushed 2026-04-17. Still one-shot MCP install with OAuth/header support; no ongoing management, removal, sync, or drift repair. Verdict: Complementary."
+    },
+    {
+      "tool": "block/ai-rules",
+      "lastResearched": "2026-05-02",
+      "stars": "96",
+      "status": "2026-05-02 refresh: block/ai-rules 96⭐ / 20 forks, latest release v1.6.0 (2026-03-31), pushed 2026-03-31. No material change after the 2026-04-27 delegation deep-dive; still rules/commands/skills generation across 10+ agents. Residual upstream PR #91 path flags remains approval-blocked in TASKS.md."
+    },
+    {
+      "tool": "skillfile",
+      "lastResearched": "2026-05-02",
+      "stars": "115",
+      "status": "2026-05-02 refresh: eljulians/skillfile 115⭐ / 13 forks, latest release v1.5.0 (2026-04-13), pushed 2026-05-01. Active Rust skills package manager with lock/patch/Skillfile primitives; still skills-only and not a multi-surface sync engine. Verdict: Keep separate; absorbed ideas remain documented only."
+    },
+    {
+      "tool": "ai-rules-sync",
+      "lastResearched": "2026-05-02",
+      "stars": "27",
+      "status": "2026-05-02 refresh: lbb00/ai-rules-sync 27⭐ / 1 fork, latest release v0.8.1 (2026-03-11), npm ai-rules-sync v0.8.1, last push still 2026-03-16. No material feature change; remains effectively dormant."
+    },
+    {
+      "tool": "OpenViking",
+      "lastResearched": "2026-05-02",
+      "stars": "23.3K",
+      "status": "2026-05-02 refresh: volcengine/OpenViking 23.3K⭐ / 1.7K forks, release v0.3.13 (2026-04-29) with v0.3.14 tag, pushed 2026-05-01. Still a ByteDance context database / memory system, not config sync. Verdict: Complementary runtime context layer; possible MCP catalog entry."
+    },
+    {
+      "tool": "knowhub",
+      "lastResearched": "2026-05-02",
+      "stars": "40",
+      "status": "2026-05-02 refresh: yujiosaka/knowhub 40⭐ / 2 forks, last push still 2025-07-24. Still inactive generic knowledge-file sync; no agent-specific config conversion or MCP/rules/commands expansion. Verdict: Keep separate/out of scope."
+    },
+    {
+      "tool": "MCP Dock",
+      "lastResearched": "2026-05-02",
+      "stars": "111",
+      "status": "2026-05-02 refresh: OldJii/mcp-dock 111⭐ / 5 forks, latest release v1.2.0 (2026-03-06), pushed 2026-03-06. Still GUI MCP server manager; no skills/rules/commands or CLI automation. Verdict: Complementary GUI."
+    },
+    {
+      "tool": "agent-config-sync (skill)",
+      "lastResearched": "2026-05-02",
+      "stars": "2",
+      "status": "2026-05-02 refresh: liamdmcgarrigle/agent-config-sync 2⭐ / 0 forks, pushed 2026-02-28. Still a Claude Code skill wrapping vsync / npx skills / git hooks for Claude Code, OpenCode, Codex, and Cursor; no independent sync engine. Verdict: Keep separate."
+    },
+    {
+      "tool": "mdskills.ai",
+      "lastResearched": "2026-05-02",
+      "stars": "N/A",
+      "status": "2026-05-02 refresh: mdskills.ai redirects to www.mdskills.ai and returns 200 from Vercel; no public GitHub repo found in mdskills-ai/mdskills, mdskills/mdskills, or ai-sh/mdskills. Still a registry / marketplace data source candidate, not a config-sync competitor."
+    },
+    {
+      "tool": "awesome-codex-subagents",
+      "lastResearched": "2026-05-02",
+      "stars": "4.4K",
+      "status": "2026-05-02 refresh: VoltAgent/awesome-codex-subagents 4.4K⭐ / 513 forks, no releases, pushed 2026-03-20. Still a Codex-native .toml subagent catalog, not a sync tool. Verdict: Complementary curated source."
+    },
+    {
+      "tool": "claude-peers-mcp",
+      "lastResearched": "2026-05-02",
+      "stars": "2.0K",
+      "status": "2026-05-02 refresh: louislva/claude-peers-mcp 2.0K⭐ / 246 forks, no GitHub releases, pushed 2026-04-26. Still runtime peer messaging between Claude Code sessions via MCP, not config sync. Verdict: Out of scope / adjacent runtime infrastructure."
+    },
+    {
+      "tool": "Warden",
+      "lastResearched": "2026-05-02",
+      "stars": "191",
+      "status": "2026-05-02 refresh: getsentry/warden 191⭐ / 15 forks, latest release v0.22.0 (2026-04-28), pushed 2026-05-01. Sentry-backed code review runner continues active development and consumes SKILL.md; still execution layer, not install/sync layer. Verdict: Complementary."
+    },
+    {
+      "tool": "Context Hub (chub)",
+      "lastResearched": "2026-05-02",
+      "stars": "13.1K",
+      "status": "2026-05-02 refresh: andrewyng/context-hub 13.1K⭐ / 1.2K forks, latest release v0.1.4 (2026-04-27), pushed 2026-04-29. Still runtime API-doc retrieval / local annotations / feedback loop for agents, not config sync. Verdict: Complementary; natural skill/MCP catalog source."
+    },
+    {
+      "tool": "React Doctor",
+      "lastResearched": "2026-05-02",
+      "stars": "6.3K",
+      "status": "2026-05-02 refresh: millionco/react-doctor 6.3K⭐ / 200 forks, npm react-doctor v0.0.47 (2026-05-01), latest GitHub release react-doctor@0.0.38 (2026-04-17), pushed 2026-05-01. Still React diagnostics + skill installer; validates multi-agent install pain but writes directly to agent dirs. Verdict: Keep separate; ownership conflict remains."
+    },
+    {
+      "tool": "Chops",
+      "lastResearched": "2026-05-02",
+      "stars": "1.3K",
+      "status": "2026-05-02 refresh: Shpigford/chops 1.3K⭐ / 78 forks, latest release v1.15.0 (2026-04-29), pushed 2026-04-29. Still macOS GUI skill browser/editor/installer and symlink-aware AgentBrew companion; no drift detection or MCP/rules sync. Verdict: Complementary GUI; watch if sync/repair appears."
+    },
+    {
+      "tool": "OpenClaw / ClawHub",
+      "lastResearched": "2026-05-02",
+      "stars": "47.7K",
+      "status": "2026-05-02 refresh: VoltAgent/awesome-openclaw-skills 47.7K⭐ / 4.7K forks, pushed 2026-04-20; clawhub.ai returns 200 and openclaw.ai returns 403 to HEAD. Registry now claims 5,400+ filtered skills. Verdict: Complementary registry / catalog source, not config sync."
+    },
+    {
+      "tool": "GitAgent",
+      "lastResearched": "2026-05-02",
+      "stars": "2.8K",
+      "status": "2026-05-02 refresh: open-gitagent/gitagent-protocol 2.8K⭐ / 330 forks, latest release v0.3.2 (2026-04-20), pushed 2026-04-23. The implementation repo open-gitagent/gitagent is 325⭐ and active; protocol remains single-agent git-native definition layer. Verdict: Complementary; watch for multi-agent sync + drift detection."
+    },
+    {
+      "tool": "**anthropics/skills**",
+      "lastResearched": "2026-05-02",
+      "stars": "126.9K",
+      "status": "2026-05-02 refresh: anthropics/skills 126.9K⭐ / 14.9K forks, no GitHub releases, pushed 2026-05-01. Continued rapid growth; still canonical Agent Skills spec + production skills, not a manager. Watch for official CLI/marketplace/sync surface."
+    },
+    {
+      "tool": "dotfiles pattern (manual)",
+      "lastResearched": "2026-05-02",
+      "stars": "N/A",
+      "status": "2026-05-02 refresh: conceptual/manual pattern, no repository to query. Still valid baseline for hand-managed multi-agent config, but no productized drift detection, catalog, or format translation."
+    },
+    {
+      "tool": "mcpick (spences10/mcpick)",
+      "lastResearched": "2026-04-26",
+      "stars": "72",
+      "status": "NEW. ~139 commits, 3 contributors, updated within 24h. TypeScript Vite+ build. Claude Code extension manager: toggles MCP servers on/off (fixes ~all-MCPs-load-at-startup token bloat), manages plugins/skills/hooks/agents/marketplaces, profiles + backups + plugin cache. Reads/writes ~/.claude.json and ~/.claude/plugins/ directly. Node 22+, Claude Code-only. Tier 5 / Complementary — single-agent runtime control vs agentbrew’s multi-agent config-sync; per-session MCP toggle UX has no agentbrew equivalent and no plan to add (runtime territory)."
+    },
+    {
+      "tool": "Alph (Aqualia/Alph)",
+      "lastResearched": "2026-04-26",
+      "stars": "61",
+      "status": "NEW. TypeScript CLI (npm @aqualia/alph-cli). \"Universal MCP Server Configuration Manager\" — 6 agents (Gemini CLI, Cursor, Claude Code, Windsurf, Codex CLI, Kiro) across HTTP/SSE/STDIO transports. Local-first atomic writes with timestamped backups + rollback, validation. Auto-installs STDIO tools via npm/brew/pipx/cargo. Cross-platform (macOS/Linux/Windows; Codex on Windows blocked upstream). Tier 2 / Complementary — narrower than MCPM (6 vs 10+ clients) but more polished UX (atomic+rollback+auto-install). Nothing strategically novel vs MCPM/install-mcp; the atomic-writes-with-backup pattern is worth absorbing if MCPM lacks it."
+    },
+    {
+      "tool": "skillpm (sbroenne/skillpm)",
+      "lastResearched": "2026-04-26",
+      "stars": "8",
+      "status": "NEW. \"npm-native package manager for Agent Skills.\" TypeScript CLI on npm. Uses npm registry as the distribution channel: `skillpm install` runs npm install + scans node_modules/ for skills/*/SKILL.md + delegates to vercel-labs/skills CLI to wire into agent dirs. `skillpm publish` validates agentskills.io spec and publishes to npmjs.org. Workspace monorepo support. Pass-through to npm for non-skillpm commands. Tier 3 / Complementary — npm-publishing front-end on top of skills CLI; different distribution channel from agentbrew (npm registry vs git URL). Distinguishing idea: npm semver as versioning vs agentbrew/skillfile git-SHA pinning. No absorbable feature today."
+    },
+    {
+      "tool": "akm (itlackey/akm)",
+      "lastResearched": "2026-04-26",
+      "stars": "40",
+      "status": "NEW. \"Agent Kit Manager\" — npm akm-cli + standalone binary. 548 commits, very active solo project. MPL-2.0. Manages skills, commands, agents, knowledge, workflows, vaults, wikis, memories. Cross-tool via prompt injection (\"add this to your AGENTS.md/CLAUDE.md\"). Distinguishing capabilities: (a) website crawling — indexes pages as searchable knowledge; (b) feedback/usage tracking; (c) registry concept (official + private + skills.sh); (d) `akm clone` copies any asset from stash/remote. Plugin SDK. Tier 1 / Keep separate — broader scope than agentbrew (vaults/wikis/memories are out of scope per VISION.md \"config-sync, not knowledge management\"). Different model: prompt-injection vs managed-section sync. Watch: feedback-as-quality-signal + website-as-skill-source ideas. Re-evaluate if akm grows past 500⭐."
+    },
+    {
+      "tool": "syncode (donnes/syncode)",
+      "lastResearched": "2026-04-26",
+      "stars": "few",
+      "status": "NEW. CLI on npm @donnes/syncode, Bun-first build. 17 agents (Amp, Antigravity, Claude Code, Clawdbot, Codex, Cursor, Droid, Gemini CLI, GitHub Copilot, Goose, Kilo, Kiro, OpenCode, Roo, Trae, VSCode, Windsurf). Git-repo-as-source-of-truth model: clones a config repo and symlinks (or copies for Claude/Gemini cache preservation) the entire agent dir. `syncode sync` bidirectional Import/Export. Auto-detects installed agents at `new`. Includes opinionated `install.sh` machine-deps setup. macOS/Linux only (Windows planned). MIT. Tier 1 / Keep separate — different model from agentbrew (full-directory sync vs managed-section sync); the full-copy model conflicts with agentbrew's user-stories prohibition on destroying user content. 17-agent list mostly overlaps agentbrew's 50+. Watch: machine-deps-as-skill (`install.sh` boilerplate as deployable skill) for the dotfiles + agentbrew composition story."
+    },
+    {
+      "tool": "faf-cli (Wolfe-Jam/faf-cli)",
+      "lastResearched": "2026-04-26",
+      "stars": "27",
+      "status": "NEW. \"The package.json for AI Context.\" Defines `.faf` YAML format (IANA-registered as application/vnd.faf+yaml). 26 commands: init, score, sync, export to AGENTS.md/.cursorrules/GEMINI.md, compile to .fafb binary. Bi-sync between .faf and CLAUDE.md (8ms); tri-sync to MEMORY.md. Auto-detects project type (MCP, fullstack, svelte, etc.) and reads metadata from package.json/pyproject.toml/Cargo.toml. WASM scoring kernel (0-100% AI-readiness). Bun-first, single-file binary, 51K+ npm downloads, 402 tests, very active. MIT. Tier 3 / Complementary — different layer: faf-cli creates the canonical AI-context content; agentbrew syncs content (skills/MCP/rules) across agents. They compose. Architectural disagreement: faf-cli treats bi-sync as a feature; agentbrew's VISION.md treats bi-sync as a non-goal due to source-of-truth ambiguity."
+    },
+    {
+      "tool": "skillink (bosens-China/skillink)",
+      "lastResearched": "2026-04-26",
+      "stars": "0",
+      "status": "NEW. TypeScript CLI on npm `@boses/skillink`. \"Robust symlink manager for AI tool configurations.\" Resolves glob patterns (e.g. `**/AGENTS.md`) into flat symlink structures across `.agents/` and tool-specific dirs (`.claude`, etc.). Distinguishing idea: **AES-256-GCM file encryption** (`skillink lock`/`skillink unlock`) for sensitive MCP configs and `.env` files so they can be safely committed to git — manifest tracked in `skillink.encrypt.json`. Cross-platform (macOS/Linux/Windows; uses NTFS Junctions with elevation fallbacks). Bilingual output (English/Chinese with `auto` locale detection). Strict-mode `--yes` fails on conflicts rather than overwriting. 56 commits, MIT, declarative `skillink.config.ts`. Tier 1 / Keep separate — narrower than agentbrew (just AGENTS.md sync + secret encryption, no MCP/rules/commands distribution). The lock/unlock encryption pattern for sensitive MCP configs is the only novel idea worth tracking; agentbrew today expects users to keep secrets out of state.yaml entirely (env-var indirection) so absorbing this would be a different security posture, not an enhancement. Watch if it grows past 50⭐ or adds full MCP/rules sync."
+    },
+    {
+      "tool": "agentctl (liangquanzhou/agentctl)",
+      "lastResearched": "2026-04-26",
+      "stars": "0",
+      "status": "NEW. Go CLI, brew tap `liangquanzhou/tap`, MIT. \"Unified control plane for managing multiple AI coding agents — think `terraform apply` but for your AI toolchain.\" 35 commits, single-static-binary distribution. **Direct competitor in scope**: 7 agents (Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, OpenClaw, Trae CN) × 6 surfaces (MCP, rules, hooks, commands, ignore patterns, skills). Custom agent registry via TOML overrides in `~/.config/agentctl/agents/`. Private skill registries via `skills/sources.json`. Plan/apply/status/validate/doctor/rollback/drift/reconcile/runs verbs — same drift-detect-and-fix model as agentbrew. Distinguishing capabilities: (a) **ignore-patterns sync** (`.codexignore`, `.geminiignore`) — a surface agentbrew doesn't currently manage; (b) **`agentctl runs`** apply-history command for rollback target selection; (c) age-encrypted secrets in `~/.config/agentctl/secrets/`. Capability matrix in README is honest about gaps (OpenCode hooks via JS plugin not yet supported; Trae CN/OpenClaw rules/hooks/commands not yet investigated). Tier 1 / Keep separate — same problem space as agentbrew, smaller agent set (7 vs 50+), Go binary vs Node CLI. **Watch if it grows past 50⭐ or adds 10+ agents.** Two absorbable ideas: (1) ignore-patterns as a first-class sync surface (worth a TASKS.md entry to evaluate `.codexignore`/`.geminiignore`/`.cursorignore` parity); (2) the `agentctl runs` history-of-applies pattern for rollback UX (agentbrew has portable export/import but no per-apply log)."
+    },
+    {
+      "tool": "spm (skillpkg/spm)",
+      "lastResearched": "2026-04-26",
+      "stars": "0",
+      "status": "NEW. Go CLI (`spm` binary) + npm wrapper (`@skillpkg/cli`). \"The package manager for AI agent skills.\" Active development — 341 commits, dedicated brand at skillpkg.dev with full registry stack (Cloudflare Workers + Hono API + Neon Postgres + R2 + admin dashboard). Apache-2.0. `spm install <skill>` installs and links to all detected AI agents (claims \"Claude Code, Cursor, Copilot, Codex, and 30+ agent platforms\" — same scope claim as vercel-labs/skills). Distinguishing capabilities: (a) **Sigstore keyless signing** (Fulcio + Rekor) for supply-chain integrity — every published skill is cryptographically signed; (b) **3-layer security scan pipeline** (regex → static analysis → ML) before any skill ships; (c) dedicated **MCP server** (`@skillpkg/mcp` on npm) so agents can discover skills directly via Model Context Protocol; (d) GitHub OAuth device flow for `spm publish`. Workspaces monorepo with Go binary + Cloudflare Worker API + React 19 web. ~640 tests across packages. Tier 3 / Complementary — yet another skills CLI (similar functional shape to vercel-labs/skills) but with security-first posture: signed packages, scanned uploads, MCP-discoverable registry. Different distribution channel from agentbrew (skillpkg.dev registry vs git URL). The Sigstore-signing-of-skills idea is novel in this ecosystem (vercel-labs/skills uses git SHA pinning; skillpm uses npm semver; skillfile uses git SHA + patches). Worth tracking as the security-leaning alternative if/when supply-chain incidents become a real concern. No absorbable feature today — agentbrew delegates skill install to skills CLI per the P0 delegation strategy."
+    },
+    {
+      "tool": "ctx (ctx-hq/web)",
+      "lastResearched": "2026-04-26",
+      "stars": "0",
+      "status": "NEW. TypeScript / Hono SSR + Cloudflare Pages. The `ctx-hq/web` repo is just the **website** (getctx.org) for a planned product called \"ctx — Universal Package Manager for LLM Context.\" 62 commits, MIT. The actual CLI (`ctx install <package>`, `ctx serve`) is referenced but not in this repo. Three claimed package types: skills, MCP servers, CLI tools. Distinguishing UX idea: **agent-readable bootstrap skill** — the README literally says \"For AI agents — paste this into your agent: `Read https://getctx.org/skill.md and follow the instructions to use ctx`\" — a meta-pattern where the install instructions ARE a skill the agent fetches and follows. Tier 5 / Complementary or registry-style — functional shape closer to skills.sh / mdskills.ai / OpenClaw (registry + CLI front-end) than to agentbrew's multi-surface sync. Without seeing the CLI repo we can't fully classify; Tier 5 is the safest holding bucket. The bootstrap-via-skill idea is the only novel piece worth tracking; agentbrew's `agentbrew add <repo>` happens at the user-CLI level, not via an agent reading a remote skill. Watch for: (a) the CLI repo going public with cross-agent sync claims (would re-classify to Tier 1); (b) registry growth past skills.sh tier (would warrant adding as a `catalog --search` query target like the `catalog-registry-source` P3 task contemplates)."
+    },
+    {
+      "tool": "skillkit (PuvaanRaaj/skillkit)",
+      "lastResearched": "2026-04-26",
+      "stars": "1",
+      "status": "NEW. Go CLI (Go 1.26+), distributed via shell installer + Go install + npm wrapper. MIT. \"One source of truth for every AI agent\" — 13 rules targets (claude, cursor, copilot, agents_md default-on; gemini, windsurf, aider, goose, jules, continue, amazon_q, kodu, zed opt-in). Same shape as block/ai-rules: define rules in `.skillkit/rules/` (with optional scoped overrides in `.skillkit/scoped/`) and `skillkit sync` regenerates each tool's native format. Distinguishing capabilities: (a) **lockfile** (`.skillkit/skillkit.lock`) for reproducible drift detection — same model as agentbrew's lockfile but rules-only; (b) **`skillkit sync --check`** exits 2 in CI when outputs would change (CI-friendly drift gate); (c) **`skillkit import --from claude`** migrates existing CLAUDE.md / .cursorrules / Copilot instructions / AGENTS.md into `.skillkit/`; (d) monorepo `parent/child` rule layering (`monorepo.inherit: true`); (e) experimental MCP server over stdio for agent-driven sync. Project-scoped only — does not write user-level config. Has a marketing site at skillset-v1.netlify.app. Tier 1 / Keep separate — same rules-sync slice as block/ai-rules / ai-rules-sync, narrower than agentbrew (rules only, project-scoped, no MCP/skills/commands distribution beyond the experimental MCP). The CI-friendly `--check` exit code and the `import --from <tool>` migration helper are both worth tracking as polish-level absorb candidates if/when agentbrew's drift gate or import story needs UX work. Watch if it grows past 50⭐ or adds MCP/skills sync."
+    },
+    {
+      "tool": "conforme (maxgfr/conforme)",
+      "lastResearched": "2026-04-26",
+      "stars": "1",
+      "status": "NEW. Rust CLI, distributed via Homebrew (`brew install maxgfr/tap/conforme`), `cargo install`, and pre-built binaries (macOS ARM64/x64, Linux ARM64/x64, Windows ARM64/x64). 13 supported tools — the most complete cross-tool surface we've documented at this scope: Claude Code, Cursor, Windsurf, GitHub Copilot, Continue.dev, Kiro (AWS), Roo Code/Cline, Amazon Q, plus Codex CLI, OpenCode, Gemini CLI, Zed AI, Amp via AGENTS.md fallback. **Source-of-truth flexibility** is the headline UX: read from any tool (`conforme sync --from claude`) and propagate to all detected tools, not just AGENTS.md as the canonical. SHA-256 content hashing means unchanged files are never touched. Orphan files (renamed/removed rules) are auto-deleted. Distinguishing capabilities: (a) **rules + skills + agents + MCP** all in one CLI (full four-surface scope) — most rules-sync competitors are rules-only; (b) **4 activation modes** normalized across all tools (always / glob / agent decision / manual) with a per-tool capability matrix in the README; (c) `conforme migrate --source gemini --output opencode` for cross-tool config translation; (d) `conforme hook install` for git pre-commit drift gate; (e) per-target frontmatter handling (Claude `paths` vs Cursor `globs` vs Windsurf `trigger` etc) that maps activation modes correctly to each tool's native frontmatter shape. Tier 1 / Keep separate — closest to agentbrew in functional surface (13 tools × 4 surfaces vs agentbrew's 50+ × 4 surfaces). Project-scoped only (writes `.cursor/rules/`, `.claude/rules/`, etc — no user-level `~/.<agent>/` writes), so it doesn't compete with agentbrew's user-level posture. **Three absorbable ideas worth tracking**: (1) source-of-truth flexibility (`--from <tool>` to read from a non-AGENTS.md canonical) — agentbrew's `agentbrew add` always writes to a state.yaml-managed source repo, doesn't honor an existing tool's config as the canonical; (2) the activation-mode normalization across rules formats — agentbrew's rules sync today is a flat injection without per-tool frontmatter mapping; (3) `conforme migrate` for cross-tool translation — agentbrew's portable export/import is repo-to-repo, not tool-to-tool. Watch if it grows past 50⭐, adds user-level config, or claims an agent count past 20."
+    },
+    {
+      "tool": "aitoolsync (EvanL1/aitoolsync)",
+      "lastResearched": "2026-04-26",
+      "stars": "1",
+      "status": "NEW. Rust CLI distributed via npm (`aitoolsync`) + `cargo install` + Homebrew + pre-built binaries (macOS ARM64/x64, Linux x86_64/ARM64, Windows x64). MIT, ~2ms execution. 7 platforms (Claude Code, Codex CLI, Gemini CLI, Cursor, Copilot, Windsurf, Cline). Source-of-truth `.agents/` directory layout: `rules/`, `skills/`, `agents/`, plus `platforms/<name>/` for per-platform runtime extras (settings.json, hooks/, plugins/, .mcp.json, output-styles/). Auto-converts file extensions per platform (`.md` → `.mdc` for Cursor, `.instructions.md` for Copilot) and rolls flat skill markdown into `<name>/SKILL.md` directory format. **Distinguishing capabilities**: (a) **LAN config server** — `aisync serve --port 9753` exposes the `.agents/` dir over HTTP for any teammate on the same network to `aisync pull http://config-server:9753`; (b) **SSH push** — `aisync remote add devbox deploy@host` + `aisync remote push devbox` rsync-pushes `.agents/` to a remote machine; (c) **`aisync user`** writes to user-level (`~/.claude/`, etc) in addition to the default project-scope writes — narrower analogue of agentbrew's user-level posture; (d) explicit `aisync import` from any source platform. Tier 1 / Keep separate — same shape as conforme (Rust binary, multi-platform sync) but narrower (7 vs 13 platforms) and adds team-distribution UX (LAN/SSH push) that other competitors don't have. The LAN config server + SSH push are the novel pieces; useful for air-gapped enterprise teams. agentbrew's portable export/import bundle is the closest analogue but requires manual file shipping. Watch if it grows past 50⭐ or generalizes beyond LAN/SSH (e.g. cloud sync)."
+    },
+    {
+      "tool": "claude-agents-sync (alexandrbasis/claude-agents-sync)",
+      "lastResearched": "2026-04-26",
+      "stars": "1",
+      "status": "NEW. Python script + Claude Code `PostToolUse` hook — not a CLI. \"Automatic synchronization for CLAUDE.md ↔ AGENTS.md files in Claude Code projects.\" Last update late 2025 (semi-stale). Auto-discovers all `(CLAUDE.md, AGENTS.md)` pairs in a project (root + subdirs for monorepos), bidirectionally copies content when either file is edited via Claude Code's Write/Edit tools. Triggers in <1s, logs to `.claude/hooks/hook-debug.log`. Inspired by `iannuttall/source-agents` but with content-duplication instead of `@AGENTS.md` sourcing. Tier 4 / Out of scope — single-purpose Claude Code hook, not a multi-agent config-sync tool. Doesn't compete with agentbrew's surface area at all (no MCP, no skills, no commands, no rules across tools — just two-file content duplication). The auto-discovery-of-pairs approach is reusable for any \"two files I want to keep identical\" automation but agentbrew already handles AGENTS.md / CLAUDE.md / cursor-rules / windsurf-rules through a different model (managed-section sync from a single source). No absorbable feature."
+    },
+    {
+      "tool": "rulix (danielcinome/rulix)",
+      "lastResearched": "2026-04-26",
+      "stars": "2",
+      "status": "NEW. TypeScript CLI on npm (`rulix`), Node 22+, MIT. v0.1. \"Single source of truth for AI coding rules across Cursor, Claude Code, AGENTS.md, and more.\" Currently 3 export targets (Cursor, Claude Code, AGENTS.md); Windsurf, Copilot, Codex listed as Planned. Distinguishing capabilities: (a) **typed rule frontmatter** — every rule has `id` (kebab-case), `scope` enum (`always` / `file-scoped` / `agent-selected`), `description`, optional `category` and `priority` (1–5), `globs` for file-scoped rules; (b) **token budget tracking** — `rulix status` reports per-tool token-budget usage so users know when rules exceed a tool's recommended limit; (c) **deterministic validation** (`rulix validate`) — catches duplicates, vague descriptions, missing fields, token overflow; zero LLM dependency, works offline; (d) **programmatic API** for embedding in build pipelines (`loadRuleset`, `validateRuleset`, `exportRules`); (e) `rulix import --from cursor|claude-code` for migration. Tier 1 / Keep separate — same rules-sync slice as block/ai-rules / skillkit / ai-rules-sync. v0.1 status with 3 targets vs agentbrew's 8 rules-sync targets. The token-budget reporting is the only distinctive idea worth tracking — useful for users hitting per-tool context limits. Watch if it grows past 50⭐ or adds Windsurf/Copilot/Codex (currently Planned)."
+    },
+    {
+      "tool": "agentsync (spyrae/agentsync)",
+      "lastResearched": "2026-04-26",
+      "stars": "3",
+      "status": "NEW. Python CLI on PyPI (`agentsync-cli`), Python 3.9+, MIT. \"Sync MCP server configs and rules across AI coding agents.\" 4 agents (Claude Code as source; Cursor, Codex, Antigravity as targets). Single source of truth = Claude Code's config (`~/.claude.json` global MCP + `.mcp.json` project + `CLAUDE.md` rules). **JSON ↔ TOML automatic conversion** for MCP server configs. **Markdown → filtered Markdown / MDC frontmatter** for rules. Case-insensitive deduplication (handles `Notion` vs `notion` from different sources). Dry-run mode + automatic backups before every write. Adapter-based architecture for extending to new agents (each adapter is a single Python class). Distinguishing capabilities: (a) **JSON↔TOML config-format conversion** that handles the Codex CLI's distinctive TOML format — a real engineering challenge most rules-sync competitors don't tackle; (b) **claude-as-source-of-truth opinion** instead of a separate `.agents/` dir or `AGENTS.md` canonical; (c) **`exclude_servers`** and **`exclude_sections`** per-target filters for selectively dropping MCP servers or rules sections per agent. Tier 1 / Keep separate — narrower than agentbrew (4 agents vs 50+, only MCP+rules vs full four-surface), Python distribution. The JSON↔TOML conversion is the only piece worth tracking; agentbrew's MCP adapter system covers the same territory via `core/format-adapters/` per-format adapters. The exclude-per-target filter idea overlaps with agentbrew's per-Agentfile filtering. No absorbable feature today. Watch if it grows past 50⭐ or adds 10+ agents."
+    },
+    {
+      "tool": "AICodingControl (nangongwentian-fe/AICodingControl)",
+      "lastResearched": "2026-04-26",
+      "stars": "6",
+      "status": "NEW. Electron + React 18 + TypeScript desktop app. MIT. Chinese-first UI with English README. **Visual GUI for config-sync**, not a CLI. 7 tools (Trae, TraeCN, Cursor, OpenCode, Codex, Claude Code, Antigravity). Each tool gets its own Rules / MCP / Skills / Commands tab in a Monaco-editor-backed UI. Quick-Settings shortcut for Claude Code (bypasses Plugin login + edits `settings.json` / `.claude.json` directly). Custom-tool support via `~/.ai-coding-control/ai_coding_tools.json`. Tier 5 / Complementary — desktop-GUI alternative to agentbrew's CLI; doesn't compete because it serves a different audience (visual editing) and operates as user-level config editor (different ownership semantics from agentbrew's managed-section sync). The Monaco-backed visual editing is the distinctive UX; agentbrew has no GUI plans. Watch if it adds drift detection or grows past 50⭐."
+    },
+    {
+      "tool": "ay-claude-templates (walidboulanouar/ay-claude-templates)",
+      "lastResearched": "2026-04-26",
+      "stars": "5",
+      "status": "NEW. TypeScript CLI on npm `@ay-claude/cli`, Node 18+, MIT. Last update Nov 2025 (semi-stale). Official CLI for the **AY Claude Platform** — a Claude Code-only marketplace covering Skills, Agents, Commands, Hooks, Plugins, MCPs, and Settings. Distinguishing capabilities: (a) **OAuth Device Flow + system keychain** for authenticated package install; (b) **5-stage security verification pipeline** for installed packages; (c) **HMAC-SHA256 request signing** + audit logging; (d) **Package bundles** for curated stack-installs (`react-dev-stack`, `nodejs-backend`, etc); (e) **Health scores** + **smart recommendations**; (f) **Team workspaces** + **favorites** + **search history** + **rollback**. Cross-platform (macOS / Linux / Windows). Tier 5 / Complementary — Claude Code-only platform tool, sits in the same niche as OpenClaw / mdskills.ai / skills.sh (registry + CLI front-end for one agent). Doesn't compete with agentbrew's cross-agent sync mission. The OAuth device flow + signed packages + bundle concept are interesting platform-level moves, but they're a different product layer (marketplace) from agentbrew (config sync). No absorbable feature."
+    },
+    {
+      "tool": "apc-cli (FZ2000/apc-cli)",
+      "lastResearched": "2026-04-26",
+      "stars": "3",
+      "status": "NEW. Python CLI (Python 3.12+), MIT. \"AI Personal Context Manager.\" 6 tools (Claude Code, Cursor, Gemini CLI, GitHub Copilot, Windsurf, OpenClaw). Three sync surfaces: skills + MCP servers + **memory entries** (the novel one). Local cache at `~/.apc/`; secrets redacted to OS keychain on collect. Distinguishing capabilities: (a) **LLM-powered memory sync** — transforms memory entries into each tool's native format using any configured LLM provider (Anthropic, OpenAI, Gemini, Qwen, GLM, MiniMax, Kimi, or any OpenAI/Anthropic-compatible endpoint via `apc configure`); (b) **age-encrypted export/import** for cross-machine portable bundles — commit the encrypted dir to a private repo, transfer the age private key once via secure channel; (c) **manifest tracking** so user edits are never overwritten; (d) **smart conflict resolution** when two tools have overlapping configs; (e) **`apc install owner/repo --skill foo`** for direct GitHub-skill install with `--list` / `--all` / `--skill '*'` modes. Tier 1 / Keep separate — closest competitor in this batch by surface (6 tools, skills+MCP+memory). The **LLM-powered memory transformation** is the only novel idea this ecosystem has produced; agentbrew's VISION.md explicitly defers memory to OpenViking / chub etc (\"config-sync, not knowledge management\"), so absorbing this would be a scope expansion the strategy currently rejects. The age-encrypted export/import is similar in spirit to agentbrew's portable export but with stronger crypto. Watch if it grows past 50⭐; if it does, the LLM-memory-sync question may need re-litigating in a strategic-review."
+    },
+    {
+      "tool": "cacs (hjnnjh/coding-agent-config-sync)",
+      "lastResearched": "2026-04-26",
+      "stars": "2",
+      "status": "NEW. Python CLI (Python 3.12+, uv-installed), MIT. Chinese-first README. \"Cross-device AI coding assistant config sync via private GitHub repo.\" Currently 2 supported tools (Claude Code Router, OpenCode), extensible via `sync_config.yaml`. **GitHub private repo as sync hub**: `cacs init` uploads, `cacs pull` downloads with auto-backup, `cacs push -m \"<msg>\"` commits, `cacs status` shows local-vs-remote diff. Distinguishing capabilities: (a) **field-level ignore** — `ignore_fields` in `sync_config.yaml` lists JSON paths (dot-separated, e.g. `mcpServers.filesystem.args`) that are preserved locally on pull and skipped in status comparisons — useful for keeping machine-specific values out of the synced canonical; (b) **timestamped backups** before every pull with restore-by-timestamp; (c) **auto-update check** (24h rate-limited) on every command. Tier 4 / Out of scope — dotfiles-pattern-as-CLI for narrow tool set (CCR + OpenCode), GitHub private repo as sync mechanism. Doesn't compete with agentbrew's surface (no skills, no rules, no commands, no cross-agent translation). The field-level `ignore_fields` JSON pruning is the only piece worth tracking — useful when agentbrew users want to commit their state.yaml to git but keep machine-specific MCP `cwd:` paths or OS-specific `command:` entries out of the canonical. No absorbable feature today."
+    },
+    {
+      "tool": "glooit (nikuscs/glooit)",
+      "lastResearched": "2026-04-26",
+      "stars": "22",
+      "status": "NEW. TypeScript (Bun-first build), distributed via Homebrew (`brew tap nikuscs/glooit`) + npm + bun + pnpm. **Most feature-rich rules-sync tool documented to date** at this size. 5 agents (Claude Code, Cursor, Codex, OpenCode, Roo Code/Cline) × 7 surfaces (rules, commands, skills, agents, MCP, agent hooks, settings merge). Distinguishing capabilities: (a) **symlink mode** — changes to source files reflect instantly in agent configs without running `glooit sync`; (b) **content transforms** with placeholders (`__TIMESTAMP__`, `__ENV_VAR__`, `__STRUCTURE__`) plus a `compact` filler-word remover — turns rules into per-context-aware artefacts; (c) **agent hooks** wired into Claude Code + Cursor lifecycle (`PreToolUse`, `PostToolUse`, `beforeShellExecution`, `afterFileEdit`, `Stop`) with TS/JS/sh script support — e.g. run prettier after file edits, block writes to sensitive files; (d) **settings merge** that consolidates env vars + permissions into provider-native settings files with safety-guard refusing to commit secrets to git-tracked files; (e) **file merging** combines multiple source files into one output (`file: ['.agents/coding-standards.md', '.agents/testing-guidelines.md']`); (f) **per-rule mode/path overrides** so a rule can target one file in `to: ./.cursor/rules/api.mdc` and a different file for `claude`; (g) automatic **backups** with retention (`backup: { enabled: true, retention: 10 }`); (h) **glob scoping** for Cursor (`globs: 'src/**/*.{ts,tsx}'`); (i) declarative `glooit.config.ts` with TypeScript types via `defineRules`. Tier 1 / Keep separate — closest functional shape to agentbrew at the project-scope layer (5 agents × 7 surfaces vs agentbrew's 50+ × 4 surfaces). Two absorbable ideas worth tracking: (1) the **content transforms** pattern (`__TIMESTAMP__`/`__ENV_VAR__`/`__STRUCTURE__` placeholders) gives users an inline templating layer agentbrew lacks; (2) the **safety-guard refusing to commit secrets** to git-tracked settings is exactly the kind of fail-closed default the dotfiles publishing-policy comment in agentbrew TASKS.md endorses. Watch if it grows past 100⭐ or claims an agent count past 10."
+    },
+    {
+      "tool": "atk (Svtoo/atk)",
+      "lastResearched": "2026-04-26",
+      "stars": "13",
+      "status": "NEW. Python CLI on PyPI (`atk-cli`), distributed via `uv tool install`, MIT. \"AI Tool Kit for Developers — a CLI plugin manager for AI-assisted development.\" **Different layer than rules-sync**: atk is a **registry-and-install** tool for MCP servers + local AI services (Docker, CLI binaries) that wires them into multiple coding agents at once. 5 agents (Claude Code, Codex, Gemini CLI, Augment Code / `auggie`, OpenCode). 11 curated registry plugins: fetch, git-local, github, gitlab, google-workspace, langfuse, notion, openmemory, piper (TTS), playwright, slack. Distinguishing capabilities: (a) **`atk mcp add github --claude --codex --gemini --auggie --opencode`** wires one MCP into multiple agents in a single command, calling each agent's native MCP-registration command (`claude mcp add` / `codex mcp add` / `gemini mcp add` / `auggie mcp add-json`) or writing config files directly; (b) **skill injection** — plugins ship a `SKILL.md` describing how to use the tool, and atk injects it into each agent's context (`@`-references in CLAUDE.md, read-directives in AGENTS.md, symlinks in `~/.gemini/skills/` / `~/.augment/rules/`, entries in opencode.jsonc instructions); (c) **lifecycle commands** (`atk start / stop / logs / upgrade / remove`) provide a uniform interface for Docker services, MCP servers, CLI binaries; (d) `~/.atk/` is **a git repository by default** — push it, clone on another machine, `atk install --all` restores everything; (e) **schema-validated curated registry** with version tracking; (f) `atk help <plugin>` renders the plugin README in-terminal. Tier 1 / Keep separate — not a rules/skills sync tool, but a peer in the MCP-management space (mcpm.sh / install-mcp / Alph) with **skill injection** as the unique twist. Two absorbable ideas worth tracking: (1) the **wire-into-multiple-agents-via-native-commands** pattern instead of writing config files directly — cleaner than agentbrew's mcp-sync because it relies on each tool's own validation; (2) the **plugin SKILL.md auto-injection** is exactly the pattern `agentbrew install <name>` could adopt for MCP servers that ship usage instructions — today agentbrew installs MCP configs but has no equivalent of the SKILL.md-as-context-extension flow. Watch if it grows past 50⭐ or expands the registry past 30 plugins."
+    },
+    {
+      "tool": "skills-compat-manager (hnaymyh123-henry/skills-compat-manager)",
+      "lastResearched": "2026-04-26",
+      "stars": "1",
+      "status": "NEW. Python (per task description). README returns 404 at `main` branch — likely the repo has been deleted, renamed, or had its README removed since the task was filed. Per the task description: \"Cross-platform compatibility layer for AI agent skills — pre-flight dependency checks, MCP-native, works with Claude Code, Cursor, Codex CLI.\" Tier 4 / Out of scope until the repo is reachable. Re-evaluate if a working README appears or the repo gets star-traction. The pre-flight-dependency-check angle from the description sounds plausibly novel — if the project resurfaces, deep-dive again because that idea overlaps with agentbrew's `agentbrew doctor` / health-check direction."
+    },
+    {
+      "tool": "nix-agentic-tools (higherorderfunctor/nix-agentic-tools)",
+      "lastResearched": "2026-04-26",
+      "stars": "0",
+      "status": "NEW. Nix flake monorepo, Unlicense (public domain). Per task description: \"stacked workflow skills, MCP server packages, and home-manager modules for AI coding CLIs.\" README is one sentence (\"A Nix flake monorepo for AI coding CLI tools.\"); no command reference, no documentation of what's actually inside. Tier 4 / Out of scope — packaging-paradigm tool (Nix home-manager modules) for a different audience than agentbrew (CLI/Node ecosystem). Even if the home-manager-module approach turned out to be interesting, the user base overlap with agentbrew is near-zero (Nix-on-the-laptop is a niche-of-a-niche). The fact that the README is empty after 'updated within 2 days' suggests this is an experimental fork, not a polished tool. No deep-dive needed unless it grows past 20⭐ or publishes documentation."
+    },
+    {
+      "tool": "Agent Deck (asheshgoplani/agent-deck)",
+      "lastResearched": "2026-04-26",
+      "stars": "2.1K",
+      "status": "NEW. Go 1.24+ TUI (terminal session manager), MIT, macOS/Linux/WSL. 234 forks, 1,886 commits, active Discord community. **Mission control for multiple AI agent sessions** — tmux-style session organization for Claude Code, OpenCode, and other agents. Operates almost entirely within its own `~/.agent-deck/` namespace. Distinguishing capabilities relative to agent-config-sync: (a) **session-level fork** (`f`/`F`) creates a Claude conversation fork inheriting full history; (b) **MCP Manager** UI toggles MCP servers on/off per project from a config-defined pool, restarts the session automatically; (c) **Skills Manager** UI attaches/detaches Claude skills per-project from `~/.agent-deck/skills/pool/`, materializes the chosen subset into the project's `.claude/skills/`; (d) **MCP Socket Pool** shares MCP processes across sessions via Unix sockets (claims 85-90% memory reduction); (e) **per-group / per-conductor Claude config** overrides (`CLAUDE_CONFIG_DIR`, `env_file`) so different sessions can authenticate against different Claude accounts; (f) **git worktree management** (`agent-deck add . --worktree feature/a --new-branch`); (g) status detection (running/waiting/idle/error) + tmux notification bar; (h) `agent-deck conductor setup` first-class conductor entities. Per the task description's classification rule (\"If it stays in its own `~/.agent-deck/` namespace, it belongs in Tier 6 (Adjacent Infrastructure — session manager) and is explicitly NOT a competitor\"): Agent Deck materializes Skills into `.claude/skills/` per project (a small touch into Claude Code's territory) but its primary state lives in `~/.agent-deck/`, the agent set is Claude-Code-centric, and the entire UX is per-session orchestration not cross-tool config-sync. Verdict: **Tier 6 / Adjacent Infrastructure** — session manager / runtime orchestration layer, not a config-sync competitor. agentbrew operates one layer below (provisions the configs that Agent Deck's per-session toggles select from). The two compose: an Agent-Deck user could pull MCPs/skills from agentbrew's catalog into their `~/.agent-deck/skills/pool/`, then use Agent Deck's TUI to attach them per session. No absorbable feature from agentbrew's perspective; the conductor / MCP-socket-pool / per-group-Claude-config mechanisms are runtime concerns."
+    },
+    {
+      "tool": "Tons of Skills / ccpi (jeremylongshore/claude-code-plugins-plus-skills)",
+      "lastResearched": "2026-04-26",
+      "stars": "2K",
+      "status": "NEW. CLI `@intentsolutionsio/ccpi` on npm + marketplace site at tonsofskills.com. 266 forks, 1,115 commits, updated within 24h. **Largest skill marketplace by count we have seen**: 423 plugins, 2,849 skills, 177 agents, 16 community contributors. 26 published packages in the `claude-code-plugins` namespace. Sponsored by nixtla.io. **Claude Code-only** — plugins follow Claude Code's `/plugin marketplace` format. Distribution: `pnpm add -g @intentsolutionsio/ccpi` then `ccpi install <plugin>`, OR `/plugin marketplace add jeremylongshore/claude-code-plugins` + `/plugin install <name>@claude-code-plugins-plus`. 18 categories (AI/ML, AI Agents, API Development, Business Tools, Crypto/Web3, Database, DevOps, Design, MCP Servers, Performance, Productivity, SaaS Skill Packs (106 plugins!), Security, Skill Enhancers, Testing, etc). Live npm download stats published in the README via daily GitHub Actions. \"Killer Skill of the Week\" curation feature with editorial picks. Tier 3 / Complementary — same bucket as skills.sh / mdskills.ai / OpenClaw / `@ay-claude/cli`: registry + CLI front-end for ONE agent (Claude Code). Doesn't compete with agentbrew's cross-agent sync mission. Active commercial entity (intentsolutionsio) with sponsor relationship and editorial curation — strongest sustained marketplace momentum in this segment. **Decision**: per the P3 `catalog-registry-source` task direction, when agentbrew adds external-registry catalog sources it should query tonsofskills.com alongside skills.sh as a primary source for Claude Code skills (this is the largest catalog by plugin count). No agentbrew code change needed today; flagged for the future `catalog-registry-source` implementation. The ccpi CLI itself is Claude-Code-only with no observable cross-agent intent, so no risk of overlap with agentbrew's ownership boundary."
+    }
+  ],
+  "readmeComparison": [
+    {
+      "name": "AgentBrew",
+      "skillsSync": "All agents",
+      "mcpSync": "Yes",
+      "rulesSync": "Yes",
+      "commandsSync": "Yes",
+      "hooksSync": "Yes",
+      "driftDetection": "Auto (30 min)",
+      "autoRepair": "Yes",
+      "catalog": "Curated",
+      "declarativeConfig": "Agentfile",
+      "lockFile": "SHA tracking",
+      "exportImport": "Yes"
+    },
+    {
+      "name": "[skills CLI](https://github.com/vercel-labs/skills)",
+      "skillsSync": "50+ agents",
+      "mcpSync": "—",
+      "rulesSync": "—",
+      "commandsSync": "—",
+      "hooksSync": "—",
+      "driftDetection": "—",
+      "autoRepair": "—",
+      "catalog": "skills.sh",
+      "declarativeConfig": "—",
+      "lockFile": "Yes (v3)",
+      "exportImport": "—"
+    },
+    {
+      "name": "[MCPM](https://github.com/pathintegral-institute/mcpm.sh)",
+      "skillsSync": "—",
+      "mcpSync": "10+ clients",
+      "rulesSync": "—",
+      "commandsSync": "—",
+      "hooksSync": "—",
+      "driftDetection": "Manual",
+      "autoRepair": "—",
+      "catalog": "mcpm.sh",
+      "declarativeConfig": "—",
+      "lockFile": "—",
+      "exportImport": "—"
+    },
+    {
+      "name": "[ai-rules-sync](https://github.com/lbb00/ai-rules-sync)",
+      "skillsSync": "10+ agents",
+      "mcpSync": "—",
+      "rulesSync": "10+ agents",
+      "commandsSync": "10+ agents",
+      "hooksSync": "—",
+      "driftDetection": "—",
+      "autoRepair": "—",
+      "catalog": "—",
+      "declarativeConfig": "JSON",
+      "lockFile": "—",
+      "exportImport": "—"
+    },
+    {
+      "name": "[block/ai-rules](https://github.com/block/ai-rules)",
+      "skillsSync": "10+ agents",
+      "mcpSync": "Partial",
+      "rulesSync": "10+ agents",
+      "commandsSync": "10+ agents",
+      "hooksSync": "—",
+      "driftDetection": "Manual",
+      "autoRepair": "—",
+      "catalog": "—",
+      "declarativeConfig": "Markdown dir",
+      "lockFile": "—",
+      "exportImport": "—"
+    },
+    {
+      "name": "[skillfile](https://github.com/eljulians/skillfile)",
+      "skillsSync": "8 agents",
+      "mcpSync": "—",
+      "rulesSync": "—",
+      "commandsSync": "—",
+      "hooksSync": "—",
+      "driftDetection": "—",
+      "autoRepair": "—",
+      "catalog": "110K+ skills",
+      "declarativeConfig": "Skillfile",
+      "lockFile": "Yes (SHA + patches)",
+      "exportImport": "—"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "theme": "dark",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "local-only",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo local-only"
+          }
+        ]
+      }
+    ]
+  }
+}

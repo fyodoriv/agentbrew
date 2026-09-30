@@ -1,0 +1,222 @@
+[
+  {
+    "label": "allow-why-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 1\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 2\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 3\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 4\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 5\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 6\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 7\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 8\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 9\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "allow-why-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"fix widget 10\" --body \"## Summary\\nUsers could not save because session tokens expired early. This fixes token refresh.\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 1\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 2\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 3\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 4\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 5\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 6\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 7\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 8\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 9\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  },
+  {
+    "label": "block-what-only-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr create --title \"refactor 10\" --body \"## Summary\\nChanged src/foo.ts and tests/bar.test.ts\""
+      }
+    }
+  }
+]

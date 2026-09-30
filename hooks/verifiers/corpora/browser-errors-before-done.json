@@ -1,0 +1,202 @@
+[
+  {
+    "label": "allow-checked-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-1.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/1\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-2.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/2\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-3.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/3\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-4.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/4\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-5.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/5\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-6.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/6\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-7.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/7\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-8.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/8\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-9.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/9\"}}]}}"
+    ]
+  },
+  {
+    "label": "allow-checked-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/App-10.tsx\"}},{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"bash scripts/check-page-errors.sh --url https://app.example/10\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-1.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-2.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-3.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-4.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-5.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-6.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-7.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-8.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-9.tsx\"}}]}}"
+    ]
+  },
+  {
+    "label": "block-unchecked-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "Stop"
+    },
+    "transcriptLines": [
+      "{\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Edit\",\"input\":{\"file_path\":\"/repo/src/Widget-10.tsx\"}}]}}"
+    ]
+  }
+]

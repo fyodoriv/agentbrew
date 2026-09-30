@@ -1,0 +1,49 @@
+{
+  "skill_name": "agentbrew-add-catalog-source",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add our new public skill repo `acme/dev-skills` to agentbrew's shipped catalog so everyone can install `code-review-helper`.",
+      "expected_output": "A catalog-entry plan that adds a pointer to the correct shared catalog, not copied skill content.",
+      "expectations": [
+        "Chooses `src/catalog.yaml` for a public portable skill and does not use the team overlay path",
+        "Confirms the skill already lives in the source repo and does not vendor `SKILL.md` into `skill-plugins/dev/`",
+        "Adds a catalog entry with name, action-oriented description including don't-use guidance, source, category, and recommendation metadata",
+        "Runs the relevant catalog validation test before declaring the entry ready"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Ship an internal portal-only MCP server into the catalog for company agents.",
+      "expected_output": "Guidance that routes internal MCP metadata to the team overlay, not the public catalog.",
+      "expectations": [
+        "Classifies the MCP as team-overlay/internal because it references private services or internal credentials",
+        "Refuses to add the internal-only entry to `src/catalog.yaml`",
+        "Uses the overlay catalog shape with setup instructions for required environment variables",
+        "Mentions overlay validation or merge tests rather than only generic catalog validation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Make this new catalog skill recommended by default.",
+      "expected_output": "A safe recommendation review that requires a rationale and avoids promotion without evidence.",
+      "expectations": [
+        "Checks whether the skill is broadly useful enough for `recommended: true`",
+        "Requires a `rationale` field when `recommended: true` is set",
+        "Checks for duplicate names in the same catalog file before adding the entry",
+        "Runs catalog validation and a local catalog listing/count check after the edit"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our team overlay now has a whole repo with more than two skills. Should I add each skill separately or use `repo_sources`?",
+      "expected_output": "Guidance that prefers a team-overlay `repo_sources` entry for whole-repo skill registries.",
+      "expectations": [
+        "Prefers `repo_sources` in the team overlay instead of per-skill catalog entries",
+        "Explains that team overlay repo sources auto-register on `agentbrew team set <overlay-url>`",
+        "Mentions auto-update or soft-update behavior for catalog-origin source repos",
+        "Keeps shared `src/catalog.yaml` out of scope for team-owned whole-repo sources"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+[
+  {
+    "label": "allow-fix-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-1.ts",
+        "new_string": "throw new Error(\"missing token 1\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-2.ts",
+        "new_string": "throw new Error(\"missing token 2\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-3.ts",
+        "new_string": "throw new Error(\"missing token 3\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-4.ts",
+        "new_string": "throw new Error(\"missing token 4\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-5.ts",
+        "new_string": "throw new Error(\"missing token 5\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-6.ts",
+        "new_string": "throw new Error(\"missing token 6\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-7.ts",
+        "new_string": "throw new Error(\"missing token 7\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-8.ts",
+        "new_string": "throw new Error(\"missing token 8\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-9.ts",
+        "new_string": "throw new Error(\"missing token 9\");"
+      }
+    }
+  },
+  {
+    "label": "allow-fix-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-10.ts",
+        "new_string": "throw new Error(\"missing token 10\");"
+      }
+    }
+  },
+  {
+    "label": "block-silence-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-1.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 1 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-2.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 2 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-3.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 3 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-4.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 4 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-5.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 5 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-6.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 6 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-7.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 7 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-8.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 8 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-9.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 9 };"
+      }
+    }
+  },
+  {
+    "label": "block-silence-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/errors-10.ts",
+        "new_string": "export const config = { silent: true, skipFailures: true, noop: 10 };"
+      }
+    }
+  }
+]

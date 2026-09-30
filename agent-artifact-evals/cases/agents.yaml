@@ -1,0 +1,78 @@
+- description: AGENTS template preserves publication and git safety guardrails
+  vars:
+    artifact_path: templates/AGENTS.md
+  metadata:
+    artifact: templates/AGENTS.md
+    surface: instruction-template
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS templates/AGENTS.md"
+    - type: contains
+      value: "diagnostic_count=0"
+
+- description: shared rules preserve strict attention-friendly output and code-comment scope
+  vars:
+    artifact_path: docs/shared-rules.md
+  metadata:
+    artifact: docs/shared-rules.md
+    surface: shared-rules
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS docs/shared-rules.md"
+    - type: contains
+      value: "diagnostic_count=0"
+
+- description: shared rules must state the strict attention-friendly requirement
+  vars:
+    artifact_path: unsafe-attention-friendly-shared-rules-fixture
+    fixture_text: |
+      Use ASD-STE100-style plain English.
+      Use short paragraphs, short, direct sentences, and active voice.
+      Keep one idea per sentence or bullet.
+      Use headings, bullets, or numbered steps when they improve scanning.
+      Use the same style for code comments.
+  metadata:
+    artifact: unsafe-attention-friendly-shared-rules-fixture
+    surface: shared-rules
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL unsafe-attention-friendly-shared-rules-fixture"
+    - type: contains
+      value: "diagnostic plain-language-output missing plain-language output default"
+
+- description: unsafe AGENTS fixture reports missing publication approval language
+  vars:
+    artifact_path: unsafe-agents-fixture
+    fixture_text: "For current-repo work, make reasonable local changes without routine confirmation."
+  metadata:
+    artifact: unsafe-agents-fixture
+    surface: instruction-template
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL unsafe-agents-fixture"
+    - type: contains
+      value: "diagnostic publish-approval missing explicit approval language"
+
+- description: unsafe AGENTS fixture reports a missing plain-language default
+  vars:
+    artifact_path: unsafe-plain-language-agents-fixture
+    fixture_text: |
+      For current-repo work, make reasonable local changes without routine confirmation.
+      Standing approvals are explicit approval.
+      Do not push, open PRs, create issues, publish packages/releases, or send comments/messages outside the current repo/workspace unless approved.
+      Never publish under the user's identity without explicit approval for that exact action in the current session.
+      Requires explicit per-action approval in the current session: Unsafe git publication, force-pushing, deleting remote branches.
+      Do not perform destructive operations without explicit confirmation for that exact action.
+  metadata:
+    artifact: unsafe-plain-language-agents-fixture
+    surface: instruction-template
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL unsafe-plain-language-agents-fixture"
+    - type: contains
+      value: "diagnostic plain-language-output missing plain-language output default"

@@ -1,0 +1,42 @@
+name: Release Verification
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist
+        run: |
+          test -f dist/cli.js || { echo "ERROR: dist/cli.js missing"; exit 1; }
+          test -f dist/catalog.yaml || { echo "ERROR: dist/catalog.yaml missing"; exit 1; }
+          head -1 dist/cli.js | grep -q '#!/usr/bin/env node' || { echo "ERROR: missing shebang"; exit 1; }
+          EXPECTED="${GITHUB_REF_NAME#v}"
+          ACTUAL=$(node dist/cli.js --version)
+          echo "Tag: $EXPECTED, Binary: $ACTUAL"
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "ERROR: version mismatch"; exit 1; }
+
+      # Auto-publishing runs via .github/workflows/auto-publish.yml on every main push.
+      # Manual releases: npm run release [patch|minor|major] (see scripts/release.sh).
+      # This workflow only verifies that tagged releases have correct dist output.

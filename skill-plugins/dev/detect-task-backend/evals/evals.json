@@ -1,0 +1,100 @@
+{
+  "skill_name": "detect-task-backend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A skill needs to know whether this repo uses TASKS.md or GitHub Issues before filing work. What should it do?",
+      "expected_output": "Use resolveTaskBackend and branch behavior on tasks-md vs github-issues.",
+      "expectations": [
+        "Calls the shared resolveTaskBackend-style contract instead of ad hoc file probing only",
+        "Handles the default tasks-md backend when no explicit config exists",
+        "For github-issues, carries repo/project metadata forward to issue helpers",
+        "Frames this as a reference consumer pattern for other task-aware skills"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Agentfile.yaml declares task_backend: github-issues with repo/project. How should next-task adapt?",
+      "expected_output": "Read backend descriptor and use issue APIs rather than editing TASKS.md.",
+      "expectations": [
+        "Reads Agentfile/backend metadata before choosing storage",
+        "Avoids appending to TASKS.md when backend is github-issues",
+        "Preserves TASKS.md behavior as the default fallback",
+        "Surfaces missing repo/project config as an actionable configuration error"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A repo has no Agentfile.yaml and no task backend config. What backend should task-aware skills use?",
+      "expected_output": "Default to TASKS.md and continue with the standard file-based queue.",
+      "expectations": [
+        "Falls back to tasks-md when no backend declaration exists",
+        "Does not require GitHub Issues setup for ordinary repos",
+        "Explains that task-aware skills should branch on the descriptor rather than assume a backend",
+        "Surfaces how a repo can opt into github-issues later"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm working in a repo and need to know whether to file tasks in TASKS.md or GitHub Issues. Detect the task backend for me.",
+      "expected_output": "A clear identification of the repo's task backend (TASKS.md or GitHub Issues) by using resolveTaskBackend(repoPath), with configuration details and instructions for filing tasks in the correct backend.",
+      "expectations": [
+        "Checks Agentfile.yaml/Agentfile.yml/Agentfile first for task_backend, repo, and project fields",
+        "Falls back to .agents/tasks.config.yaml when no Agentfile is present",
+        "Falls back to default tasks-md when neither config file declares a backend",
+        "Returns a TaskBackendDescriptor with backend type ('tasks-md' or 'github-issues') and relevant GitHub Issues config (repo, project)",
+        "Provides clear instructions on how to file tasks in the detected backend (e.g., issue APIs/tasks CLI for GitHub Issues, append to TASKS.md for default)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Our team just switched from TASKS.md to GitHub Issues for task tracking. Verify that the configuration is correct.",
+      "expected_output": "Confirmation that the local task-backend configuration is valid for GitHub Issues, with actionable errors for missing or malformed repo/project fields and guidance for issue-tool access checks.",
+      "expectations": [
+        "Reads Agentfile.yaml or .agents/tasks.config.yaml and confirms task_backend is set to 'github-issues'",
+        "Validates that repo and project fields are present and correctly formatted (owner/repo and positive integer project ID)",
+        "Reports configuration errors for missing fields, invalid backend values, malformed repo strings, or invalid project numbers",
+        "Does not silently fall back to TASKS.md when github-issues config is malformed",
+        "Explains that live repository/project accessibility is checked by the GitHub Issues helper or tasks CLI after the descriptor is valid",
+        "Suggests updating scripts or CI that reference TASKS.md directly to branch on resolveTaskBackend instead"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I'm writing a skill that needs to file tasks. How do I detect the backend and use the right API?",
+      "expected_output": "Example code demonstrating how to use resolveTaskBackend() to detect the backend and branch behavior accordingly, with concrete examples for both TASKS.md and GitHub Issues.",
+      "expectations": [
+        "Demonstrates importing resolveTaskBackend from agentbrew/src/core/task-backend",
+        "Shows how to call resolveTaskBackend(repoPath) and handle the returned TaskBackendDescriptor",
+        "Provides example code for the TASKS.md path (read/write TASKS.md file with proper formatting)",
+        "Provides example code for the GitHub Issues path (use GitHub API or tasks CLI to create issues)",
+        "Includes error handling for cases where the backend cannot be determined",
+        "Shows how to access backend-specific config (repo, project ID for GitHub Issues)"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Agentfile.yaml says task_backend: github-issues, but this repo still has an old TASKS.md. I need to file a new follow-up. Can I just append to TASKS.md because it's already there?",
+      "expected_output": "A generated-backend safety answer that treats the resolver descriptor as authoritative and refuses to append to stale TASKS.md when github-issues is configured.",
+      "expectations": [
+        "Calls resolveTaskBackend(repoPath) and treats the returned descriptor as the source of truth over the mere presence of TASKS.md",
+        "Refuses to append a new task to TASKS.md when descriptor.backend is 'github-issues'",
+        "Carries descriptor.repo and descriptor.project into the GitHub Issues helper or tasks CLI path",
+        "Mentions stale TASKS.md may exist as history or migration residue and is not evidence of the active backend",
+        "Falls back to TASKS.md only when the descriptor backend is tasks-md"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "A repo has task_backend: github-issues but no project number, and another repo has no Agentfile or .agents/tasks.config.yaml at all. Should both just default to TASKS.md?",
+      "expected_output": "A boundary answer that distinguishes malformed explicit GitHub Issues config from absent config: malformed explicit config is an actionable error, absent config defaults to tasks-md.",
+      "expectations": [
+        "Reports missing project/repo for explicit github-issues config as an actionable configuration error",
+        "Does not silently default malformed github-issues config to TASKS.md",
+        "Validates task_backend must be exactly 'tasks-md' or 'github-issues'",
+        "Validates repo must be owner/repo and project must be a positive integer",
+        "Defaults to tasks-md only when no Agentfile or .agents/tasks.config.yaml declares a backend"
+      ]
+    }
+  ]
+}

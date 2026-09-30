@@ -1,0 +1,10 @@
+schemaVersion: 1
+id: example-pack
+version: 1.0.0
+title: Example Memory Pack
+description: Generic fixture pack for contract tests — no org-specific content.
+privacy: public
+records: records.jsonl
+fingerprint: sha256:97e1c53087f7a3e2bf8e70b5c1b6440386dc2345ffdd5a6872b74df7db528369
+minAgentbrewVersion: 0.3.0
+minMemoryServiceVersion: 11.7.0

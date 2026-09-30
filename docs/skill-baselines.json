@@ -1,0 +1,174 @@
+{
+  "agentbrew-add-catalog-source": {
+    "tokens": 1533,
+    "lines": 168
+  },
+  "agentbrew-add-command": {
+    "tokens": 710,
+    "lines": 99
+  },
+  "agentbrew-add-mcp": {
+    "tokens": 1823,
+    "lines": 163
+  },
+  "agentbrew-add-skill": {
+    "tokens": 679,
+    "lines": 74
+  },
+  "agentbrew-manage-permissions": {
+    "tokens": 729,
+    "lines": 95
+  },
+  "agentbrew-status": {
+    "tokens": 754,
+    "lines": 71
+  },
+  "agentfile-init": {
+    "tokens": 1079,
+    "lines": 185
+  },
+  "analyze": {
+    "tokens": 445,
+    "lines": 65
+  },
+  "arch": {
+    "tokens": 596,
+    "lines": 57
+  },
+  "autoresearch": {
+    "tokens": 2277,
+    "lines": 273
+  },
+  "caveman": {
+    "tokens": 283,
+    "lines": 44
+  },
+  "cli-design": {
+    "tokens": 518,
+    "lines": 47
+  },
+  "companion-competitor-watch": {
+    "tokens": 1731,
+    "lines": 245
+  },
+  "companion-docs-sync": {
+    "tokens": 2134,
+    "lines": 216
+  },
+  "companion-researcher": {
+    "tokens": 3433,
+    "lines": 346
+  },
+  "companion-skill-curate": {
+    "tokens": 1685,
+    "lines": 197
+  },
+  "companion-task-groom": {
+    "tokens": 2634,
+    "lines": 262
+  },
+  "companion-test-gaps": {
+    "tokens": 1752,
+    "lines": 205
+  },
+  "competitor-spot-check": {
+    "tokens": 1049,
+    "lines": 82
+  },
+  "context-budget": {
+    "tokens": 1468,
+    "lines": 144
+  },
+  "cursor-token-playbook": {
+    "tokens": 1109,
+    "lines": 79
+  },
+  "detect-task-backend": {
+    "tokens": 476,
+    "lines": 58
+  },
+  "doubt": {
+    "tokens": 1000,
+    "lines": 103
+  },
+  "git-diagnose-codebase": {
+    "tokens": 2880,
+    "lines": 208
+  },
+  "grill": {
+    "tokens": 489,
+    "lines": 44
+  },
+  "grind": {
+    "tokens": 2950,
+    "lines": 228
+  },
+  "grind-report": {
+    "tokens": 1604,
+    "lines": 189
+  },
+  "handoff": {
+    "tokens": 252,
+    "lines": 30
+  },
+  "iterate": {
+    "tokens": 1421,
+    "lines": 154
+  },
+  "load-project-context": {
+    "tokens": 1799,
+    "lines": 102
+  },
+  "markdown-for-gdoc": {
+    "tokens": 2935,
+    "lines": 256
+  },
+  "prefer-reuse-over-reinvent": {
+    "tokens": 1890,
+    "lines": 135
+  },
+  "project-audit": {
+    "tokens": 1662,
+    "lines": 125
+  },
+  "prototype": {
+    "tokens": 825,
+    "lines": 90
+  },
+  "rfc": {
+    "tokens": 3480,
+    "lines": 226
+  },
+  "spec": {
+    "tokens": 534,
+    "lines": 77
+  },
+  "strategic-review": {
+    "tokens": 809,
+    "lines": 52
+  },
+  "sweep": {
+    "tokens": 1184,
+    "lines": 137
+  },
+  "sync-agent-config": {
+    "tokens": 1059,
+    "lines": 98
+  },
+  "to-issues": {
+    "tokens": 572,
+    "lines": 76
+  },
+  "ubiquitous-language": {
+    "tokens": 503,
+    "lines": 70
+  },
+  "verify-vision-trace": {
+    "tokens": 769,
+    "lines": 88
+  },
+  "write-vision": {
+    "tokens": 1166,
+    "lines": 106
+  }
+}

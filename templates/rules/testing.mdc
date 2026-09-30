@@ -1,0 +1,12 @@
+---
+description: Test-only code boundaries and fixture placement
+globs: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "**/__tests__/**/*.{ts,tsx}"]
+alwaysApply: false
+---
+
+# Test Code Boundaries
+
+- Keep test-only helpers, fixtures, mocks, and setup in test folders or shared test setup files.
+- Do not add production branches, production-only types, or production exports only to make a test pass.
+- Use the production public contract. Do not reach into private implementation details when a user-visible result can prove the behavior.
+- Keep fixtures named for the scenario they model. Do not use vague fixture names such as `data` or `result`.

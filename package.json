@@ -1,0 +1,100 @@
+{
+  "name": "agentbrew",
+  "version": "0.3.3",
+  "description": "Skill manager and sync engine for AI coding tools — sync skills, MCP servers, rules, and commands across every AI coding agent",
+  "type": "module",
+  "private": true,
+  "main": "./dist/cli.js",
+  "bin": {
+    "agentbrew": "./dist/cli.js",
+    "storybook-screenshot": "./dist/storybook-screenshot.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prebuild": "bash scripts/build-pipeline-guard.sh --deps-only",
+    "build": "tsup",
+    "postbuild": "bash scripts/build-pipeline-guard.sh --dist-only",
+    "dev": "tsx src/cli.ts",
+    "test": "tsx src/affected-tests.ts",
+    "test:affected": "tsx src/affected-tests.ts",
+    "test:all": "vitest run",
+    "skills:coverage": "tsx src/cli.ts skills coverage --ci --threshold 90 --builtins",
+    "test:real-e2e": "vitest run --config vitest.real-e2e.config.ts",
+    "test:real-e2e:selected": "tsx src/real-e2e/selected-runs.ts",
+    "test:devin-import-real": "tsx scripts/devin-import-real-tier.mjs",
+    "playwright:install": "playwright install chromium",
+    "docs:competition": "tsx scripts/sync-competition-docs.ts",
+    "docs:agent-matrix": "tsx scripts/sync-agent-matrix.ts",
+    "docs:verify-claims": "tsx scripts/verify-competition-claims.ts",
+    "stage-learn-sources": "tsx scripts/stage-learn-sources.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh",
+    "lint:fix": "biome check --write src scripts real-e2e",
+    "lint:security": "bash scripts/lint-security.sh",
+    "lint:artifacts": "bash scripts/lint-repo-artifacts.sh",
+    "lint:deadcode": "knip --no-progress",
+    "check:oss": "vitest run src/oss/",
+    "eval:agent-artifacts": "promptfoo eval -c agent-artifact-evals/promptfoo.yaml --no-cache --no-share --no-write --no-progress-bar",
+    "verify:build-pipeline": "bash scripts/build-pipeline-guard.sh --full",
+    "verify": "npm run verify:build-pipeline && tsc --noEmit && biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh && bash scripts/run-hook-fixtures.sh && node scripts/lint-tasks-stability.mjs TASKS.md && knip --no-progress && npm run eval:agent-artifacts && npm run skills:coverage && npm run playwright:install && npm run test:all",
+    "measure:context": "tsx src/cli.ts measure context",
+    "audit:context-tree": "bash scripts/audit-context-tree.sh",
+    "release": "bash scripts/release.sh",
+    "publish-latest": "bash scripts/publish-latest.sh",
+    "publish:latest": "bash scripts/publish-latest.sh",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "skills",
+    "mcp",
+    "sync",
+    "claude",
+    "cursor",
+    "windsurf",
+    "augment",
+    "codex",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fyodoriv/agentbrew"
+  },
+  "homepage": "https://github.com/fyodoriv/agentbrew#readme",
+  "bugs": "https://github.com/fyodoriv/agentbrew/issues",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "dependencies": {
+    "@iarna/toml": "2.2.5",
+    "@inquirer/core": "11.1.9",
+    "@inquirer/prompts": "8.4.2",
+    "ajv": "8.20.0",
+    "chalk": "5.6.2",
+    "chokidar": "5.0.0",
+    "commander": "14.0.3",
+    "js-yaml": "4.1.1",
+    "semver": "7.7.4",
+    "write-file-atomic": "7.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.13",
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "25.6.0",
+    "@types/semver": "7.7.1",
+    "@vitest/coverage-v8": "4.1.5",
+    "knip": "6.7.0",
+    "playwright": "1.58.2",
+    "promptfoo": "0.121.15",
+    "tsup": "8.5.1",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.5"
+  }
+}

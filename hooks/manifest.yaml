@@ -1,0 +1,475 @@
+# agentbrew hooks — canonical manifest
+#
+# Source-of-truth for deterministic primary-agent hooks. Each entry maps a
+# hook script to a Claude Code event + matcher pair. agentbrew sync reads
+# this file, deploys the referenced script to ~/.claude/codeassist/hooks-scripts/,
+# and writes equivalent entries into each listed agent's hooks file.
+#
+# **Layering**: this canonical manifest can be overridden / extended per-
+# machine via `~/.config/agentbrew/hooks-overlay/manifest.yaml`. Overlay
+# entries with the same `id` REPLACE canonical entries (use for local
+# tuning). Overlay's `disabled:` field lists canonical IDs to skip on
+# this machine (use for explicit opt-out — every skip is logged to
+# hook-decisions.jsonl with `reason: "disabled-by-overlay"` so drift is
+# visible).
+#
+# **Schema** (per hook):
+#   id              kebab-case unique identifier
+#   description     one-line human description
+#   event           Claude Code event: PreToolUse | PostToolUse | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
+#   matcher         optional Claude Code matcher (e.g. "Write|Edit", "Bash"). Omit to match all.
+#   script          path relative to agentbrew/hooks/ (e.g. checks/code-no-timestamps.sh)
+#   tier            "deterministic" (Cat A) or "verifier" (Cat B)
+#   verdict         "block" (exit 2) | "warn" (stderr only) | "mutate" (rewrite tool_input)
+#   bypassEnvVar    optional env var that disables this hook (default: HOOK_BYPASS_<ID_UPPERCASE>)
+#   model           Cat B only — overrides default `claude-sonnet-4-7`
+#   promptVersion   Cat B only — bump when the verifier prompt changes; logged with each decision
+#   sourceRule      reference to the original IRON LAW (file:line) the hook implements
+#   agents          which agents to deploy to. Cursor gets event-name transforms; Devin gets lifecycle hooks only.
+#
+# **Adding a hook**: copy an existing entry below, change the id, write
+# the script under checks/ or verifiers/, ship a .test.sh fixture, add
+# the corresponding rule-deletion follow-up task in TASKS.md per the
+# hooks-phase-1 / hooks-phase-2 discipline.
+
+version: 1
+
+hooks:
+  # ── Phase 0 golden-path proof (ships with foundation) ──────────────────
+  - id: code-no-timestamps
+    description: Reject Write|Edit that adds a literal date-stamp comment to source code
+    event: PreToolUse
+    matcher: Write|Edit
+    script: checks/code-no-timestamps.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:826 — "Code Has No Time Stamps (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  # ── Phase 1 hooks (dotfiles wrapper migration — sourceRule = dotfiles/bin/gh + git-hooks/commit-msg) ──
+
+  - id: gh-pr-body-attribution
+    description: Strip foreign agent attribution from gh pr create/edit body + append canonical Fyodor footer
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-attribution.sh
+    tier: deterministic
+    verdict: mutate
+    sourceRule: dotfiles/bin/gh (formalized as hook 2026-05-27) + shared-rules.md:1283 "Agent Attribution Footer (ABSOLUTE)"
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-body-requires-rationale
+    description: Block gh pr create/edit when body lacks a "why this is needed" rationale
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-requires-rationale.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:504 "PR Format (canonical structure + brevity is IRON LAW)" + dotfiles/bin/gh
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-body-requires-validation
+    description: Block gh pr create/edit when body lacks validation sections (full block or stacked-skill Summary+Delivery plan+Test plan trio)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-requires-validation.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: task-command-center skill "PR validation block (IRON LAW)" + templates/AGENTS.md
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-skill-requires-evals
+    description: Block skill PRs that add SKILL.md without evals/evals.json and eval-result sections
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-skill-requires-evals.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: templates/AGENTS.md "Skill PRs Must Ship Evals (IRON LAW)" + Anthropic skill-creator / Superpowers writing-skills
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-agent-artifacts-require-tests
+    description: Block agent-artifact PRs without same-PR tests, evals, or exemption reason
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-agent-artifacts-require-tests.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_GH_PR_AGENT_ARTIFACTS_REQUIRE_TESTS
+    sourceRule: templates/AGENTS.md "Agent Artifact PRs Need Evidence" + src/agent-artifacts/inventory.ts
+    agents: ["claude-code", "cursor"]
+
+  - id: git-commit-conventional
+    description: Block git commit -m with non-conventional-commit format (header type colon space)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/git-commit-conventional.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: dotfiles/git-hooks/commit-msg (formalized as hook 2026-05-27)
+    agents: ["claude-code", "cursor"]
+
+  - id: git-strip-agent-attribution
+    description: Strip foreign agent Co-Authored-By + Generated-with trailers from git commit -m
+    event: PreToolUse
+    matcher: Bash
+    script: checks/git-strip-agent-attribution.sh
+    tier: deterministic
+    verdict: mutate
+    sourceRule: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
+    agents: ["claude-code", "cursor"]
+
+  - id: no-git-add-all
+    description: Block git add -A or git add . in multi-agent contexts (stages other agents' work)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-git-add-all.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Git Safety (Multi-Agent)" + agentbrew/AGENTS.md
+    agents: ["claude-code", "cursor"]
+
+  - id: no-force-push-protected
+    description: Block git push --force / --force-with-lease to main / master / develop
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-force-push-protected.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Git Safety (Multi-Agent)"
+    agents: ["claude-code", "cursor"]
+
+  - id: no-commit-no-verify
+    description: Block git commit --no-verify (skipping commit hooks is forbidden by policy)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-commit-no-verify.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: agentbrew/TASKS.md policy "do NOT bypass commit hooks (--no-verify)" + dotfiles/TASKS.md
+    agents: ["claude-code", "cursor"]
+
+  - id: no-binary-screenshots
+    description: Block git add of PNG/JPG/GIF outside __storyshots__/favicon/fixtures paths
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-binary-screenshots.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: templates/AGENTS.md:370 "Never Commit Screenshots to Repos (IRON LAW)" + templates/AGENTS.md:396 "Don't Screenshot Test Output (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: selectors-pure
+    description: Block Write/Edit to selector files that add Date.now/fetch/Math.random/network calls
+    event: PreToolUse
+    matcher: Write|Edit
+    script: checks/selectors-pure.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:368 "Selectors Must Be Pure (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: verify-before-completion
+    description: Block Stop event when turn edited code files but never ran verify commands
+    event: Stop
+    script: checks/verify-before-completion.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:231 "Verify Before Completion (IRON LAW)"
+    agents: ["claude-code", "cursor", "devin"]
+
+  - id: a-pr-is-not-ready
+    description: Block Stop after gh pr create/ready/merge if PR has failing CI or is behind main
+    event: Stop
+    script: checks/a-pr-is-not-ready.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:645 "A PR Is Not Ready Until It's Rebased and Green (IRON LAW)"
+    agents: ["claude-code", "cursor", "devin"]
+
+  - id: manual-test-steps-start-at-app-url
+    description: Block gh pr create when body has test-plan section but no app URL
+    event: PreToolUse
+    matcher: Bash
+    script: checks/manual-test-steps-start-at-app-url.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:700 "Manual Test Steps Start at the App URL (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: pending-internal-work-needs-ticket
+    description: Warn (don't block) when diff adds TODO/FIXME/HACK without ticket or owner ref
+    event: PostToolUse
+    matcher: Write|Edit
+    script: checks/pending-internal-work-needs-ticket.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: shared-rules.md:1063 "Pending Internal Work Must Be Tracked (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: tests-adapt-to-production
+    description: Block diff that adds test-accommodation wrappers (*ForTest, __test*, lookup*Spy) in production code
+    event: PostToolUse
+    matcher: Write|Edit
+    script: checks/tests-adapt-to-production.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:343 "Tests Adapt to Production, Not the Other Way Around (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: skill-names-user-facing-verbs
+    description: Block Write/Edit to SKILL.md whose name field has internal jargon
+    event: PreToolUse
+    matcher: Write|Edit
+    script: checks/skill-names-user-facing-verbs.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:759 "Skill Names Are User-Facing Verbs, Not Internal Jargon (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-body-no-review-response
+    description: Block gh pr create/edit whose body has a review-response section (Qodo/CodeRabbit/Bugbot resolved, feedback addressed)
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-no-review-response.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "PR bodies stay artifact-focused; reply to reviewers in comments, not the description"
+    agents: ["claude-code", "cursor"]
+
+  - id: gh-pr-body-related-prs-not-first
+    description: Block gh pr create/edit whose body leads with a Related PRs / merge-order / reuse-chain section
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-related-prs-not-first.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md "Never lead with cross-PR navigation; put Related PRs near the bottom"
+    agents: ["claude-code", "cursor"]
+
+  - id: async-human-comms-blocks
+    description: Block mutating tool calls when ask_human.md in repo has status PENDING
+    event: PreToolUse
+    script: checks/async-human-comms-blocks.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: shared-rules.md:135 "Async human comms — ask_human.md (ADOPTED CONVENTION, IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: comment-adjacency
+    description: Warn on orphaned comments (blank line between doc and code)
+    event: PostToolUse
+    matcher: Write|Edit
+    script: checks/comment-adjacency.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: shared-rules.md:432 "Comment Adjacency (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: cross-team-code-batch
+    description: Warn on gh pr create when diff touches 2+ CODEOWNER teams without BATCH prefix
+    event: PreToolUse
+    matcher: Bash
+    script: checks/cross-team-code-batch.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: shared-rules.md:311 "Cross-Team Code Touches Batch (HIGHEST PRIORITY IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  - id: env-correct-urls
+    description: Warn when PR title mentions env (staging/prod) but body has different env's URL
+    event: PreToolUse
+    matcher: Bash
+    script: checks/env-correct-urls.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: shared-rules.md:811 "Env-Correct URLs (IRON LAW)"
+    agents: ["claude-code", "cursor"]
+
+  # ── Phase 2 Cat B verifier hooks (warn-mode observation first) ──────────
+
+  - id: pr-body-diff-consistency
+    description: Warn when a gh pr edit body appears stale relative to the current diff
+    event: PreToolUse
+    matcher: Bash
+    script: verifiers/pr-body-diff-consistency.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_PR_BODY_DIFF_CONSISTENCY
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:600 PR Bodies Decay — Verify Before Edit'
+    agents: ["claude-code", "cursor"]
+
+  - id: codify-repeated-work
+    description: Warn when repeated workflow work should be codified into a skill before continuing
+    event: UserPromptSubmit
+    script: verifiers/codify-repeated-work.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_CODIFY_REPEATED_WORK
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:187 Codify before continuing — write skill'
+    agents: ["claude-code", "cursor"]
+
+  - id: ask-action-not-treasure-map
+    description: Warn when the previous assistant response asks with a treasure map instead of an action
+    event: UserPromptSubmit
+    script: verifiers/ask-action-not-treasure-map.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_ASK_ACTION_NOT_TREASURE_MAP
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'templates/AGENTS.md:181 Ask With An Action, Not A Treasure Map'
+    agents: ["claude-code", "cursor"]
+
+  - id: rule-skill-location
+    description: Warn when new rules or skills are authored in the wrong canonical location
+    event: PreToolUse
+    matcher: Write|Edit|MultiEdit
+    script: verifiers/rule-skill-location.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_RULE_SKILL_LOCATION
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'templates/AGENTS.md:13 Where new rules and skills belong'
+    agents: ["claude-code", "cursor"]
+
+  - id: browser-errors-before-done
+    description: Warn when frontend work reaches Stop without browser console/network error checks
+    event: Stop
+    script: verifiers/browser-errors-before-done.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_BROWSER_ERRORS_BEFORE_DONE
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:79 Zero Browser Errors Before Frontend Done'
+    agents: ["claude-code", "cursor", "devin"]
+
+  - id: fix-errors-never-silence
+    description: Warn when an edit appears to silence or suppress an error instead of fixing it
+    event: PostToolUse
+    matcher: Write|Edit
+    script: verifiers/fix-errors-never-silence.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_FIX_ERRORS_NEVER_SILENCE
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:115 Fix errors, never silence them'
+    agents: ["claude-code", "cursor"]
+
+  - id: comment-proportionality-verifier
+    description: Warn when long comments are disproportionate to adjacent code
+    event: PostToolUse
+    matcher: Write|Edit
+    script: verifiers/comment-proportionality.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_COMMENT_PROPORTIONALITY_VERIFIER
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:865 Comment Proportionality IRON LAW'
+    agents: ["claude-code", "cursor"]
+
+  - id: pr-body-explains-why
+    description: Warn when gh pr create body lacks WHY rationale for cold readers
+    event: PreToolUse
+    matcher: Bash
+    script: verifiers/pr-body-explains-why.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_PR_BODY_EXPLAINS_WHY
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'shared-rules.md:576 PR Bodies Explain WHY'
+    agents: ["claude-code", "cursor"]
+
+  - id: stability-task-priority
+    description: Warn when stability/deployment infra tasks are filed below P0
+    event: PreToolUse
+    matcher: Write|Edit|MultiEdit
+    script: verifiers/stability-task-priority.sh
+    tier: verifier
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_STABILITY_TASK_PRIORITY
+    model: claude-haiku-4-5
+    promptVersion: 1
+    sourceRule: 'templates/AGENTS.md stability/deployment infra P0 discipline'
+    agents: ["claude-code", "cursor"]
+
+  - id: comment-brevity-in-tests
+    description: 'Warn on 4+ line comment blocks above it/describe/test calls'
+    event: PostToolUse
+    matcher: Write|Edit
+    script: checks/comment-brevity-in-tests.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: 'shared-rules.md:419 Comment Brevity in Tests IRON LAW'
+    agents: ["claude-code", "cursor"]
+
+  - id: comment-proportionality
+    description: 'Warn when a Write file has comment-to-code ratio above 50%'
+    event: PostToolUse
+    matcher: Write
+    script: checks/comment-proportionality.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: 'shared-rules.md:865 Comment Proportionality IRON LAW'
+    agents: ["claude-code", "cursor"]
+
+  - id: jira-no-grandchildren
+    description: 'Block Jira Sub-task creation that would make a 3-level hierarchy'
+    event: PreToolUse
+    matcher: 'mcp__jira-mcp__create.*|mcp__atlassian__createJira.*'
+    script: checks/jira-no-grandchildren.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: 'shared-rules.md:1044 Jira Hierarchy No Grandchildren IRON LAW'
+    agents: ["claude-code", "cursor"]
+
+  - id: gdoc-comment-preservation
+    description: 'Block GDoc tool calls that resolve/delete/modify existing comments'
+    event: PreToolUse
+    matcher: 'mcp__company-google-drive-mcp__.*|mcp__google-drive-mcp__.*|mcp__drive__.*'
+    script: checks/gdoc-comment-preservation.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: 'shared-rules.md:1528 GDoc Comment Preservation Rule ABSOLUTE'
+    agents: ["claude-code", "cursor"]
+
+  - id: gdoc-surgical-edit-only
+    description: 'Block wholesale-replace GDoc updates'
+    event: PreToolUse
+    matcher: 'mcp__company-google-drive-mcp__.*|mcp__google-drive-mcp__.*|mcp__drive__.*'
+    script: checks/gdoc-surgical-edit-only.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: 'shared-rules.md:1540 GDoc Surgical-Edit-Only Rule ABSOLUTE'
+    agents: ["claude-code", "cursor"]
+
+  # ── Context budget (SessionStart — throttled background capture) ─────────
+
+  - id: context-budget-measure
+    description: Refresh context-budget metrics in background when last snapshot is >6h old
+    event: SessionStart
+    script: checks/context-budget-measure.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_CONTEXT_BUDGET_MEASURE
+    sourceRule: 'context-budget skill + RECURRING.md context-budget-weekly-audit'
+    agents: ["claude-code", "cursor"]
+
+  - id: memory-sync-projects-session-end
+    description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
+    event: SessionEnd
+    script: checks/memory-sync-projects-session-end.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_MEMORY_SYNC_PROJECTS
+    sourceRule: 'docs/user-stories/29-shared-memory-packs.md project-memory ingestion invariant'
+    agents: ["claude-code"]

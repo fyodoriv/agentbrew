@@ -1,0 +1,86 @@
+name: Auto-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    # Skip version-bump commits to prevent infinite loop
+    if: "!startsWith(github.event.head_commit.message, 'release:')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Security audit
+        run: npm audit --environment production --audit-level moderate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist
+        run: |
+          test -f dist/cli.js || { echo "ERROR: dist/cli.js missing"; exit 1; }
+          test -f dist/catalog.yaml || { echo "ERROR: dist/catalog.yaml missing"; exit 1; }
+          head -1 dist/cli.js | grep -q '#!/usr/bin/env node' || { echo "ERROR: missing shebang"; exit 1; }
+
+      - name: Bump patch version
+        run: |
+          OLD_VERSION=$(node -p "require('./package.json').version")
+          npm version patch --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+
+          # Update version in src/cli.ts
+          sed -i "s/.version(\"$OLD_VERSION\")/.version(\"$NEW_VERSION\")/" src/cli.ts
+
+          echo "OLD_VERSION=$OLD_VERSION" >> "$GITHUB_ENV"
+          echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+
+      - name: Rebuild with new version
+        run: npm run build
+
+      - name: Verify version in dist
+        run: |
+          DIST_VERSION=$(node dist/cli.js --version)
+          echo "Expected: $NEW_VERSION, Got: $DIST_VERSION"
+          [ "$DIST_VERSION" = "$NEW_VERSION" ] || { echo "ERROR: version mismatch"; exit 1; }
+
+      - name: Commit version bump + tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src/cli.ts
+          git commit -m "release: v$NEW_VERSION [skip ci]"
+          git tag "v$NEW_VERSION"
+          git push && git push --tags
+
+      - name: Summary
+        run: |
+          echo "## 🚀 Version bumped to $NEW_VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tag \`v$NEW_VERSION\` created. To publish to npm:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "npm run publish:latest -- --otp=XXXXXX" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

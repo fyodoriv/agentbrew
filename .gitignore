@@ -1,0 +1,28 @@
+local/
+.idea/
+node_modules/
+dist/
+coverage/
+tsconfig.tsbuildinfo
+~
+# PnP artifacts (project uses node-modules linker now)
+.pnp.*
+.yarn/
+plugin-lock.json
+.devin/
+.agents/
+.cursor/
+.minsky/
+.worktrees/
+
+# Orchestrator pipeline artifacts
+.orchestrator/
+
+# Task queue session state (local per-developer, not shared)
+.taskgrind-state
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+.playwright-mcp/

@@ -1,0 +1,18 @@
+---
+description: Context budget hygiene — read metrics/latest.json and run agentbrew measure context before trim work
+globs: ["**/TASKS.md", "**/shared-rules.md", "**/AGENTS.md", "**/RECURRING.md"]
+alwaysApply: false
+---
+
+# Context Budget Hygiene
+
+Before proposing trims to shared rules, skills, or always-on catalog rules:
+
+1. Read `~/.config/agentbrew/metrics/latest.json` (`static.softTokenHeadroom`, `inventory.cursorMdc`) (refresh with `agentbrew measure context` if missing or stale).
+2. Run `agentbrew lint` — lint failures are the actionable static list.
+3. Check TASKS.md for P1 token/trim tasks (`token-budget`, `trim-shared-rules`, `instructions-file-size`).
+4. For Claude runtime pressure: `bunx ccusage weekly`, optional `bunx tokscale`, or the `session-report` skill — do not build custom parsers.
+5. Optional repo audit: `bash scripts/audit-context-tree.sh` (Repomix token tree) from the agentbrew repo.
+6. Cursor IDE context ring: **no API**. Note readings under `~/.config/agentbrew/metrics/manual-snapshots/` when relevant.
+
+Load the `cursor-token-playbook` skill for daily habits; load `context-budget` for metrics-driven trim investigation.

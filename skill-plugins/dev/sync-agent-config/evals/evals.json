@@ -1,0 +1,38 @@
+{
+  "skill_name": "sync-agent-config",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I added a skill and changed shared rules; sync everything to all agents.",
+      "expected_output": "A full `agentbrew sync` workflow with status checks before and after.",
+      "expectations": [
+        "Runs `agentbrew status` or `agentbrew status --verbose` to inspect current state before syncing",
+        "Runs `agentbrew sync` for multi-surface changes rather than only a single subsystem",
+        "Verifies afterward with `agentbrew status` or `agentbrew status --fix`",
+        "Does not edit individual generated agent config files directly"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Only MCP server config changed; can you sync just that surface?",
+      "expected_output": "A targeted `--only mcp` sync followed by MCP-specific verification.",
+      "expectations": [
+        "Uses `agentbrew sync --only mcp` for an MCP-only change",
+        "Verifies status after the targeted sync",
+        "Uses `mcpm ls` or equivalent when checking delegated MCP intersection clients",
+        "Does not unnecessarily sync unrelated surfaces when the user requested MCP-only work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "After syncing, Claude's instruction file seems huge. What should I check?",
+      "expected_output": "A token-overhead check and duplication diagnosis for generated instructions.",
+      "expectations": [
+        "Measures the generated instruction file size with a command like `wc -c ~/.claude/CLAUDE.md | awk ...`",
+        "Compares the rough token estimate to the documented budget",
+        "Checks for duplicated sections between templates and shared rules",
+        "Runs `agentbrew status --fix` after changes to confirm no drift remains"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+---
+description: Research must read latest remote state, never a stale local checkout — IRON LAW
+alwaysApply: true
+---
+
+# Research reads latest — IRON LAW
+
+Before stating any fact about a repo — research doc, spike, PR review, design
+note, ticket comment, or chat reply — **fetch that repo and read at the remote
+commit.**
+
+A stale local checkout is not evidence. Never publish a finding caveated with
+"my clone was N commits behind, re-check before implementing." Pull, re-check
+yourself, then publish.
+
+## Steps
+
+1. `git -C <repo> fetch --all` for every repo you will cite.
+2. Record branch, default branch, ahead/behind counts, and dirty state.
+3. Read at `origin/<default>`, not local `HEAD`, unless the question is about a
+   local or feature branch.
+4. If local `HEAD` was behind, diff the missed range and say whether any cited
+   file changed.
+5. Re-verify non-git state — PR status, review state, ticket status — at
+   publish time, not from memory.
+6. Report the commit you read per repo. Keep unmerged-branch facts (branch,
+   ahead/behind, PR state) separate from default-branch facts.
+
+## Getting to latest must not modify the tree
+
+Research is read-only work.
+
+**Allowed:** `fetch`; `pull --ff-only origin <default>` when on the default
+branch with a clean tracked tree; `git show origin/<ref>:<path>` to read.
+
+**Never, just to read latest:** `git checkout <ref> -- .` or `-- <path>` (it
+overwrites and stages the working tree — use `git show`); `rebase`, `merge`,
+`stash`, `reset`, or force-push on a branch the user is working on; any write
+to a repo with uncommitted tracked changes.
+
+Rebasing a branch is a separate task the user must request; it has its own IRON
+LAW in `rebase-verification.mdc`.
+
+If you do modify a tree by mistake, say so in the same turn, restore it, and
+prove the restore (branch, HEAD, clean status). Restore without asking only
+when you measured the tree clean beforehand and can show nothing is at risk.

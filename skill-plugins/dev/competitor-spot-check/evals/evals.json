@@ -1,0 +1,102 @@
+{
+  "skill_name": "competitor-spot-check",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I am filling the PR template for a feature that adds team-scoped skill presets. Find competitor prior art for the `Competitor prior art` line.",
+      "expected_output": "A deterministic competitor-corpus scan that produces a citation or an honest no-prior-art line for the PR body.",
+      "expectations": [
+        "Searches the repo competitive corpus locations such as competitors/, docs/competitors/, docs/competition/, docs/competition.md, and COMPETITORS.md",
+        "Uses focused feature keywords instead of generic terms that would overmatch the corpus",
+        "Quotes file path and line number when prior art is found",
+        "If no prior art is found, states how many competitor docs were scanned and says so in the PR body rather than claiming N/A blindly",
+        "Does not expand into a general competitive analysis or add new competitor docs"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A PR review has `Competitor prior art: N/A — did not check`. What should I do before approving it?",
+      "expected_output": "A review-oriented spot check that replaces the unverified N/A with a corpus-backed citation or explicit no-match result.",
+      "expectations": [
+        "Treats an unchecked competitor line as insufficient for the pr-vision-trace workflow",
+        "Runs the spot-check against the current repo corpus before suggesting review approval",
+        "Returns an actionable replacement line for the PR body",
+        "Uses existing competitor docs rather than reading the entire corpus manually by default",
+        "Mentions the edge case when the repo has no competitive corpus"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Have competitors shipped anything like our proposed inline MCP dashboard?",
+      "expected_output": "A narrow prior-art answer scoped to whether the feature appears in competitor docs, not a broad market report.",
+      "expectations": [
+        "Distinguishes this spot check from strategic-review or companion-competitor-watch",
+        "Searches only the existing competitive corpus for relevant feature keywords",
+        "Caps or summarizes excessive matches and recommends refining keywords if needed",
+        "Reports no-match results honestly instead of inventing competitor claims",
+        "Provides a citation-ready answer suitable for a Vision trace block"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "You're filling a PR's `## Vision trace` block and need to cite competitor prior art for a 'skill installation from GitHub URL' feature. Run the spot-check and explain what you find.",
+      "expected_output": "Correct execution of the spot-check script with proper citation or 'no prior art' documentation.",
+      "expectations": [
+        "Runs bash ~/.config/agentbrew/scripts/competitor-spot-check.sh 'skill installation from GitHub URL'",
+        "Searches canonical corpus locations: competitors/, docs/competitors/, docs/competition/, docs/competition.md, COMPETITORS.md",
+        "Greps each location case-insensitively for keywords (split on whitespace, ignoring stopwords)",
+        "Returns matches in format: [<competitor-name>] <line of context> (<path>:<line-no>)",
+        "If matches found: quotes them in the PR body's Competitor prior art line with exact citation",
+        "If no matches: notes the scan in the PR body: 'N/A — scanned N competitor docs, no comparable feature'"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The spot-check found 47 matches for 'agent skills' across competitor docs. The output is too long. What does the script do, and how do you use the result?",
+      "expected_output": "Correct handling of high-match-count results with refinement strategy.",
+      "expectations": [
+        "Script caps output at 20 matches and prints '+N more matches — refine search keywords'",
+        "Recognizes that 'agent skills' is too broad and needs more specific keywords",
+        "Refines the search to more specific terms (e.g., 'skill installation from GitHub', 'skill discovery')",
+        "Re-runs the spot-check with refined keywords to get a manageable result set",
+        "Cites the most relevant matches in the PR body, not all 47"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The repo has no docs/competitors/ or docs/competition/ directory. What does the spot-check report, and what should the PR body say?",
+      "expected_output": "Correct handling of missing competitive corpus with appropriate PR citation.",
+      "expectations": [
+        "Script reports: 'no competitive corpus in this repo'",
+        "Recognizes this as a legitimate opt-out (deployment manifest, pure tooling, no external competitors)",
+        "PR body Competitor prior art line says: 'N/A — repo has no competitive corpus (deployment manifest / pure tooling)'",
+        "Does not force a competitor search when the repo genuinely has no competitive corpus",
+        "Acknowledges that some repos are not competitive products"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Check competitor prior art for 'do it' / 'make this work' and fill the PR line anyway.",
+      "expected_output": "A specificity request that refuses to treat an all-stopword or underspecified query as a valid no-prior-art scan.",
+      "expectations": [
+        "Detects that the feature description has only stopwords or too few specific keywords",
+        "Asks for more specific feature terms before claiming a scan result",
+        "Does not fabricate competitor citations from an invalid query",
+        "Does not write `N/A — scanned corpus` when no meaningful search was performed",
+        "Suggests concrete example terms that would make the spot-check useful"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Use the competitor spot-check to refresh our competitor docs, add a new competitor entry, and recommend whether we should pivot before opening this PR.",
+      "expected_output": "A scope correction that keeps spot-check read-only and routes corpus refresh or strategy work to the right skills.",
+      "expectations": [
+        "Explains that competitor-spot-check only queries the existing corpus for PR-body prior art",
+        "Routes new or refreshed competitor documentation to `companion-competitor-watch`",
+        "Routes broad strategic or pivot analysis to `strategic-review`",
+        "Does not edit competitor docs, add new competitor entries, or rewrite VISION.md",
+        "If still filling a PR line, runs or describes the narrow spot-check and returns only citation-ready prior-art evidence"
+      ]
+    }
+  ]
+}

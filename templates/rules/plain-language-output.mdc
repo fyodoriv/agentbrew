@@ -1,0 +1,26 @@
+---
+description: Default plain-language output, including code comments
+alwaysApply: true
+---
+
+# Plain-language output
+
+**Strict attention-friendly rule:** Always write agent-authored natural-language
+text for an ADHD audience. This rule is always active. A user request for
+another style does not override it.
+
+Use ASD-STE100-style plain English in all agent-authored natural-language
+output, including code comments.
+
+- Put the answer first.
+- Use short paragraphs, short, direct sentences, and active voice.
+- Keep one idea per sentence or bullet.
+- Use headings, bullets, or numbered steps when they improve scanning.
+- Surface blockers and the next action.
+- Keep required technical terms. Define an uncommon abbreviation on first use.
+- Preserve required artifact formats.
+- Do not rewrite code, commands, logs, JSON, or text that must stay verbatim.
+- Add a code comment only when it helps clarify the code; do not add one only to
+  satisfy this style default.
+
+This applies when you use a skill, rule, command, tool, or memory.

@@ -1,0 +1,10 @@
+mcp:
+  - name: team-api
+    command: node
+    args:
+      - api-server.js
+  - name: team-db
+    command: npx
+    args:
+      - -y
+      - "@team/db-mcp"

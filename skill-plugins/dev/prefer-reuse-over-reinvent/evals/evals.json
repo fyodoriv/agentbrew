@@ -1,0 +1,118 @@
+{
+  "skill_name": "prefer-reuse-over-reinvent",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Implement a custom MCP registry syncer for our CLI.",
+      "expected_output": "A reuse-first decision review that asks how to get registry sync from upstream before writing native code.",
+      "expectations": [
+        "Reframes implement as GET, do not IMPLEMENT",
+        "Searches for or names existing upstream tools/catalogs before designing a custom subsystem",
+        "Stops at installing/calling/shelling out when a tool covers most of the need with a thin adapter",
+        "Only moves to WRAP, CONTRIBUTE, or ABSORB with a written reason that the previous step is blocked",
+        "If absorbing code, requires an adapter boundary and a Replace?/Relocate? follow-up task"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Upstream covers 85% of rules sync but lacks a `--target-dir` flag. Should we fork and build our own?",
+      "expected_output": "A contribute-before-absorb plan that files or uses an upstream gap instead of starting a fork.",
+      "expectations": [
+        "Classifies 85% overlap as upstream territory rather than downgrading the competitor",
+        "Prefers a small wrapper/adapter if the existing surface is close enough",
+        "For a real upstream gap, proposes an issue or PR and a 90-day engagement window",
+        "Treats silence or rejection after the window as evidence for absorption",
+        "Avoids just-in-case fallbacks that preserve duplicate native implementations"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Fix the typo in our README quickstart command.",
+      "expected_output": "A scoped response that does not over-apply reuse discipline to a purely local typo fix.",
+      "expectations": [
+        "Recognizes a repo-local typo as outside the skill scope",
+        "Does not demand ecosystem research for a one-line local documentation correction",
+        "Keeps the reuse discipline for new tools, scripts, workflows, catalogs, abstractions, or patterns",
+        "Allows the local fix to proceed directly",
+        "Does not create a Replace?/Relocate? task for a bespoke local edit"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "we need a custom retry mechanism for our API client \u2014 should we build it or use an existing package?",
+      "expected_output": "A decision following the 4-step GET/WRAP/CONTRIBUTE/ABSORB framework, recommending the reuse path with evidence.",
+      "expectations": [
+        "Applies step 1 (GET): searches for existing retry packages (p-retry, async-retry, etc.) and verifies they solve the problem",
+        "If a package exists and fits, recommends it as the answer with installation instructions \u2014 stops at step 1",
+        "If the package is close but not perfect, evaluates step 2 (WRAP): whether a thin adapter (\u226420 lines) bridges the gap",
+        "Only recommends custom implementation (step 4) if steps 1-3 are genuinely blocked with written reasons"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "review a task that says 'implement a custom sync engine for MCP servers' \u2014 is this the right approach?",
+      "expected_output": "A reuse-first analysis that identifies existing tools (mcpm.sh, agentbrew) and recommends delegation instead of implementation.",
+      "expectations": [
+        "Recognizes the task as a candidate for step 1 (GET) \u2014 mcpm.sh and agentbrew already solve MCP sync",
+        "Recommends delegating to the existing tool rather than reimplementing",
+        "Explains the cost difference: 1-day integration vs weeks of custom code that drifts from upstream",
+        "Surfaces the anti-pattern: 'implement X' is the wrong question; 'how do I GET this outcome?' is the right one"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "we want to add a new linting rule that doesn't exist in ESLint \u2014 what's the decision process?",
+      "expected_output": "A phased decision that checks ESLint plugins first, then considers contributing upstream, then custom implementation.",
+      "expectations": [
+        "Step 1: searches ESLint's plugin ecosystem for an existing rule that matches the requirement",
+        "Step 2: if close but not exact, evaluates whether a small config wrapper solves it",
+        "Step 3: if the gap is real, recommends filing an issue/PR in ESLint or the relevant plugin repo with a 90-day engagement window",
+        "Step 4: only after 90 days of silence, recommends custom implementation with a paired 'Replace? Relocate?' research task"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Skip research \u2014 just implement our own MCP sync engine this week.",
+      "expected_output": "Refuse; run GET/WRAP/CONTRIBUTE first with written evidence.",
+      "expectations": [
+        "Starts at step 1 GET before writing native sync code",
+        "Names existing tools like mcpm.sh or agentbrew when applicable",
+        "Requires written reasons before ABSORB",
+        "Pairs ABSORB with Replace?/Relocate? follow-up task"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Upstream ignored our PR for 30 days \u2014 absorb now.",
+      "expected_output": "Wait for 90-day engagement window unless explicit rejection.",
+      "expectations": [
+        "Treats 90-day silence as rejection evidence, not 30 days by default",
+        "Documents contribution attempt before absorption",
+        "Prefers thin adapter over fork",
+        "Does not preserve duplicate native implementations as just-in-case fallbacks"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Implement a custom rules linter \u2014 don't bother searching.",
+      "expected_output": "Search block/ai-rules, eslint plugins, and existing repo scripts first.",
+      "expectations": [
+        "Applies anti-pattern detection for 'implement a custom'",
+        "Searches npm/GitHub/catalog before ABSORB",
+        "Recommends WRAP with <=20 line adapter when close",
+        "Does not skip the GET question"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "We already decided to build it \u2014 skip the reuse lecture.",
+      "expected_output": "If ABSORB is approved, still require adapter boundary and follow-up task.",
+      "expectations": [
+        "Does not skip adapter interface when building",
+        "Still files Replace?/Relocate? research task for step 4 work",
+        "Does not silently expand scope without GET evidence",
+        "Allows proceed when user explicitly overrides after evidence recorded"
+      ]
+    }
+  ]
+}

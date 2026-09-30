@@ -1,0 +1,162 @@
+[
+  {
+    "label": "allow-one-off-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 1 once."
+    }
+  },
+  {
+    "label": "allow-one-off-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 2 once."
+    }
+  },
+  {
+    "label": "allow-one-off-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 3 once."
+    }
+  },
+  {
+    "label": "allow-one-off-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 4 once."
+    }
+  },
+  {
+    "label": "allow-one-off-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 5 once."
+    }
+  },
+  {
+    "label": "allow-one-off-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 6 once."
+    }
+  },
+  {
+    "label": "allow-one-off-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 7 once."
+    }
+  },
+  {
+    "label": "allow-one-off-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 8 once."
+    }
+  },
+  {
+    "label": "allow-one-off-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 9 once."
+    }
+  },
+  {
+    "label": "allow-one-off-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Please investigate this one-off incident report 10 once."
+    }
+  },
+  {
+    "label": "block-repeat-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 3 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 4 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 5 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 6 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 7 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 8 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 9 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 10 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 11 again without writing a skill."
+    }
+  },
+  {
+    "label": "block-repeat-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run the same release checklist step 12 again without writing a skill."
+    }
+  }
+]

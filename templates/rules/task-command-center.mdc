@@ -1,0 +1,39 @@
+---
+description: When starting or refreshing TASKS.md, Jira, Google Doc, docs PR, Slack-driven, or multi-repo initiative work — read the task-command-center skill first
+globs: ["**/TASKS.md"]
+---
+
+# Task command center workflow
+
+When work involves **TASKS.md**, a **Jira epic/ticket**, a **Slack thread**, **Google Docs**, or **multiple repos**, do not jump straight to coding on `main`.
+
+**Read and follow the `task-command-center` skill** (source:
+`fyodoriv/dev-skills/task-command-center/SKILL.md`).
+
+Minimum sequence:
+
+1. **`load-project-context`** in each repo you will touch.
+2. **Intake** → `SYNC-STATUS.md`, `LINKS.md`, Slack/Jira/Drive mirrors.
+3. **Command-center worktree** → `~/apps/{repo}-command-center` on `docs/{project}-command-center`; draft **DO NOT MERGE** PR.
+4. **Plan** → `plans/implementation-plan.md` per assigned ticket. Read `writing-plans` and `task-command-center` → `references/implementation-plan-template.md`; lead with overall goal/vision and alternatives, distinguish facts from proposals, and give every numbered task a Why, dependencies/parallelism, acceptance evidence, and verification.
+5. **Dry run** → separate `~/apps/{repo}-dry-run` worktree; log in `plans/dry-run-log.md`.
+6. **Execute** → main checkout feature branches with repo delivery and verification skills.
+
+**Recurring reconciliation (IRON LAW):** whenever a refresh touches a Google Doc and either a docs PR or Jira, run `task-command-center` → `references/reconciliation-protocol.md`. Read all GDoc tabs/comments, the PR, the epic, and every child first. Keep each child description split into **Product contract (immutable)** with source citations and **Engineering guidance (dynamic)**. Transient status/lane/scheduling belongs in Jira fields or dated comments, not description rewrites. Re-read every destination after writes.
+
+**Jira scope (IRON LAW):** Jira fields and links own the parent, epic,
+initiative, type, status, assignee, estimate, priority, sprint, and development
+metadata. Do not repeat them in descriptions. Never state PR or branch status
+there. A user-requested single-PR delivery means one canonical ticket and one
+delivery PR; link and close redundant issues as duplicates. Honor explicit
+exclusions:
+do not add e2e, cleanup, import/dependency decoupling, onboarding,
+context-alias, or unrelated event work unless needed to make the requested
+result work. Preserve working paths and prioritize requested behavior over
+optional cleanup.
+
+**PR bodies (IRON LAW):** every PR must include `## Requirements checklist` (this PR only — epic scope in Jira), `## Previous state`, and `## Validation steps` — see `task-command-center` skill § PR validation block. No `Status:` lines; use GitHub draft/ready. Chain PRs stay draft until blockers merge. Hook `gh-pr-body-requires-validation` blocks `gh pr create`/`edit` without them.
+
+**Hard bans:** product code on docs command-center branch; committing worktree `TASKS.md`; merging docs hub to `master`; hand-editing `~/.cursor/skills/` (edit agentbrew source + `agentbrew sync`).
+
+For SSO-gated intake, compose with `browser-tasks` and `sso-background-work` — background and keep working; do not idle in poll loops.

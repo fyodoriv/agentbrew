@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "existing-server": {
+      "command": "npx",
+      "args": ["-y", "existing-server"],
+      "env": {
+        "EXISTING_TOKEN": "fixture-token"
+      }
+    }
+  }
+}

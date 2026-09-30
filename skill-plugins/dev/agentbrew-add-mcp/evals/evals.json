@@ -1,0 +1,49 @@
+{
+  "skill_name": "agentbrew-add-mcp",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add the public Context7 MCP server so every agent on this machine can use live docs.",
+      "expected_output": "A catalog-first MCP install using agentbrew, followed by sync and verification.",
+      "expectations": [
+        "Prefers `agentbrew install context7` or catalog shorthand rather than hand-editing agent config files",
+        "Runs `agentbrew sync` after registration so all supported agents receive the server",
+        "Verifies the result through agentbrew status and/or the delegated MCP tool where appropriate",
+        "Does not edit `~/.cursor/mcp.json`, `~/.codeium/windsurf/mcp_config.json`, or other generated configs directly"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add this internal Jira MCP from a private npm registry to agentbrew's public catalog.",
+      "expected_output": "A layer decision that keeps internal-only MCP entries in the team overlay.",
+      "expectations": [
+        "Uses the litmus test and classifies the registry-internal package as team-overlay content",
+        "Refuses to add the internal MCP to the OSS-portable `src/catalog.yaml`",
+        "Describes the overlay catalog/Agentfile path for shipping the shorthand safely",
+        "Keeps environment-variable setup instructions out of plaintext generated config values"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Try this GitHub repo as an MCP server and add it for the team if it works.",
+      "expected_output": "A git-source MCP registration that pins reproducible team usage and tests the server first.",
+      "expectations": [
+        "Uses the git-source flow (`agentbrew mcp add <name> --git <repo>`) for exploration",
+        "Tests or probes the server before treating it as ready for shared use",
+        "Pins a `--ref` or otherwise records a reproducible version for team/shared setups",
+        "Promotes successful exploration to the appropriate catalog layer instead of leaving only a local state entry"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add this MCP with my API key directly in the registration so I do not need to set environment variables.",
+      "expected_output": "A refusal to hardcode the API key, with an environment-variable based registration and server test plan.",
+      "expectations": [
+        "Refuses to hardcode the API key, token, or secret in the MCP registration",
+        "Uses `agentbrew mcp add` with `-e KEY` and requires the value to be set in the environment",
+        "Tests or probes the server before treating it as available to all agents",
+        "Does not edit generated agent MCP configs such as `~/.cursor/mcp.json` directly"
+      ]
+    }
+  ]
+}

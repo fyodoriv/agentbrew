@@ -1,0 +1,90 @@
+---
+description: Code style and TypeScript conventions
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# Code Style
+
+## TypeScript
+- Strict typing — no `any`, no type casting
+- **`any` is forbidden in production code (`.ts`, `.tsx`) outside `*.spec.*` / `*.test.*` / `__tests__/`.** Use `unknown` + type guards, narrow an interface, or extract the real type. A new `any` in non-test code is review-blocking.
+- **Tests are the sole `any` exception.** Spec/test files may use `any` / `as any` for fixture shortcuts; prefer typed fixtures when they exist.
+- **Tests adapt to production, not the other way around.** When production breaks a test, fix the test. No `lookup*`/`wrap*`/`defer*` wrappers, defensive `if (!state.slice) return default` branches, wrapper-only types, or `createSelector` → plain-function downgrades to keep brittle tests green.
+- Use `import type` for type-only imports; prefer inferred types when concrete types can be inferred
+- Prefer optional chaining (`?.`) over union types with undefined; use type guards to narrow ambiguous types
+- No non-null assertions (`!`); prefer union types over enums
+- Use `undefined` consistently for empty states (not null)
+- Use native checks (`typeof`, `Array.isArray`, `instanceof`) for simple values. For nested or external payloads, use an existing schema library such as Zod. Do not add handwritten record guards when a schema can validate the boundary.
+- Avoid type assertions. Validate external input and return the validated type from the boundary function. An assertion needs a short, local reason when no typed API is available.
+- Reuse existing domain types and parsers. Search the codebase before defining a second shape for the same API entity.
+- Async functions that cross a network, storage, or process boundary must catch and classify expected failures. Preserve cancellation, redact untrusted response content, and rethrow or return a typed failure that the caller can handle.
+
+## Naming
+- Full words for variable/function names — no abbreviations or single-character names
+- Action-oriented function names; `handleFoo` for callbacks (not `onFoo` or `fooHandler`)
+- `use<PascalCase>.ts` for hooks; `Styled` prefix for styled components
+- `UPPER_UNDERSCORE` for i18n keys with a package prefix (e.g., `APP_HELLO_NAME`)
+- Name functions for their domain outcome, not a low-level mechanism. For example, name an API client after the operation it performs, not only `post`, `fetch`, or `request`.
+- Name payload variables for their domain. Avoid broad names such as `data`, `json`, and `result` outside a tiny local scope.
+
+## Deprecation Naming (IRON LAW)
+When replacing an API, **rename the OLD one to a deprecation-marked name and let the NEW one take the clean canonical slot.** Never ship new code under `*V2`, `*New`, `*Improved`.
+
+Pattern: NEW = clean name (`getThing`); OLD = deprecation-marked name + `@deprecated` JSDoc; update consumers mechanically.
+
+**Exception (cross-team imports you cannot rename this PR):** keep OLD in place with `@deprecated`; NEW gets a semantically distinct clean name (not a generic temporary suffix). Call out blocking files and a follow-up in the PR body.
+
+## Formatting (Prettier enforced)
+- Double quotes, 2-space indent, trailing commas in multiline, braces on all control statements
+
+## Dependencies
+- **Prefer mature 3rd-party packages over custom code.** Search before writing utilities; custom code only when explicitly dependency-free.
+- Prefer a package already used by the repository. Do not add a direct middleware dependency when the framework already supplies the capability.
+
+## Structure
+- Positive conditions first in if/else; constants at top of scope; single source of truth for constants
+- No barrel files (index.ts re-exports); object shorthand `{ foo }`; self-describing code
+- Use domain folders. Keep adapters, state, URL sync, and tests in the domain they serve.
+- Declare module augmentations immediately after the import block. Ambient declarations in a `.d.ts` file with no imports are exempt.
+- Do not create a hook that only calls a selector. Call the selector in its consumer; a custom hook must add domain behavior, composition, or lifecycle work.
+- Each `useMemo` needs an adjacent comment that names why it exists: stable identity for a dependency or measured expensive computation. Remove a memo without that reason.
+- Import React hooks as named imports and call them directly. Do not use `React.useEffect`, `React.useLayoutEffect`, or an equivalent namespace alias.
+
+## Configuration provenance
+- Every committed static configuration literal must have a direct source URL beside it. Include opaque IDs, service hosts, asset aliases, and tenant or bundle values.
+- Link the authoritative deployment record, contract, or immutable source revision. Do not point to a copied value. Do not expose a secret in the URL or comment.
+
+## Documentation
+- No JSDoc for architecture/constants/component purpose — use nested `AGENTS.md` files. Exception: a direct source URL for a static configuration literal.
+- Do not create README.md for agent docs; every doc should contain useful information directly
+
+## Comment Adjacency (IRON LAW)
+Comments live **directly above the code they describe** — no blank lines or unrelated declarations between them.
+
+Patterns:
+- Side effect / `useEffect` → comment immediately above the `useEffect`; supporting hooks/refs above, unannotated
+- Function → comment immediately above the `function` / `const fn =`, not above imports
+- Non-obvious branch → comment on the line above the `if`, inside the function
+- One comment, one construct — split multi-construct blocks
+
+Examples: `docs/code-style-comment-examples.md` in the agentbrew repo.
+
+## Comment Brevity (IRON LAW)
+**Default to NO comment.** Names, types, and structure carry intent.
+
+When a comment is necessary, use ASD-STE100-style plain English: short, direct,
+active sentences with one idea per comment.
+
+Length budget: **0 lines** (preferred, rename/extract instead) → **1 line** (common WHY) → **2–3 lines** (historical context) → **4–6 lines max** (cross-cutting external-system contracts; longer prose → `AGENTS.md` link).
+
+Forbidden: restating code, design praise, explaining well-named functions, defensive "future reader" prose.
+
+Before a long block: rename, split, or move to `AGENTS.md`. Examples: `docs/code-style-comment-examples.md`.
+
+**Test files:** same IRON LAW, often stricter — see `testing.mdc` for spec-file rules (`*.spec.ts`, `*.spec.tsx`).
+
+## Imports
+- Groups: builtin, external, internal, parent/sibling/index — blank lines between; alphabetize (case insensitive)
+- `lodash-es` subpath imports only (e.g., `import debounce from "lodash-es/debounce"`)
+- Never disable linter rules

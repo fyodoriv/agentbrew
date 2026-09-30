@@ -1,0 +1,9 @@
+{
+  "name": "dev-skills",
+  "version": "1.0.0",
+  "description": "Generic development skills — commit, debug, refactor, test, PR, review, RFC, and more",
+  "author": { "name": "cbrwizard" },
+  "repository": "https://github.com/your-org/agentbrew",
+  "license": "MIT",
+  "keywords": ["development", "git", "testing", "code-review"]
+}

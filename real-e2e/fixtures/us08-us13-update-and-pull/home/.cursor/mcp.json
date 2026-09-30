@@ -1,0 +1,9 @@
+{
+  "theme": "night",
+  "mcpServers": {
+    "user-postgres": {
+      "command": "npx",
+      "args": ["-y", "@user/postgres-mcp"]
+    }
+  }
+}

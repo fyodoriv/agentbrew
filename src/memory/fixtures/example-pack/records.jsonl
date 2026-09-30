@@ -1,0 +1,2 @@
+{"key":"getting-started","content":"AgentBrew sync deploys skills and MCP servers to every detected agent.","tags":["topic:onboarding"],"revision":1,"sourceFingerprint":"sha256:abc123","confidence":1,"provenance":"pack:example-pack@1.0.0"}
+{"key":"data-safety","content":"Manual edits to agent configs survive sync; prune only removes agentbrew-created entries.","tags":["topic:safety"],"revision":1,"sourceFingerprint":"sha256:def456","confidence":1,"provenance":"pack:example-pack@1.0.0"}

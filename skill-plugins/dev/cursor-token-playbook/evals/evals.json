@@ -1,0 +1,59 @@
+{
+  "skill_name": "cursor-token-playbook",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How should I pick models in Cursor to save tokens this week?",
+      "expected_output": "70% fast Composer, 20% strong when stuck, 10% Ask-only; escalation ladder from Ask to fast to strong.",
+      "expectations": [
+        "Recommends roughly 70% fast Composer for implementation",
+        "Reserves strong model for stuck/architecture cases (~20%)",
+        "Uses Ask mode for read-only exploration (~10%)",
+        "Describes escalation rather than defaulting to strongest model"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Context ring is at 75% — should I keep going in this chat?",
+      "expected_output": "Recommend new chat for new scope; continue only for tight follow-ups; mention @ scoping and not re-attaching huge logs.",
+      "expectations": [
+        "Suggests new chat when ring is high or after unrelated work",
+        "Mentions @file/@folder scoping instead of whole-repo context",
+        "Warns against re-attaching huge logs or full test output",
+        "References agentbrew measure context or context-budget for static config"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I just ran agentbrew sync and rules changed — anything special?",
+      "expected_output": "Start a new chat after rule/MCP sync; run agentbrew measure context; load context-budget if headroom low.",
+      "expectations": [
+        "Instructs to start a new chat after rules/MCP/skills sync",
+        "Mentions agentbrew measure context to verify headroom",
+        "Points to context-budget skill when softTokenHeadroom is low",
+        "Does not recommend continuing old chat with stale system prompt"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "What's my daily token workflow?",
+      "expected_output": "Morning measure context, check latest.json alerts, @-scope during work, model ladder, new chat per deliverable.",
+      "expectations": [
+        "Includes agentbrew measure context in daily routine",
+        "References latest.json softTokenHeadroom and alerts",
+        "Mentions .cursorignore template or excluding node_modules/dist",
+        "Covers parallel chats and Ask vs Agent discipline"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Ship-it just merged and Step 12 finished — what should I do next?",
+      "expected_output": "Proactively tell user to start a new chat; mention synced rules need fresh thread.",
+      "expectations": [
+        "Proactively recommends starting a new chat after ship-it delivery",
+        "Explains stale threads do not pick up synced rules/MCP/skills",
+        "References cursor-token-playbook when-to-tell checklist"
+      ]
+    }
+  ]
+}

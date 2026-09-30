@@ -1,0 +1,9 @@
+{
+  "theme": "night",
+  "mcpServers": {
+    "user-manual": {
+      "command": "node",
+      "args": ["manual-server.js"]
+    }
+  }
+}

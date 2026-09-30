@@ -1,0 +1,14 @@
+mcp:
+  - name: project-db
+    command: npx
+    args:
+      - -y
+      - "@team/db-mcp"
+  - name: project-docs
+    command: node
+    args:
+      - docs-server.js
+rules: |
+  ## Project Rules
+  - Always use TypeScript strict mode
+  - Prefer composition over inheritance

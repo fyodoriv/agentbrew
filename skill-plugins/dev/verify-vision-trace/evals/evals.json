@@ -1,0 +1,77 @@
+{
+  "skill_name": "verify-vision-trace",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "This PR body cites `Vision goal: G7`, but I am not sure G7 exists. Validate it.",
+      "expected_output": "A vision-trace validation that resolves cited goal ids against VISION.md frontmatter and fails invalid ids.",
+      "expectations": [
+        "Locates VISION.md or vision.md in root, docs/, or .minsky/",
+        "Parses YAML frontmatter with schema vision-v1 and a goals list",
+        "Extracts cited ids from the PR body Vision trace block",
+        "Reports valid ids with their names and invalid ids as NOT FOUND",
+        "Exits or treats the validation as failed when a cited id is missing"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The repo has a VISION.md without frontmatter. Should the PR fail?",
+      "expected_output": "A soft-warning validation path for repos that have not opted into structured vision goals.",
+      "expectations": [
+        "Warns that missing frontmatter prevents strict goal-id validation",
+        "Does not fail solely because frontmatter is absent",
+        "Suggests filing a P3 task to add VISION.md frontmatter",
+        "Still checks that the PR body has a substantive Vision trace per the regex gate if applicable",
+        "Does not invent goal ids from prose headings"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The PR says `Vision goal: N/A — lockfile-only update` and includes a vision-trace opt-out marker.",
+      "expected_output": "A skip path that recognizes legitimate N/A and opt-out cases.",
+      "expectations": [
+        "Accepts N/A with a substantive reason on the vision-goal line",
+        "Recognizes the vision-trace not-applicable opt-out marker for sync auto-commit, lockfile, or release-bot style PRs",
+        "Skips strict goal-id resolution for those cases",
+        "Does not flag missing G ids when the PR intentionally cites no goal id",
+        "Keeps competitor/user-story trace validation separate from goal-id validation"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "verify that my PR's vision-trace block references valid goals from VISION.md",
+      "expected_output": "The vision-trace goal ids are validated against VISION.md frontmatter; all cited goals exist.",
+      "expectations": [
+        "Locates VISION.md in the repo root, docs/, or .minsky/ directory",
+        "Parses YAML frontmatter with schema: vision-v1 and goals list",
+        "Scans the PR body for 'Vision goal: <id>' lines",
+        "For each cited id, verifies it exists in the frontmatter goals list",
+        "Reports success with goal names (e.g., '✓ G1 — Curate, not host')",
+        "Reports failure with '✗ G7 — NOT FOUND in VISION.md goals list' for invalid ids"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "my VISION.md doesn't have frontmatter. What happens?",
+      "expected_output": "A warning is issued, not a failure. The skill is opt-in for repos without frontmatter.",
+      "expectations": [
+        "Detects missing YAML frontmatter in VISION.md",
+        "Warns the user: 'VISION.md lacks frontmatter — validation skipped'",
+        "Exits with code 0 (success) and suggests filing a P3 task to add frontmatter",
+        "Does NOT fail the validation when frontmatter is missing",
+        "Does NOT block PR merge for missing frontmatter"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "my PR body has 'Vision goal: N/A — <reason>' instead of a goal id. Is that valid?",
+      "expected_output": "The N/A marker is recognized and validation is skipped for that line.",
+      "expectations": [
+        "Detects 'N/A — <reason>' pattern in the vision-goal line",
+        "Skips validation for that line (the pr-vision-trace CI gate already accepts this)",
+        "Reports: 'Vision goal: N/A — <reason> (skipped)'",
+        "Does NOT fail validation when N/A is used"
+      ]
+    }
+  ]
+}

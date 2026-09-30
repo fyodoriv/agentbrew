@@ -1,0 +1,242 @@
+[
+  {
+    "label": "allow-p0-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 1\n  - **ID**: auth-reg-1\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 2\n  - **ID**: auth-reg-2\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 3\n  - **ID**: auth-reg-3\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 4\n  - **ID**: auth-reg-4\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 5\n  - **ID**: auth-reg-5\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 6\n  - **ID**: auth-reg-6\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 7\n  - **ID**: auth-reg-7\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 8\n  - **ID**: auth-reg-8\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 9\n  - **ID**: auth-reg-9\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "allow-p0-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "content": "## P0\n- [ ] Fix auth regression 10\n  - **ID**: auth-reg-10\n  - **Tags**: probe, ci-gate, regression"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 1\n  - **ID**: probe-gap-1\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 2\n  - **ID**: probe-gap-2\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 3\n  - **ID**: probe-gap-3\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 4\n  - **ID**: probe-gap-4\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 5\n  - **ID**: probe-gap-5\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 6\n  - **ID**: probe-gap-6\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 7\n  - **ID**: probe-gap-7\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 8\n  - **ID**: probe-gap-8\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 9\n  - **ID**: probe-gap-9\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  },
+  {
+    "label": "block-p3-probe-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/TASKS.md",
+        "new_string": "## P3\n- [ ] Add k8s health probe 10\n  - **ID**: probe-gap-10\n  - **Tags**: probe, drift-guard, env-var"
+      }
+    }
+  }
+]

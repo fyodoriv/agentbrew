@@ -1,0 +1,248 @@
+{
+  "skill_name": "learn-project",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tutor me on the Workspace initiative. Sources: the RFC draft PR https://ghe.example.com/acme/workspace-rfcs/pull/77, the workspace PR https://ghe.example.com/acme/workspace-app/pull/7, all tabs of https://docs.google.com/document/d/example-workspace-design/edit, the Jira initiative https://jira.example.com/browse/PROJ-123, and my local repos in ~/apps. Build a knowledge base and start tutoring.",
+      "expected_output": "Runs the full pipeline: gathers all six source kinds via the right tools (GitHub MCP for both PRs incl. changed-file content, Drive MCP list_document_tabs + per-tab read for ALL tabs, Jira MCP jira_search_issues for PROJ-123 plus its children, local ~/apps repos matched to the topic), stages them with stage-learn-sources into one manifest, runs /tutor-setup to build a grounded StudyVault, then starts /tutor with a diagnostic session.",
+      "expectations": [
+        "Uses GitHub MCP get_pull_request/get_pull_request_files (or gh CLI for enterprise hosts) to pull BOTH PRs, including the RFC PR's changed-file content (the RFC markdown), not just metadata",
+        "Fetches ALL tabs of the Google Doc via list_document_tabs then read_document/export per tab — never only the currently-open tab",
+        "Fetches the Jira initiative PROJ-123 via jira_search_issues with issueKeys, and pulls child epics/stories via parentKeys",
+        "Passes the enterprise ghe.example.com repos as full git URLs (or via GitHub MCP), not as owner/repo shorthand that resolves to public github.com",
+        "Scans ~/apps, shortlists repos matching the topic, confirms with the user, and stages them with --local",
+        "Stages everything via stage-learn-sources into one manifest, runs /tutor-setup for the StudyVault, presents a concise learning brief, then starts /tutor with a diagnostic whose questions test understanding (not trivia) and randomize the correct option's position"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Teach me this project.",
+      "expected_output": "Detects that the current directory is a repo, treats it as the primary source, asks only for missing inputs (extra sources, focus, depth), stages it, runs /tutor-setup in codebase mode, then /tutor.",
+      "expectations": [
+        "Infers the current directory as a local repo source instead of asking for a path it can determine",
+        "Asks only for what is still unknown (additional sources, focus areas, depth) in one concise batch",
+        "Stages the repo and runs /tutor-setup in codebase mode, then starts /tutor",
+        "Does not invent private repo names, Google Doc IDs, or Jira keys"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I already ran the prep earlier in ./.learn-project — just quiz me now.",
+      "expected_output": "Detects the existing stage from the staging root and resumes: if a StudyVault exists it goes straight to /tutor; if only a manifest exists it runs /tutor-setup first; it does not restart gathering from scratch.",
+      "expectations": [
+        "Inspects the staging root to detect the current stage before doing anything",
+        "Resumes at the correct phase (straight to /tutor when a StudyVault exists) instead of re-gathering sources",
+        "Tells the user the detected stage and what it will do next before acting",
+        "Only re-runs /tutor-setup if the sources changed or the vault is missing"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Onboard me on our billing service using the design doc at https://docs.google.com/document/d/ABC123/edit and the Jira epic BILL-42.",
+      "expected_output": "Document/context-only run: exports all tabs of the Google Doc, pulls the Jira epic and its child issues, stages them (no repo), runs /tutor-setup in document mode, then /tutor.",
+      "expectations": [
+        "Exports ALL tabs of the Google Doc, not just one, and stages it as a doc",
+        "Pulls Jira epic BILL-42 and its children via parentKeys and stages the summary as context",
+        "Selects document mode (no code repo present) and runs /tutor-setup then /tutor",
+        "Grounds notes in staged sources — every claim cites a staged path or doc/tab section (cite-or-refuse)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "tutor-setup isn't installed. Just teach me this repo anyway.",
+      "expected_output": "Ensures prerequisites first: installs tutor-setup and tutor via agentbrew's native path (bevibing/tutor-skills), and only if install fails tells the user exactly what to run instead of faking a vault.",
+      "expectations": [
+        "Checks for tutor-setup/tutor and installs both via agentbrew install --from bevibing/tutor-skills before proceeding",
+        "Falls back to npx skills add only if agentbrew is unavailable",
+        "Refuses to fabricate a StudyVault if installation fails and tells the user the exact command to run",
+        "Proceeds with the normal pipeline once the upstream skills are available"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The Google Doc export hit an SSO login page and one repo is private. Learn what you can from the rest.",
+      "expected_output": "Treats blocked sources gracefully: backgrounds/polls the SSO source rather than idling, skips the unfetchable ones, stages the reachable sources, and lists the blocked items in the summary — without reconfiguring any MCP.",
+      "expectations": [
+        "Does not idle on the SSO page — stages reachable sources first and reports the blocked one to poll/resume",
+        "Skips unfetchable private sources and continues with what is available",
+        "Never reconfigures or 'repairs' an MCP server on failure",
+        "Lists the missing/blocked sources explicitly in the final summary"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Quiz me on this project. But make the questions actually test whether I understand it — the last tutor asked me to memorize requirement IDs and one question was unclear.",
+      "expected_output": "A diagnostic whose questions test meaning and application (why/how/consequences/scenarios), are each self-contained and unambiguous, avoid recall of labels/list-names/spec IDs, and stay answerable from the grounded vault; when the user flags a question as bad, it is discarded and regenerated as a meaning-based question.",
+      "expectations": [
+        "Questions test understanding — why/how/consequences or applying a concept to a scenario — not recall of terminology, list names, or requirement/spec IDs",
+        "Each question is self-contained and unambiguous, defining any term it depends on instead of using underspecified phrasing",
+        "Questions are phrased in clean, natural, grammatical English — awkward or broken wording is fixed before presenting",
+        "The diagnostic is ordered major-first: big-picture, highest-importance concepts before supporting details and edge cases",
+        "The correct option is randomly positioned across questions — no positional pattern (e.g. never always the first option)",
+        "Every question offers an explicit 'I don't know — teach me' option; picking it triggers a concise grounded explanation and marks the concept for review rather than scoring a wrong guess",
+        "A concise, refined learning brief is presented before the quiz starts (teach before testing), not a quiz cold-start",
+        "Every question's correct answer traces to a staged source (cite-or-refuse); a question the vault cannot answer is treated as bad, not hard",
+        "When the user flags a question as bad (trivia, unclear, or badly worded), the tutor discards it and regenerates a meaning-based, cleanly-worded version, preferring application/analysis over recall"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Keep quizzing me, but track what I know per section as a percentage and only ask about things I don't know yet — big-picture first, then details.",
+      "expected_output": "Maintains live mastery state in the vault: a known % per section (mastered concepts / total), recomputed after each answer, and selects each next question from the lowest-known section starting with big-picture concepts before details, never re-asking already-mastered concepts while unknown ones remain.",
+      "expectations": [
+        "Records a mastery % per section in the Learning Dashboard as coverage (mastered concepts / total concepts), not just accuracy on tested questions",
+        "Reads the tracker before each question and updates it after each answer so it always knows which concepts remain unanswered",
+        "Selects the next question from the section with the lowest known %, and within it the most fundamental big-picture concept still not-known before any detail or edge case",
+        "Does not re-ask concepts already mastered while not-known concepts remain, except in explicit hard-mode reinforcement",
+        "After each round reports the updated per-section % and the remaining concepts, and treats a section as done only at 100% known"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Before you quiz me, verify every question is actually answerable from the vault — last time one question had no grounded answer.",
+      "expected_output": "Runs the verification gate after tutor-setup and before /tutor: re-answers each question from vault notes only, discards/regenerates any the vault cannot support, verifies note claims against cited staged spans, and reports the pass/discard/flag counts before starting the quiz.",
+      "expectations": [
+        "Runs a pre-quiz verification pass after the vault exists and before /tutor starts",
+        "Attempts to answer each question using only vault notes (not staged sources directly or general knowledge)",
+        "Discards and regenerates any question the vault cannot uniquely answer from its notes",
+        "Reads cited staged paths for note claims and marks unsupported claims source: unverified or omits them",
+        "Reports how many questions passed, were discarded/regenerated, and claims flagged before proceeding to the quiz",
+        "Writes or updates StudyVault/00-Dashboard/Verification Log.md with the audit table",
+        "Do not start the quiz until every surviving question passes verification"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Don't mark a concept as mastered after I get one multiple-choice right — I need to actually retain it. Mix sections once I know the basics.",
+      "expected_output": "Uses a mastery threshold (two corrects including one applied/analysis) before flipping a concept to known, re-tests concepts later in the same session after spacing, and switches to interleaved cross-section questions once basics are green.",
+      "expectations": [
+        "Does not flip a concept to known after a single correct MCQ — requires a mastery threshold (e.g. two corrects including one applied/analysis)",
+        "Records partial progress (e.g. in-progress status) until the threshold is met",
+        "Re-tests a concept later in the same session after intervening questions; downgrades and re-teaches on failure",
+        "Offers interleaved cross-section questions once big-picture basics are past basics or the user opts in",
+        "Stays artifact-only — no cross-session spaced-repetition scheduler"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I've read the architecture notes — now make me find things in the actual repo, not just answer multiple choice.",
+      "expected_output": "Assigns applied/transfer tasks (locate-owner, where-to-add, trace-the-bug, blast-radius) graded against staged repo files once section concepts meet the mastery threshold, with cite-or-refuse answers pointing to real paths under sources/repos/.",
+      "expectations": [
+        "Uses applied/transfer task types for codebase or mixed runs after concepts meet the mastery threshold",
+        "Includes locate-owner, where-to-add, trace-the-bug, and blast-radius style prompts",
+        "Grades answers against real staged file paths under sources/repos/ (cite-or-refuse)",
+        "Teaches from vault notes and staged files on wrong answers instead of scoring a guess",
+        "Defines task types and when to assign them in learn-project rather than only in upstream tutor"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "The vault is all text — add concept maps and an architecture diagram so I can see how things connect.",
+      "expected_output": "After tutor-setup, generates Mermaid concept maps per section and an architecture diagram for codebase/mixed runs, embedded in the dashboard MOC and section notes, with nodes/edges grounded in vault wikilinks and staged sources only.",
+      "expectations": [
+        "Generates Mermaid concept maps with one diagram per section (nodes = concept notes, edges from wikilinks or stated prerequisites)",
+        "For codebase or mixed runs, generates an architecture diagram from staged repos and architecture notes",
+        "Embeds diagrams in StudyVault/00-Dashboard/MOC.md and section index/lead notes",
+        "Omits uncited relationships — cite-or-refuse applies to diagram edges as well as prose",
+        "Uses fenced mermaid code blocks in the vault markdown files"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "I updated the design doc since last time — re-stage and refresh the vault without redoing everything from scratch.",
+      "expected_output": "Re-runs stage-learn-sources v3 with contentHash comparison: only changed sources re-staged, manifest.freshness reports changed/unchanged keys, and when freshness.changed is non-empty with an existing StudyVault, affected vault sections are treated stale and /tutor-setup re-run for those sections only.",
+      "expectations": [
+        "Reads manifest.json freshness (changed / unchanged keys and per-source contentHash) before deciding what to re-fetch",
+        "Re-stages only changed inputs on aggregator re-run — unchanged sources are skipped",
+        "When freshness.changed is non-empty and a StudyVault exists, treats notes from those sources as stale",
+        "Re-runs /tutor-setup for affected sections only instead of a full regather from Phase 2",
+        "Reports which sources changed vs were skipped unchanged in the summary"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Teach me this repo plus the onboarding wiki at https://wiki.example.com/start and the architecture PDF on my desktop — code and docs together.",
+      "expected_output": "Mixed run: stages local repo + WebFetch web page + loose PDF via --file, manifest tutorSetupMode is mixed, /tutor-setup runs in Document Mode over harvested repo docs plus docs/files/web/context under sources/.",
+      "expectations": [
+        "Stages the local repo with --local and sets mixed mode when repo plus non-code sources are present",
+        "WebFetch saves the wiki page to inputs/web/ and passes --web with url:path",
+        "Stages the PDF with --file preserving extension for tutor-setup extraction",
+        "Runs /tutor-setup in mixed mode (Document Mode over all sources/ material)",
+        "Grounds vault notes across repo docs and external doc sources with cite-or-refuse paths"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Start over — wipe ./.learn-project and tutor me fresh on just this repo.",
+      "expected_output": "When the user explicitly says start over, clears the staging root first, then runs intake → gather → stage → tutor-setup → tutor from scratch on the current repo only.",
+      "expectations": [
+        "Clears or replaces the staging root when the user explicitly requests start over",
+        "Does not resume at Phase 6 when start-over was requested even if an old StudyVault existed",
+        "Re-runs the full pipeline from intake after clearing — not a partial patch on old vault",
+        "Uses the current directory as the local repo source after reset",
+        "Tells the user the staging root was cleared and which phase it is starting at"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Tutor me on payments — scan ~/apps and stage every repo you find.",
+      "expected_output": "Lists ~/apps, shortlists repos whose names match the payments topic, confirms the shortlist with the user before staging many large repos, and only then passes selected paths to --local.",
+      "expectations": [
+        "Lists ~/apps (or the requested parent directory) before staging",
+        "Matches repo folder names to the stated topic and builds a shortlist — does not blindly --local every folder",
+        "Confirms the shortlist with the user before copying/cloning many large repos",
+        "Stages only the confirmed repos with --local",
+        "Reports which repos were staged and which were skipped as off-topic"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Give me the learning brief before the quiz — and don't claim anything you can't cite from what you staged.",
+      "expected_output": "After tutor-setup, presents a concise major-first learning brief drawn from the vault (not a raw dump) with every claim grounded in a staged source path; ends by confirming readiness before /tutor.",
+      "expectations": [
+        "Presents the learning brief after the vault exists and before /tutor starts",
+        "Leads with big picture then highest-importance concepts — major-first, not a vault dump",
+        "Grounds every factual claim in a staged source path or marks source: unverified",
+        "Links each concept to the vault note covering it for deeper reading",
+        "Confirms the user has read the brief or asks focus before starting the quiz"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Focus only on authentication and security — skip the billing sections when building the vault.",
+      "expected_output": "Captures focus areas during intake, weights tutor-setup coverage toward authentication/security, and mastery tracking + question selection prioritize those sections while still cite-or-refuse grounding.",
+      "expectations": [
+        "Records focus areas from intake (authentication and security) with sensible defaults when unspecified",
+        "Weights tutor-setup coverage and vault organization toward stated focus areas",
+        "Does not skip tutor-setup quality checklist phases (verified source mapping / self-review)",
+        "Adaptive drilling prioritizes lowest-known sections within the focus scope",
+        "Still grounds all notes and quiz answers in staged material — focus narrows scope, not cite-or-refuse"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "The vault practice files are full of 'name the four X' and 'list the three epics' questions — fix them before you quiz me.",
+      "expected_output": "Audits tutor-setup practice files, rewrites list-recall questions into application/analysis scenarios, caps pure recall at ~30%, shortens concept tracker labels, updates MOC Weak Areas, and adds rendering-modes-vs-delivery-ladder to Exam Traps when architecture is in scope.",
+      "expectations": [
+        "Audits * Practice.md files after tutor-setup and before /tutor",
+        "Rewrites pure list/name/ID recall questions into scenario-based application or analysis",
+        "Keeps at most ~30% of practice questions as pure recall — prefer meaning over memorization",
+        "Uses short canonical labels in concepts/*.md tracker rows (detail lives in linked notes)",
+        "Populates or refreshes MOC §Weak Areas from the Learning Dashboard after diagnostic"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Run the quiz-fix loop — Agent B found wrong practice answers, recall over 30%, and ungrounded applied tasks. Fix and re-quiz until clean.",
+      "expected_output": "Iterates quiz → fix vault/practice → re-run Phase 5c Verification Log → re-quiz with fresh agent personas until zero P0/P1 gaps: wrong answers fixed, recall ≤30% per practice file, applied tasks cite staged repo paths, coarse concepts split, verification log updated.",
+      "expectations": [
+        "Fixes wrong practice-file answers before re-quizzing (cite staged sources)",
+        "Brings every * Practice.md recall ratio to at most ~30%",
+        "Writes or updates StudyVault/00-Dashboard/Verification Log.md after Phase 5c",
+        "Adds grounded vault notes for applied-task prompts (locate-owner, where-to-add) citing sources/repos/",
+        "Splits oversized concept tracker rows when mastery % is too coarse (e.g. B5–B11 → B5–B9 + B10–B11)",
+        "Re-quizzes with a fresh critical lens after fixes; stops when no P0/P1 gaps remain"
+      ]
+    }
+  ]
+}

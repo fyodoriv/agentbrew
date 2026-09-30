@@ -1,0 +1,22 @@
+# Agentfile — repo-local agentbrew development config
+# Project Agentfiles are additive: they register the tools this repo needs,
+# while the global Agentfile remains the portable machine-wide source of truth.
+# Validate with `npm run dev -- lint`; deploy intentionally with
+# `agentbrew sync --agentfile ./Agentfile.yaml`.
+
+mcp:
+  - context7
+  - tasks-mcp
+  - github
+
+skills:
+  - agentfile-init
+  - next-task
+  - project-audit
+  - sync-agent-config
+  - task-command-center
+  - writing-plans
+
+sources:
+  - fyodoriv/dev-skills
+  - ./skill-plugins/dev

@@ -1,0 +1,60 @@
+{
+  "skill_name": "agentfile-init",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Set up agentbrew for this new Node.js repo that has TASKS.md and GitHub Actions.",
+      "expected_output": "An Agentfile with stack-appropriate catalog shorthands and a dry-run sync check.",
+      "expectations": [
+        "Checks whether an Agentfile already exists before writing a new one",
+        "Detects the Node.js stack, TASKS.md, and GitHub repository/CI signals from project files",
+        "Includes `context7` first and adds relevant shorthands such as `tasks-mcp`, `github`, and `playwright` when justified",
+        "Runs `agentbrew sync --dry-run` before any real sync"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "There is already an `Agentfile.yaml`; update it for a Python service with Postgres.",
+      "expected_output": "A non-destructive Agentfile update that reads the existing file before modifying it.",
+      "expectations": [
+        "Reads the existing Agentfile instead of overwriting it blindly",
+        "Detects Python and Postgres signals from project files or dependencies",
+        "Adds only needed catalog shorthands, preserving existing entries",
+        "Uses `agentbrew sync --dry-run` and reviews the preview before recommending `agentbrew sync`"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create an Agentfile for an enterprise repo with Jenkins, Splunk, browser tests, and no AGENTS.md.",
+      "expected_output": "A project Agentfile plus a note that the missing agent guide should be created from the baseline checklist.",
+      "expectations": [
+        "Detects Jenkins, Splunk, and browser-testing needs from project files",
+        "Selects relevant MCP shorthands without over-provisioning unrelated servers",
+        "Notes that a missing AGENTS.md should be created using the reusable agentbrew baseline rather than copied boilerplate",
+        "Separates `sync --dry-run` preview from the later real `agentbrew sync`"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Create an Agentfile that adds every MCP server from the catalog so this repo has everything available.",
+      "expected_output": "A scoped Agentfile proposal that refuses to add all MCP servers and selects only servers justified by detected project signals.",
+      "expectations": [
+        "Refuses or does not add every MCP server just because it exists in the catalog",
+        "Explains that Agentfile entries should only include servers the project actually needs and must not over-provision",
+        "Detects the project stack before choosing optional servers beyond `context7`",
+        "Keeps `context7` first while adding other catalog shorthands only when justified by files or user needs"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Skip the dry-run and run sync now after creating the Agentfile.",
+      "expected_output": "A dry-run-first workflow that declines to run real `agentbrew sync` until the preview has been reviewed.",
+      "expectations": [
+        "Runs `agentbrew sync --dry-run` before any real `agentbrew sync`",
+        "Reviews the dry-run output with the user before proceeding",
+        "Does not run the real sync immediately when the preview has not been reviewed",
+        "Explains that real sync is allowed only after the dry-run output looks correct"
+      ]
+    }
+  ]
+}

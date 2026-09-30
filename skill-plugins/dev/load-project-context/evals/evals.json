@@ -1,0 +1,93 @@
+{
+  "skill_name": "load-project-context",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just switched into a new repo; load the project context before we pick work.",
+      "expected_output": "The canonical project-context script is run and the listed docs are read before task selection.",
+      "expectations": [
+        "Runs `bash ~/.config/agentbrew/scripts/load-project-context.sh` from the project directory",
+        "Reads the canonical files the script lists rather than only acknowledging their names",
+        "Loads README/AGENTS/VISION/ARCHITECTURE/MILESTONES/TASKS when present",
+        "Defers task selection until after project context is loaded"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Before proposing this feature, make sure it fits the repo strategy.",
+      "expected_output": "A strategy-aware feature check against vision, user stories, and competitor/prior-art docs.",
+      "expectations": [
+        "Checks the loaded VISION or equivalent strategic document for a matching goal",
+        "Checks user-story or requirements docs for acceptance criteria when available",
+        "Checks competitor/prior-art docs when proposing a non-trivial feature",
+        "Surfaces conflicts with VISION or ROADMAP before making changes"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The context loader says there are no canonical docs here; what now?",
+      "expected_output": "Graceful fallback that proceeds with explicit uncertainty instead of fabricating missing context.",
+      "expectations": [
+        "Treats 'no canonical docs found' as a non-fatal condition",
+        "Explains that the repo may not follow the canonical doc convention or may not be a project root",
+        "Uses available local files to proceed rather than inventing VISION or ROADMAP content",
+        "Does not claim project strategy was loaded when no docs were found"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "What does git status show in this repo?",
+      "expected_output": "A direct answer to the one-line git question without running the full project-context loader.",
+      "expectations": [
+        "Does not invoke load-project-context for a pure tool/read-only question",
+        "Runs git status or equivalent instead of loading VISION/TASKS first",
+        "Keeps the response scoped to the requested command output",
+        "Does not claim strategic project context was loaded for this question"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add a feature that contradicts VISION.md — the user insists anyway.",
+      "expected_output": "A conflict-first response that cites the loaded VISION/ROADMAP lines, quotes the user request, and asks proceed/amend/drop before changing code.",
+      "expectations": [
+        "Loads canonical docs before evaluating the feature against strategy",
+        "Quotes or cites the conflicting VISION or ROADMAP guidance",
+        "Surfaces the conflict before making code or TASKS changes",
+        "Asks whether to proceed anyway, amend VISION, or drop the request"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Skip the loader script — just infer the repo strategy from memory and pick the next TASKS.md item.",
+      "expected_output": "A load-project-context response that runs the script, reads listed docs, and only then picks work traceable to VISION or user stories.",
+      "expectations": [
+        "Runs bash ~/.config/agentbrew/scripts/load-project-context.sh before task selection",
+        "Reads listed canonical files instead of guessing strategy from prior sessions",
+        "Defers next-task or implementation until context is actually loaded",
+        "Does not claim VISION or user-story trace without reading the docs"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "List the canonical doc filenames but don't read them — we need to move fast.",
+      "expected_output": "A refusal to treat filename inventory alone as loaded context; reads each listed doc per the skill's chunking rules.",
+      "expectations": [
+        "Does not treat script output alone as sufficient loaded context",
+        "Reads each listed file into working context using the >500-line chunking rules when needed",
+        "Follows markdown links and @import references to depth 2 when present",
+        "Acknowledges what was loaded only after reading, not after listing paths"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I cd'd into a new repo mid-session — start next-task immediately without reloading context.",
+      "expected_output": "A session-entry response that reloads project context after the repo switch before picking or implementing TASKS.md work.",
+      "expectations": [
+        "Treats mid-session repo switch as a trigger to run load-project-context again",
+        "Runs the canonical script from the new repo root before next-task or planning",
+        "Detects task backend via .tasksmd.json when present",
+        "Does not reuse prior-repo VISION/TASKS context for the new checkout"
+      ]
+    }
+  ]
+}

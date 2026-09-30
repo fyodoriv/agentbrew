@@ -1,0 +1,8 @@
+description: Agent artifact behavioral evals
+prompts:
+  - "{{artifact_path}}"
+providers:
+  - id: file://provider.cjs
+    label: deterministic-artifact-provider
+tests:
+  - file://cases/*.yaml

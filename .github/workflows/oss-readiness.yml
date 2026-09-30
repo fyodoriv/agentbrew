@@ -1,0 +1,60 @@
+name: OSS Readiness
+
+# Dedicated job for the no-leak contract on github.com/fyodoriv/agentbrew,
+# the canonical repo. Runs on every push and PR. The main CI workflow
+# already runs the full vitest suite; this workflow is the cited gate in
+# SECURITY.md (layer L4) and is the one humans reference when triaging
+# "why is my PR blocked?".
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  no-leaks:
+    name: No private identity / content leaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the private-email check can see every
+          # author/committer on the branch.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run no-internal-refs vitest
+        run: npx vitest run src/oss/no-internal-refs.test.ts
+
+      - name: Block private emails in branch history
+        # When a private overlay configures a private-email pattern, no
+        # author or committer on the branch may match it. Nothing rewrites
+        # history after a merge, so a mapping can never make one safe.
+        run: |
+          if [ -n "${OSS_READINESS_ENV_FILE:-}" ] && [ -f "$OSS_READINESS_ENV_FILE" ]; then
+            # shellcheck source=/dev/null
+            source "$OSS_READINESS_ENV_FILE"
+          fi
+          if [ -z "${OSS_READINESS_PRIVATE_EMAIL_PATTERN:-}" ]; then
+            echo "No private email pattern configured; skipping private-email check."
+            exit 0
+          fi
+
+          private=()
+          while IFS= read -r email; do
+            [ -z "$email" ] && continue
+            printf '%s\n' "$email" | grep -Eq -- "$OSS_READINESS_PRIVATE_EMAIL_PATTERN" && private+=("$email")
+          done < <(git log --format='%ae%n%ce' HEAD 2>/dev/null | sort -u)
+          if [ "${#private[@]}" -gt 0 ]; then
+            echo "::error::Private emails in branch history:"
+            printf '%s\n' "${private[@]}"
+            echo ""
+            echo "Amend the affected commits with a public identity before this PR can be merged."
+            exit 1
+          fi

@@ -1,0 +1,20 @@
+# tasks-stability allowlist — stability-tagged tasks grandfathered at P2/P3.
+#
+# scripts/lint-tasks-stability.mjs enforces that stability-tagged tasks live in
+# P0/P1 (see ~/.config/devin/AGENTS.md § Task queues). This file drains the
+# pre-existing backlog: each entry is a stability-tagged task not yet promoted.
+# Promote it to P0/P1 with the 5 minsky HDD fields (then delete it here), or —
+# if the stability tag is a false positive — retag the task and delete it here.
+# The lint flags dead entries (an id here that is no longer a P2/P3 stability
+# task), so this list stays honest and shrinks over time.
+#
+# One task ID per line.
+
+# Incomplete HDD — genuine stability work, promote once the 5 HDD fields are authored:
+org-overlay-detection-observability
+companion-branch-stomp-protection
+
+# False positive — `data-safety` tags the UPSTREAM feature topic (vercel-labs/skills
+# user-file preservation), not local agentbrew stability; the task is a
+# blocked-on-permission upstream contribution, not stability work on this repo.
+contribute-rfc-comment-issues-268-455-user-safety-classifier

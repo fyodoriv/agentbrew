@@ -1,0 +1,242 @@
+[
+  {
+    "label": "allow-proportional-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-1.ts",
+        "new_string": "// useful note 1\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-2.ts",
+        "new_string": "// useful note 2\nconst value = 2;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-3.ts",
+        "new_string": "// useful note 3\nconst value = 3;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-4.ts",
+        "new_string": "// useful note 4\nconst value = 4;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-5.ts",
+        "new_string": "// useful note 5\nconst value = 5;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-6.ts",
+        "new_string": "// useful note 6\nconst value = 6;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-7.ts",
+        "new_string": "// useful note 7\nconst value = 7;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-8.ts",
+        "new_string": "// useful note 8\nconst value = 8;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-9.ts",
+        "new_string": "// useful note 9\nconst value = 9;"
+      }
+    }
+  },
+  {
+    "label": "allow-proportional-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-10.ts",
+        "new_string": "// useful note 10\nconst value = 10;"
+      }
+    }
+  },
+  {
+    "label": "block-long-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-1.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-2.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-3.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-4.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-5.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-6.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-7.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-8.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-9.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  },
+  {
+    "label": "block-long-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "/repo/src/value-10.ts",
+        "new_string": "// one\n// two\n// three\n// four\n// five\n// six\nconst value = 1;"
+      }
+    }
+  }
+]

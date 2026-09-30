@@ -1,0 +1,1788 @@
+# catalog.yaml — generic, machine-agnostic catalog of skills, MCP servers,
+# rules, and CLI tools. Loaded on EVERY machine regardless of team-overlay state.
+#
+# ── What this is ─────────────────────────────────────────────────────────
+# A curated index of best-in-class agent tooling that benefits any
+# developer using AI coding agents. Each skill / MCP server entry is
+# a REFERENCE — content lives in its source repo, not in agentbrew.
+# Updates propagate via `agentbrew sync --pull`. The catalog curates and
+# promotes; it never duplicates content. (Curator, not host — see
+# docs/VISION.md.)
+#
+# `recommended: true`  = Tier 1 (every developer benefits).
+# `recommended: false` = Tier 2/3 (strong or specialized).
+#
+# CLI-over-MCP philosophy: CLI commands (synced to
+# ~/.config/agentbrew/commands/) work with all configured agents via shell access.
+# MCP servers only work with MCP-capable agents (15+). Use MCP when it
+# provides a meaningfully better experience (streaming, structured tool
+# calls, persistent connections). Otherwise, CLI first.
+#
+# ── Decision tree: this file vs team-overlay catalogs ────────────────────
+# Is the skill / MCP server authored inside a specific organization,
+# referencing internal systems (private hostnames, internal APIs,
+# org-specific MCP endpoints)?
+#   YES → it belongs in a team overlay repo's `catalog-overlay.yaml`,
+#         NOT here. See docs/user-stories/27-team-overlay.md for how
+#         team overlays declare additional catalog entries via the
+#         overlay Agentfile's `catalogOverlay:` field. Such entries
+#         are only visible when `agentbrew team set <overlay-url>` is
+#         active.
+#   NO  → add HERE. Source is a public repo or a generic built-in pointer.
+#         Visible to every user regardless of any active team overlay.
+# Never mix. An org-specific entry in this file violates AGENTS.md rule #8
+# and breaks the OSS-readiness invariant enforced by
+# `src/oss/no-internal-refs.test.ts` (which lint-enforces zero company-specific
+# identifiers outside an explicit allowlist).
+#
+# ── `source: built-in` is reserved for agentbrew-specific skills ──────────
+# Skills that document agentbrew itself may live under `skill-plugins/dev/`.
+# Generic methodology and engineering skills point at their upstream or
+# personal source repository. The catalog never hosts a second copy of those
+# skills. See AGENTS.md rule #8a and `skill-plugins/dev/README.md`.
+#
+# ── Maintenance procedures ───────────────────────────────────────────────
+# Add a new generic skill:
+#   1. Confirm SKILL.md exists on the source repo's main branch.
+#   2. Add an entry below under skills: with name, description (include
+#      "Don't use for X"), source (owner/repo on github.com OR built-in
+#      ONLY for skills that document agentbrew itself), category,
+#      recommended, rationale (required if recommended: true).
+#   3. Run `npx vitest run src/catalog/`.
+#   4. Commit with a project ticket.
+#
+# Add or promote a recommended MCP server:
+#   1. Pick a cheap read-only `tools/call` from the server's actual
+#      `tools/list` schema.
+#   2. Add `smokeCall: { tool, arguments? }` to the MCP entry. This powers
+#      `agentbrew mcp probe --deep`; the 30-min auto-heal scheduler also uses
+#      it unless the entry sets `probe: fast` for side-effectful smoke calls.
+#   3. Run `npm run dev -- lint` — it fails if a recommended MCP lacks
+#      `smokeCall.tool`.
+#
+# Promote (recommended: false → true): edit the entry in place + add
+# rationale. Demote: flip the bool, drop the rationale. Remove: delete
+# the YAML block; if users might have it installed, add a P3 note in
+# TASKS.md for release communication.
+#
+# ── Verify your change didn't break team-overlay merging ─────────────────
+#   npx vitest run src/catalog/
+#   agentbrew team unset && agentbrew catalog --json | jq '.skills | length'
+#   agentbrew team set <overlay-url> && agentbrew catalog --json | jq '.skills | length'
+# First count = this file only. Second count = this file + overlay
+# additions. Same-name overlay overrides don't change the count. If
+# either surprises you, the change has leaked org-specific behaviour into
+# shared code or vice-versa.
+
+skills:
+  # ── Tier 1: Always Recommend ──────────────────────────────────
+
+  - name: find-skills
+    description: "#1 on skills.sh — discover and install skills from the community"
+    source: vercel-labs/skills
+    category: meta
+    recommended: true
+    rationale: "Community skill discovery — the agent equivalent of npm search."
+
+  - name: grill-with-docs
+    description: "A relentless interview to sharpen a plan or design, which also creates ADRs and a glossary as decisions crystallize."
+    source: mattpocock/skills
+    category: development
+    recommended: true
+    rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
+
+  - name: improve-codebase-architecture
+    description: "Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick."
+    source: mattpocock/skills
+    category: development
+    recommended: true
+    rationale: "Maintained upstream architecture workflow with the same deep-module goal."
+
+  - name: doubt-driven-development
+    description: "Subject every non-trivial decision to a fresh-context adversarial review before it stands."
+    source: addyosmani/agent-skills
+    category: development
+    recommended: true
+    rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
+
+  - name: handoff
+    description: "Compacts a long session into a mktemp handoff document for a fresh agent. References artifacts by path/SHA rather than duplicating content."
+    source: fyodoriv/dev-skills
+    category: productivity
+    recommended: true
+    rationale: "Context limits are inevitable. A structured handoff with gotchas and ordered next-steps prevents re-discovery work. Adapted from mattpocock/skills."
+
+  - name: spec-driven-development
+    description: "Create specs before coding. Use when starting a significant change or when requirements are unclear."
+    source: addyosmani/agent-skills
+    category: development
+    recommended: true
+    rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
+
+  - name: prototype
+    description: "Build throwaway code to answer one specific design question before committing. Branches: logic (terminal app, in-memory) or UI (URL-param switchable variants). Deleted or absorbed after the question is answered."
+    source: mattpocock/skills
+    category: development
+    recommended: true
+    rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
+
+  - name: to-issues
+    description: "Decompose a plan or spec into dependency-ordered tasks with AFK (agent-executable) or HITL (human required) classification. Issues are durable: domain behavior only, no file paths or line numbers."
+    source: fyodoriv/dev-skills
+    category: productivity
+    recommended: true
+    rationale: "AFK/HITL classification maximizes what an autonomous agent can immediately pick up. Dependency-ordered publishing enables real issue numbers in 'Blocked by' fields. Adapted from mattpocock/skills."
+
+  - name: analyze
+    description: "Read-only cross-artifact consistency checker. Compares spec, plan, and tasks against each other via 6 detection passes (Duplication, Ambiguity, Underspecification, Constitution, Coverage, Inconsistency) with severity tiers."
+    source: fyodoriv/dev-skills
+    category: development
+    recommended: true
+    rationale: "Spec/plan/task drift caught before implementation is cheap. After it becomes code debt it's expensive. The read-only contract + severity tiers make this safe to run without fear of accidental modification. Adapted from github/spec-kit."
+
+  - name: ubiquitous-language
+    description: "Extract a DDD-style ubiquitous language glossary: one term per concept, canonical + aliases-to-avoid, example dialogues. Re-runnable — merges with existing UBIQUITOUS_LANGUAGE.md."
+    source: fyodoriv/dev-skills
+    category: development
+    recommended: true
+    rationale: "Naming drift compounds across a codebase over years. Explicit synonym resolution and aliases-to-avoid make the glossary actionable, not just descriptive. Adapted from mattpocock/skills."
+
+  - name: caveman
+    description: "Ultra-compressed communication mode (~75% token reduction). Strips filler, articles, pleasantries. Persists until 'stop caveman'. Auto-suspends for security warnings and irreversible operations."
+    source: fyodoriv/dev-skills
+    category: productivity
+    recommended: false
+    rationale: "Long sessions accumulate verbose overhead. The auto-suspend safety valve for destructive operations preserves safety without sacrificing efficiency. Adapted from mattpocock/skills."
+
+  - name: verification-before-completion
+    description: "Gate function before any completion claim — run verification command, read output, THEN claim. Evidence before assertions, always."
+    source: obra/superpowers
+    category: quality
+    recommended: true
+    rationale: "Agents claim done without verifying. This gate prevents false completions."
+
+  - name: next-task
+    description: "Pick and work on the next task from TASKS.md — autonomous coding loop with claim/complete lifecycle."
+    source: built-in
+    category: task-management
+    recommended: true
+    rationale: "Autonomous task loop — the core workflow for agent-driven development."
+
+  - name: context-budget
+    description: "Metrics-driven context trim — read latest.json, run agentbrew lint, file TASKS.md trim work."
+    source: built-in
+    category: meta
+    recommended: false
+
+  - name: cursor-token-playbook
+    description: "Daily Cursor token habits — model mix, new chat, @ scoping, MCP discipline, measure context."
+    source: built-in
+    category: meta
+    recommended: false
+
+  - name: update-tooling
+    description: "Safely refresh a tooling workspace, apply dotfiles and agentbrew state, verify machine health, and rank next work. Don't use for package upgrades or publishing unowned changes."
+    source: fyodoriv/dotfiles
+    category: meta
+    recommended: false
+
+  - name: agentfile-init
+    description: "Bootstrap an Agentfile.yaml for any project — detects tech stack, suggests MCP servers from catalog, writes ready-to-sync config."
+    source: built-in
+    category: setup
+    recommended: true
+    rationale: "Every project benefits from an Agentfile. Agents should create one when entering a repo without one."
+
+  - name: agent-browser
+    description: "Browser automation CLI — navigate, snapshot, interact, screenshot, diff, auth. Replaces Playwright MCP."
+    source: vercel-labs/agent-browser
+    category: browser
+    recommended: true
+    rationale: "Web interaction is a universal need. Screenshots, forms, navigation."
+
+  - name: tutor-setup
+    description: >
+      Generate an Obsidian StudyVault from documents or a codebase — verified source
+      mapping, concept notes, practice questions, and self-review. Use before /tutor.
+      Don't use for multi-source combos without staging (use learn-project).
+    source: bevibing/tutor-skills
+    category: productivity
+    recommended: false
+
+  - name: tutor
+    description: >
+      Interactive concept-level quiz tutor for a StudyVault produced by tutor-setup.
+      Diagnostic, drill-weak, and hard-mode sessions with progress tracking. Don't use
+      without an existing StudyVault (run tutor-setup first).
+    source: bevibing/tutor-skills
+    category: productivity
+    recommended: false
+
+  - name: learn-project
+    description: >
+      One-command "tutor me on X": gather local/remote repos, PRs/issues, Google Docs,
+      loose files, and web pages into one grounded StudyVault, then chain tutor-setup
+      (teach) and tutor (quiz). Stage-aware and interactive — resumes prep and asks for
+      missing inputs. Don't use for a trivial single README (run tutor-setup directly).
+    source: built-in
+    category: productivity
+    recommended: false
+
+  - name: project-audit
+    description: "Deep audit across four lenses: no-brainer fixes, stability gaps, dependency modernization, documentation drift."
+    source: fyodoriv/dev-skills
+    category: quality
+    recommended: true
+    rationale: "Finds work when the queue is empty. Every repo has hidden debt."
+
+  - name: git-diagnose-codebase
+    description: "Reads any unfamiliar codebase's git history in 5 minutes — runs five `git log` commands (churn, bus factor, bug clusters, velocity, firefighting) plus the churn × bug-keyword cross-reference that surfaces highest-risk files. Used as Step 0 by `project-audit`, `sweep`, and `strategic-review`. Don't use for code review or implementing fixes."
+    source: fyodoriv/dev-skills
+    category: quality
+    recommended: true
+    rationale: "Onboarding to an unfamiliar repo, or starting any audit, costs minutes instead of hours when the first thing you do is read git history. Microsoft Research (2005) showed relative code churn predicts defect density; Tornhill's _Your Code as a Crime Scene_ extended this to bug-keyword × churn cross-reference. The 5-minute output biases the rest of the audit toward the highest-risk files instead of arbitrary ones."
+
+  - name: strategic-review
+    description: "Deep strategic review of architecture, direction, and fitness. Scans code for structural signals, asks targeted questions, produces recommendations on pivots, architecture changes, and build/buy/kill."
+    source: fyodoriv/dev-skills
+    category: quality
+    recommended: true
+    rationale: "Architecture review — when to pivot, what to kill, build vs buy."
+
+  - name: aggressive-cut
+    description: "Brutal-honest moat audit + staged aggressive deletion of a codebase that has outgrown its 1-FTE maintenance budget. Codified from the 2026-05-24 Minsky Path A pivot (70K → 7K LOC)."
+    source: built-in
+    category: quality
+    recommended: false
+    rationale: |
+      Solo-maintained projects accumulate code faster than the operator can maintain it. The 1-FTE sustainable
+      LOC budget is ~5-10K; many projects pass that without realising. This skill operationalises the
+      "brutal-honest moat audit + staged deletion with parity-test-before-delete" pattern that shipped Minsky's
+      Path A pivot. Use it before any major rewrite — if 80%+ of the codebase is reproducible from existing OSS
+      composed with a thin shell, the rewrite is "delete + write the shell", not "build a v2 from scratch".
+      Sequels strategic-review (which decides whether to pivot) — once the answer is "yes, cut", this skill
+      runs the cut with parity-test-before-delete discipline.
+
+  - name: iterate
+    description: "Autonomous iterative improvement loop: modify → verify → keep/discard → repeat. Drives a measurable metric toward a target with atomic changes and auto-rollback."
+    source: fyodoriv/dev-skills
+    category: development
+    recommended: true
+    rationale: "Iterative improvement toward a measurable goal. Useful for any metric-driven task."
+
+  # ── Tier 2: Strong Recommendation ─────────────────────────────
+
+  - name: react-best-practices
+    description: "40+ rules across 8 categories from Vercel Engineering, impact-prioritized"
+    source: vercel-labs/agent-skills
+    category: development
+    recommended: false
+
+  - name: web-design-guidelines
+    description: "Deprecated — core rules absorbed into taste skill. 39-line stub that fetches external URL."
+    source: vercel-labs/agent-skills
+    category: design
+    recommended: false
+
+  - name: frontend-design
+    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    source: anthropics/skills
+    category: design
+    recommended: true
+
+  - name: impeccable
+    description: "Chrome DevRel design vocabulary — 23 commands across brand+product modes, optional CLI scanner. Complementary to taste (rule-based) and frontend-design (aesthetic)."
+    source: pbakaus/impeccable
+    category: design
+    recommended: false
+
+  - name: mcp-builder
+    description: "Guide for building MCP servers in Python and TypeScript"
+    source: anthropics/skills
+    category: development
+    recommended: false
+
+  - name: code-smells-aware
+    description: "Write TS/React code that passes the code-smells static-analysis tool's 50+ audits across 8 categories (Component Health, Render Performance, Coupling, Type Safety, Security & Dependencies, Accessibility, Test Quality, Maintainability). Inlines audit thresholds with research-backed rationale and the verify command (`npx code-smells`). Auto-detects TS/React applicability — non-JS repos skip silently. Don't use for non-JS repos, pure styling work (use fix-styles), or PR review (use review)."
+    source: fyodoriv/code-smells
+    category: quality
+    recommended: true
+    rationale: "Every TS/React change risks regressing one of 50+ research-backed audits (LOC/function, cognitive complexity, hook overload, inline JSX props, fan-out coupling, type coverage, a11y, testing-library patterns). Inlining the thresholds plus a one-command verify gate (`npx code-smells`) means agents catch their own regressions before commit instead of waiting for CI or a reviewer."
+
+  - name: actionbook
+    description: "Pre-verified browser action manuals with DOM selectors — 10x faster site automation. Complements agent-browser with per-site knowledge."
+    source: actionbook/actionbook
+    category: browser
+    recommended: false
+
+  - name: browser-harness
+    description: "Self-modifying CDP browser harness — agent edits helpers.py mid-task. Lower-level alternative to agent-browser (raw CDP). Multi-step Python+Chrome install via project install.md."
+    source: browser-use/browser-harness
+    category: browser
+    recommended: false
+
+  - name: rfc
+    description: "Writes RFC documents following 9-section structure with POC branch workflow. Google Docs compatible."
+    source: fyodoriv/dev-skills
+    category: writing
+    recommended: false
+
+  - name: markdown-for-gdoc
+    description: "Rules for writing markdown that renders correctly in Google Docs. Tables, code blocks, headings, diagrams."
+    source: fyodoriv/dev-skills
+    category: writing
+    recommended: false
+
+  - name: webapp-testing
+    description: "Playwright-based testing toolkit from Anthropic"
+    source: anthropics/skills
+    category: testing
+    recommended: false
+
+  - name: shadcn
+    description: "Official shadcn/ui skill for component usage and patterns"
+    source: shadcn/ui
+    category: design
+    recommended: true
+    rationale: "230+ rules for forms, styling, composition, icons. Prevents the most common shadcn/ui mistakes."
+
+  - name: next-best-practices
+    description: "Next.js best practices from Vercel"
+    source: vercel-labs/next-skills
+    category: development
+    recommended: false
+
+  # ── Tier 3: Specialized ────────────────────────────────────────
+
+  - name: postgres-best-practices
+    description: "8 categories of Postgres optimization from Supabase"
+    source: supabase/agent-skills
+    category: database
+    recommended: false
+
+  - name: react-native-guidelines
+    description: "16 rules across 7 sections for React Native projects"
+    source: vercel-labs/agent-skills
+    category: mobile
+    recommended: false
+
+  - name: sync-agent-config
+    description: "Syncs all agent rules, memories, skills, and config across tools (Windsurf, Cursor, Claude Code)."
+    source: built-in
+    category: meta
+    recommended: false
+
+  - name: remotion-best-practices
+    description: "#5 on skills.sh (147K installs). Programmatic video creation with Remotion."
+    source: remotion-dev/skills
+    category: creative
+    recommended: false
+
+  - name: subagent-driven-development
+    description: "Dispatch parallel sub-agents for independent tasks. Two-stage review (spec compliance, then code quality)."
+    source: obra/superpowers
+    category: workflow
+    recommended: false
+
+  - name: executing-plans
+    description: "Batch execution of plan files with checkpoints for human review between stages."
+    source: obra/superpowers
+    category: workflow
+    recommended: false
+
+  - name: test-driven-development
+    description: "Strict RED-GREEN-REFACTOR enforcement — iron law: no production code without failing test first. Anti-patterns, rationalizations, deletion rules."
+    source: obra/superpowers
+    category: testing
+    recommended: false
+
+  - name: brainstorming
+    description: "Socratic design refinement — explore context, ask one question at a time, propose 2-3 approaches, present design in sections, write spec. Hard gate: no code before design approval."
+    source: obra/superpowers
+    category: planning
+    recommended: false
+
+  - name: using-git-worktrees
+    description: "Parallel development branches via git worktrees — directory selection, safety verification, project setup, clean baseline verification."
+    source: obra/superpowers
+    category: git
+    recommended: false
+
+  - name: finishing-a-development-branch
+    description: "Branch lifecycle completion — verify tests, present 4 options (merge/PR/keep/discard), execute choice, clean up worktree."
+    source: obra/superpowers
+    category: git
+    recommended: false
+
+  - name: requesting-code-review
+    description: "Pre-review checklist and reviewer subagent dispatch with SHA-based diffs. Mandatory after each task in subagent-driven development."
+    source: obra/superpowers
+    category: git
+    recommended: false
+
+  - name: receiving-code-review
+    description: "Technical response pattern for code review — verify before implementing, push back with reasoning, no performative agreement. Forbidden: 'Great point!'"
+    source: obra/superpowers
+    category: git
+    recommended: false
+
+  - name: dispatching-parallel-agents
+    description: "Concurrent subagent workflows — identify independent domains, create focused agent tasks, dispatch in parallel, review and integrate."
+    source: obra/superpowers
+    category: workflow
+    recommended: false
+
+  - name: systematic-debugging
+    description: "4-phase root cause debugging — investigate → pattern analysis → hypothesis testing → implementation. Supporting techniques: root-cause-tracing, defense-in-depth, condition-based-waiting."
+    source: obra/superpowers
+    category: development
+    recommended: false
+
+  - name: writing-plans
+    description: "Detailed implementation plans with bite-sized tasks (2-5 min each). File mapping, exact code, TDD steps, verification commands. Plan review loop with subagent."
+    source: fyodoriv/dev-skills
+    category: planning
+    recommended: false
+
+  - name: task-command-center
+    description: "Orchestrate docs hubs, plans, dry-run worktrees, tickets, and execution for initiative-scale work."
+    source: fyodoriv/dev-skills
+    category: planning
+    recommended: false
+
+  - name: harness
+    description: "Design domain-specific agent teams — 6 architecture patterns (Pipeline, Fan-out/Fan-in, Expert Pool, Producer-Reviewer, Supervisor, Hierarchical Delegation) with reference docs and templates."
+    source: revfactory/harness
+    category: planning
+    recommended: false
+
+  - name: search
+    description: "Web search via Tavily API — real-time lookups, content extraction, site mapping."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: semgrep
+    description: "Trail of Bits — Semgrep security scanning with custom rulesets and SARIF output."
+    source: trailofbits/skills
+    category: security
+    recommended: true
+    rationale: "Static analysis catches bugs before runtime. Semgrep is the fastest scanner."
+
+  - name: codeql
+    description: "Trail of Bits — CodeQL security scanning with cross-file taint tracking."
+    source: trailofbits/skills
+    category: security
+    recommended: true
+    rationale: "Deep taint tracking finds vulnerabilities that pattern matching misses."
+
+  - name: supply-chain-risk-auditor
+    description: "Trail of Bits — dependency and supply chain security auditing for open-source risk assessment."
+    source: trailofbits/skills
+    category: security
+    recommended: true
+    rationale: "Dependency attacks are the #1 open-source risk. Every project has deps."
+
+  - name: property-based-testing
+    description: "Trail of Bits — fuzzing and property-based testing for finding edge cases and invariant violations."
+    source: trailofbits/skills
+    category: security
+    recommended: true
+    rationale: "Finds edge cases that example-based tests miss. Universal testing improvement."
+
+  - name: deploy-to-vercel
+    description: "Deploy applications and websites to Vercel. Use when the user requests deployment actions like 'deploy my app', 'push this live', or 'create a preview deployment'."
+    source: vercel-labs/agent-skills
+    category: deployment
+    recommended: false
+
+  - name: vercel-cli-with-tokens
+    description: "Deploy and manage Vercel projects using token-based authentication — for CI/CD and non-interactive environments."
+    source: vercel-labs/agent-skills
+    category: deployment
+    recommended: false
+
+  # ── Vercel Next.js skills ──────────────────────────────────────
+
+  - name: next-upgrade
+    description: "Upgrade Next.js to the latest version following official migration guides and codemods."
+    source: vercel-labs/next-skills
+    category: development
+    recommended: false
+
+  - name: next-cache-components
+    description: "Next.js 16 Cache Components — PPR, use cache directive, cacheLife, cacheTag, updateTag."
+    source: vercel-labs/next-skills
+    category: development
+    recommended: false
+
+  # ── agent-browser companion skills ────────────────────────────
+  - name: page-zero-errors
+    description: "Playwright-driven browser-error gate — attaches via CDP before navigation. Canonical upstream source; in-repo built-in removed per curator-not-host shrink pass."
+    source: fyodoriv/page-zero-errors
+    category: testing
+    recommended: true
+    rationale: "The only signal that tells you whether the user's actual screen rendered. Hosted in fyodoriv/page-zero-errors; agentbrew references, never duplicates."
+
+
+  - name: vercel-sandbox
+    description: "Run agent-browser + headless Chrome inside ephemeral Vercel Sandbox microVMs for browser automation from any Vercel-deployed app."
+    source: vercel-labs/agent-browser
+    category: browser
+    recommended: false
+
+  - name: slack
+    description: "Interact with Slack workspaces using browser automation — check unreads, send messages, search conversations, extract data."
+    source: vercel-labs/agent-browser
+    category: browser
+    recommended: false
+
+  - name: electron
+    description: "Automate Electron desktop apps (VS Code, Slack, Discord, Figma, Notion, Spotify, etc.) using agent-browser via Chrome DevTools Protocol."
+    source: vercel-labs/agent-browser
+    category: browser
+    recommended: false
+
+  # ── Playwright ────────────────────────────────────────────────
+
+  - name: playwright-best-practices
+    description: "Comprehensive Playwright guide — E2E, component, API, visual, accessibility, security, Electron, and extension testing. Covers flaky tests, POM, CI/CD, mocking, auth, multi-tab, mobile, i18n and more. MIT."
+    source: currents-dev/playwright-best-practices-skill
+    category: testing
+    recommended: true
+    rationale: "E2E testing guide for the most popular browser testing framework."
+
+  - name: tavily-search
+    description: "Real-time web search via Tavily API — fast, accurate, AI-optimized results."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: tavily-research
+    description: "Deep research workflow using Tavily — multi-step iterative search with synthesis."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: tavily-crawl
+    description: "Crawl websites and extract structured content at scale using Tavily."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: tavily-extract
+    description: "Extract structured data from web pages using Tavily's extraction API."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: tavily-map
+    description: "Map and explore website structure using Tavily's site-mapping API."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  - name: tavily-best-practices
+    description: "Build production-ready Tavily integrations — patterns, error handling, rate limiting, and optimization."
+    source: tavily-ai/skills
+    category: utility
+    recommended: false
+
+  # ── HuggingFace skills ────────────────────────────────────────
+
+  - name: hf-cli
+    description: "HuggingFace Hub CLI — download, upload, and manage repositories, models, datasets, and Spaces."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-papers
+    description: "Look up and read HuggingFace paper pages in markdown; use the papers API for structured metadata (authors, linked models, datasets)."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-datasets
+    description: "HuggingFace Dataset Viewer API — fetch subset/split metadata, paginate rows, search text, apply filters."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-gradio
+    description: "Build Gradio web UIs and demos in Python — components, event listeners, layouts, and deployment."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-llm-trainer
+    description: "Train or fine-tune language models using TRL (Transformer Reinforcement Learning) on HuggingFace infrastructure."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: transformers-js
+    description: "Run state-of-the-art ML models in JavaScript/TypeScript with Transformers.js — NLP, vision, audio, no Python needed."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-jobs
+    description: "Run workloads on HuggingFace Jobs infrastructure — UV scripts, Docker-based jobs, GPU scheduling."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  - name: huggingface-vision-trainer
+    description: "Train and fine-tune vision models for object detection (D-FINE, RT-DETR v2, YOLOS) and image classification (timm models)."
+    source: huggingface/skills
+    category: ml
+    recommended: false
+
+  # ── Anthropic official skills (newly available) ───────────────
+
+  - name: claude-api
+    description: "Build apps with the Claude API or Anthropic SDK — triggered when code imports anthropic/sdk or the user asks about Claude API usage."
+    source: anthropics/skills
+    category: development
+    recommended: false
+
+  - name: pdf
+    description: "Handle PDF files — read, extract text/tables, convert, and process PDFs in any workflow."
+    source: anthropics/skills
+    category: utility
+    recommended: false
+
+  - name: xlsx
+    description: "Handle spreadsheet files — read, write, transform Excel/CSV data; triggered whenever a spreadsheet is the primary input or output."
+    source: anthropics/skills
+    category: utility
+    recommended: false
+
+  - name: docx
+    description: "Create, read, edit, and manipulate Word documents (.docx files)."
+    source: anthropics/skills
+    category: utility
+    recommended: false
+
+  - name: pptx
+    description: "Create, read, and edit PowerPoint presentations (.pptx files) — triggered whenever a .pptx file is involved."
+    source: anthropics/skills
+    category: utility
+    recommended: false
+
+  - name: doc-coauthoring
+    description: "Structured workflow for co-authoring documentation — guides users through planning, drafting, iterating, and finalizing docs."
+    source: anthropics/skills
+    category: writing
+    recommended: false
+
+  - name: theme-factory
+    description: "Toolkit for styling artifacts with a theme — slides, docs, reports, HTML landing pages, and more."
+    source: anthropics/skills
+    category: design
+    recommended: false
+
+  - name: canvas-design
+    description: "Create beautiful visual art in .png and .pdf using Claude's design philosophy — composition, color theory, and layout."
+    source: anthropics/skills
+    category: design
+    recommended: false
+
+  - name: nothing-design
+    description: "Nothing-inspired UI/UX design system — monochromatic, typographic, industrial. Swiss typography meets Braun/Teenage Engineering."
+    source: dominikmartn/nothing-design-skill
+    category: design
+    recommended: false
+
+  # ── Awesome DESIGN.md (VoltAgent/awesome-design-md, 22K stars) ────
+  # 58 design systems captured as DESIGN.md files. Drop into your project
+  # and tell your agent "build me a page that looks like this."
+  # These use DESIGN.md format (not SKILL.md), so they're reference docs
+  # rather than agent skills. Listed here for discoverability.
+
+  - name: design-linear
+    description: "Linear design system — dark-mode-native, Inter Variable, indigo-violet accent. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-stripe
+    description: "Stripe design system — clean financial UI, precise spacing, accessible forms. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-vercel
+    description: "Vercel design system — Geist font, minimal dark/light, developer-focused. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-supabase
+    description: "Supabase design system — dark-first developer console, green accent, data-dense. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-raycast
+    description: "Raycast design system — command palette UI, keyboard-first, macOS-native feel. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-notion
+    description: "Notion design system — content-first, flexible blocks, warm neutral palette. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-figma
+    description: "Figma design system — collaborative tool UI, vibrant purple accent, canvas-first. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: design-spotify
+    description: "Spotify design system — dark-dominant, green accent, music-optimized layouts. Reference DESIGN.md from awesome-design-md."
+    source: VoltAgent/awesome-design-md
+    category: design
+    recommended: false
+
+  - name: algorithmic-art
+    description: "Create algorithmic art using p5.js with seeded randomness and interactive parameter exploration."
+    source: anthropics/skills
+    category: creative
+    recommended: false
+
+  - name: slack-gif-creator
+    description: "Create animated GIFs optimized for Slack — sizing constraints, validation tools, and workflow."
+    source: anthropics/skills
+    category: creative
+    recommended: false
+
+  - name: web-artifacts-builder
+    description: "Suite of tools for creating elaborate multi-component HTML artifacts using modern frontend web technologies."
+    source: anthropics/skills
+    category: development
+    recommended: false
+
+  - name: brand-guidelines
+    description: "Apply Anthropic's official brand colors and typography to artifacts — for teams working with Anthropic branding."
+    source: anthropics/skills
+    category: design
+    recommended: false
+
+  - name: effective-ui-design
+    description: "Effective UI Design — the technical layer that Anthropic's frontend-design leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, form :user-valid/:user-invalid patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
+    source: sebastian-software/effective-ui-design-skill
+    category: design
+    recommended: true
+
+  # ── MCP Apps (SEP-1865, stabilized 2026-01-26) ────────────────
+  # Tools render interactive UI inside Claude, ChatGPT, VS Code, Goose,
+  # Postman, MCPJam. First official MCP extension — the design surface
+  # for agent-rendered UI in 2026.
+
+  - name: create-mcp-app
+    description: "Scaffold a new MCP App with an interactive UI from scratch. Use when the user asks to 'create an MCP App', 'add a UI to an MCP tool', 'build an interactive MCP View', 'scaffold an MCP App', or needs guidance on MCP Apps SDK patterns, UI-resource registration, MCP App lifecycle, or host integration."
+    source: modelcontextprotocol/ext-apps
+    category: design
+    recommended: true
+
+  - name: add-app-to-server
+    description: "Retrofit an existing MCP server with interactive UI. Use when adding UI to a tool that already exists, declaring ui:// resources on an established server, or extending a text-only MCP server to render inline UIs."
+    source: modelcontextprotocol/ext-apps
+    category: design
+    recommended: true
+
+  - name: convert-web-app
+    description: "Convert an existing web app into a hybrid web + MCP App. Use when porting a standalone web frontend so it also renders inside Claude/ChatGPT/VS Code via the MCP Apps protocol."
+    source: modelcontextprotocol/ext-apps
+    category: design
+    recommended: false
+
+  - name: migrate-oai-app
+    description: "Port an OpenAI Apps SDK app to MCP Apps. Use when migrating from OpenAI's vendor-specific UI extension to the standardized MCP Apps protocol that works in Claude, ChatGPT, VS Code, Goose, Postman, MCPJam."
+    source: modelcontextprotocol/ext-apps
+    category: design
+    recommended: false
+
+  - name: build-mcp-app
+    description: "Build an MCP app, add interactive UI or widgets to an MCP server, render components in chat, build MCP UI resources, make a tool that shows a form/picker/dashboard/confirmation dialog inline in the conversation. Use AFTER build-mcp-server settles the deployment model."
+    source: anthropics/claude-plugins-official
+    category: design
+    recommended: true
+
+  # ── MCP server / plugin authoring (anthropics/claude-plugins-official) ──
+
+  - name: build-mcp-server
+    description: "Canonical Anthropic guidance for building MCP servers. Use when the user asks to build an MCP server, create an MCP, make an MCP integration, wrap an API for Claude, expose tools to Claude. Entry point — interrogates use case, picks deployment model (remote HTTP, MCPB, local stdio), selects tool-design pattern, hands off to specialized skills."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: true
+
+  - name: build-mcpb
+    description: "Build MCP bundles (MCPB format) — distributable, signed packages of MCP servers + skills."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: session-report
+    description: "Generate an explorable HTML report of Claude Code session usage (tokens, cache, subagents, skills, expensive prompts) from ~/.claude/projects transcripts."
+    source: anthropics/claude-plugins-official
+    category: productivity
+    recommended: false
+
+  - name: writing-hookify-rules
+    description: "Create hookify rules — author hook configurations, hookify rule syntax and patterns."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  # plugin-dev plugin: skills for Claude Code plugin authoring
+  - name: skill-development
+    description: "Author SKILL.md files following the agentskills.io spec — YAML frontmatter, description tuning, body structure, supporting files."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: true
+
+  - name: command-development
+    description: "Author slash commands for Claude Code plugins."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: agent-development
+    description: "Author subagent definitions for Claude Code plugins."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: hook-development
+    description: "Author hook scripts (PreToolUse, PostToolUse, Stop, etc.) for Claude Code plugins."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: plugin-structure
+    description: "Anthropic's official plugin directory layout — .claude-plugin/plugin.json, commands/, agents/, skills/, hooks/."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: plugin-settings
+    description: "Configure plugin.json metadata, plugin permissions, MCP server bundling."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: mcp-integration
+    description: "Bundle an MCP server inside a Claude Code plugin (.mcp.json) so installs auto-configure the server."
+    source: anthropics/claude-plugins-official
+    category: development
+    recommended: false
+
+  - name: internal-comms
+    description: "Write internal communications (announcements, updates, memos) using company-preferred formats."
+    source: anthropics/skills
+    category: writing
+    recommended: false
+
+  # ── obra/superpowers skills (newly indexed) ───────────────────
+
+  - name: using-superpowers
+    description: "Meta-skill: establishes how to find and use skills at conversation start. Requires Skill tool invocation before any response."
+    source: obra/superpowers
+    category: meta
+    recommended: false
+
+  - name: writing-skills
+    description: "Create new agent skills or edit existing ones — follows agentskills.io spec, verifies skills before deployment."
+    source: obra/superpowers
+    category: meta
+    recommended: false
+
+  # ── EveryInc/compound-engineering-plugin (Compound Engineering) ──
+
+  - name: ce-brainstorm
+    description: "Explore vague or ambitious ideas into a right-sized requirements-only unified plan. Use when the user wants to brainstorm, think through scope, decide what to build, or needs collaborative product framing before planning. Don't use for executing already-specified work — use ce-work instead."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: false
+
+  - name: ce-code-review
+    description: "Structured code review for bugs, regressions, tests, and standards. Use before PRs or when asked for review; interactive mode can fix locally. Don't use for open-ended debugging — use ce-debug."
+    source: EveryInc/compound-engineering-plugin
+    category: review
+    recommended: false
+
+  - name: ce-commit-push-pr
+    description: "Commit, push, and open a PR. Use when asked to ship/open a PR, or for PR-description-only flows."
+    source: EveryInc/compound-engineering-plugin
+    category: git
+    recommended: false
+
+  - name: ce-commit
+    description: "Create a git commit with a clear, value-communication message."
+    source: EveryInc/compound-engineering-plugin
+    category: git
+    recommended: false
+
+  - name: ce-compound-refresh
+    description: "Refresh docs/solutions learnings against the current codebase. Use when auditing stale, overlapping, superseded, or drifted learnings."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: false
+
+  - name: ce-compound
+    description: "Document a recently solved problem or durable project vocabulary in docs/solutions/ or CONCEPTS.md. Compound Engineering's knowledge-accumulation skill — captures learnings after work."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: true
+    rationale: "Pairs with obra/superpowers process skills: superpowers runs the sprint, ce-compound preserves what the repo learned."
+
+  - name: ce-debug
+    description: "Diagnosis loop for bugs and failing behavior. Use for errors, stack traces, regressions, failed tests. Don't use for planned feature work — use ce-work."
+    source: EveryInc/compound-engineering-plugin
+    category: development
+    recommended: false
+
+  - name: ce-doc-review
+    description: "Review requirements, plans, or specs with role-specific lenses."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: false
+
+  - name: ce-dogfood
+    description: "Hands-off, diff-scoped browser QA of the active branch: maps user flows, drives a real browser, autonomously fixes small breakages."
+    source: EveryInc/compound-engineering-plugin
+    category: testing
+    recommended: false
+
+  - name: ce-explain
+    description: "Turn a concept, diff, or recent work into a dense visual explainer with optional check-in exercises. For learning, not repo docs."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: false
+
+  - name: ce-ideate
+    description: "Generate and evaluate grounded ideas before choosing one to develop; use ce-brainstorm to refine the user's own idea."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: false
+
+  - name: ce-optimize
+    description: "Run metric-driven optimization loops for search relevance, build performance, prompt quality, or scored behavior."
+    source: EveryInc/compound-engineering-plugin
+    category: development
+    recommended: false
+
+  - name: ce-plan
+    description: "Create structured plans for multi-step work. Use when asked to plan or break down implementation; prefer ce-brainstorm for exploratory framing."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: true
+    rationale: "Structured planning complement to obra/superpowers writing-plans — CE plans feed ce-work and lfg pipelines."
+
+  - name: ce-polish
+    description: "Start the dev server, inspect the feature in browser, and iterate on polish."
+    source: EveryInc/compound-engineering-plugin
+    category: development
+    recommended: false
+
+  - name: ce-pov
+    description: "Decisive, project-grounded verdict on adopting/switching external tech, libraries, or patterns — judged against the current project."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: false
+
+  - name: ce-product-pulse
+    description: "Generate time-windowed product pulse reports from configured signals."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: false
+
+  - name: ce-promote
+    description: "Draft launch or promotion copy for a shipped feature."
+    source: EveryInc/compound-engineering-plugin
+    category: writing
+    recommended: false
+
+  - name: ce-proof
+    description: "Publish, read, comment on, or edit markdown in Proof for specs/plans/drafts."
+    source: EveryInc/compound-engineering-plugin
+    category: writing
+    recommended: false
+
+  - name: ce-resolve-pr-feedback
+    description: "Resolve PR review feedback — addressing review comments, resolving threads, or fixing code-review feedback."
+    source: EveryInc/compound-engineering-plugin
+    category: review
+    recommended: false
+
+  - name: ce-riffrec-feedback-analysis
+    description: "Analyze Riffrec feedback captures from bundles or standalone recordings."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: false
+
+  - name: ce-setup
+    description: "Check Compound Engineering health and repo-local config."
+    source: EveryInc/compound-engineering-plugin
+    category: meta
+    recommended: false
+
+  - name: ce-simplify-code
+    description: "Simplify recently changed code for clarity, reuse, quality, and efficiency while preserving behavior."
+    source: EveryInc/compound-engineering-plugin
+    category: development
+    recommended: false
+
+  - name: ce-strategy
+    description: "Create or update STRATEGY.md when starting a product, changing direction, or when ideation/planning needs upstream product grounding."
+    source: EveryInc/compound-engineering-plugin
+    category: planning
+    recommended: false
+
+  - name: ce-sweep
+    description: "Sweep configured feedback sources (Slack, GitHub Issues) for new items and emit an /lfg-ready plan."
+    source: EveryInc/compound-engineering-plugin
+    category: workflow
+    recommended: false
+
+  - name: ce-test-browser
+    description: "Run browser tests for pages affected by the current branch or PR."
+    source: EveryInc/compound-engineering-plugin
+    category: testing
+    recommended: false
+
+  - name: ce-test-xcode
+    description: "Build and test iOS apps on simulator with XcodeBuildMCP."
+    source: EveryInc/compound-engineering-plugin
+    category: testing
+    recommended: false
+
+  - name: ce-work
+    description: "Execute a plan or concrete work prompt end-to-end from docs/plans, a spec path, or a clear build request."
+    source: EveryInc/compound-engineering-plugin
+    category: workflow
+    recommended: false
+
+  - name: ce-worktree
+    description: "Set up isolated git worktrees for fresh work or attach to an existing branch/PR/commit."
+    source: EveryInc/compound-engineering-plugin
+    category: git
+    recommended: false
+
+  - name: lfg
+    description: "Run the full hands-off Compound Engineering pipeline from planning through a green PR."
+    source: EveryInc/compound-engineering-plugin
+    category: workflow
+    recommended: false
+
+  # ── garrytan/gstack (decision + testing sprint pipeline) ──
+
+  - name: office-hours
+    description: "YC Office Hours — design doc before code. Think phase of the gstack sprint pipeline. Don't use for execution — use ship or qa after design is approved."
+    source: garrytan/gstack
+    category: planning
+    recommended: true
+    rationale: "Forces assumptions into the open before code — complements obra/superpowers brainstorming with a sprint-scale design gate."
+
+  - name: autoplan
+    description: "Auto-review pipeline — runs CEO, design, eng, and DX review skills sequentially with encoded decision principles."
+    source: garrytan/gstack
+    category: planning
+    recommended: true
+    rationale: "One-command reviewed plan with taste decisions surfaced — decision discipline layer on top of office-hours output."
+
+  - name: plan-ceo-review
+    description: "CEO/founder-mode plan review. Part of gstack's multi-lens planning pipeline."
+    source: garrytan/gstack
+    category: planning
+    recommended: false
+
+  - name: plan-design-review
+    description: "Designer's eye plan review — interactive, like CEO and Eng review."
+    source: garrytan/gstack
+    category: planning
+    recommended: false
+
+  - name: plan-eng-review
+    description: "Eng manager-mode plan review with test-plan output for qa."
+    source: garrytan/gstack
+    category: planning
+    recommended: false
+
+  - name: plan-devex-review
+    description: "Interactive developer experience plan review — scores onboarding and docs flows."
+    source: garrytan/gstack
+    category: planning
+    recommended: false
+
+  - name: qa
+    description: "Systematically QA test a web application and fix bugs found — auto-generates regression tests for every fix."
+    source: garrytan/gstack
+    category: testing
+    recommended: true
+    rationale: "Real-browser QA with atomic fix commits — test phase of the gstack sprint; pairs with ce-test-browser for CE users."
+
+  - name: qa-only
+    description: "Report-only QA testing without making fixes."
+    source: garrytan/gstack
+    category: testing
+    recommended: false
+
+  - name: ship
+    description: "Ship workflow: merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR."
+    source: garrytan/gstack
+    category: workflow
+    recommended: true
+    rationale: "Test-first ship gate with coverage audit — ship phase of the gstack sprint pipeline."
+
+  - name: investigate
+    description: "Systematic debugging with root cause investigation. Don't use for feature work — use ship."
+    source: garrytan/gstack
+    category: development
+    recommended: false
+
+  - name: devex-review
+    description: "Live developer experience audit — navigates docs, times TTHW, screenshots errors."
+    source: garrytan/gstack
+    category: testing
+    recommended: false
+
+  - name: retro
+    description: "Weekly engineering retrospective."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: land-and-deploy
+    description: "Land and deploy workflow — merge PR, deploy, verify production health."
+    source: garrytan/gstack
+    category: workflow
+    recommended: false
+
+  - name: canary
+    description: "Post-deploy canary monitoring for errors and performance regressions."
+    source: garrytan/gstack
+    category: workflow
+    recommended: false
+
+  - name: careful
+    description: "Safety guardrails for destructive commands."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: browse
+    description: "Fast headless browser for QA testing and site dogfooding. Infrastructure skill used by qa — install qa instead for end-to-end testing."
+    source: garrytan/gstack
+    category: testing
+    recommended: false
+
+
+  # remotion-best-practices already present above
+
+  # ── Minimalist Entrepreneur (slavingia/skills) ───────────────────
+
+  - name: find-community
+    description: "Identify and evaluate communities to build a minimalist business around. Start with community, not a product idea."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: validate-idea
+    description: "Validate a business idea using the minimalist entrepreneur framework — sell before you build."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: mvp
+    description: "Build a minimum viable product the minimalist way — manual first, processized, then productized."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: processize
+    description: "Turn a product idea into a manual-first process you can deliver today, before writing code."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: first-customers
+    description: "Strategy for selling to your first 100 customers — skip the launch, focus on selling one by one."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: marketing-plan
+    description: "Minimalist marketing plan — build an audience through content, not ads. Spend time before money."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: pricing
+    description: "Set pricing using minimalist entrepreneur principles — charge something, always."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: grow-sustainably
+    description: "Evaluate business decisions through the lens of sustainable, profitable growth."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: company-values
+    description: "Define company values and culture for a minimalist business — focus on culture before hiring."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+  - name: minimalist-review
+    description: "Review any business decision through the minimalist entrepreneur lens — simplify your approach."
+    source: slavingia/skills
+    category: business
+    recommended: false
+
+mcp_servers:
+  # ── Recommended ─────────────────────────────────────────────────
+
+  - name: context7
+    description: "Live library/framework docs via @upstash/context7-mcp — no API key for the public Upstash-hosted service. Deploys to every MCP-capable agent through agentbrew sync, not only Cursor marketplace."
+    command: npx
+    args: ["-y", "@upstash/context7-mcp@latest"]
+    category: docs
+    recommended: true
+    smokeCall:
+      tool: resolve-library-id
+      arguments:
+        libraryName: React
+        query: React documentation
+    rationale: "LLM training data is stale. Live docs prevent hallucinated API usage."
+
+  - name: sourcegraph
+    description: "Sourcegraph MCP — SCIP-backed keyword/semantic search, go-to-definition, find-references, diffs, and repo history across every indexed repo (Enterprise v6.8+)."
+    url: "${SOURCEGRAPH_URL}/.api/mcp"
+    headers:
+      Authorization: "token ${SOURCEGRAPH_ACCESS_TOKEN}"
+    category: development
+    recommended: false
+    setupLink: "https://sourcegraph.com/docs/api/mcp"
+    smokeCall:
+      tool: list_repos
+      arguments:
+        query: agent
+        limit: 1
+    note: "Requires Sourcegraph Enterprise (Cloud or self-hosted) v6.8+ with mcp.enabled and MCP#ACCESS permission."
+    setup:
+      SOURCEGRAPH_URL:
+        description: "Base URL of your Sourcegraph instance (without /.api/mcp)"
+        steps:
+          - "Use your Sourcegraph Cloud URL (e.g. https://sourcegraph.com) or self-hosted base URL"
+          - "Do not include /.api/mcp — agentbrew appends that path automatically"
+          - "Example: https://sourcegraph.com"
+      SOURCEGRAPH_ACCESS_TOKEN:
+        description: "Personal access token with MCP scope"
+        link: "https://sourcegraph.com/user/settings/tokens"
+        steps:
+          - "Sign in to your Sourcegraph instance"
+          - "Go to Settings → Access tokens"
+          - "Create a token with the mcp scope (restricts access to MCP endpoints only)"
+          - "Copy the token value — pass it as Authorization: token <value>"
+    rationale: "Deterministic cross-repo code intelligence agentbrew cannot replicate — reference the official HTTP MCP endpoint, never fork it."
+
+  - name: composio
+    description: "Composio Connect — 1,000+ SaaS apps (Gmail, Notion, Slack, GitHub, Linear, HubSpot, Jira, …) through one HTTP MCP endpoint with managed OAuth and meta-tools."
+    url: "https://connect.composio.dev/mcp"
+    headers:
+      x-consumer-api-key: "${COMPOSIO_CONSUMER_API_KEY}"
+    category: productivity
+    recommended: false
+    setupLink: "https://docs.composio.dev/docs/composio-connect"
+    smokeCall:
+      tool: COMPOSIO_SEARCH_TOOLS
+      arguments:
+        use_case: search email tools
+        limit: 1
+    note: "Replaces per-vendor Notion/Jira/Linear/etc. MCP entries — connect each app once via Composio OAuth after install."
+    setup:
+      COMPOSIO_CONSUMER_API_KEY:
+        description: "Composio consumer API key (starts with ck_)"
+        link: "https://dashboard.composio.dev/"
+        steps:
+          - "Sign up or log in at dashboard.composio.dev"
+          - "Open Settings → API Keys (or your client's Connect setup page)"
+          - "Copy your consumer key (ck_...)"
+          - "Paste it here — Composio handles OAuth for each connected SaaS app"
+    rationale: |
+      GET, don't host: one Composio Connect endpoint replaces N per-connector MCP catalog entries.
+      Managed OAuth survives model swaps. Alternatives: Arcade.dev, Scalekit.
+
+  - name: figma
+    description: "Official Figma remote MCP — pull design context, variables, components and code connect mappings straight from a Figma file into the agent."
+    url: "https://mcp.figma.com/mcp"
+    category: design
+    recommended: true
+    setupLink: "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/"
+    probeSuppression:
+      statuses: ["init_error"]
+      reason: "Figma authenticates with per-client OAuth; the token lives in each agent's own credential store, so agentbrew's unauthenticated probe always gets 401 even when every client is signed in and working."
+      retryPolicy: probe-every-tick-no-heal-until-catalog-change
+    note: "Sign in once per client — the first Figma tool call opens Figma's OAuth consent in a browser. Prefer this over the desktop server (127.0.0.1:3845), which only runs while the Figma desktop app is open in Dev Mode and needs a Dev/Full seat on a paid plan."
+    rationale: |
+      Official first-party endpoint, so there is nothing to host or fork: Figma runs the server and owns the OAuth flow.
+      The remote server is available on every seat and plan and carries the broadest tool set, while the desktop variant
+      is gated on a paid Dev/Full seat and dies whenever the desktop app closes — a bad fit for "works everywhere without
+      me doing anything". Third-party forks (framelink figma-developer-mcp and friends) need a long-lived personal access
+      token in plaintext and lag the official tool surface, so they lose on both security and capability.
+
+  - name: ask-human
+    description: "Async human-↔-agent comm channel — agent writes questions to ask_human.md, file watcher unblocks the agent when human edits PENDING→answer. 150★, MIT."
+    command: pipx
+    args: ["run", "ask-human-mcp"]
+    category: collaboration
+    recommended: false
+    smokeCall:
+      tool: list_pending_questions
+    probeSuppression:
+      statuses: ["init_timeout"]
+      reason: "Already running asyncio in this thread before MCP initialize; upstream stdio launcher is currently broken."
+      retryPolicy: probe-every-tick-no-heal-until-catalog-change
+    note: "Not currently recommended: ask-human-mcp 0.1.0/0.1.1 fail in stdio mode with `Already running asyncio in this thread` before MCP initialize. Keep explicit opt-in until upstream fixes the launcher."
+    rationale: |
+      The async-human-comms convention from the shared-rules.md "Async human comms — ask_human.md" rule. Agents write questions
+      to the repo's ask_human.md when they need operator decisions they can't make alone (vision-trace questions, irreversible
+      choices, private-knowledge gaps). The MCP server provides file-watch so the agent unblocks the moment the operator types
+      the answer, plus concurrent-question handling, file rotation, and size limits — features we would otherwise have to
+      build. Source: github.com/masony817/ask-human-mcp.
+      Per rule #1 (don't reinvent), this is the adopted convention — every agentbrew-managed agent should read ask_human.md
+      automatically and respect its format. The CLI variant (`ask-human-mcp --file custom_qa.md`) supports per-project files
+      if a repo wants to scope the inbox.
+
+  - name: playwright
+    description: "Browser automation — navigate, click, fill forms, screenshot, test. 11.6k★."
+    command: npx
+    # `--isolated` gives each MCP session an in-memory profile. Without it,
+    # Playwright MCP keys its profile dir by workspace hash, so two agents
+    # (Claude Code, Cursor, Devin, Windsurf) opening Playwright in the same
+    # repo collide on the persistent profile lock — the second client errors
+    # with `Browser is already in use for mcp-chrome-<hash>` (GH playwright
+    # #40419, playwright-mcp #1594). Isolated mode is the upstream-recommended
+    # fix for the multi-agent case. Trade-off: cookies/logins don't persist
+    # across sessions — agents that need persistence should use a separate
+    # debug-port Chrome (e.g. agent-browser at :9223) instead of Playwright MCP.
+    #
+    # `--browser chrome` drives the locally-installed Google Chrome (stable)
+    # rather than Playwright's bundled Chrome-for-Testing build. The bundled
+    # build shows an "only for automated testing" banner and is slower to cold-
+    # start; the stable channel is faster and already present on dev machines.
+    # Orthogonal to `--isolated` (which controls the profile, not the binary),
+    # so the multi-agent collision fix above still holds.
+    args: ["-y", "@playwright/mcp@latest", "--isolated", "--browser", "chrome"]
+    category: browser
+    recommended: true
+    smokeCall:
+      tool: browser_console_messages
+      arguments:
+        level: info
+        all: false
+    probe: fast
+    rationale: "Browser automation via MCP — structured tool calls beat shell scripts for web testing."
+
+  - name: chrome-devtools
+    description: "Google ChromeDevTools team's official MCP — Lighthouse audits, performance traces, accessibility tree, live DOM, console errors, network logs. Bundles MCP + Skills."
+    command: npx
+    args: ["-y", "chrome-devtools-mcp@latest", "--isolated"]
+    category: browser
+    recommended: true
+    smokeCall:
+      tool: list_pages
+    probe: fast
+    rationale: "Closes the 'design that performs' gap (Core Web Vitals + a11y) that screenshot-only browser tools miss. Free, no API key. Pairs naturally with playwright MCP — screenshots for visual fidelity, chrome-devtools for performance + accessibility metrics."
+
+  - name: shadcn-mcp
+    description: "shadcn/ui MCP server (CLI 3.0, zero-config) — browse, search, view, and install components from any shadcn-compatible registry via natural language. May 2026 added registry include + validate."
+    command: npx
+    args: ["-y", "shadcn@latest", "mcp"]
+    category: design
+    recommended: true
+    smokeCall:
+      tool: search_items_in_registries
+      arguments:
+        registries: ["@shadcn"]
+        query: button
+        limit: 1
+    rationale: "Live component library access. Agents can 'add a login form' and get production-grade shadcn components from the @shadcn registry or any namespaced third-party registry. Built into the shadcn CLI — no API key, no per-project setup."
+
+  # ── Development ────────────────────────────────────────────────
+
+  - name: github
+    description: "GitHub API — PRs, issues, repos, commits, branches. 15.2k★."
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github@latest"]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+    category: development
+    recommended: false
+    smokeCall:
+      tool: search_repositories
+      arguments:
+        query: modelcontextprotocol
+    setup:
+      GITHUB_TOKEN:
+        description: "Personal access token for GitHub API"
+        link: "https://github.com/settings/tokens?type=beta"
+        steps:
+          - "Open the link above → 'Generate new token' (fine-grained)"
+          - "Name it 'agentbrew-mcp', set expiration to 90 days"
+          - "Under 'Repository access' pick 'All repositories' or specific repos"
+          - "Grant permissions: Contents (read), Pull requests (read/write), Issues (read/write), Metadata (read)"
+          - "Click 'Generate token' and copy the value"
+
+  - name: filesystem
+    description: Sandboxed file read/write with security controls
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem@latest", "${HOME}"]
+    category: development
+    recommended: false
+
+  - name: sentry
+    description: "Error tracking and performance monitoring — issues, events, releases. 173★."
+    command: npx
+    args: ["-y", "@sentry/mcp-server@latest"]
+    env:
+      SENTRY_AUTH_TOKEN: "${SENTRY_AUTH_TOKEN}"
+    category: observability
+    recommended: false
+    setup:
+      SENTRY_AUTH_TOKEN:
+        description: "Auth token for Sentry API access"
+        link: "https://sentry.io/settings/auth-tokens/"
+        steps:
+          - "Open the link above (log in to Sentry first)"
+          - "Click 'Create New Token'"
+          - "Scopes needed: event:read, project:read, org:read, issue:read"
+          - "Copy the token value"
+
+  - name: splunk
+    description: "Official Splunk MCP — execute SPL queries, natural-language search, index metadata, knowledge objects. RBAC enforced."
+    command: npx
+    args: ["-y", "mcp-remote@latest", "${SPLUNK_MCP_URL}", "--header", "Authorization: Bearer ${SPLUNK_TOKEN}"]
+    env:
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    category: observability
+    recommended: false
+    note: "Requires the 'Splunk MCP Server' app installed on your Splunk instance. Ask your Splunk admin if unsure."
+    setup:
+      SPLUNK_MCP_URL:
+        description: "SSE endpoint exposed by the Splunk MCP Server app"
+        link: "https://splunkbase.splunk.com/app/7931"
+        steps:
+          - "Install the 'Splunk MCP Server' app on your Splunk instance (link above)"
+          - "Take your Splunk web URL (e.g. https://splunk.example.com/en-US/app/search/search)"
+          - "The MCP endpoint uses the Splunk management port (8089), not the web port"
+          - "Your URL is: https://<host>:8089/services/mcp/sse"
+          - "Example: https://splunk.example.com:8089/services/mcp/sse"
+          - "If port 8089 is blocked, ask your Splunk admin for the MCP endpoint URL"
+      SPLUNK_TOKEN:
+        description: "Authentication token for the Splunk REST API"
+        link: "https://docs.splunk.com/Documentation/Splunk/latest/Security/Setupauthenticationtokens"
+        steps:
+          - "Open your Splunk web UI and log in"
+          - "Go to Settings → Tokens (under 'Users and Authentication')"
+          - "If you don't see 'Tokens', token auth may need to be enabled by your admin"
+          - "Click 'New Token' → select your user → set audience to 'mcp'"
+          - "Set expiration (or 'no expiration' for dev) → click 'Create'"
+          - "Copy the token immediately — it won't be shown again"
+
+  # ── CI/CD ─────────────────────────────────────────────────────
+
+  - name: jenkins
+    description: "Jenkins CI/CD — trigger builds, check status, stream logs, manage pipelines. Enterprise-grade with caching and retry logic."
+    command: npx
+    args: ["-y", "@ashwinighuge/jenkins-mcp-server@latest"]
+    env:
+      JENKINS_URL: "${JENKINS_URL}"
+      JENKINS_USER: "${JENKINS_USER}"
+      JENKINS_API_TOKEN: "${JENKINS_API_TOKEN}"
+    category: cicd
+    recommended: false
+    note: "CLI-first: install slash commands via `agentbrew install jenkins-cli` (works with all agents). This MCP server is optional — install only if you need advanced features (job triggering, queue management)."
+    setup:
+      JENKINS_URL:
+        description: "Base URL of your Jenkins instance (e.g. https://jenkins.example.com)"
+        steps:
+          - "This is the base URL of your Jenkins instance — the URL you see in the browser before /job/..."
+          - "Example: https://jenkins.example.com"
+          - "You can find your URL by navigating to any job in Jenkins and copying the base path"
+      JENKINS_USER:
+        description: "Your Jenkins username (same as your SSO/LDAP username)"
+        steps:
+          - "This is your Jenkins username (e.g. <your-username>)"
+          - "Same as your LDAP/SSO login username"
+      JENKINS_API_TOKEN:
+        description: "Jenkins API token for authentication"
+        steps:
+          - "Open Jenkins in your browser and log in"
+          - "Go to your user config page: click your name (top-right) → Configure"
+          - "Or navigate to: https://<your-jenkins>/user/<your-username>/configure"
+          - "Scroll down to 'API Token' section"
+          - "Click 'Add new Token' → name it (e.g. 'agentbrew-cli')"
+          - "Click 'Generate' → copy the token immediately (it won't be shown again)"
+          - "The token is tied to your account and has the same permissions as your login"
+
+  # ── Data & Database ────────────────────────────────────────────
+
+  - name: postgres
+    description: Direct Postgres database access — natural-language SQL queries, schema exploration
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-postgres@latest"]
+    category: database
+    recommended: false
+
+  # ── Search & Research ──────────────────────────────────────────
+
+  - name: brave-search
+    description: "Privacy-first web search — current results without tracking"
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-brave-search@latest"]
+    env:
+      BRAVE_API_KEY: "${BRAVE_API_KEY}"
+    category: search
+    recommended: false
+    setup:
+      BRAVE_API_KEY:
+        description: "API key for Brave Search"
+        link: "https://brave.com/search/api/"
+        steps:
+          - "Open the link above and sign up / log in"
+          - "Go to the API dashboard → 'API Keys'"
+          - "Create a new key (the free tier gives 2,000 queries/month)"
+          - "Copy the key value"
+
+  # ── Live Web Data ───────────────────────────────────────────
+
+  - name: tinyfish
+    description: "Live-web layer — Search/Fetch/Browser/Agent in one MCP. Stealth Chromium, anti-bot, structured outputs. Hosted SaaS; complementary to local playwright."
+    command: npx
+    args: ["-y", "mcp-remote", "https://agent.tinyfish.ai/mcp"]
+    env:
+      TINYFISH_API_KEY: "${TINYFISH_API_KEY}"
+    category: web
+    recommended: false
+    note: "Hosted SaaS at tinyfish.ai. Free tier: 500 credits, no card required. See setup steps for the API key."
+    setup:
+      TINYFISH_API_KEY:
+        description: "TinyFish API key"
+        link: "https://www.tinyfish.ai"
+        steps:
+          - "Sign up at tinyfish.ai (free tier: 500 credits, no card required)"
+          - "Copy your API key from the dashboard"
+          - "Set TINYFISH_API_KEY in your environment"
+
+  # ── Task Management ───────────────────────────────────────────
+
+  - name: tasks-mcp
+    description: "Read/write TASKS.md files — list, pick, claim, complete, add tasks. Spec-compliant task queue for agents."
+    command: npx
+    args: ["-y", "tasks-mcp@0.10.2"]
+    category: task-management
+    recommended: true
+    smokeCall:
+      tool: list_tasks
+      arguments: {}
+    rationale: "Programmatic TASKS.md access — lets agents manage the task queue without file parsing."
+
+  # ── Reasoning ──────────────────────────────────────────────────
+
+  - name: sequential-thinking
+    description: Step-by-step reasoning for complex problem solving
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"]
+    category: reasoning
+    recommended: false
+
+  - name: memory
+    description: "Local-first semantic memory for agents — SQLite-vec, ONNX embeddings, BM25/vector hybrid retrieval, RRF fusion, and autonomous consolidation."
+    command: uvx
+    args: ["--system-certs", "--from", "mcp-memory-service[sqlite]", "memory", "server"]
+    env:
+      MCP_MEMORY_STORAGE_BACKEND: sqlite_vec
+      MCP_HYBRID_FUSION_METHOD: rrf
+    category: memory
+    recommended: false
+    note: "No API key or cloud service required. For many concurrent agents, run one loopback streamable-HTTP daemon and declare its URL in Agentfile.yaml to avoid duplicate Python/ONNX processes."
+
+  # ── Memory & Context ─────────────────────────────────────────
+
+  - name: openviking
+    description: "Filesystem-based context database — hierarchical memory, tiered retrieval (L0/L1/L2), semantic search. 13k★. Requires Python 3.10+ and embedding API key."
+    command: openviking-server
+    args: []
+    env:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+    category: memory
+    recommended: false
+    note: "Heavy setup: pip install openviking, config at ~/.openviking/ov.conf with embedding provider."
+    setup:
+      OPENAI_API_KEY:
+        description: "OpenAI API key (used for embeddings)"
+        link: "https://platform.openai.com/api-keys"
+        steps:
+          - "Open the link above and log in to OpenAI"
+          - "Click 'Create new secret key', name it 'agentbrew-openviking'"
+          - "Copy the key (starts with sk-)"
+          - "Note: also run `pip install openviking` and configure ~/.openviking/ov.conf"
+
+  - name: mempalace
+    description: "Local-first AI memory MCP — verbatim conversation storage, ChromaDB semantic search, 29 tools. 49k★. Run `mempalace init <path>` before first use. Overlaps openviking; pick one."
+    command: uvx
+    args: ["mempalace"]
+    category: memory
+    recommended: false
+    note: "Run `mempalace init ~/.mempalace` once before first use to seed the local store."
+
+  - name: skillclaw
+    description: "Skill-evolution proxy — captures session traces, evolves SKILL.md files via workflow/agent engines. Distinct from memory MCPs (mempalace/openviking)."
+    command: uvx
+    args: ["skillclaw"]
+    category: memory
+    recommended: false
+    note: "Run `skillclaw setup` once before first use to configure provider, model, and storage. Pairs with `skillclaw-evolve-server` for the evolution loop."
+
+# ── cli_tools ────────────────────────────────────────────────────────────
+# External CLI binaries (jenkins, gh, ...) that ship pre-built slash
+# commands for agents. Each entry points at a directory under
+# `src/cli-commands/<name>/` containing one `<command>.md` file per
+# `commands:` value. `agentbrew install <name>` copies those files into
+# `~/.config/agentbrew/commands/` and prompts the user to set any
+# `env` vars (with `setup:` instructions if provided). Use this for
+# tools that benefit from a shared command vocabulary across all configured
+# agents — anything richer (streaming / structured tool calls /
+# persistent connection) belongs under `mcp_servers:` instead.
+cli_tools:
+  - name: storybook-screenshot
+    description: "Slash command and binary for capturing Storybook stories with Playwright."
+    category: dev-tooling
+    recommended: false
+    rationale: "Restores a cross-agent visual-iteration workflow without reviving deleted bosun paths."
+    note: "Requires Storybook to be running and Playwright to be installed in the target repo."
+    commands:
+      - storybook-screenshot
+
+  - name: jenkins-cli
+    description: "Slash commands that wrap the Jenkins REST API — `/jenkins-status` and `/jenkins-log`."
+    category: cicd
+    recommended: false
+    rationale: "Lets every agent triage Jenkins failures via a shared command vocabulary, without depending on the optional `jenkins` MCP server."
+    note: "Pairs with the `jenkins` MCP server (above). Use `agentbrew install jenkins-cli` for slash commands only, `agentbrew install jenkins` for MCP."
+    commands:
+      - jenkins-status
+      - jenkins-log
+    env:
+      JENKINS_URL: "${JENKINS_URL}"
+      JENKINS_USER: "${JENKINS_USER}"
+      JENKINS_API_TOKEN: "${JENKINS_API_TOKEN}"
+    setup:
+      JENKINS_URL:
+        description: "Base URL of your Jenkins server (e.g. https://jenkins.example.com)."
+      JENKINS_USER:
+        description: "Your Jenkins username — typically the same as your GitHub / corporate username."
+      JENKINS_API_TOKEN:
+        description: "Personal API token from your Jenkins user profile."
+        steps:
+          - "Open <JENKINS_URL>/me/configure in a browser and log in."
+          - "Click 'Add new token' under the API Token section."
+          - "Name it 'agentbrew-cli', click 'Generate', and copy the value."
+
+rules:
+  - name: conventional-commits
+    description: Enforce conventional commit format
+    category: git
+    recommended: true
+    rationale: "Machine-parseable commit messages enable changelogs, versioning, and CI automation."
+    content: |
+      Use conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`); keep headers ≤72 characters and add a ticket when available.
+
+  - name: test-before-commit
+    description: Always run tests before committing
+    category: testing
+    recommended: true
+    rationale: "The single most effective quality gate. Prevents shipping broken code."
+    content: |
+      Run tests before each commit; use red/green TDD for bugs. See shared-rules **## Verification**.
+
+  - name: minimal-changes
+    description: Prefer minimal, focused edits
+    category: code-quality
+    recommended: true
+    rationale: "Focused edits are easier to review, less likely to break, and simpler to revert."
+    content: |
+      Smallest change that satisfies the request. See shared-rules **## Scope discipline**.
+
+  - name: modern-cli-cohort
+    description: Prefer the modern Rust/Go CLI cohort over POSIX defaults
+    category: shell-tools
+    recommended: true
+    rationale: "POSIX defaults (find/grep/sed/curl/top/du/ps/xxd/man) are slow, ignore .gitignore, and don't have the ergonomics of the 2024-2026 Rust/Go cohort. Agents should prefer the modern tool when both are installed."
+    content: |
+      Prefer installed modern tools: fd/rg/sd/bat/eza over find/grep/sed/cat/ls; jq/yq, gh, zoxide, delta, xh, and lazygit for structured data, GitHub, cd, diff, HTTP, and Git TUI.
+
+      Fall back to POSIX when unavailable, in `/bin/sh` or CI, or while editing POSIX-only code; use `tldr` for unfamiliar tools.
+
+  - name: verify-before-completion
+    description: No completion claims without fresh verification evidence
+    category: quality
+    recommended: true
+    rationale: "Agents must prove their work. Evidence before assertions prevents false claims."
+    content: |
+      No completion claims without fresh verification. See shared-rules **## Verification**.
+
+  - name: tasks-md-spec
+    description: "Follow the tasks.md spec (tasks.md) when reading or writing TASKS.md files"
+    category: task-management
+    recommended: true
+    rationale: "Consistent task format enables multi-agent coordination and tooling."
+    content: |
+      TASKS.md follows tasks.md spec — see shared-rules **## Task queues**. Lint with `npx @tasks-md/lint TASKS.md`.
+
+  - name: public-impersonation-ban
+    description: "Block agents from posting anything in public under the user's account without explicit per-action approval"
+    category: collaboration
+    recommended: true
+    rationale: "Agents posting as the user without approval causes real confusion and real harm. Approval must be per-action, not per-session, and never carries over between sessions."
+    content: |
+      No public posts/comments/reviews as the user without per-action approval; `gh pr create`/`gh pr edit` require it, except `/ship-it` for approved tooling/oncall delivery. Approved PRs need a why-needed rationale and `agent-attribution-footer`.
+
+  - name: load-project-context
+    description: "On entering any repo, scan for and load canonical project docs (vision, architecture, roadmap, user stories, competitors) into working context."
+    category: context
+    recommended: true
+    rationale: "Agents working in a project without its vision, architecture, and roadmap context produce drift — they reinvent solved problems, propose features that contradict strategy, and miss user-story constraints. Treating canonical docs as mandatory session context is the cheapest fix and the dominant 2026 pattern (AGENTS.md @-imports + cross-agent rules + SessionStart hooks)."
+    content: |
+      Before non-trivial work: `bash ~/.config/agentbrew/scripts/load-project-context.sh` — read listed files to depth 2. See shared-rules **## Session entry**.
+
+  - name: pr-vision-trace
+    description: "Add `## Vision trace` to PR bodies only when the repo has adopted the pr-vision-trace CI gate — never on enterprise GHE product repos."
+    category: quality
+    recommended: true
+    rationale: "The `load-project-context` rule loads VISION/user-story context for reasoning, but most repos — especially enterprise GHE product repos — do not run the pr-vision-trace CI gate. Agents were polluting those PRs with Vision trace sections copied from minsky-style templates. This rule scopes Vision trace to repos that explicitly adopted `scripts/check-pr-vision-trace.mjs` + `.github/workflows/pr-vision-trace.yml`."
+    content: |
+      Add `## Vision trace` only if root has pr-vision-trace CI gate (check script or workflow). Otherwise omit; enterprise GHE cites Jira. See shared-rules **## Session entry**.
+  - name: agent-attribution-footer
+    description: "Require a tool-neutral attribution footer on every agent-authored prose posted under the user's account"
+    category: collaboration
+    recommended: true
+    rationale: "Readers shouldn't have to guess whether a human or an agent wrote a Slack message, PR comment, commit, or Jira ticket posted under the user's name. A small tool-neutral footer disambiguates up-front without binding the user's identity to whichever specific agent happened to run the command (Devin, Windsurf, Claude, Cursor, etc.)."
+    content: |
+      Agent-authored public prose under the user's account ends with:
+          ---
+          _🤖 Written by an agent, not {{ user_name }}. Ping me if this looks off._
+
+      Required on GitHub PR descriptions/comments/reviews, Jira/Slack/email, and commit message bodies; omit code, titles, subjects, local notes.
+
+      NO TOOL-SPECIFIC ATTRIBUTION: never `Generated with [Devin]`, `Co-Authored-By: Devin`, or any tool-specific footer.
+

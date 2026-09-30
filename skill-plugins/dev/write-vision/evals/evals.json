@@ -1,0 +1,80 @@
+{
+  "skill_name": "write-vision",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a VISION.md for this new CLI project. It overlaps with several package managers and sync tools.",
+      "expected_output": "A durable decision-framework vision doc grounded in project identity, competitor scan, fatal gaps, and delegate→contribute→absorb verdicts.",
+      "expectations": [
+        "Reads project identity sources such as README, AGENTS, existing VISION, package metadata, and TASKS before asking new questions",
+        "Runs a broad market scan across GitHub, package ecosystems, alternatives links, and awesome lists",
+        "Classifies competitors by overlap percentage and gives direct competitors explicit delegate/contribute/keep-separate verdicts",
+        "Defines permanent scope as fatal gaps the ecosystem does not cover",
+        "Writes concise decision-framework sections and adds TASKS.md entries for delegate/contribute verdicts"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The market scan found two tools that cover everything except one tiny convenience feature. Write the vision anyway.",
+      "expected_output": "An honest halt that surfaces the possibility the project should dissolve into upstream contributions.",
+      "expectations": [
+        "Checks whether the fatal-gap list has zero or one durable item",
+        "Does not invent permanent scope to justify the project",
+        "Tells the user the project may not need to exist separately",
+        "Asks whether to continue writing a vision or reconsider the reason to exist",
+        "Treats dissolution into upstream contributions as a valid outcome"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review our architecture and give a one-time strategic analysis, but do not rewrite the durable vision doc.",
+      "expected_output": "A boundary-aware response that routes one-shot architecture analysis to strategic-review rather than write-vision.",
+      "expectations": [
+        "Distinguishes durable vision authoring from one-shot strategic analysis",
+        "Does not rewrite VISION.md when the user asked only for a review artifact",
+        "Recommends strategic-review for architecture fitness, pivot signals, and build/buy/kill analysis",
+        "Keeps write-vision for new docs or shifted strategic positioning",
+        "Avoids mixing code-level bug findings into a vision rewrite"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write a vision document for a new CLI tool that helps developers manage environment variables across multiple deployment environments.",
+      "expected_output": "A docs/VISION.md that articulates the market niche, applies delegate-contribute-absorb to every competitor, defines permanent scope as ecosystem gaps, and includes decision framework and re-evaluation triggers.",
+      "expectations": [
+        "Discovers at least 15-30 competitor tools using GitHub search, package ecosystem search, and awesome lists",
+        "Classifies each competitor by overlap percentage (80%+, 30-79%, <30%) and applies the 3-step test to direct competitors",
+        "For each 80%+ competitor, provides a specific verdict: Delegate (shell out to upstream), Contribute (file RFC/PR with 90-day window), or Keep separate (with documented reason)",
+        "Identifies fatal gaps (what no upstream tool covers) and halts if the list has zero or one item",
+        "Produces a vision doc with: problem statement, solution, primary user, core beliefs (including delegate-contribute-absorb), user stories, what we're building/not building, decision framework, success metrics, permanent scope list, and competitor verdicts table",
+        "Includes 4-8 concrete re-evaluation triggers (observable signals, not subjective judgment) that force reconsidering the strategy"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Our project's strategy has shifted. Rewrite the vision document to reflect that we're now focusing on enterprise features instead of open-source adoption.",
+      "expected_output": "An updated docs/VISION.md that reflects the new strategic direction, with updated competitor analysis, permanent scope redefinition, and re-evaluation triggers.",
+      "expectations": [
+        "Reads the existing VISION.md and identifies what's changed (target user, market positioning, build/buy/kill decisions)",
+        "Re-evaluates competitors in the context of the new strategy (some may become less relevant, new ones may emerge)",
+        "Updates the permanent scope list to reflect enterprise-specific gaps (compliance, audit logging, multi-tenancy, etc.)",
+        "Revises the decision framework to accept/reject features based on enterprise fit rather than open-source adoption",
+        "Updates success metrics to measure enterprise adoption (paying customers, enterprise features shipped) instead of GitHub stars",
+        "Includes a 'Current Positioning' section explaining the enterprise-first posture with a reversal path if the strategy changes again"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I'm starting a new project and need a vision document that will guide all future feature decisions. The project is currently just me, so breaking changes are free.",
+      "expected_output": "A concise docs/VISION.md (200-300 lines) that clearly defines the project's niche, permanent scope, and decision framework, with explicit acknowledgment of single-user status and breaking-changes-free posture.",
+      "expectations": [
+        "Establishes project identity: one-sentence problem, one-paragraph solution, one command/workflow, primary user (the author), current user count (1)",
+        "Discovers and classifies 15+ competitors, applying the 3-step test to each 80%+ overlap",
+        "Identifies fatal gaps that justify the project's existence (if none found, halts and recommends dissolving into upstream contributions)",
+        "Explicitly states 'Today's user base: 1 (the author). Breaking changes are free until user count grows past [threshold].'",
+        "Defines permanent scope as the fatal-gap list with one sentence per gap explaining why no upstream tool covers it",
+        "Includes a decision framework with Rule #1: 'Does this fit the permanent scope, or is it a delegation candidate?'"
+      ]
+    }
+  ]
+}

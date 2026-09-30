@@ -1,0 +1,242 @@
+[
+  {
+    "label": "allow-repo-skill-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-1/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-2/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-3/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-4/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-5/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-6/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-7/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-8/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-9/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "allow-repo-skill-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/skill-plugins/dev/example-10/SKILL.md",
+        "content": "# Example skill"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-1/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-2/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-3/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-4/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-5/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-6/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-7/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-8/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-9/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  },
+  {
+    "label": "block-wrong-path-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/repo/.claude/skills/team-only-10/SKILL.md",
+        "content": "# Team skill in wrong repo"
+      }
+    }
+  }
+]

@@ -1,0 +1,136 @@
+# sources.yaml — canonical registry of skill, MCP, and rule sources
+# Used by `agentbrew sync` for periodic fetching and by `agentbrew catalog --sources` for discovery.
+# Each source declares what it provides so agentbrew knows what to fetch.
+#
+# Schema:
+#   name:        GitHub shorthand (user/repo) or URL
+#   description: What this source offers
+#   provides:    [skills] | [skills, mcp] | [skills, rules] — what to fetch
+#   category:    Grouping for display
+#   recommended: true = auto-add on `agentbrew install --recommended`
+
+# ── Official / Major ──────────────────────────────────────────────
+
+- name: anthropics/skills
+  description: "Official Anthropic — frontend-design, mcp-builder, skill-creator, webapp-testing, pdf/docx/xlsx/pptx"
+  provides: [skills]
+  category: official
+  recommended: true
+
+- name: anthropics/claude-plugins-official
+  description: "Official Anthropic plugin marketplace (23.8k★) — frontend-design (760k installs), build-mcp-app, build-mcp-server, mcp-server-dev, hookify, code-modernization, ralph-loop, pr-review-toolkit, skill-creator, session-report, agent-sdk-dev, security-guidance, plugin-dev, and 11 LSP plugins. By May 2026 the canonical distribution channel for Claude Code."
+  provides: [skills]
+  category: official
+  recommended: true
+
+- name: modelcontextprotocol/ext-apps
+  description: "Official MCP Apps protocol repo (SEP-1865, stabilized 2026-01-26, 2.3k★). MCP tools can declare ui:// resources that render as sandboxed iframes inside Claude, ChatGPT, VS Code, Goose, Postman, MCPJam. Provides 4 skills: create-mcp-app (scaffold), migrate-oai-app (OpenAI Apps SDK port), add-app-to-server (retrofit), convert-web-app (hybrid)."
+  provides: [skills]
+  category: official
+  recommended: true
+
+- name: vercel-labs/agent-skills
+  description: "Vercel Engineering — react-best-practices, web-design-guidelines, composition-patterns, react-native"
+  provides: [skills]
+  category: official
+  recommended: true
+
+- name: vercel-labs/skills
+  description: "The skills CLI + find-skills meta skill"
+  provides: [skills]
+  category: official
+  recommended: true
+
+- name: obra/superpowers
+  description: "Complete dev methodology — debugging, TDD, planning, code review, verification, parallel agents. Install paths for Claude Code, Cursor, Codex, Gemini CLI, OpenCode, and more."
+  provides: [skills]
+  category: methodology
+  recommended: true
+
+- name: EveryInc/compound-engineering-plugin
+  description: "Every Inc Compound Engineering — knowledge accumulation (/ce:compound), brainstorm→plan→work→review pipeline, multi-agent review, worktrees. Official plugin for Claude Code, Codex, Cursor, and more."
+  provides: [skills]
+  category: methodology
+  recommended: true
+
+- name: garrytan/gstack
+  description: "Opinionated sprint pipeline — Think (office-hours), Plan (autoplan + multi-lens reviews), Build, Review, Test (qa), Ship, Reflect (retro). Decision discipline + real-browser QA with regression tests."
+  provides: [skills]
+  category: methodology
+  recommended: true
+
+# ── Strong Community ──────────────────────────────────────────────
+
+- name: vercel-labs/agent-browser
+  description: "Browser automation CLI — navigate, snapshot, interact, screenshot, diff, auth"
+  provides: [skills]
+  category: browser
+  recommended: false
+
+- name: pbakaus/impeccable
+  description: "Chrome DevRel design vocabulary — 23 commands, brand+product modes, optional CLI scanner + Chrome extension"
+  provides: [skills]
+  category: design
+  recommended: false
+
+- name: supabase/agent-skills
+  description: "Postgres optimization — 8 categories of best practices"
+  provides: [skills]
+  category: database
+  recommended: false
+
+- name: remotion-dev/skills
+  description: "Programmatic video creation — #5 on skills.sh (147K installs)"
+  provides: [skills]
+  category: creative
+  recommended: false
+
+- name: tavily-ai/skills
+  description: "Web search skill — real-time lookups, content extraction, site mapping"
+  provides: [skills]
+  category: utility
+  recommended: false
+
+- name: currents-dev/playwright-best-practices-skill
+  description: "Advanced Playwright patterns for heavy test suites"
+  provides: [skills]
+  category: testing
+  recommended: false
+
+- name: shadcn/ui
+  description: "Official shadcn/ui skill for component usage and patterns"
+  provides: [skills]
+  category: design
+  recommended: false
+
+- name: vercel-labs/next-skills
+  description: "Next.js best practices from Vercel"
+  provides: [skills]
+  category: framework
+  recommended: false
+
+# ── Specialized ───────────────────────────────────────────────────
+
+- name: openai/skills
+  description: "Official Codex catalog — skill-creator, gh-address-comments"
+  provides: [skills]
+  category: official
+  recommended: false
+
+- name: microsoft/skills
+  description: "Mostly Azure SDK-specific skills. General: mcp-builder"
+  provides: [skills]
+  category: cloud
+  recommended: false
+
+- name: huggingface/skills
+  description: "AI/ML-focused — model training, dataset creation, Hub operations"
+  provides: [skills]
+  category: ml
+  recommended: false
+
+- name: sebastian-software/effective-ui-design-skill
+  description: "Effective UI Design — the technical layer Anthropic's frontend-design skill leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, :user-valid/:user-invalid form patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
+  provides: [skills]
+  category: design
+  recommended: true

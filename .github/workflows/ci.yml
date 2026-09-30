@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          GITLEAKS_VERSION="8.24.3"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan for secrets
+        run: gitleaks detect --source . --verbose --no-banner
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Security audit
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: Skill eval coverage
+        run: npm run skills:coverage
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Agent config bloat lint
+        run: node dist/cli.js lint
+
+      - name: Check source line count
+        run: |
+          # Warn (not fail) when non-test source lines exceed 18K.
+          # Target is to keep the codebase below 20K — delete before adding.
+          count=$(find src -name '*.ts' ! -name '*.test.ts' | xargs wc -l | tail -1 | awk '{print $1}')
+          echo "Non-test source lines: $count / 18000 warning threshold"
+          if [ "$count" -gt 18000 ]; then
+            echo "::warning::Source line count ($count) exceeds 18K — delete before adding more code"
+          else
+            echo "✓ Source line count within budget"
+          fi
+
+      - name: Verify dist
+        run: |
+          test -f dist/cli.js || { echo "ERROR: dist/cli.js missing"; exit 1; }
+          test -f dist/catalog.yaml || { echo "ERROR: dist/catalog.yaml missing"; exit 1; }
+          node dist/cli.js --version

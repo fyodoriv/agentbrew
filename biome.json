@@ -1,0 +1,84 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noForEach": "off",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": { "maxAllowedComplexity": 15 }
+        },
+        "useMaxParams": {
+          "level": "error",
+          "options": { "max": 5 }
+        }
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "error"
+      },
+      "performance": {
+        "noDelete": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "useConst": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noControlCharactersInRegex": "error",
+        "noAssignInExpressions": "error",
+        "noConsole": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off",
+            "noConsole": "off",
+            "noExplicitAny": "off",
+            "noControlCharactersInRegex": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off",
+            "useMaxParams": "off"
+          }
+        }
+      }
+    }
+  ],
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!./.worktrees",
+      "!**/*.json",
+      "!**/*.md",
+      "!**/*.yaml"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "skill_name": "agentbrew-add-command",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a reusable `/release-checklist` command that all my agents can run.",
+      "expected_output": "A canonical Markdown command under agentbrew's command source plus sync/verification steps.",
+      "expectations": [
+        "Writes one canonical Markdown file under `~/.config/agentbrew/commands/` rather than editing per-agent copies",
+        "Includes YAML frontmatter with a concise `description`",
+        "Keeps the command focused on one workflow and uses a kebab-case filename",
+        "Runs `agentbrew sync` or `agentbrew sync --only commands` and verifies with `agentbrew commands list`"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Can you make step two of this Cursor workflow auto-run without prompting?",
+      "expected_output": "A command edit that uses the documented turbo annotation and explains the per-agent transform.",
+      "expectations": [
+        "Uses `<!-- turbo -->` above the intended step in the canonical command file",
+        "Explains that agentbrew transforms the annotation to Cursor's `// turbo` form",
+        "Does not place Cursor-specific command content directly in `~/.cursor/commands/`",
+        "Runs a commands-only sync after editing the canonical file"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I edited `~/.claude/commands/deploy.md`; make sure Windsurf gets the same change.",
+      "expected_output": "Correction that per-agent copies are generated outputs and the canonical file must be edited instead.",
+      "expectations": [
+        "Identifies `~/.claude/commands/` as a generated per-agent output path",
+        "Moves or reapplies the change to the canonical `~/.config/agentbrew/commands/<name>.md` source",
+        "Runs `agentbrew sync --only commands` to deploy the change to all command targets",
+        "Warns that agentbrew overwrites per-agent copies on sync"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a `/deploy-prod` command that includes my production API token so every agent can run it.",
+      "expected_output": "A refusal to place secrets in command files, with a safer environment-based alternative.",
+      "expectations": [
+        "Refuses to put the API token or any secret in the command Markdown file",
+        "Explains that command files are plaintext and deployed to all agent directories",
+        "Suggests referencing an environment variable or secret manager instead of embedding the value",
+        "Still uses the canonical `~/.config/agentbrew/commands/<name>.md` source for any non-secret command text"
+      ]
+    }
+  ]
+}

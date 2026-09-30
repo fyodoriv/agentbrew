@@ -1,0 +1,222 @@
+[
+  {
+    "label": "allow-matching-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 100 --body \"## Summary\\nUpdates hook fixture discovery for verifier 1.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 101 --body \"## Summary\\nUpdates hook fixture discovery for verifier 2.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 102 --body \"## Summary\\nUpdates hook fixture discovery for verifier 3.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 103 --body \"## Summary\\nUpdates hook fixture discovery for verifier 4.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 104 --body \"## Summary\\nUpdates hook fixture discovery for verifier 5.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 105 --body \"## Summary\\nUpdates hook fixture discovery for verifier 6.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 106 --body \"## Summary\\nUpdates hook fixture discovery for verifier 7.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 107 --body \"## Summary\\nUpdates hook fixture discovery for verifier 8.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 108 --body \"## Summary\\nUpdates hook fixture discovery for verifier 9.\""
+      }
+    }
+  },
+  {
+    "label": "allow-matching-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 109 --body \"## Summary\\nUpdates hook fixture discovery for verifier 10.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 200 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 201 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 202 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 203 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 204 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 205 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 206 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 207 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 208 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  },
+  {
+    "label": "block-stale-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "gh pr edit 209 --body \"## Summary\\nRemoves deprecated OAuth flow entirely.\""
+      }
+    }
+  }
+]

@@ -1,0 +1,11 @@
+# Git hooks for agentbrew, run via the shared lefthook wrappers in the repo's
+# git-hooks dir (core.hooksPath). lefthook must be on PATH or resolvable in
+# node_modules for these to fire — see AGENTS.md "Global git hooks".
+#
+# pre-push: block a push that would leak internal identifiers to GitHub.com.
+# Fast (~250ms) — runs only the OSS-readiness gate under src/oss/, so a leak
+# is caught before it can reach main. Nothing rewrites history later.
+pre-push:
+  commands:
+    oss-readiness:
+      run: npm run check:oss

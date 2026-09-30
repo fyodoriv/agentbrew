@@ -1,0 +1,49 @@
+{
+  "skill_name": "context-budget",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our Cursor sessions feel context-heavy — audit the agentbrew token budget.",
+      "expected_output": "A metrics-driven audit using latest.json and agentbrew measure context, with lint failures and TASKS.md trim candidates.",
+      "expectations": [
+        "Reads or refreshes ~/.config/agentbrew/metrics/latest.json via agentbrew measure context",
+        "Runs or references agentbrew lint for actionable static failures",
+        "Compares projectedDeployedTokens and topSections to thresholds in the snapshot",
+        "Searches TASKS.md for token/trim tasks or files new ones with measured evidence",
+        "Does not invent token counts without running measure context or reading latest.json"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Just tell me we're under 8k tokens without measuring anything.",
+      "expected_output": "A refusal to claim budget compliance without reading latest.json or running agentbrew measure context.",
+      "expectations": [
+        "Refuses to claim under-budget status without evidence from latest.json or measure context",
+        "Offers to run agentbrew measure context or read ~/.config/agentbrew/metrics/latest.json",
+        "Does not fabricate projectedDeployedTokens or section sizes"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Build a custom JSONL parser for Cursor transcripts to track tokens.",
+      "expected_output": "A pushback toward ccusage and session-report instead of a bespoke parser.",
+      "expectations": [
+        "Declines building a custom JSONL parser or duplicate dashboard",
+        "Points to ccusage (bunx ccusage) and the session-report skill for runtime usage",
+        "Uses agentbrew measure context for static config metrics",
+        "Cites GET-don't-build / prefer-reuse discipline"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The Cursor context ring shows 85% — what should we trim first?",
+      "expected_output": "Investigation ordered by latest.json topSections, lint output, and TASKS.md P1 trim tasks; manual ring note saved if needed.",
+      "expectations": [
+        "Uses latest.json topSections and projectedDeployedTokens to prioritize trim targets",
+        "Checks TASKS.md for existing trim-shared-rules or token-budget tasks",
+        "Documents that Cursor ring has no API and may suggest manual-snapshots/ logging",
+        "Does not delete shared-rules content without an explicit trim task or user approval"
+      ]
+    }
+  ]
+}

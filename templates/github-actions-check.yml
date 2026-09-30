@@ -1,0 +1,42 @@
+# AgentBrew Drift Check — GitHub Actions workflow template
+#
+# Copy this file to .github/workflows/agentbrew-check.yml in your repo.
+# It runs `agentbrew status --ci` on every push and PR to detect config drift.
+#
+# Prerequisites:
+#   - Node.js 20+
+#   - agentbrew installed (npm install -g agentbrew)
+#   - agentbrew init has been run at least once on the machine
+#
+# Customize the schedule cron to control how often drift checks run.
+
+name: AgentBrew Drift Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 8am UTC to catch drift from manual config edits
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install agentbrew
+        run: npm install -g agentbrew
+
+      - name: Initialize agentbrew
+        run: agentbrew init --force
+
+      - name: Check for drift
+        run: agentbrew status --ci

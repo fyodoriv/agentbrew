@@ -1,0 +1,162 @@
+[
+  {
+    "label": "allow-action-1",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 1 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-2",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 2 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-3",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 3 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-4",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 4 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-5",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 5 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-6",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 6 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-7",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 7 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-8",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 8 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-9",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 9 and paste the failing output."
+    }
+  },
+  {
+    "label": "allow-action-10",
+    "expectedVerdict": "ALLOW",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Run npm test in 10 and paste the failing output."
+    }
+  },
+  {
+    "label": "block-map-1",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 1."
+    }
+  },
+  {
+    "label": "block-map-2",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 2."
+    }
+  },
+  {
+    "label": "block-map-3",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 3."
+    }
+  },
+  {
+    "label": "block-map-4",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 4."
+    }
+  },
+  {
+    "label": "block-map-5",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 5."
+    }
+  },
+  {
+    "label": "block-map-6",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 6."
+    }
+  },
+  {
+    "label": "block-map-7",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 7."
+    }
+  },
+  {
+    "label": "block-map-8",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 8."
+    }
+  },
+  {
+    "label": "block-map-9",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 9."
+    }
+  },
+  {
+    "label": "block-map-10",
+    "expectedVerdict": "BLOCK",
+    "input": {
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Read src/a.ts then src/b.ts then docs/c.md for context 10."
+    }
+  }
+]

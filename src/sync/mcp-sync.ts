@@ -110,9 +110,14 @@ export function getMcpmIntersectionAgents(stateAgents: AgentConfig[]): AgentConf
   ).map((def) => ({ ...def, detected: true }));
 }
 
-/** Intersection clients that can load a remote HTTPS entry from their MCP config file. */
+/**
+ * Intersection clients that can load a remote HTTPS entry from their MCP config file.
+ * Yaml configs (goose) are skipped: their adapter is read-only.
+ */
 export function getNativeHttpTargetAgents(stateAgents: AgentConfig[]): AgentConfig[] {
-  return getMcpmIntersectionAgents(stateAgents).filter((agent) => !STDIO_ONLY_MCP_AGENTS.has(agent.name));
+  return getMcpmIntersectionAgents(stateAgents).filter(
+    (agent) => !STDIO_ONLY_MCP_AGENTS.has(agent.name) && agent.mcpFormat !== "yaml",
+  );
 }
 
 /**

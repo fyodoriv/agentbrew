@@ -24,6 +24,7 @@ remote_ref="$publish_remote/$publish_branch"
 quick=false
 npm_publish_args=()
 restore_private=false
+private_backup=""
 
 usage() {
   cat <<'EOF'
@@ -78,8 +79,8 @@ EOF
 }
 
 restore_private_field() {
-  if [[ "$restore_private" == true ]]; then
-    npm pkg set private=true --json >/dev/null
+  if [[ "$restore_private" == true && -f "$private_backup" ]]; then
+    mv "$private_backup" package.json
   fi
 }
 
@@ -164,6 +165,8 @@ sync_release_files_from_remote() {
 
 maybe_strip_private_field() {
   if node -e "process.exit(require('./package.json').private ? 0 : 1)"; then
+    private_backup="$(mktemp)"
+    cp package.json "$private_backup"
     restore_private=true
     npm pkg delete private >/dev/null
     echo "✓ Temporarily removed package.json private flag for publish"

@@ -86,7 +86,8 @@ describe("publish-latest npm script", () => {
     const content = scriptSource();
 
     expect(content).toContain("trap restore_private_field EXIT");
-    expect(content).toContain("npm pkg set private=true");
+    expect(content).toContain('cp package.json "$private_backup"');
+    expect(content).toContain('mv "$private_backup" package.json');
     expect(content).toContain("npm pkg delete private");
   });
 

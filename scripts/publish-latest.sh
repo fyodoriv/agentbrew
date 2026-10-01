@@ -79,7 +79,7 @@ EOF
 
 restore_private_field() {
   if [[ "$restore_private" == true ]]; then
-    npm pkg set private=true >/dev/null
+    npm pkg set private=true --json >/dev/null
   fi
 }
 

@@ -298,6 +298,13 @@
   - **Files**: src/agentfile-apply.ts, src/agentfile-apply.test.ts, src/core/state.ts
   - **Acceptance**: (1) every `origin: agentfile` entry records its owning Agentfile; (2) an apply removes entries owned by that Agentfile that it no longer declares; (3) entries owned by other Agentfiles or added by the user are never removed; (4) a regression test covers a moved `commands:` path.
 
+- [ ] Clear dev-dependency audit findings
+  - **ID**: dev-dependency-audit-findings
+  - **Tags**: security, dependencies, stability
+  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. `npm audit` still reports 48 findings in dev-only dependencies (5 low, 18 moderate, 25 high), and GitHub Dependabot flags the default branch. Fix them with semver-compatible updates first, then handle any major bumps one package at a time.
+  - **Files**: package.json, package-lock.json
+  - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
+
 - [ ] Fix or retire the LLM verifier tier — all 12 verifiers fail open and never enforce
   - **ID**: llm-verifier-tier-never-returns-verdict
   - **Tags**: scout, hooks, llm-verifier, verification, latency, stability

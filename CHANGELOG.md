@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-01
+
+### Security
+
+- **Runtime dependency fixes** — `js-yaml` 4.3.2 fixes quadratic CPU use
+  from crafted YAML merge keys. `fast-uri` 3.1.8 (through `ajv`) fixes host
+  confusion and request-forgery bugs. `npm audit --omit=dev` is now clean.
+
+### Fixed
+
+- **Publish preflight** — `npm run publish:latest` stops early on npm older
+  than 11, which cannot install this lockfile or stage a publish.
+- **Clean tree after publish** — the publish script restores `package.json`
+  byte for byte instead of moving the `private` key.
+
 ## [0.3.4] - 2026-10-01
 
 First npm release built from the clean public history. Versions 0.3.3 and

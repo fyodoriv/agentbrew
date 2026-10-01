@@ -24,6 +24,7 @@ remote_ref="$publish_remote/$publish_branch"
 quick=false
 npm_publish_args=()
 restore_private=false
+private_backup=""
 
 usage() {
   cat <<'EOF'
@@ -78,8 +79,8 @@ EOF
 }
 
 restore_private_field() {
-  if [[ "$restore_private" == true ]]; then
-    npm pkg set private=true --json >/dev/null
+  if [[ "$restore_private" == true && -f "$private_backup" ]]; then
+    mv "$private_backup" package.json
   fi
 }
 
@@ -109,6 +110,17 @@ preflight_npm_auth() {
     exit 1
   fi
   echo "✓ npm authenticated as $npm_user"
+}
+
+# npm 10 rejects this lockfile in `npm ci` (optional peers) and npm 11.15+
+# is required for staged publishing.
+preflight_npm_version() {
+  local npm_version npm_major
+  npm_version="$(npm --version 2>/dev/null || true)"
+  npm_major="${npm_version%%.*}"
+  if [[ "$npm_major" =~ ^[0-9]+$ ]] && (( npm_major < 11 )); then
+    die "npm $npm_version is too old to publish agentbrew; use npm 11 or newer (for example: fnm exec --using=<node-with-npm-11> npm run publish:latest)."
+  fi
 }
 
 preflight_git_remote() {
@@ -153,6 +165,8 @@ sync_release_files_from_remote() {
 
 maybe_strip_private_field() {
   if node -e "process.exit(require('./package.json').private ? 0 : 1)"; then
+    private_backup="$(mktemp)"
+    cp package.json "$private_backup"
     restore_private=true
     npm pkg delete private >/dev/null
     echo "✓ Temporarily removed package.json private flag for publish"
@@ -183,6 +197,7 @@ publish_to_npm() {
 }
 
 echo "🔍 Preflight..."
+preflight_npm_version
 preflight_npm_auth
 preflight_git_remote
 sync_release_files_from_remote

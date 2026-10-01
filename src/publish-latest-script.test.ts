@@ -86,7 +86,8 @@ describe("publish-latest npm script", () => {
     const content = scriptSource();
 
     expect(content).toContain("trap restore_private_field EXIT");
-    expect(content).toContain("npm pkg set private=true");
+    expect(content).toContain('cp package.json "$private_backup"');
+    expect(content).toContain('mv "$private_backup" package.json');
     expect(content).toContain("npm pkg delete private");
   });
 
@@ -95,6 +96,28 @@ describe("publish-latest npm script", () => {
 
     expect(content).toContain('npm publish --access public "${npm_publish_args[@]}"');
     expect(content).toContain("npm_publish_args+=(");
+  });
+
+  it("refuses to publish with npm older than 11", () => {
+    const temporaryDirectory = createFixtureDirectory();
+
+    writeFakeCommand(
+      temporaryDirectory,
+      "npm",
+      `#!/usr/bin/env bash
+if [[ "$1" == "--version" ]]; then
+  echo "10.9.7"
+  exit 0
+fi
+echo "unexpected npm args: $*" >&2
+exit 1
+`,
+    );
+
+    const result = runPublishLatest(temporaryDirectory);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr + result.stdout).toContain("npm 10.9.7 is too old to publish agentbrew");
   });
 
   it("fails fast with npm login guidance when npm whoami is missing", () => {

@@ -364,6 +364,36 @@ describe("removeMcpServer", () => {
     const saved = mockSaveState.mock.calls[0][0];
     expect(saved.mcpServers).toHaveLength(0);
   });
+
+  it("records the removed server so recommended installs skip it", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [],
+      sources: [],
+      mcpServers: [makeServer({ name: "remove-me" })],
+      declinedMcpServers: ["older"],
+      catalogVersion: "0.1.0",
+    });
+
+    await removeMcpServer("remove-me");
+    const saved = mockSaveState.mock.calls[0][0];
+    expect(saved.declinedMcpServers).toEqual(["older", "remove-me"]);
+  });
+});
+
+describe("addMcpServer — declined servers", () => {
+  it("clears the declined record when the user adds the server back", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [],
+      sources: [],
+      mcpServers: [],
+      declinedMcpServers: ["back-again", "other"],
+      catalogVersion: "0.1.0",
+    });
+
+    await addMcpServer("back-again", "npx", ["-y", "back-again"], {});
+    const saved = mockSaveState.mock.calls.at(-1)?.[0];
+    expect(saved?.declinedMcpServers).toEqual(["other"]);
+  });
 });
 
 // Slice 4a of `delegate-mcp-to-mcpm`: claude-code is in MCP_INTERSECTION_AGENTS
@@ -490,10 +520,31 @@ describe("syncMcpServers — bridgeStateMcpToMcpm", () => {
         return JSON.stringify({ permissions: { allow: ["Read(**)"] } });
       }
       if (p.includes(".claude.json")) {
-        return JSON.stringify({ mcpServers: {} });
+        return JSON.stringify({ mcpServers: { mcpm_time: { command: "mcpm" }, mcpm_fetch: { command: "mcpm" } } });
       }
       return "{}";
     });
+  });
+
+  it("re-wires a server that an intersection client cannot reach even when mcpm matches", async () => {
+    mockMcpServerConfigEquals.mockReturnValue(true);
+    mockReadFileSync.mockImplementation((path) => {
+      const p = String(path);
+      if (p.includes(".claude.json")) return JSON.stringify({ mcpServers: { mcpm_time: { command: "mcpm" } } });
+      return "{}";
+    });
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "~/.claude.json" }],
+      sources: [],
+      mcpServers: [makeServer({ name: "time" }), makeServer({ name: "fetch" })],
+      catalogVersion: "0.1.0",
+    });
+
+    await syncMcpServers();
+
+    expect(mockDelegateMcpNew).toHaveBeenCalledTimes(1);
+    expect(mockDelegateMcpNew).toHaveBeenCalledWith(expect.objectContaining({ serverName: "fetch" }));
+    expect(mockDelegateMcpClientEdit).toHaveBeenCalledTimes(1);
   });
 
   it("registers exact state definitions and edits clients when claude-code is detected", async () => {

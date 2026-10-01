@@ -64,7 +64,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { errorMessage } from "../core/errors.js";
@@ -578,6 +578,29 @@ function buildMcpmNewArgs(opts: DelegateMcpNewOptions): string[] {
 }
 
 /**
+ * Write the exact stdio args back into mcpm's `servers.json`.
+ *
+ * `mcpm new --args` splits its value with Python's `str.split()`, so an
+ * argument that contains whitespace (for example a `bash -lc` script)
+ * arrives as several broken tokens. `mcpm run` reads `servers.json` at
+ * launch, so restoring the array there is enough to make the entry work.
+ */
+function restoreMcpmServerArgs(serverName: string, args: readonly string[]): void {
+  const configPath = join(mcpmConfigDir(), "servers.json");
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, McpmServerEntry>;
+    const entry = parsed[serverName];
+    if (!entry) return;
+    entry.args = [...args];
+    const tmpPath = `${configPath}.agentbrew-${process.pid}.tmp`;
+    writeFileSync(tmpPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf-8");
+    renameSync(tmpPath, configPath);
+  } catch (e) {
+    logSkipped(`sync/mcp-delegate/restoreMcpmServerArgs(${configPath})`, e);
+  }
+}
+
+/**
  * Run `mcpm new <name> ...` non-interactively to register a custom
  * MCP server with mcpm's global config. Slice 3 of
  * `bridge-mcp-sync-to-mcpm-for-intersection` — the missing piece for
@@ -612,6 +635,9 @@ export function delegateMcpNew(opts: DelegateMcpNewOptions): DelegateMcpNewResul
       timeout: 60_000,
       encoding: "utf-8",
     });
+    if (!opts.url && opts.args?.some((arg) => /\s/.test(arg))) {
+      restoreMcpmServerArgs(opts.serverName, opts.args);
+    }
     return { ok: true, stdout };
   } catch (e) {
     logSkipped(`sync/mcp-delegate/new(${bin} ${opts.serverName}): ${errorMessage(e)}`, e);

@@ -1470,6 +1470,27 @@ describe("installRecommended", () => {
     existsSpy.mockRestore();
   });
 
+  it("does not re-add a recommended MCP server the user removed", async () => {
+    mockLoadState.mockReturnValue({ ...makeState(), declinedMcpServers: ["declined-mcp"] });
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      mcp_servers: [
+        { name: "declined-mcp", description: "Removed", category: "testing", command: "node", recommended: true },
+        { name: "wanted-mcp", description: "Kept", category: "testing", command: "node", recommended: true },
+      ],
+      rules: [],
+      cli_tools: [],
+    });
+    const existsSpy = vi.spyOn(await import("node:fs"), "existsSync").mockReturnValue(false);
+
+    await install(undefined, { recommended: true });
+
+    const added = mockAddMcpServer.mock.calls.map((call) => call[0]);
+    expect(added).toContain("wanted-mcp");
+    expect(added).not.toContain("declined-mcp");
+    existsSpy.mockRestore();
+  });
+
   it("installs recommended cli tools alongside skills and mcp servers", async () => {
     mockLoadState.mockReturnValue(makeState());
     const existsSpy = vi.spyOn(await import("node:fs"), "existsSync").mockReturnValue(false);

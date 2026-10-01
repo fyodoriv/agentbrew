@@ -453,6 +453,41 @@ describe("delegateMcpNew — argv construction", () => {
   });
 });
 
+describe("delegateMcpNew — args containing whitespace", () => {
+  afterEach(() => {
+    delete process.env.AGENTBREW_MCPM_CONFIG_DIR;
+  });
+
+  it("restores the exact args after mcpm splits --args on whitespace", () => {
+    const configDir = join(testRoot, "mcpm-config");
+    mkdirSync(configDir, { recursive: true });
+    process.env.AGENTBREW_MCPM_CONFIG_DIR = configDir;
+    const fakeBin = join(testRoot, "fake-mcpm-split.py");
+    writeFileSync(
+      fakeBin,
+      [
+        "#!/usr/bin/env python3",
+        "import json, sys",
+        "argv = sys.argv[1:]",
+        "name = argv[1]",
+        "command = argv[argv.index('--command') + 1]",
+        "args = argv[argv.index('--args') + 1].split()",
+        `path = ${JSON.stringify(join(configDir, "servers.json"))}`,
+        "json.dump({name: {'name': name, 'command': command, 'args': args, 'env': {}}}, open(path, 'w'))",
+        "",
+      ].join("\n"),
+      { encoding: "utf-8", mode: 0o755 },
+    );
+    process.env.AGENTBREW_MCPM_BIN = fakeBin;
+    const script = 'overlay="$HOME/overlay"; exec "$overlay/bin/wrapper.sh"';
+
+    const result = delegateMcpNew({ serverName: "wrapped", command: "/bin/bash", args: ["-lc", script] });
+
+    expect(result.ok).toBe(true);
+    expect(readMcpmServer("wrapped")?.args).toEqual(["-lc", script]);
+  });
+});
+
 describe("delegateMcpNew — failure modes", () => {
   it("returns ok=false when the binary is missing (ENOENT graceful fallback)", () => {
     process.env.AGENTBREW_MCPM_BIN = "/nonexistent/path/to/mcpm-bin-that-does-not-exist";

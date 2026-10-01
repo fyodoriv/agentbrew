@@ -147,6 +147,17 @@ describe("stdio-only client (claude-desktop)", () => {
     expect(names).not.toContain("claude-desktop");
   });
 
+  it("skips clients whose MCP config adapter cannot write", () => {
+    const agents = [
+      { name: "goose", detected: true },
+      { name: "codex", detected: true },
+    ] as AgentConfig[];
+    const names = getNativeHttpTargetAgents(agents).map((agent) => agent.name);
+
+    expect(names).toContain("codex");
+    expect(names).not.toContain("goose");
+  });
+
   it("prunes remote entries agentbrew wrote and keeps stdio, user, and other settings", () => {
     const agent = { name: "claude-desktop", mcpConfig: configPath } as AgentConfig;
     const removed = pruneManagedRemoteEntries(agent, new Set(["figma", "context7"]), false);

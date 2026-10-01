@@ -22,6 +22,7 @@ import { getEnvFormat, hasUnresolvedLiterals, resolveEnvVar } from "../mcp/env-v
 import { getServers, readMcpJson, setServers, writeMcpJson } from "../mcp/mcp.js";
 import { filterInvalidServers } from "../mcp/mcp-validation.js";
 import {
+  reconcileIntersectionClientEntries,
   sweepMcpmHygiene,
   uninstallBrokenMcpmRegistryServers,
   uninstallNativeOnlyMcpmServers,
@@ -109,9 +110,14 @@ export function getMcpmIntersectionAgents(stateAgents: AgentConfig[]): AgentConf
   ).map((def) => ({ ...def, detected: true }));
 }
 
-/** Intersection clients that can load a remote HTTPS entry from their MCP config file. */
+/**
+ * Intersection clients that can load a remote HTTPS entry from their MCP config file.
+ * Yaml configs (goose) are skipped: their adapter is read-only.
+ */
 export function getNativeHttpTargetAgents(stateAgents: AgentConfig[]): AgentConfig[] {
-  return getMcpmIntersectionAgents(stateAgents).filter((agent) => !STDIO_ONLY_MCP_AGENTS.has(agent.name));
+  return getMcpmIntersectionAgents(stateAgents).filter(
+    (agent) => !STDIO_ONLY_MCP_AGENTS.has(agent.name) && agent.mcpFormat !== "yaml",
+  );
 }
 
 /**
@@ -879,7 +885,10 @@ function bridgeStateMcpToMcpm(
   // Compare exact definitions, not only names. This keeps steady-state syncs
   // subprocess-free while repairing stale mcpm entries after an Agentfile
   // changes a server's backend or transport.
-  const changed = servers.filter((server) => !mcpServerConfigEquals(server, readMcpmServer(server.name)));
+  const unreachable = reconcileIntersectionClientEntries(AGENT_DEFINITIONS, detectedAgents, servers);
+  const changed = servers.filter(
+    (server) => unreachable.has(server.name) || !mcpServerConfigEquals(server, readMcpmServer(server.name)),
+  );
   if (changed.length === 0) return;
 
   const bridged: string[] = [];
@@ -1241,7 +1250,7 @@ function runPostSyncMcpmHygieneSweep(
         false,
       ),
     ];
-    const results = sweepMcpmHygiene({ stateServerNames });
+    const results = sweepMcpmHygiene({ stateServerNames, agentDefinitions: AGENT_DEFINITIONS });
     const removedKeys = results.reduce((sum, result) => sum + result.removedKeys.length, 0);
     const fixedGithub = results.filter((result) => result.fixedGithub).length;
     const fixedMemory = results.filter((result) => result.fixedMemory).length;

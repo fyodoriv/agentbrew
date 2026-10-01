@@ -376,7 +376,8 @@ interface PendingRecommended {
 
 function computePendingRecommended(items: RecommendedItems): PendingRecommended {
   const skills = items.skills.filter((s) => !isAlreadyInstalled(s));
-  const mcp = items.mcp.filter((s) => !isMcpServerRegistered(s));
+  const declined = new Set(loadState()?.declinedMcpServers ?? []);
+  const mcp = items.mcp.filter((s) => !declined.has(s.name) && !isMcpServerRegistered(s));
   const rules = items.rules.filter((r) => !isRuleInSharedRules(r));
   const cliTools = items.cliTools.filter((t) => !areCliToolCommandsInstalled(t));
   return {

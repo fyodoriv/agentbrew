@@ -364,6 +364,36 @@ describe("removeMcpServer", () => {
     const saved = mockSaveState.mock.calls[0][0];
     expect(saved.mcpServers).toHaveLength(0);
   });
+
+  it("records the removed server so recommended installs skip it", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [],
+      sources: [],
+      mcpServers: [makeServer({ name: "remove-me" })],
+      declinedMcpServers: ["older"],
+      catalogVersion: "0.1.0",
+    });
+
+    await removeMcpServer("remove-me");
+    const saved = mockSaveState.mock.calls[0][0];
+    expect(saved.declinedMcpServers).toEqual(["older", "remove-me"]);
+  });
+});
+
+describe("addMcpServer — declined servers", () => {
+  it("clears the declined record when the user adds the server back", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [],
+      sources: [],
+      mcpServers: [],
+      declinedMcpServers: ["back-again", "other"],
+      catalogVersion: "0.1.0",
+    });
+
+    await addMcpServer("back-again", "npx", ["-y", "back-again"], {});
+    const saved = mockSaveState.mock.calls.at(-1)?.[0];
+    expect(saved?.declinedMcpServers).toEqual(["other"]);
+  });
 });
 
 // Slice 4a of `delegate-mcp-to-mcpm`: claude-code is in MCP_INTERSECTION_AGENTS

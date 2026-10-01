@@ -101,6 +101,9 @@ export async function addMcpServer(
     if (!state.mcpServers) state.mcpServers = [];
     state.mcpServers.push(createNewServer(name, command, args, env, options));
   }
+  if (state.declinedMcpServers) {
+    state.declinedMcpServers = state.declinedMcpServers.filter((declined) => declined !== name);
+  }
 
   await syncMcpServers(undefined, ctx);
 
@@ -187,6 +190,7 @@ export async function removeMcpServer(name: string, ctx?: Context): Promise<void
   }
 
   state.mcpServers.splice(index, 1);
+  state.declinedMcpServers = [...new Set([...(state.declinedMcpServers ?? []), name])];
   if (ctx) ctx.state.save(state);
   else saveState(state);
 

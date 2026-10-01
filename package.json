@@ -6,8 +6,8 @@
   "private": true,
   "main": "./dist/cli.js",
   "bin": {
-    "agentbrew": "./dist/cli.js",
-    "storybook-screenshot": "./dist/storybook-screenshot.js"
+    "agentbrew": "dist/cli.js",
+    "storybook-screenshot": "dist/storybook-screenshot.js"
   },
   "files": [
     "dist",

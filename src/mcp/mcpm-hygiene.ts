@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { logSkipped } from "../core/logger.js";
 import { MCP_INTERSECTION_AGENTS } from "../core/mcp-agent-map.js";
 import { delegateMcpUninstall, listMcpmServerNames } from "../sync/mcp-delegate.js";
-import type { AgentConfig } from "../types.js";
+import type { AgentConfig, McpServer } from "../types.js";
 import { expandHome } from "../utils.js";
 
 const nativeRequire = createRequire(import.meta.url);
@@ -39,6 +39,10 @@ export interface McpmHygieneSweepOptions {
   dryRun?: boolean;
   detected?: AgentConfig[];
   stateServerNames?: ReadonlySet<string>;
+  /** Pass from callers that already import agent definitions. The lazy
+   *  fallback resolves `../core/agents.js` relative to this file, which
+   *  does not exist next to the bundled `dist/cli.js`. */
+  agentDefinitions?: readonly Omit<AgentConfig, "detected">[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -269,13 +273,13 @@ function sweepOneConfig(
 }
 
 export function sweepMcpmHygiene(options: McpmHygieneSweepOptions = {}): McpmHygieneFileResult[] {
-  const { dryRun = false, detected, stateServerNames = new Set<string>() } = options;
+  const { dryRun = false, detected, stateServerNames = new Set<string>(), agentDefinitions } = options;
   const detectedNames = detected
     ? new Set(detected.filter((agent) => agent.detected).map((agent) => agent.name))
     : undefined;
   const results: McpmHygieneFileResult[] = [];
 
-  for (const agent of loadAgentDefinitionsForHygiene()) {
+  for (const agent of agentDefinitions ?? loadAgentDefinitionsForHygiene()) {
     if (!agent.mcpConfig) continue;
     if (detectedNames && !detectedNames.has(agent.name)) continue;
     const handler = pickHandler(agent.mcpFormat);
@@ -345,6 +349,86 @@ export function uninstallNativeOnlyMcpmServers(
   if (intersectionAgents.length === 0) return [];
   if (dryRun) return [...nativeOnlyNames];
   return uninstallFromIntersectionClients(nativeOnlyNames, intersectionAgents);
+}
+
+function bareEntryMatches(entry: Record<string, unknown>, server: McpServer): boolean {
+  if (server.url) return entry.url === server.url;
+  return entry.command === server.command && JSON.stringify(entry.args ?? []) === JSON.stringify(server.args ?? []);
+}
+
+/** Bare entries that shadow a state server with a different definition.
+ *
+ *  Native sync skips intersection clients, so a bare entry left there by an
+ *  older sync never updates. It also makes `findRedundantMcpmKeys` delete
+ *  the current `mcpm_<name>` entry, so the stale copy wins for good. */
+export function findStaleBareKeys(servers: Record<string, unknown>, stateServers: readonly McpServer[]): string[] {
+  return stateServers
+    .filter((server) => {
+      const entry = servers[server.name];
+      return isRecord(entry) && !bareEntryMatches(entry, server);
+    })
+    .map((server) => server.name);
+}
+
+/**
+ * Prune stale bare entries from detected JSON intersection clients, then
+ * report which state servers some client cannot reach at all (no bare and
+ * no `mcpm_` entry). The bridge re-wires those even when mcpm's own
+ * `servers.json` already matches state.
+ */
+export function reconcileIntersectionClientEntries(
+  agentDefinitions: readonly Omit<AgentConfig, "detected">[],
+  detectedAgents: readonly string[],
+  stateServers: readonly McpServer[],
+): Set<string> {
+  const detected = new Set(detectedAgents.filter((name) => MCP_INTERSECTION_AGENTS.has(name)));
+  const unreachable = new Set<string>();
+  const jsonClients = agentDefinitions.filter(
+    (agent) => agent.mcpConfig && detected.has(agent.name) && (agent.mcpFormat ?? "json") === "json",
+  );
+  for (const agent of jsonClients) {
+    const servers = pruneStaleBareEntries(
+      expandHome(agent.mcpConfig ?? ""),
+      agent.mcpKey ?? "mcpServers",
+      stateServers,
+    );
+    if (!servers) continue;
+    for (const server of stateServers) {
+      if (!isReachable(servers, server.name)) unreachable.add(server.name);
+    }
+  }
+  return unreachable;
+}
+
+function isReachable(servers: Record<string, unknown>, name: string): boolean {
+  return name in servers || `${MCPM_PREFIX}${name}` in servers;
+}
+
+/** Returns the client's server map after pruning, or undefined when unreadable. */
+function pruneStaleBareEntries(
+  path: string,
+  mcpKey: string,
+  stateServers: readonly McpServer[],
+): Record<string, unknown> | undefined {
+  if (!existsSync(path)) return undefined;
+  let config: Record<string, unknown>;
+  try {
+    config = JSON_HANDLER.read(path);
+  } catch (error) {
+    logSkipped("mcp/mcpm-hygiene/reconcile/read", error);
+    return undefined;
+  }
+  const rawServers = config[mcpKey];
+  const servers = isRecord(rawServers) ? rawServers : {};
+  const stale = findStaleBareKeys(servers, stateServers);
+  if (stale.length === 0) return servers;
+  for (const key of stale) delete servers[key];
+  try {
+    JSON_HANDLER.write(path, config);
+  } catch (error) {
+    logSkipped("mcp/mcpm-hygiene/reconcile/write", error);
+  }
+  return servers;
 }
 
 /** Each uninstall spawns one `mcpm` process per intersection client, so a

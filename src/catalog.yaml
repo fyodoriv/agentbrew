@@ -517,14 +517,6 @@ skills:
     recommended: false
 
   # ── agent-browser companion skills ────────────────────────────
-  - name: page-zero-errors
-    description: "Playwright-driven browser-error gate — attaches via CDP before navigation. Canonical upstream source; in-repo built-in removed per curator-not-host shrink pass."
-    source: fyodoriv/page-zero-errors
-    category: testing
-    recommended: true
-    rationale: "The only signal that tells you whether the user's actual screen rendered. Hosted in fyodoriv/page-zero-errors; agentbrew references, never duplicates."
-
-
   - name: vercel-sandbox
     description: "Run agent-browser + headless Chrome inside ephemeral Vercel Sandbox microVMs for browser automation from any Vercel-deployed app."
     source: vercel-labs/agent-browser

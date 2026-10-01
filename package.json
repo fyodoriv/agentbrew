@@ -1,6 +1,6 @@
 {
   "name": "agentbrew",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Skill manager and sync engine for AI coding tools — sync skills, MCP servers, rules, and commands across every AI coding agent",
   "type": "module",
   "private": true,

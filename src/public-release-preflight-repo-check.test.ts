@@ -33,13 +33,13 @@ describe("public release preflight repo check", () => {
       join(temporaryDirectory, "scripts", "check-public-repo-access.sh"),
     );
     cpSync(
-      join(repoRoot, "scripts", "validate-public-mirror.sh"),
-      join(temporaryDirectory, "scripts", "validate-public-mirror.sh"),
+      join(repoRoot, "scripts", "validate-public-release.sh"),
+      join(temporaryDirectory, "scripts", "validate-public-release.sh"),
     );
 
     chmodSync(join(temporaryDirectory, "scripts", "preflight-public-release.sh"), 0o755);
     chmodSync(join(temporaryDirectory, "scripts", "check-public-repo-access.sh"), 0o755);
-    chmodSync(join(temporaryDirectory, "scripts", "validate-public-mirror.sh"), 0o755);
+    chmodSync(join(temporaryDirectory, "scripts", "validate-public-release.sh"), 0o755);
 
     return temporaryDirectory;
   }
@@ -94,7 +94,7 @@ describe("public release preflight repo check", () => {
   });
 
   it("defaults the release validator to the configured public repo", () => {
-    const content = readFileSync(join(repoRoot, "scripts", "validate-public-mirror.sh"), "utf-8");
+    const content = readFileSync(join(repoRoot, "scripts", "validate-public-release.sh"), "utf-8");
 
     expect(content).toContain('public_org="${AGENTBREW_PUBLIC_ORG:-fyodoriv}"');
   });

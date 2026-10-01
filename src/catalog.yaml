@@ -1668,7 +1668,7 @@ cli_tools:
     description: "Slash command and binary for capturing Storybook stories with Playwright."
     category: dev-tooling
     recommended: false
-    rationale: "Restores a cross-agent visual-iteration workflow without reviving deleted bosun paths."
+    rationale: "Restores a cross-agent visual-iteration workflow without reviving the deleted command paths."
     note: "Requires Storybook to be running and Playwright to be installed in the target repo."
     commands:
       - storybook-screenshot

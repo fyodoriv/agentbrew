@@ -104,11 +104,11 @@ main() {
   check_public_repo_access
   check_npm_auth
 
-  if [[ -x "$repo_root/scripts/validate-public-mirror.sh" ]]; then
-    echo "✓ Public release validator is present: scripts/validate-public-mirror.sh"
-    echo "  Run the strict publish scrub before release: scripts/validate-public-mirror.sh --strict-publish"
+  if [[ -x "$repo_root/scripts/validate-public-release.sh" ]]; then
+    echo "✓ Public release validator is present: scripts/validate-public-release.sh"
+    echo "  Run the strict publish scrub before release: scripts/validate-public-release.sh --strict-publish"
   else
-    echo "ERROR: scripts/validate-public-mirror.sh is missing or not executable."
+    echo "ERROR: scripts/validate-public-release.sh is missing or not executable."
     failures=1
   fi
 

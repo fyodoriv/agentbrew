@@ -609,12 +609,12 @@ npm run test:real-e2e:selected -- instructions rules agents hooks mcp
 ```
 
 Before an npm/public release, run
-[`scripts/validate-public-mirror.sh`](scripts/validate-public-mirror.sh). It checks
+[`scripts/validate-public-release.sh`](scripts/validate-public-release.sh). It checks
 that package metadata points at `github.com/fyodoriv/agentbrew` and that the
 publish surface passes the strict no-internal-refs scrub:
 
 ```bash
-scripts/validate-public-mirror.sh
+scripts/validate-public-release.sh
 ```
 
 ### Learn-a-project workflow (tutor me, then quiz me)

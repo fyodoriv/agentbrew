@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-01
+
+First npm release built from the clean public history. Versions 0.3.3 and
+earlier are deprecated; upgrade with `npm install -g agentbrew@latest`.
+
 ### Removed
 
 - **Mirror tooling** — removed the mirror-push, parity, staleness, and

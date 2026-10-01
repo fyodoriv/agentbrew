@@ -289,20 +289,6 @@
      observation gate that proved acceptance now lives in scripts/hook-observation.sh
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
-- [ ] Recreate JetBrains plugin `gradle-test` Cursor command (target: minsky's IntelliJ plugin once it ships)
-  **ID**: recreate-gradle-test-cursor-command
-  **Tags**: scout, dev-tooling, agent-commands, jetbrains, post-bosun-recovery
-  **Details**: 2026-05-27 cleanup deleted `~/.cursor/commands/gradle-test.md` because the bosun deprecation removed `~/apps/bosun/plugins/jetbrains/`. The command knew non-trivial gotchas (use `ApplicationRule` not `BasePlatformTestCase`, gradle daemon disabled, 5-min task timeout, health-poller `isUnitTestMode` guard, sandbox-nuke recovery). When minsky ships its own JetBrains-plugin equivalent (or any other tooling repo gets one), recreate the command at the new path so the IntelliJ-test gotcha knowledge isn't lost.
-    Build: monitor minsky's roadmap for a JetBrains plugin. When one lands, port the deleted command's step list (run all tests / filter by class / chaos-proof wrapper / read HTML report / kill stale processes) into a new `~/.cursor/commands/gradle-test.md` that calls the new path. Until then this task is **blocked**.
-  **Files**: TBD — depends on where the new JetBrains plugin lives; `~/.cursor/commands/gradle-test.md` (re-author).
-  **Acceptance**: (a) The new command invokes `./gradlew test` from the live JetBrains plugin path (whatever it ends up being); (b) the documented gotchas (`ApplicationRule`, gradle daemon disabled, sandbox-nuke recovery) are preserved verbatim from the deleted command's content; (c) running the command from a Cursor `/gradle-test` slash invocation runs the full full Gradle test suite to completion in <60s.
-  **Hypothesis**: When a JetBrains plugin lands in minsky (or wherever), the existing test-suite ergonomics (the full suite in ~40s, gotcha-aware retry wrapper) carry over, so recreating the command is a 30-LOC port — not a from-scratch design.
-  **Pivot**: If no JetBrains plugin lands in any tooling repo within 90 days, drop this task — the command had narrow utility tied to a specific bosun feature.
-  **Measurement**: `ls ~/.cursor/commands/gradle-test.md` exists once a JetBrains plugin appears in `~/apps/tooling/*/plugins/jetbrains/`; pre-commit lint blocks `~/apps/bosun/` paths in any rebooted version of the file.
-  **Anchor**: deleted bosun JetBrains plugin's own `AGENTS.md` documented the `ApplicationRule` vs `BasePlatformTestCase` decision; preserve that decision in the rebooted command.
-  **Blocked**: needs-external-action — waiting on a JetBrains plugin to land in any tooling repo.
-
-
 ## P1
 
 - [ ] Fix or retire the LLM verifier tier — all 12 verifiers fail open and never enforce

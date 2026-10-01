@@ -2,11 +2,11 @@
 
 ## Goal
 
-Restore a cross-agent `storybook-screenshot` workflow without reviving deleted `~/apps/bosun` paths.
+Restore a cross-agent `storybook-screenshot` workflow without reviving the deleted command paths.
 
 ## Why
 
-The old command was removed during bosun cleanup, but the underlying workflow is still useful for visual iteration in Storybook-heavy repos. The durable fix should live in an agentbrew-owned source surface so Claude Code, Cursor, and Windsurf receive the same command vocabulary through normal command sync.
+The old command was removed in an earlier cleanup, but the underlying workflow is still useful for visual iteration in Storybook-heavy repos. The durable fix should live in an agentbrew-owned source surface so Claude Code, Cursor, and Windsurf receive the same command vocabulary through normal command sync.
 
 ## Scope (in)
 
@@ -47,7 +47,7 @@ cli_tools:
     description: "Slash command and binary for capturing Storybook stories with Playwright."
     category: dev-tooling
     recommended: false
-    rationale: "Restores the cross-agent visual-iteration workflow without reviving deleted bosun paths."
+    rationale: "Restores the cross-agent visual-iteration workflow without reviving the deleted command paths."
     commands:
       - storybook-screenshot
 ```
@@ -55,6 +55,6 @@ cli_tools:
 ## Acceptance criteria
 
 - `scripts/storybook-screenshot.mjs --help`, pure helper tests, task lint, and `npm run verify` pass.
-- `src/cli-commands/storybook-screenshot/storybook-screenshot.md` exists and contains no `~/apps/bosun` references.
+- `src/cli-commands/storybook-screenshot/storybook-screenshot.md` exists and contains no references to the deleted command paths.
 - `src/catalog.yaml` exposes a `storybook-screenshot` CLI tool with the command source.
 - The completed `recreate-storybook-screenshot-tool` task is removed from `TASKS.md` in the shipping commit.

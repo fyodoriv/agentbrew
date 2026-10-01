@@ -29,7 +29,10 @@ describe("detectSecretsInServers — env-record edge cases", () => {
 
   it("detects a Slack bot token", () => {
     const findings = detectSecretsInServers([
-      { name: "slack", env: { SLACK_BOT_TOKEN: "xoxb-123456789012-1234567890123-abcdefghijklmnopqrstuvwx" } },
+      {
+        name: "slack",
+        env: { SLACK_BOT_TOKEN: ["xoxb", "123456789012", "1234567890123", "abcdefghijklmnopqrstuvwx"].join("-") },
+      },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0].pattern).toBe("Slack bot token");
@@ -37,7 +40,10 @@ describe("detectSecretsInServers — env-record edge cases", () => {
 
   it("detects a Slack user token", () => {
     const findings = detectSecretsInServers([
-      { name: "slack", env: { SLACK_USER_TOKEN: "xoxp-123456789012-123456789012-abcdefghijklmnopqrstuvwx" } },
+      {
+        name: "slack",
+        env: { SLACK_USER_TOKEN: ["xoxp", "123456789012", "123456789012", "abcdefghijklmnopqrstuvwx"].join("-") },
+      },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0].pattern).toBe("Slack user token");

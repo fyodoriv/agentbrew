@@ -12,7 +12,7 @@ validation_mode="strict-publish"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/validate-public-mirror.sh [--strict-publish]
+Usage: scripts/validate-public-release.sh [--strict-publish]
 
   --strict-publish  Validate package metadata and the scrubbed public-publish
                     surface (the default).

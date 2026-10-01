@@ -111,6 +111,17 @@ preflight_npm_auth() {
   echo "✓ npm authenticated as $npm_user"
 }
 
+# npm 10 rejects this lockfile in `npm ci` (optional peers) and npm 11.15+
+# is required for staged publishing.
+preflight_npm_version() {
+  local npm_version npm_major
+  npm_version="$(npm --version 2>/dev/null || true)"
+  npm_major="${npm_version%%.*}"
+  if [[ "$npm_major" =~ ^[0-9]+$ ]] && (( npm_major < 11 )); then
+    die "npm $npm_version is too old to publish agentbrew; use npm 11 or newer (for example: fnm exec --using=<node-with-npm-11> npm run publish:latest)."
+  fi
+}
+
 preflight_git_remote() {
   if ! git remote get-url "$publish_remote" >/dev/null 2>&1; then
     die "Git remote '$publish_remote' not found. Set AGENTBREW_PUBLISH_REMOTE or add the remote."
@@ -183,6 +194,7 @@ publish_to_npm() {
 }
 
 echo "🔍 Preflight..."
+preflight_npm_version
 preflight_npm_auth
 preflight_git_remote
 sync_release_files_from_remote

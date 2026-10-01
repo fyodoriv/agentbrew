@@ -291,6 +291,13 @@
 
 ## P1
 
+- [ ] Remove stale Agentfile command and agent source dirs on sync
+  - **ID**: prune-stale-agentfile-source-dirs
+  - **Tags**: agentfile, sync, state, stability
+  - **Details**: `mergeAgentfileCommandDirs` and `mergeAgentfileAgentDirs` in `src/agentfile-apply.ts` only add paths to `state.commandSourceDirs` and `state.agentSourceDirs`. When an Agentfile drops or moves a `commands:` path, the old entry stays in state, and sync keeps deploying commands from a directory that is gone or stale. Several Agentfiles (global, project, overlay) write the same lists, so each entry must record which Agentfile owns it before pruning is safe.
+  - **Files**: src/agentfile-apply.ts, src/agentfile-apply.test.ts, src/core/state.ts
+  - **Acceptance**: (1) every `origin: agentfile` entry records its owning Agentfile; (2) an apply removes entries owned by that Agentfile that it no longer declares; (3) entries owned by other Agentfiles or added by the user are never removed; (4) a regression test covers a moved `commands:` path.
+
 - [ ] Fix or retire the LLM verifier tier — all 12 verifiers fail open and never enforce
   - **ID**: llm-verifier-tier-never-returns-verdict
   - **Tags**: scout, hooks, llm-verifier, verification, latency, stability

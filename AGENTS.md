@@ -46,6 +46,10 @@ npm run playwright:install         # install Chromium for Storybook smoke tests 
 npm run verify                     # typecheck + lint + security + tests (full gate)
 ```
 
+## Frozen agents
+
+Windsurf, Devin, and Augment are deprecated and frozen ([VISION NG4](VISION.md)). Keep their `agents.yaml` entries, sync targets, and tests. Never implement a fix or a feature for them, and never file tasks for them. If work for a supported agent breaks a frozen agent's existing test, skip that test with a note naming NG4.
+
 ## Rules for Editing
 
 1. **Test before committing**: `npm run verify` (or at minimum `npm test` + `npm run typecheck`)

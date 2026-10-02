@@ -187,8 +187,10 @@ export function mergeTeamAgentfile(
     if (typeof rawUrl !== "string") continue;
     const sourceUrl = resolveTeamSourceUrl(rawUrl, teamPath);
     if (sourceUrl !== rawUrl) {
-      sources = sources.filter((s) => !(s.url === rawUrl && s.origin === origin));
+      // A source entry would filter the dir down to `skillsInstalled`.
+      sources = sources.filter((s) => !(s.origin === origin && (s.url === rawUrl || s.url === sourceUrl)));
       registerOverlaySkillDir(state, sourceUrl, teamPath, origin);
+      continue;
     }
     if (sources.some((s) => s.url === sourceUrl)) continue;
     sources.push({

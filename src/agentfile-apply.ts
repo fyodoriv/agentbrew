@@ -40,7 +40,7 @@ export interface ApplyAgentfileResult {
   /** Agent names whose `detected` flag was flipped to false in state by the
    *  Agentfile's `excludeAgents:` list. */
   excludedAgents: string[];
-  /** True when the Agentfile's `defaultModel`/`modelOverrides` changed state. */
+  /** True when the Agentfile's `defaultModel`/`defaultEffort`/`modelOverrides` changed state. */
   defaultModelUpdated: boolean;
 }
 
@@ -391,16 +391,20 @@ function mergeAgentfileExcludeAgents(agentfile: { excludeAgents?: string[] }, st
   return flipped;
 }
 
-/** Merge `defaultModel`/`modelOverrides` into state. Set-when-present only —
+/** Merge `defaultModel`/`defaultEffort`/`modelOverrides` into state. Set-when-present only —
  *  an Agentfile without the keys never clears an existing default, so project
  *  Agentfiles can't accidentally drop the machine-wide model choice. */
 function mergeAgentfileDefaultModel(
-  agentfile: { defaultModel?: string; modelOverrides?: Record<string, string | null> },
+  agentfile: { defaultModel?: string; defaultEffort?: string; modelOverrides?: Record<string, string | null> },
   state: AgentBrewState,
 ): boolean {
   let changed = false;
   if (agentfile.defaultModel !== undefined && state.defaultModel !== agentfile.defaultModel) {
     state.defaultModel = agentfile.defaultModel;
+    changed = true;
+  }
+  if (agentfile.defaultEffort !== undefined && state.defaultEffort !== agentfile.defaultEffort) {
+    state.defaultEffort = agentfile.defaultEffort;
     changed = true;
   }
   if (

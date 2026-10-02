@@ -65,6 +65,11 @@ export function setValueAtPath(obj: Record<string, unknown>, dotPath: string, va
   return true;
 }
 
+/** Human-readable "model (effort effort)" label for logs and status. */
+export function formatModelLabel(model: string, effort: string | undefined): string {
+  return effort ? `${model}, ${effort} effort` : model;
+}
+
 // ── Sync engine ──────────────────────────────────────────────────────────────
 
 interface ModelTarget {
@@ -95,23 +100,37 @@ function serializeConfigFile(config: Record<string, unknown>, format: ModelConfi
 }
 
 type TargetOutcome =
-  | { kind: "updated"; from: unknown; to: string }
+  | { kind: "updated"; changes: string[] }
   | { kind: "up-to-date" }
   | { kind: "skipped"; reason: string };
 
+interface DesiredSetting {
+  label: string;
+  path: string;
+  value: string;
+}
+
+function describeChange(label: string, from: unknown, to: string): string {
+  return typeof from === "string" ? `${label} ${from} → ${to}` : `${label} ${to}`;
+}
+
+/** Settings to write for one agent: the model, plus effort when the agent stores it separately. */
+function desiredSettings(target: ModelTarget, model: string, effort: string | undefined): DesiredSetting[] {
+  const settings: DesiredSetting[] = [{ label: "model", path: target.modelConfig.path, value: model }];
+  if (effort && target.modelConfig.effortPath) {
+    settings.push({ label: "effort", path: target.modelConfig.effortPath, value: effort });
+  }
+  return settings;
+}
+
 /**
- * Apply the resolved model to one agent's config file. Read–compare–write is
- * fully synchronous so a parallel sync module can never interleave between
- * our read and write of a shared file (e.g. hooks-sync also writes
- * ~/.claude/settings.json).
+ * Apply the resolved model (and effort) to one agent's config file.
+ * Read–compare–write is fully synchronous so a parallel sync module can never
+ * interleave between our read and write of a shared file (e.g. hooks-sync
+ * also writes ~/.claude/settings.json).
  */
-function syncSingleTarget(
-  target: ModelTarget,
-  defaultModel: string,
-  overrides: Record<string, string | null> | undefined,
-  dryRun: boolean,
-): TargetOutcome {
-  const model = resolveTargetModel(target.agentName, defaultModel, overrides);
+function syncSingleTarget(target: ModelTarget, run: ModelSyncRun): TargetOutcome {
+  const model = resolveTargetModel(target.agentName, run.defaultModel, run.overrides);
   if (model === undefined) return { kind: "skipped", reason: "override: keep agent's own model" };
 
   const filePath = expandHome(target.modelConfig.file);
@@ -120,20 +139,26 @@ function syncSingleTarget(
   const config = readConfigFile(filePath, target.modelConfig.format);
   if (!config) return { kind: "skipped", reason: "config file is not a key/value object" };
 
-  const current = getValueAtPath(config, target.modelConfig.path);
-  if (current === model) return { kind: "up-to-date" };
-
-  if (!setValueAtPath(config, target.modelConfig.path, model)) {
-    return { kind: "skipped", reason: `key path '${target.modelConfig.path}' blocked by a non-object value` };
+  const changes: string[] = [];
+  for (const setting of desiredSettings(target, model, run.defaultEffort)) {
+    const current = getValueAtPath(config, setting.path);
+    if (current === setting.value) continue;
+    if (!setValueAtPath(config, setting.path, setting.value)) {
+      return { kind: "skipped", reason: `key path '${setting.path}' blocked by a non-object value` };
+    }
+    changes.push(describeChange(setting.label, current, setting.value));
   }
-  if (!dryRun) {
+  if (changes.length === 0) return { kind: "up-to-date" };
+
+  if (!run.dryRun) {
     writeFileAtomicSync(filePath, serializeConfigFile(config, target.modelConfig.format), "utf-8");
   }
-  return { kind: "updated", from: current, to: model };
+  return { kind: "updated", changes };
 }
 
 interface ModelSyncRun {
   defaultModel: string;
+  defaultEffort: string | undefined;
   overrides: Record<string, string | null> | undefined;
   quiet: boolean;
   verbose: boolean;
@@ -145,8 +170,7 @@ function logTargetOutcome(outcome: TargetOutcome, agentName: string, run: ModelS
   if (run.quiet) return;
   if (outcome.kind === "updated") {
     const icon = run.dryRun ? run.log.blue("~") : run.log.green("✓");
-    const from = typeof outcome.from === "string" ? `${outcome.from} → ` : "";
-    run.log.log(`  ${icon} ${agentName} — model ${from}${outcome.to}`);
+    run.log.log(`  ${icon} ${agentName} — ${outcome.changes.join(", ")}`);
     return;
   }
   if (!run.verbose) return;
@@ -162,7 +186,7 @@ function processModelTargets(targets: ModelTarget[], run: ModelSyncRun): number 
   let updates = 0;
   for (const target of targets) {
     try {
-      const outcome = syncSingleTarget(target, run.defaultModel, run.overrides, run.dryRun);
+      const outcome = syncSingleTarget(target, run);
       if (outcome.kind === "updated") updates += 1;
       logTargetOutcome(outcome, target.agentName, run);
     } catch (e) {
@@ -177,8 +201,10 @@ function processModelTargets(targets: ModelTarget[], run: ModelSyncRun): number 
  * Sync the Agentfile's `defaultModel` to every detected agent that declares a
  * `modelConfig` surface in agents.yaml (claude-code, devin, codex today —
  * Cursor and Windsurf keep the model in app-managed/UI state, so there is no
- * file surface to manage). Per-agent `modelOverrides` rename or skip
- * individual agents. No-op when state has no `defaultModel`.
+ * file surface to manage). `defaultEffort` is written alongside for agents
+ * that declare an `effortPath`. Per-agent `modelOverrides` rename or skip
+ * individual agents (a skipped agent keeps its own effort too). No-op when
+ * state has no `defaultModel`.
  */
 export async function syncModels(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const quiet = options?.quiet ?? false;
@@ -192,12 +218,15 @@ export async function syncModels(options?: SyncOptions, ctx?: Partial<Context>):
   if (targets.length === 0) return;
 
   if (!quiet) {
-    const label = dryRun ? "Dry run — default model" : `Syncing default model (${state.defaultModel})...`;
+    const label = dryRun
+      ? "Dry run — default model"
+      : `Syncing default model (${formatModelLabel(state.defaultModel, state.defaultEffort)})...`;
     log.log(log.bold(`\n${label}\n`));
   }
 
   const run: ModelSyncRun = {
     defaultModel: state.defaultModel,
+    defaultEffort: state.defaultEffort,
     overrides: state.modelOverrides,
     quiet,
     verbose: options?.verbose ?? false,

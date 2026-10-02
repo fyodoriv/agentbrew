@@ -431,6 +431,29 @@ describe("generateAgentfile", () => {
     expect(result).not.toContain("127.0.0.1:18765");
   });
 
+  it("emits the recommended model defaults when state has no defaultModel", () => {
+    mockRequireState.mockReturnValue({ mcpServers: [], sources: [], agents: [], catalogVersion: "0.1.0" });
+    const parsed = parseAgentfile(generateAgentfile() ?? "");
+    expect(parsed.defaultModel).toBe("claude-opus-5-5");
+    expect(parsed.defaultEffort).toBe("medium");
+    expect(parsed.modelOverrides).toEqual({ codex: null, devin: null });
+  });
+
+  it("emits the machine's own model choice instead of the recommended one", () => {
+    mockRequireState.mockReturnValue({
+      mcpServers: [],
+      sources: [],
+      agents: [],
+      catalogVersion: "0.1.0",
+      defaultModel: "claude-5-fable-max",
+      modelOverrides: { codex: "gpt-5.1-codex" },
+    });
+    const parsed = parseAgentfile(generateAgentfile() ?? "");
+    expect(parsed.defaultModel).toBe("claude-5-fable-max");
+    expect(parsed.defaultEffort).toBeUndefined();
+    expect(parsed.modelOverrides).toEqual({ codex: "gpt-5.1-codex" });
+  });
+
   it("returns undefined when state has no data", () => {
     mockRequireState.mockReturnValue(undefined);
     expect(generateAgentfile()).toBeUndefined();
@@ -555,6 +578,11 @@ modelOverrides:
     expect(result.defaultModel).toBeUndefined();
     expect(result.modelOverrides).toBeUndefined();
   });
+
+  it("parses defaultEffort and drops a blank value", () => {
+    expect(parseAgentfile("defaultModel: claude-opus-5-5\ndefaultEffort: medium\n").defaultEffort).toBe("medium");
+    expect(parseAgentfile('defaultEffort: "  "\n').defaultEffort).toBeUndefined();
+  });
 });
 
 describe("applyAgentfile — defaultModel", () => {
@@ -597,6 +625,15 @@ describe("applyAgentfile — defaultModel", () => {
     const result = applyAgentfile(tmpDir, { quiet: true });
     expect(result?.defaultModelUpdated).toBe(false);
     expect(mockSaveState).not.toHaveBeenCalled();
+  });
+
+  it("sets defaultEffort in state", () => {
+    writeFileSync(join(tmpDir, "Agentfile"), "defaultModel: claude-opus-5-5\ndefaultEffort: medium\n");
+    const state = { ...freshState(), defaultModel: "claude-opus-5-5", defaultEffort: "xhigh" };
+    mockLoadState.mockReturnValue(state);
+    const result = applyAgentfile(tmpDir, { quiet: true });
+    expect(result?.defaultModelUpdated).toBe(true);
+    expect(state.defaultEffort).toBe("medium");
   });
 });
 

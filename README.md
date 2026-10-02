@@ -130,10 +130,11 @@ hooks:
     command: bash /path/to/hook.sh
     matcher: Bash
 
-defaultModel: claude-5-fable-max # default model for every agent with a file-managed model setting
+defaultModel: claude-opus-5-5    # default model for every agent with a file-managed model setting
+defaultEffort: medium            # reasoning effort, for agents that store it separately
 modelOverrides:
-  codex: gpt-5.1-codex           # providers name models differently — per-agent id
-  claude-code: null              # null = skip; keep that agent's own model
+  codex: null                    # null = skip; keep that agent's own model
+  devin: null                    # (a string swaps in that provider's id for the same model)
 ```
 
 `${VAR}` substitutes from your shell environment at sync time; `${VAR:-default}` provides a fallback. Devin is the exception for direct MCP `env` mappings: agentbrew leaves those secrets out of Devin's generated config and relies on the launching shell environment instead.
@@ -147,9 +148,9 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs.
 
-**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`), Devin (`~/.config/devin/config.json` `agent.model`), and Codex (`~/.codex/config.toml` `model`). Cursor and Windsurf keep the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`), Devin (`~/.config/devin/config.json` `agent.model`), and Codex (`~/.codex/config.toml` `model`). Cursor and Windsurf keep the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `medium` effort, with Codex and Devin skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
-**Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel`) use the later file; `modelOverrides` merges per agent with the later file winning.
+**Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
 Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, including downstream per-agent sync changes for Agentfile-only MCP servers, sources, commands, agents, rules, and hooks, without updating `state.yaml` or installing anything. Add `--agentfile <path>` to preview an explicit dotfiles Agentfile before making it authoritative.
 

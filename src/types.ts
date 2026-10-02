@@ -37,6 +37,9 @@ export interface ModelConfig {
   path: string;
   /** Config file format. Defaults to "json". */
   format?: "json" | "toml";
+  /** Dot-separated key path for the default reasoning effort, when the agent
+   *  stores it apart from the model id (e.g. Claude Code `effortLevel`). */
+  effortPath?: string;
 }
 
 export interface McpPermissionsConfig {
@@ -352,6 +355,12 @@ export interface AgentBrewState {
    * is off and agents keep whatever model they have.
    */
   defaultModel?: string;
+  /**
+   * Default reasoning effort written next to `defaultModel` for agents whose
+   * `modelConfig` declares an `effortPath`. Set from the Agentfile's
+   * `defaultEffort:` key.
+   */
+  defaultEffort?: string;
   /**
    * Per-agent exceptions to `defaultModel`, keyed by agent name. A string
    * replaces the model id for that agent (providers name the same model

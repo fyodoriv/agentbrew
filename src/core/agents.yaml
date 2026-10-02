@@ -35,12 +35,14 @@
 #   hooksFile: string — path to hooks config file (e.g. ~/.claude/settings.json).
 #   hooksKey: string — JSON key for the hooks object inside hooksFile. Only
 #         meaningful when hooksFile is set. Defaults to "hooks".
-#   modelConfig: { file, path, format? } — where the agent's default-model
+#   modelConfig: { file, path, format?, effortPath? } — where the agent's default-model
 #         setting lives. `file` is the config file (~-prefixed), `path` is a
 #         dot-separated key path inside it (e.g. "model", "agent.model"),
 #         `format` is "json" (default) or "toml". Enables model-sync: the
 #         Agentfile's `defaultModel` is written here on every sync. Omit for
 #         agents whose model lives in app-managed/UI state (Cursor, Windsurf).
+#         `effortPath` is the key path for the Agentfile's `defaultEffort`, for
+#         agents that store reasoning effort apart from the model id.
 #
 # OPTIONAL MCP SURFACE (pick exactly ONE of the three access modes)
 #   mcpConfig: string — direct path to the agent's MCP config file.
@@ -139,6 +141,7 @@
   modelConfig:
     file: ~/.claude/settings.json
     path: model
+    effortPath: effortLevel
   supportedSkillFeatures: [allowed-tools, context-fork, hooks]
 
 - name: cursor
@@ -194,6 +197,7 @@
     file: ~/.codex/config.toml
     path: model
     format: toml
+    effortPath: model_reasoning_effort
 
 - name: gemini-cli
   skillsDir: ~/.gemini/skills

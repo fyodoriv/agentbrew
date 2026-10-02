@@ -54,6 +54,7 @@ const AGENTFILE_KNOWN_KEYS = new Set([
   "recommended",
   "excludeAgents",
   "defaultModel",
+  "defaultEffort",
   "modelOverrides",
   "task_backend",
   "repo",

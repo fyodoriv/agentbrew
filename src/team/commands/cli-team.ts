@@ -153,42 +153,40 @@ function loadTeamAgentfile(teamPath: string): Record<string, unknown> | undefine
   }
 }
 
-/** Merge team overlay Agentfile contents into state. */
-function mergeTeamAgentfile(
+/** Resolve an overlay-relative source (`./x`, `../x`) against the overlay clone, not the cwd. */
+function resolveTeamSourceUrl(rawUrl: string, teamPath: string): string {
+  return rawUrl.startsWith("./") || rawUrl.startsWith("../") ? join(teamPath, rawUrl) : rawUrl;
+}
+
+/**
+ * Merge team overlay Agentfile contents into state.
+ * MCP servers and rules from the overlay are registered elsewhere.
+ */
+export function mergeTeamAgentfile(
   state: AgentBrewState,
   agentfile: Record<string, unknown>,
   label: string,
   now: string,
+  teamPath: string,
 ): void {
+  if (!Array.isArray(agentfile.sources)) return;
   const origin = `team:${label}`;
-
-  // Merge sources
-  if (Array.isArray(agentfile.sources)) {
-    if (!state.sources) state.sources = [];
-    for (const sourceUrl of agentfile.sources) {
-      const existing = state.sources.find((s) => s.url === sourceUrl);
-      if (!existing) {
-        state.sources.push({
-          url: sourceUrl,
-          type: detectSourceType(sourceUrl),
-          skillsInstalled: [],
-          availableItems: [],
-          addedAt: now,
-          origin,
-        });
-      }
-    }
+  let sources = state.sources ?? [];
+  for (const rawUrl of agentfile.sources) {
+    if (typeof rawUrl !== "string") continue;
+    const sourceUrl = resolveTeamSourceUrl(rawUrl, teamPath);
+    if (sourceUrl !== rawUrl) sources = sources.filter((s) => !(s.url === rawUrl && s.origin === origin));
+    if (sources.some((s) => s.url === sourceUrl)) continue;
+    sources.push({
+      url: sourceUrl,
+      type: detectSourceType(sourceUrl),
+      skillsInstalled: [],
+      availableItems: [],
+      addedAt: now,
+      origin,
+    });
   }
-
-  // Merge MCP servers (placeholder for full implementation)
-  if (Array.isArray(agentfile.mcp)) {
-    // MCP registration happens elsewhere
-  }
-
-  // Merge rules (placeholder for full implementation)
-  if (typeof agentfile.rules === "string") {
-    // Rules merging happens elsewhere
-  }
+  state.sources = sources;
 }
 
 /** Resolve a single overlay-relative path from the Agentfile; warn + return
@@ -279,7 +277,7 @@ async function teamSetAction(state: AgentBrewState, url: string): Promise<void> 
   };
 
   // Merge Agentfile contents into state
-  mergeTeamAgentfile(state, agentfile, label, now);
+  mergeTeamAgentfile(state, agentfile, label, now, teamPath);
 
   saveState(state);
   console.log(`${ICON_SUCCESS} Team "${label}" active`);

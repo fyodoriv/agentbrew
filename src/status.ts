@@ -13,7 +13,7 @@ import { COMMANDS_DIR } from "./paths.js";
 import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
 import { isInstructionsUpToDate, loadInstructions } from "./sync/instructions-sync.js";
-import { resolveTargetModel } from "./sync/model-sync.js";
+import { formatModelLabel, resolveTargetModel } from "./sync/model-sync.js";
 import { collectSkills, getSkillSources } from "./sync/skills-sync.js";
 import { isAgentbrewProvidedSkillSource } from "./sync/soft-update.js";
 import type { Source } from "./types.js";
@@ -250,7 +250,7 @@ function printVerboseAgentsSection(state: AgentbrewState): void {
 
 function printVerboseModelSection(state: AgentbrewState): void {
   if (!state.defaultModel) return;
-  console.log(`${chalk.bold("\nDefault Model")} (${state.defaultModel})\n`);
+  console.log(`${chalk.bold("\nDefault Model")} (${formatModelLabel(state.defaultModel, state.defaultEffort)})\n`);
   const detectedNames = new Set(state.agents.filter((a) => a.detected).map((a) => a.name));
   for (const def of AGENT_DEFINITIONS) {
     if (!def.modelConfig || !detectedNames.has(def.name)) continue;
@@ -489,7 +489,8 @@ function printCompactModelLine(state: NonNullable<ReturnType<typeof requireState
   if (!state.defaultModel) return;
   const overrideCount = Object.keys(state.modelOverrides ?? {}).length;
   const overrideNote = overrideCount > 0 ? chalk.dim(` (${overrideCount} per-agent override(s))`) : "";
-  console.log(`  Model:        ${chalk.green(state.defaultModel)} default${overrideNote}`);
+  const label = formatModelLabel(state.defaultModel, state.defaultEffort);
+  console.log(`  Model:        ${chalk.green(label)} default${overrideNote}`);
 }
 
 /** Print MCP readiness line — shows how many servers need env var setup. */

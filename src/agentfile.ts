@@ -66,6 +66,9 @@ export interface Agentfile {
    *  replaces the model id for that agent; `null` skips the agent (e.g. the
    *  model is not available on that agent's provider/gateway yet). */
   modelOverrides?: Record<string, string | null>;
+  /** Default reasoning effort written next to `defaultModel` for agents whose
+   *  `modelConfig` declares an `effortPath` (claude-code, codex today). */
+  defaultEffort?: string;
   /** Task backend declaration — "tasks-md" (default) or "github-issues".
    *  When "github-issues", must also declare "repo" (owner/repo) and "project" (number).
    *  See docs/task-backend-contract.md for the full contract. */
@@ -165,6 +168,8 @@ export function parseAgentfile(content: string): Agentfile {
       : undefined,
     defaultModel: typeof raw.defaultModel === "string" && raw.defaultModel.trim() ? raw.defaultModel.trim() : undefined,
     modelOverrides: parseModelOverrides(raw.modelOverrides),
+    defaultEffort:
+      typeof raw.defaultEffort === "string" && raw.defaultEffort.trim() ? raw.defaultEffort.trim() : undefined,
     task_backend: parseTaskBackend(raw.task_backend),
     repo: parseRepo(raw.repo),
     project: parseProject(raw.project),
@@ -351,12 +356,22 @@ function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   if (agentfile.rules) output.rules = agentfile.rules;
   if (agentfile.recommended) output.recommended = true;
   if (agentfile.defaultModel) output.defaultModel = agentfile.defaultModel;
+  if (agentfile.defaultEffort) output.defaultEffort = agentfile.defaultEffort;
   if (agentfile.modelOverrides) output.modelOverrides = agentfile.modelOverrides;
   if (agentfile.task_backend) output.task_backend = agentfile.task_backend;
   if (agentfile.repo) output.repo = agentfile.repo;
   if (agentfile.project) output.project = agentfile.project;
   serializeAgentfileMemoryFields(agentfile, output);
   return output;
+}
+
+/** Later file wins for model scalars; `modelOverrides` merges per agent. */
+function mergeModelFields(merged: Agentfile, agentfile: Agentfile): void {
+  if (agentfile.defaultModel) merged.defaultModel = agentfile.defaultModel;
+  if (agentfile.defaultEffort) merged.defaultEffort = agentfile.defaultEffort;
+  if (agentfile.modelOverrides) {
+    merged.modelOverrides = { ...merged.modelOverrides, ...agentfile.modelOverrides };
+  }
 }
 
 export function mergeAgentfiles(filePaths: string[]): string {
@@ -379,10 +394,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
     merged.hooks = mergeHookEntries(merged.hooks, agentfile.hooks);
     merged.rules = mergeRules(merged.rules, agentfile.rules, baseDir);
     if (agentfile.recommended) merged.recommended = true;
-    if (agentfile.defaultModel) merged.defaultModel = agentfile.defaultModel;
-    if (agentfile.modelOverrides) {
-      merged.modelOverrides = { ...merged.modelOverrides, ...agentfile.modelOverrides };
-    }
+    mergeModelFields(merged, agentfile);
     if (agentfile.task_backend) merged.task_backend = agentfile.task_backend;
     if (agentfile.repo) merged.repo = agentfile.repo;
     if (agentfile.project) merged.project = agentfile.project;
@@ -527,6 +539,28 @@ function serializeAgentfileMcpEntry(server: McpServer, catalogNames: ReadonlySet
 // ── Generate Agentfile from state ─────────────────────────────────────────────
 
 /** Generate an Agentfile YAML string from the current agentbrew state. */
+/** Model written into newly generated Agentfiles when state has none yet. */
+export const RECOMMENDED_DEFAULT_MODEL = "claude-opus-5-5";
+/** Reasoning effort paired with `RECOMMENDED_DEFAULT_MODEL`. */
+export const RECOMMENDED_DEFAULT_EFFORT = "medium";
+/** Agents whose provider cannot serve the recommended Claude model id. */
+export const RECOMMENDED_MODEL_OVERRIDES: Record<string, string | null> = { codex: null, devin: null };
+
+/** Model keys for a generated Agentfile: the machine's choice, else the recommended default. */
+function generatedModelKeys(state: AgentBrewState): Record<string, unknown> {
+  if (!state.defaultModel) {
+    return {
+      defaultModel: RECOMMENDED_DEFAULT_MODEL,
+      defaultEffort: RECOMMENDED_DEFAULT_EFFORT,
+      modelOverrides: { ...RECOMMENDED_MODEL_OVERRIDES },
+    };
+  }
+  const keys: Record<string, unknown> = { defaultModel: state.defaultModel };
+  if (state.defaultEffort) keys.defaultEffort = state.defaultEffort;
+  if (state.modelOverrides) keys.modelOverrides = state.modelOverrides;
+  return keys;
+}
+
 export function generateAgentfile(): string | undefined {
   const state = requireState();
   if (!state) return undefined;
@@ -576,14 +610,14 @@ export function generateAgentfile(): string | undefined {
     agentfile.sources = stateSources.map((s) => s.url);
   }
 
+  Object.assign(agentfile, generatedModelKeys(state));
+
   // Rules (only if shared rules file exists)
   const rulesPath = expandHome(SHARED_RULES_PATH);
   if (existsSync(rulesPath)) {
     const rulesContent = readFileSync(rulesPath, "utf-8").trim();
     if (rulesContent) agentfile.rules = rulesContent;
   }
-
-  if (Object.keys(agentfile).length === 0) return undefined;
 
   const header =
     "# Agentfile — declarative agent configuration manifest\n# Commit this to git. Run `agentbrew sync` to deploy.\n\n";

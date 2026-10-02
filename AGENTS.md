@@ -91,9 +91,9 @@ templates/AGENTS.md              →  instructions-sync.ts         →  ~/.claud
 Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key),
                                                                       ~/.cursor/hooks.json,
                                                                       .devin/hooks.v1.json (project-local)
-Agentfile defaultModel           →  model-sync.ts                →  ~/.claude/settings.json (model key),
+Agentfile defaultModel/Effort    →  model-sync.ts                →  ~/.claude/settings.json (model, effortLevel),
                                                                       ~/.config/devin/config.json (agent.model),
-                                                                      ~/.codex/config.toml (model). Cursor/Windsurf
+                                                                      ~/.codex/config.toml (model, model_reasoning_effort). Cursor/Windsurf
                                                                       have no file surface (app-managed/UI model state).
 ```
 

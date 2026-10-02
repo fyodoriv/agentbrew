@@ -13,7 +13,7 @@ vi.mock("../state.js", () => ({ loadState: vi.fn() }));
 import { loadState } from "../state.js";
 import type { AgentBrewState, AgentConfig } from "../types.js";
 import { expandHome } from "../utils.js";
-import { getValueAtPath, resolveTargetModel, setValueAtPath, syncModels } from "./model-sync.js";
+import { formatModelLabel, getValueAtPath, resolveTargetModel, setValueAtPath, syncModels } from "./model-sync.js";
 
 let testDir: string;
 let mockHome: string;
@@ -201,5 +201,71 @@ describe("syncModels", () => {
     await syncModels({ quiet: true, dryRun: true });
 
     expect(readFileSync(path, "utf-8")).toBe(before);
+  });
+
+  it("writes defaultEffort to claude-code effortLevel next to the model", async () => {
+    const path = writeClaudeSettings({ model: "claude-opus-4-8", effortLevel: "xhigh", theme: "dark" });
+    vi.mocked(loadState).mockReturnValue(
+      stateWith({ agents: [agent("claude-code")], defaultModel: "claude-opus-5-5", defaultEffort: "medium" }),
+    );
+
+    await syncModels({ quiet: true });
+
+    const written = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
+    expect(written.model).toBe("claude-opus-5-5");
+    expect(written.effortLevel).toBe("medium");
+    expect(written.theme).toBe("dark");
+  });
+
+  it("updates effort alone when the model already matches", async () => {
+    const path = writeClaudeSettings({ model: "claude-opus-5-5", effortLevel: "xhigh" });
+    vi.mocked(loadState).mockReturnValue(
+      stateWith({ agents: [agent("claude-code")], defaultModel: "claude-opus-5-5", defaultEffort: "medium" }),
+    );
+
+    await syncModels({ quiet: true });
+
+    expect((JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>).effortLevel).toBe("medium");
+  });
+
+  it("writes model_reasoning_effort for codex", async () => {
+    const path = writeCodexConfig({ model: "gpt-5.1-codex" });
+    vi.mocked(loadState).mockReturnValue(
+      stateWith({ agents: [agent("codex")], defaultEffort: "medium", modelOverrides: { codex: "gpt-5.1-codex" } }),
+    );
+
+    await syncModels({ quiet: true });
+
+    const written = TOML.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
+    expect(written.model_reasoning_effort).toBe("medium");
+  });
+
+  it("leaves effort alone for agents without an effortPath", async () => {
+    const path = writeDevinConfig({ agent: { model: "old-model" } });
+    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("devin")], defaultEffort: "medium" }));
+
+    await syncModels({ quiet: true });
+
+    const written = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
+    expect(written).toEqual({ agent: { model: "claude-5-fable-max" } });
+  });
+
+  it("keeps an agent's own effort when its override is null", async () => {
+    const path = writeClaudeSettings({ model: "claude-opus-4-8", effortLevel: "xhigh" });
+    const before = readFileSync(path, "utf-8");
+    vi.mocked(loadState).mockReturnValue(
+      stateWith({ agents: [agent("claude-code")], defaultEffort: "medium", modelOverrides: { "claude-code": null } }),
+    );
+
+    await syncModels({ quiet: true });
+
+    expect(readFileSync(path, "utf-8")).toBe(before);
+  });
+});
+
+describe("formatModelLabel", () => {
+  it("adds the effort when present", () => {
+    expect(formatModelLabel("claude-opus-5-5", "medium")).toBe("claude-opus-5-5, medium effort");
+    expect(formatModelLabel("claude-opus-5-5", undefined)).toBe("claude-opus-5-5");
   });
 });

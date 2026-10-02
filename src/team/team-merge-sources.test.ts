@@ -18,11 +18,22 @@ describe("mergeTeamAgentfile — sources", () => {
     expect(state.sources?.[0]?.origin).toBe(ORIGIN);
   });
 
-  it("keeps remote sources unchanged", () => {
+  it("keeps remote sources unchanged and opt-in", () => {
     const state = emptyState();
     mergeTeamAgentfile(state, { sources: ["git@example.com:acme/skills.git"] }, "Acme", NOW, "/teams/acme");
 
     expect(state.sources?.map((s) => s.url)).toEqual(["git@example.com:acme/skills.git"]);
+    expect(state.skillSourceDirs ?? []).toEqual([]);
+  });
+
+  it("deploys every overlay-local skill by registering its dir once", () => {
+    const state = emptyState();
+    mergeTeamAgentfile(state, { sources: ["./skill-plugins/dev"] }, "Acme", NOW, "/teams/acme");
+    mergeTeamAgentfile(state, { sources: ["./skill-plugins/dev"] }, "Acme", NOW, "/teams/acme");
+
+    expect(state.skillSourceDirs).toEqual([
+      { label: "acme-dev", path: "/teams/acme/skill-plugins/dev", origin: ORIGIN },
+    ]);
   });
 
   it("replaces a stale unresolved team entry and leaves user entries alone", () => {

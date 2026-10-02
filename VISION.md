@@ -1,18 +1,22 @@
 ---
 schema: vision-v1
 version: 1
-last_reviewed: 2026-05-27
+last_reviewed: 2026-10-02
 primary_agents:
   # The "main use case" agent set. Every sync surface that exists for ANY
   # agent must work for ALL of these. Auto-repair every 30 minutes verifies
   # parity. If you are adding a sync feature and it only works for Claude
-  # Code, it's not done — extend it to Cursor / Windsurf / Devin / Codex
-  # before merge. See G4 and G6 below.
+  # Code, it's not done — extend it to Cursor / Codex before merge. See G4
+  # and G6 below.
   - claude-code
   - cursor
+  - codex
+frozen_agents:
+  # Deprecated 2026-10-02 (owner decision). Existing support and tests stay,
+  # but no new fixes or features land for these agents. See NG4.
   - windsurf
   - devin
-  - codex
+  - augment
 goals:
   - id: G1
     name: Curate, not host
@@ -34,8 +38,8 @@ goals:
     description: |
       Every sync surface (skills, MCP servers, rules, commands, agent definitions,
       hooks, instructions) deploys to every primary agent in
-      `src/sync/per-agent-features.matrix.test.ts` (Claude Code, Cursor, Windsurf, Devin,
-      Codex) without manual intervention, every 30 minutes via the
+      `src/sync/per-agent-features.matrix.test.ts` (Claude Code, Cursor, Codex)
+      without manual intervention, every 30 minutes via the
       auto-repair launchagent. "Works for Claude Code only" is a regression; gaps
       against any primary agent get filed as P0 tasks. The full matrix is enforced
       by `src/sync/per-agent-features.matrix.test.ts`; new sync surfaces must extend
@@ -56,6 +60,14 @@ non_goals:
       (in `~/.config/agentbrew/Agentfile.yaml`): Amp, Augment, Kiro, OpenCode. The `agents.yaml`
       catalog still LISTS them so a future user can opt them back in by removing the entry from
       their excludeAgents list — agentbrew itself stays generic.
+  - id: NG4
+    name: No new work for frozen agents
+    description: |
+      Windsurf, Devin, and Augment are deprecated and frozen. Their existing sync targets,
+      agents.yaml entries, and matrix-test rows stay. Do not add fixes, features, tasks, or
+      per-agent branches for them, and do not count their gaps as G6 regressions. If work for
+      a supported agent breaks a frozen agent's existing test, skip that test with a note
+      naming NG4 instead of fixing the agent.
 ---
 
 # Vision
@@ -73,7 +85,7 @@ agentbrew team set <overlay-url>   # optional — layer on your company's curate
 
 **Primary user: any developer using AI coding agents.** Install once, configure once, and every agent on the machine gets the same skills, MCP servers, rules, commands, hooks, and agent definitions. The catalog ships with public, generic recommendations that benefit any developer.
 
-**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Cursor, Windsurf, Devin, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
+**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Cursor, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. Windsurf, Devin, and Augment are frozen: they keep their existing support but get no new fixes or features ([NG4](#non-goals)). They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
 
 **Long-tail agents — best-effort, parity-where-possible:** OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Gemini CLI, GitHub Copilot, plus other experimental surfaces listed in `src/core/agents.yaml`. agentbrew detects and syncs to these too, but only for the sync categories each agent supports natively. New first-party features land for the primary agent set first; long-tail support follows when each agent's underlying API permits.
 

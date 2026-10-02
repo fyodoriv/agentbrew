@@ -319,7 +319,8 @@
 
 - [ ] Stop false MCP heal records and repair the timed-out server/agent pairs
   - **ID**: mcp-windsurf-cluster-stale-failures-9-plus-days
-  - **Tags**: scout, mcp, health, heal, windsurf, devin, copilot, opencode, stability
+  - **Tags**: scout, mcp, health, heal, copilot, opencode, stability
+  - **Scope**: Windsurf and Devin are deprecated and frozen (owner decision 2026-10-02). Leave their pairs alone; do not count or fix them.
   - **Details**: Updated 2026-09-28: the failures are no longer windsurf-only. `~/.cache/agentbrew/mcp-health.json` lists failing server/agent pairs on several agents. `agentbrew status` shows 15, because 5 are suppressed on purpose (figma per-client OAuth x4, and `ask-human`/copilot, see `re-promote-ask-human-mcp-after-stdio-fix`). Of the 15: (a) 14 are launcher timeouts: `chrome-devtools`, `playwright`, `shadcn-mcp`, `github` and `tasks-mcp` on windsurf, devin, copilot and opencode. The same `chrome-devtools` and `playwright` servers are healthy on claude-code, so the per-agent launch config is the likely shared cause. (b) 1 is a login failure: `railway`/claude-code is not logged in. The heal history of the shown pairs holds 124 attempts. All 124 are recorded `healed: true`, but no pair recovered. Cause: `runMcpSyncHeal()` in `src/mcp/heal-actions.ts` returns `healed: true` after `syncMcpServers()` and does not re-probe. Steps: (1) record `healed: true` only when a re-probe after the heal action returns ok; (2) report a logged-out server as needs-login with its login command, and do not auto-heal it; (3) find and fix the shared launcher fault for class (a); (4) flag any pair that fails for more than 24h.
   - **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, src/mcp/probe.ts, src/status.ts, src/core/mcp-agent-map.ts, src/health.ts, TASKS.md
   - **Acceptance**: (1) a unit test with a fake probe shows that a heal whose re-probe still fails is recorded `healed: false`; (2) a logged-out server shows as needs-login with its exact login command and is not counted as failing; (3) `agentbrew mcp probe --deep` returns ok or a documented skip for the 14 class-(a) pairs; (4) a staleness check flags any pair that fails for more than 24h.
@@ -419,18 +420,6 @@
   **Files**: `src/cli.ts` (handleSyncEarlyExits/handleSyncCommand), `src/update.ts`, `src/sync-runner.ts`
   **Acceptance**: with an Agentfile source URL edited and stale state, a single `agentbrew sync --pull` pulls from the corrected URL and prunes the stale source entry; a test pins the apply-before-pull ordering.
   **Output**: code
-
-- [ ] Devin hooks drift is workspace-aware instead of reporting from arbitrary cwd
-  **ID**: devin-hooks-drift-workspace-aware
-  **Tags**: scout, drift, hooks-sync, devin
-  **Details**: Scouted while fixing `agentbrew commands list` Agentfile source visibility. Running `agentbrew status --json` from `/tmp` after MCP repair reports `devin [hooks] hooks file missing: .devin/hooks.v1.json — Run: agentbrew sync`. That path is project-local by design, so a global status command run outside a repo should not report a missing hooks file for `/tmp`.
-  **Files**: `src/drift-checks/hooks.ts`, `src/sync/hooks-sync.ts`, `src/drift-checks/hooks.test.ts`
-  **Acceptance**: `agentbrew status --json` from a directory with no `Agentfile.yaml` and no repo-local hooks manifest does not report missing Devin project hooks; running from an agentbrew repo with hook state still reports real project-hook drift.
-  **Hypothesis**: The Devin hook drift checker treats every cwd as a project hooks scope. Gating project-scoped hook drift on an Agentfile/repo context, or resolving against the state/Agentfile source path, will remove false positives without hiding real project drift.
-  **Success**: `env -C /tmp agentbrew status --json` has zero `{"agent":"devin","type":"hooks"}` entries unless `/tmp` explicitly has an Agentfile/hooks declaration.
-  **Pivot**: If hooks are intentionally global-to-current-cwd, change the status output to label the cwd explicitly and exclude `/tmp`/non-repo directories from default drift summaries.
-  **Measurement**: `env -C /tmp agentbrew status --json | jq '[.drift[] | select(.agent=="devin" and .type=="hooks")] | length'` returns 0.
-  **Anchor**: VISION.md G5 (drift detection + auto-repair must be trustworthy) and G6 (hooks parity for Devin without manual false positives).
 
 - [ ] Fix 2 pre-existing test failures unrelated to feature work
   **ID**: fix-stale-test-failures
@@ -669,9 +658,10 @@
   **Measurement**: `node -e "const c = require('js-yaml').load(require('fs').readFileSync('src/catalog.yaml','utf8')); console.log(c.bundles?.length ?? 0)"` returns ≥3; `agentbrew browse bundles --json | jq 'length' ≥ 3`.
   **Anchor**: `anthropics/claude-plugins-official` README — bundle structure (`commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`); claudepluginhub.com April 2026 stats (282,325 components, bundle is the install unit); Claude Code docs https://code.claude.com/docs/en/discover-plugins.md.
 
-- [ ] Extend `hooks-sync.ts` to deploy SessionStart hooks to Devin and Cursor (not just Claude Code)
+- [ ] Extend `hooks-sync.ts` to deploy SessionStart hooks to Cursor (not just Claude Code)
   **ID**: extend-hooks-sync-beyond-claude-code
-  **Tags**: scout, tier-3, hooks-sync, devin-hooks, cursor-rules
+  **Tags**: scout, tier-3, hooks-sync, cursor-rules
+  **Scope**: Cursor only. Devin is deprecated and frozen (owner decision 2026-10-02); skip every Devin step below.
   **Hypothesis**: today's `SessionStart` hook only fires in Claude Code. Extending hooks-sync.ts to also deploy equivalent hooks to Devin (`.devin/hooks/session-start.sh`) and Cursor (via a persistent rule with `run-first` directive) converts soft enforcement (rule text says "load context") to hard enforcement (script runs deterministically) for the the most-used agents in this user's setup.
   **Success**: When a fresh session opens in any of {Claude Code, Devin, Cursor}, the `load-project-context.sh` script runs and dumps canonical-doc content into context BEFORE the agent's first response. Verified by inspecting session transcripts for each agent.
   **Pivot**: If Devin doesn't support pre-first-response hooks (its `.devin/hooks/` model might be different from Claude Code's `SessionStart`), fall back to a `~/.config/devin/AGENTS.md` opening section that explicitly says "run this script first" — soft but at least loud.
@@ -896,18 +886,6 @@
   - **Files**: src/drift-checks/launchagent-path.ts, related tests
   - **Acceptance**: a test with different development and applied Node paths accepts the deployed applied path and still flags a genuinely stale path.
 
-- [ ] Support deprecated agents, and clean up after an excluded or missing agent
-  - **ID**: agents-deprecated-flag-and-exclude-cleanup
-  - **Tags**: agents, sync, deprecation, cleanup, windsurf, augment
-  - **Details**: Owner decision 2026-09-28: Windsurf and Augment are deprecated. The focus tools are Claude Code (also in the WebStorm terminal), WebStorm and Cursor. agentbrew has no deprecation concept: `src/core/agents.yaml` lists `windsurf` and `augment` like every other agent. On a Mac without `Windsurf.app`, removing `~/.codeium/windsurf` and running `agentbrew sync --pull` recreated `mcp_config.json`, `memories/global_rules.md` and `skills/` there, because state still marked windsurf as detected. Steps: (1) add `deprecated: true` plus a replacement hint to agent definitions, and print one deprecation line in `agentbrew status` for a detected deprecated agent; (2) re-check detection on each sync, so an agent whose app and config root are gone becomes undetected; (3) when an agent is excluded (`excludeAgents`) or becomes undetected, remove the files agentbrew wrote for it (tracked in state) and never other files.
-  - **Files**: src/core/agents.yaml, src/agents.ts, src/status.ts, src/sync/ (the per-surface writers), src/clean.ts, their tests
-  - **Acceptance**: (1) status prints a deprecation line for a detected deprecated agent; (2) with `excludeAgents: [windsurf]`, one sync removes the agentbrew-written files under `~/.codeium/windsurf` and keeps any other file there; (3) with the app and config root gone, sync marks the agent undetected and writes nothing for it; (4) tests cover all three.
-  - **Hypothesis**: A deprecated agent keeps getting config only because detection is sticky and exclusion does not clean up. Re-checking detection and cleaning up on exclusion takes agentbrew-written paths for an excluded agent from 3 (windsurf, 2026-09-28) to 0 after one sync.
-  - **Success**: On a machine whose Agentfile excludes windsurf, the Measurement prints `absent`.
-  - **Pivot**: If an agent's config root holds user files that agentbrew cannot tell apart from its own, stop deleting and print the paths to remove instead.
-  - **Measurement**: `agentbrew sync --pull >/dev/null 2>&1; test -e ~/.codeium/windsurf/mcp_config.json && echo present || echo absent`
-  - **Anchor**: Burgess, "A site configuration engine", *Computing Systems* 8(2), 1995 (convergent configuration removes what it no longer manages); Fowler, "ParallelChange", martinfowler.com, 2014 (deprecate, migrate, then remove).
-
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, status, plugins
@@ -1022,9 +1000,10 @@
   **Acceptance**: with `defaultModel` set and an agent's config manually flipped to another model, `agentbrew status` shows 1 drift issue naming the agent and the expected model; `agentbrew status --fix` repairs it.
   **Output**: code
 
-- [ ] Default-model parity for Cursor and Windsurf (G6 gap — no file surface today)
+- [ ] Default-model parity for Cursor (G6 gap — no file surface today)
   **ID**: model-default-parity-cursor-windsurf
-  **Tags**: scout, models, parity, cursor, windsurf
+  **Tags**: scout, models, parity, cursor
+  **Scope**: Cursor only. Windsurf is deprecated and frozen (owner decision 2026-10-02).
   **Details**: The model surface ships for claude-code/devin/codex but two primary agents have no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
   **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
   **Acceptance**: either (a) Cursor/Windsurf gain `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.

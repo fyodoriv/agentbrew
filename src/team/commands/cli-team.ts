@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import chalk from "chalk";
 import type { Command } from "commander";
@@ -159,6 +159,17 @@ function resolveTeamSourceUrl(rawUrl: string, teamPath: string): string {
 }
 
 /**
+ * Overlay-local skill dirs ship with the overlay itself, so every skill in them
+ * deploys on sync. Remote team sources stay opt-in, one `agentbrew install` per skill.
+ */
+function registerOverlaySkillDir(state: AgentBrewState, dir: string, teamPath: string, origin: string): void {
+  const dirs = state.skillSourceDirs ?? [];
+  if (dirs.some((d) => d.path === dir)) return;
+  dirs.push({ label: `${basename(teamPath)}-${basename(dir)}`, path: dir, origin });
+  state.skillSourceDirs = dirs;
+}
+
+/**
  * Merge team overlay Agentfile contents into state.
  * MCP servers and rules from the overlay are registered elsewhere.
  */
@@ -175,7 +186,12 @@ export function mergeTeamAgentfile(
   for (const rawUrl of agentfile.sources) {
     if (typeof rawUrl !== "string") continue;
     const sourceUrl = resolveTeamSourceUrl(rawUrl, teamPath);
-    if (sourceUrl !== rawUrl) sources = sources.filter((s) => !(s.url === rawUrl && s.origin === origin));
+    if (sourceUrl !== rawUrl) {
+      // A source entry would filter the dir down to `skillsInstalled`.
+      sources = sources.filter((s) => !(s.origin === origin && (s.url === rawUrl || s.url === sourceUrl)));
+      registerOverlaySkillDir(state, sourceUrl, teamPath, origin);
+      continue;
+    }
     if (sources.some((s) => s.url === sourceUrl)) continue;
     sources.push({
       url: sourceUrl,

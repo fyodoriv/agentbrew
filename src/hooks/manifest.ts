@@ -6,7 +6,10 @@
  * overlay). Merges them: overlay entries with matching `id` REPLACE the
  * canonical entry; canonical entries with `id` listed in overlay
  * `disabled:` are skipped (logged with `reason: "disabled-by-overlay"`
- * at hook-fire time via the deployed script's verdict logic).
+ * at hook-fire time via the deployed script's verdict logic). Entries
+ * with `defaultEnabled: false` are opt-in: their script deploys, but
+ * they are wired into agent hooks files only when the overlay lists
+ * their `id` under `enabled:`.
  *
  * Output: an array of `ManagedHook` records ready for the existing
  * `syncHooks()` pipeline at `src/sync/hooks-sync.ts`. The script files
@@ -64,6 +67,8 @@ export interface ManifestHookEntry {
   promptVersion?: number;
   sourceRule?: string;
   agents?: string[];
+  /** `false` makes the hook opt-in per machine via the overlay `enabled:` list. Omitted means on. */
+  defaultEnabled?: boolean;
 }
 
 interface ManifestFile {
@@ -71,14 +76,20 @@ interface ManifestFile {
   hooks: ManifestHookEntry[];
   /** Overlay manifests can list canonical hook IDs to disable on this machine. */
   disabled?: string[];
+  /** Overlay manifests can list `defaultEnabled: false` hook IDs to turn on for this machine. */
+  enabled?: string[];
 }
 
 /** Resolved manifest after merging canonical + overlay. */
 export interface ResolvedManifest {
-  /** All hook entries the operator wants deployed (canonical minus disabled, plus overlay additions). */
+  /** All hook entries whose scripts deploy (canonical minus disabled, plus overlay additions). */
   hooks: ManifestHookEntry[];
   /** Hook IDs that were explicitly disabled by overlay. */
   disabledByOverlay: string[];
+  /** Hook IDs that the overlay `enabled:` list turned on. */
+  enabledByOverlay: string[];
+  /** Hook IDs in `hooks` with `defaultEnabled: false` and no overlay `enabled:` entry: deployed, not wired. */
+  offByDefault: string[];
   /** Hook IDs in overlay that REPLACED a canonical entry. */
   overrides: string[];
 }
@@ -120,9 +131,11 @@ export function loadManifestFile(path: string): ManifestFile | null {
   if (!Array.isArray(hooks)) {
     throw new Error(`hook manifest: ${path} hooks field is not an array`);
   }
-  const disabled = obj.disabled ?? [];
-  if (!Array.isArray(disabled) || disabled.some((id) => typeof id !== "string" || !id)) {
-    throw new Error(`hook manifest: ${path} disabled field must be an array of non-empty strings`);
+  for (const field of ["disabled", "enabled"]) {
+    const ids = obj[field] ?? [];
+    if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || !id)) {
+      throw new Error(`hook manifest: ${path} ${field} field must be an array of non-empty strings`);
+    }
   }
   for (const [i, entry] of hooks.entries()) {
     validateEntry(entry as Record<string, unknown>, path, i);
@@ -179,6 +192,9 @@ function validateEntry(entry: Record<string, unknown>, path: string, index: numb
   if (entry.promptVersion !== undefined && typeof entry.promptVersion !== "number") {
     throw new Error(`${where} (${id}): promptVersion must be a number or omitted`);
   }
+  if (entry.defaultEnabled !== undefined && typeof entry.defaultEnabled !== "boolean") {
+    throw new Error(`${where} (${id}): defaultEnabled must be a boolean or omitted`);
+  }
 }
 
 /**
@@ -188,6 +204,8 @@ function validateEntry(entry: Record<string, unknown>, path: string, index: numb
  *   - overlay entries with matching `id` REPLACE canonical entries
  *   - overlay `disabled:` list of IDs removes those entries
  *   - new IDs in overlay get ADDED to the final list
+ *   - `defaultEnabled: false` entries (after overrides) stay in the list
+ *     but are reported in `offByDefault` unless overlay `enabled:` names them
  *
  * Returns a `ResolvedManifest` with the final hook list + diagnostics
  * about what overlay actions fired (operator-visible drift surface).
@@ -225,9 +243,14 @@ export function resolveManifest(repoRoot: string, opts?: { overlayPath?: string 
     }
   }
 
+  const enabled = new Set(overlay?.enabled ?? []);
+  const offByDefault = hooks.filter((entry) => entry.defaultEnabled === false && !enabled.has(entry.id));
+
   return {
     hooks,
     disabledByOverlay: [...disabled],
+    enabledByOverlay: [...enabled],
+    offByDefault: offByDefault.map((entry) => entry.id),
     overrides,
   };
 }
@@ -261,7 +284,9 @@ export function manifestEntryToManagedHook(entry: ManifestHookEntry, deployScrip
 
 /**
  * Top-level helper: read both manifests, return the final ManagedHook[]
- * the sync engine should feed into `syncHooks()`.
+ * the sync engine should feed into `syncHooks()`. Hooks in `offByDefault`
+ * are left out of `managed`; `resolved.hooks` still lists them so their
+ * scripts deploy.
  *
  * Throws on schema-invalid manifest (operator wants immediate feedback).
  */
@@ -271,7 +296,10 @@ export function loadManagedHooksFromManifest(
   opts?: { overlayPath?: string },
 ): { managed: ManagedHook[]; resolved: ResolvedManifest } {
   const resolved = resolveManifest(repoRoot, opts);
-  const managed = resolved.hooks.map((entry) => manifestEntryToManagedHook(entry, deployScriptDir));
+  const offByDefault = new Set(resolved.offByDefault);
+  const managed = resolved.hooks
+    .filter((entry) => !offByDefault.has(entry.id))
+    .map((entry) => manifestEntryToManagedHook(entry, deployScriptDir));
   return { managed, resolved };
 }
 

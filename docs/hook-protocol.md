@@ -12,7 +12,7 @@ surface.
 | `hooks/checks/` | Deterministic shell checks. |
 | `hooks/verifiers/` | LLM-backed verifiers. Verifiers must default to allow on timeout or model failure. |
 | `hooks/lib/` | Shared shell helpers for parsing hook stdin and emitting verdicts. |
-| `~/.config/agentbrew/hooks-overlay/manifest.yaml` | Optional per-machine overlay. Matching IDs replace canonical hooks; `disabled:` removes canonical hooks locally. |
+| `~/.config/agentbrew/hooks-overlay/manifest.yaml` | Optional per-machine overlay. Matching IDs replace canonical hooks; `disabled:` removes canonical hooks locally; `enabled:` turns on `defaultEnabled: false` hooks locally (`disabled:` wins when an ID is in both). |
 
 The parser rejects malformed manifests during sync so a broken guardrail fails
 before it can silently disappear from an agent.
@@ -23,6 +23,8 @@ before it can silently disappear from an agent.
 version: 1
 disabled:
   - optional-canonical-hook-id
+enabled:
+  - optional-opt-in-hook-id
 hooks:
   - id: code-no-timestamps
     description: Reject timestamp comments in source code
@@ -53,6 +55,15 @@ Optional fields:
 - `sourceRule`: advisory rule that the hook enforces.
 - `agents`: target agent names. Omit or use an empty list to deploy to every
   detected hook-capable target.
+- `defaultEnabled`: set `false` to make the hook opt-in. Its script still
+  deploys, but sync wires it into agent hooks files only on machines whose
+  overlay lists the ID under `enabled:`. The PreToolUse:Bash hooks and
+  `context-budget-measure` ship this way.
+
+State hooks (from `state.yaml` / Agentfile) and manifest hooks merge per hook,
+not per group. Hooks that share an event and matcher land in one group, with
+state hooks first. A manifest hook is dropped only when a state hook has the
+same event, matcher, and command.
 
 ## Sync targets
 

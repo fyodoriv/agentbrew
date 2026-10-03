@@ -112,6 +112,36 @@ describe("loadManifestFile", () => {
     );
     expect(() => loadManifestFile(path)).toThrow(/agents must be an array/u);
   });
+
+  it("rejects an invalid enabled list and a non-boolean defaultEnabled", () => {
+    const root = tempRoot();
+    const path = join(root, "manifest.yaml");
+    writeManifest(
+      path,
+      `
+      version: 1
+      enabled: [valid, ""]
+      hooks: []
+      `,
+    );
+    expect(() => loadManifestFile(path)).toThrow(/enabled field/u);
+
+    writeManifest(
+      path,
+      `
+      version: 1
+      hooks:
+        - id: bad-default
+          description: Bad default
+          event: PreToolUse
+          script: checks/bad.sh
+          tier: deterministic
+          verdict: block
+          defaultEnabled: "no"
+      `,
+    );
+    expect(() => loadManifestFile(path)).toThrow(/defaultEnabled must be a boolean/u);
+  });
 });
 
 describe("resolveManifest", () => {
@@ -165,6 +195,64 @@ describe("resolveManifest", () => {
     expect(resolvedManifest.hooks[0].description).toBe("First override");
     expect(resolvedManifest.overrides).toEqual(["first"]);
     expect(resolvedManifest.disabledByOverlay).toEqual(["second"]);
+  });
+
+  it("keeps defaultEnabled: false hooks unwired until the overlay enables them", () => {
+    const root = tempRoot();
+    const overlay = join(root, "overlay.yaml");
+    writeCanonical(
+      root,
+      `
+      version: 1
+      hooks:
+        - id: always-on
+          description: Default hook
+          event: PreToolUse
+          matcher: Bash
+          script: checks/always-on.sh
+          tier: deterministic
+          verdict: block
+        - id: opt-in
+          description: Opt-in hook
+          event: PreToolUse
+          matcher: Bash
+          script: checks/opt-in.sh
+          tier: deterministic
+          verdict: block
+          defaultEnabled: false
+        - id: opt-in-disabled
+          description: Opt-in hook the overlay also disables
+          event: PreToolUse
+          matcher: Bash
+          script: checks/opt-in-disabled.sh
+          tier: deterministic
+          verdict: block
+          defaultEnabled: false
+      `,
+    );
+    const commands = (managed: { command?: string }[]) => managed.map((hook) => hook.command);
+
+    const noOverlay = loadManagedHooksFromManifest(root, "/deploy", { overlayPath: join(root, "missing.yaml") });
+    // Every script still deploys, so an overlay `enabled:` entry only has to wire it.
+    expect(noOverlay.resolved.hooks.map((hook) => hook.id)).toEqual(["always-on", "opt-in", "opt-in-disabled"]);
+    expect(noOverlay.resolved.offByDefault).toEqual(["opt-in", "opt-in-disabled"]);
+    expect(noOverlay.resolved.enabledByOverlay).toEqual([]);
+    expect(commands(noOverlay.managed)).toEqual(["bash /deploy/always-on.sh"]);
+
+    writeManifest(
+      overlay,
+      `
+      version: 1
+      enabled: [opt-in, opt-in-disabled]
+      disabled: [opt-in-disabled]
+      hooks: []
+      `,
+    );
+    const withOverlay = loadManagedHooksFromManifest(root, "/deploy", { overlayPath: overlay });
+    expect(withOverlay.resolved.enabledByOverlay).toEqual(["opt-in", "opt-in-disabled"]);
+    expect(withOverlay.resolved.offByDefault).toEqual([]);
+    // `disabled:` wins over `enabled:`.
+    expect(commands(withOverlay.managed)).toEqual(["bash /deploy/always-on.sh", "bash /deploy/opt-in.sh"]);
   });
 });
 
@@ -289,9 +377,8 @@ describe("canonical hook manifest", () => {
       verdict: "warn",
       agents: ["claude-code", "cursor"],
     });
-    const managedContextBudget = managed.find((hook) => hook.command?.includes("context-budget-measure.sh"));
-    expect(managedContextBudget?.event).toBe("SessionStart");
-    expect(managedContextBudget?.agents).toEqual(["claude-code", "cursor"]);
+    // Opt-in (defaultEnabled: false): the script deploys, but sync does not wire it.
+    expect(managed.find((hook) => hook.command?.includes("context-budget-measure.sh"))).toBeUndefined();
     expect(memorySessionEnd).toMatchObject({
       event: "SessionEnd",
       script: "checks/memory-sync-projects-session-end.sh",
@@ -302,5 +389,19 @@ describe("canonical hook manifest", () => {
     });
     expect(managedMemorySessionEnd?.event).toBe("SessionEnd");
     expect(managedMemorySessionEnd?.agents).toEqual(["claude-code"]);
+  });
+
+  it("ships the PreToolUse:Bash hooks and context-budget-measure as opt-in", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
+      overlayPath: join(tempRoot(), "missing-overlay.yaml"),
+    });
+    const bashHookIds = resolvedManifest.hooks
+      .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
+      .map((hook) => hook.id);
+
+    expect(bashHookIds).toHaveLength(18);
+    expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
+    expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
   });
 });

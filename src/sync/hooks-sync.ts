@@ -586,9 +586,16 @@ async function loadAndDeployManifestHooks(
   }
 }
 
+/** Identity of one hook: its event:matcher group plus its command (or prompt). */
+function hookIdentity(hook: ManagedHook): string {
+  return `${hookKey(hook.event, hook.matcher)} ${hook.command ?? hook.prompt ?? ""}`;
+}
+
+/** State hooks come first, so they lead each event:matcher group. A manifest
+ *  hook is dropped only when a state hook has the same identity. */
 function mergeHooks(state: AgentBrewState, manifestHooks: ManagedHook[]): ManagedHook[] {
-  const stateHookKeys = new Set((state.hooks ?? []).map((h) => hookKey(h.event, h.matcher)));
-  const dedupedManifestHooks = manifestHooks.filter((h) => !stateHookKeys.has(hookKey(h.event, h.matcher)));
+  const stateHookIdentities = new Set((state.hooks ?? []).map(hookIdentity));
+  const dedupedManifestHooks = manifestHooks.filter((h) => !stateHookIdentities.has(hookIdentity(h)));
   return [...(state.hooks ?? []), ...dedupedManifestHooks];
 }
 

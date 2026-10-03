@@ -90,6 +90,22 @@ describe("reconcileIntersectionClientEntries", () => {
     expect(Object.keys(JSON.parse(readFileSync(claudeJson, "utf-8")).mcpServers)).toEqual(["playwright"]);
   });
 
+  it("sweeps mcpm wrappers for broken registry servers a team overlay adds", () => {
+    const claudeJson = join(home, ".claude.json");
+    writeFileSync(
+      claudeJson,
+      JSON.stringify({ mcpServers: { "mcpm_example-remote": { command: "mcpm" }, context7: { command: "npx" } } }),
+    );
+
+    const results = sweepMcpmHygiene({
+      agentDefinitions: [claudeCodeDefinition(home)],
+      brokenRegistryServers: ["ask-human", "jira-mcp", "example-remote"],
+    });
+
+    expect(results.map((result) => result.removedKeys)).toEqual([["mcpm_example-remote"]]);
+    expect(Object.keys(JSON.parse(readFileSync(claudeJson, "utf-8")).mcpServers)).toEqual(["context7"]);
+  });
+
   it("leaves clients alone when they are not detected", () => {
     const claudeJson = join(home, ".claude.json");
     const original = JSON.stringify({ mcpServers: { "tasks-mcp": { command: "npx", args: ["old"] } } });

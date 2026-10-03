@@ -144,4 +144,19 @@ describe("catalog loading boundaries", () => {
       rmSync(fixtureDir, { recursive: true, force: true });
     }
   });
+
+  it("carries the team overlay's broken mcpm registry names", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "agentbrew-catalog-"));
+    const overlayPath = join(fixtureDir, "catalog-overlay.yaml");
+    writeFileSync(overlayPath, ["broken_mcpm_registry_servers:", "  - example-remote", ""].join("\n"));
+    mockLoadState.mockReturnValue({ team: { catalogOverlayPath: overlayPath } } as never);
+
+    try {
+      expect(loadCatalog().broken_mcpm_registry_servers).toEqual(["example-remote"]);
+      expect(loadBaseCatalog().broken_mcpm_registry_servers).toBeUndefined();
+    } finally {
+      mockLoadState.mockReturnValue(undefined);
+      rmSync(fixtureDir, { recursive: true, force: true });
+    }
+  });
 });

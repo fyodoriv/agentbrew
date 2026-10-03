@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { getStateServers } from "../agentfile.js";
+import { loadCatalog } from "../catalog/types.js";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
 import { errorMessage } from "../core/errors.js";
@@ -22,11 +23,13 @@ import { getEnvFormat, hasUnresolvedLiterals, resolveEnvVar } from "../mcp/env-v
 import { getServers, readMcpJson, setServers, writeMcpJson } from "../mcp/mcp.js";
 import { filterInvalidServers } from "../mcp/mcp-validation.js";
 import {
+  BROKEN_MCPM_REGISTRY_SERVERS,
   reconcileIntersectionClientEntries,
   sweepMcpmHygiene,
   uninstallBrokenMcpmRegistryServers,
   uninstallNativeOnlyMcpmServers,
   uninstallQuarantinedMcpmServers,
+  withExtraBrokenRegistryServers,
 } from "../mcp/mcpm-hygiene.js";
 import { sweepPlaywrightIsolated } from "../mcp/playwright-isolated-sweep.js";
 import { formatQuarantineNotice, partitionQuarantined, quarantinedEntryKeys } from "../mcp/quarantine.js";
@@ -1225,6 +1228,16 @@ function runPostSyncCursorGuiFinalize(agents: AgentConfig[], log: Logger, quiet:
   }
 }
 
+/** The generic broken-registry list plus the names a team catalog overlay adds. */
+function loadBrokenMcpmRegistryServers(): readonly string[] {
+  try {
+    return withExtraBrokenRegistryServers(loadCatalog().broken_mcpm_registry_servers);
+  } catch (e) {
+    logSkipped("mcp-sync/broken-mcpm-registry", e);
+    return BROKEN_MCPM_REGISTRY_SERVERS;
+  }
+}
+
 /** Post-sync sweep that removes redundant/broken mcpm wrappers and stale MCP entries.
  *  See `src/mcp/mcpm-hygiene.ts` for the full rationale. */
 function runPostSyncMcpmHygieneSweep(
@@ -1237,8 +1250,9 @@ function runPostSyncMcpmHygieneSweep(
   try {
     const stateServerNames = new Set(servers.map((server) => server.name));
     const detectedAgents = agents.filter((agent) => agent.detected).map((agent) => agent.name);
+    const brokenRegistryServers = loadBrokenMcpmRegistryServers();
     const removedFromMcpm = [
-      ...uninstallBrokenMcpmRegistryServers(detectedAgents, false, stateServerNames),
+      ...uninstallBrokenMcpmRegistryServers(detectedAgents, false, stateServerNames, brokenRegistryServers),
       ...uninstallQuarantinedMcpmServers(
         detectedAgents,
         quarantined.map((server) => server.name),
@@ -1250,7 +1264,7 @@ function runPostSyncMcpmHygieneSweep(
         false,
       ),
     ];
-    const results = sweepMcpmHygiene({ stateServerNames, agentDefinitions: AGENT_DEFINITIONS });
+    const results = sweepMcpmHygiene({ stateServerNames, agentDefinitions: AGENT_DEFINITIONS, brokenRegistryServers });
     const removedKeys = results.reduce((sum, result) => sum + result.removedKeys.length, 0);
     const fixedGithub = results.filter((result) => result.fixedGithub).length;
     const fixedMemory = results.filter((result) => result.fixedMemory).length;

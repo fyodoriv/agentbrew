@@ -53,6 +53,7 @@ const SERVER_INPUT: McpServer = {
 const originalHome = process.env.HOME;
 const originalDotfilesReposDir = process.env.DOTFILES_REPOS_DIR;
 const originalDotfilesOverlayRoot = process.env.DOTFILES_OVERLAY_ROOT;
+const originalExtraOverlayRoot = process.env.EXTRA_OVERLAY_ROOT;
 
 beforeAll(() => {
   // The parity contract is format-only. Keep a machine-specific organization
@@ -60,6 +61,7 @@ beforeAll(() => {
   process.env.HOME = "/tmp/agentbrew-mcp-agent-matrix-home";
   process.env.DOTFILES_REPOS_DIR = "/tmp/agentbrew-mcp-agent-matrix-repos";
   delete process.env.DOTFILES_OVERLAY_ROOT;
+  delete process.env.EXTRA_OVERLAY_ROOT;
 });
 
 afterAll(() => {
@@ -69,6 +71,8 @@ afterAll(() => {
   else process.env.DOTFILES_REPOS_DIR = originalDotfilesReposDir;
   if (originalDotfilesOverlayRoot === undefined) delete process.env.DOTFILES_OVERLAY_ROOT;
   else process.env.DOTFILES_OVERLAY_ROOT = originalDotfilesOverlayRoot;
+  if (originalExtraOverlayRoot === undefined) delete process.env.EXTRA_OVERLAY_ROOT;
+  else process.env.EXTRA_OVERLAY_ROOT = originalExtraOverlayRoot;
 });
 
 describe("Per-agent toEntry() — same input → comparable shape across formats", () => {

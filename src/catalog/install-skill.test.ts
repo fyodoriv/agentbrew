@@ -1,11 +1,33 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
 import { expandHome } from "../utils.js";
 import { findSkillDirInCache } from "./index-source.js";
 import { copySkillFromCache, isAlreadyInstalled, resetSourceFallbackAnnounced } from "./install-skill.js";
+
+// install-skill.ts resolves the installed-skills dir at import time, so the
+// tmpdir home path must be set before vi.mock runs (AGENTS.md rule #15). Without it,
+// copySkillFromCache deletes and rewrites the real installed skill.
+const mockHome = vi.hoisted(() => {
+  const os = require("node:os") as typeof import("node:os");
+  const path = require("node:path") as typeof import("node:path");
+  return path.join(os.tmpdir(), `agentbrew-install-skill-home-${process.pid}-${Date.now()}`);
+});
+
+vi.mock("../utils.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils.js")>()),
+  expandHome: (path: string) => path.replace(/^~/, mockHome),
+}));
+
+beforeAll(() => {
+  mkdirSync(mockHome, { recursive: true });
+});
+
+afterAll(() => {
+  rmSync(mockHome, { recursive: true, force: true });
+});
 
 describe("copySkillFromCache", () => {
   let testDir: string;
@@ -41,6 +63,8 @@ describe("copySkillFromCache", () => {
 
     const installedRoot = expandHome(INSTALLED_SKILLS_DIR);
     const destination = join(installedRoot, "build-mcp-server");
+    // Guard: this test deletes `destination`, so it must never be the real one.
+    expect(destination.startsWith(join(homedir(), ".config", "agentbrew"))).toBe(false);
     rmSync(destination, { recursive: true, force: true });
 
     const copied = copySkillFromCache(cachePath, "build-mcp-server");

@@ -14,6 +14,7 @@ AgentBrew never destroys data it didn't create. Manual edits are preserved acros
 | **Skills directories** | Directories and symlinks you created manually | Symlinks created by agentbrew |
 | **Command files** | Commands you created or edited after deployment | Command files deployed by agentbrew (tracked via manifest hash) |
 | **Agent definitions** | Agent files you created or edited after deployment | Agent files deployed by agentbrew |
+| **Helper scripts** | Any file in `~/.config/agentbrew/scripts/` that agentbrew did not write, or that you edited after deployment | Helper scripts agentbrew installed (tracked via manifest hash) |
 
 ## How it works
 

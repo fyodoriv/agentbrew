@@ -92,6 +92,8 @@ shared-rules.md                  →  rules-sync.ts                →  Native w
 installed skills + opt-in dirs  →  skills-sync.ts               →  ~/.*/skills/* (symlinks — agents with readsFrom are skipped)
 ~/.config/agentbrew/agents/      →  agents-sync.ts               →  ~/.claude/agents/*.md, ~/.cursor/agents/*.md, etc.
 templates/AGENTS.md              →  instructions-sync.ts         →  ~/.claude/CLAUDE.md, ~/.codeium/windsurf/memories/global_rules.md, etc.
+templates/scripts/* +            →  helper-scripts.ts            →  ~/.config/agentbrew/scripts/* (only missing or
+  scripts/check-pr-vision-trace.mjs                                   agentbrew-written files)
 Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key),
                                                                       ~/.cursor/hooks.json,
                                                                       .devin/hooks.v1.json (project-local)

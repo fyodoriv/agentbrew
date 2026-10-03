@@ -27,6 +27,9 @@ export const BACKUPS_DIR = "~/.config/agentbrew/backups";
 /** Sync error log for drift detection. */
 export const SYNC_ERRORS_PATH = "~/.config/agentbrew/sync-errors.json";
 
+/** Helper scripts the agent instructions call (deployed by src/sync/helper-scripts.ts). */
+export const HELPER_SCRIPTS_DIR = "~/.config/agentbrew/scripts";
+
 /** Shell hook script for cd-based project detection (bash/zsh). */
 export const SHELL_HOOK_PATH = "~/.config/agentbrew/shell-hook.sh";
 

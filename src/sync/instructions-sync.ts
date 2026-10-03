@@ -12,6 +12,8 @@ import { loadState } from "../state.js";
 import type { AgentConfig, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
+import type { HelperScriptResult } from "./helper-scripts.js";
+import { syncHelperScripts } from "./helper-scripts.js";
 import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
@@ -305,6 +307,47 @@ function reportSyncResults(
   return { count, errors };
 }
 
+const HELPER_SCRIPT_VERBS = {
+  installed: { active: "installed", dry: "would install" },
+  updated: { active: "updated", dry: "would update" },
+} as const;
+
+type HelperScriptReportOptions = Pick<ReportOptions, "quiet" | "verbose" | "dryRun">;
+
+/** One report line for a helper-script result, or undefined when there is nothing to say. */
+function describeHelperScript(
+  result: HelperScriptResult,
+  log: Logger,
+  options: HelperScriptReportOptions,
+): string | undefined {
+  const label = `scripts/${result.name}`;
+  if (result.error) return `  ${log.red("✗")} ${label} — ${log.red(result.error)}`;
+  if (result.action === "kept-user-file") return `  ${log.dim("-")} ${label} — kept (not written by agentbrew)`;
+  if (result.action === "unchanged") return options.verbose ? `  ${log.green("✓")} ${label} — up to date` : undefined;
+  const verbs = HELPER_SCRIPT_VERBS[result.action];
+  return options.dryRun
+    ? `  ${log.blue("~")} ${label} — ${verbs.dry}`
+    : `  ${log.green("✓")} ${label} — ${verbs.active}`;
+}
+
+/** Install the helper scripts and report each one; a kept user-owned file is info, not an error. */
+function syncAndReportHelperScripts(
+  manifest: Manifest,
+  log: Logger,
+  options: HelperScriptReportOptions,
+): { summaryParts: string[]; errors: number } {
+  const results = syncHelperScripts({ projectRoot: resolveProjectRoot(), manifest, dryRun: options.dryRun });
+  for (const result of results) {
+    const line = describeHelperScript(result, log, options);
+    if (line && !options.quiet) log.log(line);
+  }
+  const written = results.filter((r) => !r.error && (r.action === "installed" || r.action === "updated")).length;
+  return {
+    summaryParts: results.length > 0 ? [`${written} helper script(s)`] : [],
+    errors: results.filter((r) => r.error).length,
+  };
+}
+
 /** Emit a warning if the deployed instructions file exceeds the token budget. */
 function warnIfOverTokenBudget(
   targets: ReadonlyArray<Omit<AgentConfig, "detected">>,
@@ -364,7 +407,7 @@ function getInstructionsTargets(): Array<Omit<AgentConfig, "detected">> {
   });
 }
 
-/** Deploy AGENTS.md to all agent instruction files and generate context files. */
+/** Deploy AGENTS.md to all agent instruction files, generate context files, and install the helper scripts AGENTS.md calls. */
 export async function syncInstructions(options?: SyncOptions, ctx?: Partial<Context>): Promise<InstructionsSyncResult> {
   const quiet = options?.quiet ?? false;
   const verbose = options?.verbose ?? false;
@@ -417,12 +460,14 @@ export async function syncInstructions(options?: SyncOptions, ctx?: Partial<Cont
     activeVerb: "generated",
     dryVerb: "would generate",
   });
+  const scriptReport = syncAndReportHelperScripts(manifest, log, { quiet, verbose, dryRun });
 
   if (!sharedManifest) saveManifest(manifest);
 
   if (!quiet) {
-    const totalErrors = agentReport.errors + contextReport.errors;
+    const totalErrors = agentReport.errors + contextReport.errors + scriptReport.errors;
     const parts = [`${agentReport.count} agent(s)`, `${contextReport.count} context file(s)`];
+    parts.push(...scriptReport.summaryParts);
     if (totalErrors > 0) parts.push(log.red(`${totalErrors} failed`));
     const verb = dryRun ? "Would update" : "Updated";
     log.log(`\n${log.green("✓")} ${verb} ${parts.join(", ")}\n`);

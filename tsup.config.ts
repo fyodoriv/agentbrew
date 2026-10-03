@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, cpSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
@@ -31,6 +31,9 @@ export default defineConfig({
     copyFileSync("src/core/agents.yaml", "dist/agents.yaml");
     cpSync("src/cli-commands", "dist/cli-commands", { recursive: true });
     cpSync("templates", "dist/templates", { recursive: true });
+    // `agentbrew sync` installs this CI gate as a helper script (src/sync/helper-scripts.ts).
+    mkdirSync("dist/scripts", { recursive: true });
+    copyFileSync("scripts/check-pr-vision-trace.mjs", "dist/scripts/check-pr-vision-trace.mjs");
     // `agentbrew status` compares this with the checkout HEAD to catch a
     // `git checkout` that was never followed by a rebuild.
     let commit: string | null = null;

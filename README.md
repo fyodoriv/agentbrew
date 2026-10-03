@@ -166,6 +166,7 @@ One command translates the source of truth into every agent's native format.
 - **Hooks** → native hook files (Claude Code settings, Cursor hooks.json, project-local Devin hooks.v1.json)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Devin config.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
+- **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies
 
 ### Strict attention-friendly language
 

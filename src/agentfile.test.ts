@@ -435,7 +435,7 @@ describe("generateAgentfile", () => {
     mockRequireState.mockReturnValue({ mcpServers: [], sources: [], agents: [], catalogVersion: "0.1.0" });
     const parsed = parseAgentfile(generateAgentfile() ?? "");
     expect(parsed.defaultModel).toBe("claude-opus-5-5");
-    expect(parsed.defaultEffort).toBe("medium");
+    expect(parsed.defaultEffort).toBe("xhigh");
     expect(parsed.modelOverrides).toEqual({ codex: null, devin: null });
   });
 

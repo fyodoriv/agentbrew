@@ -542,7 +542,7 @@ function serializeAgentfileMcpEntry(server: McpServer, catalogNames: ReadonlySet
 /** Model written into newly generated Agentfiles when state has none yet. */
 export const RECOMMENDED_DEFAULT_MODEL = "claude-opus-5-5";
 /** Reasoning effort paired with `RECOMMENDED_DEFAULT_MODEL`. */
-export const RECOMMENDED_DEFAULT_EFFORT = "medium";
+export const RECOMMENDED_DEFAULT_EFFORT = "xhigh";
 /** Agents whose provider cannot serve the recommended Claude model id. */
 export const RECOMMENDED_MODEL_OVERRIDES: Record<string, string | null> = { codex: null, devin: null };
 

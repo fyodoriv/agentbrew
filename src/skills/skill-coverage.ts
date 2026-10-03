@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import chalk from "chalk";
+import { findAgentbrewRepoRoot } from "../core/repo-root.js";
 import { checkSkillStructure } from "./skill-structural.js";
 import type { SkillValidationResult } from "./validate.js";
 import { validateAllSkills, validateEvals, validateSkill } from "./validate.js";
@@ -39,7 +40,12 @@ export interface SkillCoverageOptions {
 
 const BUILTIN_SKILL_SOURCE_LABEL = "agentbrew";
 const DEFAULT_THRESHOLD = 90;
-const DEFAULT_BUILTIN_SKILL_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "skill-plugins", "dev");
+
+/** Built-in skills of the agentbrew checkout, from the bundled dist/cli.js or from src/. */
+function defaultBuiltInSkillRoot(): string {
+  const root = findAgentbrewRepoRoot("skill-plugins/dev") ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  return join(root, "skill-plugins", "dev");
+}
 
 function isSkillDirectory(directory: string): boolean {
   try {
@@ -69,7 +75,7 @@ function validateBuiltInSkills(skillRoot: string): SkillValidationResult[] {
  */
 export function computeSkillCoverage(options: SkillCoverageOptions = {}): SkillCoverageSummary {
   const results = options.builtins
-    ? validateBuiltInSkills(options.builtInSkillRoot ?? DEFAULT_BUILTIN_SKILL_ROOT)
+    ? validateBuiltInSkills(options.builtInSkillRoot ?? defaultBuiltInSkillRoot())
     : validateAllSkills().results;
   const entries: SkillCoverageEntry[] = results.map((result) => ({
     name: result.name,

@@ -19,6 +19,7 @@ import { createContext } from "../core/context.js";
 import { errorMessage } from "../core/errors.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
+import { findAgentbrewRepoRoot } from "../core/repo-root.js";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
 import { loadState } from "../state.js";
 import type { AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
@@ -217,7 +218,10 @@ function legacyInstalledSkillNames(
 /** Carve-out: shared (returns the same source list for every carve-out's
  *  deploy phase; per-agent filtering happens later in {@link buildDeployTargets}). */
 export function getSkillSources(): SkillSource[] {
-  const agentBrewDir = process.env.AGENTBREW_DIR ?? resolve(join(import.meta.dirname, "..", ".."));
+  const agentBrewDir =
+    process.env.AGENTBREW_DIR ??
+    findAgentbrewRepoRoot("skill-plugins/dev") ??
+    resolve(join(import.meta.dirname, "..", ".."));
   const state = loadState();
   const stateSources = state?.sources ?? [];
   const sourceFilters = buildSourceSkillFilters(stateSources);

@@ -208,6 +208,20 @@ describe("syncSkills", () => {
     expect(result.bySource.minsky).toBeUndefined();
   });
 
+  it("user sources win over a built-in skill with the same name", async () => {
+    const builtInDir = join(testDir, "agentbrew-repo", "skill-plugins", "dev");
+    createSkill(builtInDir, "debug");
+    createSkill(builtInDir, "agentbrew-status");
+    createSkill(minskySkillsDir, "debug");
+
+    const result = await syncSkills({ quiet: true });
+
+    expect(result.skillCount).toBe(2);
+    expect(result.bySource.minsky).toBe(1);
+    expect(result.bySource.agentbrew).toBe(1);
+    expect(readlinkSync(join(claudeSkillsDir, "debug"))).toContain(minskySkillsDir);
+  });
+
   it("cleans stale symlinks before deploying", async () => {
     // Create an initial skill
     createSkill(minskySkillsDir, "old-skill");

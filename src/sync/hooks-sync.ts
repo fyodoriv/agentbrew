@@ -5,6 +5,7 @@ import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
+import { findAgentbrewRepoRoot } from "../core/repo-root.js";
 import { defaultDeployDir, deployHookScripts } from "../hooks/deploy.js";
 import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
 import type { Manifest } from "../manifest.js";
@@ -508,43 +509,6 @@ function finalizeSyncManifest(sctx: SyncHooksContext, hooks: ManagedHook[], prev
   if (!sctx.sharedManifest) saveManifest(sctx.manifest);
 }
 
-/**
- * Locate the agentbrew repo root by walking up from this module's path.
- * The hooks manifest lives at `<root>/hooks/manifest.yaml`; the deploy
- * step needs the root to resolve script sources.
- *
- * In production (installed via npm), this walks up from
- * `dist/cli.js` looking for `package.json` with name=agentbrew. In
- * dev (running from src/), walks up from `src/sync/hooks-sync.ts`.
- *
- * Returns null if we can't find it — caller falls back to process.cwd().
- */
-function isAgentbrewRoot(dir: string): boolean {
-  const pkgPath = join(dir, "package.json");
-  if (!existsSync(pkgPath)) return false;
-  try {
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { name?: string };
-    if (pkg.name === "agentbrew") {
-      return existsSync(join(dir, "hooks", "manifest.yaml"));
-    }
-  } catch {
-    // ignore malformed package.json
-  }
-  return false;
-}
-
-function findAgentbrewRepoRoot(): string | null {
-  let current = dirname(new URL(import.meta.url).pathname);
-  const home = expandHome("~");
-  for (let i = 0; i < 10; i++) {
-    if (isAgentbrewRoot(current)) return current;
-    const parent = dirname(current);
-    if (parent === current || parent === home || parent === "/") break;
-    current = parent;
-  }
-  return null;
-}
-
 /** Sync managed hooks from state + manifest to all agents that support hooks.
  *
  * Two sources combine into the final hook list:
@@ -570,7 +534,7 @@ export async function syncHooks(options?: SyncOptions, ctx?: Partial<Context>): 
   const state = loadState();
   if (!state) return;
 
-  const repoRoot = process.env.AGENTBREW_REPO_ROOT ?? findAgentbrewRepoRoot() ?? process.cwd();
+  const repoRoot = process.env.AGENTBREW_REPO_ROOT ?? findAgentbrewRepoRoot("hooks/manifest.yaml") ?? process.cwd();
   const deployDir = defaultDeployDir();
 
   const manifestHooks = await loadAndDeployManifestHooks(repoRoot, deployDir, dryRun, verbose, log);

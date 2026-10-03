@@ -11,7 +11,13 @@
 # tuning). Overlay's `disabled:` field lists canonical IDs to skip on
 # this machine (use for explicit opt-out — every skip is logged to
 # hook-decisions.jsonl with `reason: "disabled-by-overlay"` so drift is
-# visible).
+# visible). Overlay's `enabled:` field is the mirror: it lists
+# `defaultEnabled: false` IDs to turn on for this machine. When an ID is in
+# both lists, `disabled:` wins.
+#
+# **Opt-in hooks**: the PreToolUse:Bash hooks and context-budget-measure
+# ship with `defaultEnabled: false`. Each Bash hook runs on every Bash call,
+# so enable them one machine at a time and measure the latency first.
 #
 # **Schema** (per hook):
 #   id              kebab-case unique identifier
@@ -26,6 +32,8 @@
 #   promptVersion   Cat B only — bump when the verifier prompt changes; logged with each decision
 #   sourceRule      reference to the original IRON LAW (file:line) the hook implements
 #   agents          which agents to deploy to. Cursor gets event-name transforms; Devin gets lifecycle hooks only.
+#   defaultEnabled  optional; false makes the hook opt-in. Its script still deploys, but sync wires it into
+#                   agent hooks files only when the overlay lists its id under `enabled:`. Omit to keep it on.
 #
 # **Adding a hook**: copy an existing entry below, change the id, write
 # the script under checks/ or verifiers/, ship a .test.sh fixture, add
@@ -57,6 +65,7 @@ hooks:
     verdict: mutate
     sourceRule: dotfiles/bin/gh (formalized as hook 2026-05-27) + shared-rules.md:1283 "Agent Attribution Footer (ABSOLUTE)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: gh-pr-body-requires-rationale
     description: Block gh pr create/edit when body lacks a "why this is needed" rationale
@@ -67,6 +76,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:504 "PR Format (canonical structure + brevity is IRON LAW)" + dotfiles/bin/gh
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: gh-pr-body-requires-validation
     description: Block gh pr create/edit when body lacks validation sections (full block or stacked-skill Summary+Delivery plan+Test plan trio)
@@ -77,6 +87,7 @@ hooks:
     verdict: block
     sourceRule: task-command-center skill "PR validation block (IRON LAW)" + templates/AGENTS.md
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: gh-pr-skill-requires-evals
     description: Block skill PRs that add SKILL.md without evals/evals.json and eval-result sections
@@ -87,6 +98,7 @@ hooks:
     verdict: block
     sourceRule: templates/AGENTS.md "Skill PRs Must Ship Evals (IRON LAW)" + Anthropic skill-creator / Superpowers writing-skills
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: gh-pr-agent-artifacts-require-tests
     description: Block agent-artifact PRs without same-PR tests, evals, or exemption reason
@@ -98,6 +110,7 @@ hooks:
     bypassEnvVar: HOOK_BYPASS_GH_PR_AGENT_ARTIFACTS_REQUIRE_TESTS
     sourceRule: templates/AGENTS.md "Agent Artifact PRs Need Evidence" + src/agent-artifacts/inventory.ts
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: git-commit-conventional
     description: Block git commit -m with non-conventional-commit format (header type colon space)
@@ -108,6 +121,7 @@ hooks:
     verdict: block
     sourceRule: dotfiles/git-hooks/commit-msg (formalized as hook 2026-05-27)
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: git-strip-agent-attribution
     description: Strip foreign agent Co-Authored-By + Generated-with trailers from git commit -m
@@ -118,6 +132,7 @@ hooks:
     verdict: mutate
     sourceRule: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: no-git-add-all
     description: Block git add -A or git add . in multi-agent contexts (stages other agents' work)
@@ -128,6 +143,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)" + agentbrew/AGENTS.md
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: no-force-push-protected
     description: Block git push --force / --force-with-lease to main / master / develop
@@ -138,6 +154,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: no-commit-no-verify
     description: Block git commit --no-verify (skipping commit hooks is forbidden by policy)
@@ -148,6 +165,7 @@ hooks:
     verdict: block
     sourceRule: agentbrew/TASKS.md policy "do NOT bypass commit hooks (--no-verify)" + dotfiles/TASKS.md
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: no-binary-screenshots
     description: Block git add of PNG/JPG/GIF outside __storyshots__/favicon/fixtures paths
@@ -158,6 +176,7 @@ hooks:
     verdict: block
     sourceRule: templates/AGENTS.md:370 "Never Commit Screenshots to Repos (IRON LAW)" + templates/AGENTS.md:396 "Don't Screenshot Test Output (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: selectors-pure
     description: Block Write/Edit to selector files that add Date.now/fetch/Math.random/network calls
@@ -196,6 +215,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:700 "Manual Test Steps Start at the App URL (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: pending-internal-work-needs-ticket
     description: Warn (don't block) when diff adds TODO/FIXME/HACK without ticket or owner ref
@@ -236,6 +256,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md "PR bodies stay artifact-focused; reply to reviewers in comments, not the description"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: gh-pr-body-related-prs-not-first
     description: Block gh pr create/edit whose body leads with a Related PRs / merge-order / reuse-chain section
@@ -246,6 +267,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md "Never lead with cross-PR navigation; put Related PRs near the bottom"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: async-human-comms-blocks
     description: Block mutating tool calls when ask_human.md in repo has status PENDING
@@ -275,6 +297,7 @@ hooks:
     verdict: warn
     sourceRule: shared-rules.md:311 "Cross-Team Code Touches Batch (HIGHEST PRIORITY IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: env-correct-urls
     description: Warn when PR title mentions env (staging/prod) but body has different env's URL
@@ -285,6 +308,7 @@ hooks:
     verdict: warn
     sourceRule: shared-rules.md:811 "Env-Correct URLs (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   # ── Phase 2 Cat B verifier hooks (warn-mode observation first) ──────────
 
@@ -300,6 +324,7 @@ hooks:
     promptVersion: 1
     sourceRule: 'shared-rules.md:600 PR Bodies Decay — Verify Before Edit'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: codify-repeated-work
     description: Warn when repeated workflow work should be codified into a skill before continuing
@@ -388,6 +413,7 @@ hooks:
     promptVersion: 1
     sourceRule: 'shared-rules.md:576 PR Bodies Explain WHY'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: stability-task-priority
     description: Warn when stability/deployment infra tasks are filed below P0
@@ -463,6 +489,7 @@ hooks:
     bypassEnvVar: HOOK_BYPASS_CONTEXT_BUDGET_MEASURE
     sourceRule: 'context-budget skill + RECURRING.md context-budget-weekly-audit'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false
 
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends

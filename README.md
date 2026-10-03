@@ -387,7 +387,7 @@ bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully
 
 | Trigger | Min interval | Mode |
 |---------|--------------|------|
-| SessionStart hook (`context-budget-measure`) | 6h | background, `--quick` (static-only) |
+| SessionStart hook (`context-budget-measure`, opt-in via hooks overlay `enabled:`) | 6h | background, `--quick` (static-only) |
 | `agentbrew sync --pull` post-sync | 24h | inline, static-only |
 | Cron/launchd (`scripts/measure-context-budget.sh`) | weekly | full (optional ccusage) |
 

@@ -19,6 +19,8 @@ type SettingsJson = Record<string, unknown>;
 type HooksByEvent = Record<string, HookGroup[]>;
 interface HookGroup {
   matcher?: string;
+  /** Command (or prompt) text of each hook in the group. */
+  commands: string[];
 }
 interface HooksAgent {
   name: string;
@@ -71,10 +73,28 @@ function eventGroupsFromObject(value: unknown): HooksByEvent {
     if (!Array.isArray(groups)) continue;
     const parsedGroups = groups
       .filter((group): group is Record<string, unknown> => isJsonObject(group))
-      .map((group) => (typeof group.matcher === "string" ? { matcher: group.matcher } : {}));
+      .map((group) => ({
+        ...(typeof group.matcher === "string" ? { matcher: group.matcher } : {}),
+        commands: groupCommands(group),
+      }));
     if (parsedGroups.length > 0) config[event] = parsedGroups;
   }
   return config;
+}
+
+function hookItemText(item: SettingsJson): string | undefined {
+  if (typeof item.command === "string") return item.command;
+  if (typeof item.prompt === "string") return item.prompt;
+  return undefined;
+}
+
+/** Claude groups nest hook items under `hooks`; Cursor entries are flat items. */
+function groupCommands(group: SettingsJson): string[] {
+  const items: unknown[] = Array.isArray(group.hooks) ? group.hooks : [group];
+  return items
+    .filter(isJsonObject)
+    .map(hookItemText)
+    .filter((text) => text !== undefined);
 }
 
 function readCursorHooks(settings: SettingsJson): HooksByEvent {
@@ -90,6 +110,15 @@ function readHooksForAgent(settings: SettingsJson, agent: HooksAgent): HooksByEv
 
 function hookKey(event: string, matcher?: string): string {
   return `${event}:${matcher ?? DEFAULT_HOOK_MATCHER}`;
+}
+
+function hookText(hook: ManagedHook): string {
+  return hook.command ?? hook.prompt ?? "";
+}
+
+/** Identity of one hook: its event:matcher group plus its command (or prompt). */
+function hookIdentity(hook: ManagedHook): string {
+  return `${hookKey(hook.event, hook.matcher)} ${hookText(hook)}`;
 }
 
 function cursorEventName(event: string): string {
@@ -171,11 +200,21 @@ function permissionDefaultsDrift(agentName: string, settings: SettingsJson): Dri
   return drift;
 }
 
-/** Check if a specific hook group exists in deployed config. */
-function isHookGroupPresent(eventGroups: HookGroup[] | undefined, matcher: string | undefined): boolean {
+/** A post-sync step may put a wrapper in front of a command (`wrapper.sh bash hook.sh`). */
+function isSameCommand(deployed: string, expected: string): boolean {
+  return deployed === expected || deployed.endsWith(` ${expected}`);
+}
+
+/** Check if a specific hook command exists in its event:matcher group in deployed config. */
+function isHookPresent(eventGroups: HookGroup[] | undefined, hook: ManagedHook): boolean {
   if (!eventGroups) return false;
-  const expectedMatcher = matcher ?? DEFAULT_HOOK_MATCHER;
-  return eventGroups.some((g) => (g.matcher ?? DEFAULT_HOOK_MATCHER) === expectedMatcher);
+  const expectedMatcher = hook.matcher ?? DEFAULT_HOOK_MATCHER;
+  const expected = hookText(hook);
+  return eventGroups.some(
+    (g) =>
+      (g.matcher ?? DEFAULT_HOOK_MATCHER) === expectedMatcher &&
+      g.commands.some((command) => isSameCommand(command, expected)),
+  );
 }
 
 function hookEventForAgent(agent: HooksAgent, event: string): string {
@@ -235,8 +274,8 @@ function loadManifestManagedHooks(): ManagedHook[] {
 }
 
 function mergeManagedHooks(stateHooks: ManagedHook[], manifestHooks: ManagedHook[]): ManagedHook[] {
-  const stateKeys = new Set(stateHooks.map((hook) => hookKey(hook.event, hook.matcher)));
-  return [...stateHooks, ...manifestHooks.filter((hook) => !stateKeys.has(hookKey(hook.event, hook.matcher)))];
+  const stateIdentities = new Set(stateHooks.map(hookIdentity));
+  return [...stateHooks, ...manifestHooks.filter((hook) => !stateIdentities.has(hookIdentity(hook)))];
 }
 
 function findMissingHooks(
@@ -251,8 +290,8 @@ function findMissingHooks(
     if (!managedKeys.has(key)) continue;
 
     const eventGroups = deployed[hookEventForAgent(agent, hook.event)];
-    if (!isHookGroupPresent(eventGroups, hook.matcher)) {
-      missing.push(key);
+    if (!isHookPresent(eventGroups, hook)) {
+      missing.push(`${key} ${hookText(hook)}`);
     }
   }
   return missing;

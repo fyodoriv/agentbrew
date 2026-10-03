@@ -19,6 +19,15 @@ vi.mock("../state.js", () => ({
   loadState: vi.fn(),
 }));
 
+vi.mock("../hooks/manifest.js", () => ({
+  loadManagedHooksFromManifest: vi.fn(() => ({ managed: [], resolved: { hooks: [] } })),
+}));
+
+vi.mock("../hooks/deploy.js", () => ({
+  defaultDeployDir: vi.fn(() => "/home/test/.claude/codeassist/hooks-scripts"),
+  deployHookScripts: vi.fn(() => ({ deployed: 0, skipped: 0, errors: [] })),
+}));
+
 vi.mock("../types.js", async (importOriginal) => {
   const original = await importOriginal<typeof import("../types.js")>();
   return {
@@ -69,6 +78,7 @@ vi.mock("../utils.js", async (importOriginal) => {
 
 import { existsSync, readFileSync } from "node:fs";
 import { sync as writeFileSync } from "write-file-atomic";
+import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
 import { loadManifest, saveManifest } from "../manifest.js";
 import { loadState } from "../state.js";
 import type { ManagedHook } from "../types.js";
@@ -89,6 +99,7 @@ const mockWriteFileSync = vi.mocked(writeFileSync);
 const mockLoadState = vi.mocked(loadState);
 const mockLoadManifest = vi.mocked(loadManifest);
 const mockSaveManifest = vi.mocked(saveManifest);
+const mockLoadManagedHooks = vi.mocked(loadManagedHooksFromManifest);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -456,6 +467,48 @@ describe("syncHooks", () => {
     expect(written.hooks.PreToolUse[0].matcher).toBe("Bash");
     expect(written.permissions.defaultMode).toBe("bypassPermissions");
     expect(written.skipAutoPermissionPrompt).toBe(true);
+  });
+
+  it("keeps manifest hooks that share an event:matcher group with a state hook, state hook first", async () => {
+    const stateHook: ManagedHook = {
+      event: "PreToolUse",
+      matcher: "Bash",
+      type: "command",
+      command: "state-bash.sh",
+      source: "agentfile",
+    };
+    const manifestHook = (command: string): ManagedHook => ({
+      event: "PreToolUse",
+      matcher: "Bash",
+      type: "command",
+      command,
+      timeout: 5,
+      source: "agentbrew-hooks-manifest",
+    });
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [stateHook],
+    } as never);
+    mockLoadManagedHooks.mockReturnValueOnce({
+      // The third entry has the state hook's identity, so the state copy wins.
+      managed: [manifestHook("bash /deploy/a.sh"), manifestHook("bash /deploy/b.sh"), manifestHook("state-bash.sh")],
+      resolved: { hooks: [] },
+    } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: [] } as never);
+    mockExistsSync.mockReturnValue(false);
+
+    await syncHooks({ quiet: true });
+
+    const [, content] = mockWriteFileSync.mock.calls[0] as [string, string, string];
+    const written = JSON.parse(content);
+    expect(written.hooks.PreToolUse).toHaveLength(1);
+    expect(written.hooks.PreToolUse[0].matcher).toBe("Bash");
+    expect(written.hooks.PreToolUse[0].hooks).toEqual([
+      { type: "command", command: "state-bash.sh" },
+      { type: "command", command: "bash /deploy/a.sh", timeout: 5 },
+      { type: "command", command: "bash /deploy/b.sh", timeout: 5 },
+    ]);
   });
 
   it("writes Cursor hooks.json with native camelCase event names", async () => {

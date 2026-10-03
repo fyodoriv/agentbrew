@@ -13,6 +13,10 @@ vi.mock("../state.js", () => ({
   loadState: vi.fn(),
 }));
 
+vi.mock("../hooks/manifest.js", () => ({
+  loadManagedHooksFromManifest: vi.fn(() => ({ managed: [], resolved: { hooks: [] } })),
+}));
+
 vi.mock("../types.js", async (importOriginal) => {
   const original = await importOriginal<typeof import("../types.js")>();
   return {
@@ -58,6 +62,7 @@ vi.mock("../utils.js", async (importOriginal) => {
 });
 
 import { existsSync, readFileSync } from "node:fs";
+import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
 import { loadManifest } from "../manifest.js";
 import { loadState } from "../state.js";
 import { checkHooksDrift } from "./hooks.js";
@@ -66,6 +71,7 @@ const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
 const mockLoadState = vi.mocked(loadState);
 const mockLoadManifest = vi.mocked(loadManifest);
+const mockLoadManagedHooks = vi.mocked(loadManagedHooksFromManifest);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -397,8 +403,101 @@ describe("checkHooksDrift", () => {
 
     const drift = checkHooksDrift();
     expect(drift).toHaveLength(1);
-    expect(drift[0].diff?.added).toContain("PreToolUse:Bash");
-    expect(drift[0].diff?.added).toContain("Stop:*");
+    expect(drift[0].diff?.added).toContain("PreToolUse:Bash echo a");
+    expect(drift[0].diff?.added).toContain("Stop:* check");
+  });
+
+  it("reports a manifest hook missing from a group that a state hook keeps present", () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [{ event: "PreToolUse", matcher: "Bash", type: "command", command: "state.sh", source: "agentfile" }],
+    } as never);
+    mockLoadManagedHooks.mockReturnValueOnce({
+      managed: [
+        {
+          event: "PreToolUse",
+          matcher: "Bash",
+          type: "command",
+          command: "bash /deploy/a.sh",
+          source: "agentbrew-hooks-manifest",
+        },
+      ],
+      resolved: { hooks: [] },
+    } as never);
+    mockLoadManifest.mockReturnValue({
+      hashes: {},
+      managedHookKeysByAgent: { "claude-code": ["PreToolUse:Bash"] },
+    } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(
+      JSON.stringify({
+        hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "state.sh" }] }] },
+        permissions: { defaultMode: "bypassPermissions" },
+        skipAutoPermissionPrompt: true,
+      }),
+    );
+
+    const drift = checkHooksDrift();
+    expect(drift).toHaveLength(1);
+    expect(drift[0].diff?.added).toEqual(["PreToolUse:Bash bash /deploy/a.sh"]);
+  });
+
+  it("reports a missing hook command even when its event:matcher group exists", () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [
+        { event: "PreToolUse", matcher: "Bash", type: "command", command: "echo a", source: "agentfile" },
+        { event: "PreToolUse", matcher: "Bash", type: "command", command: "echo b", source: "agentfile" },
+      ],
+    } as never);
+    mockLoadManifest.mockReturnValue({
+      hashes: {},
+      managedHookKeysByAgent: { "claude-code": ["PreToolUse:Bash"] },
+    } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(
+      JSON.stringify({
+        hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo a" }] }] },
+        permissions: { defaultMode: "bypassPermissions" },
+        skipAutoPermissionPrompt: true,
+      }),
+    );
+
+    const drift = checkHooksDrift();
+    expect(drift).toHaveLength(1);
+    expect(drift[0].diff?.added).toEqual(["PreToolUse:Bash echo b"]);
+  });
+
+  it("accepts a deployed command that a post-sync step put behind a wrapper prefix", () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "cursor", detected: true }],
+      hooks: [],
+    } as never);
+    mockLoadManagedHooks.mockReturnValueOnce({
+      managed: [
+        {
+          event: "Stop",
+          type: "command",
+          command: "bash /deploy/a.sh",
+          source: "agentbrew-hooks-manifest",
+          agents: ["cursor"],
+        },
+      ],
+      resolved: { hooks: [] },
+    } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeysByAgent: { cursor: ["stop:*"] } } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(
+      JSON.stringify({
+        version: 1,
+        hooks: { stop: [{ matcher: "*", command: "/opt/wrap/with-path.sh bash /deploy/a.sh" }] },
+      }),
+    );
+
+    expect(checkHooksDrift()).toEqual([]);
   });
 
   it("detects Claude Code permission default drift even when no hooks are managed", () => {

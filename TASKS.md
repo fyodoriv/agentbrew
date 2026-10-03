@@ -1128,6 +1128,22 @@
 
 ## P3
 
+- [ ] `agentbrew status` names helper scripts that sync kept or could not install
+  **ID**: status-reports-helper-scripts
+  **Tags**: scout, sync, status, helper-scripts
+  **Details**: Scouted while shipping the helper scripts. Sync keeps a file in `~/.config/agentbrew/scripts/` that agentbrew did not write. Only `agentbrew sync --verbose` says so; default sync and `agentbrew status` stay silent, so an old hand-made copy can hide a newer shipped script. Also, `isUserModified` exists twice (`src/sync/agents-sync.ts`, `src/sync/command-sync.ts`), and `src/sync/helper-scripts.ts` has a third ownership check. One helper in `src/manifest.ts` would keep the rule in one place.
+  **Files**: `src/status.ts`, `src/drift-checks/`, `src/sync/helper-scripts.ts`, `src/manifest.ts`
+  **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
+  **Output**: code
+
+- [ ] `check-pr-vision-trace.mjs` checks the PR body when it runs through a symlinked path
+  **ID**: pr-vision-trace-cli-guard-symlink
+  **Tags**: scout, pr-vision-trace, helper-scripts, bug
+  **Details**: Scouted while shipping the helper scripts. The CLI guard compares `import.meta.url` with `file://${process.argv[1]}`. Node resolves symlinks for `import.meta.url` but not for `process.argv[1]`. So `node <dir-with-a-symlink>/check-pr-vision-trace.mjs body.md` prints nothing and exits 0, even for a body with no Vision trace block. A symlinked `~/.config`, or a hand-made symlink to the repo copy, turns the gate into a silent pass. Compare real paths (`pathToFileURL(realpathSync(process.argv[1]))`) instead.
+  **Files**: `scripts/check-pr-vision-trace.mjs`, `src/check-pr-vision-trace.test.ts`
+  **Acceptance**: A test runs the script through a symlinked directory with a body that has no Vision trace block and gets exit 1 with the violation list.
+  **Output**: code
+
 - [ ] Replace the "open each once" hint for a missing command folder with a fix that works
   - **ID**: commands-dir-missing-hint-actionable
   - **Tags**: commands, sync, ux, docs

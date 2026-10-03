@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Helper scripts ship with agentbrew** — the instructions tell agents to run
+  `~/.config/agentbrew/scripts/load-project-context.sh`,
+  `verify-vision-trace.sh`, `competitor-spot-check.sh`, and
+  `check-pr-vision-trace.mjs`, but no release shipped them. The shell
+  scripts now live in `templates/scripts/`, the `.mjs` gate stays in
+  `scripts/`, and `agentbrew sync` installs them. Sync never replaces a file
+  it did not write, so a hand-made copy at that path stays.
+
 ## [0.3.5] - 2026-10-01
 
 ### Security

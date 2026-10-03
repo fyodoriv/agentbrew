@@ -55,6 +55,7 @@ Detailed table is in [`AGENTS.md` § "Data Flow"](AGENTS.md#data-flow). The shor
 **Always-fresh managed skills.** Plain `agentbrew sync` (via `src/sync/soft-update.ts` + `refreshInstalledSkills` in `src/sync-runner.ts`) refetches stale caches and re-copies installed skills for agentbrew-managed sources only (`origin: catalog`, `team:<label>`, `global`). User/project/agentfile sources refresh on `agentbrew sync --pull` only. Built-in `skill-plugins/dev/` is read directly from the agentbrew checkout — no cache step.
 
 | `templates/AGENTS.md` | `instructions-sync.ts` | `~/.claude/CLAUDE.md`, etc. | merged with shared-rules.md |
+| `templates/scripts/*`, `scripts/check-pr-vision-trace.mjs` | `helper-scripts.ts` (called by `instructions-sync.ts`) | `~/.config/agentbrew/scripts/*` | writes only missing files or files agentbrew wrote (manifest hash); keeps any other file |
 | Agentfile `hooks:` | `hooks-sync.ts` | `~/.claude/settings.json`, `~/.cursor/hooks.json`, `.devin/hooks.v1.json` | Per-agent native hook formats; Devin output is project-local |
 
 ## Shared semantic memory

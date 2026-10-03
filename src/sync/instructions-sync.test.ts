@@ -296,6 +296,25 @@ describe("syncInstructions", () => {
     expect(existsSync(claudeRulesFile)).toBe(true);
     expect(existsSync(augmentRulesFile)).toBe(true);
   });
+
+  it("deploys the helper scripts the instructions call and keeps user-owned copies", async () => {
+    writeAgentsMd();
+    const sourceDir = join(agentBrewDir, "templates", "scripts");
+    mkdirSync(sourceDir, { recursive: true });
+    writeFileSync(join(sourceDir, "load-project-context.sh"), "echo agentbrew\n");
+    writeFileSync(join(sourceDir, "verify-vision-trace.sh"), "echo agentbrew\n");
+    const deployedDir = join(testDir, ".config", "agentbrew", "scripts");
+    mkdirSync(deployedDir, { recursive: true });
+    writeFileSync(join(deployedDir, "verify-vision-trace.sh"), "echo hand-made\n");
+
+    await syncInstructions();
+
+    expect(readFileSync(join(deployedDir, "load-project-context.sh"), "utf-8")).toBe("echo agentbrew\n");
+    expect(readFileSync(join(deployedDir, "verify-vision-trace.sh"), "utf-8")).toBe("echo hand-made\n");
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("load-project-context.sh — installed");
+    expect(calls).toContain("verify-vision-trace.sh — kept (not written by agentbrew)");
+  });
 });
 
 describe("syncInstructions error resilience", () => {

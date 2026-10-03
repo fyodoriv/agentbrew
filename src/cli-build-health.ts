@@ -6,7 +6,14 @@ import { logSkipped } from "./core/logger.js";
 import type { DriftItem } from "./drift.js";
 
 /** Build inputs: a commit that touches none of these leaves `dist/` current. */
-const BUILD_INPUTS = ["src", "templates", "package.json", "package-lock.json", "tsup.config.ts"];
+const BUILD_INPUTS = [
+  "src",
+  "templates",
+  "scripts/check-pr-vision-trace.mjs",
+  "package.json",
+  "package-lock.json",
+  "tsup.config.ts",
+];
 
 export const BUILD_INFO_FILE = "build-info.json";
 

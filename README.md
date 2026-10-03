@@ -431,6 +431,8 @@ agentbrew sync
 
 The overlay contains pointers only — skill content lives in the source repos. An overlay can declare whole-repo skill registries in its `repo_sources:` block. `agentbrew team set` auto-registers each one as a tracked source with `origin: team`; `agentbrew team unset` removes them symmetrically while preserving anything you added with `agentbrew install` (origin `user`). `agentbrew catalog --sources` flags team-sourced repos with a `[team]` tag so it's obvious which will disappear on `team unset`.
 
+An overlay can also list mcpm registry servers that fail on its machines in a `broken_mcpm_registry_servers:` block. `agentbrew sync` adds them to the built-in list: it removes their `mcpm_<name>` wrappers and uninstalls them from mcpm, unless your Agentfile or state defines a server with that name.
+
 `agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog, team overlay `team:<label>`, global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
 
 ## Supported agents

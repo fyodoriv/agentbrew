@@ -1,29 +1,39 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { McpServer } from "../types.js";
 import { expandHome } from "../utils.js";
 
 const HOME_EXPORT_PREFIX = `export HOME="\${HOME:-/Users/$(/usr/bin/id -un)}"; `;
+const LAUNCHER_PATH = "bin/mcp-cursor-launch.sh";
 
-function orgOverlayBasename(): string {
-  return `dotfiles-${"int"}${"uit"}`;
+/** Launcher paths of the `dotfiles-*` clones in `parent`, in name order. */
+function overlayLauncherCandidates(parent: string): string[] {
+  try {
+    return readdirSync(parent)
+      .filter((name) => name.startsWith("dotfiles-"))
+      .sort()
+      .map((name) => join(parent, name, LAUNCHER_PATH));
+  } catch {
+    return [];
+  }
 }
 
-/** Resolve org dotfiles overlay launcher when present on this machine. */
+/**
+ * Resolve the dotfiles overlay launcher when present on this machine.
+ *
+ * Order: `DOTFILES_OVERLAY_ROOT`, `EXTRA_OVERLAY_ROOT`, then the first
+ * `dotfiles-*` clone that ships the launcher, searched in the same clone
+ * layouts as dotfiles `lib/overlay-locate.sh`.
+ */
 export function resolveMcpCursorLauncher(): string | null {
+  for (const root of [process.env.DOTFILES_OVERLAY_ROOT, process.env.EXTRA_OVERLAY_ROOT]) {
+    if (root && existsSync(join(root, LAUNCHER_PATH))) return join(root, LAUNCHER_PATH);
+  }
   const home = expandHome("~");
   const repos = process.env.DOTFILES_REPOS_DIR ?? join(home, "apps");
-  const overlayName = orgOverlayBasename();
-  const candidates = [
-    process.env.DOTFILES_OVERLAY_ROOT,
-    join(repos, "tooling", overlayName),
-    join(repos, overlayName),
-    join(home, "apps/tooling", overlayName),
-    join(home, `apps/${overlayName}`),
-  ].filter((path): path is string => Boolean(path));
-  for (const root of candidates) {
-    const launcher = join(root, "bin/mcp-cursor-launch.sh");
-    if (existsSync(launcher)) return launcher;
+  for (const parent of [join(repos, "tooling"), repos, join(home, "apps/tooling"), join(home, "apps")]) {
+    const launcher = overlayLauncherCandidates(parent).find((path) => existsSync(path));
+    if (launcher) return launcher;
   }
   return null;
 }

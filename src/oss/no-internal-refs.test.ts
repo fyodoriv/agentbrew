@@ -90,17 +90,44 @@ function listScanFiles(): string[] {
   }
 }
 
+/**
+ * Join string-literal pieces so a name split to dodge the scan still matches.
+ * Covers template pieces (`${"a"}${"b"}`) and concatenation (`"a" + "b"`).
+ */
+function joinSplitStringLiterals(text: string): string {
+  return text.replace(/\$\{\s*(["'])((?:\\.|(?!\1)[^\\\n])*)\1\s*\}/g, "$2").replace(/["'`]\s*\+\s*["'`]/g, "");
+}
+
 function findOffenders(pattern: RegExp): string[] {
   const offenders: string[] = [];
   for (const relativePath of listScanFiles()) {
     try {
       const buffer = readFileSync(join(REPO_ROOT, relativePath));
       if (isBinary(buffer)) continue;
-      if (pattern.test(buffer.toString("utf-8"))) offenders.push(relativePath);
+      const text = buffer.toString("utf-8");
+      const joined = joinSplitStringLiterals(text);
+      if (pattern.test(text) || (joined !== text && pattern.test(joined))) offenders.push(relativePath);
     } catch {}
   }
   return offenders;
 }
+
+describe("joinSplitStringLiterals", () => {
+  it("joins template and concatenation pieces so a split term matches", () => {
+    const fakeTerm = /exampleorg/i;
+    const source = ['const dir = `dotfiles-${"example"}${"org"}`;', "const name = 'example' +\n  \"org\";"].join("\n");
+
+    expect(fakeTerm.test(source)).toBe(false);
+    const joined = joinSplitStringLiterals(source);
+    expect(joined).toContain("dotfiles-exampleorg");
+    expect(joined).toContain("const name = 'exampleorg\";");
+  });
+
+  it("leaves ordinary code unchanged", () => {
+    const source = 'const total = count + 1;\nconst label = `${name} items`;\nconst path = "a/b";';
+    expect(joinSplitStringLiterals(source)).toBe(source);
+  });
+});
 
 describe("OSS-readiness: no configured private references", () => {
   it("has no configured private references in tracked text files", () => {

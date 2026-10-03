@@ -20,10 +20,19 @@ import { readGooseYaml, readMcpJson, writeGooseYaml, writeMcpJson } from "./mcp.
 
 export const MCPM_PREFIX = "mcpm_";
 
-/** mcpm registry servers that fail probe and have no agentbrew-managed bare equivalent. */
-const DEV_PORTAL_MCP_REMOTE = `${"De"}${"vportal MCP Remote"}`;
+/** mcpm registry servers that fail probe and have no agentbrew-managed bare equivalent.
+ *  A team overlay adds its own names via `broken_mcpm_registry_servers:` in
+ *  `catalog-overlay.yaml`; see `withExtraBrokenRegistryServers`. */
+export const BROKEN_MCPM_REGISTRY_SERVERS = ["ask-human", "jira-mcp"] as const;
 
-export const BROKEN_MCPM_REGISTRY_SERVERS = ["ask-human", "jira-mcp", DEV_PORTAL_MCP_REMOTE] as const;
+/** The generic list plus extra names, such as a team overlay's list.
+ *  Blank and non-string entries are ignored. */
+export function withExtraBrokenRegistryServers(extra: unknown): readonly string[] {
+  const names = Array.isArray(extra)
+    ? extra.filter((name): name is string => typeof name === "string").map((name) => name.trim())
+    : [];
+  return [...new Set([...BROKEN_MCPM_REGISTRY_SERVERS, ...names.filter(Boolean)])];
+}
 
 const DEPRECATED_GITHUB_NPM = "@modelcontextprotocol/server-github";
 
@@ -43,6 +52,8 @@ export interface McpmHygieneSweepOptions {
    *  fallback resolves `../core/agents.js` relative to this file, which
    *  does not exist next to the bundled `dist/cli.js`. */
   agentDefinitions?: readonly Omit<AgentConfig, "detected">[];
+  /** Defaults to `BROKEN_MCPM_REGISTRY_SERVERS`. */
+  brokenRegistryServers?: readonly string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,16 +81,24 @@ export function findRedundantMcpmKeys(servers: Record<string, unknown>): string[
  *  the same name (an Agentfile wrapper, a local URL), that definition is the
  *  authoritative one and removing it would leave the agent with no entry at
  *  all — the failure mode that hid `jira-mcp` from every intersection client. */
-export function isBlocklistedRegistryServer(name: string, stateNames: ReadonlySet<string>): boolean {
+export function isBlocklistedRegistryServer(
+  name: string,
+  stateNames: ReadonlySet<string>,
+  brokenNames: readonly string[] = BROKEN_MCPM_REGISTRY_SERVERS,
+): boolean {
   if (stateNames.has(name)) return false;
-  return BROKEN_MCPM_REGISTRY_SERVERS.includes(name as (typeof BROKEN_MCPM_REGISTRY_SERVERS)[number]);
+  return brokenNames.includes(name);
 }
 
 /** Drop broken mcpm-only wrappers such as `mcpm_ask-human`. */
-export function findBrokenMcpmOnlyKeys(servers: Record<string, unknown>, stateNames: ReadonlySet<string>): string[] {
+export function findBrokenMcpmOnlyKeys(
+  servers: Record<string, unknown>,
+  stateNames: ReadonlySet<string>,
+  brokenNames: readonly string[] = BROKEN_MCPM_REGISTRY_SERVERS,
+): string[] {
   return Object.keys(servers).filter((key) => {
     const bare = mcpmBareName(key);
-    return bare !== undefined && isBlocklistedRegistryServer(bare, stateNames);
+    return bare !== undefined && isBlocklistedRegistryServer(bare, stateNames, brokenNames);
   });
 }
 
@@ -175,11 +194,15 @@ export function fixDeprecatedGithubEntry(entry: Record<string, unknown>, launche
   return true;
 }
 
-export function collectHygieneRemovals(servers: Record<string, unknown>, stateNames: ReadonlySet<string>): string[] {
+export function collectHygieneRemovals(
+  servers: Record<string, unknown>,
+  stateNames: ReadonlySet<string>,
+  brokenNames: readonly string[] = BROKEN_MCPM_REGISTRY_SERVERS,
+): string[] {
   return [
     ...new Set([
       ...findRedundantMcpmKeys(servers),
-      ...findBrokenMcpmOnlyKeys(servers, stateNames),
+      ...findBrokenMcpmOnlyKeys(servers, stateNames, brokenNames),
       ...findRemovableStaleKeys(servers, stateNames),
     ]),
   ];
@@ -234,7 +257,7 @@ function fixServersInConfig(servers: Record<string, unknown>): { fixedGithub: bo
 function sweepOneConfig(
   path: string,
   mcpKey: string,
-  stateNames: ReadonlySet<string>,
+  collectRemovals: (servers: Record<string, unknown>) => string[],
   dryRun: boolean,
   handler: FormatHandler,
 ): { removedKeys: string[]; fixedGithub: boolean; fixedMemory: boolean } {
@@ -250,7 +273,7 @@ function sweepOneConfig(
   const servers = config[mcpKey];
   if (!isRecord(servers)) return { removedKeys: [], fixedGithub: false, fixedMemory: false };
 
-  const removable = collectHygieneRemovals(servers, stateNames);
+  const removable = collectRemovals(servers);
   const { fixedGithub, fixedMemory } = fixServersInConfig(servers);
 
   if (removable.length === 0 && !fixedGithub && !fixedMemory) {
@@ -273,7 +296,15 @@ function sweepOneConfig(
 }
 
 export function sweepMcpmHygiene(options: McpmHygieneSweepOptions = {}): McpmHygieneFileResult[] {
-  const { dryRun = false, detected, stateServerNames = new Set<string>(), agentDefinitions } = options;
+  const {
+    dryRun = false,
+    detected,
+    stateServerNames = new Set<string>(),
+    agentDefinitions,
+    brokenRegistryServers = BROKEN_MCPM_REGISTRY_SERVERS,
+  } = options;
+  const collectRemovals = (servers: Record<string, unknown>) =>
+    collectHygieneRemovals(servers, stateServerNames, brokenRegistryServers);
   const detectedNames = detected
     ? new Set(detected.filter((agent) => agent.detected).map((agent) => agent.name))
     : undefined;
@@ -286,7 +317,7 @@ export function sweepMcpmHygiene(options: McpmHygieneSweepOptions = {}): McpmHyg
     if (!handler) continue;
     const path = expandHome(agent.mcpConfig);
     const mcpKey = agent.mcpKey ?? "mcpServers";
-    const { removedKeys, fixedGithub, fixedMemory } = sweepOneConfig(path, mcpKey, stateServerNames, dryRun, handler);
+    const { removedKeys, fixedGithub, fixedMemory } = sweepOneConfig(path, mcpKey, collectRemovals, dryRun, handler);
     if (removedKeys.length === 0 && !fixedGithub && !fixedMemory) continue;
     results.push({ path, agentName: agent.name, removedKeys, fixedGithub, fixedMemory });
   }
@@ -303,10 +334,11 @@ export function uninstallBrokenMcpmRegistryServers(
   detectedAgents: readonly string[],
   dryRun: boolean,
   stateServerNames: ReadonlySet<string> = new Set<string>(),
+  brokenNames: readonly string[] = BROKEN_MCPM_REGISTRY_SERVERS,
 ): string[] {
   const intersectionAgents = detectedAgents.filter((name) => MCP_INTERSECTION_AGENTS.has(name));
   if (intersectionAgents.length === 0) return [];
-  const targets = BROKEN_MCPM_REGISTRY_SERVERS.filter((name) => isBlocklistedRegistryServer(name, stateServerNames));
+  const targets = brokenNames.filter((name) => isBlocklistedRegistryServer(name, stateServerNames, brokenNames));
   if (targets.length === 0) return [];
   if (dryRun) return [...targets];
 

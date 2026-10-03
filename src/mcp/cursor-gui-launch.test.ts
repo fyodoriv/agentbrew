@@ -73,6 +73,65 @@ describe("cursor-gui-launch", () => {
     }
   });
 
+  describe("resolveMcpCursorLauncher overlay discovery", () => {
+    const ENV_KEYS = ["HOME", "DOTFILES_REPOS_DIR", "DOTFILES_OVERLAY_ROOT", "EXTRA_OVERLAY_ROOT"] as const;
+    let savedEnv: Record<string, string | undefined>;
+
+    function makeLauncher(root: string): string {
+      const path = join(root, "bin/mcp-cursor-launch.sh");
+      mkdirSync(join(root, "bin"), { recursive: true });
+      writeFileSync(path, '#!/bin/bash\nexec "$@"\n', { mode: 0o755 });
+      return path;
+    }
+
+    beforeEach(() => {
+      savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+      process.env.HOME = join(tmp, "home");
+      process.env.DOTFILES_REPOS_DIR = join(tmp, "repos");
+      delete process.env.DOTFILES_OVERLAY_ROOT;
+      delete process.env.EXTRA_OVERLAY_ROOT;
+    });
+
+    afterEach(() => {
+      for (const key of ENV_KEYS) {
+        if (savedEnv[key] === undefined) delete process.env[key];
+        else process.env[key] = savedEnv[key];
+      }
+    });
+
+    it("discovers any dotfiles-* overlay that ships the launcher under the repos dir", () => {
+      const expected = makeLauncher(join(tmp, "repos/tooling/dotfiles-exampleorg"));
+      expect(resolveMcpCursorLauncher()).toBe(expected);
+    });
+
+    it("discovers an overlay cloned directly under ~/apps", () => {
+      delete process.env.DOTFILES_REPOS_DIR;
+      const expected = makeLauncher(join(tmp, "home/apps/dotfiles-exampleorg"));
+      expect(resolveMcpCursorLauncher()).toBe(expected);
+    });
+
+    it("skips dotfiles-* checkouts without the launcher", () => {
+      mkdirSync(join(tmp, "repos/tooling/dotfiles-feature/bin"), { recursive: true });
+      mkdirSync(join(tmp, "repos/tooling/dotfiles"), { recursive: true });
+      expect(resolveMcpCursorLauncher()).toBeNull();
+    });
+
+    it("uses EXTRA_OVERLAY_ROOT before discovery", () => {
+      makeLauncher(join(tmp, "repos/tooling/dotfiles-exampleorg"));
+      process.env.EXTRA_OVERLAY_ROOT = join(tmp, "custom-overlay");
+      const expected = makeLauncher(process.env.EXTRA_OVERLAY_ROOT);
+      expect(resolveMcpCursorLauncher()).toBe(expected);
+    });
+
+    it("keeps DOTFILES_OVERLAY_ROOT as the first choice", () => {
+      process.env.EXTRA_OVERLAY_ROOT = join(tmp, "extra-overlay");
+      makeLauncher(process.env.EXTRA_OVERLAY_ROOT);
+      process.env.DOTFILES_OVERLAY_ROOT = join(tmp, "pinned-overlay");
+      const expected = makeLauncher(process.env.DOTFILES_OVERLAY_ROOT);
+      expect(resolveMcpCursorLauncher()).toBe(expected);
+    });
+  });
+
   it("finalizeCursorGuiMcpEntries wraps bare npx entries", () => {
     const entries: Record<string, Record<string, unknown>> = {
       playwright: { command: "npx", args: ["-y", "@playwright/mcp@latest"] },

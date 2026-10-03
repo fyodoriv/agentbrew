@@ -13,6 +13,7 @@ import {
   resolveGithubLauncherPath,
   uninstallBrokenMcpmRegistryServers,
   uninstallQuarantinedMcpmServers,
+  withExtraBrokenRegistryServers,
 } from "./mcpm-hygiene.js";
 
 describe("mcpm hygiene helpers", () => {
@@ -104,6 +105,38 @@ describe("registry blocklist vs agentbrew state", () => {
 
   it("does nothing when no intersection client is detected", () => {
     expect(uninstallBrokenMcpmRegistryServers(["cursor"], true, new Set())).toEqual([]);
+  });
+});
+
+describe("broken registry names from a team overlay", () => {
+  const withOverlay = withExtraBrokenRegistryServers(["example-remote"]);
+
+  it("adds overlay names to the generic base list", () => {
+    expect(withOverlay).toEqual([...BROKEN_MCPM_REGISTRY_SERVERS, "example-remote"]);
+  });
+
+  it("ignores non-string, blank, and duplicate overlay entries", () => {
+    expect(withExtraBrokenRegistryServers(["jira-mcp", 42, " ", null])).toEqual([...BROKEN_MCPM_REGISTRY_SERVERS]);
+    expect(withExtraBrokenRegistryServers("example-remote")).toEqual([...BROKEN_MCPM_REGISTRY_SERVERS]);
+    expect(withExtraBrokenRegistryServers(undefined)).toEqual([...BROKEN_MCPM_REGISTRY_SERVERS]);
+  });
+
+  it("drops mcpm wrappers only for the names on the list", () => {
+    const servers = { "mcpm_example-remote": { command: "mcpm" }, mcpm_context7: { command: "mcpm" } };
+    expect(collectHygieneRemovals(servers, new Set(), withOverlay)).toEqual(["mcpm_example-remote"]);
+    expect(collectHygieneRemovals(servers, new Set())).toEqual([]);
+  });
+
+  it("still lets agentbrew state protect an overlay-listed server", () => {
+    expect(isBlocklistedRegistryServer("example-remote", new Set(), withOverlay)).toBe(true);
+    expect(isBlocklistedRegistryServer("example-remote", new Set(["example-remote"]), withOverlay)).toBe(false);
+  });
+
+  it("uninstalls overlay-listed servers from mcpm", () => {
+    expect(uninstallBrokenMcpmRegistryServers(["claude-code"], true, new Set(), withOverlay)).toContain(
+      "example-remote",
+    );
+    expect(uninstallBrokenMcpmRegistryServers(["claude-code"], true, new Set())).not.toContain("example-remote");
   });
 });
 

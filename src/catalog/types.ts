@@ -169,6 +169,13 @@ export interface Catalog {
    * (dedup by `source`, overlay wins on conflict).
    */
   repo_sources?: CatalogRepoSource[];
+  /**
+   * Optional mcpm registry server names that fail on the team's machines and
+   * have no agentbrew-managed equivalent. Sync removes their `mcpm_<name>`
+   * wrappers and uninstalls them from mcpm, unless state defines the name.
+   * Adds to `BROKEN_MCPM_REGISTRY_SERVERS`; base + overlay merge as a union.
+   */
+  broken_mcpm_registry_servers?: string[];
 }
 
 interface LoadCatalogOptions {
@@ -274,6 +281,11 @@ function mergeCatalog(base: Catalog, overlay: Catalog): Catalog {
     // wins on conflict so the team overlay can tighten descriptions or change
     // auto_update semantics for a shared registry without requiring a base edit.
     repo_sources: mergeOptionalByKey(base.repo_sources, overlay.repo_sources, (item) => item.source),
+    broken_mcpm_registry_servers: mergeOptionalByKey(
+      base.broken_mcpm_registry_servers,
+      overlay.broken_mcpm_registry_servers,
+      (name) => name,
+    ),
   };
 }
 

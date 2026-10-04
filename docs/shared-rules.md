@@ -99,6 +99,8 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Org-specific catalog entries, MCP servers, skills, sources, Agentfile entries, and internal URLs belong in org overlay repos, not OSS-ish base repos.
 - For the agentbrew/dotfiles family: generic shape changes go in base repos; Org-only content goes in org overlay repos (e.g. `agentbrew-<org>` / `dotfiles-<org>`).
 - Litmus test: if a fresh external contributor cannot use it without internal identity/network/entitlement, route it to the overlay.
+- Public text uses placeholders: `~` for a home dir, `github.example.com` for a host, `<org-overlay>` for an overlay repo, `PROJ-123` for a ticket. This covers files, commit messages, and PR, issue, and comment bodies.
+- The dotfiles pre-push hook and `gh` wrapper fail closed for the owner's public repos. A missing or outdated private pattern file blocks the push or post. Report the block to the user; never work around it. Only a human may set `DOTFILES_ALLOW_GH_PRIVATE_REFS=1`.
 
 ## Agentbrew config ownership
 

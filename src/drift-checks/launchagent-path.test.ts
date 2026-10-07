@@ -132,6 +132,24 @@ describe("launchAgentPathHasRequiredPrefixes", () => {
     mockExistsSync.mockReturnValue(true);
     expect(launchAgentPathHasRequiredPrefixes("/usr/bin:/bin", "/home/user")).toBe(false);
   });
+
+  it("rejects PATH that puts the fnm default ahead of the running node", () => {
+    const fnmBin = "/home/user/.local/share/fnm/node-versions/v22.1.0/installation/bin";
+    const nodeBin = dirname(process.execPath);
+    const dotfilesBin = "/home/user/apps/tooling/dotfiles/bin";
+    mockReadFileSync.mockImplementation((p) => {
+      if (String(p) === "/home/user/.node-version") return "22.1.0\n";
+      throw new Error("ENOENT");
+    });
+    mockExistsSync.mockImplementation((p) => {
+      const s = String(p);
+      return s === "/home/user/.node-version" || s === fnmBin || s === dotfilesBin;
+    });
+    expect(launchAgentPathHasRequiredPrefixes(`${fnmBin}:${nodeBin}:${dotfilesBin}:/usr/bin`, "/home/user")).toBe(
+      false,
+    );
+    expect(launchAgentPathHasRequiredPrefixes(`${nodeBin}:${fnmBin}:${dotfilesBin}:/usr/bin`, "/home/user")).toBe(true);
+  });
 });
 
 describe("checkLaunchAgentPathDrift", () => {

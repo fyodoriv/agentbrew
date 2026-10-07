@@ -69,6 +69,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - **PR opener (IRON LAW):** `## Summary` (2–3 sentences) then `## Details`; rewrite from verified facts before merge.
 - Commit format: `type: subject TICKET`, header ≤72 chars.
 - **Rebase:** see `rebase-verification.mdc`.
+- **PR conflicts (IRON LAW):** Green checks do not prove a PR is mergeable. CI tests the PR head, not its merge with the base. On every PR touch, run `git merge-tree --write-tree --name-only <base> HEAD` and `gh pr view <n> --json mergeable,mergeStateStatus`. Treat `CONFLICTING` as not green. Bring in the base per `rebase-verification.mdc`.
 
 ## Verification
 

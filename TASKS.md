@@ -1126,6 +1126,33 @@
   - **Anchor**: `templates/AGENTS.md` § "Task backend"; GitHub docs "Linking a pull request to an issue" (closing keywords).
   - **Output**: docs
 
+- [ ] Decide whether `fyodoriv/dev-skills` folds into agentbrew, and record the decision in one place
+  - **ID**: decide-dev-skills-absorb
+  - **Tags**: skills, dev-skills, curator-not-host, decision
+  - **Details**: The owner said on 2026-10-07 that dev-skills should not exist and its skills should live in agentbrew. That reverses the written policy. `skill-plugins/dev/README.md` says agentbrew is a curator, not a host, and names `fyodoriv/dev-skills` as the home for workflow skills such as `writing-plans`, `task-command-center`, and `iterate`. VISION.md and AGENTS.md rule 8a say the same. Both this repo's `Agentfile.yaml` and the dotfiles Agentfile list `fyodoriv/dev-skills` as a source today. Decide one of two outcomes. (a) Absorb: move the skills into agentbrew with their evals, update the curator-not-host text in README, VISION, and AGENTS rule 8a, repoint both Agentfiles and `src/catalog.yaml`, then archive dev-skills with owner approval. (b) Keep: write down why dev-skills stays, so the question does not come back. Either way, `ghi-repoint-core-task-skills` and `no-volatile-counts-in-skills` follow the skills to wherever they land.
+  - **Files**: `skill-plugins/dev/README.md`, `VISION.md`, `AGENTS.md`, `Agentfile.yaml`, `src/catalog.yaml`; dotfiles `Agentfile.yaml`
+  - **Acceptance**: One merged change records the decision. If absorb: no Agentfile or catalog entry points at `fyodoriv/dev-skills`, and `agentbrew sync --dry-run` deploys the same skill names as before.
+  - **Hypothesis**: One skill home removes the cross-repo hop for skill edits, so the number of repos an agent must touch for a skill-plus-contract change drops from 2 to 1.
+  - **Success**: If absorb, `rg -l 'fyodoriv/dev-skills' Agentfile.yaml src/catalog.yaml | wc -l` reads 0, and the deployed skill-name list is unchanged.
+  - **Pivot**: If absorbing would push `npm run verify` or the bundled package size past its limits, keep dev-skills and record that as the reason.
+  - **Measurement**: `rg -l 'fyodoriv/dev-skills' Agentfile.yaml src/catalog.yaml ../dotfiles/Agentfile.yaml | wc -l` (baseline 2 at `3e22774`).
+  - **Anchor**: VISION.md § "Strategy: delegate, contribute, absorb"; `skill-plugins/dev/README.md` § "Migrated skills".
+  - **Output**: docs
+
+- [ ] Remove volatile inventory counts from the dev-skills skills and guard them
+  - **ID**: no-volatile-counts-in-skills
+  - **Tags**: skills, dev-skills, docs, volatile-counts
+  - **Blocked by**: decide-dev-skills-absorb
+  - **Details**: Some skills tell agents that `N+` counts maintain themselves, or ask agents to re-count. Those counts go stale. Change the guidance: delete the inventory count, link the source of truth, or generate it. Update `companion-docs-sync`, `companion-skill-curate`, `grind`, `project-audit`, and `sweep`, plus the docs-sync evals. Add `scripts/check-volatile-counts.mjs` with a test. It guards every SKILL.md and `references/` file. Tell contributors in the README to run it before they commit skill edits. Do not touch the frozen Windsurf, Devin, or Augment content. Land this in whichever repo `decide-dev-skills-absorb` picks.
+  - **Files**: `companion-docs-sync/`, `companion-skill-curate/`, `grind/`, `project-audit/`, `sweep/`, `scripts/check-volatile-counts.mjs`, `scripts/check-volatile-counts.test.mjs`, `README.md`
+  - **Acceptance**: The checker reports 0 violations on the branch, and its self-test and test pass.
+  - **Hypothesis**: A count checker on SKILL.md and `references/` stops new stale counts, so checker violations drop from the current baseline to 0 and stay there.
+  - **Success**: `node scripts/check-volatile-counts.mjs` reports 0 violations.
+  - **Pivot**: If the checker needs more than 10 allowlist markers to pass, narrow the pattern to inventory nouns only.
+  - **Measurement**: `node scripts/check-volatile-counts.mjs` violation count before and after.
+  - **Anchor**: Parnas, "On the Criteria To Be Used in Decomposing Systems into Modules", CACM 1972 (one source of truth per fact).
+  - **Output**: docs
+
 ## P3
 
 - [ ] `agentbrew status` names helper scripts that sync kept or could not install

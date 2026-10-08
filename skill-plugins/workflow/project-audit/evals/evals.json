@@ -33,7 +33,7 @@
         "Inventories README, AGENTS, changelog, docs, user stories, and rendered docs surfaces where present",
         "Verifies commands, flags, examples, feature claims, and counts against source code or actual command output",
         "Cross-checks README coverage against user stories and recent commits",
-        "Skips approximate counter churn called out as self-maintaining when the skill says to skip it",
+        "Files one task to delete or link volatile inventory counts instead of tasks to re-count them",
         "Files TASKS.md entries for drift instead of changing production code"
       ]
     },

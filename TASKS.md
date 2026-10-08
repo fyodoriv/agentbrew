@@ -1126,19 +1126,6 @@
   - **Anchor**: `templates/AGENTS.md` § "Task backend"; GitHub docs "Linking a pull request to an issue" (closing keywords).
   - **Output**: docs
 
-- [ ] Remove volatile inventory counts from the workflow skills and guard them
-  - **ID**: no-volatile-counts-in-skills
-  - **Tags**: skills, workflow-skills, docs, volatile-counts
-  - **Details**: Some skills tell agents that `N+` counts maintain themselves, or ask agents to re-count. Those counts go stale. Change the guidance: delete the inventory count, link the source of truth, or generate it. Update `companion-docs-sync`, `companion-skill-curate`, `grind`, `project-audit`, and `sweep`, plus the docs-sync evals. Add `scripts/check-volatile-counts.mjs` with a test. It guards every SKILL.md and `references/` file. Tell contributors in the README to run it before they commit skill edits. Do not touch the frozen Windsurf, Devin, or Augment content.
-  - **Files**: `companion-docs-sync/`, `companion-skill-curate/`, `grind/`, `project-audit/`, `sweep/`, `scripts/check-volatile-counts.mjs`, `scripts/check-volatile-counts.test.mjs`, `README.md`
-  - **Acceptance**: The checker reports 0 violations on the branch, and its self-test and test pass.
-  - **Hypothesis**: A count checker on SKILL.md and `references/` stops new stale counts, so checker violations drop from the current baseline to 0 and stay there.
-  - **Success**: `node scripts/check-volatile-counts.mjs` reports 0 violations.
-  - **Pivot**: If the checker needs more than 10 allowlist markers to pass, narrow the pattern to inventory nouns only.
-  - **Measurement**: `node scripts/check-volatile-counts.mjs` violation count before and after.
-  - **Anchor**: Parnas, "On the Criteria To Be Used in Decomposing Systems into Modules", CACM 1972 (one source of truth per fact).
-  - **Output**: docs
-
 ## P3
 
 - [ ] `agentbrew status` names helper scripts that sync kept or could not install

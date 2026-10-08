@@ -148,7 +148,7 @@ For **each** PR, escalate through every strategy until it merges:
    - Inspect the failing check name and reason
    - Fix metadata issues: `gh pr edit <n> --title "type: description TICKET-123"`
    - Fix CI issues: check out the branch, run verify, fix lint/type/test errors, push
-   - Wait ~15 seconds for checks to re-run, then retry merge
+   - Wait about 15 seconds, let the checks re-run, then retry merge
 4. **If blocked by merge conflicts or a moved base branch**:
    - Check out the branch, rebase onto main, resolve conflicts, force-push
    - Retry the merge
@@ -223,9 +223,9 @@ Run a read-only audit using the sweep skill's 8-tier structure. Launch parallel 
 
 **Tier-specific guidance** (commonly missed checks — see `sweep` and `project-audit` for full lists):
 
-- **T2 Stability**: Check for these production stability patterns — they apply to any codebase. Check: silent `catch {}` blocks (every catch must log or propagate), string-based error classification (use typed errors, not regex on messages), missing pre-condition checks before expensive operations, inconsistent error handling across parallel code paths (5 retry paths but only 2 check health = bug), fire-and-forget async (`void asyncFn()` without `.catch()`), resource leaks (unclosed handles, unreaped child processes, `buf += chunk` without cap, `on(` without `off(`), unbounded growth (log files, queues, caches without rotation/eviction), missing timeouts on ALL external calls (HTTP, exec, OS commands), crash-retry loops without health checks between attempts, missing validation gates between pipeline stages, shallow `isAvailable()` checks that don't test auth/connectivity, and graceful shutdown issues (double-shutdown race, no hard timeout, active work not stopped).
+- **T2 Stability**: Check for these production stability patterns — they apply to any codebase. Check: silent `catch {}` blocks (every catch must log or propagate), string-based error classification (use typed errors, not regex on messages), missing pre-condition checks before expensive operations, inconsistent error handling across parallel code paths (5 retry paths where just 2 verify health first = bug), fire-and-forget async (`void asyncFn()` without `.catch()`), resource leaks (unclosed handles, unreaped child processes, `buf += chunk` without cap, `on(` without `off(`), unbounded growth (log files, queues, caches without rotation/eviction), missing timeouts on ALL external calls (HTTP, exec, OS commands), crash-retry loops without health checks between attempts, missing validation gates between pipeline stages, shallow `isAvailable()` checks that don't test auth/connectivity, and graceful shutdown issues (double-shutdown race, no hard timeout, active work not stopped).
 - **T3 Tests**: Flag files with no test file, assertion density < 2/test, flaky indicators (`setTimeout` in tests, date-dependent assertions, order-dependent tests), and mock overuse (mocking so deep the test verifies nothing real).
-- **T4 Docs**: Verify AGENTS.md layout matches actual dirs. Build user-story → implementation coverage matrix. Check cross-doc consistency (README, VISION, AGENTS.md must agree on features and names). Click every link, run every documented command. **Skip counter accuracy** — `N+` approximations are self-maintaining.
+- **T4 Docs**: Verify AGENTS.md layout matches actual dirs. Build user-story → implementation coverage matrix. Check cross-doc consistency (README, VISION, AGENTS.md must agree on features and names). Click every link, run every documented command. **Volatile counts** — an inventory count in docs (agents, skills, tests, packages) goes stale, even as `N+`. Never file tasks to re-count it. File one task to delete the count, link its source of truth, or generate it.
 - **T5 Code health**: Flag >300-line source files, >4-level nesting, magic numbers/hardcoded strings, ESM/CJS shims where `import.meta.dirname` works, and inconsistent patterns (5/6 calls follow a pattern, 1 doesn't — that's a bug).
 - **T6 Dependencies**: Check `.preferred-deps.yaml` before suggesting replacements. Separate major (breaking) from minor/patch (safe) updates. Check license compliance (copyleft in permissive projects). Flag oversized deps with lighter alternatives. **Scan for custom code replaceable by packages** — hand-rolled utilities that duplicate maintained packages (retry logic vs `p-retry`, deep-merge vs `deepmerge`, glob vs `fast-glob`), entire subsystems a library solves (custom config loading vs `cosmiconfig`, custom process spawning vs `execa`), and vendored/copied code. Verify the replacement package is maintained and the custom code has real deficiencies before recommending. Shape findings as: "replace custom X with package Y — deletes ~N lines."
 - **T7 DX/UX**: For CLIs — verify `--help` on every command, actionable error messages, non-zero exit on failure, progress indicators on long ops. Check first-run experience.
@@ -308,10 +308,10 @@ unblocked P0 task looks hard, that's the task. Decompose it — don't drop to P2
 
 #### 4d. Decompose if needed
 
-If the picked task would touch 5+ files, span multiple concerns, or has 3+
+If the picked task would touch many files (rough guide: over 5), span multiple concerns, or has 3+
 acceptance criteria, decompose it BEFORE implementing:
 1. Break into 2-4 sub-tasks in TASKS.md under the same `## P*` heading
-2. Each sub-task should be one-commit-sized (1-3 files)
+2. Each sub-task should be one-commit-sized (touching 1 to 3 of them)
 3. Add `**Parent**: <original-id>` to each sub-task
 4. Keep the parent task — it's "done" when all sub-tasks are removed
 5. Commit: `chore: decompose <task-id> into sub-tasks`

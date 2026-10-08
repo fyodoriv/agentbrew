@@ -78,7 +78,7 @@ const USER_FACING_VOLATILE_COUNT_ROOT_FILES = [
   "RECURRING.md",
 ] as const;
 
-/** Markdown paths guarded for volatile counts (root docs, user stories, every shipped SKILL.md). */
+/** Markdown paths guarded for volatile counts (root docs, user stories, every shipped SKILL.md and skill references/). */
 export function getUserFacingVolatileCountFiles(repoRoot: string = resolveRepoRoot()): readonly string[] {
   return [
     ...USER_FACING_VOLATILE_COUNT_ROOT_FILES,
@@ -99,7 +99,7 @@ function listUserStoryMarkdown(repoRoot: string): string[] {
 function listSkillMarkdown(repoRoot: string): string[] {
   const skillRoot = join(repoRoot, "skill-plugins");
   try {
-    return listMarkdownFiles(skillRoot, repoRoot).filter((p) => p.endsWith("/SKILL.md"));
+    return listMarkdownFiles(skillRoot, repoRoot).filter((p) => p.endsWith("/SKILL.md") || p.includes("/references/"));
   } catch {
     return ["skill-plugins/dev/agentbrew-status/SKILL.md"];
   }

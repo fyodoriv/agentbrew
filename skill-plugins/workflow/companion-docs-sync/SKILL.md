@@ -40,7 +40,7 @@ Highlights:
     or rewrite a section, file a TASKS.md entry instead — that's the
     worker's call, not the companion's. This carve-out exists
     because forcing every USER_GUIDE typo to TASKS.md just shuffles
-    noise; mechanical fixes (renamed function, wrong count, dead
+    noise; mechanical fixes (renamed function, stale inventory count, dead
     link) belong in-place.
   - `docs/<new-file>.md` — fully owned by the companion (e.g. the
     test-gap docs from `companion-test-gaps`).
@@ -109,8 +109,10 @@ Produce a verification table:
 **Worth-filing threshold**: not every drift is worth a TASKS.md
 entry. As a rough guide:
 
-- **Worth filing**: numeric counts that are wrong (tool count, agent
-  count, port number), named function / class / route references
+- **Worth filing**: wrong fixed facts (port number, flag name, path),
+  inventory counts in docs (tool, agent, skill counts — the fix is to
+  delete the count or link its source of truth, never to re-count),
+  named function / class / route references
   that don't exist in code, behavior contradictions (doc says X,
   code does Y), missing-from-doc commands that the README
   advertises.
@@ -125,8 +127,8 @@ entry. As a rough guide:
 For each unverified or stale claim, classify:
 
 - **Doc-fixable** (worker not active on this file, fix is mechanical):
-  rewrite the line in-place. Examples: a flag name changed, a count
-  is off, a path is stale, a relationship name was renamed in code.
+  rewrite the line in-place. Examples: a flag name changed, an inventory
+  count appears (delete it or link its source), a path is stale, a relationship name was renamed in code.
   Surgical edits to `docs/<existing-file>.md` are now allowed per
   the carve-out in the safety rules.
 - **Code-or-doc** (need to decide whether to fix doc or code): file
@@ -169,7 +171,7 @@ Priority:
   hit it).
 - **P2** if drift is internal-facing or causes a less-painful
   surprise.
-- **P3** if drift is a count off by a small amount or a typo.
+- **P3** if drift is an inventory count to delete or link, or a typo.
 
 ### Step 7: Validate the doc edits don't break the build
 

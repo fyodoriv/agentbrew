@@ -46,7 +46,7 @@ Gather structural signals from the codebase before asking the user anything. Thi
 
 **First, run `git-diagnose-codebase`.** Five `git log` commands plus the churn × bug-keyword cross-reference give you bus factor, velocity trend, firefighting frequency, and the highest-risk files in 5 minutes — without opening any source. The velocity-over-time and firefighting outputs sharpen the strategic questions you'll ask in Phase 2 (acceleration vs decline → "is this still actively developed?"; firefighting > 12/year → "is the team in stabilization mode?"). The cross-reference (top 5 churn ∩ top 20 bug clusters) is also the seed list for §1.3 Complexity Hotspots — same files, less repeated git work.
 
-If `git-diagnose-codebase` is unavailable, run the 5 commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe).
+If `git-diagnose-codebase` is unavailable, run its commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe).
 
 Read these files (skip those that don't exist):
 - `README.md`, `AGENTS.md` — stated purpose and scope
@@ -119,7 +119,7 @@ Record: **Is the codebase getting easier or harder to change?**
 Look for these patterns:
 
 - **God modules** — one directory/file that everything depends on
-- **Shotgun surgery** — a single logical change requires touching 5+ files across unrelated modules
+- **Shotgun surgery** — a single logical change requires touching many unrelated modules (rough guide: over 5)
 - **Feature envy** — module A constantly reaching into module B's internals
 - **Abstraction inversion** — high-level modules implementing low-level details, or low-level modules making policy decisions
 - **Config explosion** — growing config/options that paper over architectural decisions
@@ -155,7 +155,7 @@ Evaluate whether the project's documentation can sustain adoption and onboarding
 - **README completeness**: does the README cover install, quickstart, all commands, configuration, troubleshooting? Compare against what the code actually supports.
 - **AGENTS.md freshness**: does the repo layout match reality? Are file descriptions accurate? Sample 10 and verify.
 - **Competition docs**: if `docs/COMPETITION.md` exists, are competitor comparisons accurate and dated?
-- **Missing docs**: are there complex subsystems with zero documentation? Flag any directory with 5+ source files and no README or doc reference.
+- **Missing docs**: are there complex subsystems with zero documentation? Flag any directory with more than a handful of source files (rough guide: over 5) and no README or doc reference.
 - **Rendered docs**: if the project serves docs (dashboard, Storybook, API docs), open every page with `agent-browser` and verify content is current.
 
 Record: **Documentation coverage: comprehensive / adequate / gaps / critically missing**

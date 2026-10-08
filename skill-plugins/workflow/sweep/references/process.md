@@ -22,11 +22,11 @@ Store the detected type and commands — every tier uses them. If the project ha
 `test:affected` and `test:all`, prefer those over raw tool commands.
 
 Also detect:
-- **Has README?** → enables Tier 4 doc checks
+- **Has README?** → enables the doc checks (Tier 4)
 - **Has VISION.md or docs/?** → enables Tier 8 vision alignment
 - **Has user stories?** → enables Tier 8 story-code alignment
-- **Has UI/frontend?** → enables Tier 7 UX checks (look for `src/components/`, `src/pages/`, `*.tsx`, `*.jsx`, `*.html`)
-- **Has CLI?** → enables Tier 7 CLI polish checks (look for `bin/`, `src/cli`, commander/yargs/clap imports)
+- **Has UI/frontend?** → enables the UX checks (Tier 7; look for `src/components/`, `src/pages/`, `*.tsx`, `*.jsx`, `*.html`)
+- **Has CLI?** → enables the CLI polish checks (Tier 7; look for `bin/`, `src/cli`, commander/yargs/clap imports)
 
 ### Step 0.5: Diagnostic snapshot
 
@@ -34,7 +34,7 @@ Run `git-diagnose-codebase` before the audit tiers. The five `git log` commands 
 
 The output **biases the per-tier subagents toward the highest-risk files**. Each tier subagent (Tier 1 verify gate, Tier 2 stability, Tier 5 dead code, Tier 6 doc drift, etc.) reads the cross-reference list (top 5 churn ∩ top 20 bug clusters) and prioritizes those files when sampling. Files outside the cross-reference get sampled only if budget remains.
 
-If `git-diagnose-codebase` is unavailable, run the 5 commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe) and pass the cross-reference list to the per-tier subagents in their prompt.
+If `git-diagnose-codebase` is unavailable, run its commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe) and pass the cross-reference list to the per-tier subagents in their prompt.
 
 ### Step 0.6: Queue-pressure check (deliver vs add)
 
@@ -93,7 +93,7 @@ Keep this list in memory. **Never create a duplicate** — if a finding is alrea
 
 Launch up to 8 background subagents simultaneously, one per tier. Each subagent is read-only.
 Pass each subagent: (a) the existing task list, (b) the detected project type, (c) the verify commands.
-Skip tiers that don't apply to this project type (e.g., skip Tier 8 vision checks if no VISION.md exists).
+Skip tiers that don't apply to this project type (e.g., skip the vision checks (Tier 8) if no VISION.md exists).
 
 ---
 
@@ -110,7 +110,7 @@ Modeled on production stability patterns — apply these checks to ANY codebase:
 - **Silent error swallowing**: `catch {}`, `catch (_)` with empty body, `.catch(() => {})`. Every catch must log, propagate, or emit a degraded event. Grep: `catch\s*\{?\s*\}`, `catch.*\/\*`, `.catch\(\s*\(\)\s*=>`
 - **String-based error classification**: code that matches error messages with regex instead of using typed error classes. Grep: `/error\.message\.match\(|\.includes\(.*error|isAuthError.*regex/`. These break when messages change.
 - **Missing pre-condition checks**: functions that start expensive operations (network calls, subprocess launches, file writes) without verifying preconditions first. Look for patterns where errors are discovered reactively instead of checked proactively.
-- **Inconsistent error handling across parallel paths**: multiple code paths doing the same thing (retry, resume, reconnect) with different error handling. If 5 retry paths exist but only 2 check health first, the other 3 are bugs.
+- **Inconsistent error handling across parallel paths**: multiple code paths doing the same thing (retry, resume, reconnect) with different error handling. If 5 retry paths exist and just 2 verify health first, the other 3 are bugs.
 - **Unhandled promise rejections**: `async` functions without try/catch at call boundaries. Fire-and-forget: `void someAsyncFn()` or `.then(...)` without `.catch()`. One unhandled rejection shouldn't crash the whole process.
 - **Missing timeouts**: network calls, exec/spawn, file watchers, subprocess communication without timeout. Grep: `fetch\(`, `execFileSync\(`, `spawn\(` — check for timeout option.
 - **Missing graceful shutdown**: SIGINT/SIGTERM handlers that don't stop active work, don't flush state, or can be called twice (double-shutdown race). Check: is there a `shuttingDown` guard? Does shutdown have a hard timeout?
@@ -137,7 +137,7 @@ Modeled on production stability patterns — apply these checks to ANY codebase:
   - Code examples use current API (not deprecated functions)
   - Badge URLs resolve (if any)
   - Links (internal and external) are not broken: `grep -oP '\[.*?\]\(.*?\)' README.md`
-  - **Skip counter/number accuracy** — `N+` approximations are self-maintaining by design. Never create tasks to update them.
+  - **Volatile counts** — an inventory count in docs (agents, skills, tests, packages) goes stale, even as `N+`. Never file tasks to re-count it. File one task to delete the count, link its source of truth, or generate it.
 - AGENTS.md / CLAUDE.md: layout section matches actual directory structure
 - CHANGELOG: has entry for recent commits (compare `git log --oneline -20` vs CHANGELOG)
 - JSDoc/docstring coverage on public exports
@@ -146,7 +146,7 @@ Modeled on production stability patterns — apply these checks to ANY codebase:
 - Cross-section duplication: same heading in both instructions template and managed rules section = wasted always-on context
 
 **Tier 5 — Code health** (P2-P3 findings)
-- Large files: source files over 300 lines (candidates for splitting)
+- Large files: any source file > 300 lines (candidates for splitting)
 - High complexity: functions with deep nesting (> 4 levels) or many branches (> 10)
 - Duplicate patterns: similar code blocks across files (copy-paste smell)
 - Dead code: exported functions never imported, unused variables, unreachable branches

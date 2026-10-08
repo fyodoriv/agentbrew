@@ -74,7 +74,7 @@ for cluster in "${!CLUSTERS[@]}"; do
 done
 ```
 
-For clusters with >3 skills, list them and judge whether the cluster
+For clusters larger than 3, list them and judge whether the cluster
 has a clear "primary" skill the others should defer to (e.g.
 Anthropic `skill-creator` (from `anthropics/skills`) and Superpowers `writing-skills` are the upstream lifecycle skills).
 File TASKS.md entries proposing one of:

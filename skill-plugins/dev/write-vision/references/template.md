@@ -205,7 +205,7 @@ non-negotiable content requirements.
 ### Style rules
 
 - **Concise over comprehensive.** Every sentence earns its place. Target 200
-  lines for a small project, 500 for a large one. Over 500 lines, the doc is
+  lines for a small project, 500 for a large one. A doc that would grow past ~500 lines for one project is
   probably trying to do two jobs.
 - **Tables over prose** for comparison or enumeration.
 - **Code or commands in examples** where behavior is described.

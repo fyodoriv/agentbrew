@@ -16,10 +16,10 @@
     {
       "id": 2,
       "prompt": "README says the CLI supports 9 agents, but the catalog seems to list 15. Is this drift?",
-      "expected_output": "A verified count comparison and either a surgical README fix or a task if the file is worker-active.",
+      "expected_output": "The README agent count is treated as volatile: it is deleted or replaced with a link to the source of truth (or a generated value), as a surgical README fix or a task if the file is worker-active.",
       "expectations": [
-        "Treats the agent catalog or source data as the source of truth and counts it mechanically",
-        "Compares the measured count to the README claim with evidence",
+        "Treats the agent catalog or source data as the source of truth instead of re-counting by hand",
+        "Removes the count from the README or replaces it with a link to the source of truth or a generated value, rather than writing a new number",
         "Checks whether README.md is worker-active before editing",
         "Files an appropriately prioritized doc-drift task if the doc cannot be edited safely"
       ]

@@ -6,7 +6,7 @@ Read these before touching any code. Skip files that don't exist.
 
 **Step 1.0 — run `git-diagnose-codebase` first.** Five `git log` commands plus the churn × bug-keyword cross-reference produce a 5-minute high-signal map of where bugs cluster, who owns the code, and whether the team is in firefighting mode — without opening any source files. The cross-reference output (top 5 churn ∩ top 20 bug clusters) is the **seed list** for the rest of this audit. Read source for those files first; sample everything else only after they're covered.
 
-If `git-diagnose-codebase` is unavailable in the host agent, run the 5 commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe).
+If `git-diagnose-codebase` is unavailable in the host agent, run its commands inline (see [`piechowski.io`](https://piechowski.io/post/git-commands-before-reading-code/) for the recipe).
 
 **CRITICAL — read first to avoid duplicating existing tasks:**
 - `TASKS.md` — already-planned work. Do not re-add these.
@@ -192,7 +192,7 @@ Go through the README line by line:
 - **CLI commands**: run every documented command. Does the output match the docs?
 - **Config examples**: copy-paste each example. Does it parse? Does it work?
 - **Feature list**: for each claimed feature, grep the codebase. Is it implemented? Is it behind a flag?
-- **Skip counter/number accuracy** — `N+` approximations (e.g. "100+ agents", "2600+ tests") are self-maintaining by design. Never create tasks to update them.
+- **Volatile counts** — an inventory count in docs (agents, skills, tests, packages) goes stale, even as `N+`. Never file tasks to re-count it. File one task to delete the count, link its source of truth, or generate it.
 - **Screenshots/images**: if the README includes images, verify they're current (compare against live UI)
 - **Badges**: verify CI badge URL points to the right workflow, coverage badge is accurate
 - **Links**: click every link. Flag broken ones.
@@ -226,7 +226,7 @@ These files are critical for AI agent productivity:
 
 - **Repo layout**: verify every directory listed in the layout section exists. Flag phantom entries.
 - **Build commands**: run every command. Do they work? Match the output described?
-- **File descriptions**: sample 10 files listed in the layout. Do the descriptions match what the file actually does?
+- **File descriptions**: sample a handful of paths from the layout (about 10). Do the descriptions match what the file actually does?
 - **Convention claims**: verify 3-5 stated conventions against actual code (e.g., "use `it()` not `test()`" — grep for violations)
 - **Stale references**: grep for removed features, renamed files, or dead links
 - **Cross-section duplication**: check for headings that appear in both the instructions template and the managed rules section (same heading in both = wasted tokens)
@@ -271,7 +271,7 @@ For every finding, write a task to `TASKS.md` under the appropriate priority hea
   **Acceptance**: Testable criterion. `<exact test command>` and `<exact typecheck command>` must pass.
 ```
 
-**Multi-step findings** — when a fix requires distinct sequential steps (e.g., add timeout to 5 call sites, or migrate 3 files from old pattern to new), include a `**Plan**:` section:
+**Multi-step findings** — when a fix requires distinct sequential steps (e.g., add timeout to 5 call sites, or move several call sites from the old pattern to the new), include a `**Plan**:` section:
 
 ```markdown
 - [ ] Add missing timeouts to all execFileSync calls
@@ -294,7 +294,7 @@ Use sub-tasks when a finding affects 3+ locations or has a natural sequence. Ski
 2. Grep to verify it hasn't already been fixed in the codebase
 3. Include exact file paths and line numbers from your read — not approximations
 4. Include the specific existing pattern to follow (e.g. "matching the pattern in `agentfile.ts:120`")
-5. Group related micro-fixes into one task if they're <5 lines each and touch the same concern
+5. Group related micro-fixes into one task if each is under 5 lines and they touch the same concern
 6. Do NOT group unrelated changes — each task should be a focused, single-PR change
 
 **Priority assignment:**

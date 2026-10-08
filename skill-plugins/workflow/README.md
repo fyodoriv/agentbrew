@@ -24,3 +24,8 @@ source (`./skill-plugins/workflow`).
   upstream closes the gap.
 - Windsurf, Devin, and Augment are frozen. Leave their existing mentions as
   they are, and add no fixes or features for them.
+- Keep inventory counts (agents, skills, tests, packages) out of SKILL.md and
+  `references/`: delete the count, link its source of truth, or generate it.
+  `src/docs/volatile-count-claims.test.ts` enforces this in `npm test` and
+  `npm run verify`. Run it before committing a skill edit:
+  `npx vitest run src/docs/volatile-count-claims.test.ts`.

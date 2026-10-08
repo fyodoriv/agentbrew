@@ -181,7 +181,7 @@ describe("volatile count claims guard — user-facing docs", () => {
     ).toBe(true);
   });
 
-  it("guards root docs, docs/user-stories/**/*.md, and every shipped skill-plugins/**/SKILL.md", () => {
+  it("guards root docs, docs/user-stories/**/*.md, and every shipped skill-plugins/** SKILL.md and references/*.md", () => {
     const repoRoot = resolveRepoRoot();
     const paths = getUserFacingVolatileCountFiles(repoRoot);
     expect(paths).toContain("VISION.md");
@@ -194,6 +194,9 @@ describe("volatile count claims guard — user-facing docs", () => {
     expect(paths.filter((p) => p.startsWith("skill-plugins/dev/") && p.endsWith("/SKILL.md")).length).toBeGreaterThan(
       10,
     );
+    expect(paths).toContain("skill-plugins/workflow/grind/SKILL.md");
+    expect(paths).toContain("skill-plugins/workflow/sweep/references/process.md");
+    expect(paths).toContain("skill-plugins/workflow/project-audit/references/audit-steps.md");
   });
 
   it("keeps volatile inventory counts out of user-facing Agentbrew docs and skills", () => {

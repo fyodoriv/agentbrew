@@ -94,5 +94,8 @@
     "tsx": "4.21.0",
     "typescript": "6.0.3",
     "vitest": "4.1.5"
+  },
+  "overrides": {
+    "simple-git": "4.0.2"
   }
 }

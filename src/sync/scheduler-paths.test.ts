@@ -186,6 +186,56 @@ describe("buildLaunchAgentPath", () => {
     expect(pathValue).toContain("/mock-home/apps/tooling/dotfiles/bin");
     expect(pathValue).toContain("/usr/bin");
   });
+
+  // Regression: the fnm default came first, so a bare `node` in a job ran the
+  // fnm build even when agentbrew itself ran on a different Node.
+  it("keeps the running node ahead of the fnm default", () => {
+    const fnmBin = "/mock-home/.local/share/fnm/node-versions/v22.1.0/installation/bin";
+    vi.mocked(readFileSync).mockImplementation((p) => {
+      if (String(p) === "/mock-home/.node-version") return "v22.1.0\n";
+      throw new Error("ENOENT");
+    });
+    vi.mocked(existsSync).mockImplementation((p) => {
+      const s = String(p);
+      return s === "/mock-home/.node-version" || s === fnmBin || s.includes("dotfiles/bin");
+    });
+    const pathValue = buildLaunchAgentPath("/mock-home", "/opt/homebrew/bin");
+    expect(pathValue.startsWith(`/opt/homebrew/bin:${fnmBin}:/mock-home/apps/tooling/dotfiles/bin:`)).toBe(true);
+  });
+
+  it("lists the node bin once when it is the fnm default", () => {
+    const fnmBin = "/mock-home/.local/share/fnm/node-versions/v22.1.0/installation/bin";
+    vi.mocked(readFileSync).mockImplementation((p) => {
+      if (String(p) === "/mock-home/.node-version") return "22.1.0\n";
+      throw new Error("ENOENT");
+    });
+    vi.mocked(existsSync).mockImplementation((p) => {
+      const s = String(p);
+      return s === "/mock-home/.node-version" || s === fnmBin || s.includes("dotfiles/bin");
+    });
+    const pathValue = buildLaunchAgentPath("/mock-home", fnmBin);
+    expect(pathValue.split(":").filter((segment) => segment === fnmBin)).toHaveLength(1);
+    expect(pathValue.startsWith(`${fnmBin}:/mock-home/apps/tooling/dotfiles/bin:`)).toBe(true);
+  });
+});
+
+describe("requiredLaunchAgentPathPrefixes", () => {
+  it("puts the running node first and the fnm default after it", () => {
+    const fnmBin = "/mock-home/.local/share/fnm/node-versions/v22.1.0/installation/bin";
+    vi.mocked(readFileSync).mockImplementation((p) => {
+      if (String(p) === "/mock-home/.node-version") return "22.1.0\n";
+      throw new Error("ENOENT");
+    });
+    vi.mocked(existsSync).mockImplementation((p) => {
+      const s = String(p);
+      return s === "/mock-home/.node-version" || s === fnmBin || s.includes("dotfiles/bin");
+    });
+    expect(requiredLaunchAgentPathPrefixes("/mock-home")).toEqual([
+      getNodeBinDir(),
+      fnmBin,
+      "/mock-home/apps/tooling/dotfiles/bin",
+    ]);
+  });
 });
 
 describe("resolveDotfilesBinPath", () => {

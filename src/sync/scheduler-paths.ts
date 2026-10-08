@@ -87,12 +87,11 @@ export function resolveFnmNodeBin(home: string): string | undefined {
  * so `agentbrew fix` resolves under fnm/NVM even when launchd spawns with a minimal PATH.
  */
 export function buildLaunchAgentPath(home: string, nodeBinDir: string = getNodeBinDir()): string {
-  const parts: string[] = [];
+  const parts: string[] = [nodeBinDir];
   const fnmBin = resolveFnmNodeBin(home);
   if (fnmBin && fnmBin !== nodeBinDir) {
     parts.push(fnmBin);
   }
-  parts.push(nodeBinDir);
   parts.push(resolveDotfilesBinPath(home));
 
   if (existsSync("/opt/homebrew/opt/curl/bin")) parts.push("/opt/homebrew/opt/curl/bin");
@@ -114,11 +113,12 @@ export function buildLaunchAgentPath(home: string, nodeBinDir: string = getNodeB
 /** Prefix segments every com.agentbrew.* LaunchAgent PATH must include. */
 export function requiredLaunchAgentPathPrefixes(home: string): string[] {
   const nodeBinDir = getNodeBinDir();
-  const prefixes = [nodeBinDir, resolveDotfilesBinPath(home)];
+  const prefixes = [nodeBinDir];
   const fnmBin = resolveFnmNodeBin(home);
   if (fnmBin && fnmBin !== nodeBinDir) {
-    prefixes.unshift(fnmBin);
+    prefixes.push(fnmBin);
   }
+  prefixes.push(resolveDotfilesBinPath(home));
   return prefixes;
 }
 

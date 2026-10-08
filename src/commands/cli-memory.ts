@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
-import { newestBackupInDir, sqliteBackup, verifySqliteBackup } from "../memory/backup.js";
+import { newestBackupInDir, rotateMemoryBackup, verifySqliteBackup, writeMemoryBackup } from "../memory/backup.js";
 import { disableMemory, enableMemory, getMemoryPackSearchPaths, isMemoryEnabled } from "../memory/enable.js";
 import { buildMemoryStatusJson, runMemoryDoctor, runMemoryReadinessDoctor } from "../memory/health.js";
 import { invokeMemory, invokeMemoryMaintenance } from "../memory/invoke.js";
@@ -365,10 +365,7 @@ export function registerMemoryCommands(program: Command): void {
     .option("--json", "Output as JSON")
     .action((options: { json?: boolean }) => {
       const source = resolveMemoryDbPath();
-      const destDir = resolveMemoryBackupsDir();
-      const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "_");
-      const dest = join(destDir, `agentbrew-memory_${stamp}.db`);
-      sqliteBackup(source, dest);
+      const dest = writeMemoryBackup(source, resolveMemoryBackupsDir());
       const verified = verifySqliteBackup(dest);
       const payload = { source, dest, activeCount: verified.activeCount };
       if (options.json) printJson(payload);
@@ -401,11 +398,23 @@ export function registerMemoryCommands(program: Command): void {
     .option("--json", "Output as JSON")
     .action((options: { deep?: boolean; json?: boolean }) => {
       const result = invokeMemoryMaintenance();
+      // Upstream maintain checks the schema only; the daily backup the doctor expects is written here.
+      const backup = result.ok ? rotateMemoryBackup(resolveMemoryDbPath(), resolveMemoryBackupsDir()) : null;
+      if (backup && !backup.ok) {
+        result.ok = false;
+        result.stderr = `${result.stderr}\nmemory backup failed: ${backup.error}`.trim();
+      }
       if (result.ok) {
         recordMemoryMaintenanceSuccess();
       }
       if (options.json) {
-        printJson({ ok: result.ok, command: result.command, stdout: result.stdout, stderr: result.stderr });
+        printJson({
+          ok: result.ok,
+          command: result.command,
+          backup: backup?.path ?? null,
+          stdout: result.stdout,
+          stderr: result.stderr,
+        });
       } else if (!result.ok) {
         console.error(result.stderr || "maintain failed");
         process.exitCode = 1;

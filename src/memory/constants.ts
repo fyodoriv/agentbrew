@@ -29,6 +29,8 @@ export const MEMORY_DAEMON_ENVIRONMENT = {
 
 /** Default max backup age before doctor reports stale (26 hours). */
 export const MEMORY_BACKUP_MAX_AGE_SEC = 93_600;
+/** Daily backups kept by `agentbrew memory maintain` (two weeks). */
+export const MEMORY_BACKUP_KEEP = 14;
 
 /** Managed MCP server name wired by `agentbrew memory enable`. */
 export const MEMORY_MANAGED_SERVER_NAME = "memory";

@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { errorMessage } from "../core/errors.js";
+import { MEMORY_BACKUP_KEEP } from "./constants.js";
 
 export interface SqliteBackupOptions {
   sqliteBin?: string;
@@ -97,4 +99,46 @@ export function newestBackupInDir(backupsDir: string): string | undefined {
     }
   }
   return newest;
+}
+
+/** Write a timestamped backup of `sourceDb` into `backupsDir` and return its path. */
+export function writeMemoryBackup(sourceDb: string, backupsDir: string, now: Date = new Date()): string {
+  const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "_");
+  const dest = join(backupsDir, `agentbrew-memory_${stamp}.db`);
+  sqliteBackup(sourceDb, dest);
+  return dest;
+}
+
+/** Delete all but the newest `keep` `.db` backups in `backupsDir`; return the removed paths. */
+export function pruneMemoryBackups(backupsDir: string, keep: number): string[] {
+  if (!existsSync(backupsDir)) return [];
+  const backups = readdirSync(backupsDir)
+    .filter((entry) => entry.endsWith(".db"))
+    .map((entry) => {
+      const full = join(backupsDir, entry);
+      return { full, mtime: statSync(full).mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+  const removed = backups.slice(keep).map((backup) => backup.full);
+  for (const path of removed) rmSync(path, { force: true });
+  return removed;
+}
+
+/**
+ * Write, verify, and rotate the daily memory backup. Never throws: a failure
+ * comes back as `{ ok: false, error }` so `memory maintain` can report it.
+ */
+export function rotateMemoryBackup(
+  sourceDb: string,
+  backupsDir: string,
+  keep: number = MEMORY_BACKUP_KEEP,
+): { ok: boolean; path: string | null; error?: string } {
+  try {
+    const path = writeMemoryBackup(sourceDb, backupsDir);
+    if (!verifySqliteBackup(path).ok) return { ok: false, path, error: `backup failed verification: ${path}` };
+    pruneMemoryBackups(backupsDir, keep);
+    return { ok: true, path };
+  } catch (error) {
+    return { ok: false, path: null, error: errorMessage(error) };
+  }
 }

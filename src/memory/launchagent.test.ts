@@ -6,6 +6,7 @@ import {
   MEMORY_AGENT_LABEL,
   MEMORY_MAINTAIN_LABEL,
   memoryDaemonPath,
+  parseLaunchctlJobIdentity,
 } from "./launchagent.js";
 
 describe("memory LaunchAgent", () => {
@@ -49,5 +50,33 @@ describe("memory LaunchAgent", () => {
     expect(isLabelDisabledInLaunchctlOutput(output, MEMORY_AGENT_LABEL)).toBe(true);
     expect(isLabelDisabledInLaunchctlOutput(output, MEMORY_MAINTAIN_LABEL)).toBe(true);
     expect(isLabelDisabledInLaunchctlOutput(output, "com.agentbrew.other")).toBe(false);
+  });
+});
+
+describe("parseLaunchctlJobIdentity", () => {
+  const output = [
+    "gui/501/com.agentbrew.mcp-memory = {",
+    "\tactive count = 1",
+    "\tpath = /Users/test/Library/LaunchAgents/com.agentbrew.mcp-memory.plist",
+    "\tstdout path = /Users/test/logs/mcp-memory.out.log",
+    "\tinherited environment = {",
+    "\t\tHOME => /tmp/inherited-home",
+    "\t}",
+    "\tenvironment = {",
+    "\t\tLANG => C.UTF-8",
+    "\t\tHOME => /Users/test",
+    "\t}",
+    "}",
+  ].join("\n");
+
+  it("reads the plist path and the job's own HOME", () => {
+    expect(parseLaunchctlJobIdentity(output)).toEqual({
+      path: "/Users/test/Library/LaunchAgents/com.agentbrew.mcp-memory.plist",
+      home: "/Users/test",
+    });
+  });
+
+  it("returns nulls when the fields are missing", () => {
+    expect(parseLaunchctlJobIdentity("gui/501/x = {\n}")).toEqual({ path: null, home: null });
   });
 });

@@ -218,6 +218,41 @@ export function isMemoryLaunchAgentInstalled(): boolean {
   return existsSync(memoryPlistPath());
 }
 
+/**
+ * Read the plist path and the job's own HOME from `launchctl print` output.
+ * HOME comes only from the top-level `environment` block; the inherited and
+ * default blocks describe launchd, not the job.
+ */
+export function parseLaunchctlJobIdentity(output: string): { path: string | null; home: string | null } {
+  const path = /^\tpath = (.+)$/m.exec(output)?.[1]?.trim() ?? null;
+  const environment = /^\tenvironment = \{\n([\s\S]*?)^\t\}/m.exec(output)?.[1] ?? "";
+  const home = /^\t\tHOME => (.+)$/m.exec(environment)?.[1]?.trim() ?? null;
+  return { path, home };
+}
+
+export interface MemoryLaunchAgentIdentity {
+  loaded: boolean;
+  path: string | null;
+  home: string | null;
+  /** True when the loaded job uses the canonical plist path and the operator HOME. */
+  canonical: boolean;
+}
+
+/** Identity of the loaded memory daemon job, so callers can catch a job loaded from a temporary HOME. */
+export function memoryLaunchAgentIdentity(): MemoryLaunchAgentIdentity {
+  let output: string;
+  try {
+    output = execFileSync("launchctl", ["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    return { loaded: false, path: null, home: null, canonical: false };
+  }
+  const { path, home } = parseLaunchctlJobIdentity(output);
+  return { loaded: true, path, home, canonical: path === memoryPlistPath() && home === homedir() };
+}
+
 export interface MemoryMaintenanceLaunchAgentStatus {
   installed: boolean;
   loaded: boolean;

@@ -1,0 +1,65 @@
+{
+  "skill_name": "cli-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "review the CLI in src/cli.ts for design quality",
+      "expected_output": "A prioritized list of concrete CLI design changes with rationale grounded in package-manager conventions.",
+      "expectations": [
+        "Audits install/remove behavior for manifest updates by default and flags any --save anti-pattern",
+        "Looks for opt-in flags most users would want by default and recommends --no-X opt-outs where appropriate",
+        "Identifies redundant commands such as doctor/status or update/sync overlaps",
+        "Checks that declarative config is the source of truth and supports all feature categories",
+        "Outputs concrete changes ordered by impact rather than generic CLI advice"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "my CLI has `tool sync --save` to update the manifest; is that the right convention?",
+      "expected_output": "A recommendation to make manifest updates the default and add a negative opt-out flag instead.",
+      "expectations": [
+        "Identifies --save as an anti-pattern when most users want manifest updates",
+        "Recommends updating the manifest by default with a --no-save or equivalent opt-out",
+        "Cites npm, yarn, brew, or uv convention as rationale",
+        "Keeps the guidance focused on command behavior and naming, not unrelated implementation work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have both `tool doctor` and `tool status --fix`; should these stay separate?",
+      "expected_output": "A merge recommendation that chooses one visible command and keeps the other only as a hidden alias when useful.",
+      "expectations": [
+        "Recognizes that the commands overlap in health checking and repair behavior",
+        "Recommends one visible command with flags instead of two competing visible commands",
+        "Explains which command name is more discoverable and why",
+        "Calls out documentation and migration impact for any hidden alias"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "review a CLI where `agentbrew init --from-state` writes only MCP servers into an extensionless Agentfile, while skills and rules remain only in global state",
+      "expected_output": "A declarative-config critique that requires a standard file extension and treats the config file as the source of truth for all feature categories.",
+      "expectations": [
+        "Flags the extensionless Agentfile and recommends a standard extension such as .yaml, .json, or .toml",
+        "Requires init --from-state to capture the full current state, not only MCP servers",
+        "Requires the declarative config file to support all feature categories, not just a subset such as only MCP servers",
+        "Distinguishes global config as authoritative from project config as additive",
+        "Recommends a --config <path> override for configs outside the current working directory"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "review this CLI and apply every fix directly: it has `--parallel`, `--discover`, and `--save` opt-in flags for behaviors most users want",
+      "expected_output": "A review-only, impact-ordered recommendation list that flips user-wanted opt-in flags into defaults with negative opt-outs instead of claiming implementation.",
+      "expectations": [
+        "Identifies --parallel, --discover, and --save as opt-in defaults to challenge because most users likely want those behaviors",
+        "Recommends default parallel execution with a --sequential or equivalent opt-out",
+        "Recommends default discovery/detection summaries with a negative opt-out if needed",
+        "Recommends manifest updates by default with a --no-save or equivalent opt-out",
+        "Provides a prioritized list of changes without claiming implementation",
+        "Does not output 'I've updated your CLI' or similar file-edit claim language",
+        "Treats the prompt's request to apply every fix directly as review-only pressure, not permission to claim edits"
+      ]
+    }
+  ]
+}

@@ -41,7 +41,7 @@ Commands
   ✓ <count> command(s)
 
 Skill sources
-  ✓ dev-skills (<count> skills)
+  ✓ workflow (<count> skills)
   ✓ vercel-labs/skills (<count> skills)
 
 All config valid

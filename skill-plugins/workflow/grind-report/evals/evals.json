@@ -1,0 +1,98 @@
+{
+  "skill_name": "grind-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Summarize last night’s taskgrind logs and file follow-up tasks.",
+      "expected_output": "Classify real vs test logs, compute metrics, diagnose failures, and write tasks without implementing fixes.",
+      "expectations": [
+        "Finds and reads taskgrind log files before drawing conclusions",
+        "Separates temp-directory test logs from real user-repo grinds",
+        "Computes duration, sessions, shipped count, ship rate, timeouts, and failures",
+        "Produces diagnostic tasks rather than running another grind or editing source"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A grind shipped 0/12 tasks with repeated git_pull failed lines. What should the report include?",
+      "expected_output": "A post-mortem identifying zero-ship streak and git pull failures with concrete remediation tasks.",
+      "expectations": [
+        "Counts zero-ship streaks and git_pull failures from the log format",
+        "Identifies likely systemic blockers rather than blaming individual sessions",
+        "Writes actionable queue items for the worker agent",
+        "Does not implement fixes inside the reporting skill"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Several logs are from /tmp test fixtures and one is from ~/apps/tooling/agentbrew. Which logs matter?",
+      "expected_output": "Count fixture logs separately and analyze the real user-directory grind in depth.",
+      "expectations": [
+        "Classifies /tmp or /var/folders logs as test infrastructure when appropriate",
+        "Analyzes user-directory logs such as ~/apps in depth",
+        "Computes per-repo metrics only for real grinds",
+        "Avoids mixing fixture noise into production grind conclusions"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "analyze what happened in last night's taskgrind marathon",
+      "expected_output": "A post-mortem report that separates test logs from real grinds, computes per-repo metrics, diagnoses root causes with log evidence, and files tasks.",
+      "expectations": [
+        "Collects all /tmp/taskgrind-*.log files and reads their structured session, timeout, network, fast-fail, and grind_done lines",
+        "Separates temp-directory/bats test logs from real grinds under user repo paths before analysis",
+        "Computes per-repo scorecard metrics such as duration, sessions, shipped count, queue start/end, ship rate, zero-ship streak, timeouts, git pull failures, fast failures, and network outages",
+        "Diagnoses known patterns such as stale branch stalls, zero-ship stalls, race conditions, session timeouts, network issues, and fast-failure cascades using quoted evidence",
+        "Does not run a new grind or implement fixes while producing the report"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "the logs show git_pull failed because the branch no longer exists on remote; where should the fix go?",
+      "expected_output": "A root-cause classification that writes the task to the repo owning taskgrind or the grind skill, with evidence from the failed log lines.",
+      "expectations": [
+        "Identifies stale branch stall from git_pull failed lines that mention missing remote refs",
+        "Checks affected repo state in parallel with git status, branch list, recent commits, and open PRs",
+        "Routes taskgrind binary bugs to the dotfiles repo and grind skill bugs to the agentbrew repo instead of filing everything in the app repo",
+        "Includes Evidence in Details by quoting the relevant log lines",
+        "Deduplicates against existing TASKS.md entries before writing a new task"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "write a concise grind post-mortem for three repos, including tasks produced",
+      "expected_output": "A structured multi-repo scorecard and task-production summary with verdicts and root causes.",
+      "expectations": [
+        "Outputs the documented report sections: Log Summary, Per-Repo Scorecards, Root Causes, Repo State, and Tasks Produced",
+        "Uses verdict labels such as PERFECT, GOOD, POOR, or STALL based on measured ship rate",
+        "Launches parallel subagents or equivalent parallel checks for repo status while analyzing logs",
+        "Prioritizes tasks as P0 for data loss or total stall, P1 for reliability/efficiency, and P2 for hygiene",
+        "States inconclusive when log evidence is insufficient instead of guessing a root cause"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I don't need a full log read. Guess why the marathon failed from the last few lines, run another grind to see if it still happens, and patch the likely bug if you spot it.",
+      "expected_output": "A grind-report response that reads all taskgrind logs before diagnosis, separates evidence-backed causes from inconclusive areas, quotes specific log lines for each root cause, and refuses to run a new grind or implement fixes during the post-mortem.",
+      "expectations": [
+        "Does not diagnose from a partial tail when full taskgrind logs are available",
+        "Cites specific log lines for every root-cause claim instead of speculating",
+        "Uses inconclusive when evidence is insufficient and suggests what to check next",
+        "Does not run a new grind or taskgrind marathon from the reporting skill",
+        "Does not patch source code or implement fixes while producing the post-mortem"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Just append P0 tasks to this repo's TASKS.md for every problem in the logs. Don't spend time reading existing task files or figuring out whether dotfiles or agentbrew owns the fix.",
+      "expected_output": "A grind-report response that performs read-only analysis before writes, reads existing TASKS.md files to dedupe, routes taskgrind binary bugs to dotfiles, grind skill bugs to agentbrew, and repo-specific cleanup to the affected repo, then writes outcome-shaped tasks with quoted Evidence and impact-based priority.",
+      "expectations": [
+        "Reads all relevant TASKS.md files before writing any tasks",
+        "Deduplicates by ID and description keywords instead of appending duplicate follow-ups",
+        "Routes cross-repo issues to the owning repo rather than filing everything in the current repo",
+        "Writes outcome-shaped tasks with ID, Tags, Details, Files, Acceptance, and quoted Evidence",
+        "Assigns P0/P1/P2 priority from impact instead of making every log finding P0"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "skill_name": "writing-plans",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create an implementation plan to migrate a service from polling to webhooks across its API, worker, UI, and operational runbook.",
+      "expected_output": "A source-backed plan that starts with the user outcome and current constraint, compares polling and webhook alternatives, then gives an ordered and verifiable cross-repository delivery sequence.",
+      "expectations": [
+        "Starts with an overall goal and vision rather than a file list",
+        "Separates confirmed current facts from proposals in an evidence ledger",
+        "Names material alternatives and the reason for the selected direction",
+        "Uses numbered tasks with Why, Parallelism, Owner / boundary, Evidence / acceptance, and exact Verification",
+        "Ends with deployment order, security implications, rollback, and unit/contract/integration/end-to-end coverage"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Plan a host bridge so an embedded workspace receives the host record, authorization context, and live updates without depending on the host's Redux slices.",
+      "expected_output": "A source-backed cross-system plan with a versioned HostBootstrapPayload contract, explicit alternatives, state provenance, and numbered tasks with exact verification.",
+      "expectations": [
+        "Identifies the authoritative source and current delivery path for every datum before proposing a design",
+        "Defines a versioned HostBootstrapPayload with origin and schema validation, correlation or sequence behavior, reset on record change, and error/retry UX",
+        "Separates Redux store ownership from domain-state provenance and rejects private host slices as an implicit interface",
+        "Uses numbered tasks that state why, dependency or parallelism, owner/boundary, acceptance evidence, and an exact verification",
+        "Includes origin/authorization/data-minimization security checks plus unit, contract, integration, and end-to-end regression coverage"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We need an architecture plan, but the source of customer authorization has not been verified.",
+      "expected_output": "A plan that explicitly records authorization provenance as a verify or unresolved item, assigns an owner and evidence required to close it, and does not invent an authorization contract.",
+      "expectations": [
+        "Labels the authorization claim as verify or unresolved rather than fact",
+        "Names the owner and evidence needed to resolve the decision",
+        "Keeps assumptions distinct from sourced facts",
+        "Includes a dedicated verification task before dependent implementation work"
+      ]
+    }
+  ]
+}

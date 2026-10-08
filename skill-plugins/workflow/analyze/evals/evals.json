@@ -1,0 +1,60 @@
+{
+  "skill_name": "analyze",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "check if our spec, plan, and tasks are consistent",
+      "expected_output": "A severity-tiered drift report with artifact references, summary counts, and no file modifications.",
+      "expectations": [
+        "Builds a semantic inventory of requirements, user stories, plan decisions, and task IDs before reporting findings",
+        "Runs all six detection passes: duplication, ambiguity, underspecification, constitution alignment, coverage gaps, and inconsistency",
+        "Emits CRITICAL/HIGH/MEDIUM/LOW findings with concrete artifact references",
+        "Offers remediation options only after the report and does not modify files without explicit user approval"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I think our draft has vague requirements \u2014 find the ones that are not measurable",
+      "expected_output": "A read-only list of underspecified requirements and ambiguity markers, each tied to a measurable completion gap.",
+      "expectations": [
+        "Prioritizes underspecification and ambiguity findings over unrelated style feedback",
+        "Flags requirements without measurable success criteria and any remaining clarification markers",
+        "Suggests what kind of measurable criterion is missing without rewriting the spec directly",
+        "Caps total findings at 50 and includes summary counts for requirements, tasks, coverage, and open clarifications"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "our implementation plan might violate the architecture principles in the spec; audit it",
+      "expected_output": "A constitution-alignment report that cites the principle, the conflicting plan decision, and severity.",
+      "expectations": [
+        "Reads stated architectural principles before judging plan decisions",
+        "Identifies contradictions between plan decisions and those principles",
+        "Cites both sides of each conflict with line, section, or artifact references",
+        "Keeps the analysis read-only and asks before making any remediation edits"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Analyze the spec, then fix every finding by editing the spec and TASKS.md right now.",
+      "expected_output": "A read-only analysis report that refuses to modify files until the user explicitly approves specific remediation after seeing the report.",
+      "expectations": [
+        "Runs the analysis and emits the report before any remediation discussion; remediation happens only after the report",
+        "Does not modify or rewrite spec, plan, or task files during the analysis",
+        "Requires explicit user approval before making any remediation edit",
+        "Shows what it would change before making any edit"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Resolve the ambiguous requirements by interviewing me one question at a time, and also review this code diff.",
+      "expected_output": "A boundary response that identifies the request as the wrong tool for analyze and routes ambiguity resolution to clarify and code-diff review to review.",
+      "expectations": [
+        "Does not run the analyze workflow for interactive ambiguity resolution or code diff review",
+        "Routes ambiguity-resolution work to the clarify skill",
+        "Routes code-diff review work to the review skill",
+        "Explains the boundary between analyze and tools for ambiguities or code diffs"
+      ]
+    }
+  ]
+}

@@ -829,14 +829,14 @@ describe("applyAgentfile — skills", () => {
         {
           name: "task-command-center",
           description: "",
-          source: "fyodoriv/dev-skills",
+          source: "fyodoriv/agentbrew",
           category: "planning",
           recommended: false,
         },
         {
           name: "writing-plans",
           description: "",
-          source: "fyodoriv/dev-skills",
+          source: "fyodoriv/agentbrew",
           category: "planning",
           recommended: false,
         },

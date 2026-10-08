@@ -1,0 +1,204 @@
+---
+name: companion-test-gaps
+description: >
+  Read-only companion lane — analyze test coverage and identify gaps in a
+  repo. Runs coverage tools, cross-references high-churn files, samples
+  risky modules, and files P2 TASKS.md entries for "add tests for X".
+  Never writes test code (use TDD via `tdd` skill for that). Use when
+  called by `companion-researcher` or when the user asks "find test
+  gaps", "what's untested", or "test coverage holes". Don't use to write
+  tests (use `tdd`) or audit a single PR (use `review`).
+argument-hint: "[--repo path] [--worker-active-file /tmp/companion-worker-active-<repo-slug>.txt] [--max-files 20]"
+triggers:
+  - user
+  - model
+---
+
+## Role
+
+You are the **test-gap analysis lane** of the companion workflow. You
+read the source tree, run coverage tools, identify high-risk untested
+code, and file P2 `TASKS.md` entries for "add tests for X". You never
+write test code — that's the worker's job (or a later session running
+`tdd`).
+
+## Safety Rules
+
+Inherit the [companion-researcher safety rules](../companion-researcher/SKILL.md#safety-rules--do-not-skip).
+Highlights:
+
+- You may run **non-watching** test and coverage commands
+  (`npm test -- --coverage`, `cargo tarpaulin`, `pytest --cov`). Never
+  use `--watch` flags. Always pass a tight timeout.
+- You may write to `docs/test-gaps/<area>.md` (new files) and append
+  to `TASKS.md`. Nothing else.
+- Never run `npm install`, `cargo build --release`, or anything that
+  modifies global state.
+
+## Task Backend
+
+Detect the repo's task backend by checking for `.tasksmd.json` at the git root. If it declares `backend: github-issues`, file findings as GitHub Issues via `tasks create` instead of appending to TASKS.md. Otherwise, append to TASKS.md as usual.
+
+## Process
+
+### Step 1: Detect the test stack
+
+| Marker | Stack | Coverage command |
+|--------|-------|------------------|
+| `package.json` w/ `vitest` | Vitest | `npx vitest run --coverage --coverage.reporter=json --coverage.reporter=text` |
+| `package.json` w/ `jest` | Jest | `npx jest --coverage --json --outputFile=/tmp/companion-coverage.json` |
+| `Cargo.toml` | Rust | `cargo tarpaulin --out Json` (if installed); else skip |
+| `pyproject.toml` w/ `pytest` | Pytest | `pytest --cov --cov-report=json:/tmp/companion-coverage.json` |
+| `go.mod` | Go | `go test -coverprofile=/tmp/companion-cover.out ./...` |
+
+Print the detected stack. If no coverage tool is installed and adding
+one would mutate `package.json` / `Cargo.toml`, file a P2 task:
+"Set up coverage tooling for X" and exit the lane.
+
+### Step 2: Snapshot coverage (with timeout)
+
+Run the coverage command with a generous-but-bounded timeout. Most
+projects in this workspace finish in under 60s. If the run times out,
+file a P2 task "Test suite is slow — investigate" and exit the lane
+(do not retry — the worker may have an in-flight change that breaks
+the suite).
+
+```bash
+timeout 180 npx vitest run --coverage > /tmp/companion-coverage.log 2>&1 \
+  || { echo "Coverage run failed or timed out"; tail -30 /tmp/companion-coverage.log; }
+```
+
+If the suite is failing entirely (not just slow), do NOT file a P2
+task — the worker is likely fixing it right now. Note the failure in
+the summary and exit the lane.
+
+### Step 3: Diagnose high-churn untested files
+
+Use `git-diagnose-codebase` style analysis to find the files that have
+changed most over the last 90 days, then cross-reference with the
+coverage report.
+
+```bash
+# Top 30 most-changed files
+git log --since="90 days ago" --name-only --pretty=format: \
+  | sort | uniq -c | sort -rn \
+  | head -30 \
+  | awk '{print $2}' > /tmp/companion-churn.txt
+
+# Filter to files that exist now and aren't test/config/docs
+grep -E '\.(ts|tsx|js|jsx|rs|py|go)$' /tmp/companion-churn.txt \
+  | grep -v -E '(test|spec|__tests__|\.test\.|\.spec\.)' \
+  | grep -v -E '^(docs|README|TASKS)' \
+  > /tmp/companion-churn-source.txt
+```
+
+Cross-reference with coverage: which of these high-churn files have
+the lowest coverage? The intersection is the high-risk set.
+
+### Step 4: Sample the high-risk set
+
+Pick the highest-ranked files, about 10 to 20 of them (capped by `--max-files`). For each:
+
+1. **Skip** if the file is in `$worker_active` — the worker is
+   editing it right now, the coverage data is stale, file the gap
+   later when the file settles.
+2. **Read** the file. Identify the exported functions / classes /
+   public surface.
+3. **Look** at the corresponding test file (`<file>.test.ts`, etc.).
+   If it doesn't exist at all, that's the strongest signal — file a
+   P2 task.
+4. **For partially-tested files**: which exported functions have no
+   direct test? Which branches in those functions are uncovered (use
+   the coverage report's per-line data)?
+
+### Step 5: Write a per-area test-gap doc
+
+For each cluster of related gaps, write a new file
+`docs/test-gaps/<area>.md`:
+
+```markdown
+# Test gaps: <area>
+
+Generated by `companion-test-gaps` on YYYY-MM-DD.
+
+## Untested or under-tested files
+
+| File | Coverage | Top untested exports | Why it matters |
+|------|----------|----------------------|----------------|
+| src/sync/mcp-sync.ts | 45% | `mergeMcpConfigs`, `delegateToMcpm` | Touched 23 times in last 90 days; mismerges silently lose user MCP entries |
+
+## Suggested test slices
+
+For each export above, the test should verify:
+
+- `mergeMcpConfigs` — input A wins over input B for conflicting keys;
+  arrays concat without dedup; comments preserved
+- `delegateToMcpm` — fails closed when `mcpm` binary missing; passes
+  through stdout/stderr; respects `--dry-run`
+
+## Suggested file location
+
+`src/sync/mcp-sync.test.ts` (sibling test file, matches repo convention).
+```
+
+Use this doc as the primary deliverable. It captures the why and is
+human-readable — the worker can pick from it later via `tdd`.
+
+### Step 6: File TASKS.md entries (one per file)
+
+For each high-risk file, append a P2 TASKS.md entry:
+
+```markdown
+- [ ] Add tests for `<path/to/file>` (companion test-gap)
+  - **ID**: tests-<file-slug>
+  - **Tags**: tests, coverage, companion
+  - **Details**: `<file>` has <X%> coverage despite <N> changes in the
+    last 90 days. Untested exports: <list>. See
+    [`docs/test-gaps/<area>.md`](docs/test-gaps/<area>.md) for the
+    suggested test slices.
+  - **Files**: `<source-file>`, `<expected-test-file>`
+  - **Acceptance**: New test file covers the listed exports.
+    Coverage rises above <reasonable-target>%. Run:
+    `<coverage-command>`.
+```
+
+Cap each lane invocation at 10 new P2 tasks — quality over quantity. If
+you've found more than 10, file the extras as P3.
+
+### Step 7: Verify TASKS.md is still valid
+
+```bash
+npx -y @tasks-md/lint TASKS.md
+```
+
+If lint fails, fix only the entries you just added — never edit
+existing tasks. If you can't fix, undo your appends and report the
+error to the umbrella.
+
+### Step 8: Summary
+
+```
+lane=tests repo=<name>
+test-stack=<vitest|jest|cargo|pytest|go>
+files-with-coverage=<N>
+high-churn-untested=<M>
+test-gap-docs-written=<files...>
+tasks-filed=<count> (P2=<x>, P3=<y>)
+```
+
+## Patterns That Pay Off
+
+- **Coverage is necessary but not sufficient.** A file at 90% coverage
+  may still have its hardest paths untested. Always read the file.
+- **Recent churn matters more than total churn.** Files that haven't
+  changed in 2 years probably don't need new tests — they're load-
+  bearing for a reason.
+- **Public surface > internal helpers.** A test for the public
+  function covers the helpers transitively; the inverse isn't true.
+- **Skip generated files.** `dist/`, `build/`, `target/`, `__pycache__/`,
+  and anything matching `.generated.` in the name.
+
+## Cool-down
+
+After running once per repo, mark the lane cooled for 4 cycles —
+coverage data doesn't change that fast.

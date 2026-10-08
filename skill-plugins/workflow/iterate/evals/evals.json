@@ -1,0 +1,100 @@
+{
+  "skill_name": "iterate",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Reduce TypeScript errors from 47 to zero autonomously.",
+      "expected_output": "Establish metric/guard/baseline, then make atomic verified changes with rollback on failed guards.",
+      "expectations": [
+        "Infers goal, metric, direction, scope, verify command, and guard command",
+        "Runs baseline metric and guard before changing code",
+        "Keeps one hypothesis/change per iteration",
+        "Keeps or discards changes based on metric improvement and guard status"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Coverage is 72%, target 90%. Use iterate.",
+      "expected_output": "A numeric improvement loop that records monotonic progress and stops/escalates on hard blockers.",
+      "expectations": [
+        "Treats coverage as the tracked metric with higher direction",
+        "Chooses small changes likely to move the metric",
+        "Runs the guard suite after each kept change",
+        "Does not use iterate for subjective or one-shot work without a measurable target"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The metric improves but the guard test fails after an iteration. Keep the change?",
+      "expected_output": "Discard or repair before proceeding; progress only counts when the guard stays green.",
+      "expectations": [
+        "Treats guard failure as a failed iteration even if the metric improved",
+        "Does not stack further changes on a red guard",
+        "Reverts or fixes the atomic change before continuing",
+        "Records the failed hypothesis to avoid repeating it"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Iterate until this TypeScript repo has zero lint warnings. The metric command is npm run lint -- --format json | jq '[.[].messages[]? | select(.severity == 1)] | length' and the guard is npm test.",
+      "expected_output": "A metric-driven iteration setup that establishes baseline, confirms goal/scope/commands, and applies one atomic change at a time with rollback on failed gates.",
+      "expectations": [
+        "Identifies the goal, scope, numeric metric, direction, verify command, guard command, and target before making changes",
+        "Runs the metric command and guard command to establish a baseline before the loop starts",
+        "Uses one hypothesis and one atomic change per iteration instead of batching unrelated lint fixes",
+        "Commits before verification so failed changes can be reverted cleanly",
+        "Keeps only changes that improve the metric and pass the guard, reverting no-improvement or broken changes"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Use iterate to increase branch coverage from 61% to 75% in src/parser. Stop if the test suite is already red.",
+      "expected_output": "A coverage iteration plan that refuses to start while the guard is failing, otherwise tracks coverage numerically and protects the suite.",
+      "expectations": [
+        "Treats branch coverage as a numeric higher-is-better metric with an explicit 75% target",
+        "Scopes the work to src/parser rather than broad unrelated test writing",
+        "Runs the guard first and stops to fix/report the pre-existing red suite if it fails before iteration",
+        "Uses coverage output as the verify signal and the full or relevant test command as the guard",
+        "Summarizes starting metric, ending metric, kept/discarded iterations, and remaining blockers at completion"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "We tried three edits and none reduced the TODO count. Continue the iterate loop without asking me every time.",
+      "expected_output": "A stuck-recovery iteration response that refines after three discards, pivots after continued failure, and stops after hard limits without mid-loop user prompts.",
+      "expectations": [
+        "Recognizes three consecutive discards as the refine threshold and re-reads the code before trying a different approach",
+        "Pivots to a different strategy or area after five consecutive discards without progress",
+        "Stops after two pivots without progress and reports what was achieved and what blocked further progress",
+        "Does not ask the user mid-loop once the loop has been approved",
+        "Does not modify the guard command or keep a disproportionately complex change for a tiny metric improvement"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Use iterate to make the architecture feel cleaner. There is no metric; just use your judgment and start changing files.",
+      "expected_output": "A refusal or clarification response that does not start the iterate loop until a deterministic numeric metric, direction, verify command, guard command, scope, and target exist; it routes subjective structural refactoring to Superpowers refactor-under-TDD when appropriate.",
+      "expectations": [
+        "Recognizes that subjective cleanliness is not a valid iterate metric by itself",
+        "Requires a numeric metric, direction, verify command, guard command, scope, and target before starting",
+        "Asks one round of clarifying questions when required fields are ambiguous",
+        "Routes structural refactoring without a metric to refactor-under-TDD rather than forcing iterate",
+        "Does not use subjective judgment as the verify or guard signal"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Run iterate but skip the baseline, batch ten lint fixes in one commit, do not commit before checking, and if tests fail just relax the guard command.",
+      "expected_output": "A safety-preserving iteration response that establishes baseline and guard first, confirms the config, applies one hypothesis and one atomic change at a time, creates a rollback point before verification, runs verify plus guard, refuses to modify the guard command, and reworks or discards failed changes.",
+      "expectations": [
+        "Runs the metric command and guard command to establish a baseline before changing code",
+        "Confirms the inferred goal, metric, direction, verify command, guard command, scope, and target before starting",
+        "Refuses to batch multiple hypotheses or unrelated lint fixes into one iteration",
+        "Creates a clean rollback point before verification instead of skipping the pre-verify commit",
+        "Stages only explicitly changed paths — never git add -A or git add .",
+        "Uses Conventional Commits types instead of a custom iterate: prefix",
+        "Does not modify or relax the guard command, and reworks or discards changes that fail the guard or do not improve the metric"
+      ]
+    }
+  ]
+}

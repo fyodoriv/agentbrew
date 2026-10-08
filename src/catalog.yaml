@@ -37,9 +37,12 @@
 #
 # ── `source: built-in` is reserved for agentbrew-specific skills ──────────
 # Skills that document agentbrew itself may live under `skill-plugins/dev/`.
-# Generic methodology and engineering skills point at their upstream or
-# personal source repository. The catalog never hosts a second copy of those
-# skills. See AGENTS.md rule #8a and `skill-plugins/dev/README.md`.
+# The owner's opt-in workflow skills live under `skill-plugins/workflow/` and
+# use `source: fyodoriv/agentbrew` (owner decision 2026-10-07, which replaced
+# the separate dev-skills repository). Generic methodology and engineering
+# skills point at their upstream repository. The catalog never hosts a second
+# copy of an upstream skill. See AGENTS.md rule #8a and
+# `skill-plugins/workflow/README.md`.
 #
 # ── Maintenance procedures ───────────────────────────────────────────────
 # Add a new generic skill:
@@ -107,7 +110,7 @@ skills:
 
   - name: handoff
     description: "Compacts a long session into a mktemp handoff document for a fresh agent. References artifacts by path/SHA rather than duplicating content."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: productivity
     recommended: true
     rationale: "Context limits are inevitable. A structured handoff with gotchas and ordered next-steps prevents re-discovery work. Adapted from mattpocock/skills."
@@ -128,28 +131,28 @@ skills:
 
   - name: to-issues
     description: "Decompose a plan or spec into dependency-ordered tasks with AFK (agent-executable) or HITL (human required) classification. Issues are durable: domain behavior only, no file paths or line numbers."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: productivity
     recommended: true
     rationale: "AFK/HITL classification maximizes what an autonomous agent can immediately pick up. Dependency-ordered publishing enables real issue numbers in 'Blocked by' fields. Adapted from mattpocock/skills."
 
   - name: analyze
     description: "Read-only cross-artifact consistency checker. Compares spec, plan, and tasks against each other via 6 detection passes (Duplication, Ambiguity, Underspecification, Constitution, Coverage, Inconsistency) with severity tiers."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: development
     recommended: true
     rationale: "Spec/plan/task drift caught before implementation is cheap. After it becomes code debt it's expensive. The read-only contract + severity tiers make this safe to run without fear of accidental modification. Adapted from github/spec-kit."
 
   - name: ubiquitous-language
     description: "Extract a DDD-style ubiquitous language glossary: one term per concept, canonical + aliases-to-avoid, example dialogues. Re-runnable — merges with existing UBIQUITOUS_LANGUAGE.md."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: development
     recommended: true
     rationale: "Naming drift compounds across a codebase over years. Explicit synonym resolution and aliases-to-avoid make the glossary actionable, not just descriptive. Adapted from mattpocock/skills."
 
   - name: caveman
     description: "Ultra-compressed communication mode (~75% token reduction). Strips filler, articles, pleasantries. Persists until 'stop caveman'. Auto-suspends for security warnings and irreversible operations."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: productivity
     recommended: false
     rationale: "Long sessions accumulate verbose overhead. The auto-suspend safety valve for destructive operations preserves safety without sacrificing efficiency. Adapted from mattpocock/skills."
@@ -230,21 +233,21 @@ skills:
 
   - name: project-audit
     description: "Deep audit across four lenses: no-brainer fixes, stability gaps, dependency modernization, documentation drift."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: quality
     recommended: true
     rationale: "Finds work when the queue is empty. Every repo has hidden debt."
 
   - name: git-diagnose-codebase
     description: "Reads any unfamiliar codebase's git history in 5 minutes — runs five `git log` commands (churn, bus factor, bug clusters, velocity, firefighting) plus the churn × bug-keyword cross-reference that surfaces highest-risk files. Used as Step 0 by `project-audit`, `sweep`, and `strategic-review`. Don't use for code review or implementing fixes."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: quality
     recommended: true
     rationale: "Onboarding to an unfamiliar repo, or starting any audit, costs minutes instead of hours when the first thing you do is read git history. Microsoft Research (2005) showed relative code churn predicts defect density; Tornhill's _Your Code as a Crime Scene_ extended this to bug-keyword × churn cross-reference. The 5-minute output biases the rest of the audit toward the highest-risk files instead of arbitrary ones."
 
   - name: strategic-review
     description: "Deep strategic review of architecture, direction, and fitness. Scans code for structural signals, asks targeted questions, produces recommendations on pivots, architecture changes, and build/buy/kill."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: quality
     recommended: true
     rationale: "Architecture review — when to pivot, what to kill, build vs buy."
@@ -265,7 +268,7 @@ skills:
 
   - name: iterate
     description: "Autonomous iterative improvement loop: modify → verify → keep/discard → repeat. Drives a measurable metric toward a target with atomic changes and auto-rollback."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: development
     recommended: true
     rationale: "Iterative improvement toward a measurable goal. Useful for any metric-driven task."
@@ -323,13 +326,13 @@ skills:
 
   - name: rfc
     description: "Writes RFC documents following 9-section structure with POC branch workflow. Google Docs compatible."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: writing
     recommended: false
 
   - name: markdown-for-gdoc
     description: "Rules for writing markdown that renders correctly in Google Docs. Tables, code blocks, headings, diagrams."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: writing
     recommended: false
 
@@ -440,14 +443,74 @@ skills:
 
   - name: writing-plans
     description: "Detailed implementation plans with bite-sized tasks (2-5 min each). File mapping, exact code, TDD steps, verification commands. Plan review loop with subagent."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: planning
     recommended: false
 
   - name: task-command-center
     description: "Orchestrate docs hubs, plans, dry-run worktrees, tickets, and execution for initiative-scale work."
-    source: fyodoriv/dev-skills
+    source: fyodoriv/agentbrew
     category: planning
+    recommended: false
+
+  - name: cli-design
+    description: "Review CLI commands for npm/brew convention compliance and default-behavior opportunities. Don't use for general code review (use requesting-code-review)."
+    source: fyodoriv/agentbrew
+    category: development
+    recommended: false
+
+  - name: companion-researcher
+    description: "Read-only companion mode for a second session beside an active worker: docs sync, test gaps, competitor research, task grooming, skill curation. Don't use for work that edits source code."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: companion-competitor-watch
+    description: "Read-only companion lane that refreshes competitor research and files P3 tasks for competitor feature gaps. Don't use to propose features (use strategic-review) or rewrite VISION.md (use write-vision)."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: companion-docs-sync
+    description: "Read-only companion lane that diffs README, AGENTS.md, CHANGELOG, and docs/ claims against the code and files drift tasks. Don't use to write new docs from scratch or to fix code."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: companion-skill-curate
+    description: "Read-only companion lane that audits the skill collection for duplicates, stale sources, and new candidates. Don't use to install or edit skills directly."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: companion-task-groom
+    description: "Read-only companion lane that lints TASKS.md and files corrections for dead, stale, duplicate, or incomplete tasks. Don't use to implement tasks."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: companion-test-gaps
+    description: "Read-only companion lane that finds test coverage gaps and files tasks to add tests. Don't use to write test code (use test-driven-development)."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: grind
+    description: "Autonomous sweep-then-implement loop: audit, merge findings into TASKS.md, then ship tasks one by one. Don't use for a single scoped change."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: grind-report
+    description: "Analyze taskgrind marathon logs, score each repo, find root causes, and file tasks. Don't use for live debugging of a running grind."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: sweep
+    description: "Parallel-safe codebase sweep that stages no-brainer findings and drains them into TASKS.md P3 at session end. Don't use to implement the findings."
+    source: fyodoriv/agentbrew
+    category: workflow
     recommended: false
 
   - name: harness

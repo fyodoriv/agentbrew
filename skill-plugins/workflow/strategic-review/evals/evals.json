@@ -1,0 +1,113 @@
+{
+  "skill_name": "strategic-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Is this product still pointed in the right direction, or should we pivot?",
+      "expected_output": "A strategic review that combines UX walkthrough, code/history signals, targeted questions, and build/buy/kill recommendations.",
+      "expectations": [
+        "Runs the product if possible and walks the live UI before code-only analysis",
+        "Runs git-diagnose-codebase or equivalent history diagnostics as Phase 1.1",
+        "Reads README, AGENTS, VISION, TASKS, package metadata, and secondary docs/user stories",
+        "Asks 5–8 targeted strategic questions before final recommendations",
+        "Produces architecture fitness, pivot signals, build/buy/kill analysis, strategic recommendations, what not to change, and TASKS.md follow-ups"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Audit the repo and list bugs with file:line findings.",
+      "expected_output": "A boundary-aware response that redirects tactical bug finding to project-audit instead of misusing strategic-review.",
+      "expectations": [
+        "States that strategic-review answers whether the project is building the right thing the right way",
+        "Does not produce code-level bug reports, dead-code lists, or PR-style line comments",
+        "Suggests project-audit or review for granular findings",
+        "If continuing with strategic-review, focuses on architecture fitness, pivot signals, and direction",
+        "Avoids implementing fixes during the review"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run a strategic review on a backend-only CLI library with no UI.",
+      "expected_output": "A strategic review that explicitly skips the UX walkthrough while preserving the rest of the phases.",
+      "expectations": [
+        "Attempts to detect whether the project can be run or has a UI",
+        "Notes no UI to walk through rather than fabricating UX findings",
+        "Still performs git history, docs, architecture shape, growth trajectory, and code-vs-vision alignment scans",
+        "Still asks tailored strategic questions based on observed signals",
+        "Does not assume one architecture style is inherently superior"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Should this product pivot or double down on its current architecture?",
+      "expected_output": "A strategic-review workflow that separates architecture fitness and build/buy/kill analysis from code-level bug auditing.",
+      "expectations": [
+        "Frames the work as answering whether the project is building the right thing the right way",
+        "Avoids line-level bug hunting or PR-style findings and points those to project-audit or review instead",
+        "Scans README, VISION, TASKS, user stories, docs, package manifests, and git history before asking questions",
+        "Produces strategic recommendations such as build/buy/kill, pivot signals, or architecture direction rather than granular bug tasks"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Do a strategic review of this web app, including what users actually experience.",
+      "expected_output": "A strategic-review plan that runs a live UX walkthrough before architectural analysis.",
+      "expectations": [
+        "Starts the project with detected dev/start scripts and notes when no UI can be run",
+        "Uses browser automation to visit every reachable page, primary flows, forms, empty/error states, mobile layout, and rendered docs",
+        "Captures UX signals with route, element, severity, and screenshot evidence",
+        "Feeds the UX signals into targeted strategic questions and final analysis rather than treating them as isolated CSS bugs"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Give me the big-picture review, but don't bother me with questions; just produce the final answer.",
+      "expected_output": "A response that performs silent scanning first but still asks targeted strategic questions before final recommendations.",
+      "expectations": [
+        "Runs the silent scan before interacting with the user so questions are based on concrete signals",
+        "Asks 5-8 targeted questions about direction, architecture pain, scale horizon, build/buy regrets, team constraints, and signal-specific findings",
+        "Avoids generic questions that could have been asked without reading the repo",
+        "Does not finalize strategic recommendations until the interactive question phase has been considered"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Our team is debating whether to refactor our monolithic backend into microservices. Run a strategic review to help us decide.",
+      "expected_output": "A comprehensive strategic analysis document covering UX assessment, architecture fitness, complexity hotspots, pivot signals, build/buy/kill analysis, and strategic recommendations with evidence from code scan and user input.",
+      "expectations": [
+        "Runs the project's dev server and walks through the UI with screenshots, capturing UX/UI signals (loading states, error messages, empty states, mobile responsiveness)",
+        "Executes git-diagnose-codebase to identify high-churn files, velocity trends, and firefighting frequency without user input",
+        "Asks 5-8 targeted strategic questions based on Phase 1 signals (e.g., 'I see high churn in module X with K contributors — is this active development or instability?')",
+        "Produces a vision document with architecture fitness scores (modularity, data model fit, scalability, change velocity, code-vision alignment) using emoji indicators",
+        "Identifies complexity hotspots with churn × size × contributors cross-reference, not just largest files",
+        "Includes a build/buy/kill analysis table with specific subsystems, recommendations, effort estimates, and rationale"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I think our project has lost strategic focus. Can you review whether our code aligns with our stated vision?",
+      "expected_output": "A strategic analysis that maps code-to-vision alignment, identifies aspirational features with no code, and flags code with no corresponding vision goal.",
+      "expectations": [
+        "Reads README.md, VISION.md, and TASKS.md to establish stated project direction",
+        "Scans codebase for implemented features and maps each against stated vision goals",
+        "Produces an alignment table showing: vision goal → implementation status (implemented / partial / missing) with evidence",
+        "Identifies code that has no vision goal (legacy features, scope creep, abandoned experiments)",
+        "Flags where engineering effort is concentrated vs where vision says it should be",
+        "Asks targeted questions about misaligned areas (e.g., 'I see 3 months of commits in feature X which isn't mentioned in VISION.md — is this still strategic?')"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "We're considering adopting a new technology (e.g., switching from REST to GraphQL, or adding a new database). What should we evaluate strategically?",
+      "expected_output": "A strategic analysis that evaluates the technology decision against the project's architecture, team constraints, and competitive position, with build/buy/kill verdicts.",
+      "expectations": [
+        "Scans the codebase to understand current architecture, data model, and API surface before evaluating the technology change",
+        "Asks questions about team expertise, migration effort, backwards compatibility, and user impact",
+        "Produces a build/buy/kill analysis: should we build custom adapters, buy a managed service, or kill the idea?",
+        "Identifies pivot signals that suggest the current architecture is outgrowing its assumptions (e.g., query complexity, N+1 patterns, schema evolution)",
+        "Evaluates whether the technology change addresses real pain or is solving a problem that doesn't exist",
+        "Provides effort estimates and risk assessment (risk if done, risk if ignored)"
+      ]
+    }
+  ]
+}

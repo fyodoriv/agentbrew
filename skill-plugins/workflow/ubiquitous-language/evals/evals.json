@@ -1,0 +1,74 @@
+{
+  "skill_name": "ubiquitous-language",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Extract a glossary for this payments codebase.",
+      "expected_output": "Mine conversation/docs/code, identify synonyms/overloads, propose canonical terms, then merge UBIQUITOUS_LANGUAGE.md after approval.",
+      "expectations": [
+        "Mines existing UBIQUITOUS_LANGUAGE.md before writing to avoid overwrites",
+        "Uses code models/interfaces/comments as evidence for candidate terms",
+        "Flags synonyms, overloaded terms, and unnamed concepts",
+        "Waits for approval/corrections before writing canonical glossary entries"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The team uses account, user, and member interchangeably. What should happen?",
+      "expected_output": "Surface the ambiguity, propose one canonical term per concept, aliases to avoid, definitions, and dialogue examples.",
+      "expectations": [
+        "Separates true synonyms from distinct domain concepts",
+        "Proposes canonical terms in domain language, not implementation jargon",
+        "Includes aliases to avoid and concise definitions",
+        "Adds example expert/developer dialogue to clarify boundaries"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "An existing UBIQUITOUS_LANGUAGE.md disagrees with terms found in code comments. What should happen?",
+      "expected_output": "Merge carefully and present proposed changes for approval before overwriting approved terms.",
+      "expectations": [
+        "Reads existing glossary before proposing changes",
+        "Treats conflicts as proposals requiring approval, not automatic overwrites",
+        "Uses evidence from code/comments to explain the proposed term change",
+        "Keeps confirmed unchanged terms intact"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Extract a ubiquitous language glossary for this domain from the current codebase and our conversation.",
+      "expected_output": "A DDD glossary workflow that mines sources in priority order, identifies conflicts, proposes canonical terms, and waits before writing.",
+      "expectations": [
+        "Mines the current conversation first, then existing UBIQUITOUS_LANGUAGE.md if present, then source models, service interfaces, API contracts, comments, and names",
+        "Collects candidate terms with context rather than only listing nouns alphabetically",
+        "Flags synonyms, overloaded terms, and implicit concepts that lack names",
+        "Proposes canonical terms with aliases to avoid and one-sentence domain definitions",
+        "Waits for approval or corrections before writing or changing UBIQUITOUS_LANGUAGE.md"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We already have UBIQUITOUS_LANGUAGE.md. Merge new terms from the Orders module without overwriting approved definitions.",
+      "expected_output": "A re-runnable merge that preserves confirmed terms, adds missing concepts, and notes any changed definitions.",
+      "expectations": [
+        "Reads the existing UBIQUITOUS_LANGUAGE.md before proposing changes",
+        "Adds missing terms from the Orders module without overwriting approved existing terms silently",
+        "Updates changed definitions only with a note or explanation of what changed",
+        "Keeps the documented format with domain areas, canonical term, definition, aliases to avoid, and example",
+        "Does not regenerate the whole glossary from scratch and lose prior decisions"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Developers say shipment hold, inventory lock, and reservation. Help us choose the canonical term and show how to talk about it.",
+      "expected_output": "A conflict-resolution glossary proposal with example developer/domain-expert dialogue clarifying the boundary.",
+      "expectations": [
+        "Recognizes shipment hold, inventory lock, and reservation as candidate synonyms or boundary-conflicting terms",
+        "Checks code and comments for how each term is currently used before proposing a canonical term",
+        "Proposes one canonical term and aliases to avoid with a domain-language definition",
+        "Includes a brief developer-to-domain-expert dialogue that demonstrates the term in natural use",
+        "Clarifies the term boundary without coupling the definition to implementation details"
+      ]
+    }
+  ]
+}

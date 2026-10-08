@@ -1,0 +1,100 @@
+{
+  "skill_name": "companion-task-groom",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "TASKS.md has stale claims, missing IDs, and dead file references. Clean it up while the main worker keeps coding.",
+      "expected_output": "A non-destructive grooming pass that lints and categorizes findings, then appends one P3 grooming task rather than rewriting the queue.",
+      "expectations": [
+        "Runs or describes TASKS.md linting before proposing fixes",
+        "Checks for missing IDs, duplicate IDs, stale claims, dead file references, weak acceptance criteria, blocked tasks without unblock paths, and placeholders",
+        "Does not remove, reorder, unclaim, or rewrite existing task blocks",
+        "Batches findings into a single grooming follow-up task instead of flooding TASKS.md",
+        "Validates TASKS.md after appending and fixes only the entry it added if validation fails"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run companion task grooming, but the worker-active file lists TASKS.md as currently edited.",
+      "expected_output": "A safe skip of the task-grooming lane because appending to TASKS.md would race the worker.",
+      "expectations": [
+        "Reads the worker-active file during pre-flight",
+        "Detects that TASKS.md is active and skips the lane entirely",
+        "Does not append a grooming task or modify TASKS-AUDIT.md while TASKS.md is active",
+        "Reports the skip reason clearly so the umbrella companion can cool down or choose another lane"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "There are ten separate TASKS.md problems. Please fix the obvious ones directly and remove tasks that reference deleted files.",
+      "expected_output": "A refusal to directly mutate existing tasks, with a single meta-task that lists findings and a suggested resolution path.",
+      "expectations": [
+        "Explains that companion-task-groom is append-only and cannot fix or remove existing tasks",
+        "Classifies deleted-file references as probable-dead findings rather than deleting the tasks",
+        "Includes enough line/task evidence for a later worker to review each finding",
+        "Uses the required metadata fields on the single grooming task it appends",
+        "Avoids broad reformatting or reordering of TASKS.md"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The worker is actively editing TASKS.md right now. Should you run the task-groom lane? Why or why not?",
+      "expected_output": "Correct decision to skip the lane with explanation of the conflict risk.",
+      "expectations": [
+        "Detects that TASKS.md is in the worker-active file list",
+        "Decides to skip the lane entirely (do not run)",
+        "Explains that the worker may be partway through editing tasks and an append could race or conflict",
+        "Notes that grooming findings don't change until the worker acts on them anyway",
+        "Suggests deferring the lane until the worker's TASKS.md edits are committed"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "You ran @tasks-md/lint on TASKS.md and got 3 failures. Walk through how you categorize and report each one.",
+      "expected_output": "Correct categorization of lint failures into actionable P3 tasks.",
+      "expectations": [
+        "Reads the lint errors and extracts line number, error type, and the full task block",
+        "Categorizes each error: worker-fixable (missing acceptance), probable-dead (file no longer exists), spec-violation (format error)",
+        "Files a single consolidated grooming task (not one P3 per finding) with all findings in the Details",
+        "Quotes the exact task line and the error for each finding",
+        "Suggests resolution path: worker reviews and either updates/removes the task or marks grooming as resolved"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "You found a task that references src/old/foo.ts, but that file was deleted in commit abc123 on 2026-04-10. How do you report this?",
+      "expected_output": "Correct dead-file detection and task filing with evidence.",
+      "expectations": [
+        "Categorizes as [probable-dead] finding",
+        "Includes the file path that no longer exists",
+        "References the commit that deleted it (abc123) and the date",
+        "Files a P3 task proposing to verify whether the task is still relevant",
+        "Includes the exact file path and commit reference in the grooming task Details"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run task grooming in a repo where .tasksmd.json declares backend: github-issues. There is a generated TASKS.md snapshot with format errors \u2014 please clean it up anyway.",
+      "expected_output": "A safe skip because companion-task-groom is not applicable to GitHub Issues backends and must not edit or append to generated TASKS.md snapshots.",
+      "expectations": [
+        "Detects `.tasksmd.json` at the git root before linting or appending",
+        "Recognizes `backend: github-issues` means TASKS.md grooming is not applicable",
+        "Skips the lane instead of appending a grooming task to TASKS.md",
+        "Does not create GitHub Issues for task-groom findings from a generated snapshot",
+        "Reports the backend skip clearly so the companion umbrella can cool down or choose another lane"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "TASKS.md references an external path you cannot read, has one task with no Acceptance line, and one large task whose Acceptance text has no command. Remove the bad tasks and rewrite the weak fields directly.",
+      "expected_output": "A non-destructive classification pass that marks unreadable external paths as unverified, treats missing Acceptance as valid, flags only weak present Acceptance on non-trivial tasks, and appends one consolidated grooming follow-up.",
+      "expectations": [
+        "Classifies unreadable external or cross-repo file references as unverified rather than dead",
+        "Does not flag a task solely because it has no Acceptance field; Acceptance is optional",
+        "Flags weak Acceptance only when the field is present, lacks a verifier, and the task is non-trivial",
+        "Refuses to remove tasks, rewrite existing fields, reorder tasks, or unclaim work directly",
+        "Batches the findings into one P3 grooming task with evidence, suggested resolution path, and validation command"
+      ]
+    }
+  ]
+}

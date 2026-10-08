@@ -1,0 +1,110 @@
+{
+  "skill_name": "grind",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run an autonomous grind for this repo with existing TASKS.md entries.",
+      "expected_output": "Skip sweeping while actionable tasks exist, implement/verify/commit in batches, and persist state in git/TASKS.",
+      "expectations": [
+        "Prioritizes existing unblocked TASKS.md items over finding new work",
+        "Runs the tidy/check queue/implement loop with no reliance on conversation memory",
+        "Avoids interactive questions in taskgrind autonomous mode",
+        "Commits and updates tasks so a fresh session can continue"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Taskgrind session 4 starts with previous logs and 30 minutes remaining. What comes first?",
+      "expected_output": "Analyze prior logs and repo state, then continue the queue rather than starting arbitrary work.",
+      "expectations": [
+        "Reads past taskgrind logs before choosing work",
+        "Detects project commands and current git state",
+        "Handles dangling PRs/stale state during tidy before implementation",
+        "Stops safely when context/time expires because the outer loop restarts"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The queue is empty halfway through a taskgrind marathon. What should the agent do?",
+      "expected_output": "Sweep for work, file tasks, then return to implementation in bounded batches.",
+      "expectations": [
+        "Uses sweep only after confirming no actionable unblocked tasks remain",
+        "Records findings in TASKS.md instead of keeping them in memory",
+        "Returns to implementation after filing work rather than endless auditing",
+        "Keeps progress persistent via commits/task updates"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "grind for 2-3 hours on this repo with batch size 5",
+      "expected_output": "An autonomous loop that reads prior grind logs, skips sweeping when actionable tasks exist, implements highest-priority tasks, and ships verified PR-sized work.",
+      "expectations": [
+        "Reads recent /tmp/taskgrind logs for the current repo before choosing work, unless none exist",
+        "Detects project type and canonical verify/test commands from package files and AGENTS.md",
+        "Checks the queue before sweeping and skips sweep when unclaimed unblocked tasks already exist",
+        "Picks tasks strictly P0 to P3, preferring unblockers and hardest actionable work over easy lower-priority tasks",
+        "Commits, verifies, and prepares PR-sized task completions rather than making untracked source changes"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "TASKS.md only has one huge P0 epic with five acceptance criteria; do not sweep around it",
+      "expected_output": "A decomposition-first response that breaks the large epic into shippable child tasks and implements the first child instead of generating new findings.",
+      "expectations": [
+        "Recognizes that a large unblocked P0 is still actionable and does not drop to lower priorities or sweep for easier work",
+        "Breaks the epic into 2-4 one-commit-sized subtasks under the same priority",
+        "Adds Parent metadata linking each child back to the original task",
+        "Commits the decomposition before starting implementation work",
+        "Implements or begins the first child task after decomposition rather than leaving only task churn"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "taskgrind sessions keep shipping zero tasks and there are stale feature branches; recover without asking me questions",
+      "expected_output": "A non-interactive recovery pass that analyzes logs, tidies branches/PRs safely, decomposes stalled tasks, and avoids user prompts under taskgrind mode.",
+      "expectations": [
+        "Treats taskgrind autonomous mode as non-interactive and does not ask the user for routine decisions",
+        "Diagnoses zero-ship streaks, git sync failures, stale branch state, and timeout patterns from logs",
+        "Attempts to merge or repair open own PRs before creating new work, following repo safety rules",
+        "Adds a task or decomposes stalled tasks when logs prove repeated stall on oversized work",
+        "Stops safely when context is low, relying on TASKS.md and git state for the next session"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "TASKS.md has no unclaimed actionable tasks; run a full sweep before implementing anything new.",
+      "expected_output": "A sweep-first response that audits the repo across tiers, stages findings, merges them into TASKS.md, and then implements the highest-priority resulting task.",
+      "expectations": [
+        "Confirms the queue has no unclaimed unblocked actionable tasks before starting a sweep",
+        "Runs a read-only multi-tier sweep covering verify, stability, tests, docs, code health, dependencies, DX/UX, and vision alignment",
+        "Stages new non-duplicate findings in TASKS-AUDIT.md or the repo equivalent before merging them into TASKS.md",
+        "Deletes or drains the staging buffer after merging findings into the queue",
+        "Picks the highest-priority resulting task for implementation rather than stopping after filing audit findings"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "The next task says to verify a web admin portal visually. Mark it blocked by browser access, ask me to open the URL and click around later, then move to an easier code task.",
+      "expected_output": "A grind response that treats browser work as normal autonomous work, uses agent-browser or Playwright MCP to navigate, click, fill, and capture evidence, only blocks on specific missing credentials after checking relevant skills, and does not skip to lower-priority code work just because the task needs a browser.",
+      "expectations": [
+        "Does not mark a browser or portal task as blocked merely because it requires web interaction",
+        "Does not ask the user to open, navigate, paste, or click the URL",
+        "Uses agent-browser CLI or Playwright MCP tools for navigation, interaction, screenshots, and visual verification",
+        "Only marks auth-gated work blocked when a specific missing credential or token is required after checking relevant skills",
+        "Keeps strict priority order instead of moving to an easier lower-priority code task"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "We are low on context. Skip verify, leave the PR open for later, start the next task from this feature branch, and don't bother with a session report.",
+      "expected_output": "A grind response that refuses unsafe shortcutting: it runs the detected verify gate and git diff --check, commits the completed task with its TASKS.md removal, pushes and opens the PR, merges immediately within repo policy once checks are green, syncs back to main before exiting, prints the structured session report, and then stops calling tools.",
+      "expectations": [
+        "Runs the project's full verify gate and git diff --check before claiming the task done",
+        "Removes the completed task block from TASKS.md in the same commit as the implementation",
+        "Pushes, opens a PR, and merges immediately according to repo policy instead of accumulating open PRs",
+        "Returns to main and syncs with the remote before exiting",
+        "Prints the structured session report and stops cleanly instead of starting new work from a feature branch"
+      ]
+    }
+  ]
+}

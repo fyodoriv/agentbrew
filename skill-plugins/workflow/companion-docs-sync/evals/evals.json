@@ -1,0 +1,63 @@
+{
+  "skill_name": "companion-docs-sync",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "audit the docs for drift against the implementation",
+      "expected_output": "A verification table of doc claims, surgical doc fixes where safe, and task entries for code-or-doc gaps.",
+      "expectations": [
+        "Reads the worker-active list before every potential doc edit and skips active files",
+        "Inventories README.md, AGENTS.md, CHANGELOG.md, and relevant docs directories",
+        "Extracts concrete claims such as commands, flags, counts, paths, behaviors, examples, and token estimates",
+        "Verifies claims against code, file counts, help output, or source references",
+        "Applies only surgical edits to safe docs and files TASKS.md entries for code-or-doc or active-file blockers"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "README says the CLI supports 9 agents, but the catalog seems to list 15. Is this drift?",
+      "expected_output": "A verified count comparison and either a surgical README fix or a task if the file is worker-active.",
+      "expectations": [
+        "Treats the agent catalog or source data as the source of truth and counts it mechanically",
+        "Compares the measured count to the README claim with evidence",
+        "Checks whether README.md is worker-active before editing",
+        "Files an appropriately prioritized doc-drift task if the doc cannot be edited safely"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "AGENTS.md is over the token budget; handle it in the docs sync lane",
+      "expected_output": "A token estimate and follow-up task for trimming, without broad rewriting of shared guidance.",
+      "expectations": [
+        "Estimates token count from file size instead of guessing",
+        "Recognizes over-budget AGENTS.md as a docs-sync finding worth filing",
+        "Avoids rewriting shared agent guidance wholesale in the companion lane",
+        "Creates a task with files, evidence, and acceptance criteria for a future trim"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "run docs-sync in a repo where README drift must be filed and .tasksmd.json says backend: github-issues",
+      "expected_output": "A backend-aware doc-drift filing path that uses the tasks CLI instead of hand-editing a generated TASKS.md snapshot.",
+      "expectations": [
+        "Detects `.tasksmd.json` at the git root before filing doc-drift findings",
+        "Uses `tasks create` or the configured task backend when `backend: github-issues` is declared",
+        "Does not append directly to a generated TASKS.md snapshot",
+        "Includes the quoted doc claim, source evidence, relevant files, and acceptance criteria in the filed task",
+        "Preserves the same P1/P2/P3 prioritization rules for generated-backend findings"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "README.md is worker-active; rewrite the whole README, update package.json scripts, and fix the source so the docs claim becomes true",
+      "expected_output": "A safety-boundary response that refuses broad/source edits, defers worker-active docs, and files bounded follow-up tasks with evidence.",
+      "expectations": [
+        "Checks the worker-active list before every potential README.md edit and defers because README.md is active",
+        "Refuses to edit source code, tests, config, or package.json in the docs-sync lane",
+        "Refuses broad multi-paragraph or section rewrites and limits direct doc edits to surgical line or paragraph fixes when files are clean",
+        "Files a doc-drift task instead of making unsafe edits, including claim, evidence, files, and acceptance criteria",
+        "Does not claim the docs are synced unless validation or task filing evidence supports that summary"
+      ]
+    }
+  ]
+}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Workflow skills live in agentbrew** — the owner's workflow skills moved
+  from the separate `fyodoriv/dev-skills` repository into
+  `skill-plugins/workflow/`. Catalog entries now use
+  `source: fyodoriv/agentbrew`, and the previously uncatalogued workflow
+  skills gained opt-in catalog entries. Unlike `skill-plugins/dev/`, these
+  skills deploy only when selected by name.
+
 ### Fixed
 
 - **Helper scripts ship with agentbrew** — the instructions tell agents to run

@@ -1,0 +1,140 @@
+{
+  "skill_name": "project-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit this repo and find the highest-value work we should queue next.",
+      "expected_output": "A whole-repo audit across the four lenses that files complete TASKS.md entries rather than implementing fixes.",
+      "expectations": [
+        "Reads TASKS.md and VISION.md before auditing to avoid duplicate or off-strategy findings",
+        "Runs or records detected health checks before treating findings as actionable",
+        "Covers no-brainer fixes, stability gaps, dependency modernization, and documentation drift unless the user narrows scope",
+        "Uses project size to calibrate depth and samples high-churn or bug-prone files first",
+        "Writes self-contained task entries with ID, tags, details, files, and acceptance criteria instead of directly fixing findings"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Do a stability-only audit of our TypeScript CLI. I care about production failures, not polish.",
+      "expected_output": "A scoped audit that skips unrequested lenses and focuses on resilience, error handling, and verification parity.",
+      "expectations": [
+        "States up front that only the stability lens is being run and skips docs/dependency/polish sweeps",
+        "Looks for swallowed errors, missing validation, missing timeouts, resource leaks, race conditions, and retry/circuit-breaker gaps",
+        "Checks local-vs-CI parity for verification commands when applicable",
+        "Classifies stability findings at the correct priority and includes exact file evidence",
+        "Does not drift into architecture strategy or PR-diff review work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Find README drift and missing docs in this package, but do not make code changes.",
+      "expected_output": "A documentation/content coverage audit that verifies claims against implementation and queues doc tasks.",
+      "expectations": [
+        "Inventories README, AGENTS, changelog, docs, user stories, and rendered docs surfaces where present",
+        "Verifies commands, flags, examples, feature claims, and counts against source code or actual command output",
+        "Cross-checks README coverage against user stories and recent commits",
+        "Skips approximate counter churn called out as self-maintaining when the skill says to skip it",
+        "Files TASKS.md entries for drift instead of changing production code"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Find work in this unfamiliar TypeScript repo and add useful follow-up tasks.",
+      "expected_output": "A whole-repo audit workflow that gathers context, runs health checks, avoids duplicates, and writes actionable TASKS.md entries without implementing fixes.",
+      "expectations": [
+        "Starts by reading TASKS.md, VISION.md, README.md, AGENTS.md, and running or emulating git-diagnose-codebase to seed the audit",
+        "Detects the repo language/tooling and records exact verification commands before making findings",
+        "Runs relevant health checks and fixes or records any broken baseline before continuing deeper audit lenses",
+        "Writes non-duplicate TASKS.md entries with file paths, acceptance criteria, and priority based on impact instead of vague observations"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit only dependency modernization and documentation drift; skip stability and no-brainer code cleanup.",
+      "expected_output": "A scoped project-audit response that explicitly honors the requested lenses and skips unrequested sweeps.",
+      "expectations": [
+        "Acknowledges the user's scope restriction at the top of the audit",
+        "Skips the no-brainer and stability sweeps instead of running all four default lenses",
+        "Still gathers essential context and existing tasks to avoid duplicate findings",
+        "Records exact evidence for dependency and documentation findings before creating tasks"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The repo has a web UI. Do a project audit and tell me what needs fixing.",
+      "expected_output": "A project-audit plan that runs the app and performs a browser walkthrough before source-only findings.",
+      "expectations": [
+        "Detects and starts the local UI using repository scripts rather than assuming the URL",
+        "Uses browser automation to exercise homepage, primary flows, forms, error states, mobile layout, console, and network",
+        "Captures UX findings with route/element/severity evidence",
+        "Combines UI findings with code, stability, dependency, and documentation findings as actionable queued tasks"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "audit a TypeScript Node.js project to find bugs, stale docs, and missing tests",
+      "expected_output": "A comprehensive audit report with four lenses (no-brainer fixes, stability gaps, dependency modernization, documentation drift) producing actionable TASKS.md entries.",
+      "expectations": [
+        "Runs git-diagnose-codebase first to identify high-risk files, then focuses audit on those files",
+        "Executes all health checks (typecheck, lint, tests, security audit) and fixes failures before continuing",
+        "Sweeps for no-brainer fixes: dead code, unused imports, inconsistent patterns, hardcoded values",
+        "Produces TASKS.md entries with file paths, exact reproduction steps, and acceptance criteria using the repo's existing task format"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "audit a project with a UI \u2014 find UX bugs and broken features by running the app",
+      "expected_output": "A UX audit report with screenshots, broken flows, and severity-tiered TASKS.md entries for each issue.",
+      "expectations": [
+        "Starts the dev server and walks through the app using agent-browser (not just reading code)",
+        "Exercises primary user flows, forms, error states, and mobile layout",
+        "Captures console errors and failed network requests",
+        "Files UX findings as TASKS.md entries with severity (P0/P1/P2/P3) and exact reproduction steps"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "audit a large monorepo with 200+ source files \u2014 focus on high-impact areas only",
+      "expected_output": "A scoped audit of main entry points, CI/CD, dependency management, and highest-churn modules, producing prioritized findings.",
+      "expectations": [
+        "Calibrates depth to project size: reads entry points exhaustively, samples 20% of other files across modules",
+        "Identifies highest-churn modules using git log and focuses stability audit there",
+        "Detects CI/local parity gaps: if local verification commands aren't in CI, flags as a risk",
+        "Produces a manageable number of TASKS.md entries (not overwhelming) prioritized by impact and risk"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Fix the bugs you find during the audit instead of writing tasks.",
+      "expected_output": "Refuse inline fixes; file TASKS.md entries with paths and acceptance criteria.",
+      "expectations": [
+        "Does not implement production fixes while in audit mode",
+        "Writes self-contained TASKS.md entries instead of coding",
+        "Includes file paths and acceptance criteria per finding",
+        "Aligns tasks with VISION.md and avoids duplicate TASKS.md entries"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Skip git-diagnose \u2014 just read random files.",
+      "expected_output": "Run git-diagnose-codebase first to seed high-risk files.",
+      "expectations": [
+        "Runs git-diagnose-codebase or the five inline git log commands first",
+        "Uses churn \u00d7 bug-keyword cross-reference as the seed list",
+        "Reads high-risk files before broad sampling",
+        "Does not claim exhaustive audit from random sampling alone"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Stability-only audit requested \u2014 still run docs and dependency sweeps.",
+      "expected_output": "Honor scope restriction; state stability-only at top and skip other lenses.",
+      "expectations": [
+        "Acknowledges stability-only scope at the top of the output",
+        "Skips documentation and dependency modernization sweeps",
+        "Still reads TASKS.md/VISION.md and runs health checks",
+        "Does not drift into strategic-review or PR-diff review"
+      ]
+    }
+  ]
+}

@@ -97,7 +97,7 @@ describe("collectAgentArtifacts", () => {
 
   it("does not treat generated agent output paths as source artifacts", () => {
     const inventory = collectAgentArtifacts();
-    const generatedPrefixes = [".claude/", ".config/devin/", ".codex/", ".codeium/", ".cursor/", "~/"];
+    const generatedPrefixes = [".claude/", ".codex/", ".cursor/", "~/"];
 
     for (const sourcePath of inventory.artifacts.map((artifact) => artifact.sourcePath)) {
       expect(generatedPrefixes.some((prefix) => sourcePath.startsWith(prefix))).toBe(false);
@@ -114,7 +114,7 @@ describe("collectAgentArtifacts", () => {
     );
 
     expect(command?.targetAgents).toContain("claude-code");
-    expect(hook?.targetAgents).toEqual(["claude-code", "cursor", "devin"]);
+    expect(hook?.targetAgents).toEqual(["claude-code", "cursor"]);
   });
 
   it("passes the static lint contract for the current repo inventory", () => {

@@ -148,7 +148,7 @@ function pruneServerFromAgents(name: string, agents: AgentConfig[], log: Logger)
  * Failures are non-fatal — agentbrew state mutation already succeeded;
  * mcpm-side errors (missing binary, server-not-found, partial client
  * failures) fall through to a soft skip. The caller's
- * `pruneServerFromAgents` still handles carve-out clients (devin,
+ * `pruneServerFromAgents` still handles carve-out clients (
  * overlay-desktop, copilot, opencode, kiro, amp).
  */
 function bridgeRemoveToMcpm(agents: AgentConfig[], serverName: string, log: Logger): void {

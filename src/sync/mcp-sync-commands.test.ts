@@ -239,7 +239,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
   });
 
   it("does NOT call delegateMcpUninstall when only carve-out agents are detected", async () => {
-    // devin + copilot are explicit carve-outs. Native
+    // kiro + copilot are explicit carve-outs. Native
     // `pruneServerFromAgents` handles them; the bridge stays silent.
     const { delegateMcpUninstall } = await import("./mcp-delegate.js");
     const mockDelegate = vi.mocked(delegateMcpUninstall);
@@ -247,7 +247,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
 
     const initial = makeState({
       mcpServers: [{ name: "to-remove", command: "cmd", args: [], env: {}, source: "user" }],
-      agents: [{ name: "devin", detected: true } as never, { name: "copilot", detected: true } as never],
+      agents: [{ name: "kiro", detected: true } as never, { name: "copilot", detected: true } as never],
     });
     const ctx = createTestContext(initial);
     await removeMcpServer("to-remove", ctx);

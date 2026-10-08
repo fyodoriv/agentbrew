@@ -58,35 +58,18 @@ export const AI_RULES_TO_AGENTBREW: Readonly<Record<string, string>> = Object.fr
  * — verbose enough to be informative, short enough to fit on one line.
  *
  * The carve-outs are likely to stay forever:
- *   - `windsurf`: not in ai-rules' supported list and unlikely to land
- *     given Codeium's separate ecosystem.
  *   - `augment`: not in ai-rules' supported list. Possible upstream PR if
  *     adoption justifies it; until then, native carve-out.
- *   - `devin`: Cognition product carve-out parallel to mcpm.
  *
  * `claude-desktop` is NOT a carve-out — it shares `~/.claude/CLAUDE.md`
  * with `claude-code` via agentbrew's `readsFrom` mechanism in agents.yaml,
  * so the claude-code intersection covers it transitively.
  */
 export const AGENTBREW_ONLY_RULES_RATIONALE: Readonly<Record<string, string>> = Object.freeze({
-  // windsurf: not in ai-rules' supported list. agentbrew writes both
-  // ~/.codeium/windsurf/memories/global_rules.md (rulesFile) and
-  // ~/.windsurf/rules/*.md (rulesDir). Likely upstream-blocked because
-  // Windsurf/Codeium has its own separate ecosystem and integration story.
-  windsurf: "Not in ai-rules' supported list; Codeium/Windsurf has a separate ecosystem.",
-
   // augment: not in ai-rules' supported list. agentbrew writes
   // ~/.augment/guidelines.md. Possible upstream PR if adoption justifies
   // it; until then, native carve-out.
   augment: "Not in ai-rules' supported list; possible upstream PR if adoption justifies.",
-
-  // devin: agentbrew's devin entry is a Cognition product, not on
-  // ai-rules' roadmap. Parallel to the mcpm devin carve-out.
-  // Permanent carve-out; the most-plausible upstream
-  // addition would be a Devin entry in ai-rules, tracked as a candidate
-  // upstream issue (publishing requires explicit per-action approval per
-  // the file-level TASKS.md publishing policy).
-  devin: "Cognition product not on ai-rules' roadmap; parallel to mcpm devin carve-out.",
 
   // claude-desktop: shares ~/.claude/CLAUDE.md with claude-code via
   // agentbrew's `readsFrom` mechanism in agents.yaml. The claude-code
@@ -116,7 +99,7 @@ export const AGENTBREW_ONLY_RULES_AGENTS: ReadonlySet<string> = new Set(Object.k
  *   - the same name if it's in the strict intersection (cursor, codex,
  *     amp, cline, copilot, firebender, goose) — pass-through
  *   - the remapped name for entries in {@link AGENTBREW_TO_AI_RULES}
- *   - null for the carve-outs (windsurf, augment, devin) — caller
+ *   - null for the carve-outs (augment) — caller
  *     should route to native installer
  *
  * Unknown names (not in any list) return the name unchanged — caller is
@@ -162,8 +145,8 @@ export function fromAiRulesAgent(aiRulesName: string): string {
  *   buildAiRulesAgentList(["claude-code", "cursor"])
  *   // → { agents: ["claude", "cursor"], carveOuts: [] }
  *
- *   buildAiRulesAgentList(["windsurf", "claude-code", "augment", "devin"])
- *   // → { agents: ["claude"], carveOuts: ["windsurf", "augment", "devin"] }
+ *   buildAiRulesAgentList(["claude-code", "augment"])
+ *   // → { agents: ["claude"], carveOuts: ["augment"] }
  */
 export function buildAiRulesAgentList(agentbrewAgents: readonly string[] | "all"): {
   agents: string[];

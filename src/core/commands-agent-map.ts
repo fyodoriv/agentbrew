@@ -9,7 +9,7 @@
  *
  * ai-rules supports commands generation for AMP, Claude Code, Cursor, and
  * Firebender. agentbrew's commands-capable agents are claude-code, cursor,
- * windsurf, devin, gemini-cli, claude-desktop, and opencode. The intersection
+ * gemini-cli, claude-desktop, and opencode. The intersection
  * after rename is claude-code and cursor; the rest stay native because
  * ai-rules' commands-and-skills surface does not cover them today.
  *
@@ -17,8 +17,7 @@
  *   - Rename pairs: `claude-code` → `claude`. (No gemini/kilo/roo renames
  *     because gemini-cli is a carve-out for commands and kilo/roo aren't in
  *     ai-rules' commands list at all.)
- *   - AGENTBREW_ONLY_COMMANDS_AGENTS carve-outs: windsurf (Codeium ecosystem), devin (Cognition
- *     product carve-out parallel to mcpm / rules), gemini-cli
+ *   - AGENTBREW_ONLY_COMMANDS_AGENTS carve-outs: gemini-cli
  *     (`.toml` output format ai-rules doesn't generate), claude-desktop
  *     (covered transitively by claude-code via `readsFrom`), opencode (not
  *     in ai-rules' supported commands list).
@@ -67,15 +66,10 @@ export const AI_RULES_COMMANDS_TO_AGENTBREW: Readonly<Record<string, string>> = 
  *
  * The carve-outs split into three categories:
  *   - **Format / transform mismatch**: `gemini-cli` writes
- *     `.toml` files via the `gemini` transform; `windsurf` writes to
- *     `~/.codeium/windsurf/global_workflows` via the `windsurf` transform;
- *     `opencode` writes plain `.md` but isn't in ai-rules' commands
+ *     `.toml` files via the `gemini` transform; `opencode` writes plain `.md` but isn't in ai-rules' commands
  *     supported list. ai-rules can't generate these formats, so these
  *     stay native unless ai-rules grows the corresponding transforms
  *     upstream.
- *   - **Cognition product carve-out**: `devin` is a Cognition
- *     product carve-out parallel to the mcpm / rules devin carve-outs.
- *     Permanent for commands until ai-rules grows a Devin target.
  *   - **Transitive carve-out**: `claude-desktop` shares
  *     `~/.claude/commands` with `claude-code` via agentbrew's `readsFrom`
  *     mechanism in `agents.yaml`. The claude-code intersection covers it
@@ -84,21 +78,6 @@ export const AI_RULES_COMMANDS_TO_AGENTBREW: Readonly<Record<string, string>> = 
  *     delegated path.
  */
 export const AGENTBREW_ONLY_COMMANDS_RATIONALE: Readonly<Record<string, string>> = Object.freeze({
-  // windsurf: ai-rules doesn't generate Windsurf-format commands; agentbrew's
-  // `windsurf` transform writes to ~/.codeium/windsurf/global_workflows with
-  // a Windsurf-specific frontmatter shape. Likely upstream-blocked because
-  // Windsurf/Codeium has its own separate ecosystem and integration story.
-  windsurf:
-    "ai-rules doesn't generate Windsurf-format commands; agentbrew's windsurf transform writes a Codeium-specific shape.",
-
-  // devin: agentbrew's devin entry is a Cognition product, not on ai-rules'
-  // roadmap. Parallel to the mcpm and rules devin carve-outs.
-  // Permanent carve-out; the most-plausible upstream addition would be a
-  // Devin entry in ai-rules, tracked as a candidate upstream issue
-  // (publishing requires explicit per-action approval per the file-level
-  // TASKS.md publishing policy).
-  devin: "Cognition product not on ai-rules' commands roadmap; parallel to mcpm / rules devin carve-outs.",
-
   // gemini-cli: agentbrew writes ~/.gemini/commands/<name>.toml via the
   // `gemini` transform (different file extension AND different frontmatter
   // shape). ai-rules doesn't generate Gemini-format commands. Possible
@@ -138,7 +117,7 @@ export const AGENTBREW_ONLY_COMMANDS_AGENTS: ReadonlySet<string> = new Set(
  * `--agents <name>` flag for the commands generation surface. Returns:
  *   - the same name if it's in the strict intersection (`cursor`) — pass-through
  *   - the remapped name for entries in {@link AGENTBREW_TO_AI_RULES}
- *   - null for the carve-outs (windsurf, devin, gemini-cli,
+ *   - null for the carve-outs (gemini-cli,
  *     claude-desktop, opencode) — caller should route to native installer
  *
  * Unknown names (not in any list) return the name unchanged — caller is
@@ -183,8 +162,8 @@ export function fromAiRulesCommandsAgent(aiRulesName: string): string {
  *   buildAiRulesCommandsAgentList(["claude-code", "cursor"])
  *   // → { agents: ["claude", "cursor"], carveOuts: [] }
  *
- *   buildAiRulesCommandsAgentList(["windsurf", "claude-code", "devin", "gemini-cli"])
- *   // → { agents: ["claude"], carveOuts: ["windsurf", "devin", "gemini-cli"] }
+ *   buildAiRulesCommandsAgentList(["claude-code", "gemini-cli"])
+ *   // → { agents: ["claude"], carveOuts: ["gemini-cli"] }
  */
 export function buildAiRulesCommandsAgentList(agentbrewAgents: readonly string[] | "all"): {
   agents: string[];

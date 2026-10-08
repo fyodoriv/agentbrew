@@ -266,7 +266,7 @@ describe("manifestEntryToManagedHook", () => {
         script: "checks/verify-before-completion.sh",
         tier: "verifier",
         verdict: "warn",
-        agents: ["claude-code", "devin"],
+        agents: ["claude-code", "cursor"],
       },
       "/tmp/deployed-hooks",
     );
@@ -277,7 +277,7 @@ describe("manifestEntryToManagedHook", () => {
       type: "command",
       command: "bash /tmp/deployed-hooks/verify-before-completion.sh",
       timeout: 10,
-      agents: ["claude-code", "devin"],
+      agents: ["claude-code", "cursor"],
       source: "agentbrew-hooks-manifest",
     });
   });
@@ -310,9 +310,9 @@ describe("canonical hook manifest", () => {
     expect(golden?.event).toBe("PreToolUse");
     expect(golden?.matcher).toBe("Write|Edit");
     expect(golden?.agents).toEqual(["claude-code", "cursor"]);
-    expect(verifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor", "devin"]);
+    expect(verifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
     expect(managedGolden?.agents).toEqual(["claude-code", "cursor"]);
-    expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor", "devin"]);
+    expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
     expect(prBodyVerifier).toMatchObject({
       event: "PreToolUse",
       matcher: "Bash",
@@ -368,7 +368,6 @@ describe("canonical hook manifest", () => {
     expect(resolvedManifest.hooks.find((hook) => hook.id === "browser-errors-before-done")?.agents).toEqual([
       "claude-code",
       "cursor",
-      "devin",
     ]);
     expect(resolvedManifest.hooks.find((hook) => hook.id === "context-budget-measure")).toMatchObject({
       event: "SessionStart",

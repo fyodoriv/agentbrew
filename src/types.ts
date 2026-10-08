@@ -60,11 +60,11 @@ export interface AgentConfig {
   mcpFormat?: "json" | "yaml" | "toml" | "opencode" | (string & {});
   mcpPermissionsConfig?: McpPermissionsConfig;
   rulesFile?: string;
-  /** Directory for per-file rules (e.g., ~/.cursor/rules/, ~/.windsurf/rules/). */
+  /** Directory for per-file rules (e.g., ~/.cursor/rules/). */
   rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
-  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (Devin format). */
+  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (AGENT.md per subdir). */
   agentsDirFormat?: "flat" | "subdir";
   commandTransform?: CommandTransform;
   commandFileExt?: string;
@@ -77,8 +77,8 @@ export interface AgentConfig {
   hooksFormat?: HooksFormat;
   hooksScope?: HooksScope;
   /** Where the agent's default-model setting lives (see {@link ModelConfig}).
-   *  Unset means the agent has no file-managed model surface (e.g. Cursor and
-   *  Windsurf store the model in app-managed/UI state). */
+   *  Unset means the agent has no file-managed model surface (e.g. Cursor
+   *  stores the model in app-managed/UI state). */
   modelConfig?: ModelConfig;
   /** Skills-only agents with minimal real-world validation. */
   experimental?: boolean;

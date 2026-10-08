@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
@@ -29,6 +29,7 @@ vi.mock("../state.js", () => ({
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, unlinkSync } from "node:fs";
 import { loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { loadState, saveState } from "../state.js";
+import { AGENT_DEFINITIONS } from "../types.js";
 import {
   addAgentSource,
   collectAgentDefs,
@@ -272,27 +273,12 @@ You are a senior developer with custom edits.
     });
     mockReadFileSync.mockReturnValue(AGENT_DEF);
     mockLoadState.mockReturnValue(undefined);
-    // Simulate that old-agent.md was previously deployed by agentbrew (tracked in manifest)
-    vi.mocked(loadManifest).mockReturnValue({
-      hashes: { [expect.stringContaining("old-agent.md") as unknown as string]: "mock-hash" },
+    // Simulate that old-agent.md was previously deployed by agentbrew: the manifest
+    // tracks every old-agent path, whichever target dir it lives in.
+    const trackedHashes = new Proxy({} as Record<string, string>, {
+      get: (_target, key) => (typeof key === "string" && key.includes("old-agent") ? "mock-hash" : undefined),
     });
-    // Use a simpler approach: populate hashes for any path containing old-agent.md
-    const manifestHashes: Record<string, string> = {};
-    vi.mocked(loadManifest).mockImplementation(() => {
-      // The manifest needs old-agent.md paths for each target agent
-      return { hashes: manifestHashes };
-    });
-    // Pre-populate: agentbrew would have tracked these paths during initial sync
-    // We need the exact paths — they're constructed from AGENT_DEFINITIONS
-    // For flat format agents: <agentsDir>/old-agent.md
-    // Populate broadly since we don't know exact test paths
-    mockExistsSync.mockImplementation((p) => {
-      const path = String(p);
-      manifestHashes[path] = manifestHashes[path] ?? "";
-      // Track any old-agent.md path as "deployed"
-      if (path.includes("old-agent")) manifestHashes[path] = "mock-hash";
-      return true;
-    });
+    vi.mocked(loadManifest).mockImplementation(() => ({ hashes: trackedHashes }));
 
     await syncAgentDefs({ prune: true });
     expect(mockUnlinkSync).toHaveBeenCalledWith(expect.stringContaining("old-agent.md"));
@@ -327,6 +313,22 @@ You are a senior developer with custom edits.
 });
 
 describe("syncAgentDefs — subdir format", () => {
+  // No built-in agent uses the "subdir" format; register a fixture agent in the
+  // module-scope AGENT_DEFINITIONS array for these tests and remove it after.
+  const subdirAgent = {
+    name: "subdir-fixture-agent",
+    skillsDir: "~/.config/subdir-fixture-agent/skills",
+    agentsDir: "~/.config/subdir-fixture-agent/agents",
+    agentsDirFormat: "subdir" as const,
+  };
+  beforeEach(() => {
+    AGENT_DEFINITIONS.push(subdirAgent);
+  });
+  afterEach(() => {
+    const index = AGENT_DEFINITIONS.indexOf(subdirAgent);
+    if (index !== -1) AGENT_DEFINITIONS.splice(index, 1);
+  });
+
   it("writes AGENT.md inside a named subdirectory for subdir-format targets", async () => {
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
@@ -339,11 +341,11 @@ describe("syncAgentDefs — subdir format", () => {
 
     await syncAgentDefs();
 
-    const devinWrite = vi
+    const subdirWrite = vi
       .mocked(writeIfChanged)
-      .mock.calls.find(([path]) => String(path).includes("devin") && String(path).endsWith("AGENT.md"));
-    expect(devinWrite).toBeDefined();
-    expect(String(devinWrite?.[0])).toMatch(/developer[/\\]AGENT\.md$/);
+      .mock.calls.find(([path]) => String(path).includes("subdir-fixture-agent") && String(path).endsWith("AGENT.md"));
+    expect(subdirWrite).toBeDefined();
+    expect(String(subdirWrite?.[0])).toMatch(/developer[/\\]AGENT\.md$/);
   });
 
   it("creates the named subdirectory when writing in subdir format", async () => {
@@ -360,7 +362,7 @@ describe("syncAgentDefs — subdir format", () => {
 
     const subdirCreated = vi
       .mocked(mkdirSync)
-      .mock.calls.some(([path]) => String(path).includes("devin") && String(path).endsWith("reviewer"));
+      .mock.calls.some(([path]) => String(path).includes("subdir-fixture-agent") && String(path).endsWith("reviewer"));
     expect(subdirCreated).toBe(true);
   });
 

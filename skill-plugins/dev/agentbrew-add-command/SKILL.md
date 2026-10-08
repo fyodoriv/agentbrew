@@ -32,7 +32,7 @@ More instructions.
 ```
 
 Frontmatter fields:
-- `description` — shown in Windsurf's command picker and agent UIs
+- `description` — shown in each agent's command picker and agent UIs
 
 Annotations:
 - `<!-- turbo -->` above a step → becomes `// turbo` in Cursor (auto-runs
@@ -49,7 +49,6 @@ agentbrew commands add /path/to/command.md
 |-------------|------------------------------------------------|
 | Claude Code | Kept as-is (Markdown)                          |
 | Cursor      | YAML frontmatter stripped; `<!-- turbo -->` → `// turbo` |
-| Windsurf    | Kept as-is; `description` used in picker      |
 | Gemini CLI  | Kept as-is                                     |
 
 ## Deploy & Verify

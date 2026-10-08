@@ -436,7 +436,7 @@ describe("generateAgentfile", () => {
     const parsed = parseAgentfile(generateAgentfile() ?? "");
     expect(parsed.defaultModel).toBe("claude-opus-5-5");
     expect(parsed.defaultEffort).toBe("xhigh");
-    expect(parsed.modelOverrides).toEqual({ codex: null, devin: null });
+    expect(parsed.modelOverrides).toEqual({ codex: null });
   });
 
   it("emits the machine's own model choice instead of the recommended one", () => {
@@ -573,7 +573,7 @@ modelOverrides:
 defaultModel: "  "
 modelOverrides:
   cursor: 42
-  devin: ""
+  codex: ""
 `);
     expect(result.defaultModel).toBeUndefined();
     expect(result.modelOverrides).toBeUndefined();

@@ -49,7 +49,7 @@ describe("cursor-gui-launch", () => {
 
   it("does not wrap npx entries for non-cursor agents", () => {
     const server = makeServer();
-    const entry = wrapCursorGuiStdioEntry(server, { command: "npx", args: ["-y", "@test/server"] }, "windsurf");
+    const entry = wrapCursorGuiStdioEntry(server, { command: "npx", args: ["-y", "@test/server"] }, "kiro");
     expect(entry.command).toBe("npx");
   });
 

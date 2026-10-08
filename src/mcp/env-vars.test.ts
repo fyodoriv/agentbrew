@@ -4,12 +4,9 @@ import {
   BARE_PLACEHOLDER_PATTERN,
   containsPlaceholder,
   convertEnvVars,
-  convertServerEnvVars,
   findBarePlaceholdersIn,
   fromCanonical,
   getEnvFormat,
-  getInheritedServerEnvKeys,
-  hasUnresolvedLiterals,
   makeResilient,
   mergeEnvPreservingResolved,
   resolveEnvVar,
@@ -121,10 +118,6 @@ describe("getEnvFormat", () => {
     expect(getEnvFormat("codex")).toBe("codex");
   });
 
-  it("returns literal for devin", () => {
-    expect(getEnvFormat("devin")).toBe("literal");
-  });
-
   it("defaults to standard for unknown agents", () => {
     expect(getEnvFormat("unknown-agent")).toBe("standard");
   });
@@ -160,143 +153,16 @@ describe("convertEnvVars", () => {
     expect(result.KEY).toBe("{env:SECRET}");
   });
 
-  it("resolves literal values for devin agent", () => {
-    process.env.DEVIN_TEST_SECRET = "actual-value";
-    const env = { TOKEN: "${DEVIN_TEST_SECRET}", PLAIN: "no-vars" };
-    const result = convertEnvVars(env, "devin");
-    expect(result.TOKEN).toBe("actual-value");
-    expect(result.PLAIN).toBe("no-vars");
-    delete process.env.DEVIN_TEST_SECRET;
+  it("resolves literal values with the literal format", () => {
+    process.env.LITERAL_TEST_SECRET = "actual-value";
+    expect(fromCanonical("${LITERAL_TEST_SECRET}", "literal")).toBe("actual-value");
+    expect(fromCanonical("no-vars", "literal")).toBe("no-vars");
+    delete process.env.LITERAL_TEST_SECRET;
   });
 
-  it("resolves ${VAR:-default} to default for devin when var is unset", () => {
-    delete process.env.DEVIN_MISSING;
-    const env = { TOKEN: "${DEVIN_MISSING:-my-default}" };
-    const result = convertEnvVars(env, "devin");
-    expect(result.TOKEN).toBe("my-default");
-  });
-});
-
-describe("convertServerEnvVars", () => {
-  it("rewrites bare ${VAR} to ${VAR:-} for standard agents and returns new object", () => {
-    // Same rationale as convertEnvVars — the standard-format short-circuit was removed
-    // so adapters writing to ~/.claude.json / ~/.cursor/mcp.json emit resilient placeholders
-    // that don't crash Devin's import-time interpolator on unset env vars.
-    const env = { API_KEY: "${SECRET}", PATH: "/usr/bin" };
-    const result = convertServerEnvVars(env, "claude-code");
-    expect(result).toEqual({ API_KEY: "${SECRET:-}", PATH: "/usr/bin" });
-    expect(result).not.toBe(env);
-  });
-
-  it("returns same reference when already resilient (no transform needed)", () => {
-    const env = { API_KEY: "${SECRET:-}", PATH: "/usr/bin" };
-    expect(convertServerEnvVars(env, "claude-code")).toBe(env);
-  });
-
-  it("omits Devin placeholder-backed env keys that the MCP child inherits from the launching shell", () => {
-    const previous = process.env.DEVIN_INHERITED_SECRET;
-    process.env.DEVIN_INHERITED_SECRET = "do-not-write-me";
-    try {
-      const env = {
-        DEVIN_INHERITED_SECRET: "${DEVIN_INHERITED_SECRET}",
-        APP_ENV: "dev",
-      };
-      const result = convertServerEnvVars(env, "devin");
-      expect(result).toEqual({ APP_ENV: "dev" });
-      expect(JSON.stringify(result)).not.toContain("do-not-write-me");
-    } finally {
-      if (previous === undefined) delete process.env.DEVIN_INHERITED_SECRET;
-      else process.env.DEVIN_INHERITED_SECRET = previous;
-    }
-  });
-
-  it("keeps Devin defaults when no inherited shell value exists", () => {
-    delete process.env.DEVIN_DEFAULTED_ENV;
-    const result = convertServerEnvVars({ DEVIN_DEFAULTED_ENV: "${DEVIN_DEFAULTED_ENV:-dev}" }, "devin");
-    expect(result).toEqual({ DEVIN_DEFAULTED_ENV: "dev" });
-  });
-
-  it("omits Devin defaults when the launching shell provides the variable", () => {
-    const previous = process.env.DEVIN_DEFAULTED_ENV;
-    process.env.DEVIN_DEFAULTED_ENV = "prod";
-    try {
-      const result = convertServerEnvVars({ DEVIN_DEFAULTED_ENV: "${DEVIN_DEFAULTED_ENV:-dev}" }, "devin");
-      expect(result).toEqual({});
-    } finally {
-      if (previous === undefined) delete process.env.DEVIN_DEFAULTED_ENV;
-      else process.env.DEVIN_DEFAULTED_ENV = previous;
-    }
-  });
-});
-
-describe("getInheritedServerEnvKeys", () => {
-  it("returns Devin env keys that should be inherited instead of persisted", () => {
-    const previous = process.env.DEVIN_INHERITED_KEY;
-    process.env.DEVIN_INHERITED_KEY = "available";
-    try {
-      const result = getInheritedServerEnvKeys(
-        {
-          DEVIN_INHERITED_KEY: "${DEVIN_INHERITED_KEY}",
-          APP_ENV: "dev",
-        },
-        "devin",
-      );
-      expect(result).toEqual(["DEVIN_INHERITED_KEY"]);
-    } finally {
-      if (previous === undefined) delete process.env.DEVIN_INHERITED_KEY;
-      else process.env.DEVIN_INHERITED_KEY = previous;
-    }
-  });
-
-  it("returns no inherited keys for non-literal agents", () => {
-    const previous = process.env.DEVIN_INHERITED_KEY;
-    process.env.DEVIN_INHERITED_KEY = "available";
-    try {
-      expect(getInheritedServerEnvKeys({ DEVIN_INHERITED_KEY: "${DEVIN_INHERITED_KEY}" }, "cursor")).toEqual([]);
-    } finally {
-      if (previous === undefined) delete process.env.DEVIN_INHERITED_KEY;
-      else process.env.DEVIN_INHERITED_KEY = previous;
-    }
-  });
-});
-
-describe("hasUnresolvedLiterals", () => {
-  it("returns false for plain strings without placeholders", () => {
-    expect(hasUnresolvedLiterals("plain-value")).toBe(false);
-  });
-
-  it("returns false when all referenced vars are set", () => {
-    process.env.HUL_TEST_VAR = "resolved";
-    expect(hasUnresolvedLiterals("prefix-${HUL_TEST_VAR}-suffix")).toBe(false);
-    delete process.env.HUL_TEST_VAR;
-  });
-
-  it("returns true when a referenced var is not set", () => {
-    delete process.env.HUL_MISSING_VAR;
-    expect(hasUnresolvedLiterals("Bearer ${HUL_MISSING_VAR}")).toBe(true);
-  });
-
-  it("returns true when a referenced var is set to empty string", () => {
-    process.env.HUL_EMPTY_VAR = "";
-    expect(hasUnresolvedLiterals("${HUL_EMPTY_VAR}")).toBe(true);
-    delete process.env.HUL_EMPTY_VAR;
-  });
-
-  it("returns true when any var in a multi-var string is unresolved", () => {
-    process.env.HUL_RESOLVED = "ok";
-    delete process.env.HUL_MISSING;
-    expect(hasUnresolvedLiterals("${HUL_RESOLVED},${HUL_MISSING}")).toBe(true);
-    delete process.env.HUL_RESOLVED;
-  });
-
-  it("returns false for ${VAR:-default} when var is unset (default provides a value)", () => {
-    delete process.env.HUL_WITH_DEFAULT;
-    expect(hasUnresolvedLiterals("${HUL_WITH_DEFAULT:-fallback}")).toBe(false);
-  });
-
-  it("returns true for ${VAR:-} with empty default when var is unset", () => {
-    delete process.env.HUL_EMPTY_DEFAULT;
-    expect(hasUnresolvedLiterals("${HUL_EMPTY_DEFAULT:-}")).toBe(false);
+  it("resolves ${VAR:-default} to default with the literal format when var is unset", () => {
+    delete process.env.LITERAL_MISSING;
+    expect(fromCanonical("${LITERAL_MISSING:-my-default}", "literal")).toBe("my-default");
   });
 });
 

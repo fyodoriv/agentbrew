@@ -182,7 +182,7 @@ async function runWithPreparedState<T>(options: SyncRunnerOptions | undefined, f
 async function collectParallelResults(modules: SyncModule[], sharedManifest: Manifest): Promise<SyncErrorCollector> {
   const collector = new SyncErrorCollector();
   // "models" shares target files with parallel modules (~/.claude/settings.json
-  // with hooks, ~/.config/devin/config.json with mcp carve-outs), so it runs in
+  // with hooks, ~/.codex/config.toml with mcp carve-outs), so it runs in
   // the sequential phase where no concurrent read-modify-write can interleave.
   const fileShareNames = new Set(["instructions", "rules", "models"]);
   const parallelModules = modules.filter((m) => !fileShareNames.has(m.name));

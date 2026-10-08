@@ -51,12 +51,12 @@ describe("delegateCommandsGenerate — input validation", () => {
   });
 
   it("returns an empty Map when every agent is a carve-out", () => {
-    // windsurf, devin, gemini-cli, claude-desktop, opencode are all
+    // gemini-cli, claude-desktop, opencode are all
     // carve-outs per src/core/commands-agent-map.ts. With nothing left
     // to delegate, the helper short-circuits before invoking the
     // subprocess.
     const result = delegateCommandsGenerate({
-      agents: ["windsurf", "devin", "gemini-cli", "claude-desktop", "opencode"],
+      agents: ["gemini-cli", "claude-desktop", "opencode"],
       sourceCommands: SAMPLE,
       tmpRoot: testRoot,
     });
@@ -129,13 +129,11 @@ describe.skipIf(!hasAiRules)("delegateCommandsGenerate — real ai-rules binary"
 
   it("filters carve-outs out of the result Map", () => {
     const result = delegateCommandsGenerate({
-      agents: ["claude-code", "windsurf", "devin", "gemini-cli"],
+      agents: ["claude-code", "gemini-cli"],
       sourceCommands: SAMPLE,
       tmpRoot: testRoot,
     });
     expect(result.has("claude-code")).toBe(true);
-    expect(result.has("windsurf")).toBe(false);
-    expect(result.has("devin")).toBe(false);
     expect(result.has("gemini-cli")).toBe(false);
   });
 

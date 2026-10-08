@@ -119,7 +119,7 @@ export function mcpServerConfigEquals(left: McpServer, right: McpServer | undefi
  * agentbrew no longer fetches the MCP Community Registry directly —
  * instead it shells out to `mcpm install`, then reads back what mcpm
  * resolved so the same config can be deployed to carve-out clients
- * (devin, overlay-desktop, copilot, opencode, kiro, amp) via
+ * (overlay-desktop, copilot, opencode, kiro, amp) via
  * agentbrew's native sync path.
  *
  * Returns `undefined` when:
@@ -243,8 +243,8 @@ interface DelegateMcpInstallResult {
  *   delegateMcpInstall({ serverName: "time", agents: ["claude-code"] })
  *   // → { ok: true, carveOuts: [] }
  *
- *   delegateMcpInstall({ serverName: "time", agents: ["devin", "overlay-desktop"] })
- *   // → { ok: true, carveOuts: ["devin", "overlay-desktop"] }
+ *   delegateMcpInstall({ serverName: "time", agents: ["copilot", "overlay-desktop"] })
+ *   // → { ok: true, carveOuts: ["copilot", "overlay-desktop"] }
  *   //   (subprocess still runs; carve-outs routed to native sync by caller)
  */
 export function delegateMcpInstall(opts: DelegateMcpInstallOptions): DelegateMcpInstallResult {
@@ -335,8 +335,8 @@ interface DelegateMcpClientEditResult {
  *   delegateMcpClientEdit({ serverName: "time", agents: ["claude-code"] })
  *   // → { ok: true, carveOuts: [], perClient: [{ client: "claude-code", ok: true }] }
  *
- *   delegateMcpClientEdit({ serverName: "time", agents: ["devin", "overlay-desktop"] })
- *   // → { ok: false, carveOuts: ["devin", "overlay-desktop"], perClient: [] }
+ *   delegateMcpClientEdit({ serverName: "time", agents: ["copilot", "overlay-desktop"] })
+ *   // → { ok: false, carveOuts: ["copilot", "overlay-desktop"], perClient: [] }
  *   //   (short-circuit — every agent is a carve-out)
  */
 export function delegateMcpClientEdit(opts: DelegateMcpClientEditOptions): DelegateMcpClientEditResult {
@@ -488,8 +488,8 @@ function runGlobalUninstall(bin: string, serverName: string): DelegateMcpUninsta
  *   // → { ok: true, carveOuts: [], perClient: [{ client: "claude-code", ok: true }],
  *   //     globalUninstall: { ok: true } }
  *
- *   delegateMcpUninstall({ serverName: "time", agents: ["devin"] })
- *   // → { ok: false, carveOuts: ["devin"], perClient: [],
+ *   delegateMcpUninstall({ serverName: "time", agents: ["copilot"] })
+ *   // → { ok: false, carveOuts: ["copilot"], perClient: [],
  *   //     globalUninstall: { ok: false } }
  *   //   (short-circuit — every agent is a carve-out, no work to do)
  */

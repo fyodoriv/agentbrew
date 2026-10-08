@@ -46,7 +46,7 @@ describe("agentbrew-add-command skill contract", () => {
       "Write a Markdown file at `~/.config/agentbrew/commands/<name>.md`",
       "description: One-line description of what this command does",
       "Frontmatter fields:",
-      "`description` — shown in Windsurf's command picker and agent UIs",
+      "`description` — shown in each agent's command picker and agent UIs",
       "One canonical file per command",
       "Use kebab-case filenames",
       "Keep commands focused",
@@ -63,7 +63,6 @@ describe("agentbrew-add-command skill contract", () => {
       "auto-runs",
       "without user confirmation prompt",
       "Claude Code | Kept as-is",
-      "Windsurf    | Kept as-is",
       "Gemini CLI  | Kept as-is",
     ]);
   });
@@ -148,8 +147,8 @@ describe("agentbrew-add-command skill contract", () => {
 
     requireTerms(
       [
-        evalMatching(/~\/\.claude\/commands\/deploy\.md|Windsurf gets the same change/i).prompt,
-        expectationText(evalMatching(/~\/\.claude\/commands\/deploy\.md|Windsurf gets the same change/i)),
+        evalMatching(/~\/\.claude\/commands\/deploy\.md|Gemini CLI gets the same change/i).prompt,
+        expectationText(evalMatching(/~\/\.claude\/commands\/deploy\.md|Gemini CLI gets the same change/i)),
       ].join("\n"),
       [/generated per-agent output/i, /canonical .*commands/i, /sync --only commands/i, /overwrites per-agent copies/i],
     );

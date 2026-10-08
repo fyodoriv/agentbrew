@@ -47,11 +47,6 @@ describe("us04/us06 rules drift", () => {
       expect(syncedContent).toContain(RULES_END);
       expect(syncedContent).toContain("Keep this Augment rule note.");
 
-      const windsurfManagedRule = join(homeDir, ".windsurf", "rules", "review-check.mdc");
-      const windsurfUserRule = join(homeDir, ".windsurf", "rules", "local-only.mdc");
-      expect(readFileSync(windsurfManagedRule, "utf-8")).toContain("Flag missing verification evidence.");
-      expect(readFileSync(windsurfUserRule, "utf-8")).toContain("Keep this local-only rulesDir file.");
-
       writeFileSync(augmentRules, stripRulesBlock(syncedContent), "utf-8");
 
       const repairResult = await runScenarioCli({
@@ -69,7 +64,6 @@ describe("us04/us06 rules drift", () => {
       expect(repairedContent).toContain("- Always explain why a command is risky.");
       expect(repairedContent).toContain(RULES_END);
       expect(repairedContent).toContain("Keep this Augment rule note.");
-      expect(readFileSync(windsurfUserRule, "utf-8")).toContain("Keep this local-only rulesDir file.");
     });
   }, 120_000);
 });

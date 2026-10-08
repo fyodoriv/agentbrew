@@ -78,7 +78,7 @@ describe("saveRepairLog", () => {
   it("appends to existing log entries", () => {
     const existing: RepairLog = {
       repairedAt: "2026-01-01T00:00:00.000Z",
-      actions: [{ type: "mcp", agent: "windsurf", detail: "added server" }],
+      actions: [{ type: "mcp", agent: "kiro", detail: "added server" }],
     };
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(JSON.stringify(existing));
@@ -151,7 +151,7 @@ describe("getRepairSummary", () => {
       actions: [
         { type: "symlink", agent: "claude", detail: "a" },
         { type: "symlink", agent: "cursor", detail: "b" },
-        { type: "mcp", agent: "windsurf", detail: "c" },
+        { type: "mcp", agent: "kiro", detail: "c" },
       ],
     };
     mockExistsSync.mockReturnValue(true);
@@ -166,7 +166,7 @@ describe("getRepairSummary", () => {
   it("handles single action type", () => {
     const log: RepairLog = {
       repairedAt: "2026-01-01T00:00:00.000Z",
-      actions: [{ type: "permissions", agent: "devin", detail: "fixed" }],
+      actions: [{ type: "permissions", agent: "cursor", detail: "fixed" }],
     };
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(JSON.stringify(log));

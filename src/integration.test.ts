@@ -98,14 +98,13 @@ vi.mock("./shell-hook.js", () => ({
 
 // Prevent the catalog → mcpm bridge in `installMcpServer` from spawning a
 // real `mcpm` subprocess. Slice 4a + 5a of `delegate-mcp-to-mcpm` removed
-// native MCP-config writes for MCP_INTERSECTION_AGENTS (see mcp-agent-map.ts); windsurf
-// codex, etc.) and slice 5a deleted the `installFromRegistry` path that
+// native MCP-config writes for MCP_INTERSECTION_AGENTS (see mcp-agent-map.ts); codex, etc.) and slice 5a deleted the `installFromRegistry` path that
 // previously called these helpers. The follow-up bridge in
 // `src/catalog/install-other.ts` re-introduces the call from the catalog
 // install path so users get intersection-client config writes back. Without
 // this mock, every integration test that touches the catalog install of
 // an MCP server would hit a 60s subprocess timeout because the test home
-// detects cursor + windsurf + codex (all intersection agents).
+// detects cursor + codex (intersection agents).
 vi.mock("./sync/mcp-delegate.js", () => ({
   delegateMcpInstall: vi.fn(() => ({ ok: false, carveOuts: [] })),
   delegateMcpClientEdit: vi.fn(() => ({ ok: false, carveOuts: [], perClient: [] })),
@@ -198,27 +197,25 @@ import { expandHome } from "./utils.js";
 
 /** Agent directories we'll create in TEST_HOME to simulate installed agents */
 // Slice 4a of `delegate-mcp-to-mcpm`: kiro (carve-out) is added so MCP
-// integration tests still exercise the native sync path. Cursor +
-// windsurf are intersection agents now and skip native MCP sync; their
+// integration tests still exercise the native sync path. Cursor is an
+// intersection agent now and skip native MCP sync; their
 // dirs stay in the fixture for skills/commands/rules tests, but MCP
 // integration assertions target kiro instead.
-const AGENT_DIRS = [".cursor", ".codeium/windsurf", ".augment", ".codex", ".kiro"];
+const AGENT_DIRS = [".cursor", ".config/opencode", ".augment", ".codex", ".kiro"];
 
 /** MCP config files for agents that support them.
  *  Slice 4a: kiro is the canonical native-sync MCP target for integration
- *  tests because cursor + windsurf are now intersection-skip agents. The
- *  cursor + windsurf paths are still seeded so the fixture's drift /
+ *  tests because cursor is now an intersection-skip agent. The
+ *  cursor path is still seeded so the fixture's drift /
  *  user-added scenarios still see realistic config files even though
  *  those agents skip native sync. */
 const MCP_CONFIGS: Record<string, string> = {
   ".cursor/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
-  ".codeium/windsurf/mcp_config.json": JSON.stringify({ mcpServers: {} }, null, 2),
   ".kiro/settings/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
 };
 
 /** Rules files for agents that support them */
 const RULES_FILES: Record<string, string> = {
-  ".codeium/windsurf/memories/global_rules.md": "# Windsurf Rules\n",
   ".augment/guidelines.md": "# Augment Guidelines\n",
   ".codex/AGENTS.md": "# Codex\n",
 };
@@ -230,9 +227,6 @@ function setupAgentDirs(): void {
   }
   // Cursor also needs commands dir at top level
   mkdirSync(join(TEST_HOME, ".cursor", "commands"), { recursive: true });
-  // Windsurf needs global_workflows
-  mkdirSync(join(TEST_HOME, ".codeium", "windsurf", "global_workflows"), { recursive: true });
-  mkdirSync(join(TEST_HOME, ".codeium", "windsurf", "memories"), { recursive: true });
 
   for (const [path, content] of Object.entries(MCP_CONFIGS)) {
     const full = join(TEST_HOME, path);
@@ -352,10 +346,10 @@ describe("agent detection", () => {
     const agents = detectAgents();
     const detected = agents.filter((a) => a.detected);
 
-    // We created .cursor, .codeium/windsurf, .augment, .codex dirs
+    // We created .cursor, .config/opencode, .augment, .codex dirs
     const names = detected.map((a) => a.name);
     expect(names).toContain("cursor");
-    expect(names).toContain("windsurf");
+    expect(names).toContain("opencode");
     expect(names).toContain("augment");
     expect(names).toContain("codex");
   });
@@ -399,12 +393,6 @@ describe("MCP server lifecycle", () => {
   // - `kiro` is a native carve-out → gets the direct write
   // - `cursor` is a native carve-out because mcpm wrappers are not surfaced
   //   to Cursor's agent tool layer
-  // - `windsurf` moved FROM intersection TO carve-out on 2026-05-19 (commit
-  //    in `src/core/mcp-agent-map.ts` documents the reason — endpoint-security agent
-  //    blocks mcpm's python on macOS boot; native sync uses npx/uvx).
-  //    The test previously asserted windsurf was NOT written; that's wrong
-  //    under the post-2026-05-19 architecture and the assertion was updated
-  //    to match: windsurf now gets the carve-out native write, same as kiro.
   it("add → list → sync → verify in agent configs → remove", async () => {
     const log = captureLog();
 
@@ -427,14 +415,6 @@ describe("MCP server lifecycle", () => {
     const kiroConfig = readMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"));
     expect(kiroConfig.mcpServers?.["test-db"]).toBeDefined();
     expect(kiroConfig.mcpServers?.["test-db"]?.command).toBe("npx");
-
-    // Verify windsurf config file ALSO has the server — windsurf is a native
-    // carve-out since 2026-05-19 (see AGENTBREW_ONLY_MCP_RATIONALE), so native
-    // sync writes to its config directly. Asserts the carve-out semantics
-    // are wired correctly through the full add→sync pipeline.
-    const wsConfig = readMcpJson(join(TEST_HOME, ".codeium", "windsurf", "mcp_config.json"));
-    expect(wsConfig.mcpServers?.["test-db"]).toBeDefined();
-    expect(wsConfig.mcpServers?.["test-db"]?.command).toBe("npx");
 
     // Verify cursor is written directly (native carve-out).
     const cursorConfig = readMcpJson(join(TEST_HOME, ".cursor", "mcp.json"));
@@ -677,8 +657,8 @@ describe("rules lifecycle", () => {
     await syncRules();
     log3.reset();
 
-    // Verify rules deployed to windsurf (has rulesFile)
-    const wsRules = readFileSync(join(TEST_HOME, ".codeium", "windsurf", "memories", "global_rules.md"), "utf-8");
+    // Verify rules deployed to augment (has rulesFile)
+    const wsRules = readFileSync(join(TEST_HOME, ".augment", "guidelines.md"), "utf-8");
     expect(wsRules).toContain("<!-- agentbrew:start -->");
     expect(wsRules).toContain("<!-- agentbrew:end -->");
   });
@@ -746,17 +726,12 @@ describe("commands lifecycle", () => {
 
     // Slice 4 of `delegate-commands-to-ai-rules`: cursor is now a
     // canary agent that delegates to `ai-rules generate`. The
-    // assertion pivots to windsurf — a carve-out agent whose native
-    // `toWindsurfFormat` transform still runs and rewrites
-    // `<!-- turbo -->` to `// turbo`. Verifies the carve-out path
-    // still deploys + transforms correctly post-slice-4.
-    const windsurfCmd = join(TEST_HOME, ".codeium", "windsurf", "global_workflows", "hello.md");
-    expect(existsSync(windsurfCmd)).toBe(true);
-
-    // Verify turbo marker rewritten for windsurf (commandTransform).
-    const content = readFileSync(windsurfCmd, "utf-8");
-    expect(content).toContain("// turbo");
-    expect(content).not.toContain("<!-- turbo -->");
+    // assertion pivots to opencode — a carve-out agent that keeps the
+    // native source-read path. Verifies the carve-out path still
+    // deploys correctly post-slice-4.
+    const opencodeCmd = join(TEST_HOME, ".config", "opencode", "commands", "hello.md");
+    expect(existsSync(opencodeCmd)).toBe(true);
+    expect(readFileSync(opencodeCmd, "utf-8")).toContain("description:");
   });
 
   it("sync with --prune removes only agentbrew-deployed commands, preserves user-created", async () => {
@@ -943,11 +918,11 @@ describe("end-to-end sync flow", () => {
     // ai-rules' content (frontmatter intact since cursor's transform
     // is identity post-slice-4). When ai-rules is missing, the
     // canary skips and the file isn't written. The test sandbox can
-    // be either — we assert on the windsurf carve-out path which is
+    // be either — we assert on the opencode carve-out path which is
     // unaffected by slice 4.
 
-    // 9. Verify windsurf command (carve-out — keeps native transform).
-    const wsCmd = readFileSync(join(TEST_HOME, ".codeium", "windsurf", "global_workflows", "deploy.md"), "utf-8");
+    // 9. Verify opencode command (carve-out — keeps the native path).
+    const wsCmd = readFileSync(join(TEST_HOME, ".config", "opencode", "commands", "deploy.md"), "utf-8");
     expect(wsCmd).toContain("description: Deploy app");
 
     // 10. Health check should be clean
@@ -984,7 +959,7 @@ describe("MCP server discovery", () => {
     writeMcpJson(join(TEST_HOME, ".cursor", "mcp.json"), {
       mcpServers: { shared: { command: "npx", args: ["shared"] } },
     });
-    writeMcpJson(join(TEST_HOME, ".codeium", "windsurf", "mcp_config.json"), {
+    writeMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"), {
       mcpServers: { shared: { command: "npx", args: ["shared"] } },
     });
 
@@ -2529,8 +2504,8 @@ describe("cross-repo Agentfile → sync → teammate gets same setup (US23)", { 
     expect(result!.serversAdded).toContain("team-api");
     expect(result!.serversAdded).toContain("team-db");
 
-    // Verify deployed to kiro (carve-out) — cursor + windsurf are
-    // intersection-skip and only get populated via mcpm.
+    // Verify deployed to kiro (carve-out) — cursor is
+    // intersection-skip and only gets populated via mcpm.
     const kiroMcp = readMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"));
     expect(kiroMcp.mcpServers?.["team-api"]).toBeDefined();
     expect(kiroMcp.mcpServers?.["team-db"]).toBeDefined();

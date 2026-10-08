@@ -314,7 +314,7 @@ function lintAgentBloat(): { errors: number; warnings: number } {
  *
  * Skips agents in {@link MCP_INTERSECTION_AGENTS} — those are mcpm-managed
  * (slice 4a of `delegate-mcp-to-mcpm`); their configs are validated by
- * `mcpm doctor` instead. Only carve-out agents (devin, overlay-desktop,
+ * `mcpm doctor` instead. Only carve-out agents (overlay-desktop,
  * copilot, opencode, kiro, amp) get an agentbrew-side MCP config check.
  */
 function lintMcpConfigs(): { errors: number } {
@@ -512,7 +512,7 @@ function lintBarePlaceholders(): { errors: number } {
   }
   console.log(
     chalk.dim(
-      `\n  Strict env-var interpolators (Devin CLI importing Claude/Cursor) crash on bare \${VAR} when the var is unset.\n  Run ${chalk.white("agentbrew sync")} to rewrite ${total} placeholder(s) to the resilient \${VAR:-} form.\n`,
+      `\n  Strict env-var interpolators importing Claude/Cursor configs crash on bare \${VAR} when the var is unset.\n  Run ${chalk.white("agentbrew sync")} to rewrite ${total} placeholder(s) to the resilient \${VAR:-} form.\n`,
     ),
   );
   return { errors: sweep.length };
@@ -751,8 +751,7 @@ function validateBarePlaceholdersSilent(): string[] {
   if (!state || !Array.isArray(state.agents)) return [];
   const detected = state.agents.filter((a) => a.detected);
   return sweepMcpConfigs({ dryRun: true, detected }).map(
-    (r) =>
-      `${r.agentName}: ${r.findings.length} bare \${VAR} placeholder(s) — strict importers (Devin) crash on missing vars`,
+    (r) => `${r.agentName}: ${r.findings.length} bare \${VAR} placeholder(s) — strict importers crash on missing vars`,
   );
 }
 

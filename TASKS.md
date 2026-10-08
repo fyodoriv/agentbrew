@@ -320,7 +320,7 @@
 - [ ] Stop false MCP heal records and repair the timed-out server/agent pairs
   - **ID**: mcp-windsurf-cluster-stale-failures-9-plus-days
   - **Tags**: scout, mcp, health, heal, copilot, opencode, stability
-  - **Scope**: Windsurf and Devin are deprecated and frozen (owner decision 2026-10-02). Leave their pairs alone; do not count or fix them.
+  - **Scope**: Windsurf and Devin support was removed on 2026-10-08. Their pairs no longer exist.
   - **Details**: Updated 2026-09-28: the failures are no longer windsurf-only. `~/.cache/agentbrew/mcp-health.json` lists failing server/agent pairs on several agents. `agentbrew status` shows 15, because 5 are suppressed on purpose (figma per-client OAuth x4, and `ask-human`/copilot, see `re-promote-ask-human-mcp-after-stdio-fix`). Of the 15: (a) 14 are launcher timeouts: `chrome-devtools`, `playwright`, `shadcn-mcp`, `github` and `tasks-mcp` on windsurf, devin, copilot and opencode. The same `chrome-devtools` and `playwright` servers are healthy on claude-code, so the per-agent launch config is the likely shared cause. (b) 1 is a login failure: `railway`/claude-code is not logged in. The heal history of the shown pairs holds 124 attempts. All 124 are recorded `healed: true`, but no pair recovered. Cause: `runMcpSyncHeal()` in `src/mcp/heal-actions.ts` returns `healed: true` after `syncMcpServers()` and does not re-probe. Steps: (1) record `healed: true` only when a re-probe after the heal action returns ok; (2) report a logged-out server as needs-login with its login command, and do not auto-heal it; (3) find and fix the shared launcher fault for class (a); (4) flag any pair that fails for more than 24h.
   - **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, src/mcp/probe.ts, src/status.ts, src/core/mcp-agent-map.ts, src/health.ts, TASKS.md
   - **Acceptance**: (1) a unit test with a fake probe shows that a heal whose re-probe still fails is recorded `healed: false`; (2) a logged-out server shows as needs-login with its exact login command and is not counted as failing; (3) `agentbrew mcp probe --deep` returns ok or a documented skip for the 14 class-(a) pairs; (4) a staleness check flags any pair that fails for more than 24h.
@@ -437,20 +437,6 @@
   **Pivot**: If the e2e test's Node path issue is systemic (fnm version varies per machine), replace the absolute path with `process.execPath` or a `which node` probe. If the exit-code test is flaky (timing), add a retry or mock the exit handler.
   **Measurement**: `npm run test:all 2>&1 | tail -1` shows all tests pass with 0 failures.
   **Anchor**: agentbrew AGENTS.md rule #1 (test before committing requires a green baseline); vitest documentation on `process.execPath`.
-
-- [ ] integration.test.ts MCP server lifecycle pollutes the user's real ~/.codeium/mcp_config.json
-
-  - **ID**: integration-test-pollutes-real-mcp-config-2026-05-21
-  - **Tags**: integration-test, leak, scout, p3
-  - **Hypothesis**: The `MCP server lifecycle: add → list → sync → verify in agent configs → remove` test in `src/integration.test.ts` reads from `join(TEST_HOME, ".codeium", "mcp_config.json")` to assert that the test server was NOT written there (windsurf is mcpm-managed, intersection skip). On my workstation the test reproducibly fails with `expected { command: 'npx', …(2) } to be undefined` — meaning `readMcpJson` is returning the REAL `~/.codeium/mcp_config.json` content (which has the `test-db` server lingering from prior runs) instead of the fixture. Confirmed pre-existing on clean `origin/main` (no relation to. Likely the `TEST_HOME` swap isn't propagating to `readMcpJson` path resolution, OR a prior run leaked `test-db` into the real config.
-  - **Success**: `npx vitest run src/integration.test.ts -t "MCP server lifecycle"` passes on a clean checkout without touching anything outside the tmp dir.
-  - **Pivot**: If `readMcpJson` correctly reads only `TEST_HOME`, the failure is "prior-run leak" — sweep `~/.codeium/mcp_config.json` for stray `test-db` entries and add a `beforeAll` cleanup that asserts the fixture starts empty.
-  - **Measurement**: `cd ~/apps/agentbrew && npx vitest run src/integration.test.ts -t "MCP server lifecycle"`
-  - **Anchor**: Vitest docs, "Globals and Isolation", 2025 — Section "Pool isolation". <https://vitest.dev/guide/test-context.html>
-  - **Details**: Reproduced both with and without the fix. Stashing my changes and running on plain `origin/main` shows the same failure with the same `command: 'npx', args: ['test-db-mcp']` content in the assertion. This means the user's real workstation `~/.codeium/mcp_config.json` may have a leftover `test-db` server from a prior aborted test run that wasn't cleaned up. The test fixture should either (a) prove it's reading from `TEST_HOME` exclusively, or (b) sweep that key from the real file before/after the test. Found via the `feat/mcp-keychain-fallback-` PR validation.
-  - **Files**: `src/integration.test.ts` (the "MCP server lifecycle" test block), possibly `src/mcp/mcp.ts:readMcpJson` (verify it resolves paths via `TEST_HOME`).
-  - **Acceptance**: The integration test passes on a clean checkout, and a fresh run after the test exits leaves `~/.codeium/mcp_config.json` exactly as it was before the test ran.
-
 
 - [ ] Wire the advertised `agentbrew skills validate` command to the existing skill validator
   **ID**: wire-skills-validate-command
@@ -1003,7 +989,7 @@
 - [ ] Default-model parity for Cursor (G6 gap — no file surface today)
   **ID**: model-default-parity-cursor-windsurf
   **Tags**: scout, models, parity, cursor
-  **Scope**: Cursor only. Windsurf is deprecated and frozen (owner decision 2026-10-02).
+  **Scope**: Cursor only. Windsurf support was removed on 2026-10-08.
   **Details**: The model surface ships for claude-code/devin/codex but two primary agents have no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
   **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
   **Acceptance**: either (a) Cursor/Windsurf gain `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
@@ -1391,27 +1377,6 @@
   **Measurement**: `npx vitest run src/types.test.ts src/core/agents.test.ts src/core/agent-name-map.test.ts src/docs/agent-matrix.test.ts 2>&1 | tail -3` shows `Tests  X passed (X)` with 0 failed.
   **Anchor**: agentbrew AGENTS.md rule #1 (test before committing requires a green baseline); the `feedback-loop-guardrails` cursor rule's "every bug becomes a rule" — replacing hardcoded counts with derived assertions IS the rule that prevents this recurring.
   **Surfaced-by**: 2026-05-20 PR #1015 (`collapse-mcpformat-dispatch-to-adapter`) `npm run test:all` baseline check. Caused by PR #3 `feat(agents): add qodo agent definition` (the only commit touching agents.yaml between PR #934 and HEAD); the downstream tests/docs were never updated.
-
-- [ ] Investigate `MCP server lifecycle add → list → sync → verify in agent configs → remove` integration test failure
-  **ID**: investigate-mcp-lifecycle-integration-test
-  **Tags**: scout, tests, integration, mcp, needs-investigation
-  **Details**: `src/integration.test.ts > MCP server lifecycle > add → list → sync → verify in agent configs → remove` fails on `origin/main` as of 2026-05-20. The root cause is unknown — it could be (a) interaction with the `windsurf` carve-out change in `ebb87617 test: fix windsurf carve-out + 97% surface coverage`, (b) interaction with mcpm's stateful registry (the `agentbrew-test-smoke-*` orphans tracked by the P1 task `cleanup-mcpm-test-smoke-pollution`), or (c) something else entirely.
-
-    First step: run with `--reporter=verbose` to see the actual assertion failure and the step that fails:
-    ```
-    npx vitest run src/integration.test.ts -t "MCP server lifecycle" --reporter=verbose 2>&1 | tail -60
-    ```
-
-    Then determine whether the failure is pre-existing (stash all changes, re-run — confirms the failure is on `main`), or a new regression. If pre-existing, find the commit that introduced it via `git bisect`.
-
-    Likely candidates given the timing (2026-05-19/20):
-    - `ebb87617 test: fix windsurf carve-out + 97% surface coverage` (most recent test-touching commit before this PR)
-    - `e2e96de0 fix: move windsurf from mcpm to native carve-out` (the underlying carve-out change)
-    - `1e440e3e feat(security): identity-rewrite mirror + widened regex (#1002)` (if the regex change affected an MCP transform path)
-  **Files**: `src/integration.test.ts` (the failing test), plus whichever production file the bisect identifies.
-  **Acceptance**: (a) root cause documented in a follow-up commit body; (b) `npx vitest run src/integration.test.ts -t "MCP server lifecycle"` exits 0.
-  **Output**: mixed
-  **Surfaced-by**: 2026-05-20 PR #1015 `npm run test:all` baseline check.
 
 - [ ] Remove or wire up dead `src/fetch-sources.ts` — only referenced by its own test
   - **ID**: dead-code-fetch-sources

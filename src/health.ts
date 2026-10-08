@@ -7,7 +7,6 @@ import {
   checkBarePlaceholdersDrift,
   checkBrokenSymlinks,
   checkCommandsDrift,
-  checkDevinPermissionDrift,
   checkEnvHygieneDrift,
   checkHooksDrift,
   checkInstructionsDrift,
@@ -271,7 +270,6 @@ export async function healthCheck(options?: {
   const mcpEnvDrift = checkMcpEnvVarsDrift();
   const mcpBarePlaceholdersDrift = checkBarePlaceholdersDrift();
   const envHygieneDrift = checkEnvHygieneDrift();
-  const mcpPermissionDrift = checkDevinPermissionDrift();
   const rulesDrift = checkRulesDrift();
   const skillsDrift = checkSkillsDrift();
   const brokenSymlinks = checkBrokenSymlinks();
@@ -293,7 +291,6 @@ export async function healthCheck(options?: {
   const syncDrift = [
     ...mcpDrift,
     ...mcpBarePlaceholdersDrift,
-    ...mcpPermissionDrift,
     ...rulesDrift,
     ...skillsDrift,
     ...brokenSymlinks,

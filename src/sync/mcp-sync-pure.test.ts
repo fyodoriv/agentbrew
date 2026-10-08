@@ -1,14 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { JsonAdapter } from "../mcp/adapters.js";
 import type { McpServer } from "../types.js";
-import {
-  collectUnresolvedEnvVars,
-  computeDiffWithAdapter,
-  computeServerList,
-  filterServersForLiteralAgent,
-  formatSecretWarnings,
-  warnHardcodedSecrets,
-} from "./mcp-sync.js";
+import { computeDiffWithAdapter, computeServerList, formatSecretWarnings, warnHardcodedSecrets } from "./mcp-sync.js";
 
 function makeServer(overrides: Partial<McpServer> = {}): McpServer {
   return {
@@ -115,7 +108,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 
   it("does NOT force-prune entries in forcePruneNames when prune is false", () => {
     const diff = computeDiffWithAdapter(
-      "devin",
+      "kiro",
       [],
       { "example-mcp-e2e": { url: "https://example.com" }, other: { command: "npx" } },
       json,
@@ -127,7 +120,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 
   it("force-prunes entries in forcePruneNames when prune is true", () => {
     const diff = computeDiffWithAdapter(
-      "devin",
+      "kiro",
       [],
       { "example-mcp-e2e": { url: "https://example.com" }, other: { command: "npx" } },
       json,
@@ -138,7 +131,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
   });
 
   it("force-prunes only entries that exist in the config", () => {
-    const diff = computeDiffWithAdapter("devin", [], { other: { command: "npx" } }, json, {
+    const diff = computeDiffWithAdapter("kiro", [], { other: { command: "npx" } }, json, {
       forcePruneNames: new Set(["nonexistent"]),
     });
     expect(diff.pruned).toBe(0);
@@ -169,8 +162,8 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
   });
 
   it("returns correct agentName", () => {
-    const diff = computeDiffWithAdapter("windsurf", [], {}, json);
-    expect(diff.agentName).toBe("windsurf");
+    const diff = computeDiffWithAdapter("amp", [], {}, json);
+    expect(diff.agentName).toBe("amp");
   });
 });
 
@@ -178,142 +171,6 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 // were removed with their adapters. The diff / prune / merge logic is covered
 // by JsonAdapter + overlayDesktopAdapter cases below — same
 // `computeDiffWithAdapter` core, different adapter shape.
-
-describe("filterServersForLiteralAgent", () => {
-  it("returns all servers unchanged for standard-format agents", () => {
-    const servers = [makeServer({ name: "a" }), makeServer({ name: "b" })];
-    const result = filterServersForLiteralAgent(servers, "cursor", vi.fn());
-    expect(result).toHaveLength(2);
-  });
-
-  it("keeps servers with no env var placeholders for literal agents", () => {
-    const server = makeServer({
-      name: "ok",
-      url: "https://example.com",
-      headers: { Authorization: "Bearer token123" },
-    });
-    const result = filterServersForLiteralAgent([server], "devin", vi.fn());
-    expect(result).toHaveLength(1);
-  });
-
-  it("filters out servers with unresolved header placeholders for literal agents", () => {
-    delete process.env.FSLA_MISSING_SECRET;
-    const server = makeServer({
-      name: "broken",
-      url: "https://example.com",
-      headers: { Authorization: "Bearer ${FSLA_MISSING_SECRET}" },
-    });
-    const result = filterServersForLiteralAgent([server], "devin", vi.fn());
-    expect(result).toHaveLength(0);
-  });
-
-  it("filters out servers with unresolved env placeholders for literal agents", () => {
-    delete process.env.FSLA_MISSING_TOKEN;
-    const server = makeServer({ name: "broken", env: { TOKEN: "${FSLA_MISSING_TOKEN}" } });
-    const result = filterServersForLiteralAgent([server], "devin", vi.fn());
-    expect(result).toHaveLength(0);
-  });
-
-  it("logs a warning for each skipped server", () => {
-    delete process.env.FSLA_MISSING_WARN;
-    const server = makeServer({
-      name: "warn-server",
-      headers: { Authorization: "${FSLA_MISSING_WARN}" },
-    });
-    const log = vi.fn();
-    filterServersForLiteralAgent([server], "devin", log);
-    expect(log).toHaveBeenCalledOnce();
-    expect(log.mock.calls[0][0]).toContain("warn-server");
-  });
-
-  it("keeps servers whose vars are resolved and skips those that are not", () => {
-    process.env.FSLA_RESOLVED_VAR = "real-value";
-    delete process.env.FSLA_MISSING_VAR;
-    const good = makeServer({ name: "good", env: { KEY: "${FSLA_RESOLVED_VAR}" } });
-    const bad = makeServer({ name: "bad", env: { KEY: "${FSLA_MISSING_VAR}" } });
-    const result = filterServersForLiteralAgent([good, bad], "devin", vi.fn());
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("good");
-    delete process.env.FSLA_RESOLVED_VAR;
-  });
-});
-
-describe("collectUnresolvedEnvVars (pure)", () => {
-  it("returns empty array when all env vars resolve", () => {
-    process.env.CUE_RESOLVED = "value";
-    const servers = [makeServer({ name: "s1", env: { KEY: "${CUE_RESOLVED}" } })];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toEqual([]);
-    delete process.env.CUE_RESOLVED;
-  });
-
-  it("returns empty array when servers have no env var placeholders", () => {
-    const servers = [makeServer({ name: "s1", env: { KEY: "plain-value" } })];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toEqual([]);
-  });
-
-  it("returns empty array for empty server list", () => {
-    const result = collectUnresolvedEnvVars([]);
-    expect(result).toEqual([]);
-  });
-
-  it("collects unresolved env vars with server name and var name", () => {
-    const servers = [makeServer({ name: "slack", env: { TOKEN: "${CUE_MISSING_TOKEN}" } })];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toHaveLength(1);
-    expect(result[0].serverName).toBe("slack");
-    expect(result[0].varName).toBe("CUE_MISSING_TOKEN");
-  });
-
-  it("collects unresolved vars from args too", () => {
-    const servers = [makeServer({ name: "srv", args: ["--token", "${CUE_MISSING_ARG}"], env: {} })];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toHaveLength(1);
-    expect(result[0].varName).toBe("CUE_MISSING_ARG");
-  });
-
-  it("collects from multiple servers", () => {
-    const servers = [
-      makeServer({ name: "a", env: { X: "${CUE_MISS_A}" } }),
-      makeServer({ name: "b", env: { Y: "${CUE_MISS_B}" } }),
-    ];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toHaveLength(2);
-    expect(result.map((r) => r.serverName)).toEqual(["a", "b"]);
-  });
-
-  it("skips vars with defaults", () => {
-    const servers = [makeServer({ name: "s1", env: { KEY: "${CUE_HAS_DEFAULT:-fallback}" } })];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toEqual([]);
-  });
-
-  it("collects from url field", () => {
-    const servers = [
-      makeServer({ name: "remote", command: "", url: "http://${CUE_MISSING_HOST}/sse", env: {}, args: [] }),
-    ];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toHaveLength(1);
-    expect(result[0].varName).toBe("CUE_MISSING_HOST");
-  });
-
-  it("collects from headers field", () => {
-    const servers = [
-      makeServer({
-        name: "auth-srv",
-        command: "",
-        url: "http://localhost/sse",
-        headers: { Authorization: "Bearer ${CUE_MISSING_HDR}" },
-        env: {},
-        args: [],
-      }),
-    ];
-    const result = collectUnresolvedEnvVars(servers);
-    expect(result).toHaveLength(1);
-    expect(result[0].varName).toBe("CUE_MISSING_HDR");
-  });
-});
 
 describe("formatSecretWarnings", () => {
   it("formats findings into warning lines", () => {

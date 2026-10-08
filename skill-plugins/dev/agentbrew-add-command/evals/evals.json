@@ -25,7 +25,7 @@
     },
     {
       "id": 3,
-      "prompt": "I edited `~/.claude/commands/deploy.md`; make sure Windsurf gets the same change.",
+      "prompt": "I edited `~/.claude/commands/deploy.md`; make sure Gemini CLI gets the same change.",
       "expected_output": "Correction that per-agent copies are generated outputs and the canonical file must be edited instead.",
       "expectations": [
         "Identifies `~/.claude/commands/` as a generated per-agent output path",

@@ -32,7 +32,7 @@ Validating agentbrew config...
 MCP configs
   ✓ cursor
   ✓ claude-code
-  ✓ windsurf
+  ✓ codex
 
 Shared rules
   ✓ shared-rules.md (<line-count> lines)

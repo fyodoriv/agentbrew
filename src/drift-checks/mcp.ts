@@ -4,7 +4,6 @@ import { logSkipped } from "../core/logger.js";
 import { MCP_INTERSECTION_AGENTS } from "../core/mcp-agent-map.js";
 import { getAdapter } from "../mcp/adapters.js";
 import { sweepCatalogPins } from "../mcp/catalog-pin-sweep.js";
-import { getEnvFormat, hasUnresolvedLiterals } from "../mcp/env-vars.js";
 import { validateMcpEnvVars } from "../mcp/mcp-setup.js";
 import { sweepPlaywrightIsolated } from "../mcp/playwright-isolated-sweep.js";
 import { isQuarantined } from "../mcp/quarantine.js";
@@ -131,17 +130,6 @@ function isKnownServerName(name: string, stateNames: Set<string>): boolean {
   return stateNames.has(name.slice(MCPM_SERVER_PREFIX.length));
 }
 
-function serverHasUnresolvedLiterals(server: McpServer): boolean {
-  return [...server.args, ...Object.values(server.env), server.url ?? "", ...Object.values(server.headers ?? {})].some(
-    hasUnresolvedLiterals,
-  );
-}
-
-function expectedServersForAgent(agent: AgentDefWithMcp, servers: McpServer[]): McpServer[] {
-  if (getEnvFormat(agent.name) !== "literal") return servers;
-  return servers.filter((server) => !serverHasUnresolvedLiterals(server));
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -237,10 +225,6 @@ export function checkMcpPermissionDrift(): DriftItem[] {
   return getMcpPermissionAgents(state.agents).flatMap((agent) => checkMcpPermissionDriftForAgent(agent, stateNames));
 }
 
-export function checkDevinPermissionDrift(): DriftItem[] {
-  return checkMcpPermissionDrift().filter((item) => item.agent === "devin");
-}
-
 /** Check a single agent's MCP config for missing servers. */
 function checkMcpDriftForAgent(
   agent: AgentDefWithMcp,
@@ -258,9 +242,7 @@ function checkMcpDriftForAgent(
     logSkipped("drift/readEntries", e);
     return { agent: agent.name, type: "mcp", detail: "config file unreadable — Run: agentbrew setup" };
   }
-  const missing = expectedServersForAgent(agent, servers)
-    .filter((s) => !(s.name in deployed))
-    .map((s) => s.name);
+  const missing = servers.filter((s) => !(s.name in deployed)).map((s) => s.name);
   if (missing.length === 0) return undefined;
   return {
     agent: agent.name,
@@ -276,7 +258,7 @@ function checkMcpDriftForAgent(
  * (`getMcpTargetAgents` filters them out). Drift detection follows the
  * same skip semantics — otherwise the drift checker would continuously
  * report "missing servers" for those agents even though sync correctly
- * skipped writing them. `AGENTBREW_ONLY_MCP_AGENTS` carve-outs (devin, overlay-desktop, copilot,
+ * skipped writing them. `AGENTBREW_ONLY_MCP_AGENTS` carve-outs (overlay-desktop, copilot,
  * opencode, kiro, amp) are still drift-checked because native sync still
  * writes their configs.
  *

@@ -179,7 +179,7 @@ describe("runMcpHealCycle", () => {
       await runMcpHealCycle({
         surfaces: [
           {
-            agent: "devin",
+            agent: "codex",
             servers: { playwright: { command: process.execPath, args: ["-e", makeRecordingServer(logPath)] } },
           },
         ],
@@ -201,7 +201,7 @@ describe("runMcpHealCycle", () => {
       await runMcpHealCycle({
         surfaces: [
           {
-            agent: "devin",
+            agent: "codex",
             servers: {
               context7: {
                 command: process.execPath,
@@ -226,7 +226,7 @@ describe("runMcpHealCycle", () => {
       await runMcpHealCycle({
         surfaces: [
           {
-            agent: "devin",
+            agent: "codex",
             servers: { context7: { command: process.execPath, args: ["-e", makeRecordingServer(logPath)] } },
           },
         ],

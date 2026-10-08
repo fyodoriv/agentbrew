@@ -517,7 +517,7 @@ describe("CANARY_DELEGATED_AGENTS", () => {
   // Full membership is locked in rules-sync-carveout-matrix.test.ts (DELEGATED_MATRIX).
 
   it("does not contain any carve-out agent", () => {
-    for (const name of ["windsurf", "augment", "devin", "claude-desktop"]) {
+    for (const name of ["augment", "claude-desktop"]) {
       expect(CANARY_DELEGATED_AGENTS.has(name)).toBe(false);
     }
   });
@@ -616,10 +616,10 @@ describe("computeRulesDiff", () => {
     });
 
     it("carve-outs (non-canary agents) still use mergedRules when delegation is empty", () => {
-      // windsurf / augment / devin / claude-desktop are NOT in the canary
+      // augment / claude-desktop are NOT in the canary
       // set; they use mergedRules as the native-path source.
       const existing = `${START_MARKER}\nold\n${END_MARKER}`;
-      const diffs = computeRulesDiff("shared", [{ agentName: "windsurf", existingContent: existing }], new Map());
+      const diffs = computeRulesDiff("shared", [{ agentName: "augment", existingContent: existing }], new Map());
       expect(diffs[0].action).toBe("updated");
       expect(diffs[0].newContent).toContain("shared");
     });
@@ -715,7 +715,7 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     expect(geminiWrite?.content).not.toContain("shared-rules content");
   });
 
-  it("routes carve-outs (windsurf/augment/devin) to native shared rules even when delegation is active", async () => {
+  it("routes carve-outs (augment) to native shared rules even when delegation is active", async () => {
     mockLoadState.mockReturnValue({
       agents: [],
       sources: [],
@@ -726,9 +726,7 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     mockReadFileSync.mockImplementation((p) => {
       const path = String(p);
       if (path.includes("shared-rules")) return "shared-rules content";
-      if (path.includes("windsurf/memories")) return `${START_MARKER}\nold\n${END_MARKER}`;
       if (path.includes("augment/guidelines")) return `${START_MARKER}\nold\n${END_MARKER}`;
-      if (path.includes("devin/AGENTS.md")) return `${START_MARKER}\nold\n${END_MARKER}`;
       return `${START_MARKER}\nold\n${END_MARKER}`;
     });
 
@@ -749,7 +747,7 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     await syncRules();
 
     // Carve-out agents get the SHARED rules, not any delegated payload.
-    for (const carveOutPath of ["windsurf/memories", "augment/guidelines", "devin/AGENTS.md"]) {
+    for (const carveOutPath of ["augment/guidelines"]) {
       const w = writes.find((write) => write.path.includes(carveOutPath));
       if (!w) continue; // skipped if file doesn't exist
       expect(w.content).toContain("shared-rules content");
@@ -798,9 +796,9 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     const cursorWrite = writes.find((w) => w.path.includes(".cursor/rules/agentbrew.md"));
     expect(cursorWrite).toBeUndefined();
 
-    // Carve-outs (windsurf, augment, devin) still use the native shared-rules
+    // Carve-outs (augment) still use the native shared-rules
     // path — their files ARE rewritten with the deployable shared content.
-    for (const carveOutPath of ["windsurf/memories", "augment/guidelines", "devin/AGENTS.md"]) {
+    for (const carveOutPath of ["augment/guidelines"]) {
       const w = writes.find((write) => write.path.includes(carveOutPath));
       expect(w).toBeDefined();
       expect(w?.content).toContain("fallback shared content");
@@ -1068,58 +1066,16 @@ describe("getRulesTargets — unsupported-agent skip coverage", () => {
 // upcoming `simplify-rules-sync-annotate-functions` +
 // `simplify-rules-sync-shrink-or-document` sub-tasks can delete branches
 // without silently breaking a carve-out. The aggregate test elsewhere in
-// this file (line ~623) covers all 3 in one assertion — sufficient for
+// this file (line ~623) covers all carve-outs in one assertion — sufficient for
 // "all carve-outs work" but masks regressions where one carve-out's path
 // breaks while the other two still write.
 //
 // AGENTBREW_ONLY_RULES_AGENTS flow through native rules sync; CANARY_DELEGATED_AGENTS
 // go through ai-rules generate (see rules-sync-carveout-matrix.test.ts):
-//   - windsurf: ~/.codeium/windsurf/memories/global_rules.md
 //   - augment: ~/.augment/guidelines.md
-//   - devin: ~/.config/devin/AGENTS.md
 //
 // Per the sibling sub-task acceptance criterion (b): "every carve-out has
 // at least one *.test.ts block whose description names it".
-
-describe("syncRules — windsurf carve-out (rules at ~/.codeium/windsurf/memories)", () => {
-  it("writes shared rules to windsurf's documented memories path, not delegation payload", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((p) => {
-      if (String(p).includes("shared-rules")) return "shared content for windsurf";
-      return `${START_MARKER}\nold\n${END_MARKER}`;
-    });
-
-    // Delegation returns content for intersection agents — the carve-out
-    // must NOT pick this up.
-    mockDelegateRulesGenerate.mockReturnValue(
-      new Map([
-        ["claude-code", "delegated claude payload"],
-        ["codex", "delegated codex payload"],
-      ]),
-    );
-
-    const writes: Array<{ path: string; content: string }> = [];
-    mockWriteIfChanged.mockImplementation((path, content) => {
-      writes.push({ path: String(path), content: String(content) });
-      return true;
-    });
-
-    await syncRules();
-
-    // Carve-out invariant: windsurf writes go to the documented memories path.
-    const windsurfWrite = writes.find((w) => w.path.includes("windsurf/memories/global_rules.md"));
-    expect(windsurfWrite).toBeDefined();
-    expect(windsurfWrite?.content).toContain("shared content for windsurf");
-    expect(windsurfWrite?.content).not.toContain("delegated claude payload");
-    expect(windsurfWrite?.content).not.toContain("delegated codex payload");
-  });
-});
 
 describe("syncRules — augment carve-out (rules at ~/.augment/guidelines.md)", () => {
   it("writes shared rules to augment's documented guidelines path, not delegation payload", async () => {
@@ -1156,44 +1112,6 @@ describe("syncRules — augment carve-out (rules at ~/.augment/guidelines.md)", 
     expect(augmentWrite?.content).toContain("shared content for augment");
     expect(augmentWrite?.content).not.toContain("delegated claude payload");
     expect(augmentWrite?.content).not.toContain("delegated gemini payload");
-  });
-});
-
-describe("syncRules — devin carve-out (rules at ~/.config/devin/AGENTS.md)", () => {
-  it("writes shared rules to devin's documented AGENTS.md path, not delegation payload", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((p) => {
-      if (String(p).includes("shared-rules")) return "shared content for devin";
-      return `${START_MARKER}\nold\n${END_MARKER}`;
-    });
-
-    mockDelegateRulesGenerate.mockReturnValue(
-      new Map([
-        ["claude-code", "delegated claude payload"],
-        ["codex", "delegated codex payload"],
-      ]),
-    );
-
-    const writes: Array<{ path: string; content: string }> = [];
-    mockWriteIfChanged.mockImplementation((path, content) => {
-      writes.push({ path: String(path), content: String(content) });
-      return true;
-    });
-
-    await syncRules();
-
-    // Carve-out invariant: devin writes go to the documented AGENTS.md path.
-    const devinWrite = writes.find((w) => w.path.includes("devin/AGENTS.md"));
-    expect(devinWrite).toBeDefined();
-    expect(devinWrite?.content).toContain("shared content for devin");
-    expect(devinWrite?.content).not.toContain("delegated claude payload");
-    expect(devinWrite?.content).not.toContain("delegated codex payload");
   });
 });
 

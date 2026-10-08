@@ -93,7 +93,7 @@ describe("us02/us03 install mcp and skill", () => {
       // `mcpm client edit <client>` (slice 3b) is the path now. This
       // test points AGENTBREW_MCPM_BIN at a missing binary, so the subprocess
       // call soft-skips and `.cursor/mcp.json` / `.claude.json` stay
-      // unwritten. Carve-out clients (kiro, amp, devin, etc.) would
+      // unwritten. Carve-out clients (kiro, amp, etc.) would
       // still get native writes — those are exercised by the unit
       // tests in `src/sync/mcp-sync.test.ts § slice 4a`.
       //

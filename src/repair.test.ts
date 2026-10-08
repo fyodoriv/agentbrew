@@ -77,7 +77,6 @@ vi.mock("./drift.js", () => ({
   checkBrokenSymlinks: vi.fn(() => []),
   checkCommandsDrift: vi.fn(() => []),
   checkInstructionsDrift: vi.fn(() => []),
-  checkDevinPermissionDrift: vi.fn(() => []),
   checkMcpPermissionDrift: vi.fn(() => []),
   checkHooksDrift: vi.fn(() => []),
   checkAgentDefsDrift: vi.fn(() => []),
@@ -431,7 +430,7 @@ describe("fix", () => {
       mockCheckHooksDrift.mockReturnValue([]);
       mockCheckAgentDefsDrift.mockReturnValue([]);
       const persistentItem = {
-        agent: "devin",
+        agent: "kiro",
         type: testCase.name as never,
         detail: testCase.detail,
       };

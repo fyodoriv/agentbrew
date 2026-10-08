@@ -105,7 +105,7 @@ interface DelegateCommandsGenerateOptions {
  *   - Apply any agent-specific transform agentbrew expects on the content
  *     (claude/cursor are identity today, so the delegated content matches
  *     the native output byte-for-byte for the slice 2 canary).
- *   - Route carve-outs (`windsurf`, `devin`, `gemini-cli`, `claude-desktop`,
+ *   - Route carve-outs (`gemini-cli`, `claude-desktop`,
  *     `opencode`) to the native command-sync path.
  *     {@link buildAiRulesCommandsAgentList} filters them; the caller checks
  *     {@link AGENTBREW_ONLY_COMMANDS_AGENTS} directly if it needs to log

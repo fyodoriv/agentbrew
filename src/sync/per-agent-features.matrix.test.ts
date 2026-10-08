@@ -216,11 +216,6 @@ describe("Feature-presence stays declared in agents.yaml (drift guard)", () => {
       name: "cursor",
       surfaces: ["skills", "rules-dir", "commands", "agents", "hooks", "mcp-config", "mcp-permissions"],
     },
-    { name: "windsurf", surfaces: ["skills", "rules-file", "rules-dir", "commands", "mcp-config"] },
-    {
-      name: "devin",
-      surfaces: ["skills", "rules-file", "commands", "agents", "hooks", "mcp-config", "mcp-permissions"],
-    },
     { name: "gemini-cli", surfaces: ["skills", "rules-file", "commands", "mcp-config"] },
     { name: "claude-desktop", surfaces: ["skills", "rules-file", "commands", "agents", "mcp-config"] },
     { name: "kiro", surfaces: ["skills", "mcp-config"] },
@@ -252,16 +247,12 @@ describe("Feature-presence stays declared in agents.yaml (drift guard)", () => {
 describe("Default-model surface (modelConfig)", () => {
   // G6 parity status for the model surface, per primary agent:
   //   claude-code — ~/.claude/settings.json "model" (documented setting)
-  //   devin       — ~/.config/devin/config.json "agent.model" (documented setting)
   //   codex       — ~/.codex/config.toml "model" (documented setting)
   //   cursor      — N/A: the model lives in app-managed account state
   //                 (~/.cursor/cli-config.json `model` object is written by the
   //                 app; `cursor-agent models` is account-gated). No declarative
   //                 file surface exists to manage.
-  //   windsurf    — N/A: the model is chosen per-conversation in the Cascade UI
-  //                 and stored in internal state; no public config surface.
-  // Tracked in TASKS.md (model-default-parity-cursor-windsurf).
-  const EXPECTED_MODEL_SURFACES = ["claude-code", "devin", "codex"];
+  const EXPECTED_MODEL_SURFACES = ["claude-code", "codex"];
 
   it("exactly the documented agents declare modelConfig", () => {
     const declared = AGENT_DEFINITIONS.filter((a) => a.modelConfig !== undefined).map((a) => a.name);

@@ -9,7 +9,7 @@ import { readMcpJson, writeMcpJson } from "./mcp.js";
  * ---------------
  * Playwright MCP (`@playwright/mcp`) defaults to a persistent profile keyed by
  * workspace hash (`~/Library/Caches/ms-playwright/mcp-chrome-<hash>` on macOS).
- * When two or more agents — Claude Code, Cursor, Devin, Windsurf — open
+ * When two or more agents — Claude Code, Cursor, Codex — open
  * Playwright in the same repo at overlapping times, the second one collides on
  * the persistent profile lock and errors with `Browser is already in use for
  * mcp-chrome-<hash>` (see playwright #40419, playwright-mcp #1594). The

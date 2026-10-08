@@ -31,7 +31,7 @@
 #   model           Cat B only — overrides default `claude-sonnet-4-7`
 #   promptVersion   Cat B only — bump when the verifier prompt changes; logged with each decision
 #   sourceRule      reference to the original IRON LAW (file:line) the hook implements
-#   agents          which agents to deploy to. Cursor gets event-name transforms; Devin gets lifecycle hooks only.
+#   agents          which agents to deploy to. Cursor gets event-name transforms.
 #   defaultEnabled  optional; false makes the hook opt-in. Its script still deploys, but sync wires it into
 #                   agent hooks files only when the overlay lists its id under `enabled:`. Omit to keep it on.
 #
@@ -195,7 +195,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:231 "Verify Before Completion (IRON LAW)"
-    agents: ["claude-code", "cursor", "devin"]
+    agents: ["claude-code", "cursor"]
 
   - id: a-pr-is-not-ready
     description: Block Stop after gh pr create/ready/merge if PR has failing CI or is behind main
@@ -204,7 +204,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:645 "A PR Is Not Ready Until It's Rebased and Green (IRON LAW)"
-    agents: ["claude-code", "cursor", "devin"]
+    agents: ["claude-code", "cursor"]
 
   - id: manual-test-steps-start-at-app-url
     description: Block gh pr create when body has test-plan section but no app URL
@@ -373,7 +373,7 @@ hooks:
     model: claude-haiku-4-5
     promptVersion: 1
     sourceRule: 'shared-rules.md:79 Zero Browser Errors Before Frontend Done'
-    agents: ["claude-code", "cursor", "devin"]
+    agents: ["claude-code", "cursor"]
 
   - id: fix-errors-never-silence
     description: Warn when an edit appears to silence or suppress an error instead of fixing it

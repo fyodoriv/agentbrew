@@ -274,23 +274,4 @@ describe("discoverUnmanagedServers", () => {
     const unmanaged = discoverUnmanagedServers(new Set());
     expect(unmanaged.map((entry) => entry.server)).not.toContain("mcpm_custom-srv");
   });
-
-  it("excludes Devin user-managed HTTP MCP servers by design", () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify({
-        mcpServers: {
-          "example-mcp-server": { url: "http://localhost:3000" },
-          "example-mcp-server-e2e": { url: "http://localhost:3001" },
-          orphan: { command: "node" },
-        },
-      }),
-    );
-
-    const unmanaged = discoverUnmanagedServers(new Set());
-    const names = unmanaged.map((entry) => entry.server);
-    expect(names).not.toContain("example-mcp-server");
-    expect(names).not.toContain("example-mcp-server-e2e");
-    expect(names).toContain("orphan");
-  });
 });

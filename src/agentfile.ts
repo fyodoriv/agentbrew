@@ -59,7 +59,7 @@ export interface Agentfile {
    *  the exclusion is purely a sync-time filter. */
   excludeAgents?: string[];
   /** Default model id to deploy to every detected agent that declares a
-   *  `modelConfig` surface in agents.yaml (claude-code, devin, codex today).
+   *  `modelConfig` surface in agents.yaml (claude-code, codex today).
    *  Absent means model sync is off. */
   defaultModel?: string;
   /** Per-agent exceptions to `defaultModel`, keyed by agent name. A string
@@ -544,7 +544,7 @@ export const RECOMMENDED_DEFAULT_MODEL = "claude-opus-5-5";
 /** Reasoning effort paired with `RECOMMENDED_DEFAULT_MODEL`. */
 export const RECOMMENDED_DEFAULT_EFFORT = "xhigh";
 /** Agents whose provider cannot serve the recommended Claude model id. */
-export const RECOMMENDED_MODEL_OVERRIDES: Record<string, string | null> = { codex: null, devin: null };
+export const RECOMMENDED_MODEL_OVERRIDES: Record<string, string | null> = { codex: null };
 
 /** Model keys for a generated Agentfile: the machine's choice, else the recommended default. */
 function generatedModelKeys(state: AgentBrewState): Record<string, unknown> {

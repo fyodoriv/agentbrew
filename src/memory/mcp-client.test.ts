@@ -307,8 +307,6 @@ describe("memory transport report", () => {
         agents: [
           { name: "claude-code", detected: true },
           { name: "cursor", detected: true },
-          { name: "windsurf", detected: true },
-          { name: "devin", detected: true },
           { name: "codex", detected: true },
         ],
         mcpServers: [
@@ -353,8 +351,6 @@ describe("memory transport report", () => {
     expect(report.primaryAgents.map((agent) => [agent.agent, agent.delivery, agent.currentEndpointSupported])).toEqual([
       ["claude-code", "mcpm", true],
       ["cursor", "native", true],
-      ["windsurf", "native", true],
-      ["devin", "native", true],
       ["codex", "mcpm", true],
     ]);
     expect(report.hardeningGate.ready).toBe(false);

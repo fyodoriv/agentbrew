@@ -43,11 +43,11 @@ describe("delegateRulesGenerate — input validation", () => {
   });
 
   it("returns an empty Map when every agent is a carve-out", () => {
-    // windsurf, augment, devin, claude-desktop are all carve-outs per
+    // augment, claude-desktop are all carve-outs per
     // src/core/rules-agent-map.ts. With nothing left to delegate, the
     // helper short-circuits before invoking the subprocess.
     const result = delegateRulesGenerate({
-      agents: ["windsurf", "augment", "devin", "claude-desktop"],
+      agents: ["augment", "claude-desktop"],
       sharedRules: "# Rules\n",
       tmpRoot: testRoot,
     });
@@ -119,12 +119,11 @@ describe.skipIf(!hasAiRules)("delegateRulesGenerate — real ai-rules binary", (
 
   it("filters carve-outs out of the result Map", () => {
     const result = delegateRulesGenerate({
-      agents: ["claude-code", "windsurf", "augment"],
+      agents: ["claude-code", "augment"],
       sharedRules: "# Rules\n",
       tmpRoot: testRoot,
     });
     expect(result.has("claude-code")).toBe(true);
-    expect(result.has("windsurf")).toBe(false);
     expect(result.has("augment")).toBe(false);
   });
 

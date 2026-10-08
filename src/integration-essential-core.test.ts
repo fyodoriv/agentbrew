@@ -126,9 +126,9 @@ import { loadSharedRules, saveSharedRules, syncRules } from "./sync/rules-sync.j
 
 /** Agent parent dirs we create in TEST_HOME so detectAgents() picks them up.
  *  kiro is the canonical MCP carve-out — its mcp config is exercised by the
- *  cross-agent sync block. cursor + windsurf are kept so detection asserts
- *  multi-agent presence (they're intersection-skip for MCP but still detected). */
-const AGENT_DIRS = [".cursor", ".codeium/windsurf", ".kiro"];
+ *  cross-agent sync block. cursor + augment are kept so detection asserts
+ *  multi-agent presence (cursor is intersection-skip for MCP but still detected). */
+const AGENT_DIRS = [".cursor", ".augment", ".kiro"];
 
 const MCP_CONFIGS: Record<string, string> = {
   ".kiro/settings/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
@@ -153,7 +153,7 @@ function cleanState(): void {
   const stateFile = getStatePath();
   if (existsSync(stateFile)) rmSync(stateFile);
   rmSync(join(TEST_HOME, ".claude"), { recursive: true, force: true });
-  rmSync(join(TEST_HOME, ".config", "devin"), { recursive: true, force: true });
+  rmSync(join(TEST_HOME, ".augment", "guidelines.md"), { force: true });
   // Reset MCP configs to empty between tests.
   for (const [path, content] of Object.entries(MCP_CONFIGS)) {
     writeFileSync(join(TEST_HOME, path), content);
@@ -189,9 +189,9 @@ describe("essential core: agent detection (US 01, US 15)", () => {
     const agents = detectAgents();
     const detected = agents.filter((a) => a.detected).map((a) => a.name);
 
-    // We created .cursor, .codeium/windsurf, .kiro parent dirs.
+    // We created .cursor, .augment, .kiro parent dirs.
     expect(detected).toContain("cursor");
-    expect(detected).toContain("windsurf");
+    expect(detected).toContain("augment");
     expect(detected).toContain("kiro");
   });
 
@@ -241,11 +241,11 @@ describe("essential core: cross-agent sync (US 02–06, US 20)", () => {
   });
 
   it("syncRules deploys the shared rules content to a carve-out's rulesFile", async () => {
-    // Seed devin's parent dir so detection picks it up + write a managed
+    // Seed augment's parent dir so detection picks it up + write a managed
     // section placeholder so syncRules treats it as an existing target.
-    mkdirSync(join(TEST_HOME, ".config", "devin"), { recursive: true });
+    mkdirSync(join(TEST_HOME, ".augment"), { recursive: true });
     writeFileSync(
-      join(TEST_HOME, ".config", "devin", "AGENTS.md"),
+      join(TEST_HOME, ".augment", "guidelines.md"),
       "<!-- agentbrew:start -->\nold\n<!-- agentbrew:end -->\n",
     );
 
@@ -253,16 +253,13 @@ describe("essential core: cross-agent sync (US 02–06, US 20)", () => {
 
     await syncRules();
 
-    // Read the devin file and confirm the managed section now contains the
+    // Read the augment file and confirm the managed section now contains the
     // shared-rules content (carve-out invariant: native shared-rules path
     // is exercised; delegated agents would pick up `delegateRulesGenerate`
     // payload but the mock returns an empty Map here).
-    const devinAgents = (await import("node:fs")).readFileSync(
-      join(TEST_HOME, ".config", "devin", "AGENTS.md"),
-      "utf-8",
-    );
-    expect(devinAgents).toContain("Use conventional commits");
-    expect(devinAgents).not.toContain("\nold\n");
+    const augmentRules = (await import("node:fs")).readFileSync(join(TEST_HOME, ".augment", "guidelines.md"), "utf-8");
+    expect(augmentRules).toContain("Use conventional commits");
+    expect(augmentRules).not.toContain("\nold\n");
   });
 });
 

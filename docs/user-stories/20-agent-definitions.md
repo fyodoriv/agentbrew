@@ -1,6 +1,6 @@
 # Agent Definitions
 
-> I write a persona once and every agent tool gets it — Claude Code, Cursor, Codex, Devin, all of them.
+> I write a persona once and every agent tool gets it — Claude Code, Cursor, Codex, all of them.
 
 ```bash
 agentbrew agents init                      # create ~/.config/agentbrew/agents/ directory
@@ -18,7 +18,6 @@ Agent definitions are Markdown persona files (e.g. `researcher.md`, `reviewer.md
 | Claude Code | `~/.claude/agents/` |
 | Cursor | `~/.cursor/agents/` |
 | Codex | `~/.codex/agents/` |
-| Devin | `~/.config/devin/agents/` |
 
 ## Multiple sources
 

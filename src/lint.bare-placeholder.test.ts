@@ -106,7 +106,7 @@ describe("validateConfig() — bare placeholder lint integration", () => {
     const result = validateConfig();
     const barePlaceholderErrors = result.details.filter((d) => d.includes("bare ${VAR} placeholder"));
     for (const err of barePlaceholderErrors) {
-      expect(err).toContain("strict importers (Devin) crash on missing vars");
+      expect(err).toContain("strict importers crash on missing vars");
     }
   });
 

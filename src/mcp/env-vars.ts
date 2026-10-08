@@ -3,7 +3,6 @@ import { logSkipped } from "../core/logger.js";
 
 /** Canonical env var format uses ${VAR} or ${VAR:-default} syntax. */
 const CANONICAL_PATTERN = /\$\{([A-Z_][A-Z0-9_]*)(?::-(.*?))?\}/g;
-const CANONICAL_EXACT_PATTERN = /^\$\{([A-Z_][A-Z0-9_]*)(?::-(.*?))?\}$/;
 const OPENCODE_PATTERN = /\$\{env:([^}]+)\}/g;
 const CODEX_PATTERN = /\{env:([^}]+)\}/g;
 /** Matches BARE ${VAR} placeholders ONLY — `${VAR:-default}` and `${env:VAR}` are skipped.
@@ -45,7 +44,7 @@ function resolveGitHubToken(): string | undefined {
  * Resolve a secret from the macOS Keychain via `security find-generic-password`.
  * Only runs on darwin; returns undefined on other platforms or when the item is absent.
  * This lets MCP servers that store tokens in the Keychain (e.g. Slack bot tokens)
- * resolve correctly when syncing to literal-format agents like Devin.
+ * resolve correctly when syncing to literal-format consumers (e.g. the MCP probe).
  */
 function resolveFromKeychain(service: string): string | undefined {
   if (process.platform !== "darwin") return undefined;
@@ -74,17 +73,14 @@ export function resolveEnvVar(varName: string): string | undefined {
 /**
  * "literal" resolves ${VAR} to the actual process.env value at sync time.
  * Use for agents whose MCP runtimes do not expand shell variables themselves.
- * MCP `env` blocks go through convertServerEnvVars for Devin's inheritance carve-out.
  */
 type EnvVarFormat = "standard" | "opencode" | "codex" | "literal";
 
 const AGENT_ENV_FORMAT: Record<string, EnvVarFormat> = {
   "claude-code": "standard",
   cursor: "standard",
-  windsurf: "standard",
   augment: "standard",
   codex: "codex",
-  devin: "literal",
   "gemini-cli": "standard",
 };
 
@@ -230,21 +226,6 @@ export function applyResilientToValue<T>(value: T): T {
 }
 
 /**
- * Returns true if the value contains ${VAR} references that would remain
- * unresolved when using the "literal" format (i.e. the var is not in process.env
- * and has no known fallback).
- * Used to skip servers with missing secrets when syncing to literal-format agents.
- */
-export function hasUnresolvedLiterals(value: string): boolean {
-  const pattern = /\$\{([A-Z_][A-Z0-9_]*)(?::-(.*?))?\}/g;
-  for (const match of value.matchAll(pattern)) {
-    const hasDefault = match[2] !== undefined;
-    if (!hasDefault && resolveEnvVar(match[1]) === undefined) return true;
-  }
-  return false;
-}
-
-/**
  * Returns true when a string value contains at least one ${VAR} placeholder.
  * Used to distinguish agentbrew-managed placeholders from user-resolved values
  * so that sync does not overwrite real tokens with unresolved placeholders.
@@ -254,19 +235,6 @@ export function containsPlaceholder(value: unknown): boolean {
   // Reset lastIndex since CANONICAL_PATTERN has the global flag
   CANONICAL_PATTERN.lastIndex = 0;
   return CANONICAL_PATTERN.test(value);
-}
-
-function isShellEnvResolved(varName: string): boolean {
-  const fromEnv = process.env[varName];
-  return fromEnv !== undefined && fromEnv !== "";
-}
-
-function shouldInheritForDevinEnv(value: string): boolean {
-  const canonical = toCanonical(value);
-  const match = CANONICAL_EXACT_PATTERN.exec(canonical);
-  if (!match) return false;
-  const [, varName] = match;
-  return isShellEnvResolved(varName);
 }
 
 /**
@@ -343,44 +311,6 @@ export function convertEnvVars(env: Record<string, string>, agentName: string): 
   let changed = false;
   const converted: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
-    const next = fromCanonical(toCanonical(value), format);
-    if (next !== value) changed = true;
-    converted[key] = next;
-  }
-  return changed ? converted : env;
-}
-
-/** Return MCP env keys Devin can inherit from the launching shell instead of writing to config. */
-export function getInheritedServerEnvKeys(env: Record<string, string>, agentName: string): string[] {
-  if (getEnvFormat(agentName) !== "literal") return [];
-  return Object.entries(env)
-    .filter(([, value]) => shouldInheritForDevinEnv(value))
-    .map(([key]) => key);
-}
-
-/**
- * Convert the MCP `env` block for a target agent.
- *
- * Devin starts stdio MCP commands with the environment inherited from the
- * launching shell. For direct `${VAR}` env mappings, omit the key instead of
- * resolving and persisting the secret into `~/.config/devin/config.json`.
- *
- * For standard-format agents the transform always runs because `fromCanonical("standard")`
- * now rewrites bare `${VAR}` to `${VAR:-}` (see `makeResilient`) — this is the emission-time
- * half of the bare-placeholder defense (the other half is `sweepMcpConfigs` for mcpm-written
- * entries). Returns the same input reference when nothing changed so adapters with reference-
- * equality assumptions on already-resilient input keep working.
- */
-export function convertServerEnvVars(env: Record<string, string>, agentName: string): Record<string, string> {
-  const format = getEnvFormat(agentName);
-  const inheritedKeys = new Set(getInheritedServerEnvKeys(env, agentName));
-  let changed = false;
-  const converted: Record<string, string> = {};
-  for (const [key, value] of Object.entries(env)) {
-    if (inheritedKeys.has(key)) {
-      changed = true;
-      continue;
-    }
     const next = fromCanonical(toCanonical(value), format);
     if (next !== value) changed = true;
     converted[key] = next;

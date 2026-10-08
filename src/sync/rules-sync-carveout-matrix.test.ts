@@ -56,7 +56,7 @@ interface CarveoutRow {
   expectedRulesFile?: string;
   /**
    * Expected rulesDir (tilde-prefixed). `undefined` when the agent
-   * doesn't have a per-file rules dir (e.g. devin / augment have only
+   * doesn't have a per-file rules dir (e.g. augment has only
    * a single rules file).
    */
   expectedRulesDir?: string;
@@ -64,25 +64,10 @@ interface CarveoutRow {
 
 const CARVEOUT_MATRIX: CarveoutRow[] = [
   {
-    name: "windsurf",
-    // Two-surface rules write: single-file global + per-file dir. Native
-    // because Codeium/Windsurf has a separate ecosystem and ai-rules
-    // doesn't ship a windsurf adapter.
-    expectedRulesFile: "~/.codeium/windsurf/memories/global_rules.md",
-    expectedRulesDir: "~/.windsurf/rules",
-  },
-  {
     name: "augment",
     // Single-file rules surface. Native because not in ai-rules'
     // supported list (potential upstream PR — see AGENTBREW_ONLY_RULES_RATIONALE).
     expectedRulesFile: "~/.augment/guidelines.md",
-  },
-  {
-    name: "devin",
-    // Single-file rules at ~/.config/devin/AGENTS.md. Native because
-    // ai-rules doesn't ship a Devin entry (Cognition product, parallel to
-    // the mcpm devin carve-out).
-    expectedRulesFile: "~/.config/devin/AGENTS.md",
   },
   {
     name: "claude-desktop",

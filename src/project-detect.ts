@@ -22,13 +22,9 @@ interface ProjectAssets {
 const SKILL_DIRS = [
   { agent: "claude", dir: ".claude/skills" },
   { agent: "cursor", dir: ".cursor/skills" },
-  { agent: "devin", dir: ".devin/skills" },
 ];
 
-const RULES_DIRS = [
-  { agent: "cursor", dir: ".cursor/rules" },
-  { agent: "windsurf", dir: ".windsurf/rules" },
-];
+const RULES_DIRS = [{ agent: "cursor", dir: ".cursor/rules" }];
 
 const COMMAND_DIRS = [
   { agent: "claude", dir: ".claude/commands" },

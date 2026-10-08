@@ -220,14 +220,12 @@ describe("addSource", () => {
     });
 
     it("emits one --agent <name> pair per detected intersection agent", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "windsurf"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "trae"]));
       await addSource("user/repo", {});
       const args = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // No wildcard — explicit per-agent dispatch.
       expect(args).not.toContain("*");
-      expect(args).toEqual(
-        expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "windsurf"]),
-      );
+      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "trae"]));
     });
 
     it("translates rename pairs at the subprocess boundary (copilot → github-copilot, kiro → kiro-cli, roo-code → roo)", async () => {
@@ -245,7 +243,7 @@ describe("addSource", () => {
 
     it("filters carve-outs (claude-desktop, qodo) and warns", async () => {
       const consoleSpy = vi.spyOn(console, "log");
-      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "devin", "cursor", "qodo"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "cursor", "qodo"]));
       await addSource("user/repo", {});
       const args = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // Carve-outs must NOT appear in the subprocess args — they have no
@@ -253,7 +251,7 @@ describe("addSource", () => {
       expect(args).not.toContain("claude-desktop");
       expect(args).not.toContain("qodo");
       // Intersection agents survive.
-      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "devin", "--agent", "cursor"]));
+      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "cursor"]));
       // User-visible carve-out warning so they understand which agents are
       // not covered by the delegated install.
       const warningCall = consoleSpy.mock.calls.find((call) => {
@@ -320,7 +318,7 @@ describe("addSource", () => {
     });
 
     it("delegates to all detected intersection agents when source is skill-shaped", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "windsurf"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "trae"]));
       // Skill-shaped: indexSource finds at least one SKILL.md.
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
@@ -329,7 +327,7 @@ describe("addSource", () => {
       // appears as a `--agent <name>` pair in the subprocess args.
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
       expect(delegationArgs).toEqual(
-        expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "windsurf"]),
+        expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "trae"]),
       );
       // Multiple `--agent` flags emitted (one per detected intersection agent).
       const agentFlags = delegationArgs.filter((a) => a === "--agent");
@@ -338,18 +336,18 @@ describe("addSource", () => {
 
     it("filters carve-outs from the delegation but still triggers when intersection agents exist", async () => {
       // claude-desktop and qodo are carve-outs; claude-code,
-      // devin, and cursor are intersection agents. Delegation triggers (because
+      // warp, and cursor are intersection agents. Delegation triggers (because
       // the intersection set is non-empty) but the carve-outs are filtered
       // by buildSkillsCliAgentArgs at the subprocess boundary. Carve-outs
       // are then deployed natively by agentbrew's sync engine.
-      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "devin", "cursor", "qodo"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "cursor", "qodo"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
 
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // Intersection agents survive.
       expect(delegationArgs).toEqual(
-        expect.arrayContaining(["--agent", "claude-code", "--agent", "devin", "--agent", "cursor"]),
+        expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "cursor"]),
       );
       // Carve-outs do NOT appear in the subprocess args.
       expect(delegationArgs).not.toContain("claude-desktop");
@@ -378,13 +376,13 @@ describe("addSource", () => {
       expect(mockExecFileSync).not.toHaveBeenCalled();
     });
 
-    it("delegates when only Devin is detected because skills CLI now supports it", async () => {
-      mockLoadState.mockReturnValue(makeState(["devin"]));
+    it("delegates when only warp is detected because skills CLI now supports it", async () => {
+      mockLoadState.mockReturnValue(makeState(["warp"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
 
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
-      expect(delegationArgs).toEqual(expect.arrayContaining(["--agent", "devin"]));
+      expect(delegationArgs).toEqual(expect.arrayContaining(["--agent", "warp"]));
     });
 
     it("does NOT delegate when skillInstallMode is 'native'", async () => {

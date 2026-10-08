@@ -9,7 +9,7 @@ import { loadState } from "../state.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "../ui/output.js";
 
-const PRIMARY_HOOK_AGENTS = ["claude-code", "cursor", "devin"] as const;
+const PRIMARY_HOOK_AGENTS = ["claude-code", "cursor"] as const;
 
 export interface HooksVerifyOptions {
   agent?: string;

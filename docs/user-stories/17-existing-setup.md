@@ -9,7 +9,7 @@ Your machine has:
 - **Cursor** (`~/.cursor/mcp.json`): MCP servers such as context7, playwright, postgres, github, slack
 - **Claude Code** (`~/.claude.json`): MCP servers such as context7, filesystem
 - **Claude Code** (`~/.claude/skills/`): debug, commit, review (manually installed skill directories)
-- **Windsurf**: no MCP servers configured
+- **Codex**: no MCP servers configured
 
 ## Step 1: Install and run
 
@@ -27,7 +27,7 @@ Detecting agents...
 
   ✓ claude-code
   ✓ cursor
-  ✓ windsurf
+  ✓ codex
 ```
 
 ### Existing configs are discovered (not modified)
@@ -48,7 +48,7 @@ When agentbrew syncs, it writes your registered MCP servers to **every** agent's
 
 - Cursor keeps its servers and gains any missing from other agents (e.g. filesystem from Claude Code)
 - Claude Code keeps its servers and gains any missing from Cursor (e.g. playwright, postgres, github, slack)
-- Windsurf had none → gets the merged set
+- Codex had none → gets the merged set
 
 Your skills (debug, commit, review) are **not touched** — they're directories, not agentbrew symlinks.
 
@@ -61,7 +61,7 @@ agentbrew status
 ```
 agentbrew status
 
-  Agents:       <count> detected (claude-code, cursor, windsurf)
+  Agents:       <count> detected (claude-code, cursor, codex)
   MCP Servers:  <count> registered
   Skills:       <count> in library across <count> sources
   Sources:      <count> tracked

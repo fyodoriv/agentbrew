@@ -14,8 +14,7 @@ primary_agents:
 frozen_agents:
   # Deprecated 2026-10-02 (owner decision). Existing support and tests stay,
   # but no new fixes or features land for these agents. See NG4.
-  - windsurf
-  - devin
+  # Windsurf and Devin support was removed on 2026-10-08.
   - augment
 goals:
   - id: G1
@@ -29,7 +28,7 @@ goals:
     description: `agentbrew sync` is the single entry point. Never asks the user to run two commands.
   - id: G4
     name: Every agent from a single source of truth
-    description: One Agentfile.yaml drives Claude Code, Cursor, Windsurf, Devin, Codex, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, and every other agent in `agents.yaml`.
+    description: One Agentfile.yaml drives Claude Code, Cursor, Codex, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, and every other agent in `agents.yaml`.
   - id: G5
     name: Drift detection + auto-repair
     description: `agentbrew fix` runs every 30 minutes via launchagent. State and MCP runtime health are verifiable; config corruption and common MCP regressions are detectable and automatically corrected.
@@ -63,11 +62,11 @@ non_goals:
   - id: NG4
     name: No new work for frozen agents
     description: |
-      Windsurf, Devin, and Augment are deprecated and frozen. Their existing sync targets,
-      agents.yaml entries, and matrix-test rows stay. Do not add fixes, features, tasks, or
-      per-agent branches for them, and do not count their gaps as G6 regressions. If work for
-      a supported agent breaks a frozen agent's existing test, skip that test with a note
-      naming NG4 instead of fixing the agent.
+      Windsurf and Devin support was removed on 2026-10-08. Augment stays deprecated and
+      frozen. Its existing sync targets, agents.yaml entry, and matrix-test rows stay. Do not
+      add fixes, features, tasks, or per-agent branches for it, and do not count its gaps as
+      G6 regressions. If work for a supported agent breaks Augment's existing test, skip that
+      test with a note naming NG4 instead of fixing the agent.
 ---
 
 # Vision
@@ -85,7 +84,7 @@ agentbrew team set <overlay-url>   # optional — layer on your company's curate
 
 **Primary user: any developer using AI coding agents.** Install once, configure once, and every agent on the machine gets the same skills, MCP servers, rules, commands, hooks, and agent definitions. The catalog ships with public, generic recommendations that benefit any developer.
 
-**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Cursor, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. Windsurf, Devin, and Augment are frozen: they keep their existing support but get no new fixes or features ([NG4](#non-goals)). They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
+**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Cursor, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. Windsurf and Devin support was removed on 2026-10-08. Augment is frozen: it keeps its existing support but gets no new fixes or features ([NG4](#non-goals)). They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
 
 **Long-tail agents — best-effort, parity-where-possible:** OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Gemini CLI, GitHub Copilot, plus other experimental surfaces listed in `src/core/agents.yaml`. agentbrew detects and syncs to these too, but only for the sync categories each agent supports natively. New first-party features land for the primary agent set first; long-tail support follows when each agent's underlying API permits.
 
@@ -165,7 +164,7 @@ In the product today and in the essential core. Not deletion candidates.
 | [Bidirectional sync](user-stories/11-discover-import.md) | `sync --discover` detects user-added servers; `import` propagates them |
 | [Agentfile manifest](user-stories/16-agentfile-project-config.md) | Declarative YAML; `init --from-state` bootstraps from current setup |
 | [Project detection](user-stories/16-agentfile-project-config.md) | Bare `agentbrew` in a project dir surfaces detected agent assets |
-| [Per-file rules](user-stories/04-share-rules.md) | `~/.config/agentbrew/rules/` → Cursor and Windsurf per-file rule dirs |
+| [Per-file rules](user-stories/04-share-rules.md) | `~/.config/agentbrew/rules/` → Cursor per-file rule dirs |
 | [CI integration](user-stories/25-status-and-health.md) | `agentbrew status --ci` exits 1 on drift |
 | [Portable bundles](user-stories/19-export-import.md) | `agentbrew export / import` moves setup to a new machine |
 | [Rollback](user-stories/26-rollback.md) | `agentbrew sync --rollback` restores from the pre-sync snapshot |

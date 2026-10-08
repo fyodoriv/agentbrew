@@ -20,7 +20,6 @@ describe("AGENT_DEFINITIONS", () => {
     const names = AGENT_DEFINITIONS.map((a) => a.name);
     expect(names).toContain("claude-code");
     expect(names).toContain("cursor");
-    expect(names).toContain("windsurf");
     expect(names).toContain("augment");
     expect(names).toContain("codex");
     expect(names).toContain("gemini-cli");
@@ -171,11 +170,6 @@ describe("AGENT_DEFINITIONS", () => {
     expect(cursor?.mcpPermissionsConfig?.file).toBe("~/.cursor/cli-config.json");
   });
 
-  it("windsurf has commandTransform (carve-out — Codeium ecosystem)", () => {
-    const windsurf = AGENT_DEFINITIONS.find((a) => a.name === "windsurf");
-    expect(windsurf?.commandTransform).toBeDefined();
-  });
-
   it("claude-code has no commandTransform (identity)", () => {
     const claude = AGENT_DEFINITIONS.find((a) => a.name === "claude-code");
     expect(claude?.commandTransform).toBeUndefined();
@@ -214,13 +208,12 @@ describe("AGENT_DEFINITIONS", () => {
     expect(sanitized.length).toBe(AGENT_DEFINITIONS.length);
     const names = sanitized.map((a: Record<string, unknown>) => a.name);
     expect(names).toContain("cursor");
-    expect(names).toContain("windsurf");
     expect(names).toContain("claude-code");
   });
 
-  it("only cursor, windsurf, and gemini-cli have commandTransform after command delegation", () => {
+  it("only cursor and gemini-cli have commandTransform after command delegation", () => {
     const withTransform = AGENT_DEFINITIONS.filter((a) => a.commandTransform).map((a) => a.name);
-    expect(withTransform).toEqual(expect.arrayContaining(["cursor", "windsurf", "gemini-cli"]));
-    expect(withTransform).toHaveLength(3);
+    expect(withTransform).toEqual(expect.arrayContaining(["cursor", "gemini-cli"]));
+    expect(withTransform).toHaveLength(2);
   });
 });

@@ -3,7 +3,7 @@
  *
  * Surfaced during slices 4a/4b/4c of `delegate-mcp-to-mcpm` (TASKS.md):
  * re-targeting tests from cursor/claude-code (intersection-skip) to
- * kiro/amp/devin (carve-outs) required hand-editing many inline agent
+ * kiro/amp/copilot (carve-outs) required hand-editing many inline agent
  * definitions of the shape `{ name: "kiro", detected: true,
  * skillsDir: "x", mcpConfig: "~/.kiro/settings/mcp.json" }`. This
  * helper consolidates that shape so future delegation slices that

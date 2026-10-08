@@ -21,7 +21,7 @@ function server(overrides: Partial<McpServer> = {}): McpServer {
   };
 }
 
-const CONTRACT_AGENT_NAMES = ["opencode", "claude-code", "devin"] as const;
+const CONTRACT_AGENT_NAMES = ["opencode", "claude-code"] as const;
 
 const SERVER_MATRIX: Array<{ label: string; server: McpServer }> = [
   { label: "stdio with env", server: server() },

@@ -25,7 +25,6 @@
     "skills:coverage": "tsx src/cli.ts skills coverage --ci --threshold 90 --builtins && tsx src/cli.ts skills coverage --ci --threshold 90 --builtins --built-in-skill-root skill-plugins/workflow",
     "test:real-e2e": "vitest run --config vitest.real-e2e.config.ts",
     "test:real-e2e:selected": "tsx src/real-e2e/selected-runs.ts",
-    "test:devin-import-real": "tsx scripts/devin-import-real-tier.mjs",
     "playwright:install": "playwright install chromium",
     "docs:competition": "tsx scripts/sync-competition-docs.ts",
     "docs:agent-matrix": "tsx scripts/sync-agent-matrix.ts",
@@ -56,7 +55,6 @@
     "sync",
     "claude",
     "cursor",
-    "windsurf",
     "augment",
     "codex",
     "cli"

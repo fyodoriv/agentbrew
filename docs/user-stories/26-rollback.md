@@ -21,7 +21,7 @@ The snapshot captures every file agentbrew is about to touch in a given sync:
 | Path | Restored? | Notes |
 |------|-----------|-------|
 | `~/.cursor/mcp.json`, `~/.claude/*.json`, `~/.codex/config.toml`, etc. | Yes | Every MCP config file for every detected agent |
-| `~/.claude/CLAUDE.md`, `~/.codeium/windsurf/memories/*`, agent instruction files | Yes | Rules + instructions files |
+| `~/.claude/CLAUDE.md`, agent instruction files | Yes | Rules + instructions files |
 | `~/.config/agentbrew/commands/`, `~/.claude/commands/`, `~/.cursor/commands/` | Yes | Command directories |
 | `~/.config/agentbrew/agents/`, per-agent agent-definition dirs | Yes | Agent persona files |
 | Symlinks in `~/.*/skills/` directories | Yes | Skill symlinks — their targets (the source repos) are untouched |
@@ -63,8 +63,6 @@ Restoring agent configs from: ~/.config/agentbrew/backups/2026-04-19T18-30-22Z/
   ✓ claude-code    (~/.claude/CLAUDE.md)
   ✓ claude-code    (~/.claude/commands/)
   ✓ codex          (~/.codex/config.toml)
-  ✓ windsurf       (~/.codeium/windsurf/memories/global_rules.md)
-  ✓ devin          (~/.config/devin/config.json)
 
 Restored <count> file(s) across <count> agent(s).
 

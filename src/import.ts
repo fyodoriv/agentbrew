@@ -11,12 +11,8 @@ import { expandHome } from "./utils.js";
 
 const MCPM_SERVER_PREFIX = "mcpm_";
 
-/** Devin user-added HTTP MCP servers — managed outside agentbrew state by design. */
-const USER_MANAGED_HTTP_MCP_SERVERS = new Set(["example-mcp-server", "example-mcp-server-e2e"]);
-
 function isKnownServerName(name: string, stateServerNames: Set<string>, externalNames?: Set<string>): boolean {
   if (stateServerNames.has(name) || externalNames?.has(name)) return true;
-  if (USER_MANAGED_HTTP_MCP_SERVERS.has(name)) return true;
   // mcpm bridge entries (mcpm_<name>) are managed by mcpm, not agentbrew state
   if (name.startsWith(MCPM_SERVER_PREFIX)) return true;
   const underlyingName = name.slice(MCPM_SERVER_PREFIX.length);

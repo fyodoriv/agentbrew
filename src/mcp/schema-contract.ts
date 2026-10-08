@@ -1,14 +1,12 @@
 import type { AnySchema, ErrorObject, ValidateFunction } from "ajv";
 import Ajv2020 from "ajv/dist/2020.js";
 import claudeCodeSchema from "./schemas/claude-code.schema.json";
-import devinSchema from "./schemas/devin.schema.json";
 import opencodeSchema from "./schemas/opencode.schema.json";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validatorCache = new Map<string, ValidateFunction | undefined>();
 const ENTRY_SCHEMAS: Record<string, AnySchema> = {
   "claude-code": claudeCodeSchema,
-  devin: devinSchema,
   opencode: opencodeSchema,
 };
 

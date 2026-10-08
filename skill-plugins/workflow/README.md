@@ -22,8 +22,8 @@ source (`./skill-plugins/workflow`).
 - Record provenance and local deltas in [SOURCES.md](SOURCES.md).
 - Prefer an upstream skill when it covers the use case. Move a skill out when
   upstream closes the gap.
-- Windsurf, Devin, and Augment are frozen. Leave their existing mentions as
-  they are, and add no fixes or features for them.
+- Windsurf and Devin support was removed on 2026-10-08. Augment stays frozen.
+  Leave its existing mentions as they are, and add no fixes or features for it.
 - Keep inventory counts (agents, skills, tests, packages) out of SKILL.md and
   `references/`: delete the count, link its source of truth, or generate it.
   `src/docs/volatile-count-claims.test.ts` enforces this in `npm test` and

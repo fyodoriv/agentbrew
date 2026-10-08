@@ -52,10 +52,8 @@ describe("detectAgents", () => {
     mockExistsSync.mockReturnValue(true);
     const agents = detectAgents();
     const cursor = agents.find((a) => a.name === "cursor");
-    const windsurf = agents.find((a) => a.name === "windsurf");
     const gemini = agents.find((a) => a.name === "gemini-cli");
     expect(typeof cursor?.commandTransform).toBe("function");
-    expect(typeof windsurf?.commandTransform).toBe("function");
     expect(typeof gemini?.commandTransform).toBe("function");
   });
 

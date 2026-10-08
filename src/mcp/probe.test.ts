@@ -620,13 +620,13 @@ describe("probeAllServers", () => {
       const results = await probeAllServers([
         { agent: "cursor", servers: { fake: spec } },
         { agent: "claude-code", servers: { fake: { ...spec, args: [...spec.args] } } },
-        { agent: "windsurf", servers: { fake: { ...spec, env: { EXTRA: "1" } } } },
+        { agent: "kiro", servers: { fake: { ...spec, env: { EXTRA: "1" } } } },
       ]);
 
       expect(results.map((r) => [r.agent, r.status])).toEqual([
         ["cursor", "ok"],
         ["claude-code", "ok"],
-        ["windsurf", "ok"],
+        ["kiro", "ok"],
       ]);
       expect(readMethods(logPath).filter((method) => method === "initialize")).toHaveLength(2);
     } finally {

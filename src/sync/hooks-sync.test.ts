@@ -49,10 +49,10 @@ vi.mock("../types.js", async (importOriginal) => {
         hooksFormat: "cursor",
       },
       {
-        name: "devin",
+        name: "project-hooks-agent",
         detected: true,
-        skillsDir: "~/.config/devin/skills",
-        hooksFile: ".devin/hooks.v1.json",
+        skillsDir: "~/.config/project-hooks-agent/skills",
+        hooksFile: ".project-hooks-agent/hooks.v1.json",
         hooksFormat: "claude-direct",
         hooksScope: "project",
       },
@@ -541,19 +541,19 @@ describe("syncHooks", () => {
     expect(written.hooks.preToolUse[0].command).toBe("echo cursor");
   });
 
-  it("writes Devin hooks.v1.json project-locally with Claude direct format", async () => {
+  it("writes project-scoped hooks.v1.json project-locally with Claude direct format", async () => {
     const hooks: ManagedHook[] = [
       {
         event: "Stop",
         type: "command",
-        command: "echo devin",
+        command: "echo project-hooks",
         source: "agentfile",
-        agents: ["devin"],
+        agents: ["project-hooks-agent"],
       },
     ];
     mockLoadState.mockReturnValue({
       mcpServers: [],
-      agents: [{ name: "devin", detected: true }],
+      agents: [{ name: "project-hooks-agent", detected: true }],
       hooks,
     } as never);
     mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: [] } as never);
@@ -563,10 +563,10 @@ describe("syncHooks", () => {
 
     expect(mockWriteFileSync).toHaveBeenCalledOnce();
     const [filePath, content] = mockWriteFileSync.mock.calls[0] as [string, string, string];
-    expect(filePath.endsWith("/.devin/hooks.v1.json")).toBe(true);
+    expect(filePath.endsWith("/.project-hooks-agent/hooks.v1.json")).toBe(true);
     const written = JSON.parse(content);
     expect(written.hooks).toBeUndefined();
-    expect(written.Stop[0].hooks[0].command).toBe("echo devin");
+    expect(written.Stop[0].hooks[0].command).toBe("echo project-hooks");
   });
 
   it("does not prune same-key Cursor user hooks from Claude-only legacy managed keys", async () => {

@@ -2,19 +2,17 @@
  * Native carve-out vs mcpm-delegated end-state parity.
  *
  * For any agentbrew server input, agents whose sync flows through the
- * native carve-out path (devin, kiro, amp, opencode, overlay-desktop,
+ * native carve-out path (kiro, amp, opencode, overlay-desktop,
  * copilot) and agents whose sync flows through `mcpm install`+`mcpm
- * client edit` (claude-code, cursor, windsurf, codex, goose, gemini-cli,
+ * client edit` (claude-code, cursor, codex, goose, gemini-cli,
  * claude-desktop, cline, roo-code) should produce **structurally
  * equivalent** entries inside their respective config files.
  *
  * "Structurally equivalent" means:
  *   - Same command + args
- *   - Same env keys (modulo the literal-format env carve-out for Devin —
- *     see `convertServerEnvVars`)
+ *   - Same env keys
  *   - Same env values modulo each agent's format conversion (standard
- *     `${VAR:-}`, codex `{env:VAR}`, opencode `${env:VAR}`, literal
- *     resolution for Devin)
+ *     `${VAR:-}`, codex `{env:VAR}`, opencode `${env:VAR}`)
  *
  * Why this matters
  * ----------------
@@ -96,13 +94,9 @@ describe("Per-agent toEntry() — same input → comparable shape across formats
     //   - standard (claude-code, cursor, etc.): ${GITHUB_TOKEN:-}
     //   - codex: {env:GITHUB_TOKEN}
     //   - opencode: ${env:GITHUB_TOKEN}
-    //   - literal (devin): the resolved value when set, otherwise ${GITHUB_TOKEN:-} or absent (env-inherit carve-out)
     const serialised = JSON.stringify(entry);
-    // The key must be present somewhere in the entry. (For Devin literal-resolution-by-inheritance,
-    // the key may be omitted entirely — that's documented behavior.)
-    if (fixture.name !== "devin") {
-      expect(serialised).toContain("GITHUB_PERSONAL_ACCESS_TOKEN");
-    }
+    // The key must be present somewhere in the entry.
+    expect(serialised).toContain("GITHUB_PERSONAL_ACCESS_TOKEN");
   });
 
   it.each(
@@ -111,23 +105,16 @@ describe("Per-agent toEntry() — same input → comparable shape across formats
     const adapter = getAdapter({ name: fixture.name, mcpFormat: fixture.mcpFormat });
     const entry = adapter.toEntry(SERVER_INPUT, fixture.name);
     const serialised = JSON.stringify(entry);
-    // For literal (devin) format: ${LOG_LEVEL:-info} resolves to "info" since LOG_LEVEL is unset.
-    // For other formats: the placeholder is preserved as ${LOG_LEVEL:-info}, ${env:LOG_LEVEL}, etc.
-    if (fixture.name === "devin") {
-      expect(serialised).toContain("info");
-    } else {
-      // Standard/opencode/codex preserve the placeholder shape — the literal "LOG_LEVEL" must appear.
-      expect(serialised).toContain("LOG_LEVEL");
-    }
+    // The placeholder is preserved as ${LOG_LEVEL:-info}, ${env:LOG_LEVEL}, etc.
+    // Standard/opencode/codex preserve the placeholder shape — the literal "LOG_LEVEL" must appear.
+    expect(serialised).toContain("LOG_LEVEL");
   });
 
-  it("JSON-format agents (claude-code, cursor, windsurf, gemini-cli, claude-desktop, kiro, amp) emit IDENTICAL JSON entries", () => {
+  it("JSON-format agents (claude-code, cursor, gemini-cli, claude-desktop, kiro, amp) emit IDENTICAL JSON entries", () => {
     // Parity assertion: all agents that share the same env-var format ("standard") should produce
     // byte-identical toEntry output for the same input. If a future refactor drifts one of these
     // agents into a different shape, this test fires immediately.
-    const standardAgents = MCP_AGENT_MATRIX.filter(
-      (f) => f.mcpFormat === "json" && f.name !== "devin", // devin is literal-format
-    );
+    const standardAgents = MCP_AGENT_MATRIX.filter((f) => f.mcpFormat === "json");
     const entries = standardAgents.map((f) => {
       const adapter = getAdapter({ name: f.name, mcpFormat: f.mcpFormat });
       return { name: f.name, entry: adapter.toEntry(SERVER_INPUT, f.name) };
@@ -138,24 +125,6 @@ describe("Per-agent toEntry() — same input → comparable shape across formats
       const serialised = JSON.stringify(entry);
       expect(serialised, `${name} drifted from ${entries[0].name}`).toBe(reference);
     }
-  });
-
-  it("Devin's literal-format toEntry resolves bare ${VAR} to resilient ${VAR:-} when env is unset", () => {
-    // Documents the layer-3 defense: even if a bare placeholder somehow makes it
-    // to Devin's own config, the literal-format converter falls back to the
-    // resilient form so Devin's strict importer doesn't crash.
-    const adapter = getAdapter({ name: "devin", mcpFormat: "json" });
-    const dirty: McpServer = {
-      name: "test",
-      command: "npx",
-      args: [],
-      env: { TOKEN_NO_FALLBACK: "${SOMETHING_NEVER_SET}" },
-      source: "discovered" as const,
-    };
-    const entry = adapter.toEntry(dirty, "devin");
-    const serialised = JSON.stringify(entry);
-    // Empty default emitted in place of bare placeholder.
-    expect(serialised).toMatch(/\$\{SOMETHING_NEVER_SET:-\}|\bSOMETHING_NEVER_SET\b/);
   });
 });
 

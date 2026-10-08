@@ -56,12 +56,10 @@ describe("delegateMcpInstall — input validation", () => {
 
     const result = delegateMcpInstall({
       serverName: "time",
-      agents: ["devin", "copilot", "opencode", "kiro", "amp", "windsurf"],
+      agents: ["copilot", "opencode", "kiro", "amp"],
     });
     expect(result.ok).toBe(true);
-    expect(result.carveOuts).toEqual(
-      expect.arrayContaining(["devin", "copilot", "opencode", "kiro", "amp", "windsurf"]),
-    );
+    expect(result.carveOuts).toEqual(expect.arrayContaining(["copilot", "opencode", "kiro", "amp"]));
   });
 });
 
@@ -125,10 +123,10 @@ describe("delegateMcpInstall — fake binary success", () => {
 
     const result = delegateMcpInstall({
       serverName: "time",
-      agents: ["claude-code", "devin"],
+      agents: ["claude-code", "copilot"],
     });
     expect(result.ok).toBe(true);
-    expect(result.carveOuts).toEqual(["devin"]);
+    expect(result.carveOuts).toEqual(["copilot"]);
   });
 });
 
@@ -147,17 +145,15 @@ describe.skipIf(!hasMcpm)("delegateMcpInstall — real mcpm binary smoke", () =>
 describe("delegateMcpClientEdit — input validation", () => {
   it("returns ok=false and empty perClient without invoking the subprocess when every agent is a carve-out", () => {
     // Symmetric with delegateMcpInstall — when every detected client
-    // is a carve-out (devin, copilot, etc.), mcpm has nothing
+    // is a carve-out (copilot, kiro, etc.), mcpm has nothing
     // to edit. Short-circuits before any subprocess.
     const result = delegateMcpClientEdit({
       serverName: "time",
-      agents: ["devin", "copilot", "opencode", "kiro", "amp", "windsurf"],
+      agents: ["copilot", "opencode", "kiro", "amp"],
     });
     expect(result.ok).toBe(false);
     expect(result.perClient).toEqual([]);
-    expect(result.carveOuts).toEqual(
-      expect.arrayContaining(["devin", "copilot", "opencode", "kiro", "amp", "windsurf"]),
-    );
+    expect(result.carveOuts).toEqual(expect.arrayContaining(["copilot", "opencode", "kiro", "amp"]));
   });
 });
 
@@ -186,14 +182,14 @@ describe("delegateMcpClientEdit — subprocess behavior", () => {
     process.env.AGENTBREW_MCPM_BIN = fakeBin;
 
     // Mix of intersection (claude-code, cline, codex → codex-cli
-    // rename) and carve-outs (devin, amp, cursor). The helper must iterate
+    // rename) and carve-outs (copilot, amp, cursor). The helper must iterate
     // across only the intersection subset with name-translated forms.
     const result = delegateMcpClientEdit({
       serverName: "time",
-      agents: ["claude-code", "cline", "codex", "devin", "amp", "cursor"],
+      agents: ["claude-code", "cline", "codex", "copilot", "amp", "cursor"],
     });
     expect(result.ok).toBe(true);
-    expect(result.carveOuts).toEqual(["devin", "amp", "cursor"]);
+    expect(result.carveOuts).toEqual(["copilot", "amp", "cursor"]);
     expect(result.perClient.map((r) => r.client)).toEqual(["claude-code", "cline", "codex-cli"]);
     expect(result.perClient.every((r) => r.ok)).toBe(true);
     // Every invocation goes to the log — one line per client with the
@@ -203,7 +199,7 @@ describe("delegateMcpClientEdit — subprocess behavior", () => {
     expect(logContents).toContain("client edit cline --add-server time --force");
     expect(logContents).toContain("client edit codex-cli --add-server time --force");
     // Carve-outs never reach the subprocess.
-    expect(logContents).not.toContain("devin");
+    expect(logContents).not.toContain("copilot");
     expect(logContents).not.toContain("amp");
   });
 
@@ -265,10 +261,10 @@ describe("delegateMcpUninstall — input validation", () => {
   it("returns ok=false with carve-outs reported when every agent is a carve-out", () => {
     const result = delegateMcpUninstall({
       serverName: "time",
-      agents: ["devin", "copilot"],
+      agents: ["kiro", "copilot"],
     });
     expect(result.ok).toBe(false);
-    expect(result.carveOuts).toEqual(expect.arrayContaining(["devin", "copilot"]));
+    expect(result.carveOuts).toEqual(expect.arrayContaining(["kiro", "copilot"]));
     expect(result.perClient).toEqual([]);
     expect(result.globalUninstall.ok).toBe(false);
   });

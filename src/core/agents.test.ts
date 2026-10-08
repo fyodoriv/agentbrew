@@ -315,19 +315,6 @@ describe("loadAgentDefinitions", () => {
     expect(cursor?.mcpPermissionsConfig?.file).toBe("~/.cursor/cli-config.json");
   });
 
-  it("devin writes hooks to the project-local hooks file", () => {
-    const devin = loadAgentDefinitions().find((d) => d.name === "devin");
-    expect(devin?.hooksFile).toBe(".devin/hooks.v1.json");
-    expect(devin?.hooksFormat).toBe("claude-direct");
-    expect(devin?.hooksScope).toBe("project");
-  });
-
-  it("windsurf has commandTransform resolved", () => {
-    const windsurf = loadAgentDefinitions().find((d) => d.name === "windsurf");
-    expect(windsurf?.commandTransform).toBeTypeOf("function");
-    expect(windsurf?.commandTransform?.("<!-- turbo -->")).toBe("// turbo");
-  });
-
   it("gemini-cli has mcpConfig, rulesFile, commandTransform, and commandFileExt", () => {
     const gemini = loadAgentDefinitions().find((d) => d.name === "gemini-cli");
     expect(gemini?.skillsDir).toBe("~/.gemini/skills");
@@ -339,22 +326,6 @@ describe("loadAgentDefinitions", () => {
     const result = gemini?.commandTransform?.("---\ndescription: Test\n---\n\n# Title\n");
     expect(result).toContain('description = "Test"');
     expect(result).toContain('prompt = """');
-  });
-
-  it("devin has mcpConfig and rulesFile", () => {
-    const devin = loadAgentDefinitions().find((d) => d.name === "devin");
-    expect(devin).toBeDefined();
-    expect(devin?.skillsDir).toBe("~/.config/devin/skills");
-    expect(devin?.mcpConfig).toBe("~/.config/devin/config.json");
-    expect(devin?.mcpKey).toBe("mcpServers");
-    expect(devin?.mcpPermissionsConfig?.file).toBe("~/.config/devin/config.json");
-    expect(devin?.rulesFile).toBe("~/.config/devin/AGENTS.md");
-  });
-
-  it("devin has agentsDir and subdir format for first-class support", () => {
-    const devin = loadAgentDefinitions().find((d) => d.name === "devin");
-    expect(devin?.agentsDir).toBe("~/.config/devin/agents");
-    expect(devin?.agentsDirFormat).toBe("subdir");
   });
 
   it("codex has toml format and agentsDir", () => {
@@ -613,7 +584,7 @@ describe("resolveAgentYamlPath", () => {
   it("preserves arbitrary `~/...` paths that don't match any override", () => {
     vi.stubEnv("CLAUDE_CONFIG_DIR", "/tmp/myclaude");
     vi.stubEnv("XDG_CONFIG_HOME", "/tmp/xdg");
-    expect(resolveAgentYamlPath("~/.config/devin/skills")).toBe("~/.config/devin/skills");
+    expect(resolveAgentYamlPath("~/.config/goose/skills")).toBe("~/.config/goose/skills");
     expect(resolveAgentYamlPath("~/.cursor/rules")).toBe("~/.cursor/rules");
   });
 

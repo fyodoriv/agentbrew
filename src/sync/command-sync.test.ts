@@ -347,14 +347,14 @@ describe("syncCommands", () => {
       // Slice 4 of `delegate-commands-to-ai-rules` hardened the contract
       // for canary agents (claude-code, cursor): they skip when the
       // delegation map is empty (the test-level `vi.mock("./commands-delegate.js")`
-      // returns an empty Map). Use a carve-out agent (windsurf) here so
+      // returns an empty Map). Use a carve-out agent (opencode) here so
       // the prune-count assertion exercises the native path that's
       // unaffected by the slice 4 skip semantics.
-      // windsurf's commandsDir from agents.yaml is `~/.codeium/windsurf/global_workflows`.
-      const trackedPath = `${homedir()}/.codeium/windsurf/global_workflows/old.md`;
+      // opencode's commandsDir from agents.yaml is `~/.config/opencode/commands`.
+      const trackedPath = `${homedir()}/.config/opencode/commands/old.md`;
       vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "h" } });
       mockLoadState.mockReturnValue({
-        agents: [{ name: "windsurf", detected: true, skillsDir: "x" } as never],
+        agents: [{ name: "opencode", detected: true, skillsDir: "x" } as never],
         catalogVersion: "test",
       });
       mockExistsSync.mockReturnValue(true);
@@ -840,7 +840,7 @@ describe("computeCommandsDiff — delegated content", () => {
   });
 
   it("non-canary agents still fall back to source content when delegation is missing", () => {
-    // Carve-outs (windsurf, devin, gemini-cli, claude-desktop, opencode)
+    // Carve-outs (gemini-cli, claude-desktop, opencode)
     // are not in CANARY_DELEGATED_AGENTS so the slice-4 hardening does
     // NOT apply to them. They continue to read source + apply
     // transform when the delegation map has no entry for them.
@@ -849,7 +849,7 @@ describe("computeCommandsDiff — delegated content", () => {
       [{ filename: "hello.md", content: "# Source\n" }],
       [
         {
-          agentName: "windsurf",
+          agentName: "opencode",
           exists: true,
           transform: identityTransform,
           fileExt: ".md",
@@ -908,7 +908,7 @@ describe("computeCommandsDiff — delegated content", () => {
           existingFiles: new Map(),
         },
         {
-          agentName: "windsurf",
+          agentName: "opencode",
           exists: true,
           transform: identityTransform,
           fileExt: ".md",
@@ -960,9 +960,7 @@ describe("CANARY_DELEGATED_AGENTS — slice 2–5 invariants", () => {
     expect(CANARY_DELEGATED_AGENTS.has("firebender")).toBe(true);
   });
 
-  it("excludes AGENTBREW_ONLY_COMMANDS_AGENTS (windsurf, devin, gemini-cli, claude-desktop, opencode)", () => {
-    expect(CANARY_DELEGATED_AGENTS.has("windsurf")).toBe(false);
-    expect(CANARY_DELEGATED_AGENTS.has("devin")).toBe(false);
+  it("excludes AGENTBREW_ONLY_COMMANDS_AGENTS (gemini-cli, claude-desktop, opencode)", () => {
     expect(CANARY_DELEGATED_AGENTS.has("gemini-cli")).toBe(false);
     expect(CANARY_DELEGATED_AGENTS.has("claude-desktop")).toBe(false);
     expect(CANARY_DELEGATED_AGENTS.has("opencode")).toBe(false);
@@ -991,7 +989,7 @@ describe("collectCanaryDelegation — slice 2 boundary", () => {
     // on a user who isn't using any delegated agents.
     mockDelegateCommandsGenerate.mockClear();
     const result = collectCanaryDelegation(
-      [{ agentName: "windsurf" }, { agentName: "devin" }],
+      [{ agentName: "opencode" }, { agentName: "gemini-cli" }],
       [{ filename: "hello.md", content: "# Source\n" }],
     );
     expect(result.size).toBe(0);
@@ -1010,7 +1008,7 @@ describe("collectCanaryDelegation — slice 2 boundary", () => {
     ]);
     mockDelegateCommandsGenerate.mockReturnValueOnce(stub);
     const result = collectCanaryDelegation(
-      [{ agentName: "windsurf" }, { agentName: "claude-code" }, { agentName: "cursor" }, { agentName: "devin" }],
+      [{ agentName: "opencode" }, { agentName: "claude-code" }, { agentName: "cursor" }, { agentName: "gemini-cli" }],
       [{ filename: "hello.md", content: "# Source\n" }],
     );
     expect(mockDelegateCommandsGenerate).toHaveBeenCalledWith({

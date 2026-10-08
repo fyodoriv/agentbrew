@@ -128,7 +128,7 @@ export function toSkillsCliAgent(agentbrewName: string): string | null {
  *   // → { args: ["--agent", "github-copilot", "--agent", "claude-code"],
  *   //     carveOuts: [] }
  *
- *   buildSkillsCliAgentArgs(["claude-desktop", "kiro", "devin"])
+ *   buildSkillsCliAgentArgs(["claude-desktop", "kiro", "copilot"])
  *   // → { args: ["--agent", "kiro-cli"],
  *   //     carveOuts: ["claude-desktop"] }
  */

@@ -5,13 +5,7 @@ import { loadState } from "../state.js";
 import type { AgentConfig, McpFormatAdapter, McpServer, McpServerEntry } from "../types.js";
 import { expandHome } from "../utils.js";
 import { wrapCursorGuiStdioEntry } from "./cursor-gui-launch.js";
-import {
-  applyEntryUpdate,
-  convertEnvVars,
-  convertServerEnvVars,
-  getInheritedServerEnvKeys,
-  toCanonical,
-} from "./env-vars.js";
+import { applyEntryUpdate, convertEnvVars, toCanonical } from "./env-vars.js";
 import {
   extractServersFromGoose,
   extractServersFromJson,
@@ -38,26 +32,7 @@ import {
 // `TomlAdapter` supports that for codex; `YamlAdapter` stays read-only.
 
 // McpFormatAdapter is defined in types.ts — import it from there directly.
-const INHERITED_ENV_KEYS = Symbol("agentbrewInheritedEnvKeys");
-
-type JsonEntry = Record<string, unknown> & { [INHERITED_ENV_KEYS]?: string[] };
-
-function markInheritedEnvKeys(entry: JsonEntry, inheritedKeys: string[]): void {
-  if (inheritedKeys.length === 0) return;
-  Object.defineProperty(entry, INHERITED_ENV_KEYS, {
-    value: inheritedKeys,
-    enumerable: false,
-  });
-}
-
-function removeInheritedEnvKeys(existing: Record<string, unknown>, inheritedKeys: string[]): void {
-  if (inheritedKeys.length === 0 || !existing.env || typeof existing.env !== "object") return;
-  const env = existing.env as Record<string, unknown>;
-  for (const key of inheritedKeys) {
-    delete env[key];
-  }
-  if (Object.keys(env).length === 0) delete existing.env;
-}
+type JsonEntry = Record<string, unknown>;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -69,15 +44,8 @@ function desiredKeysMatch(existingValue: unknown, desiredValue: unknown): boolea
   return Object.keys(desired).every((key) => existing[key] === desired[key]);
 }
 
-function envEntriesMatch(existing: Record<string, unknown>, desired: Record<string, unknown>): boolean {
-  const existingEnv = asRecord(existing.env);
-  const inheritedEnvKeys = (desired as JsonEntry)[INHERITED_ENV_KEYS] ?? [];
-  const inheritedKeysAlreadyRemoved = inheritedEnvKeys.every((key) => !Object.hasOwn(existingEnv, key));
-  return inheritedKeysAlreadyRemoved && desiredKeysMatch(existing.env, desired.env);
-}
-
 /** URL-based servers (SSE/HTTP transport with optional auth headers). */
-function toJsonRemoteEntry(server: McpServer, url: string, agentName: string, inheritedEnvKeys: string[]): JsonEntry {
+function toJsonRemoteEntry(server: McpServer, url: string, agentName: string): JsonEntry {
   const entry: JsonEntry = { url };
   // Claude Code requires an explicit transport type for remote MCP servers.
   // Cursor and other JSON clients infer it from the URL.
@@ -88,17 +56,16 @@ function toJsonRemoteEntry(server: McpServer, url: string, agentName: string, in
     entry.headers = convertEnvVars(server.headers, agentName);
   }
   if (Object.keys(server.env).length > 0) {
-    const env = convertServerEnvVars(server.env, agentName);
+    const env = convertEnvVars(server.env, agentName);
     if (Object.keys(env).length > 0) entry.env = env;
   }
-  markInheritedEnvKeys(entry, inheritedEnvKeys);
   return entry;
 }
 
 // ── JSON adapter ────────────────────────────────────────────────────────────
 
 /**
- * Handles the standard JSON MCP config format used by Claude Code, Cursor, Windsurf,
+ * Handles the standard JSON MCP config format used by Claude Code, Cursor,
  * and most other agents — servers stored as a name-keyed map under a configurable
  * `mcpKey` (e.g. `mcpServers`).
  */
@@ -115,17 +82,15 @@ export class JsonAdapter implements McpFormatAdapter {
   }
 
   toEntry(server: McpServer, agentName: string): Record<string, unknown> {
-    const inheritedEnvKeys = getInheritedServerEnvKeys(server.env, agentName);
-    if (server.url) return toJsonRemoteEntry(server, server.url, agentName, inheritedEnvKeys);
+    if (server.url) return toJsonRemoteEntry(server, server.url, agentName);
 
     // stdio-based servers
     const entry: JsonEntry = { command: server.command };
     if (server.args.length > 0) entry.args = server.args;
     if (Object.keys(server.env).length > 0) {
-      const env = convertServerEnvVars(server.env, agentName);
+      const env = convertEnvVars(server.env, agentName);
       if (Object.keys(env).length > 0) entry.env = env;
     }
-    markInheritedEnvKeys(entry, inheritedEnvKeys);
     return wrapCursorGuiStdioEntry(server, entry, agentName);
   }
 
@@ -139,7 +104,7 @@ export class JsonAdapter implements McpFormatAdapter {
     if ("type" in desired && existing.type !== desired.type) return false;
 
     // Compare only agentbrew-managed env/header keys; user-added keys don't trigger updates.
-    return envEntriesMatch(existing, desired) && desiredKeysMatch(existing.headers, desired.headers);
+    return desiredKeysMatch(existing.env, desired.env) && desiredKeysMatch(existing.headers, desired.headers);
   }
 
   /** Merges agentbrew-managed fields into existing entry, preserving user-added
@@ -154,7 +119,6 @@ export class JsonAdapter implements McpFormatAdapter {
     // Headers use a simple spread (incoming wins) rather than the placeholder-aware merge.
     if (entries[serverName]) {
       const existing = entries[serverName];
-      removeInheritedEnvKeys(existing, (entry as JsonEntry)[INHERITED_ENV_KEYS] ?? []);
       if (
         entry.headers &&
         typeof entry.headers === "object" &&
@@ -212,8 +176,6 @@ export class OpenCodeAdapter extends JsonAdapter {
   private static readonly PRESERVED_USER_KEYS = new Set(["enabled", "timeout"]);
 
   override toEntry(server: McpServer, agentName: string): Record<string, unknown> {
-    const inheritedEnvKeys = getInheritedServerEnvKeys(server.env, agentName);
-
     if (server.url) {
       const entry: JsonEntry = { type: "remote", url: server.url };
       if (server.headers && Object.keys(server.headers).length > 0) {
@@ -221,7 +183,6 @@ export class OpenCodeAdapter extends JsonAdapter {
       }
       // Remote schema has additionalProperties:false and no `environment` field;
       // env on a URL server is dropped to keep the entry valid.
-      markInheritedEnvKeys(entry, inheritedEnvKeys);
       return entry;
     }
 
@@ -229,10 +190,9 @@ export class OpenCodeAdapter extends JsonAdapter {
     const command = [server.command, ...server.args];
     const entry: JsonEntry = { type: "local", command };
     if (Object.keys(server.env).length > 0) {
-      const env = convertServerEnvVars(server.env, agentName);
+      const env = convertEnvVars(server.env, agentName);
       if (Object.keys(env).length > 0) entry.environment = env;
     }
-    markInheritedEnvKeys(entry, inheritedEnvKeys);
     return entry;
   }
 
@@ -241,10 +201,6 @@ export class OpenCodeAdapter extends JsonAdapter {
     if (JSON.stringify(existing.command) !== JSON.stringify(desired.command)) return false;
     if ((existing.url ?? undefined) !== (desired.url ?? undefined)) return false;
 
-    const inheritedEnvKeys = (desired as JsonEntry)[INHERITED_ENV_KEYS] ?? [];
-    const existingEnvironment = asRecord(existing.environment);
-    const inheritedAlreadyRemoved = inheritedEnvKeys.every((key) => !Object.hasOwn(existingEnvironment, key));
-    if (!inheritedAlreadyRemoved) return false;
     if (!desiredKeysMatch(existing.environment, desired.environment)) return false;
     return desiredKeysMatch(existing.headers, desired.headers);
   }

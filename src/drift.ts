@@ -7,7 +7,6 @@ import { checkLaunchAgentPathDrift } from "./drift-checks/launchagent-path.js";
 import {
   checkBarePlaceholdersDrift,
   checkCatalogPinDrift,
-  checkDevinPermissionDrift,
   checkMcpDrift,
   checkMcpEnvVarsDrift,
   checkMcpPermissionDrift,
@@ -31,7 +30,6 @@ export {
   checkBrokenSymlinks,
   checkCatalogPinDrift,
   checkCommandsDrift,
-  checkDevinPermissionDrift,
   checkEnvHygieneDrift,
   checkHooksDrift,
   checkInstructionsDrift,

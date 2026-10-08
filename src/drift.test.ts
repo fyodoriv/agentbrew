@@ -103,7 +103,6 @@ import {
   checkAgentDefsDrift,
   checkBrokenSymlinks,
   checkCommandsDrift,
-  checkDevinPermissionDrift,
   checkInstructionsDrift,
   checkMcpDrift,
   checkMcpEnvVarsDrift,
@@ -126,7 +125,6 @@ import { collectAgentDefs, getAgentDefTargets } from "./sync/agents-sync.js";
 import { compressSkillsListing, stripCursorRulesSection } from "./sync/instructions-content.js";
 import { loadInstructions } from "./sync/instructions-sync.js";
 import { extractManagedSection, loadSharedRules } from "./sync/rules-sync.js";
-import { AGENT_DEFINITIONS } from "./types.js";
 
 const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
@@ -208,39 +206,6 @@ describe("checkMcpDrift", () => {
     const result = checkMcpDrift();
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ agent: "kiro", type: "mcp", detail: "missing server: missing-server" });
-  });
-
-  it("does not report unresolved literal-agent servers as missing", () => {
-    const previousToken = process.env.MISSING_DEVIN_DRIFT_TOKEN;
-    delete process.env.MISSING_DEVIN_DRIFT_TOKEN;
-    mockLoadState.mockReturnValue(
-      makeState({
-        agents: [makeMcpAgentDef("devin", { skillsDir: "x", mcpConfig: "/tmp/devin.json" })],
-        mcpServers: [
-          { name: "context7", command: "npx", args: [], env: {}, source: "user" },
-          {
-            name: "jenkins",
-            command: "npx",
-            args: [],
-            env: { JENKINS_API_TOKEN: "${MISSING_DEVIN_DRIFT_TOKEN}" },
-            source: "user",
-          },
-        ],
-      }),
-    );
-    mockExistsSync.mockReturnValue(true);
-    mockGetAdapter.mockReturnValue({
-      readEntries: () => ({ context7: {} }),
-      writeEntries: () => {},
-      removeEntries: () => {},
-    } as unknown as ReturnType<typeof getAdapter>);
-
-    try {
-      expect(checkMcpDrift()).toEqual([]);
-    } finally {
-      if (previousToken === undefined) delete process.env.MISSING_DEVIN_DRIFT_TOKEN;
-      else process.env.MISSING_DEVIN_DRIFT_TOKEN = previousToken;
-    }
   });
 
   it("reports 'config file unreadable' when adapter throws", () => {
@@ -1066,145 +1031,6 @@ describe("collectDrift", () => {
   });
 });
 
-// ── checkDevinPermissionDrift ─────────────────────────────────────────────────
-
-describe("checkDevinPermissionDrift", () => {
-  function makeDevinState(detected = true) {
-    return makeState({
-      agents: [
-        {
-          name: "devin",
-          detected,
-          skillsDir: "~/.config/devin/skills",
-        },
-      ],
-    });
-  }
-
-  function makeDevinConfig(mcpServers: Record<string, unknown>, allowList: string[]): string {
-    return JSON.stringify({
-      mcpServers,
-      permissions: { allow: allowList },
-    });
-  }
-
-  it("returns empty when state is absent", () => {
-    mockLoadState.mockReturnValue(undefined);
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("returns empty when devin agent is not detected", () => {
-    mockLoadState.mockReturnValue(makeDevinState(false));
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("returns empty when devin config file does not exist", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(false);
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("returns empty when config file is unreadable (JSON parse error)", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue("not valid json");
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("returns empty when all servers have matching permissions", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      makeDevinConfig({ minsky: {}, playwright: {} }, ["mcp__minsky__*", "mcp__playwright__*", "Read(**)"]),
-    );
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("flags a server missing from permissions.allow", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(makeDevinConfig({ minsky: {}, "new-server": {} }, ["mcp__minsky__*"]));
-    const result = checkDevinPermissionDrift();
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("mcp-permissions");
-    expect(result[0].detail).toContain("new-server");
-    expect(result[0].agent).toBe("devin");
-  });
-
-  it("flags a stale permission entry with no matching server", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(makeDevinConfig({ minsky: {} }, ["mcp__minsky__*", "mcp__removed-server__*"]));
-    const result = checkDevinPermissionDrift();
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("mcp-permissions");
-    expect(result[0].detail).toContain("removed-server");
-  });
-
-  it("does not flag state-managed server permissions as stale when the server is skipped", () => {
-    mockLoadState.mockReturnValue(
-      makeState({
-        agents: [
-          {
-            name: "devin",
-            detected: true,
-            skillsDir: "~/.config/devin/skills",
-          },
-        ],
-        mcpServers: [
-          {
-            name: "jenkins",
-            command: "npx",
-            args: [],
-            env: { JENKINS_API_TOKEN: "${MISSING_DEVIN_PERMISSION_TOKEN}" },
-            source: "user",
-          },
-        ],
-      }),
-    );
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(makeDevinConfig({}, ["mcp__jenkins__*"]));
-
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("flags both missing and stale in the same config", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      makeDevinConfig({ minsky: {}, "new-one": {} }, ["mcp__minsky__*", "mcp__old-one__*"]),
-    );
-    const result = checkDevinPermissionDrift();
-    expect(result).toHaveLength(2);
-    const details = result.map((r) => r.detail);
-    expect(details.some((d) => d.includes("new-one"))).toBe(true);
-    expect(details.some((d) => d.includes("old-one"))).toBe(true);
-  });
-
-  it("ignores non-mcp entries in permissions.allow", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(makeDevinConfig({ minsky: {} }, ["Read(**)", "Write(~/**)", "mcp__minsky__*"]));
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("handles empty mcpServers and empty allow list without drift", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(makeDevinConfig({}, []));
-    expect(checkDevinPermissionDrift()).toEqual([]);
-  });
-
-  it("handles missing permissions key gracefully", () => {
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(JSON.stringify({ mcpServers: { minsky: {} } }));
-    const result = checkDevinPermissionDrift();
-    expect(result).toHaveLength(1);
-    expect(result[0].detail).toContain("minsky");
-  });
-});
-
 describe("checkMcpPermissionDrift", () => {
   function makeCursorState() {
     return makeState({
@@ -1612,48 +1438,6 @@ describe("checkCommandsDrift — additional edge cases", () => {
   });
 });
 
-describe("checkDevinPermissionDrift — additional edge cases", () => {
-  function makeDevinState(detected = true) {
-    return makeState({
-      agents: [
-        {
-          name: "devin",
-          detected,
-          skillsDir: "~/.config/devin/skills",
-        },
-      ],
-    });
-  }
-
-  it("handles missing mcpServers key in config (uses empty object fallback)", () => {
-    // Config has permissions but NO mcpServers key — mcpServers ?? {} should yield {}
-    // so configuredNames is empty, and any permissions entries become stale
-    mockLoadState.mockReturnValue(makeDevinState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(JSON.stringify({ permissions: { allow: ["mcp__stale-server__*"] } }));
-
-    const result = checkDevinPermissionDrift();
-    // stale permission with no matching server
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("mcp-permissions");
-    expect(result[0].detail).toContain("stale permission");
-    expect(result[0].detail).toContain("stale-server");
-  });
-
-  it("returns empty when devin agent definition has no mcpConfig path", () => {
-    const devin = AGENT_DEFINITIONS.find((a) => a.name === "devin");
-    expect(devin).toBeDefined();
-    const prev = devin!.mcpConfig;
-    try {
-      (devin as { mcpConfig?: string }).mcpConfig = undefined;
-      mockLoadState.mockReturnValue(makeDevinState());
-      expect(checkDevinPermissionDrift()).toEqual([]);
-    } finally {
-      (devin as { mcpConfig?: string }).mcpConfig = prev;
-    }
-  });
-});
-
 // ── checkMcpDrift — mcpKey and multi-agent iteration ─────────────────────────
 
 describe("checkMcpDrift — mcpKey and multi-agent", () => {
@@ -1945,12 +1729,10 @@ describe("checkAgentDefsDrift", () => {
       ],
     ]);
     mockCollectAgentDefs.mockReturnValue({ agents, bySource: { agentbrew: 1 } });
-    mockGetAgentDefTargets.mockReturnValue([
-      { agentName: "devin", dir: "~/.config/devin/agents", format: "subdir" as const },
-    ]);
+    mockGetAgentDefTargets.mockReturnValue([{ agentName: "codex", dir: "~/.codex/agents", format: "subdir" as const }]);
     mockExistsSync.mockReturnValue(true);
     mockLoadManifest.mockReturnValue({
-      hashes: { [`${homedir()}/.config/devin/agents/reviewer/AGENT.md`]: "old-hash" },
+      hashes: { [`${homedir()}/.codex/agents/reviewer/AGENT.md`]: "old-hash" },
     });
     mockReadFileSync.mockImplementation((path) => {
       const p = String(path);
@@ -1961,7 +1743,7 @@ describe("checkAgentDefsDrift", () => {
     const result = checkAgentDefsDrift();
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      agent: "devin",
+      agent: "codex",
       type: "agents",
       detail: expect.stringContaining("agent def out of date: reviewer"),
     });
@@ -2057,7 +1839,7 @@ describe("formatDriftSummary", () => {
   });
 
   it("handles a single drift type", () => {
-    const items = [{ agent: "devin", type: "mcp" as const, detail: "missing server" }];
+    const items = [{ agent: "kiro", type: "mcp" as const, detail: "missing server" }];
     expect(formatDriftSummary(items)).toBe("(1 mcp)");
   });
 });

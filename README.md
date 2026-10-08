@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/agentbrew.svg)](https://www.npmjs.com/package/agentbrew)
 [![license](https://img.shields.io/npm/l/agentbrew.svg)](LICENSE)
 
-**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Cursor, Windsurf, Devin, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
+**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Cursor, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
 
 ```bash
 npx agentbrew              # try it — detects agents, installs recommended set, schedules drift repair
@@ -71,8 +71,6 @@ agentbrew install composio                 # deploys Composio Connect MCP (1000+
 agentbrew setup composio                   # guided wizard → saves to ~/.zshenv.secrets
 ```
 
-Literal-env agents such as Devin skip servers whose required env vars are missing, so one unconfigured server never prevents the rest of the MCP config from loading. For Devin, `agentbrew sync` omits direct `${VAR}` env mappings instead of writing resolved token values into `~/.config/devin/config.json`; launch Devin from a shell that exports those vars (for example after sourcing `~/.zshenv.secrets`) so stdio MCP servers inherit them at runtime. `agentbrew status` still reports missing env vars until you run `agentbrew setup`.
-
 **Scopes.** `install` is global by default (applies to every agent). Use `--local` / `--project` to install into the current repo's `.agentbrew/skills/` — ideal for project-specific conventions or team-shared skills.
 
 **Delegated skill install networking.** Remote skill sources are installed through Vercel's `skills` CLI for agents it supports. That subprocess may need egress to `registry.npmjs.org` (to resolve the `skills` package), GitHub or the source Git host (to fetch the skill repo), and `skills.sh` (for risk-assessment metadata). If a proxy blocks any of those hosts, configure npm/git proxy settings first; agentbrew will still fall back to its native scanner when the subprocess fails.
@@ -134,10 +132,10 @@ defaultModel: claude-opus-5-5    # default model for every agent with a file-man
 defaultEffort: xhigh             # reasoning effort, for agents that store it separately
 modelOverrides:
   codex: null                    # null = skip; keep that agent's own model
-  devin: null                    # (a string swaps in that provider's id for the same model)
+                                 # (a string swaps in that provider's id for the same model)
 ```
 
-`${VAR}` substitutes from your shell environment at sync time; `${VAR:-default}` provides a fallback. Devin is the exception for direct MCP `env` mappings: agentbrew leaves those secrets out of Devin's generated config and relies on the launching shell environment instead.
+`${VAR}` substitutes from your shell environment at sync time; `${VAR:-default}` provides a fallback.
 
 ```bash
 agentbrew init --from-state              # generate an Agentfile from the current setup
@@ -148,7 +146,7 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs.
 
-**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`), Devin (`~/.config/devin/config.json` `agent.model`), and Codex (`~/.codex/config.toml` `model`). Cursor and Windsurf keep the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex and Devin skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). Cursor keeps the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
@@ -158,13 +156,13 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
-- **MCP servers** → JSON (Cursor, Claude, Windsurf at `~/.codeium/windsurf/mcp_config.json`), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
-- **MCP permissions** → `permissions.allow` entries for agents that require explicit MCP tool grants (Cursor CLI, Devin)
+- **MCP servers** → JSON (Cursor, Claude), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
+- **MCP permissions** → `permissions.allow` entries for agents that require explicit MCP tool grants (Cursor CLI)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources
-- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to Cursor/Windsurf (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.)
+- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to Cursor (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.)
 - **Commands** → Markdown auto-transformed per agent
-- **Hooks** → native hook files (Claude Code settings, Cursor hooks.json, project-local Devin hooks.v1.json)
-- **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Devin config.json, Codex config.toml)
+- **Hooks** → native hook files (Claude Code settings, Cursor hooks.json)
+- **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies
 
@@ -452,7 +450,6 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | codex | ✓ | ✓ | ✓ | — | ✓ | — |
 | copilot | ✓ | ✓ | ✓ | — | — | — |
 | cursor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| devin | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | firebender | ✓ | — | ✓ | ✓ | — | — |
 | gemini-cli | ✓ | ✓ | ✓ | ✓ | — | — |
 | goose | ✓ | ✓ | ✓ | — | — | — |
@@ -460,7 +457,6 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | kiro | ✓ | ✓ | — | — | — | — |
 | opencode | ✓ | ✓ | — | ✓ | — | — |
 | roo-code | ✓ | ✓ | ✓ | — | — | — |
-| windsurf | ✓ | ✓ | ✓ | ✓ | — | — |
 
 ### SKILL.md feature support
 
@@ -476,7 +472,6 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | codex | ✓ | — | — |
 | copilot | ✓ | — | — |
 | cursor | ✓ | — | — |
-| devin | ✓ | — | — |
 | firebender | ✓ | — | — |
 | gemini-cli | ✓ | — | — |
 | goose | ✓ | — | — |
@@ -484,7 +479,6 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | kiro | — | — | ✓ |
 | opencode | ✓ | — | — |
 | roo-code | ✓ | — | — |
-| windsurf | ✓ | — | — |
 
 Skills-only (experimental; sync only writes to `skillsDir`; not tested on real user machines beyond the author's): adal, aider-desk, antigravity, bob, codearts-agent, codebuddy, codemaker, codestudio, command-code, continue, cortex, crush, deepagents, dexto, droid, forgecode, iflow-cli, junie, kimi-cli, kode, mcpjam, mistral-vibe, mux, neovate, openclaw, openhands, pi, pochi, qoder, qodo, qwen-code, replit, rovodev, tabnine-cli, trae, trae-cn, universal, warp, zencoder.
 <!-- agent-matrix:end -->

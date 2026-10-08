@@ -10,6 +10,7 @@ import {
   installMemoryLaunchAgents,
   isMemoryLaunchAgentInstalled,
   kickstartMemoryDaemon,
+  memoryLaunchAgentIdentity,
   memoryLaunchAgentSupported,
   memoryMaintenanceLaunchAgentStatus,
 } from "../memory/launchagent.js";
@@ -304,6 +305,7 @@ export function registerMemoryCommands(program: Command): void {
         launchAgentSupported,
         launchAgentInstalled: isMemoryLaunchAgentInstalled(),
         maintenanceLaunchAgent: launchAgentSupported ? memoryMaintenanceLaunchAgentStatus() : null,
+        launchAgentIdentity: launchAgentSupported ? memoryLaunchAgentIdentity() : null,
         mcpUrl: statusJson.mcpUrl,
         dbPath: statusJson.dbPath,
         backupsDir: statusJson.backupsDir,

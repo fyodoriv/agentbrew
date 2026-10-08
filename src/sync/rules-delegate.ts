@@ -90,7 +90,7 @@ interface DelegateRulesGenerateOptions {
  *
  * Pure caller responsibility:
  *   - Wrap content in agentbrew's managed-section markers.
- *   - Route carve-outs (`windsurf`, `augment`, `devin`, `claude-desktop`)
+ *   - Route carve-outs (`augment`, `claude-desktop`)
  *     to the native rules-sync path. {@link buildAiRulesAgentList}
  *     filters them; the caller checks {@link AGENTBREW_ONLY_RULES_AGENTS}
  *     directly if it needs to log the rationale.

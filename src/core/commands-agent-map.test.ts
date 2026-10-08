@@ -36,12 +36,10 @@ describe("AI_RULES_COMMANDS_TO_AGENTBREW", () => {
 
 describe("AGENTBREW_ONLY_COMMANDS_AGENTS", () => {
   it("matches AGENTBREW_ONLY_COMMANDS_AGENTS", () => {
-    // Format/transform mismatch carve-outs (windsurf, gemini-cli, opencode),
-    // Cognition product carve-out (devin), transitive carve-out
+    // Format/transform mismatch carve-outs (gemini-cli, opencode),
+    // transitive carve-out
     // (claude-desktop, which shares ~/.claude/commands with claude-code).
-    expect(new Set(AGENTBREW_ONLY_COMMANDS_AGENTS)).toEqual(
-      new Set(["windsurf", "devin", "gemini-cli", "claude-desktop", "opencode"]),
-    );
+    expect(new Set(AGENTBREW_ONLY_COMMANDS_AGENTS)).toEqual(new Set(["gemini-cli", "claude-desktop", "opencode"]));
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -71,13 +69,7 @@ describe("AGENTBREW_ONLY_COMMANDS_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_COMMANDS_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_COMMANDS_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_COMMANDS_RATIONALE).sort()).toEqual([
-      "claude-desktop",
-      "devin",
-      "gemini-cli",
-      "opencode",
-      "windsurf",
-    ]);
+    expect(Object.keys(AGENTBREW_ONLY_COMMANDS_RATIONALE).sort()).toEqual(["claude-desktop", "gemini-cli", "opencode"]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {
@@ -90,10 +82,10 @@ describe("AGENTBREW_ONLY_COMMANDS_RATIONALE", () => {
     }
   });
 
-  it("each rationale names ai-rules specifically (or explains the cross-tool / Cognition / readsFrom scope)", () => {
+  it("each rationale names ai-rules specifically (or explains the cross-tool / readsFrom scope)", () => {
     for (const [agent, reason] of Object.entries(AGENTBREW_ONLY_COMMANDS_RATIONALE)) {
       const mentionsAiRules = /ai-rules/i.test(reason);
-      const mentionsScope = /skills-?CLI|mcpm|cognition|codeium|windsurf|readsFrom/i.test(reason);
+      const mentionsScope = /skills-?CLI|mcpm|readsFrom/i.test(reason);
       expect(mentionsAiRules || mentionsScope, `rationale for ${agent} should reference 'ai-rules' or scope`).toBe(
         true,
       );
@@ -111,8 +103,6 @@ describe("toAiRulesCommandsAgent", () => {
   });
 
   it("returns null for agentbrew-only commands carve-outs", () => {
-    expect(toAiRulesCommandsAgent("windsurf")).toBeNull();
-    expect(toAiRulesCommandsAgent("devin")).toBeNull();
     expect(toAiRulesCommandsAgent("gemini-cli")).toBeNull();
     expect(toAiRulesCommandsAgent("claude-desktop")).toBeNull();
     expect(toAiRulesCommandsAgent("opencode")).toBeNull();
@@ -229,13 +219,13 @@ describe("buildAiRulesCommandsAgentList", () => {
 
   describe("carve-out path", () => {
     it("skips AGENTBREW_ONLY_COMMANDS_AGENTS and reports them in carveOuts", () => {
-      // The carve-outs (windsurf, devin, gemini-cli, claude-desktop,
+      // The carve-outs (gemini-cli, claude-desktop,
       // opencode) have no separate ai-rules dispatch — caller must route
       // them to native OR (for claude-desktop) rely on the claude-code
       // intersection covering the same file via readsFrom.
-      expect(buildAiRulesCommandsAgentList(["windsurf", "devin", "gemini-cli", "claude-desktop", "opencode"])).toEqual({
+      expect(buildAiRulesCommandsAgentList(["gemini-cli", "claude-desktop", "opencode"])).toEqual({
         agents: [],
-        carveOuts: ["windsurf", "devin", "gemini-cli", "claude-desktop", "opencode"],
+        carveOuts: ["gemini-cli", "claude-desktop", "opencode"],
       });
     });
   });
@@ -247,8 +237,6 @@ describe("buildAiRulesCommandsAgentList", () => {
         buildAiRulesCommandsAgentList([
           "claude-code", // rename
           "cursor", // intersection
-          "windsurf", // carve-out
-          "devin", // carve-out
           "gemini-cli", // carve-out
           "claude-desktop", // carve-out
           "opencode", // carve-out
@@ -257,14 +245,14 @@ describe("buildAiRulesCommandsAgentList", () => {
         ]),
       ).toEqual({
         agents: ["claude", "cursor", "amp", "firebender"],
-        carveOuts: ["windsurf", "devin", "gemini-cli", "claude-desktop", "opencode"],
+        carveOuts: ["gemini-cli", "claude-desktop", "opencode"],
       });
     });
 
     it("preserves carve-out order in the carveOuts array", () => {
-      expect(buildAiRulesCommandsAgentList(["devin", "claude-code", "windsurf"])).toEqual({
+      expect(buildAiRulesCommandsAgentList(["opencode", "claude-code", "gemini-cli"])).toEqual({
         agents: ["claude"],
-        carveOuts: ["devin", "windsurf"],
+        carveOuts: ["opencode", "gemini-cli"],
       });
     });
 
@@ -300,7 +288,7 @@ describe("coverage invariant — every commands-capable agent in agents.yaml is 
       }
     }
     // The current commands-capable agents in agentbrew (claude-code,
-    // cursor, windsurf, devin, gemini-cli, claude-desktop, opencode) split
+    // cursor, gemini-cli, claude-desktop, opencode) split
     // intersection + carve-outs. If a new commands-capable agent lands
     // in agents.yaml without an entry in this map (intersection / rename /
     // carve-out), this test fails — preventing silent drift.

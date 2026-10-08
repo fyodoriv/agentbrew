@@ -29,9 +29,7 @@ describe("AGENTBREW_TO_MCPM", () => {
 
 describe("AGENTBREW_ONLY_MCP_AGENTS", () => {
   it("matches AGENTBREW_ONLY_MCP_AGENTS", () => {
-    expect(new Set(AGENTBREW_ONLY_MCP_AGENTS)).toEqual(
-      new Set(["devin", "copilot", "opencode", "kiro", "amp", "windsurf", "cursor"]),
-    );
+    expect(new Set(AGENTBREW_ONLY_MCP_AGENTS)).toEqual(new Set(["copilot", "opencode", "kiro", "amp", "cursor"]));
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -52,15 +50,7 @@ describe("AGENTBREW_ONLY_MCP_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_MCP_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_MCP_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_MCP_RATIONALE).sort()).toEqual([
-      "amp",
-      "copilot",
-      "cursor",
-      "devin",
-      "kiro",
-      "opencode",
-      "windsurf",
-    ]);
+    expect(Object.keys(AGENTBREW_ONLY_MCP_RATIONALE).sort()).toEqual(["amp", "copilot", "cursor", "kiro", "opencode"]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {
@@ -76,7 +66,7 @@ describe("AGENTBREW_ONLY_MCP_RATIONALE", () => {
   it("each rationale names mcpm specifically (or explains the organization-internal scope)", () => {
     // The rationale must reference the upstream tool by name OR explain why
     // the agent is out-of-scope for an upstream-general tool. Pins the doc
-    // shape — a future "devin: legacy" one-word entry would fail the test.
+    // shape — a future "kiro: legacy" one-word entry would fail the test.
     for (const [agent, reason] of Object.entries(AGENTBREW_ONLY_MCP_RATIONALE)) {
       const mentionsMcpm = /mcpm/i.test(reason);
       const mentionsOrganizationInternal = /organization/i.test(reason);
@@ -99,12 +89,10 @@ describe("toMcpmClient", () => {
   });
 
   it("returns null for agentbrew-only agents (carve-outs)", () => {
-    expect(toMcpmClient("devin")).toBeNull();
     expect(toMcpmClient("copilot")).toBeNull();
     expect(toMcpmClient("opencode")).toBeNull();
     expect(toMcpmClient("kiro")).toBeNull();
     expect(toMcpmClient("amp")).toBeNull();
-    expect(toMcpmClient("windsurf")).toBeNull();
     expect(toMcpmClient("cursor")).toBeNull();
   });
 
@@ -175,11 +163,11 @@ describe("buildMcpmClientList", () => {
 
   describe("carve-out path", () => {
     it("skips agentbrew-only agents and reports them in carveOuts", () => {
-      // The carve-outs (devin, copilot, opencode, kiro, amp, windsurf,
+      // The carve-outs (copilot, opencode, kiro, amp,
       // cursor) have no mcpm-delegated write — caller routes them to native.
-      expect(buildMcpmClientList(["devin", "copilot", "opencode", "kiro", "amp", "windsurf", "cursor"])).toEqual({
+      expect(buildMcpmClientList(["copilot", "opencode", "kiro", "amp", "cursor"])).toEqual({
         clients: [],
-        carveOuts: ["devin", "copilot", "opencode", "kiro", "amp", "windsurf", "cursor"],
+        carveOuts: ["copilot", "opencode", "kiro", "amp", "cursor"],
       });
     });
   });
@@ -194,13 +182,11 @@ describe("buildMcpmClientList", () => {
           "claude-code",
           "claude-desktop",
           "cursor",
-          "windsurf",
           "codex",
           "gemini-cli",
           "goose",
           "cline",
           "roo-code",
-          "devin",
           "copilot",
           "opencode",
           "kiro",
@@ -208,14 +194,14 @@ describe("buildMcpmClientList", () => {
         ]),
       ).toEqual({
         clients: ["claude-code", "claude-desktop", "codex-cli", "gemini-cli", "goose-cli", "cline", "roo-code"],
-        carveOuts: ["cursor", "windsurf", "devin", "copilot", "opencode", "kiro", "amp"],
+        carveOuts: ["cursor", "copilot", "opencode", "kiro", "amp"],
       });
     });
 
     it("preserves carve-out order in the carveOuts array", () => {
-      expect(buildMcpmClientList(["devin", "claude-code", "copilot"])).toEqual({
+      expect(buildMcpmClientList(["kiro", "claude-code", "copilot"])).toEqual({
         clients: ["claude-code"],
-        carveOuts: ["devin", "copilot"],
+        carveOuts: ["kiro", "copilot"],
       });
     });
   });
@@ -264,7 +250,7 @@ describe("coverage invariant — every MCP-capable agent in agents.yaml is class
 });
 
 describe("primary-agent shared-memory transport parity", () => {
-  const primaryAgents = ["claude-code", "cursor", "windsurf", "devin", "codex"];
+  const primaryAgents = ["claude-code", "cursor", "codex"];
 
   it("routes every primary agent through either mcpm or a native MCP config writer", () => {
     const definitions = loadAgentDefinitions();
@@ -277,6 +263,6 @@ describe("primary-agent shared-memory transport parity", () => {
 
     const transport = buildMcpmClientList(primaryAgents);
     expect(transport.clients).toEqual(["claude-code", "codex-cli"]);
-    expect(transport.carveOuts).toEqual(["cursor", "windsurf", "devin"]);
+    expect(transport.carveOuts).toEqual(["cursor"]);
   });
 });

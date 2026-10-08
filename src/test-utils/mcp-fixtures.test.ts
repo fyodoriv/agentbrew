@@ -17,13 +17,6 @@ describe("makeMcpAgentDef", () => {
     expect(agent.mcpConfig).toBe("~/.config/amp/settings.json");
   });
 
-  it("resolves paths for devin (subdir agentsDirFormat carve-out)", () => {
-    const agent = makeMcpAgentDef("devin");
-    expect(agent.name).toBe("devin");
-    expect(agent.skillsDir).toBe("~/.config/devin/skills");
-    expect(agent.mcpConfig).toBe("~/.config/devin/config.json");
-  });
-
   it("respects explicit detected=false", () => {
     const agent = makeMcpAgentDef("kiro", { detected: false });
     expect(agent.detected).toBe(false);

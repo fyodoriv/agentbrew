@@ -241,7 +241,7 @@ describe("diskIO.write", () => {
       schemaVersion: 1,
       agents: [
         { name: "cursor", detected: true, skillsDir: "~/.cursor/skills", commandTransform: () => "x" },
-        { name: "windsurf", detected: true, skillsDir: "~/.codeium/windsurf/skills", commandTransform: () => "y" },
+        { name: "kiro", detected: true, skillsDir: "~/.kiro/skills", commandTransform: () => "y" },
         { name: "gemini-cli", detected: true, skillsDir: "~/.gemini/skills", commandTransform: () => "z" },
       ],
       catalogVersion: "0.1.0",
@@ -249,7 +249,7 @@ describe("diskIO.write", () => {
     expect(() => diskIO.write(state)).not.toThrow();
     const written = mockWriteFileSync.mock.calls[0][1] as string;
     expect(written).toContain("cursor");
-    expect(written).toContain("windsurf");
+    expect(written).toContain("kiro");
     expect(written).toContain("gemini-cli");
     expect(written).not.toContain("commandTransform");
   });

@@ -202,57 +202,6 @@ describe("JsonAdapter", () => {
         env: { TOKEN: "my-secret" },
       });
     });
-
-    it("does not write resolved Devin env secrets when the shell can provide them at runtime", () => {
-      const previous = process.env.DEVIN_ADAPTER_SECRET;
-      process.env.DEVIN_ADAPTER_SECRET = "super-secret-value";
-      try {
-        const server = makeServer({
-          env: {
-            DEVIN_ADAPTER_SECRET: "${DEVIN_ADAPTER_SECRET}",
-            APP_ENV: "dev",
-          },
-        });
-        const entry = adapter.toEntry(server, "devin");
-        expect(entry).toEqual({
-          command: "npx",
-          args: ["-y", "@test/server"],
-          env: { APP_ENV: "dev" },
-        });
-        expect(JSON.stringify(entry)).not.toContain("super-secret-value");
-      } finally {
-        if (previous === undefined) delete process.env.DEVIN_ADAPTER_SECRET;
-        else process.env.DEVIN_ADAPTER_SECRET = previous;
-      }
-    });
-
-    it("removes older resolved Devin env secrets when updating an entry that now inherits them", () => {
-      const previous = process.env.DEVIN_ADAPTER_SECRET;
-      process.env.DEVIN_ADAPTER_SECRET = "super-secret-value";
-      try {
-        const server = makeServer({
-          env: {
-            DEVIN_ADAPTER_SECRET: "${DEVIN_ADAPTER_SECRET}",
-            APP_ENV: "dev",
-          },
-        });
-        const entry = adapter.toEntry(server, "devin");
-        const entries: Record<string, Record<string, unknown>> = {
-          "test-server": {
-            command: "npx",
-            args: ["-y", "@test/server"],
-            env: { DEVIN_ADAPTER_SECRET: "old-token", USER_EXTRA: "keep" },
-          },
-        };
-
-        expect(adapter.entriesMatch(entries["test-server"], entry)).toBe(false);
-        adapter.applyUpdate(entries, "test-server", entry);
-        expect(entries["test-server"].env).toEqual({ USER_EXTRA: "keep", APP_ENV: "dev" });
-      } finally {
-        if (previous === undefined) delete process.env.DEVIN_ADAPTER_SECRET;
-        else process.env.DEVIN_ADAPTER_SECRET = previous;
-      }
-    });
   });
 
   describe("entriesMatch", () => {
@@ -736,13 +685,13 @@ describe("getAdapter", () => {
   });
 });
 
-// ── Regression: agentbrew-sync-clear-stale-mcp-fields (Devin + Windsurf) ──────
-// Devin and Windsurf both resolve to JsonAdapter (mcpFormat defaults to "json").
+// ── Regression: agentbrew-sync-clear-stale-mcp-fields (json-format agents) ──────
+// json-format agents resolve to JsonAdapter (mcpFormat defaults to "json").
 // When central state switches `github` from `{ command: "npx", args, env }` to a
 // bare `{ command: "/abs/organization-github-mcp" }`, the generated config must not keep
-// the previous shape's args/env (it caused Devin to invoke the organization wrapper with
+// the previous shape's args/env (it caused an agent to invoke the organization wrapper with
 // public-GitHub-MCP args).
-describe.each(["devin", "windsurf"])("shape switch clears stale fields for %s", (agentName) => {
+describe.each(["kiro", "amp"])("shape switch clears stale fields for %s", (agentName) => {
   it("leaves an organization wrapper entry as exactly { command } after the previous npx shape", () => {
     const adapter = getAdapter({ name: agentName, mcpFormat: undefined } as Parameters<typeof getAdapter>[0]);
     const wrapper = "/Users/x/.local/bin/organization-github-mcp";

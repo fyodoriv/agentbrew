@@ -17,20 +17,20 @@
 # OPTIONAL SYNC SURFACES (enable the corresponding sync by setting the field)
 #   rulesFile: string — path to a single rules file. Agentbrew injects its
 #         managed section between markers (see src/sync/rules-sync.ts). May
-#         coexist with rulesDir — windsurf uses both.
+#         coexist with rulesDir.
 #   rulesDir: string — path to a per-file rules directory (e.g. ~/.cursor/rules/).
 #         One file per rule; agentbrew only touches its own filenames. May
 #         coexist with rulesFile.
 #   commandsDir: string — path to commands directory. Commands are .md files
 #         transformed per-agent on write.
-#   commandTransform: "cursor" | "windsurf" | "gemini" | ... — transform key
+#   commandTransform: "cursor" | "gemini" | ... — transform key
 #         resolved by src/core/transforms.ts. Only meaningful when
 #         commandsDir is set.
 #   commandFileExt: string — override default `.md` (e.g. `.toml` for Gemini).
 #         Only meaningful when commandsDir is set.
 #   agentsDir: string — path to sub-agent definitions directory.
 #   agentsDirFormat: "flat" | "subdir" — "flat" writes `<name>.md` (default),
-#         "subdir" writes `<name>/AGENT.md` (Devin-style). Only meaningful
+#         "subdir" writes `<name>/AGENT.md` (AGENT.md per subdir). Only meaningful
 #         when agentsDir is set.
 #   hooksFile: string — path to hooks config file (e.g. ~/.claude/settings.json).
 #   hooksKey: string — JSON key for the hooks object inside hooksFile. Only
@@ -40,7 +40,7 @@
 #         dot-separated key path inside it (e.g. "model", "agent.model"),
 #         `format` is "json" (default) or "toml". Enables model-sync: the
 #         Agentfile's `defaultModel` is written here on every sync. Omit for
-#         agents whose model lives in app-managed/UI state (Cursor, Windsurf).
+#         agents whose model lives in app-managed/UI state (Cursor).
 #         `effortPath` is the key path for the Agentfile's `defaultEffort`, for
 #         agents that store reasoning effort apart from the model id.
 #
@@ -157,34 +157,9 @@
   hooksFile: ~/.cursor/hooks.json
   hooksFormat: cursor
 
-- name: windsurf
-  skillsDir: ~/.codeium/windsurf/skills
-  mcpConfig: ~/.codeium/windsurf/mcp_config.json
-  rulesFile: ~/.codeium/windsurf/memories/global_rules.md
-  rulesDir: ~/.windsurf/rules
-  commandsDir: ~/.codeium/windsurf/global_workflows
-  commandTransform: windsurf
-
 - name: augment
   skillsDir: ~/.augment/skills
   rulesFile: ~/.augment/guidelines.md
-
-- name: devin
-  skillsDir: ~/.config/devin/skills
-  mcpConfig: ~/.config/devin/config.json
-  mcpKey: mcpServers
-  mcpPermissionsConfig:
-    file: ~/.config/devin/config.json
-  rulesFile: ~/.config/devin/AGENTS.md
-  commandsDir: ~/.config/devin/commands
-  agentsDir: ~/.config/devin/agents
-  agentsDirFormat: subdir
-  hooksFile: .devin/hooks.v1.json
-  hooksFormat: claude-direct
-  hooksScope: project
-  modelConfig:
-    file: ~/.config/devin/config.json
-    path: agent.model
 
 - name: codex
   skillsDir: ~/.codex/skills

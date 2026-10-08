@@ -55,7 +55,7 @@ agentbrew sync
 ```
 
 `agentbrew sync` reads the Agentfile from the current directory and:
-- Registers MCP servers → deployed to Claude, Cursor, Windsurf, Devin, etc.
+- Registers MCP servers → deployed to Claude, Cursor, Codex, etc.
 - Adds skill sources → skills symlinked to all agents
 - Merges rules → injected into every agent's instruction file
 - Adds command sources → commands deployed to all agents
@@ -109,7 +109,7 @@ Local directories or GitHub repo URLs containing SKILL.md files. Added to `state
 
 ### Rules (`rules:`)
 
-Inline rules or a path to a rules file. Merged with global rules — project rules augment, never replace. Injected into every agent's instruction file (CLAUDE.md, Windsurf memories, Augment guidelines, etc.).
+Inline rules or a path to a rules file. Merged with global rules — project rules augment, never replace. Injected into every agent's instruction file (CLAUDE.md, Augment guidelines, etc.).
 
 **Already works today** — Agentfile `rules` field flows through rules-sync.
 
@@ -123,7 +123,7 @@ List of directories containing agent persona definitions (`.md` files). Deployed
 
 ### Lifecycle hooks (`hooks:`)
 
-List of hook entries with event, matcher, and command/prompt. Deployed to native hook surfaces for agents that support them, including Claude Code settings, Cursor hooks.json, and project-local Devin hooks.v1.json.
+List of hook entries with event, matcher, and command/prompt. Deployed to native hook surfaces for agents that support them, including Claude Code settings, Cursor hooks.json.
 
 ## Merge priority
 

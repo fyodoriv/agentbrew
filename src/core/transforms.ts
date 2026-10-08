@@ -17,10 +17,6 @@ function toCursorFormat(content: string): string {
   return stripFrontmatter(content).replace(/<!--\s*turbo\s*-->/g, "// turbo");
 }
 
-function toWindsurfFormat(content: string): string {
-  return content.replace(/<!--\s*turbo\s*-->/g, "// turbo");
-}
-
 function toGeminiFormat(content: string): string {
   const description = extractFrontmatterField(content, "description") ?? "";
   let body = stripFrontmatter(content).trim();
@@ -50,7 +46,6 @@ function toGeminiFormat(content: string): string {
 
 const TRANSFORM_MAP: Record<string, CommandTransform> = {
   cursor: toCursorFormat,
-  windsurf: toWindsurfFormat,
   gemini: toGeminiFormat,
 };
 

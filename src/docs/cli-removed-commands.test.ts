@@ -344,7 +344,6 @@ describe("CLI command rename drift — locked-down references", () => {
       "templates/AGENTS.md",
       "templates/github-actions-check.yml",
       "docs/agent-guide-baseline.md",
-      "docs/devin-marathon-hooks-example.md",
       "docs/instructions-analysis.md",
     ];
     const scanned = new Set<string>();

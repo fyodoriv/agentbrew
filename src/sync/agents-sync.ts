@@ -20,7 +20,7 @@ import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 interface AgentDefTarget {
   agentName: string;
   dir: string;
-  /** "subdir" writes name/AGENT.md (Devin format); "flat" writes name.md (Claude Code format). */
+  /** "subdir" writes name/AGENT.md (AGENT.md per subdir); "flat" writes name.md (Claude Code format). */
   format: "flat" | "subdir";
 }
 

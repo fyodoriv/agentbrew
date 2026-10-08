@@ -114,7 +114,6 @@ describe("agentbrew-add-mcp skill contract", () => {
       "agentbrew bridges to `mcpm`",
       "Claude Code",
       "Cursor",
-      "Windsurf",
       "Roo Code",
     ]);
   });
@@ -140,7 +139,7 @@ describe("agentbrew-add-mcp skill contract", () => {
       "Test the server works before adding",
       "pin a `--ref` for reproducibility in team setups",
       "Do NOT edit agent MCP configs directly",
-      "`~/.cursor/mcp.json`, `~/.codeium/windsurf/mcp_config.json`, etc.",
+      "`~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, etc.",
       "agentbrew overwrites them on sync",
       "Do NOT hardcode API keys or secrets",
       "use `-e KEY` and set the value in your environment",

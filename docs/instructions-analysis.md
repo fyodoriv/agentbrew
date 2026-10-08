@@ -21,9 +21,7 @@ AgentBrew deploys a canonical template (`templates/AGENTS.md`) to every agent th
 | Agent | Target File |
 |-------|-------------|
 | Claude Code | `~/.claude/CLAUDE.md` |
-| Windsurf | `~/.codeium/windsurf/memories/global_rules.md` |
 | Augment | `~/.augment/guidelines.md` |
-| Devin | `~/.config/devin/AGENTS.md` |
 | Codex | `~/.codex/AGENTS.md` |
 | Gemini CLI | `~/.gemini/GEMINI.md` |
 
@@ -162,7 +160,6 @@ The template's critical rules prevent **data loss** (Git Safety), **broken build
 
 Every agent has its own file format and location:
 - Claude Code: `~/.claude/CLAUDE.md`
-- Windsurf: `~/.codeium/windsurf/memories/global_rules.md`
 - Augment: `~/.augment/guidelines.md`
 - Codex: `~/.codex/AGENTS.md`
 

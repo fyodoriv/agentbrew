@@ -87,15 +87,7 @@ interface ArtifactDraft {
 }
 
 const DEFAULT_REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GENERATED_OUTPUT_PREFIXES = [
-  ".claude/",
-  ".config/devin/",
-  ".codex/",
-  ".codeium/",
-  ".cursor/",
-  ".windsurf/",
-  "~/",
-];
+const GENERATED_OUTPUT_PREFIXES = [".claude/", ".codex/", ".cursor/", "~/"];
 const PROMPT_LIKE_KINDS: ReadonlySet<AgentArtifactKind> = new Set([
   "builtin-skill",
   "catalog-command",

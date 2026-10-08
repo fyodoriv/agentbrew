@@ -25,8 +25,8 @@ This file is the root-level architecture summary that the `load-project-context`
                                         │
                                         ▼
    ┌──────────────────────────────────────────────────────────────┐
-   │  ~/.claude/    ~/.cursor/    ~/.codeium/    ~/.config/devin/  │
-   │  ~/.augment/   ~/.codex/     ~/.config/opencode/   …          │
+   │  ~/.claude/    ~/.cursor/    ~/.codex/                       │
+   │  ~/.augment/   ~/.config/opencode/   …                       │
    │       (supported agent config targets — output-only)          │
    └──────────────────────────────────────────────────────────────┘
 ```
@@ -47,7 +47,7 @@ Detailed table is in [`AGENTS.md` § "Data Flow"](AGENTS.md#data-flow). The shor
 
 | Source | Engine | Target | Carve-outs vs delegated |
 |---|---|---|---|
-| `state.yaml` `mcpServers` | `mcp-sync.ts` | Native/delegated MCP configs plus Cursor/Devin `permissions.allow` grants | `AGENTBREW_ONLY_MCP_AGENTS` stay native; `MCP_INTERSECTION_AGENTS` flow through `mcpm` (matrix: `src/sync/mcp-sync-carveout-matrix.test.ts`) |
+| `state.yaml` `mcpServers` | `mcp-sync.ts` | Native/delegated MCP configs plus Cursor `permissions.allow` grants | `AGENTBREW_ONLY_MCP_AGENTS` stay native; `MCP_INTERSECTION_AGENTS` flow through `mcpm` (matrix: `src/sync/mcp-sync-carveout-matrix.test.ts`) |
 | `shared-rules.md` | `rules-sync.ts` | Native carve-outs + ai-rules delegation | `AGENTBREW_ONLY_RULES_AGENTS` native; `CANARY_DELEGATED_AGENTS` delegate (matrix: `src/sync/rules-sync-carveout-matrix.test.ts`) |
 | `commands/*.md` | `command-sync.ts` | Native carve-outs + ai-rules delegation | carve-outs per `src/core/commands-agent-map.ts`; `CANARY_DELEGATED_AGENTS` delegate |
 | installed skill selections + opt-in source dirs | `skills-sync.ts` | symlinks into `~/.*/skills/*` | agents with `readsFrom` skip duplicate |
@@ -56,7 +56,7 @@ Detailed table is in [`AGENTS.md` § "Data Flow"](AGENTS.md#data-flow). The shor
 
 | `templates/AGENTS.md` | `instructions-sync.ts` | `~/.claude/CLAUDE.md`, etc. | merged with shared-rules.md |
 | `templates/scripts/*`, `scripts/check-pr-vision-trace.mjs` | `helper-scripts.ts` (called by `instructions-sync.ts`) | `~/.config/agentbrew/scripts/*` | writes only missing files or files agentbrew wrote (manifest hash); keeps any other file |
-| Agentfile `hooks:` | `hooks-sync.ts` | `~/.claude/settings.json`, `~/.cursor/hooks.json`, `.devin/hooks.v1.json` | Per-agent native hook formats; Devin output is project-local |
+| Agentfile `hooks:` | `hooks-sync.ts` | `~/.claude/settings.json`, `~/.cursor/hooks.json` | Per-agent native hook formats |
 
 ## Shared semantic memory
 
@@ -95,11 +95,11 @@ mechanism.
 
 `src/agent-artifacts/inventory.ts` is a read-only static-analysis layer over the same repo-owned sources the sync engines consume. It inventories commands, built-in skills, instruction templates, rules, subagent/source declarations, hooks, MCP declarations, and skill/source references as `{ kind, name, sourcePath, targetAgents, risk, coverage }` records. The lint API rejects duplicate names within a kind, generated output paths treated as source, missing prompt metadata, high-risk artifacts without tests/evals/exemption, and obvious instruction-template safety-policy contradictions.
 
-The inventory deliberately stops at source files (`Agentfile.yaml`, `src/catalog.yaml`, `templates/AGENTS.md`, `src/core/agents.yaml`, `hooks/manifest.yaml`, `hooks/checks/*`, `skill-plugins/dev/*/SKILL.md`, and catalog CLI command markdown). It does not inspect deployed output under `~/.claude`, `~/.cursor`, `~/.config/devin`, or other agent home directories. Run `npm test src/agent-artifacts` before changing agent-facing prompt/config surfaces.
+The inventory deliberately stops at source files (`Agentfile.yaml`, `src/catalog.yaml`, `templates/AGENTS.md`, `src/core/agents.yaml`, `hooks/manifest.yaml`, `hooks/checks/*`, `skill-plugins/dev/*/SKILL.md`, and catalog CLI command markdown). It does not inspect deployed output under `~/.claude`, `~/.cursor`, or other agent home directories. Run `npm test src/agent-artifacts` before changing agent-facing prompt/config surfaces.
 
 ## Ownership boundary
 
-agentbrew owns: `~/.claude/`, `~/.cursor/`, `~/.codeium/`, `~/.augment/`, `~/.codex/`, `~/.config/devin/`, `~/.config/opencode/`, `~/.kiro/`, `~/.config/amp/`, `~/.config/agentbrew/`.
+agentbrew owns: `~/.claude/`, `~/.cursor/`, `~/.augment/`, `~/.codex/`, `~/.config/opencode/`, `~/.kiro/`, `~/.config/amp/`, `~/.config/agentbrew/`.
 
 It does NOT own: `~/.zshrc`, `~/.gitconfig`, macOS defaults, `~/Library/LaunchAgents/` — those are dotfiles territory.
 

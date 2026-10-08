@@ -15,8 +15,6 @@ Commands are written once in Markdown with YAML frontmatter. AgentBrew auto-tran
 
 - **Claude Code** — deployed as-is to `~/.claude/commands/`
 - **Cursor** — frontmatter stripped, comment syntax adjusted, deployed to `~/.cursor/commands/`
-- **Windsurf** — transformed to workflow format, deployed to `~/.codeium/windsurf/global_workflows/`
-- **Devin** — deployed to `~/.config/devin/commands/`
 - **OpenCode** — deployed to `~/.config/opencode/commands/`
 - **Gemini CLI** — converted to TOML format, deployed to `~/.gemini/commands/`
 

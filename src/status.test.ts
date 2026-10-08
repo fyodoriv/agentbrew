@@ -864,10 +864,10 @@ describe("status — unconfigured agents hint", () => {
       agents: [
         { name: "claude-code", detected: true, skillsDir: "~/.claude/skills", mcpConfig: "~/.claude.json" },
         {
-          name: "windsurf",
+          name: "kiro",
           detected: true,
-          skillsDir: "~/.codeium/windsurf/skills",
-          mcpConfig: "~/.codeium/windsurf/mcp_config.json",
+          skillsDir: "~/.kiro/skills",
+          mcpConfig: "~/.kiro/settings/mcp.json",
         },
       ],
       sources: [],

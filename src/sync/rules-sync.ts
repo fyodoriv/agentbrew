@@ -27,8 +27,8 @@ const END_MARKER = "<!-- agentbrew:end -->";
 
 /**
  * The agents whose rules go through `ai-rules generate` (rulesFile +
- * rulesDir kinds, unified by {@link getAllSyncTargets}). The 3 native
- * carve-outs (windsurf, augment, devin) plus claude-desktop transitively
+ * rulesDir kinds, unified by {@link getAllSyncTargets}). The native
+ * carve-out (augment) plus claude-desktop transitively
  * stay on the native path — see `AGENTBREW_ONLY_RULES_RATIONALE` in
  * `src/core/rules-agent-map.ts`. If `ai-rules` is missing the delegated
  * agents skip rather than silently fall back to native content.
@@ -67,8 +67,8 @@ interface RulesTargetDiff {
 
 // ── Pure functions (no I/O, trivially testable) ─────────────────────────────
 
-/** Carve-out: shared (diff for every carve-out + delegated bridge — windsurf /
- *  augment / devin go through `mergedRules`; agents in `CANARY_DELEGATED_AGENTS`
+/** Carve-out: shared (diff for every carve-out + delegated bridge — augment
+ *  goes through `mergedRules`; agents in `CANARY_DELEGATED_AGENTS`
  *  {@link CANARY_DELEGATED_AGENTS} go through `delegated` or skip — never
  *  fall back to native content silently). */
 export function computeRulesDiff(
@@ -256,9 +256,9 @@ function applyRuleDiffs(
   return { synced, errors, missingFile };
 }
 
-/** When multiple agents symlink to the same physical rules file (e.g. devin +
- *  codex → ~/.config/agentbrew/AGENTS.md), apply only one write. Delegated
- *  agents (ai-rules content) win over native carve-outs so a later devin
+/** When multiple agents symlink to the same physical rules file (e.g. two agents →
+ *  ~/.config/agentbrew/AGENTS.md), apply only one write. Delegated
+ *  agents (ai-rules content) win over native carve-outs so a later carve-out
  *  pass cannot clobber codex's managed section. Mirrors drift dedup in
  *  `src/drift-checks/rules.ts`. */
 export function dedupeRulesWritesByResolvedPath(
@@ -299,7 +299,7 @@ interface SyncRuleFileOpts {
 }
 
 /** Carve-out: shared (per-file copy of rules/*.md into a rulesDir agent's dir;
- *  e.g. the cursor / windsurf / kilo rulesDir entries). */
+ *  e.g. the cursor / kilo rulesDir entries). */
 function syncSingleRuleFile(opts: SyncRuleFileOpts): { synced: number; errors: number } {
   const { file, rulesSourceDir, targetDir, agentName, manifest, log, dryRun } = opts;
   try {

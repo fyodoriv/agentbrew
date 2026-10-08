@@ -9,7 +9,6 @@ vi.mock("../state.js", () => ({
     agents: [
       { name: "claude-code", detected: true },
       { name: "cursor", detected: true },
-      { name: "devin", detected: true },
     ],
   })),
 }));
@@ -38,12 +37,12 @@ describe("runHooksVerify", () => {
   });
 
   it("rejects unknown agents", () => {
-    expect(runHooksVerify({ agent: "windsurf" })).toBe(1);
+    expect(runHooksVerify({ agent: "unknown-agent" })).toBe(1);
   });
 
   it("emits JSON when requested", () => {
     const log = vi.spyOn(console, "log");
-    runHooksVerify({ json: true, agent: "devin" });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('"devin"'));
+    runHooksVerify({ json: true, agent: "cursor" });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('"cursor"'));
   });
 });

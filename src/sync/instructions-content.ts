@@ -180,7 +180,7 @@ export function extractCursorRules(content: string): string {
  * next H2 heading (or end of file). Content before and after the section is preserved.
  *
  * These rules are already deployed as per-file rules to agents with rulesDir
- * (Cursor, Windsurf), so including them in the shared rulesFile is redundant.
+ * (Cursor), so including them in the shared rulesFile is redundant.
  */
 export function stripCursorRulesSection(content: string): string {
   const lines = content.split("\n");

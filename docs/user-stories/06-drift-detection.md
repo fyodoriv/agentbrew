@@ -15,7 +15,7 @@ agentbrew status --ci        # machine-readable output, exit 1 on drift
 | Engine | Source | Target | Format |
 |--------|--------|--------|--------|
 | MCP servers | `state.yaml` | Each agent's config file | JSON, TOML, YAML (per agent) |
-| Instructions | `templates/AGENTS.md` | `~/.claude/CLAUDE.md`, Windsurf memories, Augment guidelines, etc. | Markdown with marker sections, auto-deduplicated against managed rules |
+| Instructions | `templates/AGENTS.md` | `~/.claude/CLAUDE.md`, Augment guidelines, etc. | Markdown with marker sections, auto-deduplicated against managed rules |
 | Rules | `shared-rules.md` | Each agent's rules file | Marker-injected sections |
 | Commands | `~/.config/agentbrew/commands/` | Each agent's commands dir | Markdown, auto-transformed per agent |
 | Skills | `skillSourceDirs` in state | Each agent's skills dir | Symlinks (source repo owns the files) |
@@ -30,7 +30,7 @@ agentbrew status --ci        # machine-readable output, exit 1 on drift
 | MCP server missing from an agent's config | Yes |
 | MCP runtime probe failing after sync | Yes for registered heal actions; otherwise P0 follow-up + status warning |
 | MCP env vars not configured | No — run `agentbrew setup` |
-| MCP tool permissions out of sync (Cursor CLI, Devin) | Yes |
+| MCP tool permissions out of sync (Cursor CLI) | Yes |
 | Rules managed section missing | Yes |
 | Skill symlinks missing | Yes |
 | Broken skill symlinks | Yes |

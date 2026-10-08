@@ -2,7 +2,7 @@
  * Per-agent crash-class regression matrix.
  *
  * For every MCP-capable agent in {@link MCP_AGENT_MATRIX}, prove the
- * Devin-import-crash class is fully contained at the agentbrew layer:
+ * strict-interpolation crash class is fully contained at the agentbrew layer:
  *
  *  1. **Crash baseline** — a freshly-written dirty config (bare `${VAR}`,
  *     no env set) is detected as crash-prone by the simulator.
@@ -27,13 +27,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { scanStrictInterpolation } from "../test-utils/strict-interpolation.js";
 import {
   CRASH_PRONE_ENV_VARS,
   dirtyServerSample,
   MCP_AGENT_MATRIX,
   type McpAgentFixture,
 } from "./agent-matrix.fixtures.js";
-import { simulateDevinImport } from "./devin-import.simulator.js";
 import { sweepOneJsonConfig, sweepOneYamlConfig } from "./resilient-sweep.js";
 
 function writeFixtureDirty(fixture: McpAgentFixture, home: string, serverName = "github"): string {
@@ -64,11 +64,11 @@ describe("Per-agent crash-class regression matrix", () => {
     rmSync(home, { recursive: true, force: true });
   });
 
-  // ── Property 1: Dirty config crashes simulated Devin import ────────────────
+  // ── Property 1: Dirty config crashes strict-interpolation scan ────────────────
 
-  it.each(MCP_AGENT_MATRIX)("$name — dirty config trips simulateDevinImport (baseline before sweep)", (fixture) => {
+  it.each(MCP_AGENT_MATRIX)("$name — dirty config trips scanStrictInterpolation (baseline before sweep)", (fixture) => {
     const configPath = writeFixtureDirty(fixture, home);
-    const result = simulateDevinImport([configPath], {});
+    const result = scanStrictInterpolation([configPath], {});
     expect(result.ok).toBe(false);
     // Every bare placeholder from CRASH_PRONE_ENV_VARS should appear in findings.
     expect(result.findings.length).toBeGreaterThanOrEqual(CRASH_PRONE_ENV_VARS.length);
@@ -94,10 +94,10 @@ describe("Per-agent crash-class regression matrix", () => {
 
   // ── Property 3: Post-sweep import succeeds (the load-bearing assertion) ───
 
-  it.each(MCP_AGENT_MATRIX)("$name — post-sweep simulateDevinImport returns ok:true with NO env set", (fixture) => {
+  it.each(MCP_AGENT_MATRIX)("$name — post-sweep scanStrictInterpolation returns ok:true with NO env set", (fixture) => {
     const configPath = writeFixtureDirty(fixture, home);
     runSweep(fixture, configPath);
-    const result = simulateDevinImport([configPath], {});
+    const result = scanStrictInterpolation([configPath], {});
     expect(result.ok).toBe(true);
     expect(result.findings).toEqual([]);
   });
@@ -113,39 +113,39 @@ describe("Per-agent crash-class regression matrix", () => {
     expect(readFileSync(configPath, "utf-8")).toBe(afterFirst);
   });
 
-  // ── Cross-cutting: Multi-agent Devin import simulation ─────────────────────
+  // ── Cross-cutting: Multi-agent strict-interpolation scan ─────────────────────
 
-  it("simulateDevinImport returns ok:false when ALL agents are dirty and no env is set", () => {
-    // Reproduce the user-reported symptom: Devin opens a session, scans peer
+  it("scanStrictInterpolation returns ok:false when ALL agents are dirty and no env is set", () => {
+    // Reproduce the user-reported symptom: A strict importer opens a session, scans peer
     // configs, hits the first bare ${VAR} it can't resolve, aborts the load.
     const paths = MCP_AGENT_MATRIX.map((f) => writeFixtureDirty(f, home, "github"));
-    const result = simulateDevinImport(paths, {});
+    const result = scanStrictInterpolation(paths, {});
     expect(result.ok).toBe(false);
     // Findings span every agent — confirms the simulator walks them all.
     const agentNames = new Set(result.findings.map((f) => f.path.split("/").pop() ?? ""));
     expect(agentNames.size).toBeGreaterThan(1);
   });
 
-  it("simulateDevinImport returns ok:true when ALL agents are dirty BUT env is set", () => {
+  it("scanStrictInterpolation returns ok:true when ALL agents are dirty BUT env is set", () => {
     // Layer 2/3 of defense (zshenv-derived GITHUB_TOKEN, dvb pre-export) — proves
     // that even without the resilient sweep, having the env set is sufficient.
     // This documents the multi-layered defense the user has across machines.
     const paths = MCP_AGENT_MATRIX.map((f) => writeFixtureDirty(f, home, "github"));
     const env: Record<string, string> = {};
     for (const v of CRASH_PRONE_ENV_VARS) env[v] = "test-value-resolved";
-    const result = simulateDevinImport(paths, env);
+    const result = scanStrictInterpolation(paths, env);
     expect(result.ok).toBe(true);
   });
 
-  it("simulateDevinImport returns ok:true after sweeping ALL agents (post-sync state)", () => {
+  it("scanStrictInterpolation returns ok:true after sweeping ALL agents (post-sync state)", () => {
     // The agentbrew sweep ran. Every fixture has resilient placeholders.
-    // Devin imports all of them with NO env set. No crash.
+    // A strict importer loads all of them with NO env set. No crash.
     const paths = MCP_AGENT_MATRIX.map((fixture) => {
       const configPath = writeFixtureDirty(fixture, home);
       runSweep(fixture, configPath);
       return configPath;
     });
-    const result = simulateDevinImport(paths, {});
+    const result = scanStrictInterpolation(paths, {});
     expect(result.ok).toBe(true);
     expect(result.findings).toEqual([]);
   });
@@ -157,17 +157,7 @@ describe("Agent matrix coverage", () => {
   // The list below is the set of (json/yaml) agents that DO use bash-style
   // placeholders. overlay-desktop, codex (toml), opencode are deliberately
   // out of scope — see `agent-matrix.fixtures.ts` file comment.
-  const EXPECTED_AGENTS_IN_MATRIX = [
-    "claude-code",
-    "cursor",
-    "windsurf",
-    "devin",
-    "gemini-cli",
-    "claude-desktop",
-    "kiro",
-    "amp",
-    "goose",
-  ];
+  const EXPECTED_AGENTS_IN_MATRIX = ["claude-code", "cursor", "gemini-cli", "claude-desktop", "kiro", "amp", "goose"];
 
   it("MCP_AGENT_MATRIX covers every expected agent", () => {
     const matrixNames = new Set(MCP_AGENT_MATRIX.map((a) => a.name));

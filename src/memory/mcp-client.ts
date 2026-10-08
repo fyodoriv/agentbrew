@@ -109,7 +109,7 @@ const DEFAULT_CLIENT_NAME = "agentbrew";
 const DEFAULT_CLIENT_VERSION = "1.0.0";
 const DEFAULT_HTTP_TIMEOUT_MS = 5_000;
 const DEFAULT_MEMORY_OPERATION_TIMEOUT_MS = 120_000;
-const PRIMARY_MEMORY_AGENTS = ["claude-code", "cursor", "windsurf", "devin", "codex"] as const;
+const PRIMARY_MEMORY_AGENTS = ["claude-code", "cursor", "codex"] as const;
 
 type PrimaryMemoryAgent = (typeof PRIMARY_MEMORY_AGENTS)[number];
 

@@ -39,8 +39,8 @@ fi
 is_rule_or_skill_path() {
   local path="$1"
   case "$path" in
-    *SKILL.md|*/skills/*|*/skill-plugins/*|*/.agents/skills/*|*/.devin/skills/*|*/.claude/skills/*|*/.config/devin/skills/*|*/.codeium/windsurf/skills/*) return 0 ;;
-    *AGENTS.md|*CLAUDE.md|*shared-rules.md|*/rules/*.md|*/rules/*.mdc|*/.cursor/rules/*|*/.windsurf/rules/*|*/.config/agentbrew/rules/*) return 0 ;;
+    *SKILL.md|*/skills/*|*/skill-plugins/*|*/.agents/skills/*|*/.claude/skills/*) return 0 ;;
+    *AGENTS.md|*CLAUDE.md|*shared-rules.md|*/rules/*.md|*/rules/*.mdc|*/.cursor/rules/*|*/.config/agentbrew/rules/*) return 0 ;;
     *) return 1 ;;
   esac
 }

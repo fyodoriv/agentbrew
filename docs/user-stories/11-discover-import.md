@@ -24,7 +24,7 @@ Sync is bidirectional. The normal flow pushes agentbrew state to agents. Discove
    Discovered <count> server(s) not in agentbrew:
 
      + my-server (found in cursor)
-     + other-srv (found in windsurf)
+     + other-srv (found in codex)
 
      Run `agentbrew import` to add them to all agents.
    ```

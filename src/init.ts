@@ -26,7 +26,7 @@ function detectAndSave(previousState?: AgentBrewState): InitResult | undefined {
 
   if (detectedAgents.length === 0) {
     console.log(chalk.yellow("No AI coding agents detected."));
-    console.log("Install at least one agent (Claude Code, Cursor, Windsurf, etc.) and try again.");
+    console.log("Install at least one agent (Claude Code, Cursor, Codex, etc.) and try again.");
     return undefined;
   }
 

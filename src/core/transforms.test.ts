@@ -4,7 +4,7 @@ import { resolveTransform } from "./transforms.js";
 
 // All transform/frontmatter helpers ride through `resolveTransform("<key>")(content)`
 // so the tests pin the public API surface that callers (src/core/agents.ts via
-// agents.yaml's `commandTransform: windsurf|gemini` field) actually use.
+// agents.yaml's `commandTransform: cursor|gemini` field) actually use.
 // Same shape as PR #919 / #921 / #922 / #923: helpers stayed alive only because
 // tests imported them directly.
 
@@ -23,16 +23,10 @@ curl -sf http://localhost:9746/api/v1/health
 `;
 
 // resolveTransform("...") returns a CommandTransform | undefined; tests assume
-// the well-known keys ("windsurf", "gemini") are wired and unwrap accordingly.
+// the well-known keys ("cursor", "gemini") are wired and unwrap accordingly.
 function gemini(content: string): string {
   const transform = resolveTransform("gemini");
   if (!transform) throw new Error("resolveTransform('gemini') returned undefined");
-  return transform(content);
-}
-
-function windsurf(content: string): string {
-  const transform = resolveTransform("windsurf");
-  if (!transform) throw new Error("resolveTransform('windsurf') returned undefined");
   return transform(content);
 }
 
@@ -124,31 +118,11 @@ version: 2
   });
 });
 
-describe("resolveTransform('windsurf') — frontmatter & format edge cases", () => {
-  it("keeps frontmatter and converts turbo annotation", () => {
-    const result = windsurf(SAMPLE_COMMAND);
-    expect(result).toContain("---");
-    expect(result).toContain("description: Start the Minsky server");
-    expect(result).toContain("// turbo");
-    expect(result).not.toContain("<!-- turbo -->");
-  });
-
-  it("passes through content without turbo annotations", () => {
-    const plain = "# No turbo\nJust text.";
-    expect(windsurf(plain)).toBe(plain);
-  });
-});
-
 describe("resolveTransform", () => {
   it("resolves cursor transform to a callable function", () => {
     const transform = resolveTransform("cursor");
     expect(typeof transform).toBe("function");
     expect(transform?.("---\ndescription: Run\n---\n\n# Run\n\n<!-- turbo -->")).toBe("\n# Run\n\n// turbo");
-  });
-
-  it("resolves windsurf transform to a callable function", () => {
-    const transform = resolveTransform("windsurf");
-    expect(typeof transform).toBe("function");
   });
 
   it("resolves gemini transform to a callable function", () => {

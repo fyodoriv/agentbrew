@@ -64,7 +64,7 @@ function showMcpMissingEnvVars(server: CatalogMcpServer): void {
  *
  * Behavior:
  *   1. Short-circuit when no intersection clients are detected (only
- *      carve-outs like devin/overlay-desktop or zero detected agents) —
+ *      carve-outs like overlay-desktop or zero detected agents) —
  *      native sync handles those targets, no need to spawn mcpm.
  *   2. Otherwise, run `mcpm install <name> --force` to register the
  *      server with mcpm globally.
@@ -104,7 +104,7 @@ function bridgeCatalogMcpToMcpm(server: CatalogMcpServer): void {
   // registry — it prints "Error: Server '<name>' not found in registry."
   // to stdout and walks away. Verify via readMcpmServer; if the entry
   // didn't land, fall back to `mcpm new` with the catalog's transport
-  // shape so intersection clients (Claude Code, Cursor, Windsurf,
+  // shape so intersection clients (Claude Code, Cursor,
   // claude-desktop, codex, gemini-cli, goose, cline, roo-code) still
   // get the server wired. This is what made team-overlay MCPs
   // (registry.npmjs.example.com) invisible to mcpm-delegated clients

@@ -23,7 +23,7 @@ Every rule has one canonical home. The home is chosen by **who needs it, and whe
 agentbrew's warning threshold is **8,000 tokens** (~32 KB of source text).
 A 47k-token shared-rules.md costs ~5.9% of a 200K context window before any
 work begins — and that's the per-session tax on every Claude / Cursor /
-Windsurf / Devin / Codex / Gemini interaction.
+Codex / Gemini interaction.
 
 The fix isn't "delete rules" — it's "move them where they belong so they
 load on-demand, not always-on."
@@ -69,7 +69,7 @@ Read top to bottom. The first "yes" is the home.
 6. Is it triggered by a specific language or file pattern? (Examples:
    TypeScript-only rules, React component rules, *.test.ts patterns.)
    ─ yes  → Per-file rule in `~/.config/agentbrew/rules/<name>.md` with
-            `globs:` frontmatter. Cursor and Windsurf load these only when
+            `globs:` frontmatter. Cursor loads these only when
             editing matching files.
    ─ no   → Reconsider. If the rule fits none of the above, it may be
             documentation, not a rule. Move to a docs file (e.g. ARCHITECTURE.md).
@@ -146,7 +146,7 @@ shared-rules.md and loads even when the user is editing Markdown.
 **Cost**: Variable, but compounds across every TypeScript / React / test
 section.
 **Fix**: Move to per-file rules in `~/.config/agentbrew/rules/<name>.md` with
-`globs:` frontmatter. Cursor + Windsurf will load these only when editing
+`globs:` frontmatter. Cursor will load these only when editing
 matching files.
 
 ### 6. Treating shared-rules as a knowledge base

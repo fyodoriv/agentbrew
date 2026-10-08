@@ -34,7 +34,7 @@ would naturally live.
 | **cursor-token-playbook** | Daily Cursor token habits — model mix, new chat vs continue, @ scoping, MCP discipline, `.cursorignore`, measure context workflow. |
 | **agentfile-init** | Generate an `Agentfile.yaml` for the current project. |
 | **load-project-context** | Run the canonical-doc discovery script + read every VISION / ARCHITECTURE / MILESTONES / user-stories / competitors file the agentbrew `load-project-context` catalog rule expects. The invokable companion to the rule + Claude Code SessionStart hook shipped from `~/.config/agentbrew/`. |
-| **sync-agent-config** | Syncs all agent rules, memories, skills, and config across tools (Windsurf, Cursor, Claude Code). |
+| **sync-agent-config** | Syncs all agent rules, memories, skills, and config across tools (Cursor, Claude Code, Codex). |
 | **prefer-reuse-over-reinvent** | GET-don't-IMPLEMENT decision discipline — VISION cites this skill as the operational wrapper for the delegate/contribute/absorb strategy. |
 | **verify-vision-trace** | Validates PR bodies against the `pr-vision-trace` CI gate (Vision goal, User story, Competitor prior art). |
 | **competitor-spot-check** | Queries the loaded competitor corpus to produce the Competitor prior art line for vision-trace PR bodies. |

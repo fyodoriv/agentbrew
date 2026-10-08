@@ -231,7 +231,7 @@ describe("discoverMcpServers", () => {
     mockReadFileSync.mockReturnValue('{"mcpServers":{"shared":{"command":"npx"}}}');
     const agents: AgentConfig[] = [
       { name: "cursor", detected: true, skillsDir: "x", mcpConfig: "/a.json" },
-      { name: "windsurf", detected: true, skillsDir: "y", mcpConfig: "/b.json" },
+      { name: "kiro", detected: true, skillsDir: "y", mcpConfig: "/b.json" },
     ];
     const servers = discoverMcpServers(agents);
     expect(servers).toHaveLength(1);

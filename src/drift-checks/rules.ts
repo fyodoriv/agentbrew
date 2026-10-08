@@ -83,7 +83,7 @@ function checkSharedRulesSourceDrift(content: string): DriftItem[] {
  * mirroring syncRules' skip semantics. Otherwise drift would falsely
  * report all `CANARY_DELEGATED_AGENTS` as out-of-date whenever `ai-rules` is
  * missing (their deployed content came from a previous run with
- * ai-rules present). Carve-outs (windsurf, augment, devin) still
+ * ai-rules present). Carve-outs (augment) still
  * compare against `freshRules` via the native path.
  */
 export function checkRulesDrift(): DriftItem[] {
@@ -110,7 +110,7 @@ export function checkRulesDrift(): DriftItem[] {
   );
 
   // Deduplicate by resolved path — agents sharing the same rulesFile (e.g.
-  // claude-code + claude-desktop, or devin + codex both symlinked to
+  // claude-code + claude-desktop, or codex + another agent both symlinked to
   // ~/.config/agentbrew/AGENTS.md) should only produce one drift item.
   // When a carve-out shares a file with a delegated agent, the delegated
   // agent owns drift detection (ai-rules content wins over native carve-out).

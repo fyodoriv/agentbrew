@@ -59,7 +59,7 @@ vi.mock("./mcp-delegate.js", () => ({
   readMcpmServer: vi.fn(() => undefined),
 }));
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { sync as writeFileSync } from "write-file-atomic";
 import { discoverUnmanagedServers } from "../import.js";
@@ -71,12 +71,10 @@ import {
   addMcpServer,
   computeDiffWithAdapter,
   computeServerList,
-  filterServersForLiteralAgent,
   getMcpmIntersectionAgents,
   getMcpTargetAgents,
   removeMcpServer,
   requiresNativeHttpTransport,
-  syncDevinPermissions,
   syncMcpPermissions,
   syncMcpServers,
   syncWithAdapter,
@@ -156,11 +154,11 @@ describe("syncMcpServers", () => {
   });
 
   it("keeps the managed loopback memory transport reachable by every primary agent", () => {
-    const primary = ["claude-code", "cursor", "windsurf", "devin", "codex"].map((name) => makeMcpAgentDef(name));
+    const primary = ["claude-code", "cursor", "codex"].map((name) => makeMcpAgentDef(name));
     const memory = makeServer({ name: "memory", command: "", args: [], url: "http://127.0.0.1:18765/mcp" });
 
     expect(requiresNativeHttpTransport(memory)).toBe(false);
-    expect(getMcpTargetAgents(primary).map((agent) => agent.name)).toEqual(["cursor", "windsurf", "devin"]);
+    expect(getMcpTargetAgents(primary).map((agent) => agent.name)).toEqual(["cursor"]);
     expect(getMcpmIntersectionAgents(primary).map((agent) => agent.name)).toEqual(["claude-code", "codex"]);
   });
 
@@ -176,69 +174,6 @@ describe("syncMcpServers", () => {
 
     await syncMcpServers();
     expect(mockWriteFileSync).toHaveBeenCalled();
-  });
-
-  it("writes Devin MCP config without resolved shell-backed env secrets", async () => {
-    const previousSecret = process.env.DEVIN_SYNC_SECRET;
-    process.env.DEVIN_SYNC_SECRET = "sync-secret-should-not-be-written";
-    let stored = JSON.stringify({ mcpServers: {}, permissions: { allow: [] } });
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("devin", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [makeServer({ name: "secure", env: { DEVIN_SYNC_SECRET: "${DEVIN_SYNC_SECRET}", APP_ENV: "dev" } })],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation(() => stored);
-    mockWriteFileSync.mockImplementation((_path: string | Buffer, data: string | Buffer) => {
-      stored = String(data);
-    });
-
-    try {
-      await syncMcpServers(undefined, { manifest: { hashes: {} } });
-      const written = JSON.parse(stored);
-      expect(written.mcpServers.secure.env).toEqual({ APP_ENV: "dev" });
-      expect(stored).not.toContain("sync-secret-should-not-be-written");
-      expect(written.permissions.allow).toContain("mcp__secure__*");
-    } finally {
-      if (previousSecret === undefined) delete process.env.DEVIN_SYNC_SECRET;
-      else process.env.DEVIN_SYNC_SECRET = previousSecret;
-    }
-  });
-
-  it("preserves manually fixed Devin entries during prune when shell env is temporarily absent", async () => {
-    const previousSecret = process.env.DEVIN_TEMPORARILY_MISSING;
-    delete process.env.DEVIN_TEMPORARILY_MISSING;
-    let stored = JSON.stringify({
-      mcpServers: {
-        secure: {
-          command: "npx",
-          args: ["-y", "@test/mcp"],
-          env: { DEVIN_TEMPORARILY_MISSING: "manual-token" },
-        },
-      },
-      permissions: { allow: [] },
-    });
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("devin", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [makeServer({ name: "secure", env: { DEVIN_TEMPORARILY_MISSING: "${DEVIN_TEMPORARILY_MISSING}" } })],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation(() => stored);
-    mockWriteFileSync.mockImplementation((_path: string | Buffer, data: string | Buffer) => {
-      stored = String(data);
-    });
-
-    try {
-      await syncMcpServers({ prune: true }, { manifest: { hashes: {} } });
-      const written = JSON.parse(stored);
-      expect(written.mcpServers.secure.env.DEVIN_TEMPORARILY_MISSING).toBe("manual-token");
-      expect(written.permissions.allow).toContain("mcp__secure__*");
-    } finally {
-      if (previousSecret !== undefined) process.env.DEVIN_TEMPORARILY_MISSING = previousSecret;
-    }
   });
 
   it("writes Cursor CLI MCP permissions while Cursor MCP config is delegated to mcpm", async () => {
@@ -723,7 +658,7 @@ describe("syncMcpServers error resilience", () => {
   });
 });
 
-describe("syncDevinPermissions", () => {
+describe("syncMcpPermissions", () => {
   beforeEach(() => {
     mockExistsSync.mockReturnValue(true);
     mockWriteFileSync.mockImplementation(() => {});
@@ -738,7 +673,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" }), makeServer({ name: "atlassian" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     expect(added).toBe(2);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -756,7 +691,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" }), makeServer({ name: "atlassian" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     expect(added).toBe(1);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -774,7 +709,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     expect(added).toBe(0);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
@@ -789,7 +724,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers, true);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers, { dryRun: true });
 
     expect(added).toBe(1);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
@@ -799,7 +734,7 @@ describe("syncDevinPermissions", () => {
     mockReadFileSync.mockReturnValue(JSON.stringify({ mcpServers: {} }));
 
     const servers = [makeServer({ name: "minsky" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     expect(added).toBe(1);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -808,9 +743,9 @@ describe("syncDevinPermissions", () => {
 
   it("grants permission to servers present in mcpServers but missing from state (mcpm- or user-added)", () => {
     // Regression guard for sync-idempotent-and-complete issue 4 (mcp-permissions subset):
-    // mcpm install or a manual edit can add a server to devin's mcpServers without
-    // going through agentbrew state. checkDevinPermissionDrift flags the missing
-    // mcp__<name>__* allow entry for those servers, so syncDevinPermissions must
+    // mcpm install or a manual edit can add a server to the agent's mcpServers without
+    // going through agentbrew state. checkMcpPermissionDrift flags the missing
+    // mcp__<name>__* allow entry for those servers, so syncMcpPermissions must
     // also add them — otherwise drift detection reports persistent "missing
     // permission" items that fix() can never clear.
     mockReadFileSync.mockReturnValue(
@@ -825,7 +760,7 @@ describe("syncDevinPermissions", () => {
 
     // State only knows about a different server that's not in mcpServers yet.
     const servers = [makeServer({ name: "agentbrew-managed" })];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     // 3 added: state's `agentbrew-managed` + mcpServers' `organization-developer-portal` + `user-only`.
     expect(added).toBe(3);
@@ -838,7 +773,7 @@ describe("syncDevinPermissions", () => {
 
   it("preserves permissions for servers in mcpServers when state is empty", () => {
     // A user could `agentbrew remove` every state server while mcpm still has
-    // its own entries in devin's mcpServers. The existing pruning logic must not
+    // its own entries in the agent's mcpServers. The existing pruning logic must not
     // delete those permissions — they correspond to live servers.
     mockReadFileSync.mockReturnValue(
       JSON.stringify({
@@ -850,7 +785,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers: ReturnType<typeof makeServer>[] = [];
-    const added = syncDevinPermissions("~/.config/devin/config.json", servers);
+    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     expect(added).toBe(0); // already present, nothing to add
     // mockWriteFileSync also should NOT be called because nothing changed.
@@ -871,7 +806,7 @@ describe("syncDevinPermissions", () => {
     );
 
     const servers: ReturnType<typeof makeServer>[] = [];
-    syncDevinPermissions("~/.config/devin/config.json", servers);
+    syncMcpPermissions("~/.cursor/cli-config.json", servers);
 
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
     expect(written.permissions.allow).toContain("mcp__still-there__*"); // kept (in mcpServers)
@@ -997,12 +932,12 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
 describe("getMcpTargetAgents", () => {
   // Slice 4a of `delegate-mcp-to-mcpm`: MCP_INTERSECTION_AGENTS
   // `MCP_INTERSECTION_AGENTS` Set (claude-code, cursor, claude-desktop,
-  // cline, windsurf, gemini-cli, codex, goose, roo-code) is filtered out
+  // cline, gemini-cli, codex, goose, roo-code) is filtered out
   // — those clients are populated by `mcpm install` + `mcpm client edit`
   // during `agentbrew mcp install`, not by native sync (cli-removed-commands-allowlist:
   // pre-slice-5a wrapper, deleted in PR #851 — the test covers the native
   // sync skip behavior, not the wrapper invocation). These tests use the
-  // carve-out agents (`kiro`, `devin`, `overlay-desktop`, `copilot`,
+  // carve-out agents (`kiro`, `overlay-desktop`, `copilot`,
   // `opencode`, `amp`) to exercise the native path.
   it("returns only detected agents that have MCP config in definitions", () => {
     const agents = [
@@ -1061,7 +996,6 @@ describe("getMcpTargetAgents", () => {
       { name: "claude-code", detected: true, skillsDir: "~/.claude/skills" },
       { name: "claude-desktop", detected: true, skillsDir: "~/Library/Application Support/Claude/skills" },
       { name: "cline", detected: true, skillsDir: "~/.cline/skills" },
-      // windsurf: moved to carve-outs (endpoint-security agent, 2026-05-19)
       // cursor: moved to carve-outs (mcpm run wrapper not surfaced to agent layer)
       { name: "gemini-cli", detected: true, skillsDir: "~/.gemini/skills" },
       { name: "codex", detected: true, skillsDir: "~/.codex/skills" },
@@ -1069,12 +1003,10 @@ describe("getMcpTargetAgents", () => {
       { name: "roo-code", detected: true, skillsDir: "~/.roo/skills" },
     ];
     const carveOuts = [
-      { name: "devin", detected: true, skillsDir: "~/.config/devin/skills" },
       { name: "copilot", detected: true, skillsDir: "~/.copilot/skills" },
       { name: "opencode", detected: true, skillsDir: "~/.config/opencode/skills" },
       makeMcpAgentDef("kiro"),
       { name: "amp", detected: true, skillsDir: "~/.config/amp/skills" },
-      { name: "windsurf", detected: true, skillsDir: "~/.codeium/windsurf/skills" },
       { name: "cursor", detected: true, skillsDir: "~/.cursor/skills" },
     ];
     const targets = getMcpTargetAgents([...intersectionAgents, ...carveOuts] as never);
@@ -1087,159 +1019,16 @@ describe("getMcpTargetAgents", () => {
     // Carve-outs: every one included (note copilot has no mcpConfig in
     // current agents.yaml so it's correctly excluded by the mcpConfig
     // filter, not the intersection filter).
-    expect(targetNames).toContain("devin");
     expect(targetNames).toContain("opencode");
     expect(targetNames).toContain("kiro");
     expect(targetNames).toContain("amp");
-    expect(targetNames).toContain("windsurf");
     expect(targetNames).toContain("cursor");
   });
 });
 
-describe("filterServersForLiteralAgent", () => {
-  it("filters servers with unresolved ${VAR} for devin", () => {
-    const log = vi.fn();
-    const servers = [
-      makeServer({ name: "ok", env: {} }),
-      makeServer({ name: "bad", env: { TOKEN: "${NOT_SET_VAR_XYZ}" } }),
-    ];
-    const filtered = filterServersForLiteralAgent(servers, "devin", log);
-    expect(filtered.map((s) => s.name)).toEqual(["ok"]);
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('skipping "bad"'));
-  });
-
-  it("does not filter for standard agents when env has placeholders", () => {
-    const log = vi.fn();
-    const servers = [makeServer({ name: "x", env: { TOKEN: "${NOT_SET_VAR_XYZ}" } })];
-    const filtered = filterServersForLiteralAgent(servers, "cursor", log);
-    expect(filtered).toHaveLength(1);
-    expect(log).not.toHaveBeenCalled();
-  });
-
-  it("passes slack-work through for devin when SLACK_BOT_TOKEN is set in env", () => {
-    const prev = process.env.SLACK_BOT_TOKEN;
-    process.env.SLACK_BOT_TOKEN = "xoxb-test-token";
-    try {
-      const log = vi.fn();
-      const slackServer = makeServer({
-        name: "slack-work",
-        env: { SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}", APP_ENV: "dev" },
-      });
-      const filtered = filterServersForLiteralAgent([slackServer], "devin", log);
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe("slack-work");
-      expect(log).not.toHaveBeenCalled();
-    } finally {
-      if (prev === undefined) delete process.env.SLACK_BOT_TOKEN;
-      else process.env.SLACK_BOT_TOKEN = prev;
-    }
-  });
-
-  it("filters slack-work for devin when SLACK_BOT_TOKEN is not set and not in Keychain", () => {
-    // Simulate env var absent and Keychain missing (spawnSync returns non-zero)
-    const prevBot = process.env.SLACK_BOT_TOKEN;
-    const prevUser = process.env.SLACK_USER_TOKEN;
-    delete process.env.SLACK_BOT_TOKEN;
-    delete process.env.SLACK_USER_TOKEN;
-    // Override spawnSync so Keychain lookup fails
-    mockSpawnSync.mockReturnValue({
-      status: 1,
-      stdout: Buffer.from(""),
-      stderr: Buffer.from(""),
-      error: undefined,
-      pid: 0,
-      signal: null,
-      output: [],
-    });
-    try {
-      const log = vi.fn();
-      const slackServer = makeServer({
-        name: "slack-work",
-        env: { SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}", SLACK_USER_TOKEN: "${SLACK_USER_TOKEN}", APP_ENV: "dev" },
-      });
-      const filtered = filterServersForLiteralAgent([slackServer], "devin", log);
-      expect(filtered).toHaveLength(0);
-      expect(log).toHaveBeenCalledWith(expect.stringContaining('skipping "slack-work"'));
-    } finally {
-      if (prevBot !== undefined) process.env.SLACK_BOT_TOKEN = prevBot;
-      if (prevUser !== undefined) process.env.SLACK_USER_TOKEN = prevUser;
-    }
-  });
-
-  it("passes slack-work through for devin when SLACK_BOT_TOKEN is ONLY in Keychain (regression)", () => {
-    // Regression for the silent-filter bug: hasUnresolvedInheritedEnv used to
-    // check raw process.env, ignoring ENV_FALLBACKS. The literal-format
-    // substitution path resolves via Keychain, so the filter was more
-    // conservative than reality and dropped servers whose secrets only lived
-    // in Keychain. Observed in the wild on 2026-05-21 when jira-mcp got
-    // silently filtered out of Devin's config because JIRA_EMAIL was only
-    // available via Keychain fallback — the agent then reported "Server
-    // 'jira-mcp' not found in configuration".
-    const prevBot = process.env.SLACK_BOT_TOKEN;
-    delete process.env.SLACK_BOT_TOKEN;
-    // resolveFromKeychain calls execFileSync("security", ...) — return a value so
-    // the Keychain fallback in ENV_FALLBACKS["SLACK_BOT_TOKEN"] resolves.
-    vi.mocked(execFileSync).mockReturnValueOnce(Buffer.from("xoxb-from-keychain\n"));
-    try {
-      const log = vi.fn();
-      const slackServer = makeServer({
-        name: "slack-work",
-        env: { SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}", APP_ENV: "dev" },
-      });
-      const filtered = filterServersForLiteralAgent([slackServer], "devin", log);
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe("slack-work");
-      expect(log).not.toHaveBeenCalled();
-    } finally {
-      if (prevBot !== undefined) process.env.SLACK_BOT_TOKEN = prevBot;
-    }
-  });
-
-  it("skipped servers with unresolved vars survive prune for devin (managedNames exclusion)", () => {
-    // Simulate: atlassian has unresolved ${JIRA_URL} but Devin already has a working entry.
-    // Even with prune: true, the resolved entry must NOT be pruned.
-    const log = vi.fn();
-    const allServers = [
-      makeServer({ name: "ok", env: {} }),
-      makeServer({ name: "atlassian", env: { JIRA_URL: "${UNRESOLVABLE_JIRA_VAR}" } }),
-    ];
-    // filterServersForLiteralAgent skips atlassian for devin
-    const agentServers = filterServersForLiteralAgent(allServers, "devin", log);
-    expect(agentServers.map((s) => s.name)).toEqual(["ok"]);
-
-    // Compute skippedNames + safeManagedNames (same logic as syncSingleAgent)
-    const skippedNames = new Set(
-      allServers.filter((s) => !agentServers.some((a) => a.name === s.name)).map((s) => s.name),
-    );
-    const managedNames = new Set(["ok", "atlassian"]);
-    const safeManagedNames = new Set([...managedNames].filter((n) => !skippedNames.has(n)));
-
-    // Existing Devin config has both servers with resolved values
-    const existing: Record<string, Record<string, unknown>> = {
-      ok: { command: "npx", args: ["-y", "@test/ok"] },
-      atlassian: {
-        command: "uvx",
-        args: ["mcp-atlassian"],
-        env: { JIRA_URL: "https://real-jira.example.com" },
-      },
-    };
-
-    const adapter = new JsonAdapter();
-    const diff = computeDiffWithAdapter("devin", agentServers, existing, adapter, {
-      prune: true,
-      managedNames: safeManagedNames,
-      unsafePruneNames: skippedNames,
-    });
-
-    // atlassian must NOT appear in prune actions
-    const pruned = diff.actions.filter((a) => a.type === "prune").map((a) => a.serverName);
-    expect(pruned).not.toContain("atlassian");
-  });
-});
-
 describe("syncMcpServers — partial failures across agents", () => {
-  // Slice 4a: uses carve-out agents from AGENTBREW_ONLY_MCP_AGENTS (kiro + amp) — windsurf is now
-  // an intersection-skip agent and would never reach the write path.
+  // Slice 4a: uses carve-out agents from AGENTBREW_ONLY_MCP_AGENTS (kiro + amp) — intersection agents
+  // are skipped and would never reach the write path.
   it("continues when one agent write fails and still syncs another", async () => {
     mockLoadState.mockReturnValue({
       agents: [makeMcpAgentDef("kiro", { skillsDir: "x" }), makeMcpAgentDef("amp", { skillsDir: "x" })],
@@ -1700,117 +1489,13 @@ describe("syncMcpServers — claude-code intersection skip (no ~/.claude.json fa
   });
 });
 
-describe("syncMcpServers — devin integration", () => {
-  it("writes Devin MCP permissions after sync via syncDevinPermissions", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("devin", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [makeServer()],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((pathArg) => {
-      const p = typeof pathArg === "string" || Buffer.isBuffer(pathArg) ? String(pathArg) : "";
-      if (p.includes("devin") && p.includes("config.json")) {
-        return JSON.stringify({
-          mcpServers: {},
-          permissions: { allow: ["Read(**)"] },
-        });
-      }
-      return "{}";
-    });
-    mockWriteFileSync.mockImplementation(() => {});
-
-    await syncMcpServers();
-
-    const bodies = mockWriteFileSync.mock.calls.map((c) => String(c[1]));
-    expect(bodies.some((json) => json.includes("mcp__test-server__*"))).toBe(true);
-  });
-
-  it("removes stale unresolved Devin entries while keeping other MCP servers", async () => {
-    const previousToken = process.env.JENKINS_API_TOKEN;
-    delete process.env.JENKINS_API_TOKEN;
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("devin", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [
-        makeServer({ name: "context7", command: "npx", args: ["-y", "@upstash/context7-mcp"] }),
-        makeServer({
-          name: "jenkins",
-          command: "npx",
-          args: ["-y", "@test/jenkins"],
-          env: { JENKINS_API_TOKEN: "${JENKINS_API_TOKEN}" },
-        }),
-      ],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    let devinConfig = JSON.stringify({
-      mcpServers: {
-        jenkins: {
-          command: "npx",
-          args: ["-y", "@test/jenkins"],
-          env: { JENKINS_API_TOKEN: "${JENKINS_API_TOKEN}" },
-        },
-      },
-      permissions: { allow: ["Read(**)"] },
-    });
-    mockReadFileSync.mockImplementation((pathArg) => {
-      const path = String(pathArg);
-      if (path.includes("devin") && path.includes("config.json")) return devinConfig;
-      return "{}";
-    });
-    mockWriteFileSync.mockImplementation((path, data) => {
-      const configPath = String(path);
-      if (configPath.includes("devin") && configPath.includes("config.json")) {
-        devinConfig = String(data);
-      }
-    });
-
-    try {
-      await syncMcpServers();
-    } finally {
-      if (previousToken === undefined) delete process.env.JENKINS_API_TOKEN;
-      else process.env.JENKINS_API_TOKEN = previousToken;
-    }
-
-    const writtenConfig = JSON.parse(devinConfig);
-    expect(writtenConfig.mcpServers).toHaveProperty("context7");
-    expect(writtenConfig.mcpServers).not.toHaveProperty("jenkins");
-    expect(devinConfig).not.toContain("${JENKINS_API_TOKEN}");
-  });
-
-  it("logs literal skip warnings for devin when env placeholders are unresolved", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("devin", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [makeServer({ env: { TOKEN: "${NOT_SET_VAR_DEVIN_SKIP}" } })],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue("{}");
-
-    await syncMcpServers();
-
-    const calls = [
-      ...(console.log as ReturnType<typeof vi.fn>).mock.calls,
-      ...(console.error as ReturnType<typeof vi.fn>).mock.calls,
-    ]
-      .flat()
-      .join(" ");
-    expect(calls).toContain("devin");
-    expect(calls).toContain("skipping");
-  });
-});
-
 // ── Carve-out lock-down (sub-task simplify-mcp-sync-lock-down-carveouts) ────
 //
 // Pins each remaining MCP carve-out's config shape (file path + key path
 // + adapter format) so the upcoming `simplify-mcp-sync-annotate-functions`
 // + `simplify-mcp-sync-shrink-or-document` sub-tasks can delete branches
 // without silently breaking a carve-out. Five describe blocks below cover
-// carve-outs missing a named regression block — `devin` already has
-// its own integration describe at line ~1632.
+// carve-outs missing a named regression block.
 //
 // Per the sibling sub-task acceptance criterion (b): "every carve-out has
 // at least one `*.test.ts` block whose description names it".

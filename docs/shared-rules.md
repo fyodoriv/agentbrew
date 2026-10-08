@@ -105,7 +105,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 ## Agentbrew config ownership
 
-- Global/user agent config belongs under `~/.config/agentbrew/` or `.devin/` for Devin-specific new config.
+- Global/user agent config belongs under `~/.config/agentbrew/`.
 - Skills are symlinks to source repos; before editing a skill, inspect the symlink and edit the source path.
 - Do not write new config into `.claude/`, `.cursor/`, or other agent-specific directories unless explicitly asked; agentbrew owns generated target files.
 

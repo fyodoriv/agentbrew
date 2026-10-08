@@ -19,7 +19,6 @@ import {
   type EndpointRepairKind,
   sweepMcpEndpointRepairs,
 } from "../mcp/endpoint-repair.js";
-import { getEnvFormat, hasUnresolvedLiterals, resolveEnvVar } from "../mcp/env-vars.js";
 import { getServers, readMcpJson, setServers, writeMcpJson } from "../mcp/mcp.js";
 import { filterInvalidServers } from "../mcp/mcp-validation.js";
 import {
@@ -241,45 +240,6 @@ function collectPruneActions(
   return actions;
 }
 
-/** Carve-out: devin (literal-format adapter — recursively detects ${VAR} placeholders). */
-function entryHasUnresolvedLiterals(value: unknown): boolean {
-  if (typeof value === "string") return hasUnresolvedLiterals(value);
-  if (Array.isArray(value)) return value.some(entryHasUnresolvedLiterals);
-  if (value && typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).some(entryHasUnresolvedLiterals);
-  }
-  return false;
-}
-
-/** Carve-out: devin (literal-format env inheritance check used by `filterServersForLiteralAgent`).
- *  Resolves through {@link resolveEnvVar} (process.env + ENV_FALLBACKS like macOS Keychain +
- *  `gh auth token`) — same path the literal-format substitution uses — so the filter cannot
- *  drop a server whose value WOULD resolve at write time. See the regression test
- *  in `mcp-sync.test.ts` for the historical false-negative this aligns away. */
-function hasUnresolvedInheritedEnv(value: string): boolean {
-  for (const match of value.matchAll(VAR_PATTERN)) {
-    const hasDefault = match[2] !== undefined;
-    if (!hasDefault && resolveEnvVar(match[1]) === undefined) return true;
-  }
-  return false;
-}
-
-/** Carve-out: devin (sweeps stale literal-mode entries whose ${VAR} no longer resolves). */
-function collectUnsafePruneActions(
-  existingEntries: Record<string, Record<string, unknown>>,
-  unsafePruneNames: Set<string>,
-  adapter: Pick<McpFormatAdapter, "isPrunable">,
-): McpDiffAction[] {
-  const actions: McpDiffAction[] = [];
-  for (const name of unsafePruneNames) {
-    const entry = existingEntries[name];
-    if (entry && adapter.isPrunable(name, entry) && entryHasUnresolvedLiterals(entry)) {
-      actions.push({ type: "prune", serverName: name });
-    }
-  }
-  return actions;
-}
-
 /** Carve-out: shared (every carve-out runs through this diff via its adapter).
  *  Compute add/update/prune diff using adapter methods for format-specific comparison. */
 export function computeDiffWithAdapter(
@@ -291,7 +251,6 @@ export function computeDiffWithAdapter(
     prune?: boolean;
     forcePruneNames?: Set<string>;
     managedNames?: Set<string>;
-    unsafePruneNames?: Set<string>;
   },
 ): McpAgentDiff {
   // Cursor GUI wrapping is persisted in mcp.json — normalize bare npx/bash -lc
@@ -308,13 +267,8 @@ export function computeDiffWithAdapter(
   const prune = options?.prune ?? false;
   const forcePruneNames = options?.forcePruneNames ?? new Set<string>();
   const managedNames = options?.managedNames;
-  const unsafePruneNames = options?.unsafePruneNames ?? new Set<string>();
   const actions: McpDiffAction[] = [];
   const serverNames = new Set(desiredServers.map((s) => s.name));
-  const unsafePruneCandidates = new Set([...unsafePruneNames].filter((name) => !serverNames.has(name)));
-  const unsafePruneActions = collectUnsafePruneActions(existingForDiff, unsafePruneCandidates, adapter);
-  const alreadyPruned = new Set(unsafePruneActions.map((a) => a.serverName));
-  actions.push(...unsafePruneActions);
 
   for (const server of desiredServers) {
     const entry = adapter.toEntry(server, agentName);
@@ -328,14 +282,8 @@ export function computeDiffWithAdapter(
   }
 
   // Force-prune names only when --prune is set.
-  // Without --prune, these entries are left in place — filterServersForLiteralAgent
-  // already logs a warning per skipped server, so the user knows they need setup.
   if (prune) {
-    actions.push(
-      ...collectPruneActions(existingForDiff, serverNames, forcePruneNames, managedNames, adapter).filter(
-        (action) => !alreadyPruned.has(action.serverName),
-      ),
-    );
+    actions.push(...collectPruneActions(existingForDiff, serverNames, forcePruneNames, managedNames, adapter));
   }
 
   return {
@@ -402,7 +350,6 @@ export function syncWithAdapter(
     mcpKey?: string;
     forcePruneNames?: Set<string>;
     managedNames?: Set<string>;
-    unsafePruneNames?: Set<string>;
   },
 ): { added: number; updated: number; pruned: number; error?: string } {
   const dryRun = options?.dryRun ?? false;
@@ -426,7 +373,6 @@ export function syncWithAdapter(
     prune: options?.prune,
     forcePruneNames: options?.forcePruneNames,
     managedNames: options?.managedNames,
-    unsafePruneNames: options?.unsafePruneNames,
   });
 
   if (!dryRun && (diff.actions.length > 0 || entriesChangedByFinalize)) {
@@ -517,79 +463,6 @@ export function syncMcpPermissions(
   return toAdd.length;
 }
 
-export function syncDevinPermissions(configPath: string, servers: McpServer[], dryRun = false): number {
-  return syncMcpPermissions(configPath, servers, { dryRun });
-}
-
-/** Result of scanning one server for unresolved ${VAR} references. */
-interface UnresolvedEnvVar {
-  serverName: string;
-  varName: string;
-  field: string;
-}
-
-const VAR_PATTERN = /\$\{([A-Z_][A-Z0-9_]*)(?::-(.*?))?\}/g;
-
-/** Carve-out: devin (literal-format pre-flight check).
- *  Scan a single string value for unresolved ${VAR} references. */
-function findUnresolvedInValue(value: string, serverName: string, field: string): UnresolvedEnvVar[] {
-  const results: UnresolvedEnvVar[] = [];
-  for (const match of value.matchAll(VAR_PATTERN)) {
-    const hasDefault = match[2] !== undefined;
-    if (!hasDefault && resolveEnvVar(match[1]) === undefined) {
-      results.push({ serverName, varName: match[1], field });
-    }
-  }
-  return results;
-}
-
-/**
- * Carve-out: devin (only literal-format agent today; called regardless to keep the API generic).
- *
- * Collect all unresolved ${VAR} references across all servers.
- * Pure function — checks env/args/url/headers for placeholders that cannot be resolved.
- * Used to print a pre-sync warning table for literal-format agents.
- */
-export function collectUnresolvedEnvVars(servers: McpServer[]): UnresolvedEnvVar[] {
-  const results: UnresolvedEnvVar[] = [];
-  for (const server of servers) {
-    for (const arg of server.args) {
-      results.push(...findUnresolvedInValue(arg, server.name, "args"));
-    }
-    for (const [key, value] of Object.entries(server.env)) {
-      results.push(...findUnresolvedInValue(value, server.name, `env.${key}`));
-    }
-    if (server.url) {
-      results.push(...findUnresolvedInValue(server.url, server.name, "url"));
-    }
-    for (const [key, value] of Object.entries(server.headers ?? {})) {
-      results.push(...findUnresolvedInValue(value, server.name, `headers.${key}`));
-    }
-  }
-  return results;
-}
-
-/** Carve-out: devin (no-op when no literal-format agent is detected; otherwise warns).
- *  Pre-sync gate: scans all servers for unresolved ${VAR}s and prints a per-server
- *  warning table — those servers will be skipped for literal-format agents. */
-function warnUnresolvedEnvVars(agents: AgentConfig[], servers: McpServer[], log: Logger): void {
-  if (!agents.some((a) => getEnvFormat(a.name) === "literal")) return;
-  const unresolved = collectUnresolvedEnvVars(servers);
-  if (unresolved.length === 0) return;
-
-  const byServer = new Map<string, string[]>();
-  for (const entry of unresolved) {
-    const list = byServer.get(entry.serverName) ?? [];
-    list.push(entry.varName);
-    byServer.set(entry.serverName, list);
-  }
-  log.warn("\n  ⚠ Unresolved env vars — these servers will be skipped for literal-format agents (e.g. Devin):\n");
-  for (const [server, vars] of byServer) {
-    log.warn(`    ${server}: ${[...new Set(vars)].join(", ")}`);
-  }
-  log.log(log.dim("\n    Run `agentbrew setup` to configure missing vars, or set them in your shell environment.\n"));
-}
-
 /** Carve-out: shared (every carve-out's pre-sync flow runs through this).
  *  Format secret findings into a human-readable warning table. */
 export function formatSecretWarnings(findings: SecretFinding[]): string[] {
@@ -614,70 +487,23 @@ export function warnHardcodedSecrets(servers: McpServer[], log: Logger): void {
   }
 }
 
-/**
- * Carve-out: devin (only literal-format agent today; no-op pass-through for other carve-outs).
- *
- * Filters out servers that have unresolved ${VAR} placeholders in any field when
- * the target agent uses "literal" env-var format (e.g. Devin). Devin does not
- * expand placeholders in config values; direct MCP env placeholders are omitted
- * later and must be present in the launching shell so child processes inherit
- * them. Returns the filtered list and logs a warning per skipped server.
- */
-export function filterServersForLiteralAgent(
-  servers: McpServer[],
-  agentName: string,
-  log: (msg: string) => void,
-): McpServer[] {
-  if (getEnvFormat(agentName) !== "literal") return servers;
-
-  return servers.filter((server) => {
-    const literalValues = [...server.args, server.url ?? "", ...Object.values(server.headers ?? {})];
-    const hasUnresolved =
-      literalValues.some(hasUnresolvedLiterals) || Object.values(server.env).some(hasUnresolvedInheritedEnv);
-    if (hasUnresolved) {
-      log(`  ⚠ ${agentName}: skipping "${server.name}" — env vars not set (run: agentbrew setup)`);
-    }
-    return !hasUnresolved;
-  });
-}
-
 /** Carve-out: shared (per-carve-out write loop body; runs once per detected carve-out). */
 function syncSingleAgent(
   agent: AgentConfig,
   servers: McpServer[],
-  options: { dryRun: boolean; prune: boolean; quiet: boolean; managedNames: Set<string> },
-  log: Logger,
+  options: { dryRun: boolean; prune: boolean; managedNames: Set<string> },
 ): { name: string; added: number; updated: number; pruned: number; error?: string } {
   if (!agent.mcpConfig) return { name: agent.name, added: 0, updated: 0, pruned: 0 };
 
   try {
-    const agentLog = options.quiet ? () => {} : (msg: string) => log.log(msg);
-    const agentServers = filterServersForLiteralAgent(servers, agent.name, agentLog);
-    // Servers skipped due to unresolved env vars are NEVER force-pruned — the agent
-    // may have a manually-fixed entry with resolved values that must be preserved.
-    // Without this, `agentbrew sync --prune` would delete working Devin credentials
-    // whenever Keychain/env vars are temporarily unavailable.
-    const skippedNames = new Set(
-      servers.filter((s) => !agentServers.some((a) => a.name === s.name)).map((s) => s.name),
-    );
-    // Remove skipped servers from managedNames so they also survive normal pruning.
-    // The prune logic only removes servers in managedNames; by excluding skipped names,
-    // any existing resolved entry is treated as user-owned and left untouched.
-    const safeManagedNames =
-      skippedNames.size > 0
-        ? new Set([...options.managedNames].filter((n) => !skippedNames.has(n)))
-        : options.managedNames;
-
-    // Only AGENTBREW_ONLY_MCP_AGENTS carve-outs (devin, overlay-desktop, copilot, opencode, kiro,
+    // Only AGENTBREW_ONLY_MCP_AGENTS carve-outs (overlay-desktop, copilot, opencode, kiro,
     // amp) reach this path — see `getMcpTargetAgents`.
     const adapter = getAdapter(agent);
-    const result = syncWithAdapter(adapter, agent.mcpConfig, agentServers, agent.name, {
+    const result = syncWithAdapter(adapter, agent.mcpConfig, servers, agent.name, {
       dryRun: options.dryRun,
       prune: options.prune,
       mcpKey: agent.mcpKey,
-      // Exclude skipped servers from prune candidates so resolved entries survive.
-      managedNames: safeManagedNames,
-      unsafePruneNames: skippedNames,
+      managedNames: options.managedNames,
     });
 
     return { name: agent.name, ...result };
@@ -944,7 +770,6 @@ function persistManagedNames(manifest: Manifest, managedNames: Set<string>, shar
 /** Carve-out: shared (pre-sync header + warnings — same shape across every carve-out). */
 function logPreSyncHeader(
   state: { agents: AgentConfig[] },
-  detectedAgents: AgentConfig[],
   servers: McpServer[],
   log: Logger,
   options: { dryRun: boolean },
@@ -953,9 +778,7 @@ function logPreSyncHeader(
   log.log(log.bold(`\n${label}\n`));
   warnUnconfiguredAgents(state.agents, log);
   logMcpDelegatedAgents(state.agents, log);
-  // Pre-sync gates: surface unresolved env vars + hardcoded secrets before
-  // the per-agent writes propagate them.
-  warnUnresolvedEnvVars(detectedAgents, servers, log);
+  // Pre-sync gate: surface hardcoded secrets before the per-agent writes propagate them.
   warnHardcodedSecrets(servers, log);
 }
 
@@ -1024,7 +847,7 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   }
 
   const detectedAgents = getMcpTargetAgents(state.agents);
-  if (!quiet) logPreSyncHeader(state, detectedAgents, servers, log, { dryRun });
+  if (!quiet) logPreSyncHeader(state, servers, log, { dryRun });
 
   // Load manifest before the bridge so the attempted-missing cache filter applies
   // on the first call. The bridge runs before the carve-out native sync below;
@@ -1038,14 +861,14 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   bridgeStateMcpToMcpm(viaMcpm, state.agents, log, { dryRun, quiet }, manifest);
 
   const agentResults = await Promise.all([
-    ...detectedAgents.map((agent) => syncSingleAgent(agent, servers, { dryRun, prune, quiet, managedNames }, log)),
+    ...detectedAgents.map((agent) => syncSingleAgent(agent, servers, { dryRun, prune, managedNames })),
     // Intersection clients get only the carve-out servers, and never with
     // `prune`, so this pass cannot disturb the entries mcpm owns for them.
     // Stdio-only clients are skipped: their config file cannot load them.
     ...(nativeOnly.length === 0
       ? []
       : getNativeHttpTargetAgents(state.agents).map((agent) =>
-          syncSingleAgent(agent, nativeOnly, { dryRun, prune: false, quiet, managedNames }, log),
+          syncSingleAgent(agent, nativeOnly, { dryRun, prune: false, managedNames }),
         )),
   ]);
   runStdioOnlyRemotePrune(state.agents, managedNames, log, { dryRun, quiet });

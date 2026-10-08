@@ -370,7 +370,7 @@ skills:
     recommended: false
 
   - name: sync-agent-config
-    description: "Syncs all agent rules, memories, skills, and config across tools (Windsurf, Cursor, Claude Code)."
+    description: "Syncs all agent rules, memories, skills, and config across tools (Cursor, Claude Code, Codex)."
     source: built-in
     category: meta
     recommended: false
@@ -1422,7 +1422,7 @@ mcp_servers:
     command: npx
     # `--isolated` gives each MCP session an in-memory profile. Without it,
     # Playwright MCP keys its profile dir by workspace hash, so two agents
-    # (Claude Code, Cursor, Devin, Windsurf) opening Playwright in the same
+    # (Claude Code, Cursor, Codex) opening Playwright in the same
     # repo collide on the persistent profile lock — the second client errors
     # with `Browser is already in use for mcp-chrome-<hash>` (GH playwright
     # #40419, playwright-mcp #1594). Isolated mode is the upstream-recommended

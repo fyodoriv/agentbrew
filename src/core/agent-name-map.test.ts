@@ -99,12 +99,12 @@ describe("toSkillsCliAgent", () => {
   it("passes through intersection agents unchanged", () => {
     expect(toSkillsCliAgent("claude-code")).toBe("claude-code");
     expect(toSkillsCliAgent("cursor")).toBe("cursor");
-    expect(toSkillsCliAgent("windsurf")).toBe("windsurf");
+    expect(toSkillsCliAgent("trae")).toBe("trae");
     expect(toSkillsCliAgent("amp")).toBe("amp");
     expect(toSkillsCliAgent("goose")).toBe("goose");
     expect(toSkillsCliAgent("bob")).toBe("bob"); // absorbed 2026-04-24
     expect(toSkillsCliAgent("deepagents")).toBe("deepagents");
-    expect(toSkillsCliAgent("devin")).toBe("devin");
+    expect(toSkillsCliAgent("warp")).toBe("warp");
     expect(toSkillsCliAgent("firebender")).toBe("firebender");
   });
 
@@ -141,8 +141,8 @@ describe("buildSkillsCliAgentArgs", () => {
     });
 
     it("preserves order of input agents in the emitted args", () => {
-      expect(buildSkillsCliAgentArgs(["windsurf", "amp", "goose"])).toEqual({
-        args: ["--agent", "windsurf", "--agent", "amp", "--agent", "goose"],
+      expect(buildSkillsCliAgentArgs(["trae", "amp", "goose"])).toEqual({
+        args: ["--agent", "trae", "--agent", "amp", "--agent", "goose"],
         carveOuts: [],
       });
     });
@@ -172,8 +172,8 @@ describe("buildSkillsCliAgentArgs", () => {
     it("skips agentbrew-only agents and reports them in carveOuts", () => {
       // `claude-desktop` (AGENTBREW_ONLY_AGENTS) has no skills CLI equivalent —
       // caller must route it to native install.
-      expect(buildSkillsCliAgentArgs(["claude-desktop", "devin"])).toEqual({
-        args: ["--agent", "devin"],
+      expect(buildSkillsCliAgentArgs(["claude-desktop", "warp"])).toEqual({
+        args: ["--agent", "warp"],
         carveOuts: ["claude-desktop"],
       });
     });
@@ -183,15 +183,15 @@ describe("buildSkillsCliAgentArgs", () => {
     it("translates renames, passes intersection agents through, and reports carve-outs separately", () => {
       // This is the slice-3-onward shape: a real detection set will mix
       // all three classes. The helper must handle them in one pass.
-      expect(buildSkillsCliAgentArgs(["claude-code", "copilot", "claude-desktop", "kiro", "windsurf"])).toEqual({
-        args: ["--agent", "claude-code", "--agent", "github-copilot", "--agent", "kiro-cli", "--agent", "windsurf"],
+      expect(buildSkillsCliAgentArgs(["claude-code", "copilot", "claude-desktop", "kiro", "trae"])).toEqual({
+        args: ["--agent", "claude-code", "--agent", "github-copilot", "--agent", "kiro-cli", "--agent", "trae"],
         carveOuts: ["claude-desktop"],
       });
     });
 
     it("preserves carve-out order in the carveOuts array", () => {
-      expect(buildSkillsCliAgentArgs(["claude-desktop", "claude-code", "devin"])).toEqual({
-        args: ["--agent", "claude-code", "--agent", "devin"],
+      expect(buildSkillsCliAgentArgs(["claude-desktop", "claude-code", "warp"])).toEqual({
+        args: ["--agent", "claude-code", "--agent", "warp"],
         carveOuts: ["claude-desktop"],
       });
     });

@@ -52,7 +52,7 @@ const stateMock = vi.hoisted(() => ({
     agents: [
       { name: "claude-code", detected: true },
       { name: "cursor", detected: true },
-      { name: "windsurf", detected: false },
+      { name: "kiro", detected: false },
     ],
     catalogVersion: "0.1.0",
     mcpServers: [],
@@ -419,7 +419,7 @@ describe("reportPostSyncDrift", () => {
       { type: "skills-user-added", agent: "warp", detail: "user-created skill: agent-browser" },
       { type: "skills-user-added", agent: "warp", detail: "user-created skill: capability-plugin-creator" },
       { type: "commands-user-added", agent: "claude-code", detail: "user-created command: minsky-clean.md" },
-      { type: "mcp-user-added", agent: "devin", detail: "user-added server: organization-developer-portal" },
+      { type: "mcp-user-added", agent: "codex", detail: "user-added server: organization-developer-portal" },
     ] as never);
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const modules: SyncModule[] = [{ name: "ok", fn: async () => undefined }];
@@ -463,7 +463,7 @@ describe("compact mode — no-op output (UX line budget)", () => {
     consoleLogSpy.mockRestore();
     const synced = lines.filter((l) => l.includes("✓ Synced") && l.includes("agents"));
     expect(synced.length).toBe(1);
-    // Counts only detected agents — `windsurf: detected=false` is not
+    // Counts only detected agents — `kiro: detected=false` is not
     // included in the agent count of the consolidated summary line.
     expect(synced[0]).toContain("2 agents");
   });

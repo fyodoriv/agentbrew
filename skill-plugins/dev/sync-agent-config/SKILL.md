@@ -36,7 +36,7 @@ takes one or more comma-separated modules
 (`mcp,rules,commands,agents,skills,hooks,instructions`):
 
 ```bash
-agentbrew sync --only mcp        # MCP servers → Claude, Cursor, Windsurf, Kiro, etc.
+agentbrew sync --only mcp        # MCP servers → Claude, Cursor, Codex, Kiro, etc.
 agentbrew sync --only rules      # shared rules → all agents
 agentbrew sync --only commands   # slash commands → Cursor, Claude Code, etc.
 agentbrew sync --only skills     # skill symlinks → all agent skill dirs
@@ -63,7 +63,6 @@ agents. See `docs/instructions-analysis.md` for trimming guidance.
 
 ```
 state.yaml (mcpServers)        → mcp-sync      → ~/.cursor/mcp.json
-                                                  ~/.codeium/windsurf/mcp_config.json
                                                   ~/.kiro/settings/mcp.json
 shared-rules.md                → rules-sync    → ~/.augment/guidelines.md
                                                   ~/.codex/AGENTS.md

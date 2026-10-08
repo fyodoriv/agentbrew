@@ -56,8 +56,8 @@ $ cd my-project && agentbrew
 **What it scans for** (fast — only `existsSync` checks):
 
 - `Agentfile`, `Agentfile.yaml`, `Agentfile.yml`
-- `.claude/skills/`, `.cursor/skills/`, `.devin/skills/`
-- `.cursor/rules/`, `.windsurf/rules/`
+- `.claude/skills/`, `.cursor/skills/`
+- `.cursor/rules/`
 - `.claude/commands/`, `.cursor/commands/`
 - `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`
 
@@ -78,7 +78,7 @@ Run `agentbrew sync` from the repo root to apply. Project servers merge into you
 
 ## Per-file rules
 
-Place rule files in `~/.config/agentbrew/rules/` to deploy them as per-file rules to agents that support it (Cursor at `~/.cursor/rules/`, Windsurf at `~/.windsurf/rules/`):
+Place rule files in `~/.config/agentbrew/rules/` to deploy them as per-file rules to agents that support it (Cursor at `~/.cursor/rules/`):
 
 ```markdown
 ---

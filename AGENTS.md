@@ -2,7 +2,7 @@
 
 ## What This Repo Is
 
-A skill manager and sync engine for AI coding agents. Pure Node.js CLI that syncs skills, MCP servers, rules, commands, and agent definitions across every supported agent — Claude Code, Cursor, Windsurf, Devin, Augment, Codex, Gemini CLI, Copilot, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Trae, Junie, Continue, Warp, and more.
+A skill manager and sync engine for AI coding agents. Pure Node.js CLI that syncs skills, MCP servers, rules, commands, and agent definitions across every supported agent — Claude Code, Cursor, Augment, Codex, Gemini CLI, Copilot, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Trae, Junie, Continue, Warp, and more.
 
 ## Repo Layout
 
@@ -31,8 +31,6 @@ agentbrew/
 └── README.md
 ```
 
-> `.devin/` is gitignored per-developer Devin CLI config (hooks, local permissions). It does not hold shared repo content — any skill that would help anyone working on agentbrew belongs in `skill-plugins/dev/`. Interested contributors can copy the opt-in marathon-session Stop hook from [`docs/devin-marathon-hooks-example.md`](docs/devin-marathon-hooks-example.md) into their own `.devin/`. The same rule applies to sibling tool dirs (`.claude/`, `.cursor/`, etc.) that agents may create locally.
-
 ## Development
 
 ```bash
@@ -48,7 +46,7 @@ npm run verify                     # typecheck + lint + security + tests (full g
 
 ## Frozen agents
 
-Windsurf, Devin, and Augment are deprecated and frozen ([VISION NG4](VISION.md)). Keep their `agents.yaml` entries, sync targets, and tests. Never implement a fix or a feature for them, and never file tasks for them. If work for a supported agent breaks a frozen agent's existing test, skip that test with a note naming NG4.
+Windsurf and Devin support was removed on 2026-10-08. agentbrew no longer knows either agent. Do not re-add them. Augment stays deprecated and frozen ([VISION NG4](VISION.md)). Keep its `agents.yaml` entry, sync targets, and tests. Never implement a fix or a feature for it, and never file tasks for it. If work for a supported agent breaks Augment's existing test, skip that test with a note naming NG4.
 
 ## Rules for Editing
 
@@ -76,12 +74,12 @@ agentbrew state                     sync engine                     target
 ───────────────                     ───────────                     ──────
 state.yaml (mcpServers)          →  mcp-sync.ts                  →  Native MCP writes for `AGENTBREW_ONLY_MCP_AGENTS`
                                                                       (paths pinned in src/sync/mcp-sync-carveout-matrix.test.ts,
-                                                                      e.g. ~/.config/devin/config.json, ~/.cursor/mcp.json,
-                                                                      ~/.codeium/windsurf/mcp_config.json); intersection clients
+                                                                      e.g. ~/.cursor/mcp.json,
+                                                                      ~/.config/opencode/opencode.json); intersection clients
                                                                       in `MCP_INTERSECTION_AGENTS` delegate to `mcpm install` +
                                                                       `mcpm client edit` via mcp-delegate.ts. agents.yaml
                                                                       `mcpPermissionsConfig` also writes permissions.allow for
-                                                                      Cursor CLI and Devin.
+                                                                      Cursor CLI.
 shared-rules.md                  →  rules-sync.ts                →  Native writes for `AGENTBREW_ONLY_RULES_AGENTS` (paths in
                                                                       src/sync/rules-sync-carveout-matrix.test.ts); agents in
                                                                       `CANARY_DELEGATED_AGENTS` go through `ai-rules generate`
@@ -91,16 +89,14 @@ shared-rules.md                  →  rules-sync.ts                →  Native w
                                                                       via commands-delegate.ts
 installed skills + opt-in dirs  →  skills-sync.ts               →  ~/.*/skills/* (symlinks — agents with readsFrom are skipped)
 ~/.config/agentbrew/agents/      →  agents-sync.ts               →  ~/.claude/agents/*.md, ~/.cursor/agents/*.md, etc.
-templates/AGENTS.md              →  instructions-sync.ts         →  ~/.claude/CLAUDE.md, ~/.codeium/windsurf/memories/global_rules.md, etc.
+templates/AGENTS.md              →  instructions-sync.ts         →  ~/.claude/CLAUDE.md, ~/.augment/guidelines.md, etc.
 templates/scripts/* +            →  helper-scripts.ts            →  ~/.config/agentbrew/scripts/* (only missing or
   scripts/check-pr-vision-trace.mjs                                   agentbrew-written files)
 Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key),
-                                                                      ~/.cursor/hooks.json,
-                                                                      .devin/hooks.v1.json (project-local)
+                                                                      ~/.cursor/hooks.json
 Agentfile defaultModel/Effort    →  model-sync.ts                →  ~/.claude/settings.json (model, effortLevel),
-                                                                      ~/.config/devin/config.json (agent.model),
-                                                                      ~/.codex/config.toml (model, model_reasoning_effort). Cursor/Windsurf
-                                                                      have no file surface (app-managed/UI model state).
+                                                                      ~/.codex/config.toml (model, model_reasoning_effort). Cursor
+                                                                      has no file surface (app-managed/UI model state).
 ```
 
 ### Deterministic hooks
@@ -137,11 +133,8 @@ Then run `agentbrew sync`. The source repo owns the skill files — agentbrew ju
 |-------------|-------|-------|
 | `~/.claude/` | **agentbrew** | CLAUDE.md, commands/, agents/ (shared by claude-code + claude-desktop Cowork) |
 | `~/.cursor/` | **agentbrew** | mcp.json, cli-config.json (MCP permissions), rules/, commands/, agents/ |
-| `~/.codeium/` | **agentbrew** | mcp_config.json, windsurf/memories/, windsurf/global_workflows/ |
-| `~/.windsurf/` | **agentbrew** | rules/ |
 | `~/.augment/` | **agentbrew** | guidelines.md |
 | `~/.codex/` | **agentbrew** | AGENTS.md, config.toml, agents/ |
-| `~/.config/devin/` | **agentbrew** | skills/, agents/, commands/, config.json (mcpServers + permissions), AGENTS.md |
 | `~/.config/opencode/` | **agentbrew** | skills/, commands/, opencode.json |
 | `~/.config/goose/` | **agentbrew** | skills/, config.yaml, AGENTS.md |
 | `~/.config/amp/` | **agentbrew** | skills/, settings.json, AGENTS.md |

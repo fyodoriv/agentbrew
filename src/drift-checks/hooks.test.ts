@@ -37,10 +37,10 @@ vi.mock("../types.js", async (importOriginal) => {
         hooksFormat: "cursor",
       },
       {
-        name: "devin",
+        name: "project-hooks-agent",
         detected: true,
-        skillsDir: "~/.config/devin/skills",
-        hooksFile: ".devin/hooks.v1.json",
+        skillsDir: "~/.config/project-hooks-agent/skills",
+        hooksFile: ".project-hooks-agent/hooks.v1.json",
         hooksFormat: "claude-direct",
         hooksScope: "project",
       },
@@ -270,33 +270,33 @@ describe("checkHooksDrift", () => {
     expect(checkHooksDrift()).toEqual([]);
   });
 
-  it("resolves Devin hooks from the project-local hooks file", () => {
+  it("resolves project-scoped hooks from the project-local hooks file", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],
-      agents: [{ name: "devin", detected: true }],
+      agents: [{ name: "project-hooks-agent", detected: true }],
       hooks: [
         {
           event: "Stop",
           type: "command",
-          command: "echo devin",
+          command: "echo project-hooks",
           source: "agentfile",
-          agents: ["devin"],
+          agents: ["project-hooks-agent"],
         },
       ],
     } as never);
     mockLoadManifest.mockReturnValue({
       hashes: {},
-      managedHookKeysByAgent: { devin: ["Stop:*"] },
+      managedHookKeysByAgent: { "project-hooks-agent": ["Stop:*"] },
     } as never);
-    mockExistsSync.mockImplementation((path) => path === `${process.cwd()}/.devin/hooks.v1.json`);
+    mockExistsSync.mockImplementation((path) => path === `${process.cwd()}/.project-hooks-agent/hooks.v1.json`);
     mockReadFileSync.mockReturnValue(
       JSON.stringify({
-        Stop: [{ hooks: [{ type: "command", command: "echo devin" }] }],
+        Stop: [{ hooks: [{ type: "command", command: "echo project-hooks" }] }],
       }),
     );
 
     expect(checkHooksDrift()).toEqual([]);
-    expect(mockExistsSync).toHaveBeenCalledWith(`${process.cwd()}/.devin/hooks.v1.json`);
+    expect(mockExistsSync).toHaveBeenCalledWith(`${process.cwd()}/.project-hooks-agent/hooks.v1.json`);
   });
 
   it("treats explicit wildcard matchers as the default hook matcher", () => {

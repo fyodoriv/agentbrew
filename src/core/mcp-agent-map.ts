@@ -12,7 +12,7 @@
  *   - Different carve-out set: see {@link AGENTBREW_ONLY_MCP_AGENTS} and
  *     {@link AGENTBREW_ONLY_MCP_RATIONALE} (adapter contribute candidates
  *     `opencode`, `kiro`, `amp` stay native until upstream PRs land; hard
- *     product-context carve-outs include `devin`, `overlay-desktop`, `copilot`).
+ *     product-context carve-outs include `overlay-desktop`, `copilot`).
  *
  * Why a separate file (not extending `agent-name-map.ts`): each delegation
  * has its own rename/carve-out shape; sharing would force a "which-tool"
@@ -50,18 +50,11 @@ export const AGENTBREW_TO_MCPM: Readonly<Record<string, string>> = Object.freeze
  *
  * Re-evaluate as upstream PRs land. Small-adapter contribute candidates
  * (`opencode`, `kiro`, `amp`) come off this map when upstream adapters land.
- * Hard product-context carve-outs (`devin`, `copilot`) likely stay forever —
- * Cognition-internal / VS Code product surfaces that won't go upstream.
+ * Hard product-context carve-out (`copilot`) likely stays forever —
+ * a VS Code product surface that won't go upstream.
  * (organization's overlay-desktop is an overlay agent, not core.)
  */
 export const AGENTBREW_ONLY_MCP_RATIONALE: Readonly<Record<string, string>> = Object.freeze({
-  // devin: Cognition product, not on mcpm's roadmap. The most-plausible
-  // upstream addition of hard carve-outs — a Devin entry in mcpm
-  // would close this gap. Tracked as a candidate upstream issue
-  // (publishing requires explicit per-action approval per the file-level
-  // TASKS.md publishing policy).
-  devin: "Not in mcpm's client list; agentbrew added the target before/independently of mcpm.",
-
   // NOTE: product-specific overlay agents (e.g. the organization Developer Desktop
   // App's overlay-desktop, provided by the agentbrew-acme team overlay) are
   // also native carve-outs, but their rationale lives in the overlay — core no
@@ -92,15 +85,6 @@ export const AGENTBREW_ONLY_MCP_RATIONALE: Readonly<Record<string, string>> = Ob
   // config lives at `~/.config/amp/settings.json` under an `amp.mcpServers`
   // key.
   amp: "Not in mcpm's client list; small adapter contribute candidate (slice 6 of delegate-mcp-to-mcpm).",
-
-  // windsurf: moved from intersection to carve-out 2026-05-19. When mcpm
-  // manages Windsurf, every MCP server launches through `mcpm run <name>`
-  // which invokes python. On macOS with an endpoint-security agent, each python3.13
-  // process triggers an "Acceptable Use Policy" popup on boot — Windsurf
-  // is a login item so all servers spawn immediately. Native sync writes
-  // direct npx/uvx commands (no python in the critical path).
-  windsurf:
-    "An endpoint-security agent blocks mcpm's python on macOS boot. Native sync uses npx/uvx — no python in the launch path.",
 
   // cursor: moved from intersection to carve-out. mcpm's `mcpm client edit
   // cursor` writes `mcpm_<name>` wrapper entries (command: mcpm, args: [run,
@@ -133,7 +117,7 @@ export const AGENTBREW_ONLY_MCP_AGENTS: ReadonlySet<string> = new Set(Object.key
  * Mirrors the `CANARY_DELEGATED_AGENTS` Set in `src/sync/rules-sync.ts`
  * for the rules-to-ai-rules delegation. Same shape, different agent set.
  *
- * The carve-outs (devin, copilot, opencode, kiro, amp) are NOT in this Set
+ * The carve-outs (copilot, opencode, kiro, amp) are NOT in this Set
  * — they continue to receive native sync writes per
  * `AGENTBREW_ONLY_MCP_RATIONALE`. Product-specific overlay agents (e.g.
  * overlay-desktop) are likewise native by not appearing here. The carve-out Set
@@ -147,7 +131,6 @@ export const MCP_INTERSECTION_AGENTS: ReadonlySet<string> = new Set([
   // direct commands instead)
   "claude-desktop",
   "cline",
-  // windsurf: moved to AGENTBREW_ONLY_MCP_RATIONALE (endpoint-security agent, 2026-05-19)
   "gemini-cli",
   "codex",
   "goose",
@@ -202,8 +185,8 @@ export function toMcpmClient(agentbrewName: string): string | null {
  *   buildMcpmClientList(["codex", "claude-code"])
  *   // → { clients: ["codex-cli", "claude-code"], carveOuts: [] }
  *
- *   buildMcpmClientList(["devin", "goose", "overlay-desktop"])
- *   // → { clients: ["goose-cli"], carveOuts: ["devin", "overlay-desktop"] }
+ *   buildMcpmClientList(["copilot", "goose", "overlay-desktop"])
+ *   // → { clients: ["goose-cli"], carveOuts: ["copilot", "overlay-desktop"] }
  */
 export function buildMcpmClientList(agentbrewAgents: readonly string[] | "all"): {
   clients: string[];

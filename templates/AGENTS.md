@@ -1,6 +1,6 @@
 # Global Agent Context
 
-Agentbrew manages skills, MCP servers, rules, commands, hooks, and agent definitions for this machine. Generated agent files under `~/.claude/`, `~/.cursor/`, `~/.codeium/`, `~/.config/devin/`, `~/.codex/`, and similar agent dirs are outputs; edit the source repo or `~/.config/agentbrew/` source, then run `agentbrew sync`.
+Agentbrew manages skills, MCP servers, rules, commands, hooks, and agent definitions for this machine. Generated agent files under `~/.claude/`, `~/.cursor/`, `~/.codex/`, and similar agent dirs are outputs; edit the source repo or `~/.config/agentbrew/` source, then run `agentbrew sync`.
 
 ## Installed skills
 

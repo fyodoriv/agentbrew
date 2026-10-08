@@ -201,7 +201,7 @@ describe("registerMcpCommands", () => {
 
     it("does NOT call delegateMcpNew when only carve-out agents are detected", async () => {
       mockRequireState.mockReturnValueOnce({
-        agents: [{ name: "devin", detected: true } as never, { name: "copilot", detected: true } as never],
+        agents: [{ name: "kiro", detected: true } as never, { name: "copilot", detected: true } as never],
         sources: [],
         mcpServers: [],
         catalogVersion: "0",

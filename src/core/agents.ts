@@ -228,8 +228,8 @@ export function resetAgentDefinitionsCache(): void {
 
 /**
  * Filter out agents whose dirs are already readable by another detected agent
- * via `readsFrom`. This prevents deploying duplicate symlinks when (e.g.) Devin
- * reads from Claude Code, Cursor, and Windsurf dirs.
+ * via `readsFrom`. This prevents deploying duplicate symlinks when (e.g.) one agent
+ * reads from several other agents' dirs.
  */
 export function filterReadsFromAgents<T extends { name: string; readsFrom?: string[] }>(
   agents: T[],

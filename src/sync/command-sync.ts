@@ -35,7 +35,7 @@ import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
  * use ai-rules' `-ai-rules` suffix shape (handled by
  * `mapAiRulesNameToSource` in `commands-delegate.ts`).
  *
- * Carve-outs in `AGENTBREW_ONLY_COMMANDS_AGENTS` (windsurf, devin, gemini-cli, claude-desktop, opencode)
+ * Carve-outs in `AGENTBREW_ONLY_COMMANDS_AGENTS` (gemini-cli, claude-desktop, opencode)
  * are filtered out by {@link buildAiRulesCommandsAgentList} — they
  * continue to use the native source-read + transform path. Their
  * rationale is documented in `AGENTBREW_ONLY_COMMANDS_RATIONALE`

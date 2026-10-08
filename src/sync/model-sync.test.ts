@@ -24,7 +24,7 @@ function agent(name: string, detected = true): AgentConfig {
 
 function stateWith(overrides: Partial<AgentBrewState>): AgentBrewState {
   return {
-    agents: [agent("claude-code"), agent("devin"), agent("codex")],
+    agents: [agent("claude-code"), agent("codex")],
     catalogVersion: "1",
     defaultModel: "claude-5-fable-max",
     ...overrides,
@@ -35,14 +35,6 @@ function writeClaudeSettings(content: Record<string, unknown>): string {
   const dir = join(mockHome, ".claude");
   mkdirSync(dir, { recursive: true });
   const path = join(dir, "settings.json");
-  writeFileSync(path, `${JSON.stringify(content, null, 2)}\n`);
-  return path;
-}
-
-function writeDevinConfig(content: Record<string, unknown>): string {
-  const dir = join(mockHome, ".config", "devin");
-  mkdirSync(dir, { recursive: true });
-  const path = join(dir, "config.json");
   writeFileSync(path, `${JSON.stringify(content, null, 2)}\n`);
   return path;
 }
@@ -69,7 +61,7 @@ afterEach(() => {
 
 describe("resolveTargetModel", () => {
   it("returns the default when no overrides exist", () => {
-    expect(resolveTargetModel("devin", "claude-5-fable-max", undefined)).toBe("claude-5-fable-max");
+    expect(resolveTargetModel("claude-code", "claude-5-fable-max", undefined)).toBe("claude-5-fable-max");
   });
 
   it("returns the per-agent override string", () => {
@@ -81,7 +73,7 @@ describe("resolveTargetModel", () => {
   });
 
   it("ignores overrides for other agents", () => {
-    expect(resolveTargetModel("devin", "claude-5-fable-max", { codex: null })).toBe("claude-5-fable-max");
+    expect(resolveTargetModel("claude-code", "claude-5-fable-max", { codex: null })).toBe("claude-5-fable-max");
   });
 });
 
@@ -119,17 +111,6 @@ describe("syncModels", () => {
     expect(written.permissions).toEqual({ defaultMode: "bypassPermissions" });
   });
 
-  it("writes the nested agent.model key for devin", async () => {
-    const path = writeDevinConfig({ version: 1, agent: { model: "old-model" }, mcpServers: { keep: {} } });
-    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("devin")] }));
-
-    await syncModels({ quiet: true });
-
-    const written = JSON.parse(readFileSync(path, "utf-8")) as { agent: { model: string }; mcpServers: unknown };
-    expect(written.agent.model).toBe("claude-5-fable-max");
-    expect(written.mcpServers).toEqual({ keep: {} });
-  });
-
   it("writes TOML for codex using the per-agent override id", async () => {
     const path = writeCodexConfig({ mcpServers: { playwright: { command: "npx" } } });
     vi.mocked(loadState).mockReturnValue(
@@ -156,11 +137,11 @@ describe("syncModels", () => {
   });
 
   it("skips agents whose config file does not exist (never creates one)", async () => {
-    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("devin")] }));
+    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("claude-code")] }));
 
     await syncModels({ quiet: true });
 
-    expect(() => readFileSync(join(mockHome, ".config", "devin", "config.json"), "utf-8")).toThrow();
+    expect(() => readFileSync(join(mockHome, ".claude", "settings.json"), "utf-8")).toThrow();
   });
 
   it("skips undetected agents", async () => {
@@ -184,9 +165,9 @@ describe("syncModels", () => {
   });
 
   it("does not rewrite a file that already has the target model", async () => {
-    const path = writeDevinConfig({ agent: { model: "claude-5-fable-max" } });
+    const path = writeClaudeSettings({ model: "claude-5-fable-max" });
     const before = readFileSync(path, "utf-8");
-    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("devin")] }));
+    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("claude-code")] }));
 
     await syncModels({ quiet: true });
 
@@ -238,16 +219,6 @@ describe("syncModels", () => {
 
     const written = TOML.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
     expect(written.model_reasoning_effort).toBe("medium");
-  });
-
-  it("leaves effort alone for agents without an effortPath", async () => {
-    const path = writeDevinConfig({ agent: { model: "old-model" } });
-    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("devin")], defaultEffort: "medium" }));
-
-    await syncModels({ quiet: true });
-
-    const written = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-    expect(written).toEqual({ agent: { model: "claude-5-fable-max" } });
   });
 
   it("keeps an agent's own effort when its override is null", async () => {

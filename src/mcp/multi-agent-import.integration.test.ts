@@ -1,5 +1,5 @@
 /**
- * Multi-agent end-to-end integration test for the Devin-import crash class.
+ * Multi-agent end-to-end integration test for the strict-interpolation crash class.
  *
  * What this proves
  * ----------------
@@ -11,7 +11,7 @@
  * that `agentbrew sync` calls post-sync.
  *
  * The load-bearing assertion: after `sweepMcpConfigs({ detected: AGENT_DEFINITIONS })`
- * touches every config, the Devin-import simulator returns ok=true against
+ * touches every config, the strict-interpolation scan returns ok=true against
  * the union of every config. This is the test that would have failed before
  * PR #998 / PR #1018 and now must stay green forever.
  *
@@ -31,8 +31,8 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { scanStrictInterpolation } from "../test-utils/strict-interpolation.js";
 import { dirtyServerSample, MCP_AGENT_MATRIX } from "./agent-matrix.fixtures.js";
-import { simulateDevinImport } from "./devin-import.simulator.js";
 import { sweepMcpConfigs } from "./resilient-sweep.js";
 
 // ── Mocked HOME so sweepMcpConfigs's expandHome() lands in the sandbox ──────
@@ -62,7 +62,7 @@ function writeFixture(fixture: (typeof MCP_AGENT_MATRIX)[number], serverName = "
   return fullPath;
 }
 
-describe("Multi-agent E2E: agentbrew sweep + simulated Devin import", () => {
+describe("Multi-agent E2E: agentbrew sweep + strict-interpolation scan", () => {
   beforeEach(() => {
     mkdirSync(ctx.home, { recursive: true });
   });
@@ -71,11 +71,11 @@ describe("Multi-agent E2E: agentbrew sweep + simulated Devin import", () => {
     rmSync(ctx.home, { recursive: true, force: true });
   });
 
-  it("baseline — dirty configs for every MCP-capable agent crash simulated Devin", () => {
+  it("baseline — dirty configs for every MCP-capable agent crash a strict interpolator", () => {
     // Reproduce the original user-reported symptom on a fresh machine where
     // every MCP-capable agent's config has bare ${VAR} placeholders.
     const paths = MCP_AGENT_MATRIX.map((f) => writeFixture(f));
-    const result = simulateDevinImport(paths, {});
+    const result = scanStrictInterpolation(paths, {});
     expect(result.ok).toBe(false);
     // Findings should span MANY agents — confirms the simulator walks all of them.
     expect(result.findings.length).toBeGreaterThanOrEqual(MCP_AGENT_MATRIX.length);
@@ -98,12 +98,12 @@ describe("Multi-agent E2E: agentbrew sweep + simulated Devin import", () => {
     }
   });
 
-  it("post-sweep — simulated Devin import succeeds with NO env set", () => {
+  it("post-sweep — strict-interpolation scan succeeds with NO env set", () => {
     // The load-bearing regression test: this would have failed on `main` before
     // PR #998 (resilient placeholders) and PR #1018 (YAML support).
     const paths = MCP_AGENT_MATRIX.map((f) => writeFixture(f));
     sweepMcpConfigs({ detected: detectedAgents });
-    const result = simulateDevinImport(paths, {});
+    const result = scanStrictInterpolation(paths, {});
     expect(result.ok).toBe(true);
     expect(result.findings).toEqual([]);
   });

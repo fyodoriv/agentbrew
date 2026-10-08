@@ -107,7 +107,7 @@ export function registerCoreCommands(program: Command): void {
   program
     .command("import")
     .description("Import user-added MCP servers from agent configs into agentbrew (syncs to all agents)")
-    .option("--from <agent>", "Import from a specific agent (e.g., cursor, windsurf)")
+    .option("--from <agent>", "Import from a specific agent (e.g., cursor, codex)")
     .option("--bundle <file>", "Import from an agentbrew export bundle (.yaml or .json)")
     .option("--replace", "Replace existing items instead of skipping (with --bundle)")
     .option("--dry-run", "Preview import without applying changes (with --bundle)")

@@ -585,13 +585,13 @@ describe("installMcpServer — bridge to mcpm", () => {
   });
 
   it("short-circuits when only carve-out agents are detected (no intersection clients)", async () => {
-    // devin + copilot are explicit carve-outs. Without the short-
+    // kiro + copilot are explicit carve-outs. Without the short-
     // circuit, slice-4c-era code would still spawn `mcpm install` even
     // though the result has nowhere useful to land — wasteful subprocess
     // call that makes the catalog install path unnecessarily slow.
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [makeAgent("devin", true), makeAgent("copilot", true)],
+        agents: [makeAgent("kiro", true), makeAgent("copilot", true)],
       }),
     );
     await install("github");

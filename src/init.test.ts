@@ -350,7 +350,7 @@ describe("initForce", () => {
   it("strips commandTransform from ALL agents including mixed detected/undetected", async () => {
     mockDetectAgents.mockReturnValue([
       { name: "cursor", detected: true, skillsDir: "x", commandTransform: (s: string) => s },
-      { name: "windsurf", detected: true, skillsDir: "y", commandTransform: (s: string) => s },
+      { name: "kiro", detected: true, skillsDir: "y", commandTransform: (s: string) => s },
       { name: "gemini-cli", detected: false, skillsDir: "z", commandTransform: (s: string) => s },
       { name: "claude-code", detected: true, skillsDir: "w" },
     ]);

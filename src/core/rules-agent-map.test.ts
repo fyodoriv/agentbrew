@@ -42,12 +42,12 @@ describe("AI_RULES_TO_AGENTBREW", () => {
 
 describe("AGENTBREW_ONLY_RULES_AGENTS", () => {
   it("matches AGENTBREW_ONLY_RULES_AGENTS", () => {
-    // AGENTBREW_ONLY_RULES_AGENTS (windsurf, augment, devin) + readsFrom-aliased
+    // AGENTBREW_ONLY_RULES_AGENTS (augment) + readsFrom-aliased
     // carve-out (claude-desktop, which shares ~/.claude/CLAUDE.md with
     // claude-code). Treated as a carve-out at the delegation boundary so
     // the dispatcher knows not to issue a separate `ai-rules generate
     // --agents claude-desktop` call.
-    expect(new Set(AGENTBREW_ONLY_RULES_AGENTS)).toEqual(new Set(["windsurf", "augment", "devin", "claude-desktop"]));
+    expect(new Set(AGENTBREW_ONLY_RULES_AGENTS)).toEqual(new Set(["augment", "claude-desktop"]));
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -68,12 +68,7 @@ describe("AGENTBREW_ONLY_RULES_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_RULES_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_RULES_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_RULES_RATIONALE).sort()).toEqual([
-      "augment",
-      "claude-desktop",
-      "devin",
-      "windsurf",
-    ]);
+    expect(Object.keys(AGENTBREW_ONLY_RULES_RATIONALE).sort()).toEqual(["augment", "claude-desktop"]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {
@@ -86,10 +81,10 @@ describe("AGENTBREW_ONLY_RULES_RATIONALE", () => {
     }
   });
 
-  it("each rationale names ai-rules specifically (or explains the cross-tool / Cognition scope)", () => {
+  it("each rationale names ai-rules specifically (or explains the cross-tool scope)", () => {
     for (const [agent, reason] of Object.entries(AGENTBREW_ONLY_RULES_RATIONALE)) {
       const mentionsAiRules = /ai-rules/i.test(reason);
-      const mentionsScope = /skills-?CLI|mcpm|cognition|codeium|windsurf/i.test(reason);
+      const mentionsScope = /skills-?CLI|mcpm/i.test(reason);
       expect(mentionsAiRules || mentionsScope, `rationale for ${agent} should reference 'ai-rules' or scope`).toBe(
         true,
       );
@@ -110,9 +105,7 @@ describe("toAiRulesAgent", () => {
   });
 
   it("returns null for agentbrew-only agents (carve-outs)", () => {
-    expect(toAiRulesAgent("windsurf")).toBeNull();
     expect(toAiRulesAgent("augment")).toBeNull();
-    expect(toAiRulesAgent("devin")).toBeNull();
     expect(toAiRulesAgent("claude-desktop")).toBeNull();
   });
 
@@ -230,13 +223,13 @@ describe("buildAiRulesAgentList", () => {
 
   describe("carve-out path", () => {
     it("skips agentbrew-only agents and reports them in carveOuts", () => {
-      // The carve-outs (windsurf, augment, devin, claude-desktop) have
+      // The carve-outs (augment, claude-desktop) have
       // no separate ai-rules dispatch — caller must route them to native
       // OR (for claude-desktop) rely on the claude-code intersection
       // covering the same file via readsFrom.
-      expect(buildAiRulesAgentList(["windsurf", "augment", "devin", "claude-desktop"])).toEqual({
+      expect(buildAiRulesAgentList(["augment", "claude-desktop"])).toEqual({
         agents: [],
-        carveOuts: ["windsurf", "augment", "devin", "claude-desktop"],
+        carveOuts: ["augment", "claude-desktop"],
       });
     });
   });
@@ -250,9 +243,7 @@ describe("buildAiRulesAgentList", () => {
         buildAiRulesAgentList([
           "claude-code", // rename
           "cursor", // intersection
-          "windsurf", // carve-out
           "augment", // carve-out
-          "devin", // carve-out
           "codex", // intersection
           "gemini-cli", // rename
           "amp", // free gain (intersection in ai-rules)
@@ -277,14 +268,14 @@ describe("buildAiRulesAgentList", () => {
           "kilocode",
           "roo",
         ],
-        carveOuts: ["windsurf", "augment", "devin"],
+        carveOuts: ["augment"],
       });
     });
 
     it("preserves carve-out order in the carveOuts array", () => {
-      expect(buildAiRulesAgentList(["devin", "claude-code", "windsurf"])).toEqual({
+      expect(buildAiRulesAgentList(["augment", "claude-code", "claude-desktop"])).toEqual({
         agents: ["claude"],
-        carveOuts: ["devin", "windsurf"],
+        carveOuts: ["augment", "claude-desktop"],
       });
     });
   });

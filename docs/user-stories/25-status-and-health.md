@@ -23,7 +23,7 @@ $ agentbrew status
 
 agentbrew status
 
-  Agents:         4 detected (claude-code, cursor, windsurf, devin)
+  Agents:         3 detected (claude-code, cursor, codex)
   MCP Ready:      5/5 (0 need setup) — run `agentbrew setup`
   Sources:        3 registered (vercel-labs/skills, trailofbits/skills, personal)
   Skills:         47 in library across 3 sources
@@ -52,7 +52,7 @@ If something is out of place — a missing MCP server, a broken skill symlink, a
 
 ```
   Drift:          6 issue(s)
-    Rules:        ✗ <count> agent(s) missing managed section — cursor, windsurf, codex
+    Rules:        ✗ <count> agent(s) missing managed section — cursor, codex
     Skills:       ✗ <count> broken symlink(s) — debug, plan
     MCP servers:  ⚠ <count> server needs env var — github (GITHUB_TOKEN)
 

@@ -155,23 +155,6 @@ export const MCP_AGENT_MATRIX: McpAgentFixture[] = [
     notes: "Devin explicitly imports ~/.cursor/mcp.json — historic regression source #2.",
   },
   {
-    name: "windsurf",
-    relativePath: ".codeium/windsurf/mcp_config.json",
-    mcpKey: "mcpServers",
-    mcpFormat: "json",
-    render: (s) => renderJson("mcpServers", s),
-    notes: "mcpm-managed; bare placeholders re-introduced on every sync prior to resilient-sweep.",
-  },
-  {
-    name: "devin",
-    relativePath: ".config/devin/config.json",
-    mcpKey: "mcpServers",
-    mcpFormat: "json",
-    render: (s) => renderJson("mcpServers", s),
-    notes:
-      "Devin's own config — literal format resolves at sync time, but bare placeholders here would crash imports if peer agents reuse the same env vars.",
-  },
-  {
     name: "gemini-cli",
     relativePath: ".gemini/settings.json",
     mcpKey: "mcpServers",
@@ -246,15 +229,6 @@ export function dirtyServerSample(serverName: string, envVars: readonly string[]
   const env: Record<string, string> = {};
   for (const v of envVars) {
     env[v] = `\${${v}}`;
-  }
-  return { name: serverName, env };
-}
-
-/** Resilient counterpart to {@link dirtyServerSample} — env values use `${VAR:-}`. */
-export function cleanServerSample(serverName: string, envVars: readonly string[] = CRASH_PRONE_ENV_VARS): ServerSample {
-  const env: Record<string, string> = {};
-  for (const v of envVars) {
-    env[v] = `\${${v}:-}`;
   }
   return { name: serverName, env };
 }

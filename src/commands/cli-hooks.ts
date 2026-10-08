@@ -8,8 +8,8 @@ export function registerHooksCommands(program: Command): void {
 
   hooks
     .command("verify")
-    .description("Verify Cursor/Devin/Claude hook configs match the agentbrew manifest")
-    .option("--agent <name>", "Verify a single agent (claude-code, cursor, devin)")
+    .description("Verify Cursor/Claude hook configs match the agentbrew manifest")
+    .option("--agent <name>", "Verify a single agent (claude-code, cursor)")
     .option("--json", "Emit machine-readable JSON")
     .action((options: { agent?: string; json?: boolean }) => {
       const code = runHooksVerify(options);
@@ -24,7 +24,7 @@ export function registerHooksCommands(program: Command): void {
 Examples:
   agentbrew hooks verify
   agentbrew hooks verify --agent cursor
-  agentbrew hooks verify --agent devin --json
+  agentbrew hooks verify --agent claude-code --json
 `),
   );
 }

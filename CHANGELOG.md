@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Windsurf and Devin support** — breaking change. agentbrew no longer
+  knows Windsurf or Devin as agents. Their `agents.yaml` entries, sync
+  targets, command transform, MCP schema, carve-out rows, Devin import
+  simulator and real-tier workflow, and the literal-env MCP inheritance path
+  are gone. Existing config files under `~/.codeium/`, `~/.windsurf/`, and
+  `~/.config/devin/` are left alone. Augment stays deprecated and frozen.
+
 ### Changed
 
 - **Workflow skills live in agentbrew** — the owner's workflow skills moved

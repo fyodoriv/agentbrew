@@ -287,6 +287,34 @@ describe("lock", () => {
       expect(results).toHaveLength(1);
       expect(results[0].source).toBe("test/repo");
     });
+
+    it("prunes entries whose source is no longer installed on a full update", () => {
+      const lock: LockFile = {
+        locked: [
+          { source: "test/repo", type: "github", sha: "abc123def456789", skills: [], lockedAt: "" },
+          { source: "removed/repo", type: "github", sha: "old", skills: ["handoff"], lockedAt: "" },
+        ],
+      };
+      lockModule.writeLock(lock);
+
+      const sources: Source[] = [
+        { url: "test/repo", type: "github", skillsInstalled: [], availableItems: [], addedAt: "" },
+      ];
+
+      const results = lockModule.updateLock(sources);
+      expect(results.find((r) => r.source === "removed/repo")?.status).toBe("pruned");
+      expect(lockModule.readLock().locked.map((entry) => entry.source)).toEqual(["test/repo"]);
+    });
+
+    it("keeps entries for other sources when filtering by source URL", () => {
+      const lock: LockFile = {
+        locked: [{ source: "removed/repo", type: "github", sha: "old", skills: [], lockedAt: "" }],
+      };
+      lockModule.writeLock(lock);
+
+      lockModule.updateLock([], "test/repo");
+      expect(lockModule.readLock().locked.map((entry) => entry.source)).toEqual(["removed/repo"]);
+    });
   });
 
   describe("verifyLock", () => {

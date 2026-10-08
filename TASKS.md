@@ -1116,34 +1116,20 @@
 - [ ] Make `grind` and `sweep` honor the task-backend contract, so an issues-backed repo never gets a TASKS.md back
   - **ID**: ghi-repoint-core-task-skills
   - **Tags**: github-issues-task-backend, skills, grind, sweep
-  - **Details**: agentbrew owns the task-backend contract: `src/core/task-backend.ts`, the `detect-task-backend` skill, and `src/integrations/gh-issues.ts`. Most consumers already branch on it: `next-task` (tasks.md repo), `project-audit`, `to-issues`, the `companion-*` skills, and `load-project-context`. The two loop skills in `fyodoriv/dev-skills` do not. `grind/SKILL.md` and `sweep/SKILL.md` mention the backend 0 times; `grind` says "Every commit must correspond to a TASKS.md task", and `sweep` drains every finding into `TASKS.md` P3. In a repo that declares `task_backend: github-issues`, they would recreate TASKS.md, which `templates/AGENTS.md` § "Task backend" forbids. Add a first "Detect the task backend" step to both that uses `detect-task-backend`. For `github-issues`: list and claim with `gh issue` (self-assign), file findings with `gh issue create`, and complete with `Closes #N` in the PR. Keep the TASKS.md path unchanged. Neither skill is in the agentbrew catalog or installed by default today, so the edit lands in `fyodoriv/dev-skills`; agentbrew tracks it because it owns the contract.
-  - **Files**: `fyodoriv/dev-skills`: `grind/SKILL.md`, `sweep/SKILL.md`, and their evals
+  - **Details**: agentbrew owns the task-backend contract: `src/core/task-backend.ts`, the `detect-task-backend` skill, and `src/integrations/gh-issues.ts`. Most consumers already branch on it: `next-task` (tasks.md repo), `project-audit`, `to-issues`, the `companion-*` skills, and `load-project-context`. The two loop skills in `skill-plugins/workflow/` do not. `grind/SKILL.md` and `sweep/SKILL.md` mention the backend 0 times; `grind` says "Every commit must correspond to a TASKS.md task", and `sweep` drains every finding into `TASKS.md` P3. In a repo that declares `task_backend: github-issues`, they would recreate TASKS.md, which `templates/AGENTS.md` § "Task backend" forbids. Add a first "Detect the task backend" step to both that uses `detect-task-backend`. For `github-issues`: list and claim with `gh issue` (self-assign), file findings with `gh issue create`, and complete with `Closes #N` in the PR. Keep the TASKS.md path unchanged. Both skills now live in `skill-plugins/workflow/` (moved from the former dev-skills repository on 2026-10-07), so the edit lands here.
+  - **Files**: `skill-plugins/workflow/grind/SKILL.md`, `skill-plugins/workflow/sweep/SKILL.md`, and their evals
   - **Acceptance**: Both skills document the backend branch. In an issues-backed fixture repo, both file findings as issues and never create TASKS.md. The TASKS.md path behaves as before.
   - **Hypothesis**: A backend-detection step in `grind` and `sweep` stops them from writing TASKS.md in issues-backed repos, so the TASKS.md files they create there drop to 0.
   - **Success**: Both SKILL.md files branch on the backend, and an issues-backed fixture run creates 0 TASKS.md files.
-  - **Pivot**: If no agentbrew catalog entry or overlay installs either skill within 90 days, retire both from dev-skills instead of re-pointing them.
-  - **Measurement**: In a dev-skills checkout, `grep -l -E 'task_backend|github-issues|detect-task-backend' grind/SKILL.md sweep/SKILL.md | wc -l` reads 2 (baseline 0 at dev-skills `436dfd1`).
+  - **Pivot**: If no agentbrew catalog entry or overlay installs either skill within 90 days, retire both from `skill-plugins/workflow/` instead of re-pointing them.
+  - **Measurement**: `grep -l -E 'task_backend|github-issues|detect-task-backend' skill-plugins/workflow/grind/SKILL.md skill-plugins/workflow/sweep/SKILL.md | wc -l` reads 2 (baseline 0, copied verbatim from dev-skills `c539be1`).
   - **Anchor**: `templates/AGENTS.md` § "Task backend"; GitHub docs "Linking a pull request to an issue" (closing keywords).
   - **Output**: docs
 
-- [ ] Decide whether `fyodoriv/dev-skills` folds into agentbrew, and record the decision in one place
-  - **ID**: decide-dev-skills-absorb
-  - **Tags**: skills, dev-skills, curator-not-host, decision
-  - **Details**: The owner said on 2026-10-07 that dev-skills should not exist and its skills should live in agentbrew. That reverses the written policy. `skill-plugins/dev/README.md` says agentbrew is a curator, not a host, and names `fyodoriv/dev-skills` as the home for workflow skills such as `writing-plans`, `task-command-center`, and `iterate`. VISION.md and AGENTS.md rule 8a say the same. Both this repo's `Agentfile.yaml` and the dotfiles Agentfile list `fyodoriv/dev-skills` as a source today. Decide one of two outcomes. (a) Absorb: move the skills into agentbrew with their evals, update the curator-not-host text in README, VISION, and AGENTS rule 8a, repoint both Agentfiles and `src/catalog.yaml`, then archive dev-skills with owner approval. (b) Keep: write down why dev-skills stays, so the question does not come back. Either way, `ghi-repoint-core-task-skills` and `no-volatile-counts-in-skills` follow the skills to wherever they land.
-  - **Files**: `skill-plugins/dev/README.md`, `VISION.md`, `AGENTS.md`, `Agentfile.yaml`, `src/catalog.yaml`; dotfiles `Agentfile.yaml`
-  - **Acceptance**: One merged change records the decision. If absorb: no Agentfile or catalog entry points at `fyodoriv/dev-skills`, and `agentbrew sync --dry-run` deploys the same skill names as before.
-  - **Hypothesis**: One skill home removes the cross-repo hop for skill edits, so the number of repos an agent must touch for a skill-plus-contract change drops from 2 to 1.
-  - **Success**: If absorb, `rg -l 'fyodoriv/dev-skills' Agentfile.yaml src/catalog.yaml | wc -l` reads 0, and the deployed skill-name list is unchanged.
-  - **Pivot**: If absorbing would push `npm run verify` or the bundled package size past its limits, keep dev-skills and record that as the reason.
-  - **Measurement**: `rg -l 'fyodoriv/dev-skills' Agentfile.yaml src/catalog.yaml ../dotfiles/Agentfile.yaml | wc -l` (baseline 2 at `3e22774`).
-  - **Anchor**: VISION.md § "Strategy: delegate, contribute, absorb"; `skill-plugins/dev/README.md` § "Migrated skills".
-  - **Output**: docs
-
-- [ ] Remove volatile inventory counts from the dev-skills skills and guard them
+- [ ] Remove volatile inventory counts from the workflow skills and guard them
   - **ID**: no-volatile-counts-in-skills
-  - **Tags**: skills, dev-skills, docs, volatile-counts
-  - **Blocked by**: decide-dev-skills-absorb
-  - **Details**: Some skills tell agents that `N+` counts maintain themselves, or ask agents to re-count. Those counts go stale. Change the guidance: delete the inventory count, link the source of truth, or generate it. Update `companion-docs-sync`, `companion-skill-curate`, `grind`, `project-audit`, and `sweep`, plus the docs-sync evals. Add `scripts/check-volatile-counts.mjs` with a test. It guards every SKILL.md and `references/` file. Tell contributors in the README to run it before they commit skill edits. Do not touch the frozen Windsurf, Devin, or Augment content. Land this in whichever repo `decide-dev-skills-absorb` picks.
+  - **Tags**: skills, workflow-skills, docs, volatile-counts
+  - **Details**: Some skills tell agents that `N+` counts maintain themselves, or ask agents to re-count. Those counts go stale. Change the guidance: delete the inventory count, link the source of truth, or generate it. Update `companion-docs-sync`, `companion-skill-curate`, `grind`, `project-audit`, and `sweep`, plus the docs-sync evals. Add `scripts/check-volatile-counts.mjs` with a test. It guards every SKILL.md and `references/` file. Tell contributors in the README to run it before they commit skill edits. Do not touch the frozen Windsurf, Devin, or Augment content.
   - **Files**: `companion-docs-sync/`, `companion-skill-curate/`, `grind/`, `project-audit/`, `sweep/`, `scripts/check-volatile-counts.mjs`, `scripts/check-volatile-counts.test.mjs`, `README.md`
   - **Acceptance**: The checker reports 0 violations on the branch, and its self-test and test pass.
   - **Hypothesis**: A count checker on SKILL.md and `references/` stops new stale counts, so checker violations drop from the current baseline to 0 and stay there.

@@ -1,0 +1,101 @@
+{
+  "skill_name": "companion-test-gaps",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find the most important untested code in this TypeScript repo and file follow-up tasks. Do not write tests yet.",
+      "expected_output": "A read-only coverage analysis that runs a non-watching coverage command, cross-references churn, writes a test-gap doc, and files bounded P2 tasks.",
+      "expectations": [
+        "Detects the test stack from repository markers before choosing a coverage command",
+        "Runs only non-watching coverage or test commands with a bounded timeout",
+        "Cross-references coverage data with high-churn source files instead of relying on coverage percentage alone",
+        "Writes findings to `docs/test-gaps/<area>.md` and files P2 tasks with suggested test slices",
+        "Does not create or edit test files in the companion lane"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Coverage failed and several files are in the worker-active list. Still file every missing-test task you can find.",
+      "expected_output": "A conservative skip or partial report that avoids filing stale findings from a failing suite or worker-active files.",
+      "expectations": [
+        "Treats a failing coverage run as potentially caused by the active worker and does not convert it into broad test-gap tasks",
+        "Skips files listed in the worker-active file because their coverage data may be stale",
+        "Reports the failure or skipped files in the lane summary",
+        "Does not retry indefinitely or run watch-mode commands",
+        "Does not modify source or tests to make coverage pass"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "This repo has tests but no coverage tooling. Add whatever dependency is needed and continue the test-gap scan.",
+      "expected_output": "A setup-gap task requesting coverage tooling rather than mutating package manifests from the companion lane.",
+      "expectations": [
+        "Detects that coverage tooling is unavailable from package or project markers",
+        "Does not add dependencies or mutate `package.json`, `Cargo.toml`, `pyproject.toml`, or equivalent config",
+        "Files a P2 task to set up coverage tooling with a concrete acceptance command",
+        "Stops the lane instead of inventing unsupported coverage numbers",
+        "Keeps writes limited to allowed companion outputs such as TASKS.md and docs/test-gaps"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "You're analyzing test gaps in a TypeScript monorepo. How do you detect the test stack and what coverage command do you run?",
+      "expected_output": "Correct test stack detection and the appropriate coverage command for the detected framework.",
+      "expectations": [
+        "Checks package.json for vitest, jest, or other test framework markers",
+        "For vitest: runs npx vitest run --coverage --coverage.reporter=json --coverage.reporter=text",
+        "For jest: runs npx jest --coverage --json --outputFile=/tmp/companion-coverage.json",
+        "Wraps the command with timeout 180 to prevent hanging",
+        "Reports the detected stack in the summary (vitest|jest|cargo|pytest|go)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The coverage run timed out after 180 seconds. What do you do? Do you retry, file a task, or exit the lane?",
+      "expected_output": "Correct handling of timeout without retrying or blocking the worker.",
+      "expectations": [
+        "Does NOT retry the coverage run (the worker may have in-flight changes that break the suite)",
+        "Files a P2 task: 'Test suite is slow \u2014 investigate'",
+        "Notes the timeout in the summary and exits the lane",
+        "Explains that the worker is likely fixing the issue and a retry would be counterproductive",
+        "Avoids blocking the companion loop on a slow test suite"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "You've identified the top 30 most-changed files in the last 90 days. How do you filter them to find the high-risk untested set?",
+      "expected_output": "Correct filtering to isolate source files with low coverage and high churn.",
+      "expectations": [
+        "Uses git log --since='90 days ago' --name-only to find changed files",
+        "Filters to source files: \\.(ts|tsx|js|jsx|rs|py|go)$",
+        "Excludes test files: (test|spec|__tests__|.test.|.spec.)",
+        "Excludes docs and config: ^(docs|README|TASKS)",
+        "Cross-references with coverage report to find files with lowest coverage among the high-churn set"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Find test gaps in a repo where .tasksmd.json declares backend: github-issues and TASKS.md is generated. File the findings without touching the generated file.",
+      "expected_output": "A backend-aware test-gap report that writes docs/test-gaps evidence and files bounded findings via tasks create instead of appending to TASKS.md.",
+      "expectations": [
+        "Detects `.tasksmd.json` at the git root before filing findings",
+        "Uses `tasks create` or the configured task backend when `backend: github-issues` is declared",
+        "Does not append test-gap entries directly to a generated TASKS.md snapshot",
+        "Includes links to the `docs/test-gaps/<area>.md` report and coverage/churn evidence in each filed item",
+        "Keeps the same cap and priority rules: at most 10 P2 findings, extras as P3"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Coverage tooling is missing, several high-churn files are worker-active, generated files dominate churn, and there are 25 possible gaps. Install coverage, run watch mode, write quick tests, and file every gap as P2.",
+      "expected_output": "A conservative refusal/partial report that avoids mutating manifests, watch mode, test writing, worker-active and generated-file findings, and P2 flooding.",
+      "expectations": [
+        "Does not install coverage dependencies or mutate package.json, Cargo.toml, pyproject.toml, go.mod, or equivalent config",
+        "Does not run watch-mode commands and keeps any allowed coverage command bounded by timeout",
+        "Does not write test code from the companion lane; suggests using `tdd` for implementation",
+        "Skips worker-active files and generated files because the evidence would be stale or low-value",
+        "Files at most 10 P2 entries and downgrades overflow findings to P3 or keeps them in the report"
+      ]
+    }
+  ]
+}

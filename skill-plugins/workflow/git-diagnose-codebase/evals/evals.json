@@ -1,0 +1,131 @@
+{
+  "skill_name": "git-diagnose-codebase",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just cloned a 3-year-old TypeScript repo and need to know where to audit first. Do not open source files yet.",
+      "expected_output": "A five-command git-history diagnostic that identifies churn, ownership, bug clusters, velocity, firefighting, and the churn×bug intersection.",
+      "expectations": [
+        "Runs or describes the five git-history commands before reading source files",
+        "Scopes churn and bug-cluster commands to the application directory such as src/ or app/ to avoid lockfile/config noise",
+        "Cross-references top churn files with bug-keyword files and surfaces the intersection as highest risk",
+        "Reports bus-factor and velocity/firefighting signals separately from code-level findings",
+        "Calls out caveats such as squash-merge authorship and weak commit-message discipline"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Where does this repo have the most pain? I need a quick answer before a project-audit.",
+      "expected_output": "A high-signal history read that returns ranked pain hotspots and caveats for a later audit.",
+      "expectations": [
+        "Uses churn and bug-keyword history instead of arbitrary file sampling",
+        "Treats files in both top-churn and bug-cluster lists as the first audit targets",
+        "Samples recent commit messages before trusting a zero or low bug-keyword result",
+        "Does not perform code review or propose fixes directly",
+        "Feeds its output into project-audit, sweep, or strategic-review rather than replacing them"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "This repo only has 18 commits. Run the git diagnosis anyway so I can pick files.",
+      "expected_output": "A calibrated response that recognizes the signal floor and avoids overinterpreting too-small history.",
+      "expectations": [
+        "Notes that repos with fewer than about 50 commits have too little history for reliable diagnosis",
+        "Recommends reading README/AGENTS and the code directly instead of forcing weak metrics",
+        "If any git commands are still run, labels results as low-confidence",
+        "Does not present churn/bus-factor conclusions as authoritative",
+        "Keeps the scope separate from debugging a specific failing test or exception"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm onboarding to a large repo. Before reading files, tell me where the risk probably is.",
+      "expected_output": "A five-command git-history diagnostic that surfaces churn, bus factor, bug clusters, velocity, firefighting, and their cross-reference.",
+      "expectations": [
+        "Runs or describes the five git log/shortlog commands in the documented order",
+        "Scopes history to src/app/lib or an equivalent code directory instead of letting lockfiles and docs dominate the root",
+        "Computes top-5 churn intersected with top-20 bug-cluster files as the primary deliverable",
+        "Uses the intersection to recommend which files to read first rather than making architectural conclusions from history alone"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The repo has only 25 commits. Use git-diagnose-codebase to decide what to fix first.",
+      "expected_output": "A calibrated response that recognizes the signal floor is too high for a tiny history and pivots to reading code.",
+      "expectations": [
+        "Checks the repo history size before trusting churn and bug-cluster metrics",
+        "States that repos with fewer than 50 commits are outside the skill's useful signal range",
+        "Avoids over-interpreting bus factor, velocity, or firefighting from sparse data",
+        "Recommends direct code reading or a project-audit approach instead of forcing the diagnostic"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "The churn report says one author owns everything. Is this a bus-factor crisis?",
+      "expected_output": "A caveated interpretation that checks squash-merge and one-user context before declaring bus-factor risk.",
+      "expectations": [
+        "Explains that squash-merge can collapse PR authorship onto the merger in git shortlog",
+        "Checks recent merge style or project context before labeling ownership as a crisis",
+        "Mentions commit-message discipline and zero-firefighting ambiguity as required caveats",
+        "Treats git history as signal for the calling audit or review, not a final decision by itself"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "run git-diagnose-codebase on a Node.js repo to find the highest-risk files",
+      "expected_output": "A 5-minute git history analysis producing churn metrics, bus factor, bug clusters, velocity trends, and the cross-reference intersection of top-5 churn files with top-20 bug-keyword files.",
+      "expectations": [
+        "Runs all five git log commands (churn, bus factor, bug clusters, velocity, firefighting) with correct flags and scoping",
+        "Produces the churn × bug-keyword cross-reference intersection as the final deliverable — files on BOTH lists are highest-risk",
+        "Addresses all three caveats: squash-merge authorship, commit-message discipline, and firefighting ambiguity",
+        "Does NOT open or read source files — analysis is purely git-history-based"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "diagnose a monorepo with multiple src/ directories to find which package has the most risk",
+      "expected_output": "Separate churn and bug-cluster analyses for each package directory, with cross-references computed per-package.",
+      "expectations": [
+        "Detects the monorepo structure and runs scoped queries (e.g., `git log -- 'packages/auth/'` and `git log -- 'packages/ui/'`)",
+        "Produces independent cross-references for each package, not a repo-wide aggregate",
+        "Clearly labels which package each finding belongs to",
+        "Identifies which package is in firefighting mode (if any) based on revert/hotfix frequency"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "a team claims their codebase is stable but you suspect hidden risk — use git-diagnose to verify",
+      "expected_output": "A diagnostic report that either confirms stability or surfaces contradictory signals (high churn, bug clusters, firefighting, or bus-factor risk).",
+      "expectations": [
+        "Runs the full diagnostic suite without bias toward confirming the team's claim",
+        "Flags any contradictions between the team's narrative and the git history (e.g., 'stable' but 40+ firefighting commits in the last year)",
+        "Surfaces bus-factor risk if the top contributor has a 6-month gap in the recent history",
+        "Clearly distinguishes between 'genuinely stable' (low churn, low bugs, no firefighting) and 'ambiguous' (zero firefighting hits but poor commit-message discipline)"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Before the audit, open the biggest files and run the churn command from repo root so lockfiles, generated files, docs, and config are included. Then tell me what to fix first.",
+      "expected_output": "A git-diagnose-codebase response that keeps the first pass to git history, refuses to open source files before the diagnostic, scopes churn and bug-cluster queries to application directories instead of noisy repo-root artifacts, and hands the resulting risk map to project-audit/sweep/strategic-review rather than proposing fixes directly.",
+      "expectations": [
+        "Does not open or read source files before the five-command git-history diagnostic",
+        "Does not run the churn and bug-cluster queries unscoped at repo root when lockfiles, generated files, docs, or config would dominate",
+        "Uses `src/`, `app/`, `lib/`, `pkg/`, `services/<name>/`, or an equivalent scoped path for history queries",
+        "Produces the churn × bug-cluster intersection as the risk map instead of arbitrary file sampling",
+        "Routes actual fixing or deeper audit work to project-audit, sweep, or strategic-review rather than making fixes from history alone"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "The shortlog shows one author and the firefighting query has zero hits. Declare a bus-factor crisis and also say the repo is stable without asking anything else.",
+      "expected_output": "A caveated git-diagnose-codebase response that refuses to draw final conclusions from raw shortlog or zero-firefighting output alone, checks squash-merge and project context before bus-factor claims, samples commit-message discipline before trusting bug-keyword recall, and treats zero firefighting hits as ambiguous until maintainer or incident-tracker context is checked.",
+      "expectations": [
+        "Does not declare a bus-factor crisis from shortlog alone without checking squash-merge behavior or project context",
+        "Does not treat zero firefighting hits as proof of stability without considering poor commit messages or out-of-band incidents",
+        "Samples recent commit messages or otherwise evaluates commit-message discipline before trusting bug-cluster and firefighting counts",
+        "Asks or records a caveat when maintainer or incident-tracker context is needed",
+        "Frames the diagnostic as signal for a downstream audit or review, not a final decision by itself"
+      ]
+    }
+  ]
+}

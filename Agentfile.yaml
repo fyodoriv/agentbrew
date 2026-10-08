@@ -18,5 +18,5 @@ skills:
   - writing-plans
 
 sources:
-  - fyodoriv/dev-skills
+  - ./skill-plugins/workflow
   - ./skill-plugins/dev

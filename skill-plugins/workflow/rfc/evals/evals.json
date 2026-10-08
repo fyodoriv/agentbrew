@@ -1,0 +1,105 @@
+{
+  "skill_name": "rfc",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write an RFC for adopting a new CLI framework.",
+      "expected_output": "Research and test the tool first, then draft a standalone RFC with trade-offs, POC branch links, tests, and limitations.",
+      "expectations": [
+        "Reads official docs and verifies the tool in a temp/POC context before making claims",
+        "Separates verified facts from assumptions",
+        "Creates/uses a POC branch for code references while keeping RFC drafts out of git",
+        "Writes to invite critique with goals, non-goals, architecture, tests, and limitations"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The RFC references an older RFC and says details are there. Is that okay?",
+      "expected_output": "No: make the RFC standalone and sufficient to implement without prior docs.",
+      "expectations": [
+        "Rejects dependence on prior RFCs for required implementation details",
+        "Inlines enough context for a developer to implement",
+        "Surfaces trade-offs and limitations clearly",
+        "Keeps local RFC drafts under the gitignored RFC location"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The RFC proposes a library based on memory of its API. Is that enough?",
+      "expected_output": "No; verify official docs and a temp/POC run before writing architectural claims.",
+      "expectations": [
+        "Treats unverified tool behavior as an assumption, not a fact",
+        "Reads current official docs before drafting claims",
+        "Runs a minimal temp or POC validation for adoption claims",
+        "Documents limitations and trade-offs for reviewer critique"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "write an RFC for adding configurable command-center feature to the CLI",
+      "expected_output": "A complete 9-section RFC with POC branch, blob URLs to code, and all global requirements covered (rollout, error handling, cleanup, defaults, validation).",
+      "expectations": [
+        "Researches the feature before writing: tests the approach in a temp directory, verifies directory structures and CLI behavior",
+        "Follows the 9-section structure: Summary, Architecture, Config Design, Implementation Steps, How to Add/Change/Delete, What Must Be Tested, Follow-up Work, Migration Plan, Known Limitations",
+        "Creates a poc/<feature-name> branch with implementation code and opens a draft PR, linking it in the RFC header",
+        "Uses blob URLs to reference code on the POC branch (not PR diff anchors), keeps RFC and code in sync"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "review an RFC draft that has full code listings embedded — refactor it to follow the POC branch pattern",
+      "expected_output": "A refactored RFC with code moved to a POC branch, blob URLs added, and embedded code removed.",
+      "expectations": [
+        "Extracts all code listings from the RFC and commits them to a poc/* branch",
+        "Creates blob URLs pointing to the POC branch files (not PR diffs)",
+        "Updates section 4 (Implementation Steps) to reference the POC code via blob URLs",
+        "Verifies RFC and POC branch are in sync — any code change updates the RFC text, and vice versa"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "write an RFC for a new MCP server integration with error handling, rollout strategy, and migration plan",
+      "expected_output": "A complete RFC covering all global requirements with clear error handling strategy, phased rollout, and migration path for existing users.",
+      "expectations": [
+        "Covers rollout/flag gating: how the feature is deployed (feature flag, gradual rollout, etc.)",
+        "Defines error handling with retry strategy: what happens on failure, how many retries, backoff logic",
+        "Specifies cleanup on unmount/teardown: resources released, state cleaned up, no leaks",
+        "Documents initial state/default behavior and empty states: what users see before data loads",
+        "Includes data validation: schema or runtime checks on inputs and outputs"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Commit the RFC to docs/rfcs/ so the team can review it in git history.",
+      "expected_output": "A refusal to commit RFC drafts; keep them under the gitignored `.tmp/rfc/` location.",
+      "expectations": [
+        "Keeps RFC drafts out of git under `.tmp/rfc/`",
+        "Does not commit RFC docs to tracked paths like docs/rfcs/",
+        "Uses POC branches for reviewable implementation code instead of committing prose drafts",
+        "Explains that committed RFC docs pollute history and confuse implemented vs proposed work"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Draft the RFC from memory — we used this library before so the API details should be fine.",
+      "expected_output": "A research-first response that verifies official docs and a temp/POC run before claims.",
+      "expectations": [
+        "Treats unverified tool behavior as an assumption, not a fact",
+        "Reads current official docs before drafting architectural claims",
+        "Runs minimal temp or POC validation for adoption claims",
+        "Separates verified facts from assumptions in the RFC"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Paste the full implementation into section 4 so reviewers do not need to open the POC branch.",
+      "expected_output": "A POC-branch pattern response that links blob URLs instead of embedding full listings.",
+      "expectations": [
+        "Does not embed full code listings in the RFC body",
+        "Links implementation via blob URLs on the poc/* branch",
+        "Keeps short inline snippets only for small API examples",
+        "Maintains sync between RFC text and POC branch code"
+      ]
+    }
+  ]
+}

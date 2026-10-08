@@ -1,0 +1,164 @@
+{
+  "skill_name": "task-command-center",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Pick up PROJ-123 epic work — Slack thread, Jira tickets, and multiple repos. Set up the command center.",
+      "expected_output": "Phase 0 load-project-context, intake into SYNC-STATUS/LINKS, command-center worktree on docs branch, draft DO NOT MERGE PR.",
+      "expectations": [
+        "Runs load-project-context before planning or coding",
+        "Creates ~/apps/{repo}-command-center worktree on docs/{project}-command-center branch",
+        "Writes SYNC-STATUS.md, LINKS.md, AGENTS.md, and slack/CHANNEL-DIGEST.md under the docs root",
+        "Opens a draft PR marked DO NOT MERGE for the docs hub only"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write the implementation plan for my assigned Jira tickets in the command center.",
+      "expected_output": "plans/implementation-plan.md with per-ticket sections, file paths, and verification commands.",
+      "expectations": [
+        "Finds assigned tickets from Jira or epic children before writing the plan",
+        "Creates or updates plans/implementation-plan.md with one section per ticket",
+        "Uses plan skill chunk structure with exact file paths and acceptance criteria",
+        "Does not implement production code on the command-center branch"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Dry-run the new checkout widget approach before we ship — iterate until the plan is stable.",
+      "expected_output": "Separate dry-run worktree, iterate loop with dry-run-log updates, no merge to master.",
+      "expectations": [
+        "Creates ~/apps/{repo}-dry-run worktree on a spike branch, not main checkout",
+        "Follows dry run → review → update plan loop and records outcomes in plans/dry-run-log.md",
+        "Runs repo verification in the dry-run worktree before updating the plan",
+        "Does not merge spike commits to master or commit product code on docs command-center branch"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Just commit TASKS.md and implement the feature on the command-center branch to move fast.",
+      "expected_output": "Refusal: TASKS.md is gitignored local queue; product code belongs on main checkout feature branches.",
+      "expectations": [
+        "Does not commit TASKS.md from the command-center worktree",
+        "Does not implement shippable product code on docs/*-command-center branch",
+        "Points execution to main checkout feat/ branches and jira-task workflow",
+        "Keeps command-center draft PR as DO NOT MERGE docs hub"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Skip load-project-context and the docs hub — just implement Jira ABC-1 on main.",
+      "expected_output": "For single-ticket ship-only, delegate to jira-task; for multi-source initiative, insist on Phase 0 and command center.",
+      "expectations": [
+        "Recognizes single-ticket ship-only scope should use jira-task instead of full command center",
+        "For multi-repo/Slack/Jira initiative, does not skip Phase 0 load-project-context",
+        "Does not conflate command-center workflow with jira-task-only pickup",
+        "Names the correct related skill instead of improvising duplicate steps"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "SSO is blocking Jira — sit and poll every 5 seconds until it clears.",
+      "expected_output": "Background SSO per sso-background-work; continue intake/docs work in parallel; poll at task boundaries.",
+      "expectations": [
+        "Uses attach-first browser on port 9223 for Slack/Jira/Drive intake",
+        "Backgrounds blocked SSO and continues command-center doc work in parallel",
+        "Does not run tight continuous SSO poll loops",
+        "Records blocker state in SYNC-STATUS.md with URL, port, and next verification step"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Ship the feature branch — open the PR for my Jira ticket.",
+      "expected_output": "PR body includes Requirements checklist, Previous state, and Validation steps per IRON LAW; hook blocks if missing.",
+      "expectations": [
+        "Includes ## Requirements checklist with honest [x]/[ ] boxes for task requirements",
+        "Includes ## Previous state with repro or navigation steps before the change",
+        "Includes ## Validation steps with manual reviewer verification commands",
+        "Does not create a PR with only Summary/Test plan and no validation block"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Address PR review feedback on example-app #11 — fix handler registration, bootstrap, and sandbox typing.",
+      "expected_output": "Update the source rules/skills first, then implement code fixes; no duplicate shell action handlers.",
+      "expectations": [
+        "Updates the task-command-center skill or the matching repo rule in its source repo before product code",
+        "Removes a duplicate action handler when the shell already registers the canonical one",
+        "Replaces unsafe casts such as `as never` with the typed API",
+        "Does not edit ~/.cursor/skills mirrors without agentbrew sync from source"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Open PRs for the checkout feature chain across shop-core, shop-widgets, shop-config, and shop-experiences.",
+      "expected_output": "Each PR body includes unified Merge / deployment order with full cross-repo table, hard vs soft deploy notes, and flag gating.",
+      "expectations": [
+        "Includes ## Merge / deployment order in every chain PR, not only the current repo",
+        "Table lists Order, Repo, PR, Description, Deploy alone safe? for all four PRs",
+        "Does not use a separate Cross-repo wiring section — wiring notes live in the same section",
+        "Documents hard errors vs soft misses and the checkout feature-flag gating per step"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Read the new comments and updates in our product GDoc, then refresh the docs PR, Jira epic, and every child task.",
+      "expected_output": "Runs the recurring reconciliation protocol: complete source read and ledger, immutable cited product contracts, dynamic engineering guidance, ordered writes, and destination-by-destination verification.",
+      "expectations": [
+        "Reads all relevant GDoc tabs and comments, the docs PR, the Jira epic, and every direct child before writing",
+        "Keeps exact product outcomes, behavior, acceptance criteria, boundaries, and durable source citations in Product contract (immutable)",
+        "Keeps architecture, ownership, files, sequencing, open decisions, and validation in Engineering guidance (dynamic)",
+        "Re-fetches every Jira child and verifies both labeled sections, the separator, and citations after updates",
+        "Uses markdown-for-gdoc surgical edits plus structured and live visual verification for every GDoc edit batch"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "The implementation changed and one child moved to next sprint. Rewrite the Jira product requirements to match the code and update the epic lane table.",
+      "expected_output": "Refuses to derive product requirements from implementation or encode transient lane state in descriptions; updates dynamic engineering guidance and uses Jira fields or dated comments for scheduling.",
+      "expectations": [
+        "Does not change Product contract (immutable) unless a cited product authority explicitly revised it",
+        "Updates Engineering guidance (dynamic) when architecture or implementation reality changes",
+        "Uses Jira fields or an approved dated comment for sprint, lane, scheduling, status, or deferral changes",
+        "Does not add an epic lane table or transient delivery snapshot to the durable Jira description",
+        "Records unresolved product-source conflicts in SYNC-STATUS.md instead of choosing from code evidence"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Plan the new host bridge so an embedded workspace can receive the host record, authorization context, and live updates without depending on the host's Redux slices.",
+      "expected_output": "A source-backed cross-system plan with a versioned HostBootstrapPayload boundary, explicit alternatives, and numbered deliverables that state why, dependencies, verification, and parallel work.",
+      "expectations": [
+        "Starts with the overall goal, vision, current failure or constraint, and why the selected approach is better than alternatives",
+        "Separates current source-backed facts from proposed design and identifies the authoritative source plus delivery path for each required datum",
+        "Defines a versioned HostBootstrapPayload with origin validation, correlation or sequence behavior, reset behavior, and a clear store-ownership versus state-provenance distinction",
+        "Uses numbered tasks that each include Why, owner or boundary, dependency or parallelism, acceptance evidence, and an exact verification",
+        "Includes rollout, security, and only the unit, contract, or integration coverage needed for the stated scope; treats end-to-end coverage as opt-in rather than default"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Create a Jira task for a memory-sync bug: the action is dispatched in e2e but no POST occurs because a remote plugin registers its Redux listener on a duplicate middleware instance.",
+      "expected_output": "A delivery-ready Jira task grounded in observed evidence, a causal root cause, clear cross-repo scope, independently verifiable acceptance criteria, and explicit validation.",
+      "expectations": [
+        "States the affected behavior and environment with expected versus actual evidence instead of a generic 'fix memory sync' request",
+        "Distinguishes confirmed root cause from any remaining hypothesis and names the host-versus-remote listener boundary",
+        "Defines scope across the library, host initialization, and any required mirror/consumer repository without treating a file list as the whole task",
+        "Uses independently testable acceptance criteria, including a regression that uses a separate host listener middleware/module graph",
+        "Includes exact validation layers, rollout or observability considerations, dependencies/related links, and excluded work where applicable"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Combine two Jira tasks for a platform-agnostic shell refactor. Keep one implementation PR. The existing iframe embed path already works; do not add end-to-end tests, import cleanup, context-alias work, or unrelated event work.",
+      "expected_output": "One canonical delivery-ready Jira task and one closed duplicate, with focused scope for the shared shell and thin platform widgets.",
+      "expectations": [
+        "Selects one canonical ticket, links the other as a duplicate, and closes the duplicate instead of maintaining two delivery scopes",
+        "Does not repeat Jira-rendered fields such as epic, initiative, status, or linked-development metadata in the task description",
+        "Does not write PR or branch status in the task description and records one requested implementation PR as the delivery boundary",
+        "Keeps end-to-end tests, optional import or dependency cleanup, context-alias work, and unrelated event work out of scope",
+        "Preserves the already-working iframe embed path and focuses the task on making the current shell behavior more platform-agnostic"
+      ]
+    }
+  ]
+}

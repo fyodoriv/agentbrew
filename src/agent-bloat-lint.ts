@@ -330,24 +330,25 @@ function collectBuiltinSkillFindings(
   baselines: SkillBaselines,
   trimTaskOpen: boolean,
 ): AgentBloatFinding[] {
-  const skillRoot = join(repoRoot, "skill-plugins", "dev");
-  if (!existsSync(skillRoot)) return [];
-
   const findings: AgentBloatFinding[] = [];
-  for (const entry of readdirSync(skillRoot)) {
-    const skillDir = join(skillRoot, entry);
-    const skillPath = join(skillDir, "SKILL.md");
-    if (!existsSync(skillPath)) continue;
-    const content = readFileSync(skillPath, "utf-8");
-    findings.push(
-      ...lintSkillBloat(content, {
-        path: `skill-plugins/dev/${entry}/SKILL.md`,
-        dirName: entry,
-        skillDir,
-        baseline: baselines[entry],
-        hasOpenTrimTask: trimTaskOpen,
-      }),
-    );
+  for (const plugin of ["dev", "workflow"]) {
+    const skillRoot = join(repoRoot, "skill-plugins", plugin);
+    if (!existsSync(skillRoot)) continue;
+    for (const entry of readdirSync(skillRoot)) {
+      const skillDir = join(skillRoot, entry);
+      const skillPath = join(skillDir, "SKILL.md");
+      if (!existsSync(skillPath)) continue;
+      const content = readFileSync(skillPath, "utf-8");
+      findings.push(
+        ...lintSkillBloat(content, {
+          path: `skill-plugins/${plugin}/${entry}/SKILL.md`,
+          dirName: entry,
+          skillDir,
+          baseline: baselines[entry],
+          hasOpenTrimTask: trimTaskOpen,
+        }),
+      );
+    }
   }
   return findings;
 }

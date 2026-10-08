@@ -44,14 +44,17 @@ would naturally live.
 ## Migrated skills
 
 Generic methodology skills do not remain in this directory. Their catalog
-entries point to maintained upstream repositories or the personal
-`fyodoriv/dev-skills` source, which records provenance and local deltas.
+entries point to maintained upstream repositories or to the opt-in
+[`skill-plugins/workflow/`](../workflow/README.md) directory, which records
+provenance and local deltas in its `SOURCES.md`.
 
 - Upstream equivalents: `grill-with-docs`, `improve-codebase-architecture`,
   `doubt-driven-development`, `spec-driven-development`, and `prototype`.
-- Personal source: `fyodoriv/dev-skills` owns the local workflow skills,
+- Workflow skills: `skill-plugins/workflow/` owns the owner's workflow skills,
   including `writing-plans`, `task-command-center`, and the consolidated
-  `iterate` loop.
+  `iterate` loop. They moved there from the former `fyodoriv/dev-skills`
+  repository on 2026-10-07. Unlike this directory, they deploy only when
+  selected by name.
 - Removed duplicate: `autoresearch` is intentionally folded into `iterate`;
   it has no separate catalog entry.
 

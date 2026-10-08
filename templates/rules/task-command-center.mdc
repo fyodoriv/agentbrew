@@ -8,7 +8,7 @@ globs: ["**/TASKS.md"]
 When work involves **TASKS.md**, a **Jira epic/ticket**, a **Slack thread**, **Google Docs**, or **multiple repos**, do not jump straight to coding on `main`.
 
 **Read and follow the `task-command-center` skill** (source:
-`fyodoriv/dev-skills/task-command-center/SKILL.md`).
+`fyodoriv/agentbrew/skill-plugins/workflow/task-command-center/SKILL.md`).
 
 Minimum sequence:
 

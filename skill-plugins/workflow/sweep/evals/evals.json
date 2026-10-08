@@ -1,0 +1,77 @@
+{
+  "skill_name": "sweep",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a full sweep while another agent is implementing tasks in the same repo.",
+      "expected_output": "A parallel-safe audit workflow that never edits source files, stages findings, and drains them into TASKS.md at the end.",
+      "expectations": [
+        "States that sweep is read-only for source files and safe to run alongside an implementation worker",
+        "Uses TASKS-AUDIT.md as a per-session staging buffer, not a persistent queue",
+        "Stages only TASKS.md and TASKS-AUDIT.md and never uses git add .",
+        "Drains every finding into TASKS.md P3 in one atomic session-end commit"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The queue already has 20 unclaimed P0-P2 tasks. Sweep the repo for more work.",
+      "expected_output": "A deliver-mode sweep that throttles proactive findings because the actionable queue is already full.",
+      "expectations": [
+        "Runs the queue-pressure check before launching tier subagents",
+        "Selects DELIVER mode when P0-P2 unclaimed tasks exceed the threshold",
+        "Runs only the verify gate and existing-queue rot check instead of all audit tiers",
+        "Allows only clearly surfaced P0 findings from the verify gate rather than generating broad net-new audit work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Sweep this CLI repo for stability, test depth, docs, dependencies, DX, and vision gaps.",
+      "expected_output": "A multi-tier sweep plan that uses git history to focus read-only subagents and avoids duplicate task creation.",
+      "expectations": [
+        "Detects project type and verification commands before audit tiers run",
+        "Runs git-diagnose-codebase or equivalent git-log commands to prioritize high-risk files",
+        "Launches or conceptually separates tier-specific read-only audits for stability, tests, docs, code health, dependencies, DX, and vision",
+        "Reads existing TASKS.md first and suppresses duplicate findings"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run a full codebase sweep to find all no-brainer improvements and stage them for implementation.",
+      "expected_output": "A TASKS-AUDIT.md file with findings from all 8 audit tiers (verify gate, stability, testing, docs, code health, dependencies, DX/UX, vision alignment), deduplicated and prioritized into P0/P1/P2/P3 tasks.",
+      "expectations": [
+        "Detects project type (TypeScript, Python, Rust, etc.) and identifies appropriate verify commands (tsc, eslint, pytest, cargo test, etc.)",
+        "Runs git-diagnose-codebase to identify high-churn files and bug clusters, biasing subsequent tiers toward highest-risk code",
+        "Checks queue pressure (P0-P2 unclaimed task count) and decides between DELIVER mode (Tier 1 only) vs ADD mode (all 8 tiers)",
+        "Executes Tier 1 (verify gate) and reports all compiler errors, lint violations, test failures, and security vulnerabilities as P0 findings",
+        "Executes Tier 2 (stability) and identifies silent error swallowing, missing timeouts, unhandled promise rejections, and resource leaks",
+        "Executes Tier 3 (test depth) and flags source files with no tests, low assertion density, and missing edge case coverage"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Our codebase has accumulated technical debt. Run a sweep focused on code health and dependencies to find refactoring opportunities.",
+      "expected_output": "A TASKS-AUDIT.md with findings from Tier 5 (code health) and Tier 6 (dependencies) including large files, dead code, duplicate patterns, and outdated dependencies.",
+      "expectations": [
+        "Identifies source files over 300 lines as candidates for splitting, with specific line ranges and suggested module boundaries",
+        "Finds functions with deep nesting (>4 levels) or high cyclomatic complexity (>10 branches) using static analysis",
+        "Detects duplicate code patterns across files using similarity heuristics, grouping similar blocks together",
+        "Identifies dead code: exported functions never imported, unused variables, unreachable branches",
+        "Runs npm outdated / cargo outdated / pip list --outdated and reports major version updates separately from minor/patch",
+        "Finds unused dependencies in package.json/Cargo.toml/pyproject.toml that are never imported"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I want to understand what's broken and what's missing in our project before I start implementing. Run a sweep with focus on vision alignment.",
+      "expected_output": "A TASKS-AUDIT.md with findings from Tier 8 (vision alignment) showing user story implementation status, README accuracy, and competitive gaps.",
+      "expectations": [
+        "Reads docs/user-stories.md (or equivalent) and checks each story against the codebase for implementation status (implemented / partial / missing)",
+        "Produces a coverage table mapping each user story to code evidence or noting it as aspirational",
+        "Verifies README feature claims against actual exports, commands, and working code",
+        "Checks VISION.md goals for corresponding code or tasks, flagging aspirational features with no implementation",
+        "Reads docs/COMPETITION.md (if present) and identifies competitor features that would be easy wins",
+        "Reviews API surface (CLI commands, exported functions, REST endpoints) for coherence and overlaps"
+      ]
+    }
+  ]
+}

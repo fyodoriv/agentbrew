@@ -1,0 +1,98 @@
+{
+  "skill_name": "handoff",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a handoff for the next agent focused on finishing the release.",
+      "expected_output": "Create a mktemp handoff markdown referencing artifacts, state, next steps, gotchas, and suggested skills.",
+      "expectations": [
+        "Uses mktemp-style path and reads before writing as instructed",
+        "Summarizes accomplishments with artifact paths/SHAs instead of duplicating full content",
+        "Includes current state, ordered next steps, and gotchas",
+        "Tailors next steps to the user-provided focus if any"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The session is long; compact it without losing PR and blocker context.",
+      "expected_output": "A concise handoff that references PR numbers, task IDs, committed code, and blockers.",
+      "expectations": [
+        "Includes open PRs/issues by URL or number",
+        "References TASKS.md IDs and commit SHAs where relevant",
+        "Avoids duplicating content already stored in docs or commits",
+        "Calls out non-obvious gotchas that would trip a fresh agent"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The next agent needs to continue a conflicted PR update. What must the handoff capture?",
+      "expected_output": "A concise state document with branch, conflict files, commands already run, next command, and gotchas.",
+      "expectations": [
+        "Names the current branch and PR/issue identifiers",
+        "Lists conflicted or modified files without dumping whole diffs",
+        "Records verification commands already run and their outcomes",
+        "Highlights gotchas such as hook warnings or blocked operations"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "write a handoff for the next session; they will continue work on the release dashboard feature",
+      "expected_output": "A mktemp-created handoff document with accomplished work, current state, ordered next steps, gotchas, and suggested skills focused on the next session's feature continuation.",
+      "expectations": [
+        "Creates the handoff path with mktemp -t handoff-XXXXXX.md and reads the file before writing it",
+        "Tailors Next steps to the user-provided focus instead of producing a generic transcript summary",
+        "Includes What was accomplished, Current state, Next steps, Gotchas, and Suggested skills sections",
+        "References committed artifacts by path and commit SHA, open PRs/issues by URL or number, and TASKS.md entries by ID",
+        "Avoids duplicating content already present in code, PRs, specs, tasks, or docs"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "context is almost full; compact everything important before we stop",
+      "expected_output": "A concise continuation artifact that preserves state and pitfalls without trying to finish unrelated work.",
+      "expectations": [
+        "Prioritizes durable continuation context over new implementation or broad investigation",
+        "Summarizes current working tree, verification status, in-flight commits/PRs, and blockers",
+        "Orders next steps so a fresh agent can resume without re-reading the whole transcript",
+        "Calls out non-obvious gotchas that consumed time in the current session",
+        "Saves the handoff to a temp markdown file and reports its path"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "make a handoff, but do not paste the entire PR body or TASKS.md into it",
+      "expected_output": "A reference-oriented handoff that links to existing artifacts rather than copying large bodies verbatim.",
+      "expectations": [
+        "Recognizes that duplicating existing artifacts is explicitly disallowed by the skill",
+        "References the PR body, task IDs, plan paths, and commits rather than copying their full text",
+        "Keeps accomplished work to 1-3 bullets as requested by the skill",
+        "Includes enough current-state detail to know what is working, broken, or in-flight",
+        "Does not write the handoff into the repository unless the user explicitly requested a repo artifact"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Make the handoff exhaustive: paste the full transcript, entire PR body, and all of TASKS.md into docs/HANDOFF.md so nothing is lost.",
+      "expected_output": "A handoff response that saves a temp markdown file via mktemp/read-before-write, references existing artifacts instead of duplicating them, keeps accomplished work concise, and refuses repo-file output unless the user explicitly requested a repository artifact.",
+      "expectations": [
+        "Does not paste the full transcript, full PR body, or full TASKS.md into the handoff",
+        "Uses a mktemp-style markdown path and reads it before writing",
+        "References existing artifacts by path, commit SHA, PR URL/number, task ID, or spec path",
+        "Keeps What was accomplished to 1-3 bullets instead of an exhaustive changelog",
+        "Does not write the handoff into the repository unless the user explicitly requests a repo artifact"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Write a quick handoff. The next session should focus on getting PR #42 green; don't worry about listing every command or blocker.",
+      "expected_output": "A focused continuation artifact that preserves PR/task/branch identifiers, working-tree state, verification commands and outcomes, blockers, gotchas, and ordered next steps tailored to getting PR #42 green.",
+      "expectations": [
+        "Treats the user's PR #42 instruction as the next-session focus",
+        "Records branch, PR or issue identifiers, TASKS.md task IDs, and in-flight state when available",
+        "Includes verification commands already run and their pass/fail outcomes instead of omitting command history",
+        "Calls out blockers and gotchas even when the user asks for a quick handoff",
+        "Orders next steps so the next agent can resume PR-green work without replaying the transcript"
+      ]
+    }
+  ]
+}

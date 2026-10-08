@@ -13,6 +13,7 @@ export function registerSkillsCommands(program: Command): void {
     .command("coverage")
     .description("Report skill structural (L1) and eval (L2) test coverage")
     .option("--builtins", "Only count in-repo skill-plugins/dev skills")
+    .option("--built-in-skill-root <path>", "Skill directory for --builtins (default skill-plugins/dev)")
     .option("--ci", "Exit 1 when eval coverage is below --threshold")
     .option("--threshold <percent>", "Minimum eval-coverage percent for --ci (default 90)", (value) =>
       Number.parseInt(value, 10),

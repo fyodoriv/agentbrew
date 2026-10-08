@@ -226,6 +226,10 @@ function behavioralCoverage(repoRoot: string, draft: ArtifactDraft): string[] {
   if (draft.kind === "builtin-skill" && existsSync(join(repoRoot, skillEvalPath))) {
     coverage.push(skillEvalPath);
   }
+  const workflowEvalPath = join("skill-plugins", "workflow", draft.name, "evals", "evals.json");
+  if (draft.kind === "catalog-skill" && existsSync(join(repoRoot, workflowEvalPath))) {
+    coverage.push(workflowEvalPath);
+  }
   if (isPromptfooCoveredArtifact(draft) && existsSync(join(repoRoot, promptfooPath))) {
     coverage.push(promptfooPath);
   }

@@ -1,0 +1,77 @@
+{
+  "skill_name": "to-issues",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Turn this plan into GitHub issues or TASKS.md entries.",
+      "expected_output": "Detect backend, clarify granularity/dependencies, dependency-order vertical slices, classify AFK/HITL.",
+      "expectations": [
+        "Detects task backend before choosing GitHub Issues vs TASKS.md",
+        "Clarifies granularity and known dependency constraints before publishing",
+        "Produces independently completable vertical slices in dependency order",
+        "Classifies each task AFK or HITL with observable acceptance criteria"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The plan has five tasks sharing a migration script and env setup. How should tasks be split?",
+      "expected_output": "Make dependencies explicit and avoid hidden shared state between concurrent tasks.",
+      "expectations": [
+        "Builds a dependency graph before writing tasks",
+        "Identifies tasks that can run in parallel vs blockers",
+        "Avoids file/line-only tasks and uses domain behavior acceptance",
+        "Marks human approvals/credentials/design judgments as HITL"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The user says “make tickets for this” but gives no source artifact. What should happen?",
+      "expected_output": "Ask for the plan/spec/PRD or clarify source before creating tasks.",
+      "expectations": [
+        "Does not fabricate tasks without a source plan or requirement",
+        "Asks what should be broken down when no context exists",
+        "Clarifies desired granularity before publishing",
+        "Still explains the output format and backend choice"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have a spec for a new payment processing feature. Break it down into independently-grabbable tasks that an agent can execute without human input.",
+      "expected_output": "A dependency-ordered list of tasks where each is independently completable, classified as AFK or HITL, with clear acceptance criteria and no file paths or line numbers.",
+      "expectations": [
+        "Reads the provided spec and identifies all major work slices (data model, API endpoints, webhook handling, error cases, testing)",
+        "Maps dependencies: identifies what must exist before each task can start (e.g., data model before API endpoints)",
+        "Orders tasks by dependency: blockers first, dependents after, with parallel-executable tasks grouped",
+        "Classifies each task as AFK (agent-executable) or HITL (requires human): payment API integration is HITL (needs credentials), schema migration is AFK",
+        "Writes outcome-shaped task descriptions (desired end state) not implementation steps (e.g., 'Payment webhook validates signatures and stores events' not 'Add webhook validation code')",
+        "Includes clear acceptance criteria for each task that are mechanically verifiable (tests pass, endpoint responds with correct status codes)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We have a plan to refactor our authentication system. Convert it into GitHub Issues that the team can pick up.",
+      "expected_output": "A set of GitHub Issues created in dependency order, each independently completable, with clear acceptance criteria and blocking relationships.",
+      "expectations": [
+        "Detects the repo's task backend (GitHub Issues vs TASKS.md) by checking for .tasksmd.json",
+        "Clarifies granularity with the user: should tasks be 1-hour slices or half-day slices?",
+        "Maps the refactoring plan into vertical slices: authentication middleware, token validation, session management, error handling, testing",
+        "Creates issues in dependency order using the GitHub Issues API (via tasks create), starting with blockers",
+        "Each issue has a clear title (imperative, outcome-shaped), description with acceptance criteria, and 'Blocked by' references to dependent issues",
+        "Classifies each issue as AFK or HITL in the issue body or labels"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I have a PRD for a new dashboard feature. Break it down into tasks that show clear dependencies and identify which ones need human approval.",
+      "expected_output": "A task list with explicit dependency graph, AFK/HITL classification, and acceptance criteria that make it clear what 'done' means for each task.",
+      "expectations": [
+        "Reads the PRD and identifies major work slices: data model, API endpoints, frontend components, styling, testing, documentation",
+        "Asks clarifying questions about granularity and dependencies before creating tasks",
+        "Maps the dependency graph visually or textually: which tasks block which others?",
+        "Identifies HITL tasks: design review (needs designer approval), API contract review (needs backend team approval), accessibility review (needs a11y specialist)",
+        "Identifies AFK tasks: implement component, write unit tests, add error handling, update documentation",
+        "Writes acceptance criteria that are observable without subjective judgment (tests pass, component renders without errors, accessibility score > 90)"
+      ]
+    }
+  ]
+}

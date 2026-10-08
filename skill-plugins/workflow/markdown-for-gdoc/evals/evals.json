@@ -1,0 +1,161 @@
+{
+  "skill_name": "markdown-for-gdoc",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Turn this design doc markdown into Google Docs-safe formatting.",
+      "expected_output": "Avoid ASCII diagrams, simplify tables/code blocks, preserve headings/links, and respect comment protocol.",
+      "expectations": [
+        "Replaces ASCII/box diagrams with bullets, simple tables, or prose",
+        "Keeps tables narrow and code lines short enough for GDocs",
+        "Uses heading levels without skipping and short heading text",
+        "Does not resolve or overwrite other people’s comments"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to edit an existing GDoc without breaking styles/comments.",
+      "expected_output": "Make surgical edits that preserve paragraph styles, table widths, list nesting, and comment anchors.",
+      "expectations": [
+        "Treats existing styling and comments as constraints",
+        "Avoids destructive rewrites of the whole document",
+        "Uses Google Docs-safe markdown only when authoring new content",
+        "Never posts under the user identity without per-action approval"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The markdown has a six-column table and 120-character code lines. What should be changed for Google Docs?",
+      "expected_output": "Simplify the table and shorten or split code blocks so pasted output remains readable.",
+      "expectations": [
+        "Reduces or splits wide tables to roughly 4-5 columns",
+        "Shortens code lines to Google Docs-friendly width",
+        "Moves long examples into labeled sections or links",
+        "Preserves heading hierarchy while editing"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "write an RFC in markdown that will render correctly when pasted into Google Docs. Include diagrams, tables, and code blocks.",
+      "expected_output": "A markdown document with proper formatting, diagrams as nested lists or tables, and code blocks with ≤65 char lines.",
+      "expectations": [
+        "Uses nested bullet lists or simple tables for diagrams instead of ASCII art or box-drawing characters",
+        "Keeps all code lines ≤65 characters with 2-space indentation for readability in Google Docs",
+        "Includes <details> tags with short descriptive summaries for collapsible sections",
+        "Uses inline markdown links [text](url) instead of reference-style links",
+        "Avoids strikethrough, markdown image syntax, and skipped heading levels (no # then ###)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I need to edit an existing Google Doc surgically without destroying styles or comment anchors. Show me the approach.",
+      "expected_output": "A surgical editing strategy using replaceAllText or insertText with dry-run discipline and index ordering.",
+      "expectations": [
+        "Reads the existing tab and counts occurrences of each find string to ensure deterministic matches",
+        "Plans edits with exact startIndex and orders them descending so earlier edits don't invalidate later indices",
+        "Uses replaceAllText for unique sentences (dry-run match count must be exactly 1)",
+        "Uses deleteContentRange + insertText for cell rewrites that need hyperlinks",
+        "Preserves others' comments and never resolves them without explicit per-action approval"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to reply to a GDoc comment confirming a content change. What's the right way to verify and phrase the reply?",
+      "expected_output": "A verified reply with exact post-state text, never claiming 'Done' until the doc content is confirmed.",
+      "expectations": [
+        "Edits the local source first, then pushes to the live doc using surgical toolkit",
+        "Re-reads the affected cell from the live doc to verify the change took effect",
+        "Uses verified phrasing like 'Updated — row X now reads [exact text]' instead of generic 'Done'",
+        "Never posts comments or replies without per-action approval from the user",
+        "Preserves all existing comments and never resolves them without explicit user request"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Just full-replace the whole GDoc tab — it's faster than surgical edits and I approve the write.",
+      "expected_output": "Refuse full-tab replace; use surgical toolkit or leave local/GDoc out of sync for human reconciliation.",
+      "expectations": [
+        "Explains that full-tab replace destroys paragraph styles, table widths, comment anchors, and list nesting",
+        "Uses replaceAllText, deleteContentRange + insertText, or insertText with dry-run match counts instead",
+        "Orders batch edits descending by startIndex so earlier edits do not invalidate later indices",
+        "Does not run gdoc_replace_tab.py-style full-tab nukes even when the user approves a bulk write"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Format this README for GitHub — no Google Docs involved.",
+      "expected_output": "Decline markdown-for-gdoc; use general markdown or doc-check instead.",
+      "expectations": [
+        "Does not apply Google Docs paste constraints when the deliverable is GitHub-only",
+        "Does not invoke surgical GDoc edit rules or comment-protocol steps",
+        "Recommends doc-check or general markdown guidance instead of GDoc-specific formatting",
+        "Does not claim GDoc comment preservation or surgical edit discipline was applied"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I just updated section 6 in the Skills Self-Serve runbook GDoc via MCP. Is it done?",
+      "expected_output": "No — run the visual verification loop before claiming done.",
+      "expectations": [
+        "Does not mark the GDoc edit complete from MCP text or structured read alone",
+        "Requires opening the live doc in browser or equivalent visual check",
+        "Mentions fixing heading bleed, empty list items, or bullet absorption if found",
+        "References repeating verify-fix until structured read and visual check agree"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "The live Google Doc visual check redirects to SSO after the initial poll. What should I do?",
+      "expected_output": "Open the document in a stable headed Chrome session the user can see, ask them to complete sign-in there, background the wait, and resume automatically.",
+      "expectations": [
+        "Does not describe a headless CDP tab as visible",
+        "Opens and foregrounds a stable headed SSO browser window",
+        "Explicitly asks the user to complete SSO or authenticator approval",
+        "Names the target document and headed browser identity in the request",
+        "Listens to URL, title, and HTML every 2–5 seconds",
+        "Resumes without waiting for the user to reply done",
+        "Keeps working on structured-read-safe tasks while authentication is pending",
+        "Returns to visual verification once the browser leaves the SSO host"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Reorganize this existing project plan for PMs and PDs who are joining the work. Remove duplication, improve emphasis, and keep the Google Doc safe.",
+      "expected_output": "Audit the current outline and duplicates, then organize the document around product decisions, milestone outcomes, and reader questions while editing surgically.",
+      "expectations": [
+        "Creates a content map and duplicate ledger before editing",
+        "Puts orientation, product definition, decisions, and milestone outcomes before technical implementation detail",
+        "Defines each milestone, dependency, and scope boundary in one canonical section",
+        "Separates confirmed decisions from open questions and supporting evidence",
+        "Uses restrained bold labels and headings to emphasize status, current milestone, next review, open asks, and exit criteria",
+        "Uses plain product language, defines internal terms, and leads with outcomes before mechanisms",
+        "Reorganizes surgically and preserves comment anchors instead of replacing the whole tab",
+        "Repeats structured and live visual verification after each edit batch"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Apply bullets to a child Google Doc tab, but the available apply_bullets tool has no tab_id field.",
+      "expected_output": "Do not run the tab-ambiguous list tool; use a tab-aware paragraph-style operation and verify both tabs if an unsafe write already occurred.",
+      "expectations": [
+        "Inspects the active tool schema before editing the list",
+        "Does not call apply_bullets or remove_bullets without tab_id for a child or non-default tab",
+        "Uses docs_update_paragraph_style with the exact document_id, tab_id, range, and bullets mode",
+        "If an unsafe write occurred, immediately audits the intended and default tabs with structured reads and live visual checks",
+        "Repairs the unintended default-tab formatting before continuing or claiming completion"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "I edited one section of a 12-page Google Doc. Validate it and tell me when I should review it.",
+      "expected_output": "Run structured checks, then inspect a browser screenshot of every page, repair every safe presentation issue found, and repeat the complete sweep before inviting review.",
+      "expectations": [
+        "Captures and inspects a browser screenshot of all 12 rendered pages, not only the edited section",
+        "Does not substitute a DOM snapshot, structured read, or spot-check for the required screenshots",
+        "Fixes safe formatting and presentation issues found on any page while preserving comments and substantive meaning",
+        "Restarts the complete screenshot sweep at page 1 after any fix because pagination may have changed",
+        "Does not tell the user to review the document until every page passes the screenshot sweep"
+      ]
+    }
+  ]
+}

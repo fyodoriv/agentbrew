@@ -93,7 +93,8 @@ export function updateLock(sources: Source[], sourceUrl?: string): UpdateLockRes
   for (const entry of targetEntries) {
     const source = sources.find((s) => s.url === entry.source);
     if (!source) {
-      results.push({ source: entry.source, status: "not-found" });
+      // A full update sees every installed source, so a missing one was removed.
+      results.push({ source: entry.source, status: sourceUrl ? "not-found" : "pruned" });
       continue;
     }
 
@@ -114,13 +115,15 @@ export function updateLock(sources: Source[], sourceUrl?: string): UpdateLockRes
     results.push({ source: entry.source, status: "updated", oldSha, sha: newSha });
   }
 
+  const pruned = new Set(results.filter((r) => r.status === "pruned").map((r) => r.source));
+  lock.locked = lock.locked.filter((entry) => !pruned.has(entry.source));
   writeLock(lock);
   return results;
 }
 
 export interface UpdateLockResult {
   source: string;
-  status: "updated" | "up-to-date" | "not-found" | "error";
+  status: "updated" | "up-to-date" | "not-found" | "pruned" | "error";
   oldSha?: string;
   sha?: string;
 }

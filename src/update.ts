@@ -159,6 +159,8 @@ function printLockResults(sources: Source[]): void {
         );
       } else if (result.status === "up-to-date") {
         console.log(`  ${ICON_SUCCESS} ${result.source} — ${chalk.dim("up to date")}`);
+      } else if (result.status === "pruned") {
+        console.log(`  ${chalk.dim("−")} ${result.source} — ${chalk.dim("source removed, entry pruned")}`);
       } else if (result.status === "error") {
         console.log(`  ${chalk.yellow("?")} ${result.source} — ${chalk.dim("could not resolve SHA")}`);
       }

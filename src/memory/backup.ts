@@ -109,7 +109,7 @@ export function writeMemoryBackup(sourceDb: string, backupsDir: string, now: Dat
   return dest;
 }
 
-/** Delete all but the newest `keep` `.db` backups in `backupsDir`; return the removed paths. */
+/** Delete all but the newest `keep` `.db` backups (and their sidecars) in `backupsDir`; return the removed paths. */
 export function pruneMemoryBackups(backupsDir: string, keep: number): string[] {
   if (!existsSync(backupsDir)) return [];
   const backups = readdirSync(backupsDir)
@@ -120,7 +120,10 @@ export function pruneMemoryBackups(backupsDir: string, keep: number): string[] {
     })
     .sort((a, b) => b.mtime - a.mtime);
   const removed = backups.slice(keep).map((backup) => backup.full);
-  for (const path of removed) rmSync(path, { force: true });
+  // Opening a backup to verify it can leave SQLite -shm/-wal sidecars next to it.
+  for (const path of removed) {
+    for (const file of [path, `${path}-shm`, `${path}-wal`]) rmSync(file, { force: true });
+  }
   return removed;
 }
 

@@ -51,6 +51,29 @@ describe("pruneMemoryBackups", () => {
   it("returns an empty list when the directory is missing", () => {
     expect(pruneMemoryBackups("/path/that/does/not/exist/agentbrew-memory-backups", 2)).toEqual([]);
   });
+
+  it("removes the SQLite -shm and -wal sidecars of pruned backups", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentbrew-backup-sidecars-"));
+    try {
+      for (let i = 0; i < 2; i++) {
+        const file = join(dir, `agentbrew-memory_2026100${i}_031500.db`);
+        for (const path of [file, `${file}-shm`, `${file}-wal`]) {
+          writeFileSync(path, "x");
+          utimesSync(path, 1_700_000_000 + i, 1_700_000_000 + i);
+        }
+      }
+
+      pruneMemoryBackups(dir, 1);
+
+      expect(readdirSync(dir).sort()).toEqual([
+        "agentbrew-memory_20261001_031500.db",
+        "agentbrew-memory_20261001_031500.db-shm",
+        "agentbrew-memory_20261001_031500.db-wal",
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("writeMemoryBackup", () => {

@@ -55,6 +55,7 @@ vi.mock("./mcp-delegate.js", () => ({
     globalUninstall: { ok: false },
   })),
   delegateMcpNew: vi.fn(() => ({ ok: false })),
+  isMcpmAvailable: vi.fn(() => true),
   mcpServerConfigEquals: vi.fn((left, right) => JSON.stringify(left) === JSON.stringify(right)),
   readMcpmServer: vi.fn(() => undefined),
 }));
@@ -66,7 +67,13 @@ import { discoverUnmanagedServers } from "../import.js";
 import * as adapters from "../mcp/adapters.js";
 import { JsonAdapter } from "../mcp/adapters.js";
 import { loadState, saveState } from "../state.js";
-import { delegateMcpClientEdit, delegateMcpNew, mcpServerConfigEquals, readMcpmServer } from "./mcp-delegate.js";
+import {
+  delegateMcpClientEdit,
+  delegateMcpNew,
+  isMcpmAvailable,
+  mcpServerConfigEquals,
+  readMcpmServer,
+} from "./mcp-delegate.js";
 import {
   addMcpServer,
   computeDiffWithAdapter,
@@ -91,9 +98,11 @@ const mockDelegateMcpClientEdit = vi.mocked(delegateMcpClientEdit);
 const mockDelegateMcpNew = vi.mocked(delegateMcpNew);
 const mockMcpServerConfigEquals = vi.mocked(mcpServerConfigEquals);
 const mockReadMcpmServer = vi.mocked(readMcpmServer);
+const mockIsMcpmAvailable = vi.mocked(isMcpmAvailable);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockIsMcpmAvailable.mockReturnValue(true);
   mockDiscoverUnmanagedServers.mockReset();
   mockDiscoverUnmanagedServers.mockReturnValue([]);
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -390,6 +399,63 @@ describe("syncMcpServers — claude-code intersection skip (slice 4a)", () => {
     const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(calls).toContain("claude-code");
     expect(calls).toContain("mcpm-managed");
+  });
+});
+
+// A fresh machine has no mcpm. Intersection clients must then get native
+// writes, or they end up with no agentbrew MCP servers at all.
+describe("syncMcpServers — native fallback when mcpm is not installed", () => {
+  const claudeOnly = (servers: McpServer[]): AgentBrewState => ({
+    agents: [{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "~/.claude.json" }],
+    sources: [],
+    mcpServers: servers,
+    catalogVersion: "0.1.0",
+  });
+
+  beforeEach(() => {
+    mockIsMcpmAvailable.mockReturnValue(false);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("{}");
+  });
+
+  it("writes state servers into ~/.claude.json", async () => {
+    mockLoadState.mockReturnValue(claudeOnly([makeServer({ name: "fresh-srv" })]));
+
+    await syncMcpServers();
+
+    const claudeWrites = mockWriteFileSync.mock.calls.filter((c) => String(c[0]).includes(".claude.json"));
+    expect(claudeWrites.length).toBeGreaterThan(0);
+    const written = JSON.parse(String(claudeWrites.at(-1)?.[1]));
+    expect(Object.keys(written.mcpServers)).toContain("fresh-srv");
+  });
+
+  it("does not call mcpm and says the config is written directly", async () => {
+    mockLoadState.mockReturnValue(claudeOnly([makeServer()]));
+
+    await syncMcpServers();
+
+    expect(mockDelegateMcpClientEdit).not.toHaveBeenCalled();
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("mcpm not found");
+    expect(calls).not.toContain("mcpm-managed");
+  });
+
+  it("still skips read-only yaml intersection clients (goose)", () => {
+    const agents = [makeMcpAgentDef("goose"), makeMcpAgentDef("codex")];
+    const names = getMcpTargetAgents(agents, { mcpmAvailable: false }).map((a) => a.name);
+    expect(names).toContain("codex");
+    expect(names).not.toContain("goose");
+  });
+
+  it("prunes a removed server from ~/.claude.json", async () => {
+    mockLoadState.mockReturnValue(claudeOnly([makeServer({ name: "remove-me" })]));
+    mockReadFileSync.mockReturnValue(JSON.stringify({ mcpServers: { "remove-me": { command: "npx" } } }));
+
+    await removeMcpServer("remove-me");
+
+    const claudeWrites = mockWriteFileSync.mock.calls.filter((c) => String(c[0]).includes(".claude.json"));
+    expect(claudeWrites.length).toBeGreaterThan(0);
+    expect(JSON.parse(String(claudeWrites.at(-1)?.[1])).mcpServers).not.toHaveProperty("remove-me");
   });
 });
 

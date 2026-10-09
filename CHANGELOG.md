@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **MCP servers reach Claude Code and Codex without mcpm** — on a machine
+  without `mcpm` on `PATH`, sync used to skip the mcpm-managed clients, so a
+  fresh install left Claude Code and Codex with no agentbrew MCP servers.
+  Sync and `remove` now write those configs directly when `mcpm` is missing.
+  Goose stays mcpm-only because its YAML adapter is read-only.
+
 ## [0.4.0] - 2026-10-09
 
 ### Security

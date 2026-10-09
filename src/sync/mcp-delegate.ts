@@ -64,9 +64,9 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { buildMcpmClientList } from "../core/mcp-agent-map.js";
@@ -77,6 +77,28 @@ import type { McpServer } from "../types.js";
  *  `AGENTBREW_MCPM_BIN` to point at a fake script or a known-bad path. */
 function mcpmBin(): string {
   return process.env.AGENTBREW_MCPM_BIN ?? "mcpm";
+}
+
+/** True when the mcpm binary can be run. Scans PATH instead of spawning
+ *  mcpm, because mcpm is a Python CLI and each start costs about a second.
+ *  A fresh machine usually has no mcpm; sync then writes intersection
+ *  clients natively instead of handing them to mcpm. */
+export function isMcpmAvailable(): boolean {
+  const bin = mcpmBin();
+  const candidates = bin.includes("/")
+    ? [bin]
+    : (process.env.PATH ?? "")
+        .split(delimiter)
+        .filter(Boolean)
+        .map((dir) => join(dir, bin));
+  return candidates.some((candidate) => {
+    try {
+      accessSync(candidate, constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 /** Resolve mcpm's global config directory. Production reads from

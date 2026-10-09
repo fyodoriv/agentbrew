@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import {
   delegateMcpInstall,
   delegateMcpNew,
   delegateMcpUninstall,
+  isMcpmAvailable,
   listMcpmServerNames,
   mcpServerConfigEquals,
   readMcpmServer,
@@ -740,5 +741,31 @@ describe("listMcpmServerNames — slice 2 (bridge state additions)", () => {
     const names = listMcpmServerNames();
     expect(names).toBeInstanceOf(Set);
     expect(names.size).toBe(0);
+  });
+});
+
+describe("isMcpmAvailable", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns false when mcpm is not on PATH", () => {
+    vi.stubEnv("AGENTBREW_MCPM_BIN", "mcpm");
+    vi.stubEnv("PATH", testRoot);
+    expect(isMcpmAvailable()).toBe(false);
+  });
+
+  it("returns true when an executable mcpm is on PATH", () => {
+    const bin = join(testRoot, "mcpm");
+    writeFileSync(bin, "#!/bin/sh\nexit 0\n");
+    chmodSync(bin, 0o755);
+    vi.stubEnv("AGENTBREW_MCPM_BIN", "mcpm");
+    vi.stubEnv("PATH", testRoot);
+    expect(isMcpmAvailable()).toBe(true);
+  });
+
+  it("checks an absolute AGENTBREW_MCPM_BIN path directly", () => {
+    vi.stubEnv("AGENTBREW_MCPM_BIN", join(testRoot, "missing-mcpm"));
+    expect(isMcpmAvailable()).toBe(false);
   });
 });

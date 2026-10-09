@@ -106,6 +106,7 @@ vi.mock("./shell-hook.js", () => ({
 // an MCP server would hit a 60s subprocess timeout because the test home
 // detects cursor + codex (intersection agents).
 vi.mock("./sync/mcp-delegate.js", () => ({
+  isMcpmAvailable: vi.fn(() => true),
   delegateMcpInstall: vi.fn(() => ({ ok: false, carveOuts: [] })),
   delegateMcpClientEdit: vi.fn(() => ({ ok: false, carveOuts: [], perClient: [] })),
   delegateMcpUninstall: vi.fn(() => ({

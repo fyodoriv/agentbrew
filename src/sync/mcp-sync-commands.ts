@@ -8,7 +8,7 @@ import { getAdapter } from "../mcp/adapters.js";
 import { requireState, saveState } from "../state.js";
 import type { AgentConfig, McpServer } from "../types.js";
 import { expandHome } from "../utils.js";
-import { delegateMcpUninstall } from "./mcp-delegate.js";
+import { delegateMcpUninstall, isMcpmAvailable } from "./mcp-delegate.js";
 import { getMcpTargetAgents, syncMcpServers } from "./mcp-sync.js";
 
 interface AddMcpServerOptions {
@@ -197,9 +197,10 @@ export async function removeMcpServer(name: string, ctx?: Context): Promise<void
   log.success("✓", `MCP server '${name}' removed from registry.`);
 
   // Bridge to mcpm for the MCP_INTERSECTION_AGENTS mcpm intersection (best-effort).
-  bridgeRemoveToMcpm(state.agents, name, log);
+  const mcpmAvailable = isMcpmAvailable();
+  if (mcpmAvailable) bridgeRemoveToMcpm(state.agents, name, log);
 
-  const mcpAgents = getMcpTargetAgents(state.agents);
+  const mcpAgents = getMcpTargetAgents(state.agents, { mcpmAvailable });
   pruneServerFromAgents(name, mcpAgents, log);
   log.log("");
 }

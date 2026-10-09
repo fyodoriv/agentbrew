@@ -61,6 +61,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 
 // Prevent the catalog → mcpm bridge from reaching real subprocesses.
 vi.mock("./sync/mcp-delegate.js", () => ({
+  isMcpmAvailable: vi.fn(() => true),
   delegateMcpInstall: vi.fn(() => ({ ok: false, carveOuts: [] })),
   delegateMcpClientEdit: vi.fn(() => ({ ok: false, carveOuts: [], perClient: [] })),
   delegateMcpUninstall: vi.fn(() => ({

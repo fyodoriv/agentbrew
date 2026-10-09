@@ -15,6 +15,7 @@ vi.mock("./mcp-sync.js", () => ({
 // clients (cursor, claude-code, codex, etc.). Without the mock, every
 // `removeMcpServer` test would spawn real `mcpm` subprocesses.
 vi.mock("./mcp-delegate.js", () => ({
+  isMcpmAvailable: vi.fn(() => true),
   delegateMcpUninstall: vi.fn(() => ({
     ok: false,
     carveOuts: [],

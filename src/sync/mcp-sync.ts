@@ -40,7 +40,13 @@ import { requireState, saveState } from "../state.js";
 import type { AgentBrewState, AgentConfig, McpFormatAdapter, McpServer, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
-import { delegateMcpClientEdit, delegateMcpNew, mcpServerConfigEquals, readMcpmServer } from "./mcp-delegate.js";
+import {
+  delegateMcpClientEdit,
+  delegateMcpNew,
+  isMcpmAvailable,
+  mcpServerConfigEquals,
+  readMcpmServer,
+} from "./mcp-delegate.js";
 
 /**
  * Carve-out: shared (mcpm-bridge informational logging).
@@ -51,12 +57,16 @@ import { delegateMcpClientEdit, delegateMcpNew, mcpServerConfigEquals, readMcpmS
  * (most non-organization-specific setups). Users call `agentbrew install <name>` for
  * the catalog or `mcpm install <name>` for the raw mcpm registry.
  */
-function logMcpDelegatedAgents(stateAgents: AgentConfig[], log: Logger): void {
+function logMcpDelegatedAgents(stateAgents: AgentConfig[], log: Logger, mcpmAvailable: boolean): void {
   const detectedNames = new Set(stateAgents.filter((a) => a.detected).map((a) => a.name));
   const delegated = AGENT_DEFINITIONS.filter(
     (def) => def.mcpConfig && detectedNames.has(def.name) && MCP_INTERSECTION_AGENTS.has(def.name),
   ).map((def) => def.name);
   if (delegated.length === 0) return;
+  if (!mcpmAvailable) {
+    log.log(log.dim(`  Note: mcpm not found — writing MCP config directly for ${delegated.join(", ")}.\n`));
+    return;
+  }
   log.log(
     log.dim(
       `  Note: ${delegated.join(", ")} → mcpm-managed (run \`agentbrew install <name>\` for the catalog or \`mcpm install <name>\` for raw registry).\n`,
@@ -89,14 +99,21 @@ function warnUnconfiguredAgents(stateAgents: AgentConfig[], log: Logger): void {
  *  fresh from `AGENT_DEFINITIONS` so new `mcpConfig` fields in `agents.yaml`
  *  are picked up without re-init, while still respecting which agents are
  *  actually installed (from state). */
-export function getMcpTargetAgents(stateAgents: AgentConfig[]): AgentConfig[] {
+export function getMcpTargetAgents(
+  stateAgents: AgentConfig[],
+  { mcpmAvailable = true }: { mcpmAvailable?: boolean } = {},
+): AgentConfig[] {
   const detectedNames = new Set(stateAgents.filter((a) => a.detected).map((a) => a.name));
-  return AGENT_DEFINITIONS.filter(
-    (def) => def.mcpConfig && detectedNames.has(def.name) && !MCP_INTERSECTION_AGENTS.has(def.name),
-  ).map((def) => ({
-    ...def,
-    detected: true,
-  }));
+  // Without mcpm, intersection clients are written natively too. Yaml
+  // configs (goose) stay out: their adapter is read-only.
+  const isTarget = (def: (typeof AGENT_DEFINITIONS)[number]): boolean =>
+    !MCP_INTERSECTION_AGENTS.has(def.name) || (!mcpmAvailable && def.mcpFormat !== "yaml");
+  return AGENT_DEFINITIONS.filter((def) => def.mcpConfig && detectedNames.has(def.name) && isTarget(def)).map(
+    (def) => ({
+      ...def,
+      detected: true,
+    }),
+  );
 }
 
 /**
@@ -772,12 +789,12 @@ function logPreSyncHeader(
   state: { agents: AgentConfig[] },
   servers: McpServer[],
   log: Logger,
-  options: { dryRun: boolean },
+  options: { dryRun: boolean; mcpmAvailable: boolean },
 ): void {
   const label = options.dryRun ? "Dry run — MCP servers" : `Syncing ${servers.length} MCP servers...`;
   log.log(log.bold(`\n${label}\n`));
   warnUnconfiguredAgents(state.agents, log);
-  logMcpDelegatedAgents(state.agents, log);
+  logMcpDelegatedAgents(state.agents, log, options.mcpmAvailable);
   // Pre-sync gate: surface hardcoded secrets before the per-agent writes propagate them.
   warnHardcodedSecrets(servers, log);
 }
@@ -822,6 +839,37 @@ async function prepareEnabledMemoryForMcpFanout(
   await maybeRunMemorySyncBeforeMcpFanout(state, quiet, log);
 }
 
+/** Carve-out: shared (per-agent native writes for every target agent). */
+function fanOutMcpWrites(
+  stateAgents: AgentConfig[],
+  targetAgents: AgentConfig[],
+  servers: McpServer[],
+  options: { dryRun: boolean; prune: boolean; managedNames: Set<string>; mcpmAvailable: boolean },
+): ReturnType<typeof syncSingleAgent>[] {
+  const { dryRun, prune, managedNames, mcpmAvailable } = options;
+  const nativeOnly = servers.filter(requiresNativeHttpTransport);
+  const stdioServers = servers.filter((server) => !requiresNativeHttpTransport(server));
+  return [
+    // Stdio-only clients cannot load remote servers (see `STDIO_ONLY_MCP_AGENTS`).
+    ...targetAgents.map((agent) =>
+      syncSingleAgent(agent, STDIO_ONLY_MCP_AGENTS.has(agent.name) ? stdioServers : servers, {
+        dryRun,
+        prune,
+        managedNames,
+      }),
+    ),
+    // Intersection clients get only the carve-out servers, and never with
+    // `prune`, so this pass cannot disturb the entries mcpm owns for them.
+    // Stdio-only clients are skipped: their config file cannot load them.
+    // Without mcpm the main pass above already wrote these clients.
+    ...(nativeOnly.length === 0 || !mcpmAvailable
+      ? []
+      : getNativeHttpTargetAgents(stateAgents).map((agent) =>
+          syncSingleAgent(agent, nativeOnly, { dryRun, prune: false, managedNames }),
+        )),
+  ];
+}
+
 export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune, discover } = resolveSyncOptions(options);
   const log = ctx?.logger ?? createContext({ quiet, compact: options?.compact }).logger;
@@ -846,8 +894,9 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
     return;
   }
 
-  const detectedAgents = getMcpTargetAgents(state.agents);
-  if (!quiet) logPreSyncHeader(state, servers, log, { dryRun });
+  const mcpmAvailable = isMcpmAvailable();
+  const detectedAgents = getMcpTargetAgents(state.agents, { mcpmAvailable });
+  if (!quiet) logPreSyncHeader(state, servers, log, { dryRun, mcpmAvailable });
 
   // Load manifest before the bridge so the attempted-missing cache filter applies
   // on the first call. The bridge runs before the carve-out native sync below;
@@ -856,21 +905,12 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
 
   // Remote HTTPS servers are withheld from mcpm and written natively to every
   // client instead — see `requiresNativeHttpTransport`.
-  const nativeOnly = servers.filter(requiresNativeHttpTransport);
   const viaMcpm = servers.filter((server) => !requiresNativeHttpTransport(server));
-  bridgeStateMcpToMcpm(viaMcpm, state.agents, log, { dryRun, quiet }, manifest);
+  if (mcpmAvailable) bridgeStateMcpToMcpm(viaMcpm, state.agents, log, { dryRun, quiet }, manifest);
 
-  const agentResults = await Promise.all([
-    ...detectedAgents.map((agent) => syncSingleAgent(agent, servers, { dryRun, prune, managedNames })),
-    // Intersection clients get only the carve-out servers, and never with
-    // `prune`, so this pass cannot disturb the entries mcpm owns for them.
-    // Stdio-only clients are skipped: their config file cannot load them.
-    ...(nativeOnly.length === 0
-      ? []
-      : getNativeHttpTargetAgents(state.agents).map((agent) =>
-          syncSingleAgent(agent, nativeOnly, { dryRun, prune: false, managedNames }),
-        )),
-  ]);
+  const agentResults = await Promise.all(
+    fanOutMcpWrites(state.agents, detectedAgents, servers, { dryRun, prune, managedNames, mcpmAvailable }),
+  );
   runStdioOnlyRemotePrune(state.agents, managedNames, log, { dryRun, quiet });
   syncDetectedMcpPermissions(state.agents, servers, dryRun);
   const totals = aggregateAndLogResults(agentResults, log, { quiet, verbose, dryRun });

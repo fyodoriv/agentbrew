@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
+### Security
+
+- **Dependency fixes** — `simple-git` 4.0.2 and `proxy-addr` 2.0.8 close the
+  critical advisories that Dependabot reported on `main`.
+
 ### Removed
 
 - **Windsurf and Devin support** — breaking change. agentbrew no longer
@@ -34,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripts now live in `templates/scripts/`, the `.mjs` gate stays in
   `scripts/`, and `agentbrew sync` installs them. Sync never replaces a file
   it did not write, so a hand-made copy at that path stays.
+- **Memory backups** — `agentbrew memory maintain` now writes the daily
+  backup and keeps the newest 14. Pruning an old backup also removes its
+  SQLite `-shm` and `-wal` files. `memory status --json` reports the
+  daemon's LaunchAgent identity.
+- **Lock entries** — `agentbrew sync` prunes lock entries for removed
+  sources.
 
 ## [0.3.5] - 2026-10-01
 

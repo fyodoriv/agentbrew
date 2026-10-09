@@ -3,26 +3,31 @@ import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { beforeAll, describe, expect, it } from "vitest";
+import { type Command, CommanderError } from "commander";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildProgram, HELP_COMMAND_GROUPS, isCliEntrypoint } from "./cli.js";
 
 const run = promisify(execFile);
-const CLI_TEST_TIMEOUT_MS = 20_000;
+const CLI_SPAWN_TIMEOUT_MS = 60_000;
 
-/** Run the CLI with given args, capturing stdout/stderr. */
-async function cli(...args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    AGENTBREW_NO_AUTO_INIT: "1",
-    NO_COLOR: "1",
-    FORCE_COLOR: "0",
-  };
+interface CliResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+/**
+ * Spawn the real CLI. Kept for one entry-point smoke test only: each spawn
+ * transpiles the whole import graph with tsx, which takes 20s+ under load.
+ */
+async function spawnCli(...args: string[]): Promise<CliResult> {
+  const env: NodeJS.ProcessEnv = { ...process.env, AGENTBREW_NO_AUTO_INIT: "1", NO_COLOR: "1", FORCE_COLOR: "0" };
   delete env.BASH_ENV;
   delete env.ENV;
   try {
     const { stdout, stderr } = await run(process.execPath, ["--import", "tsx", "src/cli.ts", ...args], {
       cwd: join(import.meta.dirname, ".."),
-      timeout: CLI_TEST_TIMEOUT_MS,
+      timeout: CLI_SPAWN_TIMEOUT_MS,
       env,
     });
     return { stdout, stderr, exitCode: 0 };
@@ -32,12 +37,45 @@ async function cli(...args: string[]): Promise<{ stdout: string; stderr: string;
   }
 }
 
-/** Memoized CLI runner — tests sharing the same args reuse one spawn. */
-const cliCache = new Map<string, Promise<{ stdout: string; stderr: string; exitCode: number }>>();
-function cachedCli(...args: string[]) {
-  const key = JSON.stringify(args);
-  if (!cliCache.has(key)) cliCache.set(key, cli(...args));
-  return cliCache.get(key)!;
+function captureCommanderOutput(cmd: Command, out: { stdout: string; stderr: string }): void {
+  cmd.exitOverride();
+  cmd.configureOutput({
+    writeOut: (text) => {
+      out.stdout += text;
+    },
+    writeErr: (text) => {
+      out.stderr += text;
+    },
+  });
+  for (const sub of cmd.commands) captureCommanderOutput(sub, out);
+}
+
+/** Run the CLI in this process through `buildProgram()`, capturing its output and exit code. */
+async function cli(...args: string[]): Promise<CliResult> {
+  const out = { stdout: "", stderr: "" };
+  const program = buildProgram();
+  captureCommanderOutput(program, out);
+  const log = vi.spyOn(console, "log").mockImplementation((...parts: unknown[]) => {
+    out.stdout += `${parts.join(" ")}\n`;
+  });
+  const error = vi.spyOn(console, "error").mockImplementation((...parts: unknown[]) => {
+    out.stderr += `${parts.join(" ")}\n`;
+  });
+  const previousExitCode = process.exitCode;
+  process.exitCode = undefined;
+  let exitCode = 0;
+  try {
+    await program.parseAsync(["node", "agentbrew", ...args]);
+    exitCode = Number(process.exitCode ?? 0);
+  } catch (err: unknown) {
+    if (!(err instanceof CommanderError)) throw err;
+    exitCode = err.exitCode;
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
+    process.exitCode = previousExitCode;
+  }
+  return { ...out, exitCode };
 }
 
 const { version } = JSON.parse(readFileSync(join(import.meta.dirname, "../package.json"), "utf-8")) as {
@@ -45,28 +83,31 @@ const { version } = JSON.parse(readFileSync(join(import.meta.dirname, "../packag
 };
 
 describe("cli entry point", () => {
-  // Pre-warm all cached CLI spawns so individual tests don't timeout
-  // waiting for cold tsx/node compilation on the first invocations.
-  beforeAll(async () => {
-    await Promise.all([
-      cachedCli("--version"),
-      cachedCli("-V"),
-      cachedCli("--help"),
-      cachedCli("sync", "--help"),
-      cachedCli("install", "--help"),
-    ]);
-  }, 30_000);
+  const previousNoAutoInit = process.env.AGENTBREW_NO_AUTO_INIT;
+  beforeAll(() => {
+    process.env.AGENTBREW_NO_AUTO_INIT = "1";
+  });
+  afterAll(() => {
+    if (previousNoAutoInit === undefined) delete process.env.AGENTBREW_NO_AUTO_INIT;
+    else process.env.AGENTBREW_NO_AUTO_INIT = previousNoAutoInit;
+  });
 
-  // ── Version ────────────────────────────────────────────────────────────
-
-  it("--version prints the package version", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout, exitCode } = await cachedCli("--version");
+  it("the spawned CLI prints the package version", { timeout: CLI_SPAWN_TIMEOUT_MS + 5_000 }, async () => {
+    const { stdout, exitCode } = await spawnCli("--version");
     expect(stdout.trim()).toBe(version);
     expect(exitCode).toBe(0);
   });
 
-  it("-V is an alias for --version", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout, exitCode } = await cachedCli("-V");
+  // ── Version ────────────────────────────────────────────────────────────
+
+  it("--version prints the package version", async () => {
+    const { stdout, exitCode } = await cli("--version");
+    expect(stdout.trim()).toBe(version);
+    expect(exitCode).toBe(0);
+  });
+
+  it("-V is an alias for --version", async () => {
+    const { stdout, exitCode } = await cli("-V");
     expect(stdout.trim()).toBe(version);
     expect(exitCode).toBe(0);
   });
@@ -85,8 +126,8 @@ describe("cli entry point", () => {
 
   // ── Help text ──────────────────────────────────────────────────────────
 
-  it("--help shows usage with grouped command sections", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout, exitCode } = await cachedCli("--help");
+  it("--help shows usage with grouped command sections", async () => {
+    const { stdout, exitCode } = await cli("--help");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Usage: agentbrew");
     expect(stdout).toContain("Core:");
@@ -99,8 +140,8 @@ describe("cli entry point", () => {
     expect(stdout).toContain("Advanced:");
   });
 
-  it("--help lists all core commands", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout } = await cachedCli("--help");
+  it("--help lists all core commands", async () => {
+    const { stdout } = await cli("--help");
     expect(stdout).toContain("init");
     expect(stdout).toContain("status");
     expect(stdout).toContain("sync");
@@ -110,16 +151,16 @@ describe("cli entry point", () => {
     expect(stdout).toContain("env");
   });
 
-  it("--help includes examples section", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout } = await cachedCli("--help");
+  it("--help includes examples section", async () => {
+    const { stdout } = await cli("--help");
     expect(stdout).toContain("Examples:");
     expect(stdout).toContain("agentbrew install");
   });
 
   // ── Subcommand help ────────────────────────────────────────────────────
 
-  it("sync --help lists all sync options", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout, exitCode } = await cachedCli("sync", "--help");
+  it("sync --help lists all sync options", async () => {
+    const { stdout, exitCode } = await cli("sync", "--help");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("--dry-run");
     expect(stdout).toContain("--pull");
@@ -133,8 +174,8 @@ describe("cli entry point", () => {
     expect(stdout).toContain("--no-recommended");
   });
 
-  it("install --help lists all install options", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout, exitCode } = await cachedCli("install", "--help");
+  it("install --help lists all install options", async () => {
+    const { stdout, exitCode } = await cli("install", "--help");
     expect(exitCode).toBe(0);
     expect(stdout).toContain("--recommended");
     expect(stdout).toContain("--local");
@@ -147,22 +188,22 @@ describe("cli entry point", () => {
     expect(stdout).toContain("--headers");
   });
 
-  it("install --help includes examples", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout } = await cachedCli("install", "--help");
+  it("install --help includes examples", async () => {
+    const { stdout } = await cli("install", "--help");
     expect(stdout).toContain("Examples:");
     expect(stdout).toContain("agentbrew install debug");
     expect(stdout).toContain("--recommended");
   });
 
-  it("sync --help includes examples", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
-    const { stdout } = await cachedCli("sync", "--help");
+  it("sync --help includes examples", async () => {
+    const { stdout } = await cli("sync", "--help");
     expect(stdout).toContain("Examples:");
     expect(stdout).toContain("agentbrew sync --dry-run");
   });
 
   // ── Unknown command handling ───────────────────────────────────────────
 
-  it("unknown command prints error and suggests alternatives", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
+  it("unknown command prints error and suggests alternatives", async () => {
     const { stdout, stderr, exitCode } = await cli("badcommand");
     const output = stdout + stderr;
     expect(exitCode).toBe(1);
@@ -170,7 +211,7 @@ describe("cli entry point", () => {
     expect(output).toContain("agentbrew --help");
   });
 
-  it("unknown command similar to real command shows suggestion", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
+  it("unknown command similar to real command shows suggestion", async () => {
     const { stdout, stderr } = await cli("symc");
     const output = stdout + stderr;
     expect(output).toContain("Did you mean");
@@ -178,7 +219,7 @@ describe("cli entry point", () => {
 
   // ── Error handling ─────────────────────────────────────────────────────
 
-  it("missing required arg for install --command shows error", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
+  it("missing required arg for install --command shows error", async () => {
     const { stdout, stderr, exitCode } = await cli("install", "--command", "npx");
     const output = stdout + stderr;
     expect(exitCode).not.toBe(0);
@@ -187,7 +228,7 @@ describe("cli entry point", () => {
 
   // ── Default action (no command) ────────────────────────────────────────
 
-  it("no command with AGENTBREW_NO_AUTO_INIT shows help hint", { timeout: CLI_TEST_TIMEOUT_MS }, async () => {
+  it("no command with AGENTBREW_NO_AUTO_INIT shows help hint", async () => {
     const { stdout, stderr, exitCode } = await cli();
     const output = stdout + stderr;
     // With no state and auto-init disabled, should show help or init hint

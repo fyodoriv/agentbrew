@@ -122,6 +122,9 @@ function readMethods(path: string): string[] {
   return existsSync(path) ? readFileSync(path, "utf-8").trim().split("\n").filter(Boolean) : [];
 }
 
+/** A node child can take seconds to start when the machine is busy. */
+const LOADED_COLD_START_BUDGET_MS = 3_000;
+
 describe("probeMcpServer", () => {
   it("returns OK with tool count on happy path", async () => {
     const r = await probeMcpServer("fake", "test-agent", {
@@ -167,7 +170,9 @@ describe("probeMcpServer", () => {
       "fake",
       "test-agent",
       { command: process.execPath, args: ["-e", makeFakeServer({ toolsListResponds: false })] },
-      { timeoutMs: 500 },
+      // One timer covers both phases. It must outlast a node cold start under
+      // load, or initialize itself times out and the status is init_timeout.
+      { timeoutMs: LOADED_COLD_START_BUDGET_MS },
     );
     expect(r.status).toBe("tools_list_timeout");
   });
@@ -200,7 +205,8 @@ describe("probeMcpServer", () => {
       "stubborn",
       "test-agent",
       { command: process.execPath, args: ["-e", stubborn] },
-      { timeoutMs: 300 },
+      // Long enough for the child to start and write its pid file under load.
+      { timeoutMs: LOADED_COLD_START_BUDGET_MS },
     );
     expect(r.status).toBe("init_timeout");
 

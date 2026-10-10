@@ -19,6 +19,7 @@ import { ensureMemoryMcpServer, mergeMemoryPackPaths } from "./memory/enable.js"
 import { resolveMemoryPackPaths } from "./memory/pack-paths.js";
 import { SHARED_RULES_PATH } from "./paths.js";
 import { stripRulesDuplicatingExisting } from "./rules-hygiene.js";
+import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
 import { loadState, saveState } from "./state.js";
 import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
@@ -267,7 +268,15 @@ export function mergeRulesIntoSharedContent(
 
   const openIdx = indexOfMarkerAtLineStart(existing, open);
   const closeIdx = indexOfMarkerAtLineStart(existing, close);
-  if (openIdx !== -1 && closeIdx !== -1 && closeIdx > openIdx) {
+  const hasBlock = openIdx !== -1 && closeIdx !== -1 && closeIdx > openIdx;
+  // Nothing left to add (no rules, or every rule already exists elsewhere):
+  // drop this source's block instead of writing an empty one.
+  if (body === "") {
+    if (!hasBlock) return { content: existing, changed: false };
+    const after = existing.slice(closeIdx + close.length).replace(/^\n/, "");
+    return { content: `${existing.slice(0, openIdx)}${after}`, changed: true };
+  }
+  if (hasBlock) {
     const current = existing.slice(openIdx + open.length, closeIdx).trim();
     if (current === body) return { content: existing, changed: false };
     const before = existing.slice(0, openIdx);
@@ -287,9 +296,8 @@ export function mergeRulesIntoSharedContent(
 
 /** Merge rules from Agentfile into shared-rules.md. Returns true if updated. */
 function mergeAgentfileRules(agentfile: { rules?: string }, baseDir: string, dryRun: boolean): boolean {
-  if (!agentfile.rules) return false;
-
-  let rulesContent = agentfile.rules.trim();
+  // No `rules:` key still runs the merge, so a block this Agentfile wrote before is removed.
+  let rulesContent = (agentfile.rules ?? "").trim();
 
   const looksLikePath =
     rulesContent.startsWith("./") ||
@@ -567,6 +575,18 @@ function warnIfLegacyAgentbrewYamlPresent(directoryOrPath: string, quiet: boolea
   }
 }
 
+/** Prune skills the authoritative Agentfile dropped. Returns true when state changed. */
+function pruneAgentfileSkills(agentfile: Agentfile, state: AgentBrewState, dryRun: boolean, quiet: boolean): boolean {
+  const before = JSON.stringify(state.agentfileSkills ?? null);
+  const pruned = pruneDroppedAgentfileSkills(agentfile, state, {
+    removeStaging: (name) => removeInstalledSkillStaging(name, dryRun),
+  });
+  if (pruned.length > 0 && !quiet) {
+    console.log(chalk.dim(`  Pruned skills the Agentfile no longer lists: ${pruned.join(", ")}`));
+  }
+  return JSON.stringify(state.agentfileSkills ?? null) !== before;
+}
+
 export function applyAgentfile(
   directoryOrPath: string,
   options?: ApplyAgentfileOptions,
@@ -602,6 +622,7 @@ export function applyAgentfile(
   const excludedAgents = mergeAgentfileExcludeAgents(agentfile, state);
   const defaultModelUpdated = mergeAgentfileDefaultModel(agentfile, state);
   const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir);
+  const agentfileSkillsChanged = authoritative && pruneAgentfileSkills(agentfile, state, dryRun, quiet);
 
   const result: ApplyAgentfileResult = {
     serversAdded: mcp.added,
@@ -629,7 +650,8 @@ export function applyAgentfile(
     hooksUpdated ||
     excludedAgents.length > 0 ||
     defaultModelUpdated ||
-    memoryUpdated;
+    memoryUpdated ||
+    agentfileSkillsChanged;
 
   saveAndReportAgentfileResult(result, state, stateChanged, quiet, dryRun);
 

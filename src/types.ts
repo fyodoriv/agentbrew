@@ -304,6 +304,8 @@ export interface AgentBrewState {
   mcpServers?: McpServer[];
   /** MCP servers the user removed; the recommended installer must not add them back. */
   declinedMcpServers?: string[];
+  /** Skills the last authoritative Agentfile listed; a skill that leaves this list is pruned from sources. */
+  agentfileSkills?: string[];
   skillSourceDirs?: SkillSourceDir[];
   agentSourceDirs?: Array<{ label: string; path: string; origin?: string }>;
   commandSourceDirs?: Array<{ label: string; path: string; origin?: string }>;

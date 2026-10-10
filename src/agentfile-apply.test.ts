@@ -698,6 +698,21 @@ describe("applyAgentfile", () => {
       expect(content).toContain("<!-- agentfile-rules: dotfiles -->");
     });
 
+    it("adds no empty block when the Agentfile has no rules", () => {
+      const existing = "Keep TASKS.md tidy.\nRun tests first.\n";
+      const { content, changed } = mergeRulesIntoSharedContent(existing, "", "dotfiles");
+      expect(changed).toBe(false);
+      expect(content).toBe(existing);
+    });
+
+    it("removes an emptied block and keeps the next line on its own line", () => {
+      const existing =
+        "<!-- agentfile-rules: dotfiles -->\n\n<!-- /agentfile-rules: dotfiles -->git push is fine.\nMore.\n";
+      const { content, changed } = mergeRulesIntoSharedContent(existing, "", "dotfiles");
+      expect(changed).toBe(true);
+      expect(content).toBe("git push is fine.\nMore.\n");
+    });
+
     it("resolves relative rules file path", () => {
       const state = makeState();
       mockLoadAgentfile.mockReturnValue({ rules: "./rules.md" });

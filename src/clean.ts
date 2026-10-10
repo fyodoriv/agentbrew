@@ -151,15 +151,26 @@ function cleanCommandSource(name: string, dryRun: boolean, manifest: ReturnType<
   return true;
 }
 
+/** True when any source in state.yaml still lists `name` in skillsInstalled. */
+function isSkillInSourceState(name: string): boolean {
+  const state = loadState();
+  if (!state) return false;
+  return getStateSources(state).some((source) => source.skillsInstalled.includes(name));
+}
+
 /** Auto-detect whether a name matches a skill, command, or both. */
 export function detectItemTypes(name: string): CleanItemType[] {
   const types: CleanItemType[] = [];
   const fileName = name.endsWith(".md") ? name : `${name}.md`;
 
-  // Check if it's a skill (exists in any agent's skills dir or source)
+  // Check if it's a skill: in any agent's skills dir, the source, the staging
+  // dir, or still listed in state. The state check lets `remove` clear an
+  // entry whose folders are already gone; otherwise `sync --pull` re-installs it.
   const isSkill =
     existsSync(join(getSkillPluginsDir(), name)) ||
-    AGENT_DEFINITIONS.some((a) => existsSync(join(expandHome(a.skillsDir), name)));
+    existsSync(join(expandHome(INSTALLED_SKILLS_DIR), name)) ||
+    AGENT_DEFINITIONS.some((a) => existsSync(join(expandHome(a.skillsDir), name))) ||
+    isSkillInSourceState(name);
 
   // Check if it's a command (exists in any agent's commands dir or source)
   const isCommand =

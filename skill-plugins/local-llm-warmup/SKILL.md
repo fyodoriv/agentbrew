@@ -351,7 +351,7 @@ Three LaunchAgents in `~/Library/LaunchAgents/`:
    persistently. KeepAlive=true.
 
 The companion `dotfiles` repo ships these as `.tmpl` files under
-`launchagents/` — see the [dotfiles local-ai-stack guide](../../docs/local-llm-stack.md)
+`launchagents/` — see the [dotfiles local LLM guide](https://github.com/fyodoriv/dotfiles/blob/feat/chezmoi/docs/local-llm.md)
 for the parameterized plists.
 
 ### Pattern B: interactive-shell-starter

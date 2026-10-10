@@ -2,8 +2,8 @@
 name: handoff
 description: >
   Compact the current conversation into a handoff document so a fresh agent
-  session can continue without losing context. Use at end of a long session or
-  before a context limit is hit.
+  session can continue without losing context. Use when a long session is
+  ending or a context limit is close.
 argument-hint: "[what the next session will focus on]"
 ---
 

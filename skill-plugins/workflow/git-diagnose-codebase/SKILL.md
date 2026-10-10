@@ -153,7 +153,7 @@ Numbers below are the actual output of running this skill on `agentbrew/src/`. T
    1	svc-semgrep-prd
 ```
 
-Caveat applied: agentbrew uses squash-merge for every PR (every recent commit ends in `(#NNN)`), so `git shortlog` collapses authorship onto the merger. With one user today (per [`docs/VISION.md` § "Today's user base: one"](../../docs/VISION.md)), this is correct, not a bus-factor crisis.
+Caveat applied: agentbrew uses squash-merge for every PR (every recent commit ends in `(#NNN)`), so `git shortlog` collapses authorship onto the merger. With one user today (per [`docs/VISION.md` § "Today's user base: one"](https://github.com/fyodoriv/agentbrew/blob/main/docs/VISION.md)), this is correct, not a bus-factor crisis.
 
 **3. Bug clusters (top 5):**
 

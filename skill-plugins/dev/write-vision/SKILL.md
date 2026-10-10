@@ -21,7 +21,7 @@ vision documents. Vision docs are not marketing copy and not hype. They are
 *"here's what we will and won't do, and why"* with enough specificity that a PR
 can be accepted or rejected by reading only the vision.
 
-The canonical reference is [`agentbrew/docs/VISION.md`](../../docs/VISION.md) —
+The canonical reference is [`agentbrew/docs/VISION.md`](https://github.com/fyodoriv/agentbrew/blob/main/docs/VISION.md) —
 study it before you write any other vision doc. It embodies the four
 non-negotiable doctrines below.
 

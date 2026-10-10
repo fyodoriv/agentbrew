@@ -268,7 +268,8 @@ async function handleSyncAgentfile(options: SyncCommandOptions, installAgentfile
 }
 
 async function handleSyncRecommended(options: SyncCommandOptions): Promise<void> {
-  if (options.only || options.dryRun || options.recommended === false) return;
+  const { shouldInstallRecommendedOnSync } = await import("./sync-recommended.js");
+  if (!shouldInstallRecommendedOnSync(options)) return;
   const { install } = await import("./catalog/install.js");
   await install(undefined, { recommended: true });
 }
@@ -281,7 +282,10 @@ function registerSyncCommand(program: Command): void {
     )
     .option("--dry-run", "Preview changes without applying")
     .option("--no-prune", "Keep stale items in agent configs (default: prune)")
-    .option("--no-recommended", "Skip installing recommended catalog items (default: install)")
+    .option(
+      "--no-recommended",
+      "Skip installing recommended catalog items (default: install only when no Agentfile is in effect)",
+    )
     .option("--sequential", "Run sync categories sequentially (default is parallel)")
     .option("--pull", "Fetch latest from all sources before syncing")
     .option("--rollback", "Restore agent config files from the last pre-sync snapshot")
@@ -297,7 +301,7 @@ function registerSyncCommand(program: Command): void {
       "after",
       `
 Examples:
-  agentbrew sync                      Install recommended + deploy to all agents (default)
+  agentbrew sync                      Deploy to all agents; with no Agentfile, also install recommended
   agentbrew sync --no-recommended     Deploy to agents WITHOUT installing recommended items
   agentbrew sync --dry-run            Preview changes without applying
   agentbrew sync --pull               Fetch latest from all sources first

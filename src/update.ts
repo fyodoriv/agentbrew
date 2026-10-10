@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import chalk from "chalk";
-import { getStateSources } from "./agentfile.js";
+import { getStateSources, loadAgentfile } from "./agentfile.js";
 import { getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
 import { copySkillFromCache } from "./catalog/install-skill.js";
@@ -9,6 +9,7 @@ import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncE
 import { readLock, updateLock } from "./lock.js";
 import { loadManifest, saveManifest } from "./manifest.js";
 import { recordSourceSha } from "./skills/skill-versions.js";
+import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
 import { requireState, saveState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
@@ -18,6 +19,7 @@ import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 import type { AgentBrewState, Source } from "./types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
+import { expandHome } from "./utils.js";
 
 interface UpdateOptions {
   dryRun?: boolean;
@@ -232,6 +234,20 @@ function refreshCatalogRulesIfNeeded(isDryRun: boolean): void {
   }
 }
 
+/** Apply the dropped-skill prune from the global Agentfile before skills are refreshed. */
+function pruneDroppedGlobalAgentfileSkills(state: AgentBrewState, dryRun: boolean): void {
+  if (dryRun) return;
+  const agentfile = loadAgentfile(expandHome("~/.config/agentbrew"));
+  if (!agentfile) return;
+  const pruned = pruneDroppedAgentfileSkills(agentfile, state, {
+    removeStaging: (name) => removeInstalledSkillStaging(name, false),
+  });
+  saveState(state);
+  if (pruned.length > 0) {
+    console.log(chalk.dim(`  Pruned skills the Agentfile no longer lists: ${pruned.join(", ")}`));
+  }
+}
+
 export async function update(options?: UpdateOptions): Promise<void> {
   const state = requireState();
   if (!state) return;
@@ -252,23 +268,26 @@ export async function update(options?: UpdateOptions): Promise<void> {
     clearMcpmBridgeAttemptedMissing();
   }
 
-  // 2. Re-index all sources (pulls latest via git)
+  // 2. Prune skills the global Agentfile dropped, so step 3 does not copy them back
+  pruneDroppedGlobalAgentfileSkills(state, isDryRun);
+
+  // 3. Re-index all sources (pulls latest via git)
   const sources = getStateSources(state);
   await reindexSourcesIfNeeded(sources, state, isDryRun);
 
-  // 3. Refresh installed skill files from updated caches (skip writes in dry-run)
+  // 4. Refresh installed skill files from updated caches (skip writes in dry-run)
   printInstalledSkillUpdates(sources, options, prefix, isDryRun);
 
-  // 4. Update lock file with latest SHAs (skip in dry-run)
+  // 5. Update lock file with latest SHAs (skip in dry-run)
   if (!isDryRun) {
     printLockResults(sources);
   }
 
-  // 5. Refresh slimmed catalog rule bodies into shared-rules.md before deploy
+  // 6. Refresh slimmed catalog rule bodies into shared-rules.md before deploy
   // (`sync --pull` exits before installRecommended; regular sync runs refresh there).
   refreshCatalogRulesIfNeeded(isDryRun);
 
-  // 6. Re-sync all engines to all agents (skip in dry-run)
+  // 7. Re-sync all engines to all agents (skip in dry-run)
   if (!isDryRun && !(await syncAllEngines())) {
     console.log(chalk.bold.yellow("\n⚠ Update finished with sync errors — run `agentbrew status` for details.\n"));
     return;

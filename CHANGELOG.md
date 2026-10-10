@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A plain `sync` no longer overrides the Agentfile** — it installed the
+  catalog recommended set on every run, even skills the Agentfile had removed.
+  With an Agentfile in effect, only the Agentfile's `recommended: true` asks
+  for that set. A machine with no Agentfile keeps the first-run install.
+- **Skills dropped from the Agentfile stay removed** — they stayed in the
+  source's `skillsInstalled` list, and `sync --pull` copied them back. The
+  authoritative Agentfile apply and `sync --pull` now prune them. Skills
+  installed by hand are not touched.
+- **`remove` clears a skill whose folders are already gone** — it reported
+  "not found" and left the state entry behind.
+- **A diverged source cache no longer deploys stale skills** — a cache that
+  could not fast-forward printed "using cached data" and kept old files. It is
+  now reset to upstream, and local-only commits stay on a `salvage/` branch.
+- **An Agentfile with no rules no longer writes an empty block** — the empty
+  `<!-- agentfile-rules: … -->` block was glued to the next rule line in
+  `shared-rules.md`. An Agentfile that drops its `rules:` now removes its own
+  block.
+
 ## [0.4.1] - 2026-10-09
 
 ### Fixed

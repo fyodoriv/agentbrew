@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import chalk from "chalk";
 import { gitExec } from "../core/git-retry.js";
+import { realignDivergedCache } from "./cache-realign.js";
 
 /** Detects GitHub Enterprise URLs — any github-like host that isn't github.com. */
 function isGitHubEnterprise(url: string): boolean {
@@ -494,8 +495,18 @@ function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): voi
     });
     sessionFetched.add(cacheKey);
   } catch (err) {
-    const message = err instanceof Error ? err.message.split("\n")[0] : String(err);
-    console.warn(`  ⚠ Could not refresh ${sourceUrl} — using cached data. (${message})`);
+    // A failed fast-forward usually means upstream rewrote history. The cache
+    // is disposable: realign it instead of deploying stale skills.
+    const realigned = realignDivergedCache(cachePath);
+    if (realigned.status === "realigned") {
+      const kept = realigned.salvageBranch
+        ? ` Kept ${realigned.kept} local commit(s) on ${realigned.salvageBranch}.`
+        : "";
+      console.warn(`  ⚠ Realigned diverged cache for ${sourceUrl} to ${realigned.upstream}.${kept}`);
+    } else {
+      const message = err instanceof Error ? err.message.split("\n")[0] : String(err);
+      console.warn(`  ⚠ Could not refresh ${sourceUrl} — using cached data. (${message})`);
+    }
     sessionFetched.add(cacheKey);
   }
 }

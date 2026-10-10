@@ -422,3 +422,32 @@ describe("clean — confirmation prompt", () => {
     await expect(clean("error-skill", { type: "skill" })).rejects.toThrow("boom");
   });
 });
+
+describe("detectItemTypes — skill known only to state", () => {
+  it("detects a skill whose folders are gone but state still lists it", async () => {
+    const { detectItemTypes } = await import("./clean.js");
+    mockLoadState.mockReturnValue({
+      sources: [{ url: "owner/repo", skillsInstalled: ["ghost-skill"] }],
+    } as never);
+
+    expect(detectItemTypes("ghost-skill")).toEqual(["skill"]);
+  });
+
+  it("detects a skill that only exists in the installed-skills staging dir", async () => {
+    const { detectItemTypes } = await import("./clean.js");
+    mockLoadState.mockReturnValue({ sources: [] } as never);
+    mkdirSync(join(testDir, ".config", "agentbrew", "installed-skills", "staged-only"), { recursive: true });
+
+    expect(detectItemTypes("staged-only")).toEqual(["skill"]);
+  });
+
+  it("clears the state entry for a skill with no folders left", async () => {
+    const state = { sources: [{ url: "owner/repo", skillsInstalled: ["ghost-skill", "keep"] }] };
+    mockLoadState.mockReturnValue(state as never);
+
+    await clean("ghost-skill", { type: "skill", yes: true });
+
+    expect(state.sources[0].skillsInstalled).toEqual(["keep"]);
+    expect(mockSaveState).toHaveBeenCalled();
+  });
+});

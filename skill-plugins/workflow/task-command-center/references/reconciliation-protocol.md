@@ -1,5 +1,14 @@
 # Product-doc, PR, and Jira reconciliation
 
+Contents:
+
+- [1. Read all authoritative inputs](#1-read-all-authoritative-inputs)
+- [2. Build a source ledger](#2-build-a-source-ledger)
+- [3. Separate durable product from changing engineering](#3-separate-durable-product-from-changing-engineering)
+- [4. Use the Jira description contract](#4-use-the-jira-description-contract)
+- [5. Apply updates in dependency order](#5-apply-updates-in-dependency-order)
+- [6. Verify every destination](#6-verify-every-destination)
+
 Use this protocol whenever a shared product Google Doc is mirrored into a docs
 PR and a Jira epic with child tasks. Run the complete loop on every refresh.
 

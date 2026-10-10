@@ -1,6 +1,6 @@
 ---
 name: detect-task-backend
-description: Detect which task backend a repo uses (TASKS.md or GitHub Issues) using the agentbrew task backend contract.
+description: Detect which task backend a repo uses (TASKS.md or GitHub Issues) using the agentbrew task backend contract. Use when a skill or agent must read, add, or close tasks and does not yet know where the repo keeps them.
 ---
 
 # Detect Task Backend

@@ -1,5 +1,14 @@
 # Cross-system implementation plan template
 
+Contents:
+
+- [1. Overall goal and vision](#1-overall-goal-and-vision)
+- [2. Decision and alternatives](#2-decision-and-alternatives)
+- [3. Evidence and current state](#3-evidence-and-current-state)
+- [4. Boundary contracts](#4-boundary-contracts)
+- [5. Numbered work breakdown](#5-numbered-work-breakdown)
+- [6. Rollout, security, and regression coverage](#6-rollout-security-and-regression-coverage)
+
 Use this reference after reading `writing-plans` for a command-center plan that
 spans hosts, repositories, state boundaries, or a shared product document.
 Keep product commitments in **Product contract (immutable)** and put this

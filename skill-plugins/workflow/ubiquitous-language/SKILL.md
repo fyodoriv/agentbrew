@@ -4,6 +4,8 @@ description: >
   Extract a DDD-style ubiquitous language glossary from the conversation and
   codebase. Resolves synonyms, proposes canonical terms, shows example dialogues.
   Re-runnable: merges with existing UBIQUITOUS_LANGUAGE.md rather than overwriting.
+  Use when terms drift between code, docs, and conversation, or when the user
+  asks for a glossary or domain language.
 ---
 
 # Ubiquitous Language

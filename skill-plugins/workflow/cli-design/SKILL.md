@@ -1,6 +1,6 @@
 ---
 name: cli-design
-description: Review CLI commands for npm/brew convention compliance and default-behavior opportunities
+description: Review CLI commands for npm/brew convention compliance and default-behavior opportunities. Use when adding or changing a CLI command, flag, or help text, or when the user asks for a CLI design review.
 argument-hint: "[path-to-cli-entry]"
 triggers:
   - user

@@ -486,6 +486,7 @@ describe("skill source ownership", () => {
       "grind-report": "fyodoriv/agentbrew",
       sweep: "fyodoriv/agentbrew",
       "update-tooling": "fyodoriv/dotfiles",
+      "tooling-checkup": "fyodoriv/dotfiles",
     } as const;
 
     for (const [name, source] of Object.entries(expectedSources)) {

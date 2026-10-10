@@ -189,6 +189,12 @@ skills:
     category: meta
     recommended: false
 
+  - name: tooling-checkup
+    description: "One manual command for the tooling repos and the whole Mac: ship outstanding work, refresh tooling, upgrade packages and Claude Code, audit background jobs, measure input latency, and lint agent config."
+    source: fyodoriv/dotfiles
+    category: meta
+    recommended: false
+
   - name: agentfile-init
     description: "Bootstrap an Agentfile.yaml for any project — detects tech stack, suggests MCP servers from catalog, writes ready-to-sync config."
     source: built-in

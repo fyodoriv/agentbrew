@@ -2,7 +2,7 @@ import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { runMcpHealCycle } from "./heal-cycle.js";
+import { type ProbeSurface, runMcpHealCycle } from "./heal-cycle.js";
 import { buildMcpHealthSnapshot, type McpHealthSnapshot } from "./health-snapshot.js";
 import type { ProbeResult } from "./probe.js";
 
@@ -80,6 +80,53 @@ describe("runMcpHealCycle", () => {
 
   // Regression: the sync heal always reported healed: true, so a pair that stayed
   // broken for days collected hundreds of "healed" records.
+  it("re-probes only the failed servers and keeps the healthy result", async () => {
+    const surfaces: ProbeSurface[] = [
+      {
+        agent: "cursor",
+        servers: { good: { command: "good-mcp", args: [] }, bad: { command: "bad-mcp", args: [] } },
+      },
+      { agent: "claude-code", servers: { good: { command: "good-mcp", args: [] } } },
+    ];
+    const started: string[] = [];
+    const probeAll = vi.fn(async (input: ProbeSurface[]) => {
+      const out: ProbeResult[] = [];
+      for (const surface of input) {
+        for (const name of Object.keys(surface.servers)) {
+          started.push(`${surface.agent}:${name}`);
+          out.push(
+            result({
+              name,
+              agent: surface.agent,
+              status: name === "bad" ? "init_timeout" : "ok",
+              ...(name === "bad" ? { error: "no response" } : {}),
+            }),
+          );
+        }
+      }
+      return out;
+    });
+    const healAction = vi.fn(async () => ({ healed: true, action: "sync" }));
+    const writeSnapshot = vi.fn();
+
+    const cycle = await runMcpHealCycle({
+      surfaces,
+      probeAll,
+      healActions: new Map([["sync", healAction]]),
+      writeSnapshot,
+      now: () => new Date("2026-06-04T12:00:00.000Z"),
+    });
+
+    expect(started.filter((s) => s.endsWith(":good"))).toEqual(["cursor:good", "claude-code:good"]);
+    expect(started.filter((s) => s.endsWith(":bad"))).toEqual(["cursor:bad", "cursor:bad"]);
+    expect(cycle.final.map((r) => `${r.agent}:${r.name}:${r.status}`)).toEqual([
+      "cursor:good:ok",
+      "cursor:bad:init_timeout",
+      "claude-code:good:ok",
+    ]);
+    expect(cycle.attempts[0].healed).toBe(false);
+  });
+
   it("records healed: false when the pair still fails the re-probe", async () => {
     const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
     const failed = result({ status: "launch_failed", error: "spawn github-mcp ENOENT" });

@@ -136,6 +136,14 @@
 
 ## P0
 
+- [ ] Repair MCP health failure for bad on cursor
+  **ID**: mcp-health-cursor-bad
+  **Tags**: mcp, health, auto-repair, P0
+  **Details**: Cron MCP probe still reports `init_timeout` for `bad` on `cursor`. Last error: `no response`.
+  **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, ~/.cache/agentbrew/mcp-health.json
+  **Acceptance**: `agentbrew mcp probe bad --agent cursor --deep` returns ok and `agentbrew status` no longer reports this MCP as failing.
+
+
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the
@@ -812,13 +820,6 @@
   - **Files**: src/catalog.yaml, src/mcp/mcpm-hygiene.ts, src/mcp/mcpm-hygiene.test.ts
   - **Acceptance**: on a machine with no launcher, `agentbrew mcp probe` passes for `github` in every agent, and the deployed entry no longer names `@modelcontextprotocol/server-github`.
 
-- [ ] Re-probe only the failed servers after a heal, not every server
-  - **ID**: heal-cycle-reprobe-failed-only
-  - **Tags**: scout, mcp, heal, scheduler, performance
-  - **Details**: `runMcpHealCycle` in `src/mcp/heal-cycle.ts` probes every server, heals, then probes every server again when anything failed. On this Mac the last snapshot shows playwright, chrome-devtools and shadcn timing out, so every 30-minute tick starts each MCP server twice, browser servers included. Re-probe only the servers that failed the first pass.
-  - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
-  - **Acceptance**: with one failing and one healthy server, a tick starts the healthy server once and the failing one twice; a test covers it.
-
 - [ ] Build repaired LaunchAgent PATH from the plist's own node dir
   - **ID**: launchagent-repair-path-uses-plist-node-dir
   - **Tags**: scout, launchagents, node, drift
@@ -1067,6 +1068,13 @@
   - **Output**: docs
 
 ## P3
+
+- [ ] Re-probe only heal-attempted pairs, not every failed pair
+  - **ID**: heal-cycle-reprobe-attempted-only
+  - **Tags**: scout, mcp, heal, performance
+  - **Details**: After this change the re-probe covers every pair that failed the first pass. Pairs that were suppressed or had no heal action cannot change, so their second start is wasted. Limit the re-probe to pairs with a heal attempt, but only if a sync heal is shown not to repair other pairs.
+  - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
+  - **Acceptance**: a suppressed failing server starts once per tick; a test covers it.
 
 - [ ] Show the total heal attempt count in `agentbrew status --verbose`
   - **ID**: mcp-status-heal-attempt-count

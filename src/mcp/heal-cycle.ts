@@ -208,7 +208,7 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
     return { initial, final: initial, attempts };
   }
 
-  const final = await probeAll(surfaces, probeOptions());
+  const final = await reprobeFailures(probeAll, surfaces, initial, failures);
   const gatedAttempts = gateHealedOnReprobe(attempts, final);
   writeSnapshotResult(
     writeSnapshot,
@@ -219,6 +219,34 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
   );
   reportUnresolvedFailures(final, gatedAttempts, writeFollowups);
   return { initial, final, attempts: gatedAttempts };
+}
+
+const pairKey = (value: { agent: string; name: string }): string => `${value.agent}\u0000${value.name}`;
+
+/**
+ * Probe again only the pairs that failed the first pass.
+ *
+ * A healthy server keeps its first result. Starting it twice per tick adds
+ * load and, for browser servers, a second launch. The merged list keeps the
+ * order of the first pass so the snapshot stays stable.
+ */
+async function reprobeFailures(
+  probeAll: ProbeAll,
+  surfaces: ProbeSurface[],
+  initial: ProbeResult[],
+  failures: ProbeResult[],
+): Promise<ProbeResult[]> {
+  const failed = new Set(failures.map(pairKey));
+  const failedSurfaces = surfaces
+    .map((surface) => ({
+      agent: surface.agent,
+      servers: Object.fromEntries(
+        Object.entries(surface.servers).filter(([name]) => failed.has(pairKey({ agent: surface.agent, name }))),
+      ),
+    }))
+    .filter((surface) => Object.keys(surface.servers).length > 0);
+  const fresh = new Map((await probeAll(failedSurfaces, probeOptions())).map((r) => [pairKey(r), r]));
+  return initial.map((r) => fresh.get(pairKey(r)) ?? r);
 }
 
 /** A heal counts only when its server/agent pair passes the re-probe. */

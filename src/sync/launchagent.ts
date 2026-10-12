@@ -129,7 +129,6 @@ export async function repairAgentbrewLaunchAgentPaths(): Promise<number> {
   if (process.platform !== "darwin") return 0;
 
   const home = expandHome("~");
-  const canonicalPath = buildLaunchAgentPath(home);
   const checkPlist = getLaunchAgentPath();
   let repaired = 0;
 
@@ -149,7 +148,7 @@ export async function repairAgentbrewLaunchAgentPaths(): Promise<number> {
     const withPath =
       plistManagesOwnPath(plistPath) || launchAgentPathHasRequiredPrefixes(pathValue, home, plistNodeBinDir(content))
         ? content
-        : setPlistPath(content, canonicalPath);
+        : setPlistPath(content, buildLaunchAgentPath(home, plistNodeBinDir(content)));
     const updated = ensurePlistLocale(withPath);
     if (updated === content) continue;
 

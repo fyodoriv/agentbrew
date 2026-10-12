@@ -451,6 +451,23 @@ describe("essential core: drift detection + auto-repair (US 06)", () => {
   // deployed config get auto-repaired without the user noticing." This block
   // fires when collectDrift() stops noticing a regression OR when fix()
   // stops closing the gap end-to-end.
+  it("collectDrift reads only the TEST_HOME Desktop log and MCP health snapshot, never the real ones", () => {
+    const baseline = collectDrift().filter((d) => d.type !== "claude-desktop-mcp" && d.type !== "mcp-stale");
+    const logDir = join(TEST_HOME, "Library", "Logs", "Claude");
+    mkdirSync(logDir, { recursive: true });
+    writeFileSync(
+      join(logDir, "main.log"),
+      "t [info] Starting app\nt [error] [LocalMcpServerManager] Failed to connect to plugin:x:prisma: boom\n",
+    );
+    try {
+      const withFailingLog = collectDrift();
+      expect(withFailingLog.filter((d) => d.type === "claude-desktop-mcp")).toHaveLength(1);
+      expect(withFailingLog.filter((d) => d.type !== "claude-desktop-mcp" && d.type !== "mcp-stale")).toEqual(baseline);
+    } finally {
+      rmSync(join(TEST_HOME, "Library"), { recursive: true, force: true });
+    }
+  });
+
   it("collectDrift reports drift when a deployed agent config is mutated out from under sync", async () => {
     saveState(makeStateWithDetectedAgents());
 

@@ -820,12 +820,12 @@
   - **Files**: src/catalog.yaml, src/mcp/mcpm-hygiene.ts, src/mcp/mcpm-hygiene.test.ts
   - **Acceptance**: on a machine with no launcher, `agentbrew mcp probe` passes for `github` in every agent, and the deployed entry no longer names `@modelcontextprotocol/server-github`.
 
-- [ ] Build repaired LaunchAgent PATH from the plist's own node dir
-  - **ID**: launchagent-repair-path-uses-plist-node-dir
-  - **Tags**: scout, launchagents, node, drift
-  - **Details**: `repairAgentbrewLaunchAgentPaths` in `src/sync/launchagent.ts` calls `buildLaunchAgentPath(home)`, which puts the running process's Node dir first. When a plist is genuinely stale, a repair run from a development checkout writes that checkout's Node dir. The drift check now reads the plist's own `ProgramArguments[0]`; the repair should pass the same dir.
-  - **Files**: `src/sync/launchagent.ts`, `src/sync/launchagent.test.ts`
-  - **Acceptance**: a test repairs a stale fixture plist whose `ProgramArguments[0]` names a different Node dir than the running process, and the rewritten PATH starts with the plist's Node dir.
+- [ ] Make the tracked-command drift test independent of the HOME variable
+  - **ID**: drift-test-tracked-command-uses-homedir
+  - **Tags**: scout, tests, hermetic
+  - **Details**: The test "skips files whose full path is tracked in the manifest" in `src/drift.test.ts` builds its path from `process.env.HOME`, while the code under test uses `os.homedir()`. Running the suite with a different `HOME` makes it fail. Build the path with `homedir()`, as the neighbouring tests do.
+  - **Files**: `src/drift.test.ts`
+  - **Acceptance**: `HOME=<empty tmpdir> npx vitest run src/drift.test.ts` passes.
 
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures
@@ -843,18 +843,6 @@
   - **Acceptance**: `agentbrew status --ci` exits 1 when the latest Desktop
     start logged an invalid-entry or connect-failure line, and exits 0 with a
     clean or missing log.
-
-- [ ] Isolate drift and integration tests from the real Claude Desktop log
-  - **ID**: isolate-tests-from-real-desktop-log
-  - **Tags**: scout, tests, claude-desktop
-  - **Details**: `collectDrift()` now reads the default Desktop log path, and
-    several integration tests call it without mocking that read. They pass
-    today, but a failing server in a developer's real log can change their
-    drift counts. Mock `readDesktopMcpFailures` (or point the path at a tmpdir)
-    in those suites.
-  - **Files**: `src/integration.test.ts`, `src/integration-essential-core.test.ts`, `src/drift.test.ts`
-  - **Acceptance**: With a fixture Desktop log holding failures at the default
-    path, the drift assertions in those suites still pass.
 
 - [ ] Measure plain-language output across managed agent surfaces
   - **ID**: measure-plain-language-output-across-managed-agents

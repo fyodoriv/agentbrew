@@ -14,6 +14,11 @@ vi.mock("./state.js", () => ({
   loadState: vi.fn(),
 }));
 
+// collectDrift reads two real per-user files: the Claude Desktop log and the MCP health
+// snapshot. Neutralise both so a developer's machine cannot change these assertions.
+vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({ checkClaudeDesktopMcpDrift: vi.fn(() => []) }));
+vi.mock("./mcp/health-snapshot.js", () => ({ checkMcpStaleDrift: vi.fn(() => []) }));
+
 vi.mock("./mcp/adapters.js", () => ({
   getAdapter: vi.fn(),
 }));

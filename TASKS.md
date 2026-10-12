@@ -347,13 +347,6 @@
   - **Files**: `src/core/agents.yaml`, `src/sync/mcp-sync.ts`, `src/drift-checks/mcp.ts`, `docs/user-stories/03-add-mcp-server.md`, `docs/user-stories/06-drift-detection.md`
   - **Acceptance**: A researched decision is recorded in code/docs/tests: either Claude Code declares `mcpPermissionsConfig.file: ~/.claude/settings.json` with regression coverage for sync + drift, or documentation explains why Claude Code permission ownership remains out of scope and drift checks deliberately skip it.
 
-- [ ] Classify remaining MCP heal churn cases before suppression
-  - **ID**: mcp-heal-loop-classify-tasks-github-churn
-  - **Tags**: scout, mcp, auto-heal, catalog, stability, p1
-  - **Details**: Scouted while implementing `mcp-heal-loop-known-failure-taxonomy`. The original incident also named `tasks-mcp` tools/list timeouts and some `github` launch/smoke failures, but only `ask-human` currently has catalog metadata documenting a deterministic upstream launcher fault. Research the remaining churn patterns and add catalog `probeSuppression` only when the root cause is deterministic enough to avoid masking real regressions.
-  - **Files**: `src/catalog.yaml`, `src/mcp/heal-cycle.ts`, `src/mcp/heal-actions.ts`, `src/mcp/health-snapshot.ts`, `TASKS.md`
-  - **Acceptance**: `tasks-mcp` and `github` scheduler probe churn cases are either backed by precise catalog suppression metadata plus regression tests or documented as intentionally unsuppressed with a manual/auth/config remediation path.
-
 - [ ] Align launchagent Node versions to stop recurring macOS permission prompts
   - **ID**: dotfiles-launchagent-node-version-sprawl
   - **Tags**: scout, dotfiles, launchagent, node, permissions, mcp, p1
@@ -812,6 +805,13 @@
   **Anchor**: minsky's `pickHostTask` (the load-bearing gate); global_rules.md "Minsky-managed repos add rule-#9 fields" (the contract this task implements); Basili/Caldiera/Rombach 1994 *Goal-Question-Metric* (the conceptual frame minsky's rule #9 instantiates).
 
 ## P2
+
+- [ ] Skip heal attempts when the machine load makes probe timeouts meaningless
+  - **ID**: heal-cycle-defer-on-high-load
+  - **Tags**: scout, mcp, heal, scheduler, load
+  - **Details**: Deep-probe timeouts on copilot and opencode tracked machine load: many timeouts at high load, none at low load. The heal cycle still runs sync heal actions on those timeouts, which cannot help. When the load average per core is far above the normal level, record the probe results but run no heal action and file no follow-up, and say why in the snapshot.
+  - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
+  - **Acceptance**: with an injected high load reading, a timeout failure triggers no heal action and no follow-up; with a normal reading it behaves as before; a test covers both.
 
 - [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
   - **ID**: github-mcp-maintained-server-without-launcher

@@ -1480,6 +1480,9 @@ mcp_servers:
 
   # ── Development ────────────────────────────────────────────────
 
+  # No probeSuppression on purpose: a rejected login shows as "MCP login"
+  # (fix: `gh auth login`), and load timeouts clear on their own. A real outage
+  # surfaces as mcp-stale drift (guarded in src/mcp/health-suppression.test.ts).
   - name: github
     description: "GitHub API — PRs, issues, repos, commits, branches. 15.2k★."
     command: npx
@@ -1646,6 +1649,10 @@ mcp_servers:
 
   # ── Task Management ───────────────────────────────────────────
 
+  # No probeSuppression on purpose: scheduler timeouts here track machine load,
+  # not an upstream fault (guarded in src/mcp/health-suppression.test.ts).
+  # A real outage surfaces as mcp-stale drift after 24h; run
+  # `agentbrew mcp probe tasks-mcp --deep` to check by hand.
   - name: tasks-mcp
     description: "Read/write TASKS.md files — list, pick, claim, complete, add tasks. Spec-compliant task queue for agents."
     command: npx

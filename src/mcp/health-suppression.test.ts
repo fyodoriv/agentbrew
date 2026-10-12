@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { CatalogMcpProbeSuppression } from "../catalog/types.js";
+import { buildSchedulerProbeSuppressionMap } from "./catalog-smoke.js";
 import {
   buildMcpHealthSnapshot,
   catalogServerName,
@@ -131,5 +132,17 @@ describe("isSuppressedFailure", () => {
 
   it("lets a real failure through to the heal loop", () => {
     expect(isSuppressedFailure(failure("github", "cursor"), byServer)).toBe(false);
+  });
+});
+
+describe("intentionally unsuppressed churn", () => {
+  // tasks-mcp and github timeouts were investigated on 2026-10-12. Neither has
+  // a deterministic upstream fault: timeouts tracked machine load (13 timeouts
+  // at load 13-20, none at load 6), the github heal churn came from a launcher
+  // rewrite bug fixed since, and a rejected login is already reported as
+  // "needs login", not as a failure. A suppression would hide a real outage,
+  // which `mcp-stale` drift now catches after 24 hours without an ok probe.
+  it.each(["tasks-mcp", "github"])("does not suppress %s in the catalog", (name) => {
+    expect(buildSchedulerProbeSuppressionMap().has(name)).toBe(false);
   });
 });

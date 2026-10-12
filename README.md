@@ -181,7 +181,7 @@ stay unchanged.
 
 ```bash
 agentbrew sync                  # deploy + prune stale items (the one healing command)
-agentbrew sync --pull           # fetch latest from sources first, then deploy
+agentbrew sync --pull           # apply the Agentfile to state, fetch latest from sources, then deploy
 agentbrew sync --dry-run        # preview Agentfile + sync changes without applying
 agentbrew sync --only mcp       # sync one surface; installs skills only with --only skills
 agentbrew sync --rollback       # restore from last pre-sync snapshot

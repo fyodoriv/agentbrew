@@ -404,13 +404,12 @@
   **Acceptance**: editing a sentence inside an Agentfile `rules:` blob and re-running `agentbrew sync` leaves exactly one copy of that blob in shared-rules.md (old text gone); a regression test covers edit→re-apply convergence; `agentbrew lint` flags a shared-rules file containing two copies of the same blob head.
   **Output**: code
 
-- [ ] `agentbrew sync --pull` applies Agentfile source changes before pulling
-  **ID**: sync-pull-applies-agentfile-first
-  **Tags**: scout, sync, agentfile, sources
-  **Details**: `sync --pull` runs `update()` in `handleSyncEarlyExits` (src/cli.ts) BEFORE `prepareSync` applies the global Agentfile, so source edits in the Agentfile (e.g. correcting `your-org/example-repo` shorthand — which resolves to github.com — to the GHE `git@github.example.com:...` URL) are invisible to the pull pass: it fetches the stale state entry, fails, and exits before the corrected entry ever lands in state. Workaround today is running a plain `agentbrew sync` (or `agentbrew install <source>`) first. Reorder so the Agentfile applies to state before the pull, or make `update()` re-load state after apply.
-  **Files**: `src/cli.ts` (handleSyncEarlyExits/handleSyncCommand), `src/update.ts`, `src/sync-runner.ts`
-  **Acceptance**: with an Agentfile source URL edited and stale state, a single `agentbrew sync --pull` pulls from the corrected URL and prunes the stale source entry; a test pins the apply-before-pull ordering.
-  **Output**: code
+- [ ] `sync --pull` skips the deploy and Agentfile skill installs after the pull
+  **ID**: sync-pull-agentfile-skill-installs
+  **Tags**: scout, sync, agentfile
+  **Details**: Scouted while fixing `sync-pull-applies-agentfile-first`. `handleSyncEarlyExits` applies the Agentfile to state before the pull, but skills or `recommended: true` that the Agentfile newly requests are not installed until the next plain `agentbrew sync`. `--dry-run --pull` also still runs the real pull, because `update()` receives no dry-run option from the CLI.
+  **Files**: `src/cli.ts` (handleSyncEarlyExits), `src/update.ts`
+  **Acceptance**: `sync --pull` installs Agentfile-requested items after the pull, and `sync --pull --dry-run` performs no fetch or write. A test pins both.
 
 - [ ] Fix 2 pre-existing test failures unrelated to feature work
   **ID**: fix-stale-test-failures

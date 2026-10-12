@@ -244,10 +244,29 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     return true;
   }
   if (options.pull) {
+    // Apply the Agentfile to state first, so the pull sees corrected source URLs
+    // and does not fetch (or fail on) entries the Agentfile already dropped.
+    await applyAgentfileBeforePull(options);
     await update();
     return true;
   }
   return false;
+}
+
+/** Apply the explicit or global Agentfile to state ahead of `sync --pull`. Honors --no-prune and --dry-run. */
+async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<void> {
+  const { applyAgentfile } = await import("./agentfile.js");
+  const { expandHome } = await import("./utils.js");
+  try {
+    applyAgentfile(options.agentfile ?? expandHome("~/.config/agentbrew"), {
+      quiet: true,
+      authoritative: options.prune !== false,
+      includeSkillInstallReport: false,
+      dryRun: options.dryRun,
+    });
+  } catch (error) {
+    console.warn(chalk.yellow(`  Agentfile apply before pull failed: ${errorMessage(error)}`));
+  }
 }
 
 async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {

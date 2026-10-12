@@ -834,25 +834,31 @@
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, status, plugins
-  - **Details**: On 2026-09-27 Claude Desktop showed an MCP startup error on
-    every launch for weeks, and `agentbrew status` stayed silent. Desktop's own
-    log named both causes: `Skipped invalid MCP server config entries: figma`
-    (fixed in PR #23) and `[LocalMcpServerManager] Failed to connect to
-    plugin:prisma:Prisma-Local`. The second comes from the account-synced
-    prisma plugin: `npx -y prisma mcp` now resolves npm `latest` =
-    8.0.0-rc.17, which has no `mcp` command. Desktop reads plugin on/off from
-    the account, so agentbrew cannot repair it; it can only report it. Read the
-    recent Desktop startup lines from `~/Library/Logs/Claude/main.log` and
-    report each failing server with its log line and the fix path (config entry
-    → agentbrew sync; synced plugin → Customize → Plugins). Also report the
-    prisma break upstream (the plugin should pin `prisma@7`); that report is a
-    public write and needs explicit operator approval first.
-  - **Files**: `src/drift-checks/`, `src/status.ts`, `docs/user-stories/25-status-and-health.md`
-  - **Acceptance**: With a fixture log holding one invalid-entry line and one
-    plugin connect failure, `agentbrew status` lists both with their fix
-    paths, and `agentbrew status --ci` exits 1. With a clean log, or with no
-    Desktop installed, it reports nothing and exits 0. Only log lines from the
-    latest Desktop start count, so old failures do not keep firing.
+  - **Details**: `agentbrew status` and `collectDrift` now list Claude Desktop
+    startup failures (invalid config entries and failed server connects) from
+    the latest Desktop start in `~/Library/Logs/Claude/main.log`, each with a
+    fix path. Two parts remain. First, `agentbrew status` has no `--ci` flag,
+    so nothing exits 1 on these failures yet; add the flag and the exit code,
+    with a clean log and a missing log both exiting 0. Second, the prisma
+    plugin break (`npx -y prisma mcp` resolves to a release with no `mcp`
+    command) should be reported upstream so the plugin pins `prisma@7`; that
+    report is a public write and needs explicit operator approval first.
+  - **Files**: `src/cli.ts`, `src/status.ts`, `docs/user-stories/25-status-and-health.md`
+  - **Acceptance**: `agentbrew status --ci` exits 1 when the latest Desktop
+    start logged an invalid-entry or connect-failure line, and exits 0 with a
+    clean or missing log.
+
+- [ ] Isolate drift and integration tests from the real Claude Desktop log
+  - **ID**: isolate-tests-from-real-desktop-log
+  - **Tags**: scout, tests, claude-desktop
+  - **Details**: `collectDrift()` now reads the default Desktop log path, and
+    several integration tests call it without mocking that read. They pass
+    today, but a failing server in a developer's real log can change their
+    drift counts. Mock `readDesktopMcpFailures` (or point the path at a tmpdir)
+    in those suites.
+  - **Files**: `src/integration.test.ts`, `src/integration-essential-core.test.ts`, `src/drift.test.ts`
+  - **Acceptance**: With a fixture Desktop log holding failures at the default
+    path, the drift assertions in those suites still pass.
 
 - [ ] Measure plain-language output across managed agent surfaces
   - **ID**: measure-plain-language-output-across-managed-agents

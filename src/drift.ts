@@ -1,4 +1,5 @@
 import { checkAgentDefsDrift } from "./drift-checks/agents.js";
+import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { checkCommandsDrift, checkUserCreatedCommands } from "./drift-checks/commands.js";
 import { checkEnvHygieneDrift } from "./drift-checks/env.js";
 import { checkHooksDrift } from "./drift-checks/hooks.js";
@@ -85,6 +86,7 @@ export function collectDrift(): DriftItem[] {
     ...checkCatalogPinDrift(),
     ...checkPlaywrightIsolatedDrift(),
     ...checkMcpStaleDrift(),
+    ...checkClaudeDesktopMcpDrift(),
     ...checkEnvHygieneDrift(),
     ...checkMcpPermissionDrift(),
     ...checkRulesDrift(),

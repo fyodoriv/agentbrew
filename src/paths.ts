@@ -39,6 +39,9 @@ export const FISH_HOOK_PATH = "~/.config/agentbrew/shell-hook.fish";
 /** Auto-repair log tracking what was fixed and when. */
 export const REPAIR_LOG_PATH = "~/.config/agentbrew/repair-log.json";
 
+/** Claude Desktop main log (macOS). Read-only; agentbrew never writes here. */
+export const CLAUDE_DESKTOP_MAIN_LOG_PATH = "~/Library/Logs/Claude/main.log";
+
 /** MCP probe health snapshot written by the auto-repair cron path. */
 export const MCP_HEALTH_PATH = "~/.cache/agentbrew/mcp-health.json";
 

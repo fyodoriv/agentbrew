@@ -7,6 +7,7 @@ import { checkEnvHygiene } from "./core/env-sanitize.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { logSkipped } from "./core/logger.js";
 import { checkMcpEnvVarsDrift } from "./drift.js";
+import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { validateConfig } from "./lint.js";
 import {
   loadMcpHealthSnapshot,
@@ -288,6 +289,13 @@ function printMcpHealthSummary(prefix: string): void {
     console.log(
       `${prefix}MCP login:    ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(`needs login — run \`${mcpLoginCommand(entry.name)}\``)}`,
     );
+  }
+  printClaudeDesktopMcpSummary(prefix);
+}
+
+function printClaudeDesktopMcpSummary(prefix: string): void {
+  for (const failure of readDesktopMcpFailures()) {
+    console.log(`${prefix}Desktop MCP: ${chalk.red(failure.name)} ${chalk.dim(`failed at startup — ${failure.fix}`)}`);
   }
 }
 

@@ -36,6 +36,10 @@ vi.mock("./sync/auto-repair-health.js", async () => {
   return { ...actual, probeAutoRepairHealth: vi.fn(() => ({ backend: "none", state: "not-installed" })) };
 });
 
+vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({
+  readDesktopMcpFailures: vi.fn(() => []),
+}));
+
 vi.mock("./mcp/health-snapshot.js", () => ({
   loadMcpHealthSnapshot: vi.fn(() => undefined),
   unhealthyMcpEntries: vi.fn((snapshot: { servers?: Array<{ status: string }> } | undefined) =>
@@ -47,6 +51,7 @@ vi.mock("./mcp/health-snapshot.js", () => ({
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { loadSyncErrors } from "./core/errors.js";
+import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { loadMcpHealthSnapshot, needsLoginMcpEntries, unhealthyMcpEntries } from "./mcp/health-snapshot.js";
 import { loadState } from "./state.js";
 import { collectStatusData, getSourcesFreshness, status } from "./status.js";
@@ -105,6 +110,25 @@ describe("status", () => {
     });
     await status({ verbose: true });
     expect(console.log).toHaveBeenCalledWith("  (none)");
+  });
+
+  it("shows Claude Desktop startup failures with their fix path", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    vi.mocked(readDesktopMcpFailures).mockReturnValueOnce([
+      { name: "plugin:demo:Demo-Local", kind: "connect-failed", line: "x", fix: "update it under Customize > Plugins" },
+    ]);
+
+    await status();
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("Desktop MCP");
+    expect(calls).toContain("plugin:demo:Demo-Local");
+    expect(calls).toContain("Customize > Plugins");
   });
 
   it("shows unresolved MCP health failures from the auto-heal snapshot", async () => {

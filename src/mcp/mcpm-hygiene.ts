@@ -136,7 +136,7 @@ export function resolveGithubLauncherPath(
       return [];
     }
   },
-): string {
+): string | undefined {
   if (process.env.AGENTBREW_GITHUB_MCP_BIN) return process.env.AGENTBREW_GITHUB_MCP_BIN;
   const binDir = join(homeDir, ".local/bin");
   for (const name of GITHUB_LAUNCHER_NAMES) {
@@ -148,10 +148,10 @@ export function resolveGithubLauncherPath(
       name.endsWith("-github-mcp") && !GITHUB_LAUNCHER_NAMES.includes(name as (typeof GITHUB_LAUNCHER_NAMES)[number]),
   );
   if (discovered) return join(binDir, discovered);
-  return join(binDir, GITHUB_LAUNCHER_NAMES[0]);
+  return undefined;
 }
 
-export function githubLauncherPath(): string {
+export function githubLauncherPath(): string | undefined {
   return resolveGithubLauncherPath();
 }
 
@@ -169,7 +169,11 @@ export function isDeprecatedGithubEntry(entry: unknown): boolean {
   return false;
 }
 
-export function fixBrokenGithubLauncherEntry(entry: Record<string, unknown>, launcherPath: string): boolean {
+export function fixBrokenGithubLauncherEntry(
+  entry: Record<string, unknown>,
+  launcherPath: string | undefined,
+): boolean {
+  if (launcherPath === undefined) return false;
   if (typeof entry.command !== "string") return false;
   if (!entry.command.includes("github-mcp")) return false;
   if (existsSync(entry.command)) return false;
@@ -181,7 +185,8 @@ export function fixBrokenGithubLauncherEntry(entry: Record<string, unknown>, lau
   return true;
 }
 
-export function fixDeprecatedGithubEntry(entry: Record<string, unknown>, launcherPath: string): boolean {
+export function fixDeprecatedGithubEntry(entry: Record<string, unknown>, launcherPath: string | undefined): boolean {
+  if (launcherPath === undefined) return false;
   if (!isDeprecatedGithubEntry(entry)) return false;
   for (const key of ["args", "env", "environment"]) {
     delete entry[key];

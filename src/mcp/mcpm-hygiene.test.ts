@@ -185,6 +185,29 @@ describe("github launcher hygiene", () => {
       ),
     ).toBe("/home/user/.local/bin/custom-org-github-mcp");
   });
+
+  // Regression: with no launcher installed, the fallback path did not exist, and
+  // the sweep replaced a working npx entry with it, so the github MCP failed to spawn.
+  it("resolveGithubLauncherPath returns undefined when no launcher is installed", () => {
+    expect(
+      resolveGithubLauncherPath(
+        "/home/user",
+        () => false,
+        () => ["other-tool"],
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps a working npx github entry when no launcher is installed", () => {
+    const entry = {
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-github@latest"],
+      env: { GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}" },
+    };
+    const before = structuredClone(entry);
+    expect(fixDeprecatedGithubEntry(entry, undefined)).toBe(false);
+    expect(entry).toEqual(before);
+  });
 });
 
 describe("memory server arg hygiene", () => {

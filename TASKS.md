@@ -858,6 +858,13 @@
 
 ## P2
 
+- [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
+  - **ID**: github-mcp-maintained-server-without-launcher
+  - **Tags**: scout, mcp, github, catalog
+  - **Details**: `src/mcp/mcpm-hygiene.ts` treats `@modelcontextprotocol/server-github` as deprecated and swaps it for a local `*-github-mcp` launcher. A machine with no launcher now keeps the deprecated npm package, because swapping in a missing path broke the server everywhere. The package is archived upstream. Point the catalog `github` entry at the maintained GitHub MCP server instead, so a machine without a launcher still gets a supported server.
+  - **Files**: src/catalog.yaml, src/mcp/mcpm-hygiene.ts, src/mcp/mcpm-hygiene.test.ts
+  - **Acceptance**: on a machine with no launcher, `agentbrew mcp probe` passes for `github` in every agent, and the deployed entry no longer names `@modelcontextprotocol/server-github`.
+
 - [ ] Re-probe only the failed servers after a heal, not every server
   - **ID**: heal-cycle-reprobe-failed-only
   - **Tags**: scout, mcp, heal, scheduler, performance

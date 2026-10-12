@@ -5,6 +5,19 @@ vi.mock("../sync/rules-sync.js", () => ({
   saveSharedRules: vi.fn(),
 }));
 
+const hashStore = vi.hoisted(() => ({ hashes: {} as Record<string, string> }));
+
+vi.mock("./rule-hashes.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./rule-hashes.js")>();
+  return {
+    ...original,
+    readRuleHashes: () => hashStore.hashes,
+    recordRuleHash: (name: string, body: string) => {
+      hashStore.hashes[name] = original.hashRuleBody(body);
+    },
+  };
+});
+
 vi.mock("../mcp/mcp-setup.js", () => ({
   extractEnvVars: vi.fn(() => []),
   isEnvVarResolved: vi.fn(() => true),
@@ -29,6 +42,7 @@ vi.mock("../sync/mcp-sync.js", () => ({
 
 import { loadSharedRules, saveSharedRules } from "../sync/rules-sync.js";
 import { refreshOwnedCatalogRuleBlock, refreshRecommendedCatalogRules } from "./install-other.js";
+import { recordRuleHash } from "./rule-hashes.js";
 import type { CatalogRule } from "./types.js";
 
 const mockLoadSharedRules = vi.mocked(loadSharedRules);
@@ -44,6 +58,7 @@ const sampleRule: CatalogRule = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hashStore.hashes = {};
 });
 
 describe("refreshOwnedCatalogRuleBlock", () => {
@@ -62,6 +77,7 @@ describe("refreshOwnedCatalogRuleBlock", () => {
   });
 
   it("replaces block content when catalog body changed", () => {
+    recordRuleHash("modern-cli-cohort", "Old bulky table here.");
     mockLoadSharedRules.mockReturnValue(
       "## Catalog rule markers\n\n<!-- rule: modern-cli-cohort -->\nOld bulky table here.\n\n## Pull/fetch latest workflow\n",
     );
@@ -75,6 +91,7 @@ describe("refreshOwnedCatalogRuleBlock", () => {
 
 describe("refreshRecommendedCatalogRules", () => {
   it("refreshes only installed recommended rules with changed bodies", () => {
+    recordRuleHash("modern-cli-cohort", "Old body");
     mockLoadSharedRules.mockReturnValue(
       [
         "## Catalog rule markers",

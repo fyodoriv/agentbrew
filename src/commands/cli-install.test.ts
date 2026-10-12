@@ -149,6 +149,15 @@ describe("registerInstallCommand", () => {
       expect(mockInstall).toHaveBeenCalledWith(undefined, expect.objectContaining({ recommended: true }));
     });
 
+    it("passes --refresh-rules flag", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "--recommended", "--refresh-rules"]);
+      expect(mockInstall).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ recommended: true, refreshRules: true }),
+      );
+    });
+
     it("passes --yes flag", async () => {
       const program = buildInstallProgram();
       await program.parseAsync(["node", "test", "install", "my-skill", "-y"]);

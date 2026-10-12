@@ -284,7 +284,14 @@ async function installFromCatalog(
 
 export async function install(
   name?: string,
-  options?: { recommended?: boolean; yes?: boolean; from?: string; dryRun?: boolean; local?: string },
+  options?: {
+    recommended?: boolean;
+    yes?: boolean;
+    from?: string;
+    dryRun?: boolean;
+    local?: string;
+    refreshRules?: boolean;
+  },
 ): Promise<void> {
   resetInstallSummary();
   const state = requireState();
@@ -293,7 +300,7 @@ export async function install(
   const catalog = loadCatalog();
 
   if (options?.recommended) {
-    await installRecommended(catalog, options.dryRun ?? false);
+    await installRecommended(catalog, options.dryRun ?? false, options.refreshRules ?? false);
     return;
   }
 
@@ -425,16 +432,33 @@ async function installPendingRecommended(items: RecommendedItems, pending: Pendi
   }
 }
 
-function refreshRecommendedRules(catalog: Catalog): void {
-  const { refreshed } = refreshRecommendedCatalogRules(catalog.rules);
+function printRuleDiff(before: string, after: string): void {
+  for (const line of before.split("\n")) console.log(chalk.red(`    - ${line}`));
+  for (const line of after.split("\n")) console.log(chalk.green(`    + ${line}`));
+}
+
+function refreshRecommendedRules(catalog: Catalog, dryRun: boolean, force: boolean): void {
+  const { refreshed, preserved, wouldRefresh } = refreshRecommendedCatalogRules(catalog.rules, { dryRun, force });
   if (refreshed.length > 0) {
     console.log(
       chalk.dim(`\n  Refreshed ${refreshed.length} catalog rule(s) from catalog.yaml: ${refreshed.join(", ")}\n`),
     );
   }
+  for (const change of wouldRefresh) {
+    console.log(chalk.bold(`\n  Would refresh rule ${change.name}:`));
+    printRuleDiff(change.before, change.after);
+  }
+  if (preserved.length > 0) {
+    console.log(
+      chalk.yellow(
+        `\n  Kept ${preserved.length} edited or unrecorded catalog rule(s): ${preserved.join(", ")}. ` +
+          "Run `agentbrew install --recommended --refresh-rules` (add --dry-run to preview) to replace them.\n",
+      ),
+    );
+  }
 }
 
-async function installRecommended(catalog: Catalog, dryRun = false): Promise<void> {
+async function installRecommended(catalog: Catalog, dryRun = false, refreshRules = false): Promise<void> {
   const items: RecommendedItems = {
     skills: catalog.skills.filter((s) => s.recommended),
     mcp: catalog.mcp_servers.filter((s) => s.recommended),
@@ -442,7 +466,7 @@ async function installRecommended(catalog: Catalog, dryRun = false): Promise<voi
     cliTools: (catalog.cli_tools ?? []).filter((t) => t.recommended),
   };
 
-  if (!dryRun) refreshRecommendedRules(catalog);
+  refreshRecommendedRules(catalog, dryRun, refreshRules);
 
   // Issue 2 of `sync-idempotent-and-complete`: quiet no-op on a
   // fully-synced system. Header, per-category listing, each installer

@@ -13,6 +13,7 @@ import { addMcpServer } from "../sync/mcp-sync.js";
 import { loadSharedRules, saveSharedRules } from "../sync/rules-sync.js";
 import { ICON_SUCCESS, ICON_WARNING } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { hashRuleBody, readRuleHashes, recordRuleHash } from "./rule-hashes.js";
 import { applyRuleTemplate, resolveTemplateVars, type TemplateVars } from "./rule-template.js";
 import type { CatalogCliTool, CatalogEnvVarSetup, CatalogMcpServer, CatalogRule } from "./types.js";
 
@@ -224,6 +225,7 @@ export function addRuleToSharedRules(rule: CatalogRule, vars?: TemplateVars): Ru
   const templated = applyRuleTemplate(rule.content, templateVars);
   const updated = insertCatalogRuleBlock(existing, rule.name, templated);
   saveSharedRules(updated);
+  recordRuleHash(rule.name, templated);
   return "added";
 }
 
@@ -340,37 +342,91 @@ export function extractRuleBlockContent(existing: string, ruleName: string): str
   return bodyLines.join("\n").trimEnd();
 }
 
-export type RuleRefreshStatus = "refreshed" | "unchanged" | "not-installed" | "no-rules-file";
+export type RuleRefreshStatus =
+  | "refreshed"
+  | "would-refresh"
+  | "unchanged"
+  | "preserved"
+  | "not-installed"
+  | "no-rules-file";
 
-/** Replace an agentbrew-owned catalog rule block when catalog.yaml body changed. */
-export function refreshOwnedCatalogRuleBlock(rule: CatalogRule, vars?: TemplateVars): RuleRefreshStatus {
+export interface RuleRefreshOptions {
+  vars?: TemplateVars;
+  /** Replace the block even when it was edited or has no recorded catalog hash. */
+  force?: boolean;
+  /** Report the change without writing. */
+  dryRun?: boolean;
+}
+
+export interface RuleRefreshResult {
+  status: RuleRefreshStatus;
+  before?: string;
+  after?: string;
+}
+
+/**
+ * Replace an agentbrew-owned catalog rule block when the catalog body changed.
+ * A block counts as owned only when its current body still matches the hash
+ * recorded at install/refresh time. Edited or unrecorded blocks are preserved
+ * unless `force` is set.
+ */
+export function refreshOwnedCatalogRuleBlockDetailed(
+  rule: CatalogRule,
+  options: RuleRefreshOptions = {},
+): RuleRefreshResult {
   const existing = loadSharedRules();
-  if (existing === undefined) return "no-rules-file";
-  if (!existing.includes(ruleMarker(rule.name))) return "not-installed";
+  if (existing === undefined) return { status: "no-rules-file" };
+  if (!existing.includes(ruleMarker(rule.name))) return { status: "not-installed" };
 
-  const templated = applyRuleTemplate(rule.content, vars ?? resolveTemplateVars()).trimEnd();
-  const currentBody = extractRuleBlockContent(existing, rule.name);
-  if (currentBody === templated) return "unchanged";
+  const templated = applyRuleTemplate(rule.content, options.vars ?? resolveTemplateVars()).trimEnd();
+  const currentBody = extractRuleBlockContent(existing, rule.name) ?? "";
+  if (currentBody === templated) {
+    if (!options.dryRun && readRuleHashes()[rule.name] !== hashRuleBody(templated))
+      recordRuleHash(rule.name, templated);
+    return { status: "unchanged" };
+  }
+
+  const owned = readRuleHashes()[rule.name] === hashRuleBody(currentBody);
+  if (!owned && !options.force) return { status: "preserved", before: currentBody, after: templated };
+  if (options.dryRun) return { status: "would-refresh", before: currentBody, after: templated };
 
   const without = removeRuleBlockFromText(existing, rule.name);
-  if (without === undefined) return "not-installed";
+  if (without === undefined) return { status: "not-installed" };
 
-  const updated = insertCatalogRuleBlock(without, rule.name, templated);
+  saveSharedRules(insertCatalogRuleBlock(without, rule.name, templated));
+  recordRuleHash(rule.name, templated);
+  return { status: "refreshed", before: currentBody, after: templated };
+}
 
-  saveSharedRules(updated);
-  return "refreshed";
+/** Status-only wrapper kept for callers that do not need the diff. */
+export function refreshOwnedCatalogRuleBlock(rule: CatalogRule, vars?: TemplateVars): RuleRefreshStatus {
+  return refreshOwnedCatalogRuleBlockDetailed(rule, { vars }).status;
+}
+
+export interface RecommendedRuleRefresh {
+  refreshed: string[];
+  unchanged: number;
+  /** Installed blocks left alone because the user edited them or agentbrew has no hash for them. */
+  preserved: string[];
+  /** Dry run only: blocks that a real run would replace. */
+  wouldRefresh: Array<{ name: string; before: string; after: string }>;
 }
 
 /** Refresh every installed recommended catalog rule from catalog.yaml (sync --pull path). */
-export function refreshRecommendedCatalogRules(rules: CatalogRule[]): { refreshed: string[]; unchanged: number } {
-  const refreshed: string[] = [];
-  let unchanged = 0;
+export function refreshRecommendedCatalogRules(
+  rules: CatalogRule[],
+  options: Omit<RuleRefreshOptions, "vars"> = {},
+): RecommendedRuleRefresh {
+  const result: RecommendedRuleRefresh = { refreshed: [], unchanged: 0, preserved: [], wouldRefresh: [] };
   for (const rule of rules.filter((r) => r.recommended)) {
-    const status = refreshOwnedCatalogRuleBlock(rule);
-    if (status === "refreshed") refreshed.push(rule.name);
-    else if (status === "unchanged") unchanged++;
+    const { status, before, after } = refreshOwnedCatalogRuleBlockDetailed(rule, options);
+    if (status === "refreshed") result.refreshed.push(rule.name);
+    else if (status === "unchanged") result.unchanged++;
+    else if (status === "preserved") result.preserved.push(rule.name);
+    else if (status === "would-refresh")
+      result.wouldRefresh.push({ name: rule.name, before: before ?? "", after: after ?? "" });
   }
-  return { refreshed, unchanged };
+  return result;
 }
 
 /** Install a rule set from the catalog into shared-rules.md. */

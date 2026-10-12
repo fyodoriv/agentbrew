@@ -56,3 +56,6 @@ export const CONTEXT_BUDGET_MANUAL_SNAPSHOTS_DIR = "~/.config/agentbrew/metrics/
 
 /** State path for the installed-skills label used in skillSourceDirs. */
 export const INSTALLED_SKILLS_LABEL = "installed-skills";
+
+/** SHA-256 of each catalog rule body agentbrew installed; lets refresh tell untouched blocks from user-edited ones. */
+export const CATALOG_RULE_HASHES_PATH = "~/.config/agentbrew/catalog-rule-hashes.json";

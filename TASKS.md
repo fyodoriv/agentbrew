@@ -913,17 +913,12 @@
   - **Files**: docs/testing/ or docs/skills/, src/skills/*contract.test.ts, skill-plugins/dev/*/evals/evals.json
   - **Acceptance**: A concise doc describes the pressure-eval categories with examples from at least four existing contract specs, including one iterative-loop safety-gate example, one communication-safety example, one human-attention / incremental-save example, and one CLI default-behavior example; it explains when an optional `evals/README.md` is useful; no existing tests regress.
 
-- [ ] Recommended catalog rule updates refresh installed marked blocks
-  - **ID**: recommended-rules-refresh-marked-blocks
-  - **Tags**: scout, rules, catalog, sync-pull, shared-rules
-  - **Details**: Scouted while shrinking recommended rule bodies after `sync --pull` re-expanded live deployed instruction files above the 40k budget. Catalog rule installs are marker-based: if `<!-- rule: <name> -->` already exists in `shared-rules.md`, `install --recommended` skips it even when `src/catalog.yaml` now has a smaller or corrected body. That preserves user edits, but it also means recommended catalog rule fixes do not reach existing installs without a manual `rules remove <name>` + reinstall. Add an explicit refresh path for catalog-owned marked blocks, likely limited to rules originally installed from the recommended set and gated by a dry-run diff, so stale bulky rule bodies can be replaced without duplicate append or silent user-content clobbering.
-  - **Files**: `src/catalog/install.ts`, `src/catalog/install-other.ts`, `src/sync/rules-sync.ts`, `src/catalog/install.test.ts`, `README.md`
-  - **Acceptance**: A test seeds `shared-rules.md` with an old marked recommended rule body, changes the catalog body in fixture, runs the refresh path, and proves the marked block is replaced exactly once; a hand-authored marker with local edits is either preserved with a clear warning or only updated after an explicit `--refresh-rules`/equivalent flag; docs explain how users update catalog rule text.
-  - **Hypothesis**: Marker-only idempotence prevents duplicate bloat but blocks safe catalog-rule updates; separating "install if absent" from "refresh catalog-owned body" preserves both safety and upgrade hygiene.
-  - **Success**: `agentbrew sync --pull` or the documented refresh command can shrink stale recommended rule bodies without manual shared-rules surgery and without touching unrelated user-authored rules.
-  - **Pivot**: If ownership cannot be inferred safely, keep default behavior unchanged and add a `rules refresh --catalog <name|--recommended>` command that always shows a diff before rewriting.
-  - **Measurement**: A fixture reproducing the old `load-project-context` bulky body is under the deployed-size budget after one refresh run; a second run is no-op.
-  - **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/04-share-rules.md (one shared-rules source of truth), docs/user-stories/14-recommended-changes.md (recommended installs are safe to re-run).
+- [ ] Show preserved catalog rule blocks in `agentbrew status`
+  - **ID**: status-reports-preserved-catalog-rules
+  - **Tags**: scout, rules, status, p3
+  - **Details**: Refresh now keeps edited or unrecorded catalog rule blocks and only warns during `install --recommended` and `sync`. `agentbrew status` does not list them, so a stale kept block stays invisible until the next install run.
+  - **Files**: `src/status.ts`, `src/catalog/install-other.ts`
+  - **Acceptance**: `status --verbose` lists installed catalog rule blocks whose body differs from `src/catalog.yaml`, marked kept or refreshable; a test covers both.
 
 - [ ] Spike FrontierCode-style negative controls for skill evals
   - **ID**: frontiercode-skill-eval-rubric-hardening

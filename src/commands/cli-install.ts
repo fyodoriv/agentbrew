@@ -52,6 +52,7 @@ export async function applyAgentfileAndInstall(
 
 interface InstallOptions {
   recommended?: boolean;
+  refreshRules?: boolean;
   yes?: boolean;
   from?: string;
   command?: string;
@@ -232,6 +233,7 @@ async function executeInstall(name: string | undefined, options: InstallOptions,
   const localDir = isLocalInstall(options) ? process.cwd() : undefined;
   const installOpts = {
     recommended: options.recommended,
+    refreshRules: options.refreshRules,
     yes: options.yes,
     from: options.from,
     dryRun: options.dryRun,
@@ -268,6 +270,7 @@ export function registerInstallCommand(program: Command): void {
     .command("install [name]")
     .description("Install a skill, MCP server, rule, source repo, or local folder")
     .option("--recommended", "Install all recommended items")
+    .option("--refresh-rules", "With --recommended: also replace edited catalog rule blocks (preview with --dry-run)")
     .option("-y, --yes", "Non-interactive mode")
     .option("--from <source>", "Install from a specific source")
     .option("-c, --command <command>", "Server command (for MCP stdio transport)")

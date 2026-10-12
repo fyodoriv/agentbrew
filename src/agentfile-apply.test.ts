@@ -760,6 +760,78 @@ describe("applyAgentfile", () => {
     });
   });
 
+  describe("stale command and agent source dirs", () => {
+    function applyWith(
+      agentfile: { commands?: string[]; agents?: string[] },
+      state: AgentBrewState,
+      options?: { authoritative?: boolean },
+    ) {
+      mockLoadAgentfile.mockReturnValue(agentfile);
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([]);
+      return applyAgentfile("/project", { quiet: true, ...options });
+    }
+
+    it("records the owning Agentfile on each agentfile entry", () => {
+      const state = makeState();
+      applyWith({ commands: ["./commands"], agents: ["./agents"] }, state);
+      expect(state.commandSourceDirs?.[0]).toMatchObject({ origin: "agentfile", agentfile: "/project" });
+      expect(state.agentSourceDirs?.[0]).toMatchObject({ origin: "agentfile", agentfile: "/project" });
+    });
+
+    it("removes a moved commands: path owned by the same Agentfile", () => {
+      const state = makeState();
+      applyWith({ commands: ["./old-commands"] }, state, { authoritative: true });
+      applyWith({ commands: ["./new-commands"] }, state, { authoritative: true });
+      expect(state.commandSourceDirs?.map((d) => d.path)).toEqual(["/project/new-commands"]);
+    });
+
+    it("removes a dropped agents: path owned by the same Agentfile", () => {
+      const state = makeState();
+      applyWith({ agents: ["./agents"] }, state, { authoritative: true });
+      applyWith({}, state, { authoritative: true });
+      expect(state.agentSourceDirs).toEqual([]);
+    });
+
+    it("never removes entries owned by another Agentfile or added by the user", () => {
+      const state = makeState({
+        commandSourceDirs: [
+          { label: "other", path: "/other/commands", origin: "agentfile", agentfile: "/other" },
+          { label: "mine", path: "/home/me/commands", origin: "user" },
+          { label: "manual", path: "/home/me/legacy" },
+        ],
+      });
+      applyWith({ commands: ["./commands"] }, state, { authoritative: true });
+      expect(state.commandSourceDirs?.map((d) => d.path)).toEqual([
+        "/other/commands",
+        "/home/me/commands",
+        "/home/me/legacy",
+        "/project/commands",
+      ]);
+    });
+
+    it("keeps entries without an owner (pre-ownership state) but claims them when still declared", () => {
+      const state = makeState({
+        commandSourceDirs: [
+          { label: "project", path: "/project/commands", origin: "agentfile" },
+          { label: "project", path: "/project/dropped", origin: "agentfile" },
+        ],
+      });
+      applyWith({ commands: ["./commands"] }, state, { authoritative: true });
+      expect(state.commandSourceDirs).toEqual([
+        { label: "project", path: "/project/commands", origin: "agentfile", agentfile: "/project" },
+        { label: "project", path: "/project/dropped", origin: "agentfile" },
+      ]);
+    });
+
+    it("keeps stale entries when the apply is not authoritative (sync --no-prune)", () => {
+      const state = makeState();
+      applyWith({ commands: ["./old-commands"] }, state, { authoritative: true });
+      applyWith({ commands: ["./new-commands"] }, state, { authoritative: false });
+      expect(state.commandSourceDirs?.map((d) => d.path)).toEqual(["/project/old-commands", "/project/new-commands"]);
+    });
+  });
+
   describe("hooks merging", () => {
     it("adds hooks from Agentfile", () => {
       const state = makeState({ hooks: [] });

@@ -291,12 +291,12 @@
 
 ## P1
 
-- [ ] Remove stale Agentfile command and agent source dirs on sync
-  - **ID**: prune-stale-agentfile-source-dirs
-  - **Tags**: agentfile, sync, state, stability
-  - **Details**: `mergeAgentfileCommandDirs` and `mergeAgentfileAgentDirs` in `src/agentfile-apply.ts` only add paths to `state.commandSourceDirs` and `state.agentSourceDirs`. When an Agentfile drops or moves a `commands:` path, the old entry stays in state, and sync keeps deploying commands from a directory that is gone or stale. Several Agentfiles (global, project, overlay) write the same lists, so each entry must record which Agentfile owns it before pruning is safe.
-  - **Files**: src/agentfile-apply.ts, src/agentfile-apply.test.ts, src/core/state.ts
-  - **Acceptance**: (1) every `origin: agentfile` entry records its owning Agentfile; (2) an apply removes entries owned by that Agentfile that it no longer declares; (3) entries owned by other Agentfiles or added by the user are never removed; (4) a regression test covers a moved `commands:` path.
+- [ ] Prune dropped source dirs for project Agentfiles
+  - **ID**: prune-project-agentfile-source-dirs
+  - **Tags**: scout, agentfile, state
+  - **Details**: Scouted while shipping `prune-stale-agentfile-source-dirs`. Pruning of owned `commands:` and `agents:` dirs only runs for authoritative applies (global Agentfile and `sync --agentfile`). The project Agentfile applied from the working directory is additive, so a moved path there stays in state. Decide whether owner-scoped pruning is safe for project applies, since a repo may be checked out in several places.
+  - **Files**: src/agentfile-apply.ts, src/sync-runner.ts
+  - **Acceptance**: A regression test moves a `commands:` path in a project Agentfile and proves the old dir is removed, or the task is closed with a documented reason.
 
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal

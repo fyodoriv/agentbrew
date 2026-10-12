@@ -307,8 +307,10 @@ export interface AgentBrewState {
   /** Skills the last authoritative Agentfile listed; a skill that leaves this list is pruned from sources. */
   agentfileSkills?: string[];
   skillSourceDirs?: SkillSourceDir[];
-  agentSourceDirs?: Array<{ label: string; path: string; origin?: string }>;
-  commandSourceDirs?: Array<{ label: string; path: string; origin?: string }>;
+  /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
+  agentSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
+  /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
+  commandSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
   hooks?: ManagedHook[];
   externalMcpServers?: string[];
   catalogVersion: string;

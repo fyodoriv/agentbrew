@@ -325,48 +325,79 @@ function mergeAgentfileRules(agentfile: { rules?: string }, baseDir: string, dry
   return true;
 }
 
-/** Merge command source dirs from Agentfile into state. Returns paths added. */
+type SourceDirEntry = { label: string; path: string; origin?: string; agentfile?: string };
+
+interface SourceDirMerge {
+  dirs: SourceDirEntry[];
+  added: string[];
+  changed: boolean;
+}
+
+/**
+ * Merge one Agentfile's declared source dirs into a state list.
+ *
+ * Each `origin: agentfile` entry records the owning Agentfile (its directory) in
+ * `agentfile`. When `prune` is true, entries owned by this Agentfile that it no
+ * longer declares are removed. Entries owned by another Agentfile, added by the
+ * user, or written before ownership existed (no `agentfile`) are never removed.
+ * A pre-ownership agentfile entry that is still declared is claimed (migration);
+ * one that was already dropped stays until the user removes it.
+ */
+function mergeAgentfileSourceDirs(
+  declared: string[] | undefined,
+  existing: SourceDirEntry[] | undefined,
+  baseDir: string,
+  prune: boolean,
+): SourceDirMerge {
+  const declaredPaths = (declared ?? []).map((relPath) => (isAbsolute(relPath) ? relPath : join(baseDir, relPath)));
+  let dirs = existing ?? [];
+  let changed = false;
+
+  if (prune) {
+    const kept = dirs.filter(
+      (d) => d.origin !== "agentfile" || d.agentfile !== baseDir || declaredPaths.includes(d.path),
+    );
+    changed = kept.length !== dirs.length;
+    dirs = kept;
+  }
+
+  const added: string[] = [];
+  for (const absPath of declaredPaths) {
+    const entry = dirs.find((d) => d.path === absPath);
+    if (!entry) {
+      dirs.push({ label: basename(baseDir), path: absPath, origin: "agentfile" as const, agentfile: baseDir });
+      added.push(absPath);
+    } else if (entry.origin === "agentfile" && entry.agentfile === undefined) {
+      entry.agentfile = baseDir;
+      changed = true;
+    }
+  }
+
+  return { dirs, added, changed: changed || added.length > 0 };
+}
+
+/** Merge command source dirs from Agentfile into state. Returns paths added and whether state changed. */
 function mergeAgentfileCommandDirs(
   agentfile: { commands?: string[] },
   state: AgentBrewState,
   baseDir: string,
-): string[] {
-  if (!agentfile.commands?.length) return [];
-
-  const dirs = state.commandSourceDirs ?? [];
-  const existingPaths = new Set(dirs.map((d) => d.path));
-  const added: string[] = [];
-
-  for (const relPath of agentfile.commands) {
-    const absPath = isAbsolute(relPath) ? relPath : join(baseDir, relPath);
-    if (!existingPaths.has(absPath)) {
-      dirs.push({ label: basename(baseDir), path: absPath, origin: "agentfile" as const });
-      added.push(absPath);
-    }
-  }
-
-  if (added.length > 0) state.commandSourceDirs = dirs;
-  return added;
+  prune: boolean,
+): { added: string[]; changed: boolean } {
+  const merged = mergeAgentfileSourceDirs(agentfile.commands, state.commandSourceDirs, baseDir, prune);
+  if (merged.changed) state.commandSourceDirs = merged.dirs;
+  return merged;
 }
 
-/** Merge agent definition source dirs from Agentfile into state. Returns paths added. */
-function mergeAgentfileAgentDirs(agentfile: { agents?: string[] }, state: AgentBrewState, baseDir: string): string[] {
-  if (!agentfile.agents?.length) return [];
-
-  const dirs = state.agentSourceDirs ?? [];
-  const existingPaths = new Set(dirs.map((d) => d.path));
-  const added: string[] = [];
-
-  for (const relPath of agentfile.agents) {
-    const absPath = isAbsolute(relPath) ? relPath : join(baseDir, relPath);
-    if (!existingPaths.has(absPath)) {
-      dirs.push({ label: basename(baseDir), path: absPath, origin: "agentfile" as const });
-      added.push(absPath);
-    }
-  }
-
-  if (added.length > 0) state.agentSourceDirs = dirs;
-  return added;
+/** Merge agent definition source dirs from Agentfile into state. Returns paths added and whether state changed. */
+function mergeAgentfileAgentDirs(
+  agentfile: { agents?: string[] },
+  state: AgentBrewState,
+  baseDir: string,
+  prune: boolean,
+): { added: string[]; changed: boolean } {
+  const merged = mergeAgentfileSourceDirs(agentfile.agents, state.agentSourceDirs, baseDir, prune);
+  if (merged.changed) state.agentSourceDirs = merged.dirs;
+  return merged;
 }
 
 /** Convert an AgentfileHookEntry into a ManagedHook for state storage. */
@@ -614,8 +645,10 @@ export function applyAgentfile(
 
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
-  const commandDirsAdded = mergeAgentfileCommandDirs(agentfile, state, baseDir);
-  const agentDirsAdded = mergeAgentfileAgentDirs(agentfile, state, baseDir);
+  const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, authoritative);
+  const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, authoritative);
+  const commandDirsAdded = commandDirs.added;
+  const agentDirsAdded = agentDirs.added;
   const skillsToInstall = collectAgentfileSkills(agentfile, quiet);
   const rulesUpdated = mergeAgentfileRules(agentfile, baseDir, dryRun);
   const hooksUpdated = mergeAgentfileHooks(agentfile, state);
@@ -644,8 +677,8 @@ export function applyAgentfile(
     mcp.updated.length > 0 ||
     mcp.removed.length > 0 ||
     sourcesAdded.length > 0 ||
-    commandDirsAdded.length > 0 ||
-    agentDirsAdded.length > 0 ||
+    commandDirs.changed ||
+    agentDirs.changed ||
     rulesUpdated ||
     hooksUpdated ||
     excludedAgents.length > 0 ||

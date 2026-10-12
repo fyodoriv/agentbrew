@@ -298,10 +298,17 @@
   - **Files**: src/agentfile-apply.ts, src/agentfile-apply.test.ts, src/core/state.ts
   - **Acceptance**: (1) every `origin: agentfile` entry records its owning Agentfile; (2) an apply removes entries owned by that Agentfile that it no longer declares; (3) entries owned by other Agentfiles or added by the user are never removed; (4) a regression test covers a moved `commands:` path.
 
-- [ ] Clear dev-dependency audit findings
+- [ ] Drop the basic-ftp override once get-uri accepts a patched range
+  - **ID**: scout-basic-ftp-override-removal
+  - **Tags**: scout, dependencies, security
+  - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
+  - **Files**: package.json, package-lock.json
+  - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
+
+- [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
   - **ID**: dev-dependency-audit-findings
   - **Tags**: security, dependencies, stability
-  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. `npm audit` still reports 48 findings in dev-only dependencies (5 low, 18 moderate, 25 high), and GitHub Dependabot flags the default branch. Fix them with semver-compatible updates first, then handle any major bumps one package at a time.
+  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. After the 2026-10-12 bump of promptfoo, vitest, and a `basic-ftp` override, the only open dev-only finding is `node-forge` (high, no patched release; reached through `promptfoo` > `jks-js`). Re-run `npm audit` when node-forge, jks-js, or promptfoo ships a fix, then bump. If promptfoo drops `jks-js`, remove the dependency path instead.
   - **Files**: package.json, package-lock.json
   - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
 

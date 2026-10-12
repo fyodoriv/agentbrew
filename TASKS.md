@@ -136,14 +136,6 @@
 
 ## P0
 
-- [ ] Repair MCP health failure for bad on cursor
-  **ID**: mcp-health-cursor-bad
-  **Tags**: mcp, health, auto-repair, P0
-  **Details**: Cron MCP probe still reports `init_timeout` for `bad` on `cursor`. Last error: `no response`.
-  **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, ~/.cache/agentbrew/mcp-health.json
-  **Acceptance**: `agentbrew mcp probe bad --agent cursor --deep` returns ok and `agentbrew status` no longer reports this MCP as failing.
-
-
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the

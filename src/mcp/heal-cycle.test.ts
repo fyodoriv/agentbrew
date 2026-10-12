@@ -114,6 +114,7 @@ describe("runMcpHealCycle", () => {
       probeAll,
       healActions: new Map([["sync", healAction]]),
       writeSnapshot,
+      writeFollowups: vi.fn(),
       loadPerCore: () => 0,
       now: () => new Date("2026-06-04T12:00:00.000Z"),
     });

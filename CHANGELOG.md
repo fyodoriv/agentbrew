@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Tests no longer file fake MCP tasks** — one heal-cycle test let the
+  real follow-up writer add a `bad` on `cursor` P0 task to `TASKS.md`. The
+  test now stubs the writer, and a vitest setup file fails any test file that
+  changes `TASKS.md`.
 - **A plain `sync` no longer overrides the Agentfile** — it installed the
   catalog recommended set on every run, even skills the Agentfile had removed.
   With an Agentfile in effect, only the Agentfile's `recommended: true` asks

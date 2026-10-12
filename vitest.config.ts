@@ -10,6 +10,7 @@ export default defineConfig({
       fsModuleCache: true,
     },
     include: ["src/**/*.test.ts"],
+    setupFiles: ["./vitest.tasks-guard.ts"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

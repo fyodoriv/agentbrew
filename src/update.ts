@@ -212,6 +212,13 @@ async function reindexSourcesIfNeeded(sources: Source[], state: AgentBrewState, 
   if (sources.length > 0 && !isDryRun) await reindexSourcesAndRecord(sources, state);
 }
 
+function printSourcePullPlan(sources: Source[], prefix: string): void {
+  const remote = sources.filter((source) => source.type !== "local");
+  if (remote.length === 0) return;
+  console.log(chalk.bold(`\n${prefix}Sources`));
+  for (const source of remote) console.log(`  Would pull ${source.url}`);
+}
+
 function printInstalledSkillUpdates(
   sources: Source[],
   options: UpdateOptions | undefined,
@@ -273,6 +280,7 @@ export async function update(options?: UpdateOptions): Promise<void> {
 
   // 3. Re-index all sources (pulls latest via git)
   const sources = getStateSources(state);
+  if (isDryRun) printSourcePullPlan(sources, prefix);
   await reindexSourcesIfNeeded(sources, state, isDryRun);
 
   // 4. Refresh installed skill files from updated caches (skip writes in dry-run)

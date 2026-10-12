@@ -246,19 +246,24 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
   if (options.pull) {
     // Apply the Agentfile to state first, so the pull sees corrected source URLs
     // and does not fetch (or fail on) entries the Agentfile already dropped.
-    await applyAgentfileBeforePull(options);
-    await update();
+    const applied = await applyAgentfileBeforePull(options);
+    // Install before the pull: the authoritative apply drops sources that only
+    // back catalog skills. The install re-adds them, so the pull's deploy keeps those skills.
+    await installAgentfileItemsBeforePull(applied, options);
+    await update({ dryRun: options.dryRun ?? false });
     return true;
   }
   return false;
 }
 
+type AppliedAgentfile = ReturnType<typeof import("./agentfile.js").applyAgentfile>;
+
 /** Apply the explicit or global Agentfile to state ahead of `sync --pull`. Honors --no-prune and --dry-run. */
-async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<void> {
+async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<AppliedAgentfile> {
   const { applyAgentfile } = await import("./agentfile.js");
   const { expandHome } = await import("./utils.js");
   try {
-    applyAgentfile(options.agentfile ?? expandHome("~/.config/agentbrew"), {
+    return applyAgentfile(options.agentfile ?? expandHome("~/.config/agentbrew"), {
       quiet: true,
       authoritative: options.prune !== false,
       includeSkillInstallReport: false,
@@ -266,7 +271,18 @@ async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<vo
     });
   } catch (error) {
     console.warn(chalk.yellow(`  Agentfile apply before pull failed: ${errorMessage(error)}`));
+    return undefined;
   }
+}
+
+/** Install skills the Agentfile requests (newly or whose source the apply pruned). Skipped on --dry-run. */
+async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, options: SyncCommandOptions): Promise<void> {
+  if (!applied || options.dryRun) return;
+  const { install: catalogInstall } = await import("./catalog/install.js");
+  for (const skillName of applied.skillsToInstall) {
+    await catalogInstall(skillName);
+  }
+  if (applied.recommendedRequested) await catalogInstall(undefined, { recommended: true });
 }
 
 async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {

@@ -397,12 +397,12 @@
   **Acceptance**: editing a sentence inside an Agentfile `rules:` blob and re-running `agentbrew sync` leaves exactly one copy of that blob in shared-rules.md (old text gone); a regression test covers edit→re-apply convergence; `agentbrew lint` flags a shared-rules file containing two copies of the same blob head.
   **Output**: code
 
-- [ ] `sync --pull` skips the deploy and Agentfile skill installs after the pull
-  **ID**: sync-pull-agentfile-skill-installs
+- [ ] Stop the authoritative Agentfile apply from pruning sources that back Agentfile skills
+  **ID**: agentfile-apply-keeps-skill-sources
   **Tags**: scout, sync, agentfile
-  **Details**: Scouted while fixing `sync-pull-applies-agentfile-first`. `handleSyncEarlyExits` applies the Agentfile to state before the pull, but skills or `recommended: true` that the Agentfile newly requests are not installed until the next plain `agentbrew sync`. `--dry-run --pull` also still runs the real pull, because `update()` receives no dry-run option from the CLI.
-  **Files**: `src/cli.ts` (handleSyncEarlyExits), `src/update.ts`
-  **Acceptance**: `sync --pull` installs Agentfile-requested items after the pull, and `sync --pull --dry-run` performs no fetch or write. A test pins both.
+  **Details**: Scouted while fixing `sync-pull-agentfile-skill-installs`. The authoritative apply drops every non-team source the Agentfile `sources:` list omits, including catalog-derived sources that back skills named in `skills:`. `sync` and `sync --pull` now re-add them by installing the skills straight after the apply. State still loses those sources briefly, and any caller that applies without the install step drops them for good.
+  **Files**: `src/agentfile-apply.ts` (mergeAgentfileSources)
+  **Acceptance**: an authoritative apply keeps a source whose installed skills the Agentfile requests. A test in `src/agentfile-apply.test.ts` pins it.
 
 - [ ] Fix 2 pre-existing test failures unrelated to feature work
   **ID**: fix-stale-test-failures

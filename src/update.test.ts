@@ -307,6 +307,7 @@ describe("update", () => {
     expect(mockSyncSkills).not.toHaveBeenCalled();
     const logCalls = [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.error).mock.calls].flat().join(" ");
     expect(logCalls).toMatch(/dry-run/);
+    expect(logCalls).toContain(`Would pull ${source.url}`);
   });
 
   it("filters to single skill when skillName is provided", async () => {

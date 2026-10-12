@@ -709,3 +709,25 @@ describe.each(["kiro", "amp"])("shape switch clears stale fields for %s", (agent
     expect(entries.github).not.toHaveProperty("env");
   });
 });
+
+// Pin: only opencode gets the array-command shape. Other json-format agents
+// keep the standard `{command, args, env}` stdio shape and the `{url}` remote shape.
+describe.each(["copilot", "kiro", "amp"])("standard stdio shape is kept for %s", (agentName) => {
+  const adapter = getAdapter({ name: agentName, mcpFormat: undefined } as Parameters<typeof getAdapter>[0]);
+
+  it("is not the OpenCodeAdapter", () => {
+    expect(adapter).not.toBeInstanceOf(OpenCodeAdapter);
+  });
+
+  it("emits { command, args, env } with a scalar command and no type key", () => {
+    const entry = adapter.toEntry(
+      makeServer({ name: "srv", command: "npx", args: ["-y", "pkg"], env: { TOKEN: "abc" } }),
+      agentName,
+    );
+    expect(entry.command).toBe("npx");
+    expect(entry.args).toEqual(["-y", "pkg"]);
+    expect(entry).toHaveProperty("env");
+    expect(entry).not.toHaveProperty("environment");
+    expect(entry).not.toHaveProperty("type");
+  });
+});

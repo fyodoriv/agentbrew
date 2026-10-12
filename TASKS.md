@@ -747,42 +747,6 @@
   - **Files**: src/catalog/install-skill.test.ts (new), src/catalog/install-other.test.ts (new)
   - **Blocked by**: integration-test-coverage-95
 
-- [ ] Fix opencode MCP adapter — `JsonAdapter.toEntry()` writes old stdio format rejected by opencode 1.14+
-  **ID**: fix-opencode-adapter-format
-  **Tags**: bug, mcp, opencode, adapters, correctness
-  **Details**: `JsonAdapter.toEntry()` in [`src/mcp/adapters.ts:100-101`](src/mcp/adapters.ts) writes the old MCP stdio format for every agent it handles:
-
-    ```typescript
-    const entry: JsonEntry = { command: server.command };
-    if (server.args.length > 0) entry.args = server.args;
-    ```
-
-    opencode 1.14+ (changed in v1.14.x) requires a different schema:
-
-    ```json
-    { "type": "local", "command": ["npx", "-y", "...args-merged"] }
-    ```
-
-    and uses `"environment"` (not `"env"`) for env vars. The old format causes opencode-serve to crash immediately with `Expected { type: "local", ... } | { type: "remote", ... }, got {"command":"npx","args":[...]}`. Because `agentbrew sync` runs this adapter on every apply, it silently re-breaks `~/.config/opencode/opencode.json` after every `chezmoi apply`, even after the operator has manually fixed the file.
-
-    The other agents that fall through to `JsonAdapter` (devin, copilot, kiro, amp) still expect the old format — so the fix must be opencode-specific. The cleanest shape:
-
-    1. Add `mcpFormat: "opencode"` to `src/core/agents.yaml` for the opencode agent entry (currently it uses the default `json` format, line ~200).
-    2. Create `OpenCodeAdapter` that extends `JsonAdapter` and overrides `toEntry()` to emit `{ type: "local", command: [server.command, ...server.args] }` with `environment` instead of `env`.
-    3. Override `entriesMatch()` in `OpenCodeAdapter` to compare the array-command format (current `entriesMatch` checks `existing.command !== desired.command` and `existing.args`, which would never match the new format and cause spurious re-writes on every sync).
-    4. Wire `getAdapter()` to return the `OpenCodeAdapter` for `mcpFormat === "opencode"`.
-
-    Regression test: add a fixture in `src/mcp/adapters.test.ts` that asserts the opencode adapter's `toEntry()` output round-trips through `readEntries()` on a real `opencode.json` fixture, and that `entriesMatch()` returns `true` on unchanged config (so sync is idempotent).
-  **Files**: `src/mcp/adapters.ts` (new `OpenCodeAdapter` class + `getAdapter` branch), `src/core/agents.yaml` (add `mcpFormat: opencode` to opencode entry), `src/mcp/adapters.test.ts` (new opencode format fixture + idempotency test)
-  **Acceptance**: (a) `agentbrew sync` on a machine with opencode 1.14+ writes `{ type: "local", command: [...] }` entries to `~/.config/opencode/opencode.json`; (b) a second `agentbrew sync` is a no-op (idempotent — `entriesMatch` returns true); (c) the other agents (devin, copilot, kiro, amp) are unaffected — still use old format; (d) `npm run verify` is green.
-  **Output**: code
-  **Hypothesis**: Adding an `OpenCodeAdapter` that emits the opencode 1.14+ schema (`{ type: "local", command: [...] }`) will make `agentbrew sync` produce a valid `opencode.json` without breaking the other agents that share `JsonAdapter`.
-  **Success**: `agentbrew sync` writes valid opencode 1.14+ entries AND a second sync is a no-op (idempotent). `npm run verify` green.
-  **Pivot**: If opencode changes schema again in the next release (1.15+), the adapter pattern still works — just update `toEntry()`. If they stabilize on the old format, revert.
-  **Measurement**: `npm run verify && node -e "const j=require(process.env.HOME+'/.config/opencode/opencode.json'); const e=Object.values(j.mcpServers||{})[0]; console.log(e.type==='local' && Array.isArray(e.command) ? 'PASS' : 'FAIL')"` — must print PASS.
-  **Anchor**: opencode 1.14 changelog (schema change); Martin 2017 adapter pattern; agentbrew AGENTS.md rule §8 (agent definitions in agents.yaml).
-  **Surfaced-by**: 2026-05-15 setup session — opencode 1.14.46 changed MCP schema; `agentbrew sync` ran during `chezmoi apply` and re-broke `opencode.json` every time it ran. Operator had to manually fix the file, only to have it reverted on next sync. Companion doctor check in dotfiles P0 `doctor-opencode-mcp-format` surfaces the symptom until this is fixed.
-
 - [ ] Catalog entry for the Minsky observer skill — `agentbrew install minsky-observer` resolves
   **ID**: catalog-minsky-observer-skill
   **Tags**: catalog, minsky, observer, curator-not-host
@@ -1913,3 +1877,10 @@
   - **Details**: `docs/competition/token-usage-tools.md` last updated 32 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
   - **Files**: docs/competition/token-usage-tools.md
   - **Acceptance**: docs/competition/token-usage-tools.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
+
+- [ ] Warn when OpenCodeAdapter drops env on a URL server
+  **ID**: opencode-remote-env-drop-warning
+  **Tags**: mcp, opencode, adapters, ux
+  **Details**: `OpenCodeAdapter.toEntry` silently drops `env` for URL (remote) servers because the opencode remote schema has no `environment` field. Emit a one-line sync warning (and a test) when a server has both `url` and non-empty `env`, so the loss is visible.
+  **Files**: `src/mcp/adapters.ts`, `src/mcp/adapters.test.ts`
+  **Output**: code

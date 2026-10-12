@@ -589,7 +589,10 @@ npm run typecheck && npm run lint      # tsc + biome + lint guards
 npm run verify                         # full gate: build smoke + typecheck + lint + tests
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
+npm run lint:rules                     # Minsky rule checks on this repo (part of verify)
 ```
+
+`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed. Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block; `.prereg-allowlist` lists the older tasks that predate the gate.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 

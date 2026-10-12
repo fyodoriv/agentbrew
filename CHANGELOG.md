@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`npm run lint:rules` reuses Minsky's rule checks** — a rule-lint adapter
+  runs Minsky's `scripts/check-rule-*.mjs` against this repo with `--repo`,
+  and `npm run verify` runs it. Rule 9 now requires the five
+  pre-registration fields on new task blocks; `.prereg-allowlist` holds the
+  older ones. A machine without Minsky skips the rules.
+
 ### Fixed
 
 - **Tests no longer file fake MCP tasks** — one heal-cycle test let the

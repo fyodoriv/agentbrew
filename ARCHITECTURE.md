@@ -37,7 +37,7 @@ The codebase has three concentric layers; cross-layer reads are forbidden in the
 
 1. **CLI / commands layer** (`src/cli.ts`, `src/commands/`) — argv parsing, output formatting, exit codes. Stateless.
 2. **Engine layer** (`src/sync/`, `src/catalog/`, `src/mcp/`, `src/skills/`, `src/core/`) — pure functions where possible; isolated I/O at adapter boundaries. This is where business logic lives.
-3. **Adapter layer** (`src/sync/mcp-delegate.ts`, `rules-delegate.ts`, `commands-delegate.ts`, per-agent maps in `src/core/agents.yaml`) — calls out to external tools (`mcpm`, `ai-rules`, `skills add`) or writes config files.
+3. **Adapter layer** (`src/sync/mcp-delegate.ts`, `rules-delegate.ts`, `commands-delegate.ts`, `src/adapters/rule-lint.minsky.ts`, per-agent maps in `src/core/agents.yaml`) — calls out to external tools (`mcpm`, `ai-rules`, `skills add`, Minsky's `scripts/check-rule-*.mjs`) or writes config files.
 
 State lives only in `~/.config/agentbrew/` (manifest, state, backups). The repo itself is stateless.
 

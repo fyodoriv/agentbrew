@@ -228,51 +228,6 @@
   - **Vision trace**: G5 (drift + auto-repair, the moat) — keep the glue, delegate the primitive. **User story**: US 06 (drift detection). **Competitor prior art**: mcpm.sh `doctor` (PR #326).
   - **Anchor**: 2026-07-06 shrink pass; docs/competition/mcpm-sh-vs-agentbrew.md.
 
-- [ ] Reuse Minsky's `scripts/check-rule-*.mjs` linters via adapter — don't reimplement (coordination task)
-  **ID**: reuse-minsky-check-rule-scripts
-  **Tags**: scout, reuse-over-reinvent, ci-gate, adapters, parent-task
-  **Blocked**: needs-user-approval — the next required sub-task is `reuse-minsky-check-rule-upstream-pr`, which requires creating a public PR against `github.com/fyodoriv/minsky`; agentbrew rule #14 requires explicit per-session approval before that publish action. See `docs/human-blocked-actions/reuse-minsky-check-rule-upstream-pr-2026-06-04.md`.
-  **Research**: 2026-06-04 — parent pickability corrected
-    The portability spike at `docs/research/minsky-check-rule-portability-spike.md` says 4/12 scripts are portable today, while the 8 scripts needed for the downstream rule tasks require upstream `--repo=` support. Sub-task C (`reuse-minsky-check-rule-adapter`) is explicitly `**Blocked by**: reuse-minsky-check-rule-upstream-pr`, so picking the P0 parent cannot produce an in-repo implementation slice until the public upstream PR step is approved and lands.
-  **Last-enriched**: 2026-06-04
-  **Details**: Coordination task. The Build was decomposed into 4 sub-tasks 2026-05-26 after a portability spike found that several Minsky check-* rules-rule scripts (rules 1, 6, 11, 17) are portable today; the other 8 (rules 2, 3, 4, 5, 7, 9, 12, 13) hardcode `REPO_ROOT = resolve(HERE, "..")` and need an upstream `--repo=` flag. See `docs/research/minsky-check-rule-portability-spike.md` for the full per-script classification and recommended patch shape. Sub-tasks: A (spike write-up, **shipped**), B (upstream `--repo` flag to Minsky, gated on user approval per rule #14), C (build adapter + runner once any rule is portable), D (CI gate + ARCHITECTURE + defer 6 downstream tasks). Closes when all four sub-tasks ship and the 6 `adopt-rule-N` tasks reference the adapter.
-  **Files**: see each sub-task
-  **Acceptance**: All four sub-tasks land. 6 dependent `adopt-rule-N` tasks edited to defer to this adapter. ARCHITECTURE.md dependency-table includes Minsky scripts. `node scripts/run-rule-lints.mjs --json` runs against agentbrew and reports per-rule pass/fail.
-  **Hypothesis**: Wiring up Minsky scripts via an adapter saves ~1000 LOC of reimplementation and provides automatic propagation of Minsky's bug fixes. Cost: ~150 LOC adapter + ~80 LOC runner + 1 upstream Minsky PR. Net shrink: ~850 LOC + structural insurance against rule drift.
-  **Pivot**: Empirical finding from sub-task A (`docs/research/minsky-check-rule-portability-spike.md`): 3 of 12 Minsky scripts (rules 1, 6, 17) accept `--repo=` today and rule 11 is data-driven (also portable). The other 8 (rules 2, 3, 4, 5, 7, 9, 12, 13) hardcode `REPO_ROOT = resolve(HERE, "..")` and need an upstream `--repo=` flag PR. If that upstream PR is rejected or sits >90 days, vendor each script with a `# vendored from minsky@<sha>` header. If vendoring drifts >2 releases behind Minsky's, fall back to implementing each rule locally (the original `adopt-rule-N` tasks).
-  **Measurement**: `node scripts/run-rule-lints.mjs --json | jq '.rules | length'` ≥ 5; `grep -c 'Blocked by: reuse-minsky-check-rule-scripts' TASKS.md` ≥ 6.
-  **Anchor**: Minsky `vision.md` § 1 "Don't reinvent the wheel"; agentbrew `VISION.md` § "Strategy: delegate → contribute → absorb"; Gamma et al. 1994 *Design Patterns* — Adapter pattern.
-
-- [ ] Contribute `--repo` flag upstream to Minsky's check-rule scripts (sub-task B)
-  - **ID**: reuse-minsky-check-rule-upstream-pr
-  - **Tags**: upstream, public-publish, reuse-over-reinvent
-  - **Parent**: reuse-minsky-check-rule-scripts
-  - **Blocked**: needs-user-approval — opening a PR against `github.com/fyodoriv/minsky` is a public-publish action per agentbrew AGENTS.md rule #14. Awaiting per-session user approval. See `docs/human-blocked-actions/reuse-minsky-check-rule-upstream-pr-2026-06-04.md`.
-  - **Research**: 2026-06-04 — public publish gate confirmed
-    Research/local patching is allowed, but creating or pushing the upstream PR to `github.com/fyodoriv/minsky` is explicitly covered by the TASKS.md publishing policy and AGENTS.md rule #14 (`Pushing to any public GitHub remote` and creating PRs/issues outside `acme/agentbrew`). No browser workaround applies because this is not a web UI access problem; the gate is the repository's publish policy.
-  - **Last-enriched**: 2026-06-04
-  - **Details**: For each Minsky script that hardcodes `REPO_ROOT = resolve(HERE, "..")` (per spike findings in sub-task A), add a `--repo <path>` CLI arg with `process.cwd()` fallback, matching the pattern already used by `check-rule-1-novel-justification.mjs`. Don't break existing usage — default keeps `resolve(HERE, "..")` when no `--repo` is passed. Add a regression test that calls each script with `--repo <fixture>` and asserts it reads from the fixture, not the script's own repo.
-  - **Files**: ~/apps/tooling/minsky/scripts/check-rule-{4,9,12,13,17}*.mjs and their .test.mjs files (upstream PR)
-  - **Acceptance**: Upstream PR merged in Minsky; new release tagged; `node ~/apps/tooling/minsky/scripts/check-rule-9-tasksmd-fields.mjs --repo ~/apps/tooling/agentbrew` reads agentbrew's TASKS.md.
-
-- [ ] Build agentbrew adapter `src/adapters/rule-lint.{ts,minsky.ts}` (sub-task C)
-  - **ID**: reuse-minsky-check-rule-adapter
-  - **Tags**: adapter, ci-gate
-  - **Parent**: reuse-minsky-check-rule-scripts
-  - **Details**: Add `src/adapters/rule-lint.ts` (interface — `{ ruleId: string; target: string }` → `Promise<RuleLintResult>`), `src/adapters/rule-lint.minsky.ts` (impl that spawns each Minsky script with `--repo <target>` per sub-task B's output), and `src/adapters/rule-lint.minsky.test.ts`. Include a `selfTest()` static method on the impl per the agentbrew adapter pattern in ARCHITECTURE.md.
-  - **Files**: src/adapters/rule-lint.ts (new), src/adapters/rule-lint.minsky.ts (new), src/adapters/rule-lint.minsky.test.ts (new)
-  - **Acceptance**: `npm test src/adapters/rule-lint.minsky.test.ts` passes; `selfTest()` runs at least one rule against the agentbrew repo and reports pass/fail.
-  - **Blocked by**: reuse-minsky-check-rule-upstream-pr
-
-- [ ] Wire runner + CI gate + ARCHITECTURE + defer 6 adopt-rule-N tasks (sub-task D)
-  - **ID**: reuse-minsky-check-rule-ci-wireup
-  - **Tags**: ci, architecture, task-coordination
-  - **Parent**: reuse-minsky-check-rule-scripts
-  - **Details**: Add `scripts/run-rule-lints.mjs` (iterates adapter, JSON output for CI). Wire a `.github/workflows/rule-lints.yml` (or extend existing) to run it on every PR. Add a row to `ARCHITECTURE.md`'s dependency table for `@minsky/check-rule-scripts`. Edit the 6 `adopt-rule-N` tasks (3, 8, 9, 10, 12, 16) so their **Build** section references this adapter and adds `**Blocked by**: reuse-minsky-check-rule-scripts`.
-  - **Files**: scripts/run-rule-lints.mjs (new), .github/workflows/rule-lints.yml (new/edit), ARCHITECTURE.md, TASKS.md (6 task edits), CHANGELOG.md
-  - **Acceptance**: `node scripts/run-rule-lints.mjs --json | jq '.rules | length'` ≥ 5; CI workflow runs on every PR and blocks merge on failing rules; ARCHITECTURE dependency table updated; all 6 `adopt-rule-N` tasks defer to this.
-  - **Blocked by**: reuse-minsky-check-rule-adapter
-
 - [ ] Awaiting upstream review: `block/ai-rules#96` adds `--source-dir`/`--target-dir` flags
   **ID**: delegate-rules-to-ai-rules-slice-6a-followup
   **Tags**: architecture, simplify, delegate, sub-task, upstream-pr, awaiting-review
@@ -472,7 +427,7 @@
 - [ ] Make hypothesis-driven development an iron rule (rule #9) — CI-required H/S/P/M/A on every P0/P1
   **ID**: adopt-rule-9-iron-hdd
   **Tags**: scout, rule-9, ci-gate, constitution
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: agentbrew already uses Minsky-style Hypothesis / Success / Pivot / Measurement / Anchor fields on many tasks (see `agentbrew-tasks-rule9-fill-sweep` for the existing partial-coverage state). But they're voluntary. Minsky's rule #9 is iron: no exemption for small fixes, obvious bugs, or refactors. Every change declares — before code is written — its hypothesis, success threshold, pivot threshold, measurement command, and literature anchor. Vanity metrics and post-hoc metrics are forbidden.
 
   Build:
@@ -495,7 +450,7 @@
 - [ ] Make deterministic enforcement an iron rule (rule #10) — every constitutional rule has a CI lint
   **ID**: adopt-rule-10-deterministic-enforcement
   **Tags**: scout, rule-10, ci-gate, constitution
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: Minsky's rule #10: "Every constitutional rule must be enforced by a deterministic CI check — not a Skill, not an LLM, not 'the agent will remember'. LLM-driven checks are advisory only; never load-bearing." When a rule resists mechanisation, split into deterministic substrate + explicit human-judgement layer. When a deterministic linter ships, any prior Skill-based enforcement is removed in the same PR (the ratchet rule).
 
   agentbrew has ~rules in AGENTS.md that match Cat A/B.md but mostly relies on the reviewer noticing violations. Examples of rules that should be CI-lints but aren't:
@@ -521,7 +476,7 @@
 - [ ] Make proactive healing an iron rule (rule #12 / Minsky rule #17) — observation IS the fix
   **ID**: adopt-rule-12-proactive-healing
   **Tags**: scout, rule-12, ci-gate, constitution
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: Minsky's rule #17 (their highest-numbered, iron): "Observation IS the fix. Every error you see — `spawn-failed`, `scope-leak`, `ETIMEDOUT`, stack traces, hung processes, flaky tests, red CI checks — is treated as work to ship in the SAME session, the SAME PR if possible. 'Observe and report' is forbidden. 'Mental note for later' is forbidden."
 
   Four mandatory parts:
@@ -980,7 +935,7 @@
 - [ ] Adopt rule #3 — test-first + doc-first across all behavior changes
   **ID**: adopt-rule-3-doc-first-discipline
   **Tags**: scout, rule-3, constitution
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: Minsky's rule #3: "Every change starts with: a failing test (red); a metric in the relevant `user-stories/*.md` file with a numeric threshold and an SLI source; updated documentation in the same commit as the code change. Then write the minimum code to pass (green). Then refactor. No exceptions." Plus the spec-kit Article III gate: GWT acceptance scenarios in `user-stories/<id>.md` or `.minsky/specs/<task-id>.md` BEFORE the test file is written.
 
   agentbrew has the test tree and ~2600 tests — test-first is already cultural. Doc-first is weaker: many PRs ship code + maybe-README. The independent-testability test ("If I implement just this one story, do I have a viable demonstrable unit of value?") is not applied. Adopt by: (a) extend `.github/pull_request_template.md` with a "Test added first?" checkbox + "Story file path" field; (b) `scripts/check-rule-3-test-first.mjs` checks that the diff includes either `*.test.ts` additions OR an explicit `**Test-first-exemption:**` line in the PR body; (c) `docs/user-stories/<id>.md` must exist for any feature PR (CI lint checks the link in PR body resolves to a file in the repo).
@@ -1190,7 +1145,7 @@
 - [ ] Adopt rule #8 — pattern conformance index in `VISION.md`
   **ID**: adopt-rule-8-pattern-conformance-index
   **Tags**: scout, rule-8, constitution, architecture
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: Minsky's rule #8: "Every artifact (file, package, interface, architectural decision, process step) traces to a named, published pattern. New artifacts add a row to `vision.md` § 'Pattern conformance index' in the same commit. Deviations from the published pattern are declared explicitly. Identifiers match pattern names when the match is total. Silent deviation is itself a constitutional violation."
 
   agentbrew's `getAdapter()` factory IS the Adapter pattern (Gamma 1994). The drift-detection runs every 30 min — that's MAPE-K (IBM 2003). The state.yaml + Agentfile pair is Repository + Specification (Evans 2003, Fowler 2002). But none are CITED in code or VISION.md. New contributors don't know which patterns are load-bearing.
@@ -1209,7 +1164,7 @@
 - [ ] Adopt rule #16 — default by default (new behavior IS the default, not opt-in)
   **ID**: adopt-rule-16-default-by-default
   **Tags**: scout, rule-16, constitution
-  **Blocked by**: reuse-minsky-check-rule-scripts (try the GET path first; if Minsky scripts don't generalize, this task unblocks as the local impl fallback)
+  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
   **Details**: Minsky's rule #16: "When you implement a new behaviour or fix, make it the default immediately — not an opt-in flag behind an env var. Every new default ships with (1) an experiment in `.minsky/experiments/<id>.yaml`, (2) a runnable measurement, (3) a documented opt-out for debugging only. Burden of proof: 'why ISN'T this the default?'"
 
   agentbrew has accumulated opt-in flags (`--prune`, `--dry-run`, `--verbose`, `--source`, `--curated`) that should perhaps be defaults. The audit found 3 cases where a fix landed behind a flag instead of as the default behavior (e.g. the recent opencode fix in `import.ts`).

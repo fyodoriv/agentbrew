@@ -317,17 +317,17 @@
   - **Measurement**: `jq -r 'select(.type=="attachment") | .attachment | select(.hookName=="PreToolUse:Bash") | .durationMs' ~/.claude/projects/*/*.jsonl | sort -n | awk '{a[NR]=$1} END{print a[int(NR/2)]}'`
   - **Anchor**: VISION.md G5 drift-detection + auto-repair; Nielsen (1993) 1s/10s interaction-latency thresholds — a 15s blocking pre-tool hook is far past the point where the loop stalls.
 
-- [ ] Stop false MCP heal records and repair the timed-out server/agent pairs
+- [ ] Report logged-out MCP servers and alarm on pairs failing for over 24h
   - **ID**: mcp-windsurf-cluster-stale-failures-9-plus-days
   - **Tags**: scout, mcp, health, heal, copilot, opencode, stability
   - **Scope**: Windsurf and Devin support was removed on 2026-10-08. Their pairs no longer exist.
-  - **Details**: Updated 2026-09-28: the failures are no longer windsurf-only. `~/.cache/agentbrew/mcp-health.json` lists failing server/agent pairs on several agents. `agentbrew status` shows 15, because 5 are suppressed on purpose (figma per-client OAuth x4, and `ask-human`/copilot, see `re-promote-ask-human-mcp-after-stdio-fix`). Of the 15: (a) 14 are launcher timeouts: `chrome-devtools`, `playwright`, `shadcn-mcp`, `github` and `tasks-mcp` on windsurf, devin, copilot and opencode. The same `chrome-devtools` and `playwright` servers are healthy on claude-code, so the per-agent launch config is the likely shared cause. (b) 1 is a login failure: `railway`/claude-code is not logged in. The heal history of the shown pairs holds 124 attempts. All 124 are recorded `healed: true`, but no pair recovered. Cause: `runMcpSyncHeal()` in `src/mcp/heal-actions.ts` returns `healed: true` after `syncMcpServers()` and does not re-probe. Steps: (1) record `healed: true` only when a re-probe after the heal action returns ok; (2) report a logged-out server as needs-login with its login command, and do not auto-heal it; (3) find and fix the shared launcher fault for class (a); (4) flag any pair that fails for more than 24h.
-  - **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, src/mcp/probe.ts, src/status.ts, src/core/mcp-agent-map.ts, src/health.ts, TASKS.md
-  - **Acceptance**: (1) a unit test with a fake probe shows that a heal whose re-probe still fails is recorded `healed: false`; (2) a logged-out server shows as needs-login with its exact login command and is not counted as failing; (3) `agentbrew mcp probe --deep` returns ok or a documented skip for the 14 class-(a) pairs; (4) a staleness check flags any pair that fails for more than 24h.
-  - **Hypothesis**: One per-agent launcher fault causes the 14 timeout pairs, and false `healed: true` records hide it (124 of 124 recorded heals fixed nothing). A re-probe gate plus a launcher fix takes non-login failing pairs from 14 to 0 and false heal records from 124 to 0.
-  - **Success**: After `agentbrew mcp probe --deep`, the Measurement command prints 0, and no new heal record says `healed: true` when its re-probe failed.
-  - **Pivot**: If the launcher fix clears fewer than 7 of the 14 timeout pairs, drop the shared-cause theory and triage each server. Keep the re-probe gate and the 24h staleness alarm in both cases.
-  - **Measurement**: `jq '[.servers[] | select(.status != "ok" and (.status | startswith("skipped_") | not) and (.suppression == null) and ((.lastError // "") | test("401|403|logged in") | not))] | length' ~/.cache/agentbrew/mcp-health.json` prints 0 (baseline 2026-09-28: 14).
+  - **Details**: Updated 2026-10-12. Done: `runMcpHealCycle()` now records `healed: true` only when the pair passes the re-probe (before: 369 of 371 heal records said `healed: true`, including 252 for a `github` entry that stayed broken for days). Disproved: the "one shared launcher fault" theory. A deep probe at load 6 on 10 cores passed every non-OAuth pair; the same probe at load 13 to 20 timed out on most copilot and opencode servers. The timeouts track machine load, not launch config. Remaining: (1) report a logged-out server as needs-login with its login command, and do not auto-heal it; (2) flag any pair whose `lastOkAt` in `~/.cache/agentbrew/mcp-health.json` is older than 24h, so a real outage stands out from load noise.
+  - **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, src/status.ts, src/health.ts
+  - **Acceptance**: (1) a logged-out server shows as needs-login with its exact login command and is not counted as failing; (2) a staleness check flags any pair with no ok probe for more than 24h, and a test covers it.
+  - **Hypothesis**: Most failing pairs are transient load timeouts that recover on their own, so a 24h staleness alarm separates real outages from noise. Pairs flagged stale drop to the real outages only (0 on a healthy machine).
+  - **Success**: On a healthy machine, the staleness check flags nothing, and the Measurement command prints 0.
+  - **Pivot**: If the staleness check keeps flagging pairs that work when tested by hand, the 24h window or the probe budget is wrong; rethink the signal instead of tuning the threshold.
+  - **Measurement**: `jq '[.servers[] | select(.status != "ok" and (.status | startswith("skipped_") | not) and (.suppression == null) and ((.lastError // "") | test("401|403|logged in") | not))] | length' ~/.cache/agentbrew/mcp-health.json` prints 0 (2026-10-12 after a plain probe: 0).
   - **Anchor**: VISION.md G5 drift-detection + auto-repair; DORA MTTR (Forsgren, Humble, Kim, *Accelerate*, 2018) for detect-to-repair time; Beyer et al., *Site Reliability Engineering*, 2016, Ch. 6 "Monitoring Distributed Systems" (monitor the symptom, not the cause).
 
 
@@ -857,6 +857,13 @@
   **Anchor**: minsky's `pickHostTask` (the load-bearing gate); global_rules.md "Minsky-managed repos add rule-#9 fields" (the contract this task implements); Basili/Caldiera/Rombach 1994 *Goal-Question-Metric* (the conceptual frame minsky's rule #9 instantiates).
 
 ## P2
+
+- [ ] Cap the MCP heal history kept per server/agent pair
+  - **ID**: mcp-heal-history-cap
+  - **Tags**: scout, mcp, health, snapshot
+  - **Details**: `buildMcpHealthSnapshot()` in `src/mcp/health-snapshot.ts` appends every heal attempt to `healHistory` and never trims it. On 2026-10-12 one pair (`github`/opencode) held 182 records and `~/.cache/agentbrew/mcp-health.json` was 107 KB. Keep the last few attempts per pair plus a total count.
+  - **Files**: src/mcp/health-snapshot.ts, src/mcp/health-snapshot.test.ts
+  - **Acceptance**: after more heal cycles than the cap, a pair keeps at most the cap of attempts and the total count stays correct; a test covers it.
 
 - [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
   - **ID**: github-mcp-maintained-server-without-launcher

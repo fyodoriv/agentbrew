@@ -78,6 +78,33 @@ describe("runMcpHealCycle", () => {
     expect(cycle.final[0].status).toBe("ok");
   });
 
+  // Regression: the sync heal always reported healed: true, so a pair that stayed
+  // broken for days collected hundreds of "healed" records.
+  it("records healed: false when the pair still fails the re-probe", async () => {
+    const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
+    const failed = result({ status: "launch_failed", error: "spawn github-mcp ENOENT" });
+    const probeAll = vi.fn().mockResolvedValue([failed]);
+    const healAction = vi.fn(async () => ({ healed: true, action: "agentbrew-sync-mcp" }));
+    const writeSnapshot = vi.fn();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const cycle = await runMcpHealCycle({
+      surfaces,
+      probeAll,
+      healActions: new Map([["sync", healAction]]),
+      writeSnapshot,
+      writeFollowups: vi.fn(),
+      now: () => new Date("2026-06-04T12:00:00.000Z"),
+    });
+
+    expect(cycle.attempts).toEqual([expect.objectContaining({ action: "agentbrew-sync-mcp", healed: false })]);
+    expect(writeSnapshot).toHaveBeenCalledWith(
+      [expect.objectContaining({ status: "launch_failed" })],
+      [expect.objectContaining({ healed: false })],
+      "2026-06-04T12:00:00.000Z",
+    );
+  });
+
   it("snapshots URL failures and attempts the registered sync heal action", async () => {
     const surfaces = [{ agent: "cursor", servers: { remote: { url: "https://example.invalid/mcp" } } }];
     const failed = result({ name: "remote", status: "tools_list_failed", error: "remote tools unavailable" });

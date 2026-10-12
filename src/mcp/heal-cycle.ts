@@ -209,13 +209,24 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
   }
 
   const final = await probeAll(surfaces, probeOptions());
+  const gatedAttempts = gateHealedOnReprobe(attempts, final);
   writeSnapshotResult(
     writeSnapshot,
     final,
-    attempts,
+    gatedAttempts,
     now().toISOString(),
     suppressionsForResults(final, suppressionByServer),
   );
-  reportUnresolvedFailures(final, attempts, writeFollowups);
-  return { initial, final, attempts };
+  reportUnresolvedFailures(final, gatedAttempts, writeFollowups);
+  return { initial, final, attempts: gatedAttempts };
+}
+
+/** A heal counts only when its server/agent pair passes the re-probe. */
+function gateHealedOnReprobe(attempts: McpHealAttempt[], final: ProbeResult[]): McpHealAttempt[] {
+  const stillFailing = new Set(final.filter(isProbeFailure).map((r) => `${r.name}\u0000${r.agent}`));
+  return attempts.map((attempt) =>
+    attempt.healed && stillFailing.has(`${attempt.name}\u0000${attempt.agent}`)
+      ? { ...attempt, healed: false }
+      : attempt,
+  );
 }

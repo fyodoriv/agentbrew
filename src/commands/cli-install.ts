@@ -18,7 +18,7 @@ import { parseKeyValuePairs } from "../utils.js";
 /** Apply an Agentfile and install any declared skills or recommended items. */
 export async function applyAgentfileAndInstall(
   agentfilePath: string,
-  options?: { installRequestedItems?: boolean; dryRun?: boolean },
+  options?: { installRequestedItems?: boolean; dryRun?: boolean; authoritative?: boolean },
 ): Promise<void> {
   const { resolve } = await import("node:path");
   const { applyAgentfile } = await import("../agentfile.js");
@@ -26,7 +26,7 @@ export async function applyAgentfileAndInstall(
   const installRequestedItems = options?.installRequestedItems ?? true;
   const dryRun = options?.dryRun ?? false;
   const result = applyAgentfile(resolved, {
-    authoritative: true,
+    authoritative: options?.authoritative ?? true,
     includeSkillInstallReport: installRequestedItems,
     dryRun,
   });

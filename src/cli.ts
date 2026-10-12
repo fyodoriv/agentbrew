@@ -227,6 +227,7 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
     installAgentfileItems,
     dryRun: options.dryRun,
     agentfilePath: options.agentfile,
+    authoritative: options.prune !== false,
   };
 
   if (options.sequential) {
@@ -264,6 +265,8 @@ async function handleSyncAgentfile(options: SyncCommandOptions, installAgentfile
   await applyAgentfileAndInstall(options.agentfile, {
     installRequestedItems: installAgentfileItems,
     dryRun: options.dryRun,
+    // `--no-prune` must also stop the Agentfile apply from pruning state-backed lists.
+    authoritative: options.prune !== false,
   });
 }
 

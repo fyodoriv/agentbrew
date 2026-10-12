@@ -3179,3 +3179,94 @@ describe("lock file workflow (US22)", () => {
     expect(driftResults.find((r) => r.source === SOURCE_URL_2)!.match).toBe(false);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 19. sync --agentfile --no-prune keeps pre-existing managed state
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("applyAgentfileAndInstall — no-prune keeps pre-existing managed state", () => {
+  const OVERLAY_DIR = join(TEST_HOME, "no-prune-overlay");
+
+  function seedState(): void {
+    saveState(
+      makeState({
+        mcpServers: [
+          { name: "kept-srv", command: "node", args: ["kept.js"], env: {}, source: "user" },
+          { name: "overlay-srv", command: "node", args: ["old.js"], env: {}, source: "user" },
+        ],
+        sources: [
+          {
+            url: "https://example.com/kept-skills.git",
+            type: "url",
+            skillsInstalled: [],
+            availableItems: [],
+            addedAt: "2026-01-01T00:00:00.000Z",
+            origin: "agentfile",
+          },
+        ],
+        commandSourceDirs: [{ label: "old", path: join(TEST_HOME, "kept-commands"), origin: "agentfile" }],
+      }),
+    );
+    mkdirSync(OVERLAY_DIR, { recursive: true });
+    writeFileSync(
+      join(OVERLAY_DIR, "Agentfile.yaml"),
+      [
+        "mcp:",
+        "  - name: overlay-srv",
+        "    command: node",
+        "    args: ['new.js']",
+        "  - name: added-srv",
+        "    command: node",
+        "    args: ['added.js']",
+        "sources:",
+        "  - https://example.com/overlay-skills.git",
+        "commands:",
+        "  - ./overlay-commands",
+      ].join("\n"),
+    );
+  }
+
+  afterEach(() => {
+    if (existsSync(OVERLAY_DIR)) rmSync(OVERLAY_DIR, { recursive: true, force: true });
+  });
+
+  it("authoritative: false keeps existing servers, sources, and command dirs while adding overlay entries", async () => {
+    seedState();
+    const { applyAgentfileAndInstall } = await import("./commands/cli-install.js");
+    const log = captureLog();
+    try {
+      await applyAgentfileAndInstall(join(OVERLAY_DIR, "Agentfile.yaml"), {
+        authoritative: false,
+        installRequestedItems: false,
+      });
+    } finally {
+      log.reset();
+    }
+
+    const state = loadState();
+    const servers = new Map((state?.mcpServers ?? []).map((s) => [s.name, s]));
+    expect([...servers.keys()].sort()).toEqual(["added-srv", "kept-srv", "overlay-srv"]);
+    expect(servers.get("overlay-srv")?.args).toEqual(["new.js"]);
+    expect((state?.sources ?? []).map((s) => s.url)).toEqual(
+      expect.arrayContaining(["https://example.com/kept-skills.git", "https://example.com/overlay-skills.git"]),
+    );
+    expect((state?.commandSourceDirs ?? []).map((d) => d.path)).toEqual(
+      expect.arrayContaining([join(TEST_HOME, "kept-commands"), join(OVERLAY_DIR, "overlay-commands")]),
+    );
+  });
+
+  it("default stays authoritative and prunes entries the Agentfile does not list", async () => {
+    seedState();
+    const { applyAgentfileAndInstall } = await import("./commands/cli-install.js");
+    const log = captureLog();
+    try {
+      await applyAgentfileAndInstall(join(OVERLAY_DIR, "Agentfile.yaml"), { installRequestedItems: false });
+    } finally {
+      log.reset();
+    }
+
+    const state = loadState();
+    expect((state?.mcpServers ?? []).map((s) => s.name)).not.toContain("kept-srv");
+    expect((state?.sources ?? []).map((s) => s.url)).not.toContain("https://example.com/kept-skills.git");
+  });
+});

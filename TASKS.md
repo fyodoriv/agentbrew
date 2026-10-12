@@ -367,17 +367,12 @@
   **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
   **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
   **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
-- [ ] `sync --agentfile ... --no-prune` preserves existing Agentfile-managed state
-  **ID**: sync-agentfile-no-prune-preserves-state
-  **Tags**: scout, agentfile, sync, no-prune
-  **Details**: Scouted while healing live rules from trimmed dotfiles overlays. `sync --agentfile <overlay> --no-prune --only rules,instructions` still calls `applyAgentfileAndInstall()` with `authoritative: true` before sync modules run, so state-backed lists can be pruned even though sync pruning is disabled. This caused MCP state to temporarily drop back to the overlay's narrow set during live repair. The CLI should propagate no-prune semantics into Agentfile application or provide a separate additive overlay path.
-  **Files**: `src/cli.ts`, `src/commands/cli-install.ts`, `src/agentfile-apply.ts`, `src/commands/cli-install.test.ts`, `src/integration.test.ts`
-  **Acceptance**: A regression test seeds state with MCP servers/sources/command dirs, runs `sync --agentfile <overlay> --no-prune`, and proves previously managed entries remain while overlay entries are added/updated. The same test proves default prune behavior remains authoritative.
-  **Hypothesis**: Passing prune semantics through Agentfile application prevents overlay syncs from deleting unrelated managed state before the sync phase starts.
-  **Success**: The regression fails on current main by showing a removed pre-existing state entry, then passes after the CLI/apply path honors `--no-prune`.
-  **Pivot**: If preserving all state under `--no-prune` conflicts with documented Agentfile authority, split the command surface into explicit `--agentfile-mode authoritative|additive` and document the default.
-  **Measurement**: `npx vitest run src/commands/cli-install.test.ts src/integration.test.ts -t no-prune` exits 0 and fails when `applyAgentfileAndInstall()` hard-codes authoritative application.
-  **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair preserves user-managed/manual content), README.md sync command docs (`--no-prune` keeps stale items).
+- [ ] Authoritative Agentfile apply drops servers and sources it just added
+  **ID**: agentfile-authoritative-apply-drops-new-entries
+  **Tags**: scout, agentfile, state, bug
+  **Details**: Scouted while fixing no-prune. `mergeAgentfileMcp` and `mergeAgentfileSources` in `src/agentfile-apply.ts` push new entries onto `state.mcpServers` / `state.sources`, but `getStateServers` / `getStateSources` return shallow copies. In authoritative mode, when at least one stale entry is also removed, the code assigns `state.mcpServers = stateServers.filter(...)` from the copy taken before the push. The entries added in the same apply are then lost until the next apply.
+  **Files**: `src/agentfile-apply.ts`, `src/agentfile-apply.test.ts`, `src/integration.test.ts`
+  **Acceptance**: A regression test applies an authoritative Agentfile that both adds a server/source and prunes a stale one, and proves the added entry is in saved state after one apply.
 
 - [ ] Expose a repo-only base catalog loader for static analyzers
   **ID**: base-catalog-loader-for-static-analyzers

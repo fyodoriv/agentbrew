@@ -647,6 +647,18 @@ describe("applyAgentfileAndInstall", () => {
     );
     expect(mockInstall).not.toHaveBeenCalled();
   });
+
+  it("applies non-authoritatively when asked (sync --no-prune)", async () => {
+    mockApplyAgentfile.mockReturnValue({
+      skillsToInstall: [],
+      recommendedRequested: false,
+    } as unknown as ReturnType<typeof applyAgentfile>);
+    await applyAgentfileAndInstall("/path/to/Agentfile.yaml", { authoritative: false });
+    expect(mockApplyAgentfile).toHaveBeenCalledWith(
+      expect.stringContaining("Agentfile.yaml"),
+      expect.objectContaining({ authoritative: false }),
+    );
+  });
 });
 
 describe("registerDefaultAction", () => {

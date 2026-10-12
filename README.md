@@ -519,6 +519,8 @@ agentbrew sync [--dry-run] [--no-prune] [--only <modules>] [--rollback]
                                        Deploy + repair drift (prunes by default)
 agentbrew sync --pull                  Fetch latest from sources, then deploy
 agentbrew sync --agentfile <path>      Apply an Agentfile before syncing (dotfiles workflow)
+agentbrew sync --no-prune --agentfile <path>
+                                       Add/update from that Agentfile, keep existing state entries
 agentbrew sync --dry-run --agentfile <path>
                                        Preview that Agentfile without changing state
 

@@ -34,6 +34,8 @@ interface SyncRunnerOptions {
   installAgentfileItems?: boolean;
   dryRun?: boolean;
   agentfilePath?: string;
+  /** False when `--no-prune` is set: the explicit Agentfile preview must not prune state. */
+  authoritative?: boolean;
 }
 
 interface PreparedSync {
@@ -113,7 +115,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
     try {
       globalResult = applyAgentfile(options.agentfilePath, {
         quiet: true,
-        authoritative: true,
+        authoritative: options.authoritative ?? true,
         includeSkillInstallReport: installAgentfileItems,
         dryRun,
         stateOverride: virtualState,

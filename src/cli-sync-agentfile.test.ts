@@ -66,6 +66,7 @@ describe("sync --dry-run --agentfile", () => {
     expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith("./Agentfile.yaml", {
       installRequestedItems: true,
       dryRun: true,
+      authoritative: true,
     });
     expect(mockRunSyncParallel).toHaveBeenCalledWith(
       expect.any(Array),
@@ -87,6 +88,7 @@ describe("sync --dry-run --agentfile", () => {
     expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith("./Agentfile.yaml", {
       installRequestedItems: false,
       dryRun: true,
+      authoritative: true,
     });
     expect(mockRunSyncParallel).toHaveBeenCalledWith(
       expect.any(Array),
@@ -95,6 +97,23 @@ describe("sync --dry-run --agentfile", () => {
         installAgentfileItems: false,
         dryRun: true,
       }),
+    );
+  });
+});
+
+describe("sync --no-prune --agentfile", () => {
+  it("applies the explicit Agentfile additively and tells the runner not to prune", async () => {
+    const program = buildSilentProgram();
+
+    await program.parseAsync(["node", "test", "sync", "--no-prune", "--agentfile", "./Agentfile.yaml"]);
+
+    expect(mockApplyAgentfileAndInstall).toHaveBeenCalledWith(
+      "./Agentfile.yaml",
+      expect.objectContaining({ authoritative: false }),
+    );
+    expect(mockRunSyncParallel).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ agentfilePath: "./Agentfile.yaml", authoritative: false }),
     );
   });
 });

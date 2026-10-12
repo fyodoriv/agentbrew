@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { availableParallelism, loadavg } from "node:os";
 import chalk from "chalk";
 import type { CatalogMcpProbeSuppression } from "../catalog/types.js";
 import { loadAgentDefinitions } from "../core/agents.js";
@@ -51,6 +52,25 @@ interface McpHealCycleOptions {
   writeFollowups?: FollowupWriter;
   suppressionByServer?: ReadonlyMap<string, CatalogMcpProbeSuppression>;
   now?: () => Date;
+  /** 1-minute load average divided by core count. Injectable for tests. */
+  loadPerCore?: () => number;
+}
+
+/**
+ * Load per core above which timeout failures are not healed.
+ *
+ * 1.0 is the saturation point: more runnable tasks than cores. On a 10-core
+ * machine, loads of 13-20 (1.3-2.0 per core) produced many deep-probe
+ * timeouts and a load of 6 (0.6 per core) produced none.
+ */
+export const HIGH_LOAD_PER_CORE = 1.0;
+
+const TIMEOUT_STATUSES: ReadonlySet<string> = new Set(["init_timeout", "tools_list_timeout"]);
+
+const isTimeoutFailure = (failure: ProbeResult): boolean => TIMEOUT_STATUSES.has(failure.status);
+
+function currentLoadPerCore(): number {
+  return loadavg()[0] / Math.max(1, availableParallelism());
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -117,9 +137,11 @@ async function collectHealAttempts(
   suppressionByServer: ReadonlyMap<string, CatalogMcpProbeSuppression>,
   healActions: ReadonlyMap<ProbeStatusCategory, HealAction>,
   attemptedAt: string,
+  deferred: ReadonlySet<ProbeResult>,
 ): Promise<McpHealAttempt[]> {
   const attempts: McpHealAttempt[] = [];
   for (const failure of failures) {
+    if (deferred.has(failure)) continue;
     if (isSuppressedFailure(failure, suppressionByServer)) continue;
     const category = categorizeProbeResult(failure);
     const action = category ? healActions.get(category) : undefined;
@@ -133,8 +155,9 @@ function reportUnresolvedFailures(
   results: ProbeResult[],
   attempts: McpHealAttempt[],
   writeFollowups: FollowupWriter,
+  deferred: ReadonlySet<string>,
 ): void {
-  const unresolved = results.filter(isProbeFailure);
+  const unresolved = results.filter(isProbeFailure).filter((r) => !deferred.has(pairKey(r)));
   if (unresolved.length === 0) return;
   writeFollowups(unresolved, attempts);
   console.log(chalk.yellow(`MCP auto-heal left ${unresolved.length} probe failure(s); see agentbrew status.`));
@@ -194,7 +217,9 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
 
   const healActions = options.healActions ?? HEAL_ACTIONS;
   const attemptedAt = now().toISOString();
-  const attempts = await collectHealAttempts(failures, suppressionByServer, healActions, attemptedAt);
+  const deferred = deferTimeoutsUnderLoad(failures, options.loadPerCore ?? currentLoadPerCore);
+  const deferredKeys = new Set([...deferred].map(pairKey));
+  const attempts = await collectHealAttempts(failures, suppressionByServer, healActions, attemptedAt, deferred);
 
   if (attempts.length === 0) {
     writeSnapshotResult(
@@ -204,7 +229,7 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
       now().toISOString(),
       suppressionsForResults(initial, suppressionByServer),
     );
-    reportUnresolvedFailures(initial, attempts, writeFollowups);
+    reportUnresolvedFailures(initial, attempts, writeFollowups, deferredKeys);
     return { initial, final: initial, attempts };
   }
 
@@ -217,8 +242,22 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
     now().toISOString(),
     suppressionsForResults(final, suppressionByServer),
   );
-  reportUnresolvedFailures(final, gatedAttempts, writeFollowups);
+  reportUnresolvedFailures(final, gatedAttempts, writeFollowups, deferredKeys);
   return { initial, final, attempts: gatedAttempts };
+}
+
+/** Timeout failures to leave alone this tick because the machine is overloaded. */
+function deferTimeoutsUnderLoad(failures: ProbeResult[], loadPerCore: () => number): Set<ProbeResult> {
+  const timeouts = failures.filter(isTimeoutFailure);
+  if (timeouts.length === 0) return new Set();
+  const load = loadPerCore();
+  if (load <= HIGH_LOAD_PER_CORE) return new Set();
+  console.log(
+    chalk.yellow(
+      `MCP auto-heal deferred ${timeouts.length} timeout failure(s): load per core ${load.toFixed(2)} is above ${HIGH_LOAD_PER_CORE}.`,
+    ),
+  );
+  return new Set(timeouts);
 }
 
 const pairKey = (value: { agent: string; name: string }): string => `${value.agent}\u0000${value.name}`;

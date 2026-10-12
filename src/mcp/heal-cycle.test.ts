@@ -114,6 +114,7 @@ describe("runMcpHealCycle", () => {
       probeAll,
       healActions: new Map([["sync", healAction]]),
       writeSnapshot,
+      loadPerCore: () => 0,
       now: () => new Date("2026-06-04T12:00:00.000Z"),
     });
 
@@ -178,6 +179,57 @@ describe("runMcpHealCycle", () => {
     );
   });
 
+  describe("load-aware heal deferral", () => {
+    const surfaces = [{ agent: "cursor", servers: { remote: { url: "https://example.invalid/mcp" } } }];
+    const run = async (failed: ProbeResult, loadPerCore: number) => {
+      const probeAll = vi.fn().mockResolvedValue([failed]);
+      const healAction = vi.fn(async () => ({ healed: false, action: "agentbrew-sync-mcp" }));
+      const writeSnapshot = vi.fn();
+      const writeFollowups = vi.fn();
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        const cycle = await runMcpHealCycle({
+          surfaces,
+          probeAll,
+          healActions: new Map([["sync", healAction]]),
+          writeSnapshot,
+          writeFollowups,
+          loadPerCore: () => loadPerCore,
+          now: () => new Date("2026-06-04T12:00:00.000Z"),
+        });
+        return { cycle, probeAll, healAction, writeSnapshot, writeFollowups, logged: log.mock.calls.flat().join("\n") };
+      } finally {
+        log.mockRestore();
+      }
+    };
+
+    it.each([
+      "init_timeout",
+      "tools_list_timeout",
+    ] as const)("defers the heal for %s under high load but still snapshots it", async (status) => {
+      const failed = result({ name: "remote", status, error: "timed out" });
+      const out = await run(failed, 2);
+
+      expect(out.healAction).not.toHaveBeenCalled();
+      expect(out.writeFollowups).not.toHaveBeenCalled();
+      expect(out.cycle.attempts).toEqual([]);
+      expect(out.writeSnapshot).toHaveBeenCalledWith([failed], [], "2026-06-04T12:00:00.000Z");
+      expect(out.logged).toContain("deferred");
+      expect(out.logged).toContain("load");
+    });
+
+    it("still heals timeout failures under normal load", async () => {
+      const out = await run(result({ name: "remote", status: "init_timeout" }), 0.5);
+      expect(out.healAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("still heals non-timeout failures under high load", async () => {
+      const out = await run(result({ name: "remote", status: "tools_list_failed" }), 3);
+      expect(out.healAction).toHaveBeenCalledTimes(1);
+      expect(out.probeAll).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("writes follow-up tasks for failures that remain after healing", async () => {
     const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
     const failed = result({ status: "smoke_call_failed", error: "401 Unauthorized" });
@@ -221,6 +273,7 @@ describe("runMcpHealCycle", () => {
         surfaces,
         probeAll,
         healActions: new Map([["sync", healAction]]),
+        loadPerCore: () => 0,
         suppressionByServer: new Map([
           [
             "ask-human",

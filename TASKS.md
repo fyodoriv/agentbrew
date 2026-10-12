@@ -806,12 +806,12 @@
 
 ## P2
 
-- [ ] Skip heal attempts when the machine load makes probe timeouts meaningless
-  - **ID**: heal-cycle-defer-on-high-load
-  - **Tags**: scout, mcp, heal, scheduler, load
-  - **Details**: Deep-probe timeouts on copilot and opencode tracked machine load: many timeouts at high load, none at low load. The heal cycle still runs sync heal actions on those timeouts, which cannot help. When the load average per core is far above the normal level, record the probe results but run no heal action and file no follow-up, and say why in the snapshot.
-  - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
-  - **Acceptance**: with an injected high load reading, a timeout failure triggers no heal action and no follow-up; with a normal reading it behaves as before; a test covers both.
+- [ ] Show deferred-for-load heal state in the health snapshot
+  - **ID**: snapshot-record-heal-deferred-for-load
+  - **Tags**: scout, mcp, heal, snapshot
+  - **Details**: The heal cycle now logs when it defers timeout heals under high load, but the snapshot does not record it. `agentbrew status` cannot tell a deferred timeout from a timeout that was never considered for healing. Add an optional field to the snapshot entry and show it in status.
+  - **Files**: `src/mcp/heal-cycle.ts`, `src/mcp/health-snapshot.ts`, `src/mcp/health-snapshot.test.ts`
+  - **Acceptance**: a deferred timeout appears in the snapshot with a deferred marker, and a test covers it.
 
 - [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
   - **ID**: github-mcp-maintained-server-without-launcher

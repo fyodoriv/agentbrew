@@ -517,6 +517,89 @@ describe("applyAgentfile", () => {
     });
   });
 
+  describe("authoritative apply keeps entries added in the same apply", () => {
+    // The real getters return shallow copies; mirror that so the test fails
+    // when the apply writes back a copy taken before the additions.
+    beforeEach(() => {
+      mockGetStateServers.mockImplementation((s) => {
+        if (!s.mcpServers) s.mcpServers = [];
+        return [...s.mcpServers];
+      });
+      mockGetStateSources.mockImplementation((s) => {
+        if (!s.sources) s.sources = [];
+        return [...s.sources];
+      });
+    });
+
+    it("keeps an added MCP server when a stale server is pruned", () => {
+      const stale = makeServer("stale");
+      const fresh = makeServer("fresh");
+      const state = makeState({ mcpServers: [stale] });
+      mockLoadAgentfile.mockReturnValue({ mcp: ["fresh"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([fresh]);
+
+      const result = applyAgentfile("/project", { authoritative: true, quiet: true });
+
+      expect(result?.serversAdded).toEqual(["fresh"]);
+      expect(result?.serversRemoved).toEqual(["stale"]);
+      expect(state.mcpServers?.map((s) => s.name)).toEqual(["fresh"]);
+      expect(mockSaveState).toHaveBeenCalledWith(expect.objectContaining({ mcpServers: [fresh] }));
+    });
+
+    it("keeps an added source when a stale source is pruned", () => {
+      const stale = {
+        url: "https://example.com/stale",
+        type: "url",
+        skillsInstalled: [],
+        availableItems: [],
+        addedAt: "2026-05-25T00:00:00Z",
+        origin: "agentfile",
+      } as Source;
+      const state = makeState({ sources: [stale] });
+      mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/fresh"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([]);
+
+      const result = applyAgentfile("/project", { authoritative: true, quiet: true });
+
+      expect(result?.sourcesAdded).toEqual(["https://example.com/fresh"]);
+      expect(state.sources?.map((s) => s.url)).toEqual(["https://example.com/fresh"]);
+    });
+
+    it("keeps added command and agent dirs when stale owned dirs are pruned", () => {
+      const state = makeState({
+        commandSourceDirs: [
+          { label: "project", path: "/project/old-cmds", origin: "agentfile", agentfile: "/project" },
+        ],
+        agentSourceDirs: [
+          { label: "project", path: "/project/old-agents", origin: "agentfile", agentfile: "/project" },
+        ],
+      });
+      mockLoadAgentfile.mockReturnValue({ commands: ["./new-cmds"], agents: ["./new-agents"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([]);
+
+      applyAgentfile("/project", { authoritative: true, quiet: true });
+
+      expect(state.commandSourceDirs?.map((d) => d.path)).toEqual(["/project/new-cmds"]);
+      expect(state.agentSourceDirs?.map((d) => d.path)).toEqual(["/project/new-agents"]);
+    });
+
+    it("keeps added entries and stale ones when the apply is not authoritative", () => {
+      const stale = makeServer("stale");
+      const fresh = makeServer("fresh");
+      const state = makeState({ mcpServers: [stale] });
+      mockLoadAgentfile.mockReturnValue({ mcp: ["fresh"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([fresh]);
+
+      applyAgentfile("/project", { authoritative: false, quiet: true });
+
+      expect(state.mcpServers?.map((s) => s.name)).toEqual(["stale", "fresh"]);
+    });
+  });
+
   describe("skills collection", () => {
     it("collects catalog skills from Agentfile", () => {
       const state = makeState();

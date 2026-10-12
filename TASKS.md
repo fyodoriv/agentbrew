@@ -369,12 +369,12 @@
   **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
   **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
   **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
-- [ ] Authoritative Agentfile apply drops servers and sources it just added
-  **ID**: agentfile-authoritative-apply-drops-new-entries
-  **Tags**: scout, agentfile, state, bug
-  **Details**: Scouted while fixing no-prune. `mergeAgentfileMcp` and `mergeAgentfileSources` in `src/agentfile-apply.ts` push new entries onto `state.mcpServers` / `state.sources`, but `getStateServers` / `getStateSources` return shallow copies. In authoritative mode, when at least one stale entry is also removed, the code assigns `state.mcpServers = stateServers.filter(...)` from the copy taken before the push. The entries added in the same apply are then lost until the next apply.
-  **Files**: `src/agentfile-apply.ts`, `src/agentfile-apply.test.ts`, `src/integration.test.ts`
-  **Acceptance**: A regression test applies an authoritative Agentfile that both adds a server/source and prunes a stale one, and proves the added entry is in saved state after one apply.
+- [ ] Agentfile apply tests mock the state getters with non-copy semantics
+  **ID**: agentfile-apply-test-getter-fidelity
+  **Tags**: scout, agentfile, tests
+  **Details**: Scouted while fixing `agentfile-authoritative-apply-drops-new-entries`. Many tests in `src/agentfile-apply.test.ts` stub `getStateServers` / `getStateSources` with fixed arrays that do not mirror the real shallow-copy behavior, which hid the lost-addition bug. One test returns an empty list while state holds a server. Replace the per-test stubs with a shared faithful default and keep the stub only where a test needs divergence.
+  **Files**: `src/agentfile-apply.test.ts`
+  **Acceptance**: The `vi.mock("./agentfile.js")` factory defaults the two getters to the real copy behavior, and the suite stays green.
 
 - [ ] Expose a repo-only base catalog loader for static analyzers
   **ID**: base-catalog-loader-for-static-analyzers

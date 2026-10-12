@@ -108,6 +108,8 @@ function mergeAgentfileMcp(
   authoritative: boolean,
 ): { added: string[]; updated: string[]; removed: string[] } {
   const resolvedServers = resolveAgentfileMcp(agentfile);
+  // getStateServers returns a copy. Mutate this one working list and assign it
+  // back once, so additions and prunes in the same apply both survive.
   const stateServers = getStateServers(state);
   const existingByName = new Map(stateServers.map((s) => [s.name, s]));
   const added: string[] = [];
@@ -116,7 +118,7 @@ function mergeAgentfileMcp(
   for (const server of resolvedServers) {
     const existing = existingByName.get(server.name);
     if (!existing) {
-      state.mcpServers?.push(server);
+      stateServers.push(server);
       added.push(server.name);
     } else if (serverConfigChanged(existing, server)) {
       existing.command = server.command;
@@ -129,15 +131,15 @@ function mergeAgentfileMcp(
   }
 
   let removed: string[] = [];
+  let finalServers = stateServers;
   if (authoritative) {
     const agentfileServerNames = new Set(resolvedServers.map((s) => s.name));
     const preservedNames = state.memory?.enabled === true ? new Set([MEMORY_MANAGED_SERVER_NAME]) : new Set<string>();
-    const toRemove = stateServers.filter((s) => !agentfileServerNames.has(s.name) && !preservedNames.has(s.name));
-    if (toRemove.length > 0) {
-      state.mcpServers = stateServers.filter((s) => agentfileServerNames.has(s.name) || preservedNames.has(s.name));
-      removed = toRemove.map((s) => s.name);
-    }
+    const isKept = (s: McpServer): boolean => agentfileServerNames.has(s.name) || preservedNames.has(s.name);
+    finalServers = stateServers.filter(isKept);
+    removed = stateServers.filter((s) => !isKept(s)).map((s) => s.name);
   }
+  if (added.length > 0 || removed.length > 0) state.mcpServers = finalServers;
 
   return { added, updated, removed };
 }
@@ -151,14 +153,16 @@ function mergeAgentfileSources(
 ): string[] {
   if (!agentfile.sources) return [];
 
+  // getStateSources returns a copy: mutate it, then assign it back once.
   const sources = getStateSources(state);
   const existingUrls = new Set(sources.map((s) => s.url));
   const added: string[] = [];
+  let finalSources = sources;
 
   for (const sourceUrl of agentfile.sources) {
     const normalizedSourceUrl = normalizeAgentfileSourceUrl(sourceUrl, baseDir);
     if (!existingUrls.has(normalizedSourceUrl)) {
-      state.sources?.push({
+      sources.push({
         url: normalizedSourceUrl,
         type: detectSourceType(normalizedSourceUrl),
         skillsInstalled: [],
@@ -181,11 +185,9 @@ function mergeAgentfileSources(
     // sync-wipes-team-origin-sources in TASKS.md for the failure mode.
     const isTeamOwned = (s: { origin?: string }): boolean =>
       typeof s.origin === "string" && s.origin.startsWith("team:");
-    const toRemove = sources.filter((s) => !agentfileSourceUrls.has(s.url) && !isTeamOwned(s));
-    if (toRemove.length > 0) {
-      state.sources = sources.filter((s) => agentfileSourceUrls.has(s.url) || isTeamOwned(s));
-    }
+    finalSources = sources.filter((s) => agentfileSourceUrls.has(s.url) || isTeamOwned(s));
   }
+  if (added.length > 0 || finalSources.length !== sources.length) state.sources = finalSources;
 
   return added;
 }

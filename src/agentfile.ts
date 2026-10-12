@@ -508,7 +508,7 @@ export function getConfigServers(): McpServer[] {
 
 /**
  * Get the servers array from a loaded state object, initializing it if absent.
- * Returns a shallow copy — callers must mutate state.mcpServers directly and call saveState().
+ * Returns a shallow copy. Callers that add or prune must assign the final list back to state.mcpServers once.
  */
 export function getStateServers(state: AgentBrewState): McpServer[] {
   if (!state.mcpServers) state.mcpServers = [];
@@ -517,7 +517,7 @@ export function getStateServers(state: AgentBrewState): McpServer[] {
 
 /**
  * Get the sources array from a loaded state object, initializing it if absent.
- * Returns a shallow copy — callers must mutate state.sources directly and call saveState().
+ * Returns a shallow copy. Callers that add or prune must assign the final list back to state.sources once.
  */
 export function getStateSources(state: AgentBrewState): Source[] {
   if (!state.sources) state.sources = [];

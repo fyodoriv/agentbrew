@@ -389,14 +389,6 @@
   **Measurement**: `npx vitest run src/catalog/types.test.ts src/agent-artifacts` stays green with explicit overlay/base split assertions.
   **Anchor**: VISION.md G4 "single source of truth" and AGENTS.md rule #8 "team overlay lives in the team overlay repo".
 
-- [ ] Agentfile rules edits converge shared-rules.md instead of stacking stale blob copies
-  **ID**: agentfile-rules-replace-not-append
-  **Tags**: scout, rules, agentfile, drift, data-integrity
-  **Details**: `mergeAgentfileRules` (src/agentfile-apply.ts) appends the Agentfile's `rules:` blob to `~/.config/agentbrew/shared-rules.md` whenever `existing.includes(rulesContent)` is false. Every edit to a repo Agentfile's rules blob therefore appends a full fresh copy while stale generations stay behind — found live on 2026-06-09 with FOUR stacked generations of the dotfiles blob (shared-rules.md grew to stacked duplicate blobs (see wc -l on shared-rules.md); deployed agent rules carried contradictory old/new mandate text side by side). Manually surgically de-duplicated this time. Fix the mechanism: track each Agentfile-origin blob with begin/end markers keyed by source (like rules-sync's managed section), so an apply REPLACES its own previous blob and removes it when the Agentfile drops the `rules:` key. Include a one-time migration/dedupe for shared-rules.md files that already contain stacked generations, plus a lint check that flags repeated blob heads.
-  **Files**: `src/agentfile-apply.ts` (mergeAgentfileRules), `src/agentfile-apply.test.ts`, `src/lint.ts` (shared-rules bloat findings), `README.md`
-  **Acceptance**: editing a sentence inside an Agentfile `rules:` blob and re-running `agentbrew sync` leaves exactly one copy of that blob in shared-rules.md (old text gone); a regression test covers edit→re-apply convergence; `agentbrew lint` flags a shared-rules file containing two copies of the same blob head.
-  **Output**: code
-
 - [ ] Stop the authoritative Agentfile apply from pruning sources that back Agentfile skills
   **ID**: agentfile-apply-keeps-skill-sources
   **Tags**: scout, sync, agentfile
@@ -875,18 +867,6 @@
   - **Details**: Scouted while repairing the content gate. `npm run verify` reaches Biome and reports pre-existing formatting, import-order, unused-import, and cognitive-complexity failures across catalog, scheduler-path, measurement, and update code. The focused mirror and learn-project contract tests pass, but the repository-wide gate is not currently a reliable completion signal.
   - **Files**: `src/catalog/`, `src/drift-checks/`, `src/commands/cli-ops.ts`, `src/learn/stage-learn-sources.ts`, `src/update.ts`
   - **Acceptance**: `npm run verify` reaches the test phase without Biome errors or warnings; complexity fixes preserve behavior with focused tests; formatting/import-only changes remain separate from behavior changes where practical.
-
-- [ ] Trim shared-rules.md from ~11.3k to <8k tokens (Sources, Critical rules, Companion skill)
-  - **ID**: trim-shared-rules-sources-criticalrules-companionskill-to-8k
-  - **Tags**: scout, instructions-file-size, token-budget, shared-rules
-  - **Details**: The synced instructions file still measures ~11.3k tokens against the documented <8k target. A per-section measurement shows the dominant contributors are now Sources (~4k, the literature-citation block), Critical rules (~1.9k), and Companion skill (~1.7k). The Sources/citation block is reference material that need not sit in every agent's always-loaded context — moving it behind a conditional/lazy catalog rule or a one-line pointer should reclaim the bulk of the ~3.3k overage.
-  - **Files**: ~/.config/agentbrew/shared-rules.md, src/catalog.yaml, src/measure/context-budget.ts, README.md, TASKS.md
-  - **Acceptance**: `agentbrew sync 2>&1 | rg 'Instructions file'` reports <8k tokens; extracted content becomes conditional catalog rules with a documented opt-in; `agentbrew measure context --dry-run` is green; no opted-in agent loses content it relied on.
-  - **Hypothesis**: Extracting the Sources citation block (the largest non-rule section) plus compressing Critical rules / Companion skill reclaims the ~3.3k overage and brings the always-loaded file under 8k.
-  - **Success**: deployed instructions file <8k tokens; `agentbrew measure context --dry-run` green.
-  - **Pivot**: If Sources cannot be safely lazy-loaded without breaking PR literature-anchor citations, stop and compress the rule sections instead; if still over, raise the target with a written rationale rather than stripping load-bearing rules.
-  - **Measurement**: `agentbrew measure context --dry-run` projected deployed tokens for the shared-rules surface is <8000.
-  - **Anchor**: VISION.md G5; the always-loaded budget follows the attention-window rationale documented on the hooks decommission rules.
 
 - [ ] Extract shared helpers for #2134-style skill contract tests
   - **ID**: extract-shared-2134-skill-contract-test-helpers

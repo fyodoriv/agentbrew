@@ -844,13 +844,6 @@
 
 ## P2
 
-- [ ] Cap the MCP heal history kept per server/agent pair
-  - **ID**: mcp-heal-history-cap
-  - **Tags**: scout, mcp, health, snapshot
-  - **Details**: `buildMcpHealthSnapshot()` in `src/mcp/health-snapshot.ts` appends every heal attempt to `healHistory` and never trims it. On 2026-10-12 one pair (`github`/opencode) held 182 records and `~/.cache/agentbrew/mcp-health.json` was 107 KB. Keep the last few attempts per pair plus a total count.
-  - **Files**: src/mcp/health-snapshot.ts, src/mcp/health-snapshot.test.ts
-  - **Acceptance**: after more heal cycles than the cap, a pair keeps at most the cap of attempts and the total count stays correct; a test covers it.
-
 - [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
   - **ID**: github-mcp-maintained-server-without-launcher
   - **Tags**: scout, mcp, github, catalog
@@ -1113,6 +1106,13 @@
   - **Output**: docs
 
 ## P3
+
+- [ ] Show the total heal attempt count in `agentbrew status --verbose`
+  - **ID**: mcp-status-heal-attempt-count
+  - **Tags**: scout, mcp, status
+  - **Details**: The snapshot now keeps a capped history plus `healAttemptCount`. Nothing reads the count yet, so an operator cannot see that one pair churns while most attempts are trimmed. Print it for pairs with many attempts.
+  - **Files**: src/status.ts, src/status.test.ts
+  - **Acceptance**: a pair with more attempts than the history cap shows its total in verbose status; a test covers it.
 
 - [ ] `agentbrew status` names helper scripts that sync kept or could not install
   **ID**: status-reports-helper-scripts

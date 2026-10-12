@@ -22,6 +22,13 @@ export interface McpHealAttempt {
   error?: string;
 }
 
+/**
+ * Attempts kept per pair. 20 ticks at 30 minutes is 10 hours of heal context,
+ * more than any operator or `lastHealed` check reads, and bounds the file near
+ * 1 KB per pair instead of growing without limit.
+ */
+export const MAX_HEAL_HISTORY = 20;
+
 export interface McpHealthSuppression {
   reason: string;
   retryPolicy: string;
@@ -37,7 +44,10 @@ export interface McpHealthEntry {
   firstFailedAt?: string;
   lastError?: string;
   latencyMs?: number;
+  /** The most recent attempts only, capped at MAX_HEAL_HISTORY. */
   healHistory: McpHealAttempt[];
+  /** Every attempt ever recorded for this pair, including trimmed ones. Absent in snapshots written before the cap. */
+  healAttemptCount?: number;
   suppression?: McpHealthSuppression;
 }
 
@@ -113,7 +123,9 @@ export function buildMcpHealthSnapshot(
       const previousEntry = previousByKey.get(keyOf(result));
       const isOk = result.status === "ok";
       const suppression = isOk ? undefined : suppressions.get(keyOf(result));
-      const healHistory = [...(previousEntry?.healHistory ?? []), ...(attemptsByKey.get(keyOf(result)) ?? [])];
+      const newAttempts = attemptsByKey.get(keyOf(result)) ?? [];
+      const priorCount = previousEntry?.healAttemptCount ?? previousEntry?.healHistory.length ?? 0;
+      const healHistory = [...(previousEntry?.healHistory ?? []), ...newAttempts].slice(-MAX_HEAL_HISTORY);
       return {
         name: result.name,
         agent: result.agent,
@@ -124,6 +136,7 @@ export function buildMcpHealthSnapshot(
         lastError: isOk ? undefined : result.error,
         latencyMs: result.latencyMs,
         healHistory,
+        healAttemptCount: priorCount + newAttempts.length,
         ...(suppression ? { suppression } : {}),
       };
     }),

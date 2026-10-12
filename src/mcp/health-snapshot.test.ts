@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMcpHealthSnapshot,
   checkMcpStaleDrift,
+  MAX_HEAL_HISTORY,
   type McpHealthEntry,
   type McpHealthSnapshot,
   mcpLoginCommand,
@@ -62,6 +63,51 @@ describe("buildMcpHealthSnapshot", () => {
       }),
     );
     expect(snapshot.servers[0].healHistory).toHaveLength(1);
+  });
+
+  it("keeps only the last attempts per pair and counts every attempt", () => {
+    const attemptAt = (i: number) => ({
+      name: "github",
+      agent: "cursor",
+      status: "smoke_call_failed" as const,
+      category: "auth" as const,
+      action: `try-${i}`,
+      healed: false,
+      attemptedAt: `2026-06-04T11:${String(i % 60).padStart(2, "0")}:00.000Z`,
+    });
+    let snapshot: McpHealthSnapshot | undefined;
+    for (let i = 0; i < MAX_HEAL_HISTORY + 15; i++) {
+      snapshot = buildMcpHealthSnapshot(
+        snapshot,
+        [result({ status: "smoke_call_failed", error: "boom" })],
+        [attemptAt(i)],
+        "2026-06-04T12:00:00.000Z",
+      );
+    }
+    const entry = snapshot?.servers[0];
+    expect(entry?.healHistory).toHaveLength(MAX_HEAL_HISTORY);
+    expect(entry?.healHistory.at(-1)?.action).toBe(`try-${MAX_HEAL_HISTORY + 14}`);
+    expect(entry?.healHistory[0].action).toBe("try-15");
+    expect(entry?.healAttemptCount).toBe(MAX_HEAL_HISTORY + 15);
+  });
+
+  it("counts a legacy uncapped history as its length", () => {
+    const old = Array.from({ length: 50 }, (_, i) => ({
+      name: "github",
+      agent: "cursor",
+      status: "smoke_call_failed" as const,
+      category: "auth" as const,
+      action: `old-${i}`,
+      healed: false,
+      attemptedAt: "2026-06-04T11:00:00.000Z",
+    }));
+    const previous: McpHealthSnapshot = {
+      generatedAt: "2026-06-04T11:00:00.000Z",
+      servers: [entry({ name: "github", agent: "cursor", status: "smoke_call_failed", healHistory: old })],
+    };
+    const snapshot = buildMcpHealthSnapshot(previous, [result({ status: "ok" })], [], "2026-06-04T12:00:00.000Z");
+    expect(snapshot.servers[0].healHistory).toHaveLength(MAX_HEAL_HISTORY);
+    expect(snapshot.servers[0].healAttemptCount).toBe(50);
   });
 
   it("records suppression metadata separately from heal history", () => {

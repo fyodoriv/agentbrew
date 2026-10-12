@@ -42,6 +42,22 @@ assert_exit_code "Test 3 (no Related PRs)" 0 "$(run_hook "$TEST3" | tail -1)"
 TEST4='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"}}'
 assert_exit_code "Test 4 (not gh pr)" 0 "$(run_hook "$TEST4" | tail -1)"
 
+# Test 5: --body-file takes the early-allow branch (reason says so).
+# A pattern like '--body-file' must not be parsed as a grep option, or the
+# branch is skipped and the reason falls through to "no --body arg detected".
+FIXTURE_HOME="$(mktemp -d)"
+TEST5='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr create --title t --body-file /tmp/body.md"}}'
+echo "$TEST5" | HOME="$FIXTURE_HOME" bash "$SCRIPT" >/dev/null 2>&1
+assert_exit_code "Test 5 (--body-file exit)" 0 "$?"
+LOG_TEXT="$(cat "$FIXTURE_HOME/.cache/agentbrew/hook-decisions.jsonl" 2>/dev/null || true)"
+if [[ "$LOG_TEXT" == *"--body-file used"* ]]; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1))
+  FAIL_DETAILS+=("Test 5 (--body-file branch): reason missing '--body-file used', got: $LOG_TEXT")
+fi
+rm -rf "$FIXTURE_HOME"
+
 if [ "$FAIL" -eq 0 ]; then
   echo "gh-pr-body-related-prs-not-first.sh: $PASS passed, $FAIL failed"
   exit 0

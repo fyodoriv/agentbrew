@@ -59,6 +59,21 @@ if [ -n "$VIOLATIONS" ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
+# 5. Ban a quoted grep pattern that starts with `-` and no `-e`/`--` before it.
+# grep parses it as an option, exits 2, and the guarded branch never runs
+# (for example `grep -qE '--body-file'`). Use `grep -qE -e '--body-file'`.
+VIOLATIONS=$(grep -rnE "grep[[:space:]]+(-[A-Za-z]+[[:space:]]+)*['\"]-" hooks/checks hooks/lib --include='*.sh' \
+  | grep -v '\.test\.sh' \
+  | grep -vE "[[:space:]]-[A-Za-z]*e[[:space:]]+['\"]-|[[:space:]]--[[:space:]]+['\"]-" \
+  || true)
+
+if [ -n "$VIOLATIONS" ]; then
+  echo "❌ grep pattern starting with '-' and no -e (parsed as an option):"
+  echo "$VIOLATIONS"
+  echo "   Use grep -e '-pattern' instead."
+  ERRORS=$((ERRORS + 1))
+fi
+
 if [ "$ERRORS" -gt 0 ]; then
   echo ""
   echo "Security lint failed with $ERRORS violation(s)."

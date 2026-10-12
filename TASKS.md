@@ -987,12 +987,12 @@
   - **Files**: `hooks/manifest.yaml` (entries) and/or the 2 scripts; update their `.test.sh` if behavior changes.
   - **Acceptance**: the manifest `verdict` field matches the script's actual verdict function for both hooks.
 
-- [ ] Fix hook greps whose pattern starts with `--` (parsed as an option)
-  - **ID**: hooks-grep-dashdash-pattern
+- [ ] Extend the dash-pattern hook lint to rg, variable, and unquoted patterns
+  - **ID**: hooks-dashdash-lint-coverage
   - **Tags**: scout, hooks, bug-class, robustness
-  - **Details**: `grep -qE '--body-file'` in `gh-pr-body-related-prs-not-first.sh` and `gh-pr-body-no-review-response.sh` makes grep fail with "unrecognized option" (exit 2). The `if` then reads false, so the `--body-file` early-allow branch never fires. Found while auditing pipefail hazards in `hooks-grep-pipefail-audit`. Fix with `grep -qE -e '--body-file'`, add a fixture per hook that passes a `--body-file` command, and extend the `lint-security.sh` hook check to flag quoted patterns that start with `-`.
-  - **Files**: `hooks/checks/gh-pr-body-related-prs-not-first.sh`, `hooks/checks/gh-pr-body-no-review-response.sh`, matching `.test.sh`, `scripts/lint-security.sh`
-  - **Acceptance**: both hooks take the `--body-file` branch on a command that uses it; no hook greps with a pattern that begins with `-` and no `-e`.
+  - **Details**: The `lint-security.sh` check added with `hooks-grep-dashdash-pattern` flags only a quoted literal that starts with `-` after `grep`. It does not see `rg` calls, patterns held in variables, or unquoted patterns. Audit showed none exist today, so this guards future drift only. Consider a ShellCheck rule or a small wrapper before adding more regex.
+  - **Files**: `scripts/lint-security.sh`
+  - **Acceptance**: A fixture hook script using each missed form fails the lint, and the current hook scripts still pass it.
 
 - [ ] Make competitor spot-check support an explicit repo root for cwd-constrained agents
   - **ID**: competitor-spot-check-explicit-repo-root

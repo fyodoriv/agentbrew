@@ -54,7 +54,7 @@ if [ -z "$BODY" ]; then
   BODY=$(printf '%s' "$COMMAND_ONELINE" | sed -nE "s/.*--body[[:space:]]+'([^']*)'.*/\1/p" | head -1)
 fi
 if [ -z "$BODY" ]; then
-  if grep -qE '--body-file' <<<"$COMMAND_ONELINE"; then
+  if grep -qE -e '--body-file' <<<"$COMMAND_ONELINE"; then
     verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"

@@ -47,7 +47,7 @@ fi
 
 BODY=""
 if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
-  if grep -qE '--body-file' <<<"$COMMAND"; then
+  if grep -qE -e '--body-file' <<<"$COMMAND"; then
     verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"

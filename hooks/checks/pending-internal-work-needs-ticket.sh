@@ -76,7 +76,7 @@ fi
 # Look for TODO/FIXME/HACK/XXX patterns (in code comments)
 TODO_PATTERN='\b(TODO|FIXME|HACK|XXX)\b'
 
-if ! printf '%s' "$CONTENT" | grep -qE "$TODO_PATTERN"; then
+if ! grep -qE "$TODO_PATTERN" <<<"$CONTENT"; then
   verdict_allow "$HOOK_ID" "no TODO/FIXME/HACK/XXX in diff"
 fi
 
@@ -85,7 +85,7 @@ HAS_TICKET=$(printf '%s' "$CONTENT" | grep -cE '\b[A-Z][A-Z0-9]+-[0-9]+\b' || tr
 HAS_OWNER=$(printf '%s' "$CONTENT" | grep -cE 'TODO[[:space:]]*[\(@][^)]*[\)]?' || true)
 
 if [ "$HAS_TICKET" = "0" ] && [ "$HAS_OWNER" = "0" ]; then
-  OFFENDING="$(printf '%s' "$CONTENT" | grep -nE "$TODO_PATTERN" | head -1)"
+  OFFENDING="$(grep -m1 -nE "$TODO_PATTERN" <<<"$CONTENT")"
   verdict_warn "$HOOK_ID" "Pending Internal Work Must Be Tracked (IRON LAW): found '$OFFENDING' in $FILE_PATH without a ticket reference.
 Add a ticket ID: \`// TODO(PROJ-123): \` or an owner: \`// TODO @alice: \`. Bare TODOs rot forever. Bypass: HOOK_BYPASS_PENDING_INTERNAL_WORK_NEEDS_TICKET=1."
 fi

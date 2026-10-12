@@ -85,8 +85,8 @@ fi
 # These are exported function / const names that only make sense for tests
 WRAPPER_REGEX='\b(export[[:space:]]+(const|function|let|var)[[:space:]]+|function[[:space:]]+|const[[:space:]]+|let[[:space:]]+)([a-zA-Z_]*ForTest[a-zA-Z_]*|[a-zA-Z_]*ForTesting[a-zA-Z_]*|__test[A-Z][a-zA-Z_]*|lookup[A-Z][a-zA-Z_]*Spy|defer[A-Z][a-zA-Z_]*Until|wrap[A-Z][a-zA-Z_]*ForTest|[a-zA-Z_]*Mock[A-Z][a-zA-Z_]*)\b'
 
-if printf '%s' "$CONTENT" | grep -qE "$WRAPPER_REGEX"; then
-  OFFENDING="$(printf '%s' "$CONTENT" | grep -nE "$WRAPPER_REGEX" | head -1)"
+if grep -qE "$WRAPPER_REGEX" <<<"$CONTENT"; then
+  OFFENDING="$(grep -m1 -nE "$WRAPPER_REGEX" <<<"$CONTENT")"
   verdict_block "$HOOK_ID" "Tests Adapt to Production, Not the Other Way Around (IRON LAW): found test-accommodation wrapper in $FILE_PATH at '$OFFENDING'.
 Production code should not contain *ForTest / __test* / lookup*Spy / wrap*ForTest functions. Refactor:
   (a) Use dependency injection at the function/class boundary (inject the dependency in the constructor or as an arg)

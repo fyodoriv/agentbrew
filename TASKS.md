@@ -987,12 +987,12 @@
   - **Files**: `hooks/manifest.yaml` (entries) and/or the 2 scripts; update their `.test.sh` if behavior changes.
   - **Acceptance**: the manifest `verdict` field matches the script's actual verdict function for both hooks.
 
-- [ ] Audit hook scripts for unguarded grep pipelines under `set -euo pipefail`
-  - **ID**: hooks-grep-pipefail-audit
+- [ ] Fix hook greps whose pattern starts with `--` (parsed as an option)
+  - **ID**: hooks-grep-dashdash-pattern
   - **Tags**: scout, hooks, bug-class, robustness
-  - **Details**: Two hooks exited 1 (neither allow=0 nor block=2) when an unconditional `VAR=$(... | grep ... )` found no match — `grep` returns 1, the pipeline fails under `set -euo pipefail`, and the script aborts before reaching its intended `verdict_*`. Fixed in this PR for `a-pr-is-not-ready.sh` (PR_NUM + REPO) and `skill-names-user-facing-verbs.sh` (NAME_VALUE) by appending `|| true`. Audit the rest: any UNCONDITIONAL command-substitution whose grep/awk can legitimately match nothing (candidate seen: `async-human-comms-blocks.sh` STATUS line when the ask_human.md has no `status:` line). Guard each with `|| true` and add the missing-match case to its fixture.
-  - **Files**: `hooks/checks/*.sh` (audit all), corresponding `.test.sh` (add no-match cases)
-  - **Acceptance**: no `hooks/checks/*.sh` exits non-{0,2} on a well-formed input that simply contains no match; a fixture covers each guarded line.
+  - **Details**: `grep -qE '--body-file'` in `gh-pr-body-related-prs-not-first.sh` and `gh-pr-body-no-review-response.sh` makes grep fail with "unrecognized option" (exit 2). The `if` then reads false, so the `--body-file` early-allow branch never fires. Found while auditing pipefail hazards in `hooks-grep-pipefail-audit`. Fix with `grep -qE -e '--body-file'`, add a fixture per hook that passes a `--body-file` command, and extend the `lint-security.sh` hook check to flag quoted patterns that start with `-`.
+  - **Files**: `hooks/checks/gh-pr-body-related-prs-not-first.sh`, `hooks/checks/gh-pr-body-no-review-response.sh`, matching `.test.sh`, `scripts/lint-security.sh`
+  - **Acceptance**: both hooks take the `--body-file` branch on a command that uses it; no hook greps with a pattern that begins with `-` and no `-e`.
 
 - [ ] Make competitor spot-check support an explicit repo root for cwd-constrained agents
   - **ID**: competitor-spot-check-explicit-repo-root

@@ -62,7 +62,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr create / edit
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 

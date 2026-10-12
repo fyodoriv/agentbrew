@@ -55,15 +55,15 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr/issue create/edit
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr/issue create/edit"
 fi
 
 # Determine the env keyword in title (case-insensitive)
 TITLE_ENV=""
-if printf '%s' "$COMMAND" | grep -qiE '\-\-title[[:space:]]+["\047][^"\047]*\b(staging|stage|preprod)\b'; then
+if grep -qiE '\-\-title[[:space:]]+["\047][^"\047]*\b(staging|stage|preprod)\b' <<<"$COMMAND"; then
   TITLE_ENV="staging"
-elif printf '%s' "$COMMAND" | grep -qiE '\-\-title[[:space:]]+["\047][^"\047]*\b(prod|production)\b'; then
+elif grep -qiE '\-\-title[[:space:]]+["\047][^"\047]*\b(prod|production)\b' <<<"$COMMAND"; then
   TITLE_ENV="prod"
 fi
 

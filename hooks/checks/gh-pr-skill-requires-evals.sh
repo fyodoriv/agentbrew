@@ -24,7 +24,7 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
@@ -91,13 +91,13 @@ pr_body_text() {
 
 has_skill_eval_sections() {
   local body="$1"
-  printf '%s' "$body" | grep -qiE '^##[[:space:]]+Skill eval results[[:space:]]*$' &&
-    printf '%s' "$body" | grep -qiE '^##[[:space:]]+How to run these tests yourself[[:space:]]*$'
+  grep -qiE '^##[[:space:]]+Skill eval results[[:space:]]*$' <<<"$body" &&
+    grep -qiE '^##[[:space:]]+How to run these tests yourself[[:space:]]*$' <<<"$body"
 }
 
 path_changed_in_diff() {
   local path="$1"
-  printf '%s\n' "$DIFF_NAME_STATUS" | awk -F '\t' '{print $NF}' | grep -Fxq "$path"
+  awk -F '\t' -v p="$path" '$NF == p { found = 1 } END { exit !found }' <<<"$DIFF_NAME_STATUS"
 }
 
 BASE_REF="$(resolve_base_ref || true)"

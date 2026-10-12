@@ -89,10 +89,10 @@ fi
 # matching version strings like "2.0.1-rc1" or path segments like "v1-20".
 TIMESTAMP_REGEX='(//|#|/\*|\*)[[:space:]]+20[2-9][0-9]-[01][0-9]-[0-3][0-9]'
 
-if printf '%s' "$CONTENT" | grep -qE "$TIMESTAMP_REGEX"; then
+if grep -qE "$TIMESTAMP_REGEX" <<<"$CONTENT"; then
   # Extract the first matching line for the error message — agents
   # appreciate the specific offending text more than a generic rule cite.
-  OFFENDING="$(printf '%s' "$CONTENT" | grep -nE "$TIMESTAMP_REGEX" | head -1)"
+  OFFENDING="$(grep -m1 -nE "$TIMESTAMP_REGEX" <<<"$CONTENT")"
   verdict_block "$HOOK_ID" "Code Has No Time Stamps (IRON LAW): found '$OFFENDING' in $FILE_PATH.
 Timestamps in code drift the moment the code is reviewed/merged/rebased.
 Use a relative reference ('during the 2026-Q2 refactor'), a ticket ID

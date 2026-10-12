@@ -41,20 +41,20 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
 BODY=""
 if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
-  if printf '%s' "$COMMAND" | tr '\n' ' ' | grep -qE '--body-file'; then
+  if grep -qE '--body-file' <<<"$COMMAND"; then
     verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"
 fi
 
 FIRST_H2="$(printf '%s' "$BODY" | grep -iE '^##[[:space:]]+' | head -1 || true)"
-if [ -n "$FIRST_H2" ] && printf '%s' "$FIRST_H2" | grep -qiE '^##[[:space:]]+(related[[:space:]]+pr|merge[[:space:]]+order|reuse[[:space:]]+chain|dependency[[:space:]]+(pr|chain))'; then
+if [ -n "$FIRST_H2" ] && grep -qiE '^##[[:space:]]+(related[[:space:]]+pr|merge[[:space:]]+order|reuse[[:space:]]+chain|dependency[[:space:]]+(pr|chain))' <<<"$FIRST_H2"; then
   verdict_block "$HOOK_ID" "PR body leads with a cross-PR navigation section ($FIRST_H2). Lead with what this PR does and how to verify it; move Related PRs / merge-order maps near the bottom (after tests, verification, rollback). Bypass: HOOK_BYPASS_GH_PR_BODY_RELATED_PRS_NOT_FIRST=1."
 fi
 

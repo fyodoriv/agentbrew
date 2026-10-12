@@ -59,7 +59,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on git add
-if ! printf '%s' "$COMMAND" | grep -qE '\bgit[[:space:]]+add\b'; then
+if ! grep -qE '\bgit[[:space:]]+add\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not git add"
 fi
 
@@ -73,7 +73,7 @@ fi
 # Binary image extensions
 BINARY_REGEX='\.(png|jpg|jpeg|gif|webp|bmp)(\b|$|[[:space:]])'
 
-if ! printf '%s' "$ARGS" | grep -qiE "$BINARY_REGEX"; then
+if ! grep -qiE "$BINARY_REGEX" <<<"$ARGS"; then
   verdict_allow "$HOOK_ID" "no binary image extensions in add args"
 fi
 
@@ -89,7 +89,7 @@ while IFS= read -r file; do
     *fixtures/*|*/fixtures/*) continue ;;               # test fixtures
     *snapshots/*|*/snapshots/*) continue ;;             # jest/vitest snapshots
   esac
-  if printf '%s' "$file" | grep -qiE "$BINARY_REGEX"; then
+  if grep -qiE "$BINARY_REGEX" <<<"$file"; then
     BLOCKED_FILES="$BLOCKED_FILES $file"
   fi
 done <<EOF

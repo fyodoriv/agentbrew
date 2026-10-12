@@ -59,7 +59,7 @@ fi
 # Anchor at word boundary so we don't match `git add -All-Other-File.txt`.
 ADD_ALL_REGEX='\bgit[[:space:]]+add[[:space:]]+(-A\b|\.[[:space:]]|\.$|--all\b|-u\b|--update\b)'
 
-if printf '%s' "$COMMAND" | grep -qE "$ADD_ALL_REGEX"; then
+if grep -qE "$ADD_ALL_REGEX" <<<"$COMMAND"; then
   verdict_block "$HOOK_ID" "git add -A / git add . / git add -u stages ALL working-tree changes including other agents' WIP. Multi-agent rule: enumerate specific files (\`git add <file1> <file2> ...\`). Bypass: HOOK_BYPASS_NO_GIT_ADD_ALL=1 (only for initial-commit-of-fresh-repo scenarios)."
 fi
 

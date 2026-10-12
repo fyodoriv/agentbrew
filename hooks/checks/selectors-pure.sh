@@ -82,8 +82,8 @@ fi
 # Check for impure operations
 IMPURE_REGEX='\b(Date\.now|Math\.random|fetch|XMLHttpRequest|axios|navigator\.|window\.location|document\.cookie|localStorage|sessionStorage)\b'
 
-if printf '%s' "$CONTENT" | grep -qE "$IMPURE_REGEX"; then
-  OFFENDING="$(printf '%s' "$CONTENT" | grep -nE "$IMPURE_REGEX" | head -1)"
+if grep -qE "$IMPURE_REGEX" <<<"$CONTENT"; then
+  OFFENDING="$(grep -m1 -nE "$IMPURE_REGEX" <<<"$CONTENT")"
   verdict_block "$HOOK_ID" "Selectors Must Be Pure (IRON LAW): found impure operation in $FILE_PATH at '$OFFENDING'.
 Selectors must be pure functions of state so createSelector memoization works + re-renders stay predictable. Move the impure operation to a thunk, listener, or component effect. Bypass: HOOK_BYPASS_SELECTORS_PURE=1 (only for documented non-memoized selectors)."
 fi

@@ -31,7 +31,7 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
@@ -94,7 +94,7 @@ inventory_high_risk_paths() {
 path_in_lines() {
   local needle="$1"
   local haystack="$2"
-  printf '%s\n' "$haystack" | grep -Fxq "$needle"
+  grep -Fxq "$needle" <<<"$haystack"
 }
 
 is_agent_artifact_path() {

@@ -86,7 +86,7 @@ esac
 # SKILL_NAMES_ORG_REPO_REGEX. Unset means no path is skipped.
 ORG_REPO_PATH_REGEX="${SKILL_NAMES_ORG_REPO_REGEX:-}"
 if [ -n "$ORG_REPO_PATH_REGEX" ] && [ "${SKILL_NAMES_ENFORCE_IN_ORG_REPOS:-0}" != "1" ]; then
-  if printf '%s' "$FILE_PATH" | grep -qE "$ORG_REPO_PATH_REGEX"; then
+  if grep -qE "$ORG_REPO_PATH_REGEX" <<<"$FILE_PATH"; then
     verdict_bypass "$HOOK_ID" "$FILE_PATH matches SKILL_NAMES_ORG_REPO_REGEX (domain naming allowed)"
   fi
 fi
@@ -110,7 +110,7 @@ if [ -z "$NAME_VALUE" ]; then
 fi
 
 # Check for jargon
-if printf '%s' "$NAME_VALUE" | grep -qiE "$JARGON_REGEX"; then
+if grep -qiE "$JARGON_REGEX" <<<"$NAME_VALUE"; then
   MATCH=$(printf '%s' "$NAME_VALUE" | grep -oiE "$JARGON_REGEX" | head -1)
   verdict_block "$HOOK_ID" "Skill Names Are User-Facing Verbs (IRON LAW): name '$NAME_VALUE' in $FILE_PATH contains internal jargon '$MATCH'.
 Skill names are how the AGENT decides which skill to invoke. Rephrase as a verb the agent (and a new operator) can match against intent:

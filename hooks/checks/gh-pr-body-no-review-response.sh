@@ -41,7 +41,7 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
@@ -54,7 +54,7 @@ if [ -z "$BODY" ]; then
   BODY=$(printf '%s' "$COMMAND_ONELINE" | sed -nE "s/.*--body[[:space:]]+'([^']*)'.*/\1/p" | head -1)
 fi
 if [ -z "$BODY" ]; then
-  if printf '%s' "$COMMAND_ONELINE" | grep -qE '--body-file'; then
+  if grep -qE '--body-file' <<<"$COMMAND_ONELINE"; then
     verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"
@@ -64,13 +64,13 @@ fi
 BODY="$(printf '%s' "$BODY" | sed 's/\\n/\n/g')"
 
 MATCHED_PATTERN=""
-if printf '%s' "$BODY" | grep -qiE '^#{2,3}[[:space:]]+.*(review(er)?[[:space:]]+feedback[[:space:]]+addressed|feedback[[:space:]]+addressed|addressed[[:space:]]+review[[:space:]]+comments?)'; then
+if grep -qiE '^#{2,3}[[:space:]]+.*(review(er)?[[:space:]]+feedback[[:space:]]+addressed|feedback[[:space:]]+addressed|addressed[[:space:]]+review[[:space:]]+comments?)' <<<"$BODY"; then
   MATCHED_PATTERN="review-response heading"
-elif printf '%s' "$BODY" | grep -qiE '^#{2,3}[[:space:]]+.*(qodo|coderabbit|bugbot).*(review|comments?)'; then
+elif grep -qiE '^#{2,3}[[:space:]]+.*(qodo|coderabbit|bugbot).*(review|comments?)' <<<"$BODY"; then
   MATCHED_PATTERN="bot-review heading"
-elif printf '%s' "$BODY" | grep -qiE '^#{2,3}[[:space:]]+.*review[[:space:]]*[—-][[:space:]]*resolved'; then
+elif grep -qiE '^#{2,3}[[:space:]]+.*review[[:space:]]*[—-][[:space:]]*resolved' <<<"$BODY"; then
   MATCHED_PATTERN="review - resolved heading"
-elif printf '%s' "$BODY" | grep -qiE '^#{2,3}[[:space:]]+.*review[[:space:]]+comments?[[:space:]]+(resolved|addressed)'; then
+elif grep -qiE '^#{2,3}[[:space:]]+.*review[[:space:]]+comments?[[:space:]]+(resolved|addressed)' <<<"$BODY"; then
   MATCHED_PATTERN="review comments resolved heading"
 fi
 

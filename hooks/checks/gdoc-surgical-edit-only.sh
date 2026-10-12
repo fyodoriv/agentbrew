@@ -83,7 +83,7 @@ if [ "$PAYLOAD_SIZE" -gt "$MAX_PAYLOAD_BYTES" ] && [ -n "$HAS_BODY" ]; then
 fi
 
 # Detect replaceAllText with empty match pattern (matches everything)
-if printf '%s' "$INPUT" | grep -qE 'replaceAllText.*containsText[^"]*""'; then
+if grep -qE 'replaceAllText.*containsText[^"]*""' <<<"$INPUT"; then
   verdict_block "$HOOK_ID" "GDoc Surgical-Edit-Only (ABSOLUTE): replaceAllText with empty match pattern targets the entire doc. Use a specific search string. Bypass: HOOK_BYPASS_GDOC_SURGICAL_EDIT_ONLY=1."
 fi
 

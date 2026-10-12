@@ -62,7 +62,7 @@ _strip_agent_attribution_in_stream() {
 
   input=$(cat)
   stripped_vendor_attribution=0
-  if printf '%s\n' "$input" | grep -iqE "$combined_re"; then
+  if grep -iqE "$combined_re" <<<"$input"; then
     stripped_vendor_attribution=1
   fi
 
@@ -76,7 +76,7 @@ _strip_agent_attribution_in_stream() {
   # If we stripped vendor attribution AND the result lacks the Fyodor
   # footer, append it. Otherwise emit the input unchanged (modulo
   # trailing-blank trimming, which is invisible to GitHub).
-  if [ "$stripped_vendor_attribution" = "1" ] && ! printf '%s' "$filtered" | grep -qE "$fyodor_footer_re"; then
+  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$fyodor_footer_re" <<<"$filtered"; then
     printf '%s\n\n---\n_🤖 Written by an agent, not Fyodor. Ping me if this looks off._\n' "$filtered"
   else
     printf '%s\n' "$filtered"
@@ -101,7 +101,7 @@ _strip_agent_attribution_in_file() {
 
   # Skip merge/fixup/squash/revert commits — they're tooling-generated
   # and the user can't control their format.
-  if head -1 "$msg_file" | grep -qE "^(Merge|fixup!|squash!|amend!|Revert)"; then
+  if head -1 "$msg_file" | grep -qE "^(Merge|fixup!|squash!|amend!|Revert)"; then  # pipefail-ok: file-fed, tiny
     return 0
   fi
 

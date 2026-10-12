@@ -64,15 +64,15 @@ fi
 
 # Must contain `git commit` AND `-m` (we only check -m calls; editor flow
 # is routed through dotfiles/git-hooks/commit-msg).
-if ! printf '%s' "$COMMAND" | grep -qE '\bgit[[:space:]]+commit\b'; then
+if ! grep -qE '\bgit[[:space:]]+commit\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not a git commit"
 fi
-if ! printf '%s' "$COMMAND" | grep -qE '[[:space:]]-m\b'; then
+if ! grep -qE '[[:space:]]-m\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "git commit without -m (editor flow handles enforcement)"
 fi
 
 # Exempt amend/fixup operations
-if printf '%s' "$COMMAND" | grep -qE '(--amend|--fixup)'; then
+if grep -qE '(--amend|--fixup)' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "amend/fixup uses existing message"
 fi
 
@@ -99,14 +99,14 @@ fi
 HEADER=$(printf '%s' "$MESSAGE" | head -1)
 
 # Exempt git-built-in subjects (Merge, Revert)
-if printf '%s' "$HEADER" | grep -qE '^(Merge|Revert)\b'; then
+if grep -qE '^(Merge|Revert)\b' <<<"$HEADER"; then
   verdict_allow "$HOOK_ID" "git-builtin subject ($HEADER)"
 fi
 
 # Check conventional format: type(scope?): description
 CONVENTIONAL_REGEX="^(${VALID_TYPES})(\\([^)]+\\))?:[[:space:]]+.+"
 
-if ! printf '%s' "$HEADER" | grep -qE "$CONVENTIONAL_REGEX"; then
+if ! grep -qE "$CONVENTIONAL_REGEX" <<<"$HEADER"; then
   verdict_block "$HOOK_ID" "Conventional Commits format required: '<type>: <description>' or '<type>(<scope>): <description>'. Valid types: ${VALID_TYPES//|/, }. Got: '$HEADER'"
 fi
 

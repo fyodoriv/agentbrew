@@ -57,7 +57,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr create / edit / comment / review with --body
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit|comment|review)\b'; then
+if ! grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit|comment|review)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr/issue body command"
 fi
 
@@ -71,7 +71,7 @@ source "$__HOOK_LIB_DIR/strip-agent-attribution.sh"
 # bin/gh wrapper does the precise extraction + strip downstream.)
 COMBINED_RE=$(_agent_attr_combined_re)
 
-if printf '%s' "$COMMAND" | grep -iqE "$COMBINED_RE"; then
+if grep -iqE "$COMBINED_RE" <<<"$COMMAND"; then
   verdict_warn "$HOOK_ID" "PR body contains foreign agent attribution (Co-Authored-By: <agent> or 'Generated with [<agent>]'). The dotfiles/bin/gh wrapper will strip these before posting + append the canonical Fyodor footer. To silence this warning: write your PR body without explicit agent footers."
 fi
 

@@ -53,7 +53,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr create
-if ! printf '%s' "$COMMAND" | grep -qE '\bgh[[:space:]]+pr[[:space:]]+create\b'; then
+if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+create\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create"
 fi
 
@@ -63,7 +63,7 @@ TITLE=$(printf '%s' "$COMMAND" | sed -nE 's/.*--title[[:space:]]+"([^"]*)".*/\1/
 if [ -z "$TITLE" ]; then
   TITLE=$(printf '%s' "$COMMAND" | sed -nE "s/.*--title[[:space:]]+'([^']*)'.*/\1/p" | head -1)
 fi
-if printf '%s' "$TITLE" | grep -qiE '^\[(BATCH|CROSS.TEAM)\]'; then
+if grep -qiE '^\[(BATCH|CROSS.TEAM)\]' <<<"$TITLE"; then
   verdict_bypass "$HOOK_ID" "title has explicit [BATCH]/[CROSS-TEAM] prefix"
 fi
 

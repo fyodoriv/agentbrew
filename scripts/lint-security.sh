@@ -42,6 +42,23 @@ if [ -n "$VIOLATIONS" ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
+# 4. Ban `<writer> | grep -q` in hook scripts. Under `set -o pipefail`, grep -q
+# exits at the first match, the writer gets SIGPIPE, and the pipeline reports 141.
+# On input past the 64 KB pipe buffer the check then reads as "no match" and the
+# hook allows a violation. Use `grep -q ... <<<"$var"` instead. A line that
+# cannot hit this (file-fed writer) may carry a `# pipefail-ok` comment.
+VIOLATIONS=$(grep -rnE '\|[[:space:]]*grep[[:space:]]+-[A-Za-z]*q' hooks/checks hooks/lib --include='*.sh' \
+  | grep -v '\.test\.sh' \
+  | grep -v 'pipefail-ok' \
+  || true)
+
+if [ -n "$VIOLATIONS" ]; then
+  echo "❌ '| grep -q' pipeline in hook scripts (SIGPIPE under pipefail):"
+  echo "$VIOLATIONS"
+  echo "   Use grep -q ... <<<\"\$var\" instead."
+  ERRORS=$((ERRORS + 1))
+fi
+
 if [ "$ERRORS" -gt 0 ]; then
   echo ""
   echo "Security lint failed with $ERRORS violation(s)."

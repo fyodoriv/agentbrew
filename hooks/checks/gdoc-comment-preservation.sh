@@ -72,9 +72,9 @@ esac
 
 # For batchUpdate / replaceText calls, check the payload for delete ops
 # that might inadvertently destroy commented content
-if printf '%s' "$HOOK_TOOL_NAME" | grep -qiE 'batchUpdate|replaceText|deleteContentRange'; then
+if grep -qiE 'batchUpdate|replaceText|deleteContentRange' <<<"$HOOK_TOOL_NAME"; then
   PAYLOAD=$(json_get "$INPUT" '.tool_input.requests // .tool_input.body // ""')
-  if printf '%s' "$PAYLOAD" | grep -qiE 'deleteRange|deleteParagraphBullets|deleteContentRange'; then
+  if grep -qiE 'deleteRange|deleteParagraphBullets|deleteContentRange' <<<"$PAYLOAD"; then
     verdict_warn "$HOOK_ID" "GDoc Comment Preservation (ABSOLUTE): $HOOK_TOOL_NAME contains delete operations that may destroy commented content. Verify NO comments anchor to the deleted range before proceeding. The MCP API does not always preserve comment anchors across deletes. Bypass: HOOK_BYPASS_GDOC_COMMENT_PRESERVATION=1."
   fi
 fi

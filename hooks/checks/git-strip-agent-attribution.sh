@@ -61,7 +61,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on git commit (-m or editor flow)
-if ! printf '%s' "$COMMAND" | grep -qE '\bgit[[:space:]]+commit\b'; then
+if ! grep -qE '\bgit[[:space:]]+commit\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not git commit"
 fi
 
@@ -70,7 +70,7 @@ fi
 source "$__HOOK_LIB_DIR/strip-agent-attribution.sh"
 COMBINED_RE=$(_agent_attr_combined_re)
 
-if printf '%s' "$COMMAND" | grep -iqE "$COMBINED_RE"; then
+if grep -iqE "$COMBINED_RE" <<<"$COMMAND"; then
   verdict_warn "$HOOK_ID" "git commit contains foreign agent attribution. The dotfiles/git-hooks/commit-msg hook will strip vendor-specific trailers (Co-Authored-By: <agent>, Generated with [<agent>]) and append the canonical Fyodor footer. To silence: omit the explicit agent attribution from -m messages — the footer is added automatically."
 fi
 

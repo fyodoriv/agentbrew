@@ -56,7 +56,7 @@ fi
 # brittle.
 NO_VERIFY_REGEX='\bgit[[:space:]]+commit\b.*?(--no-verify|[[:space:]]-n[[:space:]]|[[:space:]]-n$)'
 
-if printf '%s' "$COMMAND" | grep -qE "$NO_VERIFY_REGEX"; then
+if grep -qE "$NO_VERIFY_REGEX" <<<"$COMMAND"; then
   verdict_block "$HOOK_ID" "git commit --no-verify is forbidden by policy (pre-commit hooks catch class-of-mistake regressions; bypassing them defeats the purpose). If the pre-commit hook is wrong, FIX the hook, don't skip it. No bypass available."
 fi
 

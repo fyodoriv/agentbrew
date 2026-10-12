@@ -64,7 +64,7 @@ fi
 # Match git push with --force / -f / --force-with-lease anywhere in command
 FORCE_REGEX='\bgit[[:space:]]+push\b.*?(--force|-f\b|--force-with-lease)'
 
-if ! printf '%s' "$COMMAND" | grep -qE "$FORCE_REGEX"; then
+if ! grep -qE "$FORCE_REGEX" <<<"$COMMAND"; then
   verdict_allow "$HOOK_ID" "no force-push flag detected"
 fi
 
@@ -74,7 +74,7 @@ fi
 #   git push --force-with-lease origin develop
 PROTECTED_REGEX='\b(main|master|develop)\b'
 
-if printf '%s' "$COMMAND" | grep -qE "$PROTECTED_REGEX"; then
+if grep -qE "$PROTECTED_REGEX" <<<"$COMMAND"; then
   verdict_block "$HOOK_ID" "git push --force to main/master/develop is forbidden — overwrites other contributors' commits. Use a feature branch + PR instead. Bypass: HOOK_BYPASS_NO_FORCE_PUSH_PROTECTED=1 (only for post-incident history rewrites)."
 fi
 

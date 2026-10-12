@@ -24,6 +24,7 @@ export interface DriftItem {
     | "mcp-catalog-pin"
     | "mcp-env-vars"
     | "mcp-playwright-isolated"
+    | "mcp-stale"
     | "mcp-permissions"
     | "mcp-user-added"
     | "rules"

@@ -8,7 +8,12 @@ import { loadSyncErrors } from "./core/errors.js";
 import { logSkipped } from "./core/logger.js";
 import { checkMcpEnvVarsDrift } from "./drift.js";
 import { validateConfig } from "./lint.js";
-import { loadMcpHealthSnapshot, unhealthyMcpEntries } from "./mcp/health-snapshot.js";
+import {
+  loadMcpHealthSnapshot,
+  mcpLoginCommand,
+  needsLoginMcpEntries,
+  unhealthyMcpEntries,
+} from "./mcp/health-snapshot.js";
 import { COMMANDS_DIR } from "./paths.js";
 import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -278,7 +283,15 @@ function printVerboseServersSection(state: AgentbrewState): void {
 
 function printMcpHealthSummary(prefix: string): void {
   const snapshot = loadMcpHealthSnapshot();
-  const unhealthy = unhealthyMcpEntries(snapshot);
+  printMcpFailingLine(prefix, unhealthyMcpEntries(snapshot));
+  for (const entry of needsLoginMcpEntries(snapshot)) {
+    console.log(
+      `${prefix}MCP login:    ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(`needs login — run \`${mcpLoginCommand(entry.name)}\``)}`,
+    );
+  }
+}
+
+function printMcpFailingLine(prefix: string, unhealthy: ReturnType<typeof unhealthyMcpEntries>): void {
   if (unhealthy.length === 0) return;
   const preview = unhealthy
     .slice(0, 3)

@@ -41,11 +41,13 @@ vi.mock("./mcp/health-snapshot.js", () => ({
   unhealthyMcpEntries: vi.fn((snapshot: { servers?: Array<{ status: string }> } | undefined) =>
     (snapshot?.servers ?? []).filter((entry) => entry.status !== "ok" && !entry.status.startsWith("skipped_")),
   ),
+  needsLoginMcpEntries: vi.fn(() => []),
+  mcpLoginCommand: vi.fn((name: string) => `agentbrew mcp setup ${name}`),
 }));
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { loadSyncErrors } from "./core/errors.js";
-import { loadMcpHealthSnapshot } from "./mcp/health-snapshot.js";
+import { loadMcpHealthSnapshot, needsLoginMcpEntries, unhealthyMcpEntries } from "./mcp/health-snapshot.js";
 import { loadState } from "./state.js";
 import { collectStatusData, getSourcesFreshness, status } from "./status.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -133,6 +135,34 @@ describe("status", () => {
     expect(calls).toContain("1 failing");
     expect(calls).toContain("github/cursor");
     expect(calls).toContain("unhealthy for");
+  });
+
+  it("shows logged-out MCP servers with their login command instead of as failing", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [{ name: "railway", command: "railway", args: ["mcp"], env: {}, source: "catalog" }],
+      catalogVersion: "0.1.0",
+    });
+    const loggedOut = {
+      name: "railway",
+      agent: "claude-code",
+      status: "init_error" as const,
+      lastCheckedAt: new Date().toISOString(),
+      lastError: "Not logged in",
+      healHistory: [],
+    };
+    mockLoadMcpHealthSnapshot.mockReturnValue({ generatedAt: new Date().toISOString(), servers: [loggedOut] });
+    vi.mocked(unhealthyMcpEntries).mockReturnValueOnce([]);
+    vi.mocked(needsLoginMcpEntries).mockReturnValueOnce([loggedOut]);
+
+    await status();
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("MCP login");
+    expect(calls).toContain("railway/claude-code");
+    expect(calls).toContain("agentbrew mcp setup railway");
+    expect(calls).not.toContain("failing");
   });
 });
 

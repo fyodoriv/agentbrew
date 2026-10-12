@@ -108,6 +108,12 @@ describe("HEAL_ACTIONS", () => {
     expect(categorizeProbeResult(probe)).toBe("auth");
   });
 
+  // A logged-out server needs a login, not a sync retry that can never succeed.
+  it("categorizes a logged-out server as auth, not sync", () => {
+    const probe = result({ name: "railway", status: "init_error", error: "Not logged in. Run railway login" });
+    expect(categorizeProbeResult(probe)).toBe("auth");
+  });
+
   it("still categorizes a genuine transport failure as sync", () => {
     const probe = result({ name: "some-server", status: "init_error", error: "spawn ENOENT" });
     expect(categorizeProbeResult(probe)).toBe("sync");

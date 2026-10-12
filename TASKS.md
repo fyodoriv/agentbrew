@@ -317,20 +317,6 @@
   - **Measurement**: `jq -r 'select(.type=="attachment") | .attachment | select(.hookName=="PreToolUse:Bash") | .durationMs' ~/.claude/projects/*/*.jsonl | sort -n | awk '{a[NR]=$1} END{print a[int(NR/2)]}'`
   - **Anchor**: VISION.md G5 drift-detection + auto-repair; Nielsen (1993) 1s/10s interaction-latency thresholds — a 15s blocking pre-tool hook is far past the point where the loop stalls.
 
-- [ ] Report logged-out MCP servers and alarm on pairs failing for over 24h
-  - **ID**: mcp-windsurf-cluster-stale-failures-9-plus-days
-  - **Tags**: scout, mcp, health, heal, copilot, opencode, stability
-  - **Scope**: Windsurf and Devin support was removed on 2026-10-08. Their pairs no longer exist.
-  - **Details**: Updated 2026-10-12. Done: `runMcpHealCycle()` now records `healed: true` only when the pair passes the re-probe (before: 369 of 371 heal records said `healed: true`, including 252 for a `github` entry that stayed broken for days). Disproved: the "one shared launcher fault" theory. A deep probe at load 6 on 10 cores passed every non-OAuth pair; the same probe at load 13 to 20 timed out on most copilot and opencode servers. The timeouts track machine load, not launch config. Remaining: (1) report a logged-out server as needs-login with its login command, and do not auto-heal it; (2) flag any pair whose `lastOkAt` in `~/.cache/agentbrew/mcp-health.json` is older than 24h, so a real outage stands out from load noise.
-  - **Files**: src/mcp/heal-actions.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, src/status.ts, src/health.ts
-  - **Acceptance**: (1) a logged-out server shows as needs-login with its exact login command and is not counted as failing; (2) a staleness check flags any pair with no ok probe for more than 24h, and a test covers it.
-  - **Hypothesis**: Most failing pairs are transient load timeouts that recover on their own, so a 24h staleness alarm separates real outages from noise. Pairs flagged stale drop to the real outages only (0 on a healthy machine).
-  - **Success**: On a healthy machine, the staleness check flags nothing, and the Measurement command prints 0.
-  - **Pivot**: If the staleness check keeps flagging pairs that work when tested by hand, the 24h window or the probe budget is wrong; rethink the signal instead of tuning the threshold.
-  - **Measurement**: `jq '[.servers[] | select(.status != "ok" and (.status | startswith("skipped_") | not) and (.suppression == null) and ((.lastError // "") | test("401|403|logged in") | not))] | length' ~/.cache/agentbrew/mcp-health.json` prints 0 (2026-10-12 after a plain probe: 0).
-  - **Anchor**: VISION.md G5 drift-detection + auto-repair; DORA MTTR (Forsgren, Humble, Kim, *Accelerate*, 2018) for detect-to-repair time; Beyer et al., *Site Reliability Engineering*, 2016, Ch. 6 "Monitoring Distributed Systems" (monitor the symptom, not the cause).
-
-
   **ID**: context-budget-weekly-audit-active
   **Tags**: token-budget, metrics, context, p1
   **Details**: Infrastructure ships in `agentbrew measure context` + `~/.config/agentbrew/metrics/latest.json` + `context-budget` skill. Each week (or when token pressure is reported): run measure, diff history, run lint, triage TASKS.md trim tasks (`trim-shared-rules-md-to-under-8k-tokens`, etc.). Recurring cadence and acceptance criteria live in `RECURRING.md` → **context-budget-weekly-audit**. Cursor ring remains manual (`metrics/manual-snapshots/`).

@@ -28,8 +28,13 @@ const FIGMA_SUPPRESSION: CatalogMcpProbeSuppression = {
 
 const byServer = new Map<string, CatalogMcpProbeSuppression>([["figma", FIGMA_SUPPRESSION]]);
 
-function failure(name: string, agent: string, status: ProbeResult["status"] = "init_error"): ProbeResult {
-  return { name, agent, status, latencyMs: 10, error: "HTTP 401: Unauthorized" };
+function failure(
+  name: string,
+  agent: string,
+  status: ProbeResult["status"] = "init_error",
+  error = "HTTP 401: Unauthorized",
+): ProbeResult {
+  return { name, agent, status, latencyMs: 10, error };
 }
 
 describe("catalogServerName", () => {
@@ -93,13 +98,16 @@ describe("unhealthyMcpEntries", () => {
   });
 
   it("still counts a genuine failure", () => {
-    const snapshot = snapshotFor([failure("github", "cursor")]);
+    const snapshot = snapshotFor([failure("github", "cursor", "init_error", "spawn ENOENT")]);
 
     expect(unhealthyMcpEntries(snapshot).map((e) => e.name)).toEqual(["github"]);
   });
 
   it("separates the suppressed entry from the actionable one", () => {
-    const snapshot = snapshotFor([failure("figma", "cursor"), failure("github", "cursor")]);
+    const snapshot = snapshotFor([
+      failure("figma", "cursor"),
+      failure("github", "cursor", "init_error", "spawn ENOENT"),
+    ]);
 
     expect(unhealthyMcpEntries(snapshot).map((e) => e.name)).toEqual(["github"]);
     expect(suppressedMcpEntries(snapshot).map((e) => e.name)).toEqual(["figma"]);

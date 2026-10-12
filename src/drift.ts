@@ -21,6 +21,7 @@ import {
   checkUserCreatedSkills,
 } from "./drift-checks/skills.js";
 import type { DriftItem } from "./drift-checks/types.js";
+import { checkMcpStaleDrift } from "./mcp/health-snapshot.js";
 
 // Re-export types and all check functions so existing `from "./drift.js"` imports keep working.
 export type { DriftItem };
@@ -83,6 +84,7 @@ export function collectDrift(): DriftItem[] {
     ...checkBarePlaceholdersDrift(),
     ...checkCatalogPinDrift(),
     ...checkPlaywrightIsolatedDrift(),
+    ...checkMcpStaleDrift(),
     ...checkEnvHygieneDrift(),
     ...checkMcpPermissionDrift(),
     ...checkRulesDrift(),

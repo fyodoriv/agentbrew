@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { syncMcpServers } from "../sync/mcp-sync.js";
+import { isAuthErrorText } from "./health-snapshot.js";
 import type { ProbeResult, ProbeStatus } from "./probe.js";
 
 export type ProbeStatusCategory = "auth" | "configurable" | "sync";
@@ -38,9 +39,9 @@ export function categorizeProbeResult(result: ProbeResult): ProbeStatusCategory 
   return disposition.category;
 }
 
-/** An explicit rejected-credential signal in the transport error. */
+/** An explicit rejected-credential or logged-out signal in the transport error. */
 function hasAuthErrorSignal(result: ProbeResult): boolean {
-  return /\b(401|403)\b|Unauthorized|Forbidden/i.test(result.error ?? "");
+  return isAuthErrorText(result.error);
 }
 
 function looksLikeAuthFailure(result: ProbeResult): boolean {

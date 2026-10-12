@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import type { CatalogMcpProbeSuppression } from "../catalog/types.js";
 import { logSkipped } from "../core/logger.js";
+import type { DriftItem } from "../drift-checks/types.js";
 import { MCP_HEALTH_PATH } from "../paths.js";
 import { expandHome } from "../utils.js";
 import type { ProbeStatusCategory } from "./heal-actions.js";
@@ -32,6 +33,8 @@ export interface McpHealthEntry {
   status: ProbeStatus;
   lastCheckedAt: string;
   lastOkAt?: string;
+  /** Start of the current failure streak; persisted in the on-disk snapshot file and cleared on the next ok probe. */
+  firstFailedAt?: string;
   lastError?: string;
   latencyMs?: number;
   healHistory: McpHealAttempt[];
@@ -117,6 +120,7 @@ export function buildMcpHealthSnapshot(
         status: result.status,
         lastCheckedAt: generatedAt,
         lastOkAt: isOk ? generatedAt : previousEntry?.lastOkAt,
+        firstFailedAt: isOk ? undefined : (previousEntry?.firstFailedAt ?? generatedAt),
         lastError: isOk ? undefined : result.error,
         latencyMs: result.latencyMs,
         healHistory,
@@ -165,9 +169,61 @@ export function saveMcpHealthSnapshot(
  * costs more than the entry is worth.
  */
 export function unhealthyMcpEntries(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
+  return actionableFailures(snapshot).filter((entry) => !isAuthErrorText(entry.lastError));
+}
+
+function actionableFailures(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
   return (snapshot?.servers ?? []).filter(
     (entry) => entry.status !== "ok" && !entry.status.startsWith("skipped_") && !entry.suppression,
   );
+}
+
+const AUTH_ERROR_PATTERN = /\b(401|403)\b|Unauthorized|Forbidden|not logged in|login required/i;
+
+/** A rejected or missing credential. A sync or restart cannot fix it; only a login can. */
+export function isAuthErrorText(text: string | undefined): boolean {
+  return AUTH_ERROR_PATTERN.test(text ?? "");
+}
+
+/** Failing pairs whose fix is a login, reported apart from real failures. */
+export function needsLoginMcpEntries(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
+  return actionableFailures(snapshot).filter((entry) => isAuthErrorText(entry.lastError));
+}
+
+export function mcpLoginCommand(name: string): string {
+  return catalogServerName(name).includes("github")
+    ? "gh auth login"
+    : `agentbrew mcp setup ${catalogServerName(name)}`;
+}
+
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Failing pairs with no ok probe for more than a day.
+ *
+ * Probes time out for a while when the machine is busy and then recover on
+ * their own. A day without one ok probe is a real outage, not load noise.
+ */
+export function staleMcpEntries(snapshot: McpHealthSnapshot | undefined, now: Date = new Date()): McpHealthEntry[] {
+  return unhealthyMcpEntries(snapshot).filter((entry) => {
+    const since = entry.lastOkAt ?? entry.firstFailedAt;
+    return since !== undefined && now.getTime() - new Date(since).getTime() > STALE_AFTER_MS;
+  });
+}
+
+export function checkMcpStaleDrift(
+  snapshot: McpHealthSnapshot | undefined = loadMcpHealthSnapshot(),
+  now: Date = new Date(),
+): DriftItem[] {
+  return staleMcpEntries(snapshot, now).map((entry) => {
+    const since = entry.lastOkAt ?? entry.firstFailedAt ?? now.toISOString();
+    const days = Math.floor((now.getTime() - new Date(since).getTime()) / STALE_AFTER_MS);
+    return {
+      agent: entry.agent,
+      type: "mcp-stale",
+      detail: `${entry.name} has had no ok probe for ${days}d (${entry.status}) — run \`agentbrew mcp probe ${entry.name} --deep\``,
+    };
+  });
 }
 
 /** Entries held back by a catalog suppression, for `--verbose` style reporting. */

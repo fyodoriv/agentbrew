@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildMcpHealthSnapshot } from "./health-snapshot.js";
+import {
+  buildMcpHealthSnapshot,
+  checkMcpStaleDrift,
+  type McpHealthEntry,
+  type McpHealthSnapshot,
+  mcpLoginCommand,
+  needsLoginMcpEntries,
+  staleMcpEntries,
+  unhealthyMcpEntries,
+} from "./health-snapshot.js";
 import type { ProbeResult } from "./probe.js";
 
 function result(overrides: Partial<ProbeResult>): ProbeResult {
@@ -109,5 +118,109 @@ describe("buildMcpHealthSnapshot", () => {
     );
 
     expect(snapshot.servers[0].suppression).toBeUndefined();
+  });
+});
+
+describe("firstFailedAt", () => {
+  it("records the first failure and carries it while the pair keeps failing", () => {
+    const first = buildMcpHealthSnapshot(
+      undefined,
+      [result({ status: "init_timeout" })],
+      [],
+      "2026-06-04T10:00:00.000Z",
+    );
+    const second = buildMcpHealthSnapshot(first, [result({ status: "init_timeout" })], [], "2026-06-04T11:00:00.000Z");
+
+    expect(first.servers[0].firstFailedAt).toBe("2026-06-04T10:00:00.000Z");
+    expect(second.servers[0].firstFailedAt).toBe("2026-06-04T10:00:00.000Z");
+  });
+
+  it("clears firstFailedAt when the pair recovers", () => {
+    const failing = buildMcpHealthSnapshot(
+      undefined,
+      [result({ status: "init_timeout" })],
+      [],
+      "2026-06-04T10:00:00.000Z",
+    );
+    const recovered = buildMcpHealthSnapshot(failing, [result({ status: "ok" })], [], "2026-06-04T11:00:00.000Z");
+
+    expect(recovered.servers[0].firstFailedAt).toBeUndefined();
+  });
+});
+
+function entry(overrides: Partial<McpHealthEntry>): McpHealthEntry {
+  return {
+    name: "playwright",
+    agent: "copilot",
+    status: "init_timeout",
+    lastCheckedAt: "2026-06-05T12:00:00.000Z",
+    healHistory: [],
+    ...overrides,
+  };
+}
+
+function snapshotOf(...servers: McpHealthEntry[]): McpHealthSnapshot {
+  return { generatedAt: "2026-06-05T12:00:00.000Z", servers };
+}
+
+const NOW = new Date("2026-06-05T12:00:00.000Z");
+
+describe("needs-login entries", () => {
+  const loggedOut = entry({ name: "railway", agent: "claude-code", status: "init_error", lastError: "Not logged in" });
+  const unauthorized = entry({ name: "github", status: "smoke_call_failed", lastError: "401 Unauthorized" });
+  const timeout = entry({ lastError: "no response within 30000ms" });
+
+  it("reports logged-out and rejected-credential pairs as needs-login", () => {
+    expect(needsLoginMcpEntries(snapshotOf(loggedOut, unauthorized, timeout))).toEqual([loggedOut, unauthorized]);
+  });
+
+  it("does not count needs-login pairs as failing", () => {
+    expect(unhealthyMcpEntries(snapshotOf(loggedOut, unauthorized, timeout))).toEqual([timeout]);
+  });
+
+  it("names the exact login command", () => {
+    expect(mcpLoginCommand("github")).toBe("gh auth login");
+    expect(mcpLoginCommand("railway")).toBe("agentbrew mcp setup railway");
+  });
+});
+
+describe("stale MCP entries", () => {
+  it("flags a pair with no ok probe for more than 24h", () => {
+    const stale = entry({ lastOkAt: "2026-06-04T11:00:00.000Z", firstFailedAt: "2026-06-04T11:30:00.000Z" });
+    expect(staleMcpEntries(snapshotOf(stale), NOW)).toEqual([stale]);
+  });
+
+  it("uses firstFailedAt when the pair never passed", () => {
+    const neverOk = entry({ firstFailedAt: "2026-06-03T12:00:00.000Z" });
+    expect(staleMcpEntries(snapshotOf(neverOk), NOW)).toEqual([neverOk]);
+  });
+
+  it("leaves short failures, needs-login, and suppressed pairs alone", () => {
+    const recent = entry({ lastOkAt: "2026-06-05T10:00:00.000Z", firstFailedAt: "2026-06-05T11:00:00.000Z" });
+    const login = entry({ lastError: "Not logged in", firstFailedAt: "2026-06-01T00:00:00.000Z" });
+    const suppressed = entry({
+      firstFailedAt: "2026-06-01T00:00:00.000Z",
+      suppression: { reason: "per-client OAuth", retryPolicy: "probe-every-tick-no-heal-until-catalog-change" },
+    });
+    expect(staleMcpEntries(snapshotOf(recent, login, suppressed), NOW)).toEqual([]);
+  });
+
+  it("does not guess an age when the pair has no timestamps", () => {
+    expect(staleMcpEntries(snapshotOf(entry({})), NOW)).toEqual([]);
+  });
+
+  it("turns each stale pair into an mcp-stale drift item", () => {
+    const stale = entry({ firstFailedAt: "2026-06-02T12:00:00.000Z" });
+    expect(checkMcpStaleDrift(snapshotOf(stale), NOW)).toEqual([
+      {
+        agent: "copilot",
+        type: "mcp-stale",
+        detail: "playwright has had no ok probe for 3d (init_timeout) — run `agentbrew mcp probe playwright --deep`",
+      },
+    ]);
+  });
+
+  it("reports nothing on a healthy snapshot", () => {
+    expect(checkMcpStaleDrift(snapshotOf(entry({ status: "ok", lastOkAt: NOW.toISOString() })), NOW)).toEqual([]);
   });
 });

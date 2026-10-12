@@ -347,17 +347,17 @@
   - **Files**: `src/core/agents.yaml`, `src/sync/mcp-sync.ts`, `src/drift-checks/mcp.ts`, `docs/user-stories/03-add-mcp-server.md`, `docs/user-stories/06-drift-detection.md`
   - **Acceptance**: A researched decision is recorded in code/docs/tests: either Claude Code declares `mcpPermissionsConfig.file: ~/.claude/settings.json` with regression coverage for sync + drift, or documentation explains why Claude Code permission ownership remains out of scope and drift checks deliberately skip it.
 
-- [ ] Align launchagent Node versions to stop recurring macOS permission prompts
+- [ ] Manage Node upgrade steps so LaunchAgents and ~/.local/bin move together
   - **ID**: dotfiles-launchagent-node-version-sprawl
   - **Tags**: scout, dotfiles, launchagent, node, permissions, mcp, p1
-  - **Details**: Scouted 2026-06-10 while diagnosing `agentbrew fix` browser probe churn. The scheduler tick launches a fleet of `npx`-spawned Node MCP servers that bind sockets, which re-triggers macOS "node would like to accept incoming connections / find devices on local network" prompts when the exact Node binary path changes. The host has multiple fnm Node installs (`v20.20.2`, `v24.14.0`, `v24.15.0`, `v24.16.0`); the LaunchAgent path pins `v24.14.0` while the interactive shell default has moved, so macOS sees distinct Node binaries and prompts again.
-  - **Files**: external repo `dotfiles` LaunchAgent templates and fnm/node setup modules; agentbrew docs may cross-link once the dotfiles fix lands.
-  - **Acceptance**: Dotfiles launchagents and shell defaults resolve to one stable managed Node binary for scheduler-launched MCPs; stale fnm Node versions are pruned or explicitly ignored; approving macOS network permission once covers subsequent `agentbrew fix` ticks.
-  - **Hypothesis**: Settling launchagents and shells on one Node path removes repeated permission prompts caused by binary-path drift.
-  - **Success**: After one macOS approval, three consecutive `agentbrew fix` ticks produce no new Node network-permission prompts.
-  - **Pivot**: If macOS still prompts with a stable Node path, move MCP scheduler probes behind non-socket fast-tier probes or pre-approved signed wrapper binaries.
-  - **Measurement**: Compare `ps -axo command | grep '/fnm/node-versions/.*/node'` during scheduler probes before/after; after the fix, all scheduler Node processes use one versioned path.
-  - **Anchor**: 2026-06-10 scheduler tick diagnosis; dotfiles owns LaunchAgent and fnm policy, agentbrew owns the scheduler workload.
+  - **Details**: Scouted 2026-06-10, narrowed 2026-10-12. Done: every `com.agentbrew.*` plist now runs the Node that `~/.node-version` names, and dotfiles doctor check `agentbrew.launchagent_node_pinned` reports any plist or `~/.local/bin/node` link that drifts. Finding: `exec()` resolves symlinks, so no version-independent path (fnm alias, `~/.local/bin/node` link) can hide a Node upgrade from macOS; at best each deliberate upgrade prompts once. Not verified against a live macOS prompt. Remaining: `~/.node-version` and the `~/.local/bin/{node,npm,npx}` links are hand-made, and plists are rewritten only by a manual `agentbrew auto-sync install`.
+  - **Files**: external repo `dotfiles` (chezmoi-managed `~/.node-version` and `~/.local/bin` Node links, upgrade flow); `src/sync/scheduler-paths.ts` and `src/memory/launchagent.ts` here for the plist rewrite.
+  - **Acceptance**: A Node upgrade through the dotfiles upgrade flow updates `~/.node-version`, the `~/.local/bin` links, and rewrites the agentbrew plists in one step, and `agentbrew.launchagent_node_pinned` stays green after it. The pinned minsky Node and other old fnm versions stay installed.
+  - **Hypothesis**: A single scripted upgrade step removes the manual drift window between the new Node and old plists.
+  - **Success**: After an upgrade, `agentbrew.launchagent_node_pinned` passes without manual steps and macOS shows at most one new Node prompt.
+  - **Pivot**: If macOS still prompts on every tick with one stable path, move scheduler probes behind non-socket fast-tier probes or a pre-approved signed wrapper binary.
+  - **Measurement**: `dotfiles-doctor` reports `agentbrew.launchagent_node_pinned` as passing right after an upgrade; `ps -axo command | grep '/fnm/node-versions/.*/node'` during a scheduler tick shows one versioned path.
+  - **Anchor**: dotfiles PR 54 (drift check); 2026-06-10 scheduler tick diagnosis.
 
 - [ ] Rules source hygiene auto-repair is covered by a fixture-backed real-e2e scenario
   **ID**: rules-source-hygiene-real-e2e

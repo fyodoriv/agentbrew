@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { MEMORY_AGENT_LABEL } from "../memory/launchagent.js";
 import {
   LAUNCHAGENT_LANG,
@@ -29,6 +29,19 @@ export function setPlistPath(plistContent: string, pathValue: string): string {
   const pathRegex = /(<key>PATH<\/key>\s*<string>)[^<]*(<\/string>)/u;
   if (!pathRegex.test(plistContent)) return plistContent;
   return plistContent.replace(pathRegex, `$1${pathValue}$2`);
+}
+
+/**
+ * Node bin dir the plist itself runs: the directory of an absolute
+ * ProgramArguments[0] that is named `node`. Undefined for other plists.
+ * The running process can be a development checkout on another Node, so the
+ * deployed plist is the contract, not `process.execPath`.
+ */
+export function plistNodeBinDir(plistContent: string): string | undefined {
+  const array = /<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)<\/string>/u.exec(plistContent);
+  const program = array?.[1];
+  if (!program || !isAbsolute(program) || basename(program) !== "node") return undefined;
+  return dirname(program);
 }
 
 /** True when a LaunchAgent plist sets LANG or LC_ALL. */
@@ -78,7 +91,10 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
     const pathValue = extractPlistPath(content);
     if (!pathValue) continue;
 
-    if (!plistManagesOwnPath(plistPath) && !launchAgentPathHasRequiredPrefixes(pathValue, home)) {
+    if (
+      !plistManagesOwnPath(plistPath) &&
+      !launchAgentPathHasRequiredPrefixes(pathValue, home, plistNodeBinDir(content))
+    ) {
       items.push({
         agent: "launchagent",
         type: "launchagent",

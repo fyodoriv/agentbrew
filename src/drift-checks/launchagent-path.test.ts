@@ -206,6 +206,49 @@ describe("checkLaunchAgentPathDrift", () => {
     }
   });
 
+  describe("node dir comes from the plist's applied ProgramArguments", () => {
+    const appliedNodeBin = "/home/user/.local/share/fnm/node-versions/v24.21.0/installation/bin";
+    const plistWith = (pathValue: string) => `<?xml version="1.0"?>
+<plist><dict>
+<key>ProgramArguments</key>
+<array>
+<string>${appliedNodeBin}/node</string>
+<string>/home/user/apps/tooling/agentbrew/dist/cli.js</string>
+<string>fix</string>
+</array>
+<key>PATH</key><string>${pathValue}</string>
+<key>LANG</key><string>C.UTF-8</string>
+</dict></plist>`;
+
+    const run = (pathValue: string) => {
+      const original = process.platform;
+      Object.defineProperty(process, "platform", { value: "darwin" });
+      mockExistsSync.mockImplementation((p) => {
+        const s = String(p);
+        return s.includes("LaunchAgents") || s.includes("dotfiles/bin");
+      });
+      mockReaddirSync.mockReturnValue(["com.agentbrew.check.plist"] as unknown as ReturnType<typeof readdirSync>);
+      mockReadFileSync.mockReturnValue(plistWith(pathValue));
+      try {
+        return checkLaunchAgentPathDrift();
+      } finally {
+        Object.defineProperty(process, "platform", { value: original });
+      }
+    };
+
+    it("accepts the applied node dir even when the running node differs", () => {
+      expect(appliedNodeBin).not.toBe(dirname(process.execPath));
+      const dotfilesBin = resolveDotfilesBinPath("/home/user");
+      expect(run(`${appliedNodeBin}:${dotfilesBin}:/usr/bin:/bin`)).toEqual([]);
+    });
+
+    it("still flags a PATH that lacks the applied node dir", () => {
+      const dotfilesBin = resolveDotfilesBinPath("/home/user");
+      const drift = run(`${dirname(process.execPath)}:${dotfilesBin}:/usr/bin:/bin`);
+      expect(drift.map((d) => d.detail).join("\n")).toContain("PATH missing node");
+    });
+  });
+
   it("leaves the memory daemon's fixed PATH alone but still checks its locale", () => {
     const original = process.platform;
     Object.defineProperty(process, "platform", { value: "darwin" });

@@ -872,12 +872,12 @@
   - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
   - **Acceptance**: with one failing and one healthy server, a tick starts the healthy server once and the failing one twice; a test covers it.
 
-- [ ] Make LaunchAgent PATH drift checks independent of the running checkout's Node location
-  - **ID**: launchagent-path-drift-check-no-running-node
-  - **Tags**: launchagents, drift, node, doctor, false-positive
-  - **Details**: `src/drift-checks/launchagent-path.ts` derives its expected LaunchAgent PATH from `getNodeBinDir()`. That value can point at the development checkout or a different Node installation even when the applied checkout and deployed plist are correct. Derive the expected PATH from the applied LaunchAgent contract instead.
-  - **Files**: src/drift-checks/launchagent-path.ts, related tests
-  - **Acceptance**: a test with different development and applied Node paths accepts the deployed applied path and still flags a genuinely stale path.
+- [ ] Build repaired LaunchAgent PATH from the plist's own node dir
+  - **ID**: launchagent-repair-path-uses-plist-node-dir
+  - **Tags**: scout, launchagents, node, drift
+  - **Details**: `repairAgentbrewLaunchAgentPaths` in `src/sync/launchagent.ts` calls `buildLaunchAgentPath(home)`, which puts the running process's Node dir first. When a plist is genuinely stale, a repair run from a development checkout writes that checkout's Node dir. The drift check now reads the plist's own `ProgramArguments[0]`; the repair should pass the same dir.
+  - **Files**: `src/sync/launchagent.ts`, `src/sync/launchagent.test.ts`
+  - **Acceptance**: a test repairs a stale fixture plist whose `ProgramArguments[0]` names a different Node dir than the running process, and the rewritten PATH starts with the plist's Node dir.
 
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures

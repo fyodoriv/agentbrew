@@ -111,8 +111,7 @@ export function buildLaunchAgentPath(home: string, nodeBinDir: string = getNodeB
 }
 
 /** Prefix segments every com.agentbrew.* LaunchAgent PATH must include. */
-export function requiredLaunchAgentPathPrefixes(home: string): string[] {
-  const nodeBinDir = getNodeBinDir();
+export function requiredLaunchAgentPathPrefixes(home: string, nodeBinDir: string = getNodeBinDir()): string[] {
   const prefixes = [nodeBinDir];
   const fnmBin = resolveFnmNodeBin(home);
   if (fnmBin && fnmBin !== nodeBinDir) {
@@ -134,8 +133,12 @@ function pathStartsWithSegments(pathValue: string, segments: string[]): boolean 
 }
 
 /** True when `path` has the required prefix, including Dotfiles' secure shim-first variant. */
-export function launchAgentPathHasRequiredPrefixes(pathValue: string, home: string): boolean {
-  const required = requiredLaunchAgentPathPrefixes(home);
+export function launchAgentPathHasRequiredPrefixes(
+  pathValue: string,
+  home: string,
+  nodeBinDir: string = getNodeBinDir(),
+): boolean {
+  const required = requiredLaunchAgentPathPrefixes(home, nodeBinDir);
   if (pathStartsWithSegments(pathValue, required)) return true;
 
   // Dotfiles' endpoint-path repair deliberately prepends its bin directory to

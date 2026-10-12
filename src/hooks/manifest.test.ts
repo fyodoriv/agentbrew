@@ -183,9 +183,8 @@ describe("resolveManifest", () => {
           description: Third overlay
           event: UserPromptSubmit
           script: checks/third.sh
-          tier: verifier
+          tier: deterministic
           verdict: warn
-          promptVersion: 1
       `,
     );
 
@@ -264,7 +263,7 @@ describe("manifestEntryToManagedHook", () => {
         description: "Verify before completion",
         event: "Stop",
         script: "checks/verify-before-completion.sh",
-        tier: "verifier",
+        tier: "deterministic",
         verdict: "warn",
         agents: ["claude-code", "cursor"],
       },
@@ -276,7 +275,7 @@ describe("manifestEntryToManagedHook", () => {
       matcher: undefined,
       type: "command",
       command: "bash /tmp/deployed-hooks/verify-before-completion.sh",
-      timeout: 10,
+      timeout: 5,
       agents: ["claude-code", "cursor"],
       source: "agentbrew-hooks-manifest",
     });
@@ -290,15 +289,6 @@ describe("canonical hook manifest", () => {
       overlayPath: join(tempRoot(), "missing-overlay.yaml"),
     });
     const golden = resolvedManifest.hooks.find((hook) => hook.id === "code-no-timestamps");
-    const prBodyVerifier = resolvedManifest.hooks.find((hook) => hook.id === "pr-body-diff-consistency");
-    const codifyVerifier = resolvedManifest.hooks.find((hook) => hook.id === "codify-repeated-work");
-    const actionVerifier = resolvedManifest.hooks.find((hook) => hook.id === "ask-action-not-treasure-map");
-    const locationVerifier = resolvedManifest.hooks.find((hook) => hook.id === "rule-skill-location");
-    const catBEditVerifiers = [
-      "browser-errors-before-done",
-      "fix-errors-never-silence",
-      "comment-proportionality-verifier",
-    ].map((id) => resolvedManifest.hooks.find((hook) => hook.id === id));
     const verifyBeforeCompletion = resolvedManifest.hooks.find((hook) => hook.id === "verify-before-completion");
     const managedGolden = managed.find((hook) => hook.command?.includes("code-no-timestamps.sh"));
     const managedVerifyBeforeCompletion = managed.find((hook) => hook.command?.includes("verify-before-completion.sh"));
@@ -313,62 +303,6 @@ describe("canonical hook manifest", () => {
     expect(verifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
     expect(managedGolden?.agents).toEqual(["claude-code", "cursor"]);
     expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
-    expect(prBodyVerifier).toMatchObject({
-      event: "PreToolUse",
-      matcher: "Bash",
-      script: "verifiers/pr-body-diff-consistency.sh",
-      tier: "verifier",
-      verdict: "warn",
-      model: "claude-haiku-4-5",
-      promptVersion: 1,
-      agents: ["claude-code", "cursor"],
-    });
-    expect(resolvedManifest.hooks.find((hook) => hook.id === "pr-body-explains-why")).toMatchObject({
-      tier: "verifier",
-      verdict: "warn",
-      agents: ["claude-code", "cursor"],
-    });
-    expect(codifyVerifier).toMatchObject({
-      event: "UserPromptSubmit",
-      script: "verifiers/codify-repeated-work.sh",
-      tier: "verifier",
-      verdict: "warn",
-      model: "claude-haiku-4-5",
-      promptVersion: 1,
-      agents: ["claude-code", "cursor"],
-    });
-    expect(actionVerifier).toMatchObject({
-      event: "UserPromptSubmit",
-      script: "verifiers/ask-action-not-treasure-map.sh",
-      tier: "verifier",
-      verdict: "warn",
-      model: "claude-haiku-4-5",
-      promptVersion: 1,
-      agents: ["claude-code", "cursor"],
-    });
-    expect(locationVerifier).toMatchObject({
-      event: "PreToolUse",
-      matcher: "Write|Edit|MultiEdit",
-      script: "verifiers/rule-skill-location.sh",
-      tier: "verifier",
-      verdict: "warn",
-      model: "claude-haiku-4-5",
-      promptVersion: 1,
-      agents: ["claude-code", "cursor"],
-    });
-    for (const verifier of catBEditVerifiers) {
-      expect(verifier).toMatchObject({
-        tier: "verifier",
-        verdict: "warn",
-        model: "claude-haiku-4-5",
-        promptVersion: 1,
-        agents: expect.arrayContaining(["claude-code", "cursor"]),
-      });
-    }
-    expect(resolvedManifest.hooks.find((hook) => hook.id === "browser-errors-before-done")?.agents).toEqual([
-      "claude-code",
-      "cursor",
-    ]);
     expect(resolvedManifest.hooks.find((hook) => hook.id === "context-budget-measure")).toMatchObject({
       event: "SessionStart",
       script: "checks/context-budget-measure.sh",
@@ -399,7 +333,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(18);
+    expect(bashHookIds).toHaveLength(16);
     expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
   });

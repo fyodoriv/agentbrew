@@ -45,7 +45,7 @@ const VALID_EVENTS = new Set([
   "Notification",
 ]);
 
-const VALID_TIERS = new Set(["deterministic", "verifier"]);
+const VALID_TIERS = new Set(["deterministic"]);
 const VALID_VERDICTS = new Set(["block", "warn", "mutate"]);
 
 /**
@@ -60,11 +60,9 @@ export interface ManifestHookEntry {
   event: string;
   matcher?: string;
   script: string;
-  tier: "deterministic" | "verifier";
+  tier: "deterministic";
   verdict: "block" | "warn" | "mutate";
   bypassEnvVar?: string;
-  model?: string;
-  promptVersion?: number;
   sourceRule?: string;
   agents?: string[];
   /** `false` makes the hook opt-in per machine via the overlay `enabled:` list. Omitted means on. */
@@ -183,15 +181,11 @@ function validateEntry(entry: Record<string, unknown>, path: string, index: numb
   validateRequiredString(where, id, "description", entry.description);
   validateEnum({ where, id, field: "event" }, entry.event, VALID_EVENTS, `one of ${[...VALID_EVENTS].join(", ")}`);
   validateRequiredString(where, id, "script", entry.script);
-  validateEnum({ where, id, field: "tier" }, entry.tier, VALID_TIERS, "deterministic or verifier");
+  validateEnum({ where, id, field: "tier" }, entry.tier, VALID_TIERS, "deterministic");
   validateEnum({ where, id, field: "verdict" }, entry.verdict, VALID_VERDICTS, "block, warn, or mutate");
   validateOptionalString({ where, id, field: "matcher" }, entry.matcher);
   validateOptionalString({ where, id, field: "bypassEnvVar" }, entry.bypassEnvVar);
-  validateOptionalString({ where, id, field: "model" }, entry.model);
   validateOptionalStringArray({ where, id, field: "agents" }, entry.agents);
-  if (entry.promptVersion !== undefined && typeof entry.promptVersion !== "number") {
-    throw new Error(`${where} (${id}): promptVersion must be a number or omitted`);
-  }
   if (entry.defaultEnabled !== undefined && typeof entry.defaultEnabled !== "boolean") {
     throw new Error(`${where} (${id}): defaultEnabled must be a boolean or omitted`);
   }
@@ -274,9 +268,8 @@ export function manifestEntryToManagedHook(entry: ManifestHookEntry, deployScrip
     matcher: entry.matcher,
     type: "command",
     command: `bash ${deployedPath}`,
-    // 60s default Claude Code timeout is way too generous for our hooks;
-    // pin per-tier so a stuck verifier doesn't freeze a tool call.
-    timeout: entry.tier === "verifier" ? 10 : 5,
+    // 60s default Claude Code timeout is way too generous for our hooks.
+    timeout: 5,
     agents: entry.agents,
     source: "agentbrew-hooks-manifest",
   };

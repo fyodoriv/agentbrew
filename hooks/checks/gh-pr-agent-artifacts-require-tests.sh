@@ -109,7 +109,7 @@ is_agent_artifact_path() {
     commands/*.md|src/cli-commands/*.md|.cursor/rules/*.mdc)
       return 0
       ;;
-    hooks/manifest.yaml|hooks/verifiers/*)
+    hooks/manifest.yaml)
       return 0
       ;;
     hooks/checks/*.sh)

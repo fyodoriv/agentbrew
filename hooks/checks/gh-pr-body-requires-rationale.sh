@@ -13,8 +13,7 @@
 #   - A Jira / GitHub issue link (PROJ-, SOLID-, #123)
 #
 # These signals are pure regex — they don't VERIFY the rationale is good,
-# they just verify SOMETHING-like-rationale exists. The LLM-verifier hook
-# (gh-pr-body-explains-why, Cat B Phase 2) does the semantic check.
+# they just verify SOMETHING-like-rationale exists. No hook judges quality.
 #
 # **What gets blocked**:
 #   - `gh pr create --body "ship it"` (no rationale signal)

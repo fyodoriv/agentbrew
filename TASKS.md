@@ -305,17 +305,12 @@
   - **Files**: package.json, package-lock.json
   - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
 
-- [ ] Fix or retire the LLM verifier tier — all 12 verifiers fail open and never enforce
-  - **ID**: llm-verifier-tier-never-returns-verdict
-  - **Tags**: scout, hooks, llm-verifier, verification, latency, stability
-  - **Details**: Every `tier: verifier` hook routes through `hooks/lib/claude-verifier.sh`, which shells out to `claude --print`. On a Mac without a working verifier backend that call never returns: measured empty responses at 5s, 30s and 60s alarms, with Claude Code session env stripped (`CLAUDECODE`, `CLAUDE_CODE_*` unset) and with `--settings '{"hooks":{}}'`, so it is neither recursion nor a session-nesting artifact. The wrapper then hits the fail-safe at `claude-verifier.sh:93` and returns `ALLOW verifier-empty-response`, and because the call is wrapped in `2>/dev/null` nothing is ever surfaced — a permanently dead verifier is indistinguishable from a clean ALLOW. Transcript evidence over 5 sessions: 263 `PreToolUse:Bash` and 98/98 `UserPromptSubmit` hook runs recorded `timedOut: true`, `PreToolUse:Bash` ran to a 14.9s median (p90 58.6s, max 546.9s), and successful runs alone consumed 118 minutes of blocking time. Net effect: the tier costs ~15s per Bash call and ~30s per Edit while enforcing nothing. Two viable directions: (a) make the verifier runner work without spawning a full `claude` CLI (direct API call, or a long-lived warm process), or (b) retire the tier and re-express the highest-value checks deterministically. Either way the silent-failure mode must go: the runner needs a distinguishable health state and a self-check. Note `gtimeout`/`timeout` are absent on this machine so the `perl alarm` fallback branch is the one in use — that branch works correctly and is not the bug.
-  - **Files**: hooks/lib/claude-verifier.sh, hooks/manifest.yaml, src/hooks/manifest.ts, scripts/hook-observation.sh, tests/hooks (verifier health fixture)
-  - **Acceptance**: (1) a verifier that cannot reach its model reports a distinguishable state instead of a silent ALLOW; (2) a self-check or doctor surface flags "verifier never returns a verdict" within one run; (3) either `claude --print` returns a verdict inside the configured budget on a clean machine, or the verifier tier is disabled by default and its manifest entries say so; (4) a regression test asserts that an empty/failed model response is reported, not swallowed.
-  - **Hypothesis**: The verifier tier currently delivers zero enforcement at a ~15s-per-tool-call cost, so making the failure visible (then fixing or retiring the runner) removes the whole cost with no loss of enforcement.
-  - **Success**: median `PreToolUse:Bash` hook duration drops below 5000ms and no verifier-tier hook records `timedOut: true` across a 50-tool-call session.
-  - **Pivot**: If `claude --print` proves healthy on other machines and this is personal-Mac-only, keep the tier but gate it behind a startup health probe that disables verifiers when the probe fails.
-  - **Measurement**: `jq -r 'select(.type=="attachment") | .attachment | select(.hookName=="PreToolUse:Bash") | .durationMs' ~/.claude/projects/*/*.jsonl | sort -n | awk '{a[NR]=$1} END{print a[int(NR/2)]}'`
-  - **Anchor**: VISION.md G5 drift-detection + auto-repair; Nielsen (1993) 1s/10s interaction-latency thresholds — a 15s blocking pre-tool hook is far past the point where the loop stalls.
+- [ ] Drop dead Cat B model fields from the hook decision log
+  - **ID**: hook-log-decision-drop-cat-b-fields
+  - **Tags**: scout, hooks, dead-code
+  - **Details**: The LLM verifier tier is retired, so nothing sets `HOOK_MODEL` or `HOOK_PROMPT_VERSION` any more. `hooks/lib/log-decision.sh` still reads both and documents `model` and `promptVersion` as "Cat B only". Also confirm that `agentbrew sync` prunes stale deployed copies of the retired verifier scripts under `~/.claude/codeassist/hooks-scripts/`, and add a test if it does not.
+  - **Files**: hooks/lib/log-decision.sh, src/hooks/deploy.ts
+  - **Acceptance**: (1) `log-decision.sh` has no model or promptVersion handling; (2) a test shows a deploy run removes deployed scripts that no manifest entry references.
 
   **ID**: context-budget-weekly-audit-active
   **Tags**: token-budget, metrics, context, p1
@@ -1871,13 +1866,6 @@
   - **Details**: `src/mcp/mcp-git.test.ts` mocks `../state.js` but omits the `loadState` export, so the overlay-agent load path hits a caught error and logs `Failed to load overlay agents: No "loadState" export is defined on the "../state.js" mock` to stderr on every run. Tests pass, but the noisy stderr hides real failures and the mock is silently exercising the error path instead of the intended path. Add `loadState` to the `vi.mock("../state.js", …)` factory (return a minimal state) so the overlay path runs cleanly. Scouted while fixing `agentbrew-sync-clear-stale-mcp-fields`.
   - **Files**: `src/mcp/mcp-git.test.ts`
   - **Acceptance**: `vitest run src/mcp/mcp-git.test.ts` emits no "No \"loadState\" export" stderr line; all tests still pass.
-
-- [ ] Consolidate deterministic and Cat B comment-proportionality hook surfaces
-  - **ID**: consolidate-comment-proportionality-hook-surfaces
-  - **Tags**: scout, hooks, llm-verifier, cleanup
-  - **Details**: Cat B slice 2 added `comment-proportionality-verifier` under `hooks/verifiers/` while the older deterministic `comment-proportionality` hook remains under `hooks/checks/`. That is safe in warn mode but can double-warn on comment-heavy `Write` calls and splits rule #38 observation across two hook IDs. After the Cat B verifier has enough decision-log evidence, decide whether to retire the deterministic hook, keep it as a cheap prefilter, or merge its ratio heuristic into the verifier's candidate gate.
-  - **Files**: `hooks/checks/comment-proportionality.sh`, `hooks/checks/comment-proportionality.test.sh`, `hooks/verifiers/comment-proportionality.sh`, `hooks/verifiers/comment-proportionality.test.sh`, `hooks/manifest.yaml`
-  - **Acceptance**: Exactly one intentional policy is documented and implemented for rule #38: either one hook remains, or both remain with manifest descriptions/tests explaining why the deterministic prefilter and semantic verifier are complementary; `bash scripts/run-hook-fixtures.sh` stays green.
 
 - [ ] Refresh competitor research: block-ai-rules-vs-agentbrew
   - **ID**: refresh-competitor-block-ai-rules-vs-agentbrew

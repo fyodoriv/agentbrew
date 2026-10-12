@@ -10,7 +10,6 @@ surface.
 |---|---|
 | `hooks/manifest.yaml` | Canonical hook IDs, descriptions, event/matcher mapping, script path, tier, verdict, bypass variable, source rule, and target agents. |
 | `hooks/checks/` | Deterministic shell checks. |
-| `hooks/verifiers/` | LLM-backed verifiers. Verifiers must default to allow on timeout or model failure. |
 | `hooks/lib/` | Shared shell helpers for parsing hook stdin and emitting verdicts. |
 | `~/.config/agentbrew/hooks-overlay/manifest.yaml` | Optional per-machine overlay. Matching IDs replace canonical hooks; `disabled:` removes canonical hooks locally; `enabled:` turns on `defaultEnabled: false` hooks locally (`disabled:` wins when an ID is in both). |
 
@@ -44,14 +43,13 @@ Required fields per hook:
 - `description`: human-readable summary for review/debugging.
 - `event`: one Claude Code lifecycle event name.
 - `script`: path relative to `hooks/`.
-- `tier`: `deterministic` or `verifier`.
+- `tier`: `deterministic`. The LLM verifier tier was retired because `claude --print` takes about 10 seconds per call, far past a hook budget, and every verifier failed open.
 - `verdict`: `block`, `warn`, or `mutate`.
 
 Optional fields:
 
 - `matcher`: agent-native matcher for the event.
 - `bypassEnvVar`: emergency escape hatch. Hook scripts must honor it.
-- `model` / `promptVersion`: verifier metadata.
 - `sourceRule`: advisory rule that the hook enforces.
 - `agents`: target agent names. Omit or use an empty list to deploy to every
   detected hook-capable target.
@@ -115,8 +113,7 @@ print secrets, full environment dumps, or unrelated transcript contents.
 ## Timing and safety
 
 - Deterministic hooks should complete in under 2 seconds.
-- Verifier hooks must wrap model calls in a short timeout and default to allow on
-  timeout or malformed model output.
+- Hooks must not call a model. A blocking hook that waits on an LLM stalls the tool loop.
 - Scripts must not mutate the repository unless their manifest verdict is
   `mutate` and the target event supports mutation.
 - Every deterministic hook must have at least one adjacent `.test.sh` fixture
@@ -130,7 +127,7 @@ print secrets, full environment dumps, or unrelated transcript contents.
 
 ## Adding a hook
 
-1. Add or update the script under `hooks/checks/` or `hooks/verifiers/`.
+1. Add or update the script under `hooks/checks/`.
 2. Add an adjacent `.test.sh` fixture that proves the intended verdict.
 3. Add the manifest entry with explicit `agents:` if the hook is not portable to
    every hook-capable target.

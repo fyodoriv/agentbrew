@@ -25,18 +25,16 @@
 #   event           Claude Code event: PreToolUse | PostToolUse | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
 #   matcher         optional Claude Code matcher (e.g. "Write|Edit", "Bash"). Omit to match all.
 #   script          path relative to agentbrew/hooks/ (e.g. checks/code-no-timestamps.sh)
-#   tier            "deterministic" (Cat A) or "verifier" (Cat B)
+#   tier            "deterministic" (the LLM "verifier" tier was retired; see docs/hook-protocol.md)
 #   verdict         "block" (exit 2) | "warn" (stderr only) | "mutate" (rewrite tool_input)
 #   bypassEnvVar    optional env var that disables this hook (default: HOOK_BYPASS_<ID_UPPERCASE>)
-#   model           Cat B only — overrides default `claude-sonnet-4-7`
-#   promptVersion   Cat B only — bump when the verifier prompt changes; logged with each decision
 #   sourceRule      reference to the original IRON LAW (file:line) the hook implements
 #   agents          which agents to deploy to. Cursor gets event-name transforms.
 #   defaultEnabled  optional; false makes the hook opt-in. Its script still deploys, but sync wires it into
 #                   agent hooks files only when the overlay lists its id under `enabled:`. Omit to keep it on.
 #
 # **Adding a hook**: copy an existing entry below, change the id, write
-# the script under checks/ or verifiers/, ship a .test.sh fixture, add
+# the script under checks/, ship a .test.sh fixture, add
 # the corresponding rule-deletion follow-up task in TASKS.md per the
 # hooks-phase-1 / hooks-phase-2 discipline.
 
@@ -309,124 +307,6 @@ hooks:
     sourceRule: shared-rules.md:811 "Env-Correct URLs (IRON LAW)"
     agents: ["claude-code", "cursor"]
     defaultEnabled: false
-
-  # ── Phase 2 Cat B verifier hooks (warn-mode observation first) ──────────
-
-  - id: pr-body-diff-consistency
-    description: Warn when a gh pr edit body appears stale relative to the current diff
-    event: PreToolUse
-    matcher: Bash
-    script: verifiers/pr-body-diff-consistency.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_PR_BODY_DIFF_CONSISTENCY
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:600 PR Bodies Decay — Verify Before Edit'
-    agents: ["claude-code", "cursor"]
-    defaultEnabled: false
-
-  - id: codify-repeated-work
-    description: Warn when repeated workflow work should be codified into a skill before continuing
-    event: UserPromptSubmit
-    script: verifiers/codify-repeated-work.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_CODIFY_REPEATED_WORK
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:187 Codify before continuing — write skill'
-    agents: ["claude-code", "cursor"]
-
-  - id: ask-action-not-treasure-map
-    description: Warn when the previous assistant response asks with a treasure map instead of an action
-    event: UserPromptSubmit
-    script: verifiers/ask-action-not-treasure-map.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_ASK_ACTION_NOT_TREASURE_MAP
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'templates/AGENTS.md:181 Ask With An Action, Not A Treasure Map'
-    agents: ["claude-code", "cursor"]
-
-  - id: rule-skill-location
-    description: Warn when new rules or skills are authored in the wrong canonical location
-    event: PreToolUse
-    matcher: Write|Edit|MultiEdit
-    script: verifiers/rule-skill-location.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_RULE_SKILL_LOCATION
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'templates/AGENTS.md:13 Where new rules and skills belong'
-    agents: ["claude-code", "cursor"]
-
-  - id: browser-errors-before-done
-    description: Warn when frontend work reaches Stop without browser console/network error checks
-    event: Stop
-    script: verifiers/browser-errors-before-done.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_BROWSER_ERRORS_BEFORE_DONE
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:79 Zero Browser Errors Before Frontend Done'
-    agents: ["claude-code", "cursor"]
-
-  - id: fix-errors-never-silence
-    description: Warn when an edit appears to silence or suppress an error instead of fixing it
-    event: PostToolUse
-    matcher: Write|Edit
-    script: verifiers/fix-errors-never-silence.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_FIX_ERRORS_NEVER_SILENCE
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:115 Fix errors, never silence them'
-    agents: ["claude-code", "cursor"]
-
-  - id: comment-proportionality-verifier
-    description: Warn when long comments are disproportionate to adjacent code
-    event: PostToolUse
-    matcher: Write|Edit
-    script: verifiers/comment-proportionality.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_COMMENT_PROPORTIONALITY_VERIFIER
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:865 Comment Proportionality IRON LAW'
-    agents: ["claude-code", "cursor"]
-
-  - id: pr-body-explains-why
-    description: Warn when gh pr create body lacks WHY rationale for cold readers
-    event: PreToolUse
-    matcher: Bash
-    script: verifiers/pr-body-explains-why.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_PR_BODY_EXPLAINS_WHY
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'shared-rules.md:576 PR Bodies Explain WHY'
-    agents: ["claude-code", "cursor"]
-    defaultEnabled: false
-
-  - id: stability-task-priority
-    description: Warn when stability/deployment infra tasks are filed below P0
-    event: PreToolUse
-    matcher: Write|Edit|MultiEdit
-    script: verifiers/stability-task-priority.sh
-    tier: verifier
-    verdict: warn
-    bypassEnvVar: HOOK_BYPASS_STABILITY_TASK_PRIORITY
-    model: claude-haiku-4-5
-    promptVersion: 1
-    sourceRule: 'templates/AGENTS.md stability/deployment infra P0 discipline'
-    agents: ["claude-code", "cursor"]
 
   - id: comment-brevity-in-tests
     description: 'Warn on 4+ line comment blocks above it/describe/test calls'

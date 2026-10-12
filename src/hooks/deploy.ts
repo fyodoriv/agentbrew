@@ -1,7 +1,7 @@
 /**
  * Hook script deployment.
  *
- * Copies hook scripts from `agentbrew/hooks/{checks,verifiers}/` and
+ * Copies hook scripts from `agentbrew/hooks/checks/` and
  * from the optional per-machine overlay to a single deploy directory
  * (`~/.claude/codeassist/hooks-scripts/`). The deployed scripts are
  * what Claude Code actually exec's when a hook fires — the manifest

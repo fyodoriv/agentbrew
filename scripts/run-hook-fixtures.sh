@@ -9,7 +9,7 @@ if [[ -z "$repo_root" ]]; then
 fi
 
 fixtures="$(
-  for dir in "$repo_root/hooks/checks" "$repo_root/hooks/verifiers"; do
+  for dir in "$repo_root/hooks/checks"; do
     if [[ -d "$dir" ]]; then
       /usr/bin/find "$dir" -maxdepth 1 -type f -name '*.test.sh'
     fi

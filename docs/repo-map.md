@@ -3,6 +3,33 @@
 This is reference detail for [`AGENTS.md`](../AGENTS.md). `AGENTS.md` keeps the
 rules; this file keeps the diagrams and tables they point to.
 
+## Repo layout
+
+```
+agentbrew/
+├── src/                            # Node.js CLI (TypeScript)
+│   ├── cli.ts                      # Command definitions (commander)
+│   ├── commands/                   # CLI command registration (cli-mcp.ts, cli-infra.ts, etc.)
+│   ├── catalog/                    # Catalog browse, install, search
+│   ├── catalog.yaml                # Catalog data (skills, MCP servers, rule sets)
+│   ├── sync/                       # Sync engines (mcp-sync, rules-sync, skills-sync, etc.)
+│   ├── mcp/                        # MCP management (adapters, mcp-git, mcp-setup, mcp-status, mcp-validation, mcp-wizard, etc.)
+│   ├── skills/                     # Skill tools (init-skill, validate, skill-versions, etc.)
+│   ├── core/                       # Core infra (agents.yaml, context, env-sanitize, errors, logger, state-manager, transforms)
+│   ├── ui/                         # Interactive UI (browse)
+│   ├── health.ts                   # Drift detection + auto-repair
+│   ├── portable.ts                 # Config export/import as portable bundles
+│   ├── types.ts                    # Core interfaces
+│   └── *.test.ts                   # Unit tests (colocated)
+├── templates/                      # Source templates
+│   └── AGENTS.md                   # Shared instruction template (deployed to all agents)
+├── skill-plugins/dev/              # Dev skills (deployed via symlinks) — see skill-plugins/dev/README.md
+├── docs/                           # Vision, competition research, user stories, RFCs
+├── Agentfile.yaml                  # Repo-local MCP/skill/source manifest for agentbrew work
+├── TASKS.md                        # Task queue
+└── README.md
+```
+
 ## Data Flow
 
 ```

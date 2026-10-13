@@ -87,6 +87,17 @@ hooks:
     agents: ["claude-code", "cursor"]
     defaultEnabled: false
 
+  - id: gh-pr-body-requires-docs
+    description: 'Block gh pr create/edit when the PR body has no "## Docs" section or "Docs: none — <reason>" line'
+    event: PreToolUse
+    matcher: Bash
+    script: checks/gh-pr-body-requires-docs.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: docs/agent-guide-baseline.md "Docs With Every Change" + templates/AGENTS.md
+    agents: ["claude-code", "cursor"]
+    defaultEnabled: false
+
   - id: gh-pr-skill-requires-evals
     description: Block skill PRs that add SKILL.md without evals/evals.json and eval-result sections
     event: PreToolUse

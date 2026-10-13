@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Docs that agents can use and humans can scan** — `AGENTS.md` is now a
+  short router (start here, commands, where to change what, rules, gotchas,
+  delivery, docs upkeep), and `CLAUDE.md` links to it so Claude Code loads it.
+  The full rule text moved to `docs/editing-rules.md`. `docs/README.md` maps
+  every doc by question and audience, and the README opens with who it is for
+  and where the docs are. `src/docs/agent-guide-contract.test.ts` pins all of
+  it. `docs/agent-guide-baseline.md` is the same contract for any repo.
+- **Hook `gh-pr-body-requires-docs`** (opt-in, like every Bash hook) blocks
+  `gh pr create`/`edit` when the body has no `## Docs` section or
+  `Docs: none — <reason>` line. It also reads multi-line heredoc bodies.
+  `templates/AGENTS.md` now tells every agent to update docs with each change.
 - **`npm run lint:rules` reuses Minsky's rule checks** — a rule-lint adapter
   runs Minsky's `scripts/check-rule-*.mjs` against this repo with `--repo`,
   and `npm run verify` runs it. Rule 9 now requires the five

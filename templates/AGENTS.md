@@ -69,7 +69,7 @@ When `.worktrees/` or orchestration session state is active, do not commit sourc
 
 ### Public impersonation ban
 
-Never publish under the user's identity without explicit approval for the exact action in the current session. Standing `/ship-it` pre-approves tooling/oncall-family PR push/create — see shared-rules **## Git and delivery**. PR bodies must open with `## Summary` and two or three plain-language sentences giving the why-needed rationale: why the change is needed and what it delivers, followed by a `## Details` bullet list. Add the PR validation block and attribution footer when posting is approved.
+Never publish under the user's identity without explicit approval for the exact action in the current session. Standing `/ship-it` pre-approves tooling/oncall-family PR push/create — see shared-rules **## Git and delivery**. PR bodies must open with `## Summary` and two or three plain-language sentences giving the why-needed rationale: why the change is needed and what it delivers, followed by a `## Details` bullet list and a `## Docs` section. Add the PR validation block and attribution footer when posting is approved.
 
 ### Browser work
 
@@ -78,6 +78,10 @@ Use browser automation — never ask the user to click. SSO: use attach-first wi
 ### Verification + security
 
 No completion claims without fresh evidence. Agent-artifact changes need same-PR tests/evals or `Agent artifact test exemption: <reason>`. Defensive security only; never expose or commit secrets.
+
+### Docs with every change
+
+Every change updates its docs in the same PR. User-facing behavior goes in the README or how-to; agent workflow and any gotcha that cost time go in the repo's `AGENTS.md`. Every PR body has `## Docs` (docs changed, or `Docs: none — <reason>`); hook `gh-pr-body-requires-docs` enforces it. Repo guides follow agentbrew `docs/agent-guide-baseline.md`.
 
 ## When you need detail
 

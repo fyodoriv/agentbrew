@@ -43,7 +43,7 @@ State lives only in `~/.config/agentbrew/` (manifest, state, backups). The repo 
 
 ## Sync data flow
 
-Detailed table is in [`AGENTS.md` § "Data Flow"](AGENTS.md#data-flow). The short version:
+Detailed table is in [`docs/repo-map.md` § "Data Flow"](docs/repo-map.md#data-flow). The short version:
 
 | Source | Engine | Target | Carve-outs vs delegated |
 |---|---|---|---|
@@ -103,11 +103,11 @@ agentbrew owns: `~/.claude/`, `~/.cursor/`, `~/.augment/`, `~/.codex/`, `~/.conf
 
 It does NOT own: `~/.zshrc`, `~/.gitconfig`, macOS defaults, `~/Library/LaunchAgents/` — those are dotfiles territory.
 
-Full table in [`AGENTS.md` § "Ownership Boundary"](AGENTS.md#ownership-boundary). The iron rule: **never have two repos write to the same target path.**
+Full table in [`docs/repo-map.md` § "Ownership Boundary"](docs/repo-map.md#ownership-boundary). The iron rule: **never have two repos write to the same target path.**
 
 ## Repo layout
 
-See [`AGENTS.md` § "Repo Layout"](AGENTS.md#repo-layout) for the directory tree. The notable shapes:
+See [`docs/repo-map.md` § "Repo layout"](docs/repo-map.md#repo-layout) for the directory tree. The notable shapes:
 
 - `src/sync/*.ts` is the per-engine sync module set; one file per concern.
 - `src/core/agents.yaml` is the runtime-loaded agent definition catalog — adding a new agent goes here, not in TypeScript.
@@ -128,8 +128,8 @@ The build pipeline has a dependency drift guard before `tsup` and a CLI smoke af
 | You're here to… | Read this |
 |---|---|
 | Add a feature | [`VISION.md`](VISION.md) (§ "delegate, contribute, absorb") + [`docs/user-stories/`](docs/user-stories/) |
-| Add an agent | `src/core/agents.yaml` + [`AGENTS.md` § "Data Flow"](AGENTS.md#data-flow) |
-| Modify a sync engine | [`AGENTS.md` § "Rules for Editing"](AGENTS.md#rules-for-editing) + the relevant `src/sync/*.test.ts` |
+| Add an agent | `src/core/agents.yaml` + [`docs/repo-map.md` § "Data Flow"](docs/repo-map.md#data-flow) |
+| Modify a sync engine | [`AGENTS.md` § "Rules"](AGENTS.md#rules) + the relevant `src/sync/*.test.ts` |
 | Add a catalog rule | `src/catalog.yaml` + [`docs/COMPETITION.md`](docs/COMPETITION.md) |
 | Debug a sync mismatch | `agentbrew status` + `~/.config/agentbrew/state.yaml` + manifest.json |
 | Understand competitive positioning | [`docs/COMPETITION.md`](docs/COMPETITION.md) + [`docs/competition/`](docs/competition/) |

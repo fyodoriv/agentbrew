@@ -14,6 +14,9 @@ Requires Node.js 20.11+ and git.
 
 **First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI or pipes, it prints help. Opt out with `AGENTBREW_NO_AUTO_INIT=1`.
 
+**Who it is for:** developers who use more than one AI coding agent and want one place to manage skills, MCP servers, rules, and commands.
+**Documentation:** start at the [documentation map](docs/README.md). Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first.
+
 ## Why agentbrew
 
 Most developers use multiple AI coding tools. Each stores config in its own format (JSON, TOML, YAML, markdown). Add an MCP server: edit several config files. Add a skill: copy into each agent's skill directory. Something breaks silently: nobody notices until a tool stops working.

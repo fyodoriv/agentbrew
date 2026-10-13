@@ -3,8 +3,6 @@
 # and Anchor fields, or when the task is closed. Do not add new IDs.
 contribute-tutor-pedagogy-upstream
 delegate-catalog-to-official-mcp-registry
-delegate-skill-validation-to-skills-cli
-shrink-mcp-sync-to-mcpm-and-registry
 prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
 dev-dependency-audit-findings

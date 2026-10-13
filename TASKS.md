@@ -181,42 +181,6 @@
   - **Vision trace**: G1 (Curate, not host) — consume the canonical upstream instead of re-curating pointers. **User story**: US 03 (add MCP server), US 24 (browse catalog). **Competitor prior art**: docs/COMPETITION.md — MCP Community Registry / Smithery / mcpm.sh (already delegated); official registry is the upstream those build on.
   - **Anchor**: 2026-07-06 landscape review; modelcontextprotocol.io/registry (preview, GA pending).
 
-<!-- Added 2026-07-06 (shrink pass): replace custom agentbrew code + skills with
-     industry standards, per docs/VISION.md "Wrap, don't rewrite" / "Maintenance
-     is the product" and docs/competition/vercel-skills-cli-vs-agentbrew.md
-     § "Minimum viable agentbrew — the orchestrator fallback" (~5–7K LOC target).
-     Current surface (measured 2026-07-06): ~38K non-test src lines; 68 dev
-     skills × 68 evals.json. Each task below deletes native code/skills and
-     leans on a standard: SKILL.md source repos, `npx skills validate`, the
-     AGENTS.md standard, mcpm + official MCP Registry, ccusage/tokscale. -->
-
-- [ ] Drop the custom SKILL.md validator + eval-coverage machinery; delegate to `npx skills validate`
-  - **ID**: delegate-skill-validation-to-skills-cli
-  - **Tags**: shrink, skills, delegate, delete, p0, landscape-2026-07-06
-  - **Details**: The minimum-viable-agentbrew doc explicitly lists "custom SKILL.md validator (→ skills CLI)" as a drop target. agentbrew carries `src/skills/validate.ts` (459), `skill-structural.ts` (81), `skill-validate-display.ts` (77), `skill-versions.ts` (47), `skill-coverage.ts` (149) plus the `npm run skills:coverage` gate that forces an `evals/evals.json` on every in-repo skill. Once `delete-generic-skills-point-to-upstream-repos` removes the Bucket-2 catalog skills, most of that eval-coverage burden evaporates. Replace the native validator with `npx skills validate` (skills CLI is the SKILL.md-format standard we already delegate installs to) for structural validation, and keep only the thin agentbrew-specific checks that skills CLI can't do (if any). Delete the rest.
-  - **Files**: src/skills/validate.ts, src/skills/skill-structural.ts, src/skills/skill-validate-display.ts, src/skills/skill-versions.ts, src/skills/skill-coverage.ts (delete/shrink), src/lint.ts + package.json (`skills:coverage` gate), README.md, CHANGELOG.md, tests
-  - **Acceptance**: (a) `agentbrew lint` / validation runs `npx skills validate` for SKILL.md structure; (b) native validator LOC removed (record delta); (c) any remaining agentbrew-only check has a one-line justification for why skills CLI can't cover it; (d) `npm run verify` passes.
-  - **Vision trace**: G1 + VISION § "Minimum viable agentbrew" (drop custom SKILL.md validator → skills CLI). **User story**: US 18 (lint/validate). **Competitor prior art**: vercel-labs/skills `skills validate` (PR #509 tracked in competition doc).
-  - **Anchor**: 2026-07-06 shrink pass; competition doc "Drop: custom SKILL.md validator (→ skills CLI)".
-
-- [ ] Push the remaining native MCP-sync carve-outs onto mcpm adapters + the official registry
-  - **ID**: shrink-mcp-sync-to-mcpm-and-registry
-  - **Tags**: shrink, mcp, delegate, upstream, p0, landscape-2026-07-06
-  - **Details**: `src/sync/mcp-sync.ts` is still ~1,017 LOC (plus `mcp-delegate.ts` 601, `mcp-sync-commands.ts` 201) even after the 2026-04 mcpm delegation, because the split-intersection model kept native carve-outs (devin, overlay-desktop) and clients mcpm didn't yet support. The upstream adapter PRs agentbrew already filed (mcpm opencode #327, kiro #328, amp #329) plus the official MCP Registry (`delegate-catalog-to-official-mcp-registry`) are the standards that let more of this move. Re-run the delegation for each remaining native client: if mcpm now covers it (adapter merged), delete the native path; keep only the true carve-outs (Devin literal-env handling) with a one-line reason. Target: cut mcp-sync.ts substantially.
-  - **Files**: src/sync/mcp-sync.ts, src/sync/mcp-delegate.ts, src/mcp/mcpm-hygiene.ts, docs/competition/mcpm-sh-vs-agentbrew.md, README.md (MCP sync row), CHANGELOG.md, tests
-  - **Acceptance**: (a) every client mcpm now supports is delegated (no native writer); (b) each surviving native carve-out names the specific mcpm gap that keeps it; (c) mcp-sync.ts LOC drops (record delta); (d) MCP still deploys to all agents; (e) `npm run verify` passes.
-  - **Blocked by**: delegate-catalog-to-official-mcp-registry
-  - **Vision trace**: G1 + VISION § "Delegate, contribute, absorb". **User story**: US 03 (add MCP server). **Competitor prior art**: mcpm.sh (adapters #327–329); official MCP Registry.
-  - **Anchor**: 2026-07-06 shrink pass; docs/competition/mcpm-sh-vs-agentbrew.md split-intersection model.
-
-- [ ] Awaiting upstream review: `block/ai-rules#96` adds `--source-dir`/`--target-dir` flags
-  **ID**: delegate-rules-to-ai-rules-slice-6a-followup
-  **Tags**: architecture, simplify, delegate, sub-task, upstream-pr, awaiting-review
-  **Details**: **Filed 2026-05-13** as [block/ai-rules#96](https://github.com/block/ai-rules/pull/96). The 4-file diff + new regression tests landed cleanly on `fyodoriv/ai-rules:feat/source-target-dir-flags`. Test results: 327 passing, 1 ignored (documented v1 limitation re: agent-trait refactor for full source/target separation), 0 failing. The follow-up agentbrew change (~20 LOC in `src/sync/rules-delegate.ts` to use explicit `--source-dir`/`--target-dir` instead of `cwd:` option) is gated on the upstream PR landing. Once `block/ai-rules#96` merges + a new release ships, this task closes after: (a) updating `src/sync/rules-delegate.ts` to use the new flags, (b) recording the merged PR # in `docs/competition/block-ai-rules-vs-agentbrew.md` slice 6 (a).
-  **Files**: src/sync/rules-delegate.ts (~20 LOC change once #96 lands); docs/competition/block-ai-rules-vs-agentbrew.md (table update).
-  **Acceptance**: block/ai-rules#96 is merged + a new release exists; agentbrew's `delegateRulesGenerate` is updated to use `--source-dir`/`--target-dir` instead of `cwd:`; competition doc updated with merged PR number.
-  **Blocked**: needs-upstream-merge — waiting on block/ai-rules maintainers.
-
 <!-- Phase 1 (hooks-phase-1-cat-a-deterministic) COMPLETE 2026-06 — all 26 Cat A
      hooks shipped with scripts + manifest entries + per-hook fixture tests, and
      the production decision log (scripts/hook-observation.sh) confirms every one

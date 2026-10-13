@@ -1,8 +1,10 @@
 # Draft: upstream PR for `block/ai-rules` — `--source-dir` / `--target-dir` flags on `generate`
 
-**Status:** draft only — not yet filed. Pushing to `fyodoriv/ai-rules` and running `gh pr create` against `block/ai-rules` are public-write actions and require explicit per-action user approval per [`TASKS.md`](../../TASKS.md) file-level publishing policy.
+**Status:** closed. Filed as block/ai-rules#96, closed unmerged on 2026-05-13. The owner decided on 2026-10-13 not to refile; agentbrew keeps changing `cwd`. Kept as a record.
 
-**Source:** the [`delegate-rules-to-ai-rules-slice-6a-followup`](../../TASKS.md) task (PR (a) of 2 in slice 6 of the now-retired `delegate-rules-to-ai-rules` parent). When this lands upstream, agentbrew's `delegateRulesGenerate` (`src/sync/rules-delegate.ts`) can use explicit flags instead of changing `cwd` — a cleaner subprocess invocation. Net agentbrew shrink: minimal cleanup (~20 LOC change in `rules-delegate.ts`).
+**Original status:** draft only — not yet filed. Pushing to `fyodoriv/ai-rules` and running `gh pr create` against `block/ai-rules` are public-write actions and require explicit per-action user approval per [`TASKS.md`](../../TASKS.md) file-level publishing policy.
+
+**Source:** the closed `delegate-rules-to-ai-rules-slice-6a-followup` task (PR (a) of 2 in slice 6 of the now-retired `delegate-rules-to-ai-rules` parent). When this lands upstream, agentbrew's `delegateRulesGenerate` (`src/sync/rules-delegate.ts`) can use explicit flags instead of changing `cwd` — a cleaner subprocess invocation. Net agentbrew shrink: minimal cleanup (~20 LOC change in `rules-delegate.ts`).
 
 When approved, the files below land on a feature branch in `fyodoriv/ai-rules` and the body below is what to paste into `gh pr create`.
 

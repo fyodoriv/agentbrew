@@ -85,6 +85,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, and tsx IPC fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
+- PR-body hooks read the whole command when the body spans many lines. A command that only mentions `gh pr create --body` (for example in an `echo` test) can trip them. Pass hook test input from a file.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
 
 ## Delivery

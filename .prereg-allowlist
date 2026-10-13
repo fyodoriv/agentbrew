@@ -6,7 +6,6 @@ delegate-catalog-to-official-mcp-registry
 delegate-skill-validation-to-skills-cli
 shrink-mcp-sync-to-mcpm-and-registry
 delegate-context-budget-to-standard-tools
-delegate-mcp-health-probe-to-mcpm-doctor
 prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
 dev-dependency-audit-findings

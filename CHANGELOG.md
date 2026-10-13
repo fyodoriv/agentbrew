@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pre-registration fields on new task blocks; `.prereg-allowlist` holds the
   older ones. A machine without Minsky skips the rules.
 
+### Changed
+
+- **One runner for the context-budget usage tools** — ccusage, tokscale, and
+  openusage now share one "try each command, keep the first JSON" helper in
+  `src/measure/context-budget-runtime.ts`, with tests for fallback order and
+  skip reasons. The README lists which measurements stay native and why.
+
 ### Fixed
 
 - **Tests no longer file fake MCP tasks** — one heal-cycle test let the

@@ -209,15 +209,6 @@
   - **Vision trace**: G1 + VISION § "Delegate, contribute, absorb". **User story**: US 03 (add MCP server). **Competitor prior art**: mcpm.sh (adapters #327–329); official MCP Registry.
   - **Anchor**: 2026-07-06 shrink pass; docs/competition/mcpm-sh-vs-agentbrew.md split-intersection model.
 
-- [ ] Delegate context-budget measurement to ccusage / tokscale / openusage; delete the custom measure engine
-  - **ID**: delegate-context-budget-to-standard-tools
-  - **Tags**: shrink, measure, delegate, delete, p0, landscape-2026-07-06
-  - **Details**: `src/measure/*` (~1,125 LOC: context-budget.ts 435, runtime 145, throttle 78, alerts 53, cursor-mdc-inventory 44, mdc-frontmatter 44) hand-rolls token/context measurement. The README already shells out to `ccusage` for Claude runtime and mentions tokscale/openusage. Standard token-measurement tools now cover most of this. Replace the custom static+runtime measurement with a thin wrapper that invokes the standard tools and normalizes their JSON into `~/.config/agentbrew/metrics/latest.json`; keep only the agentbrew-specific static inventory that no standard tool computes (deployed-rules token projection), and delete the rest. Reduces a whole module + the SessionStart measure hook complexity.
-  - **Files**: src/measure/** (shrink to wrapper), src/measure/context-budget.ts, scripts/measure-context-budget.sh, README.md "Context budget measurement", docs, CHANGELOG.md, tests
-  - **Acceptance**: (a) `agentbrew measure context` produces latest.json primarily from ccusage/tokscale/openusage output; (b) only genuinely agentbrew-specific metrics (deployed-rules projection) remain native, each justified; (c) measure LOC drops (record delta); (d) missing standard tools degrade gracefully (already the contract); (e) `npm run verify` passes.
-  - **Vision trace**: G1 + VISION § "Wrap, don't rewrite". **User story**: context-budget hygiene (US 25 status/health adjacent). **Competitor prior art**: ccusage, tokscale, openusage — standard token-usage CLIs.
-  - **Anchor**: 2026-07-06 shrink pass; README "Context budget measurement" already integrates ccusage.
-
 - [ ] Awaiting upstream review: `block/ai-rules#96` adds `--source-dir`/`--target-dir` flags
   **ID**: delegate-rules-to-ai-rules-slice-6a-followup
   **Tags**: architecture, simplify, delegate, sub-task, upstream-pr, awaiting-review

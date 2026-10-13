@@ -90,25 +90,50 @@ export function extractRuntimeTodayFromOpenusage(
   };
 }
 
-/** Optional Cursor IDE usage via tokscale API cache (`tokscale cursor login` first). */
-export function tryTokscaleToday(): TokscaleRuntimeResult {
-  const attempts: Array<{ command: string; args: string[] }> = [
-    { command: "bunx", args: ["tokscale@latest", "--today", "--client", "cursor", "--json"] },
-    { command: "npx", args: ["-y", "tokscale", "--today", "--client", "cursor", "--json"] },
-    { command: "tokscale", args: ["--today", "--client", "cursor", "--json"] },
-  ];
+type Attempt = { command: string; args: string[] };
+
+/** Run each attempt in order; return the first stdout that parses as JSON. */
+function runFirstJson(tool: string, attempts: Attempt[], timeout: number): { ok: true; json: unknown } | { ok: false } {
   for (const { command, args } of attempts) {
     try {
-      const stdout = execFileSync(command, args, {
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: 45_000,
-      });
-      return { available: true, today: JSON.parse(stdout) as unknown };
+      const stdout = execFileSync(command, args, { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"], timeout });
+      return { ok: true, json: JSON.parse(stdout) as unknown };
     } catch (error) {
-      logSkipped(`measure/context-budget/tokscale/${command}`, error);
+      logSkipped(`measure/context-budget/${tool}/${command}`, error);
     }
   }
+  return { ok: false };
+}
+
+/** Claude Code usage via ccusage (`ccusage claude daily --json`). */
+export function tryCcusageDaily(): { available: boolean; skippedReason?: string; daily?: unknown } {
+  const result = runFirstJson(
+    "ccusage",
+    [
+      { command: "bunx", args: ["ccusage", "claude", "daily", "--json"] },
+      { command: "npx", args: ["-y", "ccusage", "claude", "daily", "--json"] },
+    ],
+    45_000,
+  );
+  if (result.ok) return { available: true, daily: result.json };
+  return {
+    available: false,
+    skippedReason: "ccusage not available (install via bunx/npx ccusage or skip for static-only metrics)",
+  };
+}
+
+/** Optional Cursor IDE usage via tokscale API cache (`tokscale cursor login` first). */
+export function tryTokscaleToday(): TokscaleRuntimeResult {
+  const result = runFirstJson(
+    "tokscale",
+    [
+      { command: "bunx", args: ["tokscale@latest", "--today", "--client", "cursor", "--json"] },
+      { command: "npx", args: ["-y", "tokscale", "--today", "--client", "cursor", "--json"] },
+      { command: "tokscale", args: ["--today", "--client", "cursor", "--json"] },
+    ],
+    45_000,
+  );
+  if (result.ok) return { available: true, today: result.json };
   return {
     available: false,
     skippedReason: "tokscale not available (optional: tokscale cursor login && tokscale cursor sync)",
@@ -117,25 +142,13 @@ export function tryTokscaleToday(): TokscaleRuntimeResult {
 
 /** Multi-provider daily rollup via OpenUsage.sh (`openusage daily --json`). */
 export function tryOpenusageDaily(today = new Date().toISOString().slice(0, 10)): OpenusageRuntimeResult {
-  const attempts: Array<{ command: string; args: string[] }> = [
-    { command: "openusage", args: ["daily", "--json", "--since", today] },
-  ];
-  for (const { command, args } of attempts) {
-    try {
-      const stdout = execFileSync(command, args, {
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: 60_000,
-      });
-      const daily = JSON.parse(stdout) as unknown;
-      return {
-        available: true,
-        daily,
-        today: extractRuntimeTodayFromOpenusage(daily, today),
-      };
-    } catch (error) {
-      logSkipped(`measure/context-budget/openusage/${command}`, error);
-    }
+  const result = runFirstJson(
+    "openusage",
+    [{ command: "openusage", args: ["daily", "--json", "--since", today] }],
+    60_000,
+  );
+  if (result.ok) {
+    return { available: true, daily: result.json, today: extractRuntimeTodayFromOpenusage(result.json, today) };
   }
   return {
     available: false,

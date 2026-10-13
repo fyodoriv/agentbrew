@@ -386,6 +386,8 @@ bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully
 
 **Cursor context ring:** no API — append manual readings to `~/.config/agentbrew/metrics/manual-snapshots/` (see `context-budget` skill). **What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), Cursor `.mdc` byte inventory, top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional tokscale Cursor today JSON, optional openusage daily JSON with `runtime.openusage.today` rollup.
 
+**What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude), tokscale (Cursor), and openusage (multi-provider). agentbrew only runs them and keeps their JSON. The rest is agentbrew-specific, so no standard tool computes it: the projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, the Cursor `.mdc` byte inventory, headroom alerts, and the capture throttle.
+
 **Automatic refresh (throttled):**
 
 | Trigger | Min interval | Mode |

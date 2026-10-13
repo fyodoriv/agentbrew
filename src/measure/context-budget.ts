@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
@@ -28,6 +27,7 @@ import {
   type OpenusageRuntimeResult,
   type RuntimeTodayRollup,
   type TokscaleRuntimeResult,
+  tryCcusageDaily,
   tryOpenusageDaily,
   tryTokscaleToday,
 } from "./context-budget-runtime.js";
@@ -154,29 +154,6 @@ function countUniqueSkills(status: ReturnType<typeof collectStatusData>): number
     for (const name of source.names) seen.add(name);
   }
   return seen.size;
-}
-
-function tryCcusageDaily(): ContextBudgetSnapshot["runtime"]["ccusage"] {
-  const attempts: Array<{ command: string; args: string[] }> = [
-    { command: "bunx", args: ["ccusage", "claude", "daily", "--json"] },
-    { command: "npx", args: ["-y", "ccusage", "claude", "daily", "--json"] },
-  ];
-  for (const { command, args } of attempts) {
-    try {
-      const stdout = execFileSync(command, args, {
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: 45_000,
-      });
-      return { available: true, daily: JSON.parse(stdout) as unknown };
-    } catch (error) {
-      logSkipped(`measure/context-budget/ccusage/${command}`, error);
-    }
-  }
-  return {
-    available: false,
-    skippedReason: "ccusage not available (install via bunx/npx ccusage or skip for static-only metrics)",
-  };
 }
 
 function runLintCheck(quiet: boolean): { passed: boolean; errors: number; warnings: number } {

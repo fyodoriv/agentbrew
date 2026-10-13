@@ -218,16 +218,6 @@
   - **Vision trace**: G1 + VISION § "Wrap, don't rewrite". **User story**: context-budget hygiene (US 25 status/health adjacent). **Competitor prior art**: ccusage, tokscale, openusage — standard token-usage CLIs.
   - **Anchor**: 2026-07-06 shrink pass; README "Context budget measurement" already integrates ccusage.
 
-- [ ] Delegate MCP health probing to `mcpm doctor`; keep only the multi-surface drift glue
-  - **ID**: delegate-mcp-health-probe-to-mcpm-doctor
-  - **Tags**: shrink, mcp, drift, delegate, p0, landscape-2026-07-06
-  - **Details**: The MCP probe/heal machinery is heavy — `src/mcp/probe.ts` (519), `resilient-sweep.ts` (271), `heal-cycle.ts` (233), `playwright-isolated-sweep.ts` (194), `health-snapshot.ts` (157). Auto-repair across surfaces is the moat and stays, but the per-server *probing* primitive (is this server reachable / healthy?) is exactly what `mcpm doctor --json` provides (agentbrew already filed the UX PR #326 upstream). Delegate the reachability/health probe to `mcpm doctor` and keep only agentbrew's unique layer: the cross-surface drift comparison, the catalog `smokeCall` semantics that mcpm lacks, and the heal-action registry. Delete the native probe transport where mcpm covers it.
-  - **Files**: src/mcp/probe.ts, src/mcp/probe-cli.ts, src/mcp/resilient-sweep.ts, src/mcp/heal-cycle.ts, src/mcp/health-snapshot.ts, docs/competition/mcpm-sh-vs-agentbrew.md, README.md (drift detection), CHANGELOG.md, tests
-  - **Acceptance**: (a) health/reachability probing routes through `mcpm doctor --json` where available; (b) agentbrew-only logic (cross-surface drift, catalog smokeCall, heal registry) is what remains, each justified; (c) probe LOC drops (record delta); (d) drift auto-repair still detects + heals the documented failure classes; (e) `npm run verify` passes.
-  - **Blocked**: needs-user-approval — `mcpm doctor --json` (pathintegral-institute/mcpm.sh#326) was closed unmerged on 2026-05-11 by our own account, with siblings #327–#329; the installed mcpm still has no `doctor --json`. Next step is to refile the upstream PR (an external publish that needs per-session approval) or, if the owner declines, close this task and keep the native probe (absorb).
-  - **Vision trace**: G5 (drift + auto-repair, the moat) — keep the glue, delegate the primitive. **User story**: US 06 (drift detection). **Competitor prior art**: mcpm.sh `doctor` (PR #326).
-  - **Anchor**: 2026-07-06 shrink pass; docs/competition/mcpm-sh-vs-agentbrew.md.
-
 - [ ] Awaiting upstream review: `block/ai-rules#96` adds `--source-dir`/`--target-dir` flags
   **ID**: delegate-rules-to-ai-rules-slice-6a-followup
   **Tags**: architecture, simplify, delegate, sub-task, upstream-pr, awaiting-review

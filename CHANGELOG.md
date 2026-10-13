@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **PR-body hooks stop tripping on quoted mentions** — the docs and
+  validation hooks now act only on `gh pr create`/`edit` in command
+  position, so an `echo` or a script string that mentions it passes. The
+  validation hook now reads multi-line heredoc bodies too; before, it let
+  them through unchecked.
 - **Tests no longer file fake MCP tasks** — one heal-cycle test let the
   real follow-up writer add a `bad` on `cursor` P0 task to `TASKS.md`. The
   test now stubs the writer, and a vitest setup file fails any test file that

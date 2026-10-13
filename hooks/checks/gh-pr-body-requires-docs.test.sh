@@ -58,6 +58,12 @@ HEREDOC_DOCS=$'gh pr create --title "x" --body "$(cat <<\'EOF\'\n## Summary\nWhy
 assert_exit_code "Test 12 (heredoc body without docs blocks)" 2 "$(run_hook "$(heredoc_input "$HEREDOC_NO_DOCS")")"
 assert_exit_code "Test 13 (heredoc body with ## Docs)" 0 "$(run_hook "$(heredoc_input "$HEREDOC_DOCS")")"
 
+# A command that only mentions gh pr create in quoted text is not a PR command.
+assert_exit_code "Test 14 (gh pr create inside echoed JSON passes)" 0 "$(run_hook "$(heredoc_input "echo '{\"command\":\"gh pr create --body x\"}' | bash hook.sh")")"
+assert_exit_code "Test 15 (gh pr create inside a python string passes)" 0 "$(run_hook "$(heredoc_input $'python3 - <<\'PY\'\ns = \'gh pr create --body x\'\nPY')")"
+assert_exit_code "Test 16 (after && with an env prefix still blocks)" 2 "$(run_hook "$(heredoc_input 'cd repo && GH_HOST=github.com gh pr create --body "## Summary"')")"
+assert_exit_code "Test 17 (inside \$( ) still blocks)" 2 "$(run_hook "$(heredoc_input 'url=$(gh pr create --body "## Summary")')")"
+
 echo ""
 echo "gh-pr-body-requires-docs.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

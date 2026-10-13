@@ -40,7 +40,9 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+# Match `gh pr create|edit` only where a command starts (line start, or after
+# ; & | ( or $( and optional VAR=value prefixes), not inside quoted text.
+if ! grep -qE '(^|[;&|(]|\$\()[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*gh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
@@ -82,6 +84,11 @@ pr_body_text() {
 }
 
 BODY="$(pr_body_text || true)"
+if [ -z "$BODY" ] && grep -qE -- '--body([[:space:]]|=)' <<<"$COMMAND"; then
+  # A multi-line inline body (for example a heredoc) defeats the one-line
+  # parser above. The command text holds the body verbatim, so check it.
+  BODY="$COMMAND"
+fi
 if [ -z "$BODY" ]; then
   verdict_bypass "$HOOK_ID" "no --body or readable --body-file"
 fi

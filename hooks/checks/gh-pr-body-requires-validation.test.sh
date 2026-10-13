@@ -73,6 +73,23 @@ TEST7_EXIT=$(echo "$TEST7_EXIT" | tail -1)
 rm -f "$BODY_FILE"
 assert_exit_code "Test 7 (--body-file with sections)" 0 "$TEST7_EXIT"
 
+# Test 8-11: heredoc bodies span many lines, and a command that only mentions
+# gh pr create in quoted text is not a PR command.
+json_input() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}'
+}
+run_cmd() {
+  local exit_code
+  exit_code=$(json_input "$1" | bash "$SCRIPT" 2>/dev/null; echo $?)
+  echo "$exit_code" | tail -1
+}
+HEREDOC_MISSING=$'gh pr create --title "x" --body "$(cat <<\'EOF\'\n## Summary\nWhy.\nEOF\n)"'
+HEREDOC_FULL=$'cd repo && GH_HOST=github.com gh pr create --title "x" --body "$(cat <<\'EOF\'\n## Requirements checklist\n- [x] a\n\n## Previous state\n1. before\n\n## Validation steps\n1. verify\nEOF\n)"'
+assert_exit_code "Test 8 (heredoc body missing sections blocks)" 2 "$(run_cmd "$HEREDOC_MISSING")"
+assert_exit_code "Test 9 (heredoc body with all sections)" 0 "$(run_cmd "$HEREDOC_FULL")"
+assert_exit_code "Test 10 (gh pr create inside echoed JSON passes)" 0 "$(run_cmd "echo '{\"command\":\"gh pr create --body x\"}' | bash hook.sh")"
+assert_exit_code "Test 11 (gh pr create inside a python string passes)" 0 "$(run_cmd $'python3 - <<\'PY\'\ns = \'gh pr create --body x\'\nPY')"
+
 echo ""
 echo "gh-pr-body-requires-validation.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

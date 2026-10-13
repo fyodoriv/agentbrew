@@ -171,16 +171,6 @@
   - **Vision trace**: VISION "Delegate, contribute, absorb — in that order" — upstream-homed enhancements are contributed, never built in agentbrew. **User story**: no-hallucination, best-practice tutoring. **Competitor prior art**: CoVe, retrieval practice, Bloom's taxonomy, concept inventories (Force Concept Inventory), Understanding by Design.
   - **Anchor**: 2026-07-08 learn-project pedagogy gap review.
 
-- [ ] Resolve catalog MCP pointers from the official MCP Registry as it reaches GA
-  - **ID**: delegate-catalog-to-official-mcp-registry
-  - **Tags**: delegate, mcp, catalog, upstream, p0, landscape-2026-07-06
-  - **Blocked**: needs-upstream-ga — `registry.modelcontextprotocol.io` is still in preview (no durability/breaking-change guarantees as of 2026-07). Do the read-only integration spike now; flip catalog resolution to it only after GA (or pin a snapshot).
-  - **Details**: The official MCP Registry (Anthropic + GitHub + Microsoft + PulseMCP) is the canonical metadata source for public MCP servers, with a stable namespace/trust model and an open API spec. agentbrew hand-maintains MCP pointer entries in `catalog.yaml`; that curation is exactly what the registry now owns upstream. Spike a resolver that, given a server name, fetches its canonical install metadata from the registry (with the local catalog as override/fallback for org-internal + not-yet-published servers), so agentbrew stops duplicating pointer metadata it can GET. Honors "curate, not host" and shrinks catalog maintenance. Guard behind a flag until the registry GAs; keep the local catalog authoritative for anything the registry can't verify.
-  - **Files**: src/catalog/*.ts (registry resolver + fallback), src/catalog.yaml (thin to org-internal + unpublished servers over time), docs/COMPETITION.md + docs/competition-snapshot.json, README.md, CHANGELOG.md, tests
-  - **Acceptance**: (a) a resolver fetches canonical MCP metadata from `registry.modelcontextprotocol.io` for a known server and installs it through the normal path; (b) local catalog entries override registry results and cover unpublished/org-internal servers; (c) offline / registry-down falls back to the local catalog with a one-line warning (never crashes); (d) the flip to registry-first is gated on GA; (e) `npm run verify` passes.
-  - **Vision trace**: G1 (Curate, not host) — consume the canonical upstream instead of re-curating pointers. **User story**: US 03 (add MCP server), US 24 (browse catalog). **Competitor prior art**: docs/COMPETITION.md — MCP Community Registry / Smithery / mcpm.sh (already delegated); official registry is the upstream those build on.
-  - **Anchor**: 2026-07-06 landscape review; modelcontextprotocol.io/registry (preview, GA pending).
-
 <!-- Phase 1 (hooks-phase-1-cat-a-deterministic) COMPLETE 2026-06 — all 26 Cat A
      hooks shipped with scripts + manifest entries + per-hook fixture tests, and
      the production decision log (scripts/hook-observation.sh) confirms every one
@@ -700,6 +690,18 @@
   **Anchor**: minsky's `pickHostTask` (the load-bearing gate); global_rules.md "Minsky-managed repos add rule-#9 fields" (the contract this task implements); Basili/Caldiera/Rombach 1994 *Goal-Question-Metric* (the conceptual frame minsky's rule #9 instantiates).
 
 ## P2
+
+- [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
+  - **ID**: flip-catalog-to-registry-first-at-ga
+  - **Tags**: delegate, mcp, catalog, upstream
+  - **Details**: `AGENTBREW_MCP_REGISTRY=1` turns on the read-only registry resolver (`src/adapters/mcp-registry.ts`). It stays opt-in because the registry API is still `v0`. When `registry.modelcontextprotocol.io` ships a stable 1.0/GA API, turn the lookup on by default (keep the local catalog override and the offline fallback), and move hand-curated public MCP pointers out of `src/catalog.yaml` where the registry has them.
+  - **Files**: src/adapters/mcp-registry.ts, src/catalog/install.ts, src/catalog.yaml, README.md, docs/competition/official-mcp-registry-vs-agentbrew.md
+  - **Acceptance**: with no env var set, `agentbrew install <registry-only server>` resolves from the registry; catalog entries still win; offline still falls back with one warning.
+  - **Hypothesis**: a stable registry lets agentbrew stop curating public MCP pointers by hand, so hand-maintained `mcp_servers` entries in `src/catalog.yaml` drop for every server the registry covers.
+  - **Success**: the lookup is on by default and the public catalog MCP entries that the registry covers are removed from `src/catalog.yaml`.
+  - **Pivot**: if the registry stays `v0` or its data misses install metadata the catalog needs, keep the flag opt-in and close this task with the reason.
+  - **Measurement**: the registry API version at `https://registry.modelcontextprotocol.io/`, and `yq '.mcp_servers | length' src/catalog.yaml` before and after.
+  - **Anchor**: docs/competition/official-mcp-registry-vs-agentbrew.md; VISION G1 (curate, not host).
 
 - [ ] Show deferred-for-load heal state in the health snapshot
   - **ID**: snapshot-record-heal-deferred-for-load

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { select } from "@inquirer/prompts";
 import chalk from "chalk";
+import { mcpRegistryEnabled, resolveRegistryServer } from "../adapters/mcp-registry.js";
 import { getStateSources } from "../agentfile.js";
 import { cliNotFound } from "../core/cli-error.js";
 import { COMMANDS_DIR } from "../paths.js";
@@ -246,6 +247,35 @@ function showCatalogDryRun(catalog: ReturnType<typeof loadCatalog>, name: string
   return false;
 }
 
+/**
+ * Opt-in (`AGENTBREW_MCP_REGISTRY=1`): resolve a name the local catalog lacks
+ * through the official MCP Registry. A local catalog entry with the same
+ * server name wins. Returns false when the registry has nothing to install,
+ * so the caller continues with the source search.
+ */
+async function tryInstallFromRegistry(catalog: Catalog, name: string, dryRun: boolean): Promise<boolean> {
+  if (!mcpRegistryEnabled()) return false;
+  const resolved = await resolveRegistryServer(name);
+  if (!resolved.ok) {
+    if (resolved.reason === "unreachable") {
+      console.warn(chalk.yellow(`MCP Registry unreachable (${resolved.detail}); using the local catalog only.`));
+    } else if (resolved.reason !== "not-found") {
+      console.log(chalk.dim(`  MCP Registry: ${resolved.detail}`));
+    }
+    return false;
+  }
+  const server = catalog.mcp_servers.find((s) => s.name === resolved.server.name) ?? resolved.server;
+  if (dryRun) {
+    showMcpDryRun(server);
+    console.log(
+      chalk.dim(`  source: ${server === resolved.server ? `MCP Registry ${resolved.registryName}` : "local catalog"}`),
+    );
+    return true;
+  }
+  await installMcpServer(server);
+  return true;
+}
+
 async function installFromCatalog(
   state: NonNullable<ReturnType<typeof requireState>>,
   catalog: ReturnType<typeof loadCatalog>,
@@ -279,6 +309,7 @@ async function installFromCatalog(
     await installCliTool(cliTool);
     return;
   }
+  if (await tryInstallFromRegistry(catalog, name, dryRun)) return;
   await searchAndInstallFromSources(state, catalog, name);
 }
 

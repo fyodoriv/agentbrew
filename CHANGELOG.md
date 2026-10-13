@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Opt-in official MCP Registry lookup** — with `AGENTBREW_MCP_REGISTRY=1`,
+  `agentbrew install <name>` resolves a server the local catalog lacks from
+  `registry.modelcontextprotocol.io` (npm/pypi stdio packages and http
+  remotes) and installs it through the normal MCP path. Local catalog entries
+  win; an outage prints one warning and falls back. Off by default until the
+  registry reaches 1.0.
 - **Docs that agents can use and humans can scan** — `AGENTS.md` is now a
   short router (start here, commands, where to change what, rules, gotchas,
   delivery, docs upkeep), and `CLAUDE.md` links to it so Claude Code loads it.

@@ -863,7 +863,7 @@ describe("applyAgentfile", () => {
     function applyWith(
       agentfile: { commands?: string[]; agents?: string[] },
       state: AgentBrewState,
-      options?: { authoritative?: boolean },
+      options?: { authoritative?: boolean; pruneOwnedDirs?: boolean },
     ) {
       mockLoadAgentfile.mockReturnValue(agentfile);
       mockLoadState.mockReturnValue(state);
@@ -921,6 +921,15 @@ describe("applyAgentfile", () => {
         { label: "project", path: "/project/commands", origin: "agentfile", agentfile: "/project" },
         { label: "project", path: "/project/dropped", origin: "agentfile" },
       ]);
+    });
+
+    it("removes a moved commands: path in an additive project apply that prunes owned dirs", () => {
+      const state = makeState({ mcpServers: [makeServer("user-server")] });
+      applyWith({ commands: ["./old-commands"] }, state, { pruneOwnedDirs: true });
+      applyWith({ commands: ["./new-commands"] }, state, { pruneOwnedDirs: true });
+      expect(state.commandSourceDirs?.map((d) => d.path)).toEqual(["/project/new-commands"]);
+      // Owned-dir pruning does not make the apply authoritative for other lists.
+      expect(state.mcpServers?.map((s) => s.name)).toEqual(["user-server"]);
     });
 
     it("keeps stale entries when the apply is not authoritative (sync --no-prune)", () => {

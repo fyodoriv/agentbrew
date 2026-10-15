@@ -102,6 +102,31 @@ function cloneStateForDryRun(state: AgentBrewState | undefined): AgentBrewState 
   return JSON.parse(JSON.stringify(state)) as AgentBrewState;
 }
 
+/**
+ * Apply the project Agentfile from cwd. It is additive, except that it prunes
+ * the commands:/agents: dirs it owns and no longer declares (not under --no-prune).
+ */
+function applyProjectAgentfile(
+  options: SyncRunnerOptions | undefined,
+  installAgentfileItems: boolean,
+  dryRun: boolean,
+  virtualState: AgentBrewState | undefined,
+): ApplyAgentfileResult | undefined {
+  try {
+    return applyAgentfile(process.cwd(), {
+      quiet: false,
+      pruneOwnedDirs: options?.authoritative ?? true,
+      includeSkillInstallReport: installAgentfileItems,
+      dryRun,
+      stateOverride: virtualState,
+    });
+  } catch (e) {
+    logSkipped("sync-runner/applyAgentfile", e);
+    /* non-fatal — Agentfile is optional */
+    return undefined;
+  }
+}
+
 /** Apply global and project Agentfiles, install requested skills, and snapshot configs. */
 async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
   const installAgentfileItems = options?.installAgentfileItems ?? true;
@@ -139,19 +164,7 @@ async function prepareSync(options?: SyncRunnerOptions): Promise<PreparedSync> {
     }
   }
 
-  // Apply project Agentfile from cwd — additive only
-  let projectResult: ApplyAgentfileResult | undefined;
-  try {
-    projectResult = applyAgentfile(process.cwd(), {
-      quiet: false,
-      includeSkillInstallReport: installAgentfileItems,
-      dryRun,
-      stateOverride: virtualState,
-    });
-  } catch (e) {
-    logSkipped("sync-runner/applyAgentfile", e);
-    /* non-fatal — Agentfile is optional */
-  }
+  const projectResult = applyProjectAgentfile(options, installAgentfileItems, dryRun, virtualState);
 
   // Install skills/recommended requested by Agentfiles
   try {

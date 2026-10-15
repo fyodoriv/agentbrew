@@ -155,13 +155,6 @@
 
 ## P1
 
-- [ ] Prune dropped source dirs for project Agentfiles
-  - **ID**: prune-project-agentfile-source-dirs
-  - **Tags**: scout, agentfile, state
-  - **Details**: Scouted while shipping `prune-stale-agentfile-source-dirs`. Pruning of owned `commands:` and `agents:` dirs only runs for authoritative applies (global Agentfile and `sync --agentfile`). The project Agentfile applied from the working directory is additive, so a moved path there stays in state. Decide whether owner-scoped pruning is safe for project applies, since a repo may be checked out in several places.
-  - **Files**: src/agentfile-apply.ts, src/sync-runner.ts
-  - **Acceptance**: A regression test moves a `commands:` path in a project Agentfile and proves the old dir is removed, or the task is closed with a documented reason.
-
 - [ ] Rules source hygiene auto-repair is covered by a fixture-backed real-e2e scenario
   - **ID**: rules-source-hygiene-real-e2e
   - **Tags**: scout, rules, drift, real-e2e

@@ -778,6 +778,21 @@ describe("prepareSync and Agentfile handling", () => {
     );
   });
 
+  it("prunes owned command and agent dirs in the project Agentfile apply", async () => {
+    const modules: SyncModule[] = [{ name: "ok", fn: async () => undefined }];
+    await runSyncWithErrorCollection(modules);
+    const projectCall = mockApplyAgentfile.mock.calls.find(([dir]) => dir === process.cwd());
+    expect(projectCall?.[1]).toMatchObject({ pruneOwnedDirs: true });
+    expect(projectCall?.[1]?.authoritative).toBeFalsy();
+  });
+
+  it("keeps owned dirs in the project Agentfile apply under --no-prune", async () => {
+    const modules: SyncModule[] = [{ name: "ok", fn: async () => undefined }];
+    await runSyncWithErrorCollection(modules, { authoritative: false });
+    const projectCall = mockApplyAgentfile.mock.calls.find(([dir]) => dir === process.cwd());
+    expect(projectCall?.[1]).toMatchObject({ pruneOwnedDirs: false });
+  });
+
   it("tolerates applyAgentfile throwing without crashing", async () => {
     mockApplyAgentfile.mockImplementation(() => {
       throw new Error("bad agentfile");

@@ -48,6 +48,13 @@ export interface ApplyAgentfileResult {
 interface ApplyAgentfileOptions {
   quiet?: boolean;
   authoritative?: boolean;
+  /**
+   * Remove `commands:` and `agents:` dirs this Agentfile owns but no longer
+   * declares. Defaults to `authoritative`. Ownership is the exact Agentfile
+   * directory, so a project apply can prune safely: another checkout of the
+   * same repo owns its own entries.
+   */
+  pruneOwnedDirs?: boolean;
   includeSkillInstallReport?: boolean;
   dryRun?: boolean;
   stateOverride?: AgentBrewState;
@@ -632,6 +639,7 @@ export function applyAgentfile(
 ): ApplyAgentfileResult | undefined {
   const quiet = options?.quiet ?? false;
   const authoritative = options?.authoritative ?? false;
+  const pruneOwnedDirs = options?.pruneOwnedDirs ?? authoritative;
   const includeSkillInstallReport = options?.includeSkillInstallReport ?? true;
   const dryRun = options?.dryRun ?? false;
 
@@ -653,8 +661,8 @@ export function applyAgentfile(
 
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
-  const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, authoritative);
-  const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, authoritative);
+  const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
+  const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const commandDirsAdded = commandDirs.added;
   const agentDirsAdded = agentDirs.added;
   const skillsToInstall = collectAgentfileSkills(agentfile, quiet);

@@ -29,102 +29,17 @@ per-action approval.
 
 ## Purpose
 
-Rules for writing markdown that displays correctly when copy-pasted into Google Docs. Google Docs does not natively render markdown — content is typically pasted via a markdown-to-gdoc converter or rich-text paste. These rules ensure the output looks right regardless of method.
+Google Docs does not render markdown. Content arrives through a converter or a rich-text paste. These rules make the output look right either way.
 
 ## Product document information architecture (PM/PD)
 
-When a product manager or product designer is joining a project, organize the
-document around the decisions they need to make, not the chronology of the work,
-repository boundaries, or the order in which research happened.
-
-### Audit before editing
-
-Build a short content map before changing the document:
-
-1. Identify the primary audience and the first decision they need to make.
-2. List every current heading with a one-line purpose.
-3. Record duplicated claims and choose one canonical home for each.
-4. Separate confirmed decisions, open questions, evidence, and implementation
-   detail.
-5. Flag contradictions instead of silently reconciling them.
-
-Do not start rewriting until the target outline and duplicate ledger are clear.
-
-### Recommended reading order
-
-Use this order unless the document has a stronger audience-specific reason:
-
-1. **Orientation** — title, current status, why the project matters, current
-   milestone, and the next decision or review.
-2. **Product definition** — user problem, target experience, scope, non-goals,
-   and success signals.
-3. **Decisions and open questions** — confirmed decisions first; unresolved
-   questions separately with an owner and decision point.
-4. **Milestone roadmap** — outcome, scope, and exit signal for each milestone.
-   Define each milestone once.
-5. **Experience and review plan** — scenarios, demo/review cadence, and how
-   feedback changes the next milestone.
-6. **Delivery and validation** — implementation sequence, release controls,
-   evidence, and rollback.
-7. **Technical contracts and dependencies** — architecture, repositories,
-   APIs, owners, and constraints needed by delivery teams.
-8. **References and history** — source links, research evidence, and archived
-   detail that should not interrupt the first read.
-
-Put product intent before architecture. Put architecture before repo-level task
-detail. Keep historical research after the current plan.
-
-### One fact, one canonical home
-
-- State each milestone definition, scope boundary, dependency, and decision in
-  one canonical section.
-- A top summary may repeat the outcome in one sentence, but it must point to the
-  canonical section instead of restating the details.
-- If two sections answer the same reader question, merge them or keep the
-  stronger section and replace the other with a short pointer.
-- Keep decisions separate from supporting evidence. A decision says what the
-  team will do; evidence explains why.
-- Delete stale alternatives only after confirming they are superseded and do
-  not carry anchored comments. Otherwise label them as historical.
-
-### Information accents
-
-- At the top, make **current status**, **current milestone**, **next review**,
-  and **open asks** visually easy to scan.
-- Use headings for reader questions and bold for short labels or decisions.
-  Do not bold full paragraphs.
-- Put exit criteria immediately under the milestone they close.
-- Use bullets for parallel facts and steps; use prose for rationale.
-- Use tables only for genuine comparisons. Do not turn narrative or task lists
-  into tables.
-- Keep implementation names, repo paths, and acronyms out of the first-read
-  summary unless a reader needs them to make a decision.
-
-### Clear product language
-
-- Lead with outcomes before mechanisms.
-- Define an acronym or internal term on first use.
-- Prefer active voice and one idea per bullet.
-- Name the actor: product, design, engineering, an owner team, or a reviewer.
-- Replace vague phrases such as "hybrid", "bridge", "seam", or "iteration"
-  with the concrete behavior they mean.
-- Distinguish **current decision**, **proposal**, **assumption**, and
-  **open question** explicitly.
-
-### Reorganize surgically
-
-For an existing collaborative document, improve the information architecture
-without moving or replacing broad anchored ranges. Prefer:
-
-1. Rename headings so their purpose is clear.
-2. Consolidate duplicated paragraphs into the strongest existing section.
-3. Replace secondary copies with one-line pointers.
-4. Insert short orientation or open-question blocks at precise indices.
-5. Move large sections only when comment-anchor inspection proves it is safe.
-
-After each reorganization batch, run the structured-read and live visual checks
-in this skill. Verify the outline, list boundaries, emphasis, and scan order,
-not only the words.
+When PMs or PDs join a project, organize the doc around their decisions, not
+chronology or repo boundaries. Build a content map and a duplicate ledger
+before you edit. Put orientation, product definition, and decisions before
+technical detail. Give each fact one canonical home. Reorganize surgically and
+run the visual verification loop after each batch. For the reading order,
+emphasis, and language rules, read
+[`references/product-doc-architecture.md`](references/product-doc-architecture.md).
 
 ## Diagrams
 
@@ -132,26 +47,11 @@ not only the words.
 
 Instead, use one of these alternatives (in order of preference):
 
-1. **Nested bullet lists** — describe layout hierarchically:
-   ```markdown
-   The app UI has three main areas:
-   - **TopNav** — horizontal bar at the top
-     - **Menu** (top-left) — `primaryItems` and `secondaryItems`, each linking to a scene
-     - **Tools** (top-right) — messaging, notes, tasks
-   - **Scene** (main area) — full page views like engagement view, dashboard, case view
-     - **Command Center** — toolbar with tool buttons, search, slash commands (AI Native only)
-   ```
+1. **Nested bullet lists** — describe the layout as a hierarchy.
+2. **Simple tables** — for grid-like layouts.
+3. **Prose description** — when a sentence or two is enough.
 
-2. **Simple tables** — for grid-like layouts:
-   ```markdown
-   | Area | Position | Contents |
-   |---|---|---|
-   | Menu | Top-left | primaryItems, secondaryItems |
-   | Tools | Top-right | messaging, notes, tasks |
-   | Scene | Main area | engagementView, dashboard, caseView |
-   ```
-
-3. **Prose description** — when structure is simple enough to describe in a sentence or two.
+Examples: [`references/diagram-alternatives.md`](references/diagram-alternatives.md).
 
 ## Tables
 
@@ -205,22 +105,16 @@ Instead, use one of these alternatives (in order of preference):
 
 ## Checklist
 
-Before finalizing a document for Google Docs:
-1. No ASCII art or box-drawing characters anywhere in the file.
-2. All code lines ≤ 65 chars.
-3. All `<details>` tags balanced (open + close).
-4. Tables have ≤ 5 columns and no cells wider than ~40 chars.
-5. No reference-style links.
-6. No strikethrough.
-7. Headings don't skip levels.
+Before finalizing, check every item in `## Constraints (Do NOT)` below. Also
+check that `<details>` tags are balanced and tables have ≤ 5 columns with no
+cell wider than ~40 chars.
 
 ## Editing an existing GDoc — surgical, never full-replace (ABSOLUTE)
 
 When an agent must modify an existing Google Doc, **never full-tab-replace
 the content** — even when the user approves the write. Full-tab replace
 destroys paragraph styles, table column widths, comment anchors, list
-nesting, named-range refs, and bookmark links. The reader sees "everything
-moved/disappeared" instead of "this one cell got the new number."
+nesting, named-range refs, and bookmark links.
 
 **Surgical toolkit** (use one of these, never a `gdoc_replace_tab.py`-style
 nuke):
@@ -287,13 +181,8 @@ changed section:
    edited section does not satisfy this gate. Check numbering, headings,
    spacing, emphasis, bullets versus prose, clipping, table overflow, URLs, and
    unexpected blank or duplicated content on every screenshot.
-3. **Fix** — typical repairs:
-   - `bullets: "remove"` on paragraphs wrongly absorbed into a list
-   - `docs_update_paragraph_style` with the exact `tab_id` and a **tighter**
-     bullet range (lists often bleed one paragraph too far)
-   - `docs_update_paragraph_style` → `NORMAL_TEXT` on body paragraphs
-   - `delete_content_range` on empty styled paragraphs after headings
-   - `docs_unbold_paragraph_range` when `find_and_replace` split bold mid-word
+3. **Fix** — repair the issue (typical repairs are in
+   [`references/visual-verification.md`](references/visual-verification.md)).
    Fix every safe formatting or presentation issue found anywhere in the tab,
    including outside the edited range. Preserve comments and substantive
    meaning; a content conflict remains a blocker rather than a silent rewrite.
@@ -303,13 +192,9 @@ changed section:
 5. **Only after every page passes may you tell the user the document is ready
    for review**, or claim it is updated in Slack, Jira, or a comment.
 
-If browser hits SSO, run the initial attach-first poll. If still blocked,
-open the doc URL in a stable **headed** SSO session and bring that Chrome
-window forward before asking the user to sign in. Never describe a headless
-CDP tab as visible. Start the `sso-background-work` URL/title/HTML listener
-immediately after the handoff; do not wait for the user to say “done.”
-Keep fixing from structured reads, then return to visual verification as soon
-as the listener emits `SSO_AUTH_COMPLETE`.
+If the browser hits SSO, never describe a headless tab as visible. Follow the
+headed-window handoff in
+[`references/visual-verification.md`](references/visual-verification.md).
 
 ## Comments — three absolute rules (ABSOLUTE)
 
@@ -328,8 +213,7 @@ absolute rules. These have no per-task carve-out — they apply every time.
    under the user's identity is public impersonation. Draft locally, show
    the target tab + comment ID + exact text, wait for "yes, post it."
 
-If a workflow the user requested needs forbidden comment access, stop and
-ask — don't paper over it with a workaround.
+If a requested workflow needs forbidden comment access, stop and ask.
 
 ## Comment-reply phrasing — never claim "done" before verification
 
@@ -353,21 +237,6 @@ The same rule applies to references of shared-doc state on Jira, Slack, and
 in PR descriptions: never claim a doc change without showing the verified
 post-state.
 
-## Execution and verification safety
-
-This skill governs **Google Docs formatting and surgical edit discipline**, not
-generic markdown prettification. Do not claim a GDoc was updated, a comment
-was posted, or a comment thread was resolved unless you used the surgical
-toolkit, completed the **visual verification loop**, and (for comments)
-received per-action approval. Do not full-tab-replace an existing GDoc to save time —
-even with user approval for "update the doc" — unless the tab has zero human
-content and zero anchored comments. Do not resolve others' comments or post
-under the user's identity without explicit per-action approval. Do not reply
-"Updated", "Done", or "Applied" on a GDoc comment until the live doc cell
-matches the intended text after re-read verification. When the local source and
-live GDoc cannot be bridged surgically, leave them out of sync and surface
-the diff for human reconciliation instead of destructive rewrites.
-
 ## Related Skills
 
 - **`rfc`** — RFC authoring (references this skill for all formatting rules)
@@ -376,7 +245,7 @@ the diff for human reconciliation instead of destructive rewrites.
 
 ## Constraints (Do NOT)
 
-- **Do NOT use ASCII art or box-drawing characters** — proportional fonts in Google Docs will always misalign them; use nested lists, tables, or prose instead
+- **Do NOT use ASCII art or box-drawing characters** — use nested lists, tables, or prose
 - **Do NOT write code lines over 65 characters** — Google Docs code blocks don't soft-wrap; long lines get cut off
 - **Do NOT use reference-style links** (`[text][ref]`) — they often fail to convert; use inline links `[text](url)` only
 - **Do NOT use strikethrough** (`~~text~~`) — may not convert correctly in Google Docs

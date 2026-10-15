@@ -10,7 +10,7 @@ description: >
 
 ## Core Concept
 
-Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) and generalized by [codex-autoresearch](https://github.com/leo-lilinxiao/codex-autoresearch). If a goal has a number, this skill can iterate toward it autonomously.
+Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) and generalized by [codex-autoresearch](https://github.com/leo-lilinxiao/codex-autoresearch).
 
 ```
 baseline → change → verify → keep or discard → repeat
@@ -79,7 +79,7 @@ git add path/to/changed-file.ts
 git commit -m "refactor: narrow description of the atomic change"
 ```
 
-Use a [Conventional Commits](https://www.conventionalcommits.org/) type (`fix`, `refactor`, `test`, `perf`, …) — not a custom `iterate:` prefix. This gives a clean revert point per iteration.
+Use a [Conventional Commits](https://www.conventionalcommits.org/) type, not an `iterate:` prefix. Each commit is a clean revert point.
 
 ### 2.5 Dual-gate verification
 
@@ -99,12 +99,7 @@ Run both gates in order:
 
 ### 2.7 Log the result
 
-Track each iteration mentally or in commit messages:
-
-```
-Iteration 3: replaced `any` in auth.ts → count 47→44 ✅ kept
-Iteration 4: replaced `any` in db.ts → tsc failed ❌ discarded
-```
+Log each iteration in one line, for example `Iteration 3: replaced any in auth.ts → 47→44 ✅ kept`.
 
 ### 2.8 Stuck recovery
 
@@ -116,88 +111,24 @@ If progress stalls:
 
 A single successful keep resets all counters.
 
-## Cross-Run Learning
+## Cross-Run Learning and Parallel Experiments
 
-Record reusable lessons after every successful keep and every pivot in a local,
-untracked `.orchestrator/autoresearch-lessons.md` file:
-
-```markdown
-## What Worked
-- [Lesson]: [why the hypothesis improved the metric without breaking the guard]
-
-## What Failed
-- [Lesson]: [why the hypothesis failed or was discarded]
-
-## Strategic
-- [Lesson]: [what changed after a refine or pivot]
-```
-
-Read this file before choosing the first hypothesis in a later run. Keep at most
-50 lessons and summarize older entries instead of allowing the log to grow
-without bound.
-
-## Parallel Experiments (Optional)
-
-When multiple hypotheses are equally promising, test them in isolated worktrees:
-
-```
-Main agent (orchestrator)
-├── Worktree A → hypothesis 1
-├── Worktree B → hypothesis 2
-└── Worktree C → hypothesis 3
-```
-
-Use parallel experiments only when the hypotheses are independent and the metric
-is deterministic. Keep the best verified result, integrate it into the main
-branch, and discard the other worktrees without merging their unrelated commits.
+After every keep and every pivot, record a lesson in the local, untracked
+`.orchestrator/autoresearch-lessons.md`. Read it before the first hypothesis of a
+later run. Keep at most 50 lessons. For the file format and for testing
+independent hypotheses in parallel worktrees, read
+[`references/lessons-and-parallel.md`](references/lessons-and-parallel.md).
 
 ## Phase 3: Completion
 
 When the target is reached or a stop condition is hit:
 
 1. Run the full guard command one final time
-2. Summarize results:
-   - Starting metric → ending metric
-   - Number of iterations (kept / discarded)
-   - Key lessons learned
-   - Any remaining items that couldn't be automated
+2. Summarize: starting → ending metric, iterations (kept / discarded), key lessons, and remaining items that need a human.
 
-Write a report to `.orchestrator/<pipeline-id>/iterate.md` when the run has a
-pipeline identifier, or to `.orchestrator/iterate.md` for a standalone run:
-
-```markdown
-## Iterate Report
-
-### Goal
-[What was the target]
-
-### Results
-- Baseline: [starting metric]
-- Final: [ending metric]
-- Improvement: [delta and percentage]
-- Iterations: [total] (kept: [N], discarded: [N])
-
-### Key Lessons
-- [Top insights from the run]
-
-### Remaining Work
-- [What could not be automated or needs human judgment]
-
-### Verdict
-<!-- VERDICT: PASS -->
-Target achieved / Target partially achieved / Target not achieved
-```
-
-## Example Use Cases
-
-| Goal | Verify | Guard |
-|------|--------|-------|
-| Eliminate `any` types | `grep -rwc 'any' src/ \| wc -l` | `npx tsc --noEmit` |
-| Increase test coverage to 90% | `jest --coverage 2>&1 \| grep Statements` | `yarn test` |
-| Reduce lint warnings | `eslint src/ 2>&1 \| grep problems \| awk '{print $2}'` | `yarn test` |
-| Reduce bundle size | `yarn build 2>&1 \| grep 'bundle size'` | `yarn build` |
-| Fix all TODO comments | `grep -r 'TODO' src/ \| wc -l` | `yarn test` |
-| Reduce cyclomatic complexity | `npx complexity-report src/ \| grep Average` | `yarn test` |
+Write a report to `.orchestrator/<pipeline-id>/iterate.md`, or to
+`.orchestrator/iterate.md` for a standalone run. Use the template and example
+verify/guard pairs in [`references/report-and-examples.md`](references/report-and-examples.md).
 
 ## Related Skills
 
@@ -207,13 +138,11 @@ Target achieved / Target partially achieved / Target not achieved
 
 ## Constraints (Do NOT)
 
-- **Do NOT use `git add -A`, `git add .`, or other broad staging** — stage only the paths changed in the current iteration
-- **Do NOT use a custom `iterate:` commit type** — use Conventional Commits (`fix`, `refactor`, `test`, …)
-- **Do NOT batch multiple hypotheses into one commit** — one change per iteration so you know exactly what worked or failed
+- **Do NOT batch multiple hypotheses into one commit** — one change per iteration
 - **Do NOT use subjective judgment for verify/guard** — both commands must be deterministic shell commands with numeric output
-- **Do NOT modify the guard command** to make it pass — if the guard needs fixing, that's a separate task outside the loop
-- **Do NOT skip the pre-verify commit** — always commit before running gates so you have a clean revert point
+- **Do NOT modify the guard command** to make it pass — fixing the guard is a separate task
+- **Do NOT skip the pre-verify commit** or stage broadly (see 2.4)
 - **Do NOT manually undo a failed change** — use `git revert --no-edit HEAD` to keep history clean
-- **Do NOT make unrelated changes** during the loop — note discovered bugs, fix them after the loop completes
+- **Do NOT make unrelated changes** during the loop — note bugs, fix them after the loop
 - **Do NOT keep a change that improves the metric by under 1%** if it adds disproportionate complexity
 - **Do NOT ask the user mid-loop** — once they say "go", apply best judgment and keep iterating until a hard stop condition

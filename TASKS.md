@@ -181,17 +181,6 @@
   - **Pivot**: if whole-entry comparison breaks the matcher `*` normalization tests, normalize the matcher first and compare the rest.
   - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state).
 
-- [ ] `iterate` and `markdown-for-gdoc` SKILL.md files load no more than their baselines
-  - **ID**: trim-iterate-and-markdown-for-gdoc-skills
-  - **Tags**: skill-bloat, context-budget, skills
-  - **Details**: The agent-bloat lint reports `skill-plugins/workflow/iterate/SKILL.md` at ~1,978 tokens (baseline 1,421) and `skill-plugins/workflow/markdown-for-gdoc/SKILL.md` at ~4,570 (baseline 2,935). Both grew when dev-skills was absorbed (#21). Until 2026-10-15 the lint passed only because an unrelated orphan block in TASKS.md contained the word `context-budget`. Move rarely-needed detail into each skill's `references/`, or re-baseline with a stated reason.
-  - **Files**: `skill-plugins/workflow/iterate/SKILL.md`, `skill-plugins/workflow/markdown-for-gdoc/SKILL.md`, `docs/skill-baselines.json`
-  - **Acceptance**: `npx vitest run src/agent-bloat-lint.test.ts` passes with this task removed from TASKS.md.
-  - **Hypothesis**: Moving detail into `references/` cuts always-loaded skill tokens without losing behavior.
-  - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` and the skills' eval files.
-  - **Pivot**: If a skill's evals fail after the move, re-baseline that skill with the reason in `docs/skill-baselines.json` instead.
-  - **Anchor**: agentbrew agent-bloat lint (`src/agent-bloat-lint.ts`); Anthropic skill authoring guidance on progressive disclosure.
-
 - [ ] A PreToolUse hook blocks cross-repo publishing without per-session approval
   - **ID**: enforce-cross-workspace-publish-hook
   - **Tags**: scout, hooks, guardrail

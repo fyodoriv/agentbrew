@@ -8,7 +8,7 @@ belong in `tutor-setup` / `tutor`.
 **90-day window:** if upstream rejects or ignores, absorb into `learn-project` as
 P0(d) fallback per VISION delegate-contribute-absorb.
 
-**Ready-to-paste PR bodies:** [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md) (publish still gated).
+**Ready-to-publish patches + PR bodies:** [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md) — `git am`-ready stack on upstream `397110c`, replay-verified 2026-10-15 (publish still gated).
 
 ---
 
@@ -114,9 +114,9 @@ feed diagram edges; both must be cite-or-refuse grounded.
 | PR | Repo | Scope |
 |----|------|-------|
 | 1 | tutor-skills | CoVe self-check at question authoring + misconception metadata on distractors |
-| 2 | tutor-skills | Open-answer + rubric grading mode |
-| 3 | tutor-skills | Bloom tags + confidence calibration in quiz flow |
-| 4 | tutor-skills | Objectives contract + prerequisite DAG in tutor-setup output |
+| 2 | tutor-skills | Open-answer + rubric grading mode (stacked on 1) |
+| 3 | tutor-skills | Bloom tags + confidence calibration in quiz flow; maps tutor-setup's existing `[recall]/[application]/[analysis]` tags instead of changing templates (stacked on 2) |
+| 4 | tutor-skills | Objectives + prerequisite DAG as `00-Dashboard/Learning Path` in tutor-setup output (stacked on 3) |
 
 ## agentbrew non-goals (stay in learn-project)
 

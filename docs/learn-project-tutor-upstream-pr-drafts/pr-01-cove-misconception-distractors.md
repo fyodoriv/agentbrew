@@ -1,22 +1,20 @@
 # PR title
-feat(tutor): CoVe self-check at question authoring + misconception distractor metadata
-
-## Why this is needed
-MCQ generation can produce questions answerable without vault knowledge or distractors that don't target real misconceptions. Chain-of-Verification at author time catches ungrounded questions before they reach the user; misconception metadata improves feedback quality.
+feat(tutor): verify questions against notes, tag misconceptions
 
 ## Summary
-Add a mandatory self-verification step in Phase 3 (Build Questions) and extend quiz metadata so each distractor records the misconception it targets.
+Generated quiz questions can need knowledge that is not in the vault, and wrong options often do not target a real confusion. This PR adds a Chain-of-Verification check before each question is shown, and tags each distractor with the misconception it targets. Wrong-answer feedback can then name the likely confusion.
 
-## Delivery plan
-1. **`tutor/SKILL.md` Phase 3** — after crafting each question, attempt to answer using **only** section vault notes; discard and regenerate if no unique grounded answer exists; log `discarded_ungrounded` count in session summary.
-2. **`tutor/references/quiz-rules.md`** — new section **Author-time verification (CoVe)** with the three-step loop above.
-3. **`tutor/references/quiz-rules.md`** — extend **Plausible distractors** with required `misconception:` frontmatter or inline comment per wrong option (not shown to user).
-4. **`tutor/SKILL.md` Phase 5** — on miss, feedback cites misconception when metadata present: "You may be thinking {misconception}; the vault says …"
+## Details
+- `tutor/SKILL.md` Phase 3: new step 4 verifies each question against the section notes, discards unsupported ones, and counts the discards.
+- `tutor/SKILL.md` Phase 5: wrong-answer feedback names the tagged misconception; the discard count is reported in one line.
+- `quiz-rules.md`: distractor rule now requires a hidden misconception tag per wrong option and reuses concept-file Error Notes.
+- `quiz-rules.md`: new **Author-time Verification (CoVe)** section (answer from notes only, exactly one supported option, else rewrite).
+- Zero-hint, randomization, and file-update rules are unchanged.
+- Patch: [`patches/0001-*.patch`](patches/) (base `397110c`).
 
-## Test plan
-- [ ] Manual: generate 10 questions from a sample StudyVault; verify discarded count logged when notes are thin
-- [ ] Manual: wrong-answer feedback references misconception text when metadata set
-- [ ] Existing zero-hint / randomization rules unchanged
+## Docs
+Docs: the skill files are the docs; README unchanged because no new command or install step.
 
-## Pairs with
-agentbrew `learn-project` Phase 5c orchestration gate (complementary, not duplicate).
+---
+_🤖 Written by an agent, not Fyodor. Ping me if this looks off._
+

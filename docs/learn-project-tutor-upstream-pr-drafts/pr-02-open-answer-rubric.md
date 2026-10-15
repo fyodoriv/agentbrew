@@ -1,20 +1,22 @@
 # PR title
-feat(tutor): open-answer questions with vault-grounded rubric grading
-
-## Why this is needed
-MCQ-only assessment overfits recognition over recall. Free-recall with a rubric derived from vault notes measures understanding closer to retrieval practice (Roediger & Karpicke).
+feat(tutor): add open recall mode with rubric grading
 
 ## Summary
-Add an **open-answer** session mode alongside MCQ: user explains in prose; tutor grades against a checklist rubric from vault notes with partial credit and misconception feedback.
+Multiple choice tests recognition, but free recall builds stronger retention (Roediger & Karpicke 2006). This PR adds an "Open recall" session where the learner explains a concept in prose. The tutor grades the answer against a hidden 2–4 point rubric taken from the vault notes.
 
-## Delivery plan
-1. **`tutor/SKILL.md` Phase 2** — add "Open recall" session option when user selects drill or section study.
-2. **`tutor/SKILL.md` Phase 3** — for open-answer rounds, emit 2–4 rubric items per question (key points from vault, not keywords).
-3. **`tutor/SKILL.md` Phase 4** — use free-text input (or structured multi-field) instead of AskUserQuestion MCQ when mode is open-answer.
-4. **`tutor/SKILL.md` Phase 5** — grade each rubric point met/missed; partial score; cite vault span for missed points.
-5. **`tutor/references/quiz-rules.md`** — new **Open-answer rubric** section: rubric must be derivable from vault only; no keyword matching.
+## Details
+- `tutor/SKILL.md` Phase 2: new "Open recall" option once any area has data (menu still has at most 4 options).
+- Phase 3: open recall crafts 2 questions, each with a 2–4 point rubric.
+- Phase 4: asks one question at a time as a plain message; the rubric stays hidden until the answer.
+- Phase 5: marks each rubric point met or missed, shows the score, and quotes the note for each missed point.
+- Phase 6: counts as correct only when every point is met; missed points go into the error note.
+- `quiz-rules.md`: new **Open-answer Rubric** section (meaning, not keywords; every point cites a note).
+- MCQ modes are unchanged.
+- Stacked on PR 1 (both edit Phase 3/5 lists). Patch: [`patches/0002-*.patch`](patches/).
 
-## Test plan
-- [ ] Manual: open-answer round on one section; rubric visible to grader logic, not leaked to user pre-answer
-- [ ] Partial credit updates concept file correctly
-- [ ] MCQ path unchanged when user picks diagnostic/drill MCQ modes
+## Docs
+Docs: the skill files are the docs; README unchanged because no new command or install step.
+
+---
+_🤖 Written by an agent, not Fyodor. Ping me if this looks off._
+

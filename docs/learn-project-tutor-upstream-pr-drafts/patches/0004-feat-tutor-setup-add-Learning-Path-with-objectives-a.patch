@@ -1,0 +1,107 @@
+From c24d77a5ff378270b3fec966123c40b44d4482ad Mon Sep 17 00:00:00 2001
+From: Fyodor Ivanischev <fyodor@sent.com>
+Date: Thu, 15 Oct 2026 10:45:30 -0400
+Subject: [PATCH 4/4] feat(tutor-setup): add Learning Path with objectives and
+ prerequisites
+
+---
+ skills/tutor-setup/SKILL.md                   |  5 +--
+ .../references/quality-checklist.md           |  1 +
+ skills/tutor-setup/references/templates.md    | 32 +++++++++++++++++++
+ skills/tutor/SKILL.md                         |  1 +
+ 4 files changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/skills/tutor-setup/SKILL.md b/skills/tutor-setup/SKILL.md
+index 5f41b88..c3f4d22 100644
+--- a/skills/tutor-setup/SKILL.md
++++ b/skills/tutor-setup/SKILL.md
+@@ -59,7 +59,7 @@ On invocation, detect mode automatically:
+ 
+ 1. Identify topic hierarchy — sections, chapters, domain divisions.
+ 2. Separate concept content vs practice questions.
+-3. Map dependencies between topics.
++3. Map dependencies between topics as prerequisite edges ("learn A before B"). Keep only edges the source supports, with a source citation for each.
+ 4. Identify key patterns — comparisons, decision trees, formulas.
+ 5. **Full topic checklist (MANDATORY)** — every topic/subtopic listed. Drives all subsequent phases.
+ 
+@@ -81,11 +81,12 @@ Create `StudyVault/` with numbered folders per [templates.md](references/templat
+ 
+ ### Phase D5: Dashboard Creation
+ 
+-Create `00-Dashboard/`: MOC, Quick Reference, Exam Traps. See [templates.md](references/templates.md).
++Create `00-Dashboard/`: MOC, Quick Reference, Exam Traps, Learning Path. See [templates.md](references/templates.md).
+ 
+ - **MOC**: Topic Map + Practice Notes + Study Tools + Tag Index (with rules) + Weak Areas (with links) + Non-core Topic Policy
+ - **Quick Reference**: every heading includes `→ [[Concept Note]]` link; all key formulas
+ - **Exam Traps**: per-topic trap points in fold callouts, linked to concept notes
++- **Learning Path**: per-section objectives ("By the end you can …") + prerequisite edges from Phase D2, in topological order
+ 
+ ### Phase D6: Concept Notes
+ 
+diff --git a/skills/tutor-setup/references/quality-checklist.md b/skills/tutor-setup/references/quality-checklist.md
+index 0f410b6..b2ffb3d 100644
+--- a/skills/tutor-setup/references/quality-checklist.md
++++ b/skills/tutor-setup/references/quality-checklist.md
+@@ -36,6 +36,7 @@ Before reporting completion, verify every item in the relevant mode's section. F
+ - [ ] MOC links to every concept note AND practice note
+ - [ ] Weak Areas link to `→ [[note]]` AND `→ [[Exam Traps]]`
+ - [ ] Exam Traps exists with per-topic fold callouts and bidirectional links
++- [ ] Learning Path exists: objectives for every section, cited prerequisite edges, no cycles
+ 
+ ### Quick Reference
+ - [ ] All key formulas and condition expressions included
+diff --git a/skills/tutor-setup/references/templates.md b/skills/tutor-setup/references/templates.md
+index 3f90481..96c64d7 100644
+--- a/skills/tutor-setup/references/templates.md
++++ b/skills/tutor-setup/references/templates.md
+@@ -97,6 +97,38 @@ keywords: exam traps, weak areas, common mistakes
+ - [[빠른 참조]]
+ ```
+ 
++## Learning Path Template
++
++```markdown
++---
++keywords: learning path, objectives, prerequisites
++---
++
++# Learning Path
++
++#dashboard #learning-path
++
++## Objectives
++| Section | By the end you can … |
++|---------|----------------------|
++| [[01-Topic1]] | explain X; choose between Y and Z |
++
++## Prerequisites
++| Learn first | Before | Source |
++|-------------|--------|--------|
++| [[Concept A]] | [[Concept B]] | source.pdf p.12 |
++
++## Study Order
++1. [[Concept A]]
++2. [[Concept B]]
++```
++
++### Learning Path Rules
++
++- Every prerequisite edge cites the source passage that supports it — drop uncited edges
++- No cycles; Study Order is a topological sort of the edges
++- Objectives use action verbs (explain, compare, choose, debug) — not "understand X"
++
+ ## Concept Note Template
+ 
+ ```markdown
+diff --git a/skills/tutor/SKILL.md b/skills/tutor/SKILL.md
+index d6e229c..71e7adf 100644
+--- a/skills/tutor/SKILL.md
++++ b/skills/tutor/SKILL.md
+@@ -64,6 +64,7 @@ Present these as an AskUserQuestion with header "Session" and concise descriptio
+    - **Open recall**: craft 2 open questions instead, each with a 2–4 point rubric (see Open-answer Rubric in `references/quiz-rules.md`)
+ 4. Verify each question against the notes (Author-time Verification in `references/quiz-rules.md`). Discard and regenerate any question the notes do not support. Count the discards.
+ 5. Tag each question with a Bloom level and pick levels per the Bloom Ladder in `references/quiz-rules.md`
++6. If `*Learning Path*` exists, order concepts by its Study Order: ask about prerequisites before the concepts that depend on them, and skip concepts whose prerequisites are still 🔴
+ 
+ **CRITICAL**: Read `references/quiz-rules.md` before crafting ANY question. Zero hints allowed.
+ 

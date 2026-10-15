@@ -45,6 +45,50 @@ Run a group:
 npm run eval:agent-artifacts -- --filter-pattern Jenkins
 ```
 
+## Plain-language output evals
+
+The global plain-language rule has deployment tests. These evals check
+behavior: does agent output follow the rule?
+
+The evaluator is `agent-artifact-evals/plain-language.cjs`. It is
+deterministic and uses no model. It checks five surfaces:
+
+| Surface | Checks |
+|---|---|
+| `chat` | answer first, sentence length, active voice, paragraph length |
+| `docs` | answer first, sentence length, active voice, paragraph length |
+| `pr` | body opens with `## Summary`, sentence length, active voice, paragraph length |
+| `code-comment` | comment blocks of 3 lines or fewer, sentence length, active voice |
+| `skill-wrapper` | sentence length, active voice, paragraph length (frontmatter skipped) |
+
+Limits: 25 words per sentence (ASD-STE100), 4 sentences per prose paragraph,
+and passive voice in at most 1 of 5 sentences. Bullets and fenced code are
+not counted as long paragraphs. Each diagnostic names the rule text it
+enforces, so a failure shows the rule gap.
+
+Sampled outputs for Claude Code, Cursor, and Codex live in
+`agent-artifact-evals/plain-language/samples/<agent>/<surface>.<ext>`. Known
+bad outputs live in `agent-artifact-evals/plain-language/failing/`. The
+Promptfoo cases in `agent-artifact-evals/cases/plain-language.yaml` run both
+sets inside `npm run eval:agent-artifacts`, so `npm run verify` stays
+deterministic.
+
+Print the report for every agent and surface:
+
+```bash
+npm run eval:plain-language
+```
+
+Score your own captured output (opt-in). Save the agent's reply to a file,
+then run:
+
+```bash
+npm run eval:plain-language -- --surface chat path/to/reply.md
+```
+
+The command exits 1 when an output fails. To add a sample from a live
+agent, save it under `samples/<agent>/<surface>.<ext>` and add a case.
+
 ## Exemptions
 
 If a high-risk artifact cannot reasonably be covered by deterministic tests or

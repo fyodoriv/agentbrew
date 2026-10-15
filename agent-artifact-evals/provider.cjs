@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { evaluatePlainLanguage } = require("./plain-language.cjs");
 
 const PLAIN_LANGUAGE_RULES = [
   {
@@ -106,6 +107,9 @@ async function callApi(_prompt, _options, context) {
   const artifactPath = String(vars.artifact_path || vars.artifact || "unknown-artifact");
   const fixtureText = typeof vars.fixture_text === "string" ? vars.fixture_text : undefined;
   const text = fixtureText === undefined ? readArtifact(artifactPath) : fixtureText;
+  if (vars.evaluator === "plain-language") {
+    return { output: evaluatePlainLanguage({ artifactPath, surface: String(vars.surface), text }).output };
+  }
   return evaluateArtifactText({ artifactPath, text });
 }
 

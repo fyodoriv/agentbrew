@@ -66,7 +66,7 @@ multiple repositories. It keeps Jira tasks concise: Jira fields and links own
 UI metadata, explicit non-goals stay excluded, and a requested single PR
 remains one delivery boundary.
 
-High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md).
+High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md). `npm run eval:plain-language` checks sampled chat, docs, PR, code-comment, and skill-wrapper output from Claude Code, Cursor, and Codex against the plain-language rule; pass `--surface <name> <file>` to score your own captured output.
 
 Source repos can declare one-time setup in `agentbrew-source.yaml`:
 

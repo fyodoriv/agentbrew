@@ -1,0 +1,323 @@
+- description: claude-code chat sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/claude-code/chat.md
+    evaluator: plain-language
+    surface: chat
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/claude-code/chat.md
+    agent: claude-code
+    surface: chat
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/claude-code/chat.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: claude-code code-comment sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/claude-code/code-comment.ts
+    evaluator: plain-language
+    surface: code-comment
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/claude-code/code-comment.ts
+    agent: claude-code
+    surface: code-comment
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/claude-code/code-comment.ts"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: claude-code docs sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/claude-code/docs.md
+    evaluator: plain-language
+    surface: docs
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/claude-code/docs.md
+    agent: claude-code
+    surface: docs
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/claude-code/docs.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: claude-code pr sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/claude-code/pr.md
+    evaluator: plain-language
+    surface: pr
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/claude-code/pr.md
+    agent: claude-code
+    surface: pr
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/claude-code/pr.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: claude-code skill-wrapper sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/claude-code/skill-wrapper.md
+    evaluator: plain-language
+    surface: skill-wrapper
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/claude-code/skill-wrapper.md
+    agent: claude-code
+    surface: skill-wrapper
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/claude-code/skill-wrapper.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: cursor chat sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/cursor/chat.md
+    evaluator: plain-language
+    surface: chat
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/cursor/chat.md
+    agent: cursor
+    surface: chat
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/cursor/chat.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: cursor code-comment sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/cursor/code-comment.py
+    evaluator: plain-language
+    surface: code-comment
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/cursor/code-comment.py
+    agent: cursor
+    surface: code-comment
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/cursor/code-comment.py"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: cursor docs sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/cursor/docs.md
+    evaluator: plain-language
+    surface: docs
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/cursor/docs.md
+    agent: cursor
+    surface: docs
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/cursor/docs.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: cursor pr sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/cursor/pr.md
+    evaluator: plain-language
+    surface: pr
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/cursor/pr.md
+    agent: cursor
+    surface: pr
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/cursor/pr.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: cursor skill-wrapper sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/cursor/skill-wrapper.md
+    evaluator: plain-language
+    surface: skill-wrapper
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/cursor/skill-wrapper.md
+    agent: cursor
+    surface: skill-wrapper
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/cursor/skill-wrapper.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: codex chat sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/codex/chat.md
+    evaluator: plain-language
+    surface: chat
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/codex/chat.md
+    agent: codex
+    surface: chat
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/codex/chat.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: codex code-comment sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/codex/code-comment.ts
+    evaluator: plain-language
+    surface: code-comment
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/codex/code-comment.ts
+    agent: codex
+    surface: code-comment
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/codex/code-comment.ts"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: codex docs sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/codex/docs.md
+    evaluator: plain-language
+    surface: docs
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/codex/docs.md
+    agent: codex
+    surface: docs
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/codex/docs.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: codex pr sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/codex/pr.md
+    evaluator: plain-language
+    surface: pr
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/codex/pr.md
+    agent: codex
+    surface: pr
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/codex/pr.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: codex skill-wrapper sample uses plain, short, active sentences
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/samples/codex/skill-wrapper.md
+    evaluator: plain-language
+    surface: skill-wrapper
+  metadata:
+    artifact: agent-artifact-evals/plain-language/samples/codex/skill-wrapper.md
+    agent: codex
+    surface: skill-wrapper
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "PASS agent-artifact-evals/plain-language/samples/codex/skill-wrapper.md"
+    - type: contains
+      value: 'diagnostic_count=0'
+
+- description: failing claude-code chat output reports its rule gap
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/failing/claude-code--chat.md
+    evaluator: plain-language
+    surface: chat
+  metadata:
+    artifact: agent-artifact-evals/plain-language/failing/claude-code--chat.md
+    agent: claude-code
+    surface: chat
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL agent-artifact-evals/plain-language/failing/claude-code--chat.md"
+    - type: contains
+      value: 'diagnostic answer-not-first rule="put the answer first"'
+    - type: contains
+      value: 'diagnostic long-sentence rule="short, direct sentences"'
+
+- description: failing claude-code code-comment output reports its rule gap
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/failing/claude-code--code-comment.ts
+    evaluator: plain-language
+    surface: code-comment
+  metadata:
+    artifact: agent-artifact-evals/plain-language/failing/claude-code--code-comment.ts
+    agent: claude-code
+    surface: code-comment
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL agent-artifact-evals/plain-language/failing/claude-code--code-comment.ts"
+    - type: contains
+      value: 'diagnostic long-comment rule="add a code comment only when it clarifies the code"'
+
+- description: failing codex pr output reports its rule gap
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/failing/codex--pr.md
+    evaluator: plain-language
+    surface: pr
+  metadata:
+    artifact: agent-artifact-evals/plain-language/failing/codex--pr.md
+    agent: codex
+    surface: pr
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL agent-artifact-evals/plain-language/failing/codex--pr.md"
+    - type: contains
+      value: 'diagnostic pr-summary-not-first rule="PR bodies open with ## Summary"'
+
+- description: failing cursor docs output reports its rule gap
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/failing/cursor--docs.md
+    evaluator: plain-language
+    surface: docs
+  metadata:
+    artifact: agent-artifact-evals/plain-language/failing/cursor--docs.md
+    agent: cursor
+    surface: docs
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL agent-artifact-evals/plain-language/failing/cursor--docs.md"
+    - type: contains
+      value: 'diagnostic passive-voice rule="active voice"'
+    - type: contains
+      value: 'diagnostic long-paragraph rule="short paragraphs"'
+
+- description: failing cursor skill-wrapper output reports its rule gap
+  vars:
+    artifact_path: agent-artifact-evals/plain-language/failing/cursor--skill-wrapper.md
+    evaluator: plain-language
+    surface: skill-wrapper
+  metadata:
+    artifact: agent-artifact-evals/plain-language/failing/cursor--skill-wrapper.md
+    agent: cursor
+    surface: skill-wrapper
+    tier: deterministic
+  assert:
+    - type: contains
+      value: "FAIL agent-artifact-evals/plain-language/failing/cursor--skill-wrapper.md"
+    - type: contains
+      value: 'diagnostic long-paragraph rule="short paragraphs"'

@@ -8,7 +8,7 @@ belong in `tutor-setup` / `tutor`.
 **90-day window:** if upstream rejects or ignores, absorb into `learn-project` as
 P0(d) fallback per VISION delegate-contribute-absorb.
 
-**Ready-to-publish patches + PR bodies:** [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md) — `git am`-ready stack on upstream `397110c`, replay-verified 2026-10-15 (publish still gated).
+**Ready-to-publish patches + PR bodies:** [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md) — `git am`-ready stack on upstream `397110c`, replay-verified 2026-10-15 — published 2026-10-15 as bevibing/tutor-skills#8–#11; 90-day window closes 2027-01-13.
 
 ---
 

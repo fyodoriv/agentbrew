@@ -1,7 +1,7 @@
 # tutor-skills upstream PR drafts
 
 Ready-to-publish patches and PR bodies for [`bevibing/tutor-skills`](https://github.com/bevibing/tutor-skills).
-**Publish gate:** fork, push, and `gh pr create` need explicit user approval per session.
+**Status:** published 2026-10-15 as stacked PRs #8–#11; merge is up to the upstream maintainer.
 
 Parent spec: [`../learn-project-tutor-upstream-contribution.md`](../learn-project-tutor-upstream-contribution.md)
 
@@ -11,13 +11,13 @@ Parent spec: [`../learn-project-tutor-upstream-contribution.md`](../learn-projec
 |-----------|------|--------|
 | Local spec + PR drafts complete | 2026-07-08 | done |
 | Upstream patches written and replay-verified | 2026-10-15 | done |
-| First upstream PR opened | — | pending approval |
-| Window closes (first PR + 90 days) | T+90 from first PR | — |
+| Upstream PRs [#8](https://github.com/bevibing/tutor-skills/pull/8), [#9](https://github.com/bevibing/tutor-skills/pull/9), [#10](https://github.com/bevibing/tutor-skills/pull/10), [#11](https://github.com/bevibing/tutor-skills/pull/11) opened (fork `fyodoriv/tutor-skills`) | 2026-10-15 | done |
+| Window closes (first PR + 90 days) | 2027-01-13 | open |
 | Absorb-if-rejected decision | on close | fallback → P0(d) in agentbrew `learn-project` |
 
 **Absorb trigger:** upstream rejects all four PRs, or no maintainer response within 90 days of the first PR.
 
-**Upstream activity (2026-10-15):** last push 2026-02-28; zero PRs ever opened. A silent window is likely, so record the open date the day PR 1 goes up.
+**Upstream activity (2026-10-15):** last push 2026-02-28; zero PRs ever opened. A silent window is likely.
 
 ## PR stack
 

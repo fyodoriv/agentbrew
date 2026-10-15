@@ -146,7 +146,7 @@ function mergeAgentfileMcp(
 
 /** Merge sources from Agentfile into state. Returns URLs added. */
 function mergeAgentfileSources(
-  agentfile: { sources?: string[] },
+  agentfile: { sources?: string[]; skills?: string[] },
   state: AgentBrewState,
   authoritative: boolean,
   baseDir: string,
@@ -185,7 +185,13 @@ function mergeAgentfileSources(
     // sync-wipes-team-origin-sources in TASKS.md for the failure mode.
     const isTeamOwned = (s: { origin?: string }): boolean =>
       typeof s.origin === "string" && s.origin.startsWith("team:");
-    finalSources = sources.filter((s) => agentfileSourceUrls.has(s.url) || isTeamOwned(s));
+    // Preserve sources that back a skill the Agentfile lists. Catalog installs
+    // add such sources without a `sources:` entry, so pruning them would delete
+    // skills the Agentfile declares.
+    const agentfileSkills = new Set(agentfile.skills ?? []);
+    const backsAgentfileSkill = (s: { skillsInstalled?: string[] }): boolean =>
+      (s.skillsInstalled ?? []).some((skill) => agentfileSkills.has(skill));
+    finalSources = sources.filter((s) => agentfileSourceUrls.has(s.url) || isTeamOwned(s) || backsAgentfileSkill(s));
   }
   if (added.length > 0 || finalSources.length !== sources.length) state.sources = finalSources;
 

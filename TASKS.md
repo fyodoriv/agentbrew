@@ -173,16 +173,6 @@
   - **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
   - **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
   - **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
-- [ ] Stop the authoritative Agentfile apply from pruning sources that back Agentfile skills
-  - **ID**: agentfile-apply-keeps-skill-sources
-  - **Tags**: scout, sync, agentfile
-  - **Details**: Scouted while fixing `sync-pull-agentfile-skill-installs`. The authoritative apply drops every non-team source the Agentfile `sources:` list omits, including catalog-derived sources that back skills named in `skills:`. `sync` and `sync --pull` now re-add them by installing the skills straight after the apply. State still loses those sources briefly, and any caller that applies without the install step drops them for good.
-  - **Files**: `src/agentfile-apply.ts` (mergeAgentfileSources)
-  - **Acceptance**: an authoritative apply keeps a source whose installed skills the Agentfile requests. A test in `src/agentfile-apply.test.ts` pins it.
-  - **Hypothesis**: Keeping sources that back Agentfile `skills:` entries stops an authoritative apply from deleting skills the user declared.
-  - **Measurement**: A test in `src/agentfile-apply.test.ts`: an Agentfile lists a skill whose source is not in `sources:`; after an authoritative apply the source and skill remain.
-  - **Pivot**: If apply cannot map a skill to its source, require the source in `sources:` and print a warning naming the skill instead.
-  - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state; sync must not remove what it declares).
 
 ## P2
 

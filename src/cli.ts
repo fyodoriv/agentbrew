@@ -247,8 +247,8 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     // Apply the Agentfile to state first, so the pull sees corrected source URLs
     // and does not fetch (or fail on) entries the Agentfile already dropped.
     const applied = await applyAgentfileBeforePull(options);
-    // Install before the pull: the authoritative apply drops sources that only
-    // back catalog skills. The install re-adds them, so the pull's deploy keeps those skills.
+    // Install before the pull, so the pull's deploy includes skills the
+    // Agentfile newly requests.
     await installAgentfileItemsBeforePull(applied, options);
     await update({ dryRun: options.dryRun ?? false });
     return true;
@@ -275,7 +275,7 @@ async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<Ap
   }
 }
 
-/** Install skills the Agentfile requests (newly or whose source the apply pruned). Skipped on --dry-run. */
+/** Install skills the Agentfile requests. Skipped on --dry-run. */
 async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, options: SyncCommandOptions): Promise<void> {
   if (!applied || options.dryRun) return;
   const { install: catalogInstall } = await import("./catalog/install.js");

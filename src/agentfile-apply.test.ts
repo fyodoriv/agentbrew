@@ -505,6 +505,43 @@ describe("applyAgentfile", () => {
       expect(remainingUrls).not.toContain("https://example.com/stale");
       expect(remainingUrls).toContain("https://example.com/kept");
     });
+
+    it("keeps a source that backs a skill the authoritative Agentfile lists", () => {
+      // Regression: catalog installs add a source that the Agentfile `sources:`
+      // list never names. The authoritative apply dropped it, and the skill with it.
+      const catalogSource = {
+        url: "https://example.com/catalog-skills",
+        type: "url",
+        skillsInstalled: ["wanted-skill"],
+        availableItems: [],
+        addedAt: "2026-05-25T00:00:00Z",
+      } as Source;
+      const state = makeState({ sources: [catalogSource], agentfileSkills: ["wanted-skill"] });
+      mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/kept"], skills: ["wanted-skill"] });
+      mockLoadState.mockReturnValue(state);
+
+      applyAgentfile("/project", { authoritative: true, quiet: true });
+
+      const kept = state.sources?.find((s) => s.url === "https://example.com/catalog-skills");
+      expect(kept?.skillsInstalled).toEqual(["wanted-skill"]);
+    });
+
+    it("still prunes a source whose skills the authoritative Agentfile does not list", () => {
+      const otherSource = {
+        url: "https://example.com/other-skills",
+        type: "url",
+        skillsInstalled: ["unlisted-skill"],
+        availableItems: [],
+        addedAt: "2026-05-25T00:00:00Z",
+      } as Source;
+      const state = makeState({ sources: [otherSource] });
+      mockLoadAgentfile.mockReturnValue({ sources: [], skills: ["wanted-skill"] });
+      mockLoadState.mockReturnValue(state);
+
+      applyAgentfile("/project", { authoritative: true, quiet: true });
+
+      expect(state.sources?.map((s) => s.url)).not.toContain("https://example.com/other-skills");
+    });
   });
 
   describe("authoritative apply keeps entries added in the same apply", () => {

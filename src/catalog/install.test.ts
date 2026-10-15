@@ -134,7 +134,7 @@ import { formatSuggestion } from "../suggest.js";
 import { delegateMcpClientEdit, delegateMcpInstall, delegateMcpNew, readMcpmServer } from "../sync/mcp-delegate.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
 import { getSourceCachePath, scanDirectoryForSkills } from "./index-source.js";
-import { flushInstallSummary, install } from "./install.js";
+import { flushInstallSummary, install, RULES_REFRESH_HINT_COMMAND } from "./install.js";
 import { resetSourceFallbackAnnounced } from "./install-skill.js";
 import { mockSkillCacheExists } from "./mock-skill-cache-exists.js";
 import { loadCatalog } from "./types.js";
@@ -1468,6 +1468,37 @@ describe("installRecommended", () => {
     expect(mockMkdirSync).not.toHaveBeenCalled();
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
     existsSpy.mockRestore();
+  });
+
+  it("refreshes catalog rules only with --refresh-rules and no --recommended", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    mockLoadCatalog.mockReturnValue({
+      skills: [
+        { name: "removed-skill", description: "Removed", category: "testing", source: "owner/repo", recommended: true },
+      ],
+      mcp_servers: [
+        { name: "removed-mcp", description: "Removed", category: "testing", command: "node", recommended: true },
+      ],
+      rules: [{ name: "kept-rule", description: "Rule", category: "testing", content: "Body.", recommended: true }],
+      cli_tools: [
+        { name: "removed-tool", description: "Removed", category: "testing", commands: ["x"], recommended: true },
+      ],
+    });
+    const existsSpy = vi.spyOn(await import("node:fs"), "existsSync").mockReturnValue(false);
+
+    await install(undefined, { refreshRules: true });
+
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).not.toContain("Installing recommended items");
+    expect(logs).not.toContain("Popular skills");
+    expect(mockCpSync).not.toHaveBeenCalled();
+    expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(mockAddToAgentfile).not.toHaveBeenCalled();
+    existsSpy.mockRestore();
+  });
+
+  it("points the edited-rule hint at the rules-only command", () => {
+    expect(RULES_REFRESH_HINT_COMMAND).toBe("agentbrew install --refresh-rules");
   });
 
   it("does not re-add a recommended MCP server the user removed", async () => {

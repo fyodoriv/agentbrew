@@ -23,6 +23,10 @@ vi.mock("../sync-runner.js", () => ({
   autoSync: vi.fn(),
 }));
 
+vi.mock("../sync/rules-sync.js", () => ({
+  syncRules: vi.fn(),
+}));
+
 vi.mock("../add-source.js", () => ({
   addSource: vi.fn(),
 }));
@@ -82,6 +86,7 @@ import { getStatePath, loadState } from "../state.js";
 import { status } from "../status.js";
 import { formatSuggestion } from "../suggest.js";
 import { addMcpServer } from "../sync/mcp-sync-commands.js";
+import { syncRules } from "../sync/rules-sync.js";
 import { autoSync } from "../sync-runner.js";
 import { applyAgentfileAndInstall, registerDefaultAction, registerInstallCommand } from "./cli-install.js";
 import { buildTestProgram } from "./test-program.js";
@@ -96,6 +101,7 @@ const mockInstallToProject = vi.mocked(installToProject);
 const mockInstall = vi.mocked(install);
 const mockCliMissingArg = vi.mocked(cliMissingArg);
 const mockAutoSync = vi.mocked(autoSync);
+const mockSyncRules = vi.mocked(syncRules);
 const mockAddSource = vi.mocked(addSource);
 const mockAddMcpServer = vi.mocked(addMcpServer);
 const mockInstallMcpFromGit = vi.mocked(installMcpFromGit);
@@ -156,6 +162,24 @@ describe("registerInstallCommand", () => {
         undefined,
         expect.objectContaining({ recommended: true, refreshRules: true }),
       );
+    });
+
+    it("runs --refresh-rules alone as a rules-only refresh with no full sync", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "--refresh-rules"]);
+      expect(mockInstall).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ recommended: undefined, refreshRules: true }),
+      );
+      expect(mockAutoSync).not.toHaveBeenCalled();
+      expect(mockSyncRules).toHaveBeenCalledOnce();
+    });
+
+    it("does not deploy rules for a rules-only --dry-run", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "--refresh-rules", "--dry-run"]);
+      expect(mockAutoSync).not.toHaveBeenCalled();
+      expect(mockSyncRules).not.toHaveBeenCalled();
     });
 
     it("passes --yes flag", async () => {

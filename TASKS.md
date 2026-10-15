@@ -181,18 +181,6 @@
 
 ## P1
 
-- [ ] Stop `--refresh-rules` from reinstalling skills the Agentfile removed
-  - **ID**: refresh-rules-without-recommended-skills
-  - **Tags**: scout, rules, catalog, agentfile, data-safety
-  - **Details**: When a catalog rule block was edited, agentbrew prints a hint to run `agentbrew install --recommended --refresh-rules`. That command also installs every recommended catalog skill, MCP server, and CLI tool, including skills the Agentfile removed on purpose. On 2026-10-12 a dry run on a real machine showed it would reinstall removed skills and change no rules. Give rule refresh a path that touches rules only (for example a rules-only flag or `agentbrew sync --refresh-rules`), and point the hint at it.
-  - **Files**: src/catalog/install.ts, src/commands/cli-install.ts, src/sync/rules-sync.ts, src/catalog/install.test.ts
-  - **Acceptance**: the hint names a command that refreshes catalog rules and installs no skill, MCP server, or CLI tool; a test runs it against an Agentfile that removed a recommended skill and the skill stays absent.
-  - **Hypothesis**: the rules hint is the only route that brings back removed skills during rule upkeep; a rules-only command stops that.
-  - **Success**: the dry run of the hinted command lists zero skill, MCP, or CLI installs on a machine whose Agentfile removed recommended skills.
-  - **Pivot**: if rule refresh needs the recommended install path, make that path honor the Agentfile instead and keep the flag.
-  - **Measurement**: `agentbrew <hinted command> --dry-run 2>&1 | rg -c 'Would install'` prints 0.
-  - **Anchor**: Basili, Caldiera, Rombach, "The Goal Question Metric Approach", 1994.
-
 - [ ] Prune dropped source dirs for project Agentfiles
   - **ID**: prune-project-agentfile-source-dirs
   - **Tags**: scout, agentfile, state

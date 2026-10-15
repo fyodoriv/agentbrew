@@ -313,6 +313,9 @@ async function installFromCatalog(
   await searchAndInstallFromSources(state, catalog, name);
 }
 
+/** Rules-only refresh: replaces edited catalog rule blocks and installs nothing else. */
+export const RULES_REFRESH_HINT_COMMAND = "agentbrew install --refresh-rules";
+
 export async function install(
   name?: string,
   options?: {
@@ -329,6 +332,13 @@ export async function install(
   if (!state) return;
 
   const catalog = loadCatalog();
+
+  if (options?.refreshRules && !options.recommended && !name) {
+    // Rules only: never install recommended skills, MCP servers, or CLI tools,
+    // so items the Agentfile removed stay removed.
+    refreshRecommendedRules(catalog, options.dryRun ?? false, true);
+    return;
+  }
 
   if (options?.recommended) {
     await installRecommended(catalog, options.dryRun ?? false, options.refreshRules ?? false);
@@ -483,7 +493,7 @@ function refreshRecommendedRules(catalog: Catalog, dryRun: boolean, force: boole
     console.log(
       chalk.yellow(
         `\n  Kept ${preserved.length} edited or unrecorded catalog rule(s): ${preserved.join(", ")}. ` +
-          "Run `agentbrew install --recommended --refresh-rules` (add --dry-run to preview) to replace them.\n",
+          `Run \`${RULES_REFRESH_HINT_COMMAND}\` (add --dry-run to preview) to replace them.\n`,
       ),
     );
   }

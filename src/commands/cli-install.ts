@@ -12,6 +12,7 @@ import {
 import { install } from "../catalog/install.js";
 import { isLocalFolderPath, isNpxScopedPackage, isSourceRepoPath } from "../cli-helpers.js";
 import { cliMissingArg } from "../core/cli-error.js";
+import { syncRules } from "../sync/rules-sync.js";
 import { autoSync } from "../sync-runner.js";
 import { parseKeyValuePairs } from "../utils.js";
 
@@ -248,6 +249,9 @@ async function executeInstall(name: string | undefined, options: InstallOptions,
     // browse. `install --recommended` (also no name) still triggers sync.
     // Also skip if install() signalled failure via process.exitCode.
     if (!options.dryRun && options.recommended && !process.exitCode) await autoSync();
+    // A rules-only refresh deploys rules alone: a full sync could reinstall
+    // recommended items the Agentfile removed.
+    if (!options.dryRun && options.refreshRules && !options.recommended && !process.exitCode) await syncRules();
     return;
   }
   if (await handleSourceRepoInstall(name, options)) return;
@@ -270,7 +274,10 @@ export function registerInstallCommand(program: Command): void {
     .command("install [name]")
     .description("Install a skill, MCP server, rule, source repo, or local folder")
     .option("--recommended", "Install all recommended items")
-    .option("--refresh-rules", "With --recommended: also replace edited catalog rule blocks (preview with --dry-run)")
+    .option(
+      "--refresh-rules",
+      "Replace edited catalog rule blocks; alone it changes rules only, with --recommended it also installs (preview with --dry-run)",
+    )
     .option("-y, --yes", "Non-interactive mode")
     .option("--from <source>", "Install from a specific source")
     .option("-c, --command <command>", "Server command (for MCP stdio transport)")

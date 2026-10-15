@@ -46,6 +46,7 @@ agentbrew install vercel-labs/skills      # add a GitHub skill repo as a source
 agentbrew remove context7                 # auto-detects type, removes from all agents
 agentbrew catalog --search security       # browse + search the catalog
 agentbrew skills coverage --builtins      # require in-repo skill eval coverage
+agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
 **Official MCP Registry (opt-in).** With `AGENTBREW_MCP_REGISTRY=1`, `install` looks up a name the local catalog does not have in the [official MCP Registry](https://registry.modelcontextprotocol.io/) — for example `AGENTBREW_MCP_REGISTRY=1 agentbrew install io.github.upstash/context7 --dry-run`. Local catalog entries always win, and a registry outage falls back to the local catalog with a one-line warning. Details: [docs/competition/official-mcp-registry-vs-agentbrew.md](docs/competition/official-mcp-registry-vs-agentbrew.md).
@@ -545,6 +546,10 @@ agentbrew remove [name]                Remove any item (auto-detects type)
 
 agentbrew catalog [--search <term>]    Browse available items
 agentbrew lint                         Validate all config files (exit 1 on errors)
+agentbrew skills validate [--builtins] [--verbose]
+                                       Check SKILL.md frontmatter and body (exit 1 on errors)
+agentbrew skills coverage [--builtins] [--ci]
+                                       Report skill structural and eval test coverage
 agentbrew rules dedupe                 Remove repeated blocks from shared-rules.md
 agentbrew import [--from <agent>]      Discover MCP servers from agent configs
                                        (mcpm bridge `mcpm_*` entries are

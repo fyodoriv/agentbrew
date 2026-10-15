@@ -42,7 +42,7 @@ const BUILTIN_SKILL_SOURCE_LABEL = "agentbrew";
 const DEFAULT_THRESHOLD = 90;
 
 /** Built-in skills of the agentbrew checkout, from the bundled dist/cli.js or from src/. */
-function defaultBuiltInSkillRoot(): string {
+export function defaultBuiltInSkillRoot(): string {
   const root = findAgentbrewRepoRoot("skill-plugins/dev") ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..");
   return join(root, "skill-plugins", "dev");
 }
@@ -55,7 +55,8 @@ function isSkillDirectory(directory: string): boolean {
   }
 }
 
-function validateBuiltInSkills(skillRoot: string): SkillValidationResult[] {
+/** Validate every skill directory directly under `skillRoot` (used by `skills coverage` and `skills validate`). */
+export function validateBuiltInSkills(skillRoot: string): SkillValidationResult[] {
   if (!existsSync(skillRoot)) return [];
   const skillDirectories = readdirSync(skillRoot)
     .map((entry) => join(skillRoot, entry))

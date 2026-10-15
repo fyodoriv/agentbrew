@@ -446,8 +446,13 @@ export function validateAllSkills(): ValidationSummary {
     }
   }
 
-  const results = skillEntries.map((entry) => validateSkill(entry.directory, entry.sourceLabel, allSkillNames));
+  return summarizeValidation(
+    skillEntries.map((entry) => validateSkill(entry.directory, entry.sourceLabel, allSkillNames)),
+  );
+}
 
+/** Count valid, error, and warning results into a {@link ValidationSummary}. */
+export function summarizeValidation(results: SkillValidationResult[]): ValidationSummary {
   return {
     total: results.length,
     valid: results.filter((r) => r.valid).length,

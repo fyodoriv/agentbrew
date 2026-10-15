@@ -202,18 +202,6 @@
   - **Pivot**: If apply cannot map a skill to its source, require the source in `sources:` and print a warning naming the skill instead.
   - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state; sync must not remove what it declares).
 
-- [ ] Wire the advertised `agentbrew skills validate` command to the existing skill validator
-  - **ID**: wire-skills-validate-command
-  - **Tags**: scout, cli, validation, correctness, skill-eval, P1
-  - **Details**: While authoring the workflow/debugging eval batch on 2026-06-04, `npm run dev -- skills validate --help` showed only the `coverage` subcommand, but multiple user-facing diagnostics still tell users to run `agentbrew skills validate`: `src/drift-checks/skills.ts:104`, `src/health.ts:170`, and related tests. The validator already exists in `src/skills/validate.ts` and display code exists in `src/skills/skill-validate-display.ts`; the missing piece is CLI registration under `agentbrew skills validate`.
-  - **Files**: `src/commands/cli-skills.ts`, `src/skills/validate.ts`, `src/skills/skill-validate-display.ts`, `src/drift-checks/skills.ts`, `src/health.ts`, tests under `src/skills/` or `src/commands/`.
-  - **Acceptance**: `npm run dev -- skills validate --help` documents a validate subcommand; `npm run dev -- skills validate --builtins` or the chosen equivalent exits 0 on current built-ins and renders the existing validation display; diagnostics that say "Run: agentbrew skills validate" point to a command that actually exists; `npm run verify` passes.
-  - **Output**: code
-  - **Hypothesis**: Every printed hint should name a command that exists; today `agentbrew skills validate` is a dead end.
-  - **Measurement**: `rg -n "skills validate" src` lists every hint; `npx tsx src/cli.ts skills validate --help` (or the replacement named in the hints) exits 0.
-  - **Pivot**: If the validator duplicates `skills coverage`, point the hints at `skills coverage` and do not add a command (AGENTS.md rule 9).
-  - **Anchor**: AGENTS.md rule 9 (keep the CLI small); Nielsen 1994, heuristic "help users recognize, diagnose, and recover from errors".
-
 ## P2
 
 - [ ] `iterate` and `markdown-for-gdoc` SKILL.md files load no more than their baselines

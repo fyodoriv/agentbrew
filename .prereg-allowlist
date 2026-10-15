@@ -5,9 +5,7 @@ prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
 snapshot-record-heal-deferred-for-load
 github-mcp-maintained-server-without-launcher
-status-surface-claude-desktop-mcp-failures
 measure-plain-language-output-across-managed-agents
-remove-stale-deleted-jira-skill-references
 extract-shared-2134-skill-contract-test-helpers
 document-2134-pressure-eval-conventions
 status-reports-preserved-catalog-rules

@@ -2,15 +2,16 @@
 name: companion-competitor-watch
 description: >
   Read-only companion lane — refresh competitor research for a project.
-  Identifies competitors from VISION.md / docs/competitors/, checks their
-  latest releases, scans recent blog posts and changelogs, and updates
-  `docs/competitors/<NAME>.md` with new findings. Files P3 TASKS.md
+  Identifies competitors from VISION.md and the repo's existing competitor
+  directory (`docs/competition/`, `docs/competitors/`, or `competitors/`),
+  checks their latest releases, scans recent blog posts and changelogs, and
+  updates `<COMPETITOR_DIR>/<NAME>.md` with new findings. Files P3 TASKS.md
   entries for "competitor X now has feature Y we don't". Use when called
   by `companion-researcher` or when the user asks "what are competitors
   doing", "refresh competitor research", or "scan the market". Don't use
   to propose features (use `strategic-review`) or rewrite VISION.md (use
   `write-vision`).
-argument-hint: "[--repo path] [--competitors comma,separated] [--max-age-days 30]"
+argument-hint: "[--repo path] [--competitors comma,separated] [--max-age-days 30] [--dir path]"
 triggers:
   - user
   - model
@@ -28,7 +29,7 @@ act on. You never propose pivots or rewrites — you just refresh facts.
 Inherit the [companion-researcher safety rules](../companion-researcher/SKILL.md#safety-rules--do-not-skip).
 Highlights:
 
-- Write only to `docs/competitors/<NAME>.md` (existing competitor docs
+- Write only to `<COMPETITOR_DIR>/<NAME>.md` (existing competitor docs
   may be whole-file-rewritten — they're owned by this lane), new files
   under `docs/research/`, and `TASKS.md` (atomic append).
 - Never edit `VISION.md`, `README.md`, or `docs/strategy/`. Those are
@@ -39,6 +40,37 @@ Highlights:
 
 Detect the repo's task backend by checking for `.tasksmd.json` at the git root. If it declares `backend: github-issues`, file findings as GitHub Issues via `tasks create` instead of appending to TASKS.md. Otherwise, append to TASKS.md as usual.
 
+## Competitor directory
+
+Repos name their competitor corpus differently. Detect the existing
+directory before you read or write. Call it `<COMPETITOR_DIR>`. Every
+`<COMPETITOR_DIR>` path below means this directory.
+
+1. If the caller passed `--dir <path>`, use it.
+2. Else use the first directory that exists, in this order:
+   - `docs/competition/` (agentbrew and others)
+   - `docs/competitors/`
+   - `competitors/` (repo root)
+3. If more than one exists, use the one with more `.md` files. Report
+   the other one in the summary as a split corpus. Do not merge or move
+   files.
+4. If none exists, use `docs/competitors/`. Only this case creates a new
+   directory.
+
+```bash
+for d in docs/competition docs/competitors competitors; do
+  [ -d "$d" ] && echo "$d $(ls "$d"/*.md 2>/dev/null | wc -l)"
+done
+```
+
+Never create `docs/competitors/` when `docs/competition/` or
+`competitors/` already exists. A second directory splits prior art away
+from the docs that `competitor-spot-check` and the PR template read.
+
+Match the file names already in `<COMPETITOR_DIR>`. For example,
+agentbrew uses `docs/competition/<name>-vs-agentbrew.md`. Use that
+pattern for `<NAME>.md` in that repo.
+
 ## Process
 
 ### Step 1: Identify competitors
@@ -47,8 +79,8 @@ Read in priority order:
 
 1. `docs/VISION.md` — most projects list competitors in a "Competition"
    or "Alternatives" section. Extract their names and URLs.
-2. `docs/competitors/` directory — each `<NAME>.md` is a tracked
-   competitor.
+2. `<COMPETITOR_DIR>` (see "Competitor directory") — each `<NAME>.md`
+   is a tracked competitor. Skip a `README.md` index file.
 3. `README.md` — sometimes the README mentions "alternatives" or "vs."
    in the intro.
 4. `--competitors` flag — manual override / addition.
@@ -60,7 +92,7 @@ For each competitor, also gather:
 - Their GitHub repo (if any)
 - Their changelog URL
 - Their primary marketing site
-- The last time `docs/competitors/<NAME>.md` was modified (if it exists)
+- The last time `<COMPETITOR_DIR>/<NAME>.md` was refreshed (if it exists)
 
 ### Step 2: Decide which competitors to refresh
 
@@ -115,7 +147,7 @@ fewer than 2 — the competitor may have gone dormant; note this fact.
 
 ### Step 4: Identify novel features (vs. last refresh)
 
-Read the existing `docs/competitors/<NAME>.md` if present. Compare:
+Read the existing `<COMPETITOR_DIR>/<NAME>.md` if present. Compare:
 
 - Features mentioned in the new data but not in the existing doc
 - Release dates that are newer than the last "Last updated" stamp
@@ -125,7 +157,7 @@ Read the existing `docs/competitors/<NAME>.md` if present. Compare:
 
 These are the **deltas** — the lane's primary output.
 
-### Step 5: Rewrite `docs/competitors/<NAME>.md`
+### Step 5: Rewrite `<COMPETITOR_DIR>/<NAME>.md`
 
 Use this structure:
 
@@ -192,9 +224,9 @@ and shippable, append a P3 task:
   - **Details**: <competitor> shipped <feature> on <date>. Their
     pitch: <quoted positioning>. Our equivalent would be <one
     paragraph of how we'd do it, in our codebase's terms>. See
-    [`docs/competitors/<NAME>.md`](docs/competitors/<NAME>.md) for
+    [`<COMPETITOR_DIR>/<NAME>.md`](<COMPETITOR_DIR>/<NAME>.md) for
     the full context.
-  - **Files**: docs/competitors/<NAME>.md, docs/VISION.md (may need
+  - **Files**: <COMPETITOR_DIR>/<NAME>.md, docs/VISION.md (may need
     update if we decide to act)
   - **Acceptance**: Decision recorded — either matched in code or
     rejected in VISION.md as out-of-scope with rationale.
@@ -214,6 +246,7 @@ npx -y @tasks-md/lint TASKS.md
 
 ```
 lane=competitors repo=<name>
+competitor-dir=<COMPETITOR_DIR> (split corpus: <other dir or none>)
 competitors-refreshed=<list>
 competitors-skipped-fresh=<list>
 deltas-found=<count>

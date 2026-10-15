@@ -204,18 +204,6 @@
   - **Files**: `hooks/checks/no-cross-workspace-publish.sh` (+ `.test.sh`), `hooks/manifest.yaml`, dotfiles `bin/gh` (reference only; stays as the shell backstop)
   - **Acceptance**: fixtures show each of those commands blocked outside the workspace without the approval token and allowed inside it; dotfiles `tests/gh-wrapper.bats` stays green.
 
-- [ ] Make companion competitor watch honor repo-specific competition directory names
-  - **ID**: companion-competitor-watch-competition-dir-drift
-  - **Tags**: docs, skills, companion, competitor, P1
-  - **Hypothesis**: Teaching the lane to discover `docs/competition/` as well as `docs/competitors/` prevents it from creating a parallel stale competitor corpus in repos like agentbrew.
-  - **Success**: In a repo that has `docs/competition/` and no `docs/competitors/`, the skill refreshes or reports the existing competition corpus instead of creating a competing directory.
-  - **Pivot**: If cross-repo naming is too varied for heuristics, make the competitor-doc directory a required flag or project config field.
-  - **Measurement**: `grep -n "docs/competition" skill-plugins/workflow/companion-competitor-watch/SKILL.md`
-  - **Anchor**: agentbrew VISION.md G1 "Curate, not host" + companion-competitor-watch SKILL.md "Identify competitors" / "Where they live".
-  - **Details**: The current skill repeatedly names `docs/competitors/<NAME>.md`, but this repo's canonical competitor corpus is `docs/competition/*.md`. Running the lane as written can create a second directory and split prior art away from the docs the PR template and competitor-spot-check flow already read.
-  - **Files**: `skill-plugins/workflow/companion-competitor-watch/SKILL.md`, `docs/competition/`, `TASKS.md`.
-  - **Acceptance**: The skill documents how to detect `docs/competition/` vs `docs/competitors/`, its task template links to the detected directory, and a dry-run in this repo does not propose creating `docs/competitors/`.
-
 - [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
   - **ID**: dev-dependency-audit-findings
   - **Tags**: security, dependencies, stability

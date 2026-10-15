@@ -59,8 +59,8 @@ debugging time, branch resets, and trust. Obey these rules without exception.
 2. **Allow-list for writes.** You may write to:
    - `TASKS.md` — atomic per-section appends only (see Append Discipline)
    - `TASKS-AUDIT.md` — per-session staging buffer if `sweep` semantics apply
-   - `docs/competitors/<NAME>.md` — new file or whole-file rewrite of an
-     existing competitor doc
+   - `<COMPETITOR_DIR>/<NAME>.md` — new file or whole-file rewrite of an
+     existing competitor doc (`companion-competitor-watch` detects the dir)
    - `docs/research/<topic>.md` — new file under research
    - `docs/test-gaps/<area>.md` — new file documenting analyzed test gaps
    - `RECURRING.md` — atomic per-section appends only
@@ -211,7 +211,7 @@ Lanes in default priority order:
 | **task-grooming** | `companion-task-groom` | If `TASKS.md` is invalid, has dead tasks, or has stale `(@agent)` claims older than 24h |
 | **docs-sync** | `companion-docs-sync` | If README/AGENTS.md exists AND no worker activity on them |
 | **test-gaps** | `companion-test-gaps` | If the repo has a test framework (`npm test`, `cargo test`, `pytest`) but no recent test gap analysis |
-| **competitors** | `companion-competitor-watch` | If `docs/competitors/` exists OR the repo has external competitors documented in VISION.md and last refresh > 30 days |
+| **competitors** | `companion-competitor-watch` | If a competitor dir exists OR the repo has external competitors documented in VISION.md and last refresh > 30 days |
 | **skill-curation** | `companion-skill-curate` | Workspace-level (not per-repo). Pick when the current target repo is `agentbrew`, when `agentbrew status` reports skills synced > 7 days ago, or when no other lane in any repo has work to do |
 
 Cycle the lanes so you don't repeat the same lane in the same repo twice
@@ -249,7 +249,8 @@ allow-listed paths:
 git diff --name-only HEAD | while read f; do
   case "$f" in
     TASKS.md|TASKS-AUDIT.md|RECURRING.md) ;;
-    docs/competitors/*|docs/research/*|docs/test-gaps/*) ;;
+    docs/competition/*|docs/competitors/*|competitors/*) ;;
+    docs/research/*|docs/test-gaps/*) ;;
     README.md|AGENTS.md|CHANGELOG.md)
       # Only if clean-file check passed earlier
       ;;
@@ -266,9 +267,11 @@ short_id=$(echo $RANDOM | md5sum | head -c 4)
 branch="companion/${lane}-${date_tag}-${short_id}"
 git checkout -b "$branch"
 
-# Stage only specific files
-git add TASKS.md docs/competitors/ docs/research/ docs/test-gaps/ \
-  README.md AGENTS.md 2>/dev/null
+# Stage only specific paths that exist (one missing path fails git add)
+for p in TASKS.md docs/competition docs/competitors competitors \
+  docs/research docs/test-gaps README.md AGENTS.md; do
+  [ -e "$p" ] && git add -- "$p"
+done
 
 # Commit
 git commit -m "companion(${lane}): <one-line summary>"

@@ -251,7 +251,15 @@ describe("Default-model surface (modelConfig)", () => {
   //   cursor      — N/A: the model lives in app-managed account state
   //                 (~/.cursor/cli-config.json `model` object is written by the
   //                 app; `cursor-agent models` is account-gated). No declarative
-  //                 file surface exists to manage.
+  //                 file surface exists to manage. Cursor's CLI docs mark that
+  //                 `model` object "CLI-managed" and say it may be overwritten:
+  //                 https://cursor.com/docs/cli/reference/configuration
+  //                 Upstream search (2026-10-15): no request for a config-file
+  //                 default model exists. The closest open requests ask for a
+  //                 UI default per mode:
+  //                 https://forum.cursor.com/t/default-model-selection-per-mode-agent-ask-plan-debug/150676
+  //                 https://forum.cursor.com/t/agent-mode-specific-default-model-saving/146385
+  //                 Revisit in RECURRING.md quarterly-dissolution-reeval, Check 3.
   const EXPECTED_MODEL_SURFACES = ["claude-code", "codex"];
 
   it("exactly the documented agents declare modelConfig", () => {

@@ -252,14 +252,6 @@
   - **Files**: `skill-plugins/workflow/project-audit/SKILL.md`, `skill-plugins/workflow/task-command-center/evals/evals.json`, `docs/shared-rules.md` (also loads a missing `pr` skill), `docs/plans/cover-jira-skill-with-2134-tests.md`
   - **Acceptance**: Every active reference to `jira`, `jira-task`, or `find-jira-task` resolves to an installed catalog/source skill or is replaced with a valid MCP/repo workflow; historical changelog/task text remains untouched; `npm run verify` passes.
 
-- [ ] Default-model parity for Cursor (G6 gap — no file surface today)
-  - **ID**: model-default-parity-cursor
-  - **Tags**: scout, models, parity, cursor
-  - **Details**: The model surface ships for claude-code and codex but Cursor has no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
-  - **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
-  - **Acceptance**: either (a) Cursor gains `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
-  - **Output**: code
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->

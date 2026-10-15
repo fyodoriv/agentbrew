@@ -75,6 +75,7 @@ reviews/`), and the `**Last-fired**:` line is bumped.
     6. **A Node.js port of mcpm or block/ai-rules emerges** — solves the ecosystem-mismatch problem.
 
     **Check 3 — Delegation re-run.** For any subsystem currently in terminal state "(b) Keep native, blocker X" from a prior delegation evaluation — has the blocker gone away? (e.g. corporate proxy policy changed, Python runtime stabilized, block/ai-rules got a Node port). If yes, re-run the delegation task.
+    Also re-check the Cursor default-model gap: does Cursor now document a config-file default model? If yes, add Cursor `modelConfig` in `src/core/agents.yaml` and update the comment in `src/sync/per-agent-features.matrix.test.ts` (it lists the upstream links checked on 2026-10-15).
 
     **Outcome** (each quarter): a short decision doc at `docs/competition/dissolution-reviews/<YYYY-QN>.md` with five sections:
     (a) **Contribution pulse** — per-upstream-thread status (engaged / rejected / ignored 90+ days); any capabilities absorbed this quarter.

@@ -225,6 +225,20 @@ async function handleLocalFolderInstall(name: string, options: InstallOptions): 
   return true;
 }
 
+/** Handle `install` with no name: browse, `--recommended`, or `--refresh-rules`. */
+async function installWithoutName(options: InstallOptions, installOpts: Parameters<typeof install>[1]): Promise<void> {
+  await install(undefined, installOpts);
+  // `agentbrew install` with no name and no --recommended is a help-style
+  // display (showPopularItems) that mutates nothing. Skip autoSync — it
+  // was running a full deploy pipeline every time a user just wanted to
+  // browse. `install --recommended` (also no name) still triggers sync.
+  // Also skip if install() signalled failure via process.exitCode.
+  if (!options.dryRun && options.recommended && !process.exitCode) await autoSync();
+  // A rules-only refresh deploys rules alone: a full sync could reinstall
+  // recommended items the Agentfile removed.
+  if (!options.dryRun && options.refreshRules && !options.recommended && !process.exitCode) await syncRules();
+}
+
 /** Core install dispatch — resolves install mode and delegates. */
 async function executeInstall(name: string | undefined, options: InstallOptions, cmdArgs: string[]): Promise<void> {
   if (await handleDashDashInstall(name, options)) return;
@@ -242,16 +256,7 @@ async function executeInstall(name: string | undefined, options: InstallOptions,
   };
 
   if (!name) {
-    await install(name, installOpts);
-    // `agentbrew install` with no name and no --recommended is a help-style
-    // display (showPopularItems) that mutates nothing. Skip autoSync — it
-    // was running a full deploy pipeline every time a user just wanted to
-    // browse. `install --recommended` (also no name) still triggers sync.
-    // Also skip if install() signalled failure via process.exitCode.
-    if (!options.dryRun && options.recommended && !process.exitCode) await autoSync();
-    // A rules-only refresh deploys rules alone: a full sync could reinstall
-    // recommended items the Agentfile removed.
-    if (!options.dryRun && options.refreshRules && !options.recommended && !process.exitCode) await syncRules();
+    await installWithoutName(options, installOpts);
     return;
   }
   if (await handleSourceRepoInstall(name, options)) return;

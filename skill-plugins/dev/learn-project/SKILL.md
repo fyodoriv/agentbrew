@@ -20,7 +20,10 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 You are the single orchestrator. The user invokes you once ("tutor me on X"); you run
 the whole pipeline: **ensure tools → detect stage → intake → gather sources → stage →
 teach (/tutor-setup) → quiz (/tutor)**. Teaching and quiz logic live in the upstream
-`tutor-setup` / `tutor` skills — you drive them, you do not reimplement them.
+`tutor-setup` / `tutor` skills — you drive them, you do not reimplement them. On top of
+them you apply the **pedagogy layer** in [`references/pedagogy.md`](references/pedagogy.md):
+question verification + misconception tags, open recall, Bloom ladder, confidence
+calibration, and a Learning Path. Read it before Phase 5.
 
 **Default staging root:** `./.learn-project/` in the current working directory (stable
 and resumable). The StudyVault is generated under the staged `sources/` tree.
@@ -36,8 +39,9 @@ Copy this checklist and track progress:
 - [ ] Phase 5: /tutor-setup → StudyVault
 - [ ] Phase 5a: Mermaid concept + architecture maps embedded in vault
 - [ ] Phase 5b: concise learning brief presented (teach before testing)
-- [ ] Phase 5c: verification gate passed (questions + claims grounded)
-- [ ] Phase 6: /tutor session(s) — mastery-tracked, weakest-first, big-picture-first
+- [ ] Phase 5c: verification gate passed (questions + claims grounded, distractors tagged)
+- [ ] Phase 5d: Learning Path written (objectives + cited prerequisites + study order)
+- [ ] Phase 6: /tutor session(s) — mastery-tracked, weakest-first, big-picture-first, prerequisite-ordered
 ```
 
 ## Phase 0 — Ensure prerequisites
@@ -48,11 +52,11 @@ Copy this checklist and track progress:
    `npx skills` corporate-TLS failure):
 
    ```bash
-   agentbrew install tutor-setup --from fyodoriv/tutor-skills
-   agentbrew install tutor --from fyodoriv/tutor-skills
+   agentbrew install tutor-setup --from bevibing/tutor-skills
+   agentbrew install tutor --from bevibing/tutor-skills
    ```
 
-   If `agentbrew` is unavailable, fall back to `npx skills add fyodoriv/tutor-skills`.
+   If `agentbrew` is unavailable, fall back to `npx skills add bevibing/tutor-skills`.
    If both fail, tell the user exactly what to run and stop — do not fake the vault.
 3. Note which source MCPs are available (you'll only need the ones the user's sources
    require): `user-github` (remote repos, PRs, issues), `user-google-drive-mcp`
@@ -237,14 +241,22 @@ brief is presented, **before** starting /tutor, run a grounding verification pas
 2. **Claim verification.** For each factual claim in vault notes, read the cited staged
    path/section. If the citation does not entail the claim, mark it `source: unverified` or omit
    the claim.
-3. **Report and proceed.** Briefly note how many questions passed, how many were
+3. **Distractor check.** Every wrong option carries a misconception tag (pedagogy §1). Every
+   practice question carries a Bloom level (pedagogy §3). Add missing tags.
+4. **Report and proceed.** Briefly note how many questions passed, how many were
    discarded/regenerated, and any claims flagged. Write or update
    `StudyVault/00-Dashboard/Verification Log.md` with the audit table (questions,
    claims, practice recall %). Do not start the quiz until every surviving question
    passes verification.
 
-Generation-time self-check inside the question generator is upstream (`tutor`); this gate is
-orchestration-layer QA agentbrew owns.
+Apply the same answer-from-vault check to every question you write live in Phase 6
+(pedagogy §1).
+
+### Phase 5d — Learning Path (objectives + prerequisites)
+
+Write `StudyVault/00-Dashboard/Learning Path.md` per pedagogy §5: per-section objectives
+with action verbs, prerequisite edges that each cite a staged path or vault note, and a
+cycle-free Study Order. Link it from the MOC. The concept-map edges must agree with it.
 
 ## Phase 6 — Quiz (/tutor)
 
@@ -257,6 +269,16 @@ Once a StudyVault exists, invoke **tutor**:
 3. Offer **hard-mode** reinforcement once a section is green.
 4. For **codebase** or **mixed** runs, add **applied / transfer tasks** once a section's
    concepts meet the mastery threshold — see below.
+5. Once a section has data, offer an **Open recall** round: prose answers graded against a
+   hidden, vault-cited 2–4 point rubric (pedagogy §2).
+
+Every round, apply the pedagogy layer:
+
+- **Before results:** ask confidence (Low / Medium / High). High confidence + wrong is a
+  misconception: flag it and drill it first (pedagogy §4).
+- **On a miss:** name the targeted misconception and quote the vault note (pedagogy §1).
+- **Order:** follow the Learning Path; skip a concept while a prerequisite is 🔴 (pedagogy §5).
+- **Ladder:** tag each question with a Bloom level and climb one level per drill (pedagogy §3).
 
 After every round, report the updated per-section mastery % and what remains; at the end,
 point to the weak-area notes in the vault.
@@ -272,8 +294,9 @@ does **not** yet know.
   A concept is **not known** when untested ⬜ or missed / "I don't know" 🔴. It is **in progress**
   🟡 after partial progress. It is **known** 🟢 only after meeting the mastery threshold below.
 - **Mastery threshold before 🟢.** A single correct MCQ is recognition, not mastery. Flip 🟢 only
-  after **two correct answers**, including at least one **applied/analysis** question (scenario,
-  consequence, or "what if" — not pure recall). Record one recall-only correct as 🟡 until the
+  after **two correct answers**, including at least one at Bloom **`apply` or higher** (scenario,
+  consequence, or "what if" — not pure recall; pedagogy §3). A low-confidence correct answer
+  does not count toward 🟢 (pedagogy §4). Record one recall-only correct as 🟡 until the
   threshold is met.
 - **Within-session retention re-test.** After a concept first meets the threshold, **re-test it
   later in the same session** after intervening questions on other concepts (spacing effect). If

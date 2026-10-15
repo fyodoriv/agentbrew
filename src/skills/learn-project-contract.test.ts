@@ -12,6 +12,7 @@ interface SkillEval {
 
 const skillRoot = join(process.cwd(), "skill-plugins", "dev", "learn-project");
 const skillText = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
+const pedagogyText = readFileSync(join(skillRoot, "references", "pedagogy.md"), "utf-8");
 const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "utf-8")) as {
   skill_name: string;
   evals: SkillEval[];
@@ -70,9 +71,9 @@ describe("learn-project skill contract", () => {
 
   it("pins prerequisite auto-install without faking the vault", () => {
     requireTerms(skillText, [
-      "agentbrew install tutor-setup --from fyodoriv/tutor-skills",
-      "agentbrew install tutor --from fyodoriv/tutor-skills",
-      "fall back to `npx skills add fyodoriv/tutor-skills`",
+      "agentbrew install tutor-setup --from bevibing/tutor-skills",
+      "agentbrew install tutor --from bevibing/tutor-skills",
+      "fall back to `npx skills add bevibing/tutor-skills`",
       "do not fake the vault",
     ]);
   });
@@ -201,7 +202,7 @@ describe("learn-project skill contract", () => {
       "**Claim verification.**",
       "mark it `source: unverified` or omit",
       "Do not start the quiz until every surviving question\n   passes verification",
-      "- [ ] Phase 5c: verification gate passed (questions + claims grounded)",
+      "- [ ] Phase 5c: verification gate passed (questions + claims grounded, distractors tagged)",
     ]);
   });
 
@@ -232,7 +233,7 @@ describe("learn-project skill contract", () => {
   it("pins mastery threshold, retention re-test, and interleave mode", () => {
     requireTerms(skillText, [
       "**Mastery threshold before 🟢.**",
-      "two correct answers**, including at least one **applied/analysis**",
+      "two correct answers**, including at least one at Bloom **`apply` or higher**",
       "Record one recall-only correct as 🟡",
       "**Within-session retention re-test.**",
       "downgrade to 🔴, teach again",
@@ -277,7 +278,7 @@ describe("learn-project skill contract", () => {
 
   it("keeps eval metadata spec-valid and unique", () => {
     expect(evals.skill_name).toBe("learn-project");
-    expect(evals.evals.length).toBe(20);
+    expect(evals.evals.length).toBe(25);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {
@@ -316,7 +317,7 @@ describe("learn-project skill contract", () => {
       /instead of re-gathering sources/i,
     ]);
     requireTerms(scenarioText(evalMatching(/isn't installed/i)), [
-      /agentbrew install --from fyodoriv\/tutor-skills/i,
+      /agentbrew install --from bevibing\/tutor-skills/i,
       /Refuses to fabricate a StudyVault/i,
     ]);
     requireTerms(scenarioText(evalMatching(/SSO login page/i)), [
@@ -469,6 +470,37 @@ describe("learn-project skill contract", () => {
       "short canonical labels in concepts/*.md tracker rows",
       "Populates or refreshes MOC §Weak Areas from the Learning Dashboard",
     ]);
+  });
+
+  it("layers the pedagogy reference on top of tutor without editing it", () => {
+    requireTerms(skillText, [
+      "[`references/pedagogy.md`](references/pedagogy.md)",
+      "Phase 5d: Learning Path written (objectives + cited prerequisites + study order)",
+      "Every wrong option carries a misconception tag (pedagogy §1)",
+      "at Bloom **`apply` or higher**",
+      "ask confidence (Low / Medium / High)",
+      "skip a concept while a prerequisite is 🔴",
+      "Do **not** modify `tutor-setup` / `tutor` content",
+    ]);
+    requireTerms(pedagogyText, [
+      "Do not edit the upstream skill files.",
+      "Keep tags in your working notes.",
+      "Keep the rubric hidden until the user answers.",
+      "a concept is 🟢 only after a correct answer at `apply` or higher",
+      "| High | Wrong | Misconception |",
+      "**Cite every edge.**",
+      "**No cycles.**",
+    ]);
+  });
+
+  it("pins one eval per pedagogy mechanic", () => {
+    requireTerms(expectationText(evalById(21)), ["Tags every distractor with a named misconception"]);
+    requireTerms(expectationText(evalById(22)), ["Keeps the rubric hidden until the user answers"]);
+    requireTerms(expectationText(evalById(23)), [
+      "Does not mark a concept 🟢 until a correct answer at apply or higher",
+    ]);
+    requireTerms(expectationText(evalById(24)), ["Asks Low / Medium / High confidence before revealing results"]);
+    requireTerms(expectationText(evalById(25)), ["Cites a staged path or vault note for every prerequisite edge"]);
   });
 
   it("preserves the quiz-fix loop scenario", () => {

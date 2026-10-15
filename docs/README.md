@@ -57,5 +57,3 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`plans/`](plans/) | Plans for non-trivial tasks, one file per task ID. | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |
 | [`human-blocked-actions/`](human-blocked-actions/) | Steps that need a human (logins, approvals). | human |
-| [`learn-project-tutor-upstream-contribution.md`](learn-project-tutor-upstream-contribution.md) | The draft spec for the tutor-skills upstream contribution. | agent |
-| [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/) | The per-PR drafts for that contribution. | agent |

@@ -651,8 +651,8 @@ It pulls **six source types** into one grounded StudyVault: local folders/repos,
 Install the upstream teach + quiz pair (the skill also does this automatically):
 
 ```bash
-agentbrew install tutor-setup --from fyodoriv/tutor-skills
-agentbrew install tutor --from fyodoriv/tutor-skills
+agentbrew install tutor-setup --from bevibing/tutor-skills
+agentbrew install tutor --from bevibing/tutor-skills
 ```
 
 The deterministic staging step is [`scripts/stage-learn-sources.ts`](scripts/stage-learn-sources.ts) (manifest **version 3**):
@@ -670,7 +670,7 @@ npm run stage-learn-sources -- ./.learn-project \
 
 Read `./.learn-project/manifest.json` for `tutorSetupMode`, `tutorSetupCwd`, and `freshness`, then run `/tutor-setup` and `/tutor` from that directory.
 
-The tutor skills install from [`fyodoriv/tutor-skills`](https://github.com/fyodoriv/tutor-skills): upstream `main` plus the six pedagogy upgrades (question verification, misconception feedback, open recall, Bloom ladder, confidence calibration, Learning Path). They are open upstream as [bevibing/tutor-skills#8–#11](https://github.com/bevibing/tutor-skills/pull/8); when upstream merges them, the catalog switches back. Spec: [`docs/learn-project-tutor-upstream-contribution.md`](docs/learn-project-tutor-upstream-contribution.md).
+learn-project adds a pedagogy layer on top of tutor-setup and tutor: question verification with misconception-tagged distractors, open recall graded by a rubric, a Bloom ladder, confidence calibration, and a Learning Path with cited prerequisites. See [`skill-plugins/dev/learn-project/references/pedagogy.md`](skill-plugins/dev/learn-project/references/pedagogy.md).
 
 Canonical upstream: [`bevibing/tutor-skills`](https://github.com/bevibing/tutor-skills) (`RoundTable02/tutor-skills` redirects there).
 

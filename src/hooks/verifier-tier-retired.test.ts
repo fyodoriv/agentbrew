@@ -30,4 +30,10 @@ describe("LLM verifier tier is retired", () => {
       }
     }
   });
+
+  it("keeps no model fields in the decision log", () => {
+    expect(readFileSync(join(repoRoot, "hooks/lib/log-decision.sh"), "utf8")).not.toMatch(
+      /HOOK_MODEL|HOOK_PROMPT_VERSION|promptVersion/,
+    );
+  });
 });

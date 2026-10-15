@@ -25,7 +25,17 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Logger } from "../core/logger.js";
@@ -59,6 +69,53 @@ export interface DeployResult {
   skipped: number;
   /** Errors per script ID. */
   errors: Array<{ id: string; error: string }>;
+  /** IDs whose stale deployed script was removed. */
+  pruned: string[];
+}
+
+/** Deploy-dir file that lists the hook IDs agentbrew deployed. Pruning
+ *  only removes IDs from this list, so hand-installed scripts stay. */
+const DEPLOYED_IDS_FILE = ".agentbrew-deployed-hooks.json";
+
+/** IDs of the retired LLM verifier tier. They were deployed before
+ *  {@link DEPLOYED_IDS_FILE} existed, so pruning lists them explicitly.
+ *  Delete this list once no machine still has these copies. */
+const RETIRED_VERIFIER_IDS = [
+  "pr-body-diff-consistency",
+  "codify-repeated-work",
+  "ask-action-not-treasure-map",
+  "rule-skill-location",
+  "browser-errors-before-done",
+  "fix-errors-never-silence",
+  "comment-proportionality-verifier",
+  "pr-body-explains-why",
+  "stability-task-priority",
+];
+
+function readDeployedIds(deployDir: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(join(deployDir, DEPLOYED_IDS_FILE), "utf8"));
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Remove deployed scripts that agentbrew owns and no entry references,
+ *  then record the current IDs for the next run. */
+function pruneStaleScripts(deployDir: string, entries: ManifestHookEntry[]): string[] {
+  const current = new Set(entries.map((entry) => entry.id));
+  const owned = new Set([...readDeployedIds(deployDir), ...RETIRED_VERIFIER_IDS]);
+  const pruned: string[] = [];
+  for (const id of owned) {
+    if (current.has(id)) continue;
+    const target = join(deployDir, `${id}.sh`);
+    if (!existsSync(target)) continue;
+    rmSync(target, { force: true });
+    pruned.push(id);
+  }
+  writeFileSync(join(deployDir, DEPLOYED_IDS_FILE), `${JSON.stringify([...current].sort(), null, 2)}\n`);
+  return pruned;
 }
 
 /**
@@ -68,6 +125,9 @@ export interface DeployResult {
  * Also copies the entire `agentbrew/hooks/lib/` directory to
  * `<deployDir>/lib/` so deployed scripts can `source ../lib/verdict.sh`
  * regardless of where the original repo lives.
+ *
+ * Then removes stale scripts: IDs that an earlier run deployed (or the
+ * retired verifier IDs) that no entry references now.
  */
 function deployOneHook(
   entry: ManifestHookEntry,
@@ -98,7 +158,7 @@ function deployOneHook(
 
 export function deployHookScripts(opts: DeployOptions): DeployResult {
   const deployDir = opts.deployDir ?? defaultDeployDir();
-  const result: DeployResult = { deployed: 0, skipped: 0, errors: [] };
+  const result: DeployResult = { deployed: 0, skipped: 0, errors: [], pruned: [] };
 
   // Ensure deploy dir exists
   if (!existsSync(deployDir)) {
@@ -122,6 +182,8 @@ export function deployHookScripts(opts: DeployOptions): DeployResult {
       result.deployed += 1;
     }
   }
+
+  result.pruned = pruneStaleScripts(deployDir, opts.entries);
 
   logDeployResult(result, opts.log);
 

@@ -76,6 +76,12 @@ Agentbrew tracks managed hook keys per agent in `manifest.json` so stale managed
 entries can be pruned without deleting user-authored hooks in another agent's
 format.
 
+Sync copies each hook script to `~/.claude/codeassist/hooks-scripts/<id>.sh`.
+It lists the IDs it copied in `.agentbrew-deployed-hooks.json` in that
+directory. On the next sync it deletes a listed script that no manifest entry
+references any more. It also deletes old copies of the retired verifier
+scripts. It never deletes a script that it did not deploy.
+
 ## Runtime contract
 
 Hook scripts read the agent's hook payload from stdin as JSON. The common Claude

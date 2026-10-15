@@ -4,7 +4,6 @@
 prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
 dev-dependency-audit-findings
-hook-log-decision-drop-cat-b-fields
 snapshot-record-heal-deferred-for-load
 github-mcp-maintained-server-without-launcher
 status-surface-claude-desktop-mcp-failures

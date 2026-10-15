@@ -20,9 +20,7 @@
 #     "reason": "...",
 #     "toolName": "Edit" | "Bash" | ... (when available),
 #     "event": "PreToolUse" | ... (when available),
-#     "latencyMs": int (when measurable),
-#     "model": "claude-sonnet-4-7" (Cat B only),
-#     "promptVersion": int (Cat B only) }
+#     "latencyMs": int (when measurable) }
 #
 # The log is append-only and bounded by a daily rotation: at the start of
 # each day the previous file is moved to hook-decisions.<date>.jsonl.
@@ -47,8 +45,7 @@ __ensure_log_dir() {
 
 # Append a decision to the log. All fields except hookId, decision, and
 # reason are optional; populated from env vars set by the calling hook
-# script (HOOK_TOOL_NAME, HOOK_EVENT_NAME, HOOK_LATENCY_MS, HOOK_MODEL,
-# HOOK_PROMPT_VERSION).
+# script (HOOK_TOOL_NAME, HOOK_EVENT_NAME, HOOK_LATENCY_MS).
 #
 # Usage: log_decision "hookId" "decision" "reason"
 log_decision() {
@@ -75,8 +72,6 @@ log_decision() {
       --arg toolName "${HOOK_TOOL_NAME:-}" \
       --arg event "${HOOK_EVENT_NAME:-}" \
       --arg latencyMs "${HOOK_LATENCY_MS:-}" \
-      --arg model "${HOOK_MODEL:-}" \
-      --arg promptVersion "${HOOK_PROMPT_VERSION:-}" \
       '{
         timestamp: $timestamp,
         hookId: $hookId,
@@ -85,9 +80,7 @@ log_decision() {
       }
       + (if $toolName != "" then { toolName: $toolName } else {} end)
       + (if $event != "" then { event: $event } else {} end)
-      + (if $latencyMs != "" then { latencyMs: ($latencyMs | tonumber) } else {} end)
-      + (if $model != "" then { model: $model } else {} end)
-      + (if $promptVersion != "" then { promptVersion: ($promptVersion | tonumber) } else {} end)' >> "$__LOG_FILE" 2>/dev/null || true
+      + (if $latencyMs != "" then { latencyMs: ($latencyMs | tonumber) } else {} end)' >> "$__LOG_FILE" 2>/dev/null || true
   else
     # jq missing — write a minimal line. Better some data than none.
     printf '{"timestamp":"%s","hookId":"%s","decision":"%s","reason":"%s"}\n' \

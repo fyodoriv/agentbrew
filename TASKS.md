@@ -162,13 +162,6 @@
   - **Files**: src/agentfile-apply.ts, src/sync-runner.ts
   - **Acceptance**: A regression test moves a `commands:` path in a project Agentfile and proves the old dir is removed, or the task is closed with a documented reason.
 
-- [ ] Drop dead Cat B model fields from the hook decision log
-  - **ID**: hook-log-decision-drop-cat-b-fields
-  - **Tags**: scout, hooks, dead-code
-  - **Details**: The LLM verifier tier is retired, so nothing sets `HOOK_MODEL` or `HOOK_PROMPT_VERSION` any more. `hooks/lib/log-decision.sh` still reads both and documents `model` and `promptVersion` as "Cat B only". Also confirm that `agentbrew sync` prunes stale deployed copies of the retired verifier scripts under `~/.claude/codeassist/hooks-scripts/`, and add a test if it does not.
-  - **Files**: hooks/lib/log-decision.sh, src/hooks/deploy.ts
-  - **Acceptance**: (1) `log-decision.sh` has no model or promptVersion handling; (2) a test shows a deploy run removes deployed scripts that no manifest entry references.
-
 - [ ] Rules source hygiene auto-repair is covered by a fixture-backed real-e2e scenario
   - **ID**: rules-source-hygiene-real-e2e
   - **Tags**: scout, rules, drift, real-e2e

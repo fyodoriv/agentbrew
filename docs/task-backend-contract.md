@@ -104,6 +104,13 @@ This contract follows the Hexagonal Architecture pattern (Ports & Adapters):
 
 Skills and agents depend on the port (the contract), not the adapters. Adding a new backend in the future is a matter of adding a new adapter without changing consumer code.
 
+## Loop skills
+
+The `grind` and `sweep` workflow skills start with a "Detect the task backend"
+step. In a `github-issues` repo they list, claim, and file work with `gh issue`,
+close it with `Closes #N`, and never create `TASKS.md`. A contract test pins this:
+`src/skills/grind-sweep-task-backend-contract.test.ts`.
+
 ## References
 
 - Cockburn, *Hexagonal Architecture (Ports & Adapters)*, 2005

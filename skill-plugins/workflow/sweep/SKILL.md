@@ -20,6 +20,14 @@ You are a **read-only auditor** running in parallel with another agent that impl
 You NEVER modify source files. You stage findings in `TASKS-AUDIT.md` during the sweep,
 then drain every finding into `TASKS.md` P3 at session end (Step 6).
 
+## Step 0: Detect the task backend
+
+Before you touch any task, run the `detect-task-backend` skill.
+- `tasks-md` (the default): use `TASKS.md` as written below.
+- `github-issues`: never create or edit `TASKS.md`. Use `gh issue` as
+  `references/task-backend.md` describes.
+- Invalid backend config: stop and report it. Do not fall back to `TASKS.md`.
+
 ## Parallel Safety Rules
 
 1. **Never modify source files** — you are read-only. No code changes, no formatting fixes.

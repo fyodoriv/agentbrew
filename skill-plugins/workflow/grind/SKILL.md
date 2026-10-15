@@ -25,6 +25,14 @@ still follow the same loop but can use interactive tools (ask questions, show
 progress). The "NEVER ask the user" rules in the Rules section only apply under
 `taskgrind` autonomous mode.
 
+## Step 0: Detect the task backend
+
+Before you touch any task, run the `detect-task-backend` skill.
+- `tasks-md` (the default): use `TASKS.md` as written below.
+- `github-issues`: never create or edit `TASKS.md`. Use `gh issue` as
+  `references/task-backend.md` describes.
+- Invalid backend config: stop and report it. Do not fall back to `TASKS.md`.
+
 ## Execution Model
 
 You run under `taskgrind`, an outer bash loop that:
@@ -217,7 +225,7 @@ This helps the next session (or the user) understand where things stand.
 13. **Always return to main before exiting.** Run `git checkout main && git pull --rebase`
     as the last git operation before printing the session report. Never leave the repo on
     a feature branch — taskgrind's between-session `git pull` will fail.
-14. **Every commit must correspond to a TASKS.md task.** If you find work that isn't in
+14. **Every commit must correspond to a task** (a TASKS.md block, or an issue in an issues-backed repo). If you find work that isn't in
     the queue (lint warnings, complexity, dead code, refactoring opportunities), add it as
     a task first, then implement it. Never commit work that doesn't remove or progress a
     task. Scout findings go into TASKS.md (Rule 9) — but you still work the existing

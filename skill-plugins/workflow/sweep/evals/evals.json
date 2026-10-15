@@ -72,6 +72,18 @@
         "Reads docs/COMPETITION.md (if present) and identifies competitor features that would be easy wins",
         "Reviews API surface (CLI commands, exported functions, REST endpoints) for coherence and overlaps"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run a full sweep. This repo's .agents/tasks.config.yaml says task_backend: github-issues, repo: acme/widgets, project: 7.",
+      "expected_output": "A sweep response that detects the github-issues backend first, searches existing issues to avoid duplicates, files each finding as one GitHub issue with gh issue create, reports the issue URLs, and never creates TASKS.md or TASKS-AUDIT.md or opens a drain PR.",
+      "expectations": [
+        "Detects the task backend with detect-task-backend before staging findings",
+        "Searches existing issues with gh issue list --search before filing",
+        "Files each finding as a GitHub issue with gh issue create",
+        "Never creates TASKS.md or TASKS-AUDIT.md and skips the Step 6 drain branch and PR",
+        "Reports the created issue URLs"
+      ]
     }
   ]
 }

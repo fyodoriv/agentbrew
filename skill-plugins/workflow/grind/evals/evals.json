@@ -105,6 +105,18 @@
         "Returns to main and syncs with the remote before exiting",
         "Prints the structured session report and stops cleanly instead of starting new work from a feature branch"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "Grind this repo. Its Agentfile.yaml declares task_backend: github-issues with repo acme/widgets and project 7. There is also an old TASKS.md in the root.",
+      "expected_output": "A grind response that detects the github-issues backend first, works the open issues in acme/widgets, claims an issue by self-assigning it, files new findings with gh issue create, closes work with Closes #N in the PR body, and never creates or edits TASKS.md, including the stale one.",
+      "expectations": [
+        "Detects the task backend with detect-task-backend before reading any task",
+        "Lists and claims work with gh issue list and gh issue edit --add-assignee @me",
+        "Files sweep or scout findings with gh issue create instead of appending to TASKS.md",
+        "Puts Closes #N in the PR body to complete the issue",
+        "Never creates or edits TASKS.md, and ignores the stale TASKS.md file"
+      ]
     }
   ]
 }

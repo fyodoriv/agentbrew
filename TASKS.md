@@ -233,19 +233,6 @@
   - **Anchor**: VISION.md § "Strategy: delegate, contribute, absorb" (upstream shipped the fix, so adopt it); Chrome DevTools Protocol `Target.attachToTarget`.
   - **Output**: docs
 
-- [ ] Make `grind` and `sweep` honor the task-backend contract, so an issues-backed repo never gets a TASKS.md back
-  - **ID**: ghi-repoint-core-task-skills
-  - **Tags**: github-issues-task-backend, skills, grind, sweep
-  - **Details**: agentbrew owns the task-backend contract: `src/core/task-backend.ts`, the `detect-task-backend` skill, and `src/integrations/gh-issues.ts`. Most consumers already branch on it: `next-task` (tasks.md repo), `project-audit`, `to-issues`, the `companion-*` skills, and `load-project-context`. The two loop skills in `skill-plugins/workflow/` do not. `grind/SKILL.md` and `sweep/SKILL.md` mention the backend 0 times; `grind` says "Every commit must correspond to a TASKS.md task", and `sweep` drains every finding into `TASKS.md` P3. In a repo that declares `task_backend: github-issues`, they would recreate TASKS.md, which `templates/AGENTS.md` § "Task backend" forbids. Add a first "Detect the task backend" step to both that uses `detect-task-backend`. For `github-issues`: list and claim with `gh issue` (self-assign), file findings with `gh issue create`, and complete with `Closes #N` in the PR. Keep the TASKS.md path unchanged. Both skills now live in `skill-plugins/workflow/` (moved from the former dev-skills repository on 2026-10-07), so the edit lands here.
-  - **Files**: `skill-plugins/workflow/grind/SKILL.md`, `skill-plugins/workflow/sweep/SKILL.md`, and their evals
-  - **Acceptance**: Both skills document the backend branch. In an issues-backed fixture repo, both file findings as issues and never create TASKS.md. The TASKS.md path behaves as before.
-  - **Hypothesis**: A backend-detection step in `grind` and `sweep` stops them from writing TASKS.md in issues-backed repos, so the TASKS.md files they create there drop to 0.
-  - **Success**: Both SKILL.md files branch on the backend, and an issues-backed fixture run creates 0 TASKS.md files.
-  - **Pivot**: If no agentbrew catalog entry or overlay installs either skill within 90 days, retire both from `skill-plugins/workflow/` instead of re-pointing them.
-  - **Measurement**: `grep -l -E 'task_backend|github-issues|detect-task-backend' skill-plugins/workflow/grind/SKILL.md skill-plugins/workflow/sweep/SKILL.md | wc -l` reads 2 (baseline 0, copied verbatim from dev-skills `c539be1`).
-  - **Anchor**: `templates/AGENTS.md` § "Task backend"; GitHub docs "Linking a pull request to an issue" (closing keywords).
-  - **Output**: docs
-
 ## P3
 
 - [ ] Document pressure-eval conventions for skill contract tests

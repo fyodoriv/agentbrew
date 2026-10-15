@@ -47,12 +47,17 @@ For **Google Docs/Slides/Drive, Jenkins, Jira, or any other SSO-gated UI**, atta
 ```bash
 PORT=9223
 URL='<target-url>'
-agent-browser connect "$PORT"
-agent-browser tab new
-agent-browser open "$URL"
-agent-browser get url
-agent-browser snapshot > ~/apps/agent-scratch/screenshots/page-snapshot.txt
+SESSION='<agent>-<task>'   # stable per agent; never share it with another agent
+agent-browser --session "$SESSION" --pin-tab connect "$PORT"
+agent-browser --session "$SESSION" tab new
+agent-browser --session "$SESSION" open "$URL"
+agent-browser --session "$SESSION" get url
+agent-browser --session "$SESSION" snapshot > ~/apps/agent-scratch/screenshots/page-snapshot.txt
 ```
+
+`--pin-tab` binds the session to its own tab. Pass `--session "$SESSION"` on every
+command. If the tab closes, commands fail with `tab_gone` instead of driving
+another agent's tab: run `tab new` again.
 
 Preserve the 2026-05-12 tab-stealing fix with per-agent daemons and own-tab discipline. Do not solve tab safety by spawning a timestamp-unique Chrome per SSO task.
 

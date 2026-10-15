@@ -97,4 +97,13 @@ describe("templates/rules — SSO background parallel work", () => {
     expect(browserTasks).not.toMatch(/agent-browser --session <unique/i);
     expect(browserTasks).toMatch(/timestamp-unique SSO session names/);
   });
+
+  it("pins each Mode 1 session to its own tab", () => {
+    const sharedRules = readFileSync(join(REPO_ROOT, "docs/shared-rules.md"), "utf-8");
+    expect(browserTasks).toMatch(/agent-browser --session "\$SESSION" --pin-tab connect "\$PORT"/);
+    expect(browserTasks).toMatch(/agent-browser --session "\$SESSION" tab new/);
+    expect(browserTasks).toMatch(/agent-browser --session "\$SESSION" open "\$URL"/);
+    expect(browserTasks).not.toMatch(/^agent-browser (connect|tab new|open) /m);
+    expect(sharedRules).toMatch(/--pin-tab connect <port>/);
+  });
 });

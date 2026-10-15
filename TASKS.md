@@ -194,13 +194,6 @@
   - **Measurement**: the registry API version at `https://registry.modelcontextprotocol.io/`, and `yq '.mcp_servers | length' src/catalog.yaml` before and after.
   - **Anchor**: docs/competition/official-mcp-registry-vs-agentbrew.md; VISION G1 (curate, not host).
 
-- [ ] Report the prisma plugin MCP break upstream so the plugin pins `prisma@7`
-  - **ID**: status-surface-claude-desktop-mcp-failures
-  - **Tags**: scout, mcp, claude-desktop, plugins, upstream
-  - **Blocked**: needs-user-approval — the upstream report is a public write and needs explicit current-session approval for that exact action (checked 2026-10-15).
-  - **Details**: `agentbrew status --ci` now exits 1 on Claude Desktop MCP startup failures (`src/health.ts` calls `checkClaudeDesktopMcpDrift`). One part remains: the prisma plugin runs `npx -y prisma mcp`, which resolves to a release with no `mcp` command, so `plugin:prisma:Prisma-Local` fails at every Desktop start. Report it upstream so the plugin pins `prisma@7`.
-  - **Acceptance**: an upstream issue or PR exists that asks the prisma plugin to pin `prisma@7`, and its link is recorded here.
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->
@@ -212,19 +205,6 @@
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
-
-- [ ] Pin each Mode 1 browser session to its own tab, so agents that share one Chrome stop driving each other's tabs
-  - **ID**: agent-browser-cdp-tab-hijack-prevention
-  - **Tags**: scout, agent-browser, mode-1, browser-rules, devx
-  - **Details**: Two agents attached to the same purpose Chrome over CDP can act on each other's tabs. On 2026-05-21 one agent ran `snapshot` and got the page that another agent had just opened, because every `--cdp` client acted on Chrome's active tab. This task stayed blocked because the fix had to land in `vercel-labs/agent-browser`. Upstream has since shipped it: `agent-browser --pin-tab` (or `AGENT_BROWSER_PIN_TAB=1`) binds a session to its own tab, and commands fail with `tab_gone` instead of falling back to another tab (checked on agent-browser 0.39.0, which ships `--pin-tab`). The Mode 1 snippet in `templates/rules/browser-tasks.mdc` still runs `connect`, `tab new`, and `open` without a pin, so agents do not use the fix. Add `--pin-tab` and a stable per-agent `--session` to the Mode 1 snippet, add the same one-line rule to `docs/shared-rules.md` § "Browser and web UI work", and prove that two concurrent sessions stay on their own tabs.
-  - **Files**: `templates/rules/browser-tasks.mdc`, `docs/shared-rules.md`, and any rules-sync test that pins the snippet text
-  - **Acceptance**: The Mode 1 snippet pins its session with `--pin-tab`. Two parallel shells attached to the same CDP port each `open` a different URL, and each `get url` returns its own target.
-  - **Hypothesis**: Pinning each Mode 1 session to its own tab removes cross-agent tab hijacks on a shared purpose Chrome.
-  - **Success**: 10 of 10 paired runs of two concurrent pinned sessions show no cross-contamination.
-  - **Pivot**: If `--pin-tab` does not hold under concurrent `connect`, use one Chrome per purpose per agent instead and record why.
-  - **Measurement**: `grep -c -- '--pin-tab' templates/rules/browser-tasks.mdc` reads 1 or more, and a two-shell script that opens `https://example.com` and `https://example.org` on one CDP port gets a matching `get url` in each shell in 10 of 10 runs.
-  - **Anchor**: VISION.md § "Strategy: delegate, contribute, absorb" (upstream shipped the fix, so adopt it); Chrome DevTools Protocol `Target.attachToTarget`.
-  - **Output**: docs
 
 ## P3
 

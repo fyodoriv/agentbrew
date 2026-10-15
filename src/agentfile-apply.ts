@@ -417,7 +417,7 @@ function mergeAgentfileAgentDirs(
 
 /** Convert an AgentfileHookEntry into a ManagedHook for state storage. */
 function toManagedHook(entry: AgentfileHookEntry): ManagedHook {
-  return {
+  const hook: ManagedHook = {
     event: entry.event,
     matcher: entry.matcher,
     type: entry.type ?? (entry.prompt ? "prompt" : "command"),
@@ -426,6 +426,14 @@ function toManagedHook(entry: AgentfileHookEntry): ManagedHook {
     timeout: entry.timeout,
     source: "agentfile",
   };
+  // Set optional fields only when present, so state.yaml stays free of undefined keys.
+  if (entry.agents !== undefined) hook.agents = entry.agents;
+  if (entry.async !== undefined) hook.async = entry.async;
+  if (entry.asyncRewake !== undefined) hook.asyncRewake = entry.asyncRewake;
+  if (entry.once !== undefined) hook.once = entry.once;
+  if (entry.if !== undefined) hook.if = entry.if;
+  if (entry.statusMessage !== undefined) hook.statusMessage = entry.statusMessage;
+  return hook;
 }
 
 /** Merge hooks from Agentfile into state. Returns true if state changed. */
@@ -504,8 +512,9 @@ function mergeAgentfileHooks(agentfile: { hooks?: AgentfileHookEntry[] }, state:
   const desired = agentfile.hooks.map(toManagedHook);
   const existing = state.hooks ?? [];
 
-  // Build lookup keys for comparison (event + matcher)
-  const hookKey = (h: ManagedHook): string => `${h.event}:${h.matcher ?? "*"}`;
+  // Build lookup keys for comparison (event + matcher, plus targeting and control fields)
+  const hookKey = (h: ManagedHook): string =>
+    `${h.event}:${h.matcher ?? "*"}:${JSON.stringify([h.agents, h.async, h.asyncRewake, h.once, h.if, h.statusMessage])}`;
   const existingKeys = new Set(existing.map(hookKey));
   const desiredKeys = new Set(desired.map(hookKey));
 

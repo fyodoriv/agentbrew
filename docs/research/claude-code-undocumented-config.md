@@ -54,9 +54,9 @@ fields that don't exist.
 
 - `skill-validator-claude-effort-shell-fields` (P2) — done: the validator
   accepts `effort`, `shell`, and `when_to_use` and checks their values.
-- `agentfile-hooks-async-rewake-control-fields` (P2) — `ManagedHook` /
-  `ClaudeHookItem` drop the verified control fields (`async`, `asyncRewake`,
-  `once`, `if`, `statusMessage`).
+- `agentfile-hooks-async-rewake-control-fields` (done) — Agentfile hooks now
+  keep `agents` and the verified control fields (`async`, `asyncRewake`,
+  `once`, `if`, `statusMessage`) through parse, state, and Claude Code sync.
 - `agentfile-claude-session-settings-sync` (P3, exploratory) — whether to let
   the Agentfile declare `autoMemoryEnabled` / `autoDreamEnabled` / `autoMode`
   and sync them like the existing settings.json hooks key.

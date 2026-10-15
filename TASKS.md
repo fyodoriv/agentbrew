@@ -169,6 +169,18 @@
 
 ## P2
 
+- [ ] Agentfile hook edits reach state when only the command or timeout changes
+  - **ID**: agentfile-hook-identity-includes-command
+  - **Tags**: scout, agentfile, hooks
+  - **Details**: Scouted while shipping `agentfile-hooks-async-rewake-control-fields`. `mergeAgentfileHooks` in `src/agentfile-apply.ts` decides "unchanged" from event, matcher, targeting, and control fields only. An edit that changes only `command`, `prompt`, or `timeout` is not saved to state. Also, `mergeHookEntries` in `src/agentfile.ts` keys layered Agentfile hooks by event and matcher, so two hooks on the same event for different `agents:` collapse into one.
+  - **Files**: `src/agentfile-apply.ts`, `src/agentfile.ts`, `src/agentfile-apply.test.ts`, `src/agentfile.test.ts`
+  - **Acceptance**: Changing only the command of an Agentfile hook updates `state.hooks`; merging two Agentfiles with same-event hooks for different agents keeps both.
+  - **Hypothesis**: Comparing whole hook entries makes every Agentfile hook edit reach state and the agents.
+  - **Measurement**: `npx vitest run src/agentfile-apply.test.ts src/agentfile.test.ts` with new regression tests for both cases.
+  - **Success**: both new tests fail before the fix and pass after.
+  - **Pivot**: if whole-entry comparison breaks the matcher `*` normalization tests, normalize the matcher first and compare the rest.
+  - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state).
+
 - [ ] `iterate` and `markdown-for-gdoc` SKILL.md files load no more than their baselines
   - **ID**: trim-iterate-and-markdown-for-gdoc-skills
   - **Tags**: skill-bloat, context-budget, skills
@@ -262,13 +274,6 @@
   - **Details**: The doc-first half already runs: `npm run lint:rules` uses Minsky's `check-rule-3-doc-first.mjs` (`src/adapters/rule-lint.minsky.ts`). The test-first half has no check. Add one that runs in `npm run verify` (GitHub Actions is off): a diff that changes `src/**` non-test files must also change a test file, or carry a `Test exemption: <reason>` line in the commit message.
   - **Files**: `scripts/check-rule-3-test-first.mjs` (new), `package.json` (verify), `src/adapters/rule-lint.ts`
   - **Acceptance**: `npm run verify` fails on a branch that changes `src/foo.ts` with no test diff and no exemption line, and passes with either.
-
-- [ ] Preserve Agentfile hook targeting and verified Claude Code control fields
-  - **ID**: agentfile-hooks-async-rewake-control-fields
-  - **Tags**: scout, agentfile, hooks, claude-frontmatter, docs/research/claude-code-undocumented-config.md
-  - **Details**: The `ManagedHook` and `ClaudeHookItem` types in the Agentfile schema currently drop the verified Claude Code hook control fields: `async`, `asyncRewake`, `once`, `if`, `statusMessage`. Binary verification confirms these are real fields in Claude Code 2.1.138: `asyncRewake` runs in background but exits 2 wakes the model and blocks; `once` fires once then auto-removes. `AgentfileHookEntry` has no `agents` field, so a machine manifest cannot scope lifecycle hooks to compatible agents. Preserve both the control fields and `agents` through parse, merge, state, and native sync.
-  - **Files**: `src/agentfile.ts`, `src/types.ts`, `src/sync/hooks-sync.ts`, `src/agentfile.test.ts`, `src/sync/hooks-sync.test.ts`
-  - **Acceptance**: An Agentfile with `hooks: [{ agents: [claude-code], asyncRewake: true, once: true }]` parses and syncs without type errors or dropped fields, and other detected hook targets do not receive that entry.
 
 - [ ] Restore agentbrew release automation and npm authentication
   - **ID**: restore-agentbrew-release-automation

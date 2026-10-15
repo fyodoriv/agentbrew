@@ -252,6 +252,14 @@ export interface ManagedHook {
   prompt?: string;
   timeout?: number;
   agents?: string[];
+  /** Claude Code hook control fields, written as is to the Claude Code hook item. */
+  async?: boolean;
+  /** Run in the background, but exit code 2 wakes the model and blocks. */
+  asyncRewake?: boolean;
+  /** Fire once, then Claude Code removes the hook. */
+  once?: boolean;
+  if?: string;
+  statusMessage?: string;
   /** Source of this hook. Can be "agentfile", "user", "catalog", or "team:<label>". */
   source: string;
 }

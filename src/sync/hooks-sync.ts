@@ -33,6 +33,11 @@ interface ClaudeHookItem {
   command?: string;
   prompt?: string;
   timeout?: number;
+  async?: boolean;
+  asyncRewake?: boolean;
+  once?: boolean;
+  if?: string;
+  statusMessage?: string;
 }
 
 interface ClaudeHookGroup {
@@ -73,6 +78,11 @@ function toClaudeHookItem(hook: ManagedHook): ClaudeHookItem {
   if (hook.type === "command" && hook.command) item.command = hook.command;
   if (hook.type === "prompt" && hook.prompt) item.prompt = hook.prompt;
   if (hook.timeout !== undefined) item.timeout = hook.timeout;
+  if (hook.async !== undefined) item.async = hook.async;
+  if (hook.asyncRewake !== undefined) item.asyncRewake = hook.asyncRewake;
+  if (hook.once !== undefined) item.once = hook.once;
+  if (hook.if !== undefined) item.if = hook.if;
+  if (hook.statusMessage !== undefined) item.statusMessage = hook.statusMessage;
   return item;
 }
 

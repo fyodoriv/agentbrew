@@ -941,6 +941,39 @@ describe("applyAgentfile", () => {
   });
 
   describe("hooks merging", () => {
+    it("keeps hook targeting and control fields in state", () => {
+      const state = makeState({ hooks: [] });
+      const entry = {
+        event: "Stop",
+        command: "verify",
+        agents: ["claude-code"],
+        async: true,
+        asyncRewake: true,
+        once: true,
+        if: "Bash(git commit:*)",
+        statusMessage: "Verifying",
+      };
+      mockLoadAgentfile.mockReturnValue({ hooks: [entry] });
+      mockLoadState.mockReturnValue(state);
+
+      applyAgentfile("/project", { quiet: true });
+
+      expect(state.hooks).toEqual([{ ...entry, type: "command", source: "agentfile" }]);
+    });
+
+    it("updates state when only a hook control field changes", () => {
+      const state = makeState({
+        hooks: [{ event: "Stop", matcher: "*", type: "command", command: "verify", source: "agentfile" }],
+      });
+      mockLoadAgentfile.mockReturnValue({ hooks: [{ event: "Stop", command: "verify", asyncRewake: true }] });
+      mockLoadState.mockReturnValue(state);
+
+      const result = applyAgentfile("/project", { quiet: true });
+
+      expect(result?.hooksUpdated).toBe(true);
+      expect(state.hooks?.[0]?.asyncRewake).toBe(true);
+    });
+
     it("adds hooks from Agentfile", () => {
       const state = makeState({ hooks: [] });
       mockLoadAgentfile.mockReturnValue({

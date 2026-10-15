@@ -139,6 +139,10 @@ hooks:
   - event: PreToolUse            # lifecycle hooks synced to supported agents
     command: bash /path/to/hook.sh
     matcher: Bash
+  - event: Stop
+    command: bash /path/to/verify.sh
+    agents: [claude-code]        # only these hook targets get the entry
+    asyncRewake: true            # Claude Code control fields: async, asyncRewake, once, if, statusMessage
 
 defaultModel: claude-opus-5-5    # default model for every agent with a file-managed model setting
 defaultEffort: xhigh             # reasoning effort, for agents that store it separately

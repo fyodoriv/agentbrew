@@ -34,6 +34,13 @@ export interface AgentfileHookEntry {
   type?: "command" | "prompt";
   prompt?: string;
   timeout?: number;
+  /** Agent names that get this hook. Absent or empty means every hook target. */
+  agents?: string[];
+  async?: boolean;
+  asyncRewake?: boolean;
+  once?: boolean;
+  if?: string;
+  statusMessage?: string;
 }
 
 /** Warning about an Agentfile entry that may indicate misconfiguration. */
@@ -101,6 +108,12 @@ function parseSingleHookEntry(entry: unknown): AgentfileHookEntry | undefined {
   if (obj.type === "command" || obj.type === "prompt") hook.type = obj.type;
   if (typeof obj.prompt === "string") hook.prompt = obj.prompt;
   if (typeof obj.timeout === "number") hook.timeout = obj.timeout;
+  if (Array.isArray(obj.agents)) hook.agents = obj.agents.filter((a): a is string => typeof a === "string");
+  if (typeof obj.async === "boolean") hook.async = obj.async;
+  if (typeof obj.asyncRewake === "boolean") hook.asyncRewake = obj.asyncRewake;
+  if (typeof obj.once === "boolean") hook.once = obj.once;
+  if (typeof obj.if === "string") hook.if = obj.if;
+  if (typeof obj.statusMessage === "string") hook.statusMessage = obj.statusMessage;
   return hook;
 }
 

@@ -182,6 +182,42 @@ hooks:
     expect(result.hooks?.[0].timeout).toBe(30000);
   });
 
+  it("parses hook agent targeting and Claude Code control fields", () => {
+    const result = parseAgentfile(`
+hooks:
+  - event: Stop
+    command: "verify"
+    agents: [claude-code]
+    async: true
+    asyncRewake: true
+    once: true
+    if: "Bash(git commit:*)"
+    statusMessage: "Verifying"
+`);
+    expect(result.hooks?.[0]).toEqual({
+      event: "Stop",
+      command: "verify",
+      agents: ["claude-code"],
+      async: true,
+      asyncRewake: true,
+      once: true,
+      if: "Bash(git commit:*)",
+      statusMessage: "Verifying",
+    });
+  });
+
+  it("drops hook control fields with the wrong type", () => {
+    const result = parseAgentfile(`
+hooks:
+  - event: Stop
+    command: "verify"
+    agents: claude-code
+    once: "yes"
+    if: 3
+`);
+    expect(result.hooks?.[0]).toEqual({ event: "Stop", command: "verify" });
+  });
+
   it("ignores invalid hook entries (missing event)", () => {
     const result = parseAgentfile(`
 hooks:

@@ -196,6 +196,35 @@ describe("toClaudeHooksConfig", () => {
   });
 });
 
+describe("Claude Code hook control fields", () => {
+  it("writes control fields only to targets the hook names", () => {
+    const hooks: ManagedHook[] = [
+      {
+        event: "Stop",
+        type: "command",
+        command: "verify",
+        source: "agentfile",
+        agents: ["claude-code"],
+        async: true,
+        asyncRewake: true,
+        once: true,
+        if: "Bash(git commit:*)",
+        statusMessage: "Verifying",
+      },
+    ];
+    expect(toClaudeHooksConfig(filterHooksForTarget(hooks, "claude-code")).Stop[0].hooks[0]).toEqual({
+      type: "command",
+      command: "verify",
+      async: true,
+      asyncRewake: true,
+      once: true,
+      if: "Bash(git commit:*)",
+      statusMessage: "Verifying",
+    });
+    expect(toClaudeHooksConfig(filterHooksForTarget(hooks, "cursor"))).toEqual({});
+  });
+});
+
 describe("filterHooksForTarget", () => {
   it("keeps hooks with no agent filter for every target", () => {
     const hooks: ManagedHook[] = [{ event: "PreToolUse", type: "command", command: "echo x", source: "agentfile" }];

@@ -41,18 +41,18 @@
       "expectations": [
         "Does not commit TASKS.md from the command-center worktree",
         "Does not implement shippable product code on docs/*-command-center branch",
-        "Points execution to main checkout feat/ branches and jira-task workflow",
+        "Points execution to main checkout feat/ branches and a normal single-ticket delivery workflow",
         "Keeps command-center draft PR as DO NOT MERGE docs hub"
       ]
     },
     {
       "id": 7,
       "prompt": "Skip load-project-context and the docs hub — just implement Jira ABC-1 on main.",
-      "expected_output": "For single-ticket ship-only, delegate to jira-task; for multi-source initiative, insist on Phase 0 and command center.",
+      "expected_output": "For single-ticket ship-only, skip the command center and ship from a feature branch; for multi-source initiative, insist on Phase 0 and command center.",
       "expectations": [
-        "Recognizes single-ticket ship-only scope should use jira-task instead of full command center",
+        "Recognizes single-ticket ship-only scope should ship from a feature branch instead of the full command center",
         "For multi-repo/Slack/Jira initiative, does not skip Phase 0 load-project-context",
-        "Does not conflate command-center workflow with jira-task-only pickup",
+        "Does not conflate command-center workflow with single-ticket pickup",
         "Names the correct related skill instead of improvising duplicate steps"
       ]
     },

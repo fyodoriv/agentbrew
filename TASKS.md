@@ -215,13 +215,6 @@
   - **Details**: `agentbrew status --ci` now exits 1 on Claude Desktop MCP startup failures (`src/health.ts` calls `checkClaudeDesktopMcpDrift`). One part remains: the prisma plugin runs `npx -y prisma mcp`, which resolves to a release with no `mcp` command, so `plugin:prisma:Prisma-Local` fails at every Desktop start. Report it upstream so the plugin pins `prisma@7`.
   - **Acceptance**: an upstream issue or PR exists that asks the prisma plugin to pin `prisma@7`, and its link is recorded here.
 
-- [ ] Remove stale references to deleted Jira workflow skills
-  - **ID**: remove-stale-deleted-jira-skill-references
-  - **Tags**: scout, skills, docs, jira, referential-integrity
-  - **Details**: Scouted while adding the product-doc/Jira reconciliation protocol. The 2026-07 shrink removed `jira`, `jira-task`, and `find-jira-task`, but remaining built-in skills, plans, and global guidance still name them as callable dependencies. This violates the referential-integrity rule and can route agents to missing skills. Audit every reference, replace it with a currently installed source skill or MCP-backed workflow, and keep org-only Jira content in the team overlay.
-  - **Files**: `skill-plugins/workflow/project-audit/SKILL.md`, `skill-plugins/workflow/task-command-center/evals/evals.json`, `docs/shared-rules.md` (also loads a missing `pr` skill), `docs/plans/cover-jira-skill-with-2134-tests.md`
-  - **Acceptance**: Every active reference to `jira`, `jira-task`, or `find-jira-task` resolves to an installed catalog/source skill or is replaced with a valid MCP/repo workflow; historical changelog/task text remains untouched; `npm run verify` passes.
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->

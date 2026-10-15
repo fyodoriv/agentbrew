@@ -27,7 +27,7 @@ fields that don't exist.
 |---|---|---|
 | **Hook response JSON** (stdout) | `updatedInput`, `permissionDecision`, `permissionDecisionReason`, `additionalContext`, `updatedMCPToolOutput`, `watchPaths`, `initialUserMessage` | Event-specific. Lets a hook rewrite tool input, force allow/deny, inject context, set file watches, prepend to first user message. |
 | **Hook control fields** | `async`, `asyncRewake`, `once`, `if`, `statusMessage`, `timeout` | `asyncRewake` = run in background, but exit 2 wakes the model and blocks. `once` = fire once then auto-remove. |
-| **Skill frontmatter** | `effort` (`low`/`medium`/`high`/`max`), `model`, `agent`, scoped `hooks`, `disable-model-invocation`, `shell` | `effort` confirmed: all four levels present as literals. |
+| **Skill frontmatter** | `effort` (`low`/`medium`/`high`/`max`), `model`, `agent`, scoped `hooks`, `disable-model-invocation`, `shell` | `effort` confirmed: all four levels present as literals. Re-checked in 2.1.300: `effort` also takes `xhigh` or an integer, `shell` is `bash` or `powershell`, and `when_to_use` is a string. `src/skills/validate.ts` accepts these shapes. |
 | **Agent frontmatter** | `memory` (`user`/`project`/`local` — confirmed `.claude/agent-memory-local/`), `color`, `omitClaudeMd`, `criticalSystemReminder_EXPERIMENTAL`, `requiredMcpServers` | `criticalSystemReminder_EXPERIMENTAL` is flagged unstable by its own name — do not build load-bearing infra on it. |
 | **Settings (learning loop)** | `autoMemoryEnabled`, `autoDreamEnabled` | Auto-extract memories per session; consolidate ("dream") across sessions. |
 | **Settings (auto mode)** | `autoMode.{allow, soft_deny, hard_deny, environment}`, `disableAutoMode` | `environment` is a plain-English context array the classifier reads. Confirmed template `<user_soft_deny_rules_to_replace>`. |
@@ -52,8 +52,8 @@ fields that don't exist.
 
 ## What this means for agentbrew (tasks filed)
 
-- `skill-validator-claude-effort-shell-fields` (P2) — validator flags
-  verified-real fields (`effort`, `shell`, `when_to_use`) as "unknown".
+- `skill-validator-claude-effort-shell-fields` (P2) — done: the validator
+  accepts `effort`, `shell`, and `when_to_use` and checks their values.
 - `agentfile-hooks-async-rewake-control-fields` (P2) — `ManagedHook` /
   `ClaudeHookItem` drop the verified control fields (`async`, `asyncRewake`,
   `once`, `if`, `statusMessage`).

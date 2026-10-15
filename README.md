@@ -53,6 +53,8 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 Adding a source indexes its available skills; it does not deploy every skill from that repo. `sync` deploys skills only after you explicitly install/select them, plus legacy manual `skillSourceDirs` outside tracked source paths that are already treated as opt-in source directories.
 
+`agentbrew skills validate` knows the Claude Code skill fields `effort` (`low`, `medium`, `high`, `xhigh`, `max`, or an integer), `shell` (`bash` or `powershell`), and `when_to_use` (a string). It reports a wrong value as an error, not as an unknown field.
+
 In-repo custom skills under `skill-plugins/dev/` must ship a spec-valid `evals/evals.json`. `npm run skills:coverage` is part of `npm run verify` and fails CI when any built-in skill is missing evals, even if aggregate coverage would otherwise meet the threshold.
 
 The bundled `writing-plans` skill produces source-backed plans with explicit

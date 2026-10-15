@@ -50,7 +50,15 @@ const KNOWN_FRONTMATTER_FIELDS = new Set([
   "argument-hint",
   "hooks",
   "capabilities",
+  "effort",
+  "shell",
+  "when_to_use",
 ]);
+
+// Claude Code skill schema (verified in the installed binary; see
+// docs/research/claude-code-undocumented-config.md).
+const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max"]);
+const SKILL_SHELLS = new Set(["bash", "powershell"]);
 
 // ── Frontmatter field helpers (private) ──────────────────────────────────────
 
@@ -75,6 +83,17 @@ const OPTIONAL_FIELD_CHECKS: Array<{
   { field: "model", check: (v) => typeof v === "string", expected: "a string" },
   { field: "context", check: (v) => Array.isArray(v), expected: "an array" },
   { field: "agent", check: (v) => Array.isArray(v), expected: "an array" },
+  {
+    field: "effort",
+    check: (v) => Number.isInteger(v) || (typeof v === "string" && EFFORT_LEVELS.has(v.toLowerCase())),
+    expected: "low, medium, high, xhigh, max, or an integer",
+  },
+  {
+    field: "shell",
+    check: (v) => typeof v === "string" && SKILL_SHELLS.has(v),
+    expected: "bash or powershell",
+  },
+  { field: "when_to_use", check: (v) => typeof v === "string", expected: "a string" },
 ];
 
 function validateNameField(frontmatter: Record<string, unknown>, dirName: string): ValidationIssue[] {

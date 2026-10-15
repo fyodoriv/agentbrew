@@ -334,13 +334,6 @@
   - **Files**: `scripts/check-rule-3-test-first.mjs` (new), `package.json` (verify), `src/adapters/rule-lint.ts`
   - **Acceptance**: `npm run verify` fails on a branch that changes `src/foo.ts` with no test diff and no exemption line, and passes with either.
 
-- [ ] Extend skill validator to accept verified Claude Code frontmatter fields (effort, shell, when_to_use)
-  - **ID**: skill-validator-claude-effort-shell-fields
-  - **Tags**: scout, skill-validator, claude-frontmatter, docs/research/claude-code-undocumented-config.md
-  - **Details**: The skill validator in `src/skills/validate.ts` currently flags `effort`, `shell`, and `when_to_use` as "unknown frontmatter fields". Binary verification against Claude Code 2.1.138 confirms these are real fields: `effort` (low/medium/high/max), `shell` (for shell-specific skills), and `when_to_use` are present in the embedded string literals. Extend the validator's frontmatter schema to accept these fields as valid instead of emitting warnings.
-  - **Files**: `src/skills/validate.ts`, `src/skills/validate.test.ts`
-  - **Acceptance**: `agentbrew skills validate` on a skill with `effort: medium`, `shell: true`, or `when_to_use: ...` passes without "unknown field" warnings.
-
 - [ ] Preserve Agentfile hook targeting and verified Claude Code control fields
   - **ID**: agentfile-hooks-async-rewake-control-fields
   - **Tags**: scout, agentfile, hooks, claude-frontmatter, docs/research/claude-code-undocumented-config.md

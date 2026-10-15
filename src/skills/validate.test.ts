@@ -87,6 +87,34 @@ describe("validateDirectoryName", () => {
 // ── validateFrontmatter ──────────────────────────────────────────────────────
 
 describe("validateFrontmatter", () => {
+  // Field shapes verified against the Claude Code binary's skill schema
+  // (see docs/research/claude-code-undocumented-config.md).
+  const withField = (field: string): string =>
+    `---\nname: my-skill\ndescription: Does something useful. Don't use for other things.\n${field}\n---\n\n## Steps\n`;
+
+  it.each([
+    "effort: medium",
+    "effort: xhigh",
+    "effort: 3",
+    "shell: bash",
+    "shell: powershell",
+    "when_to_use: Use when the user asks for a release note.",
+  ])("accepts Claude Code field '%s' without warnings", (field) => {
+    const issues = validateFrontmatter(withField(field), "my-skill");
+    expect(issues.filter((i) => i.severity !== "info")).toEqual([]);
+  });
+
+  it.each([
+    ["effort: huge", "effort"],
+    ["shell: zsh", "shell"],
+    ["when_to_use: [a, b]", "when_to_use"],
+  ])("errors on an invalid '%s' value", (field, name) => {
+    const issues = validateFrontmatter(withField(field), "my-skill");
+    const errors = issues.filter((i) => i.severity === "error");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].field).toBe(name);
+  });
+
   it("accepts valid frontmatter", () => {
     const content = `---
 name: commit

@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import type { McpServer } from "../types.js";
 import {
   BROKEN_MCPM_REGISTRY_SERVERS,
   collectHygieneRemovals,
@@ -10,6 +13,8 @@ import {
   fixMemoryEntry,
   isBlocklistedRegistryServer,
   isDeprecatedGithubEntry,
+  MAINTAINED_GITHUB_MCP_URL,
+  migrateDeprecatedGithubServer,
   resolveGithubLauncherPath,
   uninstallBrokenMcpmRegistryServers,
   uninstallQuarantinedMcpmServers,
@@ -207,6 +212,56 @@ describe("github launcher hygiene", () => {
     const before = structuredClone(entry);
     expect(fixDeprecatedGithubEntry(entry, undefined)).toBe(false);
     expect(entry).toEqual(before);
+  });
+});
+
+describe("maintained github server without a launcher", () => {
+  const deprecated = (): McpServer => ({
+    name: "github",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-github@latest"],
+    env: { GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}" },
+    source: "catalog",
+  });
+
+  it("moves a state entry to the maintained remote server when no launcher exists", () => {
+    const server = deprecated();
+    expect(migrateDeprecatedGithubServer(server, () => undefined)).toBe(true);
+    expect(server).toMatchObject({
+      command: "",
+      args: [],
+      env: {},
+      url: MAINTAINED_GITHUB_MCP_URL,
+      headers: { Authorization: "Bearer ${GITHUB_TOKEN}" },
+    });
+    expect(JSON.stringify(server)).not.toContain("@modelcontextprotocol/server-github");
+  });
+
+  it("leaves the entry for the launcher sweep when a launcher exists", () => {
+    const server = deprecated();
+    expect(migrateDeprecatedGithubServer(server, () => "/home/user/.local/bin/github-mcp")).toBe(false);
+    expect(server).toEqual(deprecated());
+  });
+
+  it("leaves an already-maintained entry unchanged", () => {
+    const server: McpServer = {
+      name: "github",
+      command: "",
+      args: [],
+      env: {},
+      source: "catalog",
+      url: MAINTAINED_GITHUB_MCP_URL,
+    };
+    expect(migrateDeprecatedGithubServer(server, () => undefined)).toBe(false);
+  });
+
+  it("matches the catalog github entry, which no longer names the archived npm package", () => {
+    const catalog = yaml.load(readFileSync(new URL("../catalog.yaml", import.meta.url), "utf-8")) as {
+      mcp_servers: Array<{ name: string; url?: string; command?: string; args?: string[] }>;
+    };
+    const github = catalog.mcp_servers.find((entry) => entry.name === "github");
+    expect(github?.url).toBe(MAINTAINED_GITHUB_MCP_URL);
+    expect(JSON.stringify(github)).not.toContain("@modelcontextprotocol/server-github");
   });
 });
 

@@ -304,6 +304,26 @@ describe("probeMcpServer", () => {
     expect(methods).toEqual(["initialize", "notifications/initialized", "tools/list"]);
   });
 
+  it("resolves ${VAR} placeholders in URL server headers from the environment", async () => {
+    const sent: Array<string | null> = [];
+    const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(new Headers(init?.headers).get("Authorization"));
+      return new Response("", { status: 401 });
+    };
+    vi.stubEnv("AGENTBREW_PROBE_TEST_TOKEN", "probe-token-value");
+    try {
+      await probeMcpServer(
+        "remote",
+        "test-agent",
+        { url: "http://example.com/mcp", headers: { Authorization: "Bearer ${AGENTBREW_PROBE_TEST_TOKEN:-}" } },
+        { fetchImpl },
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect(sent[0]).toBe("Bearer probe-token-value");
+  });
+
   // Behind a TLS-inspecting proxy Node rejects the re-signed certificate, so an
   // HTTP probe reports `init_error: fetch failed` for a server that is up. The
   // probe has to install the corporate root itself; a child's env cannot do it.

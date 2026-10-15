@@ -1490,12 +1490,15 @@ mcp_servers:
   # No probeSuppression on purpose: a rejected login shows as "MCP login"
   # (fix: `gh auth login`), and load timeouts clear on their own. A real outage
   # surfaces as mcp-stale drift (guarded in src/mcp/health-suppression.test.ts).
+  # GitHub's own hosted server (github/github-mcp-server). The npm package
+  # @modelcontextprotocol/server-github is archived; state entries that still
+  # name it move here on load when no local *-github-mcp launcher exists
+  # (src/mcp/mcpm-hygiene.ts MAINTAINED_GITHUB_MCP_URL must match this url).
   - name: github
-    description: "GitHub API — PRs, issues, repos, commits, branches. 15.2k★."
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-github@latest"]
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+    description: "Official GitHub MCP server (hosted by GitHub) — PRs, issues, repos, commits, branches, Actions."
+    url: "https://api.githubcopilot.com/mcp/"
+    headers:
+      Authorization: "Bearer ${GITHUB_TOKEN}"
     category: development
     recommended: false
     smokeCall:

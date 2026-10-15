@@ -243,13 +243,6 @@
   - **Files**: `src/mcp/heal-cycle.ts`, `src/mcp/health-snapshot.ts`, `src/mcp/health-snapshot.test.ts`
   - **Acceptance**: a deferred timeout appears in the snapshot with a deferred marker, and a test covers it.
 
-- [ ] Give machines without a GitHub launcher a maintained GitHub MCP server
-  - **ID**: github-mcp-maintained-server-without-launcher
-  - **Tags**: scout, mcp, github, catalog
-  - **Details**: `src/mcp/mcpm-hygiene.ts` treats `@modelcontextprotocol/server-github` as deprecated and swaps it for a local `*-github-mcp` launcher. A machine with no launcher now keeps the deprecated npm package, because swapping in a missing path broke the server everywhere. The package is archived upstream. Point the catalog `github` entry at the maintained GitHub MCP server instead, so a machine without a launcher still gets a supported server.
-  - **Files**: src/catalog.yaml, src/mcp/mcpm-hygiene.ts, src/mcp/mcpm-hygiene.test.ts
-  - **Acceptance**: on a machine with no launcher, `agentbrew mcp probe` passes for `github` in every agent, and the deployed entry no longer names `@modelcontextprotocol/server-github`.
-
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, status, plugins

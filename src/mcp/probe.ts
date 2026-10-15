@@ -33,7 +33,7 @@ import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { performStreamableHttpHandshake, StreamableHttpError } from "../memory/mcp-client.js";
 import { installCorporateTrust } from "./corporate-tls.js";
-import { fromCanonical } from "./env-vars.js";
+import { fromCanonical, toCanonical } from "./env-vars.js";
 
 /**
  * Minimal spec the probe needs from an MCP server config. Looser than
@@ -162,6 +162,21 @@ function httpProbeStatus(error: unknown): ProbeStatus {
   return "init_error";
 }
 
+/**
+ * Resolve `${VAR}` placeholders in HTTP headers from the environment, the
+ * same way `buildProbeEnvironment` resolves a stdio server's env. Without
+ * this, a `Bearer ${GITHUB_TOKEN}` header reaches the server verbatim and
+ * every token-authenticated remote server probes as a rejected login.
+ */
+function resolveProbeHeaders(headers: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!headers) return undefined;
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    resolved[key] = fromCanonical(toCanonical(value), "literal");
+  }
+  return resolved;
+}
+
 async function probeHttpMcpServer(
   name: string,
   agent: string,
@@ -175,7 +190,7 @@ async function probeHttpMcpServer(
   try {
     const handshake = await performStreamableHttpHandshake({
       url: spec.url,
-      headers: spec.headers,
+      headers: resolveProbeHeaders(spec.headers),
       timeoutMs: options.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS,
       fetchImpl: options.fetchImpl,
       clientName: "agentbrew-probe",

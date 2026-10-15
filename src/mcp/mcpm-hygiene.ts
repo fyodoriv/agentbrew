@@ -36,6 +36,10 @@ export function withExtraBrokenRegistryServers(extra: unknown): readonly string[
 
 const DEPRECATED_GITHUB_NPM = "@modelcontextprotocol/server-github";
 
+/** GitHub's own hosted MCP server (github/github-mcp-server). The catalog
+ *  `github` entry points here; `src/catalog.yaml` must use the same URL. */
+export const MAINTAINED_GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/";
+
 export interface McpmHygieneFileResult {
   path: string;
   agentName: string;
@@ -196,6 +200,28 @@ export function fixDeprecatedGithubEntry(entry: Record<string, unknown>, launche
     return true;
   }
   entry.command = launcherPath;
+  return true;
+}
+
+/**
+ * Move a state `github` entry off the archived npm package when no launcher
+ * exists. The entry becomes the maintained remote server, and its token moves
+ * from the `GITHUB_PERSONAL_ACCESS_TOKEN` env var to a bearer header. With a
+ * launcher, the entry stays as is: the agent-config sweep swaps in the launcher.
+ */
+export function migrateDeprecatedGithubServer(
+  server: McpServer,
+  launcherPath: () => string | undefined = githubLauncherPath,
+): boolean {
+  if (!isDeprecatedGithubEntry(server)) return false;
+  if (launcherPath() !== undefined) return false;
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: canonical env placeholder, resolved per agent at sync
+  const token = server.env?.GITHUB_PERSONAL_ACCESS_TOKEN ?? "${GITHUB_TOKEN}";
+  server.command = "";
+  server.args = [];
+  server.env = {};
+  server.url = MAINTAINED_GITHUB_MCP_URL;
+  server.headers = { ...server.headers, Authorization: `Bearer ${token}` };
   return true;
 }
 

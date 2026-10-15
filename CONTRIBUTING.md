@@ -50,15 +50,14 @@ Quality bar: valid `SKILL.md` with YAML frontmatter, specific description, publi
   recommended: false
 ```
 
-**With environment variables** (add `env` + `setup`):
+**With a token** (add `headers` for a URL server or `env` for a command, plus `setup`):
 
 ```yaml
 - name: github
-  description: "GitHub API — PRs, issues, repos, commits, branches."
-  command: npx
-  args: ["-y", "@modelcontextprotocol/server-github"]
-  env:
-    GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+  description: "Official GitHub MCP server (hosted by GitHub) — PRs, issues, repos, commits, branches."
+  url: "https://api.githubcopilot.com/mcp/"
+  headers:
+    Authorization: "Bearer ${GITHUB_TOKEN}"
   category: development
   recommended: false
   setup:

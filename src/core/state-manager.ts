@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { detectSourceType } from "../git-source-url.js";
-import { fixDeprecatedMemoryServerArgs } from "../mcp/mcpm-hygiene.js";
+import { fixDeprecatedMemoryServerArgs, migrateDeprecatedGithubServer } from "../mcp/mcpm-hygiene.js";
 import type { AgentBrewState, AgentConfig, McpServer, Source } from "../types.js";
 
 /**
@@ -124,6 +124,7 @@ function normalizeMcpServers(state: AgentBrewState): void {
       server.env = {};
     }
     fixDeprecatedMemoryServerArgs(server.args);
+    migrateDeprecatedGithubServer(server);
   }
 }
 

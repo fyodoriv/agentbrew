@@ -19,6 +19,8 @@ if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_
 source "$__HOOK_LIB_DIR/stdin-json.sh"
 # shellcheck source=../lib/verdict.sh
 source "$__HOOK_LIB_DIR/verdict.sh"
+# shellcheck source=../lib/gh-pr-body-from-command.sh
+source "$__HOOK_LIB_DIR/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID="gh-pr-body-no-review-response"
 
@@ -41,27 +43,17 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
-# Real newlines inside quoted --body break sed; flatten for extraction only.
-COMMAND_ONELINE="$(printf '%s' "$COMMAND" | tr '\n' ' ')"
-
 BODY=""
-BODY=$(printf '%s' "$COMMAND_ONELINE" | sed -nE 's/.*--body[[:space:]]+"([^"]*)".*/\1/p' | head -1)
-if [ -z "$BODY" ]; then
-  BODY=$(printf '%s' "$COMMAND_ONELINE" | sed -nE "s/.*--body[[:space:]]+'([^']*)'.*/\1/p" | head -1)
-fi
-if [ -z "$BODY" ]; then
-  if grep -qE -e '--body-file' <<<"$COMMAND_ONELINE"; then
+if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
+  if grep -qE -e '--body-file' <<<"$COMMAND"; then
     verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"
 fi
-
-# Unescape common \n sequences from JSON-embedded shell commands for line-anchored checks.
-BODY="$(printf '%s' "$BODY" | sed 's/\\n/\n/g')"
 
 MATCHED_PATTERN=""
 if grep -qiE '^#{2,3}[[:space:]]+.*(review(er)?[[:space:]]+feedback[[:space:]]+addressed|feedback[[:space:]]+addressed|addressed[[:space:]]+review[[:space:]]+comments?)' <<<"$BODY"; then

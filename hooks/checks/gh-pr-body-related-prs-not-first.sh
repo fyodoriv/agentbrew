@@ -41,7 +41,7 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 

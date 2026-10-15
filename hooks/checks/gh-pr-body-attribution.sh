@@ -34,6 +34,8 @@ if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_
 source "$__HOOK_LIB_DIR/stdin-json.sh"
 # shellcheck source=../lib/verdict.sh
 source "$__HOOK_LIB_DIR/verdict.sh"
+# shellcheck source=../lib/gh-pr-body-from-command.sh
+source "$__HOOK_LIB_DIR/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID="gh-pr-body-attribution"
 
@@ -57,7 +59,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr create / edit / comment / review with --body
-if ! grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit|comment|review)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" '(pr|issue)[[:space:]]+(create|edit|comment|review)'; then
   verdict_bypass "$HOOK_ID" "not gh pr/issue body command"
 fi
 

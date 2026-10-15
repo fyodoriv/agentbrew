@@ -37,6 +37,8 @@ if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_
 source "$__HOOK_LIB_DIR/stdin-json.sh"
 # shellcheck source=../lib/verdict.sh
 source "$__HOOK_LIB_DIR/verdict.sh"
+# shellcheck source=../lib/gh-pr-body-from-command.sh
+source "$__HOOK_LIB_DIR/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID="gh-pr-body-requires-rationale"
 
@@ -60,19 +62,15 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr create / gh pr edit
-if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
-# Extract the --body argument. Handles --body "...", --body '...', and
-# --body-file paths (skipped — we don't read the file, just block on
-# missing body — the file-based version typically has structure).
+# Extract the --body argument (a heredoc body falls back to the whole
+# command). --body-file is skipped: the file-based version typically has
+# structure.
 BODY=""
-BODY=$(printf '%s' "$COMMAND" | sed -nE "s/.*--body[[:space:]]+\"([^\"]*)\".*/\1/p" | head -1)
-if [ -z "$BODY" ]; then
-  BODY=$(printf '%s' "$COMMAND" | sed -nE "s/.*--body[[:space:]]+'([^']*)'.*/\1/p" | head -1)
-fi
-if [ -z "$BODY" ]; then
+if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
   # --body-file — assume the file has structure; skip the check
   if grep -qE '\-\-body-file\b' <<<"$COMMAND"; then
     verdict_bypass "$HOOK_ID" "--body-file used (trusted to have structure)"

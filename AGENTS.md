@@ -83,9 +83,9 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - A test that writes this repo's `TASKS.md` fails its file (`vitest.tasks-guard.ts`). Stub writers such as `writeFollowups`.
 - The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`.
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
-- In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, and tsx IPC fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
+- In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and the `mktemp` calls in hook fixtures fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
-- The docs and validation PR-body hooks act only on `gh pr create|edit` in command position, and they read multi-line heredoc bodies. Other `gh-pr-*` hooks still match the text anywhere, so pass hook test input from a file or use the Edit tool.
+- Every PR hook acts only on `gh pr` in command position and reads heredoc bodies (`hooks/lib/gh-pr-body-from-command.sh`). A line inside your own command that starts with `gh pr create` still counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
 - Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
 

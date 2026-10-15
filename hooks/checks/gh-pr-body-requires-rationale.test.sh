@@ -88,6 +88,27 @@ TEST9_EXIT=$(echo "$TEST9_EXIT" | tail -1)
 assert_exit_code "Test 9 (HOOK_BYPASS env var allows)" 0 "$TEST9_EXIT"
 
 # Report
+# Command position: a command that only mentions `gh pr` in quoted text is
+# not a PR command. A real one after `cd x &&` and an env prefix still is.
+cp_exit() {
+  local rc=0
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" >/dev/null 2>&1 || rc=$?
+  echo "$rc"
+}
+cp_stderr() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" 2>&1 >/dev/null || true
+}
+CP_ARGS='--body "ship it"'
+assert_exit_code "echoed gh pr mention passes" 0 "$(cp_exit "echo 'gh pr create $CP_ARGS'")"
+assert_exit_code "python string gh pr mention passes" 0 "$(cp_exit "python3 -c \"s = 'gh pr create $CP_ARGS'\"")"
+assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$(cp_exit "cd x && GH_HOST=github.com gh pr create $CP_ARGS")"
+
+# A heredoc body spans many lines; the shared parser still reads it.
+CP_HEREDOC=$'gh pr create --title "x" --body "$(cat <<\'EOF\'\nship it\nEOF\n)"'
+assert_exit_code "heredoc body without rationale blocks" 2 "$(cp_exit "$CP_HEREDOC")"
+
 echo ""
 echo "gh-pr-body-requires-rationale.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

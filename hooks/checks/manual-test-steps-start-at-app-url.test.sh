@@ -79,6 +79,23 @@ TEST8_EXIT=$(echo "$TEST8_EXIT" | tail -1)
 assert_exit_code "Test 8 (HOOK_BYPASS env var allows)" 0 "$TEST8_EXIT"
 
 # Report
+# Command position: a command that only mentions `gh pr` in quoted text is
+# not a PR command. A real one after `cd x &&` and an env prefix still is.
+cp_exit() {
+  local rc=0
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" >/dev/null 2>&1 || rc=$?
+  echo "$rc"
+}
+cp_stderr() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" 2>&1 >/dev/null || true
+}
+CP_ARGS='--body "## Test plan\n1. Click the button"'
+assert_exit_code "echoed gh pr mention passes" 0 "$(cp_exit "echo 'gh pr create $CP_ARGS'")"
+assert_exit_code "python string gh pr mention passes" 0 "$(cp_exit "python3 -c \"s = 'gh pr create $CP_ARGS'\"")"
+assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$(cp_exit "cd x && GH_HOST=github.com gh pr create $CP_ARGS")"
+
 echo ""
 echo "manual-test-steps-start-at-app-url.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

@@ -92,6 +92,24 @@ TEST6_EXIT=$(echo "$TEST6_EXIT" | tail -1)
 assert_exit_code "Test 6 (HOOK_BYPASS env var allows)" 0 "$TEST6_EXIT"
 
 # Report
+# Command position: a command that only mentions `gh pr` in quoted text is
+# not a PR command. A real one after `cd x &&` and an env prefix still is.
+cp_exit() {
+  local rc=0
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" >/dev/null 2>&1 || rc=$?
+  echo "$rc"
+}
+cp_stderr() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" 2>&1 >/dev/null || true
+}
+CP_ARGS='--title "staging check" --body "verify at https://app.example.com/foo"'
+if [ -z "$(cp_stderr "echo 'gh pr create $CP_ARGS'")" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("echoed gh pr create mention: unexpectedly warned"); fi
+if [ -n "$(cp_stderr "cd x && GH_HOST=github.com gh pr create $CP_ARGS")" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("cd && GH_HOST=... gh pr create: did not warn"); fi
+
 echo ""
 echo "env-correct-urls.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

@@ -32,6 +32,8 @@ __HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
 source "$__HOOK_LIB_DIR/stdin-json.sh"
 source "$__HOOK_LIB_DIR/verdict.sh"
+# shellcheck source=../lib/gh-pr-body-from-command.sh
+source "$__HOOK_LIB_DIR/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID="env-correct-urls"
 
@@ -55,7 +57,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Only fire on gh pr/issue create/edit
-if ! grep -qE '\bgh[[:space:]]+(pr|issue)[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" '(pr|issue)[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr/issue create/edit"
 fi
 

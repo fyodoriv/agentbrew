@@ -334,6 +334,18 @@ assert_exit_code "mixed-add-and-modify-blocks-new-skill-without-evals" 2 "$LAST_
 
 run_case "unrelated-PR" 0 setup_unrelated_pr "$(missing_sections_body)"
 
+# Command position: an echoed mention is not a PR command; a real one after
+# `cd x &&` and an env prefix still is.
+make_tmp
+CP_REPO="$LAST_TMP/repo"
+new_repo "$CP_REPO"
+setup_adds_skill_with_assertions_evals "$CP_REPO"
+commit_all "$CP_REPO" "command position"
+run_hook "$CP_REPO" "echo 'gh pr create --body \"$(missing_sections_body)\"'"
+assert_exit_code "echoed gh pr mention passes" 0 "$LAST_EXIT"
+run_hook "$CP_REPO" "cd \"$CP_REPO\" && GH_HOST=github.com gh pr create --body \"$(missing_sections_body)\""
+assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$LAST_EXIT"
+
 echo ""
 echo "gh-pr-skill-requires-evals.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

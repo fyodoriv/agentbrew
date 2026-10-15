@@ -171,6 +171,18 @@ set -e
 assert_exit_code "bypass env allows" 0 "$bypass_exit"
 assert_stderr_contains "bypass env asks for follow-up" "File a P0 follow-up task" "$(cat "$repo/bypass.err")"
 
+# Command position: an echoed mention is not a PR command; a real one after
+# `cd x &&` and an env prefix still is.
+make_tmp
+CP_REPO="$LAST_TMP/repo"
+new_repo "$CP_REPO"
+setup_changed_command_without_test "$CP_REPO"
+commit_all "$CP_REPO" "command position"
+run_hook "$CP_REPO" "echo 'gh pr create --body \"$(body)\"'"
+assert_exit_code "echoed gh pr mention passes" 0 "$LAST_EXIT"
+run_hook "$CP_REPO" "cd \"$CP_REPO\" && GH_HOST=github.com gh pr create --body \"$(body)\""
+assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$LAST_EXIT"
+
 echo ""
 echo "gh-pr-agent-artifacts-require-tests.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

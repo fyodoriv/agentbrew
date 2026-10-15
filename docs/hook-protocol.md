@@ -104,6 +104,13 @@ Code shape is:
 Scripts must tolerate missing fields and unknown extra fields because agent hook
 schemas evolve independently.
 
+Hooks that check `gh pr` commands use `hooks/lib/gh-pr-body-from-command.sh`.
+`gh_in_command_position` matches `gh pr create` only where a command starts
+(line start, after `;`, `&`, `|`, `(`, or `$(`, with optional `VAR=value`
+prefixes). An `echo` or a Python string that mentions `gh pr create` does not
+match. `gh_pr_body_from_command` and `gh_pr_body_text` read the body; for a
+multi-line `--body` such as a heredoc they return the whole command.
+
 ## Verdict contract
 
 | Verdict | Exit / stdout / stderr |

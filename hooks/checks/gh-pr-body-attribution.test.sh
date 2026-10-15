@@ -101,6 +101,24 @@ TEST7_EXIT=$(HOOK_BYPASS_GH_PR_BODY_ATTRIBUTION=1 bash -c "echo '$TEST7_INPUT' |
 TEST7_EXIT=$(echo "$TEST7_EXIT" | tail -1)
 assert_exit_code "Test 7 (HOOK_BYPASS env var allows)" 0 "$TEST7_EXIT"
 
+# Command position: a command that only mentions `gh pr` in quoted text is
+# not a PR command. A real one after `cd x &&` and an env prefix still is.
+cp_exit() {
+  local rc=0
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" >/dev/null 2>&1 || rc=$?
+  echo "$rc"
+}
+cp_stderr() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" 2>&1 >/dev/null || true
+}
+CP_ARGS=$'--body "fix\n\nCo-Authored-By: Claude <noreply@anthropic.com>"'
+if [ -z "$(cp_stderr "echo 'gh pr create $CP_ARGS'")" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("echoed gh pr create mention: unexpectedly warned"); fi
+if [ -n "$(cp_stderr "cd x && GH_HOST=github.com gh pr create $CP_ARGS")" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("cd && GH_HOST=... gh pr create: did not warn"); fi
+
 # Report
 echo ""
 echo "gh-pr-body-attribution.sh: $PASS passed, $FAIL failed"

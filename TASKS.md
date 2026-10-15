@@ -208,18 +208,6 @@
   - **Measurement**: the registry API version at `https://registry.modelcontextprotocol.io/`, and `yq '.mcp_servers | length' src/catalog.yaml` before and after.
   - **Anchor**: docs/competition/official-mcp-registry-vs-agentbrew.md; VISION G1 (curate, not host).
 
-- [ ] Make every `gh-pr-*` hook act only on a real `gh pr` command, so quoted mentions stop tripping them
-  - **ID**: gh-pr-hooks-command-position
-  - **Tags**: scout, hooks, false-positive
-  - **Details**: `gh-pr-body-requires-docs` and `gh-pr-body-requires-validation` now match `gh pr create|edit` only in command position and read multi-line heredoc bodies. The six other `hooks/checks/gh-pr-*.sh` scripts (share the matcher through `hooks/lib/gh-pr-body-from-command.sh`) (and `env-correct-urls.sh`, `manual-test-steps-start-at-app-url.sh`) still match the words anywhere in the command, so an `echo` or a Python string that mentions them is checked as a PR. Move the command-position regex and the heredoc fallback into `hooks/lib/` and use it in every PR hook.
-  - **Files**: hooks/checks/gh-pr-*.sh, hooks/lib/, their `.test.sh` fixtures
-  - **Acceptance**: each PR hook passes an echoed mention and still blocks a real `cd x && GH_HOST=… gh pr create` with a bad body; fixtures cover both.
-  - **Hypothesis**: false PR-hook blocks on commands that only mention `gh pr` drop to zero once every PR hook shares the command-position check.
-  - **Success**: every `gh-pr-*` fixture has an "echoed mention passes" case, and all pass in `bash scripts/run-hook-fixtures.sh`.
-  - **Pivot**: if a hook needs the old anywhere-match to catch a real bypass, keep that hook as is and document why.
-  - **Measurement**: `bash scripts/run-hook-fixtures.sh`; the count of `bypass … not gh pr` versus `block` decisions in `~/.cache/agentbrew/hook-decisions.jsonl`.
-  - **Anchor**: Google SRE book ch. 6 (alerts that fire on non-problems erode trust); agentbrew AGENTS.md rule 1.
-
 - [ ] Report the prisma plugin MCP break upstream so the plugin pins `prisma@7`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, plugins, upstream

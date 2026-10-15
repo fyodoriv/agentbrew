@@ -90,6 +90,23 @@ assert_exit_code "Test 9 (heredoc body with all sections)" 0 "$(run_cmd "$HEREDO
 assert_exit_code "Test 10 (gh pr create inside echoed JSON passes)" 0 "$(run_cmd "echo '{\"command\":\"gh pr create --body x\"}' | bash hook.sh")"
 assert_exit_code "Test 11 (gh pr create inside a python string passes)" 0 "$(run_cmd $'python3 - <<\'PY\'\ns = \'gh pr create --body x\'\nPY')"
 
+# Command position: a command that only mentions `gh pr` in quoted text is
+# not a PR command. A real one after `cd x &&` and an env prefix still is.
+cp_exit() {
+  local rc=0
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" >/dev/null 2>&1 || rc=$?
+  echo "$rc"
+}
+cp_stderr() {
+  jq -nc --arg cmd "$1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}' |
+    bash "$SCRIPT" 2>&1 >/dev/null || true
+}
+CP_ARGS='--body "## Summary\nship it"'
+assert_exit_code "echoed gh pr mention passes" 0 "$(cp_exit "echo 'gh pr create $CP_ARGS'")"
+assert_exit_code "python string gh pr mention passes" 0 "$(cp_exit "python3 -c \"s = 'gh pr create $CP_ARGS'\"")"
+assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$(cp_exit "cd x && GH_HOST=github.com gh pr create $CP_ARGS")"
+
 echo ""
 echo "gh-pr-body-requires-validation.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

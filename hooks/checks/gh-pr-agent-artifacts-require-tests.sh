@@ -12,6 +12,8 @@ __HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -d "$__HOOK_DIR/lib" ]; then __HOOK_LIB_DIR="$__HOOK_DIR/lib"; else __HOOK_LIB_DIR="$__HOOK_DIR/../lib"; fi
 source "$__HOOK_LIB_DIR/stdin-json.sh"
 source "$__HOOK_LIB_DIR/verdict.sh"
+# shellcheck source=../lib/gh-pr-body-from-command.sh
+source "$__HOOK_LIB_DIR/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID="gh-pr-agent-artifacts-require-tests"
 readonly BYPASS_ENV_VAR="HOOK_BYPASS_GH_PR_AGENT_ARTIFACTS_REQUIRE_TESTS"
@@ -31,7 +33,7 @@ if [ -z "$COMMAND" ]; then
   verdict_bypass "$HOOK_ID" "no command"
 fi
 
-if ! grep -qE '\bgh[[:space:]]+pr[[:space:]]+(create|edit)\b' <<<"$COMMAND"; then
+if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 

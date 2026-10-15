@@ -45,7 +45,7 @@ Add deterministic regression coverage for `skill-plugins/dev/autoresearch/` so t
 
 ## Implementation steps
 
-1. Add `src/skills/autoresearch-contract.test.ts` with local helper functions matching neighboring #2134 specs.
+1. Add `src/skills/autoresearch-contract.test.ts` with the shared helpers in `src/skills/skill-contract-test-helpers.ts` (`requireTerms`, `expectationText`, `evalMatcher`).
 2. Pin SKILL.md trigger scope, wrong-tool boundaries, setup, confirmation, baseline, core loop, dual gates, keep/discard matrix, stuck recovery, lessons, parallel experiments, modes, hard rules, and output report terms.
 3. Extend `skill-plugins/dev/autoresearch/evals/evals.json` from 3 to 5 scenarios by adding wrong-use and skip-safety-gates pressure cases.
 4. Ensure each eval has a unique ID, non-empty prompt/output, and at least four concrete expectations.

@@ -1,14 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
-interface SkillEval {
-  id: number | string;
-  prompt: string;
-  expected_output: string;
-  expectations?: string[];
-  assertions?: string[];
-}
+import {
+  evalMatcher,
+  expectationText,
+  requireTerms,
+  type SkillEval,
+  scenarioText,
+} from "./skill-contract-test-helpers.js";
 
 const skillRoot = join(process.cwd(), "skill-plugins", "dev", "detect-task-backend");
 const skillText = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
@@ -16,18 +15,9 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
   skill_name: string;
   evals: SkillEval[];
 };
+const evalMatching = evalMatcher(evals.evals);
 const contractDocs = readFileSync(join(process.cwd(), "docs", "task-backend-contract.md"), "utf-8");
 const resolverSource = readFileSync(join(process.cwd(), "src", "core", "task-backend.ts"), "utf-8");
-
-function requireTerms(text: string, terms: Array<string | RegExp>) {
-  for (const term of terms) {
-    if (typeof term === "string") {
-      expect(text, `missing term: ${term}`).toContain(term);
-    } else {
-      expect(text, `missing pattern: ${term}`).toMatch(term);
-    }
-  }
-}
 
 function rejectTerms(text: string, terms: Array<string | RegExp>) {
   for (const term of terms) {
@@ -37,20 +27,6 @@ function rejectTerms(text: string, terms: Array<string | RegExp>) {
       expect(text, `forbidden pattern present: ${term}`).not.toMatch(term);
     }
   }
-}
-
-function expectationText(skillEval: SkillEval) {
-  return [...(skillEval.expectations ?? []), ...(skillEval.assertions ?? [])].join("\n");
-}
-
-function scenarioText(skillEval: SkillEval) {
-  return [skillEval.prompt, skillEval.expected_output, expectationText(skillEval)].join("\n");
-}
-
-function evalMatching(match: RegExp) {
-  const found = evals.evals.find((skillEval) => match.test(scenarioText(skillEval)));
-  expect(found, `missing eval matching ${match}`).toBeDefined();
-  return found as SkillEval;
 }
 
 function evalById(id: number) {

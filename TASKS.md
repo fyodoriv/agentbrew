@@ -266,13 +266,6 @@
   - **Files**: `skill-plugins/workflow/project-audit/SKILL.md`, `skill-plugins/workflow/task-command-center/evals/evals.json`, `docs/shared-rules.md` (also loads a missing `pr` skill), `docs/plans/cover-jira-skill-with-2134-tests.md`
   - **Acceptance**: Every active reference to `jira`, `jira-task`, or `find-jira-task` resolves to an installed catalog/source skill or is replaced with a valid MCP/repo workflow; historical changelog/task text remains untouched; `npm run verify` passes.
 
-- [ ] Extract shared helpers for the skill contract tests
-  - **ID**: extract-shared-2134-skill-contract-test-helpers
-  - **Tags**: p2, skills, tests, deterministic-tests, scout
-  - **Details**: `requireTerms`, `expectationText`, and `evalMatching` are redefined in almost every `src/skills/*-contract.test.ts` spec. Move them into one shared test helper module.
-  - **Files**: src/skills/*contract.test.ts, optional src/skills/skill-contract-test-helpers.ts
-  - **Acceptance**: At least two `src/skills/*-contract.test.ts` specs import the shared helper; failure messages still name the missing term or scenario.
-
 - [ ] Users can see default-model drift in `agentbrew status` before repair
   - **ID**: model-drift-check-in-status
   - **Tags**: scout, models, drift, status

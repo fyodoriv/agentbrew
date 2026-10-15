@@ -324,7 +324,7 @@ This check is part of the quarterly refresh cadence (see Review Cadence above).
 
 **Ideas worth absorbing:**
 1. **Declarative whole-machine profile system** — full profiles spanning state.yaml + Agentfile + shared-rules. Think "named snapshots of your entire agent config." ~300 LOC. **Deferred under the delegate-first strategy pivot** ([VISION.md](VISION.md)). (Note: agentbrew's MCP-only profile subcommand was removed 2026-04-24 — per-context scoping now delegates to per-project Agentfile + mcpm.sh.)
-2. **Interactive install multi-select UX** — when `agentbrew install <github-url>` discovers multiple skills/MCPs, present a grouped multi-select picker instead of installing everything or requiring flags. ~200 LOC. **Deferred** — to be contributed upstream to skills CLI per `contribute-interactive-multiselect-to-skills-cli` in TASKS.md.
+2. **Interactive install multi-select UX** — when `agentbrew install <github-url>` discovers multiple skills/MCPs, present a grouped multi-select picker instead of installing everything or requiring flags. ~200 LOC. **Dropped** — the skills CLI already ships an interactive picker (2026-10-15 task review).
 3. **Cross-check `harness-locate` path tables** against `src/core/agents.yaml` — DONE 2026-04-26. Sanity check passes: agentbrew is correct on every documented case where Bridle disagrees (notably OpenCode `skills/` vs `skill/`), with 8 narrow coverage gaps and 2 env-var-override gaps tracked as scout tasks. See [`docs/audits/harness-locate-cross-check.md`](audits/harness-locate-cross-check.md).
 
 **Do NOT:**

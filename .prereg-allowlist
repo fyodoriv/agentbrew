@@ -1,24 +1,15 @@
 # Tasks that predate the rule-9 gate (npm run lint:rules). Each ID leaves this
 # list when its task gets Hypothesis, Success/Acceptance, Pivot, Measurement,
 # and Anchor fields, or when the task is closed. Do not add new IDs.
-contribute-tutor-pedagogy-upstream
 prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
 dev-dependency-audit-findings
 hook-log-decision-drop-cat-b-fields
-dotfiles-starship-scan-timeout
-decide-claude-code-mcp-permission-ownership
-integration-test-coverage-95
-test-commands-sync
-test-drift-checks
-test-export
 snapshot-record-heal-deferred-for-load
 github-mcp-maintained-server-without-launcher
-drift-test-tracked-command-uses-homedir
 status-surface-claude-desktop-mcp-failures
 measure-plain-language-output-across-managed-agents
 remove-stale-deleted-jira-skill-references
-restore-clean-verify-baseline-after-catalog-scheduler-changes
 extract-shared-2134-skill-contract-test-helpers
 document-2134-pressure-eval-conventions
 status-reports-preserved-catalog-rules
@@ -30,22 +21,38 @@ heal-cycle-reprobe-attempted-only
 mcp-status-heal-attempt-count
 index-gstack-niche-skills
 re-promote-ask-human-mcp-after-stdio-fix
-verify-biome-worktree-path-ignore
-refresh-hook-deploy-lib-comment
 gdoc-surgical-dead-replacealltext-branch
-gh-pr-body-rationale-multiline-extraction
-no-prune-does-not-prevent-authoritative-state-replacement
-dedupe-scout-and-record-agentbrew-local-vs-global
-fix-tasks-md-lint-blocked-by-no-prune-task
-skill-curate-2026-05-21-companion
-skill-boundary-audit-2026-05-21
 companion-branch-stomp-protection
-jira-title-convention-enforcement-2026-05-29
-biome-complexity-and-hermetic-integration-tests-2026-05-31
 enforce-cross-workspace-publish-hook
-fix-mcp-git-test-state-mock-loadstate
-refresh-competitor-block-ai-rules-vs-agentbrew
-refresh-competitor-mcpm-sh-vs-agentbrew
 refresh-competitor-vercel-skills-cli-vs-agentbrew
-refresh-competitor-readme
-refresh-competitor-token-usage-tools
+
+# 2026-10-15 /review-tasks: these pre-gate tasks were invisible to the rule-9 lint
+# because they used bare `**Field**:` lines, which parsers ignore. The tasks-md
+# lint now flags bare fields and `--fix` added the dash, which exposed them.
+model-drift-check-in-status
+model-default-parity-cursor
+cli-install-recommended-dry-run-parser-coverage
+competitor-spot-check-explicit-repo-root
+adopt-rule-3-doc-first-discipline
+skill-validator-claude-effort-shell-fields
+agentfile-hooks-async-rewake-control-fields
+restore-agentbrew-release-automation
+install-mcp-env-sanitize-strips-vars-and-y-flag
+workspace-aware-sync
+adopt-minsky-adapter-discipline
+establish-vision-constitutional-rules
+status-reports-helper-scripts
+pr-vision-trace-cli-guard-symlink
+replace-relocate-update-tooling-catalog-pointer
+extract-pr-hook-body-parser
+unify-opencode-bootstrap-model-with-default-model
+reconcile-skill-source-dirs-with-agentfile-sources
+replace-relocate-source-manifest-bootstrap
+agentfile-claude-session-settings-sync
+first-run-offline-warmup
+bridle-opencode-path-issue
+ecosystem-contrib-managed-section-convention
+contribute-support-issue-283-declarative-manifest
+contribute-trust-building-pr-skills-cli
+contribute-rfc-comment-issues-268-455-user-safety-classifier
+opencode-remote-env-drop-warning

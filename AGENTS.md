@@ -87,6 +87,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
 - The docs and validation PR-body hooks act only on `gh pr create|edit` in command position, and they read multi-line heredoc bodies. Other `gh-pr-*` hooks still match the text anywhere, so pass hook test input from a file or use the Edit tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
+- Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
 
 ## Delivery
 

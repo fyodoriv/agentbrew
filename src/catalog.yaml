@@ -171,6 +171,13 @@ skills:
     recommended: true
     rationale: "Autonomous task loop — the core workflow for agent-driven development."
 
+  - name: review-tasks
+    description: "Review every open task for truth, usefulness, and priority against the code and history, then clean the queue (tasks.md /review-tasks)."
+    source: tasksmd/tasks.md
+    category: task-management
+    recommended: false
+    rationale: "Queues rot: shipped work lingers and priorities drift. Format lint cannot see that; an evidence-based review can."
+
   - name: context-budget
     description: "Metrics-driven context trim — read latest.json, run agentbrew lint, file TASKS.md trim work."
     source: built-in

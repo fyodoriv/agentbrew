@@ -53,7 +53,7 @@ function hasPublishingHoldProse(block: string): boolean {
 
 /** Returns true when the block has a `**Human-approval-required**:` field with a non-empty reason. */
 function hasHumanApprovalRequiredField(block: string): boolean {
-  const match = block.match(/^\s*\*\*Human-approval-required\*\*:\s*(.+?)\s*$/mu);
+  const match = block.match(/^\s*(?:-\s+)?\*\*Human-approval-required\*\*:\s*(.+?)\s*$/mu);
   if (!match) return false;
   const value = match[1].trim();
   return value.length > 0;
@@ -61,7 +61,7 @@ function hasHumanApprovalRequiredField(block: string): boolean {
 
 /** Pull the `**ID**: <id>` from a task block for human-readable error messages. */
 function extractTaskId(block: string): string | null {
-  const match = block.match(/^\s*\*\*ID\*\*:\s*([a-z][a-z0-9-]*[a-z0-9])\s*$/mu);
+  const match = block.match(/^\s*(?:-\s+)?\*\*ID\*\*:\s*([a-z][a-z0-9-]*[a-z0-9])\s*$/mu);
   return match ? match[1] : null;
 }
 

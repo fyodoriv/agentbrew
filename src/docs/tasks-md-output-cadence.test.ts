@@ -51,19 +51,19 @@ function splitIntoTaskBlocks(markdown: string): string[] {
 
 /** Pull the `**ID**: <id>` from a task block for human-readable error messages. */
 function extractTaskId(block: string): string | null {
-  const match = block.match(/^\s*\*\*ID\*\*:\s*([a-z][a-z0-9-]*[a-z0-9])\s*$/mu);
+  const match = block.match(/^\s*(?:-\s+)?\*\*ID\*\*:\s*([a-z][a-z0-9-]*[a-z0-9])\s*$/mu);
   return match ? match[1] : null;
 }
 
 /** Returns the value of `**Output**: <value>` if present, else null. */
 function extractOutput(block: string): string | null {
-  const match = block.match(/^\s*\*\*Output\*\*:\s*(.+?)\s*$/mu);
+  const match = block.match(/^\s*(?:-\s+)?\*\*Output\*\*:\s*(.+?)\s*$/mu);
   return match ? match[1].trim() : null;
 }
 
 /** Returns the value of `**Cadence**: <value>` if present, else null. */
 function extractCadence(block: string): string | null {
-  const match = block.match(/^\s*\*\*Cadence\*\*:\s*(.+?)\s*$/mu);
+  const match = block.match(/^\s*(?:-\s+)?\*\*Cadence\*\*:\s*(.+?)\s*$/mu);
   return match ? match[1].trim() : null;
 }
 

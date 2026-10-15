@@ -162,20 +162,6 @@
   - **Files**: src/agentfile-apply.ts, src/sync-runner.ts
   - **Acceptance**: A regression test moves a `commands:` path in a project Agentfile and proves the old dir is removed, or the task is closed with a documented reason.
 
-- [ ] Drop the basic-ftp override once get-uri accepts a patched range
-  - **ID**: scout-basic-ftp-override-removal
-  - **Tags**: scout, dependencies, security
-  - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
-  - **Files**: package.json, package-lock.json
-  - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
-
-- [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
-  - **ID**: dev-dependency-audit-findings
-  - **Tags**: security, dependencies, stability
-  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. After the 2026-10-12 bump of promptfoo, vitest, and a `basic-ftp` override, the only open dev-only finding is `node-forge` (high, no patched release; reached through `promptfoo` > `jks-js`). Re-run `npm audit` when node-forge, jks-js, or promptfoo ships a fix, then bump. If promptfoo drops `jks-js`, remove the dependency path instead.
-  - **Files**: package.json, package-lock.json
-  - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
-
 - [ ] Drop dead Cat B model fields from the hook decision log
   - **ID**: hook-log-decision-drop-cat-b-fields
   - **Tags**: scout, hooks, dead-code
@@ -183,475 +169,96 @@
   - **Files**: hooks/lib/log-decision.sh, src/hooks/deploy.ts
   - **Acceptance**: (1) `log-decision.sh` has no model or promptVersion handling; (2) a test shows a deploy run removes deployed scripts that no manifest entry references.
 
-  **ID**: context-budget-weekly-audit-active
-  **Tags**: token-budget, metrics, context, p1
-  **Details**: Infrastructure ships in `agentbrew measure context` + `~/.config/agentbrew/metrics/latest.json` + `context-budget` skill. Each week (or when token pressure is reported): run measure, diff history, run lint, triage TASKS.md trim tasks (`trim-shared-rules-md-to-under-8k-tokens`, etc.). Recurring cadence and acceptance criteria live in `RECURRING.md` → **context-budget-weekly-audit**. Cursor ring remains manual (`metrics/manual-snapshots/`).
-  **Files**: `src/measure/context-budget.ts`, `scripts/measure-context-budget.sh`, `skill-plugins/dev/context-budget/SKILL.md`, `templates/rules/context-budget-hygiene.mdc`, `~/.config/agentbrew/metrics/latest.json`
-  **Acceptance**: `agentbrew measure context --dry-run` exits 0 when lint clean; `latest.json` has `schemaVersion`, `static.projectedDeployedTokens`, `inventory.*`; agents invoke `context-budget` skill without manual metric setup.
-
-- [ ] Raise Starship `scan_timeout` to stop directory-scan warnings
-  - **ID**: dotfiles-starship-scan-timeout
-  - **Tags**: scout, dotfiles, starship, p1
-  - **Details**: `agentbrew status` / shell init may warn that Starship directory scans exceed default timeout on large trees. Increase `scan_timeout` in dotfiles starship config (or exclude heavy paths) so status/shell init stays quiet.
-  - **Files**: external repo `dotfiles` starship.toml (or chezmoi source)
-  - **Acceptance**: Fresh shell + `agentbrew status` show no Starship scan_timeout warning.
-
-- [ ] Decide Claude Code MCP permission allowlist ownership
-  - **ID**: decide-claude-code-mcp-permission-ownership
-  - **Tags**: scout, mcp, permissions, claude-code, drift
-  - **Details**: Scouted while adding declarative `mcpPermissionsConfig` sync for Cursor CLI and Devin. Claude Code also has a `permissions.allow` surface in `~/.claude/settings.json` that can contain `mcp__<server>__*` entries, but this patch intentionally stayed focused on the reported Cursor `cli-config.json` gap and existing Devin behavior. Decide whether agentbrew should own Claude Code's MCP permission entries through the same declarative surface or leave them to Claude Code / user-managed policy.
-  - **Files**: `src/core/agents.yaml`, `src/sync/mcp-sync.ts`, `src/drift-checks/mcp.ts`, `docs/user-stories/03-add-mcp-server.md`, `docs/user-stories/06-drift-detection.md`
-  - **Acceptance**: A researched decision is recorded in code/docs/tests: either Claude Code declares `mcpPermissionsConfig.file: ~/.claude/settings.json` with regression coverage for sync + drift, or documentation explains why Claude Code permission ownership remains out of scope and drift checks deliberately skip it.
-
-- [ ] Manage Node upgrade steps so LaunchAgents and ~/.local/bin move together
-  - **ID**: dotfiles-launchagent-node-version-sprawl
-  - **Tags**: scout, dotfiles, launchagent, node, permissions, mcp, p1
-  - **Details**: Scouted 2026-06-10, narrowed 2026-10-12. Done: every `com.agentbrew.*` plist now runs the Node that `~/.node-version` names, and dotfiles doctor check `agentbrew.launchagent_node_pinned` reports any plist or `~/.local/bin/node` link that drifts. Finding: `exec()` resolves symlinks, so no version-independent path (fnm alias, `~/.local/bin/node` link) can hide a Node upgrade from macOS; at best each deliberate upgrade prompts once. Not verified against a live macOS prompt. Remaining: `~/.node-version` and the `~/.local/bin/{node,npm,npx}` links are hand-made, and plists are rewritten only by a manual `agentbrew auto-sync install`.
-  - **Files**: external repo `dotfiles` (chezmoi-managed `~/.node-version` and `~/.local/bin` Node links, upgrade flow); `src/sync/scheduler-paths.ts` and `src/memory/launchagent.ts` here for the plist rewrite.
-  - **Acceptance**: A Node upgrade through the dotfiles upgrade flow updates `~/.node-version`, the `~/.local/bin` links, and rewrites the agentbrew plists in one step, and `agentbrew.launchagent_node_pinned` stays green after it. The pinned minsky Node and other old fnm versions stay installed.
-  - **Hypothesis**: A single scripted upgrade step removes the manual drift window between the new Node and old plists.
-  - **Success**: After an upgrade, `agentbrew.launchagent_node_pinned` passes without manual steps and macOS shows at most one new Node prompt.
-  - **Pivot**: If macOS still prompts on every tick with one stable path, move scheduler probes behind non-socket fast-tier probes or a pre-approved signed wrapper binary.
-  - **Measurement**: `dotfiles-doctor` reports `agentbrew.launchagent_node_pinned` as passing right after an upgrade; `ps -axo command | grep '/fnm/node-versions/.*/node'` during a scheduler tick shows one versioned path.
-  - **Anchor**: dotfiles PR 54 (drift check); 2026-06-10 scheduler tick diagnosis.
-
 - [ ] Rules source hygiene auto-repair is covered by a fixture-backed real-e2e scenario
-  **ID**: rules-source-hygiene-real-e2e
-  **Tags**: scout, rules, drift, real-e2e
-  **Details**: Scouted while adding marker-managed Agentfile rules and `agentbrew rules dedupe`. The new source-drift path is covered by unit tests (`rules-hygiene`, `drift`, `repair`, `rules-sync`), but the full `status --fix` behavior is not covered by a sandbox scenario that exercises the CLI end-to-end. The gap matters because `npm run verify` caught one missing partial mock only in the full suite; a fixture-backed scenario would catch future wiring regressions without depending on brittle mocks.
-  **Files**: `real-e2e/scenarios/*rules*.test.ts`, `real-e2e/fixtures/**`, `src/real-e2e/scenario-fixture.ts`, `src/drift-checks/rules.ts`, `src/sync/rules-sync.ts`
-  **Acceptance**: A real-e2e scenario seeds duplicate blocks in `~/.config/agentbrew/shared-rules.md`, runs `agentbrew status --fix` (or the scenario helper equivalent), proves the source file is deduped, proves managed agent rules are redeployed from the cleaned source, then proves a second status run has no `rules-source` drift.
-  **Hypothesis**: Exercising duplicate source rules through the same CLI path users run will catch wiring regressions that isolated unit tests and mocks can miss.
-  **Success**: `npm run test:real-e2e:selected -- <rules-source-hygiene-scenario>` exits 0 and fails if `dedupeSharedRulesFile()` is no longer called before rules sync in `fix()`.
-  **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
-  **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
-  **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
+  - **ID**: rules-source-hygiene-real-e2e
+  - **Tags**: scout, rules, drift, real-e2e
+  - **Details**: Scouted while adding marker-managed Agentfile rules and `agentbrew rules dedupe`. The new source-drift path is covered by unit tests (`rules-hygiene`, `drift`, `repair`, `rules-sync`), but the full `status --fix` behavior is not covered by a sandbox scenario that exercises the CLI end-to-end. The gap matters because `npm run verify` caught one missing partial mock only in the full suite; a fixture-backed scenario would catch future wiring regressions without depending on brittle mocks.
+  - **Files**: `real-e2e/scenarios/*rules*.test.ts`, `real-e2e/fixtures/**`, `src/real-e2e/scenario-fixture.ts`, `src/drift-checks/rules.ts`, `src/sync/rules-sync.ts`
+  - **Acceptance**: A real-e2e scenario seeds duplicate blocks in `~/.config/agentbrew/shared-rules.md`, runs `agentbrew status --fix` (or the scenario helper equivalent), proves the source file is deduped, proves managed agent rules are redeployed from the cleaned source, then proves a second status run has no `rules-source` drift.
+  - **Hypothesis**: Exercising duplicate source rules through the same CLI path users run will catch wiring regressions that isolated unit tests and mocks can miss.
+  - **Success**: `npm run test:real-e2e:selected -- <rules-source-hygiene-scenario>` exits 0 and fails if `dedupeSharedRulesFile()` is no longer called before rules sync in `fix()`.
+  - **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
+  - **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
+  - **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
 - [ ] Agentfile apply tests mock the state getters with non-copy semantics
-  **ID**: agentfile-apply-test-getter-fidelity
-  **Tags**: scout, agentfile, tests
-  **Details**: Scouted while fixing `agentfile-authoritative-apply-drops-new-entries`. Many tests in `src/agentfile-apply.test.ts` stub `getStateServers` / `getStateSources` with fixed arrays that do not mirror the real shallow-copy behavior, which hid the lost-addition bug. One test returns an empty list while state holds a server. Replace the per-test stubs with a shared faithful default and keep the stub only where a test needs divergence.
-  **Files**: `src/agentfile-apply.test.ts`
-  **Acceptance**: The `vi.mock("./agentfile.js")` factory defaults the two getters to the real copy behavior, and the suite stays green.
-
-- [ ] Expose a repo-only base catalog loader for static analyzers
-  **ID**: base-catalog-loader-for-static-analyzers
-  **Tags**: scout, catalog, agent-artifacts, static-analysis
-  **Details**: Scouted while implementing `agent-artifact-inventory-static-gate`. `loadCatalog()` intentionally merges the machine-local team overlay from `state.team.catalogOverlayPath`, which is correct for install/catalog UX but wrong for repo-owned static analyzers that must inventory only `src/catalog.yaml`. The new agent-artifact inventory therefore has to parse `src/catalog.yaml` directly to stay deterministic and avoid org/team overlay bleed-through. Add a small exported loader, for example `loadBaseCatalog({ path? })`, that reuses the existing catalog parsing/schema shape but never consults state or overlays.
-  **Files**: `src/catalog/types.ts`, `src/catalog/types.test.ts`, `src/agent-artifacts/inventory.ts`
-  **Acceptance**: Static analyzers can load only the base repo catalog without reading `state.yaml`; tests prove `loadCatalog()` still merges a configured overlay while `loadBaseCatalog()` returns only `src/catalog.yaml`; `collectAgentArtifacts()` uses the new loader and still reports zero diagnostics for the current repo.
-  **Hypothesis**: Separating "base repo catalog" from "runtime merged catalog" removes duplicated YAML parsing and prevents future static gates from accidentally linting private/team overlay entries.
-  **Success**: A fixture with an overlay-only MCP appears in `loadCatalog()` but not in `loadBaseCatalog()` or the agent-artifact inventory.
-  **Pivot**: If catalog loading needs more cleanup, extract a pure `loadCatalogFile(path)` helper and implement both public loaders on top of it.
-  **Measurement**: `npx vitest run src/catalog/types.test.ts src/agent-artifacts` stays green with explicit overlay/base split assertions.
-  **Anchor**: VISION.md G4 "single source of truth" and AGENTS.md rule #8 "team overlay lives in the team overlay repo".
+  - **ID**: agentfile-apply-test-getter-fidelity
+  - **Tags**: scout, agentfile, tests
+  - **Details**: Scouted while fixing `agentfile-authoritative-apply-drops-new-entries`. Many tests in `src/agentfile-apply.test.ts` stub `getStateServers` / `getStateSources` with fixed arrays that do not mirror the real shallow-copy behavior, which hid the lost-addition bug. One test returns an empty list while state holds a server. Replace the per-test stubs with a shared faithful default and keep the stub only where a test needs divergence.
+  - **Files**: `src/agentfile-apply.test.ts`
+  - **Acceptance**: The `vi.mock("./agentfile.js")` factory defaults the two getters to the real copy behavior, and the suite stays green.
+  - **Hypothesis**: Mocks that return the same array on every call hide mutation bugs; copy-semantics mock defaults make the suite catch them.
+  - **Measurement**: `npx vitest run src/agentfile-apply.test.ts`, then again with a deliberate `push()` into a getter result inside `applyAgentfile`.
+  - **Pivot**: If copy-semantics defaults force rewrites of more than five unrelated tests, apply them only to new tests and note why.
+  - **Anchor**: Meszaros 2007, *xUnit Test Patterns* (test double fidelity).
 
 - [ ] Stop the authoritative Agentfile apply from pruning sources that back Agentfile skills
-  **ID**: agentfile-apply-keeps-skill-sources
-  **Tags**: scout, sync, agentfile
-  **Details**: Scouted while fixing `sync-pull-agentfile-skill-installs`. The authoritative apply drops every non-team source the Agentfile `sources:` list omits, including catalog-derived sources that back skills named in `skills:`. `sync` and `sync --pull` now re-add them by installing the skills straight after the apply. State still loses those sources briefly, and any caller that applies without the install step drops them for good.
-  **Files**: `src/agentfile-apply.ts` (mergeAgentfileSources)
-  **Acceptance**: an authoritative apply keeps a source whose installed skills the Agentfile requests. A test in `src/agentfile-apply.test.ts` pins it.
-
-- [ ] Fix 2 pre-existing test failures unrelated to feature work
-  **ID**: fix-stale-test-failures
-  **Tags**: scout, tests, flake
-  **Details**: Scouted 2026-05-11 while landing `fix/skill-sync-follow-symlinks`. Two tests fail on a clean `main` checkout (confirmed by running with the symlink-fix changes stashed):
-    1. `src/commands/cli-install.test.ts > registerDefaultAction > keeps a failing exit code when the state file exists but could not be loaded` — assertion `expected +0 to be 1`. The exit code handling for unreadable-state.yaml regressed.
-    2. `src/real-e2e/scenario-fixture.test.ts > runWithScenarioSandbox > seeds a default state with detected agents for CLI scenarios` — `spawn ~/.local/share/fnm/node-versions/v24.15.0/installation/bin/node ENOENT`. The e2e harness pins an absolute Node binary path that doesn't exist on this machine (and won't exist on CI runners with different fnm versions).
-
-    Together these block agents from running `npm run test:all` as a green baseline before adding new tests — every diff looks like it introduced failures until you stash and confirm.
-  **Files**: [`src/commands/cli-install.test.ts`](src/commands/cli-install.test.ts), [`src/commands/cli-install.ts`](src/commands/cli-install.ts), [`src/real-e2e/scenario-fixture.test.ts`](src/real-e2e/scenario-fixture.test.ts), [`src/real-e2e/scenario-fixture.ts`](src/real-e2e/scenario-fixture.ts)
-  **Acceptance**: `npm run test:all` exits 0 — 3508/3508 pass.
-  **Output**: code
-  **Hypothesis**: The 2 test failures have independent root causes: (1) exit-code handling regression in `registerDefaultAction`, (2) hardcoded absolute Node path from fnm. Fixing both unblocks `npm run test:all` as a green baseline.
-  **Success**: `npm run test:all` exits 0 with all tests passing.
-  **Pivot**: If the e2e test's Node path issue is systemic (fnm version varies per machine), replace the absolute path with `process.execPath` or a `which node` probe. If the exit-code test is flaky (timing), add a retry or mock the exit handler.
-  **Measurement**: `npm run test:all 2>&1 | tail -1` shows all tests pass with 0 failures.
-  **Anchor**: agentbrew AGENTS.md rule #1 (test before committing requires a green baseline); vitest documentation on `process.execPath`.
+  - **ID**: agentfile-apply-keeps-skill-sources
+  - **Tags**: scout, sync, agentfile
+  - **Details**: Scouted while fixing `sync-pull-agentfile-skill-installs`. The authoritative apply drops every non-team source the Agentfile `sources:` list omits, including catalog-derived sources that back skills named in `skills:`. `sync` and `sync --pull` now re-add them by installing the skills straight after the apply. State still loses those sources briefly, and any caller that applies without the install step drops them for good.
+  - **Files**: `src/agentfile-apply.ts` (mergeAgentfileSources)
+  - **Acceptance**: an authoritative apply keeps a source whose installed skills the Agentfile requests. A test in `src/agentfile-apply.test.ts` pins it.
+  - **Hypothesis**: Keeping sources that back Agentfile `skills:` entries stops an authoritative apply from deleting skills the user declared.
+  - **Measurement**: A test in `src/agentfile-apply.test.ts`: an Agentfile lists a skill whose source is not in `sources:`; after an authoritative apply the source and skill remain.
+  - **Pivot**: If apply cannot map a skill to its source, require the source in `sources:` and print a warning naming the skill instead.
+  - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state; sync must not remove what it declares).
 
 - [ ] Wire the advertised `agentbrew skills validate` command to the existing skill validator
-  **ID**: wire-skills-validate-command
-  **Tags**: scout, cli, validation, correctness, skill-eval, P1
-  **Details**: While authoring the workflow/debugging eval batch on 2026-06-04, `npm run dev -- skills validate --help` showed only the `coverage` subcommand, but multiple user-facing diagnostics still tell users to run `agentbrew skills validate`: `src/drift-checks/skills.ts:104`, `src/health.ts:170`, and related tests. The validator already exists in `src/skills/validate.ts` and display code exists in `src/skills/skill-validate-display.ts`; the missing piece is CLI registration under `agentbrew skills validate`.
-  **Files**: `src/commands/cli-skills.ts`, `src/skills/validate.ts`, `src/skills/skill-validate-display.ts`, `src/drift-checks/skills.ts`, `src/health.ts`, tests under `src/skills/` or `src/commands/`.
-  **Acceptance**: `npm run dev -- skills validate --help` documents a validate subcommand; `npm run dev -- skills validate --builtins` or the chosen equivalent exits 0 on current built-ins and renders the existing validation display; diagnostics that say "Run: agentbrew skills validate" point to a command that actually exists; `npm run verify` passes.
-  **Output**: code
-
-- [ ] Make companion competitor watch honor repo-specific competition directory names
-  **ID**: companion-competitor-watch-competition-dir-drift
-  **Tags**: docs, skills, companion, competitor, P1
-  **Hypothesis**: Teaching the lane to discover `docs/competition/` as well as `docs/competitors/` prevents it from creating a parallel stale competitor corpus in repos like agentbrew.
-  **Success**: In a repo that has `docs/competition/` and no `docs/competitors/`, the skill refreshes or reports the existing competition corpus instead of creating a competing directory.
-  **Pivot**: If cross-repo naming is too varied for heuristics, make the competitor-doc directory a required flag or project config field.
-  **Measurement**: `grep -n "docs/competition" skill-plugins/dev/companion-competitor-watch/SKILL.md`
-  **Anchor**: agentbrew VISION.md G1 "Curate, not host" + companion-competitor-watch SKILL.md "Identify competitors" / "Where they live".
-  **Details**: The current skill repeatedly names `docs/competitors/<NAME>.md`, but this repo's canonical competitor corpus is `docs/competition/*.md`. Running the lane as written can create a second directory and split prior art away from the docs the PR template and competitor-spot-check flow already read.
-  **Files**: `skill-plugins/dev/companion-competitor-watch/SKILL.md`, `docs/competition/`, `TASKS.md`.
-  **Acceptance**: The skill documents how to detect `docs/competition/` vs `docs/competitors/`, its task template links to the detected directory, and a dry-run in this repo does not propose creating `docs/competitors/`.
-
-- [ ] Establish a numbered constitutional rules section in `VISION.md` (Minsky-style)
-  **ID**: establish-vision-constitutional-rules
-  **Tags**: scout, constitution, vision-alignment
-  **Details**: Minsky's `vision.md` ships 17 numbered, CS-anchored, CI-enforced constitutional rules. agentbrew's VISION.md has principles ("delegate → contribute → absorb", "curator, not host") but they're prose — not numbered, not CS-anchored, not individually CI-enforced. Adopting Minsky's structure makes every PR review able to cite "violates rule N".
-
-  Build: add a `## Constitutional rules` section to `VISION.md`. Number 1–N, each with: (a) one-paragraph statement, (b) CS / engineering literature anchor (e.g. Gamma 1994 for adapters, Beer 1972 for VSM, Armstrong 2007 for let-it-crash), (c) link to its deterministic CI lint at `scripts/check-rule-<N>-<name>.mjs`, (d) escape hatch (when explicit deviation is allowed). Starter set inferred from existing AGENTS.md rules:
-
-  1. Curator, not host (delegate → contribute → absorb) — anchored to Minsky rule #1, Gamma Adapter pattern
-  2. Every external dependency behind an interface (`src/adapters/`) — Minsky rule #2
-  3. Test-first, doc-first — Minsky rule #3
-  4. Tickets are prompts (outcome-shaped, not implementation-shaped) — dheer.co/tickets-are-prompts
-  5. Always scout and record (every PR carries scouted tasks) — agentbrew AGENTS.md rule #11
-  6. Hypothesis-driven (every task ships H/S/P/M/A fields) — Minsky rule #9
-  7. Deterministic enforcement (every rule has a CI lint) — Minsky rule #10
-  8. Default by default (new behavior is the default, not opt-in) — Minsky rule #16
-  9. Proactive healing (observation IS the fix) — Minsky rule #17
-  10. Multi-agent git safety (no `reset --hard`, no `add -A`) — agentbrew AGENTS.md
-  11. Publishing requires per-action approval — agentbrew AGENTS.md rule #14
-  12. README drift is a bug (CI-enforced sync) — agentbrew AGENTS.md
-  13. No org-specific content in shared paths (overlay-only) — agentbrew AGENTS.md rule #8
-
-  Each rule lands with: (a) row in VISION.md table, (b) sentence in CHANGELOG, (c) a `scripts/check-rule-<N>-<name>.mjs` (or pointer to existing lint), (d) for "iron" rules: PR template gate.
-
-  This is the meta-task that legitimises the four follow-up rules (`adopt-rule-9-iron-hdd`, `-rule-10-deterministic-enforcement`, `-rule-12-proactive-healing`, `-rule-3-doc-first`).
-  **Files**: VISION.md (new `## Constitutional rules` section), scripts/check-rule-* (one per rule, port shapes from Minsky), CHANGELOG.md, .github/pull_request_template.md (extend Vision-trace block with "Rule violations:" line)
-  **Acceptance**: `VISION.md` has a numbered constitutional rules section with ≥10 rules, each with: anchor, CI lint path, escape hatch. Every rule has either a working `scripts/check-rule-<N>-<name>.mjs` OR a documented "advisory only" classification. PR template surfaces rule citations.
-  **Hypothesis**: Numbering + CS-anchoring + CI-enforcing the existing soft principles makes drift visible in review and removes the "but the spirit said…" debate class.
-  **Success**: Within 30 days of shipping, ≥3 PRs are rejected or changed in review citing a specific rule number (vs the current "feels wrong" review pattern).
-  **Pivot**: If numbered rules calcify into bureaucracy (PRs take 2x longer to review because reviewers cite rules nitpickingly), shrink to ≤5 iron rules and demote the rest to soft guidance.
-  **Measurement**: `grep -c '^### [0-9]\+\.' VISION.md ≥ 10` AND `ls scripts/check-rule-*.mjs | wc -l ≥ 5`.
-  **Anchor**: Minsky `vision.md` § "The constitution" (17 numbered rules); Havelund & Goldberg 2008 *Runtime Verification* (the project specification + runtime monitor pattern); Lessig 2006 *Code is Law* (norms-as-code argument for why this works).
-
-- [ ] Make hypothesis-driven development an iron rule (rule #9) — CI-required H/S/P/M/A on every P0/P1
-  **ID**: adopt-rule-9-iron-hdd
-  **Tags**: scout, rule-9, ci-gate, constitution
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: agentbrew already uses Minsky-style Hypothesis / Success / Pivot / Measurement / Anchor fields on many tasks (see `agentbrew-tasks-rule9-fill-sweep` for the existing partial-coverage state). But they're voluntary. Minsky's rule #9 is iron: no exemption for small fixes, obvious bugs, or refactors. Every change declares — before code is written — its hypothesis, success threshold, pivot threshold, measurement command, and literature anchor. Vanity metrics and post-hoc metrics are forbidden.
-
-  Build:
-  1. Promote H/S/P/M/A to REQUIRED for `## P0` and `## P1` tasks via `src/docs/tasks-md-output-cadence.test.ts` (extend the existing validator).
-  2. Add `scripts/check-rule-9-hdd-fields.mjs` matching Minsky's `pickHostTask` regex shape (`^\*\*<Field>\*\*:\s*(.+)$` per line — single-line values).
-  3. Make the agentbrew task-picker (whichever workflow picks next-task) reject P0/P1 tasks missing any of the 5 fields.
-  4. Extend the `add-task.sh` helper to prompt for each field if missing.
-  5. Sweep the 12 existing P0/P1 tasks missing fields (already tracked in `agentbrew-tasks-rule9-fill-sweep`) — close that task by completing the sweep within this PR's scope.
-  6. Add escape hatch: `**Replace? Relocate?:**` answer can be `N/A — <reason ≥3 chars>` if genuinely not applicable, same as Minsky's pattern.
-
-  Cross-link: `agentbrew-tasks-rule9-fill-sweep` (existing P1) becomes a subtask of this — completes when the rule lands.
-  **Files**: src/docs/tasks-md-output-cadence.test.ts (extend), scripts/check-rule-9-hdd-fields.mjs (new), scripts/add-task.sh (prompt for fields), TASKS.md (sweep the 12 violators), .github/pull_request_template.md (mention rule #9 enforcement)
-  **Acceptance**: (a) `node scripts/check-rule-9-hdd-fields.mjs` returns 0 errors on every P0/P1 task; (b) the validator runs in CI on every PR; (c) `add-task.sh --priority P1` prompts for all 5 fields and refuses to insert without them; (d) the existing 12-task sweep is complete.
-  **Hypothesis**: Making H/S/P/M/A iron (required, CI-gated, no exemption) forces "is this change actually worth doing?" thinking before code is written — same effect as Minsky's rule #9 achieves.
-  **Success**: After 30 days, the next 10 P1 tasks all ship with all 5 fields populated. Mean time from task-claim to pivot-decision drops because pivot thresholds are written down up-front.
-  **Pivot**: If field-prompting blocks legitimate small fixes (e.g. "fix typo in README" can't honestly produce a measurable hypothesis), add a `**Iron-exemption-justified-by:**` field that requires a one-line argument and is reviewer-checked. Don't drop the rule.
-  **Measurement**: `node scripts/check-rule-9-hdd-fields.mjs --json | jq '.violations | length'` returns 0; `gh pr view <N> --json statusCheckRollup | jq '.statusCheckRollup[] | select(.name=="rule-9-hdd")'` returns pass on every PR.
-  **Anchor**: Minsky `vision.md` § 9 "Pre-registered hypothesis-driven development (iron rule)"; Basili/Caldiera/Rombach 1994 *Goal-Question-Metric*; Popper 1959 *Logic of Scientific Discovery* (falsifiability — pivot threshold IS the falsifier).
-
-- [ ] Make deterministic enforcement an iron rule (rule #10) — every constitutional rule has a CI lint
-  **ID**: adopt-rule-10-deterministic-enforcement
-  **Tags**: scout, rule-10, ci-gate, constitution
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: Minsky's rule #10: "Every constitutional rule must be enforced by a deterministic CI check — not a Skill, not an LLM, not 'the agent will remember'. LLM-driven checks are advisory only; never load-bearing." When a rule resists mechanisation, split into deterministic substrate + explicit human-judgement layer. When a deterministic linter ships, any prior Skill-based enforcement is removed in the same PR (the ratchet rule).
-
-  agentbrew has ~rules in AGENTS.md that match Cat A/B.md but mostly relies on the reviewer noticing violations. Examples of rules that should be CI-lints but aren't:
-  - Rule #8 "team overlay lives in team overlay repo" — has `tests/no-internal-refs.bats` style coverage but not an end-to-end gate
-  - Rule #11 "Always scout and record" — has no CI lint; reviewers eyeball PR diff for new TASKS.md entries
-  - Rule #12 "A ticket is optional" — no CI check (github.com has no Jira check)
-  - Rule #14 "Publishing requires per-action approval" — purely operator-side, no agentbrew lint
-  - Rule #15 (Minsky terms — agentbrew doesn't have one yet) "Milestone alignment gate before picking tasks" — not enforced
-
-  Build:
-  1. Audit every numbered rule in VISION.md (after `establish-vision-constitutional-rules` lands) and map each to either: (a) existing CI lint, (b) new `scripts/check-rule-<N>-<name>.mjs`, (c) declared "advisory only" with rationale.
-  2. Add `scripts/check-rule-10-coverage.mjs` (meta-lint) that parses VISION.md, finds every numbered rule, and asserts each row points at an existing lint OR is explicitly marked advisory.
-  3. CHANGELOG entry naming the substrate vs human-judgement split for each rule that can't be fully mechanised.
-  4. Ratchet rule: any PR that adds a new LLM-judged enforcement (e.g. "the reviewer agent checks for X") is rejected — must add deterministic gate alongside.
-  **Files**: scripts/check-rule-10-coverage.mjs (new), scripts/check-rule-*.mjs (audit + extend per rule), VISION.md (cross-link each rule to its lint), CHANGELOG.md, .github/pull_request_template.md (require "rule-lint coverage" checklist for new constitutional rules)
-  **Acceptance**: every numbered rule in VISION.md has a row pointing at either a passing CI lint or a "ADVISORY ONLY — <reason>" declaration; `scripts/check-rule-10-coverage.mjs` returns 0; the meta-lint runs in CI on every PR.
-  **Hypothesis**: Forcing every rule into either deterministic enforcement OR explicit advisory removes the silent "I forgot the rule existed" failure mode that prose-only rules suffer from.
-  **Success**: After 30 days, ≥80% of constitutional rules have working CI lints; the remaining ≤20% are explicitly marked advisory with rationale.
-  **Pivot**: If certain rules genuinely cannot be mechanised (e.g. "code is clean") and the advisory-only carve-out grows past 50% of rules, the constitution itself is too aspirational — narrow it to enforceable rules and move soft guidance to a separate `docs/style.md`.
-  **Measurement**: `node scripts/check-rule-10-coverage.mjs --json | jq '[.rules[] | select(.lint == null and .advisory == false)] | length'` returns 0.
-  **Anchor**: Minsky `vision.md` § 10 "Deterministic enforcement (iron rule)"; Havelund & Goldberg 2008 *Runtime Verification* (specification monitor pattern); Lessig 2006 *Code is Law* (code-as-norm).
-
-- [ ] Make proactive healing an iron rule (rule #12 / Minsky rule #17) — observation IS the fix
-  **ID**: adopt-rule-12-proactive-healing
-  **Tags**: scout, rule-12, ci-gate, constitution
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: Minsky's rule #17 (their highest-numbered, iron): "Observation IS the fix. Every error you see — `spawn-failed`, `scope-leak`, `ETIMEDOUT`, stack traces, hung processes, flaky tests, red CI checks — is treated as work to ship in the SAME session, the SAME PR if possible. 'Observe and report' is forbidden. 'Mental note for later' is forbidden."
-
-  Four mandatory parts:
-  1. **Same-session action.** The agent who observed the error owns the fix before its session ends. If the fix needs an external action, file a `TASKS.md` block with `**Blocked**: <one-word-code>` and the unblock path on the first line — never both fix-attempted and silently-moved-on.
-  2. **Fix the class, not the instance.** Land the lint or invariant that prevents the entire category (rule #10 shape). A 401 today means the auth path is fragile — add a CI lint, not just a retry.
-  3. **Heal before reporting.** Every status message to the operator must carry an active verb: `fixed`, `patched`, `rolled out`, or `filed-blocked-because`. A bulleted summary of failures with zero merged fixes is the exact pattern this rule forbids.
-  4. **Deterministic gate.** `scripts/check-rule-12-proactive-heal.mjs` runs on every PR: if observed-error tokens > 0 in the PR body or diff comments AND `(prs-opened + tasks-filed + commits-landed) == 0`, the PR is rejected.
-
-  agentbrew today has the `scout and record` rule (#11 in AGENTS.md) which is the WEAKER form — "file a task for follow-up". Rule #12 is stronger: file AND fix what you can, in the same PR.
-
-  Build:
-  1. `scripts/check-rule-12-proactive-heal.mjs` that parses the PR body + diff for error-token regex (`spawn-failed`, `ETIMEDOUT`, `401`, `404`, stack trace lines, red CI markers, etc.) and asserts at least one fix marker (`fixed:`, `patched:`, `filed-blocked-because:`, or matching TASKS.md `**Blocked**:` line).
-  2. PR template extension: add "Scout log" section that explicitly lists every error/anomaly observed during this PR's work, with the disposition for each.
-  3. AGENTS.md: replace the weaker "scout and record" rule #11 with rule #12 (same-PR fix-class-not-instance).
-  4. Trigger phrases that activate this rule (per Minsky): "fix bugs before they happen", "be proactive", "make sure agentbrew picks them up", "make it persist", "make it iron rule". When the operator uses these, the agent must demonstrate same-session fixes, not just file tasks.
-
-  Cross-link: replaces / strengthens existing AGENTS.md rule #11.
-  **Files**: scripts/check-rule-12-proactive-heal.mjs (new), .github/pull_request_template.md (add Scout log section), AGENTS.md (replace rule #11 with rule #12), VISION.md (cross-link to constitution table)
-  **Acceptance**: (a) lint runs on every PR; (b) PRs that observe errors without shipping fixes OR explicit `Blocked: <code>` tasks are rejected; (c) PR template Scout log section is filled on every non-trivial PR; (d) AGENTS.md rule #11 is upgraded to rule #12 shape.
-  **Hypothesis**: Forcing same-PR fix-class-not-instance prevents the "I noticed but didn't fix" pattern that lets bugs survive across sessions.
-  **Success**: After 30 days, ≥50% of PRs include at least one same-session fix beyond the PR's primary scope (scouted findings shipped in the same commit).
-  **Pivot**: If "must fix same session" causes scope creep that delays PRs by >50%, weaken to "must file same PR" (matching current rule #11) and shift the iron-discipline to a follow-up session that picks up scouted tasks within 24h.
-  **Measurement**: `node scripts/check-rule-12-proactive-heal.mjs --json | jq '.violations | length'` returns 0 on shipped PRs; PR-body word count of fix markers averages ≥1 per PR.
-  **Anchor**: Minsky `vision.md` § 17 "Proactive healing (rule #17 — iron, no exemption)"; Erlang/OTP "let-it-crash" supervisor pattern (Armstrong 2007); Beck 2002 *Test-Driven Development* (fix-it-when-you-see-it discipline).
-
-- [ ] Adopt Minsky-style adapter discipline — `src/adapters/`, dependency table, Replace? Relocate? gate
-  **ID**: adopt-minsky-adapter-discipline
-  **Tags**: scout, architecture, vision-alignment
-  **Details**: Minsky's `vision.md` rules #1 and #2 codify what agentbrew's VISION.md says softly: every external dependency lives behind an interface in `novel/adapters/<name>.ts` with a vendor impl `<name>.<vendor>.ts`, a `selfTest()` method, and a row in a load-bearing dependency table parsed by CI (`scripts/check-rule-2-dep-coverage.mjs`). Every new feature ships paired with a "Replace? Relocate?" research task. Quarterly: scan whether each novel layer is now solvable upstream and replace yourself. See `~/apps/tooling/minsky/ARCHITECTURE.md` § "The adapter pattern" and § "The dependency table".
-
-  agentbrew already delegates well (vercel/skills, mcpm.sh, block/ai-rules) but has no iron discipline behind it. Three concrete gaps surfaced by the 2026-05-25 ecosystem audit:
-
-  1. **No `src/adapters/` layer.** Sync engines import vendor concepts directly (`src/sync/mcp-sync.ts` knows about `mcpm`, `src/sync/rules-sync.ts` knows about `ai-rules`, `src/sync/skills-sync.ts` knows about `skills` CLI). A future swap (e.g. replacing mcpm.sh with the official MCP Registry — see `mcp-registry-pull-aggregator` task) requires touching every consumer.
-
-  2. **No dependency table.** ARCHITECTURE.md has prose mentions of delegated tools but no machine-parseable table that a CI lint can check. Compare Minsky's `ARCHITECTURE.md` § "The dependency table" — load-bearing, CI-enforced.
-
-  3. **No "Replace? Relocate?" research-task pattern.** Per Minsky rule #1: "Every new feature ships with a paired 'Replace? Relocate?' research task (default candidate hosts: agentbrew, dotfiles, tasks.md)." agentbrew has the `delegate → contribute → absorb` strategy but no required-pairing rule. Result: features ship without asking whether the ecosystem now solves it (e.g. the MCP catalog hand-curation should have been a Replace task once `modelcontextprotocol/registry` shipped its v0.1 API freeze in Oct 2025).
-
-  Concrete build:
-  - Create `src/adapters/` with `task-queue.ts`, `mcp-registry.ts`, `skill-source.ts`, `rules-engine.ts`, `command-engine.ts` interfaces — mirroring Minsky's adapter shape
-  - Move existing delegation logic into `<name>.<vendor>.ts` implementations (e.g. `mcp-registry.mcpm.ts`, `skill-source.vercel.ts`, `rules-engine.airules.ts`)
-  - Add `**Replace? Relocate?:**` required-field gate to TASKS.md schema for new P1+ tasks (extend `src/docs/tasks-md-output-cadence.test.ts`)
-  - Add `ARCHITECTURE.md` dependency table + CI lint at `scripts/check-rule-2-dep-coverage.mjs` (port from Minsky)
-  - Add quarterly `RECURRING.md` entry: "Scan novel layers for upstream replacement candidates"
-  **Files**: src/adapters/ (new), src/sync/*.ts (refactor to use adapter interfaces), ARCHITECTURE.md (new dependency table section), scripts/check-rule-2-dep-coverage.mjs (new), src/docs/tasks-md-output-cadence.test.ts (extend with Replace? Relocate? field), RECURRING.md (new quarterly scan entry)
-  **Acceptance**: (a) `src/adapters/` exists with ≥the interface files listed below matching Minsky's pattern; (b) every external dependency in agentbrew (mcpm, vercel/skills, ai-rules, registry.modelcontextprotocol.io, lefthook, etc.) has a corresponding `<name>.<vendor>.ts` impl with `selfTest()`; (c) ARCHITECTURE.md has a machine-parseable dependency table; (d) `scripts/check-rule-2-dep-coverage.mjs` runs on every PR and fails when a new dep lands without a row; (e) every new P1/P2 task block has a `**Replace? Relocate?:**` field with answer or `N/A — <reason ≥3 chars>`; (f) RECURRING.md has a quarterly scan task.
-  **Hypothesis**: Codifying Minsky's adapter discipline (interface + impl + selfTest + dep-table + quarterly scan) reduces agentbrew's vendor-lock-in risk and surfaces "this is now upstream" opportunities ~3x faster than the current implicit `delegate → contribute → absorb` strategy.
-  **Success**: ≥80% of agentbrew's external deps have an adapter pair within 1 sprint after the lint lands; the first quarterly scan surfaces ≥2 candidate Replace/Relocate tasks not already in TASKS.md.
-  **Pivot**: If after 1 sprint the adapter layer adds friction without surfacing upstream-replacement candidates (i.e. ≤1 candidate from the scan), revert to the current implicit strategy and document why agentbrew's curator-not-host posture doesn't need Minsky's iron rules.
-  **Measurement**: `find src/adapters -name '*.ts' -type f | wc -l ≥ 10` AND `node scripts/check-rule-2-dep-coverage.mjs` returns 0 AND `grep -c 'Replace? Relocate?:' TASKS.md ≥ 5`
-  **Anchor**: Minsky `vision.md` § "1. Don't reinvent the wheel" + § "2. Every dependency behind an interface" (~/apps/tooling/minsky/vision.md); Gamma et al., *Design Patterns*, 1994 (Adapter + Strategy patterns); agentbrew VISION.md § "Strategy: delegate → contribute → absorb" (the soft precursor).
-
-- [ ] Pull catalog from upstream MCP Registry (`registry.modelcontextprotocol.io`)
-  **ID**: mcp-registry-pull-aggregator
-  **Tags**: scout, mcp, ecosystem-alignment, vision-curator-not-host
-  **Details**: The official MCP Registry (`modelcontextprotocol/registry`, 6.7k stars) froze its API at v0.1 in October 2025. Anthropic, GitHub, PulseMCP, and Microsoft back it. The registry explicitly expects downstream aggregators to scrape `GET /v0.1/servers` hourly and persist a local cache. Filter params: `updated_since` (RFC3339), `search`, `version=latest`, `include_deleted`. See https://modelcontextprotocol.io/registry/about and https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/api/official-registry-api.md.
-
-  agentbrew's current MCP catalog is hand-curated in `src/catalog.yaml` (196 items as of 2026-05-25). This is honest curation but doesn't scale — the upstream registry will outgrow the hand-list within months. Per VISION.md "Curator, not host", agentbrew is supposed to BE a downstream aggregator. Pulling from the registry is the literal definition of that role.
-
-  Concrete build:
-  - New module `src/catalog/mcp-registry-aggregator.ts` that fetches `GET /v0.1/servers?version=latest` hourly
-  - Cache in `~/.config/agentbrew/cache/mcp-registry.json` with TTL + `If-Modified-Since` revalidation
-  - Merge into in-memory catalog with `source: upstream-registry` tag (vs `source: agentbrew-curated`)
-  - Add `agentbrew browse mcp --source=upstream|curated|all` flag
-  - Surface upstream MCPs in `agentbrew install <name>` (preferring upstream when names collide, with a `--curated` override)
-  - Add `src/catalog/mcp-registry-aggregator.test.ts` with HTTP fixture covering pagination, `updated_since`, deleted-server handling
-  - Document in README under "Catalog sources" section
-
-  This integrates with the `adopt-minsky-adapter-discipline` task — the registry client should be `src/adapters/mcp-registry.ts` (interface) + `src/adapters/mcp-registry.modelcontextprotocol.ts` (impl).
-  **Files**: src/catalog/mcp-registry-aggregator.ts (new), src/catalog/mcp-registry-aggregator.test.ts (new), src/adapters/mcp-registry.ts (new, per Minsky-discipline task), src/cli.ts (add `browse mcp --source` flag), README.md (Catalog sources section)
-  **Acceptance**: (a) `agentbrew browse mcp` shows upstream MCPs alongside curated ones with source provenance; (b) hourly cache refresh works with `If-Modified-Since`; (c) `agentbrew install` resolves to upstream entry by default when names collide; (d) tests cover pagination + incremental sync; (e) `agentbrew status --verbose` shows last upstream sync timestamp + count.
-  **Hypothesis**: Wiring agentbrew to the upstream MCP Registry reduces hand-curation work to ~zero for MCPs that exist upstream while preserving agentbrew's value-add (per-agent carve-outs, sync engine, drift detection).
-  **Success**: After 30 days, ≥70% of MCPs installed by agentbrew users resolve via the upstream registry path (not hand-curated catalog). `src/catalog.yaml` MCP entries shrink by ≥50% as hand-curated ones get marked upstream-equivalent and deleted.
-  **Pivot**: If the upstream registry's metadata quality is materially worse than agentbrew's curation (e.g., missing per-agent install args, broken `env:` specs, no tested DC vs Cloud parity), keep hand-curated as the primary and use upstream only for discovery (`browse mcp --source=upstream` lists, but `install` defaults to curated).
-  **Measurement**: `curl https://registry.modelcontextprotocol.io/v0.1/servers?version=latest | jq '.servers | length'` returns ≥100; `agentbrew browse mcp | grep -c 'source: upstream-registry' ≥ 50`; `grep -c 'mcpServers:' src/catalog.yaml` drops ≥50% after migration.
-  **Anchor**: MCP Registry API freeze announcement (2025-10-24), https://modelcontextprotocol.io/registry/about; agentbrew VISION.md § "Curator, not host"; Minsky rule #1 (don't reinvent the wheel) — registry IS the wheel.
-
-- [ ] Introduce "plugin bundle" catalog primitive — install N catalog items as one unit
-  **ID**: catalog-plugin-bundle-primitive
-  **Tags**: scout, catalog, ecosystem-alignment, ux
-  **Details**: The Claude Code plugin ecosystem (15.9k stars on `anthropics/claude-plugins-official`) has converged on "plugin = installable bundle". A plugin folder contains a `plugin.json` manifest + optional `commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`. Users `/plugin install <name>` to get the whole experience. claudepluginhub.com (April 2026): 32,019 active plugins, 282,325 components, 13,151 authors. Skills are 57.2% of components, commands 20.6%, agents 17.0%, MCP servers 2.5%, hooks 2.4%.
-
-  agentbrew's catalog lists catalog items (skills + MCP + rules) (skills + MCP servers + rules). To get "the Frontend Design experience" a user has to know which skills, MCP servers, and rules to install. The ecosystem solved this with the plugin bundle. agentbrew should adopt the same primitive — `src/catalog.yaml` gains a `bundles:` section listing groups of catalog items; `agentbrew install <bundle-name>` installs all members.
-
-  This is NOT skill hosting (agentbrew remains a curator). A bundle is a reference list — it points at existing catalog entries (which themselves point at source repos / upstream registries). The bundle metadata adds: title, description, recommended for (audit-focused / dev-focused / WORKSPACE-specific), members `[skill-id, mcp-id, rule-id, ...]`, optional `recommended_by_default: true` for the Tier 1 set.
-
-  Concrete build:
-  - Extend `src/catalog.yaml` schema with `bundles:` section
-  - Add `BundleManifest` type to `src/types.ts`
-  - Add `agentbrew install <bundle-name>` resolver that fans out to each member's install path
-  - Add `agentbrew browse bundles` command
-  - Seed with 3-5 starter bundles: `verify-everything` (verification-before-completion + doubt + code-smells-aware + tdd skills), `mcp-essentials` (top 5 MCPs by install volume), `frontend-design`, `dotfiles-aware`
-  - Add tests: bundle resolves to existing catalog items, missing member fails loudly, bundle install is idempotent
-  **Files**: src/catalog.yaml (new `bundles:` section), src/types.ts (BundleManifest type), src/catalog/bundle-resolver.ts (new), src/catalog/bundle-resolver.test.ts (new), src/cli.ts (add `install <bundle>` + `browse bundles`), README.md (Bundles section)
-  **Acceptance**: (a) `agentbrew install verify-everything` installs all verification skills in the catalog + relevant rules in one command; (b) `agentbrew browse bundles` lists available bundles with description + member count; (c) bundle members reference existing catalog entries (no skill content duplicated); (d) tests cover happy path + missing-member rejection + idempotent reinstall.
-  **Hypothesis**: Bundles reduce "I want the X experience" from a a small set of command dance to a single command, matching what the Claude Code marketplace, claudepluginhub, and tonsofskills have all converged on.
-  **Success**: ≥3 starter bundles ship; `agentbrew install <bundle>` is the most-used install command within 30 days (vs individual `install <item>`).
-  **Pivot**: If users prefer hand-picking individual items (the curatorial discipline) and bundles see <10% usage, deprecate the bundle primitive and instead ship "recommended starter pack" docs that list the manual commands.
-  **Measurement**: `node -e "const c = require('js-yaml').load(require('fs').readFileSync('src/catalog.yaml','utf8')); console.log(c.bundles?.length ?? 0)"` returns ≥3; `agentbrew browse bundles --json | jq 'length' ≥ 3`.
-  **Anchor**: `anthropics/claude-plugins-official` README — bundle structure (`commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`); claudepluginhub.com April 2026 stats (282,325 components, bundle is the install unit); Claude Code docs https://code.claude.com/docs/en/discover-plugins.md.
-
-- [ ] Extend `hooks-sync.ts` to deploy SessionStart hooks to Cursor (not just Claude Code)
-  **ID**: extend-hooks-sync-beyond-claude-code
-  **Tags**: scout, tier-3, hooks-sync, cursor-rules
-  **Scope**: Cursor only. Devin is deprecated and frozen (owner decision 2026-10-02); skip every Devin step below.
-  **Hypothesis**: today's `SessionStart` hook only fires in Claude Code. Extending hooks-sync.ts to also deploy equivalent hooks to Devin (`.devin/hooks/session-start.sh`) and Cursor (via a persistent rule with `run-first` directive) converts soft enforcement (rule text says "load context") to hard enforcement (script runs deterministically) for the the most-used agents in this user's setup.
-  **Success**: When a fresh session opens in any of {Claude Code, Devin, Cursor}, the `load-project-context.sh` script runs and dumps canonical-doc content into context BEFORE the agent's first response. Verified by inspecting session transcripts for each agent.
-  **Pivot**: If Devin doesn't support pre-first-response hooks (its `.devin/hooks/` model might be different from Claude Code's `SessionStart`), fall back to a `~/.config/devin/AGENTS.md` opening section that explicitly says "run this script first" — soft but at least loud.
-  **Measurement**: For each of {Claude Code, Devin, Cursor}: open a fresh session in any of the 7 solo-project repos and confirm the inventory output appears in the first response without manual invocation.
-  **Anchor**: Tier 3 of the strategy memo at end of the `feat: canonicalize project doc structure` PR thread (#1034, merged 2026-05-23). Today's hooks-sync.ts only targets `~/.claude/settings.json`.
-  **Details**: Three sub-tasks:
-    1. **Devin**: research what `.devin/hooks/` supports (session-start? per-tool? prompt-submit?). Add Devin to `hooks-sync.ts`'s output targets. Test with a fresh Devin session.
-    2. **Cursor**: Cursor has Rules with `alwaysApply: true` but not session-start hooks per se. Workaround: write a special-case rule that opens with "Before your first response, run `bash ~/.config/agentbrew/scripts/load-project-context.sh` and report findings." Sync it.
-    3. **Documentation**: update `templates/AGENTS.md` and the `load-project-context` catalog rule to mention which agents have hard-enforcement vs soft.
-  **Files**: `src/sync/hooks-sync.ts`, `src/core/agents.yaml` (if a new `hooksKey` per-agent is needed), tests in `src/sync/hooks-sync.test.ts`, plus a new `~/.config/agentbrew/Agentfile.yaml` hook entry for each agent.
-  **Acceptance**: hooks-sync.ts deploys a working SessionStart-equivalent for all those agents; integration test demonstrates the script fires in each.
-
-- [ ] Add YAML front-matter to every VISION.md so vision-conformance can be checked programmatically (Tier 4)
-  **ID**: vision-as-dsl-yaml-frontmatter
-  **Tags**: scout, tier-4, vision-as-dsl, programmatic-verification
-  **Hypothesis**: today's VISION.md is prose; an agent can't programmatically check "does proposal X violate VISION constraint Y." Adding a YAML front-matter block with `goals: [{id, name, measurable}]`, `constraints: [{id, name, enforced_by}]`, `nongoals: [<string>]` turns VISION into a queryable DSL. A new `verify-vision-trace` skill (built on the same `competitor-spot-check` pattern) takes a diff + the YAML, returns "this change satisfies G1, doesn't touch C1, doesn't conflict with any nongoal." That's enforceable; today's prose vision isn't.
-  **Success**: Each of the 7 solo-project repos' VISION.md has a YAML front-matter block. The new `verify-vision-trace` skill in agentbrew skill-plugins/dev/ takes a diff + the YAML, returns a structured PASS/FAIL with reasoning.
-  **Pivot**: If YAML front-matter conflicts with how the file is rendered (e.g. some markdown renderers don't strip front-matter), use a fenced ```yaml constraints``` code block instead.
-  **Measurement**: `yaml-validator < VISION.md` passes on each repo. `skill invoke verify-vision-trace --diff <path>` returns structured JSON.
-  **Anchor**: Tier 4 of the strategy memo at end of #1034.
-  **Details**: Sequencing matters:
-    1. Design the schema (small — goals, constraints, nongoals) and document it as a catalog rule (`vision-frontmatter`)
-    2. Roll it out to one pilot repo (agentbrew itself or minsky)
-    3. Build the `verify-vision-trace` skill that consumes it
-    4. Roll out to the other 5 repos
-    5. (Optional) wire into the pr-vision-trace CI gate: if the PR body's `Vision goal` field cites a goal id, verify it exists in the YAML
-  **Files**: each `VISION.md` (front-matter), `src/catalog.yaml` (vision-frontmatter rule), `skill-plugins/dev/verify-vision-trace/SKILL.md` (new skill), optional updates to `scripts/check-pr-vision-trace.mjs` to verify goal ids.
-  **Acceptance**: schema documented, pilot repo updated, skill ships, ≥1 PR uses goal-id verification.
-
-- [ ] Schedule `companion-competitor-watch` to run weekly per repo (Tier 5)
-  **ID**: schedule-companion-competitor-watch-weekly
-  **Tags**: scout, tier-5, competitor-corpus, scheduling, launchagent
-  **Hypothesis**: the `companion-competitor-watch` skill already exists in skill-plugins/dev/ but is opt-in and rarely run. Scheduling it weekly per repo via a launchagent keeps the competitive corpus living, not snapshotted. When a competitor ships in your space, a P3 TASKS.md entry shows up within 7 days.
-  **Success**: launchagent runs weekly, invokes the skill for each of the 7 solo-project repos, files P3 TASKS.md entries when prior art is found. Logs to `~/.config/agentbrew/competitor-watch.log`.
-  **Pivot**: If weekly is too noisy (>10 P3 tasks/week per repo), tune to bi-weekly or monthly. If competitor docs become repetitive, gate the file-task step on "is this novel relative to the last 90 days of P3 tasks under the same `**Tags**: competitor-watch`."
-  **Measurement**: `launchctl list | grep competitor-watch` shows the agent loaded. `cat ~/.config/agentbrew/competitor-watch.log` shows weekly entries. Per-repo TASKS.md grows.
-  **Anchor**: Tier 5 of the strategy memo at end of #1034.
-  **Details**: Use launchd (macOS) initially; portability to Linux comes later. The three canonical files:
-    1. `~/Library/LaunchAgents/com.agentbrew.competitor-watch.plist` — schedule + invocation
-    2. `~/.config/agentbrew/scripts/competitor-watch-runner.sh` — iterates over the 7 repos, invokes the skill per repo
-    3. `modules/agentbrew/doctor.sh` addition — verify launchagent is loaded
-  **Files**: as above plus a `templates/launchagents/competitor-watch.plist.tmpl` if dotfiles owns the deploy.
-  **Acceptance**: launchagent loaded, first run logs an entry per repo, ≥1 P3 task auto-filed within 4 weeks.
-
-- [ ] `agentbrew install` MCP env-sanitize drops `${VAR}` placeholders and strips npx `-y`
-  **ID**: install-mcp-env-sanitize-strips-vars-and-y-flag
-  **Tags**: scout, mcp, install, env-sanitize
-  **Blocked**: needs-decomposition — verification 2026-05-26: both reported issues have nuanced root causes that DIFFER from the original task body's diagnosis. The task should be split into two focused follow-ups before implementation. Verified empirically by replaying the exact arg pattern from the task body against `commander/esm.mjs` + tracing `src/mcp/env-vars.ts:259-269,344-378`:
-
-    **Issue 1 — `-y` is NOT stripped by env-sanitize; it's consumed by Commander's variadic-option parser.** Commander binds `-y` to `--yes` at the top level of `agentbrew install`. When the user passes `--args "--registry" "..." "-y" "@pkg"`, Commander's `--args <args...>` variadic terminates at the second `-y` (which it reads as the global `--yes` option) — args end up as `['--registry', '...']` and `@pkg` is silently dropped too. Confirmed by isolated repro at `commander/esm.mjs` parser level. The `parseKeyValuePairs` (`src/utils.ts:147`) and `addMcpServer` (`src/sync/mcp-sync-commands.ts:81`) code paths pass args through cleanly; no filter is removing `-y`. **Fix shape**: either (a) document the `--` separator collision prominently in `agentbrew install --help`, (b) detect-and-warn when `--args` doesn't include a package-name-shaped final entry, or (c) reconfigure Commander to disable known-flag-recognition mid-variadic (research required — Commander 11+ may have `argParser` hooks that allow this).
-
-    **Issue 2 — `${VAR}` placeholders are CONDITIONALLY omitted, not unconditionally dropped.** `src/mcp/env-vars.ts:344-378` (`getInheritedServerEnvKeys` + `convertServerEnvVars`) omits `${VAR}` entries for Devin's literal-format ONLY when `isShellEnvResolved(varName)` returns true (i.e. when the current process's `process.env[varName]` is set). The intentional behavior: avoid persisting secrets into `~/.config/devin/config.json` because Devin inherits the launching shell's env. The user's bug report from 2026-05-21 hit this trap because their interactive shell HAD `JIRA_PERSONAL_TOKEN` set (gh-token / keychain auto-load), but Devin's MCP runtime (launchd-spawned) DOESN'T inherit interactive-shell env — only launchd's env, which doesn't include shell-loaded secrets. **Fix shape**: emit a CLI warning at install time naming the omitted keys + explaining the inherit-from-shell contract, OR add a `--persist-placeholders` flag for users who want literal `${VAR}` preserved in the config (Devin then needs to interpolate at MCP launch). Both options require a decision about Devin's literal-format contract; the task body's "preserve the placeholder reference" framing is one design choice but not the only correct one.
-
-    **Unblock path**: split into two tasks, one per issue. Each gets its own fix-shape decision (UX vs config) made by the user before implementation.
-  **Details (original)**: Scouted 2026-05-21 while installing `@acme/jira-mcp` for Devin. Ran:
-    ```
-    agentbrew install jira-mcp -y \
-      --command npx \
-      --args "--registry" "https://registry.npmjs.example.com/" "-y" "@acme/jira-mcp@latest" \
-      --env "JIRA_PERSONAL_TOKEN=\${JIRA_PERSONAL_TOKEN}" "JIRA_EMAIL=developer@company.example" "JIRA_BASE_URL=..." "PROJECT_FILTER=PROJ"
-    ```
-    Resulting `~/.config/devin/config.json` entry:
-    1. **`-y` flag silently dropped from args** — the deployed args end up as `["--registry", "...", "@acme/jira-mcp@latest"]` (no `-y`). npx with no `-y` prompts interactively for confirmation on first run, which blocks every MCP startup since Devin/Claude/Cursor never see the prompt. The user has to hand-edit `config.json` to add `-y` back, defeating the point of `agentbrew install`.
-    2. **`${JIRA_PERSONAL_TOKEN}` env entry silently dropped** — the env block ends up with only the 3 non-`${...}` values; the secret-ref placeholder is gone. The agent then connects without auth and every Jira call 401s. Forces the user to either hardcode the token (security risk) or hand-edit the config to re-add the placeholder.
-    
-    Suspected location: `src/core/env-sanitize.ts` (per AGENTS.md "core infra" section). Likely a defensive filter intended to strip secrets from logs is also being applied to the stored config. The filter needs a 3-way distinction:
-    - literal secret values (e.g. `"ATATT3xFf..."`) → reject/redact
-    - placeholder references (e.g. `"${JIRA_PERSONAL_TOKEN}"`) → preserve, MCP runtime will expand from shell env
-    - non-secret strings (e.g. `"PROJ"`) → preserve
-    
-    For the `-y` strip, suspect args-merging code is deduplicating against a "known flags" list and incorrectly treating `-y` as a shell-internal flag rather than an npx arg.
-  **Files**: `src/core/env-sanitize.ts`, `src/mcp/mcp-sync.ts` (the args/env writer), `src/install.ts` or wherever `install --env` is parsed.
-  **Acceptance**: `agentbrew install jira-mcp -y --command npx --args "-y" "pkg" --env "TOKEN=\${TOKEN}"` produces a per-agent config where `args` contains `-y` AND `env.TOKEN === "${TOKEN}"`. Add a test in `src/mcp/mcp-sync.test.ts` (or wherever the deploy step is tested) that asserts placeholder env vars round-trip unchanged and `-y` survives the args pipeline. The Jira MCP install scenario is the regression test — a fresh `agentbrew install jira-mcp ...` should be usable without hand-editing.
-  **Hypothesis**: Env sanitize was authored to prevent secret leakage into logs/snapshots, but it doesn't distinguish `${VAR}` placeholders from literal secrets. Adding a `^\$\{[A-Z_][A-Z0-9_]*\}$` allowlist preserves the placeholder path without weakening leak protection.
-  **Success**: `node dist/cli.js install <test-mcp> --env "T=\${T}" --args "-y" "x"` produces an agent config with both `-y` and `${T}` intact; new unit test in mcp-sync.test.ts asserts the round-trip.
-  **Pivot**: If the `-y` strip turns out to be a Devin-config-specific quirk (e.g. Devin's mcpServers schema rejects `-y`), narrow the task to env-sanitize only and add a separate `-y` task. Verify by reading `src/agents/devin.ts` or equivalent adapter.
-  **Measurement**: `git grep -nE '\\$\\{[A-Z_]+\\}' src/core/env-sanitize.ts` returns ≥1 hit (the allowlist branch) and `npm test -- --grep "env-sanitize.*placeholder"` passes.
-  **Anchor**: 2026-05-21 Devin/jira-mcp install (the incident); shared-rules.md Mode (0) "PREFER the API/MCP path" rule (the broader user goal that this defect blocks).
-
-- [ ] Integration test coverage: 88% → 95% (cover uncovered sync surfaces)
-  - **ID**: integration-test-coverage-95
-  - **Tags**: testing, coverage, integration
-  - **Details**: Current surface coverage is 88% (30/user-facing sync surfaces). Target: 95% (33/34). Several surfaces have zero test files. File-level coverage is 88% (110/sync source files have co-located .test.ts). The sub-tasks below each add one test file.
-  - **Acceptance**: `npm test` passes, all surfaces have dedicated test files, surface coverage ≥95%.
-
-- [ ] Test commands-sync (slash command deployment to agents)
-  - **ID**: test-commands-sync
-  - **Tags**: testing, coverage, sync
-  - **Details**: New `src/sync/commands-sync.test.ts`. Test: deploy sample commands to claude-code + cursor + gemini-cli, verify files created in correct format per agent, prune stale commands, preserve user-created commands. Mock filesystem.
-  - **Files**: src/sync/commands-sync.test.ts (new)
-  - **Blocked by**: integration-test-coverage-95
-
-- [ ] Test drift-checks/ modules (drift check modules with no dedicated test files)
-  - **ID**: test-drift-checks
-  - **Tags**: testing, coverage, drift
-  - **Details**: New test files for `src/drift-checks/{agents,commands,instructions,mcp,rules,skills}.ts`. Each drift check compares desired state vs actual agent config and reports mismatches. Test: inject a known mismatch and verify the check reports it; inject no mismatch and verify clean. Can be one test file `src/drift-checks/drift-checks.test.ts` covering all 6.
-  - **Files**: src/drift-checks/drift-checks.test.ts (new)
-  - **Blocked by**: integration-test-coverage-95
-
-- [ ] Test agentbrew export (portable config bundles)
-  - **ID**: test-export
-  - **Tags**: testing, coverage, portable
-  - **Details**: `src/portable.ts` already has `portable.test.ts` for import but export path may lack integration coverage. Verify: `agentbrew export` produces a valid bundle with MCP servers, skills, rules, and sources; the bundle can be re-imported on a clean state and produces identical config.
-  - **Files**: src/portable.test.ts (extend or new export-focused file)
-  - **Blocked by**: integration-test-coverage-95
-
-- [ ] Test catalog install-skill + install-other (catalog install paths)
-  - **ID**: test-catalog-install-paths
-  - **Tags**: testing, coverage, catalog
-  - **Details**: `src/catalog/install-skill.ts` and `install-other.ts` have no co-located test files. Test: install a mock catalog skill, verify state.yaml updated and skill symlinked; install a mock MCP server from catalog, verify state.yaml + agent configs updated. Mock network + registry.
-  - **Files**: src/catalog/install-skill.test.ts (new), src/catalog/install-other.test.ts (new)
-  - **Blocked by**: integration-test-coverage-95
-
-- [ ] Catalog entry for the Minsky observer skill — `agentbrew install minsky-observer` resolves
-  **ID**: catalog-minsky-observer-skill
-  **Tags**: catalog, minsky, observer, curator-not-host
-  **Details**: Surfaced by Minsky's observer-plugin distribution work (PR #493, merged 2026-05-12). The skill lives at `fyodoriv/minsky` under `skill-plugins/observer/minsky/SKILL.md`. Today operators install it by cloning the Minsky repo, running `distribution/install-observer.sh`, then running `agentbrew sync --agentfile ~/apps/tooling/minsky/Agentfile.yaml`. That's three manual steps per machine.
-
-    Per `docs/VISION.md` ("Curator, not host") and `src/catalog.yaml`'s header comment, the right answer is a single `catalog.yaml` entry pointing at the upstream repo, so the operator runs `agentbrew install minsky-observer` and the resolution + symlinking + agent-fan-out is handled by the existing skill-source pipeline.
-
-    Implementation hints (not load-bearing):
-    - Add an entry under `skills:` in `src/catalog.yaml` with `name: minsky-observer`, `source: github:fyodoriv/minsky/skill-plugins/observer`, `description: "Observer protocol for the Minsky autonomous runner — watches the loop, safe-heals bounded failures, files draft PRs upstream on escalation"`, `keywords: [minsky, observer, autonomous-coding, supervisor, perrow-1984]`.
-    - The `repo_sources:` machinery for fetching + caching to `~/.cache/agentbrew/sources/` already exists (rules-sync uses it); reuse rather than reinvent.
-    - Once `agentfile-command-sources` (the sibling P1 above) lands, the catalog entry can also declare `commands: ./commands/minsky*.md` so the slash commands install with the skill in one step.
-  **Files**: `src/catalog.yaml`, team overlay `catalog-overlay.yaml` (mention only — Minsky is upstream-public, not team-overlay), `docs/competition/` (if a competition page mentions Minsky), `README.md` if the catalog roster gets a README section.
-  **Acceptance**: (a) `agentbrew install minsky-observer` resolves + downloads the skill from `fyodoriv/minsky`; (b) `agentbrew sync` symlinks `SKILL.md` into every detected agent's `skillsDir`; (c) `agentbrew search minsky` returns the observer entry; (d) the catalog-team overlay is untouched.
-  **Hypothesis**: A single `catalog.yaml` entry for `minsky-observer` will reduce the 3-step manual install to `agentbrew install minsky-observer` (one command, zero git clones).
-  **Success**: `agentbrew install minsky-observer && agentbrew sync` deploys the skill to all agents. `agentbrew search minsky` lists the entry.
-  **Pivot**: If the `repo_sources:` machinery doesn't handle subdirectory skill paths (`skill-plugins/observer/`), the skill needs a top-level `SKILL.md` pointer in the Minsky repo — file the change upstream rather than patching agentbrew.
-  **Measurement**: `agentbrew install minsky-observer 2>&1 | grep -c 'installed'` returns 1; `ls ~/.claude/skills/minsky/SKILL.md` exists.
-  **Anchor**: agentbrew VISION.md § "Curator, not host"; existing catalog.yaml skill entries as reference pattern.
-  **Surfaced-by**: Minsky observer plugin (fyodoriv/minsky PR #493) — current install path bypasses agentbrew's catalog entirely.
-
-- [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
-  **ID**: workspace-aware-sync
-  **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host
-  **Details**: Companion to `tasksmd/tasks.md` task `workspace-mode-nested-repos` (filed 2026-05-12 PR upstream). Operators frequently have **multiple** workspace folders on the same host — the operator at 2026-05-12 has 5 workspaces under `~/apps/` (`tooling`, `acme`, `learning`, `_inventory`, `docs`), several containing their own per-repo `Agentfile.yaml`. Today `agentbrew sync` takes either no Agentfile (uses global `~/.config/agentbrew/Agentfile.yaml`) or an explicit `--agentfile <path>` flag — both single-Agentfile shapes. There's no first-class way to compose one global manifest + N workspaces × M per-repo manifests.
-
-    The operator's mental model is "I have these workspaces; agentbrew should know what every repo in every workspace wants and reconcile that into the target agent configs." Today that requires running `agentbrew sync --agentfile <path>` once per repo across N workspaces — friction that scales with workspace count × repo count.
-
-    **Outcome-shaped** (multi-workspace, N=1 is just a degenerate case):
-
-    1. Operator runs `agentbrew sync` (no flag) — if `workspaceRoots:` is declared in the global Agentfile, agentbrew iterates **every declared workspace** and processes every per-repo Agentfile within each. If no workspaces are declared, behaviour is unchanged (single-Agentfile, backwards compat).
-    2. Explicit scoping: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` (comma list) OR `agentbrew sync --workspace-name tooling` (config-name lookup, mirrors the `tasks` CLI's flag shape from the foundation task).
-    3. `agentbrew status` reports per-workspace, per-repo: discovered Agentfiles, declared sources, deployed targets, collision warnings.
-    4. Skills/commands/rules/MCPs are namespaced by `<workspace>::<repo>` so collisions across workspaces (two repos declaring the same MCP from different versions, etc.) surface as actionable diagnostics rather than silent last-write-wins.
-
-    Implementation hints (not load-bearing):
-    - Adds `workspaceRoots: [<path1>, <path2>, ...]` to the global `Agentfile.yaml` schema (plural; single-workspace setups declare a 1-element list). Schema validation rejects mixed `workspaceRoot:` (singular) + `workspaceRoots:` (plural).
-    - Adds `--workspaces <path1,path2,...>` (plural, comma-separated) + `--workspace-name <name>` flags on `sync`, `status`, `lint`, `health`. The singular `--workspace <path>` flag is shorthand for a 1-element list (kept for ergonomics).
-    - Reads the same `~/.config/tasks-md/workspaces.yaml` config the `tasks` CLI uses (foundation task) — so adding a workspace via `tasks workspaces add` automatically picks it up here. Don't reinvent the discovery layer.
-    - Reuses the `.tasks-md-workspace` sentinel from `tasksmd/tasks.md`.
-    - Composes with `agentfile-command-sources` (sibling P1 above): in multi-workspace mode, every workspace × every repo's `commandSources:` declaration aggregates.
-    - Composes with `catalog-minsky-observer-skill` (sibling P1 above): once Minsky has a catalog entry, the per-repo Agentfile in `~/apps/tooling/minsky/` declares it via `skills: [minsky-observer]` instead of `skillSources: [...]`, and the workspace-sync picks it up like any other.
-  **Files**: `src/cli.ts` (workspace + workspaces + workspace-name flags + Agentfile-discovery), `src/sync/skills-sync.ts`, `src/sync/command-sync.ts`, `src/sync/rules-sync.ts`, `src/sync/mcp-sync.ts` (all extended to handle the merged-from-N-workspaces-×-M-Agentfiles input), `src/health.ts` (per-workspace + per-repo health rollup), `src/core/workspaces.ts` (new — reads `~/.config/tasks-md/workspaces.yaml`), `templates/AGENTS.md` (multi-workspace docs), `docs/VISION.md` (multi-workspace as a first-class concept), tests.
-  **Acceptance**: (a) `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` exits 0 + deploys every per-repo Agentfile's declarations across both workspaces; (b) per-workspace × per-repo sources are namespaced (collision reports `<workspace>::<repo>` for both sides); (c) `agentbrew status` lists discovered Agentfiles + deployed targets, grouped by workspace; (d) multi-workspace mode is backwards-compatible (zero workspaces declared → single-Agentfile behaviour unchanged); (e) reads `~/.config/tasks-md/workspaces.yaml` if present (shared with the `tasks` CLI); (f) tests cover the cross-workspace merge-conflict path.
-  **Surfaced-by**: Operator multi-workspace setup at `~/apps/` containing 5 workspaces (`tooling`, `acme`, `learning`, `_inventory`, `docs`) as of 2026-05-12. Foundation task in `tasksmd/tasks.md` (workspace-mode-nested-repos) ships the spec + parser + shared config-file surface; this task closes the agentbrew side.
-
-- [ ] Sweep agentbrew P0/P1 tasks and add the 5 rule-#9 fields to every task that is currently missing any of them, so minsky's task picker stops silently dropping them
-  **ID**: agentbrew-tasks-rule9-fill-sweep
-  **Tags**: scout, task-queue, minsky-integration, rule-9
-  **Surfaced-by**: 2026-05-20 audit — `agentbrew/.minsky/repo.yaml` exists (bootstrapped for minsky-run), so minsky's `pickHostTask` applies the rule-#9 5-field requirement. Programmatic count via `parseTasksMd`: `{ all: 36, p0p1: 17, rule9: 9, eligible: 5 }`. Net effect: **12 of 17 P0/P1 tasks are invisible to the autonomous picker** — they get listed in TASKS.md but never claimed when minsky runs on this host. The dropping is silent (no warning, no log line), so the operator sees "queue empty after 5 tasks" while the file is full.
-  **Details**: every P0/P1 task in this file MUST carry **Hypothesis**, **Success**, **Pivot**, **Measurement**, **Anchor** (each on a single line — the picker's parser is `^\*\*<Field>\*\*:\s*(.+)$` and continuation lines orphan the value). Many older tasks shipped with only `**Acceptance**:` and `**Details**:` — those need the rule-9 set added. (a) Write a one-shot script `scripts/audit-tasks-rule9.mjs` that reuses `parseTasksMd` from `~/apps/tooling/minsky/novel/cross-repo-runner/dist/index.js` to print every P0/P1 task missing any of the 5 fields and the specific field(s) missing. (b) For each task, fill the missing fields with project-specific content (not boilerplate — the Hypothesis must be falsifiable, the Measurement must be a runnable shell command). (c) Re-run the audit script; assert eligible == p0p1 - claimed - blocked. (d) Add the script to `npm run verify` (or to a dedicated `lint:tasks-rule9` script) so the gate is permanent — any new P0/P1 task lacking a field hard-fails CI. Make this idempotent: re-running on an already-compliant TASKS.md is a no-op.
-  **Files**: `TASKS.md` (the existing 12 non-compliant P0/P1 blocks — sweep in-place), `scripts/audit-tasks-rule9.mjs` (new — uses minsky's parser), `scripts/audit-tasks-rule9.test.ts` (new — fixture-driven), `package.json` (wire `verify`), `AGENTS.md` (document the gate so future task authors don't reproduce the bug).
-  **Acceptance**: (a) `node scripts/audit-tasks-rule9.mjs` exits 0 with `eligible == p0p1 - claimed - blocked` against current `TASKS.md`; (b) deliberately omitting any field on a new P0/P1 task makes `npm run verify` fail with the offending task ID + missing field name; (c) the existing 5 picker-eligible tasks remain pickable (regression guard).
-  **Output**: mixed
-  **Hypothesis**: Filling the 5 rule-#9 fields on the 12 missing tasks increases agentbrew's autonomous-picker eligibility from 5 → 17 (P0/P1 minus claimed/blocked). After the sweep, minsky runs on agentbrew produce iterations on tasks the operator authored without anyone manually re-formatting them. Falsifiable: replay one full multi-host walk with the launchd daemon (after `minsky-daemon-plist-multi-host` lands) and verify ≥10 distinct task IDs appear in `~/.minsky/daemon.log` "iter" lines within 24h.
-  **Success**: `node -e "const {parseTasksMd}=await import('~/apps/tooling/minsky/novel/cross-repo-runner/dist/index.js'); const fs=await import('node:fs'); const t=parseTasksMd(fs.readFileSync('TASKS.md','utf8')); const p=t.filter(x=>x.priority==='P0'||x.priority==='P1'); const r9=p.filter(x=>x.hypothesis&&x.success&&x.pivot&&x.measurement&&x.anchor); console.log({p0p1:p.length, rule9:r9.length})"` prints `rule9 == p0p1` (currently 9/17, target 17/17).
-  **Pivot**: if filling the 12 missing-field tasks reveals that many P1 entries are actually scope-overshoots (the absence of a measurable Hypothesis hints the task isn't well-formed), demote them to P3 ("refactor when you have a measurable outcome") rather than inventing fake metrics — the picker rejection is doing real triage work and the right answer may be fewer P1s, not more.
-  **Measurement**: `node scripts/audit-tasks-rule9.mjs --json | jq '.eligible == .p0p1 - .claimed - .blocked'` returns `true`; `npm run verify` exits 0 with `audit-tasks-rule9` in the chain.
-  **Anchor**: minsky's `pickHostTask` (the load-bearing gate); global_rules.md "Minsky-managed repos add rule-#9 fields" (the contract this task implements); Basili/Caldiera/Rombach 1994 *Goal-Question-Metric* (the conceptual frame minsky's rule #9 instantiates).
+  - **ID**: wire-skills-validate-command
+  - **Tags**: scout, cli, validation, correctness, skill-eval, P1
+  - **Details**: While authoring the workflow/debugging eval batch on 2026-06-04, `npm run dev -- skills validate --help` showed only the `coverage` subcommand, but multiple user-facing diagnostics still tell users to run `agentbrew skills validate`: `src/drift-checks/skills.ts:104`, `src/health.ts:170`, and related tests. The validator already exists in `src/skills/validate.ts` and display code exists in `src/skills/skill-validate-display.ts`; the missing piece is CLI registration under `agentbrew skills validate`.
+  - **Files**: `src/commands/cli-skills.ts`, `src/skills/validate.ts`, `src/skills/skill-validate-display.ts`, `src/drift-checks/skills.ts`, `src/health.ts`, tests under `src/skills/` or `src/commands/`.
+  - **Acceptance**: `npm run dev -- skills validate --help` documents a validate subcommand; `npm run dev -- skills validate --builtins` or the chosen equivalent exits 0 on current built-ins and renders the existing validation display; diagnostics that say "Run: agentbrew skills validate" point to a command that actually exists; `npm run verify` passes.
+  - **Output**: code
+  - **Hypothesis**: Every printed hint should name a command that exists; today `agentbrew skills validate` is a dead end.
+  - **Measurement**: `rg -n "skills validate" src` lists every hint; `npx tsx src/cli.ts skills validate --help` (or the replacement named in the hints) exits 0.
+  - **Pivot**: If the validator duplicates `skills coverage`, point the hints at `skills coverage` and do not add a command (AGENTS.md rule 9).
+  - **Anchor**: AGENTS.md rule 9 (keep the CLI small); Nielsen 1994, heuristic "help users recognize, diagnose, and recover from errors".
 
 ## P2
+
+- [ ] `iterate` and `markdown-for-gdoc` SKILL.md files load no more than their baselines
+  - **ID**: trim-iterate-and-markdown-for-gdoc-skills
+  - **Tags**: skill-bloat, context-budget, skills
+  - **Details**: The agent-bloat lint reports `skill-plugins/workflow/iterate/SKILL.md` at ~1,978 tokens (baseline 1,421) and `skill-plugins/workflow/markdown-for-gdoc/SKILL.md` at ~4,570 (baseline 2,935). Both grew when dev-skills was absorbed (#21). Until 2026-10-15 the lint passed only because an unrelated orphan block in TASKS.md contained the word `context-budget`. Move rarely-needed detail into each skill's `references/`, or re-baseline with a stated reason.
+  - **Files**: `skill-plugins/workflow/iterate/SKILL.md`, `skill-plugins/workflow/markdown-for-gdoc/SKILL.md`, `docs/skill-baselines.json`
+  - **Acceptance**: `npx vitest run src/agent-bloat-lint.test.ts` passes with this task removed from TASKS.md.
+  - **Hypothesis**: Moving detail into `references/` cuts always-loaded skill tokens without losing behavior.
+  - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` and the skills' eval files.
+  - **Pivot**: If a skill's evals fail after the move, re-baseline that skill with the reason in `docs/skill-baselines.json` instead.
+  - **Anchor**: agentbrew agent-bloat lint (`src/agent-bloat-lint.ts`); Anthropic skill authoring guidance on progressive disclosure.
+
+- [ ] A PreToolUse hook blocks cross-repo publishing without per-session approval
+  - **ID**: enforce-cross-workspace-publish-hook
+  - **Tags**: scout, hooks, guardrail
+  - **Details**: The cross-workspace publishing rule is prose in `templates/AGENTS.md`. dotfiles `bin/gh` already blocks `gh pr create` to another repo without `AGENT_PUBLIC_WRITE_APPROVAL`, but only when the wrapper is on PATH. Add a deterministic hook that blocks, before the shell runs: `gh pr create --repo <other>`, `gh repo fork`, and `git push` to a remote outside the session's workspace roots. Model it on `no-force-push-protected`. Merges the dotfiles task `gh-cross-repo-pr-approval-hook` (2026-10-15 review).
+  - **Files**: `hooks/checks/no-cross-workspace-publish.sh` (+ `.test.sh`), `hooks/manifest.yaml`, dotfiles `bin/gh` (reference only; stays as the shell backstop)
+  - **Acceptance**: fixtures show each of those commands blocked outside the workspace without the approval token and allowed inside it; dotfiles `tests/gh-wrapper.bats` stays green.
+
+- [ ] `agentbrew install --args` keeps a `-y` meant for the MCP command
+  - **ID**: install-mcp-env-sanitize-strips-vars-and-y-flag
+  - **Tags**: scout, mcp, install, cli
+  - **Details**: `agentbrew install` registers `-y, --yes` (`src/commands/cli-install.ts`) and a variadic `-a, --args`. In `--args "--registry" "<url>" "-y" "@pkg"`, Commander binds `-y` to the top-level `--yes` and ends the variadic list, so the deployed args lose `-y` and `npx` prompts on every MCP start. The `${VAR}` half of the original report concerned Devin's literal env format; Devin support was removed on 2026-10-08, so only the `-y` half remains. README documents the `--` form as the workaround.
+  - **Files**: `src/commands/cli-install.ts`, `src/commands/cli-install.test.ts`, README.md (install section)
+  - **Acceptance**: `agentbrew install x --command npx --args "-y" "pkg"` either keeps `-y` in the deployed args or prints a one-line warning naming the `--` form; a parser test covers it.
+
+- [ ] Make companion competitor watch honor repo-specific competition directory names
+  - **ID**: companion-competitor-watch-competition-dir-drift
+  - **Tags**: docs, skills, companion, competitor, P1
+  - **Hypothesis**: Teaching the lane to discover `docs/competition/` as well as `docs/competitors/` prevents it from creating a parallel stale competitor corpus in repos like agentbrew.
+  - **Success**: In a repo that has `docs/competition/` and no `docs/competitors/`, the skill refreshes or reports the existing competition corpus instead of creating a competing directory.
+  - **Pivot**: If cross-repo naming is too varied for heuristics, make the competitor-doc directory a required flag or project config field.
+  - **Measurement**: `grep -n "docs/competition" skill-plugins/workflow/companion-competitor-watch/SKILL.md`
+  - **Anchor**: agentbrew VISION.md G1 "Curate, not host" + companion-competitor-watch SKILL.md "Identify competitors" / "Where they live".
+  - **Details**: The current skill repeatedly names `docs/competitors/<NAME>.md`, but this repo's canonical competitor corpus is `docs/competition/*.md`. Running the lane as written can create a second directory and split prior art away from the docs the PR template and competitor-spot-check flow already read.
+  - **Files**: `skill-plugins/workflow/companion-competitor-watch/SKILL.md`, `docs/competition/`, `TASKS.md`.
+  - **Acceptance**: The skill documents how to detect `docs/competition/` vs `docs/competitors/`, its task template links to the detected directory, and a dry-run in this repo does not propose creating `docs/competitors/`.
+
+- [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
+  - **ID**: dev-dependency-audit-findings
+  - **Tags**: security, dependencies, stability
+  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. After the 2026-10-12 bump of promptfoo, vitest, and a `basic-ftp` override, the only open dev-only finding is `node-forge` (high, no patched release; reached through `promptfoo` > `jks-js`). Re-run `npm audit` when node-forge, jks-js, or promptfoo ships a fix, then bump. If promptfoo drops `jks-js`, remove the dependency path instead.
+  - **Files**: package.json, package-lock.json
+  - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
@@ -668,7 +275,7 @@
 - [ ] Make every `gh-pr-*` hook act only on a real `gh pr` command, so quoted mentions stop tripping them
   - **ID**: gh-pr-hooks-command-position
   - **Tags**: scout, hooks, false-positive
-  - **Details**: `gh-pr-body-requires-docs` and `gh-pr-body-requires-validation` now match `gh pr create|edit` only in command position and read multi-line heredoc bodies. Seven other `hooks/checks/gh-pr-*.sh` scripts (and `env-correct-urls.sh`, `manual-test-steps-start-at-app-url.sh`) still match the words anywhere in the command, so an `echo` or a Python string that mentions them is checked as a PR. Move the command-position regex and the heredoc fallback into `hooks/lib/` and use it in every PR hook.
+  - **Details**: `gh-pr-body-requires-docs` and `gh-pr-body-requires-validation` now match `gh pr create|edit` only in command position and read multi-line heredoc bodies. The six other `hooks/checks/gh-pr-*.sh` scripts (share the matcher through `hooks/lib/gh-pr-body-from-command.sh`) (and `env-correct-urls.sh`, `manual-test-steps-start-at-app-url.sh`) still match the words anywhere in the command, so an `echo` or a Python string that mentions them is checked as a PR. Move the command-position regex and the heredoc fallback into `hooks/lib/` and use it in every PR hook.
   - **Files**: hooks/checks/gh-pr-*.sh, hooks/lib/, their `.test.sh` fixtures
   - **Acceptance**: each PR hook passes an echoed mention and still blocks a real `cd x && GH_HOST=… gh pr create` with a bad body; fixtures cover both.
   - **Hypothesis**: false PR-hook blocks on commands that only mention `gh pr` drop to zero once every PR hook shares the command-position check.
@@ -691,20 +298,13 @@
   - **Files**: src/catalog.yaml, src/mcp/mcpm-hygiene.ts, src/mcp/mcpm-hygiene.test.ts
   - **Acceptance**: on a machine with no launcher, `agentbrew mcp probe` passes for `github` in every agent, and the deployed entry no longer names `@modelcontextprotocol/server-github`.
 
-- [ ] Make the tracked-command drift test independent of the HOME variable
-  - **ID**: drift-test-tracked-command-uses-homedir
-  - **Tags**: scout, tests, hermetic
-  - **Details**: The test "skips files whose full path is tracked in the manifest" in `src/drift.test.ts` builds its path from `process.env.HOME`, while the code under test uses `os.homedir()`. Running the suite with a different `HOME` makes it fail. Build the path with `homedir()`, as the neighbouring tests do.
-  - **Files**: `src/drift.test.ts`
-  - **Acceptance**: `HOME=<empty tmpdir> npx vitest run src/drift.test.ts` passes.
-
 - [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, status, plugins
   - **Details**: `agentbrew status` and `collectDrift` now list Claude Desktop
     startup failures (invalid config entries and failed server connects) from
     the latest Desktop start in `~/Library/Logs/Claude/main.log`, each with a
-    fix path. Two parts remain. First, `agentbrew status` has no `--ci` flag,
+    fix path. Two parts remain. First, `agentbrew status --ci` exists, but `healthCheck` (`src/health.ts`) never calls `checkClaudeDesktopMcpDrift`, so its exit code ignores Desktop MCP failures;
     so nothing exits 1 on these failures yet; add the flag and the exit code,
     with a clean log and a missing log both exiting 0. Second, the prisma
     plugin break (`npx -y prisma mcp` resolves to a release with no `mcp`
@@ -730,7 +330,7 @@
     `README.md`
   - **Acceptance**: One repeatable evaluation runs against chat,
     documentation, PR, code-comment, and skill-wrapper fixtures for Claude
-    Code, Cursor, Windsurf, Devin, and Codex. The report identifies a failing
+    Code, Cursor, and Codex. The report identifies a failing
     output and its rule gap. `npm run verify` remains deterministic and does
     not require a live model.
 
@@ -738,92 +338,44 @@
   - **ID**: remove-stale-deleted-jira-skill-references
   - **Tags**: scout, skills, docs, jira, referential-integrity
   - **Details**: Scouted while adding the product-doc/Jira reconciliation protocol. The 2026-07 shrink removed `jira`, `jira-task`, and `find-jira-task`, but remaining built-in skills, plans, and global guidance still name them as callable dependencies. This violates the referential-integrity rule and can route agents to missing skills. Audit every reference, replace it with a currently installed source skill or MCP-backed workflow, and keep org-only Jira content in the team overlay.
-  - **Files**: `skill-plugins/dev/**`, `docs/**`, `templates/**`, `src/catalog.yaml`, `skill-plugins/dev/README.md`
+  - **Files**: `skill-plugins/workflow/project-audit/SKILL.md`, `skill-plugins/workflow/task-command-center/evals/evals.json`, `docs/shared-rules.md` (also loads a missing `pr` skill), `docs/plans/cover-jira-skill-with-2134-tests.md`
   - **Acceptance**: Every active reference to `jira`, `jira-task`, or `find-jira-task` resolves to an installed catalog/source skill or is replaced with a valid MCP/repo workflow; historical changelog/task text remains untouched; `npm run verify` passes.
 
-- [ ] Restore a clean full-verify baseline after catalog and scheduler changes
-  - **ID**: restore-clean-verify-baseline-after-catalog-scheduler-changes
-  - **Tags**: scout, verification, biome, complexity
-  - **Details**: Scouted while repairing the content gate. `npm run verify` reaches Biome and reports pre-existing formatting, import-order, unused-import, and cognitive-complexity failures across catalog, scheduler-path, measurement, and update code. The focused mirror and learn-project contract tests pass, but the repository-wide gate is not currently a reliable completion signal.
-  - **Files**: `src/catalog/`, `src/drift-checks/`, `src/commands/cli-ops.ts`, `src/learn/stage-learn-sources.ts`, `src/update.ts`
-  - **Acceptance**: `npm run verify` reaches the test phase without Biome errors or warnings; complexity fixes preserve behavior with focused tests; formatting/import-only changes remain separate from behavior changes where practical.
-
-- [ ] Extract shared helpers for #2134-style skill contract tests
+- [ ] Extract shared helpers for the skill contract tests
   - **ID**: extract-shared-2134-skill-contract-test-helpers
   - **Tags**: p2, skills, tests, deterministic-tests, scout
-  - **Details**: The first deterministic #2134-style skill contract specs (`agentbrew-add-catalog-source`, `agentbrew-add-command`, `agentbrew-add-mcp`, `agentbrew-add-skill`, `agentbrew-manage-permissions`, `agentbrew-status`, `agentfile-init`, `analyze`, `arch`, `autoresearch`, `caveman`, `clarify`, `cli-design`, `commit`, `companion-competitor-watch`, `companion-docs-sync`, `companion-researcher`, `companion-skill-curate`, `companion-task-groom`, `companion-test-gaps`, `competitor-spot-check`, `composition-patterns`, `debug`, `design-review`, `detect-task-backend`, `diagnose`, `doc-check`, `docs-coverage`, `doubt`, `find-jira-task`, `fix-styles`, `git-diagnose-codebase`, `github-actions-debugging`, `grill`, `grind`, `grind-report`, `handoff`, `iterate`, and `jira`) now duplicate local helpers for reading SKILL.md/evals, grouped term assertions, and eval scenario lookup. Extract a small shared helper in the skill-test harness so future specs stay focused on each skill contract instead of parser/diagnostic plumbing.
+  - **Details**: `requireTerms`, `expectationText`, and `evalMatching` are redefined in almost every `src/skills/*-contract.test.ts` spec. Move them into one shared test helper module.
   - **Files**: src/skills/*contract.test.ts, optional src/skills/skill-contract-test-helpers.ts
-  - **Acceptance**: At least two #2134-style skill contract specs use a shared helper for SKILL.md/evals loading and diagnostic term/scenario assertions; existing focused specs still pass; helper names keep failure messages actionable.
-
-- [ ] Document #2134 pressure-eval conventions for skill contracts
-  - **ID**: document-2134-pressure-eval-conventions
-  - **Tags**: p2, skills, tests, deterministic-tests, docs, scout
-  - **Details**: While adding the `analyze` contract spec, the eval pressure cases were self-evident only after reading the spec file. Add a short reusable convention doc for #2134 skill-contract evals that names common pressure-case categories: positive workflow, ambiguity/refusal, wrong-tool routing, read-only/no-side-effect boundary, verification/approval gates, safety-gate pressure (for example, `autoresearch` refusing skipped confirmation/batched changes/skipped guard checks), communication-safety pressure (for example, `caveman` preserving warnings/code/decision points while compressing), human-attention / incremental-save pressure (for example, `clarify` refusing bundled follow-up questions and saving after each accepted answer), CLI default-behavior pressure (for example, `cli-design` flipping user-wanted opt-ins into defaults without claiming implementation), commit-safety pressure (for example, `commit` refusing main-branch commits, `git add .`, skipped verification/hooks, and NIH/reuse shortcuts), competitor-watch safety/backend pressure (for example, `companion-competitor-watch` refusing VISION rewrites, fabricated feature gaps, generated-backend TASKS.md appends, and unbounded P3 task floods), docs-sync safety/backend pressure (for example, `companion-docs-sync` deferring worker-active docs, using `tasks create` for generated backends, refusing source/config/package edits, limiting direct edits to surgical doc changes, and avoiding unearned synced claims), companion-researcher umbrella safety pressure (for example, `companion-researcher` enforcing commit allow-lists, refusing source/config leftovers, delegating lanes instead of running them in-process, refusing watch/dev commands, avoiding direct-main pushes, snapshotting worker-active files, and reporting cooldown/status), skill-catalog curation safety pressure (for example, `companion-skill-curate` filing through generated task backends, falling back to `/tmp/` for gitignored reports, refusing install/uninstall/fetch mutations, checking candidate quality before recommendations, refusing unread skill proposals, preserving dirty caches and agentbrew-managed mirrors, and filing one consolidated follow-up), task-groom safety pressure (for example, `companion-task-groom` skipping generated GitHub Issues backends, skipping worker-active TASKS.md, refusing delete/reorder/rewrite/unclaim requests, classifying unreadable external paths as unverified instead of dead, treating Acceptance as optional, batching findings into one meta-task, using safe heredoc append, limiting TASKS-AUDIT to sweep repos, validating only its own append, and respecting cooldown), test-gap safety pressure (for example, `companion-test-gaps` filing through generated task backends, refusing coverage dependency installs and manifest mutations, refusing watch mode and test writing, skipping worker-active and generated files, exiting conservatively on failing suites/timeouts, cross-referencing churn with coverage, capping P2 findings at ten, preserving report-first evidence, and validating only new entries), competitor prior-art pressure (for example, `competitor-spot-check` refusing unchecked `N/A`, rejecting invalid/stopword-only queries, refusing fabricated citations, routing broad strategy and corpus refresh to the right skills, avoiding corpus mutation, preserving citation line shape, reporting honest no-match/no-corpus outcomes, capping high-match output with refine guidance, and preserving the pr-vision-trace CI-gate relationship), composition-patterns pressure (for example, `composition-patterns` routing performance and IDS questions to the right skills, refusing boolean mode flags, preserving compound/provider/context boundaries, decoupling UI from state implementations, avoiding prop drilling, preserving render-prop data-passing escape hatches, and refusing React 19 APIs unless the project targets React 19+), debug pressure (for example, `debug` quoting literal error fields before theory, refusing symptom hotfixes and swallowed errors, adding surgical observability for opaque errors, tracing to source, requiring failing regressions, changing one variable at a time, stopping after three failed fixes, and fetching working reference apps before declaring a platform bug), design-review pressure (for example, `design-review` routing single style fixes, greenfield UI, PR review, and code/deps/docs audits to the right skills; refusing one-page/one-theme/one-viewport shortcuts; requiring deterministic theme verification, screenshot-backed route/theme/viewport coverage, source file/line root causes, deduped lint-clean TASKS.md entries, and no inline source edits), detect-task-backend pressure (for example, `detect-task-backend` treating `resolveTaskBackend(repoPath)` descriptors as authoritative over stale TASKS.md files, refusing generated-backend TASKS.md appends, preserving Agentfile/.agents fallback order, distinguishing malformed explicit GitHub Issues config from absent config, rejecting stale `.tasksmd.json` contract drift, and avoiding live GitHub access claims in local config detection), diagnose pressure (for example, `diagnose` refusing hypotheses or patches without a usable loop/captured artifact, exhausting loop-construction strategies before declaring blocked, requesting environment access/HAR/log/core dump/screen recording/instrumentation permission, rejecting shallow helper-only regressions that do not exercise the real call-site bug, documenting no-correct-seam findings, considering `/arch` when architecture prevents locking the bug down, and rerunning the original Phase 1 loop after the fix), doc-check pressure (for example, `doc-check` routing PR/code review to `review` and RFC authoring to `rfc`, refusing incremental surprise edits before the full categorized line-referenced issue list is presented, enforcing automated `<details>` balance and code-line-length checks before/after fixes, preserving clarity over brevity, keeping TL;DRs fresh after material body changes, and applying accepted fixes in one pass), docs-coverage pressure (for example, `docs-coverage` refusing README-vs-code-only shortcuts, requiring README/user-story/implementation/instructions matrix coverage for every feature discovered in any layer, treating instruction-token overhead and duplicated managed rules as first-class drift, refusing aspirational `coming soon`/`planned`/`Status:` claims for absent behavior, and verifying README counts, user-story tables, CLI `.command()` references, and instruction overhead after fixes), doubt pressure (for example, `doubt` refusing trivial rename/formatting/file-move/tooling-operation use, requiring ARTIFACT + CONTRACT only without passing author claims or proof, using adversarial prompts to disprove rather than validate, classifying reviewer findings as contract misread / valid actionable / valid trade-off / noise, stopping after trivial findings, three cycles, or explicit user override, and escalating unresolved substantive issues instead of grinding a fourth cycle alone), find-jira-task pressure (for example, `find-jira-task` stopping at branch/commit/PR keys without slow Jira searches, refusing to guess or transition To Do tickets when confidence is low, limiting Jira searches to assigned tickets with summary/status fields and small limits, routing full-ticket reading to `jira-task` and ticket creation to `jira`, returning a single plain key rather than a URL/object, and asking a focused top-3–5 choice on ambiguity), fix-styles pressure (for example, `fix-styles` refusing to declare visual fixes done from code inspection alone, requiring baseline and after screenshots plus DOM snapshots and visual diffs, changing one visual dimension at a time, removing failed attempts instead of stacking compensating CSS, rejecting `!important`/magic-number shortcuts, tracing parent/theme/global style sources before component overrides, and verifying dark mode/mobile/interaction states), git-history diagnostic pressure (for example, `git-diagnose-codebase` refusing to open source files before the five-command history pass, scoping churn and bug-cluster queries away from noisy repo-root lockfiles/config/docs, refusing to overinterpret repos with fewer than 50 commits, preserving churn×bug intersection as the primary deliverable, applying squash-merge/commit-message/zero-firefighting caveats before bus-factor or stability claims, routing code review/fixes/debugging/visual audit to the right skills, and framing history as signal rather than final decisions), GitHub Actions debugging pressure (for example, `github-actions-debugging` refusing grep-only/no-log shortcuts, rejecting `continue-on-error: true` and blind might-fix-it pushes, requiring exact job/step/log context plus recent-run history before flake claims, reproducing the same failing check locally before workflow edits or pushes, routing local-only test failures to debug and code-style failures to formatting/style workflows, and fixing root causes instead of masking red pipelines), pre-implementation grilling pressure (for example, `grill` refusing bundled multi-question checklists, checking docs/code before asking answerable questions, asking exactly one focused question with a recommended answer before waiting for feedback, refusing implementation during the grill session, creating/updating CONTEXT.md only after durable domain decisions crystallize, excluding implementation details from glossary entries, and offering ADRs only when hard-to-reverse/surprising/real-trade-off criteria all hold), autonomous grind-loop pressure (for example, `grind` refusing to sweep around hard unblocked tasks, decomposing oversized P0 work instead of generating busywork, using browser automation instead of marking portal tasks blocked, preserving state in TASKS.md and git rather than conversation memory, running the full verify gate before task completion, merging PRs immediately within repo policy, syncing back to main before exit, and printing the structured session report), post-mortem evidence pressure (for example, `grind-report` refusing partial-tail diagnosis, separating fixture logs from real grinds, quoting log evidence for every root cause, saying inconclusive when evidence is missing, refusing to run grinds or implement fixes during reporting, routing taskgrind/grind/repo cleanup tasks to the owning repo, deduplicating against existing TASKS.md entries, and writing outcome-shaped tasks with impact-based priority), handoff continuation pressure (for example, `handoff` refusing full-transcript/PR-body/TASKS.md dumps, writing to a temp markdown path via mktemp/read-before-write, referencing artifacts by path/SHA/PR/task/spec instead of duplicating them, keeping accomplishments to 1-3 bullets, preserving branch/PR/task/working-tree/verification/blocker/gotcha state, tailoring next steps to the user's requested focus, and not writing repo handoff files unless explicitly requested), iterate metric-loop pressure (for example, `iterate` refusing subjective/no-metric goals, routing structural refactors to refactor and one-shot bugs to debug, requiring numeric metric/direction/verify/guard/scope/target before starting, establishing baseline and green guard before edits, confirming with Go before autonomous looping, enforcing one hypothesis and one atomic change per iteration, creating a rollback point before verification, keeping only metric-improved guard-passing changes, refusing guard-command weakening, applying refine/pivot/stop thresholds, and summarizing final metric plus kept/discarded iterations), jira ticket-hygiene and publication pressure (for example, `jira` requiring exact first-block ## Context with motivation not implementation, short tag-free titles with requirement IDs in labels/links, flat Epic → Story/Task hierarchy without agent-created Sub-tasks or single-child Epics, minimum viable Context/Scope-or-Plan/Acceptance tickets, no duplicate structural metadata, closed blocker links treated as valid history, PM-owned content above --- preserved, Jira MCP as API executor, explicit approval before write-side effects, and first issue verification before batch creation), and metadata completeness. Link it from future skill-contract plans or helper docs so new specs converge without each task rediscovering the taxonomy.
-  - **Files**: docs/testing/ or docs/skills/, src/skills/*contract.test.ts, skill-plugins/dev/*/evals/evals.json
-  - **Acceptance**: A concise doc describes the pressure-eval categories with examples from at least four existing contract specs, including one iterative-loop safety-gate example, one communication-safety example, one human-attention / incremental-save example, and one CLI default-behavior example; it explains when an optional `evals/README.md` is useful; no existing tests regress.
-
-- [ ] Show preserved catalog rule blocks in `agentbrew status`
-  - **ID**: status-reports-preserved-catalog-rules
-  - **Tags**: scout, rules, status, p3
-  - **Details**: Refresh now keeps edited or unrecorded catalog rule blocks and only warns during `install --recommended` and `sync`. `agentbrew status` does not list them, so a stale kept block stays invisible until the next install run.
-  - **Files**: `src/status.ts`, `src/catalog/install-other.ts`
-  - **Acceptance**: `status --verbose` lists installed catalog rule blocks whose body differs from `src/catalog.yaml`, marked kept or refreshable; a test covers both.
-
-- [ ] Spike FrontierCode-style negative controls for skill evals
-  - **ID**: frontiercode-skill-eval-rubric-hardening
-  - **Tags**: skill-eval, evals, quality, frontiercode, scout
-  - **Hypothesis**: Adding a small FrontierCode-inspired rubric-hardening layer to the existing skill eval loop will reduce false-positive skill evals by catching prompts where an eval passes without the skill, an agent freehands instead of using the paved path, or assertions reward prose that does not prove the intended behavior.
-  - **Success**: One pilot built-in skill's eval package distinguishes blocker vs non-blocker assertions, includes at least one reverse/negative-control scenario, and documents a hack-report pass; the guide explains when to keep the pattern lightweight vs when to defer it.
-  - **Pivot**: If the agentskills.io schema or current runner cannot express blocker/non-blocker and reverse controls without custom infrastructure, stop at a docs-only checklist plus one manually-scored pilot instead of building a new runner.
-  - **Measurement**: `npm run dev -- skills coverage --ci --builtins && npm run verify` exits 0 after the pilot update; the pilot PR body includes a with-skill / without-skill / negative-control table.
-  - **Anchor**: Cognition FrontierCode (2026-06-08) describes mergeability grading with blockers vs weighted non-blockers, reverse-classical tests, scope checks, and adversarial hack reports; agentbrew VISION.md G1 "Curate, not host" means this should adapt the pattern, not clone a private benchmark.
-  - **Details**: Source evidence: FrontierCode measures whether a maintainer would merge a PR and grades correctness, regression safety, mechanical cleanliness, test correctness, scope, and code quality; it treats blocker failures as zero-score and hardens rubrics through adversarial/lazy-programmer hack reports plus false-positive/false-negative checks. Local evidence: `skill-plugins/dev/skill-eval-loop/SKILL.md:20-24` already runs and scores `evals/evals.json`, `skill-plugins/dev/skill-eval-loop/SKILL.md:139-158` already compares with-skill vs without-skill arms and sets pass bars, and `skill-plugins/dev/skill-eval-loop/SKILL.md:181-187` already requires live-source and mirrored deterministic/agent scenarios for paved-path skills. The concrete gap is a modest next layer: add negative/reverse controls and blocker/non-blocker language where they improve signal without inventing an agentbrew-owned FrontierCode clone. Out of scope / future candidates: do not build a hidden benchmark service, model leaderboard, adaptive-grading system, or `mutagent` clone here; if the pilot works, a separate task can enforce the pattern in `gh-pr-skill-requires-evals`.
-  - **Files**: `skill-plugins/dev/skill-eval-loop/SKILL.md`, one pilot `skill-plugins/dev/<skill>/evals/evals.json`, optional pilot deterministic fixture if the skill wraps a script.
-  - **Acceptance**: (a) the skill-eval guide documents blocker vs non-blocker assertions, reverse/negative controls, and hack-report review with FrontierCode cited as methodology evidence; (b) one pilot skill demonstrates the pattern without changing global schema requirements; (c) the pilot captures at least one false-positive or false-negative risk that the old with/without table alone would miss, or records why none was found; (d) `npm run verify` remains green.
+  - **Acceptance**: At least two `src/skills/*-contract.test.ts` specs import the shared helper; failure messages still name the missing term or scenario.
 
 - [ ] Users can see default-model drift in `agentbrew status` before repair
-  **ID**: model-drift-check-in-status
-  **Tags**: scout, models, drift, status
-  **Details**: `model-sync.ts` reapplies the Agentfile's `defaultModel` on every sync/auto-repair tick, but `agentbrew status` / `collectDrift()` does not report a manually flipped model as drift — the repair is silent. Once the drift-checks framework refactor in flight on `test-complete-builtin-skill-evals` lands, add a `models` drift check so a changed model shows in the Drift summary (and counts toward `--ci` exit codes) instead of only being healed invisibly.
-  **Files**: `src/drift.ts` (or `src/drift-checks/` post-refactor), `src/sync/model-sync.ts`
-  **Acceptance**: with `defaultModel` set and an agent's config manually flipped to another model, `agentbrew status` shows 1 drift issue naming the agent and the expected model; `agentbrew status --fix` repairs it.
-  **Output**: code
+  - **ID**: model-drift-check-in-status
+  - **Tags**: scout, models, drift, status
+  - **Details**: `model-sync.ts` reapplies the Agentfile's `defaultModel` on every sync/auto-repair tick, but `agentbrew status` / `collectDrift()` does not report a manually flipped model as drift — the repair is silent. Add a `models` drift check so a changed model shows in the Drift summary (and counts toward `--ci` exit codes) instead of only being healed invisibly.
+  - **Files**: `src/drift-checks/` (new models check), `src/health.ts`, `src/sync/model-sync.ts`
+  - **Acceptance**: with `defaultModel` set and an agent's config manually flipped to another model, `agentbrew status` shows 1 drift issue naming the agent and the expected model; `agentbrew status --fix` repairs it.
+  - **Output**: code
 
 - [ ] Default-model parity for Cursor (G6 gap — no file surface today)
-  **ID**: model-default-parity-cursor-windsurf
-  **Tags**: scout, models, parity, cursor
-  **Scope**: Cursor only. Windsurf support was removed on 2026-10-08.
-  **Details**: The model surface ships for claude-code/devin/codex but two primary agents have no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
-  **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
-  **Acceptance**: either (a) Cursor/Windsurf gain `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
-  **Output**: code
+  - **ID**: model-default-parity-cursor
+  - **Tags**: scout, models, parity, cursor
+  - **Details**: The model surface ships for claude-code and codex but Cursor has no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
+  - **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
+  - **Acceptance**: either (a) Cursor gains `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
+  - **Output**: code
 
 - [ ] Add CLI parser coverage for `agentbrew install --recommended --dry-run`
-  **ID**: cli-install-recommended-dry-run-parser-coverage
-  **Tags**: scout, tests, cli, dry-run
-  **Details**: While fixing `install-recommended-dry-run-propagation`, `src/commands/cli-install.test.ts` had separate coverage for `install --recommended` and named `install <name> --dry-run`, but no assertion for the combined `install --recommended --dry-run` shape. The catalog-layer regression test now protects mutation behavior, but the CLI parser should also lock that both flags are forwarded together and autoSync stays skipped.
-  **Files**: `src/commands/cli-install.test.ts`, `src/commands/cli-install.ts`
-  **Acceptance**: A CLI test parses `["node", "test", "install", "--recommended", "--dry-run"]`, asserts `install(undefined, { recommended: true, dryRun: true, ... })`, and asserts `autoSync` is not called.
-  **Output**: code
-
-- [ ] Make `npm run verify` work from agentbrew `.worktrees/*` checkouts
-  **ID**: verify-biome-worktree-root
-  **Tags**: verify, biome, worktree, developer-experience
-  **Details**: Running `npm run verify` from `~/apps/tooling/agentbrew/.worktrees/fix-agentfile-source-drift` fails before tests at `biome check . --error-on-warnings` with "No files were processed" because `biome.json` excludes `!**/.worktrees`, and Biome treats the current checkout path as ignored. Targeted Biome checks against explicit files still pass, but the full repo gate is unusable from standard agentbrew worktrees.
-  **Files**: `biome.json`, `package.json`
-  **Acceptance**: From an agentbrew `.worktrees/<branch>` checkout, `npm run verify` gets past the `biome check . --error-on-warnings` step and still excludes generated worktree directories when run from the main checkout.
-
-- [ ] Make catalog MCP pin policy data-driven instead of source-hardcoded
-  - **ID**: catalog-mcp-pin-policy-data-driven
-  - **Tags**: scout, mcp, catalog, config-drift
-  - **Details**: The `tasks-mcp@latest` production failure is now guarded by a catalog-pin sweep, but the package-name mapping lives in source as a narrow allowlist. Move the policy into catalog metadata once another MCP package needs the same treatment so drift detection can reconcile future pinned npm servers without a code change.
-  - **Files**: `src/catalog.yaml`, `src/catalog/types.ts`, `src/mcp/catalog-pin-sweep.ts`
-  - **Acceptance**: at least one MCP server can declare its npm package identity and pinned-version behavior in catalog data; `sweepCatalogPins()` consumes that metadata without a source-level server allowlist.
+  - **ID**: cli-install-recommended-dry-run-parser-coverage
+  - **Tags**: scout, tests, cli, dry-run
+  - **Details**: While fixing `install-recommended-dry-run-propagation`, `src/commands/cli-install.test.ts` had separate coverage for `install --recommended` and named `install <name> --dry-run`, but no assertion for the combined `install --recommended --dry-run` shape. The catalog-layer regression test now protects mutation behavior, but the CLI parser should also lock that both flags are forwarded together and autoSync stays skipped.
+  - **Files**: `src/commands/cli-install.test.ts`, `src/commands/cli-install.ts`
+  - **Acceptance**: A CLI test parses `["node", "test", "install", "--recommended", "--dry-run"]`, asserts `install(undefined, { recommended: true, dryRun: true, ... })`, and asserts `autoSync` is not called.
+  - **Output**: code
 
 - [ ] Enforce a fixture test per `hooks/checks/*.sh` (coverage gate)
   - **ID**: hooks-fixture-coverage-gate
   - **Tags**: scout, hooks, test-coverage, feedback-loop
-  - **Details**: `scripts/run-hook-fixtures.sh` runs whatever `hooks/checks/*.test.sh` exist but nothing enforces that EVERY check script has one — that gap let ~25 hooks ship without fixtures until hooks-phase-1. Add a gate (extend `run-hook-fixtures.sh`, or a vitest in `src/oss/` / `src/sync/`) that fails when a `hooks/checks/<id>.sh` has no sibling `<id>.test.sh`. Per the feedback-loop principle (linters enforce, instructions suggest) this makes the Phase-1 discipline mechanical so a future hook can't merge testless.
+  - **Details**: `scripts/run-hook-fixtures.sh` runs whatever `hooks/checks/*.test.sh` exist but nothing enforces that EVERY check script has one. Add a gate (extend `run-hook-fixtures.sh`, or a vitest in `src/oss/` / `src/sync/`) that fails when a `hooks/checks/<id>.sh` has no sibling `<id>.test.sh`. Per the feedback-loop principle (linters enforce, instructions suggest) this makes the Phase-1 discipline mechanical so a future hook can't merge testless.
   - **Files**: `scripts/run-hook-fixtures.sh` (or a new `src/sync/hooks-fixture-coverage.test.ts`)
   - **Acceptance**: adding a `hooks/checks/foo.sh` with no `foo.test.sh` fails `npm run verify`; the message names the missing fixture.
 
@@ -834,65 +386,50 @@
   - **Files**: `hooks/manifest.yaml` (entries) and/or the 2 scripts; update their `.test.sh` if behavior changes.
   - **Acceptance**: the manifest `verdict` field matches the script's actual verdict function for both hooks.
 
-- [ ] Extend the dash-pattern hook lint to rg, variable, and unquoted patterns
-  - **ID**: hooks-dashdash-lint-coverage
-  - **Tags**: scout, hooks, bug-class, robustness
-  - **Details**: The `lint-security.sh` check added with `hooks-grep-dashdash-pattern` flags only a quoted literal that starts with `-` after `grep`. It does not see `rg` calls, patterns held in variables, or unquoted patterns. Audit showed none exist today, so this guards future drift only. Consider a ShellCheck rule or a small wrapper before adding more regex.
-  - **Files**: `scripts/lint-security.sh`
-  - **Acceptance**: A fixture hook script using each missed form fails the lint, and the current hook scripts still pass it.
-
 - [ ] Make competitor spot-check support an explicit repo root for cwd-constrained agents
   - **ID**: competitor-spot-check-explicit-repo-root
   - **Tags**: bug, dx, pr-vision-trace, skill-quality
   - **Details**: The `competitor-spot-check` helper currently assumes the process cwd is the target repo root. In terminal sandboxes where `cd` is blocked or the shell cwd is stale, the helper can scan the wrong repo and produce an invalid PR-body prior-art line. Add an explicit repo-root option or documented invocation pattern so agents can target the intended repository deterministically.
-  - **Files**: `skill-plugins/dev/competitor-spot-check/SKILL.md`, `~/.config/agentbrew/scripts/competitor-spot-check.sh`
+  - **Files**: `templates/scripts/competitor-spot-check.sh`, `skill-plugins/dev/competitor-spot-check/SKILL.md`, `src/sync/helper-scripts-behavior.test.ts`
   - **Acceptance**: An agent can invoke the spot check for a repo by absolute path without changing shell cwd; the skill docs show the explicit-root form; a regression test or documented smoke case covers scanning a non-cwd repo.
-
 
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->
 
-- [ ] Adopt rule #3 — test-first + doc-first across all behavior changes
-  **ID**: adopt-rule-3-doc-first-discipline
-  **Tags**: scout, rule-3, constitution
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: Minsky's rule #3: "Every change starts with: a failing test (red); a metric in the relevant `user-stories/*.md` file with a numeric threshold and an SLI source; updated documentation in the same commit as the code change. Then write the minimum code to pass (green). Then refactor. No exceptions." Plus the spec-kit Article III gate: GWT acceptance scenarios in `user-stories/<id>.md` or `.minsky/specs/<task-id>.md` BEFORE the test file is written.
-
-  agentbrew has the test tree and ~2600 tests — test-first is already cultural. Doc-first is weaker: many PRs ship code + maybe-README. The independent-testability test ("If I implement just this one story, do I have a viable demonstrable unit of value?") is not applied. Adopt by: (a) extend `.github/pull_request_template.md` with a "Test added first?" checkbox + "Story file path" field; (b) `scripts/check-rule-3-test-first.mjs` checks that the diff includes either `*.test.ts` additions OR an explicit `**Test-first-exemption:**` line in the PR body; (c) `docs/user-stories/<id>.md` must exist for any feature PR (CI lint checks the link in PR body resolves to a file in the repo).
-  **Files**: scripts/check-rule-3-test-first.mjs (new), .github/pull_request_template.md (extend), docs/user-stories/README.md (clarify the GWT + independent-testability gates), CHANGELOG.md
-  **Acceptance**: lint runs on every PR; PRs without a test file diff OR an exemption line are rejected; user-story-link resolution check runs and passes for feature PRs.
-  **Hypothesis**: Making doc-first as iron as test-first prevents the "I'll document later" drift that makes README claims diverge from code.
-  **Success**: After 30 days, 0 PRs land without either a test diff OR an exemption line; ≤2 PRs land without a user-story link for feature scope.
-  **Pivot**: If lint blocks legitimate refactors that don't change behavior (no test needed), allow `**Refactor-only:**` exemption with a `git diff` proof that public API didn't change.
-  **Measurement**: `node scripts/check-rule-3-test-first.mjs --json | jq '.violations | length'` returns 0 on shipped PRs.
-  **Anchor**: Minsky `vision.md` § 3 "Test-first, metric-first, doc-first"; Beck 2002 *Test-Driven Development*; Wynne & Hellesøy 2012 *The Cucumber Book* (GWT acceptance scenarios); Cockburn 2004 *Crystal Clear* Ch. 3 (vertical-slice delivery).
+- [ ] Check test-first at commit time: behavior changes ship with a test diff
+  - **ID**: adopt-rule-3-doc-first-discipline
+  - **Tags**: scout, rules, tests
+  - **Details**: The doc-first half already runs: `npm run lint:rules` uses Minsky's `check-rule-3-doc-first.mjs` (`src/adapters/rule-lint.minsky.ts`). The test-first half has no check. Add one that runs in `npm run verify` (GitHub Actions is off): a diff that changes `src/**` non-test files must also change a test file, or carry a `Test exemption: <reason>` line in the commit message.
+  - **Files**: `scripts/check-rule-3-test-first.mjs` (new), `package.json` (verify), `src/adapters/rule-lint.ts`
+  - **Acceptance**: `npm run verify` fails on a branch that changes `src/foo.ts` with no test diff and no exemption line, and passes with either.
 
 - [ ] Extend skill validator to accept verified Claude Code frontmatter fields (effort, shell, when_to_use)
-  **ID**: skill-validator-claude-effort-shell-fields
-  **Tags**: scout, skill-validator, claude-frontmatter, docs/research/claude-code-undocumented-config.md
-  **Details**: The skill validator in `src/skills/validate.ts` currently flags `effort`, `shell`, and `when_to_use` as "unknown frontmatter fields". Binary verification against Claude Code 2.1.138 confirms these are real fields: `effort` (low/medium/high/max), `shell` (for shell-specific skills), and `when_to_use` are present in the embedded string literals. Extend the validator's frontmatter schema to accept these fields as valid instead of emitting warnings.
-  **Files**: `src/skills/validate.ts`, `src/skills/validate.test.ts`
-  **Acceptance**: `agentbrew skills validate` on a skill with `effort: medium`, `shell: true`, or `when_to_use: ...` passes without "unknown field" warnings.
+  - **ID**: skill-validator-claude-effort-shell-fields
+  - **Tags**: scout, skill-validator, claude-frontmatter, docs/research/claude-code-undocumented-config.md
+  - **Details**: The skill validator in `src/skills/validate.ts` currently flags `effort`, `shell`, and `when_to_use` as "unknown frontmatter fields". Binary verification against Claude Code 2.1.138 confirms these are real fields: `effort` (low/medium/high/max), `shell` (for shell-specific skills), and `when_to_use` are present in the embedded string literals. Extend the validator's frontmatter schema to accept these fields as valid instead of emitting warnings.
+  - **Files**: `src/skills/validate.ts`, `src/skills/validate.test.ts`
+  - **Acceptance**: `agentbrew skills validate` on a skill with `effort: medium`, `shell: true`, or `when_to_use: ...` passes without "unknown field" warnings.
 
 - [ ] Preserve Agentfile hook targeting and verified Claude Code control fields
-  **ID**: agentfile-hooks-async-rewake-control-fields
-  **Tags**: scout, agentfile, hooks, claude-frontmatter, docs/research/claude-code-undocumented-config.md
-  **Details**: The `ManagedHook` and `ClaudeHookItem` types in the Agentfile schema currently drop the verified Claude Code hook control fields: `async`, `asyncRewake`, `once`, `if`, `statusMessage`. Binary verification confirms these are real fields in Claude Code 2.1.138: `asyncRewake` runs in background but exits 2 wakes the model and blocks; `once` fires once then auto-removes. The parser also declares `AgentfileHookEntry.agents` but `parseSingleHookEntry()` silently drops it, so a machine manifest cannot scope lifecycle hooks to compatible agents. Preserve both the control fields and `agents` through parse, merge, state, and native sync.
-  **Files**: `src/agentfile.ts`, `src/types.ts`, `src/sync/hooks-sync.ts`, `src/agentfile.test.ts`, `src/sync/hooks-sync.test.ts`
-  **Acceptance**: An Agentfile with `hooks: [{ agents: [claude-code], asyncRewake: true, once: true }]` parses and syncs without type errors or dropped fields, and other detected hook targets do not receive that entry.
+  - **ID**: agentfile-hooks-async-rewake-control-fields
+  - **Tags**: scout, agentfile, hooks, claude-frontmatter, docs/research/claude-code-undocumented-config.md
+  - **Details**: The `ManagedHook` and `ClaudeHookItem` types in the Agentfile schema currently drop the verified Claude Code hook control fields: `async`, `asyncRewake`, `once`, `if`, `statusMessage`. Binary verification confirms these are real fields in Claude Code 2.1.138: `asyncRewake` runs in background but exits 2 wakes the model and blocks; `once` fires once then auto-removes. `AgentfileHookEntry` has no `agents` field, so a machine manifest cannot scope lifecycle hooks to compatible agents. Preserve both the control fields and `agents` through parse, merge, state, and native sync.
+  - **Files**: `src/agentfile.ts`, `src/types.ts`, `src/sync/hooks-sync.ts`, `src/agentfile.test.ts`, `src/sync/hooks-sync.test.ts`
+  - **Acceptance**: An Agentfile with `hooks: [{ agents: [claude-code], asyncRewake: true, once: true }]` parses and syncs without type errors or dropped fields, and other detected hook targets do not receive that entry.
 
 - [ ] Restore agentbrew release automation and npm authentication
-  **ID**: restore-agentbrew-release-automation
-  **Tags**: release, github-actions, npm, human-blocked
-  **Details**: The Auto-release workflow did not run after the merged delivery. `github.com/fyodoriv/agentbrew` is now the only canonical home, and GitHub Actions is disabled there. The documented manual fallback was blocked by `npm whoami` returning `ENEEDAUTH`. The workflow already has a `workflow_dispatch` fallback. Release stays blocked until Actions is enabled on `fyodoriv/agentbrew` (or a reviewed manual release path exists) and npm credentials are available. See `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
-  **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
-  **Acceptance**: A merge to `main` on `fyodoriv/agentbrew` creates the version commit and tag through the documented workflow; `npm run publish:latest` publishes that version; `npx agentbrew@latest --version` matches the tag.
+  - **ID**: restore-agentbrew-release-automation
+  - **Tags**: release, github-actions, npm, human-blocked
+  - **Details**: The Auto-release workflow did not run after the merged delivery. `github.com/fyodoriv/agentbrew` is now the only canonical home, and GitHub Actions is disabled there. The documented manual fallback was blocked by `npm whoami` returning `ENEEDAUTH`. The workflow already has a `workflow_dispatch` fallback. Release stays blocked until Actions is enabled on `fyodoriv/agentbrew` (or a reviewed manual release path exists) and npm credentials are available. See `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
+  - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
+  - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
+  - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
 - [ ] Pin each Mode 1 browser session to its own tab, so agents that share one Chrome stop driving each other's tabs
   - **ID**: agent-browser-cdp-tab-hijack-prevention
   - **Tags**: scout, agent-browser, mode-1, browser-rules, devx
-  - **Details**: Two agents attached to the same purpose Chrome over CDP can act on each other's tabs. On 2026-05-21 one agent ran `snapshot` and got the page that another agent had just opened, because every `--cdp` client acted on Chrome's active tab. This task stayed blocked because the fix had to land in `vercel-labs/agent-browser`. Upstream has since shipped it: `agent-browser --pin-tab` (or `AGENT_BROWSER_PIN_TAB=1`) binds a session to its own tab, and commands fail with `tab_gone` instead of falling back to another tab (checked on agent-browser 0.38.1). The Mode 1 snippet in `templates/rules/browser-tasks.mdc` still runs `connect`, `tab new`, and `open` without a pin, so agents do not use the fix. Add `--pin-tab` and a stable per-agent `--session` to the Mode 1 snippet, add the same one-line rule to `docs/shared-rules.md` § "Browser and web UI work", and prove that two concurrent sessions stay on their own tabs.
+  - **Details**: Two agents attached to the same purpose Chrome over CDP can act on each other's tabs. On 2026-05-21 one agent ran `snapshot` and got the page that another agent had just opened, because every `--cdp` client acted on Chrome's active tab. This task stayed blocked because the fix had to land in `vercel-labs/agent-browser`. Upstream has since shipped it: `agent-browser --pin-tab` (or `AGENT_BROWSER_PIN_TAB=1`) binds a session to its own tab, and commands fail with `tab_gone` instead of falling back to another tab (checked on agent-browser 0.39.0, which ships `--pin-tab`). The Mode 1 snippet in `templates/rules/browser-tasks.mdc` still runs `connect`, `tab new`, and `open` without a pin, so agents do not use the fix. Add `--pin-tab` and a stable per-agent `--session` to the Mode 1 snippet, add the same one-line rule to `docs/shared-rules.md` § "Browser and web UI work", and prove that two concurrent sessions stay on their own tabs.
   - **Files**: `templates/rules/browser-tasks.mdc`, `docs/shared-rules.md`, and any rules-sync test that pins the snippet text
   - **Acceptance**: The Mode 1 snippet pins its session with `--pin-tab`. Two parallel shells attached to the same CDP port each `open` a different URL, and each `get url` returns its own target.
   - **Hypothesis**: Pinning each Mode 1 session to its own tab removes cross-agent tab hijacks on a shared purpose Chrome.
@@ -917,6 +454,124 @@
 
 ## P3
 
+- [ ] Document pressure-eval conventions for skill contract tests
+  - **ID**: document-2134-pressure-eval-conventions
+  - **Tags**: docs, skills, evals
+  - **Details**: Skill eval pressure cases (wrong-tool routing, read-only boundaries, approval gates, refusal of fabrication) are only discoverable by reading each spec. Add a short convention section to `docs/testing-agent-artifacts.md` with examples drawn from the existing specs (detect-task-backend, competitor-spot-check, learn-project, agentbrew-status).
+  - **Files**: `docs/testing-agent-artifacts.md`
+  - **Acceptance**: the doc names the common pressure-case categories, and each category links to one existing eval in `skill-plugins/**/evals/evals.json`.
+
+- [ ] Extend the dash-pattern hook lint to rg, variable, and unquoted patterns
+  - **ID**: hooks-dashdash-lint-coverage
+  - **Tags**: scout, hooks, bug-class, robustness
+  - **Details**: The `lint-security.sh` check added with `hooks-grep-dashdash-pattern` flags only a quoted literal that starts with `-` after `grep`. It does not see `rg` calls, patterns held in variables, or unquoted patterns. Audit showed none exist today, so this guards future drift only. Consider a ShellCheck rule or a small wrapper before adding more regex.
+  - **Files**: `scripts/lint-security.sh`
+  - **Acceptance**: A fixture hook script using each missed form fails the lint, and the current hook scripts still pass it.
+
+- [ ] Make catalog MCP pin policy data-driven instead of source-hardcoded
+  - **ID**: catalog-mcp-pin-policy-data-driven
+  - **Tags**: scout, mcp, catalog, config-drift
+  - **Details**: The `tasks-mcp@latest` production failure is now guarded by a catalog-pin sweep, but the package-name mapping lives in source as a narrow allowlist. Move the policy into catalog metadata once another MCP package needs the same treatment so drift detection can reconcile future pinned npm servers without a code change.
+  - **Files**: `src/catalog.yaml`, `src/catalog/types.ts`, `src/mcp/catalog-pin-sweep.ts`
+  - **Acceptance**: at least one MCP server can declare its npm package identity and pinned-version behavior in catalog data; `sweepCatalogPins()` consumes that metadata without a source-level server allowlist.
+
+- [ ] Show preserved catalog rule blocks in `agentbrew status`
+  - **ID**: status-reports-preserved-catalog-rules
+  - **Tags**: scout, rules, status, p3
+  - **Details**: Refresh now keeps edited or unrecorded catalog rule blocks and only warns during `install --recommended` and `sync`. `agentbrew status` does not list them, so a stale kept block stays invisible until the next install run.
+  - **Files**: `src/status.ts`, `src/catalog/install.ts`
+  - **Acceptance**: `status --verbose` lists installed catalog rule blocks whose body differs from `src/catalog.yaml`, marked kept or refreshable; a test covers both.
+
+- [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
+  - **ID**: workspace-aware-sync
+  - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host
+  - **Details**: Companion to `tasksmd/tasks.md` task `workspace-mode-nested-repos` (filed 2026-05-12 PR upstream). Operators frequently have **multiple** workspace folders on the same host — the operator at 2026-05-12 has 5 workspaces under `~/apps/` (`tooling`, `acme`, `learning`, `_inventory`, `docs`), several containing their own per-repo `Agentfile.yaml`. Today `agentbrew sync` takes either no Agentfile (uses global `~/.config/agentbrew/Agentfile.yaml`) or an explicit `--agentfile <path>` flag — both single-Agentfile shapes. There's no first-class way to compose one global manifest + N workspaces × M per-repo manifests.
+
+    The operator's mental model is "I have these workspaces; agentbrew should know what every repo in every workspace wants and reconcile that into the target agent configs." Today that requires running `agentbrew sync --agentfile <path>` once per repo across N workspaces — friction that scales with workspace count × repo count.
+
+    **Outcome-shaped** (multi-workspace, N=1 is just a degenerate case):
+
+    1. Operator runs `agentbrew sync` (no flag) — if `workspaceRoots:` is declared in the global Agentfile, agentbrew iterates **every declared workspace** and processes every per-repo Agentfile within each. If no workspaces are declared, behaviour is unchanged (single-Agentfile, backwards compat).
+    2. Explicit scoping: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` (comma list) OR `agentbrew sync --workspace-name tooling` (config-name lookup, mirrors the `tasks` CLI's flag shape from the foundation task).
+    3. `agentbrew status` reports per-workspace, per-repo: discovered Agentfiles, declared sources, deployed targets, collision warnings.
+    4. Skills/commands/rules/MCPs are namespaced by `<workspace>::<repo>` so collisions across workspaces (two repos declaring the same MCP from different versions, etc.) surface as actionable diagnostics rather than silent last-write-wins.
+
+    Implementation hints (not load-bearing):
+    - Adds `workspaceRoots: [<path1>, <path2>, ...]` to the global `Agentfile.yaml` schema (plural; single-workspace setups declare a 1-element list). Schema validation rejects mixed `workspaceRoot:` (singular) + `workspaceRoots:` (plural).
+    - Adds `--workspaces <path1,path2,...>` (plural, comma-separated) + `--workspace-name <name>` flags on `sync`, `status`, `lint`, `health`. The singular `--workspace <path>` flag is shorthand for a 1-element list (kept for ergonomics).
+    - Reads the same `~/.config/tasks-md/workspaces.yaml` config the `tasks` CLI uses (foundation task) — so adding a workspace via `tasks workspaces add` automatically picks it up here. Don't reinvent the discovery layer.
+    - Reuses the `.tasks-md-workspace` sentinel from `tasksmd/tasks.md`.
+    - If command sources land later: in multi-workspace mode, every workspace × every repo's `commandSources:` declaration aggregates.
+    - Composes with `catalog-minsky-observer-skill` (sibling P1 above): once Minsky has a catalog entry, the per-repo Agentfile in `~/apps/tooling/minsky/` declares it via `skills: [minsky-observer]` instead of `skillSources: [...]`, and the workspace-sync picks it up like any other.
+  - **Files**: `src/cli.ts` (workspace + workspaces + workspace-name flags + Agentfile-discovery), `src/sync/skills-sync.ts`, `src/sync/command-sync.ts`, `src/sync/rules-sync.ts`, `src/sync/mcp-sync.ts` (all extended to handle the merged-from-N-workspaces-×-M-Agentfiles input), `src/health.ts` (per-workspace + per-repo health rollup), `src/core/workspaces.ts` (new — reads `~/.config/tasks-md/workspaces.yaml`), `templates/AGENTS.md` (multi-workspace docs), `docs/VISION.md` (multi-workspace as a first-class concept), tests.
+  - **Acceptance**: (a) `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` exits 0 + deploys every per-repo Agentfile's declarations across both workspaces; (b) per-workspace × per-repo sources are namespaced (collision reports `<workspace>::<repo>` for both sides); (c) `agentbrew status` lists discovered Agentfiles + deployed targets, grouped by workspace; (d) multi-workspace mode is backwards-compatible (zero workspaces declared → single-Agentfile behaviour unchanged); (e) reads `~/.config/tasks-md/workspaces.yaml` if present (shared with the `tasks` CLI); (f) tests cover the cross-workspace merge-conflict path.
+  - **Surfaced-by**: Operator multi-workspace setup at `~/apps/` containing 5 workspaces (`tooling`, `acme`, `learning`, `_inventory`, `docs`) as of 2026-05-12. Foundation task in `tasksmd/tasks.md` (workspace-mode-nested-repos) ships the spec + parser + shared config-file surface; this task closes the agentbrew side.
+
+- [ ] Catalog entry for the Minsky observer skill — `agentbrew install minsky-observer` resolves
+  - **ID**: catalog-minsky-observer-skill
+  - **Tags**: catalog, minsky, observer, curator-not-host
+  - **Details**: Surfaced by Minsky's observer-plugin distribution work (PR #493, merged 2026-05-12). The skill lives at `fyodoriv/minsky` under `skill-plugins/observer/minsky/SKILL.md`. Today operators install it by cloning the Minsky repo, running `distribution/install-observer.sh`, then running `agentbrew sync --agentfile ~/apps/tooling/minsky/Agentfile.yaml`. That's three manual steps per machine.
+
+    Per `docs/VISION.md` ("Curator, not host") and `src/catalog.yaml`'s header comment, the right answer is a single `catalog.yaml` entry pointing at the upstream repo, so the operator runs `agentbrew install minsky-observer` and the resolution + symlinking + agent-fan-out is handled by the existing skill-source pipeline.
+
+    Implementation hints (not load-bearing):
+    - Add an entry under `skills:` in `src/catalog.yaml` with `name: minsky-observer`, `source: github:fyodoriv/minsky/skill-plugins/observer`, `description: "Observer protocol for the Minsky autonomous runner — watches the loop, safe-heals bounded failures, files draft PRs upstream on escalation"`, `keywords: [minsky, observer, autonomous-coding, supervisor, perrow-1984]`.
+    - The `repo_sources:` machinery for fetching + caching to `~/.cache/agentbrew/sources/` already exists (rules-sync uses it); reuse rather than reinvent.
+    - If command sources land later, the catalog entry can also declare `commands: ./commands/minsky*.md` so the slash commands install with the skill in one step.
+  - **Files**: `src/catalog.yaml`, team overlay `catalog-overlay.yaml` (mention only — Minsky is upstream-public, not team-overlay), `docs/competition/` (if a competition page mentions Minsky), `README.md` if the catalog roster gets a README section.
+  - **Acceptance**: (a) `agentbrew install minsky-observer` resolves + downloads the skill from `fyodoriv/minsky`; (b) `agentbrew sync` symlinks `SKILL.md` into every detected agent's `skillsDir`; (c) `agentbrew search minsky` returns the observer entry; (d) the catalog-team overlay is untouched.
+  - **Hypothesis**: A single `catalog.yaml` entry for `minsky-observer` will reduce the 3-step manual install to `agentbrew install minsky-observer` (one command, zero git clones).
+  - **Success**: `agentbrew install minsky-observer && agentbrew sync` deploys the skill to all agents. `agentbrew search minsky` lists the entry.
+  - **Pivot**: If the `repo_sources:` machinery doesn't handle subdirectory skill paths (`skill-plugins/observer/`), the skill needs a top-level `SKILL.md` pointer in the Minsky repo — file the change upstream rather than patching agentbrew.
+  - **Measurement**: `agentbrew install minsky-observer 2>&1 | grep -c 'installed'` returns 1; `ls ~/.claude/skills/minsky/SKILL.md` exists.
+  - **Anchor**: agentbrew VISION.md § "Curator, not host"; existing catalog.yaml skill entries as reference pattern.
+  - **Surfaced-by**: Minsky observer plugin (fyodoriv/minsky PR #493) — current install path bypasses agentbrew's catalog entirely.
+
+- [ ] Introduce "plugin bundle" catalog primitive — install N catalog items as one unit
+  - **ID**: catalog-plugin-bundle-primitive
+  - **Tags**: scout, catalog, ecosystem-alignment, ux
+  - **Details**: The Claude Code plugin ecosystem (15.9k stars on `anthropics/claude-plugins-official`) has converged on "plugin = installable bundle". A plugin folder contains a `plugin.json` manifest + optional `commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`. Users `/plugin install <name>` to get the whole experience. claudepluginhub.com (April 2026): 32,019 active plugins, 282,325 components, 13,151 authors. Skills are 57.2% of components, commands 20.6%, agents 17.0%, MCP servers 2.5%, hooks 2.4%.
+
+  agentbrew's catalog lists catalog items (skills + MCP + rules) (skills + MCP servers + rules). To get "the Frontend Design experience" a user has to know which skills, MCP servers, and rules to install. The ecosystem solved this with the plugin bundle. agentbrew should adopt the same primitive — `src/catalog.yaml` gains a `bundles:` section listing groups of catalog items; `agentbrew install <bundle-name>` installs all members.
+
+  This is NOT skill hosting (agentbrew remains a curator). A bundle is a reference list — it points at existing catalog entries (which themselves point at source repos / upstream registries). The bundle metadata adds: title, description, recommended for (audit-focused / dev-focused / WORKSPACE-specific), members `[skill-id, mcp-id, rule-id, ...]`, optional `recommended_by_default: true` for the Tier 1 set.
+
+  Concrete build:
+  - Extend `src/catalog.yaml` schema with `bundles:` section
+  - Add `BundleManifest` type to `src/types.ts`
+  - Add `agentbrew install <bundle-name>` resolver that fans out to each member's install path
+  - Add `agentbrew browse bundles` command
+  - Seed with 3-5 starter bundles: `verify-everything` (verification-before-completion + doubt + code-smells-aware + tdd skills), `mcp-essentials` (top 5 MCPs by install volume), `frontend-design`, `dotfiles-aware`
+  - Add tests: bundle resolves to existing catalog items, missing member fails loudly, bundle install is idempotent
+  - **Files**: src/catalog.yaml (new `bundles:` section), src/types.ts (BundleManifest type), src/catalog/bundle-resolver.ts (new), src/catalog/bundle-resolver.test.ts (new), src/cli.ts (add `install <bundle>` + `browse bundles`), README.md (Bundles section)
+  - **Acceptance**: (a) `agentbrew install verify-everything` installs all verification skills in the catalog + relevant rules in one command; (b) `agentbrew browse bundles` lists available bundles with description + member count; (c) bundle members reference existing catalog entries (no skill content duplicated); (d) tests cover happy path + missing-member rejection + idempotent reinstall.
+  - **Hypothesis**: Bundles reduce "I want the X experience" from a a small set of command dance to a single command, matching what the Claude Code marketplace, claudepluginhub, and tonsofskills have all converged on.
+  - **Success**: `agentbrew install <bundle>` installs every item in a bundle and `agentbrew status` reports the bundle as one unit; a catalog test covers a bundle with a skill, an MCP server, and a rule.
+  - **Pivot**: If users prefer hand-picking individual items (the curatorial discipline) and bundles see <10% usage, deprecate the bundle primitive and instead ship "recommended starter pack" docs that list the manual commands.
+  - **Measurement**: `node -e "const c = require('js-yaml').load(require('fs').readFileSync('src/catalog.yaml','utf8')); console.log(c.bundles?.length ?? 0)"` returns ≥3; `agentbrew browse bundles --json | jq 'length' ≥ 3`.
+  - **Anchor**: `anthropics/claude-plugins-official` README — bundle structure (`commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`); claudepluginhub.com April 2026 stats (282,325 components, bundle is the install unit); Claude Code docs https://code.claude.com/docs/en/discover-plugins.md.
+
+- [ ] Document every external dependency in an ARCHITECTURE.md dependency table
+  - **ID**: adopt-minsky-adapter-discipline
+  - **Tags**: scout, architecture, adapters
+  - **Details**: `src/adapters/` now exists (`mcp-registry.ts`, `rule-lint.ts`, `rule-lint.minsky.ts`; #62, #70). New external dependencies go behind an adapter there. What is missing is a machine-checkable dependency table in ARCHITECTURE.md (tool → adapter file or "direct, with reason"), so a swap such as mcpm.sh → MCP Registry has one place to start. Minsky is in maintenance mode, so port only the table check, not its whole rule set.
+  - **Files**: ARCHITECTURE.md, `src/docs/` (one docs test for the table), `src/adapters/`
+  - **Acceptance**: ARCHITECTURE.md lists every external CLI or service agentbrew calls (skills CLI, mcpm.sh, ai-rules, MCP Registry, Minsky rule lints) with its adapter file or a "direct" reason; a docs test fails when a row points to a missing file.
+
+- [ ] Map every AGENTS.md rule to a lint or an explicit "advisory" label
+  - **ID**: establish-vision-constitutional-rules
+  - **Tags**: scout, constitution, rules
+  - **Details**: AGENTS.md already has numbered, citable rules, and `npm run lint:rules` runs Minsky's rule lints through `src/adapters/rule-lint.minsky.ts` (#62). What is missing is a map from each rule to its enforcement. Add a table to `docs/editing-rules.md`: rule number → the lint, hook, or test that enforces it, or "advisory" with a reason. This absorbs the old rule-10 "deterministic enforcement" task.
+  - **Files**: `docs/editing-rules.md`, `AGENTS.md` (link to the table)
+  - **Acceptance**: every numbered AGENTS.md rule has a row naming its enforcing check or the word "advisory" plus a reason; a docs test fails when a rule number has no row.
+
+- [ ] Drop the basic-ftp override once get-uri accepts a patched range
+  - **ID**: scout-basic-ftp-override-removal
+  - **Tags**: scout, dependencies, security
+  - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
+  - **Files**: package.json, package-lock.json
+  - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
+
 - [ ] Re-probe only heal-attempted pairs, not every failed pair
   - **ID**: heal-cycle-reprobe-attempted-only
   - **Tags**: scout, mcp, heal, performance
@@ -932,25 +587,25 @@
   - **Acceptance**: a pair with more attempts than the history cap shows its total in verbose status; a test covers it.
 
 - [ ] `agentbrew status` names helper scripts that sync kept or could not install
-  **ID**: status-reports-helper-scripts
-  **Tags**: scout, sync, status, helper-scripts
-  **Details**: Scouted while shipping the helper scripts. Sync keeps a file in `~/.config/agentbrew/scripts/` that agentbrew did not write. Only `agentbrew sync --verbose` says so; default sync and `agentbrew status` stay silent, so an old hand-made copy can hide a newer shipped script. Also, `isUserModified` exists twice (`src/sync/agents-sync.ts`, `src/sync/command-sync.ts`), and `src/sync/helper-scripts.ts` has a third ownership check. One helper in `src/manifest.ts` would keep the rule in one place.
-  **Files**: `src/status.ts`, `src/drift-checks/`, `src/sync/helper-scripts.ts`, `src/manifest.ts`
-  **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
-  **Output**: code
+  - **ID**: status-reports-helper-scripts
+  - **Tags**: scout, sync, status, helper-scripts
+  - **Details**: Scouted while shipping the helper scripts. Sync keeps a file in `~/.config/agentbrew/scripts/` that agentbrew did not write. Only `agentbrew sync --verbose` says so; default sync and `agentbrew status` stay silent, so an old hand-made copy can hide a newer shipped script. Also, `isUserModified` exists twice (`src/sync/agents-sync.ts`, `src/sync/command-sync.ts`), and `src/sync/helper-scripts.ts` has a third ownership check. One helper in `src/manifest.ts` would keep the rule in one place.
+  - **Files**: `src/status.ts`, `src/drift-checks/`, `src/sync/helper-scripts.ts`, `src/manifest.ts`
+  - **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
+  - **Output**: code
 
 - [ ] `check-pr-vision-trace.mjs` checks the PR body when it runs through a symlinked path
-  **ID**: pr-vision-trace-cli-guard-symlink
-  **Tags**: scout, pr-vision-trace, helper-scripts, bug
-  **Details**: Scouted while shipping the helper scripts. The CLI guard compares `import.meta.url` with `file://${process.argv[1]}`. Node resolves symlinks for `import.meta.url` but not for `process.argv[1]`. So `node <dir-with-a-symlink>/check-pr-vision-trace.mjs body.md` prints nothing and exits 0, even for a body with no Vision trace block. A symlinked `~/.config`, or a hand-made symlink to the repo copy, turns the gate into a silent pass. Compare real paths (`pathToFileURL(realpathSync(process.argv[1]))`) instead.
-  **Files**: `scripts/check-pr-vision-trace.mjs`, `src/check-pr-vision-trace.test.ts`
-  **Acceptance**: A test runs the script through a symlinked directory with a body that has no Vision trace block and gets exit 1 with the violation list.
-  **Output**: code
+  - **ID**: pr-vision-trace-cli-guard-symlink
+  - **Tags**: scout, pr-vision-trace, helper-scripts, bug
+  - **Details**: Scouted while shipping the helper scripts. The CLI guard compares `import.meta.url` with `file://${process.argv[1]}`. Node resolves symlinks for `import.meta.url` but not for `process.argv[1]`. So `node <dir-with-a-symlink>/check-pr-vision-trace.mjs body.md` prints nothing and exits 0, even for a body with no Vision trace block. A symlinked `~/.config`, or a hand-made symlink to the repo copy, turns the gate into a silent pass. Compare real paths (`pathToFileURL(realpathSync(process.argv[1]))`) instead.
+  - **Files**: `scripts/check-pr-vision-trace.mjs`, `src/check-pr-vision-trace.test.ts`
+  - **Acceptance**: A test runs the script through a symlinked directory with a body that has no Vision trace block and gets exit 1 with the violation list.
+  - **Output**: code
 
 - [ ] Replace the "open each once" hint for a missing command folder with a fix that works
   - **ID**: commands-dir-missing-hint-actionable
   - **Tags**: commands, sync, ux, docs
-  - **Details**: When an agent's `commandsDir` is missing, `agentbrew sync` prints "open each once to create it" (`src/sync/command-sync.ts`) and the drift check says "open <agent> once to create it" (`src/drift-checks/commands.ts`). On 2026-09-28 Windsurf, Devin and OpenCode had config folders but no command folder. The apps were not in `/Applications`, so the hint was a dead end. `mkdir -p` on the three `commandsDir` paths plus `agentbrew sync` deployed the commands to the agents that had no command folder. Make the hint name the exact `mkdir -p <commandsDir>` command, or create the folder when the agent's config root already exists.
+  - **Details**: When an agent's `commandsDir` is missing, `agentbrew sync` prints "open each once to create it" (`src/sync/command-sync.ts`) and the drift check says "open <agent> once to create it" (`src/drift-checks/commands.ts`). On 2026-09-28 OpenCode and other agents had config folders but no command folder. The apps were not in `/Applications`, so the hint was a dead end. `mkdir -p` on the three `commandsDir` paths plus `agentbrew sync` deployed the commands to the agents that had no command folder. Make the hint name the exact `mkdir -p <commandsDir>` command, or create the folder when the agent's config root already exists.
   - **Files**: src/sync/command-sync.ts, src/drift-checks/commands.ts, their tests
   - **Acceptance**: (1) the hint names the exact folder and a command that creates it; (2) when the agent's config root exists, sync creates the command folder and deploys; (3) tests cover both.
   - **Hypothesis**: Detected agents miss commands only because the folder is missing. Creating it when the config root exists raises command deployment to every detected agent that has a `commandsDir`.
@@ -960,57 +615,41 @@
   - **Anchor**: Nielsen, "10 Usability Heuristics for User Interface Design", 1994, heuristic 9 (error messages state the problem and suggest a solution).
 
 - [ ] Re-evaluate the update-tooling catalog pointer against a generic upstream workflow
-  **ID**: replace-relocate-update-tooling-catalog-pointer
-  **Tags**: scout, catalog, skills, delegation, dotfiles
-  **Details**: The catalog points to dotfiles for the host-aware `update-tooling` skill because AgentBrew must remain a curator and cannot own machine configuration. Revisit whether an upstream generic tooling-update workflow can safely replace the pointer, or whether the host-specific applied-checkout and LaunchAgent responsibilities remain the reason it belongs in dotfiles.
-  **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`, dotfiles `skills/update-tooling/SKILL.md`
-  **Acceptance**: Record one decision with current evidence: retain the dotfiles pointer because host ownership is unique, contribute a generic portion upstream, or replace the pointer with an upstream source. The catalog must continue to avoid duplicating skill content.
-
-- [ ] Pull request checks run `npm run lint`
-  **ID**: pr-check-runs-lint
-  **Tags**: ci, lint
-  **Details**: A biome complexity regression from #1445 merged unseen because no pull request check runs biome; #1447 fixed it. A check that runs `npm run lint` on every pull request stops the next one.
-  **Files**: `.github/workflows/ci.yml`
-  **Acceptance**: A pull request that fails `npm run lint` shows a failing check.
-  **Output**: code
-
-- [ ] Out-of-repo agentbrew LaunchAgents are generated with a locale
-  **ID**: out-of-repo-launchagents-set-locale
-  **Tags**: scout, launchagents, locale
-  **Details**: Scouted while adding a locale to LaunchAgents: `com.agentbrew.competitor-watch` and `com.agentbrew.session-start-aux` are written by untracked scripts under `~/.config/agentbrew/scripts/`, not by `src/`. `agentbrew fix` now adds `LANG=C.UTF-8` after the fact, but each regeneration drops it again until the next fix tick. Generate these plists from `src/` (or a tracked template) with the same environment as `buildPlistContent`.
-  **Files**: `src/sync/launchagent.ts`, `src/drift-checks/launchagent-path.ts`, `~/.config/agentbrew/scripts/`
-  **Acceptance**: A freshly generated competitor-watch or session-start-aux plist has `EnvironmentVariables.LANG` without waiting for `agentbrew fix`.
-  **Output**: code
+  - **ID**: replace-relocate-update-tooling-catalog-pointer
+  - **Tags**: scout, catalog, skills, delegation, dotfiles
+  - **Details**: The catalog points to dotfiles for the host-aware `update-tooling` skill because AgentBrew must remain a curator and cannot own machine configuration. Revisit whether an upstream generic tooling-update workflow can safely replace the pointer, or whether the host-specific applied-checkout and LaunchAgent responsibilities remain the reason it belongs in dotfiles.
+  - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`, dotfiles `skills/update-tooling/SKILL.md`
+  - **Acceptance**: Record one decision with current evidence: retain the dotfiles pointer because host ownership is unique, contribute a generic portion upstream, or replace the pointer with an upstream source. The catalog must continue to avoid duplicating skill content.
 
 - [ ] Index remaining garrytan/gstack niche skills in catalog.yaml
   - **ID**: index-gstack-niche-skills
   - **Tags**: scout, catalog, skills, curate, p3, landscape-2026-07-06
-  - **Details**: `register-superpowers-ce-gstack-sources` indexed gstack sprint-pipeline skills from `garrytan/gstack`; ~35 remain (iOS suite, design-shotgun/consultation, OpenClaw adapters, pair-agent, gstack-upgrade, etc.). Users can already `agentbrew install garrytan/gstack` to index all skills — this task adds catalog pointers for niche entries users search for by name.
+  - **Details**: `register-superpowers-ce-gstack-sources` indexed gstack sprint-pipeline skills from `garrytan/gstack`; the niche ones remain (iOS suite, design-shotgun/consultation, OpenClaw adapters, pair-agent, gstack-upgrade, etc.). Users can already `agentbrew install garrytan/gstack` to index all skills — this task adds catalog pointers for niche entries users search for by name.
   - **Files**: src/catalog.yaml, CHANGELOG.md, src/catalog/catalog.test.ts
   - **Acceptance**: Remaining high-demand gstack skills have catalog entries with disambiguation text; `npm run verify` passes.
 
-- [ ] Extract shared PR-body parsing helpers for deterministic PR hooks
-  **ID**: extract-pr-hook-body-parser
-  **Tags**: scout, hooks, shell, maintainability
-  **Details**: Scouted while implementing `agent-artifact-pr-test-guard`: `gh-pr-skill-requires-evals.sh` and `gh-pr-agent-artifacts-require-tests.sh` both parse `gh pr create/edit` commands for `--body-file` and fallback command text. The logic is small today but duplicated across PR-time hooks; extract a shared helper under `hooks/lib/` before adding another PR-body hook so quoting/body-file edge cases have one fixture suite.
-  **Files**: `hooks/lib/`, `hooks/checks/gh-pr-skill-requires-evals.sh`, `hooks/checks/gh-pr-agent-artifacts-require-tests.sh`, adjacent `.test.sh` fixtures
-  **Acceptance**: Both hooks source one body parser helper; existing hook fixtures still pass; new helper fixtures cover quoted `--body-file`, unquoted `--body-file`, inline body fallback, and missing body.
-  **Output**: code
+- [ ] Every `gh-pr-*` hook reads PR bodies through one shared parser
+  - **ID**: extract-pr-hook-body-parser
+  - **Tags**: scout, hooks, shell, maintainability
+  - **Details**: `hooks/lib/gh-pr-body-from-command.sh` already joins multi-line `--body` values, but only `gh-pr-body-related-prs-not-first.sh` uses it. `gh-pr-skill-requires-evals.sh` and `gh-pr-agent-artifacts-require-tests.sh` each copy a `--body-file` sed, and `gh-pr-body-requires-rationale.sh` reads `--body` line by line, so a multi-line body bypasses it. Add `--body-file` support to the shared helper and source it from all four hooks. Merges `gh-pr-body-rationale-multiline-extraction` (2026-10-15 review).
+  - **Files**: `hooks/lib/gh-pr-body-from-command.sh`, `hooks/checks/gh-pr-skill-requires-evals.sh`, `hooks/checks/gh-pr-agent-artifacts-require-tests.sh`, `hooks/checks/gh-pr-body-requires-rationale.sh`, their `.test.sh` fixtures
+  - **Acceptance**: all four hooks source the helper; fixtures cover quoted and unquoted `--body-file`, a multi-line `--body` with and without a rationale, and a missing body.
+  - **Output**: code
 
 - [ ] Unify `agentbrew setup opencode --model` with the Agentfile `defaultModel` surface
-  **ID**: unify-opencode-bootstrap-model-with-default-model
-  **Tags**: scout, models, opencode, api-surface
-  **Details**: Scouted while adding model-sync: `agentbrew setup opencode --model <id>` (src/mcp/opencode-bootstrap.ts) configures OpenCode's model independently of the new Agentfile `defaultModel`/`modelOverrides` mechanism, so two entry points now set "which model an agent uses." OpenCode's `~/.config/opencode/opencode.json` top-level `model` key ("provider/model") is a valid `modelConfig` surface; consider declaring it in agents.yaml and making the bootstrap flow read/write the same override map, keeping one mental model per rule #9 (small external API).
-  **Files**: `src/mcp/opencode-bootstrap.ts`, `src/core/agents.yaml`, `src/sync/model-sync.ts`
-  **Acceptance**: either opencode declares `modelConfig` and the bootstrap flow routes through it (with `modelOverrides.opencode` as the id source), or a code comment in opencode-bootstrap.ts documents why the surfaces stay separate.
-  **Output**: code
+  - **ID**: unify-opencode-bootstrap-model-with-default-model
+  - **Tags**: scout, models, opencode, api-surface
+  - **Details**: Scouted while adding model-sync: `agentbrew setup opencode --model <id>` (src/mcp/opencode-bootstrap.ts) configures OpenCode's model independently of the new Agentfile `defaultModel`/`modelOverrides` mechanism, so two entry points now set "which model an agent uses." OpenCode's `~/.config/opencode/opencode.json` top-level `model` key ("provider/model") is a valid `modelConfig` surface; consider declaring it in agents.yaml and making the bootstrap flow read/write the same override map, keeping one mental model per rule #9 (small external API).
+  - **Files**: `src/mcp/opencode-bootstrap.ts`, `src/core/agents.yaml`, `src/sync/model-sync.ts`
+  - **Acceptance**: either opencode declares `modelConfig` and the bootstrap flow routes through it (with `modelOverrides.opencode` as the id source), or a code comment in opencode-bootstrap.ts documents why the surfaces stay separate.
+  - **Output**: code
 
 - [ ] Reconcile `skillSourceDirs` legacy semantics with Agentfile `sources`
-  **ID**: reconcile-skill-source-dirs-with-agentfile-sources
-  **Tags**: scout, skills-sync, agentfile, docs
-  **Details**: `state.sources` now models indexed skill registries whose deployment is gated by `skillsInstalled`, while legacy `skillSourceDirs` still means "deploy every skill in this directory." That distinction is documented but still subtle and easy to misuse in hand-edited state. Decide whether to keep `skillSourceDirs` as an advanced opt-in escape hatch, migrate it to an explicit `optInSourceDirs` name, or replace it with Agentfile-local skill install flows.
-  **Files**: `src/sync/skills-sync.ts`, `src/agentfile.ts`, `README.md`, `AGENTS.md`
-  **Acceptance**: Source semantics are represented by one clear schema field or by docs plus lint/validation that flags accidental registry paths in `skillSourceDirs`; `agentbrew lint` or an equivalent test catches the ambiguous configuration.
+  - **ID**: reconcile-skill-source-dirs-with-agentfile-sources
+  - **Tags**: scout, skills-sync, agentfile, docs
+  - **Details**: `state.sources` now models indexed skill registries whose deployment is gated by `skillsInstalled`, while legacy `skillSourceDirs` still means "deploy every skill in this directory." That distinction is documented but still subtle and easy to misuse in hand-edited state. Decide whether to keep `skillSourceDirs` as an advanced opt-in escape hatch, migrate it to an explicit `optInSourceDirs` name, or replace it with Agentfile-local skill install flows.
+  - **Files**: `src/sync/skills-sync.ts`, `src/agentfile.ts`, `README.md`, `AGENTS.md`
+  - **Acceptance**: Source semantics are represented by one clear schema field or by docs plus lint/validation that flags accidental registry paths in `skillSourceDirs`; `agentbrew lint` or an equivalent test catches the ambiguous configuration.
 
 - [ ] Re-promote or replace the ask-human MCP after upstream stdio init is fixed
 
@@ -1020,34 +659,12 @@
   - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`
   - **Acceptance**: A direct stdio probe of the chosen ask-human MCP returns `status: "ok"` with `deepTool: "list_pending_questions"` or equivalent; the catalog entry is recommended only if the live smoke passes on a clean install.
 
-- [ ] Make `npm run verify` work when the repo checkout lives under `.worktrees/`
-
-  - **ID**: verify-biome-worktree-path-ignore
-  - **Tags**: biome, verify, worktree, scout
-  - **Details**: Running `npm run verify` from `~/apps/tooling/agentbrew/.worktrees/fix-agentfile-source-drift` fails at `biome check . --error-on-warnings` with "No files were processed" because `biome.json` excludes `!**/.worktrees`, and Biome appears to match that against the checkout's absolute path. Explicit checks such as `npx biome check src/catalog/catalog.test.ts` still work. The full verify gate should not fail solely because the agent is using a git worktree.
-  - **Files**: `biome.json`, `package.json`
-  - **Acceptance**: `npm run verify` processes source files and reaches the later verify stages from both the primary checkout and a `.worktrees/<branch>` checkout, while the primary checkout still does not lint nested sibling worktree contents.
-
-- [ ] Refresh hook deploy helper comments after verifier lib growth
-  - **ID**: refresh-hook-deploy-lib-comment
-  - **Tags**: scout, hooks, docs, comment-drift
-  - **Details**: `src/hooks/deploy.ts` says the hook `lib/` directory is "several files today", but the directory already has more helper files and Phase 2 verifier work grows it further. This is low-risk comment drift, but stale counts make future agents question whether deploy is intentionally copying only a subset. Replace the hardcoded count with count-free wording.
-  - **Files**: `src/hooks/deploy.ts`
-  - **Acceptance**: Hook deploy comments describe copying the flat `hooks/lib/` helper directory without a stale hardcoded file count; tests still pass.
-
 - [ ] Remove dead `replaceAllText` empty-match branch in `gdoc-surgical-edit-only.sh`
   - **ID**: gdoc-surgical-dead-replacealltext-branch
   - **Tags**: scout, hooks, dead-code, gdoc
   - **Details**: The block branch matching `replaceAllText.*containsText[^"]*""` can never fire on well-formed JSON — the closing `"` after the `containsText` key immediately ends the `[^"]*` class before it can reach `""`. Verified empirically while writing the fixture (the hook's reachable block paths are `mode:full`, `replaceMode:replace`, and the >8 KB body size guard). Either fix the regex to detect a genuinely-empty `containsText` value or delete the dead branch and document the real coverage.
   - **Files**: `hooks/checks/gdoc-surgical-edit-only.sh`, `hooks/checks/gdoc-surgical-edit-only.test.sh`
   - **Acceptance**: every block branch in the script is reachable and covered by a fixture case; no dead regex remains.
-
-- [ ] `gh-pr-body-requires-rationale` bypasses on multi-line PR bodies (single-line `--body` extraction)
-  - **ID**: gh-pr-body-rationale-multiline-extraction
-  - **Tags**: scout, hooks, gh-pr, false-negative
-  - **Details**: The hook extracts `--body` with a single-line `sed`, so a `gh pr create --body $'...\n...'` (a real newline) makes extraction fail and the hook bypasses ("no --body arg detected") instead of evaluating the rationale — a silent false-negative for exactly the realistic multi-line-body case. Surfaced while writing the fixture (escaped-`\n` bodies evaluate; real-newline bodies bypass). Parse the body robustly (handle multi-line / `--body-file`) so the rationale check actually runs on real PR bodies.
-  - **Files**: `hooks/checks/gh-pr-body-requires-rationale.sh`, `hooks/checks/gh-pr-body-requires-rationale.test.sh`
-  - **Acceptance**: a multi-line `--body` with no rationale is blocked; one with a rationale is allowed; the fixture covers both multi-line shapes.
 
 - [ ] Re-evaluate source-manifest bootstrap glue for relocation to upstream skills CLI or overlay-owned scripts
   - **ID**: replace-relocate-source-manifest-bootstrap
@@ -1057,77 +674,60 @@
   - **Acceptance**: A short decision note is added to this task or a linked doc with one of: keep in agentbrew because no upstream/tool-owned host covers generic source bootstrap; contribute upstream with issue/PR link; relocate to overlay quickstart scripts and remove the agentbrew command. If the decision is keep, set a next quarterly review date.
 
 - [ ] Explore whether Agentfile should sync Claude Code session settings (autoMemoryEnabled, autoDreamEnabled, autoMode)
-  **ID**: agentfile-claude-session-settings-sync
-  **Tags**: scout, agentfile, claude-settings, exploratory, docs/research/claude-code-undocumented-config.md
-  **Details**: Claude Code has session-level settings in `~/.claude/settings.json`: `autoMemoryEnabled` (auto-extract memories per session), `autoDreamEnabled` (consolidate memories across sessions), and `autoMode` (allow/soft_deny/hard_deny/environment classifier). Binary verification confirms these are real in 2.1.138. Explore whether the Agentfile should be able to declare these settings and sync them like the existing hooks key. This is exploratory — the research doc notes this as P3 to avoid building load-bearing infra on unstable fields (e.g., `criticalSystemReminder_EXPERIMENTAL` is explicitly flagged).
-  **Files**: `src/sync/settings-sync.ts` (new, if approved), `src/cli.ts` (register sync target)
-  **Acceptance**: A decision document in `docs/research/agentfile-claude-settings-sync-decision.md` that either (a) approves the feature with implementation path OR (b) rejects with rationale (e.g., settings are user-preference, not project-level).
+  - **ID**: agentfile-claude-session-settings-sync
+  - **Tags**: scout, agentfile, claude-settings, exploratory, docs/research/claude-code-undocumented-config.md
+  - **Details**: Claude Code has session-level settings in `~/.claude/settings.json`: `autoMemoryEnabled` (auto-extract memories per session), `autoDreamEnabled` (consolidate memories across sessions), and `autoMode` (allow/soft_deny/hard_deny/environment classifier). Binary verification confirms these are real in 2.1.138. Explore whether the Agentfile should be able to declare these settings and sync them like the existing hooks key. This is exploratory — the research doc notes this as P3 to avoid building load-bearing infra on unstable fields (e.g., `criticalSystemReminder_EXPERIMENTAL` is explicitly flagged).
+  - **Files**: `src/sync/settings-sync.ts` (new, if approved), `src/cli.ts` (register sync target)
+  - **Acceptance**: A decision document in `docs/research/agentfile-claude-settings-sync-decision.md` that either (a) approves the feature with implementation path OR (b) rejects with rationale (e.g., settings are user-preference, not project-level).
 
 - [ ] Adopt rule #8 — pattern conformance index in `VISION.md`
-  **ID**: adopt-rule-8-pattern-conformance-index
-  **Tags**: scout, rule-8, constitution, architecture
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: Minsky's rule #8: "Every artifact (file, package, interface, architectural decision, process step) traces to a named, published pattern. New artifacts add a row to `vision.md` § 'Pattern conformance index' in the same commit. Deviations from the published pattern are declared explicitly. Identifiers match pattern names when the match is total. Silent deviation is itself a constitutional violation."
+  - **ID**: adopt-rule-8-pattern-conformance-index
+  - **Tags**: scout, rule-8, constitution, architecture
+  - **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
+  - **Details**: Minsky's rule #8: "Every artifact (file, package, interface, architectural decision, process step) traces to a named, published pattern. New artifacts add a row to `vision.md` § 'Pattern conformance index' in the same commit. Deviations from the published pattern are declared explicitly. Identifiers match pattern names when the match is total. Silent deviation is itself a constitutional violation."
 
   agentbrew's `getAdapter()` factory IS the Adapter pattern (Gamma 1994). The drift-detection runs every 30 min — that's MAPE-K (IBM 2003). The state.yaml + Agentfile pair is Repository + Specification (Evans 2003, Fowler 2002). But none are CITED in code or VISION.md. New contributors don't know which patterns are load-bearing.
 
   Build: (a) `VISION.md` gains a `## Pattern conformance index` table — rows: artifact path, pattern name, source citation, conformance (full/partial/declared deviation), notes. (b) Top-of-file JSDoc on key types (`Adapter`, `SyncEngine`, `DriftCheck`) names the pattern. (c) `scripts/check-rule-8-pattern-conformance.mjs` parses the index and verifies every claimed-pattern row points at a real file. (d) PR template "What pattern does this conform to?" field.
 
   This is groundwork for `establish-vision-constitutional-rules` — rule #8 is one of the iron rules listed there. Lands together or sequentially.
-  **Files**: VISION.md (new `## Pattern conformance index` section), src/**/*.ts (add pattern citations to top-of-file JSDoc on key modules), scripts/check-rule-8-pattern-conformance.mjs (new), .github/pull_request_template.md (extend)
-  **Acceptance**: VISION.md has a pattern conformance index with ≥15 rows; ≥key source files carry top-of-file pattern citations; lint passes on every PR.
-  **Hypothesis**: Naming the patterns makes architectural drift visible at PR time (vs the current "I think this is how we do it" review pattern).
-  **Success**: After 30 days, ≥3 PRs cite a specific pattern row in review and either conform or declare deviation.
-  **Pivot**: If naming patterns adds review friction with no quality gain, downgrade to "pattern citation encouraged in top-of-file JSDoc, not required" and drop the lint.
-  **Measurement**: `grep -c '^| .* |' VISION.md` in the pattern-conformance section returns ≥15.
-  **Anchor**: Minsky `vision.md` § 8 "Pattern conformance"; Gamma et al. 1994 *Design Patterns* (canonical reference); Alexander 1977 *A Pattern Language* (the original pattern-language idea); Hohpe & Woolf 2003 *Enterprise Integration Patterns* (for agentbrew's adapter family).
+  - **Files**: VISION.md (new `## Pattern conformance index` section), src/**/*.ts (add pattern citations to top-of-file JSDoc on key modules), scripts/check-rule-8-pattern-conformance.mjs (new), .github/PULL_REQUEST_TEMPLATE.md (extend)
+  - **Acceptance**: VISION.md has a pattern conformance index with ≥15 rows; key source files carry top-of-file pattern citations; the check passes in `npm run verify`.
+  - **Hypothesis**: Naming the patterns makes architectural drift visible at PR time (vs the current "I think this is how we do it" review pattern).
+  - **Success**: After 30 days, ≥3 PRs cite a specific pattern row in review and either conform or declare deviation.
+  - **Pivot**: If naming patterns adds review friction with no quality gain, downgrade to "pattern citation encouraged in top-of-file JSDoc, not required" and drop the lint.
+  - **Measurement**: `grep -c '^| .* |' VISION.md` in the pattern-conformance section returns ≥15.
+  - **Anchor**: Minsky `vision.md` § 8 "Pattern conformance"; Gamma et al. 1994 *Design Patterns* (canonical reference); Alexander 1977 *A Pattern Language* (the original pattern-language idea); Hohpe & Woolf 2003 *Enterprise Integration Patterns* (for agentbrew's adapter family).
 
 - [ ] Adopt rule #16 — default by default (new behavior IS the default, not opt-in)
-  **ID**: adopt-rule-16-default-by-default
-  **Tags**: scout, rule-16, constitution
-  **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
-  **Details**: Minsky's rule #16: "When you implement a new behaviour or fix, make it the default immediately — not an opt-in flag behind an env var. Every new default ships with (1) an experiment in `.minsky/experiments/<id>.yaml`, (2) a runnable measurement, (3) a documented opt-out for debugging only. Burden of proof: 'why ISN'T this the default?'"
+  - **ID**: adopt-rule-16-default-by-default
+  - **Tags**: scout, rule-16, constitution
+  - **Reuse**: `npm run lint:rules` runs Minsky's rule checks on this repo through `src/adapters/rule-lint.minsky.ts` (rules 1, 3, 4, 6, 9, 12, 13, 17). Extend the adapter before you write a local lint; build locally only for a rule Minsky has no `--repo` script for.
+  - **Details**: Minsky's rule #16: "When you implement a new behaviour or fix, make it the default immediately — not an opt-in flag behind an env var. Every new default ships with (1) a runnable measurement, (2) a documented opt-out for debugging only. Burden of proof: 'why ISN'T this the default?'"
 
-  agentbrew has accumulated opt-in flags (`--prune`, `--dry-run`, `--verbose`, `--source`, `--curated`) that should perhaps be defaults. The audit found 3 cases where a fix landed behind a flag instead of as the default behavior (e.g. the recent opencode fix in `import.ts`).
+  agentbrew has accumulated opt-in flags (`--prune`, `--dry-run`, `--verbose`, `--source`, `--curated`) that should perhaps be defaults. The audit found 3 cases where a fix landed behind a flag instead of as the default behavior.
 
   Build: (a) `scripts/check-rule-16-defaults.mjs` parses `src/cli.ts` for new flags added in a PR and asserts each is justified in the PR body with one of: "behavior change too disruptive", "debug-only exit hatch", "user-config knob". (b) PR template extension: "Why is this not the default?" field for every new flag. (c) Audit existing flags and either flip to default OR add an experiment file documenting why they remain opt-in.
-  **Files**: scripts/check-rule-16-defaults.mjs (new), .github/pull_request_template.md (extend), docs/cli-flags-audit.md (new — one row per existing flag with justification), src/cli.ts (flip ≥1 flag to default as the canary)
-  **Acceptance**: lint runs on every PR; new flags require justification; existing flags audited; at least 1 flag flipped to default with measurement showing no regression.
-  **Hypothesis**: Forcing "why isn't this the default?" surfaces accidental opt-in features that should just be the new behavior.
-  **Success**: After 30 days, ≥3 existing flags flipped to default; ≤1 new flag added without "why isn't this default" justification.
-  **Pivot**: If burdensome flag-justification slows feature work, narrow to "any new env-var-toggled behavior requires the justification" (drop CLI flag scrutiny).
-  **Measurement**: `node scripts/check-rule-16-defaults.mjs --json | jq '.unjustified_flags | length'` returns 0; flag count in `src/cli.ts` trends down.
-  **Anchor**: Minsky `vision.md` § 16 "Default by default"; Spolsky 2001 *Joel on Software* (the "configuration is debt" essay); Conway 1968 (Conway's Law — flags often externalize team boundaries).
-
-- [ ] team overlay detection observability — surface in `agentbrew status --verbose`
-  **ID**: org-overlay-detection-observability
-  **Tags**: scout, observability, org-overlay, audit-2026-05-25
-  **Blocked**: obsolete — premise removed by PR #988 (2026-05-13 "feat: extract remaining org content to overlay"). That PR deleted `src/core/team-detect.ts` and `src/core/team-detect.test.ts` (that test file) entirely. The host-based auto-detection model the task assumes ("`gh` config moves, env-var rename, registry URL change") was replaced with explicit team-subscription via `agentbrew team set <overlay-url>` (see `src/team/team-catalog-overlay.test.ts` + `src/catalog/types.ts` § "Add an entry to the overlay's catalog-overlay.yaml"). Under the new model there is no implicit detection to observe — `agentbrew status` already lists the registered team overlay path (`agentbrew team show`) and which catalog entries came from it. The "team overlay silently fails to load" failure mode the task tried to instrument cannot happen anymore — failure is now noisy (`team set` either succeeds or returns a non-zero exit with a clear error). Re-validate before unblocking: if there's a NEW silent-failure mode in the team-overlay-loading code path (`loadCatalog` merging the overlay catalog), file a fresh task scoped to THAT failure mode. The original framing no longer applies.
-  **Details**: `src/core/team-detect.ts` runs on every sync but has no corresponding status output. If detection breaks (e.g. `gh` config moves, env-var rename, registry URL change), the team overlay silently fails to load and users notice when expected skills are missing. Add a clearly-visible `agentbrew status --verbose` block: "team overlay: detected via <signal-name> | NOT detected (signals checked: <list>)". Add tests for detection edge cases (missing `gh` config, partial org signals, env-var with empty value).
-  **Files**: src/core/team-detect.ts (add `getDetectionTrace()` exported helper), src/cli.ts (extend status command), src/core/team-detect.test.ts (add edge-case coverage), VISION.md § "Team overlays" (cross-reference the observability output)
-  **Acceptance**: `agentbrew status --verbose` shows detection result + signal source on org hosts; `--json` includes structured detection trace; tests cover all detection signals + 3 negative cases.
-  **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 12).
-
-- [ ] Cursor rules delegation completeness — per-file rules path
-  **ID**: cursor-rules-delegation-completeness
-  **Tags**: scout, sync-engine, cursor, audit-2026-05-25
-  **Details**: Cursor's global rules delegate to `ai-rules` (via `rules-delegate.ts`) but per-file rules in `~/.codeium/windsurf/rules/` (Cursor's actual config path) are NOT delegated. This creates a split: global rules go through ai-rules, per-file rules are native. A user adding a per-file rule manually has no agentbrew tracking; future `sync --prune` could delete it OR drift undetected. Resolve by either (a) extending delegation to per-file rules (preferred), or (b) adding per-file rules to the native carve-out list and documenting the split clearly.
-  **Files**: src/sync/rules-delegate.ts, src/sync/rules-sync.ts, ARCHITECTURE.md § "Data Flow" (clarify the Cursor row)
-  **Acceptance**: per-file Cursor rules are either delegated (preferred) or explicitly carved-out with documentation + tests; sync round-trip preserves user-added per-file rules; ARCHITECTURE.md "Data Flow" table reflects reality.
-  **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 8).
+  - **Files**: scripts/check-rule-16-defaults.mjs (new), .github/PULL_REQUEST_TEMPLATE.md (extend), docs/cli-flags-audit.md (new — one row per existing flag with justification), src/cli.ts (flip ≥1 flag to default as the canary)
+  - **Acceptance**: the check runs in `npm run verify`; new flags require justification; existing flags audited; at least 1 flag flipped to default with measurement showing no regression.
+  - **Hypothesis**: Forcing "why isn't this the default?" surfaces accidental opt-in features that should just be the new behavior.
+  - **Success**: After 30 days, ≥3 existing flags flipped to default; ≤1 new flag added without "why isn't this default" justification.
+  - **Pivot**: If burdensome flag-justification slows feature work, narrow to "any new env-var-toggled behavior requires the justification" (drop CLI flag scrutiny).
+  - **Measurement**: `node scripts/check-rule-16-defaults.mjs --json | jq '.unjustified_flags | length'` returns 0; flag count in `src/cli.ts` trends down.
+  - **Anchor**: Minsky `vision.md` § 16 "Default by default"; Spolsky 2001 *Joel on Software* (the "configuration is debt" essay); Conway 1968 (Conway's Law — flags often externalize team boundaries).
 
 - [ ] First-run experience — detect offline + auto-warm `npx skills` cache
-  **ID**: first-run-offline-warmup
-  **Tags**: scout, ux, onboarding, audit-2026-05-25
-  **Details**: README mentions "Before going offline, run `npx --yes skills --version` once" but this is a footgun — users forget, then `agentbrew init` fails with `ENOTCACHED` and they're confused. Build: `agentbrew init` detects offline mode (probe network with a 2s timeout) and either (a) auto-warms the cache before going offline OR (b) gives an actionable error: "Run `npx --yes skills --version` once on a connected machine, then retry `agentbrew init`."
-  **Files**: src/init.ts (add network probe + warmup path), src/init.test.ts (extend with offline scenarios), README.md § "Offline installs" (mention the new behavior)
-  **Acceptance**: init succeeds on a connected machine that has never run `npx skills` (auto-warms); init on offline machine without cache prints actionable error with the exact command to run; tests cover both paths.
-  **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 15).
+  - **ID**: first-run-offline-warmup
+  - **Tags**: scout, ux, onboarding, audit-2026-05-25
+  - **Details**: README mentions "Before going offline, run `npx --yes skills --version` once" but this is a footgun — users forget, then `agentbrew init` fails with `ENOTCACHED` and they're confused. Build: `agentbrew init` detects offline mode (probe network with a 2s timeout) and either (a) auto-warms the cache before going offline OR (b) gives an actionable error: "Run `npx --yes skills --version` once on a connected machine, then retry `agentbrew init`."
+  - **Files**: src/init.ts (add network probe + warmup path), src/init.test.ts (extend with offline scenarios), README.md § "Offline installs" (mention the new behavior)
+  - **Acceptance**: first re-test a cold offline `agentbrew init`: a failed skills-CLI delegation now falls back to the native path (`src/add-source.ts`). If it still fails, init prints the exact command to run (or uses `skillInstallMode: native`); otherwise close this task. A test covers the offline path.
+  - **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 15).
 
 - [ ] Track install events + surface popularity signal in `agentbrew browse`
-  **ID**: catalog-install-popularity-signal
-  **Tags**: scout, catalog, ux, ecosystem-alignment
-  **Details**: Skill discovery is the #1 UX complaint in the ecosystem. The official `skills.sh` registry paginates many public skills alphabetically with no install-rank. orangebot.ai/skills built a ranked index of install-ranked public skills sorted by weekly install volume because nobody else did. claudepluginhub.com (32k+ plugins) tracks "1,730 installs in the last 7 days" per plugin. agentbrew's `browse` command has no popularity signal — Tier 1/2/3 is editorial-curated, not data-driven.
+  - **ID**: catalog-install-popularity-signal
+  - **Tags**: scout, catalog, ux, ecosystem-alignment
+  - **Details**: Skill discovery is the #1 UX complaint in the ecosystem. The official `skills.sh` registry paginates many public skills alphabetically with no install-rank. orangebot.ai/skills built a ranked index of install-ranked public skills sorted by weekly install volume because nobody else did. claudepluginhub.com (32k+ plugins) tracks "1,730 installs in the last 7 days" per plugin. agentbrew's `browse` command has no popularity signal — Tier 1/2/3 is editorial-curated, not data-driven.
 
   Concrete build:
   - Local event log at `~/.config/agentbrew/install-events.jsonl` — append on every successful `agentbrew install <id>` (skill / mcp / rule / bundle)
@@ -1138,98 +738,43 @@
   - Strictly local — no opt-out needed since no data leaves the machine. Optional `agentbrew telemetry export` produces an anonymized summary for users who WANT to share aggregate stats upstream (off by default)
 
   Integrates with the Minsky-discipline task: `src/adapters/popularity-store.ts` interface + `src/adapters/popularity-store.jsonl.ts` impl, so the storage backend is swappable (e.g. SQLite later, or a shared community endpoint if ecosystem demand emerges).
-  **Files**: src/catalog/popularity.ts (new), src/catalog/popularity.test.ts (new), src/adapters/popularity-store.ts (new), src/adapters/popularity-store.jsonl.ts (new), src/cli.ts (add `--sort` flag to browse + sparkline rendering), src/install.ts (append install events), README.md (Popularity tracking section)
-  **Acceptance**: (a) every successful `agentbrew install` appends a JSONL row; (b) `agentbrew browse --sort=trending` returns items sorted by 7d install count; (c) no network call is made by the popularity layer (verified by test with network mock); (d) `agentbrew browse <id>` shows a 30-day install history sparkline; (e) tests cover empty-log + corrupted-row + concurrent-write scenarios.
-  **Hypothesis**: A local install-count signal converts agentbrew's editorial Tier system into an empirically-validated signal — users see which items are actually used vs which were just recommended.
-  **Success**: Within 30 days of shipping, the `--sort=trending` view surfaces ≥3 items that are NOT in the current Tier 1 set, suggesting the editorial picks miss real usage patterns.
-  **Pivot**: If single-user install counts produce too-thin signal (Fyodor installs each thing once), pivot to a "session-frequency" signal — count how often each skill/MCP/rule is mentioned in the agent's tool-call logs (requires hooks-sync extension to capture tool-call events).
-  **Measurement**: `wc -l ~/.config/agentbrew/install-events.jsonl` increases monotonically with installs; `agentbrew browse --sort=trending --json | jq '. | length' ≥ 5`.
-  **Anchor**: orangebot.ai/skills (2026-05) — install-volume ranking for install-ranked public skills; claudepluginhub.com (April 2026 stats) — per-plugin install counters; agentbrew VISION.md § "Curator, not host" — editorial picks + empirical signal is stronger than either alone.
+  - **Files**: src/catalog/popularity.ts (new), src/catalog/popularity.test.ts (new), src/adapters/popularity-store.ts (new), src/adapters/popularity-store.jsonl.ts (new), src/cli.ts (add `--sort` flag to browse + sparkline rendering), src/commands/cli-install.ts (append install events), README.md (Popularity tracking section)
+  - **Acceptance**: (a) every successful `agentbrew install` appends a JSONL row; (b) `agentbrew browse --sort=trending` returns items sorted by 7d install count; (c) no network call is made by the popularity layer (verified by test with network mock); (d) `agentbrew browse <id>` shows a 30-day install history sparkline; (e) tests cover empty-log + corrupted-row + concurrent-write scenarios.
+  - **Hypothesis**: A local install-count signal converts agentbrew's editorial Tier system into an empirically-validated signal — users see which items are actually used vs which were just recommended.
+  - **Success**: Within 30 days of shipping, the `--sort=trending` view surfaces ≥3 items that are NOT in the current Tier 1 set, suggesting the editorial picks miss real usage patterns.
+  - **Pivot**: If single-user install counts produce too-thin signal (Fyodor installs each thing once), pivot to a "session-frequency" signal — count how often each skill/MCP/rule is mentioned in the agent's tool-call logs (requires hooks-sync extension to capture tool-call events).
+  - **Measurement**: `wc -l ~/.config/agentbrew/install-events.jsonl` increases monotonically with installs; `agentbrew browse --sort=trending --json | jq '. | length' ≥ 5`.
+  - **Anchor**: orangebot.ai/skills (2026-05) — install-volume ranking for install-ranked public skills; claudepluginhub.com (April 2026 stats) — per-plugin install counters; agentbrew VISION.md § "Curator, not host" — editorial picks + empirical signal is stronger than either alone.
 
 - [ ] (Publish-only step) File the staged upstream issue at `neiii/bridle` (upstream relocated 2026-05-02 from `superwall/bridle`) noting `harness-locate` uses singular `skill/` and `command/` for OpenCode but the official OpenCode docs use plural.
-  **ID**: bridle-opencode-path-issue
-  **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
-  **Details**: Surfaced from the 2026-04-26 `audit-harness-locate-paths` audit (see [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md)). Bridle's `harness-locate::opencode` returns `~/.config/opencode/skill/` (singular) and `~/.config/opencode/command/` (singular). Per [OpenCode docs](https://opencode.ai/docs/skills) (2026-04-26), the actual paths are plural: `~/.config/opencode/skills/<name>/SKILL.md` and `~/.config/opencode/commands/<name>.md`.
+  - **ID**: bridle-opencode-path-issue
+  - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
+  - **Details**: Surfaced from the 2026-04-26 `audit-harness-locate-paths` audit (see [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md)). Bridle's `harness-locate::opencode` returns `~/.config/opencode/skill/` (singular) and `~/.config/opencode/command/` (singular). Per [OpenCode docs](https://opencode.ai/docs/skills) (2026-04-26), the actual paths are plural: `~/.config/opencode/skills/<name>/SKILL.md` and `~/.config/opencode/commands/<name>.md`.
 
     **Draft staged 2026-04-26 (PR #814)** in [`docs/audits/bridle-opencode-issue-draft.md`](docs/audits/bridle-opencode-issue-draft.md). The draft includes the title, body, source-code line references (`opencode.rs:41-46` for `commands_dir`, `opencode.rs:73-78` for `skills_dir`), suggested diff, and a filing checklist for the publish step.
 
-    **Publishing hold**: posting the issue at `neiii/bridle` is a public-write action under the file-level publishing policy and requires explicit per-action approval at the moment of filing. The draft is ready (URL/branch references corrected after the 2026-05-02 upstream relocation, see `refresh-bridle-audit-docs-after-upstream-relocation` above); the only remaining step is `gh issue create` once approved.
+    - **Publishing hold**: posting the issue at `neiii/bridle` is a public-write action under the file-level publishing policy and requires explicit per-action approval at the moment of filing. The draft is ready (URL/branch references corrected after the 2026-05-02 upstream relocation); the only remaining step is `gh issue create` once approved.
 
     Outcome: a short, factual issue body referencing both OpenCode doc URLs and the two specific Bridle source-code lines. If accepted upstream: a Bridle patch lands; agentbrew users on `harness-locate`-backed tooling see correct paths. If rejected: closes a future-noise channel for next-session audits.
 
     Scope when approved: ~5 minutes — read the draft, confirm line ranges still match Bridle's `master` branch on `neiii/bridle`, run `gh issue create --repo neiii/bridle ...`, paste the URL into the audit report's "Scout output" section.
 
     Publishing scope: cross-org (Bridle is `neiii/bridle` on github.com — relocated 2026-05-02 from `superwall/bridle`). REQUIRES EXPLICIT PER-ACTION USER APPROVAL.
-  **Files**: [`docs/audits/bridle-opencode-issue-draft.md`](docs/audits/bridle-opencode-issue-draft.md) (the staged draft); when filed, [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md) gets the issue URL appended under "Scout output".
-  **Acceptance**: ~~(a) the issue draft is recorded in the commit body or a sibling `docs/audits/bridle-opencode-issue-draft.md`~~ DONE 2026-04-26 (PR #814 — draft staged at `docs/audits/bridle-opencode-issue-draft.md`); (b) post-approval, the issue is filed and the URL recorded in the audit report's "scout output" section; (c) if Bridle merges a fix, the audit report and `agents-yaml-honor-env-overrides` task get a one-line update.
-  **Output**: docs
-  **Human-approval-required**: external-issue
-  **Blocked**: needs-user-approval — posting the upstream `neiii/bridle` issue is a public write and requires explicit current-session approval for that exact action.
-  **Research**: 2026-05-02 — upstream target refresh.
+  - **Files**: [`docs/audits/bridle-opencode-issue-draft.md`](docs/audits/bridle-opencode-issue-draft.md) (the staged draft); when filed, [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md) gets the issue URL appended under "Scout output".
+  - **Acceptance**: ~~(a) the issue draft is recorded in the commit body or a sibling `docs/audits/bridle-opencode-issue-draft.md`~~ DONE 2026-04-26 (PR #814 — draft staged at `docs/audits/bridle-opencode-issue-draft.md`); (b) post-approval, the issue is filed and the URL recorded in the audit report's "scout output" section; (c) if Bridle merges a fix, the audit reportgets a one-line update.
+  - **Output**: docs
+  - **Human-approval-required**: external-issue
+  - **Blocked**: needs-user-approval — posting the upstream `neiii/bridle` issue is a public write and requires explicit current-session approval for that exact action.
+  - **Research**: 2026-05-02 — upstream target refresh.
     `superwall/bridle` no longer resolves through GitHub, but GitHub repo search finds the Bridle harness project at `neiii/bridle` (`https://github.com/neiii/bridle`, default branch `master`). The current `crates/harness-locate/src/harness/opencode.rs` still documents and joins singular `command`/`skill` at the OpenCode command/skill helpers, and an all-state issue search on `neiii/bridle` for the OpenCode plural/singular terms returned no existing issue. Before the approved publish step, update the draft's target repo and line links from `superwall/bridle`/`main` to `neiii/bridle`/`master`, then file there if the user approves that exact public write.
 
-    2026-05-02 (later) — draft prep shipped via `refresh-bridle-audit-docs-after-upstream-relocation`. `docs/audits/bridle-opencode-issue-draft.md` and `docs/audits/harness-locate-cross-check.md` now point at `neiii/bridle@master`, the `gh issue create` invocation targets `neiii/bridle`, and a re-fetch of `crates/harness-locate/src/harness/opencode.rs` from `neiii/bridle@master` confirmed the singular `"skill"` / `"command"` joins still exist at the documented line ranges (43-45 / 75-77; function blocks 41-46 / 73-78). The draft is now publish-ready end-to-end; the only remaining step is the still-blocked `gh issue create` at `neiii/bridle`.
-  **Last-enriched**: 2026-05-02
-
-- [ ] Bump hardcoded agent counts from 56 → qodo agent registry drift landed (5 cascading test failures)
-  **ID**: fix-agent-count-drift-after-qodo
-  **Tags**: scout, tests, stale-assertions, agents-yaml
-  **Details**: PR #3 `feat(agents): add qodo agent definition` added qodo as the 57th entry in `src/core/agents.yaml`, but five downstream tests/docs still hardcode 56:
-
-    1. `src/types.test.ts > AGENT_DEFINITIONS > defines the full agent registry` — `expected [Array(57)] to have a length of 56 but got 57`.
-    2. `src/core/agents.test.ts > loadAgentDefinitions > loads all agents from YAML` — `expected 57 to be 56`.
-    3. `src/core/agents.test.ts > loadAgentDefinitions > marks skills-only agents as experimental` — likely the same root cause (qodo not classified in the experimental allowlist).
-    4. `src/core/agent-name-map.test.ts > coverage invariant — every agent in agents.yaml is classified` — qodo is in `agents.yaml` but not in skills CLI intersection, renames, or carve-outs.
-    5. `src/docs/agent-matrix.test.ts > README agent matrix freshness > README.md content between <!-- agent-matrix:* --> matches the generated output` — the README agent matrix table is missing the qodo row.
-
-    Together these are the largest single cluster (5 of 14) of `npm run test:all` failures on `origin/main` as of 2026-05-20. They've blocked agents from using `npm run test:all` as a green baseline for two weeks — every PR looks like it introduces failures until you stash and confirm.
-
-    Fix is mostly mechanical: bump the hardcoded `56` to `57` in `types.test.ts` (prefer `expect(AGENT_DEFINITIONS.length).toBe(loadAgentDefinitions().length)` to make this self-healing), bump the same in `agents.test.ts`, classify qodo in `src/core/agent-name-map.ts` (intersection / rename / carve-out — qodo is an IDE skill agent so probably intersection), and regenerate `README.md`'s agent matrix block via the existing template generator (or `npm run -s build:readme-matrix` if that script exists).
-  **Files**: `src/types.test.ts`, `src/core/agents.test.ts`, `src/core/agent-name-map.ts`, `src/core/agent-name-map.test.ts`, `README.md` (the section between `<!-- agent-matrix:start -->` and `<!-- agent-matrix:end -->`)
-  **Acceptance**: (a) `npx vitest run src/types.test.ts src/core/agents.test.ts src/core/agent-name-map.test.ts src/docs/agent-matrix.test.ts` exits 0; (b) prefer self-healing assertions over hardcoded counts so the next agent addition doesn't repeat this work; (c) the `agent-name-map` classification rationale is added for qodo if it's a carve-out.
-  **Output**: code
-  **Hypothesis**: All 5 failures share a single root cause — qodo (57th agent) was added without updating the downstream count assertions + classification map + README matrix. Replacing hardcoded counts with `loadAgentDefinitions().length` and adding qodo's classification entry will fix all 5 in one PR.
-  **Success**: 5/listed tests pass; `npm run test:all` drops from 14 → 9 failures.
-  **Pivot**: If qodo turns out to need a carve-out (agentbrew-only, not in skills CLI), the rationale text under `AGENTBREW_ONLY_AGENTS_RATIONALE` must explain why — same pattern as the existing carve-out agents.
-  **Measurement**: `npx vitest run src/types.test.ts src/core/agents.test.ts src/core/agent-name-map.test.ts src/docs/agent-matrix.test.ts 2>&1 | tail -3` shows `Tests  X passed (X)` with 0 failed.
-  **Anchor**: agentbrew AGENTS.md rule #1 (test before committing requires a green baseline); the `feedback-loop-guardrails` cursor rule's "every bug becomes a rule" — replacing hardcoded counts with derived assertions IS the rule that prevents this recurring.
-  **Surfaced-by**: 2026-05-20 PR #1015 (`collapse-mcpformat-dispatch-to-adapter`) `npm run test:all` baseline check. Caused by PR #3 `feat(agents): add qodo agent definition` (the only commit touching agents.yaml between PR #934 and HEAD); the downstream tests/docs were never updated.
-
-- [ ] Remove or wire up dead `src/fetch-sources.ts` — only referenced by its own test
-  - **ID**: dead-code-fetch-sources
-  - **Tags**: scout, dead-code, cleanup
-  - **Blocked**: needs-revalidation — premise contradicted 2026-05-26 by reading `src/init.ts:140` which calls `await fetchSources()` from the `agentbrew init` command path. The blocking commit is fc41da15 "feat(init): make init idempotent — install recommended + sync (#10)" which explicitly re-wired fetchSources into init. `src/integration-essential-core.test.ts`, `src/integration-infra.test.ts`, and `src/init.test.ts` all also mock the module, confirming it's a known dependency of init. So the task's "NOT called from any live code path" claim no longer holds — deleting fetch-sources.ts would break `agentbrew init`. Re-validate before unblocking: either (a) re-state the task as "extract the disk-write semantics fetchSources adds vs scanSkillDirs and consolidate" if there's still drift between the two; or (b) mark as completed if the disk-write side IS load-bearing for init and the dead-code claim is no longer relevant.
-  - **Details**: While fixing `unify-skill-scanner-paths` on 2026-05-25, confirmed that `src/fetch-sources.ts`'s exported `fetchSources()` function is NOT called from any live code path — only `src/fetch-sources.test.ts` exercises it. The scanner unification fix added the deep-scan fallback directly to `sync/skills-sync.ts` `scanSkillDirs`, which now matches the catalog code path's behavior. So `fetch-sources.ts` is now redundant (and possibly was always dead — it appears to have been an attempted extraction that never got wired into `sync.ts`'s call chain). Two options: (a) delete the file + its test if no callers want its specific behavior; (b) wire it into `sync` if there's a reason to keep it (rebuilds `availableItems` on disk vs in-memory, perhaps for `agentbrew status` reporting). Pick (a) unless something concrete justifies the keep.
-  - **Files**: `src/fetch-sources.ts` (delete), `src/fetch-sources.test.ts` (delete), `src/cli.ts` or wherever an import would land (verify no stale references)
-  - **Acceptance**: After this PR, `grep -r "from.*fetch-sources" src/ | grep -v fetch-sources` returns 0 matches. `knip` and `npm run verify` exit clean.
-  - **Hypothesis**: `fetch-sources` was an aborted extraction now superseded by the deep-scan fallback in `scanSkillDirs`; removing it keeps the codebase smaller and prevents future contributors from accidentally calling it.
-  - **Success**: `knip --no-progress` reports `fetchSources` as unused before; reports nothing about it after.
-  - **Pivot**: If `fetchSources` has a meaningful semantic difference from `scanSkillDirs` (e.g. writes to disk vs only scans), wire it into a `agentbrew refresh-sources` subcommand instead of deleting.
-  - **Measurement**: `grep -rn "fetchSources\b" src/ | wc -l` returns 0 after the change (currently 4 — module export, test import, function definition).
-  - **Anchor**: Knip's job is to surface dead exports; `fetch-sources` appears in its output but hasn't been deleted yet.
-
-- [ ] Migrate the migration-candidate built-in skills out of `skill-plugins/dev/`
-  **ID**: migrate-builtin-skills-to-source-repos
-  **Tags**: scout, vision-curator-not-host, codebase-shrink, audit-2026-05-25
-  **Details**: Per VISION.md § "Curator, not host", only built-in skills that stay in-repo should remain permanently in `skill-plugins/dev/`: `agentbrew-*` family (skills that document agentbrew itself), `agentfile-init`, `sync-agent-config`, `load-project-context` — anything that has no other natural home. The other remaining built-in skills are migration candidates that should move to source repos (their own GitHub repos or grouped into thematic repos like `companion-*`, `grind-*`, `skill-*`), with catalog references replacing the built-in entries. `skill-plugins/dev/README.md` already has a bucket list classifying each.
-
-  This is a multi-PR program of work, not a single commit. Decompose by bucket:
-  - **Bucket A** — `companion-*` family (companion skills): create `agentbrew-companion-skills` source repo, move all 6, update catalog
-  - **Bucket B** — `grind-*` family (grind skills): create `agentbrew-grind-skills` source repo or merge into companion-skills if scope overlaps
-  - **Bucket C** — `skill-*` family (skill-creator, skill-rewriter, skill-eval-loop): create `agentbrew-skill-tooling` source repo
-  - **Bucket D** — Remaining one-offs (remaining one-off skills): triage per skill — either find a natural source repo upstream, create a small thematic repo, or mark as agentbrew-permanent if genuinely scope-aligned
-
-  Each bucket is its own PR: (1) create source repo with proper README/AGENTS.md/CHANGELOG, (2) copy skills with `git mv` + history rewrite if needed, (3) add catalog `source_repo` entries pointing at the new repo, (4) delete from `skill-plugins/dev/`, (5) update `skill-plugins/dev/README.md` to remove the migrated entries from the bucket list.
-
-  Cross-link: this task is the concrete instance of `adopt-rule-1-don't-reinvent` from the constitutional rules — every skill that's actually a "shared dev tool", not "agentbrew internals", should be a source repo.
-  **Files**: skill-plugins/dev/README.md (track progress), src/catalog.yaml (add `source_repo` entries as buckets land), CHANGELOG.md per bucket
-  **Acceptance**: by end of program — `skill-plugins/dev/` contains only agentbrew-permanent skills (only the agentbrew-permanent set); `src/catalog.yaml` has ≥4 new `source_repo` references pointing at the new repos; the codebase non-test LOC target (<20K per VISION rule #7) is materially closer.
-  **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 13); existing `skill-plugins/dev/README.md` bucket list.
+    2026-05-02 (later) — draft prep shipped. `docs/audits/bridle-opencode-issue-draft.md` and `docs/audits/harness-locate-cross-check.md` now point at `neiii/bridle@master`, the `gh issue create` invocation targets `neiii/bridle`, and a re-fetch of `crates/harness-locate/src/harness/opencode.rs` from `neiii/bridle@master` confirmed the singular `"skill"` / `"command"` joins still exist at the documented line ranges (43-45 / 75-77; function blocks 41-46 / 73-78). The draft is now publish-ready end-to-end; the only remaining step is the still-blocked `gh issue create` at `neiii/bridle`.
+  - **Last-enriched**: 2026-05-02
 
 - [ ] Add catalog refs for upstream lifecycle/loop primitives — Ralph Wiggum + right-hooks
-  **ID**: catalog-refs-ralph-and-right-hooks
-  **Tags**: scout, catalog, ecosystem-alignment
-  **Details**: Two upstream primitives that the AI dev ecosystem has converged on are missing from agentbrew's catalog as direct references:
+  - **ID**: catalog-refs-ralph-and-right-hooks
+  - **Tags**: scout, catalog, ecosystem-alignment
+  - **Details**: Two upstream primitives that the AI dev ecosystem has converged on are missing from agentbrew's catalog as direct references:
 
   1. **Ralph Wiggum loop** (Geoffrey Huntley) — official Anthropic plugin at `anthropics/claude-code/plugins/ralph-wiggum`. Uses Claude Code's Stop hook to make the agent self-loop in the same session until a completion promise fires. Boris Cherny (Claude Code creator) endorsed it. The pattern is the dominant "fire-and-forget" autonomous-loop idiom; agentbrew's `companion-researcher` umbrella is the parallel-lane pattern, not the Ralph pattern. Catalog entry should point at `anthropics/claude-code/plugins/ralph-wiggum` as Tier 2, with a one-line description and the install command.
 
@@ -1238,102 +783,51 @@
   Both are pure references — agentbrew adds catalog rows that point at the upstream package; install handler delegates to `npm install -g right-hooks` and `/plugin install ralph-wiggum@claude-plugins-official` respectively. No skill content duplicated, no maintenance burden.
 
   Integrates with bundles task (`catalog-plugin-bundle-primitive`): add an `autonomous-loop` bundle that pairs `ralph-wiggum` + `right-hooks` + `verify-everything` bundle members. Integrates with adapter discipline (`adopt-minsky-adapter-discipline`): adding these is itself a "Replace? Relocate?" instance — agentbrew's prior implicit work on autonomous loops (the companion-researcher umbrella) should be re-evaluated against Ralph.
-  **Files**: src/catalog.yaml (new catalog entries under existing skills/MCPs section + 1 new bundle), src/cli.ts (install handler for the `/plugin install` path), README.md (mention in Catalog sources)
-  **Acceptance**: (a) `agentbrew browse | grep -E '(ralph-wiggum|right-hooks)'` returns entries; (b) `agentbrew install ralph-wiggum` runs `/plugin install ralph-wiggum@claude-plugins-official` for Claude Code; (c) `agentbrew install right-hooks` runs `npm install -g right-hooks`; (d) `autonomous-loop` bundle exists and installs both + verify bundle.
-  **Hypothesis**: Linking the two dominant ecosystem primitives saves the curator effort of building Ralph/lifecycle-loop skills in-house and matches "delegate before contribute" from VISION.
-  **Success**: After 30 days, the `autonomous-loop` bundle has been installed at least once and `right-hooks` ships an updated version that agentbrew picks up via the upstream-version flow.
-  **Pivot**: If either primitive turns out to be Claude-Code-only and can't be adapted to Cursor/Devin/etc., scope the catalog entry to `agent_target: claude-code` only rather than dropping it.
-  **Measurement**: `grep -c '^  - id: ralph-wiggum' src/catalog.yaml` and `grep -c '^  - id: right-hooks' src/catalog.yaml` both return 1.
-  **Anchor**: `anthropics/claude-code/plugins/ralph-wiggum` README — official Anthropic implementation; Boris Cherny endorsement (Claude Code creator); registry.npmjs.org/right-hooks — Think→Plan→Build→Review→Test→Ship→Reflect lifecycle; Geoffrey Huntley original "Ralph is a Bash loop" essay.
+  - **Files**: src/catalog.yaml (new catalog entries under existing skills/MCPs section + 1 new bundle), src/cli.ts (install handler for the `/plugin install` path), README.md (mention in Catalog sources)
+  - **Acceptance**: (a) `agentbrew browse | grep -E '(ralph-wiggum|right-hooks)'` returns entries; (b) `agentbrew install ralph-wiggum` runs `/plugin install ralph-wiggum@claude-plugins-official` for Claude Code; (c) `agentbrew install right-hooks` runs `npm install -g right-hooks`; (d) `autonomous-loop` bundle exists and installs both + verify bundle.
+  - **Hypothesis**: Linking the two dominant ecosystem primitives saves the curator effort of building Ralph/lifecycle-loop skills in-house and matches "delegate before contribute" from VISION.
+  - **Success**: After 30 days, the `autonomous-loop` bundle has been installed at least once and `right-hooks` ships an updated version that agentbrew picks up via the upstream-version flow.
+  - **Pivot**: If either primitive turns out to be Claude-Code-only and can't be adapted to Cursor or Codex, scope the catalog entry to `agent_target: claude-code` only rather than dropping it.
+  - **Measurement**: `grep -c '^  - id: ralph-wiggum' src/catalog.yaml` and `grep -c '^  - id: right-hooks' src/catalog.yaml` both return 1.
+  - **Anchor**: `anthropics/claude-code/plugins/ralph-wiggum` README — official Anthropic implementation; Boris Cherny endorsement (Claude Code creator); registry.npmjs.org/right-hooks — Think→Plan→Build→Review→Test→Ship→Reflect lifecycle; Geoffrey Huntley original "Ralph is a Bash loop" essay.
 
-- [ ] Two pre-existing TASKS.md entries have invalid **Output**: values — validator red on main
-  **ID**: fix-tasks-md-output-cadence-preexisting-violations
-  **Tags**: scout,tasks-md,validator,p3
-  **Details**: Scouted 2026-05-25 while adding jira-mcp-delete-edit-comment-tools via scripts/add-task.sh. The post-insert validator (`npx vitest run src/docs/tasks-md-output-cadence.test.ts`) is RED on plain origin/main with two pre-existing violations: `agentbrew-tasks-rule9-fill-sweep` uses Output value `code + docs` instead of an allowed value, and `investigate-mcp-lifecycle-integration-test` uses a free-form Output value. The validator at src/docs/tasks-md-output-cadence.test.ts:163 fails both. This means the scripts/add-task.sh helper currently exits with code 1 for every new task author, even though the new entry is valid — a false-positive that erodes trust in the validator. Either fix the two offending entries (`code + docs` → `mixed`; the free-form integration-test value → `mixed`), widen the allowed set, or make the helper diff-aware so it only flags newly introduced violations.
-  **Files**: TASKS.md (the two offending task entries), src/docs/tasks-md-output-cadence.test.ts (validator), scripts/add-task.sh (helper that runs the validator post-insert)
-  **Acceptance**: npx vitest run src/docs/tasks-md-output-cadence.test.ts passes on main without warnings. Either the two offending tasks are fixed to use an allowed Output value, or the allowed set is expanded with rationale documented in the test file, or the post-insert helper script becomes diff-aware (only flags newly-introduced violations).
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->
 
 - [ ] Propose managed-section marker convention as an ecosystem-wide spec (upstream contribution).
-  **ID**: ecosystem-contrib-managed-section-convention
-  **Tags**: ecosystem, contribution, standards
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
+  - **ID**: ecosystem-contrib-managed-section-convention
+  - **Tags**: ecosystem, contribution, standards
+  - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     Multiple tools now write to the same agent config files (CLAUDE.md, AGENTS.md, `.cursor/rules/`). Without a shared convention, they collide. agentbrew uses `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->`. Caliber uses `<!-- caliber:managed:<name> -->` / `<!-- /caliber:managed:<name> -->`. React Doctor writes directly without markers. No standard exists.
     File a lightweight spec proposal — a gist or small repo — documenting: (a) marker format (`<!-- <tool-name>:managed:<section-name> -->`), (b) ownership semantics (only the owning tool may modify content inside its markers; other tools must preserve the block verbatim), (c) marker placement (top-level sections in markdown, can contain valid markdown), (d) nesting (disallowed — markers must be section-siblings, not nested), (e) test patterns (regex + examples). Link from agentbrew's VISION.md and file a drive-by PR on Caliber / Warden / React Doctor repos linking to the spec with a one-sentence "we'd like to align on this marker convention."
     This is low-priority, low-investment, ecosystem-hygiene work. Skip if Caliber or another tool beats us to it — the goal is alignment, not authorship.
-  **Files**: `docs/specs/managed-section-markers.md` (new) or a gist / standalone repo, upstream PRs to Caliber / other tools.
-  **Acceptance**: (a) spec document exists with the 5 sections above; (b) VISION.md links to it; (c) at least one upstream PR filed linking to the spec — accept the result whether merged or not (author goodwill + visibility matters more than the merge).
-  **Human-approval-required**: external-pr
+  - **Files**: `docs/specs/managed-section-markers.md` (new) or a gist / standalone repo, upstream PRs to Caliber / other tools.
+  - **Acceptance**: (a) spec document exists with the 5 sections above; (b) VISION.md links to it; (c) at least one upstream PR filed linking to the spec — accept the result whether merged or not (author goodwill + visibility matters more than the merge).
+  - **Human-approval-required**: external-pr
 
-- [ ] Contribute interactive multi-select UX to skills CLI (not absorb from Bridle).
-  **ID**: contribute-interactive-multiselect-to-skills-cli
-  **Tags**: contribute-upstream, ux, skills-cli
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    Bridle's whole-harness install UX uses a ratatui TUI multi-select picker for "which of these N discovered skills/agents/commands do I want from this GitHub repo?". Instead of absorbing that logic into agentbrew (which would grow our surface — forbidden by the delegate→contribute→absorb strategy in VISION.md), the right move is to contribute an interactive multi-select picker to skills CLI.
-    Scope of the contribution:
-    1. `npx skills add <repo>` without `--skill` or `--all` today prints a non-interactive list and requires re-invocation. Propose `-i` / `--interactive` flag that presents a checkbox-select UI.
-    2. Use a lightweight dependency (e.g. `@clack/prompts`, already used by parts of skills CLI) — no heavy TUI library.
-    3. Must work in non-TTY environments (CI) by refusing `-i` with a helpful error pointing at `--all` or `--skill <name>`.
-    Receptivity signal: this matches the kind of UX polish Andrew Qu has merged historically (see PR #558 `--json` flag). Small, focused, doesn't expand scope. Good trust-building PR.
-    Explicit non-goal: **do not implement an equivalent in agentbrew.** If this contribution gets rejected / ignored 90 days, close the task — agentbrew users can always pass `--skill <name>` or `--all` to `npx skills add`.
-  **Files**: issue + PR at vercel-labs/skills; if accepted, agentbrew docs may reference the flag.
-  **Acceptance**: (a) an issue is filed at vercel-labs/skills proposing `-i` / `--interactive` with a concrete UX sketch; (b) if the issue gets maintainer engagement, follow up with the implementation PR; (c) after 90 days with no engagement, close this task with a note in docs/competition/vercel-skills-cli-vs-agentbrew.md that the contribution was attempted and upstream did not accept it within the window.
-  **Human-approval-required**: external-issue, external-pr
+- [ ] Evaluate delegating Agentfile `skills:` installs to the skills CLI `experimental_install`
+  - **ID**: contribute-support-issue-283-declarative-manifest
+  - **Tags**: upstream, skills-cli, delegation
+  - **Details**: vercel-labs/skills issue #283 (declarative manifest) and #729 are still open, but a 2026-06-11 comment on #283 reports that `experimental_install` (install from `skills-lock.json`) works. PR #937 (config system) was closed on 2026-09-30 and superseded by PR #2348 (open). Test whether `experimental_install` can replace agentbrew's per-project skill resolution, and watch #2348. Any upstream comment is publish-gated.
+  - **Files**: `src/sync/skills-sync.ts`, `docs/competition/vercel-skills-cli-vs-agentbrew.md` (Upstream receptivity)
+  - **Acceptance**: a written result in the competition doc: either a delegation plan (what agentbrew code can be deleted) or the concrete gap that blocks it; #2348 state recorded with a date.
 
-- [ ] Engage on vercel-labs/skills [PR #630](https://github.com/vercel-labs/skills/pull/630) — add `--fix` to `skills status` per Elliot Liu's review.
-  **ID**: contribute-engage-pr-630-skills-status
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    **DO NOT claim this task without explicit user approval** (P3 policy).
-    Research (2026-04-19) found skills CLI PR #630 adds `skills status` (drift detection between installed and lockfile). Elliot Liu (collaborator) approved it and commented specifically: *"lockfile drift is a real pain point... `--fix` would make CI smoother."* This is a concrete, maintainer-invited contribution window — lands drift detection upstream AND positions us to contribute `--fix` in a follow-up PR, reducing what agentbrew eventually needs to keep.
-    Outcome when unblocked: (a) follow PR #630 to merge; (b) once merged, open a follow-up PR adding `--fix` to the `skills status` command that auto-repairs lockfile drift; (c) if `--fix` lands upstream, agentbrew's equivalent auto-repair for skills moves into the delegated path and the native implementation shrinks further (feeds `delegate-skill-install-to-skills-cli` P0 residue-reduction).
-    Why P3 not P0: the 90-day engagement window from VISION.md is already running for PR #630 (approved, not merged — we wait). Queuing this as work would duplicate that passive wait. When user says "pick up the skills CLI contribution opportunity," this is the one.
-  **Files**: upstream PR at vercel-labs/skills (no agentbrew files).
-  **Acceptance**: (a) a follow-up PR is filed at vercel-labs/skills proposing `--fix` for `skills status` with a concrete design note citing Elliot Liu's comment; (b) the PR builds on top of #630 once it merges; (c) if rejected / ignored 90 days, close this task with a note in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" — counts as absorbed residue.
-  **Human-approval-required**: external-pr
-
-- [ ] Engage on vercel-labs/skills [PR #509](https://github.com/vercel-labs/skills/pull/509) — skill validator stalled 47+ days.
-  **ID**: contribute-review-pr-509-validator
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    **DO NOT claim this task without explicit user approval** (P3 policy).
-    Research (2026-04-19) found PR #509 (skill validator) has been open with no review for 47+ days. The functionality overlaps agentbrew's `src/skills/validate.ts` — a reviewed, merged validator upstream would absorb the equivalent surface here. Zero maintainer activity for 47 days is a signal for us to help, not a signal to replicate.
-    Outcome when unblocked: (a) review the PR ourselves, leave a thoughtful comment on the design, ask concrete questions Andrew Qu / Elliot Liu can answer quickly, and offer to split the PR into smaller reviewable slices if that's the blocker; (b) if author is responsive, pair on trimming the PR to a mergeable core; (c) if PR moves, agentbrew's `validate.ts` becomes a candidate for deletion in a subsequent delegation task.
-  **Files**: upstream PR at vercel-labs/skills (no agentbrew files).
-  **Acceptance**: (a) a substantive review comment is posted on #509; (b) author engagement is recorded in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity"; (c) if the PR merges, a follow-up task is filed to delete agentbrew's native validator.
-  **Human-approval-required**: external-pr
-
-- [ ] Support vercel-labs/skills [issue #283](https://github.com/vercel-labs/skills/issues/283) + [issue #729](https://github.com/vercel-labs/skills/issues/729) — declarative manifest (Andrew Qu said "great idea! WIP").
-  **ID**: contribute-support-issue-283-declarative-manifest
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    **DO NOT claim this task without explicit user approval** (P3 policy).
-    Research (2026-04-19) found two upstream threads on this capability: [issue #283](https://github.com/vercel-labs/skills/issues/283) (install-from-lockfile) where Andrew Qu (primary maintainer) commented *"great idea! WIP"* on 2026-02-18, and [issue #729](https://github.com/vercel-labs/skills/issues/729) (Skillfile declarative manifest) which is the community's explicit manifest request. This is the single largest strategic opportunity in the skills CLI: if either ships, agentbrew's per-project Agentfile `skills:` block becomes a direct delegation target (parse Agentfile → translate to manifest → hand to `npx skills install`). It collapses a meaningful chunk of `src/agentfile.ts`.
-    Outcome when unblocked: (a) comment on both issues with a concrete proposal referencing agentbrew's Agentfile `skills:` block as a prior-art example (not as "please copy this" — as "here's one shape that already works"); (b) ask Andrew Qu whether the Feb 2026 WIP on #283 is still active — non-racing, non-duplicative posture; (c) if Andrew engages with a specific shape, offer to prototype the RFC shape in a draft PR; (d) watch [Anthony Fu's PR #937](https://github.com/vercel-labs/skills/pull/937) ("config system for the CLI as a whole") — if it generalizes to multi-surface state, the manifest story lands through it; (e) if the manifest ships, delete agentbrew's per-project skills resolution code in the same quarter.
-  **Files**: upstream issue at vercel-labs/skills (no agentbrew files).
-  **Acceptance**: (a) a substantive comment is posted on BOTH #283 and #729 referencing Agentfile's `skills:` shape as prior art, with the explicit "is Feb WIP still progressing?" question on #283; (b) if Andrew Qu engages with a specific shape, a draft PR is filed; (c) if the manifest lands upstream (via #283 WIP, #729 community proposal, or Anthony Fu's #937), agentbrew's per-project skills resolution is queued for deletion in the following delegation task.
-  **Human-approval-required**: external-issue, external-pr
-
-- [ ] Trust-building PRs on vercel-labs/skills — 15 drafts staged in `fyodoriv/skills` + next-batch candidates.
-  **ID**: contribute-trust-building-pr-skills-cli
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
+- [ ] Trust-building PRs on vercel-labs/skills from the drafts staged in `fyodoriv/skills`
+  - **ID**: contribute-trust-building-pr-skills-cli
+  - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
+  - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     **DO NOT claim this task without explicit user approval** (P3 policy).
 
     Source: [docs/competition/vercel-skills-cli-vs-agentbrew.md § "Contribution roadmap"](../docs/competition/vercel-skills-cli-vs-agentbrew.md#contribution-roadmap--priority-ordered) + [§ Fork draft inventory (2026-04-24)](../docs/competition/vercel-skills-cli-vs-agentbrew.md#fork-draft-inventory-2026-04-24).
 
-    **Current state (2026-04-24 night #6)**: 22 draft PRs staged in [`fyodoriv/skills`](https://github.com/fyodoriv/skills/pulls), targeting 19 distinct open upstream bugs. Combined: +3,463 / −194 LOC. All draft, all OPEN, all awaiting user review before upstream submission:
+    **Current state (2026-10-15)**: draft PRs stay staged in [`fyodoriv/skills`](https://github.com/fyodoriv/skills/pulls). Targets closed upstream since 2026-04 were dropped from the list below (#808, #960, #982, #561, #523/#328); #969 and #915 are closed and #971 was merged. Re-check each target's state before promoting it.
 
     - fork#1 + fork#4 — two alternative approaches to [#806](https://github.com/vercel-labs/skills/issues/806) (hash verification mismatch). Pick one for upstream.
     - fork#2 — [#781](https://github.com/vercel-labs/skills/issues/781) (Windows line endings in hash)
-    - fork#3 — [#808](https://github.com/vercel-labs/skills/issues/808) (remove-doesn't-clean-lock for project scope; supersedes the later duplicate #977)
     - fork#5 — [#1005](https://github.com/vercel-labs/skills/issues/1005) (subpath stripped from lock write-back)
     - fork#6 — [#1001](https://github.com/vercel-labs/skills/issues/1001) (suppress ASCII banner in `find`)
     - fork#7 — [#999](https://github.com/vercel-labs/skills/issues/999) (well-known URL truncated in lock)
     - fork#8 — [#954](https://github.com/vercel-labs/skills/issues/954) (`skills check` should be read-only)
-    - fork#9 — [#960](https://github.com/vercel-labs/skills/issues/960) (subcommand `--help` executes the subcommand)
-    - fork#10 — [#982](https://github.com/vercel-labs/skills/issues/982) (project-scope `update -p <name>` installs all skills)
     - fork#11 — [#1010](https://github.com/vercel-labs/skills/issues/1010) error-UX half (`spawn git ENOENT` → actionable install hint)
     - fork#12 — [#941](https://github.com/vercel-labs/skills/issues/941) (Windows execPath with spaces — silent update failure)
     - fork#13 — [#916](https://github.com/vercel-labs/skills/issues/916) (`update -p -y` creates `skills/` at project root)
@@ -1342,12 +836,8 @@
     - fork#16 — [#793](https://github.com/vercel-labs/skills/issues/793) (`-yg` combined short flags silently dropped — same class as closed #195)
     - fork#17 — [#666](https://github.com/vercel-labs/skills/issues/666) (`experimental_install` fails for well-known sources — local lock loses URL scheme)
     - fork#18 — [#745](https://github.com/vercel-labs/skills/issues/745) (`-g -y -a <agent>` silently flips to copy mode, skips canonical `~/.agents/skills/`)
-    - fork#19 — [#561](https://github.com/vercel-labs/skills/issues/561) (local-source absolute paths leak into checked-in `skills-lock.json`, breaking teammates' `experimental_install`)
     - fork#20 — [#840](https://github.com/vercel-labs/skills/issues/840) (`skills update` swallows subprocess stderr — every Windows failure shows just `✗ Failed to update <skill>` with no diagnostic info, even at `--verbose`/`DEBUG=1`) — NEW 2026-04-24 night #5
-    - fork#21 — [#523](https://github.com/vercel-labs/skills/issues/523) + [#328](https://github.com/vercel-labs/skills/issues/328) (skips `gh auth token` invocation via a `SKILLS_NO_GH_AUTH=1` opt-out)
     - fork#22 — [#985](https://github.com/vercel-labs/skills/issues/985) + [#949](https://github.com/vercel-labs/skills/issues/949) (well-known v0.2.0 discovery schema rejected by `WellKnownProvider.isValidSkillEntry`; `mockaton.com` and `createos.nodeops.network` both publish valid v0.2.0 indexes per Cloudflare RFC 0.2 spec and existing users see "No skills found at this URL" — adds schema-aware dispatch with SHA-256 digest verification per spec §Integrity and Verification, lands `type: "skill-md"` half, skips `type: "archive"` half with a console warning naming the skill; archive half tracked as follow-up requiring tar/zip extraction with §Archive Safety defenses) — NEW 2026-04-24 night #6
-
-    All prior fork-draft targets issues confirmed still OPEN on vercel-labs/skills as of 2026-04-24 night #6 refresh. Zero auto-closures across all 6 night refreshes; zero maintainer activity on PR #630 / #509 / issue #283.
 
     When upstream submission is approved: promote in priority order — fork#15 first (data-loss bug, highest user impact), fork#21 (corporate-blocker; users literally cannot use the CLI without disabling it; backward-compat opt-out), fork#22 (every v0.2.0 well-known endpoint blocked, real users hitting #985 + #949 today, new upstream tests, no breaking change for v0.1.0 consumers — workaround does not exist for v0.2.0-only servers), fork#20 (diagnostic enabler; unblocks self-diagnosis for #840 reporters and any future silent-failure thread), fork#17 (data-recovery bug, breaks `experimental_install` end-to-end for well-known sources, fully backward-compat), fork#18 (data-correctness: silent copy mode skips canonical dir; pure-helper test coverage), fork#19 (collaboration-correctness: local-source paths leak into checked-in lock; backward-compat), fork#6 (smallest, zero controversy), fork#16 (POSIX-standard parser fix, upstream tests, zero behavior change for non-combined invocations), then fork#12 + fork#13 (mechanical fixes with strong tests), then fork#9 + fork#10 + fork#11 (small, user-reported, mechanical fixes), then fork#14 (binary-files; high impact, well-tested), then fork#7 + fork#17 + fork#19 (lock-file source-shape preservation bundle, plausibly one upstream PR), fork#5 (lock-file subpath, similar territory), then fork#2 (Windows compat), then fork#3, then fork#8, then fork#4 (or fork#1, whichever the user picks for #806). Every upstream PR description cites agentbrew's contribution roadmap so reviewers see the pattern. Bug #806 is a hash verification mismatch that blocks PR #630's lockfile-vs-disk check — landing it accelerates the drift-detection landing we care about most.
 
@@ -1357,10 +847,8 @@
     |---|---|---|
     | [#974](https://github.com/vercel-labs/skills/issues/974) | `-g` combined with `-a` overrides symlinking | Spans 20+ `installGlobally` call sites in `src/add.ts`; not a drive-by. |
     | [#1010](https://github.com/vercel-labs/skills/issues/1010) (allowlist half) | Blob fast path is org-allowlisted | Policy change, not mechanical. Ask upstream in the issue which they'd accept. Error-UX half already covered by fork#11. |
-    | [#969](https://github.com/vercel-labs/skills/issues/969) | Multiselect prompt shows duplicate options | Fix is `@clack/prompts` 0.11 → 1.2 upgrade; major version bump with breaking-changes surface. PR #971 attempts the upgrade — watch for landing. |
     | [#997](https://github.com/vercel-labs/skills/issues/997) | `npx skills update` fails for self-hosted GitLab | Needs a real self-hosted GitLab instance to reproduce. |
     | [#923](https://github.com/vercel-labs/skills/issues/923) | `skills update` reports success without updating contents | Triage-needed: bug shape unclear; need a reliable repro before drafting. |
-    | [#915](https://github.com/vercel-labs/skills/issues/915) | `skills update <skill-name>` adds all other skills | Likely same root cause as fork#10. If fork#10 lands and #915 doesn't auto-close, revisit. |
     | [#537](https://github.com/vercel-labs/skills/issues/537) | Global install leaves agent skill dir missing for non-universal agents (`~/.cursor/skills/`) | `isUniversalAgent` is decided by project skillsDir but applied to global installs; needs a `isGlobalUniversal` distinction with broader testing. Not drive-by. |
     | [#225](https://github.com/vercel-labs/skills/issues/225) | Incorrect agents detected during `list`/`remove` (OpenClaw attributed to skills in `.agents/skills/`) | Detection logic conflates project and global skillsDirs. PR #965 partially addresses one symlink subcase. Whole class needs deeper refactor. |
     | [#870](https://github.com/vercel-labs/skills/issues/870) | Can't Interrupt Git Clone (Ctrl+C ignored) | SIGINT handling through @clack/prompts and simple-git is non-trivial; not a drive-by. |
@@ -1368,241 +856,21 @@
     Items no longer candidates: #983 (npx-side bug, not skills-CLI); #977 (duplicate of #808 / fork#3); #960 (now fork#9); #982 (now fork#10); #1010 error-UX half (now fork#11); #941 (now fork#12); #916 (now fork#13); #953 (now fork#14); #886 (now fork#15); #793 (now fork#16); #666 (now fork#17); #745 (now fork#18); #561 (now fork#19); #840 (now fork#20); #523 + #328 (now fork#21); #985 + #949 (now fork#22).
 
     If any target issue is already fixed by the time the task is picked up: skip it and pick another bug from the open-issues list, preferring any that unblock PR #630 or appear in agentbrew user reports. Use the pattern already established in fork#1–#22 — failing test then minimal fix, ≤250 LOC where possible (helper-extracted with bounded behavior, like fork#20's 20-line/240-char output cap, often warrants a slightly larger LOC budget). For larger surface like fork#22 (v0.2.0 schema; 1,033 LOC including new upstream tests across multiple upstream files), the budget is justified when the fix unblocks an entire class of broken endpoints AND ships with a pure-helper module that lets a follow-up PR (e.g. archive support) reuse the validation/digest logic without re-litigating it.
-  **Files**: upstream PR at vercel-labs/skills (no agentbrew files); document the outcome in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" once filed.
-  **Acceptance**: (a) one or more PRs promoted from `fyodoriv/skills` to `vercel-labs/skills:main` with a failing regression test and the minimal fix, scope ≤100 LOC each (or ≤250 LOC for the binary-files / data-loss classes with full test coverage); (b) the PR description cites agentbrew's contribution roadmap and the drift-detection dependency where applicable; (c) outcome (merged / stuck / rejected) is documented in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity"; (d) subsequent contribution tasks reference the merged PRs as trust-established context.
-  **Human-approval-required**: external-pr
+  - **Files**: upstream PR at vercel-labs/skills (no agentbrew files); document the outcome in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" once filed.
+  - **Acceptance**: (a) one or more PRs promoted from `fyodoriv/skills` to `vercel-labs/skills:main` with a failing regression test and the minimal fix, scope ≤100 LOC each (or ≤250 LOC for the binary-files / data-loss classes with full test coverage); (b) the PR description cites agentbrew's contribution roadmap and the drift-detection dependency where applicable; (c) outcome (merged / stuck / rejected) is documented in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity"; (d) subsequent contribution tasks reference the merged PRs as trust-established context.
+  - **Human-approval-required**: external-pr
 
 - [ ] RFC comment on vercel-labs/skills [issue #268](https://github.com/vercel-labs/skills/issues/268) + [issue #455](https://github.com/vercel-labs/skills/issues/455) — user-created skill preservation classifier.
-  **ID**: contribute-rfc-comment-issues-268-455-user-safety-classifier
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, data-safety
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
+  - **ID**: contribute-rfc-comment-issues-268-455-user-safety-classifier
+  - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, data-safety
+  - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     **DO NOT claim this task without explicit user approval** (P3 policy).
     Source: [docs/competition/vercel-skills-cli-vs-agentbrew.md § "Feature 7: User-created skill preservation"](../docs/competition/vercel-skills-cli-vs-agentbrew.md#7-user-created-skill-preservation--4-competing-bug-fix-prs-in-flight) and [Contribution roadmap row 3](../docs/competition/vercel-skills-cli-vs-agentbrew.md#contribution-roadmap--priority-ordered). Research (2026-04-19) found the user-safety direction has **4 competing bug-fix PRs already open** ([#609](https://github.com/vercel-labs/skills/pull/609), [#611](https://github.com/vercel-labs/skills/pull/611), [#869](https://github.com/vercel-labs/skills/pull/869), [#944](https://github.com/vercel-labs/skills/pull/944)) plus related bug reports ([#268](https://github.com/vercel-labs/skills/issues/268), [#455](https://github.com/vercel-labs/skills/issues/455), [#606](https://github.com/vercel-labs/skills/issues/606)). Filing a 5th implementation hurts: the queue is saturated and maintainers haven't merged any of them yet. The right move is RFC input on the design, not another competing PR.
-    Outcome when unblocked: (a) post agentbrew's 5-case `cleanEntry()` classifier taxonomy as a comment on [issue #268](https://github.com/vercel-labs/skills/issues/268) (the foundational issue) to inform how maintainers architect the eventual fix — managed symlink / broken symlink / user symlink to valid non-managed path / user directory without `.agentbrew-managed` sentinel / user directory with sentinel; (b) cross-post a short summary on [issue #455](https://github.com/vercel-labs/skills/issues/455) tying the agentbrew taxonomy to skills CLI's `preserve-local` mode request; (c) include the specific invariant: *"The user's own files are preserved forever; `--prune`, auto-repair, and sync all treat user-created directories as sacrosanct"*; (d) link to [`src/sync/skills-sync.ts:122-148`](../src/sync/skills-sync.ts#L122) for the implementation reference; (e) explicitly say agentbrew is NOT filing a PR, so maintainers know this is design input not queue-noise.
+    Outcome when unblocked: (a) post agentbrew's 5-case `cleanEntry()` classifier taxonomy as a comment on [issue #268](https://github.com/vercel-labs/skills/issues/268) (the foundational issue) to inform how maintainers architect the eventual fix — managed symlink / broken symlink / user symlink to valid non-managed path / user directory without `.agentbrew-managed` sentinel / user directory with sentinel; (b) cross-post a short summary on [issue #455](https://github.com/vercel-labs/skills/issues/455) tying the agentbrew taxonomy to skills CLI's `preserve-local` mode request; (c) include the specific invariant: *"The user's own files are preserved forever; `--prune`, auto-repair, and sync all treat user-created directories as sacrosanct"*; (d) link to [`src/sync/skills-sync.ts` `cleanEntry`](../src/sync/skills-sync.ts) for the implementation reference; (e) explicitly say agentbrew is NOT filing a PR, so maintainers know this is design input not queue-noise.
     If any of the 4 open PRs merges with the classifier design, close this task — the contribution has landed. If none merge and the queue grows further (a 5th community PR appears), escalate by commenting on issue #268 asking Andrew Qu / Elliot Liu for architectural direction on which PR they'd be willing to review.
-  **Files**: upstream issues at vercel-labs/skills (no agentbrew files).
-  **Acceptance**: (a) a substantive RFC-style comment is posted on BOTH #268 and #455 with the 5-case taxonomy and the invariant statement; (b) the comment links to the exact `src/sync/skills-sync.ts:122-148` agentbrew reference and explicitly states "not filing a PR"; (c) if any of the 4 open PRs (#609, #611, #869, #944) subsequently merges with a classifier design, close this task with a link to the merge in the commit message; (d) if the queue stays stuck for another 4 weeks post-comment, the escalation comment on #268 asking for architectural direction is posted.
-  **Human-approval-required**: external-issue
-
-- [ ] Watch vercel-labs/skills [PR #937](https://github.com/vercel-labs/skills/pull/937) — Anthony Fu's "config system for the CLI as a whole".
-  **ID**: contribute-watch-pr-937-anthony-fu-config-system
-  **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, monitoring
-  **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    **DO NOT claim this task without explicit user approval** (P3 policy).
-    Source: [docs/competition/vercel-skills-cli-vs-agentbrew.md § "Contribution roadmap" row 6](../docs/competition/vercel-skills-cli-vs-agentbrew.md#contribution-roadmap--priority-ordered) + [Upstream receptivity research](../docs/competition/vercel-skills-cli-vs-agentbrew.md#upstream-receptivity--what-skills-cli-maintainers-have-said). Anthony Fu (antfu — Vite, Vitest, UnoCSS) filed [PR #937](https://github.com/vercel-labs/skills/pull/937) merging `skills-npm` into `experimental_sync` and mentioned "config system for the CLI as a whole." Two strategic signals depend on this PR: (1) does high-profile OSS contributor status translate to faster skills-CLI review (informs agentbrew's future contribution posture)? (2) if the "config system" generalizes to multi-surface state, it covers the fatal-gap #4 from the dissolution analysis ("multi-surface declarative state") and accelerates agentbrew's dissolution trajectory.
-    This task is a **monitoring task**, not an implementation — actively watch PR #937 monthly and record what happens.
-    Monthly checklist when picked up with user approval:
-    1. Fetch current state of PR #937: merged / closed / approved / pending-review / stalled (weeks since last maintainer comment).
-    2. Check the PR description for "config system for the CLI as a whole" evolution — has it grown to cover multi-surface (rules, commands, MCP)? Stayed skills-only?
-    3. Check Anthony Fu's merge velocity on other skills-CLI PRs since last check — any trust signal?
-    4. If PR #937 merges and the config system is multi-surface: open a new P0 task `evaluate-delegate-multi-surface-state-to-skills-cli` — this would unblock deleting agentbrew's `agentfile.ts` + `state.ts` surface-specific logic.
-    5. If PR #937 merges and the config system is skills-only: update `contribute-support-issue-283-declarative-manifest` with the landed shape; delegation happens through that task.
-    6. If PR #937 stalls 90+ days: note the signal in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" — maintainer queue neglect is systemic, not about contributor identity.
-    Recurring cadence: tied to the P2 `quarterly-dissolution-reeval` task. This monitoring doesn't need its own schedule — the quarterly review includes "check PR #937 status" in its acceptance criteria.
-  **Files**: observation notes in `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" per quarter; new P0 task opened only if PR #937 merges with multi-surface scope.
-  **Acceptance**: (a) at each quarterly dissolution review, the PR #937 status is recorded under `docs/competition/vercel-skills-cli-vs-agentbrew.md` § "Upstream receptivity" with the 6 checklist items; (b) if PR #937 merges with multi-surface scope, a new P0 evaluation task is opened in the same commit; (c) if PR #937 closes / stalls 90+ days, the receptivity section is updated with the systemic-neglect note; (d) this task never closes — it's a recurring monitor feeding the quarterly reeval.
-  **Human-approval-required**: monitoring-only
-
-- [ ] Fix `--no-prune` to actually disable authoritative state replacement on overlay Agentfile syncs
-
-  - **ID**: no-prune-does-not-prevent-authoritative-state-replacement
-  - **Tags**: bug, agentfile, p2, mcp-sync
-  - **Why**: The chezmoi lifecycle script `run_after_agentbrew-sync.sh` in
-    dotfiles applies the base Agentfile first, then the overlay Agentfile
-    with `--no-prune` (e.g. `~/apps/dotfiles-<org>/Agentfile.yaml`). The
-    intent — documented in the overlay's header comment — is "additive on
-    top of the canonical dotfiles Agentfile state". But `--no-prune`
-    currently only affects the per-agent-config prune step (deleting from
-    `~/.cursor/mcp.json` etc. when state drops a server). Inside
-    `sync-runner.ts` the `applyAgentfile()` call passes
-    `authoritative: true` unconditionally, which makes the overlay
-    Agentfile replace the state's mcpServers list instead of adding to
-    it. Result: base Agentfile servers (context7, playwright, tasks-mcp,
-    atlassian, jenkins) get removed when the overlay applies.
-  - **Repro**:
-    ```
-    cd /tmp
-    agentbrew sync --agentfile ~/apps/dotfiles/Agentfile.yaml
-    # State has multiple servers from dotfiles base
-    agentbrew sync --agentfile ~/apps/dotfiles-<org>/Agentfile.yaml --no-prune
-    # State now has ONLY the overlay servers — base servers stripped
-    ```
-  - **Files**: `src/sync-runner.ts` (lines around `authoritative: true`),
-    `src/agentfile-apply.ts` (the `authoritative` parameter), plus
-    tests under `src/agentfile-apply.test.ts` (add a test that
-    `prune=false` keeps the existing state)
-  - **Acceptance**: `agentbrew sync --agentfile <overlay> --no-prune`
-    preserves servers in state that were added by previous Agentfile
-    applies; the dotfiles lifecycle script `--no-prune` overlay sync
-    leaves the base Agentfile's servers intact.
-  - **Details-cont**: Design decision: either `--no-prune` should also flip `authoritative: false` for the merge, OR introduce a separate `--additive` / `--overlay` mode that signals "merge, don't replace". The latter is clearer; the former is back-compat-preserving.
-
-- [ ] Dedupe `Always scout and record` between local `AGENTS.md` rule #11 and the new global template subsection
-
-  - **ID**: dedupe-scout-and-record-agentbrew-local-vs-global
-  - **Tags**: docs, agents-rules, agentbrew-template, dedupe
-  - **Details**: After hoisting "Always scout and record" into
-    `templates/AGENTS.md` (the file that propagates to every agent's
-    global rules via `instructions-sync.ts`), the local agentbrew
-    `AGENTS.md` rule #11 ("Always scout and record — every PR must
-    include scouted tasks…") restates the same rule with slightly
-    different wording. Two near-identical rules drift over time and
-    confuse contributors about which one is canonical. Replace the
-    local rule #11 with a one-line pointer: `Always scout and record
-    — see the global Always scout and record rule in
-    templates/AGENTS.md / your agent's global rules.` Keep
-    agentbrew-specific addenda (if any) but cut the redundant
-    body. Same treatment for any other agentbrew-local rule that's
-    now a verbatim subset of the global template — sweep them in the
-    same PR so the dedupe is atomic.
-  - **Files**: `AGENTS.md` (root of agentbrew repo) — rule #11 area;
-    audit any other rules that overlap the new global subsections
-    (`Local Project Autonomy`, `Always scout and record`).
-  - **Acceptance**:
-    - `AGENTS.md` rule #11 is replaced with a one-line pointer to the
-      global rule, no functional drift.
-    - `grep -n "Always scout and record" AGENTS.md` returns one line
-      (the pointer), not the full restated rule body.
-    - `npm run verify` still passes.
-    - Commit message references the PR that introduced the global
-      rule to make the dedupe traceable.
-  - **Found via**: 2026-05-15 sweep while updating
-    `templates/AGENTS.md` to hoist "Always scout and record" to the
-    global template (this PR).
-
-- [ ] Fix malformed `**Blocked by**:` value on `--no-prune` task causing `@tasks-md/lint` failure on master
-
-  - **ID**: fix-tasks-md-lint-blocked-by-no-prune-task
-  - **Tags**: docs, tasks-md, lint, master-failing
-  - **Details**: `TASKS.md:498` currently reads
-    `**Blocked by**: nothing — autonomous-doable. Decide what the right
-    semantic is: …`. Per the
-    [tasks.md spec](https://github.com/tasksmd/tasks.md/blob/main/spec.md),
-    `**Blocked by**:` expects a comma-separated list of task **IDs** of
-    blockers, not free-form English. The current value makes
-    `npx @tasks-md/lint TASKS.md` fail on master with
-    `ERROR: TASKS.md:498: blocked-by references unknown ID 'nothing — autonomous-doable. Decide what the right'`,
-    which means **every PR currently fails the `tasks-md` lint
-    invariant on master**, and the failure mode is invisible because
-    nothing runs it in the verify gate. Fix: replace the malformed
-    value with either `**Blocked by**:` (empty value) or drop the
-    field entirely — the prose belongs in the task body or a
-    `**Decision**:` field, not in `**Blocked by**:`. Also consider
-    wiring `npx @tasks-md/lint TASKS.md` into `npm run verify` so this
-    class of error can't reach master again
-    (`feedback-loop-guardrails`: linters enforce, instructions
-    suggest).
-  - **Files**: `TASKS.md` (line ~498, the `--no-prune` task block),
-    `package.json` (add `tasks-md:lint` script + chain into `verify`).
-  - **Acceptance**:
-    - `npx @tasks-md/lint TASKS.md` exits 0 on master.
-    - `npm run verify` runs `@tasks-md/lint` as part of the gate and
-      fails if any task is malformed.
-    - The `--no-prune` task's prose context is preserved either in
-      `**Details**` or a new `**Decision**` field so no information is
-      lost.
-  - **Found via**: 2026-05-15 sweep — `@tasks-md/lint TASKS.md`
-    invoked before committing the global "Always scout and record"
-    template update; the failure was already present on master.
-- [ ] Curate skill catalog (companion 2026-05-21 sweep)
-  - **ID**: skill-curate-2026-05-21-companion
-  - **Tags**: skills, agentbrew, curation, companion
-  - **Details**: Generated by `companion-skill-curate` on 2026-05-21.
-    Full report: [`docs/skill-curation/2026-05-21.md`](docs/skill-curation/2026-05-21.md).
-    Inventory: SKILL.md inventory from agentbrew status (unique names and detected agents).
-    Findings:
-    1 exact-name duplicate (`page-zero-errors` in both `builtin-dev` and `fyodoriv_page-zero-errors` cache — byte-identical, but the cache copy has 2 unstaged edits that desync risk losing).
-    0 outdated sources (all 5 cached repos are at upstream HEAD; `fyodoriv/page-zero-errors` returns HTTP 404 from `gh api`, may be private/deleted).
-    3 orphan stub dirs in `~/.config/agentbrew/installed-skills/` (`debug`, `my-custom-skill`, `test-driven-development` have no SKILL.md — leftover from aborted installs).
-    5 high-confidence new candidate sources, all already cached locally so zero-fetch to activate: `anthropics/skills` (fills pdf/xlsx gap), `obra/superpowers` (TDD/debugging/git-worktrees), `openai/skills` (security-threat-model + screenshot + Codex tooling), `supabase/agent-skills` (niche Supabase skills), `huggingface/skills` (ML/AI niche).
-    1 near-duplicate cluster worth defer notes: skill-authoring (`skill-creator`/`skill-rewriter`/`skill-eval-loop` builtin + `skill-improver`/`designing-workflow-skills` from trailofbits). Adding `anthropic` and `openai` skill-creators will compound this.
-    Highest-priority action: resolve the `page-zero-errors` dupe by picking one canonical source and capturing the 2 cache-side edits before they're lost.
-  - **Files**: docs/skill-curation/2026-05-21.md
-  - **Acceptance**: Each recommended action in the report is either executed (and a follow-up commit removes this task) or explicitly deferred with a one-line reason appended here. At minimum, the `page-zero-errors` exact-name duplicate is resolved and the 3 empty `installed-skills` stub directories are either filled or removed.
-
-- [ ] Audit remaining custom skills in skillSourceDirs for boundary clarity + 3rd-party overlap
-  - **ID**: skill-boundary-audit-2026-05-21
-  - **Tags**: skills, audit, boundaries, 3rd-party, companion
-  - **Details**: Followup to 2026-05-21 companion-researcher session that
-    sharpened 7 muddy descriptions (plan, spec, clarify, analyze, tdd,
-    skill-creator, skill-rewriter) and added activation pointers for
-    `anthropics/skills` (canonical skill-creator) and
-    `obra/superpowers/writing-skills` (TDD-driven authoring). Real
-    remaining work, batched here so a future session can pick it up:
-
-    A. **Verified 3rd-party overlaps we have NOT yet activated** (skills
-       are already cached at `~/.cache/agentbrew/sources/` for some, or
-       fetchable via `gh repo clone`; activation = adding to
-       `~/.config/agentbrew/state.yaml::skillSourceDirs` then
-       `agentbrew sync`):
-       - `obra/superpowers/systematic-debugging` shares the Iron Law
-         philosophy with our `debug`. Consider activating obra and
-         narrowing our `debug` to repo-specific conventions, or keep
-         both as peers and just cross-reference.
-       - `obra/superpowers/test-driven-development` overlaps with our
-         `tdd`. Same call: keep, cross-ref, or narrow.
-       - `obra/superpowers/dispatching-parallel-agents` may overlap with
-         `companion-researcher` and `minsky` — needs comparison.
-       - `obra/superpowers/receiving-code-review` and
-         `requesting-code-review` overlap with `pr-comments` and `review`.
-       - `anthropics/skills/mcp-builder` overlaps with `agentbrew-add-mcp`
-         (different scope — anthropic builds MCP servers, agentbrew adds
-         them to the catalog — but a cross-ref note in our description
-         would help).
-
-    B. **Internal pairs that still need a Don't-use clause sharpened**
-       (skipped this round because the boundary is already roughly
-       sharp; revisit if user reports confusion):
-       - `debug` / `diagnose` — already cross-references each other.
-       - `commit` / `pr` / `jira-task` — three git skills with partial
-         overlap. jira-task is end-to-end, pr is push+PR, commit is
-         conventional-commit + pre-commit checks. Document the
-         hierarchy explicitly.
-       - `review` / `doubt` — review evaluates artifacts, doubt
-         pre-empts decisions. Already noted in `doubt`'s "NOT for
-         renames, formatting" clause; could be sharper.
-       - `arch` / `refactor` / `composition-patterns` — arch surfaces
-         friction, refactor restructures, composition-patterns is
-         React-specific reference. Cross-ref each.
-       - `sweep` / `project-audit` / `strategic-review` — sweep is
-         parallel-safe, project-audit is deep on one repo,
-         strategic-review evaluates direction. Already cross-refed in
-         project-audit; could be sharper.
-
-    C. **Voice / spec compliance scan**: per Anthropic's spec
-       (https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices),
-       descriptions MUST be third person. Run a grep for `\\byou\\b` and
-       `\\bI\\b` across all 62 custom descriptions and rewrite any
-       offenders to third person. Initial spot-check showed most are
-       already compliant; this is a low-priority sweep.
-
-    D. **Naming gerund-form sweep**: Anthropic recommends gerund form
-       (`processing-pdfs`) or noun phrases (`pdf-processing`) over
-       single-word verbs. Our short names (`debug`, `plan`, `commit`,
-       `pr`, `review`, `arch`, `taste`, `grind`, `clarify`, `iterate`,
-       `analyze`, `refactor`, `sweep`, `tdd`, `spec`, `grill`, `doubt`,
-       `prototype`, `handoff`, `caveman`) are spec-compliant but
-       flagged as "vague" by the spec. DO NOT rename without explicit
-       user approval — these names are deeply embedded in muscle memory
-       and chat history. The right move is to add an `aliases:` field
-       to frontmatter if/when agentbrew supports it (it doesn't yet).
-
-    E. **Source repo migration**: per `agentbrew/AGENTS.md` rule 8a,
-       skills in `skill-plugins/dev/` should be Bucket 1 (agentbrew-
-       specific) only. Bucket 2 migration candidates need to move to
-       source repos. Top candidates that are clean enough to migrate
-       today: the 6 companion-* skills, the 4 grind-* skills, the
-       skill-* family (creator/rewriter/eval-loop). Each migration is
-       its own task.
-
-  - **Files**: skill-plugins/dev/* (entire directory), README.md,
-    docs/skill-curation/2026-05-21.md (the curate-round report from
-    the same companion session)
-  - **Acceptance**: This task gets decomposed into 5 sub-tasks (one
-    per section A-E above), each of which produces concrete edits or
-    a documented "keep as is with rationale". The decomposition
-    happens when a future companion session or skill-rewriter session
-    picks this up.
+  - **Files**: upstream issues at vercel-labs/skills (no agentbrew files).
+  - **Acceptance**: (a) a substantive RFC-style comment is posted on BOTH #268 and #455 with the 5-case taxonomy and the invariant statement; (b) the comment links to the exact `src/sync/skills-sync.ts` `cleanEntry` reference and explicitly states "not filing a PR"; (c) if any of the 4 open PRs (#609, #611, #869, #944) subsequently merges with a classifier design, close this task with a link to the merge in the commit message; (d) if the queue stays stuck for another 4 weeks post-comment, the escalation comment on #268 asking for architectural direction is posted.
+  - **Human-approval-required**: external-issue
 
 - [ ] Companion-researcher needs working-tree branch-stomp protection
   - **ID**: companion-branch-stomp-protection
@@ -1646,8 +914,8 @@
     multi-agent workflows the disk cost is worth it.
 
   - **Files**:
-    skill-plugins/dev/companion-researcher/SKILL.md (add the branch-
-    verification rule); optionally skill-plugins/dev/companion-*/
+    skill-plugins/workflow/companion-researcher/SKILL.md (add the branch-
+    verification rule); optionally skill-plugins/workflow/companion-*/
     SKILL.md (each sub-skill could also assert the branch before
     write operations).
   - **Acceptance**:
@@ -1659,74 +927,17 @@
     add` for its session checkout, isolating it from the worker
     entirely.
 
-- [ ] Enforce the tag-free Jira title convention with a check, not just prose
-
-  - **ID**: jira-title-convention-enforcement-2026-05-29
-  - **Tags**: jira-skill, feedback-loop, scout, p3
-  - **Details**: The `jira` skill now documents a tag-free title convention (no leading `[X.Y]` / `[skill]` bracket tags, no `R#X.Y -` requirement-ID prefix, no `Deliver:` / `Short-term:` / `Long-term:` filler prefix; the requirement mapping belongs in a `req-X-Y` label) in `skill-plugins/dev/jira/SKILL.md` under "Title Format". That rule lives only in prose, so violations still slip through when an agent creates a ticket. Per the feedback-loop principle (linters enforce, instructions suggest — zernie.com/blog/feedback-loop-is-all-you-need), add a lightweight check that flags a proposed Jira title containing a leading bracket tag, an `R#X.Y -` prefix, or a filler prefix, and surface it from the jira skill's pre-create step (or a small standalone validator). Scouted while rewriting 53 ticket titles to this convention.
-  - **Files**: `skill-plugins/dev/jira/SKILL.md` (the "Title Format" section is the spec); plus wherever the check would live (a new `src/skills/*` validator or a jira-skill self-check step).
-  - **Acceptance**: A clean descriptive title passes; a title with a leading bracket tag, `R#X.Y -` prefix, or `Deliver:` prefix is flagged with the reason before the ticket is created.
-
-- [ ] Fix 9 biome complexity warnings and non-hermetic integration tests
-
-  - **ID**: biome-complexity-and-hermetic-integration-tests-2026-05-31
-  - **Tags**: biome, complexity, integration-test, hermetic, scout, p3
-  - **Details**: Pre-existing technical debt unrelated to overlay work. Biome reports 9 complexity warnings (max allowed is 15): page-zero-errors cdp-capture.mjs:152 (18), cli.ts:192 (17), hooks/deploy.ts:72 (26), hooks/manifest.ts:131 (16), mcp/opencode-bootstrap.ts:42 (17) and :437 (23), mcp/playwright-isolated-sweep.ts:90 (16), sync/hooks-sync.ts:337 (16) and :378 (23). Two integration tests may read real machine state: clean.test.ts mocks expandHome but uses `process.env.HOME` which could read the real homedir, and integration.test.ts is a large integration test with complex mocks that may have gaps. Scouted during Phase 3 overlay extraction verification.
-  - **Files**: files with complexity warnings (see details above), src/clean.test.ts (verify expandHome mocking), src/integration.test.ts (review mock coverage for process.env.HOME reads)
-  - **Acceptance**: All biome complexity warnings resolved (refactor functions to stay under 15 complexity), all integration tests verified as hermetic (no real machine state reads), `npm run verify` passes with zero warnings.
-
-- [ ] Enforce the cross-workspace-publish guardrail with a deterministic hook
-  - **ID**: enforce-cross-workspace-publish-hook
-  - **Tags**: scout, hooks, guardrail, feedback-loop
-  - **Details**: The "Cross-workspace publishing is human-blocked" rule added to `templates/AGENTS.md` (and `~/.config/agentbrew/shared-rules.md`) is prose-only — an autonomous agent can still ignore it. Per the feedback-loop principle (linters enforce, instructions suggest — zernie.com/blog/feedback-loop-is-all-you-need), add a PreToolUse deterministic hook that blocks `gh pr create`, `gh repo fork`, `git push` to a remote whose repo root is OUTSIDE the session's workspace roots, and `gh pr merge --auto` on such repos. Model it on the existing `no-force-push-protected` / `no-git-add-all` checks. Scouted while writing the prose rule after an autonomous Devin run opened `acme/sdd-meta-registry` PR #54 from a personal fork without approval.
-  - **Files**: `hooks/checks/no-cross-workspace-publish.sh` (+ `.test.sh` fixture), `hooks/manifest.yaml` (register), `docs/research/hooks-over-agents-md.md` (document)
-  - **Acceptance**: `gh pr create` / `git push <new-remote>` against a repo whose root is outside the workspace roots is blocked with a message naming the approval requirement; the same commands inside the workspace pass; a shell fixture covers both cases.
-
-- [ ] Fix incomplete `../state.js` mock in `src/mcp/mcp-git.test.ts` (missing `loadState`)
-  - **ID**: fix-mcp-git-test-state-mock-loadstate
-  - **Tags**: scout, test-hygiene, mcp
-  - **Details**: `src/mcp/mcp-git.test.ts` mocks `../state.js` but omits the `loadState` export, so the overlay-agent load path hits a caught error and logs `Failed to load overlay agents: No "loadState" export is defined on the "../state.js" mock` to stderr on every run. Tests pass, but the noisy stderr hides real failures and the mock is silently exercising the error path instead of the intended path. Add `loadState` to the `vi.mock("../state.js", …)` factory (return a minimal state) so the overlay path runs cleanly. Scouted while fixing `agentbrew-sync-clear-stale-mcp-fields`.
-  - **Files**: `src/mcp/mcp-git.test.ts`
-  - **Acceptance**: `vitest run src/mcp/mcp-git.test.ts` emits no "No \"loadState\" export" stderr line; all tests still pass.
-
-- [ ] Refresh competitor research: block-ai-rules-vs-agentbrew
-  - **ID**: refresh-competitor-block-ai-rules-vs-agentbrew
-  - **Tags**: research, competitor, p3
-  - **Details**: `docs/competition/block-ai-rules-vs-agentbrew.md` last updated 35 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
-  - **Files**: docs/competition/block-ai-rules-vs-agentbrew.md
-  - **Acceptance**: docs/competition/block-ai-rules-vs-agentbrew.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
-
-- [ ] Refresh competitor research: mcpm-sh-vs-agentbrew
-  - **ID**: refresh-competitor-mcpm-sh-vs-agentbrew
-  - **Tags**: research, competitor, p3
-  - **Details**: `docs/competition/mcpm-sh-vs-agentbrew.md` last updated 34 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
-  - **Files**: docs/competition/mcpm-sh-vs-agentbrew.md
-  - **Acceptance**: docs/competition/mcpm-sh-vs-agentbrew.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
-
-- [ ] Refresh competitor research: vercel-skills-cli-vs-agentbrew
+- [ ] Competitor docs state the current upstream facts, dated inside the doc
   - **ID**: refresh-competitor-vercel-skills-cli-vs-agentbrew
-  - **Tags**: research, competitor, p3
-  - **Details**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` last updated 31 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
-  - **Files**: docs/competition/vercel-skills-cli-vs-agentbrew.md
-  - **Acceptance**: docs/competition/vercel-skills-cli-vs-agentbrew.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
-
-- [ ] Refresh competitor research: readme
-  - **ID**: refresh-competitor-readme
-  - **Tags**: research, competitor, p3
-  - **Details**: `docs/competition/README.md` last updated 33 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
-  - **Files**: docs/competition/README.md
-  - **Acceptance**: docs/competition/README.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
-
-- [ ] Refresh competitor research: token-usage-tools
-  - **ID**: refresh-competitor-token-usage-tools
-  - **Tags**: research, competitor, p3
-  - **Details**: `docs/competition/token-usage-tools.md` last updated 32 days ago (stale threshold: 30 days). Refresh: check the competitor's blog, changelog, recent releases, and pricing page for changes since the last edit. Use the `companion-competitor-watch` skill for guidance.
-  - **Files**: docs/competition/token-usage-tools.md
-  - **Acceptance**: docs/competition/token-usage-tools.md has at least one new bullet point referencing post-last-edit material, and the file's last-commit date is within the past 7 days.
+  - **Tags**: research, competitor
+  - **Details**: The 2026-10-01 public-history reset makes git dates useless for staleness, so judge freshness by dates written in each doc. Known stale facts in `docs/competition/vercel-skills-cli-vs-agentbrew.md`: #509, #937 and #944 are closed; #869 and #971 are merged; #2348 (supersedes #937) is not mentioned; several fork-draft targets are closed. Also re-check `block-ai-rules-vs-agentbrew.md`, `mcpm-sh-vs-agentbrew.md`, and `token-usage-tools.md`. Merges the five per-file refresh tasks (2026-10-15 review).
+  - **Files**: `docs/competition/*.md`
+  - **Acceptance**: every listed doc has a dated "Last checked: YYYY-MM-DD" line, and the vercel doc's PR and issue states match GitHub on that date.
 
 - [ ] Warn when OpenCodeAdapter drops env on a URL server
-  **ID**: opencode-remote-env-drop-warning
-  **Tags**: mcp, opencode, adapters, ux
-  **Details**: `OpenCodeAdapter.toEntry` silently drops `env` for URL (remote) servers because the opencode remote schema has no `environment` field. Emit a one-line sync warning (and a test) when a server has both `url` and non-empty `env`, so the loss is visible.
-  **Files**: `src/mcp/adapters.ts`, `src/mcp/adapters.test.ts`
-  **Output**: code
+  - **ID**: opencode-remote-env-drop-warning
+  - **Tags**: mcp, opencode, adapters, ux
+  - **Details**: `OpenCodeAdapter.toEntry` silently drops `env` for URL (remote) servers because the opencode remote schema has no `environment` field. Emit a one-line sync warning (and a test) when a server has both `url` and non-empty `env`, so the loss is visible.
+  - **Files**: `src/mcp/adapters.ts`, `src/mcp/adapters.test.ts`
+  - **Output**: code
+  - **Acceptance**: sync logs one warning naming the server when it has both `url` and a non-empty `env`; a test in `src/mcp/adapters.test.ts` asserts the warning.

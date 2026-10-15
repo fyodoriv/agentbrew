@@ -89,6 +89,17 @@ reviews/`), and the `**Last-fired**:` line is bumped.
   **Files**: `docs/competition/dissolution-reviews/YYYY-QN.md` (new per quarter), `docs/competition/vercel-skills-cli-vs-agentbrew.md` (update triggers + 90-day-window status), TASKS.md (new/closed tasks from triggers that fired), docs/VISION.md (update permanent-scope list if capabilities got absorbed).
   **Acceptance**: Every quarter, a new `docs/competition/dissolution-reviews/YYYY-QN.md` file with all 5 sections. Every upstream contribution agentbrew has open is accounted for — engaged / rejected / absorbed. Every trigger in the 6-item list (plus new ones) is evaluated with a concrete answer. Every "keep native, blocker X" slice is re-measured. Any capability absorbed after a 90-day ignore gets a corresponding line added to VISION.md's "permanent agentbrew scope." If zero triggers fire and zero absorbs happen for 4 consecutive quarters, the trigger list is reviewed for staleness (maybe the triggers are wrong).
 
+- [ ] Review the task queue with /review-tasks — delete done or obsolete tasks, fix priorities and stale details.
+  **ID**: review-tasks-monthly
+  **Tags**: tasks, queue-hygiene
+  **Output**: audit-report
+  **Cadence**: monthly
+  **Next**: 2026-11-15
+  **Last-fired**: 2026-10-15
+  **Details**: Run `/review-tasks` (tasks.md command; `agentbrew install review-tasks`) on `TASKS.md`. Every verdict needs evidence (file:line, commit, PR state). The 2026-10-15 run took agentbrew from 116 to 68 open tasks.
+  **Files**: `TASKS.md`, `.prereg-allowlist`, `.tasks-stability-allowlist`
+  **Acceptance**: a PR whose body holds the review table and verdict counts; `npm run verify` passes.
+
 - [ ] Context budget weekly audit — refresh metrics, compare history, triage TASKS.md trim tasks.
   **ID**: context-budget-weekly-audit
   **Tags**: token-budget, metrics, context, ops

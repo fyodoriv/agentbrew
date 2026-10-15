@@ -55,12 +55,12 @@ hooks:
   # ── Phase 1 hooks (dotfiles wrapper migration — sourceRule = dotfiles/bin/gh + git-hooks/commit-msg) ──
 
   - id: gh-pr-body-attribution
-    description: Strip foreign agent attribution from gh pr create/edit body + append canonical Fyodor footer
+    description: Warn when a gh pr create/edit body has foreign agent attribution (the dotfiles gh wrapper strips it and appends the footer)
     event: PreToolUse
     matcher: Bash
     script: checks/gh-pr-body-attribution.sh
     tier: deterministic
-    verdict: mutate
+    verdict: warn
     sourceRule: dotfiles/bin/gh (formalized as hook 2026-05-27) + shared-rules.md:1283 "Agent Attribution Footer (ABSOLUTE)"
     agents: ["claude-code", "cursor"]
     defaultEnabled: false
@@ -133,12 +133,12 @@ hooks:
     defaultEnabled: false
 
   - id: git-strip-agent-attribution
-    description: Strip foreign agent Co-Authored-By + Generated-with trailers from git commit -m
+    description: Warn when git commit -m has foreign agent Co-Authored-By or Generated-with trailers (the dotfiles commit-msg hook strips them)
     event: PreToolUse
     matcher: Bash
     script: checks/git-strip-agent-attribution.sh
     tier: deterministic
-    verdict: mutate
+    verdict: warn
     sourceRule: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
     agents: ["claude-code", "cursor"]
     defaultEnabled: false

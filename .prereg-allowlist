@@ -14,7 +14,6 @@ document-2134-pressure-eval-conventions
 status-reports-preserved-catalog-rules
 catalog-mcp-pin-policy-data-driven
 hooks-fixture-coverage-gate
-hooks-attribution-verdict-mutate-vs-warn
 hooks-dashdash-lint-coverage
 heal-cycle-reprobe-attempted-only
 mcp-status-heal-attempt-count

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -336,5 +336,22 @@ describe("canonical hook manifest", () => {
     expect(bashHookIds).toHaveLength(17);
     expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
+  });
+
+  it("declares the verdict that each mutate or attribution script really emits", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const { resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
+      overlayPath: join(tempRoot(), "missing-overlay.yaml"),
+    });
+    const scriptOf = (script: string) => readFileSync(join(repoRoot, "hooks", script), "utf8");
+
+    for (const hook of resolvedManifest.hooks.filter((entry) => entry.verdict === "mutate")) {
+      expect(scriptOf(hook.script), `${hook.id} declares mutate`).toMatch(/\bverdict_mutate\b/);
+    }
+    for (const id of ["gh-pr-body-attribution", "git-strip-agent-attribution"]) {
+      const hook = resolvedManifest.hooks.find((entry) => entry.id === id);
+      expect(hook?.verdict, id).toBe("warn");
+      expect(scriptOf(hook?.script ?? ""), id).toMatch(/\bverdict_warn\b/);
+    }
   });
 });

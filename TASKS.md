@@ -323,13 +323,6 @@
   - **Files**: `scripts/run-hook-fixtures.sh` (or a new `src/sync/hooks-fixture-coverage.test.ts`)
   - **Acceptance**: adding a `hooks/checks/foo.sh` with no `foo.test.sh` fails `npm run verify`; the message names the missing fixture.
 
-- [ ] Reconcile manifest `verdict: mutate` vs `verdict_warn` for the two attribution hooks
-  - **ID**: hooks-attribution-verdict-mutate-vs-warn
-  - **Tags**: scout, hooks, manifest, consistency
-  - **Details**: `hooks/manifest.yaml` declares `verdict: mutate` for `gh-pr-body-attribution` and `git-strip-agent-attribution`, but both scripts actually call `verdict_warn` (exit 0 + stderr) — the real attribution rewrite happens downstream in dotfiles `bin/gh` + `git-hooks/commit-msg`, not in the hook. The manifest field is misleading. Either (a) change the manifest verdict to `warn` and document that the mutation is delegated downstream, or (b) implement real PostToolUse mutate via `verdict_mutate`. Surfaced while writing the Phase-1 fixtures (the tests assert exit 0 + stderr, matching the actual `warn` behavior).
-  - **Files**: `hooks/manifest.yaml` (entries) and/or the 2 scripts; update their `.test.sh` if behavior changes.
-  - **Acceptance**: the manifest `verdict` field matches the script's actual verdict function for both hooks.
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->

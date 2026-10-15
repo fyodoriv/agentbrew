@@ -113,6 +113,12 @@ schemas evolve independently.
 | Block | Exit `2` and print a concise, actionable explanation to stderr. |
 | Mutate | Exit `0` with agent-supported rewrite JSON on stdout. Only use on events whose host supports mutation. |
 
+The manifest `verdict` names what the script itself emits. A hook that only
+detects text that another tool rewrites later declares `warn`, not `mutate`.
+The attribution hooks work this way: the dotfiles `gh` wrapper and
+`commit-msg` hook do the strip. A test checks that every `mutate` hook calls
+`verdict_mutate`.
+
 Blocking messages must tell the agent exactly how to retry successfully. Do not
 print secrets, full environment dumps, or unrelated transcript contents.
 

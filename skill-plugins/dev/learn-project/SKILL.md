@@ -48,11 +48,11 @@ Copy this checklist and track progress:
    `npx skills` corporate-TLS failure):
 
    ```bash
-   agentbrew install tutor-setup --from bevibing/tutor-skills
-   agentbrew install tutor --from bevibing/tutor-skills
+   agentbrew install tutor-setup --from fyodoriv/tutor-skills
+   agentbrew install tutor --from fyodoriv/tutor-skills
    ```
 
-   If `agentbrew` is unavailable, fall back to `npx skills add bevibing/tutor-skills`.
+   If `agentbrew` is unavailable, fall back to `npx skills add fyodoriv/tutor-skills`.
    If both fail, tell the user exactly what to run and stop — do not fake the vault.
 3. Note which source MCPs are available (you'll only need the ones the user's sources
    require): `user-github` (remote repos, PRs, issues), `user-google-drive-mcp`

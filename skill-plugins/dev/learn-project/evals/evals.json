@@ -50,9 +50,9 @@
     {
       "id": 5,
       "prompt": "tutor-setup isn't installed. Just teach me this repo anyway.",
-      "expected_output": "Ensures prerequisites first: installs tutor-setup and tutor via agentbrew's native path (bevibing/tutor-skills), and only if install fails tells the user exactly what to run instead of faking a vault.",
+      "expected_output": "Ensures prerequisites first: installs tutor-setup and tutor via agentbrew's native path (fyodoriv/tutor-skills), and only if install fails tells the user exactly what to run instead of faking a vault.",
       "expectations": [
-        "Checks for tutor-setup/tutor and installs both via agentbrew install --from bevibing/tutor-skills before proceeding",
+        "Checks for tutor-setup/tutor and installs both via agentbrew install --from fyodoriv/tutor-skills before proceeding",
         "Falls back to npx skills add only if agentbrew is unavailable",
         "Refuses to fabricate a StudyVault if installation fails and tells the user the exact command to run",
         "Proceeds with the normal pipeline once the upstream skills are available"

@@ -25,8 +25,8 @@ The `learn-project` skill is agentbrew's orchestrator over upstream [`tutor-setu
 ```bash
 # From an agentbrew checkout (dev) or after agentbrew sync (deployed)
 agentbrew install learn-project    # built-in — synced with agentbrew
-agentbrew install tutor-setup --from bevibing/tutor-skills
-agentbrew install tutor --from bevibing/tutor-skills
+agentbrew install tutor-setup --from fyodoriv/tutor-skills
+agentbrew install tutor --from fyodoriv/tutor-skills
 ```
 
 `learn-project` **auto-installs** `tutor-setup` + `tutor` on first run if they are missing.
@@ -195,7 +195,7 @@ These behaviors live in `learn-project` — not in upstream tutor:
 | **Source freshness** | Re-stage only changed inputs; patch vault sections when docs update |
 | **Mermaid maps** | Section concept maps + architecture diagram in MOC |
 
-- Upstream tutor improvements (open-answer, Bloom tags, confidence calibration) are spec'd in [`learn-project-tutor-upstream-contribution.md`](learn-project-tutor-upstream-contribution.md) — not shipped in tutor-skills yet. Ready-to-paste upstream PR bodies: [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md).
+- Tutor pedagogy upgrades (question verification, misconception feedback, open recall, Bloom ladder, confidence calibration, Learning Path) ship from the [`fyodoriv/tutor-skills`](https://github.com/fyodoriv/tutor-skills) fork until upstream merges [bevibing/tutor-skills#8–#11](https://github.com/bevibing/tutor-skills/pull/8). Spec: [`learn-project-tutor-upstream-contribution.md`](learn-project-tutor-upstream-contribution.md); patches: [`learn-project-tutor-upstream-pr-drafts/`](learn-project-tutor-upstream-pr-drafts/README.md).
 
 ---
 
@@ -215,7 +215,7 @@ When `freshness.changed` is non-empty and a StudyVault exists, the agent re-runs
 
 | Problem | What to do |
 |---------|------------|
-| "tutor-setup not installed" | Run `agentbrew install tutor-setup --from bevibing/tutor-skills` (and `tutor`) |
+| "tutor-setup not installed" | Run `agentbrew install tutor-setup --from fyodoriv/tutor-skills` (and `tutor`) |
 | SSO blocked GitHub/Jira/Drive | Complete auth in browser; agent backgrounds and continues other work |
 | Bad / trivia questions | Say "that question is bad" — agent discards and regenerates; or run quiz-fix loop |
 | Stale vault after doc update | Re-invoke learn-project — freshness detects changed sources |

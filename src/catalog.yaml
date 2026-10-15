@@ -214,7 +214,7 @@ skills:
       Generate an Obsidian StudyVault from documents or a codebase — verified source
       mapping, concept notes, practice questions, and self-review. Use before /tutor.
       Don't use for multi-source combos without staging (use learn-project).
-    source: bevibing/tutor-skills
+    source: fyodoriv/tutor-skills
     category: productivity
     recommended: false
 
@@ -223,7 +223,7 @@ skills:
       Interactive concept-level quiz tutor for a StudyVault produced by tutor-setup.
       Diagnostic, drill-weak, and hard-mode sessions with progress tracking. Don't use
       without an existing StudyVault (run tutor-setup first).
-    source: bevibing/tutor-skills
+    source: fyodoriv/tutor-skills
     category: productivity
     recommended: false
 

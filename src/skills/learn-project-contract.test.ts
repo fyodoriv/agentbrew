@@ -70,9 +70,9 @@ describe("learn-project skill contract", () => {
 
   it("pins prerequisite auto-install without faking the vault", () => {
     requireTerms(skillText, [
-      "agentbrew install tutor-setup --from bevibing/tutor-skills",
-      "agentbrew install tutor --from bevibing/tutor-skills",
-      "fall back to `npx skills add bevibing/tutor-skills`",
+      "agentbrew install tutor-setup --from fyodoriv/tutor-skills",
+      "agentbrew install tutor --from fyodoriv/tutor-skills",
+      "fall back to `npx skills add fyodoriv/tutor-skills`",
       "do not fake the vault",
     ]);
   });
@@ -316,7 +316,7 @@ describe("learn-project skill contract", () => {
       /instead of re-gathering sources/i,
     ]);
     requireTerms(scenarioText(evalMatching(/isn't installed/i)), [
-      /agentbrew install --from bevibing\/tutor-skills/i,
+      /agentbrew install --from fyodoriv\/tutor-skills/i,
       /Refuses to fabricate a StudyVault/i,
     ]);
     requireTerms(scenarioText(evalMatching(/SSO login page/i)), [

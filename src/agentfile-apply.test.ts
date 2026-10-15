@@ -14,8 +14,8 @@ vi.mock("./agentfile.js", () => ({
   loadAgentfileFromPath: vi.fn(),
   resolveAgentfileMcp: vi.fn(() => []),
   validateAgentfileMcp: vi.fn(() => []),
-  getStateServers: vi.fn(() => []),
-  getStateSources: vi.fn(() => []),
+  getStateServers: vi.fn(),
+  getStateSources: vi.fn(),
 }));
 
 vi.mock("./catalog/types.js", () => ({
@@ -91,6 +91,17 @@ function makeServer(name: string): McpServer {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Mirror the real getters: initialize the state list, then return a shallow copy.
+  // A stub that returns one fixed array hides apply bugs that mutate the copy
+  // and never assign it back. Override only where a test needs divergence.
+  mockGetStateServers.mockImplementation((s) => {
+    if (!s.mcpServers) s.mcpServers = [];
+    return [...s.mcpServers];
+  });
+  mockGetStateSources.mockImplementation((s) => {
+    if (!s.sources) s.sources = [];
+    return [...s.sources];
+  });
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -135,7 +146,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["new-server"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([newServer]);
-      mockGetStateServers.mockReturnValue([]);
 
       const result = applyAgentfile("/project");
       expect(result?.serversAdded).toContain("new-server");
@@ -148,7 +158,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["existing"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([existingServer]);
-      mockGetStateServers.mockReturnValue([existingServer]);
 
       const result = applyAgentfile("/project");
       expect(result?.serversAdded).toHaveLength(0);
@@ -159,7 +168,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ memory: { enabled: true } });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateServers.mockReturnValue([]);
 
       applyAgentfile("/project", { quiet: true });
 
@@ -187,7 +195,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ memory: { enabled: true } });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateServers.mockReturnValue([]);
 
       applyAgentfile("/project", { quiet: true });
       expect(state.mcpServers?.[0]).toEqual({
@@ -224,7 +231,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["my-server"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([updatedServer]);
-      mockGetStateServers.mockReturnValue([existingServer]);
 
       const result = applyAgentfile("/project");
       expect(result?.serversUpdated).toContain("my-server");
@@ -251,7 +257,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["env-srv"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([updatedServer]);
-      mockGetStateServers.mockReturnValue([existingServer]);
 
       const result = applyAgentfile("/project");
       expect(result?.serversUpdated).toContain("env-srv");
@@ -264,7 +269,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["same"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([{ ...server }]);
-      mockGetStateServers.mockReturnValue([server]);
 
       const result = applyAgentfile("/project");
       expect(result?.serversUpdated).toHaveLength(0);
@@ -278,7 +282,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["kept"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([kept]);
-      mockGetStateServers.mockReturnValue([kept, removed]);
 
       const result = applyAgentfile("/project", { authoritative: true });
       expect(result?.serversRemoved).toContain("removed");
@@ -298,7 +301,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ memory: { enabled: true } });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateServers.mockReturnValue([memoryServer]);
 
       const result = applyAgentfile("/project", { authoritative: true, quiet: true });
 
@@ -316,7 +318,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["slack-work", "context7"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([slackServer, otherServer]);
-      mockGetStateServers.mockReturnValue([slackServer, otherServer]);
 
       const result = applyAgentfile("/project", { authoritative: true });
       expect(result?.serversRemoved).not.toContain("slack-work");
@@ -332,7 +333,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["context7"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([otherServer]);
-      mockGetStateServers.mockReturnValue([slackServer, otherServer]);
 
       const result = applyAgentfile("/project", { authoritative: true });
       expect(result?.serversRemoved).toContain("slack-work");
@@ -345,7 +345,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       const result = applyAgentfile("/project");
       expect(result?.sourcesAdded).toContain("https://example.com/skills");
@@ -357,7 +356,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([existingSource]);
 
       const result = applyAgentfile("/project");
       expect(result?.sourcesAdded).toHaveLength(0);
@@ -368,7 +366,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["./.claude/skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       applyAgentfile("/project");
 
@@ -382,7 +379,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["./.claude/skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([existingSource]);
 
       const result = applyAgentfile("/project");
 
@@ -395,7 +391,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["/Users/me/my-skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       applyAgentfile("/project");
 
@@ -408,7 +403,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["~/my-skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       applyAgentfile("/project");
 
@@ -421,7 +415,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["user/custom-skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       applyAgentfile("/project");
 
@@ -434,7 +427,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
 
       applyAgentfile("/project");
 
@@ -472,7 +464,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/user-skills"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([teamSource, userSource]);
 
       applyAgentfile("/project", { authoritative: true });
 
@@ -507,7 +498,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ sources: ["https://example.com/kept"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([staleSource, keptSource]);
 
       applyAgentfile("/project", { authoritative: true });
 
@@ -518,19 +508,8 @@ describe("applyAgentfile", () => {
   });
 
   describe("authoritative apply keeps entries added in the same apply", () => {
-    // The real getters return shallow copies; mirror that so the test fails
-    // when the apply writes back a copy taken before the additions.
-    beforeEach(() => {
-      mockGetStateServers.mockImplementation((s) => {
-        if (!s.mcpServers) s.mcpServers = [];
-        return [...s.mcpServers];
-      });
-      mockGetStateSources.mockImplementation((s) => {
-        if (!s.sources) s.sources = [];
-        return [...s.sources];
-      });
-    });
-
+    // The default getter mocks return shallow copies, like the real getters,
+    // so these tests fail when the apply writes back a copy taken before the additions.
     it("keeps an added MCP server when a stale server is pruned", () => {
       const stale = makeServer("stale");
       const fresh = makeServer("fresh");
@@ -982,7 +961,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["server"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([makeServer("server")]);
-      mockGetStateServers.mockReturnValue([]);
 
       applyAgentfile("/project");
       expect(mockSaveState).toHaveBeenCalledWith(state);
@@ -999,7 +977,6 @@ describe("applyAgentfile", () => {
       });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([]);
-      mockGetStateSources.mockReturnValue([]);
       mockExistsSync.mockReturnValue(false);
 
       const result = applyAgentfile("/project", { dryRun: true });
@@ -1024,7 +1001,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["srv"] });
       mockLoadState.mockReturnValue(state);
       mockResolveAgentfileMcp.mockReturnValue([{ ...existingServer, args: ["new"] }]);
-      mockGetStateServers.mockImplementation((s: AgentBrewState) => [...(s.mcpServers ?? [])]);
 
       const result = applyAgentfile("/project", { dryRun: true });
 
@@ -1039,7 +1015,6 @@ describe("applyAgentfile", () => {
       mockLoadAgentfile.mockReturnValue({ mcp: ["virtual"] });
       mockLoadState.mockReturnValue(persistedState);
       mockResolveAgentfileMcp.mockReturnValue([makeServer("virtual")]);
-      mockGetStateServers.mockImplementation((s: AgentBrewState) => [...(s.mcpServers ?? [])]);
 
       const result = applyAgentfile("/project", { dryRun: true, stateOverride: virtualState });
 

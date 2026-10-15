@@ -48,6 +48,8 @@ Each line answers one question:
 
 If something is out of place — a missing MCP server, a broken skill symlink, a truncated rules file, or an MCP that still fails after auto-heal — status prints a top-level warning and points at the next command to run.
 
+On macOS, status also reads the latest Claude Desktop start in `~/Library/Logs/Claude/main.log`. An invalid MCP config entry or a server that failed to connect shows as `claude-desktop-mcp` drift, with its fix. `agentbrew status --ci` exits 1 on these failures. A clean log, or no log at all, adds nothing.
+
 ## Reading the drift section
 
 ```

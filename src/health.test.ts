@@ -102,11 +102,16 @@ vi.mock("./manifest.js", () => ({
   loadManifest: vi.fn(() => ({ hashes: {} })),
 }));
 
+vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({
+  checkClaudeDesktopMcpDrift: vi.fn(() => []),
+}));
+
 vi.mock("./sync/auto-repair-health.js", () => ({
   probeAutoRepairHealth: vi.fn(() => ({ backend: "launchagent", state: "not-loaded", loaded: false })),
 }));
 
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { fix, healthCheck } from "./health.js";
 import { runMcpHealCycle } from "./mcp/heal-cycle.js";
 import { validateMcpEnvVars } from "./mcp/mcp-setup.js";
@@ -347,6 +352,42 @@ describe("healthCheck --ci mode", () => {
 
     await healthCheck({ autoFix: false, ci: true });
     expect(mockSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("healthCheck --ci with Claude Desktop MCP startup failures", () => {
+  const cleanState = () =>
+    makeState({ agents: [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: undefined }] });
+
+  it("exits 1 when the latest Desktop start logged a connect failure", async () => {
+    mockLoadState.mockReturnValue(cleanState());
+    mockExistsSync.mockReturnValue(false);
+    vi.mocked(checkClaudeDesktopMcpDrift).mockReturnValueOnce([
+      {
+        agent: "claude-desktop",
+        type: "claude-desktop-mcp",
+        detail: "plugin:prisma:Prisma-Local failed at Claude Desktop startup (Failed to connect) — turn it off",
+      },
+    ]);
+
+    await healthCheck({ autoFix: false, ci: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(console.error).toHaveBeenCalledWith("drift=1 status=failed");
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("claude-desktop [claude-desktop-mcp] plugin:prisma:Prisma-Local"),
+    );
+  });
+
+  it("exits 0 when the Desktop log is clean or missing", async () => {
+    mockLoadState.mockReturnValue(cleanState());
+    mockExistsSync.mockReturnValue(false);
+
+    await healthCheck({ autoFix: false, ci: true });
+
+    expect(checkClaudeDesktopMcpDrift).toHaveBeenCalled();
+    expect(process.exitCode).toBe(0);
+    expect(console.log).toHaveBeenCalledWith("drift=0 status=clean");
   });
 });
 

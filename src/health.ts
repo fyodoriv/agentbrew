@@ -21,6 +21,7 @@ import {
   checkUserCreatedSkills,
   formatDriftSummary,
 } from "./drift.js";
+import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { fix } from "./repair.js";
 import { requireState } from "./state.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -144,6 +145,7 @@ interface DriftSections {
   syncDrift: DriftItem[];
   mcpEnvDrift: DriftItem[];
   envHygieneDrift: DriftItem[];
+  desktopMcpDrift: DriftItem[];
   skillValidity: DriftItem[];
   cliBuildDrift: DriftItem[];
   userAddedDrift: DriftItem[];
@@ -201,7 +203,16 @@ function printUserAdditionsSection(userAddedDrift: DriftItem[], verbose: boolean
 
 /** Display human-readable drift sections and set exit code. */
 async function displayInteractiveDrift(sections: DriftSections, autoFix: boolean, verbose = false): Promise<void> {
-  const { syncDrift, mcpEnvDrift, envHygieneDrift, skillValidity, cliBuildDrift, userAddedDrift, allDrift } = sections;
+  const {
+    syncDrift,
+    mcpEnvDrift,
+    envHygieneDrift,
+    desktopMcpDrift,
+    skillValidity,
+    cliBuildDrift,
+    userAddedDrift,
+    allDrift,
+  } = sections;
   // Show MCP env var warnings (not auto-fixable)
   printWarningSection(
     `MCP configuration: ${chalk.yellow(`${mcpEnvDrift.length} server(s) need setup`)}`,
@@ -221,6 +232,13 @@ async function displayInteractiveDrift(sections: DriftSections, autoFix: boolean
   if (envHygieneDrift.length > 0) {
     console.log(chalk.dim(`\n  Run ${chalk.white("eval $(agentbrew env sanitize)")} to unset them.`));
   }
+
+  // Claude Desktop startup failures (not auto-fixable — each item names its fix)
+  printWarningSection(
+    `Claude Desktop MCP: ${chalk.yellow(`${desktopMcpDrift.length} startup failure(s)`)}`,
+    desktopMcpDrift,
+    false,
+  );
 
   printSkillValiditySection(skillValidity);
   printCliBuildDriftSection(cliBuildDrift);
@@ -270,6 +288,7 @@ export async function healthCheck(options?: {
   const mcpEnvDrift = checkMcpEnvVarsDrift();
   const mcpBarePlaceholdersDrift = checkBarePlaceholdersDrift();
   const envHygieneDrift = checkEnvHygieneDrift();
+  const desktopMcpDrift = checkClaudeDesktopMcpDrift();
   const rulesDrift = checkRulesDrift();
   const skillsDrift = checkSkillsDrift();
   const brokenSymlinks = checkBrokenSymlinks();
@@ -304,7 +323,14 @@ export async function healthCheck(options?: {
   // They surface in their own `User additions` section in the human-readable output
   // and as a separate `userAdditions` field in JSON/CI modes.
   const userAddedDrift = [...userAddedMcp, ...userCreatedSkills, ...userCreatedCommands];
-  const allDrift = [...syncDrift, ...skillValidity, ...mcpEnvDrift, ...envHygieneDrift, ...cliBuildDrift];
+  const allDrift = [
+    ...syncDrift,
+    ...skillValidity,
+    ...mcpEnvDrift,
+    ...envHygieneDrift,
+    ...desktopMcpDrift,
+    ...cliBuildDrift,
+  ];
 
   if (options?.json) {
     outputHealthJson(state, allDrift, userAddedDrift);
@@ -322,6 +348,7 @@ export async function healthCheck(options?: {
       syncDrift,
       mcpEnvDrift,
       envHygieneDrift,
+      desktopMcpDrift,
       skillValidity,
       cliBuildDrift,
       userAddedDrift,

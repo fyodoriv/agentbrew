@@ -233,22 +233,12 @@
   - **Files**: `src/mcp/heal-cycle.ts`, `src/mcp/health-snapshot.ts`, `src/mcp/health-snapshot.test.ts`
   - **Acceptance**: a deferred timeout appears in the snapshot with a deferred marker, and a test covers it.
 
-- [ ] Surface Claude Desktop MCP startup failures in `agentbrew status`
+- [ ] Report the prisma plugin MCP break upstream so the plugin pins `prisma@7`
   - **ID**: status-surface-claude-desktop-mcp-failures
-  - **Tags**: scout, mcp, claude-desktop, status, plugins
-  - **Details**: `agentbrew status` and `collectDrift` now list Claude Desktop
-    startup failures (invalid config entries and failed server connects) from
-    the latest Desktop start in `~/Library/Logs/Claude/main.log`, each with a
-    fix path. Two parts remain. First, `agentbrew status --ci` exists, but `healthCheck` (`src/health.ts`) never calls `checkClaudeDesktopMcpDrift`, so its exit code ignores Desktop MCP failures;
-    so nothing exits 1 on these failures yet; add the flag and the exit code,
-    with a clean log and a missing log both exiting 0. Second, the prisma
-    plugin break (`npx -y prisma mcp` resolves to a release with no `mcp`
-    command) should be reported upstream so the plugin pins `prisma@7`; that
-    report is a public write and needs explicit operator approval first.
-  - **Files**: `src/cli.ts`, `src/status.ts`, `docs/user-stories/25-status-and-health.md`
-  - **Acceptance**: `agentbrew status --ci` exits 1 when the latest Desktop
-    start logged an invalid-entry or connect-failure line, and exits 0 with a
-    clean or missing log.
+  - **Tags**: scout, mcp, claude-desktop, plugins, upstream
+  - **Blocked**: needs-user-approval — the upstream report is a public write and needs explicit current-session approval for that exact action (checked 2026-10-15).
+  - **Details**: `agentbrew status --ci` now exits 1 on Claude Desktop MCP startup failures (`src/health.ts` calls `checkClaudeDesktopMcpDrift`). One part remains: the prisma plugin runs `npx -y prisma mcp`, which resolves to a release with no `mcp` command, so `plugin:prisma:Prisma-Local` fails at every Desktop start. Report it upstream so the plugin pins `prisma@7`.
+  - **Acceptance**: an upstream issue or PR exists that asks the prisma plugin to pin `prisma@7`, and its link is recorded here.
 
 - [ ] Measure plain-language output across managed agent surfaces
   - **ID**: measure-plain-language-output-across-managed-agents

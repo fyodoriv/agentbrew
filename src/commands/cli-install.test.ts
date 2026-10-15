@@ -201,6 +201,14 @@ describe("registerInstallCommand", () => {
       expect(mockAutoSync).not.toHaveBeenCalled();
     });
 
+    it("forwards --recommended and --dry-run together and skips autoSync", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "--recommended", "--dry-run"]);
+      expect(mockInstall).toHaveBeenCalledWith(undefined, expect.objectContaining({ recommended: true, dryRun: true }));
+      expect(mockAutoSync).not.toHaveBeenCalled();
+      expect(mockSyncRules).not.toHaveBeenCalled();
+    });
+
     it("installs with no name (all recommended)", async () => {
       const program = buildInstallProgram();
       await program.parseAsync(["node", "test", "install"]);
@@ -338,6 +346,60 @@ describe("registerInstallCommand", () => {
       const program = buildInstallProgram();
       await program.parseAsync(["node", "test", "install", "srv", "--command", "npx", "--args", "arg1", "arg2"]);
       expect(mockAddMcpServer).toHaveBeenCalledWith("srv", "npx", ["arg1", "arg2"], {}, expect.any(Object));
+    });
+
+    it("keeps a -y inside --args for the MCP command (not the top-level --yes)", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "x", "--command", "npx", "--args", "-y", "pkg"]);
+      expect(mockAddMcpServer).toHaveBeenCalledWith("x", "npx", ["-y", "pkg"], {}, expect.any(Object));
+      expect(mockAddToAgentfile).toHaveBeenCalledWith(
+        "/fake/config/agentbrew",
+        expect.objectContaining({ args: ["-y", "pkg"] }),
+        { create: true },
+      );
+    });
+
+    it("keeps a -y in the middle of --args in its original position", async () => {
+      const argv = [
+        "node",
+        "test",
+        "install",
+        "x",
+        "--command",
+        "npx",
+        "--args",
+        "--registry",
+        "https://npm.example.com",
+        "-y",
+        "@scope/pkg",
+        "--env",
+        "A=1",
+      ];
+      process.argv = argv;
+      const program = buildInstallProgram();
+      await program.parseAsync(argv);
+      expect(mockAddMcpServer).toHaveBeenCalledWith(
+        "x",
+        "npx",
+        ["--registry", "https://npm.example.com", "-y", "@scope/pkg"],
+        { A: "1" },
+        expect.any(Object),
+      );
+    });
+
+    it("shows the kept -y in the --dry-run preview", async () => {
+      const argv = ["node", "test", "install", "x", "--command", "npx", "--args", "--quiet", "-y", "pkg", "--dry-run"];
+      process.argv = argv;
+      const program = buildInstallProgram();
+      await program.parseAsync(argv);
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("npx --quiet -y pkg"));
+      expect(mockAddMcpServer).not.toHaveBeenCalled();
+    });
+
+    it("does not add -y to the MCP args when --yes comes before --args", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync(["node", "test", "install", "x", "-y", "--command", "npx", "--args", "pkg"]);
+      expect(mockAddMcpServer).toHaveBeenCalledWith("x", "npx", ["pkg"], {}, expect.any(Object));
     });
 
     it("parses --env KEY=VALUE pairs", async () => {

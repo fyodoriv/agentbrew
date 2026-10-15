@@ -204,13 +204,6 @@
   - **Files**: `hooks/checks/no-cross-workspace-publish.sh` (+ `.test.sh`), `hooks/manifest.yaml`, dotfiles `bin/gh` (reference only; stays as the shell backstop)
   - **Acceptance**: fixtures show each of those commands blocked outside the workspace without the approval token and allowed inside it; dotfiles `tests/gh-wrapper.bats` stays green.
 
-- [ ] `agentbrew install --args` keeps a `-y` meant for the MCP command
-  - **ID**: install-mcp-env-sanitize-strips-vars-and-y-flag
-  - **Tags**: scout, mcp, install, cli
-  - **Details**: `agentbrew install` registers `-y, --yes` (`src/commands/cli-install.ts`) and a variadic `-a, --args`. In `--args "--registry" "<url>" "-y" "@pkg"`, Commander binds `-y` to the top-level `--yes` and ends the variadic list, so the deployed args lose `-y` and `npx` prompts on every MCP start. The `${VAR}` half of the original report concerned Devin's literal env format; Devin support was removed on 2026-10-08, so only the `-y` half remains. README documents the `--` form as the workaround.
-  - **Files**: `src/commands/cli-install.ts`, `src/commands/cli-install.test.ts`, README.md (install section)
-  - **Acceptance**: `agentbrew install x --command npx --args "-y" "pkg"` either keeps `-y` in the deployed args or prints a one-line warning naming the `--` form; a parser test covers it.
-
 - [ ] Make companion competitor watch honor repo-specific competition directory names
   - **ID**: companion-competitor-watch-competition-dir-drift
   - **Tags**: docs, skills, companion, competitor, P1
@@ -333,14 +326,6 @@
   - **Details**: The model surface ships for claude-code and codex but Cursor has no declarative surface: Cursor stores the model in app-managed account state (`~/.cursor/cli-config.json`'s `model` object is written by the app; `cursor-agent models` is account-gated) and Windsurf picks the model per-conversation in the Cascade UI with no public config file. Per VISION G6 a sync surface that skips primary agents needs a tracked gap. Follow the delegate→contribute path: file/locate upstream feature requests for a config-file default-model setting in both products, link them here, and revisit quarterly with the competitor sweep. If a surface appears, extend `modelConfig` in agents.yaml and delete the N/A comment in `per-agent-features.matrix.test.ts`.
   - **Files**: `src/core/agents.yaml`, `src/sync/per-agent-features.matrix.test.ts`, `RECURRING.md`
   - **Acceptance**: either (a) Cursor gains `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
-  - **Output**: code
-
-- [ ] Add CLI parser coverage for `agentbrew install --recommended --dry-run`
-  - **ID**: cli-install-recommended-dry-run-parser-coverage
-  - **Tags**: scout, tests, cli, dry-run
-  - **Details**: While fixing `install-recommended-dry-run-propagation`, `src/commands/cli-install.test.ts` had separate coverage for `install --recommended` and named `install <name> --dry-run`, but no assertion for the combined `install --recommended --dry-run` shape. The catalog-layer regression test now protects mutation behavior, but the CLI parser should also lock that both flags are forwarded together and autoSync stays skipped.
-  - **Files**: `src/commands/cli-install.test.ts`, `src/commands/cli-install.ts`
-  - **Acceptance**: A CLI test parses `["node", "test", "install", "--recommended", "--dry-run"]`, asserts `install(undefined, { recommended: true, dryRun: true, ... })`, and asserts `autoSync` is not called.
   - **Output**: code
 
 - [ ] Enforce a fixture test per `hooks/checks/*.sh` (coverage gate)

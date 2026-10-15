@@ -135,8 +135,62 @@ async function handleNpxShorthand(name: string, options: InstallOptions): Promis
   return true;
 }
 
+/**
+ * Rebuild the MCP command args when `-y` sat inside `--args`.
+ *
+ * Commander ends a variadic `--args` list at any known flag. So in
+ * `--args --registry <url> -y pkg`, the `-y` becomes the top-level `--yes`
+ * and drops out of the MCP args, and `npx` then prompts on every start.
+ * The top-level `--yes` has no effect on a `--command` install, so a `-y`
+ * after `--args` always belongs to the MCP command. This rebuilds the list
+ * from argv: every token after `--args` up to `--` or the next install flag.
+ */
+function recoverArgsYesFlag(
+  argv: string[],
+  knownFlags: ReadonlySet<string>,
+  parsedArgs: string[],
+  passthrough: string[],
+): string[] {
+  const unchanged = [...parsedArgs, ...passthrough];
+  const end = argv.includes("--") ? argv.indexOf("--") : argv.length;
+  const head = argv.slice(0, end);
+  const start = Math.max(head.lastIndexOf("--args"), head.lastIndexOf("-a"));
+  if (start === -1) return unchanged;
+  const run: string[] = [];
+  for (const [i, token] of head.slice(start + 1).entries()) {
+    const isYes = token === "-y" || token === "--yes";
+    if (i > 0 && !isYes && knownFlags.has(token)) break;
+    run.push(token);
+  }
+  if (!run.slice(1).some((t) => t === "-y" || t === "--yes")) return unchanged;
+  const rest = [...passthrough];
+  for (const token of run) {
+    const at = rest.indexOf(token);
+    if (at !== -1) rest.splice(at, 1);
+  }
+  return [...run, ...rest];
+}
+
+/** Collect the long and short flags of a command, for `recoverArgsYesFlag`. */
+function commandFlags(cmd: Command): Set<string> {
+  const flags = new Set<string>();
+  for (const option of cmd.options) {
+    if (option.long) flags.add(option.long);
+    if (option.short) flags.add(option.short);
+  }
+  return flags;
+}
+
+/** Resolve the final MCP command args from `--args` plus excess operands. */
+function legacyMcpArgs(options: InstallOptions, cmdArgs: string[], knownFlags: ReadonlySet<string>): string[] {
+  const parsedArgs = options.args ?? [];
+  const passthrough = cmdArgs.slice(1);
+  if (!options.yes || parsedArgs.length === 0) return [...parsedArgs, ...passthrough];
+  return recoverArgsYesFlag(process.argv, knownFlags, parsedArgs, passthrough);
+}
+
 /** Print a dry-run preview for legacy flag install. */
-function printLegacyDryRun(name: string | undefined, options: InstallOptions, cmdArgs: string[]): void {
+function printLegacyDryRun(name: string | undefined, options: InstallOptions, allArgs: string[]): void {
   console.log(chalk.bold("\nDry run — install\n"));
   const icon = chalk.blue("~");
   if (options.git) {
@@ -144,18 +198,15 @@ function printLegacyDryRun(name: string | undefined, options: InstallOptions, cm
   } else if (options.url) {
     console.log(`  ${icon} Would add MCP server ${chalk.cyan(name ?? "")} (URL: ${options.url})`);
   } else {
-    const allArgs = [...(options.args ?? []), ...cmdArgs.slice(1)];
     console.log(`  ${icon} Would add MCP server ${chalk.cyan(name ?? "")} (${options.command} ${allArgs.join(" ")})`);
   }
   console.log();
 }
 
 /** Execute the actual legacy flag install (stdio command or URL). */
-async function executeLegacyInstall(name: string, options: InstallOptions, cmdArgs: string[]): Promise<void> {
+async function executeLegacyInstall(name: string, options: InstallOptions, allArgs: string[]): Promise<void> {
   const env = options.env ? parseKeyValuePairs(options.env) : {};
   const headers = options.headers ? parseKeyValuePairs(options.headers) : {};
-  const passthroughArgs = cmdArgs.slice(1);
-  const allArgs = [...(options.args ?? []), ...passthroughArgs];
   const { addMcpServer } = await import("../sync/mcp-sync-commands.js");
   await addMcpServer(name, options.command ?? "", allArgs, env, { url: options.url, headers });
   addToAgentfile(
@@ -171,6 +222,7 @@ async function handleLegacyFlagInstall(
   name: string | undefined,
   options: InstallOptions,
   cmdArgs: string[],
+  knownFlags: ReadonlySet<string>,
 ): Promise<boolean> {
   if (!options.command && !options.url && !options.git) return false;
 
@@ -183,7 +235,7 @@ async function handleLegacyFlagInstall(
     return true;
   }
   if (options.dryRun) {
-    printLegacyDryRun(name, options, cmdArgs);
+    printLegacyDryRun(name, options, legacyMcpArgs(options, cmdArgs, knownFlags));
     return true;
   }
   if (options.git) {
@@ -191,7 +243,7 @@ async function handleLegacyFlagInstall(
     await installMcpFromGit(options.git, { ref: options.ref, name: name });
     return true;
   }
-  await executeLegacyInstall(name ?? "", options, cmdArgs);
+  await executeLegacyInstall(name ?? "", options, legacyMcpArgs(options, cmdArgs, knownFlags));
   return true;
 }
 
@@ -240,10 +292,15 @@ async function installWithoutName(options: InstallOptions, installOpts: Paramete
 }
 
 /** Core install dispatch — resolves install mode and delegates. */
-async function executeInstall(name: string | undefined, options: InstallOptions, cmdArgs: string[]): Promise<void> {
+async function executeInstall(
+  name: string | undefined,
+  options: InstallOptions,
+  cmdArgs: string[],
+  knownFlags: ReadonlySet<string>,
+): Promise<void> {
   if (await handleDashDashInstall(name, options)) return;
   if (name && (await handleNpxShorthand(name, options))) return;
-  if (await handleLegacyFlagInstall(name, options, cmdArgs)) return;
+  if (await handleLegacyFlagInstall(name, options, cmdArgs, knownFlags)) return;
 
   const localDir = isLocalInstall(options) ? process.cwd() : undefined;
   const installOpts = {
@@ -299,8 +356,8 @@ export function registerInstallCommand(program: Command): void {
     .option("-P, --project", "Install to project (alias for --local)", undefined)
     .allowUnknownOption()
     .allowExcessArguments(true)
-    .action(async (name: string | undefined, options: InstallOptions, cmd: { args: string[] }) => {
-      await executeInstall(name, options, cmd.args);
+    .action(async (name: string | undefined, options: InstallOptions, cmd: Command) => {
+      await executeInstall(name, options, cmd.args, commandFlags(cmd));
     })
     .addHelpText(
       "after",

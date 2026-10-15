@@ -92,6 +92,11 @@ agentbrew remove my-server
 agentbrew install my-server -c npx -a "-y" "@my/mcp-server@2.0"
 ```
 
+A `-y` inside `-a`/`--args` stays in the MCP args, even in the middle of the
+list (`-a --registry <url> -y @my/mcp-server`). On a `-c` install, any `-y`
+after `--args` goes to the MCP command, not to agentbrew. The `--` form
+(`agentbrew install my-server -- npx -y @my/mcp-server`) also works.
+
 For git-installed servers, pull the latest:
 
 ```bash

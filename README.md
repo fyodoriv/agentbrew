@@ -538,6 +538,8 @@ agentbrew sync --dry-run --agentfile <path>
 agentbrew install [name]               Install from catalog, npm, source, or folder
 agentbrew install @scope/pkg           npm package (auto-detected as MCP)
 agentbrew install srv -- <cmd> <args>  Any command as an MCP server
+agentbrew install srv -c <cmd> -a <args...>
+                                       Same, with flags; a -y after -a stays in the MCP args
 agentbrew install srv --url <url>      SSE/HTTP server
 agentbrew install --git <url>          MCP server from a git repo
 agentbrew install user/repo            GitHub skill repo (adds as a source)

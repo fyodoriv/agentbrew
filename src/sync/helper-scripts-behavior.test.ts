@@ -23,9 +23,9 @@ function write(relativePath: string, content = "# doc\n"): void {
 // Drop GIT_DIR and friends (set inside git hooks) so `git rev-parse` sees the fixture, not this repo.
 const SCRIPT_ENV = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
 
-function runScript(script: string, args: string[] = []) {
+function runScript(script: string, args: string[] = [], cwd = repo) {
   const result = spawnSync("bash", [join(SCRIPTS_DIR, script), ...args], {
-    cwd: repo,
+    cwd,
     encoding: "utf-8",
     // The ceiling stops git from finding a repo that encloses the temp dir.
     env: { ...SCRIPT_ENV, GIT_CEILING_DIRECTORIES: dirname(repo) },
@@ -309,6 +309,30 @@ describe("competitor-spot-check.sh", () => {
 
     expect(status).toBe(0);
     expect(out).toContain("only stopwords");
+  });
+
+  it("scans the repo named by --root, not the shell cwd", () => {
+    write("docs/competition/acme-vs-agentbrew.md", "# acme\n\nAcme ships team presets for skills.\n");
+    const elsewhere = mkdtempSync(join(tmpdir(), "helper-script-cwd-"));
+    try {
+      const { status, out } = runScript("competitor-spot-check.sh", ["--root", repo, "team skill presets"], elsewhere);
+
+      expect(status).toBe(0);
+      expect(out).toContain("[acme] Acme ships team presets for skills. (docs/competition/acme-vs-agentbrew.md:3)");
+      expect(out).not.toContain("--root");
+    } finally {
+      rmSync(elsewhere, { recursive: true, force: true });
+    }
+  });
+
+  it("reports a missing --root directory instead of scanning the cwd", () => {
+    write("docs/competition/acme-vs-agentbrew.md", "# acme\n\nAcme ships team presets for skills.\n");
+
+    const { status, out } = runScript("competitor-spot-check.sh", ["--root", join(repo, "missing"), "team presets"]);
+
+    expect(status).toBe(0);
+    expect(out).toContain("repo root not found");
+    expect(out).not.toContain("[acme]");
   });
 
   it("caps output at 20 matches", () => {

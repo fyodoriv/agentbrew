@@ -375,13 +375,6 @@
   - **Files**: `hooks/manifest.yaml` (entries) and/or the 2 scripts; update their `.test.sh` if behavior changes.
   - **Acceptance**: the manifest `verdict` field matches the script's actual verdict function for both hooks.
 
-- [ ] Make competitor spot-check support an explicit repo root for cwd-constrained agents
-  - **ID**: competitor-spot-check-explicit-repo-root
-  - **Tags**: bug, dx, pr-vision-trace, skill-quality
-  - **Details**: The `competitor-spot-check` helper currently assumes the process cwd is the target repo root. In terminal sandboxes where `cd` is blocked or the shell cwd is stale, the helper can scan the wrong repo and produce an invalid PR-body prior-art line. Add an explicit repo-root option or documented invocation pattern so agents can target the intended repository deterministically.
-  - **Files**: `templates/scripts/competitor-spot-check.sh`, `skill-plugins/dev/competitor-spot-check/SKILL.md`, `src/sync/helper-scripts-behavior.test.ts`
-  - **Acceptance**: An agent can invoke the spot check for a repo by absolute path without changing shell cwd; the skill docs show the explicit-root form; a regression test or documented smoke case covers scanning a non-cwd repo.
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->

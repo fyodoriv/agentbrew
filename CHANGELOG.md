@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Competitor spot-check can target a repo by path** —
+  `competitor-spot-check.sh --root <repo-dir> "<feature>"` scans that repo
+  instead of the shell cwd, so an agent that cannot `cd` (or has a stale
+  cwd) no longer cites prior art from the wrong repo. A missing `--root`
+  path scans nothing.
 - **PR-body hooks stop tripping on quoted mentions** — the docs and
   validation hooks now act only on `gh pr create`/`edit` in command
   position, so an `echo` or a script string that mentions it passes. The

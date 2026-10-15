@@ -4,7 +4,9 @@
 # Local and read-only: no network, no LLM. Spec: the `competitor-spot-check`
 # skill (skill-plugins/dev/competitor-spot-check/SKILL.md in agentbrew).
 #
-# Usage: competitor-spot-check.sh "<feature description>"
+# Usage: competitor-spot-check.sh [--root <repo-dir>] "<feature description>"
+#        --root scans <repo-dir> instead of the current directory, so an
+#        agent whose shell cwd is fixed or stale can target a repo by path.
 # Exit:  always 0 — a research tool, not a gate.
 #
 # `agentbrew sync` installs this file to ~/.config/agentbrew/scripts/ from
@@ -16,12 +18,22 @@ set -uo pipefail
 MAX_MATCHES=20
 STOPWORDS=" a about add adds all also an and any anything are as at be been but by can could do does doing done every everything feature features for from get has have how i if in into is it its just let like make makes me more my need new no not of on or our should so some something support that the their them then there these they thing things this those to too us use using via want was we were what when where which who will with work works would you your "
 
+start=.
+if [ "${1:-}" = "--root" ]; then
+  start="${2:-}"
+  shift 2 2>/dev/null || shift $#
+  if [ -z "$start" ] || [ ! -d "$start" ]; then
+    echo "competitor-spot-check: repo root not found: ${start:-<empty>}" >&2
+    exit 0
+  fi
+fi
+
 description="$*"
-root=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+root=$(git -C "$start" rev-parse --show-toplevel 2>/dev/null || (cd "$start" && pwd -P))
 echo "competitor-spot-check @ $root"
 
 if [ -z "$(printf '%s' "$description" | tr -d '[:space:]')" ]; then
-  echo "usage: competitor-spot-check.sh \"<feature description>\"" >&2
+  echo "usage: competitor-spot-check.sh [--root <repo-dir>] \"<feature description>\"" >&2
   exit 0
 fi
 

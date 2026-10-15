@@ -34,6 +34,14 @@ Run from any repo root:
 bash ~/.config/agentbrew/scripts/competitor-spot-check.sh "<feature description>"
 ```
 
+If you cannot `cd`, or the shell cwd may be stale, name the repo by absolute path:
+
+```bash
+bash ~/.config/agentbrew/scripts/competitor-spot-check.sh --root /abs/path/to/repo "<feature description>"
+```
+
+The first output line, `competitor-spot-check @ <root>`, shows the repo that was scanned. Check it before you cite the result. A `--root` path that does not exist prints `repo root not found` and scans nothing.
+
 The script:
 
 1. Looks for canonical competitive corpus locations in the current repo:

@@ -299,13 +299,6 @@
   - **Acceptance**: either (a) Cursor gains `modelConfig` entries backed by a documented upstream setting, or (b) upstream issue links are recorded here and the matrix-test comment cites them.
   - **Output**: code
 
-- [ ] Enforce a fixture test per `hooks/checks/*.sh` (coverage gate)
-  - **ID**: hooks-fixture-coverage-gate
-  - **Tags**: scout, hooks, test-coverage, feedback-loop
-  - **Details**: `scripts/run-hook-fixtures.sh` runs whatever `hooks/checks/*.test.sh` exist but nothing enforces that EVERY check script has one. Add a gate (extend `run-hook-fixtures.sh`, or a vitest in `src/oss/` / `src/sync/`) that fails when a `hooks/checks/<id>.sh` has no sibling `<id>.test.sh`. Per the feedback-loop principle (linters enforce, instructions suggest) this makes the Phase-1 discipline mechanical so a future hook can't merge testless.
-  - **Files**: `scripts/run-hook-fixtures.sh` (or a new `src/sync/hooks-fixture-coverage.test.ts`)
-  - **Acceptance**: adding a `hooks/checks/foo.sh` with no `foo.test.sh` fails `npm run verify`; the message names the missing fixture.
-
 <!-- Nested catalog skill install shipped 2026-06-11 (fix/nested-skill-cache-lookup:
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->

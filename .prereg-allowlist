@@ -13,7 +13,6 @@ extract-shared-2134-skill-contract-test-helpers
 document-2134-pressure-eval-conventions
 status-reports-preserved-catalog-rules
 catalog-mcp-pin-policy-data-driven
-hooks-fixture-coverage-gate
 hooks-dashdash-lint-coverage
 heal-cycle-reprobe-attempted-only
 mcp-status-heal-attempt-count

@@ -129,7 +129,9 @@ print secrets, full environment dumps, or unrelated transcript contents.
 - Scripts must not mutate the repository unless their manifest verdict is
   `mutate` and the target event supports mutation.
 - Every deterministic hook must have at least one adjacent `.test.sh` fixture
-  and be covered by `scripts/run-hook-fixtures.sh`.
+  and be covered by `scripts/run-hook-fixtures.sh`. That script (part of
+  `npm run verify`) fails and names the missing file when a
+  `hooks/checks/<id>.sh` has no `<id>.test.sh`.
 - Every bypass must be discoverable from the script header and the manifest's
   `bypassEnvVar`.
 - PRs that change high-impact agent artifacts must include same-PR deterministic

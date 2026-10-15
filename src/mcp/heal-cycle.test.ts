@@ -214,7 +214,11 @@ describe("runMcpHealCycle", () => {
       expect(out.healAction).not.toHaveBeenCalled();
       expect(out.writeFollowups).not.toHaveBeenCalled();
       expect(out.cycle.attempts).toEqual([]);
-      expect(out.writeSnapshot).toHaveBeenCalledWith([failed], [], "2026-06-04T12:00:00.000Z");
+      expect(out.writeSnapshot).toHaveBeenCalledWith(
+        [{ ...failed, healDeferred: { at: "2026-06-04T12:00:00.000Z", reason: "load per core 2.00 is above 1" } }],
+        [],
+        "2026-06-04T12:00:00.000Z",
+      );
       expect(out.logged).toContain("deferred");
       expect(out.logged).toContain("load");
     });
@@ -222,6 +226,7 @@ describe("runMcpHealCycle", () => {
     it("still heals timeout failures under normal load", async () => {
       const out = await run(result({ name: "remote", status: "init_timeout" }), 0.5);
       expect(out.healAction).toHaveBeenCalledTimes(1);
+      expect(out.writeSnapshot.mock.calls[0][0][0]).not.toHaveProperty("healDeferred");
     });
 
     it("still heals non-timeout failures under high load", async () => {

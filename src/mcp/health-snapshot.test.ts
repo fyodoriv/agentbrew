@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMcpHealthSnapshot,
   checkMcpStaleDrift,
+  healDeferredMcpEntries,
   MAX_HEAL_HISTORY,
   type McpHealthEntry,
   type McpHealthSnapshot,
@@ -164,6 +165,38 @@ describe("buildMcpHealthSnapshot", () => {
     );
 
     expect(snapshot.servers[0].suppression).toBeUndefined();
+  });
+});
+
+describe("heal deferred for load", () => {
+  const timeout = result({ name: "remote", status: "init_timeout", error: "timed out" });
+  const deferredTimeout = {
+    ...timeout,
+    healDeferred: { at: "2026-06-04T12:00:00.000Z", reason: "load per core 2.00 is above 1" },
+  };
+
+  it("marks a deferred timeout with when and why", () => {
+    const snapshot = buildMcpHealthSnapshot(undefined, [deferredTimeout], [], "2026-06-04T12:00:00.000Z");
+
+    expect(snapshot.servers[0].healDeferred).toEqual({
+      at: "2026-06-04T12:00:00.000Z",
+      reason: "load per core 2.00 is above 1",
+    });
+    expect(healDeferredMcpEntries(snapshot)).toHaveLength(1);
+  });
+
+  it("leaves a timeout that was not deferred unmarked", () => {
+    const snapshot = buildMcpHealthSnapshot(undefined, [timeout], [], "2026-06-04T12:00:00.000Z");
+
+    expect(snapshot.servers[0]).not.toHaveProperty("healDeferred");
+    expect(healDeferredMcpEntries(snapshot)).toEqual([]);
+  });
+
+  it("drops the marker on the next tick that does not defer", () => {
+    const first = buildMcpHealthSnapshot(undefined, [deferredTimeout], [], "2026-06-04T12:00:00.000Z");
+    const next = buildMcpHealthSnapshot(first, [timeout], [], "2026-06-04T12:30:00.000Z");
+
+    expect(next.servers[0]).not.toHaveProperty("healDeferred");
   });
 });
 

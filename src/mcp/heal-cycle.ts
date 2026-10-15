@@ -17,8 +17,10 @@ import {
 import {
   isSuppressedFailure,
   type McpHealAttempt,
+  type McpHealDeferral,
   type McpHealthSuppression,
   resolveProbeSuppressions,
+  type SnapshotProbeResult,
   saveMcpHealthSnapshot,
 } from "./health-snapshot.js";
 import { BUILTIN_ENV_STRIP_BY_SERVER, type McpProbeSpec, type ProbeResult, probeAllServers } from "./probe.js";
@@ -37,7 +39,7 @@ export interface McpHealCycleResult {
 
 type ProbeAll = typeof probeAllServers;
 type SnapshotWriter = (
-  results: ProbeResult[],
+  results: SnapshotProbeResult[],
   attempts: McpHealAttempt[],
   generatedAt?: string,
   suppressions?: ReadonlyMap<string, McpHealthSuppression>,
@@ -120,7 +122,7 @@ const suppressionsForResults = resolveProbeSuppressions;
 
 function writeSnapshotResult(
   writeSnapshot: SnapshotWriter,
-  results: ProbeResult[],
+  results: SnapshotProbeResult[],
   attempts: McpHealAttempt[],
   generatedAt: string,
   suppressions: ReadonlyMap<string, McpHealthSuppression>,
@@ -217,14 +219,15 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
 
   const healActions = options.healActions ?? HEAL_ACTIONS;
   const attemptedAt = now().toISOString();
-  const deferred = deferTimeoutsUnderLoad(failures, options.loadPerCore ?? currentLoadPerCore);
+  const { deferred, reason } = deferTimeoutsUnderLoad(failures, options.loadPerCore ?? currentLoadPerCore);
   const deferredKeys = new Set([...deferred].map(pairKey));
+  const deferral = reason ? { at: attemptedAt, reason } : undefined;
   const attempts = await collectHealAttempts(failures, suppressionByServer, healActions, attemptedAt, deferred);
 
   if (attempts.length === 0) {
     writeSnapshotResult(
       writeSnapshot,
-      initial,
+      markHealDeferred(initial, deferredKeys, deferral),
       attempts,
       now().toISOString(),
       suppressionsForResults(initial, suppressionByServer),
@@ -237,7 +240,7 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
   const gatedAttempts = gateHealedOnReprobe(attempts, final);
   writeSnapshotResult(
     writeSnapshot,
-    final,
+    markHealDeferred(final, deferredKeys, deferral),
     gatedAttempts,
     now().toISOString(),
     suppressionsForResults(final, suppressionByServer),
@@ -247,17 +250,27 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
 }
 
 /** Timeout failures to leave alone this tick because the machine is overloaded. */
-function deferTimeoutsUnderLoad(failures: ProbeResult[], loadPerCore: () => number): Set<ProbeResult> {
+function deferTimeoutsUnderLoad(
+  failures: ProbeResult[],
+  loadPerCore: () => number,
+): { deferred: Set<ProbeResult>; reason?: string } {
   const timeouts = failures.filter(isTimeoutFailure);
-  if (timeouts.length === 0) return new Set();
+  if (timeouts.length === 0) return { deferred: new Set() };
   const load = loadPerCore();
-  if (load <= HIGH_LOAD_PER_CORE) return new Set();
-  console.log(
-    chalk.yellow(
-      `MCP auto-heal deferred ${timeouts.length} timeout failure(s): load per core ${load.toFixed(2)} is above ${HIGH_LOAD_PER_CORE}.`,
-    ),
-  );
-  return new Set(timeouts);
+  if (load <= HIGH_LOAD_PER_CORE) return { deferred: new Set() };
+  const reason = `load per core ${load.toFixed(2)} is above ${HIGH_LOAD_PER_CORE}`;
+  console.log(chalk.yellow(`MCP auto-heal deferred ${timeouts.length} timeout failure(s): ${reason}.`));
+  return { deferred: new Set(timeouts), reason };
+}
+
+/** Tag deferred pairs so the snapshot can tell a deferred timeout from one that was never considered. */
+function markHealDeferred(
+  results: ProbeResult[],
+  deferredKeys: ReadonlySet<string>,
+  deferral: McpHealDeferral | undefined,
+): SnapshotProbeResult[] {
+  if (!deferral) return results;
+  return results.map((r) => (deferredKeys.has(pairKey(r)) ? { ...r, healDeferred: deferral } : r));
 }
 
 const pairKey = (value: { agent: string; name: string }): string => `${value.agent}\u0000${value.name}`;

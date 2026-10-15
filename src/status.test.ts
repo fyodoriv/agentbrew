@@ -46,13 +46,19 @@ vi.mock("./mcp/health-snapshot.js", () => ({
     (snapshot?.servers ?? []).filter((entry) => entry.status !== "ok" && !entry.status.startsWith("skipped_")),
   ),
   needsLoginMcpEntries: vi.fn(() => []),
+  healDeferredMcpEntries: vi.fn(() => []),
   mcpLoginCommand: vi.fn((name: string) => `agentbrew mcp setup ${name}`),
 }));
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
-import { loadMcpHealthSnapshot, needsLoginMcpEntries, unhealthyMcpEntries } from "./mcp/health-snapshot.js";
+import {
+  healDeferredMcpEntries,
+  loadMcpHealthSnapshot,
+  needsLoginMcpEntries,
+  unhealthyMcpEntries,
+} from "./mcp/health-snapshot.js";
 import { loadState } from "./state.js";
 import { collectStatusData, getSourcesFreshness, status } from "./status.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -187,6 +193,33 @@ describe("status", () => {
     expect(calls).toContain("railway/claude-code");
     expect(calls).toContain("agentbrew mcp setup railway");
     expect(calls).not.toContain("failing");
+  });
+
+  it("shows timeouts whose heal was deferred for load, with the reason", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [{ name: "remote", command: "", args: [], env: {}, source: "catalog", url: "https://x.example.com" }],
+      catalogVersion: "0.1.0",
+    });
+    const deferred = {
+      name: "remote",
+      agent: "claude-code",
+      status: "init_timeout" as const,
+      lastCheckedAt: new Date().toISOString(),
+      healHistory: [],
+      healDeferred: { at: new Date().toISOString(), reason: "load per core 2.00 is above 1" },
+    };
+    mockLoadMcpHealthSnapshot.mockReturnValue({ generatedAt: new Date().toISOString(), servers: [deferred] });
+    vi.mocked(healDeferredMcpEntries).mockReturnValueOnce([deferred]);
+
+    await status();
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("MCP heal:");
+    expect(calls).toContain("1 deferred");
+    expect(calls).toContain("remote/claude-code");
+    expect(calls).toContain("load per core 2.00 is above 1");
   });
 });
 

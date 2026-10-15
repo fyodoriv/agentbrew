@@ -10,6 +10,7 @@ import { checkMcpEnvVarsDrift } from "./drift.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { validateConfig } from "./lint.js";
 import {
+  healDeferredMcpEntries,
   loadMcpHealthSnapshot,
   mcpLoginCommand,
   needsLoginMcpEntries,
@@ -285,6 +286,7 @@ function printVerboseServersSection(state: AgentbrewState): void {
 function printMcpHealthSummary(prefix: string): void {
   const snapshot = loadMcpHealthSnapshot();
   printMcpFailingLine(prefix, unhealthyMcpEntries(snapshot));
+  printMcpHealDeferredLine(prefix, healDeferredMcpEntries(snapshot));
   for (const entry of needsLoginMcpEntries(snapshot)) {
     console.log(
       `${prefix}MCP login:    ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(`needs login — run \`${mcpLoginCommand(entry.name)}\``)}`,
@@ -297,6 +299,15 @@ function printClaudeDesktopMcpSummary(prefix: string): void {
   for (const failure of readDesktopMcpFailures()) {
     console.log(`${prefix}Desktop MCP: ${chalk.red(failure.name)} ${chalk.dim(`failed at startup — ${failure.fix}`)}`);
   }
+}
+
+function printMcpHealDeferredLine(prefix: string, deferred: ReturnType<typeof healDeferredMcpEntries>): void {
+  if (deferred.length === 0) return;
+  const names = deferred.map((entry) => `${entry.name}/${entry.agent}`).join(", ");
+  const reason = deferred[0].healDeferred?.reason ?? "high load";
+  console.log(
+    `${prefix}MCP heal:     ${chalk.yellow(`${deferred.length} deferred`)} ${chalk.dim(`${names} — ${reason}; retried next tick`)}`,
+  );
 }
 
 function printMcpFailingLine(prefix: string, unhealthy: ReturnType<typeof unhealthyMcpEntries>): void {

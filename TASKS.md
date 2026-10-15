@@ -219,13 +219,6 @@
   - **Measurement**: `bash scripts/run-hook-fixtures.sh`; the count of `bypass … not gh pr` versus `block` decisions in `~/.cache/agentbrew/hook-decisions.jsonl`.
   - **Anchor**: Google SRE book ch. 6 (alerts that fire on non-problems erode trust); agentbrew AGENTS.md rule 1.
 
-- [ ] Show deferred-for-load heal state in the health snapshot
-  - **ID**: snapshot-record-heal-deferred-for-load
-  - **Tags**: scout, mcp, heal, snapshot
-  - **Details**: The heal cycle now logs when it defers timeout heals under high load, but the snapshot does not record it. `agentbrew status` cannot tell a deferred timeout from a timeout that was never considered for healing. Add an optional field to the snapshot entry and show it in status.
-  - **Files**: `src/mcp/heal-cycle.ts`, `src/mcp/health-snapshot.ts`, `src/mcp/health-snapshot.test.ts`
-  - **Acceptance**: a deferred timeout appears in the snapshot with a deferred marker, and a test covers it.
-
 - [ ] Report the prisma plugin MCP break upstream so the plugin pins `prisma@7`
   - **ID**: status-surface-claude-desktop-mcp-failures
   - **Tags**: scout, mcp, claude-desktop, plugins, upstream

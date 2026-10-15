@@ -34,6 +34,15 @@ export interface McpHealthSuppression {
   retryPolicy: string;
 }
 
+/** Why the heal cycle left a failure alone this tick (for example, high load). */
+export interface McpHealDeferral {
+  at: string;
+  reason: string;
+}
+
+/** A probe result as the heal cycle hands it to the snapshot writer. */
+export type SnapshotProbeResult = ProbeResult & { healDeferred?: McpHealDeferral };
+
 export interface McpHealthEntry {
   name: string;
   agent: string;
@@ -49,6 +58,8 @@ export interface McpHealthEntry {
   /** Every attempt ever recorded for this pair, including trimmed ones. Absent in snapshots written before the cap. */
   healAttemptCount?: number;
   suppression?: McpHealthSuppression;
+  /** Set only when the latest tick deferred healing this failure. A timeout without it was not deferred. */
+  healDeferred?: McpHealDeferral;
 }
 
 export interface McpHealthSnapshot {
@@ -102,9 +113,14 @@ function isMcpHealthSnapshot(value: unknown): value is McpHealthSnapshot {
   );
 }
 
+/** A deferral marks only a failure, and only on the tick that deferred it. */
+function healDeferredField(result: SnapshotProbeResult): { healDeferred?: McpHealDeferral } {
+  return result.status !== "ok" && result.healDeferred ? { healDeferred: result.healDeferred } : {};
+}
+
 export function buildMcpHealthSnapshot(
   previous: McpHealthSnapshot | undefined,
-  results: ProbeResult[],
+  results: SnapshotProbeResult[],
   attempts: McpHealAttempt[],
   generatedAt: string,
   suppressions: ReadonlyMap<string, McpHealthSuppression> = new Map(),
@@ -138,6 +154,7 @@ export function buildMcpHealthSnapshot(
         healHistory,
         healAttemptCount: priorCount + newAttempts.length,
         ...(suppression ? { suppression } : {}),
+        ...healDeferredField(result),
       };
     }),
   };
@@ -156,7 +173,7 @@ export function loadMcpHealthSnapshot(): McpHealthSnapshot | undefined {
 }
 
 export function saveMcpHealthSnapshot(
-  results: ProbeResult[],
+  results: SnapshotProbeResult[],
   attempts: McpHealAttempt[],
   generatedAt = new Date().toISOString(),
   suppressions: ReadonlyMap<string, McpHealthSuppression> = new Map(),
@@ -237,6 +254,11 @@ export function checkMcpStaleDrift(
       detail: `${entry.name} has had no ok probe for ${days}d (${entry.status}) — run \`agentbrew mcp probe ${entry.name} --deep\``,
     };
   });
+}
+
+/** Failing pairs whose heal the latest tick deferred, for example under high load. */
+export function healDeferredMcpEntries(snapshot: McpHealthSnapshot | undefined): McpHealthEntry[] {
+  return (snapshot?.servers ?? []).filter((entry) => entry.status !== "ok" && Boolean(entry.healDeferred));
 }
 
 /** Entries held back by a catalog suppression, for `--verbose` style reporting. */

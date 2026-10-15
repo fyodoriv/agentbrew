@@ -145,32 +145,6 @@
      RECURRING.md watch-lists (re-research-stale-competitors, quarterly-
      dissolution-reeval) instead of a duplicate task. -->
 
-<!-- Added 2026-07-08 (learn-project pedagogy gap review). These are
-     P0 category (d): raising a Bucket-1 no-upstream-home builtin skill
-     (learn-project) to documented learning-science + agentic-RAG best
-     practices. Scope is bounded to what agentbrew OWNS — the orchestration
-     wrapper, the deterministic staging aggregator, the pre-quiz QA gate, and
-     the mastery-selection layer. Teaching/quiz *mechanics* that live in the
-     upstream tutor-setup / tutor skills (bevibing/tutor-skills) are routed to
-     the single `contribute-tutor-pedagogy-upstream` task, not built here. Gap
-     analysis grounded in: Chain-of-Verification (Meta), RAGAS/promptfoo evals,
-     DeepWiki + NotebookLM, mastery learning (Bloom), retrieval practice
-     (Roediger & Karpicke), Bloom's taxonomy / ICAP, Understanding by Design
-     (Wiggins & McTighe). -->
-
-- [ ] Contribute the tutor teaching/quiz mechanics upstream to bevibing/tutor-skills
-  - **ID**: contribute-tutor-pedagogy-upstream
-  - **Tags**: learn-project, tutor, contribute, upstream, p0, pedagogy-2026-07-08
-  - **Output**: mixed
-  - **Blocked**: waiting-on-upstream — PRs bevibing/tutor-skills#8 (CoVe), #9 (open recall), #10 (Bloom + confidence), #11 (Learning Path) opened 2026-10-15 as a stack; only the maintainer can merge (no push access). Next action: on any review, rebase/answer; on 2027-01-13 with no response, absorb into learn-project as P0(d).
-  - **Details**: The gap-review items that belong to the *teaching/quiz generator* — not agentbrew's orchestration — must be contributed upstream per delegate-contribute-absorb, since tutor-setup/tutor are hosted in bevibing/tutor-skills and learn-project's own constraint forbids modifying them locally. Bundle: (1) question-generation self-verification (CoVe) at author time; (2) free-recall / rubric-graded open answers; (3) Bloom-level tagging + laddering of questions; (4) confidence calibration (ask certainty; high-confidence-wrong = misconception flag); (5) misconception-based distractors; (6) explicit learning objectives + a prerequisite DAG. Run the 90-day contribution window; **absorb into learn-project only if upstream rejects/ignores** (then it converts to a P0(d) build task).
-  - **Files**: (upstream) bevibing/tutor-skills PRs; (local) docs/learn-project-tutor-upstream-contribution.md — no tutor-setup/tutor edits in agentbrew
-  - **Acceptance**: (a) a written spec of the six mechanics mapped to tutor-setup/tutor; (b) upstream PR(s) drafted (publish gated on approval); (c) 90-day window tracked; (d) absorb-if-rejected fallback noted; (e) no local edits to tutor-setup/tutor content.
-  - **Research**: 2026-07-08 — local spec drafted at docs/learn-project-tutor-upstream-contribution.md (six mechanics, upstream PR split, agentbrew non-goals). 2026-10-15 — all six mechanics written as four stacked `git am` patches in docs/learn-project-tutor-upstream-pr-drafts/patches/ (replay-verified on upstream 397110c); PR bodies rewritten to match. Acceptance (a), (d), (e) done; (b) done locally. Owner approved; fork fyodoriv/tutor-skills created and PRs #8–#11 opened 2026-10-15, so (b) is done and the (c) window runs to 2027-01-13. Upstream last pushed 2026-02-28, so expect the absorb fallback.
-  - **Last-enriched**: 2026-10-15
-  - **Vision trace**: VISION "Delegate, contribute, absorb — in that order" — upstream-homed enhancements are contributed, never built in agentbrew. **User story**: no-hallucination, best-practice tutoring. **Competitor prior art**: CoVe, retrieval practice, Bloom's taxonomy, concept inventories (Force Concept Inventory), Understanding by Design.
-  - **Anchor**: 2026-07-08 learn-project pedagogy gap review.
-
 <!-- Phase 1 (hooks-phase-1-cat-a-deterministic) COMPLETE 2026-06 — all 26 Cat A
      hooks shipped with scripts + manifest entries + per-hook fixture tests, and
      the production decision log (scripts/hook-observation.sh) confirms every one
@@ -942,6 +916,19 @@
   - **Output**: docs
 
 ## P3
+
+- [ ] Learners get the six tutor pedagogy upgrades even if bevibing/tutor-skills never merges them
+  - **ID**: absorb-tutor-pedagogy-if-upstream-silent
+  - **Tags**: learn-project, tutor, absorb, upstream, pedagogy-2026-07-08
+  - **Output**: mixed
+  - **Details**: The contribution step is done: bevibing/tutor-skills#8 (CoVe + misconception tags), #9 (open recall + rubric), #10 (Bloom ladder + confidence), #11 (Learning Path) were opened 2026-10-15 as a stack from fork fyodoriv/tutor-skills. We have no push access there. On any maintainer review, answer and rebase the stack. If upstream merges, refresh the installed tutor skills and close this task. If there is no maintainer response by 2027-01-13, or all four are rejected, absorb the mechanics into agentbrew `learn-project` (delegate-contribute-absorb) and raise this task to P0(d). The patches in docs/learn-project-tutor-upstream-pr-drafts/patches/ are the starting point for the absorb.
+  - **Files**: skill-plugins/dev/learn-project/ (absorb path only), docs/learn-project-tutor-upstream-pr-drafts/README.md
+  - **Acceptance**: (a) the upstream PR state is recorded in the drafts README on or after 2027-01-13; (b) either upstream merged and the installed tutor skills include the changes, or learn-project ships the six mechanics with evals; (c) no local edits to the upstream tutor-setup/tutor content.
+  - **Hypothesis**: Delivering CoVe-checked, Bloom-laddered, confidence-calibrated quizzes cuts ungrounded quiz questions to zero in a sample vault, whichever path (upstream merge or absorb) lands.
+  - **Measurement**: GH_HOST=github.com gh pr list -R bevibing/tutor-skills --author fyodoriv --state all --json number,state,updatedAt
+  - **Success**: all four PRs merged upstream, or learn-project evals pass for all six mechanics by 2027-02-13.
+  - **Pivot**: if neither path lands by 2027-03-01, drop the mechanics that have no eval and keep only CoVe + Learning Path.
+  - **Anchor**: VISION "Delegate, contribute, absorb — in that order"; Dhuliawala et al. 2023 (Chain-of-Verification); Roediger & Karpicke 2006 (retrieval practice).
 
 - [ ] Re-probe only heal-attempted pairs, not every failed pair
   - **ID**: heal-cycle-reprobe-attempted-only

@@ -155,18 +155,6 @@
 
 ## P1
 
-- [ ] Rules source hygiene auto-repair is covered by a fixture-backed real-e2e scenario
-  - **ID**: rules-source-hygiene-real-e2e
-  - **Tags**: scout, rules, drift, real-e2e
-  - **Details**: Scouted while adding marker-managed Agentfile rules and `agentbrew rules dedupe`. The new source-drift path is covered by unit tests (`rules-hygiene`, `drift`, `repair`, `rules-sync`), but the full `status --fix` behavior is not covered by a sandbox scenario that exercises the CLI end-to-end. The gap matters because `npm run verify` caught one missing partial mock only in the full suite; a fixture-backed scenario would catch future wiring regressions without depending on brittle mocks.
-  - **Files**: `real-e2e/scenarios/*rules*.test.ts`, `real-e2e/fixtures/**`, `src/real-e2e/scenario-fixture.ts`, `src/drift-checks/rules.ts`, `src/sync/rules-sync.ts`
-  - **Acceptance**: A real-e2e scenario seeds duplicate blocks in `~/.config/agentbrew/shared-rules.md`, runs `agentbrew status --fix` (or the scenario helper equivalent), proves the source file is deduped, proves managed agent rules are redeployed from the cleaned source, then proves a second status run has no `rules-source` drift.
-  - **Hypothesis**: Exercising duplicate source rules through the same CLI path users run will catch wiring regressions that isolated unit tests and mocks can miss.
-  - **Success**: `npm run test:real-e2e:selected -- <rules-source-hygiene-scenario>` exits 0 and fails if `dedupeSharedRulesFile()` is no longer called before rules sync in `fix()`.
-  - **Pivot**: If the existing real-e2e harness cannot mutate `shared-rules.md` safely, add an integration test under `src/integration-essential-core.test.ts` using a temporary HOME instead.
-  - **Measurement**: The selected scenario reports one failing assertion before removing the `fix()` dedupe call and passes after restoring it.
-  - **Anchor**: VISION.md G5 (drift detection + auto-repair), docs/user-stories/06-drift-detection.md (auto-repair only touches managed content), docs/user-stories/04-share-rules.md (one shared-rules source of truth).
-
 ## P2
 
 - [ ] Agentfile hook edits reach state when only the command or timeout changes

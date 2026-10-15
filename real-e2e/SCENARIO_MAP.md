@@ -8,6 +8,7 @@ stories while keeping each scenario group small and fixture-backed.
 - `us01-get-started.test.ts` -> US01
 - `us02-us03-install-mcp-and-skill.test.ts` -> US02, US03
 - `us04-share-rules.test.ts` -> US04
+- `us04-us06-rules-source-hygiene.test.ts` -> US04, US06 (`status --fix` dedupes `shared-rules.md`, then redeploys the cleaned rules)
 - `us05-us06-commands-and-drift.test.ts` -> US05, US06
 - `us07-us17-source-and-existing-setup.test.ts` -> US07, US17
 - `us08-us13-update-and-pull.test.ts` -> US08, US13

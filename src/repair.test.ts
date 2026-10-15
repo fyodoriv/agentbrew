@@ -40,6 +40,10 @@ vi.mock("./sync/hooks-sync.js", () => ({
   syncHooks: vi.fn(),
 }));
 
+vi.mock("./sync/model-sync.js", () => ({
+  syncModels: vi.fn(),
+}));
+
 vi.mock("./sync/launchagent.js", () => ({
   installLaunchAgent: vi.fn(),
   repairAgentbrewLaunchAgentPaths: vi.fn(),
@@ -80,6 +84,7 @@ vi.mock("./drift.js", () => ({
   checkMcpPermissionDrift: vi.fn(() => []),
   checkHooksDrift: vi.fn(() => []),
   checkAgentDefsDrift: vi.fn(() => []),
+  checkModelsDrift: vi.fn(() => []),
   checkSkillsValidity: vi.fn(() => []),
   checkMcpEnvVarsDrift: vi.fn(() => []),
   collectDrift: vi.fn(() => []),
@@ -102,6 +107,7 @@ import {
   checkInstructionsDrift,
   checkMcpDrift,
   checkMcpPermissionDrift,
+  checkModelsDrift,
   checkRulesDrift,
   checkSkillsDrift,
   collectDrift,
@@ -116,6 +122,7 @@ import { syncCommands } from "./sync/command-sync.js";
 import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
+import { syncModels } from "./sync/model-sync.js";
 import { dedupeSharedRulesFile, syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 
@@ -139,6 +146,8 @@ const mockCheckInstructionsDrift = vi.mocked(checkInstructionsDrift);
 const mockCheckMcpPermissionDrift = vi.mocked(checkMcpPermissionDrift);
 const mockCheckHooksDrift = vi.mocked(checkHooksDrift);
 const mockCheckAgentDefsDrift = vi.mocked(checkAgentDefsDrift);
+const mockCheckModelsDrift = vi.mocked(checkModelsDrift);
+const mockSyncModels = vi.mocked(syncModels);
 const mockCollectDrift = vi.mocked(collectDrift);
 const mockSaveRepairLog = vi.mocked(saveRepairLog);
 const mockSnapshotAgentConfigs = vi.mocked(snapshotAgentConfigs);
@@ -244,6 +253,35 @@ describe("fix", () => {
     // present in driftBefore but never cleared, falsely classified as "fixed"
     // by the diff. Same root-cause class as the original mcp-permissions bug.
     expect(mockSyncHooks).toHaveBeenCalledOnce();
+    expect(mockSyncModels).toHaveBeenCalledOnce();
+  });
+
+  it("logs model drift as repaired when syncModels clears it", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    const modelDrift = {
+      agent: "claude-code",
+      type: "models" as const,
+      detail: "expected model claude-5-fable-max (model other → claude-5-fable-max)",
+    };
+    mockCollectDrift.mockReturnValueOnce([modelDrift]);
+    mockCheckModelsDrift.mockReturnValueOnce([]);
+
+    await fix();
+
+    expect(mockSaveRepairLog).toHaveBeenCalledWith([
+      { type: "models", agent: "claude-code", detail: modelDrift.detail },
+    ]);
+  });
+
+  it("keeps model drift as remaining when syncModels cannot clear it", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    const modelDrift = { agent: "codex", type: "models" as const, detail: "expected model gpt-x (model a → gpt-x)" };
+    mockCollectDrift.mockReturnValueOnce([modelDrift]);
+    mockCheckModelsDrift.mockReturnValueOnce([modelDrift]);
+
+    await fix();
+
+    expect(mockSaveRepairLog).toHaveBeenCalledWith([]);
   });
 
   it("reports all drift resolved when re-check finds zero issues", async () => {

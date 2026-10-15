@@ -129,7 +129,7 @@ function desiredSettings(target: ModelTarget, model: string, effort: string | un
  * interleave between our read and write of a shared file (e.g. hooks-sync
  * also writes ~/.claude/settings.json).
  */
-function syncSingleTarget(target: ModelTarget, run: ModelSyncRun): TargetOutcome {
+function syncSingleTarget(target: ModelTarget, run: ModelPlan): TargetOutcome {
   const model = resolveTargetModel(target.agentName, run.defaultModel, run.overrides);
   if (model === undefined) return { kind: "skipped", reason: "override: keep agent's own model" };
 
@@ -156,13 +156,17 @@ function syncSingleTarget(target: ModelTarget, run: ModelSyncRun): TargetOutcome
   return { kind: "updated", changes };
 }
 
-interface ModelSyncRun {
+/** The Agentfile model settings one target is compared against. */
+interface ModelPlan {
   defaultModel: string;
   defaultEffort: string | undefined;
   overrides: Record<string, string | null> | undefined;
+  dryRun: boolean;
+}
+
+interface ModelSyncRun extends ModelPlan {
   quiet: boolean;
   verbose: boolean;
-  dryRun: boolean;
   log: Logger;
 }
 
@@ -195,6 +199,43 @@ function processModelTargets(targets: ModelTarget[], run: ModelSyncRun): number 
     }
   }
   return updates;
+}
+
+/** One agent whose config file does not match the Agentfile's model settings. */
+export interface ModelDrift {
+  agentName: string;
+  /** The model that sync would write. */
+  expectedModel: string;
+  /** Changes sync would make, for example `model a → b`. */
+  changes: string[];
+}
+
+/**
+ * Compare every detected model target with the Agentfile's `defaultModel`
+ * (and `defaultEffort`) without writing. Returns one entry per agent that
+ * `syncModels` would change. Used by `agentbrew status` drift detection.
+ */
+export function collectModelDrift(): ModelDrift[] {
+  const state = loadState();
+  if (!state?.defaultModel) return [];
+  const plan: ModelPlan = {
+    defaultModel: state.defaultModel,
+    defaultEffort: state.defaultEffort,
+    overrides: state.modelOverrides,
+    dryRun: true,
+  };
+  const drift: ModelDrift[] = [];
+  for (const target of getModelTargets(state.agents)) {
+    try {
+      const outcome = syncSingleTarget(target, plan);
+      if (outcome.kind !== "updated") continue;
+      const expectedModel = resolveTargetModel(target.agentName, plan.defaultModel, plan.overrides) ?? "";
+      drift.push({ agentName: target.agentName, expectedModel, changes: outcome.changes });
+    } catch (e) {
+      logSkipped(`drift/models/${target.agentName}`, e);
+    }
+  }
+  return drift;
 }
 
 /**

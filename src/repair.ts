@@ -11,6 +11,7 @@ import {
   checkInstructionsDrift,
   checkMcpDrift,
   checkMcpPermissionDrift,
+  checkModelsDrift,
   checkRulesDrift,
   checkSkillsDrift,
   collectDrift,
@@ -29,6 +30,7 @@ import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
 import { installLaunchAgent, repairAgentbrewLaunchAgentPaths } from "./sync/launchagent.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
+import { syncModels } from "./sync/model-sync.js";
 import { dedupeSharedRulesFile, syncRules } from "./sync/rules-sync.js";
 import { cleanBrokenSymlinksGlobally, syncSkills } from "./sync/skills-sync.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
@@ -114,6 +116,7 @@ const AUTO_FIXABLE_TYPES: ReadonlySet<DriftItem["type"]> = new Set([
   "instructions",
   "agents",
   "launchagent",
+  "models",
 ]);
 
 export async function fix(): Promise<void> {
@@ -161,6 +164,7 @@ export async function fix(): Promise<void> {
   // "fixed" by the diff below (same class of bug as the mcp-permissions one
   // pre-2026-04-27). See sync-idempotent-and-complete issue 4.
   await syncHooks({ quiet: true });
+  await syncModels({ quiet: true });
   if (process.platform === "darwin" && checkLaunchAgentPathDrift().length > 0) {
     try {
       await installLaunchAgent();
@@ -193,6 +197,7 @@ export async function fix(): Promise<void> {
   const hooksDrift = checkHooksDrift();
   const launchagentDrift = checkLaunchAgentPathDrift();
   const agentsDrift = checkAgentDefsDrift();
+  const modelsDrift = checkModelsDrift();
   const remainingItems = [
     ...mcpDrift,
     ...mcpBarePlaceholdersDrift,
@@ -205,6 +210,7 @@ export async function fix(): Promise<void> {
     ...hooksDrift,
     ...launchagentDrift,
     ...agentsDrift,
+    ...modelsDrift,
   ];
 
   // Log what was repaired (drift that existed before but not after)

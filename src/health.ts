@@ -13,6 +13,7 @@ import {
   checkLaunchAgentPathDrift,
   checkMcpDrift,
   checkMcpEnvVarsDrift,
+  checkModelsDrift,
   checkRulesDrift,
   checkSkillsDrift,
   checkSkillsValidity,
@@ -301,6 +302,7 @@ export async function healthCheck(options?: {
   const userCreatedSkills = checkUserCreatedSkills();
   const userCreatedCommands = checkUserCreatedCommands();
   const agentDefsDrift = checkAgentDefsDrift();
+  const modelsDrift = checkModelsDrift();
   let cliBuildDrift = checkCliBuildDrift();
   const cliRoot = builtCliRoot();
   if (autoFix && cliBuildDrift.length > 0 && cliRoot && rebuildCli(cliRoot)) {
@@ -318,6 +320,7 @@ export async function healthCheck(options?: {
     ...launchagentDrift,
     ...instructionsDrift,
     ...agentDefsDrift,
+    ...modelsDrift,
   ];
   // User-added items are informational — never auto-repaired, never counted as drift.
   // They surface in their own `User additions` section in the human-readable output

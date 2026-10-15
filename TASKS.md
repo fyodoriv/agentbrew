@@ -266,14 +266,6 @@
   - **Files**: `skill-plugins/workflow/project-audit/SKILL.md`, `skill-plugins/workflow/task-command-center/evals/evals.json`, `docs/shared-rules.md` (also loads a missing `pr` skill), `docs/plans/cover-jira-skill-with-2134-tests.md`
   - **Acceptance**: Every active reference to `jira`, `jira-task`, or `find-jira-task` resolves to an installed catalog/source skill or is replaced with a valid MCP/repo workflow; historical changelog/task text remains untouched; `npm run verify` passes.
 
-- [ ] Users can see default-model drift in `agentbrew status` before repair
-  - **ID**: model-drift-check-in-status
-  - **Tags**: scout, models, drift, status
-  - **Details**: `model-sync.ts` reapplies the Agentfile's `defaultModel` on every sync/auto-repair tick, but `agentbrew status` / `collectDrift()` does not report a manually flipped model as drift — the repair is silent. Add a `models` drift check so a changed model shows in the Drift summary (and counts toward `--ci` exit codes) instead of only being healed invisibly.
-  - **Files**: `src/drift-checks/` (new models check), `src/health.ts`, `src/sync/model-sync.ts`
-  - **Acceptance**: with `defaultModel` set and an agent's config manually flipped to another model, `agentbrew status` shows 1 drift issue naming the agent and the expected model; `agentbrew status --fix` repairs it.
-  - **Output**: code
-
 - [ ] Default-model parity for Cursor (G6 gap — no file surface today)
   - **ID**: model-default-parity-cursor
   - **Tags**: scout, models, parity, cursor

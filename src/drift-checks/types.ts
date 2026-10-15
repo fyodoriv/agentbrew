@@ -28,6 +28,7 @@ export interface DriftItem {
     | "mcp-stale"
     | "mcp-permissions"
     | "mcp-user-added"
+    | "models"
     | "rules"
     | "rules-source"
     | "skills"

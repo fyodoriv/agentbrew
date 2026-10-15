@@ -14,6 +14,7 @@ import {
   checkPlaywrightIsolatedDrift,
   checkUserAddedMcpServers,
 } from "./drift-checks/mcp.js";
+import { checkModelsDrift } from "./drift-checks/models.js";
 import { checkRulesDrift } from "./drift-checks/rules.js";
 import {
   checkBrokenSymlinks,
@@ -39,6 +40,7 @@ export {
   checkMcpDrift,
   checkMcpEnvVarsDrift,
   checkMcpPermissionDrift,
+  checkModelsDrift,
   checkPlaywrightIsolatedDrift,
   checkRulesDrift,
   checkSkillsDrift,
@@ -101,5 +103,6 @@ export function collectDrift(): DriftItem[] {
     ...checkUserCreatedSkills(),
     ...checkUserCreatedCommands(),
     ...checkAgentDefsDrift(),
+    ...checkModelsDrift(),
   ];
 }

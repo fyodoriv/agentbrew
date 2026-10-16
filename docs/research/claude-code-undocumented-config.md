@@ -57,9 +57,10 @@ fields that don't exist.
 - `agentfile-hooks-async-rewake-control-fields` (done) — Agentfile hooks now
   keep `agents` and the verified control fields (`async`, `asyncRewake`,
   `once`, `if`, `statusMessage`) through parse, state, and Claude Code sync.
-- `agentfile-claude-session-settings-sync` (P3, exploratory) — whether to let
-  the Agentfile declare `autoMemoryEnabled` / `autoDreamEnabled` / `autoMode`
-  and sync them like the existing settings.json hooks key.
+- `agentfile-claude-session-settings-sync` (closed 2026-10-16, rejected) —
+  the Agentfile does not sync `autoMemoryEnabled` / `autoDreamEnabled` /
+  `autoMode`. See
+  [`agentfile-claude-settings-sync-decision.md`](agentfile-claude-settings-sync-decision.md).
 
 Sibling dotfiles task: `claude-hook-updatedinput-mutate-vs-warn` (P2) — verify
 PreToolUse `updatedInput` empirically and, if it works, collapse the WARN-hook +

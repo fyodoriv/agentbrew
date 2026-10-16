@@ -114,6 +114,18 @@
         "Does not start a retro or ask questions",
         "Confirms the goal is cleared in at most one short line"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "/goal record the new --verbose flag in the changelog. The repo AGENTS.md says changelog entries go under ## Unreleased and start with Added:. The installed write-changelog skill says to add a line under the top heading.",
+      "expected_output": "The contract names the skill-versus-AGENTS.md conflict as a risk and follows the repo rule. The retro fixes the skill source and adds an eval.",
+      "expectations": [
+        "Prints the goal contract before any edit",
+        "Names the conflict between the skill and AGENTS.md under Assumptions and risks",
+        "Follows the repo rule: one Added: line under ## Unreleased",
+        "Changes only CHANGELOG.md in the app repo",
+        "Edits the skill source, not the installed symlink, and adds an eval for it"
+      ]
     }
   ]
 }

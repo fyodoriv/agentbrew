@@ -354,13 +354,6 @@
   - **Files**: package.json, package-lock.json
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
 
-- [ ] Re-probe only heal-attempted pairs, not every failed pair
-  - **ID**: heal-cycle-reprobe-attempted-only
-  - **Tags**: scout, mcp, heal, performance
-  - **Details**: After this change the re-probe covers every pair that failed the first pass. Pairs that were suppressed or had no heal action cannot change, so their second start is wasted. Limit the re-probe to pairs with a heal attempt, but only if a sync heal is shown not to repair other pairs.
-  - **Files**: src/mcp/heal-cycle.ts, src/mcp/heal-cycle.test.ts
-  - **Acceptance**: a suppressed failing server starts once per tick; a test covers it.
-
 - [ ] Show the total heal attempt count in `agentbrew status --verbose`
   - **ID**: mcp-status-heal-attempt-count
   - **Tags**: scout, mcp, status

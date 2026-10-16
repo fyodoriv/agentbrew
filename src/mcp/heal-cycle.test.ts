@@ -129,6 +129,65 @@ describe("runMcpHealCycle", () => {
     expect(cycle.attempts[0].healed).toBe(false);
   });
 
+  it("starts a suppressed failing server once per tick while another pair heals", async () => {
+    const surfaces: ProbeSurface[] = [
+      {
+        agent: "cursor",
+        servers: { known: { command: "known-mcp", args: [] }, broken: { command: "broken-mcp", args: [] } },
+      },
+      { agent: "claude-code", servers: { authy: { command: "authy-mcp", args: [] } } },
+    ];
+    const started: string[] = [];
+    const statusOf: Record<string, ProbeResult["status"]> = {
+      known: "init_timeout",
+      broken: "launch_failed",
+      authy: "smoke_call_failed",
+    };
+    const errorOf: Record<string, string> = { known: "no response", broken: "spawn ENOENT", authy: "401 Unauthorized" };
+    const probeAll = vi.fn(async (input: ProbeSurface[]) =>
+      input.flatMap((surface) =>
+        Object.keys(surface.servers).map((name) => {
+          started.push(`${surface.agent}:${name}`);
+          return result({ name, agent: surface.agent, status: statusOf[name], error: errorOf[name] });
+        }),
+      ),
+    );
+    const suppressionByServer = new Map([
+      [
+        "known",
+        {
+          statuses: ["init_timeout"],
+          reason: "upstream",
+          retryPolicy: "probe-every-tick-no-heal-until-catalog-change",
+        },
+      ],
+    ]);
+    const run = (healActions: Map<string, () => Promise<{ healed: boolean; action: string }>>) =>
+      runMcpHealCycle({
+        surfaces,
+        probeAll,
+        healActions: healActions as never,
+        suppressionByServer: suppressionByServer as never,
+        writeSnapshot: vi.fn(),
+        writeFollowups: vi.fn(),
+        loadPerCore: () => 0,
+        now: () => new Date("2026-06-04T12:00:00.000Z"),
+      });
+
+    // A sync heal rewrites every server config, so every unsuppressed failure is re-probed.
+    await run(new Map([["sync", async () => ({ healed: true, action: "agentbrew-sync-mcp" })]]));
+    expect(started.filter((s) => s === "cursor:known")).toHaveLength(1);
+    expect(started.filter((s) => s === "cursor:broken")).toHaveLength(2);
+    expect(started.filter((s) => s === "claude-code:authy")).toHaveLength(2);
+
+    // Without a sync heal, only the attempted pair is re-probed.
+    started.length = 0;
+    await run(new Map([["auth", async () => ({ healed: true, action: "gh-auth-token" })]]));
+    expect(started.filter((s) => s === "cursor:known")).toHaveLength(1);
+    expect(started.filter((s) => s === "cursor:broken")).toHaveLength(1);
+    expect(started.filter((s) => s === "claude-code:authy")).toHaveLength(2);
+  });
+
   it("records healed: false when the pair still fails the re-probe", async () => {
     const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
     const failed = result({ status: "launch_failed", error: "spawn github-mcp ENOENT" });

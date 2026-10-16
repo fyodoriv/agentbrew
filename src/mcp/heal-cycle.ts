@@ -236,7 +236,12 @@ export async function runMcpHealCycle(options: McpHealCycleOptions = {}): Promis
     return { initial, final: initial, attempts };
   }
 
-  const final = await reprobeFailures(probeAll, surfaces, initial, failures);
+  const targets = reprobeTargets(
+    failures,
+    attempts,
+    (f) => deferred.has(f) || isSuppressedFailure(f, suppressionByServer),
+  );
+  const final = await reprobeFailures(probeAll, surfaces, initial, targets);
   const gatedAttempts = gateHealedOnReprobe(attempts, final);
   writeSnapshotResult(
     writeSnapshot,
@@ -274,6 +279,22 @@ function markHealDeferred(
 }
 
 const pairKey = (value: { agent: string; name: string }): string => `${value.agent}\u0000${value.name}`;
+
+/**
+ * Failed pairs worth a second start this tick: every pair with a heal attempt.
+ * A sync heal rewrites every server config, so after one, any other failure
+ * that was not skipped (suppressed or deferred) may have changed too. A
+ * skipped pair cannot change, so it starts once per tick.
+ */
+function reprobeTargets(
+  failures: ProbeResult[],
+  attempts: McpHealAttempt[],
+  skipped: (failure: ProbeResult) => boolean,
+): ProbeResult[] {
+  const attempted = new Set(attempts.map(pairKey));
+  const syncRan = attempts.some((attempt) => attempt.category === "sync");
+  return failures.filter((f) => attempted.has(pairKey(f)) || (syncRan && !skipped(f)));
+}
 
 /**
  * Probe again only the pairs that failed the first pass.

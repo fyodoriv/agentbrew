@@ -293,28 +293,6 @@
   - **Measurement**: `node scripts/check-rule-16-defaults.mjs --json | jq '.unjustified_flags | length'` returns 0; flag count in `src/cli.ts` trends down.
   - **Anchor**: Minsky `vision.md` § 16 "Default by default"; Spolsky 2001 *Joel on Software* (the "configuration is debt" essay); Conway 1968 (Conway's Law — flags often externalize team boundaries).
 
-- [ ] Track install events + surface popularity signal in `agentbrew browse`
-  - **ID**: catalog-install-popularity-signal
-  - **Tags**: scout, catalog, ux, ecosystem-alignment
-  - **Details**: Skill discovery is the #1 UX complaint in the ecosystem. The official `skills.sh` registry paginates many public skills alphabetically with no install-rank. orangebot.ai/skills built a ranked index of install-ranked public skills sorted by weekly install volume because nobody else did. claudepluginhub.com (32k+ plugins) tracks "1,730 installs in the last 7 days" per plugin. agentbrew's `browse` command has no popularity signal — Tier 1/2/3 is editorial-curated, not data-driven.
-
-  Concrete build:
-  - Local event log at `~/.config/agentbrew/install-events.jsonl` — append on every successful `agentbrew install <id>` (skill / mcp / rule / bundle)
-  - Each event: `{ timestamp, item_type, item_id, source, version, agent_target }` — no PII, no telemetry over the wire
-  - Aggregation: `src/catalog/popularity.ts` reads the log, computes 7d/30d/all-time install counts per item
-  - `agentbrew browse --sort=trending|popular|alphabetical` (default: alphabetical, but interactive `agentbrew browse` shows top-5 trending at top)
-  - `agentbrew browse <id>` shows install count history sparkline
-  - Strictly local — no opt-out needed since no data leaves the machine. Optional `agentbrew telemetry export` produces an anonymized summary for users who WANT to share aggregate stats upstream (off by default)
-
-  Integrates with the Minsky-discipline task: `src/adapters/popularity-store.ts` interface + `src/adapters/popularity-store.jsonl.ts` impl, so the storage backend is swappable (e.g. SQLite later, or a shared community endpoint if ecosystem demand emerges).
-  - **Files**: src/catalog/popularity.ts (new), src/catalog/popularity.test.ts (new), src/adapters/popularity-store.ts (new), src/adapters/popularity-store.jsonl.ts (new), src/cli.ts (add `--sort` flag to browse + sparkline rendering), src/commands/cli-install.ts (append install events), README.md (Popularity tracking section)
-  - **Acceptance**: (a) every successful `agentbrew install` appends a JSONL row; (b) `agentbrew browse --sort=trending` returns items sorted by 7d install count; (c) no network call is made by the popularity layer (verified by test with network mock); (d) `agentbrew browse <id>` shows a 30-day install history sparkline; (e) tests cover empty-log + corrupted-row + concurrent-write scenarios.
-  - **Hypothesis**: A local install-count signal converts agentbrew's editorial Tier system into an empirically-validated signal — users see which items are actually used vs which were just recommended.
-  - **Success**: Within 30 days of shipping, the `--sort=trending` view surfaces ≥3 items that are NOT in the current Tier 1 set, suggesting the editorial picks miss real usage patterns.
-  - **Pivot**: If single-user install counts produce too-thin signal (Fyodor installs each thing once), pivot to a "session-frequency" signal — count how often each skill/MCP/rule is mentioned in the agent's tool-call logs (requires hooks-sync extension to capture tool-call events).
-  - **Measurement**: `wc -l ~/.config/agentbrew/install-events.jsonl` increases monotonically with installs; `agentbrew browse --sort=trending --json | jq '. | length' ≥ 5`.
-  - **Anchor**: orangebot.ai/skills (2026-05) — install-volume ranking for install-ranked public skills; claudepluginhub.com (April 2026 stats) — per-plugin install counters; agentbrew VISION.md § "Curator, not host" — editorial picks + empirical signal is stronger than either alone.
-
 - [ ] (Publish-only step) File the staged upstream issue at `neiii/bridle` (upstream relocated 2026-05-02 from `superwall/bridle`) noting `harness-locate` uses singular `skill/` and `command/` for OpenCode but the official OpenCode docs use plural.
   - **ID**: bridle-opencode-path-issue
   - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
@@ -443,3 +421,15 @@
   - **Pivot**: If the deep probe fails on a clean install, or the package has no release for 6 months, drop the human-in-the-loop entry from the catalog instead of finding another one.
   - **Measurement**: `agentbrew mcp probe mcp-feedback-enhanced --deep --json | jq -r '.results[] | "\(.status) \(.deepTool)"'`
   - **Anchor**: Kohavi, Tang, Xu 2020, *Trustworthy Online Controlled Experiments*, ch. 3 (guardrail metrics: keep a broken default from reaching users).
+
+- [ ] `agentbrew catalog` can order catalog skills by their public skills.sh install count
+  - **ID**: catalog-browse-skills-sh-install-counts
+  - **Tags**: catalog, ux, delegation
+  - **Details**: Follow-up of `catalog-install-popularity-signal` (decision: [`docs/decisions/catalog-install-popularity-signal.md`](docs/decisions/catalog-install-popularity-signal.md)). The skills.sh search API (`GET https://skills.sh/api/search?q=<name>&limit=<n>`) returns an `installs` count per skill. Read it for catalog skills only, behind a `--sort installs` option on `agentbrew catalog`, with a short timeout and an offline fallback to the editorial order. Send only the search text; no user data. MCP servers and rules keep the editorial tiers.
+  - **Files**: `src/catalog/browse.ts`, `src/commands/cli-catalog.ts`, their tests, README "Install a skill or MCP server"
+  - **Acceptance**: `agentbrew catalog --skills --sort installs` lists catalog skills by skills.sh installs, highest first; a test with a stubbed fetch covers the order, a timeout, and a skill skills.sh does not know.
+  - **Hypothesis**: an ecosystem-wide install count shows which catalog skills people actually use, which a one-machine log cannot.
+  - **Measurement**: `agentbrew catalog --skills --sort installs --json | jq '.[0:5] | map(.installs)'` returns descending numbers.
+  - **Success**: the top of the `--sort installs` list shows non-zero install counts, highest first.
+  - **Pivot**: if the skills.sh API changes shape or rate-limits browse, drop the option and keep the editorial order.
+  - **Anchor**: VISION.md "Delegate, contribute, absorb"; skills.sh public search API.

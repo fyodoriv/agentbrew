@@ -234,19 +234,6 @@
   - **Pivot**: if the eval runner needs literal paths, list both `docs/competition/*` and `docs/competitors/*` instead.
   - **Anchor**: #86 (competitor dir detection); Basili et al. 1994 (GQM).
 
-- [ ] `agentbrew skills validate` accepts standard and current Claude Code frontmatter fields
-  - **ID**: skills-validate-known-frontmatter-fields
-  - **Tags**: skills, validate, false-positive
-  - **Details**: `KNOWN_FRONTMATTER_FIELDS` (`src/skills/validate.ts:41-56`) lacks the Agent Skills standard fields `license`, `metadata`, and `hidden`, and the Claude Code 2.1.300 fields `arguments`, `version`, and `paths`. `validateUnknownFields` (`src/skills/validate.ts:144`) warns "Unknown frontmatter field" for each one, so valid skills get noise.
-  - **Files**: `src/skills/validate.ts`, `src/skills/validate.test.ts`, `docs/research/claude-code-undocumented-config.md`
-  - **Output**: code
-  - **Acceptance**: a SKILL.md with each of the six fields gets no unknown-field warning; a test covers all six; a truly unknown field still warns.
-  - **Hypothesis**: adding the six fields drops unknown-field warnings on valid skills to zero without hiding real typos.
-  - **Measurement**: `npx vitest run src/skills/validate.test.ts` with a fixture that uses all six fields.
-  - **Success**: 0 unknown-field warnings for the six fields; the typo fixture still warns.
-  - **Pivot**: if the field list keeps drifting each Claude Code release, read it from one data file next to the research doc instead of a code constant.
-  - **Anchor**: agentskills.io frontmatter spec; `docs/research/claude-code-undocumented-config.md`.
-
 - [ ] Bloat lint relaxes only the skill that has an open size-cut task
   - **ID**: bloat-lint-open-task-per-skill
   - **Tags**: lint, skills, baselines

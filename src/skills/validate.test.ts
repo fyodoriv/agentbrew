@@ -250,6 +250,26 @@ Content
     expect(unknownWarnings[1].message).toContain("another");
   });
 
+  it("accepts the Agent Skills standard and current Claude Code fields", () => {
+    const content = `---
+name: my-skill
+description: A long enough description for validation. Don't use elsewhere.
+license: MIT
+metadata:
+  owner: someone
+hidden: true
+arguments: [target]
+version: 1.0.0
+paths: ["src/**"]
+licence: typo
+---
+
+Content
+`;
+    const unknown = validateFrontmatter(content, "my-skill").filter((i) => i.message.includes("Unknown"));
+    expect(unknown.map((i) => i.field)).toEqual(["licence"]);
+  });
+
   it("errors on wrong type for disable-model-invocation", () => {
     const content = `---
 name: my-skill

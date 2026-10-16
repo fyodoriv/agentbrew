@@ -53,6 +53,14 @@ const KNOWN_FRONTMATTER_FIELDS = new Set([
   "effort",
   "shell",
   "when_to_use",
+  // Agent Skills standard (agentskills.io).
+  "license",
+  "metadata",
+  "hidden",
+  // Claude Code 2.1.300.
+  "arguments",
+  "version",
+  "paths",
 ]);
 
 // Claude Code skill schema (verified in the installed binary; see

@@ -73,15 +73,29 @@
     },
     {
       "id": 7,
-      "prompt": "start a new project for a habit tracker web app; it must have full observability, metrics, vision, user stories, a one-line setup, e2e tests, a way to keep getting faster, and tasks",
+      "prompt": "start a new project for a habit tracker web app; it must have full observability, metrics, vision, user stories, a one-line setup, e2e tests, a way to keep getting faster, tasks, one checkup command, and fast but full tests",
       "expected_output": "A tool-profile repo where check-setup.sh reports every required area (vision, metrics, observability, user-stories, setup, e2e, self-improving, tasks) passing, and the one-line setup and full gate actually run green.",
       "expectations": [
-        "Runs check-setup.sh and shows its areas line listing vision, metrics, observability, user-stories, setup, e2e, self-improving, and tasks",
+        "Runs check-setup.sh and shows its areas line listing vision, metrics, observability, user-stories, setup, e2e, self-improving, tasks, checkup, and caching",
         "Runs scripts/setup.sh and shows it ending with 'doctor: all checks passed'",
         "Writes the first real user story with its metric and an e2e test per case, listed in docs/user-stories.md so scripts/check-docs.sh passes",
         "Fills the metrics table in docs/observability.md with goal, pivot, and command for each metric, using (stub) for missing data",
         "Runs the full scripts/check.sh (with e2e) and then scripts/metrics.sh to show the timed steps",
-        "Leaves RECURRING.md with the weekly speed review and checkup instead of deleting them"
+        "Leaves RECURRING.md with the weekly speed review and checkup instead of deleting them",
+        "Runs scripts/check.sh twice and shows the second run skipping steps as cached, then shows a file change making every step run again"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "run the monthly requirements audit on this existing repo; it keeps VISION.md at the root and has no runtime logs because it is a spec repo",
+      "expected_output": "Runs audit-due.sh, maps the area to the repo's own files in .agents/requirements.yaml, waives only with a concrete reason, keeps one P0 task listing every gap, and records the run.",
+      "expectations": [
+        "Runs scripts/audit-due.sh first and stops when it prints not due",
+        "Adds map.vision: VISION.md instead of moving the file, after checking VISION.md really has a success metric and kill criteria",
+        "Waives an area only with a concrete reason a reviewer would accept, never 'too much work'",
+        "Updates the single P0 task meet-new-project-requirements instead of filing a duplicate",
+        "Proposes a change to the new-project requirement when the same waiver appears in two or more repos",
+        "Runs audit-due.sh --record at the end"
       ]
     }
   ]

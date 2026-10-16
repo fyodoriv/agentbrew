@@ -42,6 +42,19 @@ behind one adapter, a doctor, a metrics table. These libraries fill it:
 
 Start with the JSONL file. Add a service only when the profile's privacy rules allow it.
 
+## Caching (fast yet full)
+
+`scripts/check.sh` already skips steps while the whole repo is unchanged. When
+one step is slow, add finer caching for it:
+
+| | TypeScript | Python | Rust |
+|---|---|---|---|
+| Task cache by inputs | [Nx](https://nx.dev) or Turborepo (local cache; `inputs`/`outputs` per target) | Nx with `@nxlv/python`, or a per-step input hash | cargo's incremental build + `sccache` |
+| Affected tests only | `vitest related` / `vitest --changed`, `nx affected` | `pytest-testmon` | `cargo nextest` with a filter per changed crate |
+
+Keep one rule: a cache may skip work only when every input it depends on is in
+its key. When in doubt, run with `NO_CACHE=1` and compare.
+
 ## Wire the gate
 
 `scripts/check.sh` runs, when present:

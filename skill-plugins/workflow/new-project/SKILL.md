@@ -27,6 +27,8 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
 | self-improving | timed gate steps in `.metrics/`, weekly speed review in `RECURRING.md`, `docs/learnings.md` |
 | tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
+| checkup | `scripts/checkup.sh`: one repo-wide checkup (health, cached gate, broken stories, speed, P0s, monthly audit) |
+| caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), any change re-runs, `NO_CACHE=1` forces all |
 
 ## Profiles
 
@@ -35,6 +37,12 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | `tool` | CLIs, libraries, dev tools, web apps | `CHANGELOG.md`, `LICENSE`, CLI rules, `cli-design` skill |
 | `assistant` | a personal AI helper run by a coding agent | `skills/`, `prompts/`, `knowledge/`, `evals/`, `config/models.yaml`, `profile/`, `memory/`, `docs/privacy.md`, ignored `private/` |
 | `side-project` | a private hobby project | `docs/privacy.md`, ignored `private/`, kill criteria used at each milestone |
+
+**Existing repos** keep their own layout. They map each area to their own
+files, or waive an area with a concrete reason, in `.agents/requirements.yaml`.
+A requirement that is wrong in general is changed here, in this skill. Checkup
+commands re-audit each repo once a month (`scripts/audit-due.sh`). Details:
+[references/requirements-map.md](references/requirements-map.md).
 
 Common setup for every profile, beyond the table above: `AGENTS.md` (the
 agent-guide baseline sections) with a `CLAUDE.md` symlink, the

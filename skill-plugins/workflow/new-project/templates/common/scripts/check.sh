@@ -3,27 +3,45 @@
 #   scripts/check.sh        full gate: docs, lint, types, unit tests, e2e (once per PR)
 #   scripts/check.sh fast   skips e2e (each commit; keep it under 10 seconds)
 # Each step's time goes to .metrics/events.jsonl; scripts/metrics.sh reports it.
+#
+# Fast yet full: a step that passed is skipped while the repo's inputs are
+# unchanged (hash of tracked, staged, unstaged, and untracked files, like the
+# nx cache). Any change re-runs every step. NO_CACHE=1 forces a full run (do it
+# after a tool upgrade). CHECK_OFFLINE=1 skips steps that need the network.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-full}"
-mkdir -p .metrics
+mkdir -p .metrics/cache
+
+key=""
+if [ "${NO_CACHE:-0}" != 1 ] && git rev-parse --git-dir >/dev/null 2>&1; then
+  key="$( { echo "$mode"; git ls-files -s; git diff;
+            git ls-files -z --others --exclude-standard | xargs -0 shasum 2>/dev/null; } | shasum | cut -c1-16)"
+fi
 
 step() {
-  # step <name> <command...>: run, time, and log one gate step.
+  # step <name> <command...>: run, time, and log one gate step; skip it on a cache hit.
   name="$1"; shift
+  if [ -n "$key" ] && [ "$(cat ".metrics/cache/$name" 2>/dev/null)" = "$key" ]; then
+    printf '{"ts":"%s","event":"check.step","name":"%s","seconds":0,"ok":true,"cached":true}\n' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$name" >> .metrics/events.jsonl
+    echo "check.sh: $name cached (inputs unchanged)"
+    return
+  fi
   start=$(date +%s)
   if "$@"; then okv=true; else okv=false; fi
   secs=$(( $(date +%s) - start ))
   printf '{"ts":"%s","event":"check.step","name":"%s","seconds":%s,"ok":%s}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$name" "$secs" "$okv" >> .metrics/events.jsonl
   [ "$okv" = true ] || { echo "check.sh: step '$name' failed" >&2; exit 1; }
+  [ -z "$key" ] || echo "$key" > ".metrics/cache/$name"
 }
 
 step docs scripts/check-docs.sh
 if command -v gitleaks >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null; then
   step secrets gitleaks git --no-banner --redact -l warn --log-opts=-20
 fi
-if [ -f TASKS.md ] && command -v npx >/dev/null 2>&1; then
+if [ -f TASKS.md ] && command -v npx >/dev/null 2>&1 && [ "${CHECK_OFFLINE:-0}" != 1 ]; then
   if npx --no-install @tasks-md/lint --help >/dev/null 2>&1 || npm view @tasks-md/lint version >/dev/null 2>&1; then
     step tasks npx -y @tasks-md/lint TASKS.md
   else

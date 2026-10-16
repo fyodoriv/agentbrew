@@ -4,8 +4,14 @@
 # Usage: check-setup.sh <repo-dir> --profile tool|assistant|side-project [--strict]
 #
 # Prints one PASS/FAIL line per check, then "score: N/M (P%)".
-# Exit 0 only when every check passes. --strict also fails on "FILL:" markers
+# Exit 0 only when every check passes. --strict also fails on "FILL" markers
 # that the scaffold leaves for the agent to replace with project facts.
+#
+# An existing repo can push back through .agents/requirements.yaml (flat lines):
+#   map.<area>: <path> [<path>...]   the repo's own files satisfy this area
+#                                    (replaces the area's default checks; all paths must exist)
+#   waive.<area>: <reason>           the area does not fit this repo; printed on every run
+# See references/requirements-map.md.
 # Runs under macOS /bin/bash 3.2: no associative arrays, no ${var,,}.
 set -u
 
@@ -32,9 +38,34 @@ case "$profile" in tool|assistant|side-project) ;; *) usage ;; esac
 pass=0
 total=0
 labels=""
+waived=0
+mapped_done=" "
+reqfile="$dir/.agents/requirements.yaml"
+req_get() { [ -f "$reqfile" ] && grep -E "^$1:" "$reqfile" | head -1 | sed -E "s/^$1:[[:space:]]*//"; }
+
+mapped_paths_exist() { for f in "$@"; do [ -e "$f" ] || return 1; done; }
+
 check() {
   # check <label> <command...>: runs the command in the repo dir.
   label="$1"; shift
+  area="$(printf '%s' "$label" | sed -nE 's/^\[([a-z0-9-]+)\].*/\1/p')"
+  if [ -n "$area" ] && [ "$area" != strict ]; then
+    reason="$(req_get "waive.$area" || true)"
+    if [ -n "$reason" ]; then
+      total=$((total + 1)); pass=$((pass + 1)); waived=$((waived + 1))
+      labels="$labels
+$label"
+      echo "WAIVED $label -- $reason"
+      return
+    fi
+    paths="$(req_get "map.$area" || true)"
+    if [ -n "$paths" ]; then
+      case "$mapped_done" in *" $area "*) return ;; esac
+      mapped_done="$mapped_done$area "
+      label="[$area] mapped to $paths"
+      set -- mapped_paths_exist $paths
+    fi
+  fi
   total=$((total + 1))
   labels="$labels
 $label"
@@ -95,6 +126,9 @@ check "[e2e] scripts/e2e.sh runs at least one tests/e2e test" sh -c 'test -x scr
 check "[self-improving] check.sh logs step timings to .metrics/" sh -c 'test -x scripts/check.sh && grep -q ".metrics/events.jsonl" scripts/check.sh'
 check "[self-improving] RECURRING.md schedules a speed review" sh -c 'grep -qi "speed review" RECURRING.md'
 check "[self-improving] docs/learnings.md logs predicted vs observed" sh -c 'grep -q "Predicted" docs/learnings.md'
+check "[checkup] scripts/checkup.sh is the repo-wide checkup command" test -x scripts/checkup.sh
+check "[caching] check.sh skips unchanged steps by input hash (NO_CACHE=1 forces a full run)" \
+  sh -c 'grep -q "NO_CACHE" scripts/check.sh && grep -q "cache" scripts/check.sh'
 check "[tasks] task backend declared (TASKS.md or .agents/tasks.config.yaml)" has_any TASKS.md .agents/tasks.config.yaml
 check "[decisions] docs/decisions/ holds an ADR" sh -c 'ls docs/decisions/*.md >/dev/null 2>&1'
 check "[agents] Agentfile.yaml declares agent dependencies" test -f Agentfile.yaml
@@ -132,6 +166,7 @@ fi
 
 areas="$(echo "$labels" | grep -oE '^\[[a-z0-9-]+\]' | sort -u | tr -d '[]' | tr '\n' ' ')"
 echo "areas: $areas"
+[ "$waived" -eq 0 ] || echo "waived: $waived (reasons above; review them in the monthly audit)"
 pct=$((pass * 100 / total))
 echo "score: $pass/$total ($pct%)"
 [ "$pass" -eq "$total" ]

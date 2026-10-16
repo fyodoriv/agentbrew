@@ -45,6 +45,15 @@ Compare the main metrics with the closest competitor in `docs/VISION.md` → Pri
 `scripts/doctor.sh` prints one `ok` or `FAIL` line per check, each with its fix.
 Add a check for every new dependency and for each way the main story can break.
 
+## Checkup and caching
+
+`scripts/checkup.sh` is the one repo-wide checkup. `scripts/check.sh` skips a
+step that passed while the repo's inputs are unchanged (an input hash, like the
+nx cache), so a checkup on a quiet day takes seconds and any change re-runs
+everything. Cache hits log `"cached":true`. Use `NO_CACHE=1` after a tool
+upgrade. For big suites, add affected-only test selection per stack
+(`references/stacks.md` in the new-project skill).
+
 ## Speed review
 
 Each week (`RECURRING.md`), run `scripts/metrics.sh`. If a step got slower or

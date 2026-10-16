@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
@@ -15,7 +15,18 @@ const profiles = [
   { profile: "assistant", stack: "python" },
   { profile: "side-project", stack: "rust" },
 ] as const;
-const required = ["vision", "metrics", "observability", "user-stories", "setup", "e2e", "self-improving", "tasks"];
+const required = [
+  "vision",
+  "metrics",
+  "observability",
+  "user-stories",
+  "setup",
+  "e2e",
+  "self-improving",
+  "tasks",
+  "checkup",
+  "caching",
+];
 
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
@@ -93,6 +104,61 @@ describe("new-project skill", () => {
       execFileSync("/bin/bash", [join(dir, "scripts", script)], { cwd: dir, encoding: "utf-8", env });
     expect(run("check-docs.sh")).toContain("docs match the code");
     expect(run("e2e.sh")).toContain("e2e: 1 file(s) passed");
+  });
+
+  it("lets an existing repo map an area to its own files or waive it with a reason", () => {
+    const dir = join(scratch, "mapped");
+    scaffoldInto(dir, "tool", "none");
+    renameSync(join(dir, "docs", "VISION.md"), join(dir, "VISION.md"));
+    expect(score(dir, "tool").status).toBe(1);
+    mkdirSync(join(dir, ".agents"), { recursive: true });
+    writeFileSync(
+      join(dir, ".agents", "requirements.yaml"),
+      "map.vision: VISION.md\nwaive.e2e: spec-only repo; the CLI package owns the e2e\n",
+    );
+    const mapped = score(dir, "tool");
+    expect(mapped.status).toBe(0);
+    expect(mapped.out).toContain("PASS [vision] mapped to VISION.md");
+    expect(mapped.out).toContain("WAIVED [e2e]");
+    expect(mapped.out).toContain("waived: 1");
+    writeFileSync(join(dir, ".agents", "requirements.yaml"), "map.vision: MISSING.md\n");
+    expect(score(dir, "tool").out).toContain("FAIL [vision] mapped to MISSING.md");
+  });
+
+  it("caches gate steps by input hash and re-runs them after any change", () => {
+    const dir = join(scratch, "cached");
+    scaffoldInto(dir, "tool", "none");
+    const gitEnv = { ...env, CHECK_OFFLINE: "1", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.com" };
+    execFileSync("git", ["add", "-A"], { cwd: dir, env: gitEnv });
+    const check = (extra: Record<string, string> = {}) =>
+      execFileSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+        cwd: dir,
+        encoding: "utf-8",
+        env: { ...gitEnv, ...extra },
+      });
+    expect(check()).not.toContain("cached");
+    expect(check()).toContain("docs cached (inputs unchanged)");
+    writeFileSync(join(dir, "docs", "plans", "note.md"), "a change\n");
+    expect(check()).not.toContain("cached");
+    expect(check({ NO_CACHE: "1" })).not.toContain("cached");
+    expect(readFileSync(join(dir, ".metrics", "events.jsonl"), "utf-8")).toContain('"cached":true');
+  });
+
+  it("says when the monthly audit is due and records a run", () => {
+    const repo = join(scratch, "audited");
+    mkdirSync(repo, { recursive: true });
+    const stateEnv = { ...env, XDG_STATE_HOME: join(scratch, "state") };
+    const due = (...flags: string[]) =>
+      spawnSync("/bin/bash", [join(skillRoot, "scripts", "audit-due.sh"), repo, ...flags], {
+        encoding: "utf-8",
+        env: stateEnv,
+      });
+    expect(due().stdout).toContain("due (never run)");
+    expect(due("--record").status).toBe(0);
+    const after = due();
+    expect(after.status).toBe(1);
+    expect(after.stdout).toContain("not due");
+    expect(due("--days", "0").status).toBe(0);
   });
 
   it("tracks every template file in git, so a global gitignore cannot drop one", () => {

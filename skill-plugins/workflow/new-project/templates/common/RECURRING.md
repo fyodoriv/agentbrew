@@ -17,8 +17,8 @@ everything at once.
 - [ ] Health checkup: doctor, errors by story, open questions
   - **ID**: weekly-checkup
   - **Cadence**: weekly
-  - **Details**: Run `scripts/doctor.sh` and count `ok: false` events per story in
-    `.metrics/events.jsonl`. A broken story becomes a P0 task. Re-check last
+  - **Details**: Run `scripts/checkup.sh`, then `NO_CACHE=1 scripts/check.sh` once to
+    catch tool drift the cache cannot see. A broken story becomes a P0 task. Re-check last
     week's rows in `docs/learnings.md`. End with at most three questions for the
     owner (context, options, recommended option first), then apply the answers.
 

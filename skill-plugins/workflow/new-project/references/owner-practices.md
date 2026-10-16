@@ -24,6 +24,8 @@ area in brackets.
 | One-line setup | `scripts/setup.sh`: idempotent, no sudo, ends with the doctor; first line of the README quickstart | agentbrew `scripts/install.sh`, minsky `setup.sh`, dotfiles quickstart | `[setup]` |
 | E2E | One file per story case in `tests/e2e/`, isolated in a scratch copy; US-01 is a stranger-install test | agentbrew `real-e2e/scenarios/us24-one-step-install.test.ts`, dotfiles `tests/stranger-readiness.bats` | `[e2e]` |
 | Self-improving speed | Gate steps timed into `.metrics/`; weekly speed review in `RECURRING.md`; append-only `docs/learnings.md` (predicted vs observed) | agentbrew `docs/agent-perf.md` and `perf-review`; minsky `docs/validated-learnings.md`, `RECURRING.md`; private app timings report | `[self-improving]` |
+| Checkup | One repo-wide checkup command that reports health, gate, broken stories, speed, open P0s, and ends with questions | dotfiles `skills/tooling-checkup`; private app checkup skill | `[checkup]` |
+| Caching | Gate and tests fast yet full: skip work whose inputs are unchanged, re-run on any change | private app Nx cache and test trace cache; dotfiles `bin/cached-run`; agentbrew `src/affected-tests.ts` | `[caching]` |
 | Tasks | tasks.md queue; every task has Hypothesis, Measurement, Success, Pivot, Anchor; delete the block when done | tasks.md `spec.md`; minsky rule #9; agentbrew `scripts/lint-tasks-stability.mjs` | `[tasks]`, the tasks lint in `scripts/check.sh` |
 
 ## 2. Other adopted rules
@@ -43,6 +45,10 @@ area in brackets.
 | Weekly checkup that ends with at most three questions for the owner | private app checkup skill | `RECURRING.md` |
 | Conventional commits | dotfiles `git-hooks/commit-msg` | `AGENTS.md` Delivery |
 
+Repos can push back on any of these: map an area to their own files, waive
+it with a reason, or propose a change to the requirement. See
+[requirements-map.md](requirements-map.md).
+
 ## 3. Rejected, and why
 
 | Practice | Why not in a new repo |
@@ -53,4 +59,4 @@ area in brackets.
 | PR-body checks that need a CI rerun after an edit | Friction with little gain for solo repos. |
 | Backup and auto-restore installer (agentbrew `install.sh`) | Right for a `tool` that writes to user machines; overkill otherwise. Note it in the tool's ADR when it applies. |
 | Machine-specific shims, chezmoi templates, LaunchAgents | Owner-machine details, not project practice. |
-| Test-result caches by recorded inputs (a private app's trace cache) | Worth it once the suite is slow; `scripts/metrics.sh` shows when. |
+| Per-test trace caches (a private app records what each test file read) | The whole-repo input hash in `check.sh` comes first; add per-test or affected-only selection when `scripts/metrics.sh` shows a slow step. |

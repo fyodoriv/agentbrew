@@ -426,6 +426,34 @@ What the researcher found for each of our 5 candidates, with verbatim maintainer
 
 5. **Anthony Fu (antfu) is a wildcard.** He's a prominent OSS developer (Vite, Vitest, UnoCSS) with high credibility. His [PR #937](https://github.com/vercel-labs/skills/pull/937) on merging `skills-npm` features into `experimental_sync` was closed on 2026-09-30. The primary maintainer rebased the work as [PR #2348](https://github.com/vercel-labs/skills/pull/2348). So even a high-profile contributor's PR stayed open for five and a half months (2026-04-15 to 2026-09-30) and was then replaced by a maintainer PR, which is not merged yet.
 
+### `experimental_install` test (2026-10-16)
+
+**Result: a concrete gap blocks delegation.** agentbrew cannot hand its Agentfile `skills:` installs to `experimental_install` today.
+
+**Upstream state on 2026-10-16:**
+
+- Issue [#283](https://github.com/vercel-labs/skills/issues/283) (install from lockfile) is open. A 2026-06-11 comment says `experimental_install` works, but the lock has no symlink data for `.claude`. A 2026-10-01 comment links a third-party lock spec draft. No maintainer reply since the 2026-02-18 "WIP" comment.
+- Issue [#729](https://github.com/vercel-labs/skills/issues/729) (declarative `Skillfile`) is open.
+- PR [#2348](https://github.com/vercel-labs/skills/pull/2348) is open, with no reviews and no comments. It syncs skills shipped inside npm packages (`experimental_sync`). It does not add a manifest for git sources, so it does not cover Agentfile `skills:` entries.
+
+**Method.** The test used `skills` v1.7.2 through `npx --yes skills@latest`, in a temporary project with a temporary `HOME`:
+
+1. `npx skills add vercel-labs/agent-skills --skill web-design-guidelines --agent claude-code -y` copied the skill to `./.claude/skills/web-design-guidelines` and wrote `skills-lock.json`.
+2. The lock entry has only `source`, `sourceType`, `skillPath`, and `computedHash`. It records no agent, no install mode (symlink or copy), no scope, and no git ref.
+3. After `rm -rf .claude`, `npx skills experimental_install -y` restored the skill in about 1.4 s. But it wrote it to `./.agents/skills/web-design-guidelines`, not to `./.claude/skills/`.
+4. `experimental_install -y --agent claude-code` and `experimental_install -g -y` gave the same result. Both flags are ignored. Nothing was written to the agent directory or to the global scope.
+
+**The gaps, in order of impact:**
+
+1. **No agent targeting.** Restore always goes to the universal `.agents/skills/` directory. Agents that do not read that directory (Claude Code reads `.claude/skills/`) do not see the skill. agentbrew must place skills for every agent in the Agentfile.
+2. **Project scope only.** agentbrew's main use is global skills for the user. `experimental_install` has no global restore.
+3. **No pin.** The lock stores a content hash but no commit SHA. A restore takes the source's current head, so it cannot reproduce an older install. Open issues [#806](https://github.com/vercel-labs/skills/issues/806) and [#781](https://github.com/vercel-labs/skills/issues/781) report that the hash does not verify across platforms.
+4. **Known restore bugs are open:** [#666](https://github.com/vercel-labs/skills/issues/666) (well-known sources) and [#1005](https://github.com/vercel-labs/skills/issues/1005) (subpath is dropped).
+
+**Consequence.** No code in `src/sync/skills-sync.ts` or `src/catalog/` can be deleted yet. agentbrew already delegates each single install to `npx skills add` (see [Current integration state](#current-integration-state-the-existing-npx-skills-fallback)). That stays the delegation boundary.
+
+**Re-test trigger.** Run the four steps again when one of these happens: #283 or #729 closes, #2348 merges, or a release note says `experimental_install` honors `--agent` or `-g`. A fix for gap 1 alone would let agentbrew delegate project-scope restores.
+
 ### What this changes in our contribution plan
 
 Before this research, agentbrew's plan (from the original Contribution roadmap) was to open issues + file PRs for 4 of 5 candidates. After the research:

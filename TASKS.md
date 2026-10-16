@@ -250,13 +250,6 @@
   - **Files**: `src/catalog.yaml`, `src/catalog/types.ts`, `src/mcp/catalog-pin-sweep.ts`
   - **Acceptance**: at least one MCP server can declare its npm package identity and pinned-version behavior in catalog data; `sweepCatalogPins()` consumes that metadata without a source-level server allowlist.
 
-- [ ] Show preserved catalog rule blocks in `agentbrew status`
-  - **ID**: status-reports-preserved-catalog-rules
-  - **Tags**: scout, rules, status, p3
-  - **Details**: Refresh now keeps edited or unrecorded catalog rule blocks and only warns during `install --recommended` and `sync`. `agentbrew status` does not list them, so a stale kept block stays invisible until the next install run.
-  - **Files**: `src/status.ts`, `src/catalog/install.ts`
-  - **Acceptance**: `status --verbose` lists installed catalog rule blocks whose body differs from `src/catalog.yaml`, marked kept or refreshable; a test covers both.
-
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
   - **ID**: workspace-aware-sync
   - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host

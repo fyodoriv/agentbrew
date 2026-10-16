@@ -429,6 +429,21 @@ export function refreshRecommendedCatalogRules(
   return result;
 }
 
+/**
+ * Installed catalog rule blocks whose body differs from the catalog, without
+ * writing anything. `kept`: edited or unrecorded, so refresh leaves them alone.
+ * `refreshable`: still agentbrew-owned, so the next `sync --pull` replaces them.
+ */
+export function catalogRuleDrift(rules: CatalogRule[]): { kept: string[]; refreshable: string[] } {
+  const drift = { kept: [] as string[], refreshable: [] as string[] };
+  for (const rule of rules) {
+    const { status } = refreshOwnedCatalogRuleBlockDetailed(rule, { dryRun: true });
+    if (status === "preserved") drift.kept.push(rule.name);
+    else if (status === "would-refresh") drift.refreshable.push(rule.name);
+  }
+  return drift;
+}
+
 /** Install a rule set from the catalog into shared-rules.md. */
 export function installRule(rule: CatalogRule): void {
   console.log(chalk.bold(`\nInstalling rule set: ${rule.name}\n`));

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addRuleToSharedRules, refreshRecommendedCatalogRules } from "./install-other.js";
+import { addRuleToSharedRules, catalogRuleDrift, refreshRecommendedCatalogRules } from "./install-other.js";
 import type { CatalogRule } from "./types.js";
 
 const rule = (content: string): CatalogRule => ({
@@ -33,6 +33,21 @@ afterEach(() => {
   if (savedHome === undefined) delete process.env.HOME;
   else process.env.HOME = savedHome;
   rmSync(home, { recursive: true, force: true });
+});
+
+describe("catalogRuleDrift", () => {
+  it("lists kept and refreshable blocks without writing", () => {
+    const other: CatalogRule = { ...rule("Other body."), name: "other-rule", recommended: false };
+    addRuleToSharedRules(rule("Old body."));
+    addRuleToSharedRules(other);
+    writeFileSync(rulesPath, read().replace("Other body.", "Other body. Edited."), "utf-8");
+    const before = read();
+
+    const drift = catalogRuleDrift([rule("Short body."), { ...other, content: "New other body." }]);
+
+    expect(drift).toEqual({ kept: ["other-rule"], refreshable: ["load-project-context"] });
+    expect(read()).toBe(before);
+  });
 });
 
 describe("catalog rule refresh protects user edits", () => {

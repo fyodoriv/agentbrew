@@ -40,6 +40,14 @@ vi.mock("./drift-checks/statusline.js", () => ({
   checkUserStatusLine: vi.fn(() => []),
 }));
 
+vi.mock("./catalog/install-other.js", () => ({
+  catalogRuleDrift: vi.fn(() => ({ kept: [], refreshable: [] })),
+}));
+
+vi.mock("./catalog/types.js", () => ({
+  loadCatalog: vi.fn(() => ({ rules: [] })),
+}));
+
 vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({
   readDesktopMcpFailures: vi.fn(() => []),
 }));
@@ -55,6 +63,7 @@ vi.mock("./mcp/health-snapshot.js", () => ({
 }));
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { catalogRuleDrift } from "./catalog/install-other.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import {
@@ -197,6 +206,25 @@ describe("status", () => {
     expect(calls).toContain("railway/claude-code");
     expect(calls).toContain("agentbrew mcp setup railway");
     expect(calls).not.toContain("failing");
+  });
+
+  it("lists kept and refreshable catalog rule blocks in verbose status", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    vi.mocked(catalogRuleDrift).mockReturnValueOnce({ kept: ["edited-rule"], refreshable: ["stale-rule"] });
+
+    await status({ verbose: true });
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("Catalog Rules");
+    expect(calls).toContain("edited-rule");
+    expect(calls).toContain("kept");
+    expect(calls).toContain("stale-rule");
+    expect(calls).toContain("refreshable");
   });
 
   it("shows timeouts whose heal was deferred for load, with the reason", async () => {

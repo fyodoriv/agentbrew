@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import chalk from "chalk";
 import { AGENTFILE_NAMES, getConfigServers, getStateServers, getStateSources } from "./agentfile.js";
+import { catalogRuleDrift } from "./catalog/install-other.js";
+import { loadCatalog } from "./catalog/types.js";
 import { checkCliBuildDrift } from "./cli-build-health.js";
 import { checkEnvHygiene } from "./core/env-sanitize.js";
 import { loadSyncErrors } from "./core/errors.js";
@@ -450,6 +452,29 @@ function printVerboseInstructionsSection(): void {
   }
 }
 
+/** Installed catalog rule blocks whose body differs from src/catalog.yaml. */
+function printVerboseCatalogRulesSection(): void {
+  let drift: { kept: string[]; refreshable: string[] };
+  try {
+    drift = catalogRuleDrift(loadCatalog().rules);
+  } catch (e) {
+    logSkipped("status/catalog-rules", e);
+    return;
+  }
+  if (drift.kept.length === 0 && drift.refreshable.length === 0) return;
+  console.log(chalk.bold("\nCatalog Rules"));
+  for (const name of drift.kept) {
+    console.log(
+      `  ${ICON_WARNING} ${name} ${chalk.dim("kept — edited or unrecorded; `agentbrew install --refresh-rules` replaces it")}`,
+    );
+  }
+  for (const name of drift.refreshable) {
+    console.log(
+      `  ${ICON_WARNING} ${name} ${chalk.dim("refreshable — differs from the catalog; `agentbrew install --refresh-rules` updates it")}`,
+    );
+  }
+}
+
 function printVerboseSyncSection(): void {
   const errorLog = loadSyncErrors();
   if (!errorLog) return;
@@ -646,6 +671,7 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printVerboseSkillsSection();
   printVerboseCommandsSection();
   printVerboseInstructionsSection();
+  printVerboseCatalogRulesSection();
   printVerboseSyncSection();
 
   const autoRepair = describeAutoRepair(probeAutoRepairHealth());

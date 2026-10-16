@@ -340,13 +340,6 @@
   - **Files**: package.json, package-lock.json
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
 
-- [ ] Show the total heal attempt count in `agentbrew status --verbose`
-  - **ID**: mcp-status-heal-attempt-count
-  - **Tags**: scout, mcp, status
-  - **Details**: The snapshot now keeps a capped history plus `healAttemptCount`. Nothing reads the count yet, so an operator cannot see that one pair churns while most attempts are trimmed. Print it for pairs with many attempts.
-  - **Files**: src/status.ts, src/status.test.ts
-  - **Acceptance**: a pair with more attempts than the history cap shows its total in verbose status; a test covers it.
-
 - [ ] `agentbrew status` names helper scripts that sync kept or could not install
   - **ID**: status-reports-helper-scripts
   - **Tags**: scout, sync, status, helper-scripts

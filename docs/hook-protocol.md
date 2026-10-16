@@ -154,8 +154,9 @@ Skill text alone did not stop a one-line bugfix goal from editing before its
 goal contract. So `goal-set-loads-run-goal` also writes a per-session marker
 (`~/.cache/agentbrew/run-goal/<session_id>.pending`), and
 `goal-contract-before-edit` (PreToolUse on Write, Edit, MultiEdit,
-NotebookEdit) blocks file edits while the marker exists and no assistant
-message in the transcript has "Done when". The first contract, `/goal clear`,
+NotebookEdit) blocks file edits while the marker exists and no visible
+assistant message holds the contract ("Done when", "Metric", and "Pivot" in
+one message; thinking does not count). The first contract, `/goal clear`,
 or a marker older than one day removes it.
 
 ## Cross-workspace publishing

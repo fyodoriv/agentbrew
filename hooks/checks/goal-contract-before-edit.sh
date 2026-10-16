@@ -9,8 +9,10 @@
 # After `/goal <condition>`, run-goal says: print the goal contract before
 # the first edit. Live runs showed skill text alone is not enough (a
 # one-line bugfix went straight to Edit). This hook blocks the first file
-# edit of a goal session until an assistant message in the transcript has a
-# "Done when" section.
+# edit of a goal session until one visible assistant message in the
+# transcript holds the contract: it names "Done when", "Metric", and
+# "Pivot". A prose mention of one phrase does not count (a live run once
+# opened an earlier, looser gate by quoting "Done when").
 #
 # **State** (session-file scope): goal-set-loads-run-goal writes
 # `<state dir>/<session_id>.pending` when a goal is set and deletes it on
@@ -19,7 +21,7 @@
 # allows the edit. Nothing else reads or writes these files.
 #
 # **What gets blocked**: Write/Edit in a session with a pending marker and no
-# "Done when" in any assistant text of the transcript.
+# assistant text block that contains all of "Done when", "Metric", "Pivot".
 #
 # **What does NOT get blocked**: sessions with no marker (no goal set, goal
 # cleared, or contract already printed); other tools.
@@ -69,10 +71,10 @@ fi
 
 TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] &&
-  hook_jq -e -s 'any(.[]; .type == "assistant" and any(.message.content[]?; .type == "text" and (.text | test("Done when"))))' \
+  hook_jq -e -s 'any(.[]; .type == "assistant" and any(.message.content[]?; .type == "text" and (.text | test("Done when") and test("Metric") and test("Pivot"))))' \
     "$TRANSCRIPT" >/dev/null 2>&1; then
   rm -f "$MARKER"
   verdict_allow "$HOOK_ID" "goal contract found"
 fi
 
-verdict_block "$HOOK_ID" "A /goal is active and no goal contract is in the chat yet. Print the run-goal contract first (Done when with proof, Metric with baseline, Success/Pivot, Suggestions), then retry this edit."
+verdict_block "$HOOK_ID" "A /goal is active and no goal contract is in the chat yet. Print the run-goal contract as a visible message (thinking does not count): one message with Done when (criteria with proof), Metric (baseline, target, command), Success / Pivot, and Suggestions. Then retry this edit."

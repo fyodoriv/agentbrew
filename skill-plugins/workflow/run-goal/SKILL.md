@@ -26,8 +26,9 @@ Follow this order, even for a small goal:
 2. **Print the goal contract** (Phase 2) in the chat. This is your first
    real message. Do not call Edit, Write, or any other changing command
    before the contract is in the chat. In Claude Code with agentbrew, the
-   `goal-contract-before-edit` hook blocks file edits until a "Done when"
-   section is in your messages.
+   `goal-contract-before-edit` hook blocks file edits until one visible
+   message has the "Done when", "Metric", and "Pivot" sections. Thinking
+   does not count.
 3. Ask the one question round, or record your defaults (Phase 3).
 4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
 5. Verify with fresh evidence (Phase 5), then the retro and the final

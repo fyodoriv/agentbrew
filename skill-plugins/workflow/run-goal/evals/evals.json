@@ -20,6 +20,7 @@
         "Prints a goal contract with Done when, Metric (baseline 1 failing), Success/Pivot, and Suggestions before the first Edit or Write",
         "Takes the baseline with a read-only test run before editing",
         "Prints a Goal check line with evidence for each done-criterion",
+        "Reads the test exit status with rc=$? (not an echo wrapper) and shows git diff --stat limited to sum.js",
         "Ends with the final report including What went wrong, What to improve, and Skills updated"
       ],
       "id": 2

@@ -157,6 +157,32 @@
 
 ## P2
 
+- [ ] Perf step keys name the real command in compound Bash commands
+  - **ID**: perf-step-key-compound-commands
+  - **Tags**: perf, hooks, step-keys
+  - **Details**: `bash_key` in `hooks/lib/perf-row.jq` keys a command by its first two words only. A compound command (`a ; b`, `a && b`, `a | b`) is logged as `a`, so a 30 s `pgrep -lf … ; make check` showed up as `pgrep -lf` and hid `make check`. Checked on main 491632c: `pgrep -lf foo ; make check` gives `pgrep -lf`, and `git status && npm run verify` gives `git status`. Design choice for the task: key the last real command, the most expensive-looking one (a small known list such as `make`, `npm run`, `bats`, `vitest`), or a joined key such as `pgrep+make check`. Pick one and record why in `docs/agent-perf.md`. Keep the privacy rules: only the step key, no paths, no secrets.
+  - **Files**: `hooks/lib/perf-row.jq`, `src/scripts/agent-perf.test.ts`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: `pgrep -lf foo ; make check`, `git status && npm run verify`, and `ps aux | grep node` each get a key that names the dominant command; the privacy test in `src/scripts/agent-perf.test.ts` still passes.
+  - **Hypothesis**: keying the dominant command makes the top-steps list in `agent-perf.mjs report` name the slow command for compound calls, not the cheap prefix.
+  - **Measurement**: `jq -nc --arg c 'pgrep -lf foo ; make check' '{hook_event_name:"PostToolUse",tool_name:"Bash",tool_input:{command:$c},cwd:"/x"}' | jq -r -f hooks/lib/perf-row.jq | tail -1` (key now `pgrep -lf`).
+  - **Success**: each acceptance command gives a key that contains the dominant command.
+  - **Pivot**: if no rule picks the dominant command in at least 2 of the 3 cases, key compound commands as `<compound> <first>` instead, so they are at least visible as compound.
+  - **Anchor**: agentbrew #114 (step key design); Basili et al. 1994 (GQM).
+
+- [ ] Perf step keys stop collapsing to `<arg> <arg>` for subshells, quotes, and loops
+  - **ID**: perf-step-key-arg-arg
+  - **Tags**: perf, hooks, step-keys
+  - **Details**: some live keys are `<arg> <arg>` or `until <arg>`, which hides what was slow. Causes in `hooks/lib/perf-row.jq` (`strip`, `clean_word`, `bash_key`): a command that starts with `$(…)`, a quoted first word, and `until`/`while`/`for`/`if` loops, where the key takes the loop word plus its test. Checked on main 491632c: `$(npm bin)/vitest run` gives `<arg> <path>`, `"$HOME/x.sh" arg` gives `<path> arg`, and `until [ -f done ]; do sleep 1; done` gives `until <arg>`. Improve the extraction: strip outer quotes before the word check, look inside a leading `$(…)` or loop for the first real command, and key loops by the command in their body. Store nothing beyond the step key: no paths, no secrets, no argument values.
+  - **Files**: `hooks/lib/perf-row.jq`, `src/scripts/agent-perf.test.ts`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: the commands above get keys that name a real command (for example `vitest run`, `x.sh arg`, `until sleep`); the existing privacy test (`never writes a token-like argument, a path, or the prompt`) still passes.
+  - **Hypothesis**: the share of logged keys that contain `<arg> <arg>` or start with a loop word plus `<arg>` drops to near zero.
+  - **Measurement**: `cat ~/.local/state/agentbrew/perf/*.jsonl | jq -r 'select(.tool=="Bash") | .key' | grep -cE '^<arg> <arg>$|^(until|while|for|if) <arg>'` over rows logged after the change, compared with rows before it.
+  - **Success**: the count over one week of new rows is at most 1% of Bash rows.
+  - **Pivot**: if the fix cannot reach 1% without storing argument values, keep the loop and quote handling only and document the remaining `<arg>` cases.
+  - **Anchor**: agentbrew #114 (step key design); Basili et al. 1994 (GQM).
+
 - [ ] SessionStart and SessionEnd hooks read the real hook event name
   - **ID**: fix-hook-json-default-brace
   - **Tags**: scout, hooks, bug

@@ -240,7 +240,8 @@ function signed(pct) {
 
 export function formatReport(report) {
   const { scope } = report;
-  const where = scope.session ? `session ${scope.session}` : `last ${scope.days}d`;
+  // Session mode has days: null. "latest" resolves to no session id when no row is in scope.
+  const where = scope.days === null ? `session ${scope.session ?? "latest (none found)"}` : `last ${scope.days}d`;
   const lines = [`Agent time — ${scope.project}, ${where}`];
   if (report.calls === 0 && report.keys.length === 0) {
     lines.push("No tool rows yet.");

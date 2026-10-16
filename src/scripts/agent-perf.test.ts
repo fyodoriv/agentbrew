@@ -11,6 +11,7 @@ import {
   buildReport,
   buildTurn,
   formatMs,
+  formatReport,
   formatStatusline,
   projectForDir,
   sessionStats,
@@ -144,6 +145,17 @@ describe("report", () => {
     expect(latest.previous).toBeUndefined();
 
     expect(buildReport({ session: "old" }, ctx()).toolMs).toBe(1000);
+  });
+
+  it("names the session scope, not a day window, when latest finds no rows", () => {
+    writeRows([tool("make check", 3000, { sid: "other-project", project: "beta", ts: at(HOUR) })]);
+
+    const empty = buildReport({ session: "latest" }, ctx());
+    expect(empty.scope.session).toBeNull();
+    const text = formatReport(empty);
+    expect(text).not.toContain("null");
+    expect(text.split("\n")[0]).toBe("Agent time — alpha, session latest (none found)");
+    expect(text).toContain("No tool rows yet.");
   });
 
   it("prints valid JSON from the CLI and survives a torn line", () => {

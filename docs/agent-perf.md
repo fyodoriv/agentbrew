@@ -118,6 +118,9 @@ another folder.
 
 `*ChangePct` is `null` when the previous window had no time for that value.
 `--session` reports have no `previous` and no `previousSumMs`.
+`--session` reports set `scope.days` to `null`. When `--session latest` finds no
+row in scope, `scope.session` is `null` and the text header says
+`session latest (none found)`.
 
 ## Hooks that use the log
 

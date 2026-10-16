@@ -66,7 +66,8 @@
         "Follows the AGENTS.md changelog format where it conflicts with the skill",
         "Prints one Goal check line with evidence per done-criterion",
         "Does not commit the app change, because nothing approves a commit",
-        "Updates write-changelog at its source with a new eval, and updates run-goal too"
+        "Updates write-changelog at its source with a new eval, and updates run-goal too",
+        "Finds run-goal's local agentbrew checkout and, with the user's standing approval for retro skill updates, changes run-goal there in a worktree instead of reporting 'source not found'"
       ],
       "id": 6
     },

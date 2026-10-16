@@ -185,9 +185,16 @@ Do this every time, also after a BLOCKED stop. Details:
    flow. Never edit an installed mirror. A third-party skill gets a task with
    the proposed change. `run-goal` itself is never exempt: add an eval case
    from this run to its `evals/evals.json` in its source, or fix the step
-   that went wrong. agentbrew installs a copy, not a symlink: find the
-   source with `agentbrew status --verbose` (for `run-goal`, the agentbrew
-   repo's `skill-plugins/workflow/run-goal/`).
+   that went wrong. Its source is `skill-plugins/workflow/run-goal/` in the
+   agentbrew repo (`github.com/fyodoriv/agentbrew`). agentbrew installs
+   copies, not symlinks, so find the local checkout: run
+   `git -C <dir> remote get-url origin` on candidate folders (for example
+   `find ~ -maxdepth 4 -type d -name agentbrew`). For other skills,
+   `agentbrew status --verbose` names the source repo.
+   A skill in another repo is a cross-repo change. Check the user's rules
+   for a standing approval for retro skill updates. With one, make the
+   change in a worktree of that repo and ship it by its rules. Without one,
+   park it and ask at the end with the exact diff.
 5. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report

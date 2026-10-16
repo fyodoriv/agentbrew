@@ -1,5 +1,7 @@
 # block/ai-rules vs agentbrew — Detailed Comparison
 
+> **Last checked: 2026-10-16.** `block/ai-rules` is active and not archived. Its latest release is v1.7.0 (2026-05-11), and its last push was on 2026-05-11. It has 139 stars and 26 forks. The fallback `lbb00/ai-rules-sync` is at v0.10.0 (2026-08-14) with 41 stars. The slice findings below are from 2026-04-27.
+
 > **All 4 slices DONE 2026-04-27.** This doc was filled in incrementally
 > through `evaluate-delegate-rules-to-block-ai-rules` (P0) slices 1–4.
 > Slices 1–3 record project shape, distribution channels, subprocess latency
@@ -74,7 +76,7 @@ agentbrew's rules sync subsystem.
 
 Repo: [`block/ai-rules`](https://github.com/block/ai-rules) on GitHub.
 Author: Block ([Block, Inc.](https://block.xyz), the parent of Square and
-Cash App). License: Apache-2.0. Latest release: v1.6.0 (Cargo.toml 2026-04-27).
+Cash App). License: Apache-2.0. Latest release: v1.6.0 (Cargo.toml 2026-04-27); v1.7.0 on 2026-10-16.
 Distribution: self-contained x86_64-apple-darwin binary via the `install.sh`
 curl-installer (and presumably aarch64-apple-darwin / linux variants for
 the platforms Block CI builds for).
@@ -119,14 +121,14 @@ agentbrew's permanent scope.
 
 | Dimension | ai-rules | Method |
 |---|---|---|
-| Stars | 94 (was 91 in older agentbrew docs) | GitHub repo page 2026-04-27 |
+| Stars | 94 (was 91 in older agentbrew docs); 139 on 2026-10-16 | GitHub repo page 2026-04-27 |
 | Forks | 19 | GitHub repo page |
 | Commits (lifetime) | 104 | GitHub repo page |
 | Open PRs | 7 | GitHub repo page |
 | Open Issues | 4 | GitHub repo page |
 | Contributors | (slice 2) | TBD — needs contributor graph fetch |
 | License | Apache-2.0 | `Cargo.toml` |
-| Latest version | v1.6.0 | `Cargo.toml` |
+| Latest version | v1.6.0; v1.7.0 (2026-05-11) on 2026-10-16 | `Cargo.toml` |
 | Author | `Block <ai-oss-tools@block.xyz>` | `Cargo.toml` |
 | Governance | Org (Block, parent of Square/Cash App) | GitHub org page |
 | Language / runtime | Rust, edition 2021 | `Cargo.toml` |
@@ -331,7 +333,7 @@ GitHub repo page 2026-04-27.
 | Total commits | 82 | Smaller than block/ai-rules' 104 |
 | Language | TypeScript / Node.js | Same ecosystem as agentbrew |
 | Distribution | Homebrew Formula directory + `.changeset` (Changesets) | Active publishing infrastructure |
-| Last push (claim from older docs) | 2026-03-16 | TBD — repo's commit log not fully fetched |
+| Last push (claim from older docs) | 2026-03-16; 2026-08-20 on 2026-10-16 (release v0.10.0 on 2026-08-14) | Checked with the GitHub API on 2026-10-16 |
 
 **Verdict (slice 2):** ai-rules-sync is small but not entirely abandoned.
 Same-ecosystem (Node.js) is a meaningful advantage over block/ai-rules for

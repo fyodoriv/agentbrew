@@ -1,16 +1,18 @@
 # Token usage tools — build/wrap decision (2026-06)
 
+Last checked: 2026-10-16. All five tools below are active and not archived. Stars and latest releases on that date are in the table.
+
 Research for `agentbrew measure context` and the `context-budget` skill. Verdict per [VISION.md](../../VISION.md): **GET, don't IMPLEMENT** — wrap mature CLIs; keep static reduction in `agentbrew lint` / `agent-bloat-lint`.
 
 ## Evaluated tools (top 5)
 
 | Tool | Repo | Stars / activity | Measures | Fit for agentbrew | Overlap with measure context / bloat-lint |
 |------|------|------------------|----------|-------------------|-------------------------------------------|
-| **ccusage** | [ryoppippi/ccusage](https://github.com/ryoppippi/ccusage) | ~15.3k★, active May 2026 | **Runtime** — local JSONL/session logs for 15+ coding CLIs | **CLI wrap** (shipped) | Runtime Claude/Codex/etc.; no static config |
-| **tokscale** | [junhoyeo/tokscale](https://github.com/junhoyeo/tokscale) | ~3.7k★, active Jun 2026 | **Runtime** — multi-agent token + cost; Cursor via API cache | **CLI wrap** (shipped) | Cursor IDE when `tokscale cursor login && sync`; complements ccusage |
-| **OpenUsage.sh** | [janekbaraniewski/openusage](https://github.com/janekbaraniewski/openusage) | ~67★, active May 2026 | **Runtime + quota** — 34 providers; Cursor via local SQLite (no login) | **CLI wrap** (shipped Jun 2026) | Multi-provider `daily --json`; fills Cursor gap without Workos token |
-| **LiteLLM proxy** | [BerriAI/litellm](https://github.com/BerriAI/litellm) | large, infra-focused | **Runtime** — proxy-side spend DB + Admin UI | **Document only** | Team routing layer; not a drop-in for local agent logs |
-| **clawmeter** | [tnunamak/clawmeter](https://github.com/tnunamak/clawmeter) | ~3★, Mar 2026 | **Quota** — rate-limit windows (Claude 5h/7d, OR credits) | **Skill reference** | Complements runtime cost; no static bloat checks |
+| **ccusage** | [ryoppippi/ccusage](https://github.com/ryoppippi/ccusage) | ~19.0k★, v20.0.34 (2026-10-15) | **Runtime** — local JSONL/session logs for 15+ coding CLIs | **CLI wrap** (shipped) | Runtime Claude/Codex/etc.; no static config |
+| **tokscale** | [junhoyeo/tokscale](https://github.com/junhoyeo/tokscale) | ~5.7k★, v4.19.1 (2026-10-15) | **Runtime** — multi-agent token + cost; Cursor via API cache | **CLI wrap** (shipped) | Cursor IDE when `tokscale cursor login && sync`; complements ccusage |
+| **OpenUsage.sh** | [janekbaraniewski/openusage](https://github.com/janekbaraniewski/openusage) | ~226★, v0.26.1 (2026-10-11) | **Runtime + quota** — 34 providers; Cursor via local SQLite (no login) | **CLI wrap** (shipped Jun 2026) | Multi-provider `daily --json`; fills Cursor gap without Workos token |
+| **LiteLLM proxy** | [BerriAI/litellm](https://github.com/BerriAI/litellm) | ~61k★, v1.105.1 (2026-10-14), infra-focused | **Runtime** — proxy-side spend DB + Admin UI | **Document only** | Team routing layer; not a drop-in for local agent logs |
+| **clawmeter** | [tnunamak/clawmeter](https://github.com/tnunamak/clawmeter) | ~4★, v0.44.1 (2026-10-14) | **Quota** — rate-limit windows (Claude 5h/7d, OR credits) | **Skill reference** | Complements runtime cost; no static bloat checks |
 
 Also reviewed: OpenRouter one-off monitors (~150 LOC Python), Repomix (repo tree — already in `scripts/audit-context-tree.sh`), session-report skill (transcript deep-dive), Claude Code built-in `/usage` and `/context` (in-session only, not scriptable).
 

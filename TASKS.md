@@ -257,13 +257,6 @@
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
   - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
 
-- [ ] Re-evaluate the update-tooling catalog pointer against a generic upstream workflow
-  - **ID**: replace-relocate-update-tooling-catalog-pointer
-  - **Tags**: scout, catalog, skills, delegation, dotfiles
-  - **Details**: The catalog points to dotfiles for the host-aware `update-tooling` skill because AgentBrew must remain a curator and cannot own machine configuration. Revisit whether an upstream generic tooling-update workflow can safely replace the pointer, or whether the host-specific applied-checkout and LaunchAgent responsibilities remain the reason it belongs in dotfiles.
-  - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`, dotfiles `skills/update-tooling/SKILL.md`
-  - **Acceptance**: Record one decision with current evidence: retain the dotfiles pointer because host ownership is unique, contribute a generic portion upstream, or replace the pointer with an upstream source. The catalog must continue to avoid duplicating skill content.
-
 - [ ] Index remaining garrytan/gstack niche skills in catalog.yaml
   - **ID**: index-gstack-niche-skills
   - **Tags**: scout, catalog, skills, curate, p3, landscape-2026-07-06
@@ -277,28 +270,6 @@
   - **Details**: `state.sources` now models indexed skill registries whose deployment is gated by `skillsInstalled`, while legacy `skillSourceDirs` still means "deploy every skill in this directory." That distinction is documented but still subtle and easy to misuse in hand-edited state. Decide whether to keep `skillSourceDirs` as an advanced opt-in escape hatch, migrate it to an explicit `optInSourceDirs` name, or replace it with Agentfile-local skill install flows.
   - **Files**: `src/sync/skills-sync.ts`, `src/agentfile.ts`, `README.md`, `AGENTS.md`
   - **Acceptance**: Source semantics are represented by one clear schema field or by docs plus lint/validation that flags accidental registry paths in `skillSourceDirs`; `agentbrew lint` or an equivalent test catches the ambiguous configuration.
-
-- [ ] Re-promote or replace the ask-human MCP after upstream stdio init is fixed
-
-  - **ID**: re-promote-ask-human-mcp-after-stdio-fix
-  - **Tags**: mcp, catalog, upstream, scout
-  - **Details**: `ask-human-mcp` 0.1.0 and 0.1.1 currently fail before MCP initialize in stdio mode with `RuntimeError: Already running asyncio in this thread` from `FastMCP.run()` / `anyio.run()` under the package's `asyncio.run(async_main())` launcher. The catalog entry was demoted from `recommended: true` to `recommended: false` while adding deep-smoke metadata, because `agentbrew mcp probe --deep` must not install/probe a known-broken recommended MCP. Re-check upstream issue Masony817/ask-human-mcp#3, test any new release with an initialize + `list_pending_questions` smoke call, then either restore `recommended: true` or replace the entry with a maintained human-in-the-loop MCP.
-  - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`
-  - **Acceptance**: A direct stdio probe of the chosen ask-human MCP returns `status: "ok"` with `deepTool: "list_pending_questions"` or equivalent; the catalog entry is recommended only if the live smoke passes on a clean install.
-
-- [ ] Re-evaluate source-manifest bootstrap glue for relocation to upstream skills CLI or overlay-owned scripts
-  - **ID**: replace-relocate-source-manifest-bootstrap
-  - **Tags**: replace-relocate, source-manifest, bootstrap, delegation
-  - **Details**: The generic `bootstrap:` source-manifest block is intentionally small agentbrew glue for overlay one-time setup. Per VISION.md's delegate → contribute → absorb rule, revisit whether this belongs permanently in agentbrew, should be contributed to `vercel-labs/skills` as source-manifest lifecycle support, or should move fully into overlay repos as explicit scripts invoked by their quickstart. Include evidence from at least one real overlay using it and from upstream skills CLI source-manifest capabilities at the time of review.
-  - **Files**: `src/catalog/index-source.ts`, `src/bootstrap.ts`, `src/commands/cli-bootstrap.ts`, `README.md`, `docs/competition/vercel-skills-cli-vs-agentbrew.md`
-  - **Acceptance**: A short decision note is added to this task or a linked doc with one of: keep in agentbrew because no upstream/tool-owned host covers generic source bootstrap; contribute upstream with issue/PR link; relocate to overlay quickstart scripts and remove the agentbrew command. If the decision is keep, set a next quarterly review date.
-
-- [ ] Explore whether Agentfile should sync Claude Code session settings (autoMemoryEnabled, autoDreamEnabled, autoMode)
-  - **ID**: agentfile-claude-session-settings-sync
-  - **Tags**: scout, agentfile, claude-settings, exploratory, docs/research/claude-code-undocumented-config.md
-  - **Details**: Claude Code has session-level settings in `~/.claude/settings.json`: `autoMemoryEnabled` (auto-extract memories per session), `autoDreamEnabled` (consolidate memories across sessions), and `autoMode` (allow/soft_deny/hard_deny/environment classifier). Binary verification confirms these are real in 2.1.138. Explore whether the Agentfile should be able to declare these settings and sync them like the existing hooks key. This is exploratory — the research doc notes this as P3 to avoid building load-bearing infra on unstable fields (e.g., `criticalSystemReminder_EXPERIMENTAL` is explicitly flagged).
-  - **Files**: `src/sync/settings-sync.ts` (new, if approved), `src/cli.ts` (register sync target)
-  - **Acceptance**: A decision document in `docs/research/agentfile-claude-settings-sync-decision.md` that either (a) approves the feature with implementation path OR (b) rejects with rationale (e.g., settings are user-preference, not project-level).
 
 - [ ] Adopt rule #8 — pattern conformance index in `VISION.md`
   - **ID**: adopt-rule-8-pattern-conformance-index
@@ -425,13 +396,6 @@
   - **Acceptance**: (a) spec document exists with the 5 sections above; (b) VISION.md links to it; (c) at least one upstream PR filed linking to the spec — accept the result whether merged or not (author goodwill + visibility matters more than the merge).
   - **Human-approval-required**: external-pr
 
-- [ ] Evaluate delegating Agentfile `skills:` installs to the skills CLI `experimental_install`
-  - **ID**: contribute-support-issue-283-declarative-manifest
-  - **Tags**: upstream, skills-cli, delegation
-  - **Details**: vercel-labs/skills issue #283 (declarative manifest) and #729 are still open, but a 2026-06-11 comment on #283 reports that `experimental_install` (install from `skills-lock.json`) works. PR #937 (config system) was closed on 2026-09-30 and superseded by PR #2348 (open). Test whether `experimental_install` can replace agentbrew's per-project skill resolution, and watch #2348. Any upstream comment is publish-gated.
-  - **Files**: `src/sync/skills-sync.ts`, `docs/competition/vercel-skills-cli-vs-agentbrew.md` (Upstream receptivity)
-  - **Acceptance**: a written result in the competition doc: either a delegation plan (what agentbrew code can be deleted) or the concrete gap that blocks it; #2348 state recorded with a date.
-
 - [ ] Trust-building PRs on vercel-labs/skills from the drafts staged in `fyodoriv/skills`
   - **ID**: contribute-trust-building-pr-skills-cli
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
@@ -546,13 +510,6 @@
     companion-researcher umbrella migrates to using `git worktree
     add` for its session checkout, isolating it from the worker
     entirely.
-
-- [ ] Competitor docs state the current upstream facts, dated inside the doc
-  - **ID**: refresh-competitor-vercel-skills-cli-vs-agentbrew
-  - **Tags**: research, competitor
-  - **Details**: The 2026-10-01 public-history reset makes git dates useless for staleness, so judge freshness by dates written in each doc. Known stale facts in `docs/competition/vercel-skills-cli-vs-agentbrew.md`: #509, #937 and #944 are closed; #869 and #971 are merged; #2348 (supersedes #937) is not mentioned; several fork-draft targets are closed. Also re-check `block-ai-rules-vs-agentbrew.md`, `mcpm-sh-vs-agentbrew.md`, and `token-usage-tools.md`. Merges the five per-file refresh tasks (2026-10-15 review).
-  - **Files**: `docs/competition/*.md`
-  - **Acceptance**: every listed doc has a dated "Last checked: YYYY-MM-DD" line, and the vercel doc's PR and issue states match GitHub on that date.
 
 - [ ] `agentbrew setup opencode` writes a model and provider shape current opencode accepts
   - **ID**: opencode-bootstrap-config-shape

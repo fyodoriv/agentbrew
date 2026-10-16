@@ -1,5 +1,7 @@
 # mcpm.sh vs agentbrew — Detailed Comparison
 
+> **Last checked: 2026-10-16.** `pathintegral-institute/mcpm.sh` is active and not archived. Its latest release is v2.15.0 (2026-05-22), and its last push was on 2026-10-08. It has 1,014 stars and 166 forks. The slice findings below are from 2026-04-26 and 2026-04-27.
+
 > **All 4 slices DONE 2026-04-27.** This doc was filled in incrementally
 > through `evaluate-delegate-mcp-to-mcpm` (P0) slices 1–4. Slices 1–3 record
 > project shape, subprocess latency, client coverage diff, command surface
@@ -141,8 +143,8 @@ slice this evaluation considers delegating.
 | Repository created | 2025-03-21 (~13 months old as of 2026-04-26) |
 | Default branch | `main` |
 | Last commit | 2026-03-27 (~30 days ago — the v2.14.0 release) |
-| Last push | 2026-04-24 (~2 days ago — minor release-channel touch-up) |
-| Latest release | **v2.14.0** (2026-03-27) |
+| Last push | 2026-04-24 (~2 days ago — minor release-channel touch-up); 2026-10-08 on 2026-10-16 |
+| Latest release | **v2.14.0** (2026-03-27); **v2.15.0** (2026-05-22) on 2026-10-16 |
 | Prior release | v2.13.0 (2026-01-15) |
 | Release cadence (last 6 months) | v2.12.1 (2026-01-15) → v2.13.0 (2026-01-15) → v2.14.0 (2026-03-27) — three releases in ~3 months, uneven cadence |
 | Language | Python (3.10+ required; pyproject.toml; pinned to authlib + fastmcp + click stack) |

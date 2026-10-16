@@ -86,13 +86,27 @@ secrets. It holds only a short step key:
 
 | Tool | Key |
 |---|---|
-| Bash | First two words of the command, plus the third when the second is `run` (`npm run verify`). |
+| Bash | First two words of the dominant command, plus the third when the second is `run` (`npm run verify`). |
 | Edit, Write, Read, MultiEdit, NotebookEdit | `<tool>:<file extension>` (`Edit:ts`). |
 | Agent / Task | `agent:<subagent_type>`. |
 | Skill | `skill:<name>`. |
 | Other tools, MCP tools | The tool name. |
 
-For Bash, the hook first drops `cd X &&`, `VAR=value`, `(`, and the `env`,
+For a compound Bash line (`a ; b`, `a && b`, `a | b`), the key names the
+dominant command, so the cheap prefix does not hide the slow step:
+
+- Pipe stages after the first are filters (`grep`, `tail`, `jq`) and never win: `ps aux | grep node` → `ps aux`.
+- Otherwise the first known build, test, or package command wins (`make`, `npm`, `npx`, `vitest`, `bats`, `cargo`, `bash`, …): `pgrep -lf foo ; make check` → `make check`.
+- Otherwise the last command that is not trivial (`cd`, `echo`, `export`, `[`) wins.
+- A loop or `if` header is not a candidate. Its keyword prefixes the body command: `until [ -f done ]; do sleep 1; done` → `until sleep 1`.
+- Quoted text and `$(…)` do not split the line. A command that is only `$(…)` keys the command inside it. A quoted or `$(…)`-prefixed command word keeps its file name: `$(npm bin)/vitest run` → `vitest run`, `"$HOME/x.sh" arg` → `x.sh arg`.
+
+Why this rule and not "always the last command": a pipe puts the slow
+producer first, and a check-then-build line puts it last. The known-heavy list
+covers both without storing anything beyond the key. Only the first line of a
+multi-line command is read.
+
+For each simple command, the hook first drops `cd X &&`, `VAR=value`, `(`, and the `env`,
 `nice`, `time`, `nohup`, `command`, `exec`, and `timeout` wrappers with their
 flags. Then it checks each kept word:
 

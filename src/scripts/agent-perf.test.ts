@@ -401,6 +401,18 @@ describe.skipIf(!hasJq)("perf-record step keys (privacy)", () => {
     ["bash scripts/run-hook-fixtures.sh", "bash run-hook-fixtures.sh"],
     ["echo 'quoted words'", "echo <arg>"],
     ["", "Bash"],
+    // Compound commands key the dominant command, not the cheap prefix.
+    ["pgrep -lf foo ; make check", "make check"],
+    ["git status && npm run verify", "npm run verify"],
+    ["ps aux | grep node", "ps aux"],
+    ["git add a.ts && git commit -m 'x; y'", "git commit"],
+    ["npm run build 2>&1 | tail -5", "npm run build"],
+    // Subshells, quoted command words, and loops name a real command.
+    ["$(npm bin)/vitest run", "vitest run"],
+    ['"$HOME/x.sh" arg', "x.sh arg"],
+    ["until [ -f done ]; do sleep 1; done", "until sleep 1"],
+    ["for f in a b; do npm test; done", "for npm test"],
+    ["$(git rev-parse --show-toplevel)", "git rev-parse"],
   ])("keys %j as %j", (command, key) => {
     expect(record(bash(command)).key).toBe(key);
   });

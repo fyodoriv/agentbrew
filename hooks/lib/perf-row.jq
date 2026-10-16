@@ -43,15 +43,74 @@ def strip:
   elif test("^[0-9]+[smhd]?\\s+") then sub("^[0-9]+[smhd]?\\s+"; "") | strip
   else . end;
 
-def bash_key:
-  ((.tool_input.command // "") | tostring | (split("\n") | .[0] // "") | sub("^\\s+"; "") | strip
-   | [splits("\\s+")] | map(select(length > 0))) as $w
-  | if ($w | length) == 0 then "Bash"
-    else ($w[0] | clean_word) as $a
-      | if ($w | length) == 1 then $a
-        else ($w[1] | clean_word) as $b
-          | if $b == "run" and ($w | length) > 2 then "\($a) run \($w[2] | clean_word)" else "\($a) \($b)" end
+# Key one simple command (no ;, &&, ||, or | left in it).
+def unquote: if test("^\"[^\"]*\"$") or test("^'[^']*'$") then .[1:-1] else . end;
+
+def cmd_word:
+  unquote
+  | if test("/") then
+      (split("/") | last) as $base
+      | if ($base | word_ok) then ($base | clean_word) else "<path>" end
+    else clean_word end;
+
+def simple_key:
+  sub("^\\s+"; "") | strip
+  | if test("^\\$\\([^()]*\\)(\\s|$)") then capture("^\\$\\((?<in>[^()]*)\\)").in | simple_key
+    else
+      (gsub("\\$\\([^()]*\\)"; "$S") | [splits("\\s+")] | map(select(length > 0))) as $w
+      | if ($w | length) == 0 then "Bash"
+        else ($w[0] | cmd_word) as $a
+          | if ($w | length) == 1 then $a
+            else ($w[1] | unquote | clean_word) as $b
+              | if $b == "run" and ($w | length) > 2 then "\($a) run \($w[2] | clean_word)" else "\($a) \($b)" end
+            end
         end
+    end;
+
+# Drop unbalanced closing parens left by a subshell: "make check)".
+def trim_close:
+  if test("\\)\\s*$") and (([scan("\\(")] | length) < ([scan("\\)")] | length))
+  then sub("\\)\\s*$"; "") | trim_close else . end;
+
+# Split a command line into simple commands. Each part records the operator
+# before it: "start", "seq" (; && || &), or "pipe" (|). Quoted text and $(…)
+# stay whole, so a ";" inside them does not split.
+def parts:
+  [scan("\"[^\"]*\"|'[^']*'|\\$\\([^()]*\\)|[0-9]*[<>]&[0-9-]*|&>>?|&&|\\|\\||\\|&?|[;&]|[^;&|<>\"'$0-9]+|.")]
+  | reduce .[] as $t ({cur: "", op: "start", out: []};
+      if ($t | test("^(&&|\\|\\||;|&)$")) then .out += [{op, text: .cur}] | .cur = "" | .op = "seq"
+      elif ($t | test("^\\|&?$")) then .out += [{op, text: .cur}] | .cur = "" | .op = "pipe"
+      else .cur += $t end)
+  | .out + [{op, text: .cur}]
+  | map(.text |= (sub("^[\\s({]+"; "") | sub("[\\s}]+$"; "") | trim_close))
+  | map(select(.text | test("^(done|fi|esac|do|then|else)?$") | not))
+  | map(.text |= sub("^(do|then|else)\\s+"; ""));
+
+# Commands that usually cost the most time in a compound line.
+def heavy:
+  test("^(make|npm|npx|pnpm|yarn|bun|node|tsx|deno|vitest|jest|bats|pytest|cargo|go|tsc|docker|gradle|mvn|xcodebuild|swift|uv|pip|pip3|brew|playwright|biome|eslint|knip|bash|sh|zsh)\\b");
+
+# Cheap commands that are never the slow step.
+def trivial:
+  test("^(cd|echo|printf|true|false|:|export|set|unset|pwd|test|\\[|\\[\\[|<path>|<arg>|Bash)\\b");
+
+# Key the dominant command of a compound line. Pipe stages after the first
+# are filters (grep, tail, jq) and never win. Among the rest, the first
+# known-heavy command wins; else the last non-trivial one; else the first.
+# A loop or if header (until/while/for/if) is not a candidate; its keyword
+# prefixes the chosen body command ("until sleep 1").
+def bash_key:
+  ((.tool_input.command // "") | tostring | (split("\n") | .[0] // "") | parts) as $p
+  | if ($p | length) == 0 then "Bash"
+    else
+      ($p | map(.text | capture("^(?<kw>until|while|for|if|elif)\\s").kw) | first // null) as $kw
+      | [$p[] | select(.op != "pipe") | select(.text | test("^(until|while|for|if|elif)\\s") | not)
+         | .text | simple_key] as $c
+      | (if ($c | length) == 0 then ($p[0].text | simple_key)
+         else ([$c[] | select(heavy)] | first)
+           // ([$c[] | select(trivial | not)] | last)
+           // $c[0] end) as $k
+      | if $kw != null and ($c | length) > 0 then "\($kw) \($k)" else $k end
     end;
 
 def ext_key($tool):

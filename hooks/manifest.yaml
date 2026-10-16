@@ -22,7 +22,7 @@
 # **Schema** (per hook):
 #   id              kebab-case unique identifier
 #   description     one-line human description
-#   event           Claude Code event: PreToolUse | PostToolUse | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
+#   event           Claude Code event: PreToolUse | PostToolUse | PostToolUseFailure | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
 #   matcher         optional Claude Code matcher (e.g. "Write|Edit", "Bash"). Omit to match all.
 #   script          path relative to agentbrew/hooks/ (e.g. checks/code-no-timestamps.sh)
 #   tier            "deterministic" (the LLM "verifier" tier was retired; see docs/hook-protocol.md)
@@ -30,6 +30,7 @@
 #   bypassEnvVar    optional env var that disables this hook (default: HOOK_BYPASS_<ID_UPPERCASE>)
 #   sourceRule      reference to the original IRON LAW (file:line) the hook implements
 #   agents          which agents to deploy to. Cursor gets event-name transforms.
+#   async           optional; true lets Claude Code run the hook in the background (the tool call does not wait).
 #   defaultEnabled  optional; false makes the hook opt-in. Its script still deploys, but sync wires it into
 #                   agent hooks files only when the overlay lists its id under `enabled:`. Omit to keep it on.
 #
@@ -414,4 +415,40 @@ hooks:
     verdict: warn
     bypassEnvVar: HOOK_BYPASS_MEMORY_SYNC_PROJECTS
     sourceRule: 'docs/user-stories/29-shared-memory-packs.md project-memory ingestion invariant'
+    agents: ["claude-code"]
+
+  # ── Agent perf log (per-step timing; read with ~/.config/agentbrew/scripts/agent-perf.mjs) ──
+  # One script, three events. Each ID deploys its own copy of checks/perf-record.sh.
+
+  - id: perf-record
+    description: Append the tool name, step key, and duration of each tool call to the agent perf log
+    event: PostToolUse
+    script: checks/perf-record.sh
+    tier: deterministic
+    verdict: warn
+    async: true
+    bypassEnvVar: HOOK_BYPASS_PERF_RECORD
+    sourceRule: 'docs/agent-perf.md "Perf log"'
+    agents: ["claude-code"]
+
+  - id: perf-record-failure
+    description: Append failed tool calls (ok false) to the agent perf log
+    event: PostToolUseFailure
+    script: checks/perf-record.sh
+    tier: deterministic
+    verdict: warn
+    async: true
+    bypassEnvVar: HOOK_BYPASS_PERF_RECORD
+    sourceRule: 'docs/agent-perf.md "Perf log"'
+    agents: ["claude-code"]
+
+  - id: perf-record-turn
+    description: Append a turn boundary row (no prompt text) to the agent perf log on each user prompt
+    event: UserPromptSubmit
+    script: checks/perf-record.sh
+    tier: deterministic
+    verdict: warn
+    async: true
+    bypassEnvVar: HOOK_BYPASS_PERF_RECORD
+    sourceRule: 'docs/agent-perf.md "Perf log"'
     agents: ["claude-code"]

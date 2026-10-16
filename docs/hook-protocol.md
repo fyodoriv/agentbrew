@@ -41,7 +41,9 @@ Required fields per hook:
 
 - `id`: stable kebab-case hook ID. Also names the deployed script copy.
 - `description`: human-readable summary for review/debugging.
-- `event`: one Claude Code lifecycle event name.
+- `event`: one Claude Code lifecycle event name. A script that serves several
+  events gets one entry per event, each with its own ID (the `perf-record`
+  hooks do this).
 - `script`: path relative to `hooks/`.
 - `tier`: `deterministic`. The LLM verifier tier was retired because `claude --print` takes about 10 seconds per call, far past a hook budget, and every verifier failed open.
 - `verdict`: `block`, `warn`, or `mutate`.
@@ -53,6 +55,9 @@ Optional fields:
 - `sourceRule`: advisory rule that the hook enforces.
 - `agents`: target agent names. Omit or use an empty list to deploy to every
   detected hook-capable target.
+- `async`: set `true` to let Claude Code run the hook in the background, so
+  the tool call does not wait for it. Use it only for hooks that record data
+  and never block, such as `perf-record`.
 - `defaultEnabled`: set `false` to make the hook opt-in. Its script still
   deploys, but sync wires it into agent hooks files only on machines whose
   overlay lists the ID under `enabled:`. The PreToolUse:Bash hooks and

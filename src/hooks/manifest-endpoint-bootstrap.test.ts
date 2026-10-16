@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { loadManifestFile } from "./manifest.js";
 
 const repoRoot = join(import.meta.dirname, "..", "..");
+// Hot-path hooks that run on every tool call skip the bootstrap (about 20 ms)
+// to stay inside their latency budget. Each one must find jq on its own.
+const SELF_RESOLVING_JQ = new Set(["checks/perf-record.sh"]);
 
 describe("manifest hook endpoint bootstrap", () => {
   it("every manifest hook sources stdin-json (which bootstraps endpoint PATH)", () => {
@@ -14,6 +17,11 @@ describe("manifest hook endpoint bootstrap", () => {
     for (const entry of manifest!.hooks) {
       const scriptPath = join(repoRoot, "hooks", entry.script);
       const content = readFileSync(scriptPath, "utf-8");
+      if (SELF_RESOLVING_JQ.has(entry.script)) {
+        expect(content, entry.id).toContain("/opt/homebrew/bin/jq");
+        expect(content, entry.id).toContain("/usr/bin/jq");
+        continue;
+      }
       const hasBootstrap = content.includes("bootstrap-endpoint-path.sh") || content.includes("stdin-json.sh");
       if (!hasBootstrap) {
         missing.push(entry.id);

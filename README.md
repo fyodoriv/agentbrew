@@ -417,6 +417,19 @@ Skip a scheduled capture: `HOOK_BYPASS_CONTEXT_BUDGET_MEASURE=1`. Force refresh 
 
 **Agents:** load the `context-budget` skill (or `templates/rules/context-budget-hygiene.mdc` when deployed) and read `~/.config/agentbrew/metrics/latest.json` before trim work. Weekly cadence: `RECURRING.md` → `context-budget-weekly-audit`.
 
+## Agent time measurement
+
+agentbrew times every Claude Code tool call, so you can see which steps are slow and which slow steps repeat. The `perf-record` hooks (on by default, async, never blocking) append one row per call to `~/.local/state/agentbrew/perf/YYYY-MM.jsonl`. A row holds only a short step key such as `npm run verify` or `Edit:ts`, never a prompt, a full command, a path, or a secret.
+
+```bash
+node ~/.config/agentbrew/scripts/agent-perf.mjs report                 # this project, last 7 days
+node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 30 --json
+node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
+node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
+```
+
+Row schema, privacy rules, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
+
 ## Share config across a team
 
 Commit an `Agentfile.yaml` to a git repo; teammates clone it and symlink it as their global Agentfile.

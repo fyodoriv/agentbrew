@@ -142,6 +142,29 @@ describe("loadManifestFile", () => {
     );
     expect(() => loadManifestFile(path)).toThrow(/defaultEnabled must be a boolean/u);
   });
+
+  it("rejects a non-boolean async and accepts PostToolUseFailure", () => {
+    const root = tempRoot();
+    const path = join(root, "manifest.yaml");
+    writeManifest(
+      path,
+      `
+      version: 1
+      hooks:
+        - id: failure-hook
+          description: Failure hook
+          event: PostToolUseFailure
+          script: checks/failure.sh
+          tier: deterministic
+          verdict: warn
+          async: "yes"
+      `,
+    );
+
+    expect(() => loadManifestFile(path)).toThrow(/async must be a boolean/u);
+    writeFileSync(path, readFileSync(path, "utf-8").replace('async: "yes"', "async: true"));
+    expect(loadManifestFile(path)?.hooks[0]).toMatchObject({ event: "PostToolUseFailure", async: true });
+  });
 });
 
 describe("resolveManifest", () => {
@@ -336,6 +359,29 @@ describe("canonical hook manifest", () => {
     expect(bashHookIds).toHaveLength(18);
     expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
+  });
+
+  it("ships the perf-record hooks on by default, async, for Claude Code only", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
+      overlayPath: join(tempRoot(), "missing-overlay.yaml"),
+    });
+    const perf = resolvedManifest.hooks.filter((hook) => hook.script === "checks/perf-record.sh");
+
+    expect(perf.map((hook) => [hook.id, hook.event])).toEqual([
+      ["perf-record", "PostToolUse"],
+      ["perf-record-failure", "PostToolUseFailure"],
+      ["perf-record-turn", "UserPromptSubmit"],
+    ]);
+    for (const hook of perf) {
+      expect(hook).toMatchObject({ async: true, agents: ["claude-code"], verdict: "warn" });
+      expect(hook.defaultEnabled).toBeUndefined();
+      expect(managed.find((m) => m.command === `bash /tmp/deployed-hooks/${hook.id}.sh`)).toMatchObject({
+        event: hook.event,
+        async: true,
+        agents: ["claude-code"],
+      });
+    }
   });
 
   it("declares the verdict that each mutate or attribution script really emits", () => {

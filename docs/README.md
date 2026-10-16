@@ -23,6 +23,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`measure-context-budget.md`](measure-context-budget.md) | How do I measure how much context agentbrew adds to each session? | both |
+| [`agent-perf.md`](agent-perf.md) | Which agent steps take the longest? The perf log, its privacy rules, and `agent-perf.mjs`. | both |
 | [`learn-project.md`](learn-project.md) | How do I use the `learn-project` skill to study a codebase? | human |
 | [`testing-agent-artifacts.md`](testing-agent-artifacts.md) | How do I test skills, commands, hooks, and rules? | agent |
 | [`agent-guide-baseline.md`](agent-guide-baseline.md) | How do I write an `AGENTS.md` for any repo? The cross-repo contract. | both |

@@ -23,6 +23,7 @@ import { expandHome } from "../utils.js";
  * keep working; tsup copies it to `dist/scripts/` for the built CLI.
  */
 export const HELPER_SCRIPT_SOURCES: Readonly<Record<string, string>> = {
+  "agent-perf.mjs": join("templates", "scripts", "agent-perf.mjs"),
   "check-pr-vision-trace.mjs": join("scripts", "check-pr-vision-trace.mjs"),
   "competitor-spot-check.sh": join("templates", "scripts", "competitor-spot-check.sh"),
   "load-project-context.sh": join("templates", "scripts", "load-project-context.sh"),

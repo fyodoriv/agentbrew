@@ -36,6 +36,7 @@ import type { ManagedHook } from "../types.js";
 const VALID_EVENTS = new Set([
   "PreToolUse",
   "PostToolUse",
+  "PostToolUseFailure",
   "UserPromptSubmit",
   "Stop",
   "SubagentStop",
@@ -67,6 +68,8 @@ export interface ManifestHookEntry {
   agents?: string[];
   /** `false` makes the hook opt-in per machine via the overlay `enabled:` list. Omitted means on. */
   defaultEnabled?: boolean;
+  /** `true` lets Claude Code run the hook in the background; the tool call does not wait for it. */
+  async?: boolean;
 }
 
 interface ManifestFile {
@@ -186,8 +189,10 @@ function validateEntry(entry: Record<string, unknown>, path: string, index: numb
   validateOptionalString({ where, id, field: "matcher" }, entry.matcher);
   validateOptionalString({ where, id, field: "bypassEnvVar" }, entry.bypassEnvVar);
   validateOptionalStringArray({ where, id, field: "agents" }, entry.agents);
-  if (entry.defaultEnabled !== undefined && typeof entry.defaultEnabled !== "boolean") {
-    throw new Error(`${where} (${id}): defaultEnabled must be a boolean or omitted`);
+  for (const field of ["defaultEnabled", "async"] as const) {
+    if (entry[field] !== undefined && typeof entry[field] !== "boolean") {
+      throw new Error(`${where} (${id}): ${field} must be a boolean or omitted`);
+    }
   }
 }
 
@@ -263,7 +268,7 @@ export function resolveManifest(repoRoot: string, opts?: { overlayPath?: string 
  */
 export function manifestEntryToManagedHook(entry: ManifestHookEntry, deployScriptDir: string): ManagedHook {
   const deployedPath = join(deployScriptDir, `${entry.id}.sh`);
-  return {
+  const hook: ManagedHook = {
     event: entry.event,
     matcher: entry.matcher,
     type: "command",
@@ -273,6 +278,8 @@ export function manifestEntryToManagedHook(entry: ManifestHookEntry, deployScrip
     agents: entry.agents,
     source: "agentbrew-hooks-manifest",
   };
+  if (entry.async) hook.async = true;
+  return hook;
 }
 
 /**

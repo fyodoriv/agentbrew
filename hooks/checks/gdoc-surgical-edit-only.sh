@@ -14,7 +14,7 @@
 #
 # **What gets blocked**:
 #   - `update_doc` with a `body` field containing the FULL document text
-#   - `batchUpdate` with a single `replaceAllText` that targets the entire doc
+#   - `batchUpdate` with a `replaceAllText` whose search text is empty
 #   - `update_doc` with `replaceMode: full` / `mode: replace`
 #
 # **What does NOT get blocked**:
@@ -82,8 +82,11 @@ if [ "$PAYLOAD_SIZE" -gt "$MAX_PAYLOAD_BYTES" ] && [ -n "$HAS_BODY" ]; then
   verdict_block "$HOOK_ID" "GDoc Surgical-Edit-Only (ABSOLUTE): tool $HOOK_TOOL_NAME has a payload of ${PAYLOAD_SIZE} bytes with a body field — likely wholesale-replace. Surgical ops (replaceText, insertText) should be <8KB each. Split into multiple targeted batchUpdate requests. Bypass: HOOK_BYPASS_GDOC_SURGICAL_EDIT_ONLY=1."
 fi
 
-# Detect replaceAllText with empty match pattern (matches everything)
-if grep -qE 'replaceAllText.*containsText[^"]*""' <<<"$INPUT"; then
+# Detect replaceAllText with an empty search string (matches everything).
+# The Docs API shape is containsText: {text, matchCase}; a bare string is
+# accepted too.
+EMPTY_REPLACE_ALL=$(printf '%s' "$INPUT" | jq -r '[.tool_input | .. | objects | .replaceAllText? | objects | .containsText | if type == "object" then .text else . end | select(. == "")] | length > 0' 2>/dev/null || echo false)
+if [ "$EMPTY_REPLACE_ALL" = "true" ]; then
   verdict_block "$HOOK_ID" "GDoc Surgical-Edit-Only (ABSOLUTE): replaceAllText with empty match pattern targets the entire doc. Use a specific search string. Bypass: HOOK_BYPASS_GDOC_SURGICAL_EDIT_ONLY=1."
 fi
 

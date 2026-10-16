@@ -54,25 +54,10 @@ resolve_base_ref() {
   fi
 }
 
+# The PR body (a readable --body-file, else the inline --body), or the whole
+# command when the body cannot be parsed out of it.
 pr_body_text() {
-  local file
-  file="$(printf '%s' "$COMMAND" | sed -nE "s/.*--body-file(=|[[:space:]]+)\"([^\"]*)\".*/\2/p" | head -1)"
-  if [ -z "$file" ]; then
-    file="$(printf '%s' "$COMMAND" | sed -nE "s/.*--body-file(=|[[:space:]]+)'([^']*)'.*/\2/p" | head -1)"
-  fi
-  if [ -z "$file" ]; then
-    file="$(printf '%s' "$COMMAND" | sed -nE "s/.*--body-file(=|[[:space:]]+)([^[:space:]]+).*/\2/p" | head -1)"
-  fi
-  if [ -n "$file" ] && [ "$file" != "-" ]; then
-    if [ "${file#/}" = "$file" ]; then
-      file="$REPO_DIR/$file"
-    fi
-    if [ -f "$file" ]; then
-      cat "$file"
-      return 0
-    fi
-  fi
-  printf '%s' "$COMMAND"
+  gh_pr_body_text "$COMMAND" "$REPO_DIR" || printf '%s' "$COMMAND"
 }
 
 inventory_high_risk_paths() {

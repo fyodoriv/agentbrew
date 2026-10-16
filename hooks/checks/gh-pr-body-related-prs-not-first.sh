@@ -45,10 +45,15 @@ if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
+REPO_DIR="$(json_get "$INPUT" '.cwd')"
+if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR" ]; then
+  REPO_DIR="$(pwd -P)"
+fi
+
 BODY=""
-if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
+if ! BODY="$(gh_pr_body_or_file "$COMMAND" "$REPO_DIR")"; then
   if grep -qE -e '--body-file' <<<"$COMMAND"; then
-    verdict_bypass "$HOOK_ID" "--body-file used (not scanned inline)"
+    verdict_bypass "$HOOK_ID" "--body-file not readable"
   fi
   verdict_bypass "$HOOK_ID" "no --body arg detected"
 fi

@@ -66,14 +66,18 @@ if ! gh_in_command_position "$COMMAND" 'pr[[:space:]]+(create|edit)'; then
   verdict_bypass "$HOOK_ID" "not gh pr create/edit"
 fi
 
-# Extract the --body argument (a heredoc body falls back to the whole
-# command). --body-file is skipped: the file-based version typically has
-# structure.
+REPO_DIR="$(json_get "$INPUT" '.cwd')"
+if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR" ]; then
+  REPO_DIR="$(pwd -P)"
+fi
+
+# Read the body from a readable --body-file, else the --body argument (a
+# heredoc body falls back to the whole command).
 BODY=""
-if ! BODY="$(gh_pr_body_from_command "$COMMAND")"; then
-  # --body-file — assume the file has structure; skip the check
+if ! BODY="$(gh_pr_body_or_file "$COMMAND" "$REPO_DIR")"; then
+  # An unreadable --body-file (for example `-`, stdin) cannot be checked.
   if grep -qE '\-\-body-file\b' <<<"$COMMAND"; then
-    verdict_bypass "$HOOK_ID" "--body-file used (trusted to have structure)"
+    verdict_bypass "$HOOK_ID" "--body-file not readable"
   fi
   # No --body at all — let gh handle (it'll prompt). Don't block here.
   verdict_bypass "$HOOK_ID" "no --body arg detected"

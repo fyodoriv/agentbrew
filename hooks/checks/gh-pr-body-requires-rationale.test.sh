@@ -63,11 +63,11 @@ TEST5_EXIT=$(echo "$TEST5_INPUT" | bash "$SCRIPT" 2>/dev/null; echo $?)
 TEST5_EXIT=$(echo "$TEST5_EXIT" | tail -1)
 assert_exit_code "Test 5 (fixed != fixes)" 2 "$TEST5_EXIT"
 
-# Test 6: --body-file is trusted (the file is assumed to have structure) → bypass
-TEST6_INPUT='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file /tmp/pr-body.md"}}'
+# Test 6: an unreadable --body-file cannot be checked → bypass
+TEST6_INPUT='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file /nonexistent/agentbrew-pr-body.md"}}'
 TEST6_EXIT=$(echo "$TEST6_INPUT" | bash "$SCRIPT" 2>/dev/null; echo $?)
 TEST6_EXIT=$(echo "$TEST6_EXIT" | tail -1)
-assert_exit_code "Test 6 (--body-file bypasses)" 0 "$TEST6_EXIT"
+assert_exit_code "Test 6 (unreadable --body-file bypasses)" 0 "$TEST6_EXIT"
 
 # Test 7: not gh pr create/edit (gh pr view) → bypass
 TEST7_INPUT='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr view 123"}}'
@@ -108,6 +108,21 @@ assert_exit_code "cd && GH_HOST=... gh pr create still blocks" 2 "$(cp_exit "cd 
 # A heredoc body spans many lines; the shared parser still reads it.
 CP_HEREDOC=$'gh pr create --title "x" --body "$(cat <<\'EOF\'\nship it\nEOF\n)"'
 assert_exit_code "heredoc body without rationale blocks" 2 "$(cp_exit "$CP_HEREDOC")"
+
+# A readable --body-file is read through the shared parser, quoted or not.
+BODY_FILE="$(mktemp)"
+printf 'ship it\n' >"$BODY_FILE"
+assert_exit_code "quoted --body-file without rationale blocks" 2 "$(cp_exit "gh pr create --title x --body-file \"$BODY_FILE\"")"
+assert_exit_code "unquoted --body-file without rationale blocks" 2 "$(cp_exit "gh pr create --title x --body-file $BODY_FILE")"
+printf '## Summary\nThis fixes the retry loop.\n' >"$BODY_FILE"
+assert_exit_code "quoted --body-file with rationale passes" 0 "$(cp_exit "gh pr create --title x --body-file '$BODY_FILE'")"
+assert_exit_code "--body-file= with rationale passes" 0 "$(cp_exit "gh pr create --title x --body-file=$BODY_FILE")"
+rm -f "$BODY_FILE"
+
+# A multi-line --body with a rationale passes; no body at all bypasses.
+CP_HEREDOC_OK=$'gh pr create --title "x" --body "$(cat <<\'EOF\'\n## Summary\nThis fixes the retry loop.\nEOF\n)"'
+assert_exit_code "heredoc body with rationale passes" 0 "$(cp_exit "$CP_HEREDOC_OK")"
+assert_exit_code "missing body bypasses" 0 "$(cp_exit "gh pr create --title x --fill")"
 
 echo ""
 echo "gh-pr-body-requires-rationale.sh: $PASS passed, $FAIL failed"

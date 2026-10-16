@@ -388,14 +388,6 @@
   - **Files**: src/catalog.yaml, CHANGELOG.md, src/catalog/catalog.test.ts
   - **Acceptance**: Remaining high-demand gstack skills have catalog entries with disambiguation text; `npm run verify` passes.
 
-- [ ] Every `gh-pr-*` hook reads PR bodies through one shared parser
-  - **ID**: extract-pr-hook-body-parser
-  - **Tags**: scout, hooks, shell, maintainability
-  - **Details**: `hooks/lib/gh-pr-body-from-command.sh` already joins multi-line `--body` values, but only `gh-pr-body-related-prs-not-first.sh` uses it. `gh-pr-skill-requires-evals.sh` and `gh-pr-agent-artifacts-require-tests.sh` each copy a `--body-file` sed, and `gh-pr-body-requires-rationale.sh` reads `--body` line by line, so a multi-line body bypasses it. Add `--body-file` support to the shared helper and source it from all four hooks. Merges `gh-pr-body-rationale-multiline-extraction` (2026-10-15 review).
-  - **Files**: `hooks/lib/gh-pr-body-from-command.sh`, `hooks/checks/gh-pr-skill-requires-evals.sh`, `hooks/checks/gh-pr-agent-artifacts-require-tests.sh`, `hooks/checks/gh-pr-body-requires-rationale.sh`, their `.test.sh` fixtures
-  - **Acceptance**: all four hooks source the helper; fixtures cover quoted and unquoted `--body-file`, a multi-line `--body` with and without a rationale, and a missing body.
-  - **Output**: code
-
 - [ ] Unify `agentbrew setup opencode --model` with the Agentfile `defaultModel` surface
   - **ID**: unify-opencode-bootstrap-model-with-default-model
   - **Tags**: scout, models, opencode, api-surface
@@ -418,13 +410,6 @@
   - **Details**: `ask-human-mcp` 0.1.0 and 0.1.1 currently fail before MCP initialize in stdio mode with `RuntimeError: Already running asyncio in this thread` from `FastMCP.run()` / `anyio.run()` under the package's `asyncio.run(async_main())` launcher. The catalog entry was demoted from `recommended: true` to `recommended: false` while adding deep-smoke metadata, because `agentbrew mcp probe --deep` must not install/probe a known-broken recommended MCP. Re-check upstream issue Masony817/ask-human-mcp#3, test any new release with an initialize + `list_pending_questions` smoke call, then either restore `recommended: true` or replace the entry with a maintained human-in-the-loop MCP.
   - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`
   - **Acceptance**: A direct stdio probe of the chosen ask-human MCP returns `status: "ok"` with `deepTool: "list_pending_questions"` or equivalent; the catalog entry is recommended only if the live smoke passes on a clean install.
-
-- [ ] Remove dead `replaceAllText` empty-match branch in `gdoc-surgical-edit-only.sh`
-  - **ID**: gdoc-surgical-dead-replacealltext-branch
-  - **Tags**: scout, hooks, dead-code, gdoc
-  - **Details**: The block branch matching `replaceAllText.*containsText[^"]*""` can never fire on well-formed JSON — the closing `"` after the `containsText` key immediately ends the `[^"]*` class before it can reach `""`. Verified empirically while writing the fixture (the hook's reachable block paths are `mode:full`, `replaceMode:replace`, and the >8 KB body size guard). Either fix the regex to detect a genuinely-empty `containsText` value or delete the dead branch and document the real coverage.
-  - **Files**: `hooks/checks/gdoc-surgical-edit-only.sh`, `hooks/checks/gdoc-surgical-edit-only.test.sh`
-  - **Acceptance**: every block branch in the script is reachable and covered by a fixture case; no dead regex remains.
 
 - [ ] Re-evaluate source-manifest bootstrap glue for relocation to upstream skills CLI or overlay-owned scripts
   - **ID**: replace-relocate-source-manifest-bootstrap

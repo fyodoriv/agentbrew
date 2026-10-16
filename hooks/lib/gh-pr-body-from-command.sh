@@ -35,6 +35,44 @@ gh_pr_body_from_command() {
   printf '%s' "$body" | sed 's/\\n/\n/g'
 }
 
+# gh_pr_body_file COMMAND REPO_DIR
+# Prints the path of a readable --body-file (quoted or unquoted, with `=` or a
+# space). A relative path resolves against REPO_DIR. Fails when there is no
+# --body-file, it is `-` (stdin), or the file cannot be read.
+gh_pr_body_file() {
+  local command="$1"
+  local repo_dir="$2"
+  local file
+  file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)\"([^\"]*)\".*/\2/p" | head -1)"
+  if [ -z "$file" ]; then
+    file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)'([^']*)'.*/\2/p" | head -1)"
+  fi
+  if [ -z "$file" ]; then
+    file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)([^[:space:]]+).*/\2/p" | head -1)"
+  fi
+  if [ -z "$file" ] || [ "$file" = "-" ]; then
+    return 1
+  fi
+  if [ "${file#/}" = "$file" ]; then
+    file="$repo_dir/$file"
+  fi
+  [ -f "$file" ] && [ -r "$file" ] || return 1
+  printf '%s' "$file"
+}
+
+# gh_pr_body_or_file COMMAND REPO_DIR
+# Prints the PR body for checks that read it line by line: a readable
+# --body-file, else gh_pr_body_from_command (inline --body with \n expanded,
+# or the whole command for a multi-line --body). Fails when neither exists.
+gh_pr_body_or_file() {
+  local file
+  if file="$(gh_pr_body_file "$1" "$2")"; then
+    cat "$file"
+    return 0
+  fi
+  gh_pr_body_from_command "$1"
+}
+
 # gh_pr_body_text COMMAND REPO_DIR
 # Prints the PR body: a readable --body-file (relative paths resolve against
 # REPO_DIR), else the inline --body, else (for a multi-line --body such as a
@@ -43,21 +81,9 @@ gh_pr_body_text() {
   local command="$1"
   local repo_dir="$2"
   local file body=""
-  file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)\"([^\"]*)\".*/\2/p" | head -1)"
-  if [ -z "$file" ]; then
-    file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)'([^']*)'.*/\2/p" | head -1)"
-  fi
-  if [ -z "$file" ]; then
-    file="$(printf '%s' "$command" | sed -nE "s/.*--body-file(=|[[:space:]]+)([^[:space:]]+).*/\2/p" | head -1)"
-  fi
-  if [ -n "$file" ] && [ "$file" != "-" ]; then
-    if [ "${file#/}" = "$file" ]; then
-      file="$repo_dir/$file"
-    fi
-    if [ -f "$file" ]; then
-      cat "$file"
-      return 0
-    fi
+  if file="$(gh_pr_body_file "$command" "$repo_dir")"; then
+    cat "$file"
+    return 0
   fi
 
   body=$(printf '%s' "$command" | sed -nE "s/.*--body[[:space:]]+\"([^\"]*)\".*/\1/p" | head -1)

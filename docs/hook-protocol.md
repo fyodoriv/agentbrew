@@ -113,8 +113,12 @@ Hooks that check `gh pr` commands use `hooks/lib/gh-pr-body-from-command.sh`.
 `gh_in_command_position` matches `gh pr create` only where a command starts
 (line start, after `;`, `&`, `|`, `(`, or `$(`, with optional `VAR=value`
 prefixes). An `echo` or a Python string that mentions `gh pr create` does not
-match. `gh_pr_body_from_command` and `gh_pr_body_text` read the body; for a
-multi-line `--body` such as a heredoc they return the whole command.
+match. Every `gh-pr-*` hook reads the body through this file; do not copy a
+`--body-file` parser into a hook. `gh_pr_body_file` finds a readable
+`--body-file` (quoted, unquoted, or `=`). `gh_pr_body_or_file` returns that
+file, else the inline `--body` with `\n` expanded. `gh_pr_body_text` returns
+the file, else the raw inline body. For a multi-line `--body` such as a heredoc,
+both return the whole command.
 
 ## Verdict contract
 

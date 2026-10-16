@@ -6,8 +6,9 @@
 # (assumes you're in agentbrew/hooks/checks/).
 #
 # The hook fires on google-drive MCP write/update tools and blocks (exit 2)
-# wholesale-replace edits: replaceMode/mode of full|replace, or a >8KB
-# tool_input that carries a `body` field. Surgical edits (small localized
+# wholesale-replace edits: replaceMode/mode of full|replace, a >8KB
+# tool_input that carries a `body` field, or a replaceAllText request with an
+# empty search string. Surgical edits (small localized
 # batchUpdate/replaceText) and non-write tools are allowed (exit 0).
 
 set -uo pipefail
@@ -71,6 +72,24 @@ TEST7_INPUT='{"hook_event_name":"PreToolUse","tool_name":"mcp__google-drive-mcp_
 TEST7_EXIT=$(HOOK_BYPASS_GDOC_SURGICAL_EDIT_ONLY=1 bash -c "echo '$TEST7_INPUT' | bash '$SCRIPT' 2>/dev/null; echo \$?")
 TEST7_EXIT=$(echo "$TEST7_EXIT" | tail -1)
 assert_exit_code "Test 7 (HOOK_BYPASS env var allows)" 0 "$TEST7_EXIT"
+
+# Test 8: replaceAllText with an empty containsText.text → block (exit 2)
+TEST8_INPUT='{"hook_event_name":"PreToolUse","tool_name":"mcp__google-drive-mcp__batchUpdate","tool_input":{"requests":[{"replaceAllText":{"containsText":{"text":"","matchCase":false},"replaceText":"x"}}]}}'
+TEST8_EXIT=$(echo "$TEST8_INPUT" | bash "$SCRIPT" 2>/dev/null; echo $?)
+TEST8_EXIT=$(echo "$TEST8_EXIT" | tail -1)
+assert_exit_code "Test 8 (replaceAllText empty match blocked)" 2 "$TEST8_EXIT"
+
+# Test 9: replaceAllText with a real search string → allow (exit 0)
+TEST9_INPUT='{"hook_event_name":"PreToolUse","tool_name":"mcp__google-drive-mcp__batchUpdate","tool_input":{"requests":[{"replaceAllText":{"containsText":{"text":"old name","matchCase":true},"replaceText":"new name"}}]}}'
+TEST9_EXIT=$(echo "$TEST9_INPUT" | bash "$SCRIPT" 2>/dev/null; echo $?)
+TEST9_EXIT=$(echo "$TEST9_EXIT" | tail -1)
+assert_exit_code "Test 9 (replaceAllText with a search string allowed)" 0 "$TEST9_EXIT"
+
+# Test 10: replaceAllText with a bare empty containsText string → block (exit 2)
+TEST10_INPUT='{"hook_event_name":"PreToolUse","tool_name":"mcp__google-drive-mcp__batchUpdate","tool_input":{"requests":[{"replaceAllText":{"containsText":"","replaceText":"x"}}]}}'
+TEST10_EXIT=$(echo "$TEST10_INPUT" | bash "$SCRIPT" 2>/dev/null; echo $?)
+TEST10_EXIT=$(echo "$TEST10_EXIT" | tail -1)
+assert_exit_code "Test 10 (replaceAllText bare empty string blocked)" 2 "$TEST10_EXIT"
 
 # Report
 echo ""

@@ -7,7 +7,7 @@ description: >
   Never writes test code (use TDD via `tdd` skill for that). Use when
   called by `companion-researcher` or when the user asks "find test
   gaps", "what's untested", or "test coverage holes". Don't use to write
-  tests (use `tdd`) or audit a single PR (use `review`).
+  tests (use `test-driven-development`) or audit a single PR (use `requesting-code-review`).
 argument-hint: "[--repo path] [--worker-active-file /tmp/companion-worker-active-<repo-slug>.txt] [--max-files 20]"
 triggers:
   - user

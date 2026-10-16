@@ -10,7 +10,7 @@ description: >
   when the strategic picture has shifted (new competitor, user-count change,
   ecosystem consolidation). Don't use for code-level bugs (use project-audit),
   one-shot strategic analysis with no durable output (use strategic-review),
-  or single-feature breakdown (use plan).
+  or single-feature breakdown (use writing-plans).
 ---
 
 ## Role

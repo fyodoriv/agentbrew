@@ -6,7 +6,7 @@ description: >
   outputs a report and offers remediation suggestions only after user approval.
   Use when artifacts exist but their consistency is in doubt. Don't use for
   resolving ambiguities by asking the user (use clarify), creating any of the
-  artifacts (use plan or spec), or reviewing code diffs (use review).
+  artifacts (use writing-plans or spec-driven-development), or reviewing code diffs (use requesting-code-review).
 ---
 
 # Analyze

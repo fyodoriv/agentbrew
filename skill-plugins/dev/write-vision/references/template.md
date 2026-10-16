@@ -15,8 +15,8 @@ reappears the day the user base grows past one — name that threshold.
 |---|---|
 | Produces durable `docs/VISION.md` | One-time analysis document (use `strategic-review`) |
 | Articulates per-competitor delegate/contribute/absorb verdicts | Code-level task generation (use `project-audit`) |
-| Defines the permanent scope and the triggers that shrink it | Single-feature breakdown (use `plan`) |
-| Works for new projects AND existing ones whose strategy shifted | PR-level review (use `review`) |
+| Defines the permanent scope and the triggers that shrink it | Single-feature breakdown (use `writing-plans`) |
+| Works for new projects AND existing ones whose strategy shifted | PR-level review (use `requesting-code-review`) |
 | Forces the 80%+ overlap test on every competitor | Pure architectural review of an in-house codebase |
 
 ## Phase 0 — Project identity

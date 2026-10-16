@@ -7,7 +7,7 @@ description: >
   not a queue. Run this in one session while another session implements tasks.
   Use when asked to "sweep", "find work", "audit", "full sweep", or "what needs
   fixing". Don't use for implementing fixes (just pick tasks from TASKS.md) or
-  reviewing a specific PR (use review).
+  reviewing a specific PR (use requesting-code-review).
 argument-hint: "[focus: stability | testing | docs | deps | dx | perf | vision | all]"
 triggers:
   - user

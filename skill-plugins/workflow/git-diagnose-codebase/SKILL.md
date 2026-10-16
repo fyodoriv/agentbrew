@@ -5,7 +5,7 @@ description: >
   five `git log` commands (churn, bus factor, bug clusters, velocity, firefighting), then
   cross-references the top-churn list with the bug-keyword list to surface the highest-risk
   files first. Use at the start of any audit, sweep, strategic review, or onboarding session.
-  Don't use for code review (use `review`), implementing fixes (use `plan`), or visual UX audit
+  Don't use for code review (use `requesting-code-review`), implementing fixes (use `writing-plans`), or visual UX audit
   (use `design-review`).
 ---
 
@@ -17,7 +17,7 @@ description: >
 
 ## When NOT to use this skill
 
-- **You're reviewing one PR** — use `review`. The single-PR diff is the right surface; history is noise.
+- **You're reviewing one PR** — use `requesting-code-review`. The single-PR diff is the right surface; history is noise.
 - **You already know the file** — go read it. Don't run the diagnostic for a one-line change.
 - **You're tied to a flaky test or a specific exception** — use `debug`. History is the wrong tool for "why does THIS test fail right now?".
 - **The repo has < 50 commits** — the signal floor is too high. Just read the code.

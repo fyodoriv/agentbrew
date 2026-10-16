@@ -7,7 +7,7 @@ description: >
   Use when asked "should we pivot?", "what architecture changes are needed?", "strategic review",
   "is this the right direction?", or "what's the big picture?". Works in any repo.
   Don't use for finding code-level bugs or tasks (use project-audit), implementing changes
-  (use writing-plans), or reviewing a specific PR (use review).
+  (use writing-plans), or reviewing a specific PR (use requesting-code-review).
 ---
 
 ## Role

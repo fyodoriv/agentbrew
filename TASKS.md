@@ -234,17 +234,17 @@
   - **Pivot**: if full sync skips hooks by design, document `--only hooks` in the README sync section instead.
   - **Anchor**: run-goal goal run 2026-10-15; Basili et al. 1994 (GQM).
 
-- [ ] Workflow skills route single-PR review to a skill that exists
-  - **ID**: skills-route-review-to-existing-skill
+- [ ] Workflow skills route only to skills that exist
+  - **ID**: skills-route-dangling-skill-names
   - **Tags**: skills, routing, docs
-  - **Details**: These skill files say "use review" or `review` for single-PR review: `skill-plugins/workflow/project-audit/SKILL.md:8,17,37`, `skill-plugins/workflow/strategic-review/SKILL.md:10`, `skill-plugins/workflow/sweep/SKILL.md:10`, plus `analyze`, `companion-test-gaps`, `git-diagnose-codebase`, and `skill-plugins/dev/write-vision/references/template.md`. No `review` skill exists under `skill-plugins/`, and the catalog has only `requesting-code-review` (`src/catalog.yaml:433`). Agents get routed to nothing.
-  - **Files**: `skill-plugins/workflow/*/SKILL.md`, `skill-plugins/dev/write-vision/references/template.md`
+  - **Details**: `src/skills/skill-routing-refs.test.ts` checks every `(use <skill>)` routing hint under `skill-plugins/`. Some targets still resolve to no skill and sit in its `KNOWN_DANGLING` allowlist: `clarify`, `design-review`, `doc-check`, `pipeline-ops`, `readme-audit`, `refactor`, `rfc-iterate`, `rfc-review`, `taste`. They come from `analyze`, `companion-docs-sync`, `companion-researcher`, `git-diagnose-codebase`, `grind-report`, `markdown-for-gdoc`, and `rfc`. For each, point the hint at a real skill, add the skill to the catalog, or drop the hint.
+  - **Files**: `skill-plugins/workflow/*/SKILL.md`, `src/skills/skill-routing-refs.test.ts`
   - **Output**: code
-  - **Acceptance**: every skill reference to a sibling skill resolves to a skill in `skill-plugins/` or `src/catalog.yaml`; a test fails on an unknown `use <skill>` target.
-  - **Hypothesis**: pointing the routing lines at a real skill and adding a resolver test brings dangling skill references to zero and keeps them there.
-  - **Measurement**: `rg -l '\(use review\)|use \x60review\x60|\(\x60review\x60\)' skill-plugins | wc -l` (now 7), plus the new test.
-  - **Success**: the count is 0 and the resolver test passes.
-  - **Pivot**: if many dangling names show up, file one cleanup task per plugin and land only the test with an allowlist.
+  - **Acceptance**: `KNOWN_DANGLING` is empty and `npx vitest run src/skills/skill-routing-refs.test.ts` passes.
+  - **Hypothesis**: routing hints that name a missing skill drop to 0, so agents are never routed to nothing.
+  - **Measurement**: the size of `KNOWN_DANGLING` in `src/skills/skill-routing-refs.test.ts`.
+  - **Success**: 0.
+  - **Pivot**: if a name has no real home, delete the hint rather than invent a skill.
   - **Anchor**: Agent Skills routing guidance ("Don't use for…" fields); Basili et al. 1994 (GQM).
 
 ## P3

@@ -5,7 +5,7 @@ description: >
   modernization, and documentation drift. Produces actionable tasks in TASKS.md.
   Auto-detects repo tooling and adapts to any language/framework. Use when asked to "find work",
   "audit the project", "what should we improve", or "look for tasks". Works in any repo.
-  Don't use for implementing fixes (use writing-plans), reviewing a specific PR (use review),
+  Don't use for implementing fixes (use writing-plans), reviewing a specific PR (use requesting-code-review),
   or evaluating architecture direction and strategic fit (use strategic-review).
 ---
 
@@ -14,7 +14,7 @@ description: >
 **Yes:** find work / audit the project / what should we improve; whole-repo sweeps across
 no-brainer, stability, dependency, and documentation lenses unless scope is narrowed.
 
-**No:** implementing fixes (`writing-plans`); reviewing a single PR (`review`); strategic
+**No:** implementing fixes (`writing-plans`); reviewing a single PR (`requesting-code-review`); strategic
 direction / pivot analysis (`strategic-review`); visual-only multi-page design audit
 (`design-review` as the UI portion only when combined).
 
@@ -34,7 +34,7 @@ You are a **Distinguished Staff Engineer** performing a comprehensive project au
 
 ## Scope
 
-This skill audits **code quality and correctness across the whole repo** — bugs, dead code, missing error handling, stale docs, outdated deps. It stops at the code level. It does not evaluate whether the architecture is the right fit, whether the project should pivot, or produce strategic recommendations. For that, use `strategic-review`. For a single PR diff, use `review`.
+This skill audits **code quality and correctness across the whole repo** — bugs, dead code, missing error handling, stale docs, outdated deps. It stops at the code level. It does not evaluate whether the architecture is the right fit, whether the project should pivot, or produce strategic recommendations. For that, use `strategic-review`. For a single PR diff, use `requesting-code-review`.
 
 | This skill | Not this skill |
 |---|---|

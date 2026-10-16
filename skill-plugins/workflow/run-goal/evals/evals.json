@@ -220,6 +220,18 @@
         "Prints a Goal check line with evidence for each done-criterion",
         "Ends with the final report, including What went wrong and Skills updated"
       ]
+    },
+    {
+      "id": 20,
+      "prompt": "/goal prepare my two tooling repos to be used on someone else's machine: stable, nothing unnecessary enforced, metrics on their machine, and a way to open PRs back from there",
+      "expected_output": "A goal contract with a measurable baseline (count of owner-specific items a new user gets), one question round where every question explains its terms and options in plain words, and a mid-goal user request added to the contract as a new done-criterion.",
+      "expectations": [
+        "Takes a baseline before any edit, such as owner paths found in a rendered new-user home",
+        "Each question in the round explains the thing it asks about and what each option changes for the user",
+        "Does not ask about an internal name (a hook id, a flag) without saying what it is",
+        "When the user adds a request in an answer, adds it to the contract file as a done-criterion and delivers it in the same run",
+        "Keeps the owner's own machine behaviour unchanged and proves it with evidence"
+      ]
     }
   ]
 }

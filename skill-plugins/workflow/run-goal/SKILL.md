@@ -126,6 +126,11 @@ whether an action is allowed. Never ask about something that the code, the
 docs, memory, or a quick experiment can answer.
 
 - One round only, three questions at most. Put your recommended option first.
+- Give each question its full context. Say what the thing is in plain
+  words, what each option does, and what changes for the user. Never ask
+  about a hook, flag, file, or internal name without explaining it first:
+  the user may not know it, and "I'm not sure what this is" wastes the one
+  round.
 - Prefer the structured question tool when it exists (`AskUserQuestion` in
   Claude Code).
 - Someone is at the keyboard when the structured question tool exists and

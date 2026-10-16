@@ -244,6 +244,18 @@
         "Runs one real end-to-end install in a temporary HOME from the published branch, without touching the user's real login session",
         "Files each finding as a task with its id cited in the final report"
       ]
+    },
+    {
+      "id": 22,
+      "prompt": "/goal find a way to e2e test the installers and keep them tested with future changes in a performant way",
+      "expected_output": "A contract whose metric counts real (unstubbed) components the e2e exercises plus time budgets, an e2e that runs the real tools in a throwaway HOME with OS-changing tools both shimmed and blocked, real bugs found by the e2e fixed with the fix proven by the e2e, and a path trigger so unrelated changes add zero gate time.",
+      "expectations": [
+        "Takes a baseline count of real components already under automated e2e (zero when only stubs exist)",
+        "Isolates the real machine with two layers (shims plus an OS sandbox), and proves an escape fails instead of changing the machine",
+        "Treats each e2e failure as a possible product bug, fixes the product, and re-runs the e2e as proof",
+        "Measures the e2e time and cuts it (build once, run cases in parallel) before wiring it into a gate",
+        "Wires a path trigger into the existing gates and shows an unrelated diff skipping it"
+      ]
     }
   ]
 }

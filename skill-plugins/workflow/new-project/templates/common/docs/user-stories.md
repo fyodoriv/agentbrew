@@ -1,7 +1,9 @@
 # User stories
 
 Each story is something a user can do end to end. Each one names its metric
-and has an e2e test per case in `tests/e2e/`: happy, error, and loading or slow
+(an outcome rate a user feels, such as the share of failed `pick` events in
+`.metrics/events.jsonl`; a count of passing tests is only a guard) and has an
+e2e test per case in `tests/e2e/`, and each test file names its story id: happy, error, and loading or slow
 only where a user waits (a CLI usually has no loading state),
 named after the story id. `scripts/check-docs.sh` fails when this file and
 `tests/e2e/` drift apart. A change to what the user does or sees updates its
@@ -20,7 +22,7 @@ story and its tests in the same commit.
 ## US-02: FILL: the first real user story
 
 - **As** FILL: the user, **I want** FILL: the action, **so that** FILL: the outcome.
-- **Metric**: FILL: the number that shows it works. **Target**: FILL.
+- **Metric**: FILL: an outcome rate users feel (for example the share of `ok:false` events for this story). **Target**: FILL.
 
 | Case | Test | Log event |
 |---|---|---|

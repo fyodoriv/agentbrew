@@ -20,21 +20,21 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | Area | What the repo gets |
 |---|---|
 | vision | `docs/VISION.md`: problem, success metric, non-goals, dated kill criteria, prior art |
-| metrics | metrics table with goal, pivot, and command; `scripts/metrics.sh` |
-| observability | content-free JSONL events, errors captured locally and mapped to stories (an external reporter is optional, only where privacy allows), `scripts/doctor.sh` |
-| user-stories | each story names its metric and its e2e test per case |
-| setup | `scripts/setup.sh`: one idempotent command, first in the README; prompts only when the OS requires them |
+| metrics | metrics table with goal, pivot, and command (the exact query, pinned); `scripts/metrics.sh`; missing data, or a source that answers 0 for something that does not exist, shows `(stub)` |
+| observability | content-free JSONL events (string fields allow-listed, so free text cannot leak), errors captured locally and mapped to stories (an external reporter is optional, only where privacy allows), tests turn the log off; `scripts/doctor.sh` with a fix on every failing line |
+| user-stories | each story names an outcome metric (a rate users feel, not a count of passing tests) and its e2e test per case; each e2e file names its story ID |
+| setup | `scripts/setup.sh`: one idempotent command, first in the README, ending with the doctor; prompts only when the OS requires them; an optional step (git hooks) warns instead of failing |
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
 | self-improving | timed gate steps in `.metrics/`, a speed review (weekly by default, monthly for quiet repos; it may live in the repo's checkup), `docs/learnings.md` |
 | tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
 | checkup | `scripts/checkup.sh`: one repo-wide checkup (health, cached gate, broken stories, speed, P0s, monthly audit) |
-| caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), any change re-runs, `NO_CACHE=1` forces all |
+| caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), every file a step reads is in its key, any change re-runs (prove it by editing one file), `NO_CACHE=1` forces all |
 
 ## Profiles
 
 | Profile | For | Adds to the common setup |
 |---|---|---|
-| `tool` | CLIs, libraries, dev tools, web apps | `CHANGELOG.md`, `LICENSE`, CLI rules, `cli-design` skill |
+| `tool` | CLIs, libraries, dev tools, web apps | `CHANGELOG.md` generated from conventional commits at each release (never hand-edited), `LICENSE`, CLI rules, `cli-design` skill |
 | `assistant` | a personal AI helper run by a coding agent | `skills/`, `prompts/`, `knowledge/`, `evals/`, `config/models.yaml`, `profile/`, `memory/`, `docs/privacy.md`, ignored `private/` |
 | `side-project` | a private hobby project | `docs/privacy.md`, ignored `private/`, kill criteria used at each milestone |
 

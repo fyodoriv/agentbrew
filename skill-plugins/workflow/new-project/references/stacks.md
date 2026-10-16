@@ -55,6 +55,21 @@ one step is slow, add finer caching for it:
 Keep one rule: a cache may skip work only when every input it depends on is in
 its key. When in doubt, run with `NO_CACHE=1` and compare.
 
+Turborepo in an npm workspace (proven in tasks.md, 2026-10-16: full gate 78 s,
+all-cached 4.2 s):
+
+- Pin `turbo` exactly; set `"dangerouslyDisablePackageManagerCheck": true`
+  when you do not pin npm, and `TURBO_TELEMETRY_DISABLED=1` in the gate.
+- Root scripts (lint, e2e) become root tasks (`//#lint`) with explicit
+  `inputs` and `dependsOn` on the package builds they use.
+- A package test that reads a root file (`.github/`, `scripts/`, shared
+  fixtures) lists it with `$TURBO_ROOT$/…` in that task's `inputs`, or a
+  change there will not re-run it.
+- Give a root input only to the package task that needs it; a shared `build`
+  input invalidates every package.
+- Prove the inputs: `echo >> <file>; npx turbo run <tasks> --dry=json` and list
+  the tasks that miss; restore the file.
+
 ## Wire the gate
 
 `scripts/check.sh` runs, when present:

@@ -106,6 +106,20 @@ describe("new-project skill", () => {
     expect(run("e2e.sh")).toContain("e2e: 1 file(s) passed");
   });
 
+  it("fails check-docs when a story test does not name its story id", () => {
+    const dir = join(scratch, "story-id");
+    scaffoldInto(dir, "tool", "none");
+    const test = join(dir, "tests", "e2e", "us-01-setup.sh");
+    writeFileSync(test, readFileSync(test, "utf-8").replaceAll("US-01", "story one"));
+    const result = spawnSync("/bin/bash", [join(dir, "scripts", "check-docs.sh")], {
+      cwd: dir,
+      encoding: "utf-8",
+      env,
+    });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("does not name its story US-01");
+  });
+
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {
     const dir = join(scratch, "mapped");
     scaffoldInto(dir, "tool", "none");

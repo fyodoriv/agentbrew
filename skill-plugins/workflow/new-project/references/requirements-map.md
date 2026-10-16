@@ -27,7 +27,9 @@ listed must exist. The map is a claim; the monthly audit checks that the
 mapped files really meet the area (for example, that `VISION.md` has a
 measurable success metric and dated kill criteria). Map only what truly meets it.
 
-Map lines name files, never commands. When a command meets the area (for
+A mapped area still has to meet the requirement's intent. For example, a setup
+map must name the README when the README's first code block is the setup, and
+that block must end with the doctor. Map lines name files, never commands. When a command meets the area (for
 example a `tasks doctor` health check instead of `scripts/doctor.sh`), map the
 file that implements it, and say in a comment above the line why it meets the
 area. Add each map line in the same PR that makes it true, so every PR shows its

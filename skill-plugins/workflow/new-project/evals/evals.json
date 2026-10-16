@@ -109,6 +109,19 @@
         "Waives nothing for effort; every area ends met or mapped with a reason",
         "Runs check-setup.sh on main after the last merge for the final score"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "scaffold a new CLI tool repo and fill in its first two user stories, metrics, and event log",
+      "expected_output": "Each story's metric is an outcome rate users feel (for example the share of failed events for that story), with the e2e test count kept only as a guard; each e2e file names its story id; the event writer allow-lists string fields and tests turn the log off; metrics pin their exact query and show (stub) when a source would answer 0 for something missing; the CHANGELOG is set up to be generated at release.",
+      "expectations": [
+        "Writes no story metric that is only a count of passing tests",
+        "Each tests/e2e/us-NN file contains its US-NN id and scripts/check-docs.sh passes",
+        "The event writer rejects a string field that could hold free text, and a test asserts the log is off during tests",
+        "A metric whose source can answer 0 for a missing thing checks that the thing exists and shows (stub) otherwise",
+        "Every doctor FAIL line names its fix",
+        "check-setup.sh --profile tool reaches 100% on the scaffold"
+      ]
     }
   ]
 }

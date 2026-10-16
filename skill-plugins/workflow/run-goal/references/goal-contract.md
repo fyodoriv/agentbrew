@@ -19,7 +19,7 @@ every turn.
 - Guards (must not get worse): <tests, lint, build, latency, ...>
 - Success: <keep threshold> · Pivot: <change-approach threshold>
 
-**Scope**: in — <...> · out — <...>
+**Scope**: in — <...>, plus the retro's updates to every skill used · out — <...>
 **Approvals already granted**: <each with its source: rule file line or user answer>
 **Human-only steps**: <secrets, 2FA, payments, uncited approvals; when they happen>
 **Budget**: <rough time or turns>; past 2× → report and re-plan

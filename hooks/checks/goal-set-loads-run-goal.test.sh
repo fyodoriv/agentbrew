@@ -52,6 +52,11 @@ check "/goals is a different word" "/goals list" 0
 check "missing skill stays silent" "/goal fix it" 0 "$MISSING"
 check "bypass env stays silent" "/goal fix it" 0 "$INSTALLED" "HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL=1"
 
+# The context names run-goal's source when RUN_GOAL_SOURCE_DIR is set.
+SRC_OUT="$(jq -cn '{hook_event_name:"UserPromptSubmit",session_id:"s",prompt:"/goal ship"}' | RUN_GOAL_SKILL_DIR="$INSTALLED" RUN_GOAL_SOURCE_DIR=/src/agentbrew/skill-plugins/workflow/run-goal bash "$SCRIPT" 2>/dev/null)"
+if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("in scope for every goal") and test("/src/agentbrew/skill-plugins/workflow/run-goal")' >/dev/null 2>&1; then
+  PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context names run-goal source and retro scope"); fi
+
 # Marker lifecycle shared with goal-contract-before-edit.
 marker_check() {
   local label="$1" expected="$2"

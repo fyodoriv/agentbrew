@@ -26,6 +26,10 @@
 # **Configuration** (optional):
 #   - RUN_GOAL_SKILL_DIR: installed skill folder to check. Default:
 #     `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/run-goal`.
+#   - RUN_GOAL_SOURCE_DIR: the run-goal source folder to name in the context.
+#     Default: the first `<dir>/skill-plugins/workflow/run-goal` that exists
+#     for `$HOME/apps/*/agentbrew`, `$HOME/apps/agentbrew`, `$HOME/src/agentbrew`.
+#     Live retros skipped run-goal when they had to search for its source.
 #   - RUN_GOAL_STATE_DIR: marker folder shared with goal-contract-before-edit.
 #     Default `$HOME/.cache/agentbrew/run-goal`.
 #
@@ -86,10 +90,24 @@ if [ ! -f "$SKILL_DIR/SKILL.md" ]; then
 fi
 
 SAVE_STEP=""
+SOURCE_DIR="${RUN_GOAL_SOURCE_DIR:-}"
+if [ -z "$SOURCE_DIR" ]; then
+  for base in "$HOME"/apps/*/agentbrew "$HOME/apps/agentbrew" "$HOME/src/agentbrew"; do
+    if [ -f "$base/skill-plugins/workflow/run-goal/SKILL.md" ]; then
+      SOURCE_DIR="$base/skill-plugins/workflow/run-goal"
+      break
+    fi
+  done
+fi
+RETRO_STEP=" The retro's skill updates are in scope for every goal, including run-goal itself"
+if [ -n "$SOURCE_DIR" ]; then
+  RETRO_STEP="$RETRO_STEP (its source: $SOURCE_DIR; change it in a worktree of that repo)"
+fi
+RETRO_STEP="$RETRO_STEP."
 if [ -n "$SESSION_ID" ]; then
   SAVE_STEP=" Then save the same contract text with the Write tool to $STATE_DIR/$SESSION_ID.contract.md (pre-approved); file edits stay blocked until that file has Done when, Metric, and Pivot."
 fi
-CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat.$SAVE_STEP Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
+CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat.$SAVE_STEP Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used.$RETRO_STEP"
 
 if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
   rm -f "$STATE_DIR/$SESSION_ID.contract.md"

@@ -191,6 +191,10 @@ Do this every time, also after a BLOCKED stop. Details:
    `git -C <dir> remote get-url origin` on candidate folders (for example
    `find ~ -maxdepth 4 -type d -name agentbrew`). For other skills,
    `agentbrew status --verbose` names the source repo.
+   These updates are in scope for every goal: the user asked for them when
+   they installed this skill. "Touch only what the request requires" does
+   not exclude them. In Claude Code with agentbrew, the `/goal` hook names
+   run-goal's local source path.
    A skill in another repo is a cross-repo change. Check the user's rules
    for a standing approval for retro skill updates. With one, make the
    change in a worktree of that repo and ship it by its rules. Without one,

@@ -35,6 +35,7 @@ import type { ManagedHook } from "../types.js";
 /** Canonical Claude Code event names — kept narrow to catch typos at parse time. */
 const VALID_EVENTS = new Set([
   "PreToolUse",
+  "PermissionDenied",
   "PostToolUse",
   "PostToolUseFailure",
   "UserPromptSubmit",

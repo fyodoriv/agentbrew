@@ -43,6 +43,17 @@
         "Uses or recommends the session-report analyzer for token and cost numbers",
         "Does not invent token numbers from agent-perf output"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "The Stop hook says: Time review needed: 4 tool calls never ran this turn (permission prompt, hook block, or denial): cd <path> 3x, Edit:ts 1x. Write the time review.",
+      "expected_output": "A Time review of at most 5 lines that names the blocked calls, explains that each cost a round trip, and gives one concrete fix such as splitting the compound cd command into simple Bash calls.",
+      "expectations": [
+        "Quotes the blocked count and the step keys from the hook or from agent-perf.mjs report --session latest",
+        "Keeps the Time review to 5 lines or fewer",
+        "Names one concrete fix for the top blocked key (split the compound Bash command, or meet the hook gate first)",
+        "States whether it recurs and either files a task or says Filed: none (one-off)"
+      ]
     }
   ]
 }

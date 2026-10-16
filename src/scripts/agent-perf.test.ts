@@ -35,7 +35,8 @@ interface Row {
   ok?: boolean;
   key?: string;
   agent?: string | null;
-  ev?: "turn";
+  ev?: "turn" | "attempt" | "denied";
+  id?: string;
 }
 
 let base: string;
@@ -52,6 +53,10 @@ function tool(key: string, ms: number, extra: Partial<Row> = {}): Row {
 function writeRows(rows: Row[], month = "2026-10"): void {
   mkdirSync(dir, { recursive: true });
   appendFileSync(join(dir, `${month}.jsonl`), rows.map((row) => `${JSON.stringify(row)}\n`).join(""));
+}
+
+function attempt(key: string, id: string, extra: Partial<Row> = {}): Row {
+  return { project: "alpha", ts: at(HOUR), sid: "s1", ev: "attempt", tool: "Bash", key, id, agent: null, ...extra };
 }
 
 const ctx = () => ({ dir, nowMs: NOW, cwd: "/nowhere/alpha" });
@@ -99,6 +104,61 @@ describe("summarize", () => {
     expect(summary.calls).toBe(1);
     expect(summary.subagentCalls).toBe(1);
     expect(summary.keys.map((k: { key: string }) => k.key)).toEqual(["agent:Explore", "rg foo"]);
+  });
+});
+
+describe("attempts and blocked calls", () => {
+  it("pairs attempts with completions by session and id", () => {
+    const summary = summarize([
+      attempt("npm test", "a1"),
+      tool("npm test", 1000, { id: "a1" }),
+      attempt("cd <path>", "a2"),
+      attempt("cd <path>", "a3"),
+      { ...attempt("cd <path>", "a3"), ev: "denied" },
+      attempt("Edit:ts", "a4"),
+      // The same id in another session does not complete a1's twin there.
+      attempt("git push", "a1", { sid: "s2" }),
+      // A completion row without an attempt row (the attempt hook missed it).
+      tool("rg <arg>", 5, { id: "a5" }),
+      // Rows written before ids existed take no part in pairing.
+      tool("old row", 7),
+    ]);
+
+    expect(summary.attempts).toBe(5);
+    expect(summary.blocked).toBe(4);
+    expect(summary.blockedKeys).toEqual([
+      { key: "cd <path>", count: 2 },
+      { key: "Edit:ts", count: 1 },
+      { key: "git push", count: 1 },
+    ]);
+    // 5 of the 6 calls with an id have an attempt row (a5 has only a completion).
+    expect(summary.captureRate).toBeCloseTo(5 / 6, 5);
+    expect(summary.calls).toBe(3);
+  });
+
+  it("reports null capture and zero blocked without id rows", () => {
+    const summary = summarize([tool("npm test", 1000)]);
+    expect(summary).toMatchObject({ attempts: 0, blocked: 0, blockedKeys: [], captureRate: null });
+  });
+
+  it("shows blocked calls in the text report and the brief", () => {
+    writeRows([
+      ...[50_000, 60_000, 70_000].flatMap((ms, i) => [
+        attempt("npm run verify", `v${i}`),
+        tool("npm run verify", ms, { id: `v${i}` }),
+      ]),
+      attempt("cd <path>", "b1"),
+      attempt("cd <path>", "b2"),
+      attempt("Edit:ts", "b3"),
+    ]);
+
+    const text = formatReport(buildReport({}, ctx()));
+    expect(text).toContain("Blocked: 3 of 6 attempted calls never ran (capture 100% of 6 calls with an id).");
+    expect(text).toContain("  cd <path>: 2");
+
+    const brief = buildBrief({}, ctx());
+    expect(brief.split("\n").length).toBeLessThanOrEqual(5);
+    expect(brief).toContain("Blocked calls: 3 never ran (top: cd <path> 2x)");
   });
 });
 
@@ -210,6 +270,22 @@ describe("turn", () => {
     expect(turn.toolMs).toBe(350_010);
     expect(turn.calls).toBe(3);
     expect(turn.slowest.map((s: { key: string }) => s.key)).toEqual(["npm run verify", "git push", "ls <path>"]);
+    expect(turn).toMatchObject({ attempts: 0, blocked: 0, blockedKeys: [] });
+  });
+
+  it("lists this turn's blocked calls only", () => {
+    writeRows([
+      attempt("before", "x0"),
+      { project: "alpha", ts: at(HOUR), sid: "s1", ev: "turn" },
+      attempt("cd <path>", "x1"),
+      attempt("cd <path>", "x2"),
+      attempt("npm test", "x3"),
+      tool("npm test", 100, { id: "x3" }),
+    ]);
+
+    const turn = buildTurn("s1", { dir, nowMs: NOW });
+
+    expect(turn).toMatchObject({ attempts: 3, blocked: 2, blockedKeys: [{ key: "cd <path>", count: 2 }] });
   });
 });
 
@@ -342,11 +418,29 @@ describe.skipIf(!hasJq)("perf-record step keys (privacy)", () => {
       duration_ms: 3,
     });
     const turn = record({ hook_event_name: "UserPromptSubmit", session_id: "s1", cwd: "/x", prompt: token });
+    const tried = record({
+      hook_event_name: "PreToolUse",
+      session_id: "s1",
+      cwd: "/nowhere/alpha",
+      tool_name: "Bash",
+      tool_input: { command: `cd /srv/team-x && TOKEN=${token} ./deploy.sh ${token}`, description: "plan.md" },
+      tool_use_id: "toolu_01abc",
+    });
 
     expect(row.key).toBe("gh api");
     expect(deploy.key).toBe("deploy <redacted>");
     expect(edit.key).toBe("Write:md");
     expect(turn).toEqual({ project: "x", ts: expect.any(String), sid: "s1", ev: "turn" });
+    expect(tried).toEqual({
+      project: "alpha",
+      ts: expect.any(String),
+      sid: "s1",
+      ev: "attempt",
+      tool: "Bash",
+      key: "deploy.sh <redacted>",
+      id: "toolu_01abc",
+      agent: null,
+    });
     const log = readFileSync(
       join(base, "hook-state", "agentbrew", "perf", `${new Date().toISOString().slice(0, 7)}.jsonl`),
       "utf8",

@@ -46,7 +46,10 @@ Field meanings and counting rules: agentbrew `docs/agent-perf.md`.
    it runs again.
 4. Check `previous` and `sumChangePct`. A step that grew since the last
    window is a regression; name the change that caused it if you can.
-5. Ignore steps under a minute in total. They are noise.
+5. Check `blocked` and `blockedKeys`. A blocked call was attempted but never
+   ran (permission prompt, hook block, denial). Each one costs a model round
+   trip, so 3 or more in a turn is a speedup target even when no step is slow.
+6. Ignore steps under a minute in total. They are noise.
 
 ## 3. Find a concrete speedup
 
@@ -58,6 +61,9 @@ Pick the top recurring step and ask, in this order:
 - Is it waiting on something? (a lock, a network call, a cold install)
   Cache it or run it once.
 - Did it fail and retry? Fix the cause of the failure.
+- Was it blocked? A compound Bash command (`cd X && a; b`) that needs
+  approval: split it into simple commands. A hook gate: meet the gate before
+  the call.
 
 A speedup is concrete when it names the step, the change, and the expected
 saving (for example: "run `npx vitest run <file>` before `npm run verify`;

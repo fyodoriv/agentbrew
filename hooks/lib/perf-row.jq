@@ -1,7 +1,9 @@
 # agentbrew/hooks/lib/perf-row.jq
 #
 # Builds one agent perf log row from a Claude Code hook payload.
-# Used by hooks/checks/perf-record.sh. Output is three lines:
+# Used by hooks/checks/perf-record.sh. Events: PostToolUse and
+# PostToolUseFailure (tool row), PreToolUse (attempt row), PermissionDenied
+# (denied row), UserPromptSubmit (turn row). Output is three lines:
 #   1. the payload cwd (the shell maps it to a project name)
 #   2. the UTC month (YYYY-MM), which names the log file
 #   3. the row as JSON, without its leading "{" and without "project"
@@ -67,6 +69,11 @@ def step_key:
     elif $t == "Skill" then "skill:" + ((.tool_input.skill // .tool_input.command // "unknown") | safe_name)
     else ($t | safe_name) end;
 
+# tool_use_id pairs an attempt row with its completion row. It is opaque.
+def call_id: (.tool_use_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; "") | .[0:64];
+
+def agent_name: if .agent_type == null then null else (.agent_type | safe_name) end;
+
 (.cwd // "" | tostring) as $cwd
 | now as $now
 | ($now | todate) as $ts
@@ -79,6 +86,11 @@ def step_key:
     ({ts: $ts, sid: $sid, tool: ((.tool_name // "unknown") | safe_name),
       ms: (if (.duration_ms | type) == "number" then .duration_ms else null end),
       ok: (.hook_event_name == "PostToolUse"),
-      key: step_key, agent: (if .agent_type == null then null else (.agent_type | safe_name) end)}
+      key: step_key, id: call_id, agent: agent_name}
+     | tojson | .[1:])
+  elif .hook_event_name == "PreToolUse" or .hook_event_name == "PermissionDenied" then
+    $cwd, $month,
+    ({ts: $ts, sid: $sid, ev: (if .hook_event_name == "PreToolUse" then "attempt" else "denied" end),
+      tool: ((.tool_name // "unknown") | safe_name), key: step_key, id: call_id, agent: agent_name}
      | tojson | .[1:])
   else empty end

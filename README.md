@@ -419,7 +419,7 @@ Skip a scheduled capture: `HOOK_BYPASS_CONTEXT_BUDGET_MEASURE=1`. Force refresh 
 
 ## Agent time measurement
 
-agentbrew times every Claude Code tool call, so you can see which steps are slow and which slow steps repeat. The `perf-record` hooks (on by default, async, never blocking) append one row per call to `~/.local/state/agentbrew/perf/YYYY-MM.jsonl`. A row holds only a short step key such as `npm run verify` or `Edit:ts`, never a prompt, a full command, a path, or a secret.
+agentbrew times every Claude Code tool call, so you can see which steps are slow and which slow steps repeat. The `perf-record` hooks (on by default, async, never blocking) append one row per call to `~/.local/state/agentbrew/perf/YYYY-MM.jsonl`. They also log each attempt before a call runs, so `report` counts calls that never ran (a permission prompt, a hook block, a denial) as `blocked`. A row holds only a short step key such as `npm run verify` or `Edit:ts`, never a prompt, a full command, a path, or a secret.
 
 ```bash
 node ~/.config/agentbrew/scripts/agent-perf.mjs report                 # this project, last 7 days

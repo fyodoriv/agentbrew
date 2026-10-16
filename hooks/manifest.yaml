@@ -22,7 +22,7 @@
 # **Schema** (per hook):
 #   id              kebab-case unique identifier
 #   description     one-line human description
-#   event           Claude Code event: PreToolUse | PostToolUse | PostToolUseFailure | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
+#   event           Claude Code event: PreToolUse | PermissionDenied | PostToolUse | PostToolUseFailure | UserPromptSubmit | Stop | SubagentStop | SessionStart | SessionEnd | PreCompact | Notification
 #   matcher         optional Claude Code matcher (e.g. "Write|Edit", "Bash"). Omit to match all.
 #   script          path relative to agentbrew/hooks/ (e.g. checks/code-no-timestamps.sh)
 #   tier            "deterministic" (the LLM "verifier" tier was retired; see docs/hook-protocol.md)
@@ -429,7 +429,7 @@ hooks:
     agents: ["claude-code"]
 
   # ── Agent perf log (per-step timing; read with ~/.config/agentbrew/scripts/agent-perf.mjs) ──
-  # One script, three events. Each ID deploys its own copy of checks/perf-record.sh.
+  # One script, five events. Each ID deploys its own copy of checks/perf-record.sh.
 
   - id: perf-record
     description: Append the tool name, step key, and duration of each tool call to the agent perf log
@@ -456,6 +456,28 @@ hooks:
   - id: perf-record-turn
     description: Append a turn boundary row (no prompt text) to the agent perf log on each user prompt
     event: UserPromptSubmit
+    script: checks/perf-record.sh
+    tier: deterministic
+    verdict: warn
+    async: true
+    bypassEnvVar: HOOK_BYPASS_PERF_RECORD
+    sourceRule: 'docs/agent-perf.md "Perf log"'
+    agents: ["claude-code"]
+
+  - id: perf-record-attempt
+    description: Append an attempt row (tool, step key, tool_use_id) before each tool call, so calls that never run still count
+    event: PreToolUse
+    script: checks/perf-record.sh
+    tier: deterministic
+    verdict: warn
+    async: true
+    bypassEnvVar: HOOK_BYPASS_PERF_RECORD
+    sourceRule: 'docs/agent-perf.md "Perf log"'
+    agents: ["claude-code"]
+
+  - id: perf-record-denied
+    description: Append a denied row (tool, step key, tool_use_id) when the auto mode classifier denies a tool call
+    event: PermissionDenied
     script: checks/perf-record.sh
     tier: deterministic
     verdict: warn

@@ -10,6 +10,8 @@ agents can see which steps are slow and which slow steps repeat.
 | Hook `perf-record` (PostToolUse) | Appends one row per tool call. |
 | Hook `perf-record-failure` (PostToolUseFailure) | Appends one row per failed tool call (`ok: false`). |
 | Hook `perf-record-turn` (UserPromptSubmit) | Appends a turn boundary row. It does not store the prompt. |
+| Hook `perf-record-attempt` (PreToolUse, all tools) | Appends an attempt row before each tool call, so a call that never runs still counts. |
+| Hook `perf-record-denied` (PermissionDenied) | Appends a denied row when the auto mode classifier denies a call. |
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
 | Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
 | Hook `perf-task-review` (Stop) | Asks for a "Time review" after a long turn. |
@@ -20,6 +22,21 @@ The hooks are on by default for Claude Code. They run with `async: true`, so
 Claude Code does not wait for them. They never block and never print. The
 time comes from the `duration_ms` field that Claude Code puts in the
 PostToolUse and PostToolUseFailure payloads.
+
+Some calls never run, so they fire no PostToolUse or PostToolUseFailure
+event: a permission prompt that nobody answers (for example "This Bash
+command contains multiple operations"), a PreToolUse block by another hook,
+or an auto mode denial. PreToolUse fires before the permission check and
+before the other hooks decide, so the attempt row records these calls too.
+The `id` field pairs each attempt with its completion row.
+
+Claude Code 2.1.301 limits, from captured payloads:
+
+- An input-validation error (`<tool_use_error>File does not exist` from
+  Edit) fires no hook at all, not even PreToolUse. The log cannot see it.
+- `PermissionDenied` fires only for auto mode classifier denials. A prompt
+  that is refused in `claude -p` default mode fires `PermissionRequest`
+  (without a `tool_use_id`) and then nothing. The attempt row still covers it.
 
 To turn them off on one machine, list the IDs under `disabled:` in
 `~/.config/agentbrew/hooks-overlay/manifest.yaml`, or set
@@ -34,7 +51,13 @@ hook deletes month files older than 180 days.
 Tool row:
 
 ```json
-{"project":"agentbrew","ts":"2026-10-15T12:00:00Z","sid":"<session id>","tool":"Bash","ms":61234,"ok":true,"key":"npm run verify","agent":null}
+{"project":"agentbrew","ts":"2026-10-15T12:00:00Z","sid":"<session id>","tool":"Bash","ms":61234,"ok":true,"key":"npm run verify","id":"toolu_01…","agent":null}
+```
+
+Attempt row (PreToolUse) and denied row (PermissionDenied, `"ev":"denied"`):
+
+```json
+{"project":"agentbrew","ts":"2026-10-15T12:00:00Z","sid":"<session id>","ev":"attempt","tool":"Bash","key":"npm run verify","id":"toolu_01…","agent":null}
 ```
 
 Turn row:
@@ -51,7 +74,9 @@ Turn row:
 | `tool` | Tool name (`Bash`, `Edit`, an MCP tool name, …). |
 | `ms` | `duration_ms` from Claude Code: tool run time, not model time. `null` when absent. |
 | `ok` | `false` for PostToolUseFailure rows. |
+| `ev` | `attempt`, `denied`, or `turn`. Absent on tool (completion) rows. |
 | `key` | The step key (below). |
+| `id` | Claude Code `tool_use_id`, kept only as an opaque pairing key (`[A-Za-z0-9_-]`). Rows written before this field existed have none. |
 | `agent` | `agent_type` when a subagent ran the call, else `null`. |
 
 ### Step key and privacy
@@ -88,9 +113,9 @@ Run every command with `node ~/.config/agentbrew/scripts/agent-perf.mjs`.
 |---|---|
 | `report [--project NAME \| --all] [--days N] [--json]` | Total tool time and calls, then per-step count, total, p50, p95, and max; the 10 slowest calls; the top 5 steps by total time; failures by step; and the change against the previous window of the same length. Default: the current project, 7 days. |
 | `report --session ID\|latest [--project NAME \| --all] [--json]` | The same for one session. `latest` is the session of the newest row in scope. |
-| `brief [--project NAME]` | At most 5 lines: 7-day tool time, the top 3 steps with p50, the slowest single step, and one speedup candidate (a step that ran 3 or more times and cost at least a minute). Empty when there is no data. |
+| `brief [--project NAME]` | At most 5 lines: 7-day tool time, the top 3 steps with p50, the slowest single step, the blocked calls (when there are any), and one speedup candidate (a step that ran 3 or more times and cost at least a minute). Empty when there is no data. |
 | `statusline` | Reads Claude Code status-line JSON on stdin and prints one line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. |
-| `turn --session ID [--json]` | Tool time, call count, the 3 slowest calls, and the top 3 steps since the last turn row of that session. |
+| `turn --session ID [--json]` | Tool time, call count, the 3 slowest calls, the top 3 steps, and `attempts`, `blocked`, and `blockedKeys` (top 5) since the last turn row of that session. |
 
 `--cwd DIR` picks the project for `report` and `brief` when you run them from
 another folder.
@@ -100,7 +125,24 @@ another folder.
 - Totals (`toolMs`, `calls`, `failures`) count only main-thread rows (`agent: null`). A subagent's calls run inside its Agent call, so adding them would count the time twice. `subagentCalls` reports them.
 - Per-step stats (`keys`, `topKeys`, `slowest`) count every row.
 - Percentiles use the nearest-rank method.
-- A row without a number in `ms` does not count.
+- A row without a number in `ms` does not count toward time. Attempt and denied rows have no `ms`.
+
+### Attempts, blocked calls, and capture rate
+
+Pairing uses `sid` plus `id`. Rows without an `id` take no part.
+
+| Field | Meaning |
+|---|---|
+| `attempts` | Calls with an attempt or denied row. |
+| `blocked` | Attempts with no completion row (PostToolUse or PostToolUseFailure) of the same `sid` and `id`. The call never ran: a permission prompt, a hook block, or a denial. A call that is still running also counts until it ends. |
+| `blockedKeys` | `blocked` by step key, most first: `[{ "key", "count" }]`. |
+| `callsWithId` | Calls with any row that has an `id`. |
+| `captureRate` | Calls with an attempt row ÷ `callsWithId`. `1` means every call that reached the log has its attempt recorded. `null` without `id` rows. |
+
+`captureRate` checks the hooks against each other. The outside check
+compares the log with the session transcript: attempt rows for a session ÷
+`tool_use` blocks in `~/.claude/projects/*/<sid>.jsonl`. Only an
+input-validation error (above) can make that ratio miss.
 
 ### report --json shape
 
@@ -112,6 +154,8 @@ another folder.
   "topKeys": [{ "key": "…", "sumMs": 0, "previousSumMs": 0, "sumChangePct": null }],
   "slowest": [{ "ts": "…", "key": "…", "ms": 0, "project": "…", "sid": "…", "ok": true }],
   "failuresByKey": [{ "key": "…", "failures": 0, "count": 0 }],
+  "attempts": 0, "callsWithId": 0, "blocked": 0, "captureRate": null,
+  "blockedKeys": [{ "key": "…", "count": 0 }],
   "previous": { "toolMs": 0, "calls": 0, "toolMsChangePct": null, "callsChangePct": null }
 }
 ```
@@ -132,9 +176,12 @@ Both hooks are on by default for Claude Code and need `node` on the hook
   nothing when the project has no rows. Bypass: `HOOK_BYPASS_PERF_BRIEF=1`.
 - `perf-task-review` (Stop) runs `agent-perf.mjs turn --session <id>`. When
   the turn spent at least `AGENTBREW_PERF_REVIEW_MIN_SECS` seconds (default
-  300) in tools, it blocks the stop once with
+  300) in tools, or had at least `AGENTBREW_PERF_REVIEW_MIN_BLOCKED` blocked
+  calls (default 3), it blocks the stop once with
   `{"decision":"block","reason":…}`. The reason lists the turn's 3 slowest
-  steps and asks for a Time review of at most 5 lines: what took longest, one
+  steps (long turn) and the blocked calls by step key (blocked turn). A
+  blocked call wastes a model round trip, so the reason suggests splitting
+  compound Bash commands and meeting hook gates first. It asks for a Time review of at most 5 lines: what took longest, one
   concrete speedup, and a task when a speedup saves a minute or more and
   recurs. The next stop has `stop_hook_active: true`, so the hook stays
   silent and cannot loop. Bypass: `HOOK_BYPASS_PERF_TASK_REVIEW=1`;

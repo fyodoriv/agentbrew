@@ -372,6 +372,8 @@ describe("canonical hook manifest", () => {
       ["perf-record", "PostToolUse"],
       ["perf-record-failure", "PostToolUseFailure"],
       ["perf-record-turn", "UserPromptSubmit"],
+      ["perf-record-attempt", "PreToolUse"],
+      ["perf-record-denied", "PermissionDenied"],
     ]);
     for (const hook of perf) {
       expect(hook).toMatchObject({ async: true, agents: ["claude-code"], verdict: "warn" });

@@ -40,6 +40,8 @@ printf 'gitdir: %s/.git/worktrees/feature-x\n' "$REPO" >"$WT/.git"
 
 POST_TOOL_USE='{"session_id":"11111111-2222-3333-4444-555555555555","transcript_path":"/redacted/transcript.jsonl","cwd":"'"$REPO/src"'","prompt_id":"redacted","permission_mode":"bypassPermissions","effort":{"level":"medium"},"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"sleep 1 && echo hi","description":"Sleep one second then echo hi"},"tool_response":{"stdout":"hi","stderr":"","interrupted":false,"isImage":false,"noOutputExpected":false},"tool_use_id":"toolu_redacted","duration_ms":1163}'
 POST_TOOL_FAILURE='{"session_id":"11111111-2222-3333-4444-555555555555","transcript_path":"/redacted/transcript.jsonl","cwd":"'"$WT"'","hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"ls /nonexistent-dir-xyz","description":"List"},"tool_use_id":"toolu_redacted","error":"Exit code 1","is_interrupt":false,"duration_ms":24}'
+PRE_TOOL_USE='{"session_id":"11111111-2222-3333-4444-555555555555","transcript_path":"/redacted/transcript.jsonl","cwd":"'"$REPO/src"'","scratchpad_dir":"/redacted/scratchpad","prompt_id":"redacted","permission_mode":"auto","effort":{"level":"medium"},"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"GH_TOKEN=ghp_FAKEexampleTOKEN1234567890abcd cd /srv/team-x && git push --force origin HEAD:main","description":"Force-push HEAD to origin main"},"tool_use_id":"toolu_01AttemptExample"}'
+PERMISSION_DENIED='{"session_id":"11111111-2222-3333-4444-555555555555","transcript_path":"/redacted/transcript.jsonl","cwd":"'"$REPO/src"'","scratchpad_dir":"/redacted/scratchpad","prompt_id":"redacted","permission_mode":"auto","effort":{"level":"medium"},"hook_event_name":"PermissionDenied","tool_name":"Bash","tool_input":{"command":"GH_TOKEN=ghp_FAKEexampleTOKEN1234567890abcd cd /srv/team-x && git push --force origin HEAD:main","description":"Force-push HEAD to origin main"},"tool_use_id":"toolu_01AttemptExample","reason":"The server-side auto mode classifier judged this action dangerous (it gave no explanation)"}'
 USER_PROMPT='{"session_id":"11111111-2222-3333-4444-555555555555","cwd":"'"$REPO"'","hook_event_name":"UserPromptSubmit","prompt":"secret plan for the launch"}'
 
 # Test 1: PostToolUse → exit 0, no output, one row with the key and duration.
@@ -47,7 +49,7 @@ RC=$(run_hook "$POST_TOOL_USE")
 check "Test 1a (exit 0)" "$([ "$RC" = 0 ] && echo 0 || echo 1)"
 check "Test 1b (prints nothing)" "$([ ! -s "$TMP/out" ] && echo 0 || echo 1)"
 ROW="$(last_row)"
-check "Test 1c (row fields: $ROW)" "$(printf '%s' "$ROW" | jq -e '.project=="myrepo" and .tool=="Bash" and .ms==1163 and .ok==true and .key=="sleep 1" and .agent==null and .sid=="11111111-2222-3333-4444-555555555555" and (.ts|test("^[0-9]{4}-"))' >/dev/null && echo 0 || echo 1)"
+check "Test 1c (row fields: $ROW)" "$(printf '%s' "$ROW" | jq -e '.project=="myrepo" and .tool=="Bash" and .ms==1163 and .ok==true and .key=="sleep 1" and .id=="toolu_redacted" and .agent==null and .sid=="11111111-2222-3333-4444-555555555555" and (.ts|test("^[0-9]{4}-"))' >/dev/null && echo 0 || echo 1)"
 check "Test 1d (file named YYYY-MM.jsonl)" "$(basename "$(log_file)" | grep -Eq '^[0-9]{4}-[0-9]{2}\.jsonl$' && echo 0 || echo 1)"
 
 # Test 2: PostToolUseFailure in a linked worktree → ok false, project = main repo.
@@ -102,6 +104,21 @@ check "Test 8 (bypass)" "$([ "$RC" = 0 ] && [ "$BEFORE" = "$AFTER" ] && echo 0 |
 # Test 9: an unwritable state dir never fails the tool.
 RC=$(printf '%s' "$POST_TOOL_USE" | XDG_STATE_HOME=/dev/null/nope /bin/bash "$SCRIPT" >/dev/null 2>&1; echo $?)
 check "Test 9 (unwritable state dir → exit 0)" "$([ "$RC" = 0 ] && echo 0 || echo 1)"
+
+# Test 10: PreToolUse → an attempt row with the call id, no duration, no ok.
+run_hook "$PRE_TOOL_USE" >/dev/null
+ROW="$(last_row)"
+check "Test 10a (attempt row: $ROW)" "$(printf '%s' "$ROW" | jq -e '(keys_unsorted == ["project","ts","sid","ev","tool","key","id","agent"]) and .ev=="attempt" and .project=="myrepo" and .tool=="Bash" and .key=="git push" and .id=="toolu_01AttemptExample" and .agent==null' >/dev/null && echo 0 || echo 1)"
+
+# Test 11: PermissionDenied → a denied row with the same id; the reason text is not stored.
+run_hook "$PERMISSION_DENIED" >/dev/null
+ROW="$(last_row)"
+check "Test 11a (denied row: $ROW)" "$(printf '%s' "$ROW" | jq -e '.ev=="denied" and .key=="git push" and .id=="toolu_01AttemptExample" and (has("ms")|not)' >/dev/null && echo 0 || echo 1)"
+check "Test 11b (no token, path, or reason text in log)" "$(grep -Eq 'ghp_FAKE|/srv/team-x|classifier|Force-push' "$(log_file)" && echo 1 || echo 0)"
+
+# Test 12: an id with unsafe characters keeps only [A-Za-z0-9_-].
+run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PreToolUse",session_id:"s1",cwd:$cwd,tool_name:"Read",tool_input:{file_path:"/a/b.md"},tool_use_id:"toolu_\"x/../y"}')" >/dev/null
+check "Test 12 (id sanitized: $(last_row))" "$(last_row | jq -e '.id=="toolu_xy" and .key=="Read:md"' >/dev/null && echo 0 || echo 1)"
 
 echo ""
 echo "perf-record.sh: $PASS passed, $FAIL failed"

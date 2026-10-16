@@ -13,7 +13,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
 export AGENTBREW_PERF_HELPER="$HERE/../../templates/scripts/agent-perf.mjs"
-unset MINSKY_PIPELINE AGENTBREW_PERF_REVIEW_MIN_SECS HOOK_BYPASS_PERF_TASK_REVIEW
+unset MINSKY_PIPELINE AGENTBREW_PERF_REVIEW_MIN_SECS AGENTBREW_PERF_REVIEW_MIN_BLOCKED HOOK_BYPASS_PERF_TASK_REVIEW
 mkdir -p "$HOME" "$XDG_STATE_HOME/agentbrew/perf"
 LOG="$XDG_STATE_HOME/agentbrew/perf/$(date -u +%Y-%m).jsonl"
 PASS=0
@@ -31,6 +31,12 @@ check() { # $1 label, $2 condition result (0 = pass)
 
 row() { # $1 sid, $2 key, $3 ms
   printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","tool":"Bash","ms":%s,"ok":true,"key":"%s","agent":null}\n' "$1" "$3" "$2" >>"$LOG"
+}
+attempt() { # $1 sid, $2 key, $3 id
+  printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","ev":"attempt","tool":"Bash","key":"%s","id":"%s","agent":null}\n' "$1" "$2" "$3" >>"$LOG"
+}
+done_row() { # $1 sid, $2 key, $3 id
+  printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","tool":"Bash","ms":10,"ok":true,"key":"%s","id":"%s","agent":null}\n' "$1" "$2" "$3" >>"$LOG"
 }
 turn() { printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","ev":"turn"}\n' "$1" >>"$LOG"; }
 run_hook() { # $1 input json; prints stdout, sets RC file
@@ -74,6 +80,39 @@ OUT2="$(MINSKY_PIPELINE=1 run_hook '{"session_id":"long","stop_hook_active":fals
 OUT3="$(run_hook '{"session_id":"nobody","stop_hook_active":false}')"
 OUT4="$(AGENTBREW_PERF_HELPER="$TMP/missing.mjs" run_hook '{"session_id":"long","stop_hook_active":false}')"
 check "Test 5 (bypass/pipeline/unknown/missing → silent)" "$([ -z "$OUT1$OUT2$OUT3$OUT4" ] && echo 0 || echo 1)"
+
+# Session "blocked": a short turn with 3 calls that never ran and 1 that ran.
+turn blocked
+attempt blocked "cd <path>" t1
+attempt blocked "cd <path>" t2
+attempt blocked "Edit:ts" t3
+attempt blocked "npm test" t4
+done_row blocked "npm test" t4
+# Session "two": only 2 blocked calls.
+turn two
+attempt two "cd <path>" u1
+attempt two "cd <path>" u2
+
+# Test 6: 3 blocked calls in a short turn → block that lists them.
+OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"blocked","stop_hook_active":false}')"
+REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
+check "Test 6a (3 blocked → block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null 2>&1 && echo 0 || echo 1)"
+check "Test 6b (reason lists blocked calls)" "$(case "$REASON" in *"3 tool calls never ran"*"cd <path> 2x, Edit:ts 1x"*"split"*) echo 0 ;; *) echo 1 ;; esac)"
+check "Test 6c (the call that ran is not listed)" "$(case "$REASON" in *"npm test"*) echo 1 ;; *) echo 0 ;; esac)"
+
+# Test 7: 2 blocked calls → silent; MIN_BLOCKED=2 → block.
+OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"two","stop_hook_active":false}')"
+check "Test 7a (2 blocked → no output: $OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+OUT="$(AGENTBREW_PERF_REVIEW_MIN_BLOCKED=2 run_hook '{"hook_event_name":"Stop","session_id":"two","stop_hook_active":false}')"
+check "Test 7b (MIN_BLOCKED=2 → block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block" and (.reason|contains("2 tool calls never ran"))' >/dev/null 2>&1 && echo 0 || echo 1)"
+
+# Test 8: a long turn with 3 blocked calls lists both the slow steps and the blocked calls.
+attempt long "cd <path>" v1
+attempt long "cd <path>" v2
+attempt long "cd <path>" v3
+OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active":false}')"
+REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
+check "Test 8 (time + blocked in one reason)" "$(case "$REASON" in *"6m40s in tools"*"3 tool calls never ran"*) echo 0 ;; *) echo 1 ;; esac)"
 
 echo ""
 echo "perf-task-review.sh: $PASS passed, $FAIL failed"

@@ -2,8 +2,13 @@
 // agent-perf.mjs — read the agent perf log that the perf-record hook writes.
 //
 // Log: ${XDG_STATE_HOME:-~/.local/state}/agentbrew/perf/YYYY-MM.jsonl
-// Tool row: {"project","ts","sid","tool","ms","ok","key","agent"}
+// Tool row: {"project","ts","sid","tool","ms","ok","key","id","agent"}
+// Attempt row: {"project","ts","sid","ev":"attempt","tool","key","id","agent"}
+// Denied row: {"project","ts","sid","ev":"denied","tool","key","id","agent"}
 // Turn row: {"project","ts","sid","ev":"turn"}
+// "id" (tool_use_id) pairs an attempt with its completion. An attempt with
+// no completion is a blocked call: it never ran (permission prompt, hook
+// block, denial), or it is still running.
 //
 // Commands:
 //   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
@@ -94,6 +99,55 @@ function sessionRows(dir, sid, nowMs = Date.now()) {
 
 const isToolRow = (row) => typeof row.ms === "number" && row.ev !== "turn";
 const isMainThread = (row) => row.agent === null || row.agent === undefined;
+const hasId = (row) => typeof row.id === "string" && row.id !== "";
+
+/**
+ * Pair attempt rows with completion rows by session and id.
+ * attempts: calls with an attempt or denied row. callsWithId: calls with any
+ * row that has an id. blocked: attempts with no
+ * completion row. captureRate: share of calls with an id (any row) that have
+ * an attempt row; null when no row has an id. Rows without an id (written
+ * before ids existed) take no part.
+ */
+export function pairCalls(rows) {
+  const tried = new Map();
+  const done = new Set();
+  const seen = new Set();
+  for (const row of rows) {
+    if (!hasId(row)) continue;
+    const call = `${row.sid}\u0000${row.id}`;
+    if (row.ev === "attempt" || row.ev === "denied") {
+      seen.add(call);
+      const prev = tried.get(call);
+      tried.set(call, {
+        key: prev?.key ?? row.key ?? row.tool ?? "unknown",
+        recorded: Boolean(prev?.recorded) || row.ev === "attempt",
+      });
+    } else if (isToolRow(row)) {
+      seen.add(call);
+      done.add(call);
+    }
+  }
+  const byKey = new Map();
+  let blocked = 0;
+  let recorded = 0;
+  for (const [call, { key, recorded: hasAttempt }] of tried) {
+    if (hasAttempt) recorded += 1;
+    if (done.has(call)) continue;
+    blocked += 1;
+    byKey.set(key, (byKey.get(key) ?? 0) + 1);
+  }
+  const blockedKeys = [...byKey.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  return {
+    attempts: tried.size,
+    callsWithId: seen.size,
+    blocked,
+    blockedKeys,
+    captureRate: seen.size === 0 ? null : recorded / seen.size,
+  };
+}
 
 export function percentile(sorted, p) {
   if (sorted.length === 0) return 0;
@@ -151,6 +205,7 @@ export function summarize(rows) {
     topKeys: keys.slice(0, 5),
     slowest,
     failuresByKey: keys.filter((k) => k.failures > 0).map((k) => ({ key: k.key, failures: k.failures, count: k.count })),
+    ...pairCalls(rows),
   };
 }
 
@@ -243,7 +298,7 @@ export function formatReport(report) {
   // Session mode has days: null. "latest" resolves to no session id when no row is in scope.
   const where = scope.days === null ? `session ${scope.session ?? "latest (none found)"}` : `last ${scope.days}d`;
   const lines = [`Agent time — ${scope.project}, ${where}`];
-  if (report.calls === 0 && report.keys.length === 0) {
+  if (report.calls === 0 && report.keys.length === 0 && !report.attempts) {
     lines.push("No tool rows yet.");
     return lines.join("\n");
   }
@@ -255,6 +310,12 @@ export function formatReport(report) {
       `Previous ${scope.days}d: ${formatMs(report.previous.toolMs)} over ${report.previous.calls} calls (time ${signed(report.previous.toolMsChangePct)}).`,
     );
   }
+  if (report.attempts > 0) {
+    const capture = report.captureRate === null ? "n/a" : `${Math.round(report.captureRate * 1000) / 10}%`;
+    lines.push(
+      `Blocked: ${report.blocked} of ${report.attempts} attempted calls never ran (capture ${capture} of ${report.callsWithId} calls with an id).`,
+    );
+  }
   lines.push("", "Top steps by total time:");
   for (const k of report.topKeys) {
     const change = k.sumChangePct === undefined ? "" : ` (${signed(k.sumChangePct)})`;
@@ -263,6 +324,10 @@ export function formatReport(report) {
   lines.push("", "Slowest calls:");
   for (const row of report.slowest) {
     lines.push(`  ${formatMs(row.ms)}  ${row.key}  ${row.project ?? ""} ${row.ts ?? ""}${row.ok ? "" : " (failed)"}`);
+  }
+  if (report.blockedKeys?.length > 0) {
+    lines.push("", "Blocked calls by step (no completion row):");
+    for (const b of report.blockedKeys) lines.push(`  ${b.key}: ${b.count}`);
   }
   if (report.failuresByKey.length > 0) {
     lines.push("", "Failures by step:");
@@ -278,7 +343,7 @@ export function formatReport(report) {
 /** At most five lines for an agent at session start. Empty when there is no data. */
 export function buildBrief(opts, ctx = {}) {
   const report = buildReport({ ...opts, days: 7, all: false }, ctx);
-  if (report.keys.length === 0) return "";
+  if (report.keys.length === 0 && !report.attempts) return "";
   const top = report.topKeys.slice(0, 3).map((k) => `${k.key} ${formatMs(k.sumMs)} (${k.count}x, p50 ${formatMs(k.p50Ms)})`);
   const slow = report.slowest[0];
   const lines = [
@@ -286,6 +351,12 @@ export function buildBrief(opts, ctx = {}) {
     `Top steps: ${top.join(" · ")}.`,
   ];
   if (slow) lines.push(`Slowest single step: ${slow.key} ${formatMs(slow.ms)}.`);
+  if (report.blocked > 0) {
+    const top = report.blockedKeys[0];
+    lines.push(
+      `Blocked calls: ${report.blocked} never ran (top: ${top.key} ${top.count}x); split compound Bash commands and meet hook gates first to save a round trip each.`,
+    );
+  }
   // Keys are sorted by total time, so the first repeat that costs a minute is the best target.
   const candidate = report.keys.find((k) => k.count >= 3 && k.sumMs >= 60_000);
   if (candidate) {
@@ -312,6 +383,9 @@ export function buildTurn(sid, { dir = perfDir(), nowMs = Date.now() } = {}) {
     calls: summary.calls,
     slowest: summary.slowest.slice(0, 3).map(({ key, ms, ok }) => ({ key, ms, ok })),
     topKeys: summary.topKeys.slice(0, 3).map(({ key, sumMs, count }) => ({ key, sumMs, count })),
+    attempts: summary.attempts,
+    blocked: summary.blocked,
+    blockedKeys: summary.blockedKeys.slice(0, 5),
   };
 }
 

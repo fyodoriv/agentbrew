@@ -1,15 +1,20 @@
 #!/bin/bash
 # agentbrew/hooks/checks/perf-record.sh
 #
-# **Hook**: perf-record (also deployed as perf-record-failure and perf-record-turn)
-# **Events**: PostToolUse, PostToolUseFailure, UserPromptSubmit
+# **Hook**: perf-record (also deployed as perf-record-failure, perf-record-turn,
+#           perf-record-attempt, and perf-record-denied)
+# **Events**: PostToolUse, PostToolUseFailure, UserPromptSubmit, PreToolUse, PermissionDenied
 # **Verdict**: warn (it never blocks and never prints; it only appends a row)
 # **Bypass**: HOOK_BYPASS_PERF_RECORD=1
 #
 # Appends one JSON row per tool call to the agent perf log:
 #   ${XDG_STATE_HOME:-$HOME/.local/state}/agentbrew/perf/YYYY-MM.jsonl
-# Tool row: {"project","ts","sid","tool","ms","ok","key","agent"}
+# Tool row: {"project","ts","sid","tool","ms","ok","key","id","agent"}
+# Attempt row: {"project","ts","sid","ev":"attempt","tool","key","id","agent"} (PreToolUse)
+# Denied row: {"project","ts","sid","ev":"denied","tool","key","id","agent"} (PermissionDenied)
 # Turn row: {"project","ts","sid","ev":"turn"} (from UserPromptSubmit)
+# "id" is the tool_use_id. It pairs an attempt with its completion, so a
+# call that never ran (permission prompt, hook block) shows as blocked.
 # lib/perf-row.jq builds the row and the step key (see its privacy notes).
 #
 # Speed: one jq call plus shell builtins that work on macOS bash 3.2.

@@ -5,6 +5,14 @@
 
 **One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Cursor, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
 
+**Install with your AI agent (one step):** open Claude Code (or Cursor, Codex) and say:
+
+> Install agentbrew by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md
+
+The agent explains what will change, asks your preferences, backs up your current agent settings, installs, heals drift, and restores the backup by itself if anything critical fails. Undo later with `bash scripts/install.sh restore`. Details: [`INSTALL.md`](INSTALL.md).
+
+Or install by hand:
+
 ```bash
 npx agentbrew              # try it — detects agents, installs recommended set, schedules drift repair
 npm install -g agentbrew   # or install globally for faster startup + tab completion
@@ -12,7 +20,7 @@ npm install -g agentbrew   # or install globally for faster startup + tab comple
 
 Requires Node.js 20.11+ and git.
 
-**First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI or pipes, it prints help. Opt out with `AGENTBREW_NO_AUTO_INIT=1`.
+**First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI or pipes, it prints help. Opt out with `AGENTBREW_NO_AUTO_INIT=1`. `AGENTBREW_NO_AUTO_SYNC=1` skips the background repair job and `AGENTBREW_NO_SHELL_HOOK=1` leaves your shell rc file alone (the one-step installer sets them from your answers).
 
 **Who it is for:** developers who use more than one AI coding agent and want one place to manage skills, MCP servers, rules, and commands.
 **Documentation:** start at the [documentation map](docs/README.md). Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first.

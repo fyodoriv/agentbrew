@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **One-step install with your agent** — tell Claude Code (or Cursor, Codex)
+  "Install agentbrew by following …/INSTALL.md". `scripts/install.sh` explains
+  the plan, takes the answers as flags, backs up your agent settings, builds,
+  runs `init`, heals with `status --fix`, verifies with `lint`, and restores
+  the backup by itself on a critical error (`install.sh restore` undoes it by
+  hand). It ends by suggesting `agentbrew contribute` for fixes.
+- `agentbrew metrics` and `agentbrew contribute`.
+
 - **Working human-in-the-loop MCP** — the catalog `ask-human` entry, whose
   last release fails before MCP initialize, is replaced by the opt-in
   `mcp-feedback-enhanced` (pinned, MIT), which passed a live stdio smoke test.

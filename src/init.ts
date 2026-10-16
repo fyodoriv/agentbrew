@@ -124,14 +124,16 @@ function printInitSummary(result: InitResult, options?: { skipInstall?: boolean;
 }
 
 async function postInit(result: InitResult, options?: { skipInstall?: boolean; skipSync?: boolean }): Promise<void> {
-  // Auto-install background drift repair (macOS: LaunchAgent, Linux: systemd/cron)
-  if (!isAutoSyncInstalled()) {
+  // Auto-install background drift repair (macOS: LaunchAgent, Linux: systemd/cron).
+  // AGENTBREW_NO_AUTO_SYNC=1 and AGENTBREW_NO_SHELL_HOOK=1 let the installer
+  // honour a user's "no background job" / "leave my shell rc alone" answers.
+  if (process.env.AGENTBREW_NO_AUTO_SYNC !== "1" && !isAutoSyncInstalled()) {
     console.log(chalk.bold("\nSetting up auto-repair...\n"));
     await installAutoSync();
   }
 
   // Auto-install shell hook (cd detection for Agentfile/skills/MCP)
-  if (!isShellHookInstalled()) {
+  if (process.env.AGENTBREW_NO_SHELL_HOOK !== "1" && !isShellHookInstalled()) {
     installShellHook();
   }
 

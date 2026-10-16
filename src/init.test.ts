@@ -66,6 +66,7 @@ import { detectAgents, discoverAllSkills } from "./agents.js";
 import { install } from "./catalog/install.js";
 import { init, initForce } from "./init.js";
 import { discoverMcpServers } from "./mcp/mcp.js";
+import { installShellHook, isShellHookInstalled } from "./shell-hook.js";
 import { defaultState, loadState, saveState } from "./state.js";
 import { installAutoSync, isAutoSyncInstalled } from "./sync/auto-sync.js";
 import { autoSync } from "./sync-runner.js";
@@ -206,6 +207,27 @@ describe("init", () => {
 
     await init();
     expect(mockInstallAutoSync).toHaveBeenCalled();
+  });
+
+  it("skips the auto-sync job and shell hook when the installer opts out", async () => {
+    mockLoadState.mockReturnValue(undefined);
+    mockDetectAgents.mockReturnValue([
+      { name: "claude-code", detected: true, skillsDir: "~/.claude/skills", mcpConfig: "~/.claude.json" },
+    ]);
+    mockDiscoverAllSkills.mockReturnValue(new Map());
+    mockDiscoverMcpServers.mockReturnValue([]);
+    mockIsAutoSyncInstalled.mockReturnValue(false);
+    vi.stubEnv("AGENTBREW_NO_AUTO_SYNC", "1");
+    vi.stubEnv("AGENTBREW_NO_SHELL_HOOK", "1");
+    vi.mocked(isShellHookInstalled).mockReturnValue(false);
+    try {
+      await init();
+      expect(mockInstallAutoSync).not.toHaveBeenCalled();
+      expect(vi.mocked(installShellHook)).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.mocked(isShellHookInstalled).mockReturnValue(true);
+    }
   });
 
   it("skips auto-sync install when already present", async () => {

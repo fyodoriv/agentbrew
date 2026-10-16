@@ -157,6 +157,32 @@
 
 ## P2
 
+- [ ] Hook decision counts show real blocks, not test-fixture noise
+  - **ID**: hook-decision-log-excludes-fixtures
+  - **Tags**: hooks, metrics, telemetry
+  - **Details**: `agentbrew metrics` on the owner's Mac (2026-10-16) showed about 10,700 blocks in 24 hours, led by `selectors-pure` (866), `code-no-timestamps` (732), and `tests-adapt-to-production` (722). Those hooks fire only on Write/Edit, so the volume most likely comes from `scripts/run-hook-fixtures.sh` and hook tests writing to the real `~/.cache/agentbrew/hook-decisions.jsonl`. Find the writers, point fixtures at a temp log (`HOOK_DECISIONS_LOG` or a temp `HOME`), and tag real decisions with the session id so the metrics count only real ones.
+  - **Files**: `hooks/lib/log-decision.sh`, `scripts/run-hook-fixtures.sh`, `src/metrics/usage.ts`
+  - **Output**: code
+  - **Acceptance**: running the hook fixtures adds zero lines to the real decision log; `agentbrew metrics` counts only rows with a session id.
+  - **Hypothesis**: most logged blocks are fixture noise; after the fix the daily block count drops by more than 80% with no change in real agent behaviour.
+  - **Measurement**: `agentbrew metrics --days 1 --json | jq .hooks.blocks` before and after one day of normal use, plus `wc -l` of the log around a fixture run.
+  - **Success**: fixture run adds 0 rows; daily blocks drop by 80% or more.
+  - **Pivot**: if fixture rows are under 20% of blocks, the hooks over-block real edits; narrow their matchers instead.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (GQM); agentbrew metrics snapshot 2026-10-16.
+
+- [ ] npm users get the same hooks and per-file rules as clone users
+  - **ID**: npm-package-ships-hooks-and-rules
+  - **Tags**: packaging, hooks, rules, new-users
+  - **Details**: `package.json` `files` ships only `dist`, README, and LICENSE, and the hook sync finds `hooks/` by walking up from the repo or cwd. So `npm i -g agentbrew` users get no canonical hooks (perf recording, verify-before-completion, /goal hooks), and the `.mdc` template rules may not deploy either. Ship `hooks/` and `templates/rules` in the package (or copy them into `dist/` at build) and resolve them from the package root.
+  - **Files**: `package.json`, `tsup.config.ts`, `src/sync/hooks-sync.ts`, `src/sync/catalog-template-rules.ts`
+  - **Output**: code
+  - **Acceptance**: `npm pack` then a global install in a temp prefix and temp HOME deploys the default-on hooks into `~/.claude/settings.json`.
+  - **Hypothesis**: default-on hooks deployed for an npm install go from 0 to the same set a clone gets.
+  - **Measurement**: `npm pack` + `npm i -g ./agentbrew-*.tgz --prefix $TMP` + `HOME=$TMP/home agentbrew sync`, then count hook entries in the temp `settings.json`.
+  - **Success**: hook ids match a clone install exactly.
+  - **Pivot**: if the package size grows past 2x, ship only the default-on hooks.
+  - **Anchor**: Basili et al. 1994 (GQM); finding from the 2026-10-16 portability audit.
+
 - [ ] New agentbrew worktrees get dependencies in seconds, not minutes
   - **ID**: worktree-deps-apfs-clone
   - **Tags**: perf, worktrees, agents

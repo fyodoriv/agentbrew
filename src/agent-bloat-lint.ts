@@ -94,18 +94,35 @@ function hasReferencesDir(skillDir: string): boolean {
   return existsSync(join(skillDir, "references")) || existsSync(join(skillDir, "reference"));
 }
 
+/** Text of each open (`- [ ]`) task block in a TASKS.md file. */
+function openTaskBlocks(tasksContent: string): string[] {
+  const blocks: string[] = [];
+  let current: string[] | undefined;
+  for (const line of tasksContent.split("\n")) {
+    if (/^- \[[ x]\]/i.test(line) || /^#{1,6} /.test(line)) {
+      if (current) blocks.push(current.join("\n"));
+      current = /^- \[ \]/.test(line) ? [line] : undefined;
+    } else if (current) {
+      current.push(line);
+    }
+  }
+  if (current) blocks.push(current.join("\n"));
+  return blocks;
+}
+
+/**
+ * True when an open task block matches the size-cut keywords and, when
+ * `skillName` is given, names that skill. One open task for skill A must not
+ * relax the baseline gate for skill B.
+ */
 export function hasOpenTrimTask(
   tasksContent: string,
+  skillName?: string,
   keywords: RegExp = /(trim-|context-budget|token-budget|skill-bloat)/i,
 ): boolean {
-  const lines = tasksContent.split("\n");
-  let inOpen = false;
-  for (const line of lines) {
-    if (/^- \[ \]/.test(line)) inOpen = true;
-    if (/^- \[x\]/i.test(line)) inOpen = false;
-    if (inOpen && keywords.test(line)) return true;
-  }
-  return false;
+  const escaped = skillName?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const namesSkill = escaped ? new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`) : undefined;
+  return openTaskBlocks(tasksContent).some((block) => keywords.test(block) && (!namesSkill || namesSkill.test(block)));
 }
 
 export function loadSkillBaselines(repoRoot: string = DEFAULT_REPO_ROOT): SkillBaselines {
@@ -328,7 +345,7 @@ export function lintMdcBloat(content: string, path: string): AgentBloatFinding[]
 function collectBuiltinSkillFindings(
   repoRoot: string,
   baselines: SkillBaselines,
-  trimTaskOpen: boolean,
+  tasksContent: string,
 ): AgentBloatFinding[] {
   const findings: AgentBloatFinding[] = [];
   for (const plugin of ["dev", "workflow"]) {
@@ -345,7 +362,7 @@ function collectBuiltinSkillFindings(
           dirName: entry,
           skillDir,
           baseline: baselines[entry],
-          hasOpenTrimTask: trimTaskOpen,
+          hasOpenTrimTask: hasOpenTrimTask(tasksContent, entry),
         }),
       );
     }
@@ -397,18 +414,18 @@ export function collectAgentBloatFindings(options: CollectAgentBloatOptions = {}
   const commandsDir = options.commandsDir ?? expandHome(COMMANDS_DIR);
   const tasksPath = options.tasksMdPath ?? join(repoRoot, "TASKS.md");
 
-  let trimTaskOpen = false;
+  let tasksContent = "";
   if (existsSync(tasksPath)) {
     try {
-      trimTaskOpen = hasOpenTrimTask(readFileSync(tasksPath, "utf-8"));
+      tasksContent = readFileSync(tasksPath, "utf-8");
     } catch {
-      trimTaskOpen = false;
+      tasksContent = "";
     }
   }
 
   const baselines = loadSkillBaselines(repoRoot);
   return [
-    ...collectBuiltinSkillFindings(repoRoot, baselines, trimTaskOpen),
+    ...collectBuiltinSkillFindings(repoRoot, baselines, tasksContent),
     ...collectCommandFindings(commandsDir),
     ...collectMdcTemplateFindings(repoRoot),
   ];

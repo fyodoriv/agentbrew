@@ -108,6 +108,35 @@ describe("collectAgentBloatFindings", () => {
     expect(summarizeAgentBloat(findings).errors).toBe(0);
   });
 
+  it("relaxes baseline growth only for the skill an open trim task names", () => {
+    const repoRoot = temporaryRepo();
+    const body = `${"grow ".repeat(4000)}\n`;
+    for (const name of ["alpha", "beta"]) {
+      mkdirSync(join(repoRoot, "skill-plugins", "workflow", name, "references"), { recursive: true });
+      writeFileSync(
+        join(repoRoot, "skill-plugins", "workflow", name, "SKILL.md"),
+        `---\nname: ${name}\ndescription: Use when testing per-skill trim tasks in the bloat lint\n---\n${body}`,
+      );
+    }
+    mkdirSync(join(repoRoot, "docs"), { recursive: true });
+    writeFileSync(
+      join(repoRoot, "docs", "skill-baselines.json"),
+      JSON.stringify({ alpha: { tokens: 100, lines: 5 }, beta: { tokens: 100, lines: 5 } }),
+    );
+    const tasksMdPath = join(repoRoot, "TASKS.md");
+    writeFileSync(
+      tasksMdPath,
+      "# Tasks\n\n## P2\n\n- [ ] Cut the alpha skill\n  - **ID**: trim-alpha-skill\n  - **Files**: `skill-plugins/workflow/alpha/SKILL.md`\n",
+    );
+    const growth = collectAgentBloatFindings({ repoRoot, commandsDir: join(repoRoot, "none"), tasksMdPath }).filter(
+      (f) => f.ruleId === BLOAT_RULE.SKILL_BASELINE_GROWTH,
+    );
+    expect(growth.map((f) => [f.path.split("/")[2], f.severity]).sort()).toEqual([
+      ["alpha", "warning"],
+      ["beta", "error"],
+    ]);
+  });
+
   it("reports template mdc broad glob warnings", () => {
     const repoRoot = temporaryRepo();
     mkdirSync(join(repoRoot, "templates", "rules"), { recursive: true });

@@ -234,19 +234,6 @@
   - **Pivot**: if full sync skips hooks by design, document `--only hooks` in the README sync section instead.
   - **Anchor**: run-goal goal run 2026-10-15; Basili et al. 1994 (GQM).
 
-- [ ] Bloat lint relaxes only the skill that has an open size-cut task
-  - **ID**: bloat-lint-open-task-per-skill
-  - **Tags**: lint, skills, baselines
-  - **Details**: `runAgentBloatLint` computes one boolean for the whole queue (`src/agent-bloat-lint.ts:400-404`) and passes it to every skill (`src/agent-bloat-lint.ts:348`). `hasOpenTrimTask` (`src/agent-bloat-lint.ts:97-108`) returns true when any open task line matches its keyword regex (line 99). So one open size-cut task turns every skill's baseline-growth error into a warning. This block avoids those keywords on purpose, or it would trigger the bug itself.
-  - **Files**: `src/agent-bloat-lint.ts`, `src/agent-bloat-lint.test.ts`
-  - **Output**: code
-  - **Acceptance**: an open size-cut task that names skill A downgrades only A's growth error; skill B's growth still errors; a test covers both.
-  - **Hypothesis**: scoping the check to the skill name makes unrelated skill growth fail the lint again.
-  - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` with a two-skill fixture and one open task naming skill A.
-  - **Success**: B's finding has severity `error`; A's has `warning`.
-  - **Pivot**: if such tasks rarely name the skill, require a `**Files**:` path under `skill-plugins/<plugin>/<skill>/` and match on that instead.
-  - **Anchor**: `docs/skill-baselines.json` growth gate; Basili et al. 1994 (GQM).
-
 - [ ] Workflow skills route single-PR review to a skill that exists
   - **ID**: skills-route-review-to-existing-skill
   - **Tags**: skills, routing, docs

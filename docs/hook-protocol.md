@@ -129,6 +129,19 @@ The attribution hooks work this way: the dotfiles `gh` wrapper and
 Blocking messages must tell the agent exactly how to retry successfully. Do not
 print secrets, full environment dumps, or unrelated transcript contents.
 
+A `warn` hook on `UserPromptSubmit` can add context instead of a stderr line.
+It prints `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`
+on stdout and exits `0`. Claude Code ignores a top-level `additionalContext`.
+
+## Goal setting
+
+Claude Code's built-in `/goal <condition>` fires `UserPromptSubmit`, and the
+`prompt` field holds the raw `/goal …` text. The hook
+`goal-set-loads-run-goal` matches it and adds context that tells the agent to
+load the `run-goal` skill. It stays silent for `/goal`, `/goal clear` and the
+other clear aliases, and on machines where `run-goal` is not installed. So
+installing the skill (`agentbrew install run-goal`) is the only opt-in step.
+
 ## Cross-workspace publishing
 
 The opt-in hook `no-cross-workspace-publish` blocks three commands before the

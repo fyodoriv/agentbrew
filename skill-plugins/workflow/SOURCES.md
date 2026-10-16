@@ -32,7 +32,7 @@ third-party equivalent in the current source inventory:
 `companion-docs-sync`, `companion-researcher`, `companion-skill-curate`,
 `companion-task-groom`, `companion-test-gaps`, `git-diagnose-codebase`,
 `grind`, `grind-report`, `handoff`, `markdown-for-gdoc`, `project-audit`,
-`rfc`, `strategic-review`, `sweep`, `task-command-center`,
+`rfc`, `run-goal`, `strategic-review`, `sweep`, `task-command-center`,
 `to-issues`, and `ubiquitous-language`.
 
 AgentBrew installs a skill from this directory only when it is selected by name

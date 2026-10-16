@@ -286,6 +286,12 @@ skills:
     recommended: true
     rationale: "Iterative improvement toward a measurable goal. Useful for any metric-driven task."
 
+  - name: run-goal
+    description: "Turns a /goal into a measurable goal contract, asks one round of questions at most, works until done or blocked, then reports with a retro and skill updates."
+    source: fyodoriv/agentbrew
+    category: development
+    rationale: "Makes goal-driven autonomous runs measurable and review-ready. The goal-set-loads-run-goal hook loads it on every /goal once it is installed."
+
   # ── Tier 2: Strong Recommendation ─────────────────────────────
 
   - name: react-best-practices

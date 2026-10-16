@@ -394,6 +394,18 @@ hooks:
     agents: ["claude-code", "cursor"]
     defaultEnabled: false
 
+  # ── Goal setting (UserPromptSubmit — loads run-goal on /goal) ───────────
+
+  - id: goal-set-loads-run-goal
+    description: When /goal sets a goal and run-goal is installed, add context that loads the run-goal skill
+    event: UserPromptSubmit
+    script: checks/goal-set-loads-run-goal.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL
+    sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md (owner request 2026-10-15: run the goal skill every time a goal is set)'
+    agents: ["claude-code"]
+
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
     event: SessionEnd

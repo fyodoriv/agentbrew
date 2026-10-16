@@ -97,6 +97,25 @@ mechanism.
 
 The inventory deliberately stops at source files (`Agentfile.yaml`, `src/catalog.yaml`, `templates/AGENTS.md`, `src/core/agents.yaml`, `hooks/manifest.yaml`, `hooks/checks/*`, `skill-plugins/dev/*/SKILL.md`, and catalog CLI command markdown). It does not inspect deployed output under `~/.claude`, `~/.cursor`, or other agent home directories. Run `npm test src/agent-artifacts` before changing agent-facing prompt/config surfaces.
 
+## External dependencies
+
+Every external CLI or service that agentbrew calls at runtime is listed here.
+A new one goes behind an adapter in `src/adapters/`, so a swap (for example
+mcpm.sh to the MCP Registry) has one place to start. A "direct" row says why
+it has no adapter. `src/docs/architecture-dependencies.test.ts` fails when a
+row names a file that does not exist.
+
+| Tool | Called from | Adapter |
+|---|---|---|
+| MCP Registry (`registry.modelcontextprotocol.io`) | `src/adapters/mcp-registry.ts` | adapter |
+| Minsky rule lints | `src/adapters/rule-lint.minsky.ts` (interface `src/adapters/rule-lint.ts`) | adapter |
+| skills CLI (`npx skills`) | `src/update.ts` | direct: two read-and-update calls in one function; the delegation layer is `npx` itself |
+| mcpm.sh | `src/sync/mcp-delegate.ts` | direct: the `*-delegate.ts` module is the boundary for this tool |
+| ai-rules | `src/sync/rules-delegate.ts`, `src/sync/commands-delegate.ts` | direct: same delegate-module boundary |
+| GitHub CLI (`gh`) | `src/integrations/gh-issues.ts` | direct: one integration module owns every call |
+| Ollama | `src/mcp/opencode-bootstrap.ts` | direct: optional local-model bootstrap, one module |
+| git | `src/core/git-retry.ts`, `src/mcp/mcp-git.ts` | direct: a system tool, wrapped for retries only |
+
 ## Ownership boundary
 
 agentbrew owns: `~/.claude/`, `~/.cursor/`, `~/.augment/`, `~/.codex/`, `~/.config/opencode/`, `~/.kiro/`, `~/.config/amp/`, `~/.config/agentbrew/`.

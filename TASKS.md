@@ -292,13 +292,6 @@
   - **Measurement**: `node -e "const c = require('js-yaml').load(require('fs').readFileSync('src/catalog.yaml','utf8')); console.log(c.bundles?.length ?? 0)"` returns ≥3; `agentbrew browse bundles --json | jq 'length' ≥ 3`.
   - **Anchor**: `anthropics/claude-plugins-official` README — bundle structure (`commands/`, `agents/`, `skills/`, `.mcp.json`, `hooks/`); claudepluginhub.com April 2026 stats (282,325 components, bundle is the install unit); Claude Code docs https://code.claude.com/docs/en/discover-plugins.md.
 
-- [ ] Document every external dependency in an ARCHITECTURE.md dependency table
-  - **ID**: adopt-minsky-adapter-discipline
-  - **Tags**: scout, architecture, adapters
-  - **Details**: `src/adapters/` now exists (`mcp-registry.ts`, `rule-lint.ts`, `rule-lint.minsky.ts`; #62, #70). New external dependencies go behind an adapter there. What is missing is a machine-checkable dependency table in ARCHITECTURE.md (tool → adapter file or "direct, with reason"), so a swap such as mcpm.sh → MCP Registry has one place to start. Minsky is in maintenance mode, so port only the table check, not its whole rule set.
-  - **Files**: ARCHITECTURE.md, `src/docs/` (one docs test for the table), `src/adapters/`
-  - **Acceptance**: ARCHITECTURE.md lists every external CLI or service agentbrew calls (skills CLI, mcpm.sh, ai-rules, MCP Registry, Minsky rule lints) with its adapter file or a "direct" reason; a docs test fails when a row points to a missing file.
-
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security

@@ -297,23 +297,44 @@ function hookEntryKey(entry: AgentfileHookEntry): string {
   return JSON.stringify([entry.event, entry.matcher ?? "*", agents]);
 }
 
+/** Group one file's hooks by {@link hookEntryKey}, in first-seen order. Two
+ *  hooks with one key but different commands both stay (agents run every hook
+ *  that matches); an exact copy is dropped. */
+function groupHooksByKey(entries: AgentfileHookEntry[]): Map<string, AgentfileHookEntry[]> {
+  const groups = new Map<string, AgentfileHookEntry[]>();
+  for (const entry of entries) {
+    const key = hookEntryKey(entry);
+    const group = groups.get(key) ?? [];
+    const serialized = JSON.stringify(entry);
+    if (!group.some((existing) => JSON.stringify(existing) === serialized)) group.push(entry);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+/** A later file's hooks replace every earlier hook with the same key, at the
+ *  position of the first one. Hooks inside one file never replace each other. */
 function mergeHookEntries(
   current: AgentfileHookEntry[] | undefined,
   incoming: AgentfileHookEntry[] | undefined,
 ): AgentfileHookEntry[] | undefined {
   if (!incoming?.length) return current;
-  const result = current ? [...current] : [];
-  const indexByKey = new Map(result.map((entry, index) => [hookEntryKey(entry), index]));
+  const incomingByKey = groupHooksByKey(incoming);
+  const result: AgentfileHookEntry[] = [];
+  const placed = new Set<string>();
 
-  for (const entry of incoming) {
+  for (const entry of current ?? []) {
     const key = hookEntryKey(entry);
-    const existingIndex = indexByKey.get(key);
-    if (existingIndex === undefined) {
-      indexByKey.set(key, result.length);
+    const replacement = incomingByKey.get(key);
+    if (!replacement) {
       result.push(entry);
-    } else {
-      result[existingIndex] = entry;
+    } else if (!placed.has(key)) {
+      result.push(...replacement);
+      placed.add(key);
     }
+  }
+  for (const [key, group] of incomingByKey) {
+    if (!placed.has(key)) result.push(...group);
   }
 
   return result;

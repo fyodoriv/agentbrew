@@ -326,6 +326,38 @@ project: 42
     ]);
   });
 
+  it("keeps both same-key hooks from one Agentfile and drops exact copies", () => {
+    const basePath = join(tmpDir, "base.Agentfile.yaml");
+    writeFileSync(
+      basePath,
+      "hooks:\n  - event: Stop\n    command: lint\n  - event: Stop\n    command: test\n  - event: Stop\n    command: lint\n",
+    );
+
+    const merged = parseAgentfile(mergeAgentfiles([basePath]));
+
+    expect(merged.hooks).toEqual([
+      { event: "Stop", command: "lint" },
+      { event: "Stop", command: "test" },
+    ]);
+  });
+
+  it("lets a later file replace every earlier hook with the same key", () => {
+    const basePath = join(tmpDir, "base.Agentfile.yaml");
+    const overlayPath = join(tmpDir, "overlay.Agentfile.yaml");
+    writeFileSync(
+      basePath,
+      "hooks:\n  - event: Stop\n    command: lint\n  - event: PreToolUse\n    matcher: Bash\n    command: guard\n  - event: Stop\n    command: test\n",
+    );
+    writeFileSync(overlayPath, "hooks:\n  - event: Stop\n    command: overlay-check\n");
+
+    const merged = parseAgentfile(mergeAgentfiles([basePath, overlayPath]));
+
+    expect(merged.hooks).toEqual([
+      { event: "Stop", command: "overlay-check" },
+      { event: "PreToolUse", matcher: "Bash", command: "guard" },
+    ]);
+  });
+
   it("carries defaultModel through and merges modelOverrides per key", () => {
     const basePath = join(tmpDir, "base.Agentfile.yaml");
     const overlayPath = join(tmpDir, "overlay.Agentfile.yaml");

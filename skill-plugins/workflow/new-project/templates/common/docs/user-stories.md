@@ -1,11 +1,27 @@
 # User stories
 
-Each story is something a user can do end to end. Each one has a test that
-covers the happy path and one failure path. A change to what the user does or
-sees updates its story and its test.
+Each story is something a user can do end to end. Each one names its metric
+and has an e2e test per case (happy, loading or slow, error) in `tests/e2e/`,
+named after the story id. `scripts/check-docs.sh` fails when this file and
+`tests/e2e/` drift apart. A change to what the user does or sees updates its
+story and its tests in the same commit.
 
-## US-1: FILL: short title
+## US-01: Set up the project with one command
+
+- **As** a new contributor (or agent), **I want** to run one command, **so that** I can work in minutes.
+- **Metric**: time from clone to a passing `scripts/doctor.sh`. **Target**: under 5 minutes.
+
+| Case | Test | Log event |
+|---|---|---|
+| happy | `tests/e2e/us-01-setup.sh` | `check.step` |
+| error | FILL: a test where a required tool is missing and doctor prints the fix | FILL |
+
+## US-02: FILL: the first real user story
 
 - **As** FILL: the user, **I want** FILL: the action, **so that** FILL: the outcome.
-- **Done when**: FILL: the observable result.
-- **Test**: FILL: path to the test that proves it.
+- **Metric**: FILL: the number that shows it works. **Target**: FILL.
+
+| Case | Test | Log event |
+|---|---|---|
+| happy | FILL: the e2e test file for US-02 | FILL: `component.action` |
+| error | FILL | FILL |

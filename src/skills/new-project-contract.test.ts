@@ -15,21 +15,26 @@ const profiles = [
   { profile: "assistant", stack: "python" },
   { profile: "side-project", stack: "rust" },
 ] as const;
+const required = ["vision", "metrics", "observability", "user-stories", "setup", "e2e", "self-improving", "tasks"];
 
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 function score(dir: string, profile: string, ...flags: string[]) {
-  const run = spawnSync("bash", [checkSetup, dir, "--profile", profile, ...flags], { encoding: "utf-8", env });
+  const run = spawnSync("/bin/bash", [checkSetup, dir, "--profile", profile, ...flags], { encoding: "utf-8", env });
   const match = /score: (\d+)\/(\d+)/.exec(run.stdout);
   expect(match, run.stdout + run.stderr).not.toBeNull();
   return { status: run.status, pass: Number(match?.[1]), total: Number(match?.[2]), out: run.stdout };
 }
 
 function scaffoldInto(dir: string, profile: string, stack: string) {
-  return execFileSync("bash", [scaffold, dir, "--profile", profile, "--name", `demo-${profile}`, "--stack", stack], {
-    encoding: "utf-8",
-    env,
-  });
+  return execFileSync(
+    "/bin/bash",
+    [scaffold, dir, "--profile", profile, "--name", `demo-${profile}`, "--stack", stack],
+    {
+      encoding: "utf-8",
+      env,
+    },
+  );
 }
 
 describe("new-project skill", () => {
@@ -46,8 +51,58 @@ describe("new-project skill", () => {
   it.each(profiles)("strict mode fails a fresh $profile scaffold until FILL: markers are replaced", ({ profile }) => {
     const dir = join(scratch, profile);
     expect(score(dir, profile, "--strict").status).toBe(1);
-    execFileSync("bash", ["-c", "grep -rIl 'FILL:' . | xargs perl -pi -e 's/FILL:/Filled:/g'"], { cwd: dir });
+    execFileSync("bash", ["-c", "grep -rIlw 'FILL' --exclude-dir=.git . | xargs perl -pi -e 's/\\bFILL\\b/Filled/g'"], {
+      cwd: dir,
+    });
     expect(score(dir, profile, "--strict").status).toBe(0);
+  });
+
+  it.each(profiles)("enforces every required area for $profile", ({ profile }) => {
+    const areas =
+      /areas: (.*)/
+        .exec(score(join(scratch, profile), profile).out)?.[1]
+        .trim()
+        .split(" ") ?? [];
+    for (const area of required) expect(areas, area).toContain(area);
+  });
+
+  it("runs the one-line setup, e2e, docs check, and speed report in a fresh scaffold", () => {
+    const dir = join(scratch, "run");
+    scaffoldInto(dir, "side-project", "none");
+    const run = (script: string) =>
+      execFileSync("bash", [join(dir, "scripts", script)], { cwd: dir, encoding: "utf-8", env });
+    expect(run("setup.sh")).toContain("doctor: all checks passed");
+    expect(run("e2e.sh")).toContain("ok US-01 setup");
+    expect(run("check-docs.sh")).toContain("docs match the code");
+    writeFileSync(
+      join(dir, ".metrics", "events.jsonl"),
+      '{"ts":"t","event":"check.step","name":"unit","seconds":3,"ok":true}\n',
+    );
+    expect(run("metrics.sh")).toMatch(/unit\s+1\s+3\.0/);
+  });
+
+  it("keeps check-docs and e2e right with prose, helpers, and required env keys", () => {
+    const dir = join(scratch, "edge");
+    scaffoldInto(dir, "tool", "none");
+    const stories = join(dir, "docs", "user-stories.md");
+    writeFileSync(stories, `${readFileSync(stories, "utf-8")}\nSee tests/e2e/us-01-setup.sh.\n`);
+    mkdirSync(join(dir, "tests", "e2e", "fixtures"), { recursive: true });
+    writeFileSync(join(dir, "tests", "e2e", "lib.sh"), "exit 1\n");
+    writeFileSync(join(dir, ".env.example"), "API_KEY=  # required\n");
+    const run = (script: string) =>
+      execFileSync("/bin/bash", [join(dir, "scripts", script)], { cwd: dir, encoding: "utf-8", env });
+    expect(run("check-docs.sh")).toContain("docs match the code");
+    expect(run("e2e.sh")).toContain("e2e: 1 file(s) passed");
+  });
+
+  it("tracks every template file in git, so a global gitignore cannot drop one", () => {
+    const onDisk = execFileSync("find", [join(skillRoot, "templates"), "-type", "f"], { encoding: "utf-8" })
+      .trim()
+      .split("\n").length;
+    const tracked = execFileSync("git", ["ls-files", join(skillRoot, "templates")], { encoding: "utf-8" })
+      .trim()
+      .split("\n").length;
+    expect(tracked).toBe(onDisk);
   });
 
   it.each(profiles)("scores an empty dir at 20% or less for $profile", ({ profile }) => {

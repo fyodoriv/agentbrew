@@ -83,7 +83,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
   dir (`.wt/`) breaks vitest discovery, and a symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under high load. Run it again, or compare with `main`, before you blame your change.
 - A test that writes this repo's `TASKS.md` fails its file (`vitest.tasks-guard.ts`). Stub writers such as `writeFollowups`.
-- The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`.
+- The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`. It also hides template files named `TASKS.md`: store them as `*.template.md` (the `new-project` contract test checks that every template is tracked).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and the `mktemp` calls in hook fixtures fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
 - `jks-js` is a local stub (`scripts/stubs/jks-js`, wired by a root dev dependency plus an `overrides` entry). It keeps the unpatched `node-forge` out of the dev tree; promptfoo loads it only for Java keystore auth. Drop the stub when promptfoo or `node-forge` ships a fix.

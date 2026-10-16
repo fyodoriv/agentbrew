@@ -29,11 +29,25 @@ Ask the user only when two rows fit equally. Record the choice in an ADR.
 | Supply chain | Dependabot or Renovate | pip-audit | cargo-deny |
 | LLM evals | promptfoo | promptfoo, then inspect_ai | promptfoo (black box) |
 
+## Observability per stack
+
+The contract is in each repo's `docs/observability.md`: JSONL events, errors
+behind one adapter, a doctor, a metrics table. These libraries fill it:
+
+| | TypeScript | Python | Rust |
+|---|---|---|---|
+| JSON logs | pino | structlog (or stdlib `logging` with a JSON formatter) | tracing + tracing-subscriber (json) |
+| Errors (optional, behind an adapter) | @sentry/node | sentry-sdk | sentry |
+| Traces and metrics (when one process is not enough) | OpenTelemetry JS | OpenTelemetry Python | opentelemetry-rust |
+
+Start with the JSONL file. Add a service only when the profile's privacy rules allow it.
+
 ## Wire the gate
 
 `scripts/check.sh` runs, when present:
 
-- **TypeScript**: `lint`, `typecheck`, and `test` scripts in `package.json`. Add them:
+- **TypeScript**: `lint`, `typecheck`, and `test` scripts in `package.json`. `npm init` writes a
+  `test` script that always fails; replace it. Add them:
   `"lint": "biome check .", "typecheck": "tsc --noEmit", "test": "vitest run"`.
 - **Python**: `ruff format --check`, `ruff check`, `pyright` (when installed), `pytest`.
   Add them as dev dependencies: `uv add --dev ruff pyright pytest`.

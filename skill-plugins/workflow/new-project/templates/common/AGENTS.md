@@ -16,14 +16,21 @@ Run every command from the repo root.
 
 | Task | Command |
 |---|---|
+| One-line setup (idempotent) | `scripts/setup.sh` |
+| Health check | `scripts/doctor.sh` |
 {{COMMANDS_TABLE}}
-| Full gate (run before you say done) | `scripts/check.sh` |
+| Fast gate (each commit) | `scripts/check.sh fast` |
+| Full gate with e2e (before you say done) | `scripts/check.sh` |
+| E2E tests only | `scripts/e2e.sh` |
+| Speed report | `scripts/metrics.sh` |
 
 ## Where to change what
 
 | I want to… | Change | Update this doc too |
 |---|---|---|
-| Add a feature | the code, plus a story in `docs/user-stories.md` | `README.md` if users see it |
+| Add a feature | the code, a story in `docs/user-stories.md`, and its tests in `tests/e2e/` | `README.md` if users see it |
+| Add a log event or metric | the code | `docs/observability.md` event or metric table |
+| Add a dependency | the manifest, plus a check in `scripts/doctor.sh` | `README.md` if setup changes |
 | Record a decision that is hard to undo | a new `docs/decisions/NNNN-*.md` | none |
 | Plan a change bigger than one PR | `docs/plans/YYYY-MM-DD-<topic>.md` | none |
 | Add or close a task | `TASKS.md` | none |
@@ -37,18 +44,27 @@ Run every command from the repo root.
 4. Touch only what the task needs. Note other problems as tasks in `TASKS.md`.
 5. Never commit secrets. Real values go in `.env` (ignored); names go in `.env.example`.
 6. Prefer a maintained library or tool to new code. Wrap it behind a small adapter.
+7. Every user story has an e2e test per case in `tests/e2e/`, named after its id.
+8. Log content-free JSONL events ([`docs/observability.md`](docs/observability.md)). Errors name the story they break; a broken story is fixed first.
+9. A rule a machine can check becomes a step in `scripts/check.sh`, not a sentence here.
+10. Key costly outputs by a hash of their inputs, so nothing is computed twice.
 {{PROFILE_RULES}}
 
 ## Gotchas
 
-- FILL: add each environment fact that costs an agent time, with its fix.
+A trap that cost time gets a dated row here, or becomes a check.
+
+| Date | Symptom | Fix |
+|---|---|---|
+| FILL | FILL | FILL |
 
 ## Delivery
 
 1. Branch `type/short-description` from `main`.
-2. Make the change with its tests and docs. Run `scripts/check.sh`.
-3. Commit with a conventional header (`feat:`, `fix:`, `docs:`, `chore:`).
-4. Open a PR with `## Summary`, `## Details`, and `## Docs`. Merge when the gate is green.
+2. Write the task's Hypothesis, Measurement, Success, and Pivot before the code.
+3. Make the change with its tests and docs. Run `scripts/check.sh fast` per commit and `scripts/check.sh` once before merge.
+4. Commit with a conventional header (`feat:`, `fix:`, `docs:`, `chore:`).
+5. Open a PR with `## Summary`, `## Details`, `## Docs`, and Predicted / Observed / Lesson. Add the row to `docs/learnings.md`. Merge when the gate is green.
 
 ## Task Management
 

@@ -269,6 +269,18 @@
         "Runs the project's own gate on the generated output, and treats a gate failure in a template as a template bug to fix",
         "Does not create the deferred assistant repo; the goal's out-of-scope note stays respected"
       ]
+    },
+    {
+      "id": 24,
+      "prompt": "/goal update the new-project skill to include best practices from my repos (minsky, tooling, etc.); every project must have observability, metrics, vision, user stories, one-line setup, e2e, self-improving speed, and tasks",
+      "expected_output": "A contract whose metric counts required areas the scorer enforces (baseline before edits), a survey of the owner's repos split into adopted and rejected rules with sources, generated output actually run (not only scored), and any bug found in already-shipped work fixed with a regression test.",
+      "expectations": [
+        "Counts the required areas the scorer enforces before editing (baseline) and after (target all)",
+        "Surveys the owner's repos with at most three parallel read-only agents and never reads private user data",
+        "Records rejected practices with a reason, so overgrowth (huge lint farms, daemons) is not copied",
+        "Runs the generated setup and full gate in fresh scaffolds and in one real stack, not only the structural score",
+        "When it finds a bug in earlier shipped work (a template hidden by a global gitignore), adds a test that fails on the bug before the fix"
+      ]
     }
   ]
 }

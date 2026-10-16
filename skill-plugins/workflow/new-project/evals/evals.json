@@ -70,6 +70,19 @@
         "Suggests the prototype skill or a single script",
         "Does not run scaffold.sh or check-setup.sh"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "start a new project for a habit tracker web app; it must have full observability, metrics, vision, user stories, a one-line setup, e2e tests, a way to keep getting faster, and tasks",
+      "expected_output": "A tool-profile repo where check-setup.sh reports every required area (vision, metrics, observability, user-stories, setup, e2e, self-improving, tasks) passing, and the one-line setup and full gate actually run green.",
+      "expectations": [
+        "Runs check-setup.sh and shows its areas line listing vision, metrics, observability, user-stories, setup, e2e, self-improving, and tasks",
+        "Runs scripts/setup.sh and shows it ending with 'doctor: all checks passed'",
+        "Writes the first real user story with its metric and an e2e test per case, listed in docs/user-stories.md so scripts/check-docs.sh passes",
+        "Fills the metrics table in docs/observability.md with goal, pivot, and command for each metric, using (stub) for missing data",
+        "Runs the full scripts/check.sh (with e2e) and then scripts/metrics.sh to show the timed steps",
+        "Leaves RECURRING.md with the weekly speed review and checkup instead of deleting them"
+      ]
     }
   ]
 }

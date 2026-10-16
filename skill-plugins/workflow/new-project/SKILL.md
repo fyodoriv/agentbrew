@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Starts a new software repo with an agent-ready setup on day one, for one of three profiles - a developer tool, a personal AI assistant (career, business, tutor, interview prep), or a private side project. Interviews the user, picks the stack (TypeScript, Python, or Rust), scaffolds AGENTS.md, docs, task queue, gate, and profile files, then scores the result with a deterministic checker until it reaches 100%. Use when the user says "new project", "start a repo", "bootstrap", "scaffold", "set up a new assistant", or "create a side project". Don't use for an existing repo's docs (follow docs/agent-guide-baseline.md in agentbrew), for a single Agentfile (use agentfile-init), or for a throwaway spike (use prototype).
+description: Starts a new software repo with an agent-ready setup on day one, for one of three profiles - a developer tool, a personal AI assistant (career, business, tutor, interview prep), or a private side project. Interviews the user, picks the stack (TypeScript, Python, or Rust), scaffolds AGENTS.md, vision, metrics, observability, user stories with e2e tests, a one-line setup, a timed gate with a weekly speed review, tasks, and profile files, then scores the result with a deterministic checker until it reaches 100%. Use when the user says "new project", "start a repo", "bootstrap", "scaffold", "set up a new assistant", or "create a side project". Don't use for an existing repo's docs (follow docs/agent-guide-baseline.md in agentbrew), for a single Agentfile (use agentfile-init), or for a throwaway spike (use prototype).
 ---
 
 # New project
@@ -8,7 +8,25 @@ description: Starts a new software repo with an agent-ready setup on day one, fo
 Start a repo that agents can work in well from the first commit. The setup
 follows what Anthropic, OpenAI, Google, and the agents.md spec agree on: one
 short instruction file, one runnable gate, docs loaded on demand, and evals
-before prompt tuning. Evidence and sources: [references/research.md](references/research.md).
+before prompt tuning. It also carries the practices proven in the owner's own
+repos. Evidence and sources: [references/research.md](references/research.md)
+(providers and popular repos) and [references/owner-practices.md](references/owner-practices.md)
+(the owner's repos, with what was rejected and why).
+
+## Required in every project
+
+`check-setup.sh` tags each check with its area. All of these must pass:
+
+| Area | What the repo gets |
+|---|---|
+| vision | `docs/VISION.md`: problem, success metric, non-goals, dated kill criteria, prior art |
+| metrics | metrics table with goal, pivot, and command; `scripts/metrics.sh` |
+| observability | content-free JSONL events, errors mapped to stories, `scripts/doctor.sh` |
+| user-stories | each story names its metric and its e2e test per case |
+| setup | `scripts/setup.sh`: one idempotent command, first in the README |
+| e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
+| self-improving | timed gate steps in `.metrics/`, weekly speed review in `RECURRING.md`, `docs/learnings.md` |
+| tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
 
 ## Profiles
 
@@ -18,12 +36,12 @@ before prompt tuning. Evidence and sources: [references/research.md](references/
 | `assistant` | a personal AI helper run by a coding agent | `skills/`, `prompts/`, `knowledge/`, `evals/`, `config/models.yaml`, `profile/`, `memory/`, `docs/privacy.md`, ignored `private/` |
 | `side-project` | a private hobby project | `docs/privacy.md`, ignored `private/`, kill criteria used at each milestone |
 
-Common setup for every profile: `AGENTS.md` (the agent-guide baseline
-sections) with a `CLAUDE.md` symlink, `README.md` with a quickstart,
-`docs/README.md` map, `docs/VISION.md` (problem, success metric, non-goals,
-kill criteria, prior art), `docs/user-stories.md`, `docs/decisions/` ADRs,
-`docs/plans/`, `TASKS.md`, `Agentfile.yaml`, `.gitignore`, and
-`scripts/check.sh` (the one gate).
+Common setup for every profile, beyond the table above: `AGENTS.md` (the
+agent-guide baseline sections) with a `CLAUDE.md` symlink, the
+`docs/README.md` map checked by `scripts/check-docs.sh`, `docs/decisions/`
+ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
+`lefthook.yml` (secret scan, docs check, fast gate), and `scripts/check.sh`
+(`fast` per commit, full with e2e per PR).
 
 ## Steps
 
@@ -45,13 +63,16 @@ kill criteria, prior art), `docs/user-stories.md`, `docs/decisions/` ADRs,
    ```
 
 5. **Run the stack generator** inside `<dir>` (table in `stacks.md`), add the
-   lint, typecheck, and test entries, and add one smoke test.
+   lint, typecheck, and test entries, and add one smoke test. Then run
+   `scripts/setup.sh` once; it must end with `doctor: all checks passed`.
 6. **Fill every `FILL:` marker** with project facts from the interview. Write
    VISION with the user: a measurable success metric and a dated kill
    criterion. For `assistant`, pick a recipe in
    [references/assistant-recipes.md](references/assistant-recipes.md) and add
-   its skills, rubrics, and eval cases. Do not invent facts; ask, or leave
-   the marker and say so.
+   its skills, rubrics, and eval cases. Write US-02 (the first real story) with
+   its e2e tests, its log events in `docs/observability.md`, and a doctor check
+   for each way it can break. Do not invent facts; ask, or leave the marker and
+   say so.
 7. **Wire the tools.** `npx -y @tasks-md/cli install --agent claude` (adds
    `/next-task`), then `agentbrew sync --dry-run` and `agentbrew sync` for the
    Agentfile skills.
@@ -86,5 +107,10 @@ kill criteria, prior art), `docs/user-stories.md`, `docs/decisions/` ADRs,
 
 - The tasks.md linter needs network on first run (`npx -y @tasks-md/lint`). In a
   sandbox, run `scripts/check.sh` outside it, or install the linter first.
+- `lefthook install` fails when a global `core.hooksPath` is set; `setup.sh`
+  then skips it with a note. The gate still runs the same checks.
+- A global gitignore can hide template files (one once listed `TASKS.md`).
+  Templates that a global ignore might match are stored as `*.template.md`;
+  the contract test fails if any template file is not tracked by git.
 - `check-setup.sh` checks structure, not quality. After it passes, read VISION
   and the first user story with the user.

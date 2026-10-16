@@ -141,6 +141,17 @@
         "Asks no question when the repo answers it",
         "Writes the retro file with one line per skill used, including run-goal"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "/goal make the tests in this repo pass (same tiny sum.js repo; eval 12 already covers it; retro time)",
+      "expected_output": "The retro still makes a real update to run-goal (new eval or edit) and records its commit SHA or PR. It does not write a no-change line.",
+      "expectations": [
+        "Does not write \"no change\" or \"already covers\" as the run-goal retro line, because the goal-retro-before-stop hook rejects it",
+        "Makes a real edit (new eval case or SKILL.md/reference fix) in a worktree of the agentbrew repo",
+        "Records the new commit SHA or PR in the retro file line for run-goal",
+        "Loads the commit_session_legacy memory schema (session_id, agent_id, task_summary, outcome) before the first call"
+      ]
     }
   ]
 }

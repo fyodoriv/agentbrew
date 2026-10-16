@@ -182,6 +182,112 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+<!-- Added 2026-10-15 from an agent audit; each item verified on main at 8eaa800. -->
+
+- [ ] companion-researcher eval names the competitor dir the skill now detects
+  - **ID**: companion-researcher-eval-competitor-dir
+  - **Tags**: skills, evals, companion
+  - **Details**: #86 made the skill write to `<COMPETITOR_DIR>/<NAME>.md` (`skill-plugins/workflow/companion-researcher/SKILL.md:62`). The eval still expects the fixed path `docs/competitors/*` in its write allow-list (`skill-plugins/workflow/companion-researcher/evals/evals.json:46`). A correct answer that names `docs/competition/` can fail the eval.
+  - **Files**: `skill-plugins/workflow/companion-researcher/evals/evals.json`
+  - **Output**: code
+  - **Acceptance**: the eval expectation names the detected competitor dir (`<COMPETITOR_DIR>`), not only `docs/competitors/*`; `npm run eval:agent-artifacts` passes.
+  - **Hypothesis**: matching the eval to the skill text removes the one expectation that rejects a correct `docs/competition/` answer.
+  - **Measurement**: `grep -c 'docs/competitors/\*' skill-plugins/workflow/companion-researcher/evals/evals.json` (now 1).
+  - **Success**: the count is 0 and the expectation names `<COMPETITOR_DIR>`.
+  - **Pivot**: if the eval runner needs literal paths, list both `docs/competition/*` and `docs/competitors/*` instead.
+  - **Anchor**: #86 (competitor dir detection); Basili et al. 1994 (GQM).
+
+- [ ] `agentbrew skills validate` accepts standard and current Claude Code frontmatter fields
+  - **ID**: skills-validate-known-frontmatter-fields
+  - **Tags**: skills, validate, false-positive
+  - **Details**: `KNOWN_FRONTMATTER_FIELDS` (`src/skills/validate.ts:41-56`) lacks the Agent Skills standard fields `license`, `metadata`, and `hidden`, and the Claude Code 2.1.300 fields `arguments`, `version`, and `paths`. `validateUnknownFields` (`src/skills/validate.ts:144`) warns "Unknown frontmatter field" for each one, so valid skills get noise.
+  - **Files**: `src/skills/validate.ts`, `src/skills/validate.test.ts`, `docs/research/claude-code-undocumented-config.md`
+  - **Output**: code
+  - **Acceptance**: a SKILL.md with each of the six fields gets no unknown-field warning; a test covers all six; a truly unknown field still warns.
+  - **Hypothesis**: adding the six fields drops unknown-field warnings on valid skills to zero without hiding real typos.
+  - **Measurement**: `npx vitest run src/skills/validate.test.ts` with a fixture that uses all six fields.
+  - **Success**: 0 unknown-field warnings for the six fields; the typo fixture still warns.
+  - **Pivot**: if the field list keeps drifting each Claude Code release, read it from one data file next to the research doc instead of a code constant.
+  - **Anchor**: agentskills.io frontmatter spec; `docs/research/claude-code-undocumented-config.md`.
+
+- [ ] Bloat lint relaxes only the skill that has an open size-cut task
+  - **ID**: bloat-lint-open-task-per-skill
+  - **Tags**: lint, skills, baselines
+  - **Details**: `runAgentBloatLint` computes one boolean for the whole queue (`src/agent-bloat-lint.ts:400-404`) and passes it to every skill (`src/agent-bloat-lint.ts:348`). `hasOpenTrimTask` (`src/agent-bloat-lint.ts:97-108`) returns true when any open task line matches its keyword regex (line 99). So one open size-cut task turns every skill's baseline-growth error into a warning. This block avoids those keywords on purpose, or it would trigger the bug itself.
+  - **Files**: `src/agent-bloat-lint.ts`, `src/agent-bloat-lint.test.ts`
+  - **Output**: code
+  - **Acceptance**: an open size-cut task that names skill A downgrades only A's growth error; skill B's growth still errors; a test covers both.
+  - **Hypothesis**: scoping the check to the skill name makes unrelated skill growth fail the lint again.
+  - **Measurement**: `npx vitest run src/agent-bloat-lint.test.ts` with a two-skill fixture and one open task naming skill A.
+  - **Success**: B's finding has severity `error`; A's has `warning`.
+  - **Pivot**: if such tasks rarely name the skill, require a `**Files**:` path under `skill-plugins/<plugin>/<skill>/` and match on that instead.
+  - **Anchor**: `docs/skill-baselines.json` growth gate; Basili et al. 1994 (GQM).
+
+- [ ] `status --fix` suggests a next step for leftover models drift
+  - **ID**: repair-next-steps-models-hint
+  - **Tags**: repair, status, ux
+  - **Details**: `fix()` runs `syncModels` (`src/repair.ts:166`) and `models` is in `AUTO_FIXABLE_TYPES` (`src/repair.ts:116`). But `reportRemainingDrift` (`src/repair.ts:53-97`) has no `sync --only models` line in "Next steps", although `sync --only` accepts `models` (`src/cli.ts:332`). The function sits at the Biome cognitive-complexity limit (15, `biome.json:12`), so adding one more `if` fails lint. Move the type-to-hint pairs into a data table first.
+  - **Files**: `src/repair.ts`, `src/repair.test.ts`
+  - **Output**: code
+  - **Acceptance**: leftover `models` drift prints `agentbrew sync --only models`; `npx biome check src/repair.ts` passes; existing hint tests still pass.
+  - **Hypothesis**: a table-driven hint list gives every sync-fixable type a next step and lowers the function's complexity below 15.
+  - **Measurement**: `npx vitest run src/repair.test.ts` plus `npx biome check src/repair.ts`.
+  - **Success**: a test asserts the models hint; Biome reports no complexity error.
+  - **Pivot**: if a table cannot hold the hints cleanly, split hint printing into its own function and keep the rest as is.
+  - **Anchor**: Biome `noExcessiveCognitiveComplexity` (Campbell 2018, cognitive complexity).
+
+- [ ] agentbrew-add-mcp skill shows a maintained GitHub MCP example
+  - **ID**: add-mcp-skill-maintained-github-example
+  - **Tags**: skills, mcp, docs
+  - **Details**: The skill example still installs the archived npm package `@modelcontextprotocol/server-github` (`skill-plugins/dev/agentbrew-add-mcp/SKILL.md:89`). A contract test pins that exact line (`src/skills/agentbrew-add-mcp-contract.test.ts:66`). Since #89 the catalog points `github` at GitHub's hosted server (`src/catalog.yaml` entry `github`). Agents that copy the example install an archived server.
+  - **Files**: `skill-plugins/dev/agentbrew-add-mcp/SKILL.md`, `src/skills/agentbrew-add-mcp-contract.test.ts`
+  - **Output**: code
+  - **Acceptance**: the example uses a maintained server (for example `agentbrew install github`, or a `--url` form); the contract test pins the new text; no archived package name is left in the skill.
+  - **Hypothesis**: replacing the example stops agents from adding the archived package by copy-paste.
+  - **Measurement**: `grep -c 'server-github' skill-plugins/dev/agentbrew-add-mcp/SKILL.md` (now 1) and `npx vitest run src/skills/agentbrew-add-mcp-contract.test.ts`.
+  - **Success**: the grep count is 0 and the contract test passes.
+  - **Pivot**: if a URL example confuses the stdio walkthrough, use a different maintained stdio server as the example.
+  - **Anchor**: #89 (catalog github entry); archived `modelcontextprotocol/servers` notice.
+
+- [ ] Workflow skills route single-PR review to a skill that exists
+  - **ID**: skills-route-review-to-existing-skill
+  - **Tags**: skills, routing, docs
+  - **Details**: These skill files say "use review" or `review` for single-PR review: `skill-plugins/workflow/project-audit/SKILL.md:8,17,37`, `skill-plugins/workflow/strategic-review/SKILL.md:10`, `skill-plugins/workflow/sweep/SKILL.md:10`, plus `analyze`, `companion-test-gaps`, `git-diagnose-codebase`, and `skill-plugins/dev/write-vision/references/template.md`. No `review` skill exists under `skill-plugins/`, and the catalog has only `requesting-code-review` (`src/catalog.yaml:433`). Agents get routed to nothing.
+  - **Files**: `skill-plugins/workflow/*/SKILL.md`, `skill-plugins/dev/write-vision/references/template.md`
+  - **Output**: code
+  - **Acceptance**: every skill reference to a sibling skill resolves to a skill in `skill-plugins/` or `src/catalog.yaml`; a test fails on an unknown `use <skill>` target.
+  - **Hypothesis**: pointing the routing lines at a real skill and adding a resolver test brings dangling skill references to zero and keeps them there.
+  - **Measurement**: `rg -l '\(use review\)|use \x60review\x60|\(\x60review\x60\)' skill-plugins | wc -l` (now 7), plus the new test.
+  - **Success**: the count is 0 and the resolver test passes.
+  - **Pivot**: if many dangling names show up, file one cleanup task per plugin and land only the test with an allowlist.
+  - **Anchor**: Agent Skills routing guidance ("Don't use for…" fields); Basili et al. 1994 (GQM).
+
+- [ ] SSO watcher snippet pins its agent-browser session to one tab
+  - **ID**: sso-watcher-session-pin-tab
+  - **Tags**: browser, sso, rules
+  - **Details**: #107 added `--session "$SESSION" --pin-tab` to Mode 1 in `templates/rules/browser-tasks.mdc:51-58`. The background SSO watcher in `templates/rules/sso-background-work.mdc:78-89` still runs bare `agent-browser connect`, `get url`, `get title`, and `eval`. On a shared purpose Chrome it can read another agent's tab and report a false login.
+  - **Files**: `templates/rules/sso-background-work.mdc`, `docs/shared-rules.md`
+  - **Output**: docs
+  - **Acceptance**: every `agent-browser` call in the watcher snippet passes the same `--session`, and `connect` uses `--pin-tab`.
+  - **Hypothesis**: pinning the watcher removes cross-agent tab reads during SSO waits.
+  - **Measurement**: `rg -n 'agent-browser' templates/rules/sso-background-work.mdc | rg -vc -- '--session'` (now 4).
+  - **Success**: the count is 0.
+  - **Pivot**: if `--pin-tab` breaks the watcher's reconnect loop, use a per-watcher `--session` only and note the gap.
+  - **Anchor**: #107 (Mode 1 tab pinning); agent-browser 0.39.0 `--pin-tab`.
+
+- [ ] Hook manifest verdicts match what each script can emit
+  - **ID**: hook-manifest-verdict-matches-script
+  - **Tags**: hooks, lint, manifest
+  - **Details**: `memory-sync-projects-session-end` declares `verdict: warn` (`hooks/manifest.yaml:402`), but `hooks/checks/memory-sync-projects-session-end.sh` only calls `verdict_bypass` and `verdict_allow` (lines 205-276); it never calls `verdict_warn`. No lint checks that a declared verdict is reachable.
+  - **Files**: `hooks/manifest.yaml`, `hooks/checks/*.sh`, `scripts/lint-repo-artifacts.sh`
+  - **Output**: code
+  - **Acceptance**: the manifest verdict for this hook is fixed (or the script warns), and a lint fails when a manifest `verdict: X` has no matching `verdict_X` call in its script.
+  - **Hypothesis**: a static check brings manifest-vs-script verdict mismatches to zero and keeps them there.
+  - **Measurement**: the new lint over `hooks/manifest.yaml` (today it would report at least 1 mismatch).
+  - **Success**: the lint reports 0 mismatches and runs in `npm run lint`.
+  - **Pivot**: if many hooks emit verdicts through shared helpers, check the fixture output (`scripts/run-hook-fixtures.sh`) instead of grepping scripts.
+  - **Anchor**: `docs/hook-protocol.md` verdict contract.
+
 ## P3
 
 - [ ] Document pressure-eval conventions for skill contract tests
@@ -671,3 +777,94 @@
   - **Files**: `src/mcp/adapters.ts`, `src/mcp/adapters.test.ts`
   - **Output**: code
   - **Acceptance**: sync logs one warning naming the server when it has both `url` and a non-empty `env`; a test in `src/mcp/adapters.test.ts` asserts the warning.
+
+- [ ] launchagent repair-node-dir test passes Biome with no info findings
+  - **ID**: launchagent-test-biome-use-template
+  - **Tags**: lint, tests, cosmetic
+  - **Details**: `npx biome check src/sync/launchagent-repair-node-dir.test.ts` reports one `lint/style/useTemplate` info at line 46 (string `+ ":"` instead of a template literal). It does not fail `--error-on-warnings`.
+  - **Files**: `src/sync/launchagent-repair-node-dir.test.ts`
+  - **Output**: code
+  - **Acceptance**: Biome reports 0 findings for the file; the test still passes.
+  - **Hypothesis**: the one-line template fix removes the only Biome info in this file.
+  - **Measurement**: `npx biome check src/sync/launchagent-repair-node-dir.test.ts`.
+  - **Success**: "Found 0" findings.
+  - **Pivot**: none; if Biome flags more after the fix, fold them into this task.
+  - **Anchor**: Biome `useTemplate` rule.
+
+- [ ] Decide whether a local GitHub MCP launcher wins over the hosted server on new installs
+  - **ID**: github-mcp-launcher-vs-hosted-decision
+  - **Tags**: mcp, catalog, decision
+  - **Details**: Since #89 a new `agentbrew install github` writes the hosted URL entry (`src/catalog.yaml`, entry `github`). The launcher swap only rewrites the archived npm form or a broken launcher path (`fixDeprecatedGithubEntry` and `fixBrokenGithubLauncherEntry`, `src/mcp/mcpm-hygiene.ts:176-203`). So on a machine with a local `*-github-mcp` launcher, a fresh install gets the hosted server, not the launcher. Decide which one should win, then document it.
+  - **Files**: `src/mcp/mcpm-hygiene.ts`, `src/catalog/install.ts`, `src/catalog.yaml`, `README.md`
+  - **Output**: mixed
+  - **Acceptance**: the chosen behavior is written in the README; a test covers a fresh install with and without a launcher.
+  - **Hypothesis**: one stated rule removes the surprise where an existing launcher is ignored on a fresh install.
+  - **Measurement**: a test in `src/mcp/mcpm-hygiene.test.ts` that installs `github` with a fake launcher on PATH.
+  - **Success**: the test asserts the documented choice.
+  - **Pivot**: if the owner prefers the hosted server everywhere, drop the launcher swap code instead.
+  - **Anchor**: #89 (hosted GitHub MCP); VISION G1 (curate, not host).
+
+- [ ] Drop the duplicate shared-rules dedupe call in `fix()`
+  - **ID**: repair-single-shared-rules-dedupe
+  - **Tags**: repair, rules, cleanup
+  - **Details**: `fix()` calls `dedupeSharedRulesFile()` (`src/repair.ts:152`) and then `syncRules()` (`src/repair.ts:153`), which calls it again through `maybeDedupeSharedRules` (`src/sync/rules-sync.ts:546`). The second pass is a no-op file read.
+  - **Files**: `src/repair.ts`, `src/repair.test.ts`
+  - **Output**: code
+  - **Acceptance**: `fix()` dedupes shared-rules once; the `status --fix` real-e2e dedupe test (#109) still passes.
+  - **Hypothesis**: removing the direct call keeps behavior the same and cuts one redundant file pass.
+  - **Measurement**: a spy test that counts `dedupeSharedRulesFile` calls during `fix()` (now 2).
+  - **Success**: the count is 1 and the #109 e2e test passes.
+  - **Pivot**: if `fix()` needs dedupe before `syncInstructions`, keep the direct call and skip it inside `syncRules` instead.
+  - **Anchor**: #109 (shared-rules dedupe through `status --fix`).
+
+- [ ] Remove plans for skills that no longer exist
+  - **ID**: prune-stale-skill-plans
+  - **Tags**: docs, cleanup, plans
+  - **Details**: 13 of the `docs/plans/cover-*-skill-with-2134-tests.md` files name a skill that has no directory under `skill-plugins/`: arch, autoresearch, clarify, composition-patterns, debug, design-review, diagnose, doc-check, docs-coverage, doubt, fix-styles, github-actions-debugging, grill. Some may have moved to the catalog or been renamed; check each before deleting.
+  - **Files**: `docs/plans/`
+  - **Output**: docs
+  - **Acceptance**: every `docs/plans/cover-*` file names a skill that exists in `skill-plugins/` or `src/catalog.yaml`, or is deleted.
+  - **Hypothesis**: deleting dead plans removes misleading work items for agents that scan `docs/plans/`.
+  - **Measurement**: `for p in docs/plans/cover-*-skill-with-2134-tests.md; do s=$(basename $p | sed 's/^cover-//; s/-skill-with-2134-tests.md$//'); fd -t d "^$s\$" skill-plugins | grep -q . || echo $s; done | wc -l` (now 13).
+  - **Success**: the count is 0, or each remaining name is a catalog skill.
+  - **Pivot**: if a plan still has open value, rename it to the current skill name instead of deleting it.
+  - **Anchor**: tasks.md "completed tasks are deleted" policy.
+
+- [ ] Hook fixture runner passes ShellCheck
+  - **ID**: hook-fixtures-runner-shellcheck
+  - **Tags**: lint, scripts, cosmetic
+  - **Details**: `shellcheck scripts/run-hook-fixtures.sh` reports SC2066 at line 28: `for dir in "$repo_root/hooks/checks"` loops once. Behavior is correct today (one directory), and no gate runs ShellCheck on `scripts/`.
+  - **Files**: `scripts/run-hook-fixtures.sh`
+  - **Output**: code
+  - **Acceptance**: `shellcheck scripts/run-hook-fixtures.sh` exits 0 and `bash scripts/run-hook-fixtures.sh` still finds every fixture.
+  - **Hypothesis**: replacing the one-item loop removes the only ShellCheck error with no behavior change.
+  - **Measurement**: `shellcheck scripts/run-hook-fixtures.sh; echo $?` (now 1).
+  - **Success**: exit 0 and the same fixture count.
+  - **Pivot**: none; if more ShellCheck errors appear across `scripts/`, file a separate gate task.
+  - **Anchor**: ShellCheck SC2066.
+
+- [ ] Hook deploy prunes untracked scripts that predate deploy tracking
+  - **ID**: hook-deploy-prune-pre-tracking-scripts
+  - **Tags**: hooks, deploy, cleanup
+  - **Details**: `pruneStaleScripts` (`src/hooks/deploy.ts:106-119`) only removes IDs listed in `.agentbrew-deployed-hooks.json` or `RETIRED_VERIFIER_IDS`. On this Mac, `~/.claude/codeassist/hooks-scripts/` still holds 5 scripts dated 2026-06-10 to 2026-09-30 from an old overlay. None is in the tracking file, and none is referenced from `~/.claude/settings.json`, so they are inert clutter.
+  - **Files**: `src/hooks/deploy.ts`, `src/hooks/deploy.test.ts`
+  - **Output**: code
+  - **Acceptance**: a deploy run reports (or, with an opt-in flag, removes) `*.sh` files in the deploy dir that no manifest entry and no agent config references; a test covers it.
+  - **Hypothesis**: a one-time orphan sweep brings untracked, unreferenced deployed scripts to zero.
+  - **Measurement**: count `*.sh` in the deploy dir that are neither in `.agentbrew-deployed-hooks.json` nor in `~/.claude/settings.json` (now 5 here).
+  - **Success**: the count is 0 after one sync.
+  - **Pivot**: if a safe orphan rule is unclear, report them in `agentbrew status` and let the user delete them.
+  - **Anchor**: #84 (stale deployed-script pruning).
+
+- [ ] Decide how duplicate hooks inside one Agentfile behave
+  - **ID**: agentfile-duplicate-hooks-same-file-decision
+  - **Tags**: agentfile, hooks, decision
+  - **Details**: `mergeHookEntries` keys hooks on event, matcher, and agents (`hookEntryKey`, `src/agentfile.ts:295-298`). It applies the key inside one file too (`src/agentfile.ts:308-317`), so two hooks with the same key but different commands collapse to the last one. The README says duplicates "use the later definition" (`README.md:167`) but describes only merges across files. Decide whether same-file duplicates should both run, warn, or collapse, then document it.
+  - **Files**: `src/agentfile.ts`, `src/agentfile.test.ts`, `README.md`
+  - **Output**: mixed
+  - **Acceptance**: the README states the same-file rule; a test covers two same-key hooks in one Agentfile.
+  - **Hypothesis**: a stated rule (or a warning) removes silent loss of a hook command.
+  - **Measurement**: `npx vitest run src/agentfile.test.ts` with a one-file, two-hook fixture.
+  - **Success**: the test asserts the documented behavior.
+  - **Pivot**: if both hooks should run, add the command to the key instead of a warning.
+  - **Anchor**: `README.md` "Merging overlays"; Claude Code hooks docs (multiple hooks per matcher run in parallel).

@@ -295,6 +295,19 @@
         "Adds a user request that arrives mid-goal to the contract file as a new done-criterion and delivers it in the same run",
         "Verifies each P0 and each monthly hook on origin (not the local checkout) before claiming done"
       ]
+    },
+    {
+      "id": 26,
+      "prompt": "/goal claim and complete the P0 task that brings this git-native repo to 100% on the new-project check-setup score, in small PRs, with the repo gate passing, and ship it",
+      "expected_output": "A contract with the baseline score and a pivot, a plan doc whose reviewer verdict comes from a real reviewer run, small stacked PRs that each pass the full CI (claim check, vision trace) before squash-merge, a fresh 100% score on main, and the task completed through the CLI.",
+      "expectations": [
+        "Writes the plan's reviewer verdict as pending until a fresh-context reviewer has run, then records the reviewer's real verdict (including needs-revision) and the edits made",
+        "Reads a failing CI check's log before acting, and fixes the cause (for example trailers no longer parsed because a footer was appended after them) instead of re-pushing",
+        "Checks that commit trailers parse (git log --format='%(trailers:key=Task)') after any commit hook rewrites the message",
+        "Rebases each stacked branch onto main after the previous squash-merge instead of merging stale history",
+        "Corrects a wrong number in its own PR body when it notices one, instead of leaving it",
+        "Takes the final score on main after the last merge, not on a branch"
+      ]
     }
   ]
 }

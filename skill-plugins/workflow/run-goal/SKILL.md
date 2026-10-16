@@ -153,6 +153,10 @@ continue?". The user set a goal so that they can be away.
   risk: unknowns first.
 - Work in small verified steps. Run the guard after each change that matters.
 - Log each non-obvious decision in one line: what you chose, and why.
+- Never write a result before it exists. A reviewer verdict, a check
+  status, or a CI result is `pending` until the reviewer or check has run and
+  you have read its output. Filling it in early is a false claim, even if you
+  plan to run it next.
 - When one part is blocked, park it with a note and continue with the other
   parts. Come back to it later.
 - A new request from the user mid-goal joins the goal: add it to the

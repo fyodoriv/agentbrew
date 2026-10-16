@@ -97,6 +97,18 @@
         "Proposes a change to the new-project requirement when the same waiver appears in two or more repos",
         "Runs audit-due.sh --record at the end"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "bring this existing npm-workspace tool repo (root VISION.md, a doctor command, git-native task queue) to 100% on check-setup.sh --profile tool, mapping or waiving areas where its own files already meet them",
+      "expected_output": "Reaches 100% with map lines that each name existing files (VISION.md, the doctor source file, the docs-contract check) and a comment saying why, adds the missing pieces (metrics table, setup script, e2e per story, content-free logs, cached gate, checkup, learnings, ADRs) instead of waiving them, and adds each map line in the PR that makes it true.",
+      "expectations": [
+        "Maps the health check to the file that implements the doctor command, not to the command name",
+        "Checks before mapping that VISION.md has a dated numeric goal, a pivot, and dated kill criteria, and adds them when missing",
+        "Builds the cached gate so a change to any file a test reads re-runs that test, and proves it by editing a file and showing the cache miss",
+        "Waives nothing for effort; every area ends met or mapped with a reason",
+        "Runs check-setup.sh on main after the last merge for the final score"
+      ]
     }
   ]
 }

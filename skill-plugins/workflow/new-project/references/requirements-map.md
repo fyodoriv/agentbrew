@@ -27,6 +27,12 @@ listed must exist. The map is a claim; the monthly audit checks that the
 mapped files really meet the area (for example, that `VISION.md` has a
 measurable success metric and dated kill criteria). Map only what truly meets it.
 
+Map lines name files, never commands. When a command meets the area (for
+example a `tasks doctor` health check instead of `scripts/doctor.sh`), map the
+file that implements it, and say in a comment above the line why it meets the
+area. Add each map line in the same PR that makes it true, so every PR shows its
+area green; a map file written at the end hides which PR met what.
+
 ## 2. Waive an area (push back for this repo)
 
 ```yaml

@@ -75,3 +75,8 @@ An existing eval that already covers the run is not an update. The
 "already covers", or "skipped". Write the real commit SHA or PR instead.
 `commit_session_legacy` needs `session_id`, `agent_id`, `task_summary`, and
 `outcome` (`success`, `partial`, or `failure`). Load its schema first.
+
+Finish the delivery in this session: run the repo's gate yourself, then
+merge when it is green. "I'll merge when the gate is green" is not done,
+because the session ends and nobody comes back to it. A live run (PR #136)
+opened its PR and stopped there.

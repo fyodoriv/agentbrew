@@ -165,6 +165,18 @@ hooks:
     agents: ["claude-code", "cursor"]
     defaultEnabled: false
 
+  - id: no-cross-workspace-publish
+    description: Block gh pr create --repo <other>, gh repo fork, and git push outside the workspace without per-session approval
+    event: PreToolUse
+    matcher: Bash
+    script: checks/no-cross-workspace-publish.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_NO_CROSS_WORKSPACE_PUBLISH
+    sourceRule: templates/AGENTS.md "Cross-workspace publishing" + dotfiles bin/gh
+    agents: ["claude-code", "cursor"]
+    defaultEnabled: false
+
   - id: no-commit-no-verify
     description: Block git commit --no-verify (skipping commit hooks is forbidden by policy)
     event: PreToolUse

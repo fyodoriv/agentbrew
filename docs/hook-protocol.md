@@ -129,6 +129,21 @@ The attribution hooks work this way: the dotfiles `gh` wrapper and
 Blocking messages must tell the agent exactly how to retry successfully. Do not
 print secrets, full environment dumps, or unrelated transcript contents.
 
+## Cross-workspace publishing
+
+The opt-in hook `no-cross-workspace-publish` blocks three commands before the
+shell runs them: `gh pr create` to another repo, `gh repo fork`, and
+`git push` to a remote that is not the pushed repo's `origin`. It also blocks
+`gh pr create` and `git push` from a directory outside the workspace root
+(`$CLAUDE_PROJECT_DIR`, else the payload `cwd`).
+
+To publish after the user approves the target in the current session, set
+`AGENT_PUBLIC_WRITE_APPROVAL` to a value that includes `repo=<owner/repo>`.
+Set it in the agent's environment or as a prefix on the command. The dotfiles
+`gh` wrapper reads the same variable and stays as the shell backstop. Repos
+listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
+`git push` without approval. They do not pass `gh repo fork`.
+
 ## Timing and safety
 
 - Deterministic hooks should complete in under 2 seconds.

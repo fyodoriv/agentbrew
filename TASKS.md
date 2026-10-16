@@ -181,13 +181,6 @@
   - **Pivot**: if whole-entry comparison breaks the matcher `*` normalization tests, normalize the matcher first and compare the rest.
   - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state).
 
-- [ ] A PreToolUse hook blocks cross-repo publishing without per-session approval
-  - **ID**: enforce-cross-workspace-publish-hook
-  - **Tags**: scout, hooks, guardrail
-  - **Details**: The cross-workspace publishing rule is prose in `templates/AGENTS.md`. dotfiles `bin/gh` already blocks `gh pr create` to another repo without `AGENT_PUBLIC_WRITE_APPROVAL`, but only when the wrapper is on PATH. Add a deterministic hook that blocks, before the shell runs: `gh pr create --repo <other>`, `gh repo fork`, and `git push` to a remote outside the session's workspace roots. Model it on `no-force-push-protected`. Merges the dotfiles task `gh-cross-repo-pr-approval-hook` (2026-10-15 review).
-  - **Files**: `hooks/checks/no-cross-workspace-publish.sh` (+ `.test.sh`), `hooks/manifest.yaml`, dotfiles `bin/gh` (reference only; stays as the shell backstop)
-  - **Acceptance**: fixtures show each of those commands blocked outside the workspace without the approval token and allowed inside it; dotfiles `tests/gh-wrapper.bats` stays green.
-
 - [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
   - **ID**: dev-dependency-audit-findings
   - **Tags**: security, dependencies, stability

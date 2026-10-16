@@ -333,7 +333,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(17);
+    expect(bashHookIds).toHaveLength(18);
     expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
   });

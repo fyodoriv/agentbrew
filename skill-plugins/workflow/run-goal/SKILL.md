@@ -25,10 +25,13 @@ Install once: `agentbrew install run-goal`. Then type a goal in Claude Code:
 ```
 /goal make the checkout tests in src/checkout stop flaking
 /goal fix the sync bug where a missing commands dir fails, with a regression test, and ship it
+/goal let users export their orders as CSV from the web app's orders page, with tests and docs, and ship it
 ```
 
 The second example is a bug fix, the most common kind of goal. It names the
-end state, asks for a failing test first, and approves the PR.
+end state, asks for a failing test first, and approves the PR. The third is a
+feature in a web app: it names what users can do, what must come with it
+(tests, docs), and approves the PR.
 
 What you will see:
 

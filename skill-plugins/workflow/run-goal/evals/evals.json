@@ -208,6 +208,18 @@
         "Prints a Goal check line with evidence for each done-criterion",
         "Ends with the final report, including What went wrong and Skills updated"
       ]
+    },
+    {
+      "id": 19,
+      "prompt": "/goal let users export their orders as CSV from the web app's orders page, with tests and docs, and ship it",
+      "expected_output": "A goal contract that states what users can do as the outcome, lists tests and docs as done-criteria, takes the PR approval from the goal text, and ends with a final report and retro.",
+      "expectations": [
+        "Prints a goal contract before the first edit, with the CSV export as the outcome",
+        "Lists tests and docs as separate done-criteria with proof commands",
+        "Cites \"and ship it\" in the goal text as the approval for the PR",
+        "Prints a Goal check line with evidence for each done-criterion",
+        "Ends with the final report, including What went wrong and Skills updated"
+      ]
     }
   ]
 }

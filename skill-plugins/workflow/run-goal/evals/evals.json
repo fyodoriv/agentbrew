@@ -232,6 +232,18 @@
         "When the user adds a request in an answer, adds it to the contract file as a done-criterion and delivers it in the same run",
         "Keeps the owner's own machine behaviour unchanged and proves it with evidence"
       ]
+    },
+    {
+      "id": 21,
+      "prompt": "/goal make both tools installable in one step: users tell Claude 'install x', it explains the plan, backs up settings, asks preferences, heals, auto-reverts to the backup on a critical error, and suggests a fork PR at the end. Also create tasks for the findings",
+      "expected_output": "A contract with a countable metric (installer phases automated per tool), one question round with full-context options that accepts a free-text answer, deterministic installer scripts with tests that inject a failure and prove a byte-identical restore, one real end-to-end run in a throwaway HOME, and the findings filed as tasks.",
+      "expectations": [
+        "Takes a baseline of automated installer phases before any edit",
+        "Questions explain each option and allow a typed answer when the user wants one (for example the clone folder)",
+        "Tests inject a critical failure and assert the backed-up files are restored byte for byte",
+        "Runs one real end-to-end install in a temporary HOME from the published branch, without touching the user's real login session",
+        "Files each finding as a task with its id cited in the final report"
+      ]
     }
   ]
 }

@@ -197,6 +197,12 @@ Read the gate's own exit status, not a line that a wrapper printed. In
 the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
 
+Before you call a failure "pre-existing", run the same test files with the
+same flags on the unchanged base (a detached worktree) and compare the two
+failure lists. Only a failure on both lists is pre-existing. A wait loop on
+a background job must run outside the agent sandbox: `pgrep` and `ps` fail
+inside it, so the loop exits at once and looks finished.
+
 When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude

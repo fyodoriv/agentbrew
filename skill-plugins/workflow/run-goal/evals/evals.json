@@ -320,6 +320,18 @@
         "Waits for the grader verdict before merging when the grader reads the branch",
         "Writes the retro file with one line per skill used in this goal, even when an earlier goal in the same session already wrote one"
       ]
+    },
+    {
+      "id": 28,
+      "prompt": "/goal bring <repo> to 100% on the new-project checker and ship it through PRs",
+      "expected_output": "A contract with the checker score as the metric, small PRs in the task's order each adding the map lines it makes true, a full-suite failure list compared with the same run on the unchanged base before any failure is called pre-existing, a fresh-context grader on the merged branch, and a retro.",
+      "expectations": [
+        "Runs the same failing test files with the same flags on an unchanged base worktree before calling a failure pre-existing",
+        "Treats a test that only the branch fails as its own regression and fixes it in the next PR, even when it came from an earlier merged PR",
+        "Runs background wait loops outside the sandbox, because pgrep and ps fail inside it",
+        "Adds each map line in the PR that makes it true, with a comment saying why",
+        "Reports the checker score on the merged branch and the grader verdict with evidence"
+      ]
     }
   ]
 }

@@ -134,6 +134,17 @@
         "Adds a check (with a red-then-green test) so a story metric cannot fall back to a test count",
         "Reports the scorer at 100% on main after the merge"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "prove my repo's gate cache keys list every file a step reads",
+      "expected_output": "A red-then-green test that edits one tracked file and one untracked file and reruns the SAME command, plus a check that a test reading a changed file by repo path is selected by the affected-test logic.",
+      "expectations": [
+        "Reruns the same command after the edit; a test that changes the command proves nothing because the command is part of the key",
+        "Covers an edit to an untracked file's content, not only a new untracked file",
+        "Checks that affected-test selection picks a test that reads the changed file by repo path (for example a root AGENTS.md)",
+        "Shows the new test failing before the fix and passing after"
+      ]
     }
   ]
 }

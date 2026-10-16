@@ -11,7 +11,6 @@
 # One task ID per line.
 
 # Incomplete HDD — genuine stability work, promote once the 5 HDD fields are authored:
-companion-branch-stomp-protection
 
 # False positive — `data-safety` tags the UPSTREAM feature topic (vercel-labs/skills
 # user-file preservation), not local agentbrew stability; the task is a

@@ -226,7 +226,7 @@ Users can safely run agentbrew alongside other agent-config managers. The coexis
 - **[Bridle](https://github.com/neiii/bridle)** — does whole-harness profile switching for 7 harnesses (Claude Code, Amp, Copilot CLI, Crush, Droid, Goose, OpenCode). Agentbrew syncs skills / MCP / rules across every supported agent. If a user uses both, they should set Bridle's "active" profile to a shape agentbrew maintains; Bridle's profile switches then re-copy agentbrew's content into place. No conflict because the two tools target different surfaces — Bridle switches whole-harness profiles, agentbrew updates individual skill / MCP / rule entries.
 - **Settings.json hooks** — both tools register hooks with namespaced command names (`agentbrew-*` vs `caliber-*` / `bridle-*`), so hooks from different tools don't collide in the same `settings.json`.
 
-The inverse contract is true too: other tools MUST never modify content inside agentbrew's `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->` markers. We document that expectation in every README instead of enforcing it (the ecosystem is too small to warrant lockfile-style enforcement).
+The inverse contract is true too: other tools MUST never modify content inside agentbrew's `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->` markers. We document that expectation in every README instead of enforcing it (the ecosystem is too small to warrant lockfile-style enforcement). The proposed shared marker format and ownership rules are in [`docs/specs/managed-section-markers.md`](docs/specs/managed-section-markers.md).
 
 ## Decision framework
 

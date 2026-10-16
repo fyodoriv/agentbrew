@@ -227,6 +227,43 @@ describe("status", () => {
     expect(calls).toContain("refreshable");
   });
 
+  it("shows the total heal attempts in verbose status when history was trimmed", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    const attempt = {
+      name: "churny",
+      agent: "claude-code",
+      status: "init_timeout" as const,
+      category: "sync" as const,
+      action: "agentbrew-sync-mcp",
+      healed: false,
+      attemptedAt: new Date().toISOString(),
+    };
+    const entry = (name: string, count: number, kept: number) => ({
+      name,
+      agent: "claude-code",
+      status: "init_timeout" as const,
+      lastCheckedAt: new Date().toISOString(),
+      healHistory: Array.from({ length: kept }, () => ({ ...attempt, name })),
+      healAttemptCount: count,
+    });
+    mockLoadMcpHealthSnapshot.mockReturnValue({
+      generatedAt: new Date().toISOString(),
+      servers: [entry("churny", 137, 20), entry("calm", 3, 3)],
+    });
+
+    await status({ verbose: true });
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("churny/claude-code");
+    expect(calls).toContain("137 heal attempts");
+    expect(calls).not.toContain("3 heal attempts");
+  });
+
   it("shows timeouts whose heal was deferred for load, with the reason", async () => {
     mockLoadState.mockReturnValue({
       agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],

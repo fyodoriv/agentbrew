@@ -297,6 +297,21 @@ function printMcpHealthSummary(prefix: string): void {
   printClaudeDesktopMcpSummary(prefix);
 }
 
+/**
+ * Verbose only: pairs whose heal history was trimmed, with their total attempt
+ * count, so a pair that churns tick after tick is visible.
+ */
+function printMcpHealChurnLines(prefix: string): void {
+  const churning = (loadMcpHealthSnapshot()?.servers ?? []).filter(
+    (entry) => (entry.healAttemptCount ?? 0) > entry.healHistory.length,
+  );
+  for (const entry of churning) {
+    console.log(
+      `${prefix}MCP heal:     ${chalk.yellow(`${entry.name}/${entry.agent}`)} ${chalk.dim(`${entry.healAttemptCount} heal attempts (last ${entry.healHistory.length} kept)`)}`,
+    );
+  }
+}
+
 function printClaudeDesktopMcpSummary(prefix: string): void {
   for (const failure of readDesktopMcpFailures()) {
     console.log(`${prefix}Desktop MCP: ${chalk.red(failure.name)} ${chalk.dim(`failed at startup — ${failure.fix}`)}`);
@@ -666,6 +681,7 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printVerboseModelSection(state);
   printVerboseServersSection(state);
   printMcpHealthSummary("  ");
+  printMcpHealChurnLines("  ");
   printCliBuildSummary("  ");
   printVerboseSourcesSection(state);
   printVerboseSkillsSection();

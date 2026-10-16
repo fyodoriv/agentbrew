@@ -67,7 +67,7 @@ if [ ! -f "$SKILL_DIR/SKILL.md" ]; then
   verdict_allow "$HOOK_ID" "run-goal skill not installed"
 fi
 
-CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it: write the goal contract with checkable done-criteria and a baseline, ask at most one round of questions, then work without interruptions until the goal is met or hopelessly blocked, print evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
+CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat. Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
 
 log_decision "$HOOK_ID" "warn" "goal set: added run-goal context"
 hook_jq -cn --arg ctx "$CONTEXT" \

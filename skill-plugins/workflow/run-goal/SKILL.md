@@ -18,6 +18,22 @@ A goal is an end state, not an activity. This skill turns the user's words
 into an end state that you and the goal checker can both verify. Then it keeps
 you working until that end state is true.
 
+## Order of work
+
+Follow this order, even for a small goal:
+
+1. Read only: look at the repo and take the baseline. No edits yet.
+2. **Print the goal contract** (Phase 2) in the chat. This is your first
+   real message. Do not call Edit, Write, or any other changing command
+   before the contract is in the chat.
+3. Ask the one question round, or record your defaults (Phase 3).
+4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
+5. Verify with fresh evidence (Phase 5), then the retro and the final
+   report (Phase 6).
+
+A small goal gets a short contract, not none. Without it, neither you nor the
+goal checker knows what "done" means, and the user cannot review your plan.
+
 ## Why the transcript matters
 
 In Claude Code, `/goal` sets a session Stop hook. After each turn, a small fast
@@ -31,7 +47,7 @@ So:
 - When you are hopelessly blocked, say so in plain words. The checker can then
   return "impossible" and release the session.
 
-## Phase 1 — Intake (silent, a few minutes at most)
+## Phase 1 — Intake (read only, a few minutes at most)
 
 1. Copy the raw goal text verbatim. You will compare against it at the end.
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the

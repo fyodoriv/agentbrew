@@ -5,6 +5,8 @@
 # full `npm run verify` instead. The full gate still runs once before merge.
 #
 # Usage: bash scripts/verify-changed.sh [base-ref]   (default: origin/main)
+#
+# <!-- scope: human-approved task verify-changed-fast-gate (filed in #132); this file closes it -->
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"

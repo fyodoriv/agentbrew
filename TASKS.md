@@ -205,13 +205,6 @@
      copySkillFromCache/findSkillDirInCache deep-scan resolves anthropics/trailofbits/ext-apps plugin layouts.
      Closes sync --pull "not found in source" for build-mcp-server, semgrep, create-mcp-app, etc. -->
 
-- [ ] Check test-first at commit time: behavior changes ship with a test diff
-  - **ID**: adopt-rule-3-doc-first-discipline
-  - **Tags**: scout, rules, tests
-  - **Details**: The doc-first half already runs: `npm run lint:rules` uses Minsky's `check-rule-3-doc-first.mjs` (`src/adapters/rule-lint.minsky.ts`). The test-first half has no check. Add one that runs in `npm run verify` (GitHub Actions is off): a diff that changes `src/**` non-test files must also change a test file, or carry a `Test exemption: <reason>` line in the commit message.
-  - **Files**: `scripts/check-rule-3-test-first.mjs` (new), `package.json` (verify), `src/adapters/rule-lint.ts`
-  - **Acceptance**: `npm run verify` fails on a branch that changes `src/foo.ts` with no test diff and no exemption line, and passes with either.
-
 - [ ] Restore agentbrew release automation and npm authentication
   - **ID**: restore-agentbrew-release-automation
   - **Tags**: release, github-actions, npm, human-blocked

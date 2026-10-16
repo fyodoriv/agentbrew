@@ -617,6 +617,8 @@ npm run lint:rules                     # Minsky rule checks on this repo (part o
 
 `npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed. Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block; `.prereg-allowlist` lists the older tasks that predate the gate.
 
+`npm run verify` also runs `scripts/check-rule-3-test-first.mjs`, the test-first half of rule 3. It fails when the branch (committed or not) changes a non-test file under `src/` but changes no test file, unless a commit message on the branch has a `Test exemption: <reason>` line. It compares against `origin/main` (`--base <ref>` or `TEST_FIRST_BASE` to change it) and skips when that ref has no merge base.
+
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 
 Agent-facing artifacts are also testable build inputs. The inventory in `src/agent-artifacts/inventory.ts` discovers repo-owned prompts/configuration (`Agentfile.yaml`, `src/catalog.yaml`, `templates/AGENTS.md`, `src/core/agents.yaml`, `hooks/manifest.yaml`, `hooks/checks/*`, built-in skills, and catalog CLI command markdown) and classifies each record as `{ kind, name, sourcePath, targetAgents, risk, coverage }`. Run the static gate when touching those surfaces:

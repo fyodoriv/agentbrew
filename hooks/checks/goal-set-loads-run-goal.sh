@@ -26,6 +26,14 @@
 # **Configuration** (optional):
 #   - RUN_GOAL_SKILL_DIR: installed skill folder to check. Default:
 #     `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/run-goal`.
+#   - RUN_GOAL_STATE_DIR: marker folder shared with goal-contract-before-edit.
+#     Default `$HOME/.cache/agentbrew/run-goal`.
+#
+# **State** (session-file scope): when it adds context, this hook writes
+# `<state dir>/<session_id>.pending`, so goal-contract-before-edit can hold
+# the first edit until the goal contract is printed. `/goal clear` (and its
+# aliases) deletes the marker. See goal-contract-before-edit.sh for the rest
+# of the marker lifecycle.
 
 set -euo pipefail
 
@@ -53,11 +61,18 @@ case "$PROMPT" in
   *) verdict_allow "$HOOK_ID" "not a goal prompt" ;;
 esac
 
+STATE_DIR="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}"
+SESSION_ID="$(json_get "$INPUT" '.session_id')"
+case "$SESSION_ID" in
+  "" | *[!A-Za-z0-9_-]*) SESSION_ID="" ;;
+esac
+
 CONDITION="${PROMPT#/goal}"
 CONDITION="${CONDITION#"${CONDITION%%[![:space:]]*}"}"
 CONDITION="${CONDITION%"${CONDITION##*[![:space:]]}"}"
 case "$(printf '%s' "$CONDITION" | tr '[:upper:]' '[:lower:]')" in
   "" | clear | stop | off | reset | none | cancel)
+    if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then rm -f "$STATE_DIR/$SESSION_ID.pending"; fi
     verdict_allow "$HOOK_ID" "goal cleared or status"
     ;;
 esac
@@ -68,6 +83,10 @@ if [ ! -f "$SKILL_DIR/SKILL.md" ]; then
 fi
 
 CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat. Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
+
+if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
+  : >"$STATE_DIR/$SESSION_ID.pending" 2>/dev/null || true
+fi
 
 log_decision "$HOOK_ID" "warn" "goal set: added run-goal context"
 hook_jq -cn --arg ctx "$CONTEXT" \

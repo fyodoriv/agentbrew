@@ -18,6 +18,7 @@ INSTALLED="$FIXTURE_ROOT/installed/run-goal"
 MISSING="$FIXTURE_ROOT/missing/run-goal"
 mkdir -p "$INSTALLED"
 printf -- '---\nname: run-goal\n---\n' >"$INSTALLED/SKILL.md"
+export RUN_GOAL_STATE_DIR="$FIXTURE_ROOT/state"
 
 # Usage: check "label" "<prompt>" <expect_context 0|1> [skill_dir] [extra env assignment]
 check() {
@@ -50,6 +51,23 @@ check "plain prompt stays silent" "please fix the goal tests" 0
 check "/goals is a different word" "/goals list" 0
 check "missing skill stays silent" "/goal fix it" 0 "$MISSING"
 check "bypass env stays silent" "/goal fix it" 0 "$INSTALLED" "HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL=1"
+
+# Marker lifecycle shared with goal-contract-before-edit.
+marker_check() {
+  local label="$1" expected="$2"
+  local actual=0
+  [ -f "$RUN_GOAL_STATE_DIR/s.pending" ] && actual=1
+  if [ "$actual" = "$expected" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected marker=$expected, got $actual")
+  fi
+}
+rm -rf "$RUN_GOAL_STATE_DIR"
+check "goal set (marker run)" "/goal ship it" 1
+marker_check "goal set writes the marker" 1
+check "goal clear (marker run)" "/goal clear" 0
+marker_check "goal clear removes the marker" 0
+check "missing skill (marker run)" "/goal ship it" 0 "$MISSING"
+marker_check "no marker without the skill" 0
 
 # Malformed stdin must not block the prompt.
 MALFORMED_CODE=$(printf 'not json' | RUN_GOAL_SKILL_DIR="$INSTALLED" bash "$SCRIPT" >/dev/null 2>&1; echo $?)

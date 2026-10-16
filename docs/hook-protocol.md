@@ -150,6 +150,14 @@ In real `claude -p` sessions, `/goal <condition>` made the agent call the
 `run-goal` skill as its first tool in 3 of 3 runs. With
 `HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL=1`, and for `/goal clear`, it did not.
 
+Skill text alone did not stop a one-line bugfix goal from editing before its
+goal contract. So `goal-set-loads-run-goal` also writes a per-session marker
+(`~/.cache/agentbrew/run-goal/<session_id>.pending`), and
+`goal-contract-before-edit` (PreToolUse on Write, Edit, MultiEdit,
+NotebookEdit) blocks file edits while the marker exists and no assistant
+message in the transcript has "Done when". The first contract, `/goal clear`,
+or a marker older than one day removes it.
+
 ## Cross-workspace publishing
 
 The opt-in hook `no-cross-workspace-publish` blocks three commands before the

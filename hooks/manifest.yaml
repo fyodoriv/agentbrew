@@ -407,6 +407,17 @@ hooks:
     sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md (owner request 2026-10-15: run the goal skill every time a goal is set)'
     agents: ["claude-code"]
 
+  - id: goal-contract-before-edit
+    description: After /goal, block the first file edit until the run-goal contract (Done when) is in the transcript
+    event: PreToolUse
+    matcher: Write|Edit|MultiEdit|NotebookEdit
+    script: checks/goal-contract-before-edit.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_GOAL_CONTRACT_BEFORE_EDIT
+    sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md "Order of work" (live runs edited before the contract)'
+    agents: ["claude-code"]
+
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
     event: SessionEnd

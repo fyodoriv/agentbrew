@@ -299,13 +299,6 @@
   - **Files**: ARCHITECTURE.md, `src/docs/` (one docs test for the table), `src/adapters/`
   - **Acceptance**: ARCHITECTURE.md lists every external CLI or service agentbrew calls (skills CLI, mcpm.sh, ai-rules, MCP Registry, Minsky rule lints) with its adapter file or a "direct" reason; a docs test fails when a row points to a missing file.
 
-- [ ] Map every AGENTS.md rule to a lint or an explicit "advisory" label
-  - **ID**: establish-vision-constitutional-rules
-  - **Tags**: scout, constitution, rules
-  - **Details**: AGENTS.md already has numbered, citable rules, and `npm run lint:rules` runs Minsky's rule lints through `src/adapters/rule-lint.minsky.ts` (#62). What is missing is a map from each rule to its enforcement. Add a table to `docs/editing-rules.md`: rule number → the lint, hook, or test that enforces it, or "advisory" with a reason. This absorbs the old rule-10 "deterministic enforcement" task.
-  - **Files**: `docs/editing-rules.md`, `AGENTS.md` (link to the table)
-  - **Acceptance**: every numbered AGENTS.md rule has a row naming its enforcing check or the word "advisory" plus a reason; a docs test fails when a rule number has no row.
-
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security

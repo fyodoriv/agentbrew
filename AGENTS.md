@@ -51,8 +51,8 @@ Run every command from the repo root.
 
 ## Rules
 
-Full text and examples: [`docs/editing-rules.md`](docs/editing-rules.md). Other
-files cite these numbers.
+Full text and examples: [`docs/editing-rules.md`](docs/editing-rules.md), which also
+maps each rule to its check. Other files cite these numbers.
 
 1. Run `npm run verify` before you say a change is done.
 2. Update the docs that match a behavior change in the same PR (see `## Docs upkeep`).

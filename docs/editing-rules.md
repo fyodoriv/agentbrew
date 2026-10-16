@@ -23,6 +23,31 @@ Other files cite these numbers, so never renumber them.
 14. **Publishing requires explicit per-action approval** — any task step that would publish, send, or broadcast to a destination outside `fyodoriv/agentbrew` is blocked until the user explicitly approves that specific action in the current session. Covered: `npm publish`, `gh release create`, creating/commenting/reviewing PRs or issues at ANY external repo (public or private, including any other org's repos), Slack / Teams / email, Jira, pushing to any `github.com/*` repo other than `fyodoriv/agentbrew`, or registering on `skills.sh`. Research, reading, drafting PR bodies, and local testing are NOT publishing. Approval to CLAIM a task is NOT approval to PUBLISH — ask fresh approval at the publish moment. The full policy lives in the file-level `<!-- policy: PUBLISHING REQUIRES EXPLICIT PER-ACTION APPROVAL -->` comment at the top of [`TASKS.md`](TASKS.md); the global External Communication Ban in the global agent instructions covers the same ground.
 15. **Never mock `expandHome` as pure identity when the code under test writes files.** An identity mock (`expandHome: (p) => p`) leaks literal `~` paths into `writeFileSync` / `symlinkSync` / `mkdirSync`, which the OS then resolves against cwd, producing a `./~/` directory in the repo. This pollutes `biome check`, `git status`, and future test runs. Safe alternatives: (a) a tmpdir pattern — mock `expandHome` as `(p) => p.replace(/^~/, mockHome)` where `mockHome` is a `vi.hoisted()` tmpdir created in `beforeAll` and deleted in `afterAll` (see [`src/lint.test.ts:58`](src/lint.test.ts), [`src/sync/skills-sync.test.ts`](src/sync/skills-sync.test.ts)); (b) mock the filesystem-writing callee directly (`vi.mock('./shell-hook.js', ...)` — see [`src/init.test.ts`](src/init.test.ts)). When in doubt, prefer (b) — it's cheaper than managing tmpdirs. The pollution guard (`./~/` exclusion) was removed from `biome.json` once the identity-mock leaks were fixed; adding a new identity mock will re-break verify.
 
+## How each rule is enforced
+
+Each numbered rule in `AGENTS.md` maps to the check that enforces it, or to
+"advisory" with the reason no machine check exists. `src/docs/rule-enforcement-map.test.ts`
+fails when a rule has no row or a named file is missing.
+
+| Rule | Enforced by |
+|---|---|
+| 1 | Hook `hooks/checks/verify-before-completion.sh` (blocks the end of a turn that edited code but ran no verify command). |
+| 2 | Hook `hooks/checks/gh-pr-body-requires-docs.sh` (opt-in; blocks a PR body without `## Docs`) and `src/docs/agent-guide-contract.test.ts` (docs map). |
+| 3 | Test `src/types.test.ts` (one agent definition per `agents.yaml` row). |
+| 4 | Advisory: telling a real path from a hardcoded one needs review; no static check is reliable. |
+| 5 | Advisory: same reason as rule 4. |
+| 6 | Advisory in this repo: `scripts/check-pr-vision-trace.mjs` exists but `npm run verify` does not run it, because PR bodies are not in the tree. |
+| 7 | Advisory: a judgment call per PR. |
+| 8 | Test `src/oss/no-internal-refs.test.ts` and the global pre-push leak gate. |
+| 8a | Advisory: a new skill's home is a review decision. |
+| 9 | Advisory: whether a command solves a distinct problem is a review decision. |
+| 10 | Advisory: `scripts/lint-tasks-stability.mjs` and the rule-9 lint check task fields, not outcome wording. |
+| 11 | Advisory: whether a PR scouted enough cannot be checked. |
+| 12 | Advisory: the rule only allows something (an optional ticket key). |
+| 13 | Hook `hooks/checks/git-commit-conventional.sh` and the global `commit-msg` git hook. |
+| 14 | Hook `hooks/checks/no-cross-workspace-publish.sh` (blocks a PR, fork, or push outside the workspace without approval). |
+| 15 | Advisory: an identity mock is legal when the code under test writes no files. |
+
 ## Frozen agents
 
 Windsurf and Devin support was removed on 2026-10-08. agentbrew no longer knows either agent. Do not re-add them. Augment stays deprecated and frozen ([VISION NG4](VISION.md)). Keep its `agents.yaml` entry, sync targets, and tests. Never implement a fix or a feature for it, and never file tasks for it. If work for a supported agent breaks Augment's existing test, skip that test with a note naming NG4.

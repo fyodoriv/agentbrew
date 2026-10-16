@@ -1523,28 +1523,21 @@ mcp_servers:
       me doing anything". Third-party forks (framelink figma-developer-mcp and friends) need a long-lived personal access
       token in plaintext and lag the official tool surface, so they lose on both security and capability.
 
-  - name: ask-human
-    description: "Async human-↔-agent comm channel — agent writes questions to ask_human.md, file watcher unblocks the agent when human edits PENDING→answer. 150★, MIT."
-    command: pipx
-    args: ["run", "ask-human-mcp"]
+  - name: mcp-feedback-enhanced
+    description: "Human-in-the-loop feedback channel — the agent asks the operator a question in a local web UI and waits for the answer. MIT."
+    command: uvx
+    args: ["mcp-feedback-enhanced@2.8.1", "server"]
     category: collaboration
     recommended: false
     smokeCall:
-      tool: list_pending_questions
-    probeSuppression:
-      statuses: ["init_timeout"]
-      reason: "Already running asyncio in this thread before MCP initialize; upstream stdio launcher is currently broken."
-      retryPolicy: probe-every-tick-no-heal-until-catalog-change
-    note: "Not currently recommended: ask-human-mcp 0.1.0/0.1.1 fail in stdio mode with `Already running asyncio in this thread` before MCP initialize. Keep explicit opt-in until upstream fixes the launcher."
+      tool: get_system_info
+    note: "Opt-in: its interactive_feedback tool opens a browser tab and waits for a human, so it is not a fit for unattended runs. Replaced the ask-human entry on 2026-10-16 (decision: docs/decisions/re-promote-ask-human-mcp-after-stdio-fix.md)."
     rationale: |
-      The async-human-comms convention from the shared-rules.md "Async human comms — ask_human.md" rule. Agents write questions
-      to the repo's ask_human.md when they need operator decisions they can't make alone (vision-trace questions, irreversible
-      choices, private-knowledge gaps). The MCP server provides file-watch so the agent unblocks the moment the operator types
-      the answer, plus concurrent-question handling, file rotation, and size limits — features we would otherwise have to
-      build. Source: github.com/masony817/ask-human-mcp.
-      Per rule #1 (don't reinvent), this is the adopted convention — every agentbrew-managed agent should read ask_human.md
-      automatically and respect its format. The CLI variant (`ask-human-mcp --file custom_qa.md`) supports per-project files
-      if a repo wants to scope the inbox.
+      Agents sometimes need an operator decision they cannot make alone (an irreversible choice, a private-knowledge gap).
+      This server gives them one tool call that blocks until the operator answers, instead of ending the turn. It replaced
+      ask-human-mcp, whose last release (0.1.1, 2025-06-08) fails before MCP initialize. On 2026-10-16 version 2.8.1 passed
+      a live stdio smoke test (initialize, tools/list, tools/call get_system_info).
+      Source: github.com/Minidoracat/mcp-feedback-enhanced.
 
   - name: playwright
     description: "Browser automation — navigate, click, fill forms, screenshot, test. 11.6k★."

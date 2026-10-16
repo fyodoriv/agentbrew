@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Working human-in-the-loop MCP** — the catalog `ask-human` entry, whose
+  last release fails before MCP initialize, is replaced by the opt-in
+  `mcp-feedback-enhanced` (pinned, MIT), which passed a live stdio smoke test.
+
 - **More gstack skills in the catalog** — the gstack skills people install most
   by name now have catalog entries: design (`design-consultation`,
   `design-shotgun`, `design-html`, `ios-design-review`), safety (`freeze`,

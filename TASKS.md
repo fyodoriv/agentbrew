@@ -410,18 +410,6 @@
   - **Pivot**: if the current shape still validates, close this task with the schema evidence.
   - **Anchor**: opencode config docs (https://opencode.ai/docs/config/), models and providers pages.
 
-- [ ] Users who opt in to a human-in-the-loop MCP get one that starts
-  - **ID**: swap-ask-human-mcp-for-mcp-feedback-enhanced
-  - **Tags**: mcp, catalog, upstream, p3
-  - **Details**: Decision: [`docs/decisions/re-promote-ask-human-mcp-after-stdio-fix.md`](docs/decisions/re-promote-ask-human-mcp-after-stdio-fix.md). On 2026-10-16 the catalog `ask-human` entry (`pipx run ask-human-mcp`, PyPI 0.1.1) failed before MCP initialize: first `ModuleNotFoundError: No module named 'mcp.server.fastmcp'` (unpinned `mcp` 2.x), then, with `mcp<2`, `Already running asyncio in this thread`. Upstream has no release since 2025-06-08. `mcp-feedback-enhanced` 2.8.1 (MIT, released 2026-09-07) passed a live stdio smoke test (`initialize`, `tools/list`, `tools/call get_system_info`). Replace the `ask-human` entry with `mcp-feedback-enhanced` (`uvx mcp-feedback-enhanced@2.8.1 server`), keep `recommended: false` (its `interactive_feedback` tool opens a web UI), set `smokeCall.tool: get_system_info`, drop the `probeSuppression` block, and replace the rationale that cites the removed shared-rules "ask_human.md" rule. Keep `ask-human` in `BROKEN_MCPM_REGISTRY_SERVERS` (`src/mcp/mcpm-hygiene.ts`) so old installs still get cleaned up.
-  - **Files**: `src/catalog.yaml`, `src/catalog/catalog.test.ts`, `src/mcp/heal-cycle.test.ts`, `src/mcp/health-snapshot.test.ts`, README "Install a skill or MCP server"
-  - **Acceptance**: `agentbrew install mcp-feedback-enhanced` on a clean machine, then `agentbrew mcp probe mcp-feedback-enhanced --deep --json`, reports `status: "ok"` with `deepTool: "get_system_info"`; `npm run verify` passes.
-  - **Hypothesis**: The opt-in human-in-the-loop MCP fails its deep probe today (0 of 1 clean installs reach initialize). Swapping to a maintained package raises that to 1 of 1, because the new package pins `mcp<3` and its stdio launcher works.
-  - **Success**: The deep probe reports `ok` for the new entry on a clean install, and on a second run 7 days later.
-  - **Pivot**: If the deep probe fails on a clean install, or the package has no release for 6 months, drop the human-in-the-loop entry from the catalog instead of finding another one.
-  - **Measurement**: `agentbrew mcp probe mcp-feedback-enhanced --deep --json | jq -r '.results[] | "\(.status) \(.deepTool)"'`
-  - **Anchor**: Kohavi, Tang, Xu 2020, *Trustworthy Online Controlled Experiments*, ch. 3 (guardrail metrics: keep a broken default from reaching users).
-
 - [ ] `agentbrew catalog` can order catalog skills by their public skills.sh install count
   - **ID**: catalog-browse-skills-sh-install-counts
   - **Tags**: catalog, ux, delegation

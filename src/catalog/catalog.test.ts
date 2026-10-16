@@ -553,18 +553,18 @@ describe("catalog MCP smoke calls", () => {
     expect(browserNames.filter((name) => schedulerMap.has(name))).toEqual([]);
   });
 
-  it("does not recommend ask-human-mcp while its stdio launcher is broken", () => {
+  it("replaces the broken ask-human entry with a pinned, opt-in mcp-feedback-enhanced", () => {
     mockLoadState.mockReturnValue(makeState());
 
-    const askHuman = loadCatalog().mcp_servers.find((server) => server.name === "ask-human");
+    const servers = loadCatalog().mcp_servers;
+    const feedback = servers.find((server) => server.name === "mcp-feedback-enhanced");
 
-    expect(askHuman?.recommended).toBe(false);
-    expect(askHuman?.note).toContain("Already running asyncio in this thread");
-    expect(askHuman?.probeSuppression).toEqual({
-      statuses: ["init_timeout"],
-      reason: expect.stringContaining("Already running asyncio in this thread"),
-      retryPolicy: "probe-every-tick-no-heal-until-catalog-change",
-    });
+    expect(servers.find((server) => server.name === "ask-human")).toBeUndefined();
+    expect(feedback?.recommended).toBe(false);
+    expect(feedback?.command).toBe("uvx");
+    expect(feedback?.args).toEqual(["mcp-feedback-enhanced@2.8.1", "server"]);
+    expect(feedback?.smokeCall?.tool).toBe("get_system_info");
+    expect(feedback?.probeSuppression).toBeUndefined();
   });
 });
 

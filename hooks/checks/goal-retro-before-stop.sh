@@ -18,8 +18,10 @@
 #
 # **Retro file**: `<state dir>/<session_id>.retro.md`. Each skill used needs a
 # line that names it and its update: a commit SHA, a PR (`#123` or a
-# `/pull/` URL), or `task`. A line that says "not updated", "no change", or
-# "did not" does not count.
+# `/pull/` URL), or `task`. A line that says it made no update ("not
+# updated", "no change", "no new edit", "did not", "already covers",
+# "skipped", "duplicate") does not count, even if it cites an old commit:
+# a live retro once passed with "no new edit ... commit 1fcff84".
 #
 # **State** (session-file scope, shared with goal-set-loads-run-goal and
 # goal-contract-before-edit): the hook acts only while
@@ -84,7 +86,7 @@ case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" 
 MISSING=""
 for skill in $SKILLS; do
   [ -n "$skill" ] || continue
-  if [ -f "$RETRO" ] && grep -F -- "$skill" "$RETRO" | grep -viE 'not updated|no change|did not' |
+  if [ -f "$RETRO" ] && grep -F -- "$skill" "$RETRO" | grep -viE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' |
     grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|\btask\b'; then
     continue
   fi

@@ -50,6 +50,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`competition/`](competition/) | Detailed comparisons with single tools (mcpm, ai-rules, skills CLI). | both |
 | [`instructions-analysis.md`](instructions-analysis.md) | What do the deployed instruction files cost and buy? | both |
 | [`research/`](research/) | Spikes and research notes behind past decisions. | agent |
+| [`decisions/`](decisions/) | Which design choices were made, why, and when do we review them? | agent |
 
 ## Work in progress and records
 

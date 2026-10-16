@@ -43,6 +43,6 @@ describe("repairAgentbrewLaunchAgentPaths node dir", () => {
 
     const repaired = extractPlistPath(readFileSync(plistPath, "utf-8")) ?? "";
     expect(repaired.split(":")[0]).toBe(PLIST_NODE_DIR);
-    expect(repaired).not.toContain(process.execPath.replace(/\/node$/u, "") + ":");
+    expect(repaired).not.toContain(`${process.execPath.replace(/\/node$/u, "")}:`);
   });
 });

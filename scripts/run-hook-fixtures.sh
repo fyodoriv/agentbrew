@@ -24,13 +24,11 @@ if ((${#missing[@]} > 0)); then
   exit 1
 fi
 
-fixtures="$(
-  for dir in "$repo_root/hooks/checks"; do
-    if [[ -d "$dir" ]]; then
-      /usr/bin/find "$dir" -maxdepth 1 -type f -name '*.test.sh'
-    fi
-  done | sort
-)"
+fixtures_dir="$repo_root/hooks/checks"
+fixtures=""
+if [[ -d "$fixtures_dir" ]]; then
+  fixtures="$(/usr/bin/find "$fixtures_dir" -maxdepth 1 -type f -name '*.test.sh' | sort)"
+fi
 
 if [[ -z "$fixtures" ]]; then
   echo "Hook fixture tests: no fixtures found"

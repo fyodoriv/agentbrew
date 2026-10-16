@@ -1676,6 +1676,9 @@ mcp_servers:
   # not an upstream fault (guarded in src/mcp/health-suppression.test.ts).
   # A real outage surfaces as mcp-stale drift after 24h; run
   # `agentbrew mcp probe tasks-mcp --deep` to check by hand.
+  # The exact version in args is the pin policy: drift repair rewrites a
+  # floating `tasks-mcp` or `tasks-mcp@latest` in agent configs to it
+  # (src/mcp/catalog-pin-sweep.ts). Any npx entry pinned this way gets the same.
   - name: tasks-mcp
     description: "Read/write TASKS.md files — list, pick, claim, complete, add tasks. Spec-compliant task queue for agents."
     command: npx

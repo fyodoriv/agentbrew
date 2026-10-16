@@ -3,10 +3,48 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  pinsFromCatalog,
   sweepOneJsonConfigForCatalogPins,
   sweepOneTomlConfigForCatalogPins,
   sweepOneYamlConfigForCatalogPins,
 } from "./catalog-pin-sweep.js";
+
+describe("pinsFromCatalog", () => {
+  it("pins every npx server whose catalog args name an exact version", () => {
+    const pins = pinsFromCatalog([
+      {
+        name: "tasks-mcp",
+        description: "",
+        category: "x",
+        recommended: true,
+        command: "npx",
+        args: ["-y", "tasks-mcp@0.10.2"],
+      },
+      {
+        name: "other",
+        description: "",
+        category: "x",
+        recommended: false,
+        command: "npx",
+        args: ["-y", "@acme/other-mcp@1.2.3-beta.1"],
+      },
+      {
+        name: "floating",
+        description: "",
+        category: "x",
+        recommended: false,
+        command: "npx",
+        args: ["-y", "floating-mcp@latest"],
+      },
+      { name: "bare", description: "", category: "x", recommended: false, command: "npx", args: ["-y", "bare-mcp"] },
+      { name: "remote", description: "", category: "x", recommended: false, url: "https://x.example.com/mcp" },
+    ]);
+    expect(pins.map((p) => [p.serverName, p.packageName])).toEqual([
+      ["tasks-mcp", "tasks-mcp"],
+      ["other", "@acme/other-mcp"],
+    ]);
+  });
+});
 
 describe("sweepOneJsonConfigForCatalogPins", () => {
   let tmp: string;

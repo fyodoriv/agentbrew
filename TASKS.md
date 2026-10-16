@@ -236,13 +236,6 @@
 
 ## P3
 
-- [ ] Make catalog MCP pin policy data-driven instead of source-hardcoded
-  - **ID**: catalog-mcp-pin-policy-data-driven
-  - **Tags**: scout, mcp, catalog, config-drift
-  - **Details**: The `tasks-mcp@latest` production failure is now guarded by a catalog-pin sweep, but the package-name mapping lives in source as a narrow allowlist. Move the policy into catalog metadata once another MCP package needs the same treatment so drift detection can reconcile future pinned npm servers without a code change.
-  - **Files**: `src/catalog.yaml`, `src/catalog/types.ts`, `src/mcp/catalog-pin-sweep.ts`
-  - **Acceptance**: at least one MCP server can declare its npm package identity and pinned-version behavior in catalog data; `sweepCatalogPins()` consumes that metadata without a source-level server allowlist.
-
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
   - **ID**: workspace-aware-sync
   - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host

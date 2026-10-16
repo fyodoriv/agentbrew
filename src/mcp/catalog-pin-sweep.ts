@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { sync as writeFileSync } from "write-file-atomic";
-import { loadCatalog } from "../catalog/types.js";
+import { type CatalogMcpServer, loadCatalog } from "../catalog/types.js";
 import { logSkipped } from "../core/logger.js";
 import { AGENT_DEFINITIONS, type AgentConfig } from "../types.js";
 import { expandHome } from "../utils.js";
 import { readGooseYaml, readMcpJson, readToml, writeGooseYaml, writeMcpJson } from "./mcp.js";
 
-const PINNED_CATALOG_PACKAGES = new Map([["tasks-mcp", "tasks-mcp"]]);
+/** `pkg@1.2.3` or `@scope/pkg@1.2.3-rc.1`: an npm package pinned to an exact version. */
+const EXACT_VERSION_ARG = /^((?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*)@\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/i;
 
 export interface CatalogPinFinding {
   path: string;
@@ -67,13 +68,22 @@ function getCatalogPins(): CatalogPin[] {
     }
   })();
   if (!catalog || !Array.isArray(catalog.mcp_servers)) return [];
-  const pins: CatalogPin[] = [];
-  for (const [serverName, packageName] of PINNED_CATALOG_PACKAGES) {
-    const server = catalog.mcp_servers.find((entry) => entry.name === serverName);
-    if (!server?.command || !server.args) continue;
-    pins.push({ serverName, command: server.command, args: server.args, packageName });
-  }
-  return pins;
+  return pinsFromCatalog(catalog.mcp_servers);
+}
+
+/**
+ * The pin policy is catalog data: a stdio server whose catalog args name an
+ * npm package at an exact version (`tasks-mcp@0.10.2`) is pinned, and the
+ * sweep rewrites floating copies (`tasks-mcp`, `tasks-mcp@latest`) to it.
+ */
+export function pinsFromCatalog(servers: CatalogMcpServer[]): CatalogPin[] {
+  return servers.flatMap((server) => {
+    if (!server.command || !server.args) return [];
+    const pinned = server.args.map((arg) => EXACT_VERSION_ARG.exec(arg)).find((match) => match !== null);
+    return pinned
+      ? [{ serverName: server.name, command: server.command, args: server.args, packageName: pinned[1] }]
+      : [];
+  });
 }
 
 function isFloatingPackageArg(arg: string, packageName: string): boolean {

@@ -11,9 +11,9 @@ const plainLanguageTemplateRule = readFileSync(
 );
 const plainLanguagePatterns = [
   /ASD-STE100-style plain\s+English/,
-  /Always write agent-authored natural-language\s+text for an ADHD audience/i,
-  /This rule is always active/i,
-  /A user request for\s+another style does not override it/i,
+  /Write agent-authored natural-language\s+text so a\s+reader with little time or\s+attention can scan it/i,
+  /This is the default style/i,
+  /Follow a user's explicit request for\s+another style/i,
   /code\s+comments/i,
   /short paragraphs/i,
   /short, direct sentences[\s\S]*active[\s\S]*voice/i,

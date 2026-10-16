@@ -41,6 +41,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Fewer opinions for new users** — nine hooks that encode one maintainer's
+  workflow (`code-no-timestamps`, `selectors-pure`, `tests-adapt-to-production`,
+  `skill-names-user-facing-verbs`, `async-human-comms-blocks`,
+  `jira-no-grandchildren`, both `gdoc-*` guards, and the `perf-task-review`
+  Stop hook) now ship opt-in. List an ID under `enabled:` in
+  `~/.config/agentbrew/hooks-overlay/manifest.yaml` to keep it.
+- **Attention-friendly language is a default, not a lock** — an explicit user
+  request for another style now wins. Make it strict in your own shared rules.
+- The attribution footer names the committer's first name (`git config
+  user.name`), and skills no longer assume the maintainer's `~/apps/tooling`
+  layout.
+
 - **One runner for the context-budget usage tools** — ccusage, tokscale, and
   openusage now share one "try each command, keep the first JSON" helper in
   `src/measure/context-budget-runtime.ts`, with tests for fallback order and

@@ -14,7 +14,7 @@ agents can see which steps are slow and which slow steps repeat.
 | Hook `perf-record-denied` (PermissionDenied) | Appends a denied row when the auto mode classifier denies a call. |
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
 | Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
-| Hook `perf-task-review` (Stop) | Asks for a "Time review" after a long turn. |
+| Hook `perf-task-review` (Stop, opt-in) | Asks for a "Time review" after a long turn. Enable it in the hooks overlay `enabled:` list. |
 | Claude Code `statusLine` | Shows session time, tool time, and the slowest step. |
 | Skill `perf-review` | Tells an agent how to read the report and when to file a speedup task. |
 

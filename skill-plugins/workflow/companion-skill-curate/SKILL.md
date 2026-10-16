@@ -68,7 +68,7 @@ mkdir -p /tmp/companion-skill-curate
 
 # Overall stats
 agentbrew status > /tmp/companion-skill-curate/status.txt 2>&1 \
-  || npm run --prefix ~/apps/tooling/agentbrew dev -- status \
+  || npm run --prefix "${AGENTBREW_REPO:-$HOME/apps/tooling/agentbrew}" dev -- status \
        > /tmp/companion-skill-curate/status.txt 2>&1
 
 # Real CLI verbs — used later for the suggested-actions list. Do
@@ -76,7 +76,7 @@ agentbrew status > /tmp/companion-skill-curate/status.txt 2>&1 \
 # drifted historically (e.g. `agentbrew install --source` vs
 # `agentbrew catalog --sources add`).
 agentbrew --help > /tmp/companion-skill-curate/help.txt 2>&1 \
-  || npm run --prefix ~/apps/tooling/agentbrew dev -- --help \
+  || npm run --prefix "${AGENTBREW_REPO:-$HOME/apps/tooling/agentbrew}" dev -- --help \
        > /tmp/companion-skill-curate/help.txt 2>&1
 grep -E '^\s+(install|uninstall|sources|catalog|sync)' \
   /tmp/companion-skill-curate/help.txt | head -10
@@ -109,7 +109,7 @@ awk '
 
 # Also include the in-repo built-in source if it exists and isn't
 # already listed (agentbrew's `skill-plugins/dev/` is special).
-builtin="${HOME}/apps/tooling/agentbrew/skill-plugins/dev"
+builtin="${AGENTBREW_REPO:-$HOME/apps/tooling/agentbrew}/skill-plugins/dev"
 if [ -d "$builtin" ] && \
    ! grep -qF "$builtin" /tmp/companion-skill-curate/sources.tsv; then
   printf 'builtin-dev\t%s\n' "$builtin" \

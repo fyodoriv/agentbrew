@@ -75,8 +75,10 @@ describe("refreshCatalogTemplateRules", () => {
 
     expect(rule).toMatch(/alwaysApply:\s*true/);
     expect(rule).toMatch(/ASD-STE100-style plain\s+English/);
-    expect(rule).toMatch(/Always write agent-authored natural-language\s+text for an ADHD audience/i);
-    expect(rule).toMatch(/This rule is always active/);
+    expect(rule).toMatch(
+      /Write agent-authored natural-language\s+text so a\s+reader with little time or\s+attention can scan it/i,
+    );
+    expect(rule).toMatch(/Follow a user's explicit request for\s+another style/);
     expect(rule).toMatch(/code comments/i);
   });
 

@@ -8,9 +8,9 @@ const PLAIN_LANGUAGE_RULES = [
     message: "missing plain-language output default",
     patterns: [
       /ASD-STE100-style plain\s+English/i,
-      /Always write agent-authored natural-language\s+text for an ADHD audience/i,
-      /This rule is always active/i,
-      /A user request for\s+another style does not override it/i,
+      /Write agent-authored natural-language\s+text so a\s+reader with little time or\s+attention can scan it/i,
+      /This is the default style/i,
+      /Follow a user's explicit request for\s+another style/i,
       /short paragraphs/i,
       /short, direct sentences[\s\S]*active[\s\S]*voice/i,
       /one idea per sentence or bullet/i,

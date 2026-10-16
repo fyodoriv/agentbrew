@@ -142,7 +142,7 @@ every open PR merged into main, local and remote fully in sync, zero dangling st
 Run `gh pr list --author @me --state open --json number,title,headRefName,mergeable,statusCheckRollup`.
 For **each** PR, escalate through every strategy until it merges:
 
-1. **If this repo is under `~/apps/tooling` and substantive checks are green, admin/bypass merge by default**: `gh pr merge <n> --squash --admin`. This is standing-approved for the user's own tooling PRs; do not stop at review/base-branch policy.
+1. **If the user's rules give a standing admin-merge approval for this repo family and substantive checks are green, admin/bypass merge**: `gh pr merge <n> --squash --admin`. Without such a written approval, skip this step.
 2. **Otherwise try normal merge**: `gh pr merge <n> --squash --delete-branch`
 3. **If blocked by failing status check** (e.g. a required ticket check, required CI):
    - Inspect the failing check name and reason
@@ -152,7 +152,7 @@ For **each** PR, escalate through every strategy until it merges:
 4. **If blocked by merge conflicts or a moved base branch**:
    - Check out the branch, rebase onto main, resolve conflicts, force-push
    - Retry the merge
-5. **If blocked by required approvals outside `~/apps/tooling`**:
+5. **If blocked by required approvals outside an approved repo family**:
    - If the repo belongs to an approved repo family, follow that repo's AGENTS.md merge path.
    - In org/work/product repos outside explicitly approved families, do **not** try `--admin`, REST merge bypasses, branch-protection bypasses, or any force-merge path. Leave the PR open and log the exact review/check blocker.
 6. **If all allowed strategies fail**: log the PR number and reason, move to the next PR.
@@ -390,8 +390,9 @@ Follow the repo's commit convention. Check AGENTS.md or recent git log.
 
 #### 4h. Merge and sync
 
-Merge immediately — don't accumulate open PRs. In repos under `~/apps/tooling`,
-admin/bypass merge own PRs by default once substantive checks are green:
+Merge immediately — don't accumulate open PRs. In repo families where the user's
+rules give a standing admin-merge approval, admin/bypass merge own PRs once
+substantive checks are green:
 ```bash
 gh pr merge <number> --squash --admin
 ```

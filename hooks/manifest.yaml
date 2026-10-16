@@ -15,8 +15,10 @@
 # `defaultEnabled: false` IDs to turn on for this machine. When an ID is in
 # both lists, `disabled:` wins.
 #
-# **Opt-in hooks**: the PreToolUse:Bash hooks and context-budget-measure
-# ship with `defaultEnabled: false`. Each Bash hook runs on every Bash call,
+# **Opt-in hooks**: the PreToolUse:Bash hooks, context-budget-measure, and
+# the hooks that encode one maintainer's workflow (comment and naming style,
+# Jira/Google Docs habits, the Stop-time review) ship with
+# `defaultEnabled: false`, so a new user gets only generally useful hooks. Each Bash hook runs on every Bash call,
 # so enable them one machine at a time and measure the latency first.
 #
 # **Schema** (per hook):
@@ -52,6 +54,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:826 — "Code Has No Time Stamps (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   # ── Phase 1 hooks (dotfiles wrapper migration — sourceRule = dotfiles/bin/gh + git-hooks/commit-msg) ──
 
@@ -209,6 +212,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:368 "Selectors Must Be Pure (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: verify-before-completion
     description: Block Stop event when turn edited code files but never ran verify commands
@@ -258,6 +262,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:343 "Tests Adapt to Production, Not the Other Way Around (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: skill-names-user-facing-verbs
     description: Block Write/Edit to SKILL.md whose name field has internal jargon
@@ -268,6 +273,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:759 "Skill Names Are User-Facing Verbs, Not Internal Jargon (IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gh-pr-body-no-review-response
     description: Block gh pr create/edit whose body has a review-response section (Qodo/CodeRabbit/Bugbot resolved, feedback addressed)
@@ -299,6 +305,7 @@ hooks:
     verdict: block
     sourceRule: shared-rules.md:135 "Async human comms — ask_human.md (ADOPTED CONVENTION, IRON LAW)"
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: comment-adjacency
     description: Warn on orphaned comments (blank line between doc and code)
@@ -361,6 +368,7 @@ hooks:
     verdict: block
     sourceRule: 'shared-rules.md:1044 Jira Hierarchy No Grandchildren IRON LAW'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gdoc-comment-preservation
     description: 'Block GDoc tool calls that resolve/delete/modify existing comments'
@@ -371,6 +379,7 @@ hooks:
     verdict: block
     sourceRule: 'shared-rules.md:1528 GDoc Comment Preservation Rule ABSOLUTE'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gdoc-surgical-edit-only
     description: 'Block wholesale-replace GDoc updates'
@@ -381,6 +390,7 @@ hooks:
     verdict: block
     sourceRule: 'shared-rules.md:1540 GDoc Surgical-Edit-Only Rule ABSOLUTE'
     agents: ["claude-code", "cursor"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   # ── Context budget (SessionStart — throttled background capture) ─────────
 
@@ -515,3 +525,4 @@ hooks:
     bypassEnvVar: HOOK_BYPASS_PERF_TASK_REVIEW
     sourceRule: 'docs/agent-perf.md "Hooks that use the log"'
     agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`

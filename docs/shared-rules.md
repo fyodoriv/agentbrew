@@ -117,9 +117,9 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 ## Communication
 
-- **Strict attention-friendly rule:** Always write agent-authored natural-language
-  text for an ADHD audience.
-- This rule is always active. A user request for another style does not override it.
+- **Attention-friendly default:** Write agent-authored natural-language text so a
+  reader with little time or attention can scan it.
+- This is the default style. Follow a user's explicit request for another style.
 - Use ASD-STE100-style plain English.
 - Apply it to chat, status updates, docs, PRs, issue comments, task text, memory
   summaries, prompts, code comments, and every skill, rule, command, or tool

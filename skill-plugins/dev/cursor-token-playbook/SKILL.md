@@ -55,7 +55,7 @@ Agents **MUST** surface a new-chat nudge when any trigger matches — evaluate e
 1. **Scope with @** — `@file` / `@folder` / `@symbol` instead of "read the whole repo". Never paste multi-thousand-line logs; attach the failing snippet + command output tail.
 2. **Ask vs Agent** — Ask for research and questions; Agent only when you need edits. Ask burns fewer tool loops.
 3. **Fewer MCP servers** — each enabled server adds tool schema to context. Disable servers unused this week (`agentbrew status`, MCP panel). Prefer one data plane per domain.
-4. **`.cursorignore`** — copy `~/apps/tooling/dotfiles/templates/project.cursorignore` to repo root as `.cursorignore`. Keeps `node_modules`, `dist`, vendor trees, fixtures, and `.git` out of agent context.
+4. **`.cursorignore`** — copy `templates/project.cursorignore` from your dotfiles checkout (`$DOTFILES_DIR`) to repo root as `.cursorignore`. Keeps `node_modules`, `dist`, vendor trees, fixtures, and `.git` out of agent context.
 5. **Parallel chats** — one chat per workstream; avoids cross-contamination and ring bloat.
 6. **Measure, don't guess** — `agentbrew measure context` → read `~/.config/agentbrew/metrics/latest.json` (`static.softTokenHeadroom`, `topSections`, `alerts`).
 7. **Restart after config sync** — after `agentbrew sync` or dotfiles apply that touched rules/MCP/skills, **new chat** so stale system prompt isn't carried.
@@ -89,5 +89,5 @@ When `softTokenHeadroom` < ~1,800 tokens (see `latest.json` alerts):
 
 - **`context-budget`** — metrics, lint, ccusage/openusage/tokscale, TASKS.md trim tasks
 - **`agentbrew-status`** — MCP drift and sync health
-- **`~/apps/tooling/dotfiles/docs/cursor-token-playbook.md`** — human-readable mirror of this playbook
-- **`~/apps/tooling/dotfiles/templates/project.cursorignore`** — per-repo ignore scaffold
+- **`$DOTFILES_DIR/docs/cursor-token-playbook.md`** (dotfiles repo) — human-readable mirror of this playbook
+- **`$DOTFILES_DIR/templates/project.cursorignore`** — per-repo ignore scaffold

@@ -36,12 +36,12 @@ Pick whichever matches your mental model for the rule — if it's a short projec
 
 Edit `shared-rules.md` once, `agentbrew sync` deploys to all. The background scheduler also picks up changes automatically.
 
-## Strict attention-friendly language
+## Attention-friendly language
 
-AgentBrew deploys a strict attention-friendly rule through its managed sync
-surfaces. Agents must write all agent-authored natural-language text for an ADHD
-audience. The rule is always active and is not overridden by a user request for
-another style.
+AgentBrew deploys an attention-friendly default through its managed sync
+surfaces. Agents write agent-authored natural-language text so a reader with
+little time or attention can scan it. An explicit user request for another
+style wins; a user who wants it strict adds that to their own shared rules.
 
 Agents must put the answer first, use short paragraphs and direct sentences,
 keep one idea per sentence or bullet, and use headings, bullets, or numbered

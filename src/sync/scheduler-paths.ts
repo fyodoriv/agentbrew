@@ -64,7 +64,8 @@ export function resolveDotfilesBinPath(home: string): string {
   for (const candidate of [`${home}/apps/tooling/dotfiles/bin`, `${home}/apps/dotfiles/bin`, `${home}/dotfiles/bin`]) {
     if (existsSync(candidate)) return candidate;
   }
-  return `${home}/apps/tooling/dotfiles/bin`;
+  // Nothing exists yet: use the README's default clone path.
+  return `${home}/apps/dotfiles/bin`;
 }
 
 /** fnm default Node bin (matches dotfiles launchagent-path / gui-path). */

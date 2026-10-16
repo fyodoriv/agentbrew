@@ -17,8 +17,8 @@ describe("evaluateArtifactText", () => {
         "Never publish under the user's identity without explicit approval for that exact action in the current session.",
         "Requires explicit per-action approval in the current session: Unsafe git publication, force-pushing, deleting remote branches.",
         "Do not perform destructive operations without explicit confirmation for that exact action.",
-        "Always write agent-authored natural-language text for an ADHD audience.",
-        "This rule is always active. A user request for another style does not override it.",
+        "Write agent-authored natural-language text so a reader with little time or attention can scan it.",
+        "This is the default style. Follow a user's explicit request for another style.",
         "Use ASD-STE100-style plain English.",
         "Use short paragraphs, short, direct sentences, and active voice.",
         "Keep one idea per sentence or bullet.",
@@ -35,8 +35,8 @@ describe("evaluateArtifactText", () => {
     const { output } = evaluateArtifactText({
       artifactPath: "docs/shared-rules.md",
       text: [
-        "Always write agent-authored natural-language text for an ADHD audience.",
-        "This rule is always active. A user request for another style does not override it.",
+        "Write agent-authored natural-language text so a reader with little time or attention can scan it.",
+        "This is the default style. Follow a user's explicit request for another style.",
         "Use ASD-STE100-style plain English.",
         "Use short paragraphs, short, direct sentences, and active voice.",
         "Keep one idea per sentence or bullet.",
@@ -81,8 +81,8 @@ describe("evaluateArtifactText", () => {
     const { output } = evaluateArtifactText({
       artifactPath: "unsafe-code-comment-shared-rules-fixture",
       text: [
-        "Always write agent-authored natural-language text for an ADHD audience.",
-        "This rule is always active. A user request for another style does not override it.",
+        "Write agent-authored natural-language text so a reader with little time or attention can scan it.",
+        "This is the default style. Follow a user's explicit request for another style.",
         "Use ASD-STE100-style plain English.",
         "Use short paragraphs, short, direct sentences, and active voice.",
         "Keep one idea per sentence or bullet.",

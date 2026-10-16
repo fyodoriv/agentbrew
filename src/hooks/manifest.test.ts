@@ -62,6 +62,20 @@ afterEach(() => {
   }
 });
 
+// Hooks that encode one maintainer's workflow. They ship off; a machine opts
+// in through the overlay `enabled:` list (the owner's dotfiles do this).
+const OWNER_WORKFLOW_HOOK_IDS = [
+  "code-no-timestamps",
+  "selectors-pure",
+  "tests-adapt-to-production",
+  "skill-names-user-facing-verbs",
+  "async-human-comms-blocks",
+  "jira-no-grandchildren",
+  "gdoc-comment-preservation",
+  "gdoc-surgical-edit-only",
+  "perf-task-review",
+];
+
 describe("loadManifestFile", () => {
   it("parses a valid v1 manifest with target agents", () => {
     const root = tempRoot();
@@ -349,7 +363,9 @@ describe("canonical hook manifest", () => {
     expect(golden?.matcher).toBe("Write|Edit");
     expect(golden?.agents).toEqual(["claude-code", "cursor"]);
     expect(verifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
-    expect(managedGolden?.agents).toEqual(["claude-code", "cursor"]);
+    // code-no-timestamps is an owner-workflow hook: parsed, but off by default.
+    expect(resolvedManifest.offByDefault).toContain("code-no-timestamps");
+    expect(managedGolden).toBeUndefined();
     expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
     expect(resolvedManifest.hooks.find((hook) => hook.id === "context-budget-measure")).toMatchObject({
       event: "SessionStart",
@@ -372,7 +388,7 @@ describe("canonical hook manifest", () => {
     expect(managedMemorySessionEnd?.agents).toEqual(["claude-code"]);
   });
 
-  it("ships the PreToolUse:Bash hooks and context-budget-measure as opt-in", () => {
+  it("ships the PreToolUse:Bash hooks, context-budget-measure, and owner-workflow hooks as opt-in", () => {
     const repoRoot = resolve(import.meta.dirname, "../..");
     const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
       overlayPath: join(tempRoot(), "missing-overlay.yaml"),
@@ -382,7 +398,9 @@ describe("canonical hook manifest", () => {
       .map((hook) => hook.id);
 
     expect(bashHookIds).toHaveLength(18);
-    expect(resolvedManifest.offByDefault).toEqual([...bashHookIds, "context-budget-measure"]);
+    expect([...resolvedManifest.offByDefault].sort()).toEqual(
+      [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
+    );
     expect(managed.filter((hook) => hook.matcher === "Bash")).toEqual([]);
   });
 
@@ -411,7 +429,7 @@ describe("canonical hook manifest", () => {
     }
   });
 
-  it("ships perf-brief and perf-task-review on by default for Claude Code only", () => {
+  it("ships perf-brief on and perf-task-review opt-in, for Claude Code only", () => {
     const repoRoot = resolve(import.meta.dirname, "../..");
     const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
       overlayPath: join(tempRoot(), "missing-overlay.yaml"),
@@ -427,6 +445,12 @@ describe("canonical hook manifest", () => {
         script: `checks/${id}.sh`,
         agents: ["claude-code"],
       });
+      if (id === "perf-task-review") {
+        // The Stop-time review is an owner-workflow hook: opt in via the overlay.
+        expect(resolvedManifest.offByDefault).toContain(id);
+        expect(managed.find((hook) => hook.command === `bash /tmp/deployed-hooks/${id}.sh`)).toBeUndefined();
+        continue;
+      }
       expect(resolvedManifest.offByDefault).not.toContain(id);
       expect(managed.find((hook) => hook.command === `bash /tmp/deployed-hooks/${id}.sh`)?.async).toBeUndefined();
     }

@@ -16,7 +16,7 @@
 #      `Co-Authored-By: <Agent> <bot@…>` trailers (case-insensitive
 #      header — catches both `Co-Authored-By:` and `Co-authored-by:`).
 #   2. If we stripped any vendor line, appends the canonical
-#      tool-neutral Fyodor footer so readers can still tell the commit
+#      tool-neutral footer ("not <first name>") so readers can still tell the commit
 #      was agent-authored.
 #   3. Orchestrator pipelines (e.g. minsky) are exempt — set
 #      MINSKY_PIPELINE=1 to bypass entirely. Bypass mode preserves
@@ -38,6 +38,21 @@
 AGENT_ATTR_NAMES='Devin|devin-ai-integration\[bot\]|Claude|Claude Code|Windsurf|Cursor|GitHub Copilot|Copilot|Aider|Augment|Augment Code|Roo|Cline|Kiro|OpenCode|Continue|Trae|Amp|Goose|Junie|Warp|Droid|Bolt|Replit Agent|Zed|Codex'
 AGENT_ATTR_EMAILS='devin-ai-integration|noreply@anthropic\.com|claude@anthropic\.com|copilot@github\.com|agent@cursor\.com|@cursor\.sh|agent@windsurf\.com|@windsurf\.sh|aider@|@augmentcode\.com|@codeium\.com|bot@openai\.com'
 
+# Internal: succeeds when this machine applies the owner's agent policy.
+# dotfiles writes `dotfiles.agentPolicy` into ~/.gitconfig: true on the
+# owner's Macs, false elsewhere, so a new user's commits stay untouched.
+# Unset (older configs, or no dotfiles) keeps the rewrite on.
+_agent_attr_enabled() {
+  [ "$(git config --bool dotfiles.agentPolicy 2>/dev/null || true)" != "false" ]
+}
+
+# Internal: first name for the footer, from AGENT_FOOTER_NAME or git user.name.
+_agent_footer_name() {
+  name="${AGENT_FOOTER_NAME:-}"
+  [ -n "$name" ] || name="$(git config user.name 2>/dev/null | awk '{print $1}' || true)"
+  printf '%s' "${name:-the author}"
+}
+
 # Internal: build the combined regex from the agent name/email tables.
 _agent_attr_combined_re() {
   coauthor_name_re="^Co-Authored-By:[[:space:]]+(${AGENT_ATTR_NAMES})[[:space:]]*<"
@@ -50,15 +65,15 @@ _agent_attr_combined_re() {
 # cleaned text to stdout. Used by the `gh` wrapper to scrub
 # `--body` / `--body-file` content before it's posted to GitHub.
 # Idempotent — safe to run on text that's already clean. If we end
-# up stripping anything, the canonical Fyodor footer is appended so
+# up stripping anything, the canonical footer is appended so
 # the final body is still tagged as agent-authored.
 _strip_agent_attribution_in_stream() {
-  if [ -n "${MINSKY_PIPELINE:-}" ]; then
+  if [ -n "${MINSKY_PIPELINE:-}" ] || ! _agent_attr_enabled; then
     cat
     return 0
   fi
   combined_re=$(_agent_attr_combined_re)
-  fyodor_footer_re='Written by an agent, not Fyodor'
+  footer_re='Written by an agent, not '
 
   input=$(cat)
   stripped_vendor_attribution=0
@@ -73,18 +88,18 @@ _strip_agent_attribution_in_stream() {
     for (i=1;i<=n;i++) print a[i]
   }')
 
-  # If we stripped vendor attribution AND the result lacks the Fyodor
+  # If we stripped vendor attribution AND the result lacks the
   # footer, append it. Otherwise emit the input unchanged (modulo
   # trailing-blank trimming, which is invisible to GitHub).
-  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$fyodor_footer_re" <<<"$filtered"; then
-    printf '%s\n\n---\n_🤖 Written by an agent, not Fyodor. Ping me if this looks off._\n' "$filtered"
+  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$footer_re" <<<"$filtered"; then
+    printf '%s\n\n---\n_🤖 Written by an agent, not %s. Ping me if this looks off._\n' "$filtered" "$(_agent_footer_name)"
   else
     printf '%s\n' "$filtered"
   fi
 }
 
 # Public: strip agent attribution from the commit message file passed
-# in $1 and append the Fyodor footer if any was stripped.
+# in $1 and append the footer if any was stripped.
 _strip_agent_attribution_in_file() {
   msg_file="$1"
   if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
@@ -95,7 +110,7 @@ _strip_agent_attribution_in_file() {
   # message exactly as the orchestrator wrote it. The orchestrator is
   # responsible for any attribution it wants; this library stays out
   # of its way.
-  if [ -n "${MINSKY_PIPELINE:-}" ]; then
+  if [ -n "${MINSKY_PIPELINE:-}" ] || ! _agent_attr_enabled; then
     return 0
   fi
 
@@ -106,7 +121,7 @@ _strip_agent_attribution_in_file() {
   fi
 
   combined_re=$(_agent_attr_combined_re)
-  fyodor_footer_re='Written by an agent, not Fyodor'
+  footer_re='Written by an agent, not '
 
   stripped_vendor_attribution=0
   if grep -iqE "$combined_re" "$msg_file"; then
@@ -123,10 +138,10 @@ _strip_agent_attribution_in_file() {
   fi
 
   # If we just stripped vendor attribution, the commit was almost
-  # certainly agent-authored — append the Fyodor footer so readers
+  # certainly agent-authored — append the footer so readers
   # know an agent wrote it. We do NOT touch commits that had no
   # vendor attribution (those are human commits).
-  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$fyodor_footer_re" "$msg_file"; then
+  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$footer_re" "$msg_file"; then
     tmp_file=$(mktemp)
     # Trim trailing blank lines so the appended footer stays cleanly spaced.
     awk 'BEGIN{n=0} {a[++n]=$0} END{
@@ -134,7 +149,7 @@ _strip_agent_attribution_in_file() {
       for (i=1;i<=n;i++) print a[i]
     }' "$msg_file" > "$tmp_file"
     cleaned=$(cat "$tmp_file")
-    printf '%s\n\n---\n_🤖 Written by an agent, not Fyodor. Ping me if this looks off._\n' "$cleaned" > "$msg_file"
+    printf '%s\n\n---\n_🤖 Written by an agent, not %s. Ping me if this looks off._\n' "$cleaned" "$(_agent_footer_name)" > "$msg_file"
     rm -f "$tmp_file"
     echo "🤖 Appended tool-neutral agent footer (agent-attribution-footer rule)."
     echo ""

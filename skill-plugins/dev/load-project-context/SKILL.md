@@ -76,7 +76,7 @@ When loading project context, also detect the repo's task backend by checking fo
 
 ## Failure modes
 
-- **Script not found**: agentbrew sync hasn't been run on this machine, or the script was deleted. Re-run `agentbrew sync` from `~/apps/tooling/agentbrew/` (or wherever the repo lives) — it redeploys the script.
+- **Script not found**: agentbrew sync hasn't been run on this machine, or the script was deleted. Re-run `agentbrew sync` (from your agentbrew checkout if you run it from source) — it redeploys the script.
 - **`find` returns errors**: on systems with a shimmed `find` (e.g. some dotfiles ship `find` → `fd`), the script falls back to `/usr/bin/find`. If that's missing, the inventory is incomplete but the session still proceeds.
 - **No canonical docs found**: the script prints a graceful "no canonical docs found" message. That means either (a) the current dir isn't a project root, or (b) the project doesn't follow the canonical doc convention. Proceed normally; the agent has no forced context to load.
 - **Files too large**: the script doesn't fail, it just lists everything found. The agent is responsible for chunking large files using the read-strategy above (TOC + first/last 100 lines for >500-line docs).

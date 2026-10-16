@@ -184,11 +184,13 @@ One command translates the source of truth into every agent's native format.
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies, and `agentbrew status --verbose` names each kept, missing, or outdated script with its path
 
-### Strict attention-friendly language
+### Attention-friendly language
 
-Agentbrew requires managed agents to write all agent-authored natural-language
-text for an ADHD audience. This rule is always active, including in user-facing
-text, docs, prompts, status updates, and code comments.
+By default, managed agents write agent-authored natural-language text so a
+reader with little time or attention can scan it. This covers user-facing text,
+docs, prompts, status updates, and code comments. An explicit user request for
+another style wins. To make it strict on your machine, add a line such as "a
+request for another style does not override it" to your own shared rules.
 
 Agents must put the answer first, use short paragraphs and direct sentences,
 keep one idea per sentence or bullet, and use headings, bullets, or numbered
@@ -430,7 +432,7 @@ node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
 node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
 ```
 
-At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. After a turn with 5 or more minutes of tool time, the `perf-task-review` Stop hook asks the agent for a short "Time review" once (`AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold). `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
+At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once (`AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold; turn it on by listing it under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`). `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
 
 Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
 

@@ -37,9 +37,9 @@ Shared-rules holds git/PR/browser/security detail — load it via session entry.
 
 ### User-facing language
 
-**Strict attention-friendly rule:** Always write agent-authored natural-language
-text for an ADHD audience. This rule is always active. A user request for
-another style does not override it.
+**Attention-friendly default:** Write agent-authored natural-language text so a
+reader with little time or attention can scan it. This is the default style.
+Follow a user's explicit request for another style.
 
 Use ASD-STE100-style plain English.
 

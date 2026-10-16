@@ -238,6 +238,8 @@ describe("checkLaunchAgentPathDrift", () => {
 
     it("accepts the applied node dir even when the running node differs", () => {
       expect(appliedNodeBin).not.toBe(dirname(process.execPath));
+      // Resolve under the same mocked filesystem that run() uses.
+      mockExistsSync.mockImplementation((p) => String(p).includes("dotfiles/bin"));
       const dotfilesBin = resolveDotfilesBinPath("/home/user");
       expect(run(`${appliedNodeBin}:${dotfilesBin}:/usr/bin:/bin`)).toEqual([]);
     });

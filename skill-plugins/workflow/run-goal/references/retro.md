@@ -48,7 +48,8 @@ never the installed mirror.
 
 After the change merges, redeploy it the way that repo says (for agentbrew:
 pull, `npm run build`, `agentbrew sync --pull`; plain `sync` skips a skill
-that is already installed). Then check that the installed copy shows the
+that is already installed; a changed hook script also needs
+`agentbrew sync --only hooks`). Then check that the installed copy shows the
 change. A merged edit that never reaches the agent helps nobody.
 
 Keep each edit small. Every skill used gets one update:

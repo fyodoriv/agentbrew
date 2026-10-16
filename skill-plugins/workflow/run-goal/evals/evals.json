@@ -127,6 +127,20 @@
         "Changes only CHANGELOG.md in the app repo",
         "Edits the skill source, not the installed symlink, and adds an eval for it"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "/goal make the tests in this repo pass (tiny repo, one off-by-one bug in sum.js)",
+      "expected_output": "A short but complete goal contract printed and saved before the first edit, a baseline failing run, a one-line fix in the source file only, a fresh passing run with exit code, and the retro with every skill used.",
+      "expectations": [
+        "Prints a short contract with Done when, Metric, and Pivot before the first Edit",
+        "Saves the contract to the file the /goal hook names before editing any repo file",
+        "Takes the baseline (npm test fails 1 of 2) before changing code",
+        "Fixes the source and does not edit or weaken the tests",
+        "Reads the exit code from the gate itself (rc=$?), not from a wrapper echo",
+        "Asks no question when the repo answers it",
+        "Writes the retro file with one line per skill used, including run-goal"
+      ]
     }
   ]
 }

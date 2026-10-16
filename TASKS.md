@@ -376,14 +376,6 @@
   - **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
   - **Output**: code
 
-- [ ] `check-pr-vision-trace.mjs` checks the PR body when it runs through a symlinked path
-  - **ID**: pr-vision-trace-cli-guard-symlink
-  - **Tags**: scout, pr-vision-trace, helper-scripts, bug
-  - **Details**: Scouted while shipping the helper scripts. The CLI guard compares `import.meta.url` with `file://${process.argv[1]}`. Node resolves symlinks for `import.meta.url` but not for `process.argv[1]`. So `node <dir-with-a-symlink>/check-pr-vision-trace.mjs body.md` prints nothing and exits 0, even for a body with no Vision trace block. A symlinked `~/.config`, or a hand-made symlink to the repo copy, turns the gate into a silent pass. Compare real paths (`pathToFileURL(realpathSync(process.argv[1]))`) instead.
-  - **Files**: `scripts/check-pr-vision-trace.mjs`, `src/check-pr-vision-trace.test.ts`
-  - **Acceptance**: A test runs the script through a symlinked directory with a body that has no Vision trace block and gets exit 1 with the violation list.
-  - **Output**: code
-
 - [ ] Replace the "open each once" hint for a missing command folder with a fix that works
   - **ID**: commands-dir-missing-hint-actionable
   - **Tags**: commands, sync, ux, docs

@@ -4,6 +4,10 @@
 // minsky constitution, adopted into agentbrew's CI-gate set). Paired
 // positive/negative fixtures (Meszaros 2007).
 
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 // @ts-expect-error — pure-ESM .mjs sibling; vitest resolves it via Node ESM.
@@ -118,5 +122,29 @@ describe("checkPrVisionTrace", () => {
     ].join("\n");
     const result: CheckResult = checkPrVisionTrace(body);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("check-pr-vision-trace CLI", () => {
+  test("still checks the body when run through a symlinked directory", () => {
+    const root = mkdtempSync(join(tmpdir(), "pr-vision-trace-"));
+    try {
+      const realDir = join(root, "real");
+      mkdirSync(realDir);
+      const script = resolve(import.meta.dirname, "../scripts/check-pr-vision-trace.mjs");
+      writeFileSync(join(realDir, "check-pr-vision-trace.mjs"), readFileSync(script, "utf8"));
+      symlinkSync(realDir, join(root, "linked"));
+      const body = join(root, "body.md");
+      writeFileSync(body, "## Summary\nNo trace block here.\n");
+
+      const result = spawnSync(process.execPath, [join(root, "linked", "check-pr-vision-trace.mjs"), body], {
+        encoding: "utf8",
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("pr-vision-trace violation:");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

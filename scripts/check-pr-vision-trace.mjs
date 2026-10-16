@@ -117,7 +117,17 @@ Opt-out for release bots / lockfile bumps / sync auto-commits:
     <!-- vision-trace: not-applicable — <reason ≥3 chars> -->`;
 
 // CLI entry: read PR body from argv[2], lint, exit 0 or 1.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Compare real paths: Node resolves symlinks for import.meta.url but not for
+// argv[1], so a symlinked path would otherwise skip the check and exit 0.
+const { realpathSync } = await import("node:fs");
+const { pathToFileURL } = await import("node:url");
+let invokedAs = "";
+try {
+  invokedAs = process.argv[1] ? pathToFileURL(realpathSync(process.argv[1])).href : "";
+} catch {
+  // argv[1] is not a file (for example `node -e`): not a CLI run.
+}
+if (import.meta.url === invokedAs) {
   const path = process.argv[2];
   if (!path) {
     console.error("usage: check-pr-vision-trace.mjs <pr-body-file>");

@@ -46,6 +46,15 @@ in general, change the requirement itself: open a PR (or a task) on the
 `check-setup.sh`, and `references/owner-practices.md`, with the reason and the
 repos that hit it. Remove the matching waivers once it merges.
 
+### Changes made from push back
+
+| Date | Change | Why (repos that pushed back) |
+|---|---|---|
+| 2026-10-16 | An external error reporter is optional; errors are captured locally | privacy or "a local CLI never phones home" (all five audited repos) |
+| 2026-10-16 | The loading or slow e2e case applies only where a user waits | a CLI or spec has no loading state (agentbrew, tasks.md, dotfiles) |
+| 2026-10-16 | The speed review may be monthly and may live in the repo's checkup | one checkup owns the schedule; quiet repos (dotfiles, a private app) |
+| 2026-10-16 | Setup may prompt when the OS requires it | a Mac bootstrap needs OS prompts (dotfiles) |
+
 ## 4. Monthly audit
 
 Checkup commands run this once a month per repo:

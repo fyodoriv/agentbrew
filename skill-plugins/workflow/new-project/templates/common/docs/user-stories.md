@@ -1,7 +1,8 @@
 # User stories
 
 Each story is something a user can do end to end. Each one names its metric
-and has an e2e test per case (happy, loading or slow, error) in `tests/e2e/`,
+and has an e2e test per case in `tests/e2e/`: happy, error, and loading or slow
+only where a user waits (a CLI usually has no loading state),
 named after the story id. `scripts/check-docs.sh` fails when this file and
 `tests/e2e/` drift apart. A change to what the user does or sees updates its
 story and its tests in the same commit.

@@ -145,6 +145,29 @@
      RECURRING.md watch-lists (re-research-stale-competitors, quarterly-
      dissolution-reeval) instead of a duplicate task. -->
 
+- [ ] agentbrew meets every new-project requirement, or waives it with a reason
+  - **ID**: meet-new-project-requirements
+  - **Tags**: requirements, agents, observability, docs
+  - **Details**: The 2026-10-16 audit scored agentbrew 9/22 by path (11/24 with `.agents/requirements.yaml`). By intent: e2e and tasks are met; vision, metrics, observability, user stories, setup, and self-improving are partial; checkup and caching are missing. Fix in this order:
+    1. `VISION.md`: a `## Problem` section and dated `## Kill criteria` (move the dissolution triggers in; record the keep-or-kill decision on the fired >30K-LOC trigger).
+    2. New `docs/metrics.md` (docs map row): metric | goal | pivot | command (no-op sync time, sync output lines, LOC trend, zero-to-configured time), `(stub)` when data is missing; `agentbrew metrics --goals` prints it.
+    3. Auto-sync events as content-free JSONL with an event list and an error-to-story map in new `docs/observability.md`; every `DriftItem` prints its fix in `status`.
+    4. Fix `real-e2e/SCENARIO_MAP.md` (us09-us10 rename, unmapped drift scenarios, US24 mismatch) and add `src/docs/scenario-map.test.ts` that fails on drift; add `Metric:` and `E2E:` lines to each story; add scenarios for US25 to US29.
+    5. `scripts/install.sh run` ends with `agentbrew status --ci`, and the README quick start opens with that one command.
+    6. A repo-wide checkup command (`npm run checkup`: status, cached gate, metrics, open P0s, monthly `audit-due.sh`).
+    7. Caching: `npm test` already selects affected tests; add a result cache keyed by input hash for the verify steps (re-run on any change, `NO_CACHE=1` forces a full run).
+    8. Time each gate step into `.metrics/gate-timings.jsonl` (ignored); the speed review runs inside `/tooling-checkup`; new `docs/learnings.md` (predicted vs observed).
+    9. Drain `.prereg-allowlist` and run `@tasks-md/lint` in `verify`; add `*.pem`, `*.key`, `.envrc`, `.metrics/` to `.gitignore`; trim `AGENTS.md` below about 9 KB for headroom.
+    Accepted push back (map, do not rename): root `VISION.md`, `scripts/install.sh run` as setup, `agentbrew status --ci` as the doctor, `real-e2e/` as e2e. No external error reporter (VISION excludes telemetry). No loading e2e case for a CLI.
+  - **Files**: `VISION.md`, `docs/`, `src/sync/auto-sync.ts`, `src/drift-checks/`, `real-e2e/`, `scripts/install.sh`, `package.json`, `.gitignore`, `.agents/requirements.yaml`
+  - **Output**: code
+  - **Acceptance**: `check-setup.sh . --profile tool` reaches 100% with every gap met, mapped, or waived with a reason, and `npm run verify` passes.
+  - **Hypothesis**: the setup score rises from 45% to 100%, honestly mapped or waived, and the monthly audit finds no new gap.
+  - **Measurement**: `bash ~/.claude/skills/new-project/scripts/check-setup.sh . --profile tool`
+  - **Success**: 100%, every waiver reasoned, `npm run verify` green.
+  - **Pivot**: a gap that costs more than it returns here becomes a waiver, or a requirement-change PR on `new-project`.
+  - **Anchor**: `skill-plugins/workflow/new-project/references/requirements-map.md`; audit 2026-10-16.
+
 <!-- Phase 1 (hooks-phase-1-cat-a-deterministic) COMPLETE 2026-06 — all 26 Cat A
      hooks shipped with scripts + manifest entries + per-hook fixture tests, and
      the production decision log (scripts/hook-observation.sh) confirms every one

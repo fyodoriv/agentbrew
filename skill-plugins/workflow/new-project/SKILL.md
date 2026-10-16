@@ -21,11 +21,11 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 |---|---|
 | vision | `docs/VISION.md`: problem, success metric, non-goals, dated kill criteria, prior art |
 | metrics | metrics table with goal, pivot, and command; `scripts/metrics.sh` |
-| observability | content-free JSONL events, errors mapped to stories, `scripts/doctor.sh` |
+| observability | content-free JSONL events, errors captured locally and mapped to stories (an external reporter is optional, only where privacy allows), `scripts/doctor.sh` |
 | user-stories | each story names its metric and its e2e test per case |
-| setup | `scripts/setup.sh`: one idempotent command, first in the README |
+| setup | `scripts/setup.sh`: one idempotent command, first in the README; prompts only when the OS requires them |
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
-| self-improving | timed gate steps in `.metrics/`, weekly speed review in `RECURRING.md`, `docs/learnings.md` |
+| self-improving | timed gate steps in `.metrics/`, a speed review (weekly by default, monthly for quiet repos; it may live in the repo's checkup), `docs/learnings.md` |
 | tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
 | checkup | `scripts/checkup.sh`: one repo-wide checkup (health, cached gate, broken stories, speed, P0s, monthly audit) |
 | caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), any change re-runs, `NO_CACHE=1` forces all |

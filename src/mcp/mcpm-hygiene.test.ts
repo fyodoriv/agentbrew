@@ -8,6 +8,7 @@ import {
   findBrokenMcpmOnlyKeys,
   findRedundantMcpmKeys,
   findRemovableStaleKeys,
+  fixBrokenGithubLauncherEntry,
   fixDeprecatedGithubEntry,
   fixDeprecatedMemoryServerArgs,
   fixMemoryEntry,
@@ -297,4 +298,43 @@ describe("memory server arg hygiene", () => {
     expect(entry.command).toBe("uvx");
     expect(entry.args).toEqual(["--system-certs", "--from", "mcp-memory-service[sqlite]", "memory", "server"]);
   });
+});
+
+// Decision (github-mcp-launcher-vs-hosted-decision, 2026-10-16): a fresh
+// `agentbrew install github` keeps the hosted server even when a local
+// `*-github-mcp` launcher exists. The launcher swap only repairs the archived
+// npm form or a launcher path that no longer exists.
+describe("fresh github install keeps the hosted server", () => {
+  const catalogGithub = (): { url?: string; headers?: Record<string, string> } => {
+    const catalog = yaml.load(readFileSync(new URL("../catalog.yaml", import.meta.url), "utf-8")) as {
+      mcp_servers: Array<{ name: string; url?: string; headers?: Record<string, string> }>;
+    };
+    const entry = catalog.mcp_servers.find((server) => server.name === "github");
+    return { url: entry?.url, headers: entry?.headers };
+  };
+  const freshState = (): McpServer => ({
+    name: "github",
+    command: "",
+    args: [],
+    env: {},
+    source: "catalog",
+    ...catalogGithub(),
+  });
+
+  for (const [label, launcher] of [
+    ["with a local launcher", "/home/user/.local/bin/custom-org-github-mcp"],
+    ["without a launcher", undefined],
+  ] as const) {
+    it(`keeps the hosted URL ${label}`, () => {
+      const server = freshState();
+      expect(migrateDeprecatedGithubServer(server, () => launcher)).toBe(false);
+      expect(server.url).toBe(MAINTAINED_GITHUB_MCP_URL);
+
+      const agentEntry: Record<string, unknown> = { url: server.url, headers: { ...server.headers } };
+      const before = structuredClone(agentEntry);
+      expect(fixDeprecatedGithubEntry(agentEntry, launcher)).toBe(false);
+      expect(fixBrokenGithubLauncherEntry(agentEntry, launcher)).toBe(false);
+      expect(agentEntry).toEqual(before);
+    });
+  }
 });

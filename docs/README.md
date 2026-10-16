@@ -57,5 +57,6 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`plans/`](plans/) | Plans for non-trivial tasks, one file per task ID. | agent |
+| [`decisions/`](decisions/) | Decision records for closed research tasks, one file per task ID. | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |
 | [`human-blocked-actions/`](human-blocked-actions/) | Steps that need a human (logins, approvals). | human |

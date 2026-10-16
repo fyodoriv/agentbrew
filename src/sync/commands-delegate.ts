@@ -1,3 +1,4 @@
+// Pattern: Gateway (Fowler 2002, Patterns of Enterprise Application Architecture). See VISION.md "Pattern conformance index".
 /**
  * Subprocess wrapper that delegates per-agent **commands** generation to
  * `block/ai-rules` and returns the per-agent generated content.

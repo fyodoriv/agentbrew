@@ -1,3 +1,4 @@
+// Pattern: Retry (Microsoft 2014, Cloud Design Patterns, "Retry"). See VISION.md "Pattern conformance index".
 import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
 
 /** Default timeout for git operations, overridden by AGENTBREW_GIT_TIMEOUT env var. */

@@ -1,3 +1,4 @@
+// Pattern: Context Object (Alur, Crupi, Malks 2001, Core J2EE Patterns). See VISION.md "Pattern conformance index".
 import type { Manifest } from "../manifest.js";
 import type { AgentBrewState } from "../types.js";
 import type { Logger } from "./logger.js";

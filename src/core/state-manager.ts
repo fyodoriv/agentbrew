@@ -1,3 +1,4 @@
+// Pattern: Repository (Fowler 2002, Patterns of Enterprise Application Architecture; Evans 2003, Domain-Driven Design). See VISION.md "Pattern conformance index".
 import { resolve } from "node:path";
 import chalk from "chalk";
 import { getSourceCacheDir, sourceCacheRoot } from "../catalog/index-source.js";

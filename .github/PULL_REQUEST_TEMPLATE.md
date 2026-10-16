@@ -20,6 +20,11 @@ this file's structure — keep the section headers and bullet shapes intact. -->
   <!-- vision-trace: not-applicable — <reason ≥3 chars> -->
 -->
 
+## Patterns and defaults
+
+- **Pattern**: <the pattern this change follows, as named in VISION.md "Pattern conformance index", or "deviation: <why>", or `N/A — <reason>`>
+- **New flags**: <for each new CLI flag, why it is not the default (opt-out, debug, knob, or disruptive), plus its row in docs/cli-flags-audit.md, or "none">
+
 ## How to test manually
 
 ```bash

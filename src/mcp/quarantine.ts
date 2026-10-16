@@ -1,3 +1,4 @@
+// Pattern: Circuit Breaker (Nygard 2007, Release It!). See VISION.md "Pattern conformance index".
 import type { McpQuarantine, McpServer } from "../types.js";
 import { MCPM_PREFIX } from "./mcpm-hygiene.js";
 

@@ -228,6 +228,30 @@ Users can safely run agentbrew alongside other agent-config managers. The coexis
 
 The inverse contract is true too: other tools MUST never modify content inside agentbrew's `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->` markers. We document that expectation in every README instead of enforcing it (the ecosystem is too small to warrant lockfile-style enforcement). The proposed shared marker format and ownership rules are in [`docs/specs/managed-section-markers.md`](docs/specs/managed-section-markers.md).
 
+## Pattern conformance index
+
+Each load-bearing artifact names the published pattern it follows. A new artifact that follows a pattern adds a row in the same PR. A deviation from the pattern is declared in the row, never left silent. Each listed `.ts` file names its pattern in a top-of-file `Pattern:` comment. `node scripts/check-rule-8-pattern-conformance.mjs` checks that every row points at a real file, uses a known conformance value, and matches the file's `Pattern:` comment. It runs in `npm run verify`.
+
+| Artifact | Pattern | Source | Conformance | Notes |
+|---|---|---|---|---|
+| `src/mcp/adapters.ts` | Adapter | Gamma et al. 1994, *Design Patterns* | full | `getAdapter()` picks one adapter per `mcpFormat`; each turns a server into one agent's config shape. |
+| `src/adapters/rule-lint.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | `RuleLint` is the port; rule linters plug in behind it. |
+| `src/adapters/rule-lint.minsky.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | Adapter that runs Minsky's rule scripts with `--repo`. |
+| `src/sync/commands-delegate.ts` | Gateway | Fowler 2002, *Patterns of Enterprise Application Architecture* | full | One object wraps the `ai-rules` subprocess; callers never spawn it. |
+| `src/core/transforms.ts` | Strategy | Gamma et al. 1994, *Design Patterns* | full | One command transform per agent, chosen by `commandTransform`. |
+| `src/core/agents.ts` | Table-Driven Methods | McConnell 2004, *Code Complete* 2nd ed., ch. 18 | full | Agent support is data in `agents.yaml`; adding an agent is a YAML edit. |
+| `src/core/state-manager.ts` | Repository | Fowler 2002, *Patterns of Enterprise Application Architecture*; Evans 2003, *Domain-Driven Design* | full | `StateIO` hides how `state.yaml` is read and written. |
+| `src/core/context.ts` | Context Object | Alur, Crupi, Malks 2001, *Core J2EE Patterns* | full | Logger, state, and the shared manifest travel in one object through a sync. |
+| `src/core/errors.ts` | Notification | Fowler 2004, "Replacing Throwing Exceptions with Notification in Validations" | full | `SyncErrorCollector` gathers module errors so one failing module does not stop the others. |
+| `src/core/git-retry.ts` | Retry | Microsoft 2014, *Cloud Design Patterns*, "Retry" | full | Git network calls retry with backoff on transient failures. |
+| `src/mcp/heal-cycle.ts` | MAPE-K control loop | Kephart and Chess 2003, "The Vision of Autonomic Computing" | partial | Monitor (probe), analyze (categorize), plan and execute (heal actions); the knowledge base is the health snapshot, not a shared model. |
+| `src/mcp/probe.ts` | Health Endpoint Monitoring | Microsoft 2014, *Cloud Design Patterns* | partial | Active probe of stdio MCP servers (`initialize`, `tools/list`) instead of an HTTP health endpoint. |
+| `src/mcp/quarantine.ts` | Circuit Breaker | Nygard 2007, *Release It!* | declared deviation | An endpoint that cannot be repaired is cut out of the fanout, but there is no timed half-open state; the owner lifts it. |
+| `src/drift.ts` | Reconciliation loop | Burns et al. 2016, "Borg, Omega, and Kubernetes" | partial | Drift checks diff desired against actual; `sync` and `status --fix` act. The 30-minute LaunchAgent is the loop timer. |
+| `src/agentfile.ts` | Declarative desired-state configuration | Burgess 1995, "A site configuration engine" (CFEngine) | full | The Agentfile states what each agent should have, not the steps. |
+| `src/state-migrations.ts` | Evolutionary database design | Ambler and Sadalage 2006, *Refactoring Databases* | partial | One-time migrations for removed `state.yaml` fields; no version table, a schema version constant instead. |
+| `src/ops.ts` | Memento | Gamma et al. 1994, *Design Patterns* | declared deviation | `snapshotAgentConfigs` saves whole files before a repair so `sync --rollback` can restore them; it stores files, not object state. |
+
 ## Decision framework
 
 Every new feature or change answers these in order:

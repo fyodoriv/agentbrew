@@ -37,6 +37,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`hook-protocol.md`](hook-protocol.md) | How do deterministic hooks receive input and return a verdict? | agent |
 | [`task-backend-contract.md`](task-backend-contract.md) | Where does a repo keep its tasks (TASKS.md or GitHub Issues)? | both |
 | [`agent-bloat-lint.md`](agent-bloat-lint.md) | Which size and bloat checks does `agentbrew lint` run? | agent |
+| [`cli-flags-audit.md`](cli-flags-audit.md) | Why is each CLI flag opt-in instead of the default (rule 16)? | agent |
 | [`shared-rules.md`](shared-rules.md) | What is the baseline shared rules file that sync deploys? | agent |
 | [`code-style-comment-examples.md`](code-style-comment-examples.md) | What do good and bad code comments look like? | agent |
 | [`skill-routing-policy.md`](skill-routing-policy.md) | Where does a new rule belong: shared rules, a skill, or a repo guide? | agent |

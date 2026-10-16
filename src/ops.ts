@@ -1,3 +1,4 @@
+// Pattern: Memento (Gamma et al. 1994, Design Patterns). See VISION.md "Pattern conformance index".
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import chalk from "chalk";

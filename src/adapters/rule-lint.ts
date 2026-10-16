@@ -1,3 +1,4 @@
+// Pattern: Ports and Adapters (Cockburn 2005, "Hexagonal Architecture"). See VISION.md "Pattern conformance index".
 /**
  * Rule-lint adapter interface: run one deterministic rule check against a
  * repo and report pass, fail, or skip. agentbrew wraps existing rule

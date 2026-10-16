@@ -1,3 +1,4 @@
+// Pattern: Table-Driven Methods (McConnell 2004, Code Complete 2nd ed., ch. 18). See VISION.md "Pattern conformance index".
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import yaml from "js-yaml";

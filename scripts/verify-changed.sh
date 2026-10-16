@@ -56,6 +56,8 @@ has '^skill-plugins/' && tests+=(src/skills)
 has '^hooks/' && tests+=(src/hooks)
 
 step node scripts/lint-tasks-stability.mjs TASKS.md
+step node scripts/check-rule-8-pattern-conformance.mjs
+step node scripts/check-rule-16-defaults.mjs
 step bash scripts/lint-repo-artifacts.sh
 
 if has '^hooks/'; then

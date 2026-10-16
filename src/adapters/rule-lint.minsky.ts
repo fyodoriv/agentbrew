@@ -1,3 +1,4 @@
+// Pattern: Ports and Adapters (Cockburn 2005, "Hexagonal Architecture"). See VISION.md "Pattern conformance index".
 /**
  * Runs Minsky's `scripts/check-rule-*.mjs` linters against another repo
  * with `--repo=<target>`. Minsky is found through `AGENTBREW_MINSKY_DIR`,

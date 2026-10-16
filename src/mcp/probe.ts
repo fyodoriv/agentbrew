@@ -1,3 +1,4 @@
+// Pattern: Health Endpoint Monitoring (Microsoft 2014, Cloud Design Patterns). See VISION.md "Pattern conformance index".
 /**
  * MCP server smoke probe — spawn a server, send `initialize` + `tools/list`,
  * report status. Two tiers:

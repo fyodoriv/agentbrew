@@ -1,3 +1,4 @@
+// Pattern: Adapter (Gamma et al. 1994, Design Patterns). See VISION.md "Pattern conformance index".
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";

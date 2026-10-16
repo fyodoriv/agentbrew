@@ -41,7 +41,7 @@
     "eval:plain-language": "node agent-artifact-evals/plain-language/run.cjs",
     "eval:agent-artifacts": "promptfoo eval -c agent-artifact-evals/promptfoo.yaml --no-cache --no-share --no-write --no-progress-bar",
     "verify:build-pipeline": "bash scripts/build-pipeline-guard.sh --full",
-    "verify": "npm run verify:build-pipeline && tsc --noEmit && biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh && bash scripts/run-hook-fixtures.sh && node scripts/lint-tasks-stability.mjs TASKS.md && node scripts/check-rule-3-test-first.mjs && npm run lint:rules && knip --no-progress && npm run eval:agent-artifacts && npm run skills:coverage && npm run playwright:install && npm run test:all",
+    "verify": "npm run verify:build-pipeline && tsc --noEmit && biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh && bash scripts/run-hook-fixtures.sh && node scripts/lint-tasks-stability.mjs TASKS.md && node scripts/check-rule-3-test-first.mjs && node scripts/check-rule-8-pattern-conformance.mjs && node scripts/check-rule-16-defaults.mjs && npm run lint:rules && knip --no-progress && npm run eval:agent-artifacts && npm run skills:coverage && npm run playwright:install && npm run test:all",
     "verify:changed": "bash scripts/verify-changed.sh",
     "measure:context": "tsx src/cli.ts measure context",
     "audit:context-tree": "bash scripts/audit-context-tree.sh",

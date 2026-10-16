@@ -1,3 +1,4 @@
+// Pattern: Strategy (Gamma et al. 1994, Design Patterns). See VISION.md "Pattern conformance index".
 import type { CommandTransform } from "../types.js";
 
 function stripFrontmatter(content: string): string {

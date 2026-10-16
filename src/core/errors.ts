@@ -1,3 +1,4 @@
+// Pattern: Notification (Fowler 2004, "Replacing Throwing Exceptions with Notification in Validations"). See VISION.md "Pattern conformance index".
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";

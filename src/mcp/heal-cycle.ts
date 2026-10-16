@@ -1,3 +1,4 @@
+// Pattern: MAPE-K control loop (Kephart and Chess 2003, "The Vision of Autonomic Computing"). See VISION.md "Pattern conformance index".
 import { existsSync, readFileSync } from "node:fs";
 import { availableParallelism, loadavg } from "node:os";
 import chalk from "chalk";

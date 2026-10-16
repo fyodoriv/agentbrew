@@ -1,3 +1,4 @@
+// Pattern: Reconciliation loop (Burns et al. 2016, "Borg, Omega, and Kubernetes"). See VISION.md "Pattern conformance index".
 import { checkAgentDefsDrift } from "./drift-checks/agents.js";
 import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { checkCommandsDrift, checkUserCreatedCommands } from "./drift-checks/commands.js";

@@ -1,3 +1,4 @@
+// Pattern: Evolutionary database design (Ambler and Sadalage 2006, Refactoring Databases). See VISION.md "Pattern conformance index".
 import type { AgentBrewState } from "./types.js";
 
 /**

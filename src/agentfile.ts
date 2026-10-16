@@ -1,3 +1,4 @@
+// Pattern: Declarative desired-state configuration (Burgess 1995, "A site configuration engine" (CFEngine)). See VISION.md "Pattern conformance index".
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import chalk from "chalk";

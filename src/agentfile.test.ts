@@ -309,6 +309,23 @@ project: 42
     expect(merged.memoryPacks).toEqual([join(tmpDir, "packs/base"), join(tmpDir, "packs/overlay")]);
   });
 
+  it("keeps same-event hooks that target different agents", () => {
+    const basePath = join(tmpDir, "base.Agentfile.yaml");
+    const overlayPath = join(tmpDir, "overlay.Agentfile.yaml");
+    writeFileSync(
+      basePath,
+      "hooks:\n  - event: Stop\n    command: base-claude\n    agents: [claude-code]\n  - event: Stop\n    command: base-codex\n    agents: [codex]\n",
+    );
+    writeFileSync(overlayPath, "hooks:\n  - event: Stop\n    command: overlay-claude\n    agents: [claude-code]\n");
+
+    const merged = parseAgentfile(mergeAgentfiles([basePath, overlayPath]));
+
+    expect(merged.hooks).toEqual([
+      { event: "Stop", command: "overlay-claude", agents: ["claude-code"] },
+      { event: "Stop", command: "base-codex", agents: ["codex"] },
+    ]);
+  });
+
   it("carries defaultModel through and merges modelOverrides per key", () => {
     const basePath = join(tmpDir, "base.Agentfile.yaml");
     const overlayPath = join(tmpDir, "overlay.Agentfile.yaml");

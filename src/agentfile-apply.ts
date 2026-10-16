@@ -512,9 +512,22 @@ function mergeAgentfileHooks(agentfile: { hooks?: AgentfileHookEntry[] }, state:
   const desired = agentfile.hooks.map(toManagedHook);
   const existing = state.hooks ?? [];
 
-  // Build lookup keys for comparison (event + matcher, plus targeting and control fields)
+  // Compare whole hook entries; only the matcher is normalized (absent means "*").
   const hookKey = (h: ManagedHook): string =>
-    `${h.event}:${h.matcher ?? "*"}:${JSON.stringify([h.agents, h.async, h.asyncRewake, h.once, h.if, h.statusMessage])}`;
+    JSON.stringify([
+      h.event,
+      h.matcher ?? "*",
+      h.type,
+      h.command,
+      h.prompt,
+      h.timeout,
+      h.agents,
+      h.async,
+      h.asyncRewake,
+      h.once,
+      h.if,
+      h.statusMessage,
+    ]);
   const existingKeys = new Set(existing.map(hookKey));
   const desiredKeys = new Set(desired.map(hookKey));
 

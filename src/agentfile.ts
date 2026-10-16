@@ -291,8 +291,10 @@ function normalizeSourceDirEntry(value: string, baseDir: string): string {
   return join(baseDir, value);
 }
 
+/** Hook identity for layered merges: event, matcher, and target agents (absent or empty means every agent). */
 function hookEntryKey(entry: AgentfileHookEntry): string {
-  return `${entry.event}:${entry.matcher ?? "*"}`;
+  const agents = [...(entry.agents ?? [])].sort();
+  return JSON.stringify([entry.event, entry.matcher ?? "*", agents]);
 }
 
 function mergeHookEntries(

@@ -974,6 +974,25 @@ describe("applyAgentfile", () => {
       expect(state.hooks?.[0]?.asyncRewake).toBe(true);
     });
 
+    it("updates state when only a hook command, prompt, or timeout changes", () => {
+      const base = { event: "Stop", matcher: "*", source: "agentfile" as const };
+      const cases = [
+        { before: { type: "command" as const, command: "old" }, after: { command: "new" } },
+        { before: { type: "prompt" as const, prompt: "old" }, after: { type: "prompt" as const, prompt: "new" } },
+        { before: { type: "command" as const, command: "x", timeout: 5 }, after: { command: "x", timeout: 30 } },
+      ];
+      for (const { before, after } of cases) {
+        const state = makeState({ hooks: [{ ...base, ...before }] });
+        mockLoadAgentfile.mockReturnValue({ hooks: [{ event: "Stop", ...after }] });
+        mockLoadState.mockReturnValue(state);
+
+        const result = applyAgentfile("/project", { quiet: true });
+
+        expect(result?.hooksUpdated).toBe(true);
+        expect(state.hooks?.[0]).toMatchObject(after);
+      }
+    });
+
     it("adds hooks from Agentfile", () => {
       const state = makeState({ hooks: [] });
       mockLoadAgentfile.mockReturnValue({

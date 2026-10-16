@@ -169,18 +169,6 @@
 
 ## P2
 
-- [ ] Agentfile hook edits reach state when only the command or timeout changes
-  - **ID**: agentfile-hook-identity-includes-command
-  - **Tags**: scout, agentfile, hooks
-  - **Details**: Scouted while shipping `agentfile-hooks-async-rewake-control-fields`. `mergeAgentfileHooks` in `src/agentfile-apply.ts` decides "unchanged" from event, matcher, targeting, and control fields only. An edit that changes only `command`, `prompt`, or `timeout` is not saved to state. Also, `mergeHookEntries` in `src/agentfile.ts` keys layered Agentfile hooks by event and matcher, so two hooks on the same event for different `agents:` collapse into one.
-  - **Files**: `src/agentfile-apply.ts`, `src/agentfile.ts`, `src/agentfile-apply.test.ts`, `src/agentfile.test.ts`
-  - **Acceptance**: Changing only the command of an Agentfile hook updates `state.hooks`; merging two Agentfiles with same-event hooks for different agents keeps both.
-  - **Hypothesis**: Comparing whole hook entries makes every Agentfile hook edit reach state and the agents.
-  - **Measurement**: `npx vitest run src/agentfile-apply.test.ts src/agentfile.test.ts` with new regression tests for both cases.
-  - **Success**: both new tests fail before the fix and pass after.
-  - **Pivot**: if whole-entry comparison breaks the matcher `*` normalization tests, normalize the matcher first and compare the rest.
-  - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state).
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

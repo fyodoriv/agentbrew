@@ -160,6 +160,12 @@ when it has "Done when", "Metric", and "Pivot", and blocks other file edits
 until it exists. A valid contract file, `/goal clear`, or a marker older
 than one day ends the block.
 
+`goal-retro-before-stop` (Stop) closes the goal. While the session's
+contract file exists, it blocks Stop until `<session_id>.retro.md` has one
+line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`
+read, plus `run-goal`) with a commit SHA, a PR, or `task`. It gives up after
+three blocks, so a goal can always end. On success it deletes the contract.
+
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait

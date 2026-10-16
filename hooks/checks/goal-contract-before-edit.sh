@@ -19,7 +19,8 @@
 #     content has "Done when", "Metric", and "Pivot", and blocks it otherwise;
 #   - blocks other file edits while the session's goal is pending and no
 #     valid contract file exists;
-#   - allows everything in sessions with no pending goal.
+#   - allows everything in sessions with no pending goal;
+#   - approves a Write to `<session_id>.retro.md` (read by goal-retro-before-stop).
 #
 # **State** (session-file scope, shared with goal-set-loads-run-goal):
 # `<session_id>.pending` exists from `/goal <condition>` until a valid
@@ -68,6 +69,12 @@ FILE_PATH="$(json_get "$INPUT" '.tool_input.file_path')"
 has_sections() {
   hook_jq -e -R -s 'test("Done when") and test("Metric") and test("Pivot")' >/dev/null 2>&1
 }
+
+if [ "$TOOL" = "Write" ] && [ "$FILE_PATH" = "$STATE_DIR/$SESSION_ID.retro.md" ]; then
+  log_decision "$HOOK_ID" "allow" "goal retro file written"
+  hook_jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "run-goal retro file"}}'
+  exit 0
+fi
 
 if [ "$TOOL" = "Write" ] && [ "$FILE_PATH" = "$CONTRACT" ]; then
   if json_get "$INPUT" '.tool_input.content' | has_sections; then

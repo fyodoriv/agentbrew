@@ -78,7 +78,7 @@ CONDITION="${CONDITION%"${CONDITION##*[![:space:]]}"}"
 case "$(printf '%s' "$CONDITION" | tr '[:upper:]' '[:lower:]')" in
   "" | clear | stop | off | reset | none | cancel)
     if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then
-      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md"
+      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.stopblocks"
     fi
     verdict_allow "$HOOK_ID" "goal cleared or status"
     ;;
@@ -103,6 +103,9 @@ RETRO_STEP=" The retro's skill updates are in scope for every goal, including ru
 if [ -n "$SOURCE_DIR" ]; then
   RETRO_STEP="$RETRO_STEP (its source: $SOURCE_DIR; change it in a worktree of that repo)"
 fi
+if [ -n "$SESSION_ID" ]; then
+  RETRO_STEP="$RETRO_STEP. Save the Skills updated list with Write to $STATE_DIR/$SESSION_ID.retro.md (pre-approved): one line per skill used with its commit SHA, PR, or task id; the session cannot end until every skill used has one"
+fi
 RETRO_STEP="$RETRO_STEP."
 if [ -n "$SESSION_ID" ]; then
   SAVE_STEP=" Then save the same contract text with the Write tool to $STATE_DIR/$SESSION_ID.contract.md (pre-approved); file edits stay blocked until that file has Done when, Metric, and Pivot."
@@ -110,9 +113,9 @@ fi
 CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat.$SAVE_STEP Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used.$RETRO_STEP"
 
 if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
-  rm -f "$STATE_DIR/$SESSION_ID.contract.md"
+  rm -f "$STATE_DIR/$SESSION_ID.contract.md" "$STATE_DIR/$SESSION_ID.retro.md" "$STATE_DIR/$SESSION_ID.stopblocks"
   : >"$STATE_DIR/$SESSION_ID.pending" 2>/dev/null || true
-  find "$STATE_DIR" -name '*.contract.md' -mtime +7 -delete 2>/dev/null || true
+  find "$STATE_DIR" \( -name '*.contract.md' -o -name '*.retro.md' -o -name '*.stopblocks' \) -mtime +7 -delete 2>/dev/null || true
 fi
 
 log_decision "$HOOK_ID" "warn" "goal set: added run-goal context"

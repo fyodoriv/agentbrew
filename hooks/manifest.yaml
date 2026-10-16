@@ -418,6 +418,16 @@ hooks:
     sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md "Order of work" (live runs edited before the contract)'
     agents: ["claude-code"]
 
+  - id: goal-retro-before-stop
+    description: After a /goal contract is saved, hold Stop until the retro file lists every skill used with its commit, PR, or task
+    event: Stop
+    script: checks/goal-retro-before-stop.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP
+    sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md Phase 6 (live retros skipped run-goal 1 of 2 times)'
+    agents: ["claude-code"]
+
   - id: memory-sync-projects-session-end
     description: Schedule a successful-run-debounced shared-memory ingest when a Claude Code session ends
     event: SessionEnd

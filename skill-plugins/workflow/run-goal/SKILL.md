@@ -199,7 +199,12 @@ Do this every time, also after a BLOCKED stop. Details:
    for a standing approval for retro skill updates. With one, make the
    change in a worktree of that repo and ship it by its rules. Without one,
    park it and ask at the end with the exact diff.
-5. **Remember**: store reusable lessons in memory, if the agent has memory.
+5. **Save the retro**: in Claude Code with agentbrew, write the Skills
+   updated list to the retro file the `/goal` hook names (pre-approved).
+   One line per skill used, each with its commit SHA, PR, or task id. The
+   `goal-retro-before-stop` hook keeps the session from ending until every
+   skill used has such a line (it gives up after three tries).
+6. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report
 

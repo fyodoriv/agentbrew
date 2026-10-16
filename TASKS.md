@@ -181,13 +181,6 @@
   - **Pivot**: if whole-entry comparison breaks the matcher `*` normalization tests, normalize the matcher first and compare the rest.
   - **Anchor**: agentbrew VISION.md (the Agentfile is the declared state).
 
-- [ ] Clear the last dev-dependency audit finding (node-forge via promptfoo)
-  - **ID**: dev-dependency-audit-findings
-  - **Tags**: security, dependencies, stability
-  - **Details**: `npm audit --omit=dev` is clean, so the published package is not affected. After the 2026-10-12 bump of promptfoo, vitest, and a `basic-ftp` override, the only open dev-only finding is `node-forge` (high, no patched release; reached through `promptfoo` > `jks-js`). Re-run `npm audit` when node-forge, jks-js, or promptfoo ships a fix, then bump. If promptfoo drops `jks-js`, remove the dependency path instead.
-  - **Files**: package.json, package-lock.json
-  - **Acceptance**: (1) `npm audit` reports no high findings; (2) `npm ci` works with npm 11; (3) lint, build, and the full test suite pass.
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

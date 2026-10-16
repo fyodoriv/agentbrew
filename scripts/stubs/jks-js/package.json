@@ -1,0 +1,8 @@
+{
+  "name": "jks-js",
+  "version": "0.0.0-agentbrew-stub",
+  "private": true,
+  "description": "Empty stand-in for jks-js. promptfoo loads jks-js only for Java keystore auth, which agentbrew never uses. The real package pulls node-forge, which has an unpatched high advisory (GHSA-86w9-cpqp-85rv).",
+  "main": "index.js",
+  "license": "MIT"
+}

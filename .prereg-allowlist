@@ -3,7 +3,6 @@
 # and Anchor fields, or when the task is closed. Do not add new IDs.
 prune-project-agentfile-source-dirs
 scout-basic-ftp-override-removal
-dev-dependency-audit-findings
 snapshot-record-heal-deferred-for-load
 github-mcp-maintained-server-without-launcher
 status-surface-claude-desktop-mcp-failures

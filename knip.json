@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["src/**/*.test.ts", "real-e2e/**/*.test.ts", "scripts/*.ts"],
   "ignoreBinaries": ["biome", "knip", "tsc", "tsup", "tsx", "vitest"],
-  "ignoreDependencies": ["@biomejs/biome", "tsx"],
+  "ignoreDependencies": ["@biomejs/biome", "jks-js", "tsx"],
   "project": ["src/**/*.ts", "real-e2e/**/*.ts", "scripts/**/*.ts"],
   "ignoreExportsUsedInFile": true
 }

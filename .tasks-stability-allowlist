@@ -18,4 +18,3 @@ companion-branch-stomp-protection
 # blocked-on-permission upstream contribution, not stability work on this repo.
 contribute-rfc-comment-issues-268-455-user-safety-classifier
 # 2026-10-15 /review-tasks: dev-only finding (node-forge via promptfoo); waits on an upstream jks-js release, no action possible now.
-dev-dependency-audit-findings

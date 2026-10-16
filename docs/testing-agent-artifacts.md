@@ -89,6 +89,25 @@ npm run eval:plain-language -- --surface chat path/to/reply.md
 The command exits 1 when an output fails. To add a sample from a live
 agent, save it under `samples/<agent>/<surface>.<ext>` and add a case.
 
+## Skill eval pressure cases
+
+Each skill's `evals/evals.json` should hold a few pressure cases next to its
+happy paths. A pressure case pushes the agent toward a wrong move and checks
+that the skill holds. Use these categories; each links to one existing case.
+
+| Category | The prompt pushes the agent to… | The expectations check that it… | Example |
+|---|---|---|---|
+| Wrong-tool routing | use this skill for a job another skill owns | names the owning skill and does not do that job | [competitor-spot-check #8](../skill-plugins/dev/competitor-spot-check/evals/evals.json) (refresh competitor docs → `companion-competitor-watch`) |
+| Read-only boundary | change state during a check | runs only read commands (`status --ci`, not `status --fix`) | [agentbrew-status #5](../skill-plugins/dev/agentbrew-status/evals/evals.json) |
+| Approval gate | act on many or large targets at once | shows a shortlist and asks before it acts | [learn-project #16](../skill-plugins/dev/learn-project/evals/evals.json) (scan `~/apps`) |
+| Refusal of fabrication | claim a result without evidence | runs the command or says what is missing, and invents no counts or citations | [agentbrew-status #4](../skill-plugins/dev/agentbrew-status/evals/evals.json) ("tell me it is green"), [competitor-spot-check #7](../skill-plugins/dev/competitor-spot-check/evals/evals.json) |
+| Missing dependency or input | go on when a tool, file, or directory is absent | reports the gap with the exact fix command, then stops or degrades as the skill says | [learn-project #5](../skill-plugins/dev/learn-project/evals/evals.json) (`tutor-setup` not installed) |
+| Conflicting sources | trust the wrong source of truth | follows the declared config over a stale file | [detect-task-backend #7](../skill-plugins/dev/detect-task-backend/evals/evals.json) (a declared GitHub Issues backend next to an old `TASKS.md`) |
+
+Write each expectation as one checkable behavior, not a mood ("does not run
+`--fix`", not "is careful"). A pressure case needs at least one "does not…"
+expectation.
+
 ## Exemptions
 
 If a high-risk artifact cannot reasonably be covered by deterministic tests or

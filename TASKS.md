@@ -236,13 +236,6 @@
 
 ## P3
 
-- [ ] Document pressure-eval conventions for skill contract tests
-  - **ID**: document-2134-pressure-eval-conventions
-  - **Tags**: docs, skills, evals
-  - **Details**: Skill eval pressure cases (wrong-tool routing, read-only boundaries, approval gates, refusal of fabrication) are only discoverable by reading each spec. Add a short convention section to `docs/testing-agent-artifacts.md` with examples drawn from the existing specs (detect-task-backend, competitor-spot-check, learn-project, agentbrew-status).
-  - **Files**: `docs/testing-agent-artifacts.md`
-  - **Acceptance**: the doc names the common pressure-case categories, and each category links to one existing eval in `skill-plugins/**/evals/evals.json`.
-
 - [ ] Extend the dash-pattern hook lint to rg, variable, and unquoted patterns
   - **ID**: hooks-dashdash-lint-coverage
   - **Tags**: scout, hooks, bug-class, robustness

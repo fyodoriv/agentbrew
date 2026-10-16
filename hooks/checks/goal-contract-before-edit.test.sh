@@ -15,6 +15,7 @@ FAIL_DETAILS=()
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
+export RUN_GOAL_CONTRACT_WAIT_TENTHS=0
 mkdir -p "$RUN_GOAL_STATE_DIR"
 
 NO_CONTRACT="$ROOT/no-contract.jsonl"
@@ -58,6 +59,14 @@ touch -t 202001010000 "$RUN_GOAL_STATE_DIR/s3.pending"
 expect "stale marker allows" 0 "$(run s3 Edit "$NO_CONTRACT")"
 expect "stale marker removed" 0 "$([ -f "$RUN_GOAL_STATE_DIR/s3.pending" ] && echo 1 || echo 0)"
 expect "unsafe session id allows" 0 "$(run '../x' Edit "$NO_CONTRACT")"
+
+# Late flush: the contract lands in the transcript after the hook starts.
+LATE="$ROOT/late.jsonl"
+cp "$NO_CONTRACT" "$LATE"
+touch "$RUN_GOAL_STATE_DIR/s4.pending"
+(sleep 0.5; tail -1 "$WITH_CONTRACT" >>"$LATE") &
+expect "contract flushed late allows" 0 "$(run s4 Edit "$LATE" RUN_GOAL_CONTRACT_WAIT_TENTHS=20)"
+wait
 
 echo "goal-contract-before-edit.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

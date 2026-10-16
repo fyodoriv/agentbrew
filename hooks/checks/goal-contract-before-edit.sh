@@ -28,8 +28,15 @@
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_CONTRACT_BEFORE_EDIT=1`
 #
+# **Timing**: Claude Code can run this hook before it writes the same turn's
+# contract text to the transcript (a live run blocked five parallel Writes
+# that came right after a real contract). So, while a marker is pending,
+# the hook re-reads the transcript for a short time before it blocks.
+#
 # **Configuration** (optional):
 #   - RUN_GOAL_STATE_DIR: marker folder. Default `$HOME/.cache/agentbrew/run-goal`.
+#   - RUN_GOAL_CONTRACT_WAIT_TENTHS: how long to keep re-reading, in tenths of
+#     a second. Default 20 (2 s), inside the 5 s hook timeout.
 
 set -euo pipefail
 
@@ -70,11 +77,23 @@ if [ -n "$(find "$MARKER" -mmin +1440 2>/dev/null)" ]; then
 fi
 
 TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
-if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] &&
-  hook_jq -e -s 'any(.[]; .type == "assistant" and any(.message.content[]?; .type == "text" and (.text | test("Done when") and test("Metric") and test("Pivot"))))' \
-    "$TRANSCRIPT" >/dev/null 2>&1; then
-  rm -f "$MARKER"
-  verdict_allow "$HOOK_ID" "goal contract found"
-fi
+contract_in_transcript() {
+  [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] &&
+    hook_jq -e -s 'any(.[]; .type == "assistant" and any(.message.content[]?; .type == "text" and (.text | test("Done when") and test("Metric") and test("Pivot"))))' \
+      "$TRANSCRIPT" >/dev/null 2>&1
+}
+
+WAIT_TENTHS="${RUN_GOAL_CONTRACT_WAIT_TENTHS:-20}"
+case "$WAIT_TENTHS" in "" | *[!0-9]*) WAIT_TENTHS=20 ;; esac
+waited=0
+while :; do
+  if contract_in_transcript; then
+    rm -f "$MARKER"
+    verdict_allow "$HOOK_ID" "goal contract found"
+  fi
+  [ "$waited" -ge "$WAIT_TENTHS" ] && break
+  sleep 0.2
+  waited=$((waited + 2))
+done
 
 verdict_block "$HOOK_ID" "A /goal is active and no goal contract is in the chat yet. Print the run-goal contract as a visible message (thinking does not count): one message with Done when (criteria with proof), Metric (baseline, target, command), Success / Pivot, and Suggestions. Then retry this edit."

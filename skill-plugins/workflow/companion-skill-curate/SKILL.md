@@ -157,7 +157,7 @@ does — no fragmentation):
 - [ ] Curate skill catalog (companion 2026-05-21 sweep)
   - **ID**: skill-curate-2026-05-21-<short-id>
   - **Tags**: skills, agentbrew, curation, companion
-  - **Details**: See [`docs/skill-curation/2026-05-21.md`](docs/skill-curation/2026-05-21.md)
+  - **Details**: See `docs/skill-curation/2026-05-21.md`
     for the full report. Summary:
     - <N> exact-name duplicates flagged (top 3: ...)
     - <M> outdated sources (top 3: ...)

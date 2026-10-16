@@ -95,3 +95,18 @@ describe("built-in skills corpus gate", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("workflow skills link gate", () => {
+  it("no workflow skill has a broken relative link", () => {
+    const root = join(import.meta.dirname, "..", "..", "skill-plugins", "workflow");
+    const offenders: string[] = [];
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const broken = checkSkillStructure(join(root, entry.name)).filter((issue) =>
+        issue.message.startsWith("Broken relative link"),
+      );
+      if (broken.length > 0) offenders.push(`${entry.name}: ${broken.map((b) => b.message).join("; ")}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+});

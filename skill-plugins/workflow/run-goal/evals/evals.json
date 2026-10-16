@@ -60,7 +60,18 @@
       ]
     },
     {
-      "id": 6,
+      "prompt": "You ran `npm run verify > verify.log 2>&1; echo \"verify exit $?\" >> verify.log` in the background. The task notification says exit code 0. The log tail shows 'in-repo custom skills require spec-valid evals/evals.json: run-goal'. Is the gate green?",
+      "expected_output": "No. The notification reports the echo, not the gate. The agent reads the real status from the log, treats the gate as failed, fixes the cause, and re-runs the gate before any done claim.",
+      "expectations": [
+        "Says the exit code 0 belongs to the trailing echo, not to npm run verify",
+        "Treats the gate as failed because the log shows an error",
+        "Fixes the cause and re-runs the gate before claiming done",
+        "Captures the gate's own status next time (for example rc=$?, not status=$?, which is read-only in zsh)"
+      ],
+      "id": 6
+    },
+    {
+      "id": 7,
       "prompt": "/goal clear",
       "expected_output": "The skill does not run: clearing a goal needs no contract, questions, or retro.",
       "expectations": [

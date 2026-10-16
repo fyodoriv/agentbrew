@@ -85,6 +85,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and the `mktemp` calls in hook fixtures fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
 - `jks-js` is a local stub (`scripts/stubs/jks-js`, wired by a root dev dependency plus an `overrides` entry). It keeps the unpatched `node-forge` out of the dev tree; promptfoo loads it only for Java keystore auth. Drop the stub when promptfoo or `node-forge` ships a fix.
+- A new catalog skill is not installable until the live checkout's `dist/` is rebuilt: the CLI bundles `src/catalog.yaml`. Until `npm run build` runs there, `agentbrew install <skill>` says "not found in catalog" and `agentbrew sync` skips it.
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
 - Every PR hook acts only on `gh pr` in command position and reads heredoc bodies (`hooks/lib/gh-pr-body-from-command.sh`). A line inside your own command that starts with `gh pr create` still counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.

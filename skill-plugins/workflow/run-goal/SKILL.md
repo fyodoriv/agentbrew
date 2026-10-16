@@ -128,6 +128,11 @@ reuse output from earlier in the session. Run the metric command and compare
 it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal
 is not done yet.
 
+Read the gate's own exit status, not a line that a wrapper printed. In
+`gate; echo "exit $?"` run in the background, the background task reports
+the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
+(`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
+
 When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude

@@ -182,6 +182,32 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] Goal runs can use skill-creator evals without a blocking human review, and its benchmark fails loudly on an unknown layout
+  - **ID**: skill-creator-autonomous-evals-and-loud-aggregate
+  - **Tags**: skills, evals, upstream, run-goal
+  - **Details**: In the run-goal build (#111), two parts of the third-party `skill-creator` skill (anthropics/skills) got in the way of an autonomous `/goal` run. (1) Its loop tells the agent to open the review viewer and wait for human feedback before each revision, which conflicts with "work without interruptions". (2) `python -m scripts.aggregate_benchmark` needs `eval-*/<config>/run-*/grading.json`. With descriptive eval dirs it printed "Delta +0.00" and 0% pass rates instead of an error. Propose both upstream (issue needs owner approval), or add a small local note in `run-goal/references/retro.md` until upstream changes.
+  - **Files**: `skill-plugins/workflow/run-goal/references/retro.md`
+  - **Output**: docs
+  - **Acceptance**: an owner-approved upstream issue exists for both points, or `run-goal` documents the autonomous eval path and the required layout.
+  - **Hypothesis**: documenting the layout and the autonomous path removes the silent 0% benchmark and the review stall from future goal runs that build skills.
+  - **Measurement**: run `aggregate_benchmark` on a workspace with descriptive eval dirs; count runs reported (now 0 with no error).
+  - **Success**: it reports every run, or exits non-zero with a layout message.
+  - **Pivot**: if upstream declines, keep the local note and close the upstream half.
+  - **Anchor**: #111 retro; Basili et al. 1994 (GQM).
+
+- [ ] Confirm the /goal hook adds run-goal context in an interactive Claude Code session
+  - **ID**: confirm-goal-hook-interactive-context
+  - **Tags**: hooks, run-goal, verification
+  - **Details**: #111 proved that `UserPromptSubmit` fires for `/goal` with the raw prompt, but only in a headless `claude -p` run that stopped at an expired OAuth session before the model ran. The docs do not say whether `additionalContext` from that event reaches the model for a built-in command. Check it in an interactive session after `agentbrew sync`.
+  - **Files**: `hooks/checks/goal-set-loads-run-goal.sh`, `docs/hook-protocol.md`
+  - **Output**: measurement
+  - **Acceptance**: in a fresh interactive session, `/goal say hi` makes the agent load `run-goal`, and `~/.cache/agentbrew/hook-decisions.jsonl` has a `goal-set-loads-run-goal` warn line for it.
+  - **Hypothesis**: the injected context reaches the model, so the skill loads on 100% of `/goal <condition>` prompts.
+  - **Measurement**: `rg -c goal-set-loads-run-goal ~/.cache/agentbrew/hook-decisions.jsonl` after three `/goal` prompts, plus the transcript showing the Skill call.
+  - **Success**: 3 of 3 prompts log the hook and load the skill.
+  - **Pivot**: if the context never reaches the model, switch the trigger to the skill description only and delete the hook.
+  - **Anchor**: Claude Code hooks reference (UserPromptSubmit additionalContext).
+
 <!-- Added 2026-10-15 from an agent audit; each item verified on main at 8eaa800. -->
 
 - [ ] companion-researcher eval names the competitor dir the skill now detects

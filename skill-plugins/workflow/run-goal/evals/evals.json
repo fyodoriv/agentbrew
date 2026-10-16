@@ -308,6 +308,18 @@
         "Corrects a wrong number in its own PR body when it notices one, instead of leaving it",
         "Takes the final score on main after the last merge, not on a branch"
       ]
+    },
+    {
+      "id": 27,
+      "prompt": "/goal ensure that <repo> matches updated rules",
+      "expected_output": "A contract whose metric is rules met by intent (N/M) with a per-rule intake table as the baseline, work only on the failing rules, the prose rule turned into an automated check, a fresh-context grader per rule, and the merge on main with fresh evidence.",
+      "expectations": [
+        "Reads the updated rules from the source that changed (the merged PR or the installed skill) before judging the repo",
+        "Builds a per-rule PASS/FAIL intake with evidence and uses it as the N/M baseline",
+        "Leaves passing rules untouched (surgical changes)",
+        "Waits for the grader verdict before merging when the grader reads the branch",
+        "Writes the retro file with one line per skill used in this goal, even when an earlier goal in the same session already wrote one"
+      ]
     }
   ]
 }

@@ -122,6 +122,18 @@
         "Every doctor FAIL line names its fix",
         "check-setup.sh --profile tool reaches 100% on the scaffold"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "the new-project rules changed; make sure my existing tool repo still matches them",
+      "expected_output": "Checks each changed rule by intent against the repo (not only the scorer), finds stories whose metric is a passing-test count, replaces them with outcome metrics that have a pinned query, goal, pivot, and a (stub) path, keeps the test counts as Guard lines, and turns the rule into a docs check that fails on a test-count metric.",
+      "expectations": [
+        "Lists every changed rule with PASS or FAIL and evidence before editing",
+        "Takes baselines for new outcome metrics from a real source (code search, labelled issues, the event log) and pins the exact query",
+        "Creates a missing label before counting it, and prints (stub) when the label is missing",
+        "Adds a check (with a red-then-green test) so a story metric cannot fall back to a test count",
+        "Reports the scorer at 100% on main after the merge"
+      ]
     }
   ]
 }

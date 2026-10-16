@@ -22,7 +22,7 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | vision | `docs/VISION.md`: problem, success metric, non-goals, dated kill criteria, prior art |
 | metrics | metrics table with goal, pivot, and command (the exact query, pinned); `scripts/metrics.sh`; missing data, or a source that answers 0 for something that does not exist, shows `(stub)` |
 | observability | content-free JSONL events (string fields allow-listed, so free text cannot leak), errors captured locally and mapped to stories (an external reporter is optional, only where privacy allows), tests turn the log off; `scripts/doctor.sh` with a fix on every failing line |
-| user-stories | each story names an outcome metric (a rate users feel, not a count of passing tests) and its e2e test per case; each e2e file names its story ID |
+| user-stories | each story names an outcome metric (a rate users feel, not a count of passing tests; a test count may follow after `Guard:`) and its e2e test per case; each e2e file names its story ID |
 | setup | `scripts/setup.sh`: one idempotent command, first in the README, ending with the doctor; prompts only when the OS requires them; an optional step (git hooks) warns instead of failing |
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
 | self-improving | timed gate steps in `.metrics/`, a speed review (weekly by default, monthly for quiet repos; it may live in the repo's checkup), `docs/learnings.md` |

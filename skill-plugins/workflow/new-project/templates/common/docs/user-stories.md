@@ -22,7 +22,7 @@ story and its tests in the same commit.
 ## US-02: FILL: the first real user story
 
 - **As** FILL: the user, **I want** FILL: the action, **so that** FILL: the outcome.
-- **Metric**: FILL: an outcome rate users feel (for example the share of `ok:false` events for this story). **Target**: FILL.
+- **Metric**: FILL: an outcome rate users feel (for example the share of `ok:false` events for this story). **Target**: FILL. Guard: FILL (optional: a test count that must stay 0, such as failing cases in `scripts/e2e.sh`).
 
 | Case | Test | Log event |
 |---|---|---|

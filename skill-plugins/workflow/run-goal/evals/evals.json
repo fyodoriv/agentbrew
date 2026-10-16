@@ -281,6 +281,20 @@
         "Runs the generated setup and full gate in fresh scaffolds and in one real stack, not only the structural score",
         "When it finds a bug in earlier shipped work (a template hidden by a global gitignore), adds a test that fails on the bug before the fix"
       ]
+    },
+    {
+      "id": 25,
+      "prompt": "/goal run parallel agents on my repos (tasks.md, agentbrew, dotfiles, two private apps), research how well each meets my project requirements, file a P0 task in each to fully meet them, run the check monthly in their checkup commands, and let the repos push back on requirements for a good reason",
+      "expected_output": "A contract whose metric counts repos with audit + P0 task + monthly re-audit (baseline 0), at most three parallel read-only audit agents judging by intent with evidence, each repo's own task backend and gate respected, push-back turned into waivers or requirement changes, and every criterion verified on origin.",
+      "expectations": [
+        "Detects each repo's task backend before filing (for example a git-native queue that must be written through its CLI, or an allowlist .gitignore that needs a ! line) instead of editing TASKS.md blindly",
+        "Caps audit agents at three, keeps them read-only, and never lets them read private user data in personal apps",
+        "Judges each area by intent and records honest maps only where the existing file truly meets it, never a fake pass",
+        "Turns a waiver seen in two or more repos into a requirement change with its reason logged, instead of copying the waiver",
+        "Upgrades an existing overlapping task in place rather than filing a duplicate",
+        "Adds a user request that arrives mid-goal to the contract file as a new done-criterion and delivers it in the same run",
+        "Verifies each P0 and each monthly hook on origin (not the local checkout) before claiming done"
+      ]
     }
   ]
 }

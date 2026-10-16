@@ -273,6 +273,19 @@
   - **Pivot**: if pruning is the intended Agentfile contract, make `install` print that the Agentfile will drop the skill and how to keep it.
   - **Anchor**: README "Agentfile" (hand installs stay); Basili et al. 1994 (GQM).
 
+- [ ] Repos made with new-project can pull later template fixes
+  - **ID**: new-project-updatable-templates
+  - **Tags**: skills, new-project, templates
+  - **Details**: `new-project` copies its templates once (`scripts/scaffold.sh`). A fix to a template, such as a new `AGENTS.md` rule or a better `scripts/check.sh`, never reaches repos made earlier. [Copier](https://github.com/copier-org/copier) keeps a `.copier-answers.yml` and applies template changes with `copier update`. Turn `templates/` into a Copier template, keep `scaffold.sh` as a thin wrapper (with a no-Copier fallback), and document `copier update` in the skill.
+  - **Files**: `skill-plugins/workflow/new-project/`, `src/skills/new-project-contract.test.ts`
+  - **Output**: code
+  - **Acceptance**: a repo scaffolded from the old template gets a changed template line through `copier update`, keeps its own edits, and still scores 100% with `check-setup.sh`.
+  - **Hypothesis**: template fixes reach 100% of repos made with the skill, up from 0% today, with no lost local edits.
+  - **Measurement**: a contract test that scaffolds, edits, changes a template, runs `copier update`, and runs `check-setup.sh`.
+  - **Success**: the update applies, local edits survive, and the score stays 100%.
+  - **Pivot**: if Copier needs Python on machines without it, or conflicts on more than 1 file in the test, keep one-time copies and add a `check-setup.sh` hint for drift instead.
+  - **Anchor**: Copier docs "Updating a project"; new-project research brief (references/research.md, section 5).
+
 ## P3
 
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host

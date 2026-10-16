@@ -196,6 +196,18 @@
         "Asks one round of at most three questions, recommended option first, or records its default when unattended",
         "Does not start editing before the contract is saved"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "/goal fix the sync bug where a missing commands dir fails, with a regression test, and ship it",
+      "expected_output": "A goal contract that names a failing regression test as the baseline, then a red-to-green fix, fresh verification, a PR with the approval taken from the goal text, and the final report with a retro.",
+      "expectations": [
+        "Prints a goal contract before the first edit, with a failing regression test as the baseline",
+        "Cites \"and ship it\" in the goal text as the approval for the PR",
+        "Writes the regression test first and shows it failing before the fix",
+        "Prints a Goal check line with evidence for each done-criterion",
+        "Ends with the final report, including What went wrong and Skills updated"
+      ]
     }
   ]
 }

@@ -24,7 +24,11 @@ Install once: `agentbrew install run-goal`. Then type a goal in Claude Code:
 
 ```
 /goal make the checkout tests in src/checkout stop flaking
+/goal fix the sync bug where a missing commands dir fails, with a regression test, and ship it
 ```
+
+The second example is a bug fix, the most common kind of goal. It names the
+end state, asks for a failing test first, and approves the PR.
 
 What you will see:
 

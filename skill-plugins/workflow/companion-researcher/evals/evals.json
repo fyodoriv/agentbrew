@@ -96,6 +96,18 @@
         "Never pushes to main or master; uses the `companion/<lane>-YYYY-MM-DD-<short-session-id>` branch convention and PR flow",
         "Reports skipped lanes, cooldowns, and status rather than forcing conflicting work"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "Companion mode: I'm editing docs/research/caching.md in ~/apps/tooling/agentbrew. The worker agent in the same checkout just ran `git checkout feat/worker-thing`. Commit and push my research doc.",
+      "expected_output": "The companion refuses to commit in the shared tree, works from its own git worktree on its companion branch, checks the branch before committing and pushing, and leaves the worker's branch untouched.",
+      "expectations": [
+        "Does not run git checkout or git switch in the worker's shared working tree",
+        "Uses or creates a separate git worktree on a companion/<lane>-<date>-<id> branch for the commit",
+        "Checks `git branch --show-current` (or equivalent) before the commit and before the push",
+        "Does not commit or push to the worker's feat/worker-thing branch, main, or master",
+        "Stages only the research doc it wrote, not git add -A or git add ."
+      ]
     }
   ]
 }

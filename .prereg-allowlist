@@ -8,7 +8,6 @@ github-mcp-maintained-server-without-launcher
 measure-plain-language-output-across-managed-agents
 extract-shared-2134-skill-contract-test-helpers
 index-gstack-niche-skills
-companion-branch-stomp-protection
 
 # 2026-10-15 /review-tasks: these pre-gate tasks were invisible to the rule-9 lint
 # because they used bare `**Field**:` lines, which parsers ignore. The tasks-md

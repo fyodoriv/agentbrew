@@ -74,11 +74,11 @@ debugging time, branch resets, and trust. Obey these rules without exception.
    `git reset --hard`, `git checkout .`, `git checkout -- <path>`,
    `git clean -fd`, `git stash` (in non-interactive shells). They wipe the
    worker's uncommitted changes. Stage only the specific files you wrote.
-5. **Dedicated branch per session.** Use
-   `companion/<lane>-YYYY-MM-DD-<short-session-id>` (e.g.
-   `companion/docs-2026-05-21-a3f1`). Never push to `main`/`master`. PR
-   directly to `main` once your lane completes a unit of work — small,
-   focused PRs the worker can merge without rebasing.
+5. **Own worktree and branch per session.** Never `git checkout` or
+   `git switch` in the worker's tree. Run `git worktree add ../<repo>-companion-<id> -b
+   companion/<lane>-YYYY-MM-DD-<id>` and work only there. Before every
+   commit and push, check `git branch --show-current`. Never push to
+   `main`/`master`. Open small PRs to `main`, then `git worktree remove`.
 6. **Never run long-blocking commands.** No `npm run dev`, no `vitest
    --watch`, no server starts. The worker may have one running already on
    the same port. If you need to run tests, use the project's

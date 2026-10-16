@@ -436,6 +436,10 @@ At session start, the `perf-brief` hook gives the agent a short brief of the slo
 
 Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
 
+### One local metrics report
+
+`agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers. `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
+
 ## Share config across a team
 
 Commit an `Agentfile.yaml` to a git repo; teammates clone it and symlink it as their global Agentfile.
@@ -591,6 +595,12 @@ agentbrew hook install --shell         Install shell hook for project detection
 agentbrew upgrade [--check]            Check for / install CLI updates
 agentbrew env {check|sanitize}         Review env vars that could leak across sessions
 agentbrew completions                  Shell completions (bash, zsh, fish)
+agentbrew metrics [--days N] [--json] [--share [file]]
+                                       Local agent time, hook, and MCP metrics;
+                                       --share writes a privacy-safe snapshot
+agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]
+                                       Open a PR from this branch upstream
+                                       (forks the repo when you lack push access)
 agentbrew classify <repo-path>         Classify a repo as solo or shared (downstream
                                        safety-rail input — minsky, etc.)
                                        Override file: ~/.config/agentbrew/repo-class.yaml

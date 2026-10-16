@@ -2,6 +2,20 @@
 
 The catalog (`src/catalog.yaml`) is how AgentBrew discovers and installs skills, MCP servers, and rules. Contributions welcome — here's how to add yours.
 
+## Open a PR from your own machine
+
+You do not need push access. From a clone of agentbrew (or any repo agentbrew helps you work on, such as dotfiles or a skill source):
+
+```bash
+git switch -c fix/short-name          # never work on main
+# edit, then run the gate: npm run verify (agentbrew) or make check (dotfiles)
+git commit -m "fix: what changed"
+agentbrew contribute --dry-run        # shows each git and gh step
+agentbrew contribute                  # forks, pushes to the fork, opens the PR
+```
+
+`agentbrew contribute` needs the GitHub CLI signed in (`gh auth login`). It forks the upstream repo to your account (once), adds the fork as a remote, pushes your branch there, and runs `gh pr create --repo <upstream> --head <you>:<branch>`. The PR title and body come from your commit message unless you pass `--title` and `--body-file`. If you want to show how agentbrew behaves on your machine, attach `agentbrew metrics --share metrics.md` to the PR.
+
 ## Design philosophy
 
 **Prefer CLI commands over MCP servers.** CLI commands (synced to `~/.config/agentbrew/commands/`) work with all configured agents via shell access. MCP servers only work with MCP-capable agents. Use MCP when it provides a meaningfully better experience (streaming, structured tool calls, persistent connections). Otherwise, CLI first.

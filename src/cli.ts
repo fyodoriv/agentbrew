@@ -364,7 +364,7 @@ export function buildProgram(): Command {
   registerMcpCommands(program, autoSync);
   registerMemoryCommands(program);
   registerCatalogCommands(program);
-  registerOpsCommands(program);
+  registerOpsCommands(program, version);
   registerSkillsCommands(program);
   registerLockCommands(program);
   registerCompletionCommands(program);

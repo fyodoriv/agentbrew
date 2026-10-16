@@ -206,9 +206,11 @@ Do this every time, also after a BLOCKED stop. Details:
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
-   skill used has such a line (it gives up after three tries). For
-   `run-goal` itself the line must cite its PR, and that PR must be merged:
-   run the repo's gate, merge, then write the PR URL.
+   skill used has such a line (it gives up after three tries). When you can
+   write the skill's source repo, ship the change in this session: gate, PR,
+   merge, then cite the PR. When the sandbox or permissions block writes to
+   that repo (common when the goal runs in another folder), file a task in
+   the user's queue and cite its id; never bypass the sandbox for it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report

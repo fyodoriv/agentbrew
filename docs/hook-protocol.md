@@ -167,9 +167,10 @@ contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`
 read, plus `run-goal`) with a commit SHA, a PR, or `task`. A line that says
 no update was made ("no new edit", "already covers", and similar) does not
-count, even when it cites an old commit. When `run-goal`'s source repo is
-known, its line must cite a PR that `gh pr view` reports as MERGED; a parked
-PR or a bare commit does not count (live runs parked it 2 of 3 times). It gives up after
+count, even when it cites an old commit. A rule that also required a merged
+`run-goal` PR was removed: goal sessions in other folders cannot write the
+agentbrew repo through the sandbox, so the gate blocked three times and gave
+up. Such runs file a task and cite its id instead. It gives up after
 three blocks, so a goal can always end. On success it deletes the contract.
 
 An earlier version read the transcript instead. Claude Code writes the

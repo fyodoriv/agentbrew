@@ -282,6 +282,8 @@ describe("fix", () => {
     await fix();
 
     expect(mockSaveRepairLog).toHaveBeenCalledWith([]);
+    const logOutput = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logOutput).toContain("agentbrew sync --only models");
   });
 
   it("reports all drift resolved when re-check finds zero issues", async () => {

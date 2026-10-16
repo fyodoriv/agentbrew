@@ -247,19 +247,6 @@
   - **Pivot**: if such tasks rarely name the skill, require a `**Files**:` path under `skill-plugins/<plugin>/<skill>/` and match on that instead.
   - **Anchor**: `docs/skill-baselines.json` growth gate; Basili et al. 1994 (GQM).
 
-- [ ] `status --fix` suggests a next step for leftover models drift
-  - **ID**: repair-next-steps-models-hint
-  - **Tags**: repair, status, ux
-  - **Details**: `fix()` runs `syncModels` (`src/repair.ts:166`) and `models` is in `AUTO_FIXABLE_TYPES` (`src/repair.ts:116`). But `reportRemainingDrift` (`src/repair.ts:53-97`) has no `sync --only models` line in "Next steps", although `sync --only` accepts `models` (`src/cli.ts:332`). The function sits at the Biome cognitive-complexity limit (15, `biome.json:12`), so adding one more `if` fails lint. Move the type-to-hint pairs into a data table first.
-  - **Files**: `src/repair.ts`, `src/repair.test.ts`
-  - **Output**: code
-  - **Acceptance**: leftover `models` drift prints `agentbrew sync --only models`; `npx biome check src/repair.ts` passes; existing hint tests still pass.
-  - **Hypothesis**: a table-driven hint list gives every sync-fixable type a next step and lowers the function's complexity below 15.
-  - **Measurement**: `npx vitest run src/repair.test.ts` plus `npx biome check src/repair.ts`.
-  - **Success**: a test asserts the models hint; Biome reports no complexity error.
-  - **Pivot**: if a table cannot hold the hints cleanly, split hint printing into its own function and keep the rest as is.
-  - **Anchor**: Biome `noExcessiveCognitiveComplexity` (Campbell 2018, cognitive complexity).
-
 - [ ] Workflow skills route single-PR review to a skill that exists
   - **ID**: skills-route-review-to-existing-skill
   - **Tags**: skills, routing, docs

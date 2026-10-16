@@ -85,16 +85,21 @@ function reportRemainingDrift(remainingItems: DriftItem[]): void {
   const hasEnvVar = remainingItems.some((d) => d.type === "mcp-env-vars" || d.type === "mcp");
   console.log(chalk.dim("\n  Next steps:"));
   if (hasEnvVar) console.log(chalk.dim("    agentbrew setup      — configure MCP server env vars"));
-  if (syncFixableTypes.has("rules-source"))
-    console.log(chalk.dim("    agentbrew rules dedupe — remove duplicate shared-rules blocks"));
-  if (syncFixableTypes.has("rules")) console.log(chalk.dim("    agentbrew sync --only rules — redeploy shared rules"));
-  if (syncFixableTypes.has("skills")) console.log(chalk.dim("    agentbrew sync --only skills  — redeploy skills"));
-  if (syncFixableTypes.has("commands"))
-    console.log(chalk.dim("    agentbrew sync --only commands — redeploy commands"));
-  if (syncFixableTypes.has("instructions"))
-    console.log(chalk.dim("    agentbrew sync --only instructions — redeploy instructions"));
+  for (const [type, hint] of SYNC_NEXT_STEPS) {
+    if (syncFixableTypes.has(type)) console.log(chalk.dim(`    ${hint}`));
+  }
   console.log();
 }
+
+/** Next-step hint for each drift type that a targeted sync can fix, in print order. */
+const SYNC_NEXT_STEPS: ReadonlyArray<readonly [DriftItem["type"], string]> = [
+  ["rules-source", "agentbrew rules dedupe — remove duplicate shared-rules blocks"],
+  ["rules", "agentbrew sync --only rules — redeploy shared rules"],
+  ["skills", "agentbrew sync --only skills  — redeploy skills"],
+  ["commands", "agentbrew sync --only commands — redeploy commands"],
+  ["instructions", "agentbrew sync --only instructions — redeploy instructions"],
+  ["models", "agentbrew sync --only models — reapply default models"],
+];
 /**
  * Drift types that `fix()` actually addresses by running sync pipelines.
  * Used to filter out everything else (skill-validity, env hygiene, user-added

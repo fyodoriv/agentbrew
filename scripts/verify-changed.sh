@@ -80,6 +80,9 @@ unique_tests=()
 while IFS= read -r t; do unique_tests+=("$t"); done < <(printf '%s\n' "${tests[@]}" | sort -u)
 step npx vitest run "${unique_tests[@]}"
 
+# The install playbook drives the one-step install e2e (no-op for other paths).
+step bash scripts/install-e2e-if-needed.sh "$base_ref"
+
 if [[ -f "$HOME/.config/oss-readiness/oss-readiness.env" ]]; then
   # shellcheck disable=SC1091
   source "$HOME/.config/oss-readiness/oss-readiness.env"

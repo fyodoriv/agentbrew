@@ -27,6 +27,7 @@ Run every command from the repo root.
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Fast gate for a skill, hook, docs, rules, or task-queue diff | `npm run verify:changed` — seconds; any other path runs the full gate |
 | Full gate | `npm run verify` — takes several minutes; run it in the background |
+| One-step install e2e (real `scripts/install.sh` in a sandboxed scratch HOME) | `npm run test:install-e2e` — both gates run it only when an install path changes |
 | Build | `npm run build` |
 
 ## Where to change what
@@ -92,6 +93,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Every PR hook acts only on `gh pr` in command position and reads heredoc bodies (`hooks/lib/gh-pr-body-from-command.sh`). A line inside your own command that starts with `gh pr create` still counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
 - Hook scripts run under macOS `/bin/bash` 3.2: no `printf '%(...)T'`, no `${var,,}`. Keep a long jq program in a `hooks/lib/*.jq` file (sync deploys `lib/` whole); a jq program inside a single-quoted bash string breaks on its first `'`. Write a JSON default as `"${INPUT:-{\}}"`: `"${INPUT:-{}}"` appends a stray `}` when `INPUT` is set. `scripts/lint-security.sh` rejects it.
+- The install e2e (`real-e2e/scenarios/us24-one-step-install.test.ts`) runs under `sandbox-exec` on macOS: writes outside its scratch folder and the real `launchctl` fail it. Add a new install path to the triggers in `scripts/install-e2e-if-needed.sh`.
 - Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
 
 ## Delivery

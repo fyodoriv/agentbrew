@@ -21,6 +21,7 @@ stories while keeping each scenario group small and fixture-backed.
 - `us19-us20-portable-and-agents.test.ts` -> US19, US20
 - `us21-shell-hooks.test.ts` -> US21
 - `us23-cross-repo-discovery.test.ts` -> US23
+- `us24-one-step-install.test.ts` -> one-step install (`scripts/install.sh`): fast mode on the built CLI, cold mode (`E2E_COLD=1`) with `npm ci` + build; run by `scripts/install-e2e-if-needed.sh` only when an install path changes
 
 ## Grouping rules
 

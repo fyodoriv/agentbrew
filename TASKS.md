@@ -700,19 +700,6 @@
   - **Pivot**: if the owner prefers the hosted server everywhere, drop the launcher swap code instead.
   - **Anchor**: #89 (hosted GitHub MCP); VISION G1 (curate, not host).
 
-- [ ] Drop the duplicate shared-rules dedupe call in `fix()`
-  - **ID**: repair-single-shared-rules-dedupe
-  - **Tags**: repair, rules, cleanup
-  - **Details**: `fix()` calls `dedupeSharedRulesFile()` (`src/repair.ts:152`) and then `syncRules()` (`src/repair.ts:153`), which calls it again through `maybeDedupeSharedRules` (`src/sync/rules-sync.ts:546`). The second pass is a no-op file read.
-  - **Files**: `src/repair.ts`, `src/repair.test.ts`
-  - **Output**: code
-  - **Acceptance**: `fix()` dedupes shared-rules once; the `status --fix` real-e2e dedupe test (#109) still passes.
-  - **Hypothesis**: removing the direct call keeps behavior the same and cuts one redundant file pass.
-  - **Measurement**: a spy test that counts `dedupeSharedRulesFile` calls during `fix()` (now 2).
-  - **Success**: the count is 1 and the #109 e2e test passes.
-  - **Pivot**: if `fix()` needs dedupe before `syncInstructions`, keep the direct call and skip it inside `syncRules` instead.
-  - **Anchor**: #109 (shared-rules dedupe through `status --fix`).
-
 - [ ] Hook deploy prunes untracked scripts that predate deploy tracking
   - **ID**: hook-deploy-prune-pre-tracking-scripts
   - **Tags**: hooks, deploy, cleanup

@@ -220,22 +220,15 @@ describe("fix", () => {
     expect(instructionsIndex).toBeLessThan(rulesIndex);
   });
 
-  it("dedupes shared-rules.md before syncing rules", async () => {
+  it("leaves the shared-rules dedupe to syncRules (one pass per fix)", async () => {
     mockLoadState.mockReturnValue(makeState());
-
-    const callOrder: string[] = [];
-    mockDedupeSharedRulesFile.mockImplementation(() => {
-      callOrder.push("dedupeSharedRulesFile");
-      return { content: "# Rules\n", removedCount: 1, removed: ["repeat"] };
-    });
-    mockSyncRules.mockImplementation(async () => {
-      callOrder.push("syncRules");
-    });
 
     await fix();
 
-    expect(callOrder).toEqual(expect.arrayContaining(["dedupeSharedRulesFile", "syncRules"]));
-    expect(callOrder.indexOf("dedupeSharedRulesFile")).toBeLessThan(callOrder.indexOf("syncRules"));
+    // syncRules dedupes shared-rules.md itself (maybeDedupeSharedRules), so a
+    // direct call from fix() would read the file twice.
+    expect(mockDedupeSharedRulesFile).not.toHaveBeenCalled();
+    expect(mockSyncRules).toHaveBeenCalledTimes(1);
   });
 
   it("calls every sync function once (mcp, instructions, rules, commands, skills, agents, hooks)", async () => {

@@ -31,7 +31,7 @@ import { syncInstructions } from "./sync/instructions-sync.js";
 import { installLaunchAgent, repairAgentbrewLaunchAgentPaths } from "./sync/launchagent.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
-import { dedupeSharedRulesFile, syncRules } from "./sync/rules-sync.js";
+import { syncRules } from "./sync/rules-sync.js";
 import { cleanBrokenSymlinksGlobally, syncSkills } from "./sync/skills-sync.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
 
@@ -154,7 +154,7 @@ export async function fix(): Promise<void> {
   // syncInstructions must run before syncRules so the managed rules section
   // (appended by syncRules) is not overwritten by the raw AGENTS.md template.
   await syncInstructions({ quiet: true });
-  dedupeSharedRulesFile();
+  // syncRules dedupes shared-rules.md before it deploys the rules.
   await syncRules();
   await syncCommands();
   await syncSkills({ quiet: true });

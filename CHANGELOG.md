@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **More gstack skills in the catalog** — the gstack skills people install most
+  by name now have catalog entries: design (`design-consultation`,
+  `design-shotgun`, `design-html`, `ios-design-review`), safety (`freeze`,
+  `unfreeze`, `guard`), `cso`, `document-release`, `benchmark`, `ios-qa`,
+  `context-save`, `context-restore`, `pair-agent`, `make-pdf`, and
+  `gstack-upgrade`. Each is opt-in and says when to use a sibling instead.
+
 - **Opt-in official MCP Registry lookup** — with `AGENTBREW_MCP_REGISTRY=1`,
   `agentbrew install <name>` resolves a server the local catalog lacks from
   `registry.modelcontextprotocol.io` (npm/pypi stdio packages and http

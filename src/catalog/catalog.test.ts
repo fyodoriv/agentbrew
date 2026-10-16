@@ -721,7 +721,17 @@ describe("methodology skill sources in catalog", () => {
     expect(sources).toEqual(new Set(["obra/superpowers", "EveryInc/compound-engineering-plugin", "garrytan/gstack"]));
     expect(data.skills.filter((s) => s.source === "obra/superpowers").length).toBeGreaterThanOrEqual(13);
     expect(data.skills.filter((s) => s.source === "EveryInc/compound-engineering-plugin").length).toBe(29);
-    expect(data.skills.filter((s) => s.source === "garrytan/gstack").length).toBe(16);
+    expect(data.skills.filter((s) => s.source === "garrytan/gstack").length).toBe(32);
+  });
+
+  it("indexes the gstack niche skills users search for by name, each opt-in", () => {
+    mockLoadState.mockReturnValue(makeState());
+    const gstack = getCatalogData({ skills: true }).skills.filter((s) => s.source === "garrytan/gstack");
+    const byName = new Map(gstack.map((s) => [s.name, s]));
+    for (const name of ["design-consultation", "design-shotgun", "cso", "freeze", "guard", "ios-qa", "make-pdf"]) {
+      expect(byName.get(name)?.recommended, name).toBe(false);
+    }
+    expect(byName.get("ios-qa")?.description).toContain("use qa");
   });
 });
 

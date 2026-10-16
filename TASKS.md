@@ -257,13 +257,6 @@
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
   - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
 
-- [ ] Index remaining garrytan/gstack niche skills in catalog.yaml
-  - **ID**: index-gstack-niche-skills
-  - **Tags**: scout, catalog, skills, curate, p3, landscape-2026-07-06
-  - **Details**: `register-superpowers-ce-gstack-sources` indexed gstack sprint-pipeline skills from `garrytan/gstack`; the niche ones remain (iOS suite, design-shotgun/consultation, OpenClaw adapters, pair-agent, gstack-upgrade, etc.). Users can already `agentbrew install garrytan/gstack` to index all skills — this task adds catalog pointers for niche entries users search for by name.
-  - **Files**: src/catalog.yaml, CHANGELOG.md, src/catalog/catalog.test.ts
-  - **Acceptance**: Remaining high-demand gstack skills have catalog entries with disambiguation text; `npm run verify` passes.
-
 - [ ] Reconcile `skillSourceDirs` legacy semantics with Agentfile `sources`
   - **ID**: reconcile-skill-source-dirs-with-agentfile-sources
   - **Tags**: scout, skills-sync, agentfile, docs

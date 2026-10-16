@@ -1270,6 +1270,102 @@ skills:
     category: testing
     recommended: false
 
+  - name: design-consultation
+    description: "Proposes a full design system (type, color, layout, spacing, motion) from research on your product and market. Don't use to review an existing UI — use plan-design-review."
+    source: garrytan/gstack
+    category: design
+    recommended: false
+
+  - name: design-shotgun
+    description: "Generates several design variants, shows them side by side, and iterates on your feedback. Don't use for a single final mockup — use design-html."
+    source: garrytan/gstack
+    category: design
+    recommended: false
+
+  - name: design-html
+    description: "Turns an approved design into production-quality HTML and CSS. Use after design-shotgun or design-consultation picks a direction."
+    source: garrytan/gstack
+    category: design
+    recommended: false
+
+  - name: cso
+    description: "Security audit with static findings; some profiles add reproduction and fix candidates. Don't use for a dependency-only scan — use supply-chain-risk-auditor."
+    source: garrytan/gstack
+    category: security
+    recommended: false
+
+  - name: document-release
+    description: "Audits release documentation (changelog, upgrade notes) against the diff before a release. Don't use for code review — use review skills."
+    source: garrytan/gstack
+    category: workflow
+    recommended: false
+
+  - name: benchmark
+    description: "Detects web performance regressions between runs. Don't use for app QA — use qa."
+    source: garrytan/gstack
+    category: testing
+    recommended: false
+
+  - name: freeze
+    description: "Limits file edits to one directory for the session. Undo with unfreeze."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: unfreeze
+    description: "Clears the edit boundary that freeze set."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: guard
+    description: "Full safety mode: warnings on destructive commands plus freeze-style directory limits. Use instead of careful plus freeze together."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: context-save
+    description: "Saves the working context of a session so a later session can resume. Restore with context-restore."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: context-restore
+    description: "Restores working context saved by context-save."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
+  - name: pair-agent
+    description: "Pairs a remote AI agent with your local browser session."
+    source: garrytan/gstack
+    category: development
+    recommended: false
+
+  - name: ios-qa
+    description: "Live-device QA for SwiftUI apps. Don't use for web apps — use qa."
+    source: garrytan/gstack
+    category: testing
+    recommended: false
+
+  - name: ios-design-review
+    description: "Visual design audit of an iOS app on real hardware. Don't use for web UI — use plan-design-review."
+    source: garrytan/gstack
+    category: design
+    recommended: false
+
+  - name: make-pdf
+    description: "Turns a Markdown file into a publication-quality PDF."
+    source: garrytan/gstack
+    category: writing
+    recommended: false
+
+  - name: gstack-upgrade
+    description: "Upgrades an installed gstack to its latest version. Only useful when you run gstack skills."
+    source: garrytan/gstack
+    category: meta
+    recommended: false
+
 
   # remotion-best-practices already present above
 

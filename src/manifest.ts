@@ -35,6 +35,24 @@ export function contentHash(content: string): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
+/**
+ * True when a file exists at `filePath` and agentbrew did not write its
+ * current content: it is untracked (user-created) or its hash changed since
+ * the last deploy. Sync must keep such a file. A read error counts as
+ * unmodified, so a transient error never hides a file agentbrew owns.
+ */
+export function isUserModified(filePath: string, manifest: Manifest): boolean {
+  if (!existsSync(filePath)) return false;
+  const lastDeployedHash = manifest.hashes[filePath];
+  if (!lastDeployedHash) return true;
+  try {
+    return contentHash(readFileSync(filePath, "utf-8")) !== lastDeployedHash;
+  } catch (e) {
+    logSkipped("manifest/isUserModified", e);
+    return false;
+  }
+}
+
 export function loadManifest(): Manifest {
   if (!existsSync(MANIFEST_PATH)) return { hashes: {} };
   try {

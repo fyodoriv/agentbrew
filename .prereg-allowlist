@@ -24,7 +24,6 @@ agentfile-hooks-async-rewake-control-fields
 restore-agentbrew-release-automation
 install-mcp-env-sanitize-strips-vars-and-y-flag
 workspace-aware-sync
-status-reports-helper-scripts
 replace-relocate-update-tooling-catalog-pointer
 reconcile-skill-source-dirs-with-agentfile-sources
 replace-relocate-source-manifest-bootstrap

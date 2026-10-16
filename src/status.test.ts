@@ -17,6 +17,7 @@ vi.mock("./sync/skills-sync.js", async () => {
 });
 
 vi.mock("./sync/instructions-sync.js", () => ({
+  helperScriptStatus: vi.fn(() => []),
   loadInstructions: vi.fn(() => undefined),
   isInstructionsUpToDate: (deployed: string, content: string) =>
     deployed === content || deployed.startsWith(content.trimEnd()),
@@ -75,7 +76,7 @@ import {
 import { loadState } from "./state.js";
 import { collectStatusData, getSourcesFreshness, status } from "./status.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
-import { loadInstructions } from "./sync/instructions-sync.js";
+import { helperScriptStatus, loadInstructions } from "./sync/instructions-sync.js";
 import { getSkillSources } from "./sync/skills-sync.js";
 import type { Source } from "./types.js";
 
@@ -262,6 +263,38 @@ describe("status", () => {
     expect(calls).toContain("churny/claude-code");
     expect(calls).toContain("137 heal attempts");
     expect(calls).not.toContain("3 heal attempts");
+  });
+
+  it("names kept and missing helper scripts with their paths in verbose status", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    vi.mocked(helperScriptStatus).mockReturnValueOnce([
+      { name: "agent-perf.mjs", target: "/h/.config/agentbrew/scripts/agent-perf.mjs", action: "kept-user-file" },
+      {
+        name: "load-project-context.sh",
+        target: "/h/.config/agentbrew/scripts/load-project-context.sh",
+        action: "installed",
+      },
+      {
+        name: "verify-vision-trace.sh",
+        target: "/h/.config/agentbrew/scripts/verify-vision-trace.sh",
+        action: "unchanged",
+      },
+    ]);
+
+    await status({ verbose: true });
+
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(calls).toContain("Helper Scripts");
+    expect(calls).toContain("/h/.config/agentbrew/scripts/agent-perf.mjs");
+    expect(calls).toContain("kept");
+    expect(calls).toContain("/h/.config/agentbrew/scripts/load-project-context.sh");
+    expect(calls).toContain("missing");
+    expect(calls).not.toContain("verify-vision-trace.sh");
   });
 
   it("shows timeouts whose heal was deferred for load, with the reason", async () => {

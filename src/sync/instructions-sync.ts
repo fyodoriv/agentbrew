@@ -330,6 +330,11 @@ function describeHelperScript(
     : `  ${log.green("✓")} ${label} — ${verbs.active}`;
 }
 
+/** What sync would do with each helper script, without writing (for `agentbrew status --verbose`). */
+export function helperScriptStatus(manifest: Manifest = loadManifest()): HelperScriptResult[] {
+  return syncHelperScripts({ projectRoot: resolveProjectRoot(), manifest, dryRun: true });
+}
+
 /** Install the helper scripts and report each one; a kept user-owned file is info, not an error. */
 function syncAndReportHelperScripts(
   manifest: Manifest,

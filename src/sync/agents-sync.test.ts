@@ -13,13 +13,28 @@ vi.mock("write-file-atomic", () => ({
   sync: vi.fn(),
 }));
 
-vi.mock("../manifest.js", () => ({
-  loadManifest: vi.fn(() => ({ hashes: {} })),
-  saveManifest: vi.fn(),
-  writeIfChanged: vi.fn(() => true),
-  removeFromManifest: vi.fn(),
-  contentHash: vi.fn(() => "mock-hash"),
-}));
+vi.mock("../manifest.js", async () => {
+  const fs = await import("node:fs");
+  const contentHash = vi.fn((_content: string) => "mock-hash");
+  return {
+    loadManifest: vi.fn(() => ({ hashes: {} })),
+    saveManifest: vi.fn(),
+    writeIfChanged: vi.fn(() => true),
+    removeFromManifest: vi.fn(),
+    contentHash,
+    // Same rule as src/manifest.ts, but on the mocked fs and contentHash.
+    isUserModified: (filePath: string, manifest: { hashes: Record<string, string> }) => {
+      if (!fs.existsSync(filePath)) return false;
+      const lastDeployedHash = manifest.hashes[filePath];
+      if (!lastDeployedHash) return true;
+      try {
+        return contentHash(String(fs.readFileSync(filePath, "utf-8"))) !== lastDeployedHash;
+      } catch {
+        return false;
+      }
+    },
+  };
+});
 
 vi.mock("../state.js", () => ({
   loadState: vi.fn(() => undefined),

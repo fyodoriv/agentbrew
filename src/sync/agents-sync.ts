@@ -8,7 +8,7 @@ import { createContext } from "../core/context.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
-import { contentHash, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
+import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { AGENTS_DIR } from "../paths.js";
 import { loadState, saveState } from "../state.js";
 import type { AgentBrewState, SyncOptions } from "../types.js";
@@ -109,19 +109,6 @@ export function resolveTargetPath(targetDir: string, sourceFile: string, format:
 /** Check if a file was modified by the user since agentbrew last deployed it.
  *  Returns true if the file exists but isn't tracked in the manifest (user-created)
  *  or if its content doesn't match what agentbrew last wrote. */
-function isUserModified(filePath: string, manifest: Manifest): boolean {
-  if (!existsSync(filePath)) return false;
-  const lastDeployedHash = manifest.hashes[filePath];
-  if (!lastDeployedHash) return true; // File exists but not tracked — user-created, don't overwrite
-  try {
-    const currentContent = readFileSync(filePath, "utf-8");
-    return contentHash(currentContent) !== lastDeployedHash;
-  } catch (e) {
-    logSkipped("sync/agents-sync/contentHash", e);
-    return false;
-  }
-}
-
 interface TargetSyncResult {
   agentName: string;
   synced: number;

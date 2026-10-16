@@ -270,14 +270,6 @@
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
   - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
 
-- [ ] `agentbrew status` names helper scripts that sync kept or could not install
-  - **ID**: status-reports-helper-scripts
-  - **Tags**: scout, sync, status, helper-scripts
-  - **Details**: Scouted while shipping the helper scripts. Sync keeps a file in `~/.config/agentbrew/scripts/` that agentbrew did not write. Only `agentbrew sync --verbose` says so; default sync and `agentbrew status` stay silent, so an old hand-made copy can hide a newer shipped script. Also, `isUserModified` exists twice (`src/sync/agents-sync.ts`, `src/sync/command-sync.ts`), and `src/sync/helper-scripts.ts` has a third ownership check. One helper in `src/manifest.ts` would keep the rule in one place.
-  - **Files**: `src/status.ts`, `src/drift-checks/`, `src/sync/helper-scripts.ts`, `src/manifest.ts`
-  - **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
-  - **Output**: code
-
 - [ ] Re-evaluate the update-tooling catalog pointer against a generic upstream workflow
   - **ID**: replace-relocate-update-tooling-catalog-pointer
   - **Tags**: scout, catalog, skills, delegation, dotfiles

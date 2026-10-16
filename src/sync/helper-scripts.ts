@@ -13,7 +13,7 @@ import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
-import { contentHash } from "../manifest.js";
+import { contentHash, isUserModified } from "../manifest.js";
 import { HELPER_SCRIPTS_DIR } from "../paths.js";
 import { expandHome } from "../utils.js";
 
@@ -64,11 +64,8 @@ function lexists(path: string): boolean {
 function planHelperScript(target: string, content: string, manifest: Manifest): HelperScriptAction {
   if (!lexists(target)) return "installed";
   if (!lstatSync(target).isFile()) return "kept-user-file";
-  const current = readFileSync(target, "utf-8");
-  const lastWrittenHash = manifest.hashes[target];
-  const ownedByAgentbrew = lastWrittenHash !== undefined && contentHash(current) === lastWrittenHash;
-  if (current === content) return "unchanged";
-  return ownedByAgentbrew ? "updated" : "kept-user-file";
+  if (readFileSync(target, "utf-8") === content) return "unchanged";
+  return isUserModified(target, manifest) ? "kept-user-file" : "updated";
 }
 
 /** Install or update the helper scripts; return one result per shipped script. */

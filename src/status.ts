@@ -21,7 +21,7 @@ import {
 import { COMMANDS_DIR } from "./paths.js";
 import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
-import { isInstructionsUpToDate, loadInstructions } from "./sync/instructions-sync.js";
+import { helperScriptStatus, isInstructionsUpToDate, loadInstructions } from "./sync/instructions-sync.js";
 import { formatModelLabel, resolveTargetModel } from "./sync/model-sync.js";
 import { collectSkills, getSkillSources } from "./sync/skills-sync.js";
 import { isAgentbrewProvidedSkillSource } from "./sync/soft-update.js";
@@ -490,6 +490,29 @@ function printVerboseCatalogRulesSection(): void {
   }
 }
 
+const HELPER_SCRIPT_PROBLEMS: Readonly<Record<string, string>> = {
+  "kept-user-file": "kept — agentbrew did not write this file, so sync leaves it",
+  installed: "missing — run `agentbrew sync`",
+  updated: "outdated — run `agentbrew sync`",
+};
+
+/** Helper scripts that sync kept (not agentbrew's) or that are missing or outdated, with their paths. */
+function printVerboseHelperScriptsSection(): void {
+  let results: ReturnType<typeof helperScriptStatus>;
+  try {
+    results = helperScriptStatus();
+  } catch (e) {
+    logSkipped("status/helper-scripts", e);
+    return;
+  }
+  const problems = results.filter((r) => HELPER_SCRIPT_PROBLEMS[r.action]);
+  if (problems.length === 0) return;
+  console.log(chalk.bold("\nHelper Scripts"));
+  for (const r of problems) {
+    console.log(`  ${ICON_WARNING} ${r.target} ${chalk.dim(HELPER_SCRIPT_PROBLEMS[r.action])}`);
+  }
+}
+
 function printVerboseSyncSection(): void {
   const errorLog = loadSyncErrors();
   if (!errorLog) return;
@@ -688,6 +711,7 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printVerboseCommandsSection();
   printVerboseInstructionsSection();
   printVerboseCatalogRulesSection();
+  printVerboseHelperScriptsSection();
   printVerboseSyncSection();
 
   const autoRepair = describeAutoRepair(probeAutoRepairHealth());

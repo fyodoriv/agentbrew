@@ -108,6 +108,13 @@ skills:
     recommended: true
     rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
 
+  - name: minsky
+    description: "Observer for the Minsky autonomous runner: start it, watch its health, heal bounded failures, and report progress. Use when the user says run, watch, observe, or monitor minsky."
+    source: fyodoriv/minsky
+    category: productivity
+    recommended: false
+    rationale: "One install command replaces cloning Minsky and running its install script; the skill stays in the Minsky repo."
+
   - name: perf-review
     description: "Find the slowest recurring agent steps from the agentbrew perf log (agent-perf.mjs report) and turn real speedups into tasks. Use for a Time review or 'what took longest'. Don't use for tokens alone (use session-report)."
     source: fyodoriv/agentbrew

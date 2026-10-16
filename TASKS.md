@@ -221,6 +221,19 @@
   - **Pivot**: if a name has no real home, delete the hint rather than invent a skill.
   - **Anchor**: Agent Skills routing guidance ("Don't use for…" fields); Basili et al. 1994 (GQM).
 
+- [ ] A hand-installed catalog skill from a new source survives sync under a global Agentfile
+  - **ID**: hand-install-survives-agentfile-prune
+  - **Tags**: scout, agentfile, install, bug
+  - **Details**: Found while adding the `minsky` catalog entry. In a scratch `HOME` with the global Agentfile that `agentbrew init` writes (a `sources:` list, no `skills:`), `agentbrew install minsky` printed "installed" and copied the skill to `~/.config/agentbrew/installed-skills/minsky`, but the source `fyodoriv/minsky` was gone from `state.yaml` afterwards and `~/.claude/skills/minsky` was never linked. With the Agentfile moved away, the same install linked the skill. README says "Skills you installed by hand stay." Either keep the hand-installed source through the authoritative prune, or have `install` add the skill to the Agentfile and say so.
+  - **Files**: `src/agentfile.ts`, `src/catalog/install.ts`, `src/source-skill-prune.ts`
+  - **Output**: code
+  - **Acceptance**: in a scratch `HOME` after `agentbrew init --skip-install --skip-sync`, `agentbrew install <catalog skill from a new source>` leaves the source in state and links the skill into `~/.claude/skills/`; a test covers it.
+  - **Hypothesis**: hand installs under a global Agentfile stop vanishing, so "installed" output matches what agents see.
+  - **Measurement**: the scratch-HOME repro above: `ls ~/.claude/skills/<name>` after install (now missing).
+  - **Success**: the link exists and a second `agentbrew sync` keeps it.
+  - **Pivot**: if pruning is the intended Agentfile contract, make `install` print that the Agentfile will drop the skill and how to keep it.
+  - **Anchor**: README "Agentfile" (hand installs stay); Basili et al. 1994 (GQM).
+
 ## P3
 
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
@@ -247,26 +260,6 @@
   - **Files**: `src/cli.ts` (workspace + workspaces + workspace-name flags + Agentfile-discovery), `src/sync/skills-sync.ts`, `src/sync/command-sync.ts`, `src/sync/rules-sync.ts`, `src/sync/mcp-sync.ts` (all extended to handle the merged-from-N-workspaces-×-M-Agentfiles input), `src/health.ts` (per-workspace + per-repo health rollup), `src/core/workspaces.ts` (new — reads `~/.config/tasks-md/workspaces.yaml`), `templates/AGENTS.md` (multi-workspace docs), `docs/VISION.md` (multi-workspace as a first-class concept), tests.
   - **Acceptance**: (a) `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` exits 0 + deploys every per-repo Agentfile's declarations across both workspaces; (b) per-workspace × per-repo sources are namespaced (collision reports `<workspace>::<repo>` for both sides); (c) `agentbrew status` lists discovered Agentfiles + deployed targets, grouped by workspace; (d) multi-workspace mode is backwards-compatible (zero workspaces declared → single-Agentfile behaviour unchanged); (e) reads `~/.config/tasks-md/workspaces.yaml` if present (shared with the `tasks` CLI); (f) tests cover the cross-workspace merge-conflict path.
   - **Surfaced-by**: Operator multi-workspace setup at `~/apps/` containing 5 workspaces (`tooling`, `acme`, `learning`, `_inventory`, `docs`) as of 2026-05-12. Foundation task in `tasksmd/tasks.md` (workspace-mode-nested-repos) ships the spec + parser + shared config-file surface; this task closes the agentbrew side.
-
-- [ ] Catalog entry for the Minsky observer skill — `agentbrew install minsky-observer` resolves
-  - **ID**: catalog-minsky-observer-skill
-  - **Tags**: catalog, minsky, observer, curator-not-host
-  - **Details**: Surfaced by Minsky's observer-plugin distribution work (PR #493, merged 2026-05-12). The skill lives at `fyodoriv/minsky` under `skill-plugins/observer/minsky/SKILL.md`. Today operators install it by cloning the Minsky repo, running `distribution/install-observer.sh`, then running `agentbrew sync --agentfile ~/apps/tooling/minsky/Agentfile.yaml`. That's three manual steps per machine.
-
-    Per `docs/VISION.md` ("Curator, not host") and `src/catalog.yaml`'s header comment, the right answer is a single `catalog.yaml` entry pointing at the upstream repo, so the operator runs `agentbrew install minsky-observer` and the resolution + symlinking + agent-fan-out is handled by the existing skill-source pipeline.
-
-    Implementation hints (not load-bearing):
-    - Add an entry under `skills:` in `src/catalog.yaml` with `name: minsky-observer`, `source: github:fyodoriv/minsky/skill-plugins/observer`, `description: "Observer protocol for the Minsky autonomous runner — watches the loop, safe-heals bounded failures, files draft PRs upstream on escalation"`, `keywords: [minsky, observer, autonomous-coding, supervisor, perrow-1984]`.
-    - The `repo_sources:` machinery for fetching + caching to `~/.cache/agentbrew/sources/` already exists (rules-sync uses it); reuse rather than reinvent.
-    - If command sources land later, the catalog entry can also declare `commands: ./commands/minsky*.md` so the slash commands install with the skill in one step.
-  - **Files**: `src/catalog.yaml`, team overlay `catalog-overlay.yaml` (mention only — Minsky is upstream-public, not team-overlay), `docs/competition/` (if a competition page mentions Minsky), `README.md` if the catalog roster gets a README section.
-  - **Acceptance**: (a) `agentbrew install minsky-observer` resolves + downloads the skill from `fyodoriv/minsky`; (b) `agentbrew sync` symlinks `SKILL.md` into every detected agent's `skillsDir`; (c) `agentbrew search minsky` returns the observer entry; (d) the catalog-team overlay is untouched.
-  - **Hypothesis**: A single `catalog.yaml` entry for `minsky-observer` will reduce the 3-step manual install to `agentbrew install minsky-observer` (one command, zero git clones).
-  - **Success**: `agentbrew install minsky-observer && agentbrew sync` deploys the skill to all agents. `agentbrew search minsky` lists the entry.
-  - **Pivot**: If the `repo_sources:` machinery doesn't handle subdirectory skill paths (`skill-plugins/observer/`), the skill needs a top-level `SKILL.md` pointer in the Minsky repo — file the change upstream rather than patching agentbrew.
-  - **Measurement**: `agentbrew install minsky-observer 2>&1 | grep -c 'installed'` returns 1; `ls ~/.claude/skills/minsky/SKILL.md` exists.
-  - **Anchor**: agentbrew VISION.md § "Curator, not host"; existing catalog.yaml skill entries as reference pattern.
-  - **Surfaced-by**: Minsky observer plugin (fyodoriv/minsky PR #493) — current install path bypasses agentbrew's catalog entirely.
 
 - [ ] Introduce "plugin bundle" catalog primitive — install N catalog items as one unit
   - **ID**: catalog-plugin-bundle-primitive

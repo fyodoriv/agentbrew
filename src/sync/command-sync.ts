@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import chalk from "chalk";
 import { sync as writeFileSync } from "write-file-atomic";
 import { filterReadsFromAgents } from "../core/agents.js";
@@ -208,6 +208,8 @@ function isUserModified(filePath: string, manifest: Manifest): boolean {
 interface ExtendedTargetInput {
   agentName: string;
   targetDir: string;
+  /** The agents.yaml `commandsDir` as written (with `~`), for user-facing hints. */
+  displayDir: string;
   exists: boolean;
   transform: CommandTransform;
   fileExt: string;
@@ -264,14 +266,26 @@ function readExistingTargetFiles(targetDir: string, ext: string): Map<string, st
   return existingFiles;
 }
 
-function buildTargetInputs(targets: CommandTarget[]): ExtendedTargetInput[] {
+/** A missing commands dir is created when the agent's config folder (the
+ *  dir's parent) exists: the agent is installed but has not made the folder
+ *  yet. A dry run only reports it as writable. */
+function ensureCommandsDir(targetDir: string, dryRun: boolean): boolean {
+  if (existsSync(targetDir)) return true;
+  if (!existsSync(dirname(targetDir))) return false;
+  if (!dryRun) mkdirSync(targetDir, { recursive: true });
+  return true;
+}
+
+function buildTargetInputs(targets: CommandTarget[], dryRun: boolean): ExtendedTargetInput[] {
   return targets.map((target) => {
     const targetDir = expandHome(target.dir);
-    const exists = existsSync(targetDir);
-    const existingFiles = exists ? readExistingTargetFiles(targetDir, target.fileExt) : new Map<string, string>();
+    const exists = ensureCommandsDir(targetDir, dryRun);
+    const existingFiles =
+      exists && existsSync(targetDir) ? readExistingTargetFiles(targetDir, target.fileExt) : new Map<string, string>();
     return {
       agentName: target.agentName,
       targetDir,
+      displayDir: target.dir,
       exists,
       transform: target.transform,
       fileExt: target.fileExt,
@@ -434,7 +448,7 @@ function logCmdDiffResult(opts: LogCmdDiffOpts): void {
 }
 
 function logCmdSyncSummary(
-  totals: { synced: number; pruned: number; skipped: number; missingDir: number },
+  totals: { synced: number; pruned: number; skipped: number; missingDirs: string[] },
   dryRun: boolean,
   log: Logger,
 ): void {
@@ -442,14 +456,16 @@ function logCmdSyncSummary(
   if (totals.skipped > 0) parts.push(`${totals.skipped} user-modified (skipped)`);
   if (totals.pruned > 0) parts.push(`${totals.pruned} pruned`);
   log.log(`${log.bold(dryRun ? "\nWould apply:" : "\nDone.")} ${parts.join(", ")}.\n`);
-  if (totals.missingDir > 0) {
-    const noun = totals.missingDir === 1 ? "agent has" : "agents have";
-    log.log(
-      log.dim(
-        `  ℹ ${totals.missingDir} ${noun} no commands dir yet — open each once to create it (run with --verbose to list).`,
-      ),
-    );
+  if (totals.missingDirs.length > 0) {
+    log.log(log.dim(`  ℹ ${missingCommandsDirHint(totals.missingDirs)}`));
   }
+}
+
+/** Hint for agents whose config folder is missing, so sync cannot create the
+ *  commands dir. It names the exact command that creates the folders. */
+export function missingCommandsDirHint(dirs: readonly string[]): string {
+  const noun = dirs.length === 1 ? "agent has" : "agents have";
+  return `${dirs.length} ${noun} no config folder, so sync skipped their commands. To deploy them anyway, run: mkdir -p ${dirs.join(" ")} && agentbrew sync`;
 }
 
 function warnNoCommandsDir(quiet: boolean, log: Logger): void {
@@ -521,7 +537,7 @@ function processSingleDiff(opts: ProcessDiffOpts): {
     // Per-agent "dir not found" lines are spammy noise in the common case
     // (many agents detected, most without a commands/ dir yet).
     // Verbose mode keeps the detail for debugging; non-verbose shows a
-    // single collapsed "N agents have no commands dir yet" summary line.
+    // single collapsed summary line that names the mkdir fix.
     if (!quiet && verbose) log.log(log.dim(`  - ${diff.agentName} — skipped (dir not found)`));
     return { synced: 0, pruned: 0, skipped: 0, missingDir: 1 };
   }
@@ -611,7 +627,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
     return;
   }
 
-  const targetInputs = buildTargetInputs(getCommandTargets());
+  const targetInputs = buildTargetInputs(getCommandTargets(), dryRun);
 
   // Slice 2 of `delegate-commands-to-ai-rules`: invoke ai-rules for the
   // canary agents only. Returns an empty Map when no canary appears in
@@ -629,7 +645,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const sharedManifest = ctx?.manifest !== undefined;
   const manifest = resolveManifest(ctx);
   refreshCanonicalCommandSources(sourceFiles, { dryRun, manifest });
-  const totals = { synced: 0, pruned: 0, skipped: 0, missingDir: 0 };
+  const totals = { synced: 0, pruned: 0, skipped: 0, missingDirs: [] as string[] };
 
   for (let i = 0; i < diffs.length; i++) {
     const result = processSingleDiff({
@@ -644,7 +660,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
     totals.synced += result.synced;
     totals.pruned += result.pruned;
     totals.skipped += result.skipped;
-    totals.missingDir += result.missingDir;
+    if (result.missingDir > 0) totals.missingDirs.push(targetInputs[i].displayDir);
     if (!quiet) {
       logCmdDiffResult({
         diff: diffs[i],

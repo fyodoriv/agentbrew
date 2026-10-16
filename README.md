@@ -176,7 +176,7 @@ One command translates the source of truth into every agent's native format.
 - **MCP permissions** → `permissions.allow` entries for agents that require explicit MCP tool grants (Cursor CLI)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources
 - **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to Cursor (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
-- **Commands** → Markdown auto-transformed per agent
+- **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run
 - **Hooks** → native hook files (Claude Code settings, Cursor hooks.json)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules

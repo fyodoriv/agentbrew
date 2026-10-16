@@ -341,18 +341,6 @@
   - **Acceptance**: `agentbrew status --verbose` names each kept or missing helper script with its path, and the three ownership checks share one helper.
   - **Output**: code
 
-- [ ] Replace the "open each once" hint for a missing command folder with a fix that works
-  - **ID**: commands-dir-missing-hint-actionable
-  - **Tags**: commands, sync, ux, docs
-  - **Details**: When an agent's `commandsDir` is missing, `agentbrew sync` prints "open each once to create it" (`src/sync/command-sync.ts`) and the drift check says "open <agent> once to create it" (`src/drift-checks/commands.ts`). On 2026-09-28 OpenCode and other agents had config folders but no command folder. The apps were not in `/Applications`, so the hint was a dead end. `mkdir -p` on the three `commandsDir` paths plus `agentbrew sync` deployed the commands to the agents that had no command folder. Make the hint name the exact `mkdir -p <commandsDir>` command, or create the folder when the agent's config root already exists.
-  - **Files**: src/sync/command-sync.ts, src/drift-checks/commands.ts, their tests
-  - **Acceptance**: (1) the hint names the exact folder and a command that creates it; (2) when the agent's config root exists, sync creates the command folder and deploys; (3) tests cover both.
-  - **Hypothesis**: Detected agents miss commands only because the folder is missing. Creating it when the config root exists raises command deployment to every detected agent that has a `commandsDir`.
-  - **Success**: `agentbrew status --verbose` shows commands deployed to every detected agent that has a `commandsDir`.
-  - **Pivot**: If an agent ignores files in the created folder (wrong folder name for its version), stop auto-creating for that agent and fix its `commandsDir` in `src/core/agents.yaml`.
-  - **Measurement**: `agentbrew status --verbose 2>&1 | rg -o 'deployed to [0-9]+/[0-9]+ agents'`
-  - **Anchor**: Nielsen, "10 Usability Heuristics for User Interface Design", 1994, heuristic 9 (error messages state the problem and suggest a solution).
-
 - [ ] Re-evaluate the update-tooling catalog pointer against a generic upstream workflow
   - **ID**: replace-relocate-update-tooling-catalog-pointer
   - **Tags**: scout, catalog, skills, delegation, dotfiles

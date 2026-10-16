@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { filterReadsFromAgents } from "../core/agents.js";
 import { logSkipped } from "../core/logger.js";
 import { loadManifest } from "../manifest.js";
@@ -15,15 +15,16 @@ function checkCommandsDriftForAgent(agent: (typeof AGENT_DEFINITIONS)[number], s
   const drift: DriftItem[] = [];
   const targetDir = expandHome(agent.commandsDir ?? "");
   if (!existsSync(targetDir)) {
-    // Do NOT suggest `agentbrew sync` here — sync cannot create an agent's
-    // commands directory. The only path to creating it is the user opening
-    // the agent at least once. Previously the detail said "Run: agentbrew
-    // sync" which, when shown after `status --fix` (which already runs sync
-    // internally), is a circular dead-end.
+    // Sync creates the folder when the agent's config folder exists, so then
+    // `agentbrew sync` (or `status --fix`) repairs it. Otherwise name the
+    // exact command that creates it.
+    const fix = existsSync(dirname(targetDir))
+      ? "run: agentbrew sync"
+      : `run: mkdir -p ${agent.commandsDir} && agentbrew sync`;
     drift.push({
       agent: agent.name,
       type: "commands",
-      detail: `commands directory missing — open ${agent.name} once to create it (${agent.commandsDir})`,
+      detail: `commands directory missing (${agent.commandsDir}) — ${fix}`,
     });
     return drift;
   }

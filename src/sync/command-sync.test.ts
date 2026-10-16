@@ -228,12 +228,9 @@ describe("syncCommands", () => {
   });
 
   it("summarises missing agent dirs instead of one 'skipped (dir not found)' line per agent", async () => {
-    // Commands dir exists, but every target dir is missing. Without the
-    // summary-collapse UX, the user sees N lines of `- <agent> — skipped
-    // (dir not found)` which is unactionable noise (the fix is "open the
-    // agent once to create the dir", not anything agentbrew can do).
-    // Non-verbose mode MUST collapse to a single count line. Verbose mode
-    // MUST still show per-agent detail for debugging.
+    // Commands dir exists, but every target dir and its config folder is
+    // missing. Non-verbose mode collapses to one line that names the exact
+    // mkdir command. Verbose mode still shows per-agent detail.
     mockExistsSync.mockImplementation((p) => {
       return String(p).includes("agentbrew/commands");
     });
@@ -245,8 +242,48 @@ describe("syncCommands", () => {
 
     // Non-verbose: no per-agent "skipped (dir not found)" lines
     expect(calls).not.toMatch(/- \w.*— skipped \(dir not found\)/);
-    // Non-verbose: summary line present when any agent was skipped for this reason
-    expect(calls).toMatch(/agent.*no commands dir yet|agents.*no commands dir yet/);
+    // Non-verbose: one summary line that names the exact fix command
+    expect(calls).toMatch(/agents? ha(s|ve) no config folder/);
+    expect(calls).toMatch(/run: mkdir -p .*~\/\.cursor\/commands.* && agentbrew sync/);
+  });
+
+  it("creates a missing commands dir when the agent's config folder exists, then deploys", async () => {
+    // opencode is not an ai-rules canary, so it deploys through the native path.
+    const opencodeRoot = `${homedir()}/.config/opencode`;
+    const opencodeCommands = `${opencodeRoot}/commands`;
+    const created = new Set<string>();
+    mockExistsSync.mockImplementation((p) => {
+      const path = String(p);
+      return path.includes("agentbrew/commands") || path === opencodeRoot || created.has(path);
+    });
+    mockMkdirSync.mockImplementation(((p: string) => {
+      created.add(String(p));
+      return undefined;
+    }) as unknown as typeof mkdirSync);
+    mockReaddirSync.mockImplementation(((p: string) =>
+      String(p).includes("agentbrew/commands") ? ["hello.md"] : []) as unknown as typeof readdirSync);
+    mockReadFileSync.mockReturnValue("# Hello");
+
+    await syncCommands();
+
+    expect(mockMkdirSync).toHaveBeenCalledWith(opencodeCommands, { recursive: true });
+    const written = mockWriteIfChanged.mock.calls.map((c) => String(c[0]));
+    expect(written.some((path) => path.startsWith(`${opencodeCommands}/`))).toBe(true);
+  });
+
+  it("does not create a commands dir on a dry run", async () => {
+    const opencodeRoot = `${homedir()}/.cursor`;
+    mockExistsSync.mockImplementation((p) => {
+      const path = String(p);
+      return path.includes("agentbrew/commands") || path === opencodeRoot;
+    });
+    mockReaddirSync.mockImplementation(((p: string) =>
+      String(p).includes("agentbrew/commands") ? ["hello.md"] : []) as unknown as typeof readdirSync);
+    mockReadFileSync.mockReturnValue("# Hello");
+
+    await syncCommands({ dryRun: true });
+
+    expect(mockMkdirSync).not.toHaveBeenCalledWith(`${opencodeRoot}/commands`, expect.anything());
   });
 
   it("shows per-agent skip detail in verbose mode", async () => {

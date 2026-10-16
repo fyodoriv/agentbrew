@@ -770,14 +770,30 @@ describe("checkCommandsDrift", () => {
     }) as unknown as typeof readdirSync);
 
     const result = checkCommandsDrift();
-    // The detail must NOT suggest `agentbrew sync` — sync can't create the
-    // agent's commands dir, only the user opening the agent can. Regression:
-    // previously the text was "Run: agentbrew sync" which is the command the
-    // user just ran (via `status --fix`), which re-runs sync internally.
+    // Sync cannot create the dir when the agent's config folder is missing,
+    // so the detail names the exact mkdir command, not a bare sync.
     const missing = result.find((d) => d.detail.startsWith("commands directory missing"));
     expect(missing).toBeDefined();
-    expect(missing?.detail).not.toMatch(/Run: agentbrew sync/);
-    expect(missing?.detail).toMatch(/open .* once/);
+    expect(missing?.detail).toContain("mkdir -p ~/.cursor/commands && agentbrew sync");
+  });
+
+  it("points at agentbrew sync when the agent's config folder exists", () => {
+    mockLoadState.mockReturnValue(
+      makeState({
+        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+      }),
+    );
+    mockExistsSync.mockImplementation(
+      (p) => String(p).includes("agentbrew/commands") || String(p).endsWith("/.cursor"),
+    );
+    mockReaddirSync.mockImplementation(((p: string) => {
+      if (String(p).includes("agentbrew/commands")) return ["my-cmd.md"];
+      return [];
+    }) as unknown as typeof readdirSync);
+
+    const missing = checkCommandsDrift().find((d) => d.detail.startsWith("commands directory missing"));
+    expect(missing?.detail).toMatch(/run: agentbrew sync$/);
+    expect(missing?.detail).not.toContain("mkdir");
   });
 
   it("returns empty when all commands are present", () => {

@@ -23,6 +23,7 @@ import {
   formatDriftSummary,
 } from "./drift.js";
 import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
+import { checkUserStatusLine } from "./drift-checks/statusline.js";
 import { fix } from "./repair.js";
 import { requireState } from "./state.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -325,7 +326,7 @@ export async function healthCheck(options?: {
   // User-added items are informational — never auto-repaired, never counted as drift.
   // They surface in their own `User additions` section in the human-readable output
   // and as a separate `userAdditions` field in JSON/CI modes.
-  const userAddedDrift = [...userAddedMcp, ...userCreatedSkills, ...userCreatedCommands];
+  const userAddedDrift = [...userAddedMcp, ...userCreatedSkills, ...userCreatedCommands, ...checkUserStatusLine()];
   const allDrift = [
     ...syncDrift,
     ...skillValidity,

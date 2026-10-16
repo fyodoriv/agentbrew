@@ -1,0 +1,48 @@
+{
+  "skill_name": "perf-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The Stop hook says: Time review needed: this turn spent 9m10s in tools. Slowest steps: npm run verify 6m2s, bats <path> 2m5s, git push 30s. Write the time review.",
+      "expected_output": "A Time review of at most 5 lines that quotes the hook numbers, names one concrete speedup for npm run verify, and says whether it recurs and whether a task was filed.",
+      "expectations": [
+        "Runs or cites agent-perf.mjs report --session latest (or the 7-day report) before claiming recurrence",
+        "Keeps the Time review to 5 lines or fewer",
+        "Names one concrete speedup with the step key and an expected saving",
+        "States whether the step recurs and either files a task or says Filed: none (one-off)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "What took longest in this repo this week, and what can we speed up?",
+      "expected_output": "Uses agent-perf.mjs report --days 7, ranks steps by total time (topKeys), reads p50 against p95 and failures, and proposes one concrete speedup.",
+      "expectations": [
+        "Runs node ~/.config/agentbrew/scripts/agent-perf.mjs report --days 7 (or with --json)",
+        "Ranks by total time per step rather than by the single slowest call",
+        "Mentions the p50 versus p95 gap or failures by step when they are present",
+        "Proposes exactly one speedup and quotes report numbers rather than estimates"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run the agent time part of the tooling checkup across all projects.",
+      "expected_output": "Uses report --all --days 7 --json plus the session-report analyzer for tokens and hours, lists the top slow recurring steps per project, and files tasks only for speedups of a minute or more that recur.",
+      "expectations": [
+        "Runs agent-perf.mjs report --all --days 7 --json",
+        "Uses the session-report analyze-sessions.mjs --json --since 7d for tokens or hours when it is installed",
+        "Files a task only when the speedup saves at least 1 minute and the step recurs",
+        "Task text names the step key, the 7-day count and total, the change, and the expected saving"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "How many tokens did I spend on this project last week?",
+      "expected_output": "Points to the session-report skill or analyzer for tokens and cost instead of the perf log, which has no token data.",
+      "expectations": [
+        "Says the perf log records tool time, not tokens",
+        "Uses or recommends the session-report analyzer for token and cost numbers",
+        "Does not invent token numbers from agent-perf output"
+      ]
+    }
+  ]
+}

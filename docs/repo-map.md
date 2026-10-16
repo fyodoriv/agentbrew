@@ -57,6 +57,8 @@ templates/scripts/* +            →  helper-scripts.ts            →  ~/.confi
   scripts/check-pr-vision-trace.mjs                                   agentbrew-written files)
 Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key),
                                                                       ~/.cursor/hooks.json
+agent-perf.mjs statusline        →  statusline-sync.ts           →  ~/.claude/settings.json (statusLine; only absent or
+  (called from hooks-sync.ts)                                         agentbrew-written values)
 Agentfile defaultModel/Effort    →  model-sync.ts                →  ~/.claude/settings.json (model, effortLevel),
                                                                       ~/.codex/config.toml (model, model_reasoning_effort). Cursor
                                                                       has no file surface (app-managed/UI model state).

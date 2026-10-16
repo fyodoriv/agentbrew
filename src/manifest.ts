@@ -17,6 +17,9 @@ export interface Manifest {
    *  Used to distinguish managed hooks from user-created ones. */
   managedHookKeys?: string[];
   managedHookKeysByAgent?: Record<string, string[]>;
+  /** The Claude Code `statusLine` value agentbrew wrote last (src/sync/statusline-sync.ts).
+   *  A different value in settings.json is the user's own and is kept. */
+  managedStatusLine?: unknown;
   /** Server names that the sync-time mcpm bridge tried to install via
    *  `mcpm install <name>` but mcpm could not resolve (server not in
    *  mcpm's registry). Skipped on subsequent syncs to avoid the

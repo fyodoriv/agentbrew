@@ -23,6 +23,10 @@ vi.mock("../hooks/manifest.js", () => ({
   loadManagedHooksFromManifest: vi.fn(() => ({ managed: [], resolved: { hooks: [] } })),
 }));
 
+vi.mock("./statusline-sync.js", () => ({
+  syncStatusLine: vi.fn(() => "unchanged"),
+}));
+
 vi.mock("../hooks/deploy.js", () => ({
   defaultDeployDir: vi.fn(() => "/home/test/.claude/codeassist/hooks-scripts"),
   deployHookScripts: vi.fn(() => ({ deployed: 0, skipped: 0, errors: [] })),
@@ -92,6 +96,7 @@ import {
   toClaudeHooksConfig,
   toCursorHooksConfig,
 } from "./hooks-sync.js";
+import { syncStatusLine } from "./statusline-sync.js";
 
 const mockExistsSync = vi.mocked(existsSync);
 const mockReadFileSync = vi.mocked(readFileSync);
@@ -100,6 +105,7 @@ const mockLoadState = vi.mocked(loadState);
 const mockLoadManifest = vi.mocked(loadManifest);
 const mockSaveManifest = vi.mocked(saveManifest);
 const mockLoadManagedHooks = vi.mocked(loadManagedHooksFromManifest);
+const mockSyncStatusLine = vi.mocked(syncStatusLine);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -471,6 +477,27 @@ describe("syncHooks", () => {
     const [filePath] = mockWriteFileSync.mock.calls[0] as [string, string, string];
     expect(filePath).toContain("claude");
     expect(filePath).not.toContain("unsupported");
+  });
+
+  it("syncs the Claude Code statusLine into the same settings file", async () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [],
+    } as never);
+    const manifest = { hashes: {}, managedHookKeys: [] };
+    mockLoadManifest.mockReturnValue(manifest as never);
+    mockExistsSync.mockReturnValue(false);
+    mockSyncStatusLine.mockClear();
+
+    await syncHooks({ quiet: true, dryRun: true });
+
+    expect(mockSyncStatusLine).toHaveBeenCalledOnce();
+    expect(mockSyncStatusLine).toHaveBeenCalledWith({
+      settingsPath: "/home/test/.claude/settings.json",
+      manifest,
+      dryRun: true,
+    });
   });
 
   it("should sync hooks to agent settings file", async () => {

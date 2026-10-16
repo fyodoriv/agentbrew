@@ -384,6 +384,27 @@ describe("canonical hook manifest", () => {
     }
   });
 
+  it("ships perf-brief and perf-task-review on by default for Claude Code only", () => {
+    const repoRoot = resolve(import.meta.dirname, "../..");
+    const { managed, resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
+      overlayPath: join(tempRoot(), "missing-overlay.yaml"),
+    });
+
+    for (const [id, event, verdict] of [
+      ["perf-brief", "SessionStart", "warn"],
+      ["perf-task-review", "Stop", "block"],
+    ]) {
+      expect(resolvedManifest.hooks.find((hook) => hook.id === id)).toMatchObject({
+        event,
+        verdict,
+        script: `checks/${id}.sh`,
+        agents: ["claude-code"],
+      });
+      expect(resolvedManifest.offByDefault).not.toContain(id);
+      expect(managed.find((hook) => hook.command === `bash /tmp/deployed-hooks/${id}.sh`)?.async).toBeUndefined();
+    }
+  });
+
   it("declares the verdict that each mutate or attribution script really emits", () => {
     const repoRoot = resolve(import.meta.dirname, "../..");
     const { resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {

@@ -452,3 +452,23 @@ hooks:
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'
     agents: ["claude-code"]
+
+  - id: perf-brief
+    description: At session start, give the agent the 7-day agent time brief for the project (silent without data)
+    event: SessionStart
+    script: checks/perf-brief.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_PERF_BRIEF
+    sourceRule: 'docs/agent-perf.md "Hooks that use the log"'
+    agents: ["claude-code"]
+
+  - id: perf-task-review
+    description: Block a stop once when the turn spent AGENTBREW_PERF_REVIEW_MIN_SECS (default 300) or more in tools, and ask for a Time review
+    event: Stop
+    script: checks/perf-task-review.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_PERF_TASK_REVIEW
+    sourceRule: 'docs/agent-perf.md "Hooks that use the log"'
+    agents: ["claude-code"]

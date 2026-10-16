@@ -102,6 +102,10 @@ vi.mock("./manifest.js", () => ({
   loadManifest: vi.fn(() => ({ hashes: {} })),
 }));
 
+vi.mock("./drift-checks/statusline.js", () => ({
+  checkUserStatusLine: vi.fn(() => []),
+}));
+
 vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({
   checkClaudeDesktopMcpDrift: vi.fn(() => []),
 }));

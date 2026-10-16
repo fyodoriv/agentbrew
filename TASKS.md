@@ -157,6 +157,18 @@
 
 ## P2
 
+- [ ] SessionStart and SessionEnd hooks read the real hook event name
+  - **ID**: fix-hook-json-default-brace
+  - **Tags**: scout, hooks, bug
+  - **Details**: `context-budget-measure.sh` and `memory-sync-projects-session-end.sh` call `json_get "${INPUT:-{}}" '.hook_event_name'`. Bash ends the default at the first `}`, so a set `INPUT` gets a stray `}` appended, the JSON is invalid, and `HOOK_EVENT_NAME` is always empty. Their "wrong event → bypass" guard never fires. Found while building the perf hooks (they use `"${INPUT:-{\}}"`). Fix both, with a fixture that sends a non-matching event and expects a bypass.
+  - **Files**: hooks/checks/context-budget-measure.sh, hooks/checks/memory-sync-projects-session-end.sh, their .test.sh fixtures
+  - **Acceptance**: each fixture sends `{"hook_event_name":"Stop"}` and the hook bypasses without scheduling work.
+  - **Hypothesis**: the event guard in both hooks fires on a wrong event once the default is fixed.
+  - **Measurement**: `/bin/bash -c 'INPUT="{\"a\":1}"; echo "${INPUT:-{}}"'` prints a stray `}`; the new fixture cases fail before the fix and pass after.
+  - **Success**: both new fixture cases pass and `bash scripts/run-hook-fixtures.sh` stays green.
+  - **Pivot**: if a caller depends on the empty event name, document that and drop the guard instead.
+  - **Anchor**: Bash manual, "Shell Parameter Expansion" (`${parameter:-word}`).
+
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

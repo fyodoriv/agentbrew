@@ -428,7 +428,9 @@ node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
 node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
 ```
 
-Row schema, privacy rules, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
+At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. After a turn with 5 or more minutes of tool time, the `perf-task-review` Stop hook asks the agent for a short "Time review" once (`AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold). `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
+
+Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
 
 ## Share config across a team
 

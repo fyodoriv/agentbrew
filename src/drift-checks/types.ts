@@ -33,6 +33,7 @@ export interface DriftItem {
     | "rules-source"
     | "skills"
     | "skills-user-added"
+    | "statusline-user-added"
     | "skill-validity"
     | "commands"
     | "commands-user-added"

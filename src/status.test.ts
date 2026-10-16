@@ -36,6 +36,10 @@ vi.mock("./sync/auto-repair-health.js", async () => {
   return { ...actual, probeAutoRepairHealth: vi.fn(() => ({ backend: "none", state: "not-installed" })) };
 });
 
+vi.mock("./drift-checks/statusline.js", () => ({
+  checkUserStatusLine: vi.fn(() => []),
+}));
+
 vi.mock("./drift-checks/claude-desktop-mcp.js", () => ({
   readDesktopMcpFailures: vi.fn(() => []),
 }));

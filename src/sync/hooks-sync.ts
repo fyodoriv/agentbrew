@@ -15,6 +15,7 @@ import type { AgentBrewState, AgentConfig, HooksFormat, ManagedHook, SyncOptions
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
 import { migrateLegacyShellPermissionSettings } from "./permission-patterns.js";
+import { syncStatusLine } from "./statusline-sync.js";
 
 // ── Pure types ──────────────────────────────────────────────────────────────
 
@@ -512,6 +513,30 @@ function processHooksTargets(targets: HooksTarget[], hooks: ManagedHook[], sctx:
   return total;
 }
 
+/** Point the Claude Code statusLine at agent-perf.mjs unless the user set their own. Returns 1 on a change. */
+function syncClaudeStatusLine(targets: HooksTarget[], sctx: SyncHooksContext): number {
+  const claude = targets.find((target) => target.agentName === "claude-code" && target.format === "claude-settings");
+  if (!claude) return 0;
+  const action = syncStatusLine({
+    settingsPath: resolveHooksFilePath(claude),
+    manifest: sctx.manifest,
+    dryRun: sctx.dryRun,
+  });
+  if (action === "installed" || action === "updated") {
+    if (!sctx.quiet) {
+      const icon = sctx.dryRun ? sctx.log.blue("~") : sctx.log.green("✓");
+      sctx.log.log(
+        `  ${icon} claude-code — statusLine ${action === "installed" ? "set" : "updated"} (agent-perf.mjs statusline)`,
+      );
+    }
+    return 1;
+  }
+  if (action === "kept-user" && sctx.verbose && !sctx.quiet) {
+    sctx.log.log(`  ${sctx.log.dim("-")} claude-code — statusLine kept (not written by agentbrew)`);
+  }
+  return 0;
+}
+
 /** Finalize the sync: update manifest and save if needed. */
 function finalizeSyncManifest(sctx: SyncHooksContext, hooks: ManagedHook[], previousSize: number): void {
   if (sctx.dryRun) return;
@@ -561,7 +586,7 @@ export async function syncHooks(options?: SyncOptions, ctx?: Partial<Context>): 
     log.log(log.bold(`\n${label}\n`));
   }
 
-  const totalChanges = processHooksTargets(targets, hooks, sctx);
+  const totalChanges = processHooksTargets(targets, hooks, sctx) + syncClaudeStatusLine(targets, sctx);
   finalizeSyncManifest(sctx, hooks, previousManagedKeys.size);
 
   if (!quiet && totalChanges > 0) {

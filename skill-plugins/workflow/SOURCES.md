@@ -31,7 +31,7 @@ third-party equivalent in the current source inventory:
 `analyze`, `caveman`, `cli-design`, `companion-competitor-watch`,
 `companion-docs-sync`, `companion-researcher`, `companion-skill-curate`,
 `companion-task-groom`, `companion-test-gaps`, `git-diagnose-codebase`,
-`grind`, `grind-report`, `handoff`, `markdown-for-gdoc`, `project-audit`,
+`grind`, `grind-report`, `handoff`, `markdown-for-gdoc`, `perf-review`, `project-audit`,
 `rfc`, `run-goal`, `strategic-review`, `sweep`, `task-command-center`,
 `to-issues`, and `ubiquitous-language`.
 

@@ -11,6 +11,10 @@ agents can see which steps are slow and which slow steps repeat.
 | Hook `perf-record-failure` (PostToolUseFailure) | Appends one row per failed tool call (`ok: false`). |
 | Hook `perf-record-turn` (UserPromptSubmit) | Appends a turn boundary row. It does not store the prompt. |
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
+| Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
+| Hook `perf-task-review` (Stop) | Asks for a "Time review" after a long turn. |
+| Claude Code `statusLine` | Shows session time, tool time, and the slowest step. |
+| Skill `perf-review` | Tells an agent how to read the report and when to file a speedup task. |
 
 The hooks are on by default for Claude Code. They run with `async: true`, so
 Claude Code does not wait for them. They never block and never print. The
@@ -114,6 +118,52 @@ another folder.
 
 `*ChangePct` is `null` when the previous window had no time for that value.
 `--session` reports have no `previous` and no `previousSumMs`.
+
+## Hooks that use the log
+
+Both hooks are on by default for Claude Code and need `node` on the hook
+`PATH`. Without `node` or the helper, they stay silent.
+
+- `perf-brief` (SessionStart) runs `agent-perf.mjs brief --cwd <session cwd>`
+  and adds its output (at most 5 lines) as `additionalContext`. It prints
+  nothing when the project has no rows. Bypass: `HOOK_BYPASS_PERF_BRIEF=1`.
+- `perf-task-review` (Stop) runs `agent-perf.mjs turn --session <id>`. When
+  the turn spent at least `AGENTBREW_PERF_REVIEW_MIN_SECS` seconds (default
+  300) in tools, it blocks the stop once with
+  `{"decision":"block","reason":…}`. The reason lists the turn's 3 slowest
+  steps and asks for a Time review of at most 5 lines: what took longest, one
+  concrete speedup, and a task when a speedup saves a minute or more and
+  recurs. The next stop has `stop_hook_active: true`, so the hook stays
+  silent and cannot loop. Bypass: `HOOK_BYPASS_PERF_TASK_REVIEW=1`;
+  `MINSKY_PIPELINE=1` also skips it.
+
+## Status line
+
+`agentbrew sync` sets the Claude Code `statusLine` in
+`~/.claude/settings.json`:
+
+```json
+{"type": "command", "command": "node ~/.config/agentbrew/scripts/agent-perf.mjs statusline", "refreshInterval": 5}
+```
+
+The command holds the absolute path. Sync writes the setting only when it is
+absent or still equals the value that agentbrew wrote last time (kept in
+`~/.config/agentbrew/manifest.json` as `managedStatusLine`). A status line
+that you set yourself is never changed, and `agentbrew status` lists it under
+"User additions". To opt out, set your own `statusLine`.
+
+## Tokens, cost, and hours
+
+The perf log has no token data. For tokens, cache hits, cost, and active
+hours per project, use the official `session-report` skill (catalog,
+`recommended: true`). Its analyzer prints JSON:
+
+```bash
+node ~/.claude/skills/session-report/analyze-sessions.mjs --json --since 7d
+```
+
+A machine with an Agentfile installs only the skills that the Agentfile
+lists, so add `session-report` (and `perf-review`) to its `skills:`.
 
 ## Speed
 

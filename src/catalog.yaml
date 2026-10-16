@@ -108,6 +108,12 @@ skills:
     recommended: true
     rationale: "Use the maintained upstream implementation instead of maintaining a local copy."
 
+  - name: perf-review
+    description: "Find the slowest recurring agent steps from the agentbrew perf log (agent-perf.mjs report) and turn real speedups into tasks. Use for a Time review or 'what took longest'. Don't use for tokens alone (use session-report)."
+    source: fyodoriv/agentbrew
+    category: productivity
+    recommended: false
+
   - name: handoff
     description: "Compacts a long session into a mktemp handoff document for a fresh agent. References artifacts by path/SHA rather than duplicating content."
     source: fyodoriv/agentbrew
@@ -905,7 +911,8 @@ skills:
     description: "Generate an explorable HTML report of Claude Code session usage (tokens, cache, subagents, skills, expensive prompts) from ~/.claude/projects transcripts."
     source: anthropics/claude-plugins-official
     category: productivity
-    recommended: false
+    recommended: true
+    rationale: "Official token, cache, cost, and active-hours view per project. It pairs with the agentbrew perf log (per-step tool time) in the perf-review skill, so agentbrew does not rebuild a token report."
 
   - name: writing-hookify-rules
     description: "Create hookify rules — author hook configurations, hookify rule syntax and patterns."

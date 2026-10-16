@@ -411,7 +411,20 @@ function pullModel(model: string): boolean {
   }
 }
 
-/** Write provider + model config to opencode.json, preserving existing keys. */
+/** Write provider + model config to opencode.json, preserving existing keys.
+ *
+ *  This stays separate from the Agentfile `defaultModel` / `modelOverrides`
+ *  model sync (src/sync/model-sync.ts), and opencode declares no
+ *  `modelConfig` in agents.yaml, on purpose:
+ *  - `defaultModel` is one hosted model id for every agent (for example
+ *    `claude-opus-5-5`). opencode needs a `provider/model` id, so a shared
+ *    default would write an id opencode cannot resolve.
+ *  - This bootstrap picks a local Ollama model from the machine's memory and
+ *    also writes the provider block. Model sync writes one key and owns no
+ *    provider setup.
+ *  - If opencode declared `modelConfig`, model sync would overwrite this
+ *    local model with the hosted default on every drift-repair tick.
+ *  Revisit when model sync can write a provider block per agent. */
 function writeOpencodeProviderConfig(model: string): void {
   const configPath = expandHome(OPENCODE_CONFIG);
   mkdirSync(expandHome("~/.config/opencode"), { recursive: true });

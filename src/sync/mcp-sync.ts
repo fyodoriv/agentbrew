@@ -11,7 +11,7 @@ import type { SecretFinding } from "../core/secret-detector.js";
 import { detectSecretsInServers } from "../core/secret-detector.js";
 import type { Manifest } from "../manifest.js";
 import { loadManifest, saveManifest } from "../manifest.js";
-import { getAdapter } from "../mcp/adapters.js";
+import { getAdapter, OpenCodeAdapter } from "../mcp/adapters.js";
 import { sweepCatalogPins } from "../mcp/catalog-pin-sweep.js";
 import { finalizeCursorGuiMcpEntries } from "../mcp/cursor-gui-launch.js";
 import {
@@ -911,6 +911,7 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   const agentResults = await Promise.all(
     fanOutMcpWrites(state.agents, detectedAgents, servers, { dryRun, prune, managedNames, mcpmAvailable }),
   );
+  warnOpenCodeDroppedEnv(detectedAgents, servers, log, quiet);
   runStdioOnlyRemotePrune(state.agents, managedNames, log, { dryRun, quiet });
   syncDetectedMcpPermissions(state.agents, servers, dryRun);
   const totals = aggregateAndLogResults(agentResults, log, { quiet, verbose, dryRun });
@@ -940,6 +941,12 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
     const externalNames = state.externalMcpServers?.length ? new Set(state.externalMcpServers) : undefined;
     await logSyncSummary(totals, { dryRun, discover, externalNames }, detectedAgents.length, servers, log);
   }
+}
+
+/** Make the env that OpenCodeAdapter drops on URL servers visible. */
+function warnOpenCodeDroppedEnv(targetAgents: AgentConfig[], servers: McpServer[], log: Logger, quiet: boolean): void {
+  if (quiet || !targetAgents.some((agent) => agent.mcpFormat === "opencode")) return;
+  for (const line of OpenCodeAdapter.droppedEnvWarnings(servers)) log.warn(line);
 }
 
 /** Remove agentbrew-written remote entries from stdio-only clients (see `STDIO_ONLY_MCP_AGENTS`). */

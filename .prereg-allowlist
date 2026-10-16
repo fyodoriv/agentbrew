@@ -26,7 +26,6 @@ install-mcp-env-sanitize-strips-vars-and-y-flag
 workspace-aware-sync
 status-reports-helper-scripts
 replace-relocate-update-tooling-catalog-pointer
-unify-opencode-bootstrap-model-with-default-model
 reconcile-skill-source-dirs-with-agentfile-sources
 replace-relocate-source-manifest-bootstrap
 agentfile-claude-session-settings-sync
@@ -36,4 +35,3 @@ ecosystem-contrib-managed-section-convention
 contribute-support-issue-283-declarative-manifest
 contribute-trust-building-pr-skills-cli
 contribute-rfc-comment-issues-268-455-user-safety-classifier
-opencode-remote-env-drop-warning

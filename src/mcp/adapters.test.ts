@@ -462,6 +462,23 @@ describe("OpenCodeAdapter", () => {
     });
   });
 
+  describe("droppedEnvWarnings", () => {
+    it("names each URL server whose env the remote shape drops", () => {
+      const remote = makeServer({ name: "remote-with-env", url: "https://example.com/mcp", command: "", args: [] });
+      const remoteNoEnv = makeServer({ name: "remote-no-env", url: "https://example.com/mcp", env: {} });
+      const stdio = makeServer({ name: "stdio-with-env" });
+      const warnings = OpenCodeAdapter.droppedEnvWarnings([remote, remoteNoEnv, stdio]);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("remote-with-env");
+      expect(warnings[0]).toContain("API_KEY");
+      expect(warnings[0]).toMatch(/opencode/);
+    });
+
+    it("returns nothing when no URL server has env", () => {
+      expect(OpenCodeAdapter.droppedEnvWarnings([makeServer()])).toEqual([]);
+    });
+  });
+
   describe("entriesMatch", () => {
     it("returns true when desired round-trips through readEntries (idempotency)", () => {
       // Write a config in opencode 1.14+ shape, read it back, then compare to

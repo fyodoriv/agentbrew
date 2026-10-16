@@ -175,6 +175,18 @@ export class OpenCodeAdapter extends JsonAdapter {
    *  stripped, because opencode's schema is `additionalProperties: false`. */
   private static readonly PRESERVED_USER_KEYS = new Set(["enabled", "timeout"]);
 
+  /** One warning per URL server with env: {@link toEntry} drops that env,
+   *  because opencode's remote schema has no `environment` field. Names the
+   *  env keys only, never their values. */
+  static droppedEnvWarnings(servers: readonly McpServer[]): string[] {
+    return servers
+      .filter((server) => server.url && Object.keys(server.env ?? {}).length > 0)
+      .map(
+        (server) =>
+          `opencode: ${server.name} is a URL server, so its env (${Object.keys(server.env).join(", ")}) is not written; opencode remote servers take headers only.`,
+      );
+  }
+
   override toEntry(server: McpServer, agentName: string): Record<string, unknown> {
     if (server.url) {
       const entry: JsonEntry = { type: "remote", url: server.url };

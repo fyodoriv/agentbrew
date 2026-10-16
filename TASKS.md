@@ -292,14 +292,6 @@
   - **Files**: src/catalog.yaml, CHANGELOG.md, src/catalog/catalog.test.ts
   - **Acceptance**: Remaining high-demand gstack skills have catalog entries with disambiguation text; `npm run verify` passes.
 
-- [ ] Unify `agentbrew setup opencode --model` with the Agentfile `defaultModel` surface
-  - **ID**: unify-opencode-bootstrap-model-with-default-model
-  - **Tags**: scout, models, opencode, api-surface
-  - **Details**: Scouted while adding model-sync: `agentbrew setup opencode --model <id>` (src/mcp/opencode-bootstrap.ts) configures OpenCode's model independently of the new Agentfile `defaultModel`/`modelOverrides` mechanism, so two entry points now set "which model an agent uses." OpenCode's `~/.config/opencode/opencode.json` top-level `model` key ("provider/model") is a valid `modelConfig` surface; consider declaring it in agents.yaml and making the bootstrap flow read/write the same override map, keeping one mental model per rule #9 (small external API).
-  - **Files**: `src/mcp/opencode-bootstrap.ts`, `src/core/agents.yaml`, `src/sync/model-sync.ts`
-  - **Acceptance**: either opencode declares `modelConfig` and the bootstrap flow routes through it (with `modelOverrides.opencode` as the id source), or a code comment in opencode-bootstrap.ts documents why the surfaces stay separate.
-  - **Output**: code
-
 - [ ] Reconcile `skillSourceDirs` legacy semantics with Agentfile `sources`
   - **ID**: reconcile-skill-source-dirs-with-agentfile-sources
   - **Tags**: scout, skills-sync, agentfile, docs
@@ -583,10 +575,14 @@
   - **Files**: `docs/competition/*.md`
   - **Acceptance**: every listed doc has a dated "Last checked: YYYY-MM-DD" line, and the vercel doc's PR and issue states match GitHub on that date.
 
-- [ ] Warn when OpenCodeAdapter drops env on a URL server
-  - **ID**: opencode-remote-env-drop-warning
-  - **Tags**: mcp, opencode, adapters, ux
-  - **Details**: `OpenCodeAdapter.toEntry` silently drops `env` for URL (remote) servers because the opencode remote schema has no `environment` field. Emit a one-line sync warning (and a test) when a server has both `url` and non-empty `env`, so the loss is visible.
-  - **Files**: `src/mcp/adapters.ts`, `src/mcp/adapters.test.ts`
-  - **Output**: code
-  - **Acceptance**: sync logs one warning naming the server when it has both `url` and a non-empty `env`; a test in `src/mcp/adapters.test.ts` asserts the warning.
+- [ ] `agentbrew setup opencode` writes a model and provider shape current opencode accepts
+  - **ID**: opencode-bootstrap-config-shape
+  - **Tags**: opencode, bootstrap, models, scout
+  - **Details**: `writeOpencodeProviderConfig` (`src/mcp/opencode-bootstrap.ts`) writes `model: { big, small }` and `provider: { ollama: { url } }`. Current opencode docs describe `model` and `small_model` as `provider/model` strings, and a custom provider as `provider.<id>` with `npm`, `options.baseURL`, and `models`. opencode's config schema rejects unknown keys, so this bootstrap may leave an invalid config. Found while closing `unify-opencode-bootstrap-model-with-default-model` (2026-10-16). Check the schema at https://opencode.ai/config.json first.
+  - **Files**: `src/mcp/opencode-bootstrap.ts`, its test
+  - **Acceptance**: the written `model`, `small_model`, and `provider` keys validate against the opencode config schema; a test pins the shape.
+  - **Hypothesis**: the bootstrap writes an old shape; fixing it makes a fresh `agentbrew setup opencode` produce a config opencode loads.
+  - **Measurement**: validate the written `opencode.json` against https://opencode.ai/config.json with a JSON schema validator in a test fixture.
+  - **Success**: 0 schema errors.
+  - **Pivot**: if the current shape still validates, close this task with the schema evidence.
+  - **Anchor**: opencode config docs (https://opencode.ai/docs/config/), models and providers pages.

@@ -64,7 +64,6 @@ describe("agentbrew-add-mcp skill contract", () => {
       "Add Manually",
       "You need: **name**, **command**, and optionally **args** and **env vars**.",
       'agentbrew mcp add filesystem -c npx -a "-y" "@modelcontextprotocol/server-filesystem" ~/projects',
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: shell variable in the skill example
       "agentbrew mcp add github -u https://api.githubcopilot.com/mcp/ -H 'Authorization=Bearer ${GITHUB_TOKEN}'",
       "prefer `agentbrew install github`",
       "Add from a Git Repo",

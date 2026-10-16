@@ -60,6 +60,14 @@ export interface DeployOptions {
   log?: Logger;
   /** Skip syntax-check (bash -n). Useful in tests with mock scripts. */
   skipSyntaxCheck?: boolean;
+  /** Text of every agent hook config (for example `~/.claude/settings.json`)
+   *  plus state hook commands. A deploy-dir script named in none of them, and
+   *  not deployed by agentbrew, is an orphan. Without this list no orphan is
+   *  reported, because a reference cannot be ruled out. */
+  referenceTexts?: string[];
+  /** Delete the orphans instead of only reporting them (`agentbrew sync`
+   *  prunes by default; `--no-prune` and the 30-minute auto-sync only report). */
+  removeOrphans?: boolean;
 }
 
 export interface DeployResult {
@@ -71,6 +79,11 @@ export interface DeployResult {
   errors: Array<{ id: string; error: string }>;
   /** IDs whose stale deployed script was removed. */
   pruned: string[];
+  /** `*.sh` files in the deploy dir that agentbrew does not track and no
+   *  agent config references (see {@link DeployOptions.referenceTexts}). */
+  orphans: string[];
+  /** True when the orphans were deleted. */
+  orphansRemoved: boolean;
 }
 
 /** Deploy-dir file that lists the hook IDs agentbrew deployed. Pruning
@@ -118,6 +131,25 @@ function pruneStaleScripts(deployDir: string, entries: ManifestHookEntry[]): str
   return pruned;
 }
 
+/** Find untracked, unreferenced scripts. They predate deploy tracking (for
+ *  example from an old overlay), so {@link pruneStaleScripts} never sees them. */
+function findOrphanScripts(deployDir: string, entries: ManifestHookEntry[], referenceTexts: string[]): string[] {
+  const current = new Set(entries.map((entry) => `${entry.id}.sh`));
+  return readdirSync(deployDir)
+    .filter((name) => name.endsWith(".sh") && !current.has(name))
+    .filter((name) => !referenceTexts.some((text) => text.includes(name)))
+    .sort();
+}
+
+/** Fill `result.orphans`, and delete them when `removeOrphans` is set. */
+function sweepOrphanScripts(deployDir: string, opts: DeployOptions, result: DeployResult): void {
+  if (!opts.referenceTexts || opts.referenceTexts.length === 0) return;
+  result.orphans = findOrphanScripts(deployDir, opts.entries, opts.referenceTexts);
+  if (!opts.removeOrphans || result.orphans.length === 0) return;
+  for (const name of result.orphans) rmSync(join(deployDir, name), { force: true });
+  result.orphansRemoved = true;
+}
+
 /**
  * Deploy all hook scripts referenced by the resolved manifest. Idempotent:
  * re-running is a no-op if every source matches its deployed copy.
@@ -158,7 +190,7 @@ function deployOneHook(
 
 export function deployHookScripts(opts: DeployOptions): DeployResult {
   const deployDir = opts.deployDir ?? defaultDeployDir();
-  const result: DeployResult = { deployed: 0, skipped: 0, errors: [], pruned: [] };
+  const result: DeployResult = { deployed: 0, skipped: 0, errors: [], pruned: [], orphans: [], orphansRemoved: false };
 
   // Ensure deploy dir exists
   if (!existsSync(deployDir)) {
@@ -184,6 +216,7 @@ export function deployHookScripts(opts: DeployOptions): DeployResult {
   }
 
   result.pruned = pruneStaleScripts(deployDir, opts.entries);
+  sweepOrphanScripts(deployDir, opts, result);
 
   logDeployResult(result, opts.log);
 

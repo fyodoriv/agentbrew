@@ -85,7 +85,14 @@ Sync copies each hook script to `~/.claude/codeassist/hooks-scripts/<id>.sh`.
 It lists the IDs it copied in `.agentbrew-deployed-hooks.json` in that
 directory. On the next sync it deletes a listed script that no manifest entry
 references any more. It also deletes old copies of the retired verifier
-scripts. It never deletes a script that it did not deploy.
+scripts.
+
+A `*.sh` file in that directory that agentbrew did not deploy is an orphan
+when no agent hook config (for example `~/.claude/settings.json`) and no state
+hook command names it. Such files come from setups older than the tracking
+file. `agentbrew sync` deletes orphans; `sync --no-prune` and the quiet
+auto-sync only warn. A script that an agent config still names is never
+deleted.
 
 ## Runtime contract
 

@@ -29,7 +29,14 @@ vi.mock("./statusline-sync.js", () => ({
 
 vi.mock("../hooks/deploy.js", () => ({
   defaultDeployDir: vi.fn(() => "/home/test/.claude/codeassist/hooks-scripts"),
-  deployHookScripts: vi.fn(() => ({ deployed: 0, skipped: 0, errors: [] })),
+  deployHookScripts: vi.fn(() => ({
+    deployed: 0,
+    skipped: 0,
+    errors: [],
+    pruned: [],
+    orphans: [],
+    orphansRemoved: false,
+  })),
 }));
 
 vi.mock("../types.js", async (importOriginal) => {

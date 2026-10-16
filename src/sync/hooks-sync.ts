@@ -563,7 +563,7 @@ function finalizeSyncManifest(sctx: SyncHooksContext, hooks: ManagedHook[], prev
  * hand-installed at the same location).
  */
 export async function syncHooks(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
-  const { quiet, verbose, dryRun } = resolveHooksSyncOptions(options);
+  const { quiet, verbose, dryRun, prune } = resolveHooksSyncOptions(options);
   const log = resolveLogger(ctx, quiet, options?.compact);
 
   const state = loadState();
@@ -572,10 +572,16 @@ export async function syncHooks(options?: SyncOptions, ctx?: Partial<Context>): 
   const repoRoot = process.env.AGENTBREW_REPO_ROOT ?? findAgentbrewRepoRoot("hooks/manifest.yaml") ?? process.cwd();
   const deployDir = defaultDeployDir();
 
-  const manifestHooks = await loadAndDeployManifestHooks(repoRoot, deployDir, dryRun, verbose, log);
+  const targets = getHooksTargets(state.agents);
+  const manifestHooks = await loadAndDeployManifestHooks(repoRoot, deployDir, {
+    dryRun,
+    verbose,
+    log,
+    prune,
+    referenceTexts: hookReferenceTexts(state, targets),
+  });
   const hooks = mergeHooks(state, manifestHooks);
 
-  const targets = getHooksTargets(state.agents);
   if (targets.length === 0) return;
 
   const { manifest, previousManagedKeys } = prepareSyncContext(ctx);
@@ -594,17 +600,58 @@ export async function syncHooks(options?: SyncOptions, ctx?: Partial<Context>): 
   }
 }
 
+/** Texts that may name a deployed hook script: every agent hook config file
+ *  that exists, plus the state hook commands. */
+function hookReferenceTexts(state: AgentBrewState, targets: HooksTarget[]): string[] {
+  const texts = (state.hooks ?? []).map((hook) => hook.command ?? "").filter((command) => command !== "");
+  for (const target of targets) {
+    const filePath = resolveHooksFilePath(target);
+    try {
+      if (existsSync(filePath)) texts.push(readFileSync(filePath, "utf-8"));
+    } catch (e) {
+      logSkipped("sync/hooks-sync/hookReferenceTexts", e);
+    }
+  }
+  return texts;
+}
+
+function logOrphanScripts(orphans: string[], removed: boolean, deployDir: string, log: Logger): void {
+  if (orphans.length === 0) return;
+  if (removed) {
+    log.log(`Removed ${orphans.length} orphan hook script(s) from ${deployDir}: ${orphans.join(", ")}`);
+    return;
+  }
+  log.warn(
+    `${orphans.length} hook script(s) in ${deployDir} are not agentbrew-deployed and no agent config uses them: ${orphans.join(", ")}. A plain \`agentbrew sync\` (without --no-prune) removes them.`,
+  );
+}
+
+interface DeployManifestHooksOptions {
+  dryRun: boolean;
+  verbose: boolean;
+  log: Logger;
+  prune: boolean;
+  referenceTexts: string[];
+}
+
 async function loadAndDeployManifestHooks(
   repoRoot: string,
   deployDir: string,
-  dryRun: boolean,
-  verbose: boolean,
-  log: Logger,
+  opts: DeployManifestHooksOptions,
 ): Promise<ManagedHook[]> {
+  const { dryRun, verbose, log } = opts;
   try {
     const { managed, resolved } = loadManagedHooksFromManifest(repoRoot, deployDir);
     if (!dryRun) {
-      const deployResult = deployHookScripts({ repoRoot, deployDir, entries: resolved.hooks, log });
+      const deployResult = deployHookScripts({
+        repoRoot,
+        deployDir,
+        entries: resolved.hooks,
+        log,
+        referenceTexts: opts.referenceTexts,
+        removeOrphans: opts.prune,
+      });
+      logOrphanScripts(deployResult.orphans, deployResult.orphansRemoved, deployDir, log);
       if (verbose && deployResult.deployed > 0) {
         log.log(`Deployed ${deployResult.deployed} hook script(s) to ${deployDir}`);
       }

@@ -273,19 +273,6 @@
   - **Pivot**: if many dangling names show up, file one cleanup task per plugin and land only the test with an allowlist.
   - **Anchor**: Agent Skills routing guidance ("Don't use for…" fields); Basili et al. 1994 (GQM).
 
-- [ ] SSO watcher snippet pins its agent-browser session to one tab
-  - **ID**: sso-watcher-session-pin-tab
-  - **Tags**: browser, sso, rules
-  - **Details**: #107 added `--session "$SESSION" --pin-tab` to Mode 1 in `templates/rules/browser-tasks.mdc:51-58`. The background SSO watcher in `templates/rules/sso-background-work.mdc:78-89` still runs bare `agent-browser connect`, `get url`, `get title`, and `eval`. On a shared purpose Chrome it can read another agent's tab and report a false login.
-  - **Files**: `templates/rules/sso-background-work.mdc`, `docs/shared-rules.md`
-  - **Output**: docs
-  - **Acceptance**: every `agent-browser` call in the watcher snippet passes the same `--session`, and `connect` uses `--pin-tab`.
-  - **Hypothesis**: pinning the watcher removes cross-agent tab reads during SSO waits.
-  - **Measurement**: `rg -n 'agent-browser' templates/rules/sso-background-work.mdc | rg -vc -- '--session'` (now 4).
-  - **Success**: the count is 0.
-  - **Pivot**: if `--pin-tab` breaks the watcher's reconnect loop, use a per-watcher `--session` only and note the gap.
-  - **Anchor**: #107 (Mode 1 tab pinning); agent-browser 0.39.0 `--pin-tab`.
-
 ## P3
 
 - [ ] Document pressure-eval conventions for skill contract tests

@@ -74,8 +74,9 @@ page leaves SSO and the DOM no longer contains auth controls.
 
 ```bash
 PORT=9333   # headed Google SSO; use the headed port for this task
+SESSION='<agent>-<task>'   # the session that opened the SSO page; never another agent's
 SSO_HOSTS="${SSO_HOSTS:-}"   # extra SSO host substrings from the org overlay
-agent-browser connect "$PORT"
+agent-browser --session "$SESSION" --pin-tab connect "$PORT"
 is_sso_url() {
   case "$1" in *accounts.google.com*) return 0 ;; esac
   for host in $SSO_HOSTS; do
@@ -84,9 +85,9 @@ is_sso_url() {
   return 1
 }
 while true; do
-  current_url=$(agent-browser get url 2>/dev/null || true)
-  title=$(agent-browser get title 2>/dev/null || true)
-  html=$(agent-browser eval 'document.documentElement.outerHTML' 2>/dev/null || true)
+  current_url=$(agent-browser --session "$SESSION" get url 2>/dev/null || true)
+  title=$(agent-browser --session "$SESSION" get title 2>/dev/null || true)
+  html=$(agent-browser --session "$SESSION" eval 'document.documentElement.outerHTML' 2>/dev/null || true)
   if ! is_sso_url "$current_url"; then
     if ! printf '%s' "$title $html" | \
       rg -qi 'sign.?in|login|authenticator|verification|approve'; then
@@ -97,6 +98,10 @@ while true; do
   sleep 3
 done
 ```
+
+Pass the same `--session` on every watcher call. On a shared purpose Chrome, a
+call without `--session` can read another agent's tab and report a false
+login.
 
 Run this as a background/monitored shell job; keep its output quiet except for
 `SSO_AUTH_COMPLETE`. When that sentinel arrives, immediately execute the resume

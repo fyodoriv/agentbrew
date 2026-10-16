@@ -57,6 +57,15 @@ describe("templates/rules — SSO background parallel work", () => {
     expect(ssoBackground).not.toMatch(/every 30–60 seconds/i);
   });
 
+  it("pins every watcher agent-browser call to one session and tab", () => {
+    const calls = ssoBackground.split("\n").filter((line) => line.includes("agent-browser "));
+    expect(calls.length).toBeGreaterThan(0);
+    for (const line of calls.filter((l) => /agent-browser (connect|get|eval|--session)/.test(l))) {
+      expect(line, line).toContain('--session "$SESSION"');
+    }
+    expect(ssoBackground).toContain('agent-browser --session "$SESSION" --pin-tab connect "$PORT"');
+  });
+
   it("diagnoses and fixes unexpected states discovered during auth waits", () => {
     expect(ssoBackground).toMatch(/unexpected state/i);
     expect(ssoBackground).toMatch(/diagnose it immediately/i);

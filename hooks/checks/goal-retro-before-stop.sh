@@ -31,6 +31,11 @@
 # file stays for review; goal-set-loads-run-goal deletes retro files older
 # than seven days.
 #
+# **run-goal ships**: when run-goal's source repo is known (an agentbrew
+# checkout with a GitHub origin, or RUN_GOAL_SOURCE_REPO=owner/repo), its line
+# must cite a PR that `gh pr view` reports as MERGED. RUN_GOAL_GH overrides
+# the gh binary (tests use a stub).
+#
 # **Bypass**: `HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1`
 #
 # **Configuration** (optional):
@@ -92,6 +97,35 @@ for skill in $SKILLS; do
   fi
   MISSING="$MISSING $skill"
 done
+
+# run-goal's own update must ship, not park: live runs committed it and then
+# parked the PR (2 of 3) or ended at "I'll merge when green". When run-goal's
+# source repo is known, its line must cite a PR that gh reports as MERGED.
+# Without gh, or when gh fails, the SHA or PR line above is enough (fail open).
+RG_REPO="${RUN_GOAL_SOURCE_REPO:-}"
+if [ -z "$RG_REPO" ]; then
+  for base in "$HOME"/apps/*/agentbrew "$HOME/apps/agentbrew" "$HOME/src/agentbrew"; do
+    if [ -f "$base/skill-plugins/workflow/run-goal/SKILL.md" ]; then
+      RG_REPO="$(git -C "$base" remote get-url origin 2>/dev/null | sed -nE 's#.*github\.com[:/]([^/]+/[^/.]+)(\.git)?$#\1#p')"
+      break
+    fi
+  done
+fi
+case " $MISSING " in *" run-goal "*) RG_REPO="" ;; esac
+GH_BIN="${RUN_GOAL_GH:-gh}"
+if [ -n "$RG_REPO" ] && command -v "$GH_BIN" >/dev/null 2>&1; then
+  RG_LINE="$(grep -F -- "run-goal" "$RETRO" 2>/dev/null | grep -viE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' | head -1)"
+  RG_PR="$(printf '%s' "$RG_LINE" | grep -oE '/pull/[0-9]+|#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)"
+  if [ -z "$RG_PR" ]; then
+    MISSING="$MISSING run-goal(cite its merged PR in $RG_REPO, not only a commit)"
+  else
+    RG_STATE="$("$GH_BIN" pr view "$RG_PR" -R "$RG_REPO" --json state -q .state 2>/dev/null || echo UNKNOWN)"
+    case "$RG_STATE" in
+      MERGED | UNKNOWN) ;;
+      *) MISSING="$MISSING run-goal(PR #$RG_PR is $RG_STATE: run the repo gate, then merge it)" ;;
+    esac
+  fi
+fi
 
 if [ -z "$MISSING" ]; then
   finish "retro lists every skill used"

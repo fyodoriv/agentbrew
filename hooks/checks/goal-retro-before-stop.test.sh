@@ -15,6 +15,10 @@ FAIL_DETAILS=()
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 export RUN_GOAL_STATE_DIR="$ROOT/state"
+# No run-goal repo by default, so the merged-PR rule stays off in most cases.
+export RUN_GOAL_SOURCE_REPO=""
+export HOME="$ROOT/home"
+mkdir -p "$HOME"
 mkdir -p "$RUN_GOAL_STATE_DIR"
 
 TX="$ROOT/t.jsonl"
@@ -60,6 +64,22 @@ expect "contract removed after giving up" 0 "$(has s2.contract.md)"
 touch "$RUN_GOAL_STATE_DIR/s3.contract.md"
 expect "bypass allows" 0 "$(run s3 HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1)"
 expect "unsafe session id allows" 0 "$(run '../x')"
+
+# Merged-PR rule: a gh stub reports PR 7 as OPEN and PR 8 as MERGED.
+STUB="$ROOT/bin"; mkdir -p "$STUB"
+cat >"$STUB/gh" <<'GH'
+#!/bin/bash
+case "$*" in *"view 8 "*) echo MERGED ;; *"view 7 "*) echo OPEN ;; *) exit 1 ;; esac
+GH
+chmod +x "$STUB/gh"
+REPO_ENV="RUN_GOAL_SOURCE_REPO=fyodoriv/agentbrew RUN_GOAL_GH=$STUB/gh"
+touch "$RUN_GOAL_STATE_DIR/m1.contract.md"
+printf -- '- write-changelog: commit 4a0ac04\n- run-goal: eval 14, commit 0f7ad32 (PR parked)\n' >"$RUN_GOAL_STATE_DIR/m1.retro.md"
+expect "run-goal with only a SHA blocks when its repo is known" 2 "$(run m1 "$REPO_ENV")"
+printf -- '- write-changelog: commit 4a0ac04\n- run-goal: eval 14, PR #7\n' >"$RUN_GOAL_STATE_DIR/m1.retro.md"
+expect "run-goal with an open PR blocks" 2 "$(run m1 "$REPO_ENV")"
+printf -- '- write-changelog: commit 4a0ac04\n- run-goal: eval 14, https://github.com/fyodoriv/agentbrew/pull/8\n' >"$RUN_GOAL_STATE_DIR/m1.retro.md"
+expect "run-goal with a merged PR allows" 0 "$(run m1 "$REPO_ENV")"
 
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

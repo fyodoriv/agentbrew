@@ -423,6 +423,7 @@
   - **ID**: opencode-bootstrap-config-shape
   - **Tags**: opencode, bootstrap, models, scout
   - **Details**: `writeOpencodeProviderConfig` (`src/mcp/opencode-bootstrap.ts`) writes `model: { big, small }` and `provider: { ollama: { url } }`. Current opencode docs describe `model` and `small_model` as `provider/model` strings, and a custom provider as `provider.<id>` with `npm`, `options.baseURL`, and `models`. opencode's config schema rejects unknown keys, so this bootstrap may leave an invalid config. Found while closing `unify-opencode-bootstrap-model-with-default-model` (2026-10-16). Check the schema at https://opencode.ai/config.json first.
+  - **Research**: 2026-10-16 — the live schema (https://opencode.ai/config.json) confirms the bug: `model` must be a `provider/model` string or `{ providerID, model, variant? }` with `additionalProperties: false`, so `{ big, small }` is invalid. `small_model` is a deprecated string. `provider` is deprecated in favour of `providers` (`Config.ProviderEncoded`); a custom provider takes `npm`, `options.baseURL`, and `models`. Write `model: "ollama/<tag>"` and a `providers.ollama` block, then validate against the schema in the test.
   - **Files**: `src/mcp/opencode-bootstrap.ts`, its test
   - **Acceptance**: the written `model`, `small_model`, and `provider` keys validate against the opencode config schema; a test pins the shape.
   - **Hypothesis**: the bootstrap writes an old shape; fixing it makes a fresh `agentbrew setup opencode` produce a config opencode loads.

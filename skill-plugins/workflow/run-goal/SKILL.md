@@ -18,6 +18,25 @@ A goal is an end state, not an activity. This skill turns the user's words
 into an end state that you and the goal checker can both verify. Then it keeps
 you working until that end state is true.
 
+## Quick start
+
+Install once: `agentbrew install run-goal`. Then type a goal in Claude Code:
+
+```
+/goal make the checkout tests in src/checkout stop flaking
+```
+
+What you will see:
+
+1. The agent reads the repo and takes a baseline. It changes nothing yet.
+2. It prints a goal contract: done-criteria, a metric, and a pivot.
+3. It asks at most one round of questions. You can skip it.
+4. It works alone and prints a `Goal check` line per criterion.
+5. It ends with a report, a retro, and updates to the skills it used.
+
+Tips: name an end state, not an activity. Add "and ship it" if a PR is
+approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
+
 ## Order of work
 
 Follow this order, even for a small goal:

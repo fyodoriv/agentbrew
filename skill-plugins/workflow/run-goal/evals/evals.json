@@ -185,6 +185,17 @@
         "Writes a line for run-goal in the retro file that cites the task id",
         "Names the sandbox block and the task id in the final report under Skills updated"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "/goal make it better",
+      "expected_output": "The agent does not guess. It reads the repo, prints a short contract that turns the vague goal into one checkable end state with a stated assumption, and asks at most one round of questions because the answer changes the deliverable.",
+      "expectations": [
+        "Prints a goal contract before any edit, even though the goal is vague",
+        "Names the assumed meaning of \"better\" and gives a baseline command for it",
+        "Asks one round of at most three questions, recommended option first, or records its default when unattended",
+        "Does not start editing before the contract is saved"
+      ]
     }
   ]
 }

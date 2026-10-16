@@ -157,19 +157,6 @@
 
 ## P2
 
-- [ ] Goal retros that cannot write run-goal's repo file a task and an eval covers it
-  - **ID**: run-goal-eval-sandbox-blocked-skill-repo
-  - **Tags**: run-goal, retro, eval
-  - **Details**: Filed by an unattended live /goal run on 2026-10-16. Its retro could not edit `skill-plugins/workflow/run-goal` because the sandbox denied writes to the agentbrew checkout (`git fetch`: Operation not permitted on `.git/FETCH_HEAD`). Add an eval where the skill-source repo is unwritable: the agent does not bypass the sandbox, files a task, cites its id in the retro file, and names the block in the final report. SKILL.md Phase 6 now states the fallback.
-  - **Files**: `skill-plugins/workflow/run-goal/evals/evals.json`
-  - **Output**: code
-  - **Acceptance**: an eval with those expectations exists and `npm run verify` is green.
-  - **Hypothesis**: goal runs that cannot reach run-goal's repo record a task instead of a dead-end "parked" line, in 100% of such runs.
-  - **Measurement**: retro files under `~/.cache/agentbrew/run-goal/` from the next unattended runs started outside `~/apps/tooling`.
-  - **Success**: every such retro cites a task id.
-  - **Pivot**: if agents still bypass or skip, add a hook hint naming the task path.
-  - **Anchor**: live run logs 2026-10-16; Basili et al. 1994 (GQM).
-
 - [ ] New agentbrew worktrees get dependencies in seconds, not minutes
   - **ID**: worktree-deps-apfs-clone
   - **Tags**: perf, worktrees, agents

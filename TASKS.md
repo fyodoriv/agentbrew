@@ -247,19 +247,6 @@
   - **Pivot**: if a table cannot hold the hints cleanly, split hint printing into its own function and keep the rest as is.
   - **Anchor**: Biome `noExcessiveCognitiveComplexity` (Campbell 2018, cognitive complexity).
 
-- [ ] agentbrew-add-mcp skill shows a maintained GitHub MCP example
-  - **ID**: add-mcp-skill-maintained-github-example
-  - **Tags**: skills, mcp, docs
-  - **Details**: The skill example still installs the archived npm package `@modelcontextprotocol/server-github` (`skill-plugins/dev/agentbrew-add-mcp/SKILL.md:89`). A contract test pins that exact line (`src/skills/agentbrew-add-mcp-contract.test.ts:66`). Since #89 the catalog points `github` at GitHub's hosted server (`src/catalog.yaml` entry `github`). Agents that copy the example install an archived server.
-  - **Files**: `skill-plugins/dev/agentbrew-add-mcp/SKILL.md`, `src/skills/agentbrew-add-mcp-contract.test.ts`
-  - **Output**: code
-  - **Acceptance**: the example uses a maintained server (for example `agentbrew install github`, or a `--url` form); the contract test pins the new text; no archived package name is left in the skill.
-  - **Hypothesis**: replacing the example stops agents from adding the archived package by copy-paste.
-  - **Measurement**: `grep -c 'server-github' skill-plugins/dev/agentbrew-add-mcp/SKILL.md` (now 1) and `npx vitest run src/skills/agentbrew-add-mcp-contract.test.ts`.
-  - **Success**: the grep count is 0 and the contract test passes.
-  - **Pivot**: if a URL example confuses the stdio walkthrough, use a different maintained stdio server as the example.
-  - **Anchor**: #89 (catalog github entry); archived `modelcontextprotocol/servers` notice.
-
 - [ ] Workflow skills route single-PR review to a skill that exists
   - **ID**: skills-route-review-to-existing-skill
   - **Tags**: skills, routing, docs

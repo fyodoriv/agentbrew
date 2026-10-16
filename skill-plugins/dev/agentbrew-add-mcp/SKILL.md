@@ -86,9 +86,13 @@ within the same session.
 You need: **name**, **command**, and optionally **args** and **env vars**.
 
 ```bash
-agentbrew mcp add github -c npx -a "-y" "@modelcontextprotocol/server-github" -e GITHUB_TOKEN
-agentbrew mcp add postgres -c npx -a "-y" "@modelcontextprotocol/server-postgres"
+agentbrew mcp add filesystem -c npx -a "-y" "@modelcontextprotocol/server-filesystem" ~/projects
+agentbrew mcp add github -u https://api.githubcopilot.com/mcp/ -H 'Authorization=Bearer ${GITHUB_TOKEN}'
 ```
+
+For GitHub, prefer `agentbrew install github`: the catalog entry points at
+GitHub's hosted server. The old `@modelcontextprotocol/server-*` packages for
+GitHub and Postgres are archived; do not add them.
 
 ## Add from a Git Repo
 

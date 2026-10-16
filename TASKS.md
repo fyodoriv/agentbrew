@@ -157,6 +157,19 @@
 
 ## P2
 
+- [ ] Agents can gate a skill-or-hook-only PR in under a minute
+  - **ID**: verify-changed-fast-gate
+  - **Tags**: perf, verify, agents
+  - **Details**: The run-goal build (#111-#131) ran `npm run verify` for about twenty small PRs that touched only `skill-plugins/`, `hooks/`, `docs/`, or `TASKS.md`. Each run took 3.5-4 min, about 70 min in total. Add a `verify:changed` script that runs only the suites affected by the diff (vitest `--changed origin/main`, the touched hook fixtures, `skills validate`, the task lint, the leak check), and keep the full `npm run verify` for code under `src/`.
+  - **Files**: `package.json`, `scripts/`, `AGENTS.md` (Commands and Delivery)
+  - **Output**: code
+  - **Acceptance**: on a skill-only diff, `npm run verify:changed` finishes in under 60 s and fails when the touched skill's evals are invalid; `AGENTS.md` says when the full gate is still required.
+  - **Hypothesis**: gate time for skill/hook/docs-only PRs drops from about 220 s to under 60 s, with no missed failure on main after merge.
+  - **Measurement**: `time npm run verify:changed` versus `time npm run verify` on the same skill-only branch; a full `npm run verify` on main after each merged fast-gated PR.
+  - **Success**: under 60 s and 0 failures on main traced to a fast-gated PR over 10 PRs.
+  - **Pivot**: any failure on main that the fast gate missed -> restrict it to docs-only diffs or drop it.
+  - **Anchor**: agent-perf report 2026-10-16 (npm run verify p50 3m39s); Forsgren, Humble, Kim 2018 (lead time).
+
 - [ ] Perf step keys name the real command in compound Bash commands
   - **ID**: perf-step-key-compound-commands
   - **Tags**: perf, hooks, step-keys

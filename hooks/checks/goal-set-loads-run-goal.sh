@@ -30,10 +30,11 @@
 #     Default `$HOME/.cache/agentbrew/run-goal`.
 #
 # **State** (session-file scope): when it adds context, this hook writes
-# `<state dir>/<session_id>.pending`, so goal-contract-before-edit can hold
-# the first edit until the goal contract is printed. `/goal clear` (and its
-# aliases) deletes the marker. See goal-contract-before-edit.sh for the rest
-# of the marker lifecycle.
+# `<state dir>/<session_id>.pending` and names `<session_id>.contract.md` in
+# the context, so goal-contract-before-edit can hold file edits until the
+# contract is saved there. `/goal clear` (and its aliases) deletes both
+# files; contract files older than seven days are deleted here. See
+# goal-contract-before-edit.sh for the rest of the lifecycle.
 
 set -euo pipefail
 
@@ -72,7 +73,9 @@ CONDITION="${CONDITION#"${CONDITION%%[![:space:]]*}"}"
 CONDITION="${CONDITION%"${CONDITION##*[![:space:]]}"}"
 case "$(printf '%s' "$CONDITION" | tr '[:upper:]' '[:lower:]')" in
   "" | clear | stop | off | reset | none | cancel)
-    if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then rm -f "$STATE_DIR/$SESSION_ID.pending"; fi
+    if [ -n "$SESSION_ID" ] && [ -n "$CONDITION" ]; then
+      rm -f "$STATE_DIR/$SESSION_ID.pending" "$STATE_DIR/$SESSION_ID.contract.md"
+    fi
     verdict_allow "$HOOK_ID" "goal cleared or status"
     ;;
 esac
@@ -82,10 +85,16 @@ if [ ! -f "$SKILL_DIR/SKILL.md" ]; then
   verdict_allow "$HOOK_ID" "run-goal skill not installed"
 fi
 
-CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat. Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
+SAVE_STEP=""
+if [ -n "$SESSION_ID" ]; then
+  SAVE_STEP=" Then save the same contract text with the Write tool to $STATE_DIR/$SESSION_ID.contract.md (pre-approved); file edits stay blocked until that file has Done when, Metric, and Pivot."
+fi
+CONTEXT="A goal was just set with /goal. Before any other work, load the run-goal skill (Skill tool, name run-goal) and follow it in order. After read-only intake, your first message is the goal contract (done-when criteria with proof, metric with baseline, success and pivot, suggestions); make no edit before it is in the chat.$SAVE_STEP Then ask at most one round of questions, work without interruptions until the goal is met or hopelessly blocked, print a Goal check line with evidence for each criterion, and finish with the final report, the retro, and updates to the skills you used."
 
 if [ -n "$SESSION_ID" ] && mkdir -p "$STATE_DIR" 2>/dev/null; then
+  rm -f "$STATE_DIR/$SESSION_ID.contract.md"
   : >"$STATE_DIR/$SESSION_ID.pending" 2>/dev/null || true
+  find "$STATE_DIR" -name '*.contract.md' -mtime +7 -delete 2>/dev/null || true
 fi
 
 log_decision "$HOOK_ID" "warn" "goal set: added run-goal context"

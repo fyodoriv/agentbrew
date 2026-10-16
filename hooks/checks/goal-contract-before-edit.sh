@@ -3,40 +3,35 @@
 #
 # **Hook**: goal-contract-before-edit
 # **Event**: PreToolUse on Write|Edit|MultiEdit|NotebookEdit
-# **Verdict**: block
+# **Verdict**: block (and auto-approves the one contract-file Write)
 # **Source rule**: skill-plugins/workflow/run-goal/SKILL.md "Order of work"
 #
-# After `/goal <condition>`, run-goal says: print the goal contract before
+# After `/goal <condition>`, run-goal says: write the goal contract before
 # the first edit. Live runs showed skill text alone is not enough (a
-# one-line bugfix went straight to Edit). This hook blocks the first file
-# edit of a goal session until one visible assistant message in the
-# transcript holds the contract: it names "Done when", "Metric", and
-# "Pivot". A prose mention of one phrase does not count (a live run once
-# opened an earlier, looser gate by quoting "Done when").
+# one-line bugfix went straight to Edit). A transcript-based check was not
+# reliable either: Claude Code writes the transcript in batches, so a
+# contract printed several seconds earlier was often not on disk yet, and
+# real contracts were blocked.
 #
-# **State** (session-file scope): goal-set-loads-run-goal writes
-# `<state dir>/<session_id>.pending` when a goal is set and deletes it on
-# `/goal clear`. This hook deletes it once the contract is in the
-# transcript. A marker older than one day is stale: this hook deletes it and
-# allows the edit. Nothing else reads or writes these files.
+# So the contract is a file. goal-set-loads-run-goal tells the agent the
+# path `<state dir>/<session_id>.contract.md`. This hook:
+#   - approves a Write to that exact path (no permission prompt) when its
+#     content has "Done when", "Metric", and "Pivot", and blocks it otherwise;
+#   - blocks other file edits while the session's goal is pending and no
+#     valid contract file exists;
+#   - allows everything in sessions with no pending goal.
 #
-# **What gets blocked**: Write/Edit in a session with a pending marker and no
-# assistant text block that contains all of "Done when", "Metric", "Pivot".
-#
-# **What does NOT get blocked**: sessions with no marker (no goal set, goal
-# cleared, or contract already printed); other tools.
+# **State** (session-file scope, shared with goal-set-loads-run-goal):
+# `<session_id>.pending` exists from `/goal <condition>` until a valid
+# contract file is written or `/goal clear` runs. `<session_id>.contract.md`
+# holds the contract; goal-set-loads-run-goal deletes contract files older
+# than seven days. A pending marker older than one day is stale: this hook
+# deletes it and allows the edit. Nothing else reads or writes these files.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_CONTRACT_BEFORE_EDIT=1`
 #
-# **Timing**: Claude Code can run this hook before it writes the same turn's
-# contract text to the transcript (a live run blocked five parallel Writes
-# that came right after a real contract). So, while a marker is pending,
-# the hook re-reads the transcript for a short time before it blocks.
-#
 # **Configuration** (optional):
-#   - RUN_GOAL_STATE_DIR: marker folder. Default `$HOME/.cache/agentbrew/run-goal`.
-#   - RUN_GOAL_CONTRACT_WAIT_TENTHS: how long to keep re-reading, in tenths of
-#     a second. Default 20 (2 s), inside the 5 s hook timeout.
+#   - RUN_GOAL_STATE_DIR: state folder. Default `$HOME/.cache/agentbrew/run-goal`.
 
 set -euo pipefail
 
@@ -67,6 +62,23 @@ esac
 
 STATE_DIR="${RUN_GOAL_STATE_DIR:-$HOME/.cache/agentbrew/run-goal}"
 MARKER="$STATE_DIR/$SESSION_ID.pending"
+CONTRACT="$STATE_DIR/$SESSION_ID.contract.md"
+FILE_PATH="$(json_get "$INPUT" '.tool_input.file_path')"
+
+has_sections() {
+  hook_jq -e -R -s 'test("Done when") and test("Metric") and test("Pivot")' >/dev/null 2>&1
+}
+
+if [ "$TOOL" = "Write" ] && [ "$FILE_PATH" = "$CONTRACT" ]; then
+  if json_get "$INPUT" '.tool_input.content' | has_sections; then
+    rm -f "$MARKER"
+    log_decision "$HOOK_ID" "allow" "goal contract file written"
+    hook_jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", permissionDecisionReason: "run-goal contract file"}}'
+    exit 0
+  fi
+  verdict_block "$HOOK_ID" "The goal contract file needs the Done when, Metric (baseline, target, command), and Success / Pivot sections. Rewrite it with all three."
+fi
+
 if [ ! -f "$MARKER" ]; then
   verdict_allow "$HOOK_ID" "no pending goal contract"
 fi
@@ -76,24 +88,9 @@ if [ -n "$(find "$MARKER" -mmin +1440 2>/dev/null)" ]; then
   verdict_allow "$HOOK_ID" "stale goal marker removed"
 fi
 
-TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
-contract_in_transcript() {
-  [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] &&
-    hook_jq -e -s 'any(.[]; .type == "assistant" and any(.message.content[]?; .type == "text" and (.text | test("Done when") and test("Metric") and test("Pivot"))))' \
-      "$TRANSCRIPT" >/dev/null 2>&1
-}
+if [ -f "$CONTRACT" ] && has_sections <"$CONTRACT"; then
+  rm -f "$MARKER"
+  verdict_allow "$HOOK_ID" "goal contract file found"
+fi
 
-WAIT_TENTHS="${RUN_GOAL_CONTRACT_WAIT_TENTHS:-20}"
-case "$WAIT_TENTHS" in "" | *[!0-9]*) WAIT_TENTHS=20 ;; esac
-waited=0
-while :; do
-  if contract_in_transcript; then
-    rm -f "$MARKER"
-    verdict_allow "$HOOK_ID" "goal contract found"
-  fi
-  [ "$waited" -ge "$WAIT_TENTHS" ] && break
-  sleep 0.2
-  waited=$((waited + 2))
-done
-
-verdict_block "$HOOK_ID" "A /goal is active and no goal contract is in the chat yet. Print the run-goal contract as a visible message (thinking does not count): one message with Done when (criteria with proof), Metric (baseline, target, command), Success / Pivot, and Suggestions. Then retry this edit."
+verdict_block "$HOOK_ID" "A /goal is active and its goal contract is not saved yet. Print the contract in the chat, then save the same text with the Write tool to $CONTRACT (Done when with proof, Metric with baseline, Success / Pivot, Suggestions). That write is pre-approved. Then retry this edit."

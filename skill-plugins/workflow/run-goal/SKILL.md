@@ -26,9 +26,10 @@ Follow this order, even for a small goal:
 2. **Print the goal contract** (Phase 2) in the chat. This is your first
    real message. Do not call Edit, Write, or any other changing command
    before the contract is in the chat. In Claude Code with agentbrew, the
-   `goal-contract-before-edit` hook blocks file edits until one visible
-   message has the "Done when", "Metric", and "Pivot" sections. Thinking
-   does not count.
+   `/goal` hook also names a contract file: save the same text there with
+   the Write tool (that write is pre-approved). The
+   `goal-contract-before-edit` hook blocks other file edits until that file
+   has the "Done when", "Metric", and "Pivot" sections.
 3. Ask the one question round, or record your defaults (Phase 3).
 4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
 5. Verify with fresh evidence (Phase 5), then the retro and the final
@@ -100,9 +101,14 @@ docs, memory, or a quick experiment can answer.
 - One round only, three questions at most. Put your recommended option first.
 - Prefer the structured question tool when it exists (`AskUserQuestion` in
   Claude Code).
-- Non-interactive run (`claude -p`, a scheduled worker, nobody at the
-  keyboard): ask nothing. Pick the recommended default and record it under
-  **Assumptions**.
+- Someone is at the keyboard when the structured question tool exists and
+  nothing says the run is unattended. Then every assumption that changes
+  what you build (which feature, which interface, which storage, what is in
+  scope) is a question, not an **Assumptions** line. Keep only the
+  assumptions that would not change the deliverable.
+- Unattended run (`claude -p`, a scheduled worker, no question tool, or the
+  prompt says nobody is around): ask nothing. Pick the recommended default
+  and record it under **Assumptions**.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 
@@ -176,7 +182,9 @@ Do this every time, also after a BLOCKED stop. Details:
    the update by owner (see the retro reference). For skills the user owns,
    edit the source and ship the change through that repo's normal delivery
    flow. Never edit an installed mirror. A third-party skill gets a task with
-   the proposed change.
+   the proposed change. `run-goal` itself is never exempt: add an eval case
+   from this run to its `evals/evals.json` in its source (`readlink -f` on
+   the installed skill finds it), or fix the step that went wrong.
 5. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report
@@ -195,6 +203,6 @@ End with this shape. Keep it short.
 **Changes**: <PRs, commits, files>
 **What went wrong**: <bullets>
 **What to improve**: <bullets>
-**Skills updated**: <every skill used → its edit or new eval + PR, or the task for a third-party skill>
+**Skills updated**: <every skill used, run-goal included → its edit or new eval + PR, or the task for a third-party skill>
 **Needed from you**: <the review or the one action, or "nothing">
 ```

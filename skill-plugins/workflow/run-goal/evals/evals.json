@@ -25,7 +25,18 @@
       "id": 2
     },
     {
-      "id": 3,
+      "prompt": "/goal add a way for users to save notes in this app (interactive session; AskUserQuestion is available; the repo is a one-file node app with no storage yet)",
+      "expected_output": "The open choices change what gets built (CLI vs other interface, storage format and location), so with someone at the keyboard the agent asks them in one AskUserQuestion round with recommended options first, then works without further questions.",
+      "expectations": [
+        "Asks one AskUserQuestion round of at most three questions before building",
+        "The questions cover choices that change the deliverable (interface, storage)",
+        "Puts the recommended option first in each question",
+        "Asks nothing after the round and records only non-deliverable assumptions"
+      ],
+      "id": 3
+    },
+    {
+      "id": 4,
       "prompt": "Goal set: improve the onboarding docs. (non-interactive run, nobody at the keyboard)",
       "expected_output": "A contract that turns a vague goal into proxy metrics plus a review deliverable, asks nothing because the run is non-interactive, and records the chosen defaults as assumptions.",
       "expectations": [
@@ -36,7 +47,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 5,
       "prompt": "/goal publish the new package version to npm. Midway, npm publish asks for a 2FA one-time code.",
       "expected_output": "The agent finishes every other part first, then stops with a BLOCKED report that names the evidence, what was tried, the exact human action needed, and the line 'Goal status: impossible without <X>.', followed by the retro.",
       "expectations": [
@@ -48,7 +59,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "prompt": "The goal is done. During it you used the systematic-debugging skill (from a third-party repo) and the iterate skill (from the user's own tooling repo). Wrap up.",
       "expected_output": "A retro that lists every skill used, finds each skill's source, edits the user-owned skill source with an eval through a PR, and files a task instead of editing the third-party skill.",
       "expectations": [
@@ -60,7 +71,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "prompt": "/goal fix the broken links in the docs site. (non-interactive run; package.json has a deploy:prod script; the repo AGENTS.md says nothing about deploys or merges)",
       "expected_output": "The agent fixes the links and opens a PR, cites the source of each approval it uses, does not deploy or merge because nothing it can cite approves that, and names those as the next actions for the user.",
       "expectations": [
@@ -79,10 +90,10 @@
         "Fixes the cause and re-runs the gate before claiming done",
         "Captures the gate's own status next time (for example rc=$?, not status=$?, which is read-only in zsh)"
       ],
-      "id": 7
+      "id": 8
     },
     {
-      "id": 8,
+      "id": 9,
       "prompt": "/goal clear",
       "expected_output": "The skill does not run: clearing a goal needs no contract, questions, or retro.",
       "expectations": [

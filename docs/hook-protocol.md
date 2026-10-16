@@ -152,12 +152,18 @@ In real `claude -p` sessions, `/goal <condition>` made the agent call the
 
 Skill text alone did not stop a one-line bugfix goal from editing before its
 goal contract. So `goal-set-loads-run-goal` also writes a per-session marker
-(`~/.cache/agentbrew/run-goal/<session_id>.pending`), and
-`goal-contract-before-edit` (PreToolUse on Write, Edit, MultiEdit,
-NotebookEdit) blocks file edits while the marker exists and no visible
-assistant message holds the contract ("Done when", "Metric", and "Pivot" in
-one message; thinking does not count). The first contract, `/goal clear`,
-or a marker older than one day removes it.
+(`~/.cache/agentbrew/run-goal/<session_id>.pending`) and names a contract
+file (`<session_id>.contract.md` in the same folder) in its context. The
+agent saves its contract there with Write. `goal-contract-before-edit`
+(PreToolUse on Write, Edit, MultiEdit, NotebookEdit) approves that one write
+when it has "Done when", "Metric", and "Pivot", and blocks other file edits
+until it exists. A valid contract file, `/goal clear`, or a marker older
+than one day ends the block.
+
+An earlier version read the transcript instead. Claude Code writes the
+transcript in batches, so a contract printed 6 to 8 seconds earlier was
+often not on disk yet, and real contracts were blocked. A hook cannot wait
+that long (the hook timeout is 5 s).
 
 ## Cross-workspace publishing
 

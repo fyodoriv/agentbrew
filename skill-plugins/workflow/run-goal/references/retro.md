@@ -47,8 +47,9 @@ never the installed mirror.
 | You cannot find the source | Report it as a gap in the final report. |
 
 After the change merges, redeploy it the way that repo says (for agentbrew:
-pull, `npm run build`, `agentbrew sync`). Then check that the installed copy
-shows the change. A merged edit that never reaches the agent helps nobody.
+pull, `npm run build`, `agentbrew sync --pull`; plain `sync` skips a skill
+that is already installed). Then check that the installed copy shows the
+change. A merged edit that never reaches the agent helps nobody.
 
 Keep each edit small: one change that would have prevented a problem you hit.
 "No change — worked as written" is a valid result, but it needs a reason.

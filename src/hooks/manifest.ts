@@ -48,7 +48,7 @@ const VALID_EVENTS = new Set([
 ]);
 
 const VALID_TIERS = new Set(["deterministic"]);
-const VALID_VERDICTS = new Set(["block", "warn", "mutate"]);
+const VALID_VERDICTS = new Set(["allow", "block", "warn", "mutate"]);
 
 /**
  * One hook entry in the manifest. The shape is more verbose than the
@@ -63,7 +63,7 @@ export interface ManifestHookEntry {
   matcher?: string;
   script: string;
   tier: "deterministic";
-  verdict: "block" | "warn" | "mutate";
+  verdict: "allow" | "block" | "warn" | "mutate";
   bypassEnvVar?: string;
   sourceRule?: string;
   agents?: string[];
@@ -186,7 +186,7 @@ function validateEntry(entry: Record<string, unknown>, path: string, index: numb
   validateEnum({ where, id, field: "event" }, entry.event, VALID_EVENTS, `one of ${[...VALID_EVENTS].join(", ")}`);
   validateRequiredString(where, id, "script", entry.script);
   validateEnum({ where, id, field: "tier" }, entry.tier, VALID_TIERS, "deterministic");
-  validateEnum({ where, id, field: "verdict" }, entry.verdict, VALID_VERDICTS, "block, warn, or mutate");
+  validateEnum({ where, id, field: "verdict" }, entry.verdict, VALID_VERDICTS, "allow, block, warn, or mutate");
   validateOptionalString({ where, id, field: "matcher" }, entry.matcher);
   validateOptionalString({ where, id, field: "bypassEnvVar" }, entry.bypassEnvVar);
   validateOptionalStringArray({ where, id, field: "agents" }, entry.agents);

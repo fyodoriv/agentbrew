@@ -34,9 +34,15 @@ run_hook() { # $1 = input json
 T1=$(run_hook '{"hook_event_name":"SessionStart"}')
 assert_exit_code "Test 1 (SessionStart → allow)" 0 "$T1"
 
-# Test 2: non-SessionStart event → bypass (exit 0)
-T2=$(run_hook '{"hook_event_name":"Stop"}')
+# Test 2: non-SessionStart event → bypass (exit 0), logged with its reason
+T2=$(HOME="$TMP/t2" run_hook '{"hook_event_name":"Stop"}')
 assert_exit_code "Test 2 (Stop → bypass)" 0 "$T2"
+if grep -q '"reason":"event Stop is not SessionStart"' "$TMP/t2/.cache/agentbrew/hook-decisions.jsonl" 2>/dev/null; then
+  PASS=$((PASS + 1))
+else
+  FAIL=$((FAIL + 1))
+  FAIL_DETAILS+=("Test 2: expected a bypass for the Stop event")
+fi
 
 # Test 3: HOOK_BYPASS → allow
 T3=$(HOOK_BYPASS_CONTEXT_BUDGET_MEASURE=1 bash -c "printf '%s' '{\"hook_event_name\":\"SessionStart\"}' | bash '$SCRIPT' >/dev/null 2>&1; echo \$?" | tail -1)

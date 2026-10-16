@@ -433,7 +433,7 @@ hooks:
     event: SessionEnd
     script: checks/memory-sync-projects-session-end.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     bypassEnvVar: HOOK_BYPASS_MEMORY_SYNC_PROJECTS
     sourceRule: 'docs/user-stories/29-shared-memory-packs.md project-memory ingestion invariant'
     agents: ["claude-code"]
@@ -446,7 +446,7 @@ hooks:
     event: PostToolUse
     script: checks/perf-record.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     async: true
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'
@@ -457,7 +457,7 @@ hooks:
     event: PostToolUseFailure
     script: checks/perf-record.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     async: true
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'
@@ -468,7 +468,7 @@ hooks:
     event: UserPromptSubmit
     script: checks/perf-record.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     async: true
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'
@@ -479,7 +479,7 @@ hooks:
     event: PreToolUse
     script: checks/perf-record.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     async: true
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'
@@ -490,7 +490,7 @@ hooks:
     event: PermissionDenied
     script: checks/perf-record.sh
     tier: deterministic
-    verdict: warn
+    verdict: allow
     async: true
     bypassEnvVar: HOOK_BYPASS_PERF_RECORD
     sourceRule: 'docs/agent-perf.md "Perf log"'

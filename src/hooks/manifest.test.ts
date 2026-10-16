@@ -31,6 +31,31 @@ function writeCanonical(root: string, body: string): void {
   writeManifest(join(hooksDir, "manifest.yaml"), body);
 }
 
+// What a script must contain to emit each manifest verdict. A Stop hook blocks
+// with `{"decision":"block"}` on stdout; a UserPromptSubmit or SessionStart
+// warn hook may add context instead of a stderr line (docs/hook-protocol.md).
+const VERDICT_EMITTERS: Record<string, RegExp> = {
+  block: /\bverdict_block\b|"decision"\s*:\s*"block"|decision:\s*"block"/u,
+  warn: /\bverdict_warn\b|additionalContext|systemMessage/u,
+  mutate: /\bverdict_mutate\b/u,
+};
+
+/** Hooks whose script cannot emit the declared verdict, as "id: reason". */
+function mismatchedVerdicts(
+  hooks: { id: string; verdict: string; script: string }[],
+  scriptOf: (script: string) => string,
+): string[] {
+  return hooks.flatMap((hook) => {
+    const text = scriptOf(hook.script);
+    if (hook.verdict === "allow") {
+      const loud = /\bverdict_(block|warn|mutate)\b/u.exec(text);
+      return loud ? [`${hook.id}: declares allow but calls ${loud[0]}`] : [];
+    }
+    const emitter = VERDICT_EMITTERS[hook.verdict];
+    return emitter?.test(text) ? [] : [`${hook.id}: declares ${hook.verdict} but never emits it`];
+  });
+}
+
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -339,7 +364,7 @@ describe("canonical hook manifest", () => {
       event: "SessionEnd",
       script: "checks/memory-sync-projects-session-end.sh",
       tier: "deterministic",
-      verdict: "warn",
+      verdict: "allow",
       bypassEnvVar: "HOOK_BYPASS_MEMORY_SYNC_PROJECTS",
       agents: ["claude-code"],
     });
@@ -376,7 +401,7 @@ describe("canonical hook manifest", () => {
       ["perf-record-denied", "PermissionDenied"],
     ]);
     for (const hook of perf) {
-      expect(hook).toMatchObject({ async: true, agents: ["claude-code"], verdict: "warn" });
+      expect(hook).toMatchObject({ async: true, agents: ["claude-code"], verdict: "allow" });
       expect(hook.defaultEnabled).toBeUndefined();
       expect(managed.find((m) => m.command === `bash /tmp/deployed-hooks/${hook.id}.sh`)).toMatchObject({
         event: hook.event,
@@ -407,16 +432,24 @@ describe("canonical hook manifest", () => {
     }
   });
 
-  it("declares the verdict that each mutate or attribution script really emits", () => {
+  it("declares a verdict that each script can really emit", () => {
     const repoRoot = resolve(import.meta.dirname, "../..");
     const { resolved: resolvedManifest } = loadManagedHooksFromManifest(repoRoot, "/tmp/deployed-hooks", {
       overlayPath: join(tempRoot(), "missing-overlay.yaml"),
     });
     const scriptOf = (script: string) => readFileSync(join(repoRoot, "hooks", script), "utf8");
 
-    for (const hook of resolvedManifest.hooks.filter((entry) => entry.verdict === "mutate")) {
-      expect(scriptOf(hook.script), `${hook.id} declares mutate`).toMatch(/\bverdict_mutate\b/);
-    }
+    expect(mismatchedVerdicts(resolvedManifest.hooks, scriptOf)).toEqual([]);
+    expect(
+      mismatchedVerdicts(
+        [
+          { id: "silent-warn", verdict: "warn", script: "a.sh" },
+          { id: "loud-allow", verdict: "allow", script: "b.sh" },
+          { id: "real-block", verdict: "block", script: "c.sh" },
+        ],
+        (script) => ({ "a.sh": "verdict_allow x", "b.sh": "verdict_warn x", "c.sh": "verdict_block x" })[script] ?? "",
+      ),
+    ).toEqual(["silent-warn: declares warn but never emits it", "loud-allow: declares allow but calls verdict_warn"]);
     for (const id of ["gh-pr-body-attribution", "git-strip-agent-attribution"]) {
       const hook = resolvedManifest.hooks.find((entry) => entry.id === id);
       expect(hook?.verdict, id).toBe("warn");

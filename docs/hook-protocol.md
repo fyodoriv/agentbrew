@@ -46,7 +46,7 @@ Required fields per hook:
   hooks do this).
 - `script`: path relative to `hooks/`.
 - `tier`: `deterministic`. The LLM verifier tier was retired because `claude --print` takes about 10 seconds per call, far past a hook budget, and every verifier failed open.
-- `verdict`: `block`, `warn`, or `mutate`.
+- `verdict`: `allow`, `block`, `warn`, or `mutate`. Use `allow` for a hook that only records or schedules work and never warns, such as `perf-record`.
 
 Optional fields:
 
@@ -128,8 +128,10 @@ multi-line `--body` such as a heredoc they return the whole command.
 The manifest `verdict` names what the script itself emits. A hook that only
 detects text that another tool rewrites later declares `warn`, not `mutate`.
 The attribution hooks work this way: the dotfiles `gh` wrapper and
-`commit-msg` hook do the strip. A test checks that every `mutate` hook calls
-`verdict_mutate`.
+`commit-msg` hook do the strip. `src/hooks/manifest.test.ts` checks that each
+script can emit its declared verdict: `block` needs `verdict_block` or a
+`"decision":"block"` line, `warn` needs `verdict_warn` or added context,
+`mutate` needs `verdict_mutate`, and an `allow` script calls none of them.
 
 Blocking messages must tell the agent exactly how to retry successfully. Do not
 print secrets, full environment dumps, or unrelated transcript contents.

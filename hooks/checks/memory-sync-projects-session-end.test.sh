@@ -151,7 +151,10 @@ reset_runtime
 run_hook '{"hook_event_name":"Stop"}'
 T3=$?
 assert_exit_code "Test 3 (other event bypasses)" 0 "$T3"
-if [ ! -e "$LOG" ]; then
+# The schedule receipt is written before the background child starts, so its
+# absence proves the event guard fired. The decision log names the reason.
+if [ ! -e "$LOG" ] && [ ! -e "$(receipt_path)" ] \
+  && grep -q '"reason":"event Stop is not SessionEnd"' "$FAKE_HOME/.cache/agentbrew/hook-decisions.jsonl" 2>/dev/null; then
   PASS=$((PASS + 1))
 else
   FAIL=$((FAIL + 1))

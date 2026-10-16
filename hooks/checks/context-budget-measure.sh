@@ -30,7 +30,7 @@ fi
 
 INPUT="$(read_hook_stdin || true)"
 export HOOK_EVENT_NAME
-HOOK_EVENT_NAME="$(json_get "${INPUT:-{}}" '.hook_event_name')"
+HOOK_EVENT_NAME="$(json_get "${INPUT:-{\}}" '.hook_event_name')"
 
 if [ -n "$HOOK_EVENT_NAME" ] && [ "$HOOK_EVENT_NAME" != "SessionStart" ]; then
   verdict_bypass "$HOOK_ID" "event $HOOK_EVENT_NAME is not SessionStart"

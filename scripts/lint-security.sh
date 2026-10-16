@@ -74,6 +74,18 @@ if [ -n "$VIOLATIONS" ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
+# 6. Ban a JSON default written as "${VAR:-{}}". Bash ends the default at the
+# first "}", so a set VAR gets a stray "}" appended. Write "${VAR:-{\}}".
+VIOLATIONS=$(grep -rnF ':-{}}' hooks/checks hooks/lib --include='*.sh' \
+  | grep -v '\.test\.sh' \
+  || true)
+if [ -n "$VIOLATIONS" ]; then
+  echo "❌ JSON default \"\${VAR:-{}}\" appends a stray } when VAR is set:"
+  echo "$VIOLATIONS"
+  echo "   Write \"\${VAR:-{\\}}\" instead."
+  ERRORS=$((ERRORS + 1))
+fi
+
 if [ "$ERRORS" -gt 0 ]; then
   echo ""
   echo "Security lint failed with $ERRORS violation(s)."

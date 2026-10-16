@@ -89,7 +89,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
 - Every PR hook acts only on `gh pr` in command position and reads heredoc bodies (`hooks/lib/gh-pr-body-from-command.sh`). A line inside your own command that starts with `gh pr create` still counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
-- Hook scripts run under macOS `/bin/bash` 3.2: no `printf '%(...)T'`, no `${var,,}`. Keep a long jq program in a `hooks/lib/*.jq` file (sync deploys `lib/` whole); a jq program inside a single-quoted bash string breaks on its first `'`. Write a JSON default as `"${INPUT:-{\}}"`: `"${INPUT:-{}}"` appends a stray `}` when `INPUT` is set.
+- Hook scripts run under macOS `/bin/bash` 3.2: no `printf '%(...)T'`, no `${var,,}`. Keep a long jq program in a `hooks/lib/*.jq` file (sync deploys `lib/` whole); a jq program inside a single-quoted bash string breaks on its first `'`. Write a JSON default as `"${INPUT:-{\}}"`: `"${INPUT:-{}}"` appends a stray `}` when `INPUT` is set. `scripts/lint-security.sh` rejects it.
 - Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
 
 ## Delivery

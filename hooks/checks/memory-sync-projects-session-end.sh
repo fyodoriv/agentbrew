@@ -206,7 +206,7 @@ if [ "${HOOK_BYPASS_MEMORY_SYNC_PROJECTS:-0}" = "1" ]; then
 fi
 
 INPUT="$(read_hook_stdin || true)"
-HOOK_EVENT_NAME="$(json_get "${INPUT:-{}}" '.hook_event_name')"
+HOOK_EVENT_NAME="$(json_get "${INPUT:-{\}}" '.hook_event_name')"
 if [ -n "$HOOK_EVENT_NAME" ] && [ "$HOOK_EVENT_NAME" != "SessionEnd" ]; then
   verdict_bypass "$HOOK_ID" "event $HOOK_EVENT_NAME is not SessionEnd"
 fi

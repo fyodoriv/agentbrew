@@ -170,18 +170,6 @@
   - **Pivot**: any failure on main that the fast gate missed -> restrict it to docs-only diffs or drop it.
   - **Anchor**: agent-perf report 2026-10-16 (npm run verify p50 3m39s); Forsgren, Humble, Kim 2018 (lead time).
 
-- [ ] SessionStart and SessionEnd hooks read the real hook event name
-  - **ID**: fix-hook-json-default-brace
-  - **Tags**: scout, hooks, bug
-  - **Details**: `context-budget-measure.sh` and `memory-sync-projects-session-end.sh` call `json_get "${INPUT:-{}}" '.hook_event_name'`. Bash ends the default at the first `}`, so a set `INPUT` gets a stray `}` appended, the JSON is invalid, and `HOOK_EVENT_NAME` is always empty. Their "wrong event → bypass" guard never fires. Found while building the perf hooks (they use `"${INPUT:-{\}}"`). Fix both, with a fixture that sends a non-matching event and expects a bypass.
-  - **Files**: hooks/checks/context-budget-measure.sh, hooks/checks/memory-sync-projects-session-end.sh, their .test.sh fixtures
-  - **Acceptance**: each fixture sends `{"hook_event_name":"Stop"}` and the hook bypasses without scheduling work.
-  - **Hypothesis**: the event guard in both hooks fires on a wrong event once the default is fixed.
-  - **Measurement**: `/bin/bash -c 'INPUT="{\"a\":1}"; echo "${INPUT:-{}}"'` prints a stray `}`; the new fixture cases fail before the fix and pass after.
-  - **Success**: both new fixture cases pass and `bash scripts/run-hook-fixtures.sh` stays green.
-  - **Pivot**: if a caller depends on the empty event name, document that and drop the guard instead.
-  - **Anchor**: Bash manual, "Shell Parameter Expansion" (`${parameter:-word}`).
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream
@@ -323,19 +311,6 @@
   - **Success**: the count is 0.
   - **Pivot**: if `--pin-tab` breaks the watcher's reconnect loop, use a per-watcher `--session` only and note the gap.
   - **Anchor**: #107 (Mode 1 tab pinning); agent-browser 0.39.0 `--pin-tab`.
-
-- [ ] Hook manifest verdicts match what each script can emit
-  - **ID**: hook-manifest-verdict-matches-script
-  - **Tags**: hooks, lint, manifest
-  - **Details**: `memory-sync-projects-session-end` declares `verdict: warn` (`hooks/manifest.yaml:402`), but `hooks/checks/memory-sync-projects-session-end.sh` only calls `verdict_bypass` and `verdict_allow` (lines 205-276); it never calls `verdict_warn`. No lint checks that a declared verdict is reachable.
-  - **Files**: `hooks/manifest.yaml`, `hooks/checks/*.sh`, `scripts/lint-repo-artifacts.sh`
-  - **Output**: code
-  - **Acceptance**: the manifest verdict for this hook is fixed (or the script warns), and a lint fails when a manifest `verdict: X` has no matching `verdict_X` call in its script.
-  - **Hypothesis**: a static check brings manifest-vs-script verdict mismatches to zero and keeps them there.
-  - **Measurement**: the new lint over `hooks/manifest.yaml` (today it would report at least 1 mismatch).
-  - **Success**: the lint reports 0 mismatches and runs in `npm run lint`.
-  - **Pivot**: if many hooks emit verdicts through shared helpers, check the fixture output (`scripts/run-hook-fixtures.sh`) instead of grepping scripts.
-  - **Anchor**: `docs/hook-protocol.md` verdict contract.
 
 ## P3
 

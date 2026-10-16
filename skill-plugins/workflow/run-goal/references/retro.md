@@ -68,3 +68,10 @@ leak checks.
 If the agent has a memory tool, store the reusable lessons: decisions with
 their reasons, errors with their fixes, and user corrections. Store no
 secrets and no raw transcripts.
+
+A skill that worked as written still gets an edit, such as a new eval case.
+An existing eval that already covers the run is not an update. The
+`goal-retro-before-stop` hook rejects retro lines that say "no change",
+"already covers", or "skipped". Write the real commit SHA or PR instead.
+`commit_session_legacy` needs `session_id`, `agent_id`, `task_summary`, and
+`outcome` (`success`, `partial`, or `failure`). Load its schema first.

@@ -236,13 +236,6 @@
 
 ## P3
 
-- [ ] Extend the dash-pattern hook lint to rg, variable, and unquoted patterns
-  - **ID**: hooks-dashdash-lint-coverage
-  - **Tags**: scout, hooks, bug-class, robustness
-  - **Details**: The `lint-security.sh` check added with `hooks-grep-dashdash-pattern` flags only a quoted literal that starts with `-` after `grep`. It does not see `rg` calls, patterns held in variables, or unquoted patterns. Audit showed none exist today, so this guards future drift only. Consider a ShellCheck rule or a small wrapper before adding more regex.
-  - **Files**: `scripts/lint-security.sh`
-  - **Acceptance**: A fixture hook script using each missed form fails the lint, and the current hook scripts still pass it.
-
 - [ ] Make catalog MCP pin policy data-driven instead of source-hardcoded
   - **ID**: catalog-mcp-pin-policy-data-driven
   - **Tags**: scout, mcp, catalog, config-drift

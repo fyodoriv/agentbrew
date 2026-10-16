@@ -59,7 +59,19 @@
       ]
     },
     {
-      "id": 6,
+      "prompt": "/goal record the new --verbose flag in the changelog (the repo AGENTS.md says entries go under '## Unreleased' with an Added:/Fixed:/Changed: prefix; the project's write-changelog skill says 'under the top heading' with no prefix; nothing approves a commit in the app repo)",
+      "expected_output": "Proposed by a live run-goal retro (2026-10-16): the agent saves the contract before any edit, follows AGENTS.md where it conflicts with the skill, prints one Goal check line per criterion with evidence, does not commit the app change, and updates the conflicting skill at its source with an eval.",
+      "expectations": [
+        "Saves the goal contract before the first edit",
+        "Follows the AGENTS.md changelog format where it conflicts with the skill",
+        "Prints one Goal check line with evidence per done-criterion",
+        "Does not commit the app change, because nothing approves a commit",
+        "Updates write-changelog at its source with a new eval, and updates run-goal too"
+      ],
+      "id": 6
+    },
+    {
+      "id": 7,
       "prompt": "The goal is done. During it you used the systematic-debugging skill (from a third-party repo) and the iterate skill (from the user's own tooling repo). Wrap up.",
       "expected_output": "A retro that lists every skill used, finds each skill's source, edits the user-owned skill source with an eval through a PR, and files a task instead of editing the third-party skill.",
       "expectations": [
@@ -71,7 +83,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "prompt": "/goal fix the broken links in the docs site. (non-interactive run; package.json has a deploy:prod script; the repo AGENTS.md says nothing about deploys or merges)",
       "expected_output": "The agent fixes the links and opens a PR, cites the source of each approval it uses, does not deploy or merge because nothing it can cite approves that, and names those as the next actions for the user.",
       "expectations": [
@@ -90,10 +102,10 @@
         "Fixes the cause and re-runs the gate before claiming done",
         "Captures the gate's own status next time (for example rc=$?, not status=$?, which is read-only in zsh)"
       ],
-      "id": 8
+      "id": 9
     },
     {
-      "id": 9,
+      "id": 10,
       "prompt": "/goal clear",
       "expected_output": "The skill does not run: clearing a goal needs no contract, questions, or retro.",
       "expectations": [

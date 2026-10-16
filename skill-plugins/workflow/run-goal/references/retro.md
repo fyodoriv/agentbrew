@@ -34,8 +34,11 @@ session transcript (Claude Code keeps it under `~/.claude/projects/`) for
 Installed skill folders are often symlinks or synced copies. Edit the source,
 never the installed mirror.
 
-- `readlink -f ~/.claude/skills/<name>` shows a symlink target.
-- `agentbrew status --verbose` lists the source of each synced skill.
+- `agentbrew status --verbose` lists the source of each synced skill. Start
+  here: agentbrew installs copies under `~/.config/agentbrew/installed-skills/`,
+  and those copies are not git repos.
+- `readlink -f ~/.claude/skills/<name>` shows a symlink target, for skills
+  linked by hand or by a project.
 - `git -C <source dir> remote get-url origin` shows who owns the repo.
 
 ## 5. Route the edit by owner

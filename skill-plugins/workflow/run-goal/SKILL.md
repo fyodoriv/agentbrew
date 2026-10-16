@@ -26,8 +26,9 @@ Follow this order, even for a small goal:
 2. **Print the goal contract** (Phase 2) in the chat. This is your first
    real message. Do not call Edit, Write, or any other changing command
    before the contract is in the chat. In Claude Code with agentbrew, the
-   `/goal` hook also names a contract file: save the same text there with
-   the Write tool (that write is pre-approved). The
+   `/goal` hook also names a contract file: save the contract there with
+   the Write tool (that write is pre-approved and shows in the transcript),
+   and say in one chat line that the contract is saved. The
    `goal-contract-before-edit` hook blocks other file edits until that file
    has the "Done when", "Metric", and "Pivot" sections.
 3. Ask the one question round, or record your defaults (Phase 3).
@@ -183,8 +184,10 @@ Do this every time, also after a BLOCKED stop. Details:
    edit the source and ship the change through that repo's normal delivery
    flow. Never edit an installed mirror. A third-party skill gets a task with
    the proposed change. `run-goal` itself is never exempt: add an eval case
-   from this run to its `evals/evals.json` in its source (`readlink -f` on
-   the installed skill finds it), or fix the step that went wrong.
+   from this run to its `evals/evals.json` in its source, or fix the step
+   that went wrong. agentbrew installs a copy, not a symlink: find the
+   source with `agentbrew status --verbose` (for `run-goal`, the agentbrew
+   repo's `skill-plugins/workflow/run-goal/`).
 5. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report

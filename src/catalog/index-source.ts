@@ -445,6 +445,11 @@ function toGitUrl(source: Source): string {
   return resolveGitCloneUrl(source.url, source.type);
 }
 
+/** Root dir that holds every cloned source cache. */
+export function sourceCacheRoot(): string {
+  return CACHE_DIR;
+}
+
 /** Return the local cache directory for a source (without cloning). */
 export function getSourceCacheDir(source: Source): string {
   const safeName = source.url.replace(/[^a-zA-Z0-9_-]/g, "_");

@@ -55,7 +55,7 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 **Official MCP Registry (opt-in).** With `AGENTBREW_MCP_REGISTRY=1`, `install` looks up a name the local catalog does not have in the [official MCP Registry](https://registry.modelcontextprotocol.io/) — for example `AGENTBREW_MCP_REGISTRY=1 agentbrew install io.github.upstash/context7 --dry-run`. Local catalog entries always win, and a registry outage falls back to the local catalog with a one-line warning. Details: [docs/competition/official-mcp-registry-vs-agentbrew.md](docs/competition/official-mcp-registry-vs-agentbrew.md).
 
-Adding a source indexes its available skills; it does not deploy every skill from that repo. `sync` deploys skills only after you explicitly install/select them, plus legacy manual `skillSourceDirs` outside tracked source paths that are already treated as opt-in source directories.
+Adding a source indexes its available skills; it does not deploy every skill from that repo. `sync` deploys skills only after you explicitly install/select them, plus legacy manual `skillSourceDirs` outside tracked source paths that are already treated as opt-in source directories. A `skillSourceDirs` entry inside the source cache that no tracked source owns prints a `state.yaml` warning, because it would deploy every skill in that cache.
 
 `agentbrew skills validate` knows the Claude Code skill fields `effort` (`low`, `medium`, `high`, `xhigh`, `max`, or an integer), `shell` (`bash` or `powershell`), and `when_to_use` (a string). It reports a wrong value as an error, not as an unknown field.
 

@@ -1,7 +1,10 @@
+import { resolve } from "node:path";
 import chalk from "chalk";
+import { getSourceCacheDir, sourceCacheRoot } from "../catalog/index-source.js";
 import { detectSourceType } from "../git-source-url.js";
 import { fixDeprecatedMemoryServerArgs, migrateDeprecatedGithubServer } from "../mcp/mcpm-hygiene.js";
 import type { AgentBrewState, AgentConfig, McpServer, Source } from "../types.js";
+import { expandHome } from "../utils.js";
 
 /**
  * Tracks the state.yaml schema version so future breaking changes can trigger
@@ -32,6 +35,7 @@ export function validateState(state: AgentBrewState): string[] {
   const warnings: string[] = [];
   validateMcpServers(state.mcpServers ?? [], warnings);
   validateSkillSourceDirs(state.skillSourceDirs ?? [], warnings);
+  validateCachedSkillSourceDirs(state.skillSourceDirs ?? [], state.sources ?? [], warnings);
   return warnings;
 }
 
@@ -74,6 +78,33 @@ function validateSkillSourceDirs(dirs: Array<{ label: string; path: string }>, w
     if (!dir.label) {
       warnings.push(`skillSourceDirs: entry with path '${dir.path || "(empty)"}' has an empty label`);
     }
+  }
+}
+
+function isWithin(path: string, root: string): boolean {
+  const normalized = resolve(expandHome(path));
+  const normalizedRoot = resolve(expandHome(root));
+  return normalized === normalizedRoot || normalized.startsWith(`${normalizedRoot}/`);
+}
+
+/** `skillSourceDirs` has two meanings. Inside a tracked source's cache, only
+ *  that source's `skillsInstalled` deploy. Anywhere else, every skill in the
+ *  dir deploys (an explicit opt-in). A cache path that no tracked source owns
+ *  (for example after the source was removed or the entry was hand-edited)
+ *  silently falls into the second meaning, so warn about it. */
+function validateCachedSkillSourceDirs(
+  dirs: Array<{ label: string; path: string }>,
+  sources: Source[],
+  warnings: string[],
+): void {
+  const cacheRoot = sourceCacheRoot();
+  const sourceRoots = sources.map((source) => (source.type === "local" ? source.url : getSourceCacheDir(source)));
+  for (const dir of dirs) {
+    if (!dir.path || !isWithin(dir.path, cacheRoot)) continue;
+    if (sourceRoots.some((root) => isWithin(dir.path, root))) continue;
+    warnings.push(
+      `skillSourceDirs: entry '${dir.label}' points into the source cache, but no tracked source owns it, so sync deploys every skill in it. Run \`agentbrew install <source>\` to track it, or remove the entry.`,
+    );
   }
 }
 

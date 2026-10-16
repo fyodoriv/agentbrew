@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentBrewState } from "../types.js";
 import type { StateIO } from "./state-manager.js";
@@ -528,6 +530,39 @@ describe("validateState", () => {
     const state = makeState({ mcpServers: undefined });
     const warnings = validateState(state);
     expect(warnings).toEqual([]);
+  });
+
+  it("warns when a skillSourceDirs entry points into the source cache with no tracked source", () => {
+    const cacheRoot = join(homedir(), ".cache", "agentbrew", "sources");
+    const state = makeState({
+      sources: [],
+      skillSourceDirs: [{ label: "stale", path: join(cacheRoot, "https___github_com_acme_skills", "skills") }],
+    });
+    const warnings = validateState(state);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("stale");
+    expect(warnings[0]).toContain("every skill");
+  });
+
+  it("does not warn when a tracked source owns the cached skillSourceDirs path", () => {
+    const source = {
+      url: "https://github.com/acme/skills",
+      type: "github" as const,
+      skillsInstalled: ["debug"],
+      availableItems: [],
+      addedAt: "",
+    };
+    const cacheRoot = join(homedir(), ".cache", "agentbrew", "sources");
+    const state = makeState({
+      sources: [source],
+      skillSourceDirs: [{ label: "skills", path: join(cacheRoot, "https___github_com_acme_skills", "skills") }],
+    });
+    expect(validateState(state)).toEqual([]);
+  });
+
+  it("does not warn for a hand-picked skill dir outside the source cache", () => {
+    const state = makeState({ skillSourceDirs: [{ label: "mine", path: "~/my-skills" }] });
+    expect(validateState(state)).toEqual([]);
   });
 
   it("warns when an MCP server has an empty command", () => {

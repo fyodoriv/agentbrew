@@ -80,7 +80,7 @@ Run `npm run dev -- lint` after editing it to validate syntax and catalog shorth
 
 ### Skill Sources
 
-Skills are collected from installed source selections plus opt-in `skillSourceDirs` in `state.yaml`. A tracked source in `state.sources` is an index of available skills; only names listed in that source's `skillsInstalled` are symlinked during `agentbrew sync`. Legacy/manual `skillSourceDirs` outside tracked source paths remain explicit opt-in directories and deploy every skill they contain.
+Skills are collected from installed source selections plus opt-in `skillSourceDirs` in `state.yaml`. A tracked source in `state.sources` is an index of available skills; only names listed in that source's `skillsInstalled` are symlinked during `agentbrew sync`. Legacy/manual `skillSourceDirs` outside tracked source paths remain explicit opt-in directories and deploy every skill they contain. A `skillSourceDirs` path inside the source cache (`~/.cache/agentbrew/sources/`) that no tracked source owns gets a `state.yaml` warning on load, because it would silently deploy every skill in that cache. The field keeps its name: renaming it would force a state migration for no behavior gain.
 
 To add a new skill source, edit `~/.config/agentbrew/state.yaml`:
 

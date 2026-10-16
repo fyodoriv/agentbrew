@@ -257,13 +257,6 @@
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
   - **Blocked**: upstream — re-checked 2026-10-16: `get-uri` 8.0.1 (latest) still depends on `basic-ftp` `^5.3.1`; the override keeps 6.2.3.
 
-- [ ] Reconcile `skillSourceDirs` legacy semantics with Agentfile `sources`
-  - **ID**: reconcile-skill-source-dirs-with-agentfile-sources
-  - **Tags**: scout, skills-sync, agentfile, docs
-  - **Details**: `state.sources` now models indexed skill registries whose deployment is gated by `skillsInstalled`, while legacy `skillSourceDirs` still means "deploy every skill in this directory." That distinction is documented but still subtle and easy to misuse in hand-edited state. Decide whether to keep `skillSourceDirs` as an advanced opt-in escape hatch, migrate it to an explicit `optInSourceDirs` name, or replace it with Agentfile-local skill install flows.
-  - **Files**: `src/sync/skills-sync.ts`, `src/agentfile.ts`, `README.md`, `AGENTS.md`
-  - **Acceptance**: Source semantics are represented by one clear schema field or by docs plus lint/validation that flags accidental registry paths in `skillSourceDirs`; `agentbrew lint` or an equivalent test catches the ambiguous configuration.
-
 - [ ] Adopt rule #8 — pattern conformance index in `VISION.md`
   - **ID**: adopt-rule-8-pattern-conformance-index
   - **Tags**: scout, rule-8, constitution, architecture

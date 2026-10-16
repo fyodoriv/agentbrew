@@ -20,7 +20,6 @@ agentfile-hooks-async-rewake-control-fields
 restore-agentbrew-release-automation
 install-mcp-env-sanitize-strips-vars-and-y-flag
 workspace-aware-sync
-reconcile-skill-source-dirs-with-agentfile-sources
 bridle-opencode-path-issue
 ecosystem-contrib-managed-section-convention
 contribute-trust-building-pr-skills-cli

@@ -36,6 +36,8 @@ agentbrew install context7                # live library docs MCP (recommended, 
 agentbrew install sourcegraph             # enterprise code search MCP (token + instance URL)
 agentbrew install storybook-screenshot    # catalog CLI command + package binary
 agentbrew install --recommended           # recommended skills + MCP + rules, in one shot
+agentbrew install verify-everything       # a bundle: a named group of catalog items, installed together
+agentbrew catalog --bundles               # list bundles and their members
 agentbrew install review-tasks            # tasks.md /review-tasks: audit a task queue for stale or misprioritized work
 agentbrew install --refresh-rules --dry-run   # preview catalog rule text updates (rules only); drop --dry-run to apply
 agentbrew install @anthropic/mcp-proxy    # any npm package (auto-detected as MCP)

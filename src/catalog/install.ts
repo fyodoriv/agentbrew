@@ -12,6 +12,7 @@ import { loadSharedRules } from "../sync/rules-sync.js";
 import type { Source } from "../types.js";
 import { ICON_INFO, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { findBundle, missingBundleMembers } from "./bundles.js";
 import {
   addRuleToSharedRules,
   installCliTool,
@@ -28,7 +29,7 @@ import type {
   CatalogRule,
   CatalogSkill,
 } from "./types.js";
-import { loadCatalog } from "./types.js";
+import { type CatalogBundle, loadCatalog } from "./types.js";
 
 /**
  * Stderr-warn at install time when a catalog entry carries a `deprecated:`
@@ -283,6 +284,11 @@ async function installFromCatalog(
   dryRun: boolean,
   local?: string,
 ): Promise<void> {
+  const bundle = findBundle(catalog, name);
+  if (bundle) {
+    await installBundle(state, catalog, bundle, dryRun);
+    return;
+  }
   if (dryRun && showCatalogDryRun(catalog, name, local)) return;
 
   const skill = catalog.skills.find((s) => s.name === name);
@@ -311,6 +317,29 @@ async function installFromCatalog(
   }
   if (await tryInstallFromRegistry(catalog, name, dryRun)) return;
   await searchAndInstallFromSources(state, catalog, name);
+}
+
+/** Install every member of a bundle; refuse the whole bundle when a member is not in the catalog. */
+async function installBundle(
+  state: NonNullable<ReturnType<typeof requireState>>,
+  catalog: ReturnType<typeof loadCatalog>,
+  bundle: CatalogBundle,
+  dryRun: boolean,
+): Promise<void> {
+  const missing = missingBundleMembers(catalog, bundle);
+  if (missing.length > 0) {
+    console.error(
+      chalk.red(
+        `Bundle '${bundle.name}' lists items that are not in the catalog: ${missing.join(", ")}. Nothing installed.`,
+      ),
+    );
+    process.exitCode = 1;
+    return;
+  }
+  console.log(chalk.bold(`\nInstalling bundle: ${bundle.name}`) + chalk.dim(` (${bundle.members.join(", ")})`));
+  for (const member of bundle.members) {
+    await installFromCatalog(state, catalog, member, dryRun);
+  }
 }
 
 /** Rules-only refresh: replaces edited catalog rule blocks and installs nothing else. */

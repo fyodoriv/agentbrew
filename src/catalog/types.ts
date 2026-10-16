@@ -158,11 +158,23 @@ export interface CatalogRepoSource {
   auto_update?: boolean;
 }
 
+/**
+ * A named group of existing catalog items (skills, MCP servers, rules, CLI
+ * tools) that `agentbrew install <bundle>` installs together. A bundle holds
+ * names only; each member keeps its own catalog entry and source.
+ */
+export interface CatalogBundle {
+  name: string;
+  description: string;
+  members: string[];
+}
+
 export interface Catalog {
   skills: CatalogSkill[];
   mcp_servers: CatalogMcpServer[];
   rules: CatalogRule[];
   cli_tools?: CatalogCliTool[];
+  bundles?: CatalogBundle[];
   /**
    * Optional list of whole-repo skill sources the catalog auto-registers
    * on applicable machines. Merged across base + overlay via `mergeCatalog`
@@ -277,6 +289,7 @@ function mergeCatalog(base: Catalog, overlay: Catalog): Catalog {
     mcp_servers: mergeByName(base.mcp_servers ?? [], overlay.mcp_servers ?? []),
     rules: mergeByName(base.rules ?? [], overlay.rules ?? []),
     cli_tools: mergeOptionalByKey(base.cli_tools, overlay.cli_tools, (item) => item.name),
+    bundles: mergeOptionalByKey(base.bundles, overlay.bundles, (item) => item.name),
     // repo_sources dedup by `source` (owner/repo) — they don't have `name`. Overlay
     // wins on conflict so the team overlay can tighten descriptions or change
     // auto_update semantics for a shared registry without requiring a base edit.

@@ -1,6 +1,8 @@
 import type { Command } from "commander";
 import { showCatalog } from "../catalog/browse.js";
+import { printBundles } from "../catalog/bundles.js";
 import { showCatalogItem } from "../catalog/show.js";
+import { loadCatalog } from "../catalog/types.js";
 import { cliMissingArg } from "../core/cli-error.js";
 
 /**
@@ -15,6 +17,7 @@ export function registerCatalogCommands(program: Command): void {
     .option("--mcp", "Show MCP servers only")
     .option("--rules", "Show rules only")
     .option("--sources", "Show skill sources only")
+    .option("--bundles", "Show bundles (groups of items that install together)")
     .option("-s, --search <term>", "Filter by keyword")
     .option("--json", "Output as JSON")
     .option("--markdown", "Output as markdown table")
@@ -28,11 +31,16 @@ export function registerCatalogCommands(program: Command): void {
         mcp?: boolean;
         rules?: boolean;
         sources?: boolean;
+        bundles?: boolean;
         search?: string;
         json?: boolean;
         markdown?: boolean;
         includeDeprecated?: boolean;
       }) => {
+        if (options.bundles) {
+          printBundles(loadCatalog());
+          return;
+        }
         const format = options.json ? ("json" as const) : options.markdown ? ("markdown" as const) : undefined;
         await showCatalog({ ...options, format });
       },

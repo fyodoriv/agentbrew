@@ -3185,3 +3185,51 @@ describe("catalog — bundled authorship rules", () => {
     expect(rule?.content).toMatch(/GitHub PR descriptions/i);
   });
 });
+
+describe("install <bundle>", () => {
+  const http = (name: string) => ({
+    name,
+    description: "HTTP MCP",
+    url: `http://localhost:9/${name}`,
+    env: {},
+    category: "dev",
+    recommended: false,
+  });
+
+  it("installs every member, and installing again is safe", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      cli_tools: [],
+      rules: [],
+      mcp_servers: [http("one-mcp"), http("two-mcp")],
+      bundles: [{ name: "pair", description: "two servers", members: ["one-mcp", "two-mcp"] }],
+    });
+
+    await install("pair");
+    await install("pair");
+
+    const added = mockAddMcpServer.mock.calls.map((call) => call[0]);
+    expect(added).toEqual(["one-mcp", "two-mcp", "one-mcp", "two-mcp"]);
+  });
+
+  it("installs nothing when a member is not in the catalog", async () => {
+    process.exitCode = 0;
+    mockLoadState.mockReturnValue(makeState());
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      cli_tools: [],
+      rules: [],
+      mcp_servers: [http("one-mcp")],
+      bundles: [{ name: "broken", description: "", members: ["one-mcp", "ghost"] }],
+    });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await install("broken");
+
+    expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(errors.mock.calls.flat().join(" ")).toContain("ghost");
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
+});

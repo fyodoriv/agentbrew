@@ -1799,6 +1799,23 @@ cli_tools:
           - "Click 'Add new token' under the API Token section."
           - "Name it 'agentbrew-cli', click 'Generate', and copy the value."
 
+
+# ── Bundles ────────────────────────────────────────────────────
+# A bundle names existing catalog items that `agentbrew install <bundle>`
+# installs together. It holds names only; each member keeps its own entry.
+# `agentbrew catalog --bundles` lists them. A bundle name must not match an
+# item name (src/catalog/bundles.test.ts).
+bundles:
+  - name: verify-everything
+    description: "Verification habits: check before claiming done, test first, debug systematically, doubt each decision, and keep code smells out."
+    members: [verification-before-completion, test-driven-development, systematic-debugging, doubt-driven-development, code-smells-aware]
+  - name: frontend-kit
+    description: "Build and check web UI: design guidance, shadcn components, web design rules, Playwright practices, and the Playwright MCP server."
+    members: [frontend-design, shadcn, web-design-guidelines, playwright-best-practices, playwright]
+  - name: mcp-essentials
+    description: "Common MCP servers: library docs (context7), browser control (playwright), GitHub, and step-by-step reasoning."
+    members: [context7, playwright, github, sequential-thinking]
+
 rules:
   - name: conventional-commits
     description: Enforce conventional commit format

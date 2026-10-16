@@ -1,0 +1,19 @@
+id: start-session-proposes-one-step
+suite: regression
+skill: start-session
+should: act
+input: "start"
+fixture:
+  profile: "Goal: finish chapter 3 by 2026-12-01. Constraints: 5 hours a week."
+  memory: "- [Chapter 3 outline](ch3.md) — outline done, draft not started"
+expect:
+  - "Proposes exactly one next step that moves chapter 3 forward"
+  - "Mentions the 2026-12-01 deadline or the time budget"
+---
+id: start-session-refrains-on-trivia
+suite: regression
+skill: start-session
+should: refrain
+input: "what is 2 + 2?"
+expect:
+  - "Answers directly without loading the session ritual"

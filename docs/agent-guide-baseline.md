@@ -71,6 +71,10 @@ agentbrew's version is `src/docs/agent-guide-contract.test.ts`.
 
 ## Adoption Steps
 
+For a brand-new repo, use the `new-project` workflow skill
+(`agentbrew install new-project`): it scaffolds this contract and scores it.
+The steps below are for an existing repo.
+
 1. Create or update `Agentfile.yaml` first so the repo declares its agent
    dependencies.
 2. Audit `AGENTS.md`, `README.md`, and `docs/` against this contract.

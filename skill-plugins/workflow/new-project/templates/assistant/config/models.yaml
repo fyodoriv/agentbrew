@@ -1,0 +1,17 @@
+# Model routing for {{NAME}}. Code reads this one file; nothing else names a model.
+# Order: local first, then free hosted, then paid. Personal data uses only routes with private_data: true.
+routes:
+  - name: local
+    provider: ollama            # OpenAI-compatible endpoint at http://localhost:11434/v1
+    model: "FILL: a local instruct model that fits in RAM"
+    private_data: true
+  - name: free-hosted
+    provider: "FILL: a free hosted provider"
+    model: "FILL: model id"
+    private_data: false
+  - name: paid
+    provider: anthropic
+    model: "FILL: model id"
+    private_data: false         # set true only after you accept the provider's data terms
+judge:
+  route: local                  # eval grader; a paid judge only for disagreements

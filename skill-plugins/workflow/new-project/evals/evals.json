@@ -1,0 +1,75 @@
+{
+  "skill_name": "new-project",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "set up a new repo for my software interview prep assistant: it should quiz me on algorithms and system design, run mock interviews, and track what I keep getting wrong",
+      "expected_output": "An assistant-profile repo, Python by default, with a tutor recipe (learner model, review and mock skills, rubrics, FSRS scheduling) and a 100% strict setup score.",
+      "expectations": [
+        "Chooses the assistant profile and the tutor recipe from references/assistant-recipes.md",
+        "Asks at most one round of at most three questions, or states its defaults",
+        "Runs scaffold.sh with --profile assistant, then the stack generator for the chosen stack",
+        "Plans a learner model under private/, review and mock skills, binary rubrics shared by feedback and judge, and FSRS scheduling",
+        "Adds eval cases that check the tutor withholds the solution before an attempt and refrains on a quick factual question",
+        "Keeps personal data out of git: private/ is ignored and eval cases are synthetic",
+        "Routes models through config/models.yaml with the local route first and never proposes xAI or Grok",
+        "Runs check-setup.sh --profile assistant --strict and scripts/check.sh and shows both outputs before reporting done"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "bootstrap a new CLI tool that converts markdown task files to calendar events",
+      "expected_output": "A tool-profile TypeScript repo with CHANGELOG, LICENSE, cli-design in the Agentfile, a wired gate, and a 100% strict score.",
+      "expectations": [
+        "Checks for prior art before building and records a verdict in docs/VISION.md",
+        "Chooses the tool profile and TypeScript, and records the stack in an ADR",
+        "Runs the stack generator and adds lint, typecheck, and test scripts that scripts/check.sh runs",
+        "Adds one smoke test so the gate proves something on day one",
+        "Fills every FILL: marker or names the ones the user must fill",
+        "Shows check-setup.sh --profile tool --strict at 100% and a green scripts/check.sh"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to start a private side project: an offline log of my garden plants with photos, to know when to water. Nobody should ever see my photos.",
+      "expected_output": "A side-project repo with a privacy doc, an ignored private/ folder, synthetic fixtures, VISION with a success metric and dated kill criteria.",
+      "expectations": [
+        "Chooses the side-project profile and a private repo",
+        "Writes docs/privacy.md and keeps the user's photos under private/ or outside the repo, never in tests or commits",
+        "Writes VISION with a measurable success metric and a dated kill criterion",
+        "Uses only synthetic fixtures in tests",
+        "Does not push or create a remote unless the user asked"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "new project: a log analyzer that has to chew through 50 GB of files fast on my laptop and ship as a single binary",
+      "expected_output": "A tool-profile repo on the Rust stack with cargo fmt, clippy, and tests wired into the gate.",
+      "expectations": [
+        "Picks Rust because of the heavy-app row in references/stacks.md (speed, big files, single binary)",
+        "Runs cargo init and relies on scripts/check.sh to run cargo fmt --check, clippy -D warnings, and cargo test",
+        "Records the stack choice and its reason in an ADR"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "my existing repo has no AGENTS.md, can you add one?",
+      "expected_output": "Does not scaffold a new project; points to the agent guide baseline for an existing repo instead.",
+      "expectations": [
+        "Recognizes this is an existing repo, not a new project",
+        "Does not run scaffold.sh over the existing repo",
+        "Routes to the agent-guide baseline (docs/agent-guide-baseline.md) or agentfile-init as appropriate"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "quickly hack a throwaway script to test whether this API returns pagination cursors",
+      "expected_output": "Does not use this skill; a throwaway spike belongs to prototype or a plain script.",
+      "expectations": [
+        "Does not create a full project scaffold for a throwaway question",
+        "Suggests the prototype skill or a single script",
+        "Does not run scaffold.sh or check-setup.sh"
+      ]
+    }
+  ]
+}

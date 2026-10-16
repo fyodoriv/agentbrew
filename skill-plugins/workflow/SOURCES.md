@@ -18,6 +18,7 @@ the former `fyodoriv/dev-skills` repository on 2026-10-07. The policy is:
 | --- | --- | --- |
 | `writing-plans` | [`obra/superpowers`](https://github.com/obra/superpowers/tree/main/skills/writing-plans) | Adds source-backed evidence ledgers, cross-repository task contracts, and the versioned `HostBootstrapPayload` rules required by the local `/ship-it` workflow. |
 | `iterate` | [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch), [`leo-lilinxiao/codex-autoresearch`](https://github.com/leo-lilinxiao/codex-autoresearch) | Consolidates the former `iterate` and `autoresearch` workflows into one canonical loop with rollback, stuck recovery, lessons, and parallel experiments. |
+| `new-project` | [`agentsmd/agents.md`](https://github.com/agentsmd/agents.md), [`anthropics/skills`](https://github.com/anthropics/skills), [`obra/superpowers`](https://github.com/obra/superpowers), [`github/spec-kit`](https://github.com/github/spec-kit) | Combines their repo conventions into three profiles (tool, assistant, side project) with a never-overwrite scaffolder and a deterministic `check-setup.sh` score. Sources: `new-project/references/research.md`. |
 
 The following catalog entries use upstream implementations directly and are
 not duplicated here: `grill-with-docs`, `improve-codebase-architecture`,

@@ -256,6 +256,19 @@
         "Measures the e2e time and cuts it (build once, run cases in parallel) before wiring it into a gate",
         "Wires a path trigger into the existing gates and shows an unrelated diff skipping it"
       ]
+    },
+    {
+      "id": 23,
+      "prompt": "/goal do extensive research on agentic best practices (provider docs, starred GitHub repos) and set up the best skills for creating new software projects: tools, personal assistants, side projects. Don't create the planned assistant repo yet.",
+      "expected_output": "A contract whose metric is a deterministic setup score taken as a baseline before any template exists, research fanned out to at most three parallel agents, one skill with profiles instead of several near-duplicate skills, and no private project names in the public skill repo.",
+      "expectations": [
+        "Builds the scorer first and records a baseline (empty dir and existing repos) before writing templates",
+        "Caps parallel research agents at three and folds their findings into a cited references file",
+        "Extends or composes existing skills (agentfile-init, write-vision, tasks.md setup) instead of duplicating them",
+        "Keeps names of the user's private projects out of the public repo and runs the leak check on untracked files too (git add -N)",
+        "Runs the project's own gate on the generated output, and treats a gate failure in a template as a template bug to fix",
+        "Does not create the deferred assistant repo; the goal's out-of-scope note stays respected"
+      ]
     }
   ]
 }

@@ -305,6 +305,12 @@ skills:
     category: development
     rationale: "Makes goal-driven autonomous runs measurable and review-ready. The goal-set-loads-run-goal hook loads it on every /goal once it is installed."
 
+  - name: new-project
+    description: "Starts a new repo with an agent-ready setup for a tool, a personal AI assistant, or a private side project: interview, stack pick (TS, Python, Rust), scaffold, and a deterministic setup score. Don't use for an existing repo (use the agent guide baseline) or a throwaway spike (use prototype)."
+    source: fyodoriv/agentbrew
+    category: development
+    rationale: "Bakes provider-agreed practice (one short AGENTS.md, one gate, evals before prompts, private data out of git) into every new repo from the first commit."
+
   # ── Tier 2: Strong Recommendation ─────────────────────────────
 
   - name: react-best-practices

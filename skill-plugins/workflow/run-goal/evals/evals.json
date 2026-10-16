@@ -45,7 +45,7 @@
         "Finds each skill's source (readlink, agentbrew status, or git remote) instead of editing the installed copy",
         "For the user-owned iterate skill, proposes or makes one concrete edit with an eval and ships it through the repo's delivery flow",
         "For the third-party skill, files a task or asks instead of forking it silently",
-        "Writes 'no change — <reason>' for any skill it does not change"
+        "Updates every skill used, including run-goal itself: a fix where a skill caused a problem, otherwise a new eval case from this run"
       ]
     },
     {

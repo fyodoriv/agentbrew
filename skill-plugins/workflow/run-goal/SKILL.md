@@ -150,11 +150,14 @@ Do this every time, also after a BLOCKED stop. Details:
    tooling. Each item is concrete and small.
 3. **Skills used**: list every skill you loaded or followed in this session,
    including this one.
-4. **Update those skills**: for each one, make one concrete edit that would
-   have prevented a problem you hit, or write "no change — <reason>". Route
-   the edit by owner (see the retro reference). For skills the user owns, edit
-   the source, add or adjust an eval, and ship the change through that repo's
-   normal delivery flow. Never edit an installed mirror.
+4. **Update every one of those skills**: each skill used gets an update, not
+   a "no change". If the skill caused or missed a problem, make the edit that
+   would have prevented it. If it worked as written, add an eval case built
+   from this run's scenario, so the behavior that worked stays tested. Route
+   the update by owner (see the retro reference). For skills the user owns,
+   edit the source and ship the change through that repo's normal delivery
+   flow. Never edit an installed mirror. A third-party skill gets a task with
+   the proposed change.
 5. **Remember**: store reusable lessons in memory, if the agent has memory.
 
 ## Final report
@@ -173,6 +176,6 @@ End with this shape. Keep it short.
 **Changes**: <PRs, commits, files>
 **What went wrong**: <bullets>
 **What to improve**: <bullets>
-**Skills updated**: <skill → change or PR, or "no change — reason">
+**Skills updated**: <every skill used → its edit or new eval + PR, or the task for a third-party skill>
 **Needed from you**: <the review or the one action, or "nothing">
 ```

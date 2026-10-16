@@ -18,7 +18,7 @@ the next goal goes faster, so each finding must change something.
 Write each item as `problem → cause → change`. Examples:
 
 - `Spent 20 min on a sandbox write failure → the hook fixture needs mktemp outside the sandbox → add a gotcha to AGENTS.md`
-- `Asked which test runner to use → package.json already said vitest → no change; the skill already says do not ask what the code answers`
+- `Asked which test runner to use → package.json already said vitest → add an eval where the runner is in package.json and the right answer asks nothing`
 
 Drop an item when you cannot name a change for it.
 
@@ -51,8 +51,11 @@ pull, `npm run build`, `agentbrew sync --pull`; plain `sync` skips a skill
 that is already installed). Then check that the installed copy shows the
 change. A merged edit that never reaches the agent helps nobody.
 
-Keep each edit small: one change that would have prevented a problem you hit.
-"No change — worked as written" is a valid result, but it needs a reason.
+Keep each edit small. Every skill used gets one update:
+
+- It caused or missed a problem: the change that would have prevented it.
+- It worked as written: a new eval case built from this run's scenario, so
+  that behavior stays tested. This is a real update, not churn.
 Follow the target repo's rules (`AGENTS.md`): tests, docs, commit style, and
 leak checks.
 

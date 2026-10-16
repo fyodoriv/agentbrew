@@ -163,6 +163,17 @@
         "Names the human-only step (npm login with 2FA) with the exact command and does not try to bypass it",
         "Keeps the parallel-agent cap while folding in the new work"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "/goal improve the description of my-skill until its trigger evals pass; use skill-creator. The benchmark step printed 'No eval directories found' and 'Delta +0.00'.",
+      "expected_output": "The agent treats the empty benchmark as a failure, renames the eval dirs to eval-<N>-<slug>, reruns the aggregate, revises without waiting for the review viewer, and notes the skipped human review in the report.",
+      "expectations": [
+        "Treats 'No eval directories found' or a run count of 0 as a failed benchmark, not a 0% result",
+        "Moves runs into the eval-<N>-<slug>/<config>/run-<K>/grading.json layout and reruns aggregate_benchmark",
+        "Grades the runs itself and revises without waiting for the review viewer or user feedback",
+        "Notes in the final report that the human review step was skipped"
+      ]
     }
   ]
 }

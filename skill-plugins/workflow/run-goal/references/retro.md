@@ -63,6 +63,21 @@ Keep each edit small. Every skill used gets one update:
 Follow the target repo's rules (`AGENTS.md`): tests, docs, commit style, and
 leak checks.
 
+### Evals with skill-creator in a goal run
+
+The third-party `skill-creator` skill (anthropics/skills) assumes a human in
+the loop. In a goal run:
+
+- Skip the review viewer wait. Its loop opens `generate_review.py` and waits
+  for the user's feedback before each revision. Grade the runs yourself
+  (`agents/grader.md`), read `benchmark.md`, and revise without waiting. Note
+  the skipped human review in the final report.
+- Use its exact layout: `<workspace>/eval-<N>-<slug>/<config>/run-<K>/grading.json`.
+  The directory name must start with `eval-`. With other names,
+  `python -m scripts.aggregate_benchmark` prints "No eval directories found",
+  still exits 0, and writes a benchmark with 0% pass rates and "Delta +0.00".
+  Treat that line or a run count of 0 as a failed benchmark, not a result.
+
 ## 6. Remember
 
 If the agent has a memory tool, store the reusable lessons: decisions with

@@ -196,7 +196,7 @@ stay unchanged.
 
 ```bash
 agentbrew sync                  # deploy + prune stale items (the one healing command)
-agentbrew sync --pull           # apply the Agentfile to state, fetch latest from sources, install newly requested skills, then deploy
+agentbrew sync --pull           # apply the Agentfile to state, fetch latest from sources, install newly requested skills, then deploy everything (hook scripts and models included)
 agentbrew sync --pull --dry-run # list what would be pulled; fetch and write nothing
 agentbrew sync --dry-run        # preview Agentfile + sync changes without applying
 agentbrew sync --only mcp       # sync one surface; installs skills only with --only skills

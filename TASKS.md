@@ -221,19 +221,6 @@
   - **Pivot**: if upstream declines, keep the local note and close the upstream half.
   - **Anchor**: #111 retro; Basili et al. 1994 (GQM).
 
-- [ ] `agentbrew sync --pull` redeploys changed hook scripts
-  - **ID**: sync-pull-redeploys-hook-scripts
-  - **Tags**: hooks, sync, run-goal
-  - **Details**: After #117 changed `hooks/checks/goal-set-loads-run-goal.sh`, `agentbrew sync --pull` (exit 0) left the old copy in `~/.claude/codeassist/hooks-scripts/`. Only `agentbrew sync --only hooks` deployed the new text. A full sync should redeploy changed hook scripts too.
-  - **Files**: `src/sync/hooks-sync.ts`
-  - **Output**: code
-  - **Acceptance**: change a hook script, run `agentbrew sync --pull`, and the deployed copy matches the source.
-  - **Hypothesis**: hook edits reach agents on the normal sync path, so the extra redeploy command per hook change drops from 1 to 0.
-  - **Measurement**: `diff hooks/checks/<id>.sh ~/.claude/codeassist/hooks-scripts/<id>.sh` after `agentbrew sync --pull`.
-  - **Success**: no diff.
-  - **Pivot**: if full sync skips hooks by design, document `--only hooks` in the README sync section instead.
-  - **Anchor**: run-goal goal run 2026-10-15; Basili et al. 1994 (GQM).
-
 - [ ] Workflow skills route only to skills that exist
   - **ID**: skills-route-dangling-skill-names
   - **Tags**: skills, routing, docs

@@ -29,6 +29,14 @@ vi.mock("./sync/agents-sync.js", () => ({
   syncAgentDefs: vi.fn(),
 }));
 
+vi.mock("./sync/hooks-sync.js", () => ({
+  syncHooks: vi.fn(),
+}));
+
+vi.mock("./sync/model-sync.js", () => ({
+  syncModels: vi.fn(),
+}));
+
 vi.mock("./sync/instructions-sync.js", () => ({
   syncInstructions: vi.fn(),
 }));
@@ -81,8 +89,10 @@ import { loadManifest, saveManifest } from "./manifest.js";
 import { loadState, saveState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
+import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
+import { syncModels } from "./sync/model-sync.js";
 import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 import { clearMcpmBridgeAttemptedMissing, refreshInstalledSkills, update } from "./update.js";
@@ -160,6 +170,9 @@ describe("update", () => {
     expect(mockSyncCommands).toHaveBeenCalledOnce();
     expect(mockSyncAgentDefs).toHaveBeenCalledOnce();
     expect(mockSyncInstructions).toHaveBeenCalledOnce();
+    // `sync --pull` must redeploy changed hook scripts and models too.
+    expect(vi.mocked(syncHooks)).toHaveBeenCalledOnce();
+    expect(vi.mocked(syncModels)).toHaveBeenCalledOnce();
   });
 
   it("records a clean sync so status shows the new last-sync time", async () => {

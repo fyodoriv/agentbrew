@@ -13,8 +13,10 @@ import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./sour
 import { requireState, saveState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
+import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
+import { syncModels } from "./sync/model-sync.js";
 import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 import type { AgentBrewState, Source } from "./types.js";
@@ -176,6 +178,10 @@ const SYNC_ENGINES: ReadonlyArray<{ name: string; label: string; run: () => Prom
   { name: "skills", label: "Skills", run: () => syncSkills() },
   { name: "commands", label: "Commands", run: () => syncCommands() },
   { name: "agents", label: "Agents", run: () => syncAgentDefs() },
+  // Keep in step with buildSyncModules (src/sync-runner.ts): a module left out
+  // here is skipped by `sync --pull` (hook scripts once stayed stale this way).
+  { name: "hooks", label: "Hooks", run: () => syncHooks() },
+  { name: "models", label: "Models", run: () => syncModels() },
   { name: "instructions", label: "Instructions", run: () => syncInstructions() },
 ];
 

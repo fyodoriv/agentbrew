@@ -43,7 +43,7 @@
       "expected_output": "A comprehensive list of safety rules and worker-detection strategy to prevent edit collisions.",
       "expectations": [
         "Explains the read-only companion role and that you never edit code files (src/, lib/, packages/*/src/, config files, test files)",
-        "Lists the allow-list for writes: TASKS.md, RECURRING.md, docs/competitors/*, docs/research/*, docs/test-gaps/*, README.md, AGENTS.md, CHANGELOG.md",
+        "Lists the allow-list for writes: TASKS.md, RECURRING.md, <COMPETITOR_DIR>/* (the competitor dir the skill detects, such as docs/competition/ or docs/competitors/), docs/research/*, docs/test-gaps/*, README.md, AGENTS.md, CHANGELOG.md",
         "Describes the worker-detection process: git status, git log --since, fd --changed-within, and git for-each-ref for active branches",
         "Explains that you must check worker-active files before editing README/AGENTS.md/CHANGELOG",
         "Warns against using git add -A, git reset --hard, git checkout ., git clean -fd, or git stash in non-interactive shells"

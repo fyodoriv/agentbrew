@@ -221,19 +221,6 @@
   - **Pivot**: if full sync skips hooks by design, document `--only hooks` in the README sync section instead.
   - **Anchor**: run-goal goal run 2026-10-15; Basili et al. 1994 (GQM).
 
-- [ ] companion-researcher eval names the competitor dir the skill now detects
-  - **ID**: companion-researcher-eval-competitor-dir
-  - **Tags**: skills, evals, companion
-  - **Details**: #86 made the skill write to `<COMPETITOR_DIR>/<NAME>.md` (`skill-plugins/workflow/companion-researcher/SKILL.md:62`). The eval still expects the fixed path `docs/competitors/*` in its write allow-list (`skill-plugins/workflow/companion-researcher/evals/evals.json:46`). A correct answer that names `docs/competition/` can fail the eval.
-  - **Files**: `skill-plugins/workflow/companion-researcher/evals/evals.json`
-  - **Output**: code
-  - **Acceptance**: the eval expectation names the detected competitor dir (`<COMPETITOR_DIR>`), not only `docs/competitors/*`; `npm run eval:agent-artifacts` passes.
-  - **Hypothesis**: matching the eval to the skill text removes the one expectation that rejects a correct `docs/competition/` answer.
-  - **Measurement**: `grep -c 'docs/competitors/\*' skill-plugins/workflow/companion-researcher/evals/evals.json` (now 1).
-  - **Success**: the count is 0 and the expectation names `<COMPETITOR_DIR>`.
-  - **Pivot**: if the eval runner needs literal paths, list both `docs/competition/*` and `docs/competitors/*` instead.
-  - **Anchor**: #86 (competitor dir detection); Basili et al. 1994 (GQM).
-
 - [ ] Bloat lint relaxes only the skill that has an open size-cut task
   - **ID**: bloat-lint-open-task-per-skill
   - **Tags**: lint, skills, baselines

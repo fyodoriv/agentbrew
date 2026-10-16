@@ -59,18 +59,35 @@ if [ -n "$VIOLATIONS" ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
-# 5. Ban a quoted grep pattern that starts with `-` and no `-e`/`--` before it.
-# grep parses it as an option, exits 2, and the guarded branch never runs
+# 5. Ban a grep or rg pattern that starts with `-` and no `-e`/`--` before it.
+# The tool parses it as an option, exits 2, and the guarded branch never runs
 # (for example `grep -qE '--body-file'`). Use `grep -qE -e '--body-file'`.
-VIOLATIONS=$(grep -rnE "grep[[:space:]]+(-[A-Za-z]+[[:space:]]+)*['\"]-" hooks/checks hooks/lib --include='*.sh' \
-  | grep -v '\.test\.sh' \
-  | grep -vE "[[:space:]]-[A-Za-z]*e[[:space:]]+['\"]-|[[:space:]]--[[:space:]]+['\"]-" \
-  || true)
+# Three forms are checked in hook scripts:
+#   a. a quoted literal: grep -q '-x' / rg '-x'
+#   b. an unquoted literal right before a here-string: grep -q -x <<<"$s"
+#      (an option there would leave grep without a pattern, so it is the pattern)
+#   c. a variable whose assignment in the same file starts with `-`:
+#      RE='-x'; grep -q "$RE" <<<"$s"
+DASH_HOOK_FILES=$(grep -rlE "(grep|rg)[[:space:]]" hooks/checks hooks/lib --include='*.sh' 2>/dev/null | grep -v '\.test\.sh' || true)
+VIOLATIONS=""
+for f in $DASH_HOOK_FILES; do
+  found=$(grep -nE "(^|[^A-Za-z_-])(grep|rg)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*(['\"]-|-[^[:space:]]+[[:space:]]*<<<)" "$f" \
+    | grep -vE "[[:space:]]-[A-Za-z]*e[[:space:]]+['\"]?-|[[:space:]]--[[:space:]]+['\"]?-" || true)
+  for var in $(grep -oE "^[[:space:]]*(readonly[[:space:]]+|local[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=['\"]-" "$f" \
+    | sed -E "s/^[[:space:]]*(readonly[[:space:]]+|local[[:space:]]+)?//; s/=.*//" || true); do
+    found="$found
+$(grep -nE "(^|[^A-Za-z_-])(grep|rg)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*\"?\\\$\{?$var\b" "$f" \
+  | grep -vE "[[:space:]]-[A-Za-z]*e[[:space:]]+\"?\\\$|[[:space:]]--[[:space:]]+\"?\\\$" || true)"
+  done
+  found=$(printf '%s\n' "$found" | grep -v '^$' | sed "s|^|$f:|" || true)
+  [ -n "$found" ] && VIOLATIONS="$VIOLATIONS$found
+"
+done
 
 if [ -n "$VIOLATIONS" ]; then
-  echo "❌ grep pattern starting with '-' and no -e (parsed as an option):"
-  echo "$VIOLATIONS"
-  echo "   Use grep -e '-pattern' instead."
+  echo "❌ grep/rg pattern starting with '-' and no -e (parsed as an option):"
+  printf '%s' "$VIOLATIONS"
+  echo "   Use grep -e '-pattern' (or rg -e) instead."
   ERRORS=$((ERRORS + 1))
 fi
 

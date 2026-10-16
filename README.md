@@ -89,7 +89,7 @@ agentbrew setup composio                   # guided wizard → saves to ~/.zshen
 
 **Delegated skill install networking.** Remote skill sources are installed through Vercel's `skills` CLI for agents it supports. That subprocess may need egress to `registry.npmjs.org` (to resolve the `skills` package), GitHub or the source Git host (to fetch the skill repo), and `skills.sh` (for risk-assessment metadata). If a proxy blocks any of those hosts, configure npm/git proxy settings first; agentbrew will still fall back to its native scanner when the subprocess fails.
 
-Offline installs work only after the npm cache is warm. Before going offline, run `npx --yes skills --version` once (or complete one online `agentbrew install <source>` run) so npm has the package cached. A cold offline run can fail with `ENOTCACHED`; for first-run offline machines, temporarily set the machine-local override in `~/.config/agentbrew/state.yaml` and switch it back to `auto` when online again:
+A cold offline `agentbrew init` still finishes: it detects agents, writes MCP config, and skips each skill source it cannot clone with a `source unreachable` warning (retested 2026-10-16, see [`docs/decisions/first-run-offline-warmup.md`](docs/decisions/first-run-offline-warmup.md)). Run `agentbrew init` or `agentbrew sync --pull` again when online to fetch the skipped skills. If a source is cloned but the skills CLI is not in the npm cache, the install fails with `ENOTCACHED` and falls back to the native path. To skip the skills CLI fully on an offline machine, set the machine-local override in `~/.config/agentbrew/state.yaml` and switch it back to `auto` when online again:
 
 ```yaml
 skillInstallMode: native

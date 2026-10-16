@@ -307,14 +307,6 @@
   - **Measurement**: `node scripts/check-rule-16-defaults.mjs --json | jq '.unjustified_flags | length'` returns 0; flag count in `src/cli.ts` trends down.
   - **Anchor**: Minsky `vision.md` § 16 "Default by default"; Spolsky 2001 *Joel on Software* (the "configuration is debt" essay); Conway 1968 (Conway's Law — flags often externalize team boundaries).
 
-- [ ] First-run experience — detect offline + auto-warm `npx skills` cache
-  - **ID**: first-run-offline-warmup
-  - **Tags**: scout, ux, onboarding, audit-2026-05-25
-  - **Details**: README mentions "Before going offline, run `npx --yes skills --version` once" but this is a footgun — users forget, then `agentbrew init` fails with `ENOTCACHED` and they're confused. Build: `agentbrew init` detects offline mode (probe network with a 2s timeout) and either (a) auto-warms the cache before going offline OR (b) gives an actionable error: "Run `npx --yes skills --version` once on a connected machine, then retry `agentbrew init`."
-  - **Files**: src/init.ts (add network probe + warmup path), src/init.test.ts (extend with offline scenarios), README.md § "Offline installs" (mention the new behavior)
-  - **Acceptance**: first re-test a cold offline `agentbrew init`: a failed skills-CLI delegation now falls back to the native path (`src/add-source.ts`). If it still fails, init prints the exact command to run (or uses `skillInstallMode: native`); otherwise close this task. A test covers the offline path.
-  - **Surfaced-by**: 2026-05-25 ecosystem audit (subagent report § 15).
-
 - [ ] Track install events + surface popularity signal in `agentbrew browse`
   - **ID**: catalog-install-popularity-signal
   - **Tags**: scout, catalog, ux, ecosystem-alignment

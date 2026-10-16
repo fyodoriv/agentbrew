@@ -22,7 +22,6 @@ restore-agentbrew-release-automation
 install-mcp-env-sanitize-strips-vars-and-y-flag
 workspace-aware-sync
 reconcile-skill-source-dirs-with-agentfile-sources
-first-run-offline-warmup
 bridle-opencode-path-issue
 ecosystem-contrib-managed-section-convention
 contribute-trust-building-pr-skills-cli

@@ -124,6 +124,9 @@ continue?". The user set a goal so that they can be away.
 - Log each non-obvious decision in one line: what you chose, and why.
 - When one part is blocked, park it with a note and continue with the other
   parts. Come back to it later.
+- A new request from the user mid-goal joins the goal: add it to the
+  contract file as a done-criterion, say so in one line, and deliver it in
+  this run. Do not start a separate session for it unless the user asks.
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,

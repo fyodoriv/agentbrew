@@ -152,6 +152,17 @@
         "Records the new commit SHA or PR in the retro file line for run-goal",
         "Loads the commit_session_legacy memory schema (session_id, agent_id, task_summary, outcome) before the first call"
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "/goal do tooling-checkup then deliver all unblocked tasks (mid-run the user adds: 'also make input latency a metric checked only when needed' and 'also set up npm auto-publish without asking me')",
+      "expected_output": "Both mid-goal requests are added to the contract file as done-criteria and delivered in the same run, with a one-line note each; human-only setup steps (npm 2FA) are named once, not worked around.",
+      "expectations": [
+        "Adds each mid-goal request to the contract file as a done-criterion and says so in one chat line",
+        "Delivers or hands each request to the agent already working in that repo instead of starting a new session",
+        "Names the human-only step (npm login with 2FA) with the exact command and does not try to bypass it",
+        "Keeps the parallel-agent cap while folding in the new work"
+      ]
     }
   ]
 }

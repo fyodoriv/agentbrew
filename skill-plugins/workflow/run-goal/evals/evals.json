@@ -332,6 +332,18 @@
         "Adds each map line in the PR that makes it true, with a comment saying why",
         "Reports the checker score on the merged branch and the grader verdict with evidence"
       ]
+    },
+    {
+      "id": 29,
+      "prompt": "/goal research this blog post about being more ambitious with AI models, update my skills, rules, and memories to follow it, and make my weekly checkup look for new AI-work ideas on its own",
+      "expected_output": "A contract whose metric counts the places that apply the post's ideas (baseline 0), an Ambition line naming the axis it applies, edits that extend the closest existing rule and skill sources instead of adding a new skill, a tested research step in the checkup that lists only unseen feed items, a memory entry, a sync that deploys the rules, and a retro.",
+      "expectations": [
+        "Reads the post itself before writing the contract, and quotes no more than a short phrase from it",
+        "Writes an Ambition line in the contract (Altitude, Depth, or Range) and offers any bigger goal as a suggestion, not as silent scope",
+        "Extends the closest existing rule and skill sources (shared rules, run-goal, the checkup skill) rather than creating a new skill",
+        "Gives the new research step an outside judge: a script with a test, and a rule that each finding names a measurement before it becomes a task",
+        "Deploys the rule change with agentbrew sync and proves it with a grep of the generated instructions file"
+      ]
     }
   ]
 }

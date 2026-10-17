@@ -116,6 +116,12 @@ Write the contract in the chat before you change anything. Fill in the template 
 - **Suggestions**: one to three ways to make the goal better. For example:
   split it, add a missing metric, reuse a tool, or take a cheaper path. Adopt
   a suggestion by default when it only reduces risk or scope creep, and say so.
+- **Ambition pass** (shared-rules **## Ambition with models**): before you
+  finish the Suggestions, check three axes and name the one you apply.
+  **Altitude**: the goal beyond the goal ("keep the suite green", not "fix
+  this test"). **Depth**: the rawest data, the expert's instruments, and a
+  judge other than you. **Range**: one method from another field. Offer a
+  bigger goal as a suggestion; never widen scope without the user's yes.
 
 Take the baseline measurement now, while nothing has changed yet.
 

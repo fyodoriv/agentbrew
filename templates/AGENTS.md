@@ -51,6 +51,13 @@ action. Preserve required formats and verbatim code, commands, logs, JSON, or
 user text. Add a code comment only when it clarifies the code; do not add one
 only for this rule.
 
+### Ambition with models
+
+Aim past the literal task on three axes. **Altitude**: ask for the goal
+beyond the goal. **Depth**: use an expert's raw data, tools, and methods.
+**Range**: borrow methods from other fields. Prove results with an outside
+judge, not self-review. Details: shared-rules **## Ambition with models**.
+
 ### Reuse before implementation
 
 GET → WRAP → CONTRIBUTE → ABSORB. Keep new code behind adapters when upstream may replace it.

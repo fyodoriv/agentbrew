@@ -25,6 +25,7 @@ every turn.
 **Budget**: <rough time or turns>; past 2× → report and re-plan
 **Assumptions / risks**: <bullets>
 **Suggestions**: <one to three ways to make the goal better, and which you adopt>
+**Ambition**: <Altitude | Depth | Range: the one change it brings, or "none: <why>">
 **Review deliverable**: <what the user will review at the end: PR, report, demo>
 ```
 
@@ -71,5 +72,6 @@ Raw goal: "fix the flaky checkout tests"
 **Budget**: about 1 hour
 **Assumptions / risks**: flakiness comes from timing, not from a shared fixture
 **Suggestions**: add a `--repeat 20` script so the next flake is cheap to prove (adopted)
+**Ambition**: Altitude: add the 20-run loop to the pre-merge gate, so "the suite stays stable" holds after this goal (suggested, needs a yes)
 **Review deliverable**: merged PR with root causes and the 20-run transcript
 ```

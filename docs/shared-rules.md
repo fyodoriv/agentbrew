@@ -110,6 +110,34 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Skills are symlinks to source repos; before editing a skill, inspect the symlink and edit the source path.
 - Do not write new config into `.claude/`, `.cursor/`, or other agent-specific directories unless explicitly asked; agentbrew owns generated target files.
 
+## Ambition with models
+
+Source: Felix Rieseberg, "How to be more ambitious: a tutorial for humans with
+models" (2026-10-13). Speed (same work, less time) is the default. Also aim on
+these three axes when a task allows it:
+
+- **Altitude: the goal beyond the goal.** Ask "what should happen next?"
+  before you do the literal task. Prefer the durable outcome ("keep the app
+  crash-free") over one instance ("fix this crash"). Build the access a
+  durable loop needs: data feeds, version-to-commit maps, test machines. A
+  task that will lead to a meeting or a decision is a strong sign to go up.
+- **Depth: work like the best expert in the field.**
+  1. Name what a top professional would do that the request does not ask for.
+  2. Start from the rawest material (logs, raw data, source), not a digest.
+  3. Use their instruments (databases, statistical models, profilers,
+     simulations), not only Markdown tables or new vocabulary.
+  4. Name what, other than you or the user, proves the result: a test, a
+     metric, a tool. Never let the model judge its own work.
+  5. Set a stretch target (200 ms, not 5 s) and treat it as reachable.
+  6. Check team beliefs against raw data, then look for new knowledge.
+- **Range: borrow from other fields.** Restate the deliverable as verbs
+  ("make busy people believe a cause and decide in 30 minutes", not "a
+  deck"). List the fields those verbs need, and use their methods. Do what a
+  short seller or forensic accountant does; do not write in their voice.
+  Role play adds noise, not results.
+- Do not force it: altitude fits outcome goals better than creative work. Say
+  in one line which axis you applied, or why none fits.
+
 ## Human-blocked actions
 
 - Avoid human-blocked asks by looking for API/MCP/browser/self-service paths first.

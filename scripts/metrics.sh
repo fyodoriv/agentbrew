@@ -9,6 +9,7 @@
 # (AGENTBREW_EVENTS_FILE, default ~/.local/share/agentbrew/logs/events.jsonl),
 # and the gate timings (.metrics/gate-timings.jsonl).
 # Runs under macOS /bin/bash 3.2.
+# <!-- scope: human-approved task meet-new-project-requirements (TASKS.md); this file closes step 2 -->
 set -u
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

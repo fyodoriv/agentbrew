@@ -23,6 +23,13 @@ describe("install e2e trigger", () => {
     expect(out).not.toContain("install e2e: fast");
   });
 
+  it("runs the pack e2e when the packed hooks or template rules change", () => {
+    for (const path of ["package.json", "hooks/manifest.yaml", "templates/rules/testing.mdc", "src/sync/hooks-sync.ts"]) {
+      expect(decide(path), path).toContain("install e2e: pack");
+    }
+    expect(decide("hooks/checks/perf-record.sh")).toContain("skip");
+  });
+
   it("is wired into both gates", async () => {
     const { readFileSync } = await import("node:fs");
     const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8"));

@@ -195,19 +195,6 @@
 
 ## P2
 
-- [ ] npm users get the same hooks and per-file rules as clone users
-  - **ID**: npm-package-ships-hooks-and-rules
-  - **Tags**: packaging, hooks, rules, new-users
-  - **Details**: `package.json` `files` ships only `dist`, README, and LICENSE, and the hook sync finds `hooks/` by walking up from the repo or cwd. So `npm i -g agentbrew` users get no canonical hooks (perf recording, verify-before-completion, /goal hooks), and the `.mdc` template rules may not deploy either. Ship `hooks/` and `templates/rules` in the package (or copy them into `dist/` at build) and resolve them from the package root.
-  - **Files**: `package.json`, `tsup.config.ts`, `src/sync/hooks-sync.ts`, `src/sync/catalog-template-rules.ts`
-  - **Output**: code
-  - **Acceptance**: `npm pack` then a global install in a temp prefix and temp HOME deploys the default-on hooks into `~/.claude/settings.json`.
-  - **Hypothesis**: default-on hooks deployed for an npm install go from 0 to the same set a clone gets.
-  - **Measurement**: `npm pack` + `npm i -g ./agentbrew-*.tgz --prefix $TMP` + `HOME=$TMP/home agentbrew sync`, then count hook entries in the temp `settings.json`.
-  - **Success**: hook ids match a clone install exactly.
-  - **Pivot**: if the package size grows past 2x, ship only the default-on hooks.
-  - **Anchor**: Basili et al. 1994 (GQM); finding from the 2026-10-16 portability audit.
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

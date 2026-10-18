@@ -11,6 +11,9 @@
   },
   "files": [
     "dist",
+    "hooks",
+    "!hooks/**/*.test.sh",
+    "templates/rules",
     "README.md",
     "LICENSE"
   ],

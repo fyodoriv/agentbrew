@@ -16,6 +16,17 @@ surface.
 The parser rejects malformed manifests during sync so a broken guardrail fails
 before it can silently disappear from an agent.
 
+Sync finds `hooks/` in this order: `AGENTBREW_REPO_ROOT`, then the nearest
+ancestor of the running CLI that has an `agentbrew` `package.json` and
+`hooks/manifest.yaml`, then the current directory. A clone matches at the repo
+root. An `npm i -g agentbrew` install matches at the package root, because the
+package ships `hooks/` (without the `.test.sh` fixtures) and `templates/rules/`
+through the `files` list in `package.json`. The real-e2e scenario
+`real-e2e/scenarios/npm-package-hooks.test.ts` packs the repo, installs the
+tarball globally into a scratch prefix, and checks that the hook entries and
+catalog `.mdc` rules match a clone. `scripts/install-e2e-if-needed.sh` runs it
+when `package.json`, the manifest, or the template rules change.
+
 ## Manifest schema
 
 ```yaml

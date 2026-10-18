@@ -80,6 +80,17 @@ agentbrew                    # auto-init, auto-sync — done
 agentbrew team set <overlay-url>   # optional — layer on your company's curated set
 ```
 
+## Problem
+
+A developer who uses more than one AI coding agent keeps the same skills, MCP
+servers, rules, commands, hooks, and agent definitions in a separate file
+format for each agent. The copies drift: a server added to Claude Code is
+missing in Cursor, a rule edit reaches one agent and not the others, and an
+agent update breaks a config without any warning. Each agent ships its own
+installer, and none of them owns the whole machine. agentbrew solves this with
+one declarative source (`Agentfile.yaml`), one sync, and a scheduled repair
+that finds and fixes drift.
+
 ## Who it's for
 
 **Primary user: any developer using AI coding agents.** Install once, configure once, and every agent on the machine gets the same skills, MCP servers, rules, commands, hooks, and agent definitions. The catalog ships with public, generic recommendations that benefit any developer.
@@ -218,6 +229,16 @@ Hard boundaries. Out of scope unless a specific [trigger in the dissolution anal
 - **Bi-directional sync** — agentbrew is one-way (Agentfile → agent configs)
 - **A daemon separate from the OS scheduler** — auto-repair uses launchd / systemd / Windows Task Scheduler
 
+## Non-goals
+
+The frontmatter lists them as NG1 to NG4; the "Not building" list below gives
+the full boundaries.
+
+- Not a per-agent config UI (NG1), and not a skill author or host (NG2).
+- No bespoke support for excluded agents (NG3) and no new work for frozen ones (NG4).
+- No telemetry: every log stays on the user's machine.
+- No content hosting, registry, IDE extension, framework, or daemon of its own.
+
 ## Coexistence with other tools
 
 Users can safely run agentbrew alongside other agent-config managers. The coexistence contract is that each tool owns its own managed-section markers and never touches content inside another tool's markers.
@@ -267,6 +288,9 @@ Every new feature or change answers these in order:
 
 ## Success metrics
 
+Each measurable goal has a goal, a pivot, and an exact command in
+[`metrics.md`](metrics.md); `bash scripts/metrics.sh` prints them.
+
 - A new engineer on a team with an overlay goes from zero to fully configured in under 2 minutes
 - `agentbrew team unset` leaves a fully functional generic tool
 - Overlay never touches `src/catalog.yaml` or generic shared code
@@ -276,6 +300,22 @@ Every new feature or change answers these in order:
 - Every error message tells the user what to do next
 - Codebase shrinks over time as upstream tools improve
 - New contributor adds a catalog entry in under 10 minutes
+
+## Kill criteria
+
+If any trigger fires, open a keep-or-kill review in the next quarterly
+dissolution review (`RECURRING.md`, `quarterly-dissolution-reeval`) and record
+the decision here with its date. These triggers moved here from the
+[skills CLI comparison](competition/vercel-skills-cli-vs-agentbrew.md#triggers-that-would-flip-the-decision-to-dissolve-now).
+
+| Trigger | Status (checked 2026-10-18) |
+|---|---|
+| The skills CLI adds MCP or rules sync. | Not fired. |
+| A multi-surface tool (Bridle, Caliber, or a new one) reaches 5K stars with drift detection and 20+ agent targets. | Not fired. |
+| The skills CLI ships a config system for the whole CLI that grows into a multi-surface manifest. | Not fired: PR #937 closed; its successor #2348 syncs npm package skills only (2026-10-16). |
+| Nobody can staff agentbrew maintenance, even half a person. | Not fired. |
+| Non-test source grows past 30K lines without matching user-story gains. | **Fired.** Decision (in "Maintenance is the product" above since before the 2026-09-30 public release): keep, and shrink. On 2026-10-18 the source is still well past the line and growing, so the next quarterly review must confirm or reverse the decision. `bash scripts/metrics.sh` prints the line count. |
+| A Node.js port of mcpm or ai-rules appears, so full delegation becomes possible. | Not fired. |
 
 ## team overlay
 

@@ -1,0 +1,22 @@
+# Where agentbrew meets each new-project required area. check-setup.sh reads
+# it: map.<area> lists the files that meet the area, waive.<area> gives the
+# reason an area does not fit. The monthly audit re-reads every line.
+# Rules: skill-plugins/workflow/new-project/references/requirements-map.md
+# Each map line lands in the PR that makes it true, with a comment saying why.
+
+# Docs: docs/README.md maps every doc to the question it answers;
+# src/docs/agent-guide-contract.test.ts fails on an unmapped doc, a broken map
+# link, an AGENTS.md over 10000 bytes or out of section order, or a README
+# that does not open with a quickstart and the map link.
+map.docs: docs/README.md src/docs/agent-guide-contract.test.ts
+
+# VISION.md (root, by accepted push back; docs/VISION.md is a symlink) has
+# Problem, Non-goals, Success metrics (pointing at docs/metrics.md), and dated
+# Kill criteria with the keep-or-kill decision on the fired 30K-line trigger.
+map.vision: VISION.md
+
+# docs/metrics.md: every metric is an outcome with a goal, a pivot, and its
+# exact command; missing data prints (stub), never 0. scripts/metrics.sh prints
+# the table, gate speed included. src/docs/metrics-doc.test.ts fails on a row
+# without a goal, pivot, or command, or a metric the script does not print.
+map.metrics: docs/metrics.md scripts/metrics.sh src/docs/metrics-doc.test.ts

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Print the agentbrew metrics table: value, goal, and pivot for each metric.
+#
+# Usage: bash scripts/metrics.sh
+#
+# A metric with no data prints "(stub)", never 0, so a missing log is never
+# read as a real zero. Definitions, goals, pivots, and commands: docs/metrics.md.
+# Sources: git (source lines), the content-free event log
+# (AGENTBREW_EVENTS_FILE, default ~/.local/share/agentbrew/logs/events.jsonl),
+# and the gate timings (.metrics/gate-timings.jsonl).
+# Runs under macOS /bin/bash 3.2.
+set -u
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+events="${AGENTBREW_EVENTS_FILE:-$HOME/.local/share/agentbrew/logs/events.jsonl}"
+timings="$root/.metrics/gate-timings.jsonl"
+
+row() { printf '%-22s %-14s %-14s %s\n' "$1" "$2" "$3" "$4"; }
+
+source_lines="$(cd "$root" && git ls-files 'src/*.ts' 2>/dev/null | grep -v '\.test\.ts$' | xargs cat 2>/dev/null | wc -l | tr -d ' ')"
+case "$source_lines" in '' | 0 | *[!0-9]*) source_lines="(stub)" ;; esac
+
+# jsonl_stats <file> <kind>: prints one line of values for the metric kind,
+# each "(stub)" when the file is missing or holds no matching events.
+jsonl_stats() {
+  node -e '
+const fs = require("fs");
+const [file, kind] = process.argv.slice(1);
+let lines = [];
+try { lines = fs.readFileSync(file, "utf-8").split("\n").filter(Boolean); } catch {}
+const ev = lines.map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+const median = (xs) => { if (!xs.length) return "(stub)"; const s = xs.slice().sort((a, b) => a - b); return String(s[Math.floor(s.length / 2)]); };
+const rate = (xs) => xs.length ? Math.round((100 * xs.filter((e) => !e.ok).length) / xs.length) + "%" : "(stub)";
+const since = Date.now() - 30 * 86400e3;
+if (kind === "sync") {
+  const s = ev.filter((e) => e.event === "sync" && Number.isFinite(e.ms));
+  console.log(median(s.slice(-20).map((e) => e.ms)), rate(s));
+} else if (kind === "repair") {
+  console.log(rate(ev.filter((e) => e.event === "repair")));
+} else if (kind === "stories") {
+  const by = {};
+  for (const e of ev) if (e.story && Date.parse(e.ts) >= since) (by[e.story] ||= []).push(e);
+  const parts = Object.keys(by).sort().map((k) => k + "=" + rate(by[k]));
+  console.log(parts.length ? parts.join(",") : "(stub)");
+} else if (kind === "gate") {
+  const g = ev.filter((e) => e.event === "gate" && e.mode === "full" && Number.isFinite(e.ms));
+  console.log(median(g.slice(-10).map((e) => e.ms)));
+}
+' "$1" "$2"
+}
+
+read -r sync_ms sync_fail <<EOF
+$(jsonl_stats "$events" sync)
+EOF
+repair_fail="$(jsonl_stats "$events" repair)"
+stories="$(jsonl_stats "$events" stories)"
+gate_ms="$(jsonl_stats "$timings" gate)"
+
+row "metric" "value" "goal" "pivot"
+row "source_lines" "$source_lines" "<= 20000" "> 30000"
+row "sync_ms" "${sync_ms:-(stub)}" "<= 2000" "> 10000"
+row "sync_fail_rate" "${sync_fail:-(stub)}" "<= 5%" "> 20%"
+row "repair_fail_rate" "${repair_fail:-(stub)}" "<= 5%" "> 20%"
+row "story_fail_rate" "${stories:-(stub)}" "<= 5% each" "> 20% for one"
+# No cold install run records its time yet (docs/metrics.md).
+row "zero_to_configured_s" "(stub)" "<= 120" "> 300"
+row "gate_ms" "${gate_ms:-(stub)}" "<= 300000" "> 600000"

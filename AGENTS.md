@@ -27,8 +27,9 @@ Run every command from the repo root.
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Fast gate; says `merge-ready` when no full gate is needed | `npm run verify:changed` — seconds |
 | Full gate | `npm run verify` — takes several minutes; run it in the background |
-| One-step install e2e (real `scripts/install.sh` in a sandboxed scratch HOME) | `npm run test:install-e2e` — both gates run it only when an install path changes |
+| Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it when an install path changes) |
 | Build | `npm run build` |
+| Metrics with goal and pivot | `bash scripts/metrics.sh` ([`docs/metrics.md`](docs/metrics.md)) |
 
 ## Where to change what
 
@@ -81,20 +82,21 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it). Deps: `bash scripts/worktree-deps.sh`.
   A symlinked `node_modules` breaks `src/cli.test.ts`.
-- `src/cli.test.ts` can time out under high load. Run it again, or compare with `main`, before you blame your change.
+- `src/cli.test.ts` can time out under load. Re-run it before you blame your change.
 - A test that writes this repo's `TASKS.md` fails its file (`vitest.tasks-guard.ts`). Stub writers such as `writeFollowups`.
-- The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`. It also hides template files named `TASKS.md`: store them as `*.template.md` (the `new-project` contract test checks that every template is tracked).
+- The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`; store templates as `*.template.md`.
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and the `mktemp` calls in hook fixtures fail. Run those commands outside the sandbox. `$TMPDIR` differs between the two.
-- `jks-js` is a local stub (`scripts/stubs/jks-js`, wired by a root dev dependency plus an `overrides` entry). It keeps the unpatched `node-forge` out of the dev tree; promptfoo loads it only for Java keystore auth. Drop the stub when promptfoo or `node-forge` ships a fix.
-- A new catalog skill is not installable until the live checkout's `dist/` is rebuilt: the CLI bundles `src/catalog.yaml`. Until `npm run build` runs there, `agentbrew install <skill>` says "not found in catalog" and `agentbrew sync` skips it.
-- `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (label `com.agentbrew.check`). Do not test `init` that way on a machine whose auto-repair job matters.
+- `jks-js` is a local stub (`scripts/stubs/jks-js`, plus an `overrides` entry) that keeps the unpatched `node-forge` out. Drop it when upstream ships a fix.
+- The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
+- `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (`com.agentbrew.check`).
 - `npm run lint:rules` needs a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`). Without one, each rule is skipped.
-- Every PR hook acts only on `gh pr` in command position and reads heredoc bodies (`hooks/lib/gh-pr-body-from-command.sh`). A line inside your own command that starts with `gh pr create` still counts, so write hook test input with the Write tool.
+- PR hooks read `gh pr` in command position and heredoc bodies; a line in your command that starts with `gh pr create` counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
-- Hook scripts run under macOS `/bin/bash` 3.2: no `printf '%(...)T'`, no `${var,,}`. Keep a long jq program in a `hooks/lib/*.jq` file (sync deploys `lib/` whole); a jq program inside a single-quoted bash string breaks on its first `'`. Write a JSON default as `"${INPUT:-{\}}"`: `"${INPUT:-{}}"` appends a stray `}` when `INPUT` is set. `scripts/lint-security.sh` rejects it.
-- The install e2e (`real-e2e/scenarios/us24-one-step-install.test.ts`) runs under `sandbox-exec` on macOS: writes outside its scratch folder and the real `launchctl` fail it. Add a new install path to the triggers in `scripts/install-e2e-if-needed.sh`.
-- Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
+- Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
+- The install e2e (`real-e2e/scenarios/us24-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
+- `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
+- Task fields need the list dash (`  - **Field**: value`); parsers ignore a bare `  **Field**:` line. `npx @tasks-md/lint --fix TASKS.md` adds it.
 
 ## Delivery
 
@@ -111,6 +113,6 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 - Every behavior change updates its docs in the same PR. The routing table above names the doc.
 - A gotcha that cost you time goes into `## Gotchas` in the same PR, or becomes a test or lint if a machine can check it.
-- Every PR body has a `## Docs` section: the docs you changed, or `Docs: none — <reason>`. The opt-in hook `gh-pr-body-requires-docs` blocks `gh pr create` without it (enable it in `~/.config/agentbrew/hooks-overlay/manifest.yaml`).
+- Every PR body has a `## Docs` section: the docs you changed, or `Docs: none — <reason>`. The opt-in hook `gh-pr-body-requires-docs` enforces it.
 - A new top-level `docs/*.md` file needs a row in [`docs/README.md`](docs/README.md). `src/docs/agent-guide-contract.test.ts` checks this file's sections and size, the docs map, and the README opening.
 - Repos outside agentbrew: follow [`docs/agent-guide-baseline.md`](docs/agent-guide-baseline.md).

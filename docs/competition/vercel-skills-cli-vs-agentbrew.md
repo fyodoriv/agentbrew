@@ -1026,14 +1026,7 @@ Equally important to name the wins:
 
 ### Triggers that would flip the decision to "dissolve now"
 
-Specific conditions that would change the answer. If any of these happen, open an RFC to dissolve:
-
-- **Skills CLI expands to MCP OR rules sync.** Would reduce fatal gaps from 7 to 4–5 and signal Andrew Qu is expanding scope.
-- **A multi-surface tool (Bridle, Caliber, or new entrant) hits 5K stars with drift detection + 20+ agent targets.** Would fill the multi-surface gap.
-- **Anthony Fu's [PR #937](https://github.com/vercel-labs/skills/pull/937) lands with the "config system for the CLI as a whole"** and evolves to a multi-surface declarative manifest. Would fill the multi-surface state gap. (2026-10-16: #937 is closed; its successor [#2348](https://github.com/vercel-labs/skills/pull/2348) is open and syncs npm package skills only.)
-- **org's engineering team can no longer staff agentbrew maintenance** — even half a headcount. The tool's value proposition depends on maintenance happening.
-- **Agentbrew codebase grows past 30K LOC without commensurate user-story gains.** The ratio of maintenance burden to user value has flipped.
-- **A Node.js port of mcpm or ai-rules emerges.** Would solve the ecosystem-mismatch problem and make full delegation viable.
+The list of triggers now lives in [`VISION.md` § Kill criteria](../VISION.md#kill-criteria), with the status of each one and the keep-or-kill decisions. If any of them fires, open an RFC to dissolve.
 
 Until one of these triggers fires, the orchestrator-shape minimum-viable agentbrew is the target. The dissolution path is documented, the ecosystem is monitored, and the shrinks happen incrementally.
 

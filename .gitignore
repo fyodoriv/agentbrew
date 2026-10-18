@@ -10,7 +10,8 @@ tsconfig.tsbuildinfo
 .yarn/
 plugin-lock.json
 .devin/
-.agents/
+.agents/*
+!.agents/requirements.yaml
 .cursor/
 .minsky/
 .worktrees/
@@ -25,4 +26,10 @@ plugin-lock.json
 .env
 .env.*
 !.env.example
+.envrc
+*.pem
+*.key
+
+# Local gate timings and caches (scripts/metrics.sh reads them)
+.metrics/
 .playwright-mcp/

@@ -77,7 +77,7 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   SKILLS="$(hook_jq -r -s '
     [ .[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")
       | if .name == "Skill" then (.input.skill // empty)
-        elif .name == "Read" then ((.input.file_path // "") | capture("/skills/(?<n>[A-Za-z0-9_:-]+)/SKILL\\.md$")?.n // empty)
+        elif .name == "Read" then ((.input.file_path // "") | (capture("/skills/(?<n>[A-Za-z0-9_:-]+)/SKILL\\.md$").n)? // empty)
         else empty end ]
     | map(sub("^[^:]+:"; "")) | unique | .[]' "$TRANSCRIPT" 2>/dev/null || true)"
 fi

@@ -5,7 +5,14 @@
 # pre-push: block a push that would leak internal identifiers to GitHub.com.
 # Fast (~250ms) — runs only the OSS-readiness gate under src/oss/, so a leak
 # is caught before it can reach main. Nothing rewrites history later.
+#
+# lockfile-sync: block a push whose package.json and package-lock.json
+# disagree for npm 10 (`npm ci` would fail for npm 10 users). It runs only
+# when a pushed commit touches a package file; about 1 s with npm 10 cached.
 pre-push:
   commands:
     oss-readiness:
       run: npm run check:oss
+    lockfile-sync:
+      glob: "{package.json,package-lock.json}"
+      run: bash scripts/check-lockfile-sync.sh

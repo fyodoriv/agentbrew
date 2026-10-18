@@ -92,6 +92,20 @@ describe("scripts/verify.sh cache", () => {
     expect(runs()).toBe(0);
   });
 
+  it("keys the lockfile-sync step on the package files only", () => {
+    const { repo, run, runs } = scratchRepo();
+    writeFileSync(join(repo, "plan.txt"), "lockfile-sync bash count.sh\n");
+    writeFileSync(join(repo, "package.json"), '{"name":"p"}\n');
+    writeFileSync(join(repo, "package-lock.json"), '{"lockfileVersion":3}\n');
+    run();
+    writeFileSync(join(repo, "a.txt"), "two\n");
+    expect(run().stdout).toContain("lockfile-sync: cached");
+    expect(runs()).toBe(1);
+    writeFileSync(join(repo, "package.json"), '{"name":"p","dependencies":{"x":"1"}}\n');
+    run();
+    expect(runs()).toBe(2);
+  });
+
   it("logs each step and the gate to .metrics/gate-timings.jsonl", () => {
     const { repo, run } = scratchRepo();
     run();

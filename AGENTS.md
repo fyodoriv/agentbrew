@@ -79,8 +79,8 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 ## Gotchas
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
-- Develop in a worktree under `~/apps/tooling/wt/` and run `npm ci` there. A dot
-  dir (`.wt/`) breaks vitest discovery, and a symlinked `node_modules` breaks `src/cli.test.ts`.
+- Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it). Deps: `bash scripts/worktree-deps.sh`.
+  A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under high load. Run it again, or compare with `main`, before you blame your change.
 - A test that writes this repo's `TASKS.md` fails its file (`vitest.tasks-guard.ts`). Stub writers such as `writeFollowups`.
 - The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`. It also hides template files named `TASKS.md`: store them as `*.template.md` (the `new-project` contract test checks that every template is tracked).

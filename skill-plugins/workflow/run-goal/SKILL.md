@@ -164,6 +164,11 @@ continue?". The user set a goal so that they can be away.
   the user's parallel cap. When a worker reports, check its claims yourself
   (re-run its metric, look at side effects such as LaunchAgents it touched),
   and stop any background job it left running in a removed worktree.
+- After a session restart (`/goal continue …`, or workers reported as
+  stopped): re-measure from `origin` first, then list every worktree with
+  its commits ahead, uncommitted files, and push state. Resume each stopped
+  worker with its saved context (`SendMessage` to its id) and give it that
+  state; never assume a stopped worker's PR landed.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you

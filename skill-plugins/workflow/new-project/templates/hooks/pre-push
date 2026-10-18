@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Repo-local pre-push hook. A global core.hooksPath (for example dotfiles git-hooks)
+# delegates to hooks/pre-push, so the checks still run when lefthook cannot install.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+if command -v lefthook >/dev/null 2>&1; then exec lefthook run pre-push; fi
+scripts/check.sh fast

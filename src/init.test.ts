@@ -64,6 +64,7 @@ vi.mock("./sync-runner.js", () => ({
 
 import { detectAgents, discoverAllSkills } from "./agents.js";
 import { install } from "./catalog/install.js";
+import { fetchSources } from "./fetch-sources.js";
 import { init, initForce } from "./init.js";
 import { discoverMcpServers } from "./mcp/mcp.js";
 import { installShellHook, isShellHookInstalled } from "./shell-hook.js";
@@ -85,6 +86,7 @@ const mockSaveState = vi.mocked(saveState);
 const mockDefaultState = vi.mocked(defaultState);
 const mockInstall = vi.mocked(install);
 const mockAutoSync = vi.mocked(autoSync);
+const mockFetchSources = vi.mocked(fetchSources);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -163,6 +165,37 @@ describe("init", () => {
 
     expect(mockInstall).not.toHaveBeenCalled();
     expect(mockAutoSync).toHaveBeenCalled();
+  });
+
+  it("--skip-install fetches no sources, installs no Agentfile skills, and says how to add them", async () => {
+    mockLoadState.mockReturnValue(undefined);
+    mockDetectAgents.mockReturnValue([{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "y" }]);
+    mockDiscoverAllSkills.mockReturnValue(new Map());
+    mockDiscoverMcpServers.mockReturnValue([]);
+
+    await init({ skipInstall: true });
+
+    expect(mockFetchSources).not.toHaveBeenCalled();
+    expect(mockAutoSync).toHaveBeenCalledWith({ installAgentfileItems: false });
+    const printed = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => String(c[0]))
+      .join("\n");
+    expect(printed).not.toContain("Fetching sources");
+    expect(printed).toContain("agentbrew install --recommended");
+    expect(printed).toContain("Install the skills your Agentfiles list");
+  });
+
+  it("fetches sources and installs Agentfile skills without --skip-install", async () => {
+    mockLoadState.mockReturnValue(undefined);
+    mockDetectAgents.mockReturnValue([{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "y" }]);
+    mockDiscoverAllSkills.mockReturnValue(new Map());
+    mockDiscoverMcpServers.mockReturnValue([]);
+
+    await init();
+
+    expect(mockFetchSources).toHaveBeenCalled();
+    expect(mockAutoSync).toHaveBeenCalledWith({ installAgentfileItems: true });
   });
 
   it("honors --skip-sync by installing but not syncing", async () => {

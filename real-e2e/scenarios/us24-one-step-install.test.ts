@@ -132,6 +132,9 @@ describe.concurrent(`us24 one-step install (${COLD ? "cold: npm ci + build" : "f
       expect(existsSync(join(home, "Library", "LaunchAgents", "com.agentbrew.check.plist"))).toBe(false);
       expect(existsSync(join(home, ".local", "bin", "agentbrew"))).toBe(true);
       expect(out).toContain("agentbrew contribute");
+      // "No" to the recommended set means no downloads and no skill installs.
+      expect(out).not.toMatch(/Fetching /);
+      expect(out).not.toContain("Installing skill");
       expect(
         existsSync(join(root, "os-calls.log")) ? readFileSync(join(root, "os-calls.log"), "utf-8") : "",
       ).not.toMatch(/launchctl (load|bootstrap)/);

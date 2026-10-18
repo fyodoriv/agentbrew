@@ -20,6 +20,35 @@ interface InitResult {
   mcpServers: McpServer[];
 }
 
+/**
+ * What `init` does with each state.yaml key. `rebuild` keys come from
+ * detection and defaults; `keep` keys are user or sync choices copied from
+ * the previous state. The `Record` type makes a new state key fail the
+ * typecheck until it is listed here, so init cannot drop it by accident.
+ */
+const STATE_KEYS_ON_INIT: Record<keyof AgentBrewState, "rebuild" | "keep"> = {
+  schemaVersion: "rebuild",
+  agents: "rebuild",
+  mcpServers: "rebuild", // merged with the previous list above
+  catalogVersion: "rebuild",
+  sources: "keep",
+  declinedMcpServers: "keep",
+  agentfileSkills: "keep",
+  skillSourceDirs: "keep",
+  agentSourceDirs: "keep",
+  commandSourceDirs: "keep",
+  hooks: "keep",
+  externalMcpServers: "keep",
+  team: "keep",
+  memory: "keep",
+  organization: "keep",
+  skillInstallMode: "keep",
+  claudePermissions: "keep",
+  defaultModel: "keep",
+  defaultEffort: "keep",
+  modelOverrides: "keep",
+};
+
 function detectAndSave(previousState?: AgentBrewState): InitResult | undefined {
   const agents = detectAgents();
   const detectedAgents = agents.filter((a) => a.detected);
@@ -70,11 +99,13 @@ function detectAndSave(previousState?: AgentBrewState): InitResult | undefined {
   state.mcpServers = [...discoveredServers, ...preservedServers];
 
   // Preserve user configuration that detection doesn't touch
-  if (previousState?.sources) state.sources = previousState.sources;
-  if (previousState?.skillSourceDirs) state.skillSourceDirs = previousState.skillSourceDirs;
-  if (previousState?.agentSourceDirs) state.agentSourceDirs = previousState.agentSourceDirs;
-  if (previousState?.commandSourceDirs) state.commandSourceDirs = previousState.commandSourceDirs;
-  if (previousState?.claudePermissions) state.claudePermissions = previousState.claudePermissions;
+  if (previousState) {
+    for (const key of Object.keys(STATE_KEYS_ON_INIT) as Array<keyof AgentBrewState>) {
+      if (STATE_KEYS_ON_INIT[key] === "keep" && previousState[key] !== undefined) {
+        (state as unknown as Record<string, unknown>)[key] = previousState[key];
+      }
+    }
+  }
 
   // One-time migration hints fire when an upgraded user runs init/sync against
   // a state.yaml that still carries removed fields. Each removed field is

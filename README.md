@@ -105,6 +105,8 @@ agentbrew setup composio                   # guided wizard → saves to ~/.zshen
 claudePermissions: keep   # default: manage
 ```
 
+On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` writes this line before setup, so the prompts are never turned off. `install.sh plan` lists this and the other Claude Code changes (hooks, `/goal` behaviour, always-loaded CLAUDE.md size) before anything changes.
+
 `keep` does not undo what an earlier `sync` wrote. If `sync` already ran, also remove `defaultMode`, `skipAutoPermissionPrompt`, and any `mcp__*` allow rules you do not want from `~/.claude/settings.json`.
 
 **Scopes.** `install` is global by default (applies to every agent). Use `--local` / `--project` to install into the current repo's `.agentbrew/skills/` — ideal for project-specific conventions or team-shared skills.
@@ -116,6 +118,8 @@ A cold offline `agentbrew init` still finishes: it detects agents, writes MCP co
 ```yaml
 skillInstallMode: native
 ```
+
+Re-running `agentbrew init` keeps this setting and every other one you set in `state.yaml` (for example `claudePermissions`, `team`, `hooks`, `declinedMcpServers`, and the model keys). Init rebuilds only the detected agents and merges the MCP server list.
 
 #### Fallback failure modes
 

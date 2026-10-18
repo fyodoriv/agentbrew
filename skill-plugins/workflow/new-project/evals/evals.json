@@ -145,6 +145,17 @@
         "Checks that affected-test selection picks a test that reads the changed file by repo path (for example a root AGENTS.md)",
         "Shows the new test failing before the fix and passing after"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "new assistant repo for career help; my machine has a global core.hooksPath from dotfiles and the app handles employer data",
+      "expected_output": "The scaffold keeps working git hooks despite the global hooksPath (repo-local hooks/pre-commit and hooks/pre-push that the global hook delegates to), skill frontmatter that parses as YAML, and a privacy doc that lists every data exit including the agent transcript, each with a guard and a canary test.",
+      "expectations": [
+        "Ships hooks/pre-commit and hooks/pre-push so secret and docs checks run when lefthook install is skipped",
+        "Every skills/*/SKILL.md description parses as YAML (no bare ': ' in the value)",
+        "docs/privacy.md lists data exits including the agent transcript (stdout), each with a guard and a test",
+        "Uses an allowlist .gitignore and adds the hooks folder to it"
+      ]
     }
   ]
 }

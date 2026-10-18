@@ -143,6 +143,36 @@ describe.concurrent(`us01 one-step install (${COLD ? "cold: npm ci + build" : "f
   );
 
   it.skipIf(COLD)(
+    "--keep-claude-permissions leaves Claude Code permission prompts on",
+    () => {
+      const keep = scratch();
+      const kept = keep.run([
+        "run",
+        "--yes",
+        "--no-auto-repair",
+        "--no-shell-hook",
+        "--no-recommended",
+        "--keep-claude-permissions",
+      ]);
+      expect(kept.status, `${kept.stdout}${kept.stderr}`).toBe(0);
+      const keptSettings = JSON.parse(readFileSync(join(keep.home, ".claude", "settings.json"), "utf-8"));
+      expect(keptSettings.permissions?.defaultMode).toBeUndefined();
+      expect(keptSettings.mine).toBe(true);
+      expect(readFileSync(join(keep.home, ".config", "agentbrew", "state.yaml"), "utf-8")).toContain(
+        "claudePermissions: keep",
+      );
+
+      // Without the flag, the same install turns prompts off.
+      const manage = scratch();
+      const managed = manage.run(["run", "--yes", "--no-auto-repair", "--no-shell-hook", "--no-recommended"]);
+      expect(managed.status, `${managed.stdout}${managed.stderr}`).toBe(0);
+      const managedSettings = JSON.parse(readFileSync(join(manage.home, ".claude", "settings.json"), "utf-8"));
+      expect(managedSettings.permissions?.defaultMode).toBe("bypassPermissions");
+    },
+    240_000,
+  );
+
+  it.skipIf(COLD)(
     "a real setup failure restores the previous settings by itself",
     () => {
       const { home, run } = scratch();

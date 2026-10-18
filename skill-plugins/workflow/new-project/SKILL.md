@@ -99,6 +99,8 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
 9. **First commit** on `main`: `chore: scaffold <name> (<profile>)`. Push or
    create a remote only if the user asked. Report the score, the stack, the
    first task in `TASKS.md`, and any marker the user must still fill.
+   Then run `scripts/check.sh` again: before the first commit, gates that
+   scan tracked files (leak and secret scans) find nothing to scan and pass vacuously.
 
 ## Pull template fixes later
 
@@ -136,7 +138,13 @@ fallback in `scaffold.sh` reads the same names.
 - The tasks.md linter needs network on first run (`npx -y @tasks-md/lint`). In a
   sandbox, run `scripts/check.sh` outside it, or install the linter first.
 - `lefthook install` fails when a global `core.hooksPath` is set; `setup.sh`
-  then skips it with a note. The gate still runs the same checks.
+  then skips it with a note. The template ships `hooks/pre-commit` and
+  `hooks/pre-push`, which a delegating global hook (dotfiles) runs, so the
+  secret and docs checks still fire on commit. Keep them in sync with
+  `lefthook.yml`, and add `!/hooks/` if the repo uses an allowlist `.gitignore`.
+- A skill `description:` with `: ` inside is invalid YAML frontmatter, and
+  agents then skip the skill. Use ` - ` or quote the value; an assistant's
+  `evals/run.sh` should parse every `skills/*/SKILL.md`.
 - A global gitignore can hide template files (one once listed `TASKS.md`).
   Templates that a global ignore might match are stored under a Jinja name,
   such as `{{ 'TASKS.md' }}`;

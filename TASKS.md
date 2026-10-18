@@ -171,32 +171,6 @@
 
 ## P2
 
-- [ ] The installer says which Node version it found and how to upgrade it
-  - **ID**: install-node-version-message
-  - **Tags**: install, new-users, ux
-  - **Details**: With Node 18 installed (Volta), `scripts/install.sh plan` printed "Node.js 20 or newer is missing", so the person looks for a missing install instead of an old one. Print the found version and the fix for the version manager in use (`volta install node@22`, `fnm install 22`, `nvm install 22`, or `brew install node`).
-  - **Files**: `scripts/install.sh`, `INSTALL.md`
-  - **Output**: code
-  - **Acceptance**: with Node 18 on PATH, `install.sh plan` prints "Node.js 18 found; 20.11+ needed" and one upgrade command that matches the detected manager.
-  - **Hypothesis**: first-run installs that stop at the Node check and need a second attempt drop to zero in the install e2e.
-  - **Measurement**: `npm run test:install-e2e` with a Node 18 fixture.
-  - **Success**: the message names the found version and a working command.
-  - **Pivot**: if detection is fragile, print the version and the nodejs.org link only.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
-- [ ] The install plan lists every behaviour change the recommended set makes
-  - **ID**: install-plan-discloses-behaviour
-  - **Tags**: install, new-users, safety, ux
-  - **Details**: The recommended set changes how Claude Code behaves beyond adding skills: 21 hooks, a goal contract that blocks edits after `/goal` until it is written (`goal-contract-before-edit`), a retro before stop, ~6 KB of always-loaded CLAUDE.md text, and (unless `claudePermissions: keep`) prompts off. `install.sh plan` shows none of these, and `install.sh run` has no flag for `claudePermissions: keep`. List them in `plan`, add `--keep-claude-permissions` (seeds state.yaml before init), and ask it as INSTALL.md question 4.
-  - **Files**: `scripts/install.sh`, `INSTALL.md`, `src/init.ts`
-  - **Output**: code
-  - **Acceptance**: `install.sh plan` prints the hook count, the `/goal` behaviour, the CLAUDE.md size and the permission default; `install.sh run --yes --keep-claude-permissions` leaves `permissions.defaultMode` unset.
-  - **Hypothesis**: people surprised by changed Claude behaviour after install go to zero.
-  - **Measurement**: install e2e asserts on plan text and settings.json.
-  - **Success**: both assertions pass.
-  - **Pivot**: if the list gets long, link to one generated doc instead.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

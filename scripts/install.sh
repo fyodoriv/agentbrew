@@ -13,6 +13,8 @@
 #   --no-recommended   Skip the recommended skills and MCP servers
 #   --no-auto-repair   Do not install the background repair job (every 30 min)
 #   --no-shell-hook    Do not add the project-detection line to your shell rc file
+#   --keep-claude-permissions
+#                      Keep Claude Code permission prompts on (claudePermissions: keep)
 #   --yes              Required: confirms the user agreed to the plan
 #
 # Phases of `run`: preflight -> backup -> build -> link -> setup -> heal ->
@@ -42,21 +44,113 @@ LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 say() { printf '%s\n' "$*"; }
 step() { printf '\n== %s\n' "$*"; }
 
-usage() { sed -n '3,21p' "$0" | sed -E 's/^# ?//'; }
+usage() { sed -n '3,23p' "$0" | sed -E 's/^# ?//'; }
 
 node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
+
+# The minimum Node.js (major.minor) from package.json "engines", e.g. 20.11.
+node_min() {
+  sed -n 's/^ *"node": *">= *\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' "$REPO_DIR/package.json" | head -n 1
+}
+
+# One upgrade command for the version manager that owns `node` on PATH.
+node_upgrade_cmd() {
+  local path
+  path="$(command -v node 2>/dev/null || true)"
+  case "$path" in
+    */.volta/*) echo "volta install node@22"; return ;;
+    */fnm/* | */.fnm/* | */fnm_multishells/*) echo "fnm install 22 && fnm default 22"; return ;;
+    */.nvm/*) echo "nvm install 22 && nvm alias default 22"; return ;;
+    */mise/*) echo "mise use -g node@22"; return ;;
+  esac
+  if [ -z "$path" ]; then
+    if command -v volta >/dev/null 2>&1; then echo "volta install node@22"; return; fi
+    if command -v fnm >/dev/null 2>&1; then echo "fnm install 22 && fnm default 22"; return; fi
+    if [ -n "${NVM_DIR:-}" ]; then echo "nvm install 22 && nvm alias default 22"; return; fi
+    if command -v mise >/dev/null 2>&1; then echo "mise use -g node@22"; return; fi
+  fi
+  if command -v brew >/dev/null 2>&1; then echo "brew install node"; else echo "see https://nodejs.org"; fi
+}
+
+# Prints a ✗ line and returns 1 when Node.js is missing or older than package.json allows.
+check_node() {
+  local min found major minor min_major min_minor
+  min="$(node_min)"; min="${min:-20.11}"
+  min_major="${min%%.*}"; min_minor="${min#*.}"
+  if ! command -v node >/dev/null 2>&1; then
+    say "  ✗ Node.js is missing; $min+ needed. Install it: $(node_upgrade_cmd)"
+    return 1
+  fi
+  found="$(node --version 2>/dev/null)"; found="${found#v}"
+  major="${found%%.*}"; minor="${found#*.}"; minor="${minor%%.*}"
+  case "$major$minor" in
+    '' | *[!0-9]*)
+      say "  ✗ Node.js found, but 'node --version' failed; $min+ needed. Fix: $(node_upgrade_cmd)"
+      return 1
+      ;;
+  esac
+  if [ "$major" -gt "$min_major" ] || { [ "$major" -eq "$min_major" ] && [ "$minor" -ge "$min_minor" ]; }; then
+    return 0
+  fi
+  found="$major"
+  [ "$major" -eq "$min_major" ] && found="$major.$minor"
+  say "  ✗ Node.js $found found; $min+ needed. Upgrade: $(node_upgrade_cmd)"
+  return 1
+}
 
 preflight() {
   local ok=0
   if ! command -v git >/dev/null 2>&1; then say "  ✗ git is missing (install Xcode Command Line Tools: xcode-select --install)"; ok=1; fi
-  if ! command -v node >/dev/null 2>&1 || [ "$(node_major)" -lt 20 ]; then
-    say "  ✗ Node.js 20 or newer is missing (https://nodejs.org or: brew install node)"; ok=1
-  fi
+  check_node || ok=1
   if ! command -v npm >/dev/null 2>&1; then say "  ✗ npm is missing (it ships with Node.js)"; ok=1; fi
   if command -v gh >/dev/null 2>&1; then say "  ✓ GitHub CLI found (needed later for 'agentbrew contribute')"
   else say "  - GitHub CLI not found: optional, only for sending fixes upstream (brew install gh)"; fi
   [ "$ok" -eq 0 ] && say "  ✓ git, Node.js $(node_major), npm"
   return "$ok"
+}
+
+# Hooks that sync wires into Claude Code by default (hooks/manifest.yaml
+# entries for claude-code without `defaultEnabled: false`).
+claude_hook_count() {
+  awk '
+    function done() { if (open && on && cc) n++ }
+    /^  - id:/ { done(); open = 1; on = 1; cc = 0; next }
+    /^    defaultEnabled: *false/ { on = 0 }
+    /^    agents:.*claude-code/ { cc = 1 }
+    END { done(); print n + 0 }
+  ' "$REPO_DIR/hooks/manifest.yaml"
+}
+
+# Approximate size in KB of the always-loaded text agentbrew writes to
+# ~/.claude/CLAUDE.md: templates/AGENTS.md plus the recommended catalog rules.
+claude_md_kb() {
+  local template rules
+  template="$(wc -c < "$REPO_DIR/templates/AGENTS.md")"
+  rules="$(LC_ALL=C awk '
+    function done() { if (rec) total += buf; rec = 0; buf = 0; inc = 0 }
+    /^[a-z_]+:/ { done(); sec = ($0 ~ /^rules:/); next }
+    !sec { next }
+    inc && /^      / { buf += length($0) - 5; next }
+    inc && /^ *$/ { buf += 1; next }
+    { inc = 0 }
+    /^  - name:/ { done(); next }
+    /^    recommended: *true/ { rec = 1 }
+    /^    content: *\|/ { inc = 1 }
+    END { done(); print total + 0 }
+  ' "$REPO_DIR/src/catalog.yaml")"
+  echo $(( (template + rules + 512) / 1024 ))
+}
+
+# Sets `claudePermissions: keep` in state.yaml and keeps every other line.
+seed_keep_claude_permissions() {
+  local dir="$HOME/.config/agentbrew" file
+  file="$dir/state.yaml"
+  mkdir -p "$dir" || return 1
+  if [ -f "$file" ]; then
+    grep -v '^claudePermissions:' "$file" > "$file.tmp" || true
+    mv "$file.tmp" "$file" || return 1
+  fi
+  printf 'claudePermissions: keep\n' >> "$file"
 }
 
 cmd_plan() {
@@ -74,10 +168,15 @@ cmd_plan() {
   say "     MCP servers and rules, and write them into each agent's config."
   say "     It also adds a background repair job (every 30 min) and a shell hook,"
   say "     unless you opt out."
-  say "     For Claude Code it turns permission prompts off (bypassPermissions) and"
-  say "     allows the tools of every MCP server. To get your prompts back, add"
-  say "     'claudePermissions: keep' to ~/.config/agentbrew/state.yaml after the"
-  say "     install, then undo those settings in ~/.claude/settings.json (see README)."
+  say "     What it changes in Claude Code:"
+  say "     - It adds $(claude_hook_count) hooks (hooks/manifest.yaml). After you set a goal with"
+  say "       /goal, one blocks file edits until the goal contract is written, and"
+  say "       another makes Claude write a retro before it stops."
+  say "     - It adds about $(claude_md_kb) KB of always-loaded text to ~/.claude/CLAUDE.md"
+  say "       (agentbrew instructions plus the recommended rules)."
+  say "     - It turns permission prompts off (bypassPermissions) and allows the tools"
+  say "       of every MCP server, unless you pass --keep-claude-permissions"
+  say "       (claudePermissions: keep in ~/.config/agentbrew/state.yaml)."
   say "  5. Heal: 'agentbrew status --fix' repairs any drift it finds."
   say "  6. Verify: 'agentbrew lint', then the doctor 'agentbrew status --ci'."
   step "If something goes wrong"
@@ -87,6 +186,7 @@ cmd_plan() {
   say "  - Install the recommended skills and MCP servers? (default yes)"
   say "  - Install the background repair job? (default yes)"
   say "  - Add the project-detection hook to your shell rc file? (default yes)"
+  say "  - Keep Claude Code permission prompts on? (default no: prompts off)"
 }
 
 # Backup ids are timestamps, so the glob's sort order is oldest first.
@@ -163,13 +263,14 @@ critical() {
 }
 
 cmd_run() {
-  local yes=0 recommended=1 auto_repair=1 shell_hook=1 init_args=()
+  local yes=0 recommended=1 auto_repair=1 shell_hook=1 keep_perms=0 init_args=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --yes) yes=1 ;;
       --no-recommended) recommended=0 ;;
       --no-auto-repair) auto_repair=0 ;;
       --no-shell-hook) shell_hook=0 ;;
+      --keep-claude-permissions) keep_perms=1 ;;
       *) say "Unknown flag: $1"; usage; exit 2 ;;
     esac
     shift
@@ -198,6 +299,10 @@ cmd_run() {
   [ "$recommended" -eq 1 ] || init_args+=(--skip-install)
   [ "$auto_repair" -eq 1 ] || export AGENTBREW_NO_AUTO_SYNC=1
   [ "$shell_hook" -eq 1 ] || export AGENTBREW_NO_SHELL_HOOK=1
+  if [ "$keep_perms" -eq 1 ]; then
+    seed_keep_claude_permissions || critical "saving claudePermissions: keep"
+    say "  ✓ Claude Code permission prompts stay on (claudePermissions: keep)"
+  fi
   AGENTBREW_NO_AUTO_INIT=1 "$AGENTBREW_CMD" init ${init_args[@]+"${init_args[@]}"} || critical "agent setup (agentbrew init)"
 
   step "6/7 Heal"

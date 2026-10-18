@@ -11,6 +11,13 @@ HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")"
 SCRIPT="$HERE/perf-brief.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+# Version-manager shims (Volta, asdf) find node under $HOME; pin the real binary first.
+NODE_BIN="$(node -p 'process.execPath' 2>/dev/null || true)"
+if [ -n "$NODE_BIN" ]; then
+  mkdir -p "$TMP/node-bin"
+  ln -sf "$NODE_BIN" "$TMP/node-bin/node"
+  export PATH="$TMP/node-bin:$PATH"
+fi
 export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
 export AGENTBREW_PERF_HELPER="$HERE/../../templates/scripts/agent-perf.mjs"
 unset HOOK_BYPASS_PERF_BRIEF
@@ -40,7 +47,7 @@ RC=$?
 check "Test 1a (exit 0)" "$([ "$RC" = 0 ] && echo 0 || echo 1)"
 check "Test 1b (SessionStart JSON: $OUT)" "$(printf '%s' "$OUT" | jq -e '.hookSpecificOutput.hookEventName=="SessionStart"' >/dev/null && echo 0 || echo 1)"
 CONTEXT="$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.additionalContext // ""')"
-check "Test 1c (brief names the project and top step)" "$(case "$CONTEXT" in *"alpha"*"npm run verify 3m30s"*) echo 0 ;; *) echo 1 ;; esac)"
+check "Test 1c (brief names the project and top step)" "$(case "$CONTEXT" in (*"alpha"*"npm run verify 3m30s"*) echo 0 ;; (*) echo 1 ;; esac)"
 check "Test 1d (brief has at most 5 lines)" "$([ "$(printf '%s\n' "$CONTEXT" | wc -l)" -le 5 ] && echo 0 || echo 1)"
 
 # Test 2: a project without rows → silent.

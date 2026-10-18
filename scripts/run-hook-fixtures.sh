@@ -40,12 +40,39 @@ fixture_log_dir="$(mktemp -d "${TMPDIR:-/tmp}/hook-fixtures.XXXXXX")"
 trap 'rm -rf "$fixture_log_dir"' EXIT
 export HOOK_DECISIONS_LOG="$fixture_log_dir/hook-decisions.jsonl"
 
-echo "Hook fixture tests:"
+# Run each fixture the way a stock Mac runs hooks: /bin/bash (3.2 on macOS),
+# BSD tools from /usr/bin:/bin, Apple's /usr/bin/jq when present, and an empty
+# HOME, so the owner's dotfiles, GNU tools, and newer jq cannot hide a bug.
+# A shim dir puts that bash, node, and jq first on PATH. Set
+# HOOK_FIXTURES_HOST_ENV=1 to run with your own shell environment instead.
+fixture_bash="${HOOK_FIXTURE_BASH:-/bin/bash}"
+[[ -x "$fixture_bash" ]] || fixture_bash="$(command -v bash)"
+shim_dir="$fixture_log_dir/bin"
+fixture_home="$fixture_log_dir/home"
+mkdir -p "$shim_dir" "$fixture_home"
+ln -s "$fixture_bash" "$shim_dir/bash"
+node_bin="$(node -p 'process.execPath' 2>/dev/null || true)"
+[[ -z "$node_bin" ]] || ln -s "$node_bin" "$shim_dir/node"
+jq_bin="/usr/bin/jq"
+[[ -x "$jq_bin" ]] || jq_bin="$(command -v jq || true)"
+[[ -z "$jq_bin" ]] || ln -s "$jq_bin" "$shim_dir/jq"
+
+run_fixture() {
+  if [[ "${HOOK_FIXTURES_HOST_ENV:-0}" == 1 ]]; then
+    bash "$1"
+    return
+  fi
+  env -i HOME="$fixture_home" PATH="$shim_dir:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TMPDIR="${TMPDIR:-/tmp}" USER="${USER:-}" LANG="${LANG:-en_US.UTF-8}" \
+    HOOK_DECISIONS_LOG="$HOOK_DECISIONS_LOG" "$fixture_bash" "$1"
+}
+
+echo "Hook fixture tests ($("$fixture_bash" -c 'echo "bash $BASH_VERSION"')):"
 while IFS= read -r fixture; do
   [[ -n "$fixture" ]] || continue
   rel="${fixture#"$repo_root"/}"
   echo "  → $rel"
-  bash "$fixture"
+  run_fixture "$fixture"
   echo "  ✓ $rel"
 done <<<"$fixtures"
 

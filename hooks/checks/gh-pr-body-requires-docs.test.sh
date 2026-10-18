@@ -42,11 +42,16 @@ assert_exit_code "Test 8 (not Bash passes)" 0 "$(run_hook '{"hook_event_name":"P
 TEST9_EXIT=$(HOOK_BYPASS_GH_PR_BODY_REQUIRES_DOCS=1 bash -c "echo '$(pr_create 'no docs')' | bash '$SCRIPT' 2>/dev/null; echo \$?" | tail -1)
 assert_exit_code "Test 9 (bypass env var)" 0 "$TEST9_EXIT"
 
+# Build the payload with jq: macOS bash 3.2 brace-expands a {"a","b"} JSON
+# literal nested in "$(...)", which splits it into several arguments.
+body_file_input() {
+  jq -nc --arg cmd "gh pr create --body-file $1" '{hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd}}'
+}
 BODY_FILE="$(mktemp)"
 printf '## Summary\nWhy.\n\n## Docs\n- AGENTS.md: new gotcha\n' > "$BODY_FILE"
-assert_exit_code "Test 10 (--body-file with ## Docs)" 0 "$(run_hook "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh pr create --body-file $BODY_FILE\"}}")"
+assert_exit_code "Test 10 (--body-file with ## Docs)" 0 "$(run_hook "$(body_file_input "$BODY_FILE")")"
 printf '## Summary\nWhy.\n' > "$BODY_FILE"
-assert_exit_code "Test 11 (--body-file without docs blocks)" 2 "$(run_hook "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"gh pr create --body-file $BODY_FILE\"}}")"
+assert_exit_code "Test 11 (--body-file without docs blocks)" 2 "$(run_hook "$(body_file_input "$BODY_FILE")")"
 rm -f "$BODY_FILE"
 
 # Heredoc bodies span many lines; the hook must still read them.

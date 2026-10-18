@@ -7,7 +7,7 @@ description: >
   rewrites docs only when the file is clean (no worker activity). Use
   when called by `companion-researcher` or when the user asks "are the
   docs in sync", "audit docs for drift", or "refresh README claims".
-  Don't use to write new docs from scratch (use `taste`, `readme-audit`)
+  Don't use to write new docs from scratch (use `write-vision` for a vision doc)
   or to fix code (use `writing-plans`, `systematic-debugging`).
 argument-hint: "[--repo path] [--worker-active-file /tmp/companion-worker-active-<repo-slug>.txt]"
 triggers:

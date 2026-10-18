@@ -3,8 +3,8 @@ name: rfc
 description: >
   Writes RFC documents following the 9-section structure with POC branch workflow.
   Covers authoring, code listings, Google Docs compatibility, and final
-  verification. Don't use for iterating on existing RFCs (use rfc-iterate) or processing
-  reviewer feedback (use rfc-review).
+  verification. Don't use for iterating on existing RFCs or processing
+  reviewer feedback (use receiving-code-review).
 ---
 
 ## When to invoke

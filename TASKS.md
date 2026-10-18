@@ -310,19 +310,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Workflow skills route only to skills that exist
-  - **ID**: skills-route-dangling-skill-names
-  - **Tags**: skills, routing, docs
-  - **Details**: `src/skills/skill-routing-refs.test.ts` checks every `(use <skill>)` routing hint under `skill-plugins/`. Some targets still resolve to no skill and sit in its `KNOWN_DANGLING` allowlist: `clarify`, `design-review`, `doc-check`, `pipeline-ops`, `readme-audit`, `refactor`, `rfc-iterate`, `rfc-review`, `taste`. They come from `analyze`, `companion-docs-sync`, `companion-researcher`, `git-diagnose-codebase`, `grind-report`, `markdown-for-gdoc`, and `rfc`. For each, point the hint at a real skill, add the skill to the catalog, or drop the hint.
-  - **Files**: `skill-plugins/workflow/*/SKILL.md`, `src/skills/skill-routing-refs.test.ts`
-  - **Output**: code
-  - **Acceptance**: `KNOWN_DANGLING` is empty and `npx vitest run src/skills/skill-routing-refs.test.ts` passes.
-  - **Hypothesis**: routing hints that name a missing skill drop to 0, so agents are never routed to nothing.
-  - **Measurement**: the size of `KNOWN_DANGLING` in `src/skills/skill-routing-refs.test.ts`.
-  - **Success**: 0.
-  - **Pivot**: if a name has no real home, delete the hint rather than invent a skill.
-  - **Anchor**: Agent Skills routing guidance ("Don't use for…" fields); Basili et al. 1994 (GQM).
-
 - [ ] A hand-installed catalog skill from a new source survives sync under a global Agentfile
   - **ID**: hand-install-survives-agentfile-prune
   - **Tags**: scout, agentfile, install, bug

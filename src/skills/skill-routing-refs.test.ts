@@ -8,17 +8,7 @@ const SKILL_PLUGINS = join(REPO_ROOT, "skill-plugins");
 
 // Routing targets that no skill in skill-plugins/ or src/catalog.yaml provides
 // yet. Task `skills-route-dangling-skill-names` removes them. Do not add names.
-const KNOWN_DANGLING = new Set([
-  "clarify",
-  "design-review",
-  "doc-check",
-  "pipeline-ops",
-  "readme-audit",
-  "refactor",
-  "rfc-iterate",
-  "rfc-review",
-  "taste",
-]);
+const KNOWN_DANGLING = new Set<string>([]);
 
 function markdownFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

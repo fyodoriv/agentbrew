@@ -22,7 +22,7 @@ nesting; replying to GDoc comments (only with per-action approval) after
 verified doc changes.
 
 **No:** GitHub-only READMEs or repo markdown with no GDoc destination; general
-markdown linting without GDoc constraints (use `doc-check`); RFC authoring from
+markdown linting without GDoc constraints; RFC authoring from
 scratch when the deliverable stays in-repo only (use `rfc` without GDoc
 formatting pass); posting GDoc comments or resolving threads without explicit
 per-action approval.

@@ -11,7 +11,7 @@ description: >
   user stops it. Use when the user says "companion mode", "work in
   parallel", "help in the background while X works", or launches a second
   session on an active repo. Don't use for fixing bugs, implementing
-  features, or any work that edits source code (use writing-plans / systematic-debugging / refactor
+  features, or any work that edits source code (use writing-plans / systematic-debugging
   instead).
 argument-hint: "[--workspace path] [--worker-repo name] [--lanes docs,tests,competitors,tasks,skills] [--exclude-repos minsky]"
 triggers:

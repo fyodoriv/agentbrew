@@ -5,8 +5,7 @@ description: >
   five `git log` commands (churn, bus factor, bug clusters, velocity, firefighting), then
   cross-references the top-churn list with the bug-keyword list to surface the highest-risk
   files first. Use at the start of any audit, sweep, strategic review, or onboarding session.
-  Don't use for code review (use `requesting-code-review`), implementing fixes (use `writing-plans`), or visual UX audit
-  (use `design-review`).
+  Don't use for code review (use `requesting-code-review`), implementing fixes (use `writing-plans`), or a visual UX audit.
 ---
 
 ## When to use this skill

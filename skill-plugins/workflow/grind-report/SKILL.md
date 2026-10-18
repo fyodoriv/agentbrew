@@ -7,7 +7,7 @@ description: >
   (stalls, race conditions, branch issues, off-queue work), and writes tasks to each repo's
   TASKS.md. Use when asked to "analyze grind logs", "grind report", "what happened in the
   marathon", "why did the grind fail", or "post-mortem". Don't use for running a grind
-  (use grind) or managing pipelines (use pipeline-ops).
+  (use grind) or managing pipelines.
 triggers:
   - user
 ---

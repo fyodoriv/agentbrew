@@ -344,6 +344,17 @@
         "Gives the new research step an outside judge: a script with a test, and a rule that each finding names a measurement before it becomes a task",
         "Deploys the rule change with agentbrew sync and proves it with a grep of the generated instructions file"
       ]
+    },
+    {
+      "id": 30,
+      "prompt": "/goal make the tests in this repo pass (the sum.js repo again; evals 2, 12 and 13 already cover it; retro time, run-goal worked as written)",
+      "expected_output": "The retro lists the existing eval prompts first. It sees the scenario is covered, so it adds a case for a new angle, or tightens an existing expectation. It does not add a fourth sum.js copy.",
+      "expectations": [
+        "Lists or greps the existing eval prompts in evals/evals.json before adding a case",
+        "Does not add an eval whose prompt repeats the sum.js off-by-one scenario",
+        "Adds a case for a different angle, or edits an existing expectation, and says which",
+        "Records the PR for run-goal in the retro file, and the PR is merged before the line is written"
+      ]
     }
   ]
 }

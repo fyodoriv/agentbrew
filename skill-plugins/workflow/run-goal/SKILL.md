@@ -229,7 +229,9 @@ Do this every time, also after a BLOCKED stop. Details:
 4. **Update every one of those skills**: each skill used gets an update, not
    a "no change". If the skill caused or missed a problem, make the edit that
    would have prevented it. If it worked as written, add an eval case built
-   from this run's scenario, so the behavior that worked stays tested. Route
+   from this run's scenario, so the behavior that worked stays tested. First
+   list the existing eval prompts. If one already covers the scenario, add a
+   case for a new angle instead of a copy. Route
    the update by owner (see the retro reference). For skills the user owns,
    edit the source and ship the change through that repo's normal delivery
    flow. Never edit an installed mirror. A third-party skill gets a task with

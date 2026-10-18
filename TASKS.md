@@ -210,19 +210,6 @@
   - **Pivot**: if a global setup file breaks real-e2e, scope it to unit tests.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
-- [ ] The install plan lists every behaviour change the recommended set makes
-  - **ID**: install-plan-discloses-behaviour
-  - **Tags**: install, new-users, safety, ux
-  - **Details**: The recommended set changes how Claude Code behaves beyond adding skills: 21 hooks, a goal contract that blocks edits after `/goal` until it is written (`goal-contract-before-edit`), a retro before stop, ~6 KB of always-loaded CLAUDE.md text, and (unless `claudePermissions: keep`) prompts off. `install.sh plan` shows none of these, and `install.sh run` has no flag for `claudePermissions: keep`. List them in `plan`, add `--keep-claude-permissions` (seeds state.yaml before init), and ask it as INSTALL.md question 4.
-  - **Files**: `scripts/install.sh`, `INSTALL.md`, `src/init.ts`
-  - **Output**: code
-  - **Acceptance**: `install.sh plan` prints the hook count, the `/goal` behaviour, the CLAUDE.md size and the permission default; `install.sh run --yes --keep-claude-permissions` leaves `permissions.defaultMode` unset.
-  - **Hypothesis**: people surprised by changed Claude behaviour after install go to zero.
-  - **Measurement**: install e2e asserts on plan text and settings.json.
-  - **Success**: both assertions pass.
-  - **Pivot**: if the list gets long, link to one generated doc instead.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Merging hooks into settings.json keeps existing commands byte-for-byte
   - **ID**: hooks-merge-preserves-text
   - **Tags**: hooks, sync

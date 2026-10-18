@@ -105,6 +105,8 @@ agentbrew setup composio                   # guided wizard → saves to ~/.zshen
 claudePermissions: keep   # default: manage
 ```
 
+On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` writes this line before setup, so the prompts are never turned off. `install.sh plan` lists this and the other Claude Code changes (hooks, `/goal` behaviour, always-loaded CLAUDE.md size) before anything changes.
+
 `keep` does not undo what an earlier `sync` wrote. If `sync` already ran, also remove `defaultMode`, `skipAutoPermissionPrompt`, and any `mcp__*` allow rules you do not want from `~/.claude/settings.json`.
 
 **Scopes.** `install` is global by default (applies to every agent). Use `--local` / `--project` to install into the current repo's `.agentbrew/skills/` — ideal for project-specific conventions or team-shared skills.

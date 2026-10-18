@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import yaml from "js-yaml";
 import { afterEach, describe, expect, it } from "vitest";
 
 const SCRIPT = join(import.meta.dirname, "..", "scripts", "install.sh");
@@ -25,6 +26,7 @@ function sandbox(failOn?: "init" | "lint") {
     `#!/bin/bash
 echo "$* AUTO_SYNC=\${AGENTBREW_NO_AUTO_SYNC:-} HOOK=\${AGENTBREW_NO_SHELL_HOOK:-}" >> "${log}"
 if [ "$1" = init ]; then
+  { echo "--- state.yaml at init:"; cat "$HOME/.config/agentbrew/state.yaml" 2>/dev/null; } >> "${log}"
   echo '{"user":"changed"}' > "$HOME/.claude/settings.json"
   mkdir -p "$HOME/.config/agentbrew" "$HOME/Library/LaunchAgents"
   echo state > "$HOME/.config/agentbrew/state.yaml"
@@ -69,6 +71,48 @@ describe("scripts/install.sh", () => {
       expect(result.stdout).toContain(text);
     }
     expect(existsSync(join(home, ".local", "state", "agentbrew"))).toBe(false);
+  });
+
+  it("plan lists what the recommended set changes in Claude Code, with computed numbers", () => {
+    const repo = join(import.meta.dirname, "..");
+    const manifest = yaml.load(readFileSync(join(repo, "hooks", "manifest.yaml"), "utf-8")) as {
+      hooks: Array<{ agents?: string[]; defaultEnabled?: boolean }>;
+    };
+    const hookCount = manifest.hooks.filter(
+      (h) => h.defaultEnabled !== false && (h.agents ?? []).includes("claude-code"),
+    ).length;
+    const catalog = yaml.load(readFileSync(join(repo, "src", "catalog.yaml"), "utf-8")) as {
+      rules: Array<{ recommended?: boolean; content?: string }>;
+    };
+    const bytes =
+      Buffer.byteLength(readFileSync(join(repo, "templates", "AGENTS.md"), "utf-8")) +
+      catalog.rules.filter((r) => r.recommended).reduce((n, r) => n + Buffer.byteLength(r.content ?? ""), 0);
+    const kb = Math.round(bytes / 1024);
+
+    const { run } = sandbox();
+    const result = run("plan");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`adds ${hookCount} hooks`);
+    expect(result.stdout).toMatch(/\/goal.*blocks file edits until/s);
+    expect(result.stdout).toMatch(/retro before it stops/);
+    expect(result.stdout).toContain(`about ${kb} KB`);
+    expect(result.stdout).toContain("bypassPermissions");
+    expect(result.stdout).toContain("--keep-claude-permissions");
+  });
+
+  it("run --keep-claude-permissions seeds claudePermissions: keep before init and keeps other state", () => {
+    const { home, log, run } = sandbox();
+    mkdirSync(join(home, ".config", "agentbrew"), { recursive: true });
+    writeFileSync(
+      join(home, ".config", "agentbrew", "state.yaml"),
+      "skillInstallMode: native\nclaudePermissions: manage\n",
+    );
+    const result = run("run", "--yes", "--keep-claude-permissions");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    const atInit = readFileSync(log, "utf-8").split("--- state.yaml at init:")[1] ?? "";
+    expect(atInit).toContain("skillInstallMode: native");
+    expect(atInit).toContain("claudePermissions: keep");
+    expect(atInit).not.toContain("claudePermissions: manage");
   });
 
   it("refuses to run without --yes, so the user always sees the plan first", () => {

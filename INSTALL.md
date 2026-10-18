@@ -40,6 +40,10 @@ Show the person the output in your own short words:
 - what they need (Node.js 20+, git, about 5 minutes, network),
 - what will change (agent settings, skills, rules, a background job, a shell
   hook),
+- what changes in Claude Code: the hook count, the `/goal` behaviour (edits
+  wait for the goal contract; a retro runs before stop), the size of the
+  always-loaded `~/.claude/CLAUDE.md` text, and that permission prompts go
+  off unless they keep them,
 - that a backup is made first and restored by itself on a critical error,
 - how to undo later (`bash <DIR>/scripts/install.sh restore`).
 
@@ -60,9 +64,17 @@ Ask these together, in one round:
 3. "Add a line to your shell rc file (for example `~/.zshrc`) so agentbrew
    notices when you enter a project that has its own Agentfile?" Yes
    (recommended) / No.
+4. "Keep Claude Code's permission prompts? By default agentbrew turns them
+   off (`bypassPermissions`) and allows every MCP server's tools, so Claude
+   does not stop to ask before it runs a command, edits a file, or calls a
+   tool. Keep them if you want Claude to ask first, for example before it
+   sends email or changes business data." No: prompts off (default) / Yes:
+   keep prompts.
 
 Map the answers to flags: No to 1 → `--no-recommended`, No to 2 →
-`--no-auto-repair`, No to 3 → `--no-shell-hook`.
+`--no-auto-repair`, No to 3 → `--no-shell-hook`, Yes to 4 →
+`--keep-claude-permissions` (it writes `claudePermissions: keep` to
+`~/.config/agentbrew/state.yaml` before setup).
 
 With `--no-recommended`, setup downloads nothing: it fetches no catalog
 sources and installs no skills, not even the ones an Agentfile lists. Add

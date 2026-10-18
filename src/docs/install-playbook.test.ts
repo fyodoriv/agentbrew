@@ -23,6 +23,7 @@ describe("one-step install with an agent", () => {
     expect(playbook).toMatch(/add or update a test and the docs/);
     // Every installer flag the playbook maps answers to exists in the script.
     const script = read("scripts/install.sh");
-    for (const flag of playbook.match(/--no-[a-z-]+/g) ?? []) expect(script).toContain(flag);
+    for (const flag of playbook.match(/--(?:no|keep)-[a-z-]+/g) ?? []) expect(script).toContain(flag);
+    expect(playbook).toContain("--keep-claude-permissions");
   });
 });

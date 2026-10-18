@@ -4,6 +4,7 @@ import { sync as writeFileSync } from "write-file-atomic";
 import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
+import { existingText, jsonTextFor } from "../core/json-text-edit.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import { findAgentbrewRepoRoot } from "../core/repo-root.js";
@@ -405,7 +406,7 @@ export function applyClaudeCodePermissionDefaults(
 function writeSettingsFile(filePath: string, settings: SettingsJson): void {
   try {
     mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+    writeFileSync(filePath, jsonTextFor(existingText(filePath), settings), "utf-8");
   } catch (e) {
     logSkipped("sync/hooks-sync/writeSettingsFile/write", e);
   }

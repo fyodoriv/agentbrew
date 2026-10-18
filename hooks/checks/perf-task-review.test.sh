@@ -11,6 +11,13 @@ HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")"
 SCRIPT="$HERE/perf-task-review.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+# Version-manager shims (Volta, asdf) find node under $HOME; pin the real binary first.
+NODE_BIN="$(node -p 'process.execPath' 2>/dev/null || true)"
+if [ -n "$NODE_BIN" ]; then
+  mkdir -p "$TMP/node-bin"
+  ln -sf "$NODE_BIN" "$TMP/node-bin/node"
+  export PATH="$TMP/node-bin:$PATH"
+fi
 export HOME="$TMP/home" XDG_STATE_HOME="$TMP/state"
 export AGENTBREW_PERF_HELPER="$HERE/../../templates/scripts/agent-perf.mjs"
 unset MINSKY_PIPELINE AGENTBREW_PERF_REVIEW_MIN_SECS AGENTBREW_PERF_REVIEW_MIN_BLOCKED HOOK_BYPASS_PERF_TASK_REVIEW
@@ -59,8 +66,8 @@ OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active
 check "Test 1a (exit 0)" "$([ "$(cat "$TMP/rc")" = 0 ] && echo 0 || echo 1)"
 check "Test 1b (decision block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null && echo 0 || echo 1)"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
-check "Test 1c (reason lists steps and time)" "$(case "$REASON" in *"6m40s in tools"*"npm run verify 4m0s, bats <path> 2m10s, git push 30s"*"Time review"*) echo 0 ;; *) echo 1 ;; esac)"
-check "Test 1d (reason ignores the previous turn)" "$(case "$REASON" in *"old step"*) echo 1 ;; *) echo 0 ;; esac)"
+check "Test 1c (reason lists steps and time)" "$(case "$REASON" in (*"6m40s in tools"*"npm run verify 4m0s, bats <path> 2m10s, git push 30s"*"Time review"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 1d (reason ignores the previous turn)" "$(case "$REASON" in (*"old step"*) echo 1 ;; (*) echo 0 ;; esac)"
 
 # Test 2: stop_hook_active → silent (the loop guard).
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active":true}')"
@@ -97,8 +104,8 @@ attempt two "cd <path>" u2
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"blocked","stop_hook_active":false}')"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
 check "Test 6a (3 blocked → block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null 2>&1 && echo 0 || echo 1)"
-check "Test 6b (reason lists blocked calls)" "$(case "$REASON" in *"3 tool calls never ran"*"cd <path> 2x, Edit:ts 1x"*"split"*) echo 0 ;; *) echo 1 ;; esac)"
-check "Test 6c (the call that ran is not listed)" "$(case "$REASON" in *"npm test"*) echo 1 ;; *) echo 0 ;; esac)"
+check "Test 6b (reason lists blocked calls)" "$(case "$REASON" in (*"3 tool calls never ran"*"cd <path> 2x, Edit:ts 1x"*"split"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 6c (the call that ran is not listed)" "$(case "$REASON" in (*"npm test"*) echo 1 ;; (*) echo 0 ;; esac)"
 
 # Test 7: 2 blocked calls → silent; MIN_BLOCKED=2 → block.
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"two","stop_hook_active":false}')"
@@ -112,7 +119,7 @@ attempt long "cd <path>" v2
 attempt long "cd <path>" v3
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active":false}')"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
-check "Test 8 (time + blocked in one reason)" "$(case "$REASON" in *"6m40s in tools"*"3 tool calls never ran"*) echo 0 ;; *) echo 1 ;; esac)"
+check "Test 8 (time + blocked in one reason)" "$(case "$REASON" in (*"6m40s in tools"*"3 tool calls never ran"*) echo 0 ;; (*) echo 1 ;; esac)"
 
 echo ""
 echo "perf-task-review.sh: $PASS passed, $FAIL failed"

@@ -184,19 +184,6 @@
   - **Pivot**: if detection is fragile, print the version and the nodejs.org link only.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
-- [ ] A red `main` and an out-of-sync lockfile are caught before users install
-  - **ID**: main-stays-installable
-  - **Tags**: ci, install, gates
-  - **Details**: `main` CI had failed since the last runs (Install step: `npm ci` "Missing: gcp-metadata@7.0.1 from lock file"), and `install.sh run` failed the same way for every new user. Add `npm ci --dry-run` (or a lockfile-sync check) to `lefthook.yml` pre-push and to `verify`, and make a failing `main` visible (badge in README or a scheduled CI run that opens an issue).
-  - **Files**: `lefthook.yml`, `package.json` (verify), `.github/workflows/ci.yml`, `README.md`
-  - **Output**: code
-  - **Acceptance**: a commit that changes `package.json` without the lockfile fails locally before push; a red `main` shows on the README badge.
-  - **Hypothesis**: days with a broken `npm ci` on `main` go from unknown to zero.
-  - **Measurement**: CI history for `main`; install e2e on the release tag.
-  - **Success**: no `main` run fails at Install for 30 days.
-  - **Pivot**: if the hook is too slow, run the dry-run only when `package*.json` changed.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Hook fixture tests pass on stock macOS, and CI proves it
   - **ID**: hook-tests-macos-ci
   - **Tags**: ci, hooks, macos, tests

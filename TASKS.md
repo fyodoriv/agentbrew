@@ -171,19 +171,6 @@
 
 ## P2
 
-- [ ] The installer says which Node version it found and how to upgrade it
-  - **ID**: install-node-version-message
-  - **Tags**: install, new-users, ux
-  - **Details**: With Node 18 installed (Volta), `scripts/install.sh plan` printed "Node.js 20 or newer is missing", so the person looks for a missing install instead of an old one. Print the found version and the fix for the version manager in use (`volta install node@22`, `fnm install 22`, `nvm install 22`, or `brew install node`).
-  - **Files**: `scripts/install.sh`, `INSTALL.md`
-  - **Output**: code
-  - **Acceptance**: with Node 18 on PATH, `install.sh plan` prints "Node.js 18 found; 20.11+ needed" and one upgrade command that matches the detected manager.
-  - **Hypothesis**: first-run installs that stop at the Node check and need a second attempt drop to zero in the install e2e.
-  - **Measurement**: `npm run test:install-e2e` with a Node 18 fixture.
-  - **Success**: the message names the found version and a working command.
-  - **Pivot**: if detection is fragile, print the version and the nodejs.org link only.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] A red `main` and an out-of-sync lockfile are caught before users install
   - **ID**: main-stays-installable
   - **Tags**: ci, install, gates

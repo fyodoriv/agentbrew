@@ -46,12 +46,60 @@ usage() { sed -n '3,21p' "$0" | sed -E 's/^# ?//'; }
 
 node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
 
+# The minimum Node.js (major.minor) from package.json "engines", e.g. 20.11.
+node_min() {
+  sed -n 's/^ *"node": *">= *\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' "$REPO_DIR/package.json" | head -n 1
+}
+
+# One upgrade command for the version manager that owns `node` on PATH.
+node_upgrade_cmd() {
+  local path
+  path="$(command -v node 2>/dev/null || true)"
+  case "$path" in
+    */.volta/*) echo "volta install node@22"; return ;;
+    */fnm/* | */.fnm/* | */fnm_multishells/*) echo "fnm install 22 && fnm default 22"; return ;;
+    */.nvm/*) echo "nvm install 22 && nvm alias default 22"; return ;;
+    */mise/*) echo "mise use -g node@22"; return ;;
+  esac
+  if [ -z "$path" ]; then
+    if command -v volta >/dev/null 2>&1; then echo "volta install node@22"; return; fi
+    if command -v fnm >/dev/null 2>&1; then echo "fnm install 22 && fnm default 22"; return; fi
+    if [ -n "${NVM_DIR:-}" ]; then echo "nvm install 22 && nvm alias default 22"; return; fi
+    if command -v mise >/dev/null 2>&1; then echo "mise use -g node@22"; return; fi
+  fi
+  if command -v brew >/dev/null 2>&1; then echo "brew install node"; else echo "see https://nodejs.org"; fi
+}
+
+# Prints a ✗ line and returns 1 when Node.js is missing or older than package.json allows.
+check_node() {
+  local min found major minor min_major min_minor
+  min="$(node_min)"; min="${min:-20.11}"
+  min_major="${min%%.*}"; min_minor="${min#*.}"
+  if ! command -v node >/dev/null 2>&1; then
+    say "  ✗ Node.js is missing; $min+ needed. Install it: $(node_upgrade_cmd)"
+    return 1
+  fi
+  found="$(node --version 2>/dev/null)"; found="${found#v}"
+  major="${found%%.*}"; minor="${found#*.}"; minor="${minor%%.*}"
+  case "$major$minor" in
+    '' | *[!0-9]*)
+      say "  ✗ Node.js found, but 'node --version' failed; $min+ needed. Fix: $(node_upgrade_cmd)"
+      return 1
+      ;;
+  esac
+  if [ "$major" -gt "$min_major" ] || { [ "$major" -eq "$min_major" ] && [ "$minor" -ge "$min_minor" ]; }; then
+    return 0
+  fi
+  found="$major"
+  [ "$major" -eq "$min_major" ] && found="$major.$minor"
+  say "  ✗ Node.js $found found; $min+ needed. Upgrade: $(node_upgrade_cmd)"
+  return 1
+}
+
 preflight() {
   local ok=0
   if ! command -v git >/dev/null 2>&1; then say "  ✗ git is missing (install Xcode Command Line Tools: xcode-select --install)"; ok=1; fi
-  if ! command -v node >/dev/null 2>&1 || [ "$(node_major)" -lt 20 ]; then
-    say "  ✗ Node.js 20 or newer is missing (https://nodejs.org or: brew install node)"; ok=1
-  fi
+  check_node || ok=1
   if ! command -v npm >/dev/null 2>&1; then say "  ✗ npm is missing (it ships with Node.js)"; ok=1; fi
   if command -v gh >/dev/null 2>&1; then say "  ✓ GitHub CLI found (needed later for 'agentbrew contribute')"
   else say "  - GitHub CLI not found: optional, only for sending fixes upstream (brew install gh)"; fi

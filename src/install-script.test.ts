@@ -46,8 +46,10 @@ exit 0
     AGENTBREW_INSTALL_CLI: join(stubs, "agentbrew"),
     AGENTBREW_INSTALL_BIN_DIR: join(home, ".local", "bin"),
   };
-  const run = (...args: string[]) => spawnSync("bash", [SCRIPT, ...args], { env, encoding: "utf-8" });
-  return { home, log, run };
+  const runEnv = (runEnvVars: NodeJS.ProcessEnv, ...args: string[]) =>
+    spawnSync("bash", [SCRIPT, ...args], { env: runEnvVars, encoding: "utf-8" });
+  const run = (...args: string[]) => runEnv(env, ...args);
+  return { home, log, run, env, runEnv };
 }
 
 afterEach(() => {
@@ -69,6 +71,78 @@ describe("scripts/install.sh", () => {
       expect(result.stdout).toContain(text);
     }
     expect(existsSync(join(home, ".local", "state", "agentbrew"))).toBe(false);
+  });
+
+  describe("Node.js check", () => {
+    const enginesMin = (
+      JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8")).engines.node as string
+    )
+      .replace(/^>=\s*/, "")
+      .split(".")
+      .slice(0, 2)
+      .join(".");
+
+    /** Runs `plan` with a stub `node` that reports `version`, installed at `nodeDir` under a temp root. */
+    function planWithNode(version: string, nodeDir: string) {
+      const { env: base, runEnv } = sandbox();
+      const root = mkdtempSync(join(tmpdir(), "agentbrew-node-"));
+      roots.push(root);
+      const bin = join(root, nodeDir);
+      mkdirSync(bin, { recursive: true });
+      // Acts like `node --version` and `node -p process.versions.node[.split(".")[0]]`.
+      writeFileSync(
+        join(bin, "node"),
+        `#!/bin/bash
+case "$1 $2" in
+  --version*|-v*) echo v${version} ;;
+  *split*) echo ${version.split(".")[0]} ;;
+  *) echo ${version} ;;
+esac
+`,
+      );
+      chmodSync(join(bin, "node"), 0o755);
+      const env: NodeJS.ProcessEnv = { ...base, PATH: `${bin}:${base.PATH}` };
+      // BASH_ENV/ENV startup files can put the real node back in front of the stub.
+      for (const key of [
+        "BASH_ENV",
+        "ENV",
+        "VOLTA_HOME",
+        "FNM_DIR",
+        "FNM_MULTISHELL_PATH",
+        "NVM_DIR",
+        "MISE_DATA_DIR",
+      ]) {
+        delete env[key];
+      }
+      return runEnv(env, "plan");
+    }
+
+    it("names the old version, the real minimum from package.json, and the fix for the version manager", () => {
+      expect(enginesMin).toBe("20.11");
+      const cases: Array<[string, string]> = [
+        [".volta/bin", "volta install node@22"],
+        [".local/share/fnm/node-versions/v18.20.4/installation/bin", "fnm install 22"],
+        [".nvm/versions/node/v18.20.4/bin", "nvm install 22"],
+        [".local/share/mise/installs/node/18.20.4/bin", "mise use -g node@22"],
+      ];
+      for (const [dir, fix] of cases) {
+        const result = planWithNode("18.20.4", dir);
+        expect(result.stdout, dir).toContain(`Node.js 18 found; ${enginesMin}+ needed`);
+        expect(result.stdout, dir).toContain(fix);
+        expect(result.stdout, dir).not.toContain("is missing");
+      }
+    });
+
+    it("shows major.minor when the major matches but the minor is too old", () => {
+      const result = planWithNode("20.5.1", "opt/node/bin");
+      expect(result.stdout).toContain(`Node.js 20.5 found; ${enginesMin}+ needed`);
+    });
+
+    it("passes a new enough Node.js", () => {
+      const result = planWithNode("22.3.0", ".volta/bin");
+      expect(result.stdout).toContain("✓ git, Node.js 22");
+      expect(result.stdout).not.toContain("+ needed");
+    });
   });
 
   it("refuses to run without --yes, so the user always sees the plan first", () => {

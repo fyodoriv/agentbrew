@@ -136,6 +136,15 @@
 
 ## P0
 
+- [ ] Fix integration.test.ts writing context files into the repo tree
+  - **ID**: integration-test-writes-repo-tree
+  - **Details**: `npm run verify` fails on origin/main (`b1b2a4a`): `src/integration.test.ts` passes every test, then the isolated-home guard reports "This test file changed the repo tree (?? context/chatgpt.md, ?? context/claude-desktop.md)". Reproduced on a detached origin/main worktree on 2026-10-18. A test writes generated context files to the real `context/` folder instead of a temp dir.
+  - **Hypothesis**: pointing that test's output at its temp HOME brings `npm run verify` back to green.
+  - **Measurement**: `npx vitest run src/integration.test.ts` exits 0 and `git status --short` stays empty.
+  - **Success**: exit 0 with a clean tree on two consecutive runs.
+  - **Pivot**: if the writer is in production code, add a target-dir parameter instead of patching the test.
+  - **Anchor**: Meszaros 2007, xUnit Test Patterns (fresh fixture, no shared state).
+
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the

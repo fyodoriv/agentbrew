@@ -155,6 +155,9 @@ print secrets, full environment dumps, or unrelated transcript contents.
 A `warn` hook on `UserPromptSubmit` can add context instead of a stderr line.
 It prints `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`
 on stdout and exits `0`. Claude Code ignores a top-level `additionalContext`.
+A `PreToolUse` hint works the same way with `"hookEventName":"PreToolUse"`
+and no `permissionDecision`, so the call still runs; `poll-loop-hint` does
+this. Claude Code does not show the agent stderr from a hook that exits `0`.
 
 ## Decision log
 

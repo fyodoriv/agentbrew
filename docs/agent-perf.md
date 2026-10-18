@@ -15,6 +15,7 @@ agents can see which steps are slow and which slow steps repeat.
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
 | Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
 | Hook `perf-task-review` (Stop, opt-in) | Asks for a "Time review" after a long turn. Enable it in the hooks overlay `enabled:` list. |
+| Hook `poll-loop-hint` (PreToolUse Bash, opt-in) | Hints at a background run or a blocking wait when a command polls with a `sleep` loop. Enable it in the hooks overlay `enabled:` list. |
 | Claude Code `statusLine` | Shows session time, tool time, and the slowest step. |
 | Skill `perf-review` | Tells an agent how to read the report and when to file a speedup task. |
 
@@ -205,6 +206,30 @@ Both hooks are on by default for Claude Code and need `node` on the hook
   recurs. The next stop has `stop_hook_active: true`, so the hook stays
   silent and cannot loop. Bypass: `HOOK_BYPASS_PERF_TASK_REVIEW=1`;
   `MINSKY_PIPELINE=1` also skips it.
+
+## Poll-loop hint
+
+The time review on 2026-10-18 found that foreground `until` loops were the
+most expensive recurring step: an agent that polls with `sleep` waits until
+the loop ends or the call times out. The opt-in hook `poll-loop-hint`
+(PreToolUse, Bash) does not read the log. It fires before such a call and
+adds a hint as `additionalContext`. It never blocks.
+
+- It fires when an `until` or `while` loop in command position has a `sleep`
+  command after it.
+- It stays silent for loops without `sleep`, for `run_in_background: true`
+  calls, and for the words inside quotes, comments, or heredoc bodies.
+  `hooks/lib/shell-code-only.pl` strips those parts first. A loop inside
+  `bash -c '...'` is quoted text, so the hook misses it.
+- The hint names three cheaper waits: run the command with
+  `run_in_background: true` and wait for the completion notice; use a
+  blocking wait such as `gh pr checks --watch` or `wait <pid>`; or raise the
+  poll interval and cap the total time.
+- Turn it on with `- poll-loop-hint` under `enabled:` in
+  `~/.config/agentbrew/hooks-overlay/manifest.yaml`, then run
+  `agentbrew sync`. Bypass: `HOOK_BYPASS_POLL_LOOP_HINT=1`.
+- Check the effect with the `until <arg>` line of the time review 7 days
+  after you turn it on.
 
 ## Status line
 

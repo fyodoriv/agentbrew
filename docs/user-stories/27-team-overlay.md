@@ -2,6 +2,10 @@
 
 > I work somewhere with internal skills, MCP servers, or auth-bound tools that don't belong in a public catalog. I want one command to layer my team's curated set on top of agentbrew, and one command to remove it cleanly.
 
+**Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): failed `team` runs.
+
+**E2E**: [`us27-us28-us29-team-overlay-and-packs.test.ts`](../../real-e2e/scenarios/us27-us28-us29-team-overlay-and-packs.test.ts)
+
 ```bash
 agentbrew team set <overlay-repo-url>    # install + activate one team overlay
 agentbrew team unset                      # remove (symmetric)

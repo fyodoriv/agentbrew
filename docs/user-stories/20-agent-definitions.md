@@ -2,6 +2,10 @@
 
 > I write a persona once and every agent tool gets it — Claude Code, Cursor, Codex, all of them.
 
+**Metric**: `story_fail_rate` for US20 in [`metrics.md`](../metrics.md): failed `agents` runs and `agents` sync errors.
+
+**E2E**: [`us06-us20-agents-drift.test.ts`](../../real-e2e/scenarios/us06-us20-agents-drift.test.ts), [`us19-us20-portable-and-agents.test.ts`](../../real-e2e/scenarios/us19-us20-portable-and-agents.test.ts)
+
 ```bash
 agentbrew agents init                      # create ~/.config/agentbrew/agents/ directory
 agentbrew agents list                      # show all agent definitions and deployment status

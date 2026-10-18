@@ -1,0 +1,5 @@
+name: e2e-team
+sources:
+  - skills
+memoryPacks:
+  - packs/team-pack

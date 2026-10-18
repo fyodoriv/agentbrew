@@ -2,6 +2,10 @@
 
 > I changed my config and want to make sure everything is valid before syncing.
 
+**Metric**: `story_fail_rate` for US18 in [`metrics.md`](../metrics.md): failed `lint` runs.
+
+**E2E**: [`us18-us22-validate-and-locks.test.ts`](../../real-e2e/scenarios/us18-us22-validate-and-locks.test.ts)
+
 ```bash
 agentbrew lint   # validate all config files
 ```

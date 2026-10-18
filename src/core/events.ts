@@ -17,7 +17,7 @@ import { logSkipped } from "./logger.js";
  */
 
 /** Event names. Add one here and in docs/observability.md together. */
-export type EventName = "sync" | "repair" | "error";
+export type EventName = "sync" | "repair" | "error" | "command";
 
 export interface AgentbrewEvent {
   event: EventName;
@@ -55,6 +55,40 @@ const MODULE_STORY: Readonly<Record<string, string>> = {
   hooks: "US21",
   models: "US16",
 };
+
+/**
+ * Story that each top-level command serves. `sync` and `fix` log their own
+ * events, and commands without a story (for example `metrics`) log nothing.
+ */
+const COMMAND_STORY: Readonly<Record<string, string>> = {
+  init: "US01",
+  install: "US02",
+  mcp: "US03",
+  setup: "US03",
+  rules: "US04",
+  commands: "US05",
+  "auto-sync": "US06",
+  upgrade: "US08",
+  import: "US11",
+  remove: "US12",
+  skills: "US13",
+  agentfile: "US16",
+  lint: "US18",
+  export: "US19",
+  agents: "US20",
+  completions: "US21",
+  hooks: "US21",
+  hook: "US21",
+  lock: "US22",
+  catalog: "US24",
+  status: "US25",
+  team: "US27",
+  memory: "US29",
+};
+
+export function storyForCommand(command: string): string | undefined {
+  return COMMAND_STORY[command];
+}
 
 export function storyForModule(module: string | undefined): string {
   return (module && MODULE_STORY[module]) || "US08";

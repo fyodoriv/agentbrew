@@ -2,6 +2,10 @@
 
 > I point agentbrew at a GitHub repo or folder and it indexes skills, MCP servers, rules, and commands.
 
+**Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): `install <repo>` is the same command as US02.
+
+**E2E**: [`us07-us17-source-and-existing-setup.test.ts`](../../real-e2e/scenarios/us07-us17-source-and-existing-setup.test.ts)
+
 ```bash
 agentbrew install vercel-labs/agent-skills    # GitHub repo
 agentbrew install ~/my-company/skills         # local folder

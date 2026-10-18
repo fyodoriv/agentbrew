@@ -2,6 +2,10 @@
 
 > I upgraded agentbrew and there are new recommended skills. How do I get them?
 
+**Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): `install --recommended` is the US02 command.
+
+**E2E**: [`us14-recommended-after-upgrade.test.ts`](../../real-e2e/scenarios/us14-recommended-after-upgrade.test.ts)
+
 ## Get new recommended items
 
 ```bash

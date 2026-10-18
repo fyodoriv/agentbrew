@@ -2,6 +2,10 @@
 
 > I find a skill and install it — every agent gets it immediately.
 
+**Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): failed `install` runs and `skills` sync errors.
+
+**E2E**: [`us02-us03-install-mcp-and-skill.test.ts`](../../real-e2e/scenarios/us02-us03-install-mcp-and-skill.test.ts)
+
 ```bash
 agentbrew catalog                              # browse what's available
 agentbrew catalog --search "review"            # search by keyword

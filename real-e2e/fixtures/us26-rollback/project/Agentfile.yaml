@@ -1,0 +1,5 @@
+mcp:
+  - name: team-api
+    command: node
+    args:
+      - api-server.js

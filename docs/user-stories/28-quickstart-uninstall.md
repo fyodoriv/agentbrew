@@ -2,6 +2,10 @@
 
 > My team has a private overlay repo and I want a single command that installs agentbrew AND configures it with our team config. Same for uninstall — one line restores my machine to vanilla.
 
+**Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): the overlay scripts wrap `team set` and `team unset`.
+
+**E2E**: [`us27-us28-us29-team-overlay-and-packs.test.ts`](../../real-e2e/scenarios/us27-us28-us29-team-overlay-and-packs.test.ts)
+
 Each team overlay ships its own `bin/quickstart` and `bin/uninstall` scripts. agentbrew core doesn't ship them — they live in the overlay repo because they know your team's specific URLs, install preferences, and one-time bootstrap.
 
 ```bash

@@ -2,6 +2,10 @@
 
 > Something went wrong after `agentbrew sync` — an agent stopped working, my rules got truncated, my MCP servers are missing. I undo the last sync in one command.
 
+**Metric**: `story_fail_rate` for US26 in [`metrics.md`](../metrics.md): failed `sync --rollback` runs.
+
+**E2E**: [`us26-rollback.test.ts`](../../real-e2e/scenarios/us26-rollback.test.ts)
+
 ```bash
 agentbrew sync --rollback        # restore every agent's config from the pre-sync snapshot
 ```

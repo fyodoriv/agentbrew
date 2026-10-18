@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { eventsEnabled, recordEvent, sanitizeEvent, storyForModule } from "./events.js";
+import { eventsEnabled, recordEvent, sanitizeEvent, storyForCommand, storyForModule } from "./events.js";
 
 const scratch = mkdtempSync(join(tmpdir(), "agentbrew-events-"));
 const saved = { on: process.env.AGENTBREW_EVENTS, file: process.env.AGENTBREW_EVENTS_FILE };
@@ -80,5 +80,14 @@ describe("storyForModule", () => {
     expect(storyForModule("hooks")).toBe("US21");
     expect(storyForModule(undefined)).toBe("US08");
     expect(storyForModule("unknown")).toBe("US08");
+  });
+});
+
+describe("storyForCommand", () => {
+  it("maps top-level commands to stories and skips commands without one", () => {
+    expect(storyForCommand("status")).toBe("US25");
+    expect(storyForCommand("team")).toBe("US27");
+    expect(storyForCommand("metrics")).toBeUndefined();
+    expect(storyForCommand("sync")).toBeUndefined();
   });
 });

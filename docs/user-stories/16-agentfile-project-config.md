@@ -2,6 +2,10 @@
 
 > I commit an Agentfile to my repo. My teammates clone it, run `agentbrew sync`, and get the same agent setup.
 
+**Metric**: `story_fail_rate` for US16 in [`metrics.md`](../metrics.md): failed `agentfile` runs and `models` sync errors.
+
+**E2E**: [`us16-agentfile-project-config.test.ts`](../../real-e2e/scenarios/us16-agentfile-project-config.test.ts)
+
 ## The Agentfile
 
 An `Agentfile` is a declarative manifest — like `Brewfile` for Homebrew or `package.json` for npm. It lives at the repo root and describes what your project needs:

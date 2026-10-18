@@ -37,7 +37,7 @@ interface Scratch {
 }
 
 function scratch(): Scratch {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-us24-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-us01-")));
   roots.push(root);
   const home = join(root, "home");
   const shims = join(root, "shims");
@@ -114,7 +114,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe.concurrent(`us24 one-step install (${COLD ? "cold: npm ci + build" : "fast: built CLI"})`, () => {
+describe.concurrent(`us01 one-step install (${COLD ? "cold: npm ci + build" : "fast: built CLI"})`, () => {
   it(
     "installs with the user's answers, heals, verifies, and keeps their settings",
     () => {

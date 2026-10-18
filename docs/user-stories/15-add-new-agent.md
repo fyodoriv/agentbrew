@@ -2,6 +2,10 @@
 
 > I installed Cursor yesterday. How do I get my skills and MCP servers deployed to it?
 
+**Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init --force` is the US01 command.
+
+**E2E**: [`us15-add-new-agent.test.ts`](../../real-e2e/scenarios/us15-add-new-agent.test.ts)
+
 ## Re-detect agents
 
 ```bash

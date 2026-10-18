@@ -2,6 +2,10 @@
 
 > Something changed my agent's config. AgentBrew detects it and fixes it — without losing my manual edits.
 
+**Metric**: `repair_fail_rate` in [`metrics.md`](../metrics.md): scheduled repairs that leave drift or fail.
+
+**E2E**: [`us03-us06-mcp-drift.test.ts`](../../real-e2e/scenarios/us03-us06-mcp-drift.test.ts), [`us04-us06-rules-drift.test.ts`](../../real-e2e/scenarios/us04-us06-rules-drift.test.ts), [`us04-us06-rules-source-hygiene.test.ts`](../../real-e2e/scenarios/us04-us06-rules-source-hygiene.test.ts), [`us05-us06-commands-and-drift.test.ts`](../../real-e2e/scenarios/us05-us06-commands-and-drift.test.ts), [`us06-instructions-drift.test.ts`](../../real-e2e/scenarios/us06-instructions-drift.test.ts), [`us06-us20-agents-drift.test.ts`](../../real-e2e/scenarios/us06-us20-agents-drift.test.ts), [`us06-us21-hooks-drift.test.ts`](../../real-e2e/scenarios/us06-us21-hooks-drift.test.ts)
+
 ```bash
 agentbrew status --fix       # detect drift, auto-repair
 agentbrew status             # view drift summary without fixing

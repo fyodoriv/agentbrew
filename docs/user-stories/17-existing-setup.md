@@ -2,6 +2,10 @@
 
 > I already have MCP servers in Cursor and skills in Claude Code. I install agentbrew. What happens to my stuff?
 
+**Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init` on an existing setup is the US01 command.
+
+**E2E**: [`us07-us17-source-and-existing-setup.test.ts`](../../real-e2e/scenarios/us07-us17-source-and-existing-setup.test.ts)
+
 ## Before agentbrew
 
 Your machine has:

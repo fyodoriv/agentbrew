@@ -2,6 +2,10 @@
 
 > Tab-complete every agentbrew command, and keep configs in sync automatically whenever I open a shell or commit code.
 
+**Metric**: `story_fail_rate` for US21 in [`metrics.md`](../metrics.md): failed `completions` and `hooks` runs and `hooks` sync errors.
+
+**E2E**: [`us06-us21-hooks-drift.test.ts`](../../real-e2e/scenarios/us06-us21-hooks-drift.test.ts), [`us21-shell-hooks.test.ts`](../../real-e2e/scenarios/us21-shell-hooks.test.ts), [`us01-us21-npm-package-hooks.test.ts`](../../real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts)
+
 ```bash
 agentbrew completions install              # install tab completions for your shell
 agentbrew completions install zsh          # install for a specific shell

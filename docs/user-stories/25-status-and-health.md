@@ -2,6 +2,10 @@
 
 > I run `agentbrew status` and know exactly what's configured, what's drifting, and what's broken.
 
+**Metric**: `story_fail_rate` for US25 in [`metrics.md`](../metrics.md): failed `status` runs, `status --ci` on drift included.
+
+**E2E**: [`us25-status-and-health.test.ts`](../../real-e2e/scenarios/us25-status-and-health.test.ts)
+
 ```bash
 agentbrew status                 # one-screen summary: agents, servers, sources, skills, drift
 agentbrew status --verbose       # full per-agent, per-skill, per-server detail

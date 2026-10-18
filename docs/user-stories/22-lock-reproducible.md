@@ -2,6 +2,10 @@
 
 > I pin my skill sources to exact commits so every teammate gets the same versions — no surprises from upstream changes.
 
+**Metric**: `story_fail_rate` for US22 in [`metrics.md`](../metrics.md): failed `lock` runs.
+
+**E2E**: [`us18-us22-validate-and-locks.test.ts`](../../real-e2e/scenarios/us18-us22-validate-and-locks.test.ts)
+
 ```bash
 agentbrew lock                # show locked source versions (SHA pins)
 agentbrew lock --verify       # verify installed sources match locked SHAs

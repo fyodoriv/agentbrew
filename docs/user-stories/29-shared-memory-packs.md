@@ -2,6 +2,10 @@
 
 > I want org-neutral semantic memory with optional curated packs — one loopback daemon, explicit install, and team overlays that never delete my local memories.
 
+**Metric**: `story_fail_rate` for US29 in [`metrics.md`](../metrics.md): failed `memory` runs.
+
+**E2E**: [`us27-us28-us29-team-overlay-and-packs.test.ts`](../../real-e2e/scenarios/us27-us28-us29-team-overlay-and-packs.test.ts)
+
 ```bash
 agentbrew memory enable              # wire shared HTTP MCP + optional LaunchAgent (macOS)
 agentbrew memory disable             # remove managed wiring; SQLite data preserved

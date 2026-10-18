@@ -94,9 +94,10 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - PR hooks read `gh pr` in command position and heredoc bodies; a line in your command that starts with `gh pr create` counts, so write hook test input with the Write tool.
 - The rule-9 lint applies to every `- **ID**:` task block. Give new tasks Hypothesis, Success, Pivot, Measurement, and Anchor fields.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
-- The install e2e (`real-e2e/scenarios/us24-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
+- The install e2e (`real-e2e/scenarios/us01-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - Tests run with `AGENTBREW_EVENTS=0` (`vitest.config.ts`). A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
+- Name a real-e2e scenario after every story it covers (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`; `src/docs/scenario-map.test.ts` checks both.
 - Task fields need the list dash (`  - **Field**: value`); parsers ignore a bare `  **Field**:` line. `npx @tasks-md/lint --fix TASKS.md` adds it.
 
 ## Delivery

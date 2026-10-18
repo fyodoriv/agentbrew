@@ -2,6 +2,10 @@
 
 > I want to see what skills, MCP servers, and rules are available before I install anything.
 
+**Metric**: `story_fail_rate` for US24 in [`metrics.md`](../metrics.md): failed `catalog` runs.
+
+**E2E**: [`us24-browse-catalog.test.ts`](../../real-e2e/scenarios/us24-browse-catalog.test.ts)
+
 ```bash
 agentbrew catalog                         # full catalog, grouped by type
 agentbrew catalog --search review         # keyword search across names + descriptions

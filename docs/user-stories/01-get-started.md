@@ -2,6 +2,10 @@
 
 > I install agentbrew and all my agents end up with the same config.
 
+**Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): failed `init` runs; `zero_to_configured_s` times the install.
+
+**E2E**: [`us01-get-started.test.ts`](../../real-e2e/scenarios/us01-get-started.test.ts), [`us01-one-step-install.test.ts`](../../real-e2e/scenarios/us01-one-step-install.test.ts), [`us01-us21-npm-package-hooks.test.ts`](../../real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts)
+
 ```bash
 npm install -g agentbrew
 agentbrew

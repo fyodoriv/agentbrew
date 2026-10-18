@@ -2,6 +2,10 @@
 
 > I write one command file and every agent gets it in its native format.
 
+**Metric**: `story_fail_rate` for US05 in [`metrics.md`](../metrics.md): `commands` sync errors and failed `commands` runs.
+
+**E2E**: [`us05-us06-commands-and-drift.test.ts`](../../real-e2e/scenarios/us05-us06-commands-and-drift.test.ts)
+
 ```bash
 agentbrew commands init    # create ~/.config/agentbrew/commands/
 # Add .md files to the commands directory

@@ -6,6 +6,8 @@ AgentBrew syncs skills, MCP servers, rules, commands, and instructions across ev
 
 **Lifecycle status.** Each user story below is one of three states: shipped-and-staying, shipped-being-removed (⚠ marked inline), or planned. The full lifecycle map lives in [`docs/VISION.md` § "What We're Building — Status"](../VISION.md#what-were-building--status); the queue of in-flight work is in [`TASKS.md`](../../TASKS.md). See [`VISION.md`](../VISION.md) for project direction.
 
+Each story names its outcome metric (`**Metric**:`, a row in [`metrics.md`](../metrics.md)) and the real end-to-end scenarios that prove it (`**E2E**:`, mapped in [`real-e2e/SCENARIO_MAP.md`](../../real-e2e/SCENARIO_MAP.md)). `src/docs/scenario-map.test.ts` fails when they drift.
+
 ## Flows
 
 | # | Use Case | One-liner | Command |

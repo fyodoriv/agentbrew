@@ -39,7 +39,7 @@ import { registerOpsCommands } from "./commands/cli-ops.js";
 import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
-import { recordEvent } from "./core/events.js";
+import { recordEvent, storyForCommand } from "./core/events.js";
 import { printMotd } from "./motd.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
 import { registerTeamCommands } from "./team/commands/cli-team.js";
@@ -205,8 +205,17 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
     await runSyncCommand(options);
     ok = !process.exitCode;
   } finally {
-    if (!options.dryRun) recordEvent({ event: "sync", story: "US08", ok, ms: Date.now() - started });
+    if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
+}
+
+/** The user story a sync run serves, by its flags (docs/observability.md). */
+function syncStory(options: SyncCommandOptions): string {
+  if (options.rollback) return "US26";
+  if (options.pull) return "US13";
+  if (options.agentfile) return "US23";
+  if (options.discover) return "US11";
+  return "US08";
 }
 
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
@@ -389,7 +398,22 @@ export function buildProgram(): Command {
   registerBootstrapCommand(program);
   registerInstallCommand(program);
   registerDefaultAction(program);
+  recordCommandEvents(program);
   return program;
+}
+
+/** One content-free `command` event per top-level command that serves a user story. */
+function recordCommandEvents(program: Command): void {
+  let started = 0;
+  program.hook("preAction", () => {
+    started = Date.now();
+  });
+  program.hook("postAction", (_root, action) => {
+    let top = action;
+    while (top.parent && top.parent !== program) top = top.parent;
+    const story = storyForCommand(top.name());
+    if (story) recordEvent({ event: "command", story, ok: !process.exitCode, ms: Date.now() - started });
+  });
 }
 
 export function isCliEntrypoint(moduleUrl: string, argvPath = process.argv[1]): boolean {

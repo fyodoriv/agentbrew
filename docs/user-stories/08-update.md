@@ -2,6 +2,10 @@
 
 > I pull latest skills from all sources and re-sync without losing my config.
 
+**Metric**: `sync_fail_rate` in [`metrics.md`](../metrics.md): failed plain `agentbrew sync` runs.
+
+**E2E**: [`us08-us13-update-and-pull.test.ts`](../../real-e2e/scenarios/us08-us13-update-and-pull.test.ts)
+
 ```bash
 agentbrew sync --pull          # pull all sources, re-sync everything
 agentbrew sync --pull --dry-run  # preview what would change without applying

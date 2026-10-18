@@ -2,6 +2,10 @@
 
 > I commit an Agentfile to my project repo. My teammates clone it, run `agentbrew sync`, and get the same MCP servers, skills, rules, commands, hooks, and agent personas — zero manual config.
 
+**Metric**: `story_fail_rate` for US23 in [`metrics.md`](../metrics.md): failed `sync --agentfile` runs.
+
+**E2E**: [`us23-cross-repo-discovery.test.ts`](../../real-e2e/scenarios/us23-cross-repo-discovery.test.ts)
+
 ## The problem
 
 MCP servers, skills, and rules are configured globally per-machine. When a team works on a project that needs specific tools (a database MCP server, project-specific coding rules, custom commands), each developer must set them up manually. There's no way to say "this project needs these agent resources" and have it flow to the whole team.

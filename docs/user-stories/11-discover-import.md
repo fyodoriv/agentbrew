@@ -2,6 +2,10 @@
 
 > I manually add an MCP server to one agent and want it everywhere — agentbrew discovers it and syncs it to all others.
 
+**Metric**: `story_fail_rate` for US11 in [`metrics.md`](../metrics.md): failed `sync --discover` and `import` runs.
+
+**E2E**: [`us11-us12-discover-import-and-prune.test.ts`](../../real-e2e/scenarios/us11-us12-discover-import-and-prune.test.ts)
+
 ```bash
 agentbrew sync                # bare sync warns about user-added servers
 agentbrew sync --discover     # detailed listing of user-added servers

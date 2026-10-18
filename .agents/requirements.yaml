@@ -29,3 +29,17 @@ map.metrics: docs/metrics.md scripts/metrics.sh src/docs/metrics-doc.test.ts
 # Every drift item prints its fix from src/drift-fixes.ts, a record over every
 # DriftItem type, so a type without a fix fails tsc.
 map.observability: docs/observability.md src/core/events.ts src/core/events.test.ts src/health.ts src/drift-fixes.ts
+
+# Each story in docs/user-stories/NN-*.md has a Metric line naming an outcome
+# row in docs/metrics.md (failed events for its story, never a test count) and
+# an E2E line naming its real-e2e scenarios. real-e2e/SCENARIO_MAP.md maps each
+# scenario to the stories its file name lists; src/docs/scenario-map.test.ts
+# fails on any drift.
+map.user-stories: docs/user-stories/README.md real-e2e/SCENARIO_MAP.md src/docs/scenario-map.test.ts
+
+# E2E: real-e2e/ instead of tests/e2e/ and npm run test:real-e2e instead of
+# scripts/e2e.sh (accepted push back). Each scenario runs the real CLI from
+# source in a scratch HOME with a happy and an error case; the one-step install
+# runs the real scripts/install.sh under sandbox-exec. No loading case: a CLI
+# has no loading state (accepted push back).
+map.e2e: real-e2e/scenarios real-e2e/SCENARIO_MAP.md vitest.real-e2e.config.ts src/real-e2e/scenario-fixture.ts

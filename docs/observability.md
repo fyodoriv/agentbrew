@@ -26,7 +26,8 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 
 | Event | When | Fields | Story |
 |---|---|---|---|
-| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08 |
+| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
+| `command` | each other top-level command that serves a story (`init`, `install`, `status`, `team`, ...) | `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts` |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
 

@@ -2,6 +2,10 @@
 
 > I want to move my entire agent setup to a new machine — or share it with a colleague who doesn't use git.
 
+**Metric**: `story_fail_rate` for US19 in [`metrics.md`](../metrics.md): failed `export` runs.
+
+**E2E**: [`us19-us20-portable-and-agents.test.ts`](../../real-e2e/scenarios/us19-us20-portable-and-agents.test.ts)
+
 ```bash
 agentbrew export -o my-setup.yaml           # export full config as portable bundle
 agentbrew import --bundle my-setup.yaml      # import on another machine (merges by default)

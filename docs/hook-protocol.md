@@ -22,7 +22,7 @@ ancestor of the running CLI that has an `agentbrew` `package.json` and
 root. An `npm i -g agentbrew` install matches at the package root, because the
 package ships `hooks/` (without the `.test.sh` fixtures) and `templates/rules/`
 through the `files` list in `package.json`. The real-e2e scenario
-`real-e2e/scenarios/npm-package-hooks.test.ts` packs the repo, installs the
+`real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts` packs the repo, installs the
 tarball globally into a scratch prefix, and checks that the hook entries and
 catalog `.mdc` rules match a clone. `scripts/install-e2e-if-needed.sh` runs it
 when `package.json`, the manifest, or the template rules change.

@@ -2,6 +2,10 @@
 
 > I register one MCP server and every agent gets it — right format, env vars, and permissions.
 
+**Metric**: `story_fail_rate` for US03 in [`metrics.md`](../metrics.md): failed `mcp` and `setup` runs and `mcp` sync errors.
+
+**E2E**: [`us02-us03-install-mcp-and-skill.test.ts`](../../real-e2e/scenarios/us02-us03-install-mcp-and-skill.test.ts), [`us03-us06-mcp-drift.test.ts`](../../real-e2e/scenarios/us03-us06-mcp-drift.test.ts)
+
 ```bash
 # From catalog
 agentbrew install context7

@@ -2,6 +2,10 @@
 
 > I write one set of rules and every agent follows them — whether the agent stores rules in one big file or in a directory of per-file rules.
 
+**Metric**: `story_fail_rate` for US04 in [`metrics.md`](../metrics.md): `rules` and `instructions` sync errors and failed `rules` runs.
+
+**E2E**: [`us04-share-rules.test.ts`](../../real-e2e/scenarios/us04-share-rules.test.ts), [`us04-us06-rules-drift.test.ts`](../../real-e2e/scenarios/us04-us06-rules-drift.test.ts), [`us04-us06-rules-source-hygiene.test.ts`](../../real-e2e/scenarios/us04-us06-rules-source-hygiene.test.ts)
+
 ```bash
 agentbrew rules init           # create ~/.config/agentbrew/shared-rules.md
 $EDITOR ~/.config/agentbrew/shared-rules.md

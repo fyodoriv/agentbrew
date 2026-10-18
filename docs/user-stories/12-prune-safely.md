@@ -2,6 +2,10 @@
 
 > Pruning is **on by default** — every sync automatically removes stale managed entries. Use `--no-prune` to opt out.
 
+**Metric**: `story_fail_rate` for US12 in [`metrics.md`](../metrics.md): failed `remove` runs; pruning inside sync shows in `sync_fail_rate`.
+
+**E2E**: [`us11-us12-discover-import-and-prune.test.ts`](../../real-e2e/scenarios/us11-us12-discover-import-and-prune.test.ts)
+
 ```bash
 agentbrew sync              # syncs AND prunes stale entries (default)
 agentbrew sync --no-prune   # sync without removing anything

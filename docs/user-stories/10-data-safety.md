@@ -2,6 +2,10 @@
 
 > I manually edit agent config files and those changes survive every sync, update, and auto-repair cycle.
 
+**Metric**: `story_fail_rate` for US26 in [`metrics.md`](../metrics.md): each rollback is a sync whose result someone had to undo.
+
+**E2E**: [`us10-data-safety-with-shared-agentfile.test.ts`](../../real-e2e/scenarios/us10-data-safety-with-shared-agentfile.test.ts)
+
 ## The guarantee
 
 AgentBrew never destroys data it didn't create. Manual edits are preserved across syncs:

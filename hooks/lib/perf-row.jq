@@ -72,19 +72,24 @@ def trim_close:
   if test("\\)\\s*$") and (([scan("\\(")] | length) < ([scan("\\)")] | length))
   then sub("\\)\\s*$"; "") | trim_close else . end;
 
-# Split a command line into simple commands. Each part records the operator
-# before it: "start", "seq" (; && || &), or "pipe" (|). Quoted text and $(…)
-# stay whole, so a ";" inside them does not split.
+# Split a command into simple commands. Each part records the operator
+# before it: "start", "seq" (; && || & or a newline), or "pipe" (|). Quoted
+# text and $(…) stay whole, so a ";" or a newline inside them does not split.
 def parts:
-  [scan("\"[^\"]*\"|'[^']*'|\\$\\([^()]*\\)|[0-9]*[<>]&[0-9-]*|&>>?|&&|\\|\\||\\|&?|[;&]|[^;&|<>\"'$0-9]+|.")]
+  [scan("\"[^\"]*\"|'[^']*'|\\$\\([^()]*\\)|[0-9]*[<>]&[0-9-]*|&>>?|&&|\\|\\||\\|&?|[;&\n]|[^;&|<>\"'$0-9\n]+|.")]
   | reduce .[] as $t ({cur: "", op: "start", out: []};
-      if ($t | test("^(&&|\\|\\||;|&)$")) then .out += [{op, text: .cur}] | .cur = "" | .op = "seq"
+      if ($t | test("^(&&|\\|\\||;|&|\n)$")) then .out += [{op, text: .cur}] | .cur = "" | .op = "seq"
       elif ($t | test("^\\|&?$")) then .out += [{op, text: .cur}] | .cur = "" | .op = "pipe"
       else .cur += $t end)
   | .out + [{op, text: .cur}]
   | map(.text |= (sub("^[\\s({]+"; "") | sub("[\\s}]+$"; "") | trim_close))
   | map(select(.text | test("^(done|fi|esac|do|then|else)?$") | not))
   | map(.text |= sub("^(do|then|else)\\s+"; ""));
+
+# Drop heredoc bodies: their lines are data, not commands. Keeps the text
+# after the "<<TAG" marker on its line ("<<'EOF' > f" keeps "> f").
+def strip_heredocs:
+  gsub("<<-?\\s*['\"]?(?<tag>[A-Za-z_][A-Za-z0-9_]*)['\"]?(?<rest>[^\n]*)\n[\\s\\S]*?\n[ \t]*\\k<tag>(?=\n|$)"; "\(.rest)");
 
 # Commands that usually cost the most time in a compound line.
 def heavy:
@@ -94,13 +99,13 @@ def heavy:
 def trivial:
   test("^(cd|echo|printf|true|false|:|export|set|unset|pwd|test|\\[|\\[\\[|<path>|<arg>|Bash)\\b");
 
-# Key the dominant command of a compound line. Pipe stages after the first
+# Key the dominant command of a compound or multi-line command. Pipe stages after the first
 # are filters (grep, tail, jq) and never win. Among the rest, the first
 # known-heavy command wins; else the last non-trivial one; else the first.
 # A loop or if header (until/while/for/if) is not a candidate; its keyword
 # prefixes the chosen body command ("until sleep 1").
 def bash_key:
-  ((.tool_input.command // "") | tostring | (split("\n") | .[0] // "") | parts) as $p
+  ((.tool_input.command // "") | tostring | strip_heredocs | parts) as $p
   | if ($p | length) == 0 then "Bash"
     else
       ($p | map(.text | capture("^(?<kw>until|while|for|if|elif)\\s").kw) | first // null) as $kw

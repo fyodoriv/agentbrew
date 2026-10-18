@@ -17,7 +17,11 @@ faster. Then file a task only for a speedup that is real and recurs.
 
 ## 1. Get the numbers
 
-The perf log holds one row per tool call (step key, duration, ok). Read it
+The perf log holds one row per tool call (step key, duration, ok). A Bash
+call's key is its likely slowest command across all its lines (build and
+test tools first; heredoc bodies are skipped). Rows before 2026-10-18 keyed
+only the first line, so heredoc steps such as `python3 <arg>`, `cat <arg>`,
+and `git fetch` carried the time of the commands after them. Read the log
 with the helper that `agentbrew sync` deploys:
 
 ```bash

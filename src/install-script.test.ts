@@ -86,6 +86,8 @@ describe("scripts/install.sh", () => {
     expect(calls).toContain("init --skip-install AUTO_SYNC=1 HOOK=1");
     expect(calls).toContain("status --fix");
     expect(calls).toContain("lint");
+    // The run ends with the doctor, after lint.
+    expect(calls.trim().split("\n").at(-1)).toMatch(/^status --ci /);
     expect(result.stdout).toContain("agentbrew contribute");
     expect(result.stdout).toContain("add a test and update the docs");
     const backups = spawnSync("ls", [join(home, ".local", "state", "agentbrew", "install-backups")], {

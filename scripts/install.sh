@@ -75,7 +75,7 @@ cmd_plan() {
   say "     It also adds a background repair job (every 30 min) and a shell hook,"
   say "     unless you opt out."
   say "  5. Heal: 'agentbrew status --fix' repairs any drift it finds."
-  say "  6. Verify: 'agentbrew lint' and 'agentbrew status'."
+  say "  6. Verify: 'agentbrew lint', then the doctor 'agentbrew status --ci'."
   step "If something goes wrong"
   say "  A critical error in steps 2-4 or 6 restores the backup automatically."
   say "  You can also undo by hand any time: bash $REPO_DIR/scripts/install.sh restore"
@@ -203,6 +203,7 @@ cmd_run() {
 
   step "7/7 Verify"
   "$AGENTBREW_CMD" lint || critical "verification (agentbrew lint)"
+  "$AGENTBREW_CMD" status --ci || say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."
 
   step "Done"
   say "agentbrew is installed. Backup: $BACKUP_ROOT/$BACKUP_ID"

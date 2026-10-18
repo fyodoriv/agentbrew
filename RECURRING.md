@@ -52,6 +52,16 @@ reviews/`), and the `**Last-fired**:` line is bumped.
 
 ## P2
 
+- [ ] Monthly checkup: health, cached gate, metrics, gate speed review, open P0s, and the requirements audit
+  - **ID**: monthly-checkup
+  - **Tags**: checkup, metrics, speed-review, requirements
+  - **Cadence**: monthly
+  - **Next**: 2026-11-18
+  - **Output**: docs
+  - **Details**: Run `npm run checkup` (`scripts/checkup.sh`). Its speed review ranks the uncached gate steps of the last 30 days from `.metrics/gate-timings.jsonl`. A metric past its pivot in `docs/metrics.md` becomes a P0 or P1 task with the numbers. Add a row to `docs/learnings.md` for each prediction closed since the last checkup. The requirements audit follows the new-project skill's `references/requirements-map.md`, section 4.
+  - **Acceptance**: the checkup ran, each question it printed is answered or filed as a task, and `**Last-fired**:` is bumped.
+
+
 - [ ] Quarterly dissolution + contribution-pulse re-evaluation — is agentbrew still the right answer, which contributions are stalling, what absorbs back.
   **ID**: quarterly-dissolution-reeval
   **Tags**: strategy, dissolution, delegate, contribute, docs
@@ -98,7 +108,7 @@ reviews/`), and the `**Last-fired**:` line is bumped.
   **Next**: 2026-11-15
   **Last-fired**: 2026-10-15
   **Details**: Run `/review-tasks` (tasks.md command; `agentbrew install review-tasks`) on `TASKS.md`. Every verdict needs evidence (file:line, commit, PR state). The 2026-10-15 run took agentbrew from 116 to 68 open tasks.
-  **Files**: `TASKS.md`, `.prereg-allowlist`, `.tasks-stability-allowlist`
+  **Files**: `TASKS.md`, `.tasks-stability-allowlist`
   **Acceptance**: a PR whose body holds the review table and verdict counts; `npm run verify` passes.
 
 - [ ] Context budget weekly audit — refresh metrics, compare history, triage TASKS.md trim tasks.

@@ -77,8 +77,9 @@ bash <DIR>/scripts/install.sh run --yes [flags from step 3]
 ```
 
 The script backs up, builds, links the `agentbrew` command, runs
-`agentbrew init`, heals with `agentbrew status --fix`, and verifies with
-`agentbrew lint`. On a critical error it restores the backup by itself and
+`agentbrew init`, heals with `agentbrew status --fix`, verifies with
+`agentbrew lint`, and ends with the doctor, `agentbrew status --ci`, which
+names the fix for any drift left. On a critical error it restores the backup by itself and
 exits 1. Then tell the person what failed, that their settings are back, and
 offer to open an issue with the output.
 

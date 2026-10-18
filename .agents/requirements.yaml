@@ -43,3 +43,26 @@ map.user-stories: docs/user-stories/README.md real-e2e/SCENARIO_MAP.md src/docs/
 # runs the real scripts/install.sh under sandbox-exec. No loading case: a CLI
 # has no loading state (accepted push back).
 map.e2e: real-e2e/scenarios real-e2e/SCENARIO_MAP.md vitest.real-e2e.config.ts src/real-e2e/scenario-fixture.ts
+
+# Setup: the README's first code block is one line that clones and runs
+# scripts/install.sh run (back up, build, link, init, heal, lint), which ends
+# with the doctor, agentbrew status --ci (accepted push back: install.sh run is
+# the setup, no scripts/setup.sh alias). src/install-script.test.ts proves the
+# doctor is the last call; src/docs/agent-guide-contract.test.ts pins the
+# README line. INSTALL.md is the agent-driven version of the same run.
+map.setup: README.md scripts/install.sh INSTALL.md src/install-script.test.ts src/docs/agent-guide-contract.test.ts
+
+# Caching: npm run verify is scripts/verify.sh. It skips a step that passed on
+# the same inputs: a hash of every tracked and untracked (not ignored) file's
+# path and content, the node version, the step command, and origin/main.
+# NO_CACHE=1 runs every step. src/scripts/verify-cache.test.ts proves that an
+# edit to one tracked file, or a new untracked file, re-runs the step.
+# npm test already selects affected tests (src/affected-tests.ts).
+map.caching: scripts/verify.sh src/scripts/verify-cache.test.ts src/affected-tests.ts
+
+# Self-improving: scripts/verify.sh times every step into
+# .metrics/gate-timings.jsonl (ignored); scripts/checkup.sh (npm run checkup)
+# runs the speed review over the uncached steps of the last 30 days; RECURRING.md
+# schedules it monthly (monthly-checkup); docs/learnings.md logs predicted vs
+# observed for each change.
+map.self-improving: scripts/verify.sh scripts/checkup.sh RECURRING.md docs/learnings.md

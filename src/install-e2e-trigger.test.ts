@@ -38,7 +38,10 @@ describe("install e2e trigger", () => {
   it("is wired into both gates", async () => {
     const { readFileSync } = await import("node:fs");
     const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8"));
-    expect(pkg.scripts.verify).toContain("install-e2e-if-needed.sh");
+    expect(pkg.scripts.verify).toBe("bash scripts/verify.sh");
+    expect(readFileSync(join(import.meta.dirname, "..", "scripts", "verify.sh"), "utf-8")).toContain(
+      "install-e2e-if-needed.sh",
+    );
     expect(readFileSync(join(import.meta.dirname, "..", "scripts", "verify-changed.sh"), "utf-8")).toContain(
       "install-e2e-if-needed.sh",
     );

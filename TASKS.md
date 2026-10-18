@@ -145,30 +145,6 @@
      RECURRING.md watch-lists (re-research-stale-competitors, quarterly-
      dissolution-reeval) instead of a duplicate task. -->
 
-- [ ] agentbrew meets every new-project requirement, or waives it with a reason
-  - **ID**: meet-new-project-requirements
-  - **Tags**: requirements, agents, observability, docs
-  - **Details**: The 2026-10-16 audit scored agentbrew 9/22 by path (11/24 with `.agents/requirements.yaml`). By intent: e2e and tasks are met; vision, metrics, observability, user stories, setup, and self-improving are partial; checkup and caching are missing. Fix in this order:
-    1. `VISION.md`: a `## Problem` section and dated `## Kill criteria` (move the dissolution triggers in; record the keep-or-kill decision on the fired >30K-LOC trigger).
-    2. New `docs/metrics.md` (docs map row): metric | goal | pivot | command (no-op sync time, sync output lines, LOC trend, zero-to-configured time), `(stub)` when data is missing; `agentbrew metrics --goals` prints it.
-    3. Auto-sync events as content-free JSONL with an event list and an error-to-story map in new `docs/observability.md`; every `DriftItem` prints its fix in `status`.
-    4. Fix `real-e2e/SCENARIO_MAP.md` (us09-us10 rename, unmapped drift scenarios, US24 mismatch) and add `src/docs/scenario-map.test.ts` that fails on drift; add `Metric:` and `E2E:` lines to each story; add scenarios for US25 to US29.
-    5. `scripts/install.sh run` ends with `agentbrew status --ci`, and the README quick start opens with that one command.
-    6. A repo-wide checkup command (`npm run checkup`: status, cached gate, metrics, open P0s, monthly `audit-due.sh`).
-    7. Caching: `npm test` already selects affected tests; add a result cache keyed by input hash for the verify steps (re-run on any change, `NO_CACHE=1` forces a full run).
-    8. Time each gate step into `.metrics/gate-timings.jsonl` (ignored); the speed review runs inside `/tooling-checkup`; new `docs/learnings.md` (predicted vs observed).
-    9. Drain `.prereg-allowlist` and run `@tasks-md/lint` in `verify`; add `*.pem`, `*.key`, `.envrc`, `.metrics/` to `.gitignore`; trim `AGENTS.md` below about 9 KB for headroom.
-    Requirement updates from the tasks.md 100% run (2026-10-16, new-project skill): each story's metric is an outcome rate (for example failed sync events per story), not a passing-test count; each e2e scenario names its story ID; the event writer allow-lists string fields and tests turn the log off; a metric whose source answers 0 for a missing thing shows `(stub)`; every `DriftItem` fix is required by its type; the cache key lists every file a step reads (prove it by editing one file); the README setup block ends with the doctor; `CHANGELOG.md` is generated at release. Worked example: tasks.md PRs #26-#34.
-    Accepted push back (map, do not rename): root `VISION.md`, `scripts/install.sh run` as setup, `agentbrew status --ci` as the doctor, `real-e2e/` as e2e. No external error reporter (VISION excludes telemetry). No loading e2e case for a CLI.
-  - **Files**: `VISION.md`, `docs/`, `src/sync/auto-sync.ts`, `src/drift-checks/`, `real-e2e/`, `scripts/install.sh`, `package.json`, `.gitignore`, `.agents/requirements.yaml`
-  - **Output**: code
-  - **Acceptance**: `check-setup.sh . --profile tool` reaches 100% with every gap met, mapped, or waived with a reason, and `npm run verify` passes.
-  - **Hypothesis**: the setup score rises from 45% to 100%, honestly mapped or waived, and the monthly audit finds no new gap.
-  - **Measurement**: `bash ~/.claude/skills/new-project/scripts/check-setup.sh . --profile tool`
-  - **Success**: 100%, every waiver reasoned, `npm run verify` green.
-  - **Pivot**: a gap that costs more than it returns here becomes a waiver, or a requirement-change PR on `new-project`.
-  - **Anchor**: `skill-plugins/workflow/new-project/references/requirements-map.md`; audit 2026-10-16.
-
 <!-- Phase 1 (hooks-phase-1-cat-a-deterministic) COMPLETE 2026-06 — all 26 Cat A
      hooks shipped with scripts + manifest entries + per-hook fixture tests, and
      the production decision log (scripts/hook-observation.sh) confirms every one
@@ -215,6 +191,10 @@
 - [ ] Restore agentbrew release automation and npm authentication
   - **ID**: restore-agentbrew-release-automation
   - **Tags**: release, github-actions, npm, human-blocked
+  - **Hypothesis**: one owner-run publish brings npm `latest`, the git tag, and `package.json` to the same version (version drift goes to 0).
+  - **Measurement**: `npm view agentbrew version`, `node -p "require('./package.json').version"`, and `git describe --tags --abbrev=0`.
+  - **Pivot**: if the publish fails on auth again, write a reviewed manual release path and close the automation part.
+  - **Anchor**: `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
   - **Details**: The Auto-release workflow did not run after the merged delivery. `github.com/fyodoriv/agentbrew` is now the only canonical home, and GitHub Actions is disabled there. The documented manual fallback was blocked by `npm whoami` returning `ENEEDAUTH`. The workflow already has a `workflow_dispatch` fallback. Release stays blocked until Actions is enabled on `fyodoriv/agentbrew` (or a reviewed manual release path exists) and npm credentials are available. See `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`.
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
@@ -225,6 +205,10 @@
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
   - **ID**: workspace-aware-sync
   - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host
+  - **Hypothesis**: one `agentbrew sync` applies every per-repo Agentfile in the declared workspaces, so manual `sync --agentfile` runs drop from one per repo to zero.
+  - **Measurement**: `fd -g Agentfile.yaml ~/apps -d 3 | wc -l` (repos that need a manual run today) before and after.
+  - **Pivot**: if only one workspace still has per-repo Agentfiles at the next review, close this task as not needed.
+  - **Anchor**: tasks.md `workspace-mode-nested-repos`; the 2026-10-16 re-check note below.
   - **Details**: Companion to `tasksmd/tasks.md` task `workspace-mode-nested-repos` (filed 2026-05-12 PR upstream). Operators frequently have **multiple** workspace folders on the same host — the operator at 2026-05-12 has 5 workspaces under `~/apps/` (`tooling`, `acme`, `learning`, `_inventory`, `docs`), several containing their own per-repo `Agentfile.yaml`. Today `agentbrew sync` takes either no Agentfile (uses global `~/.config/agentbrew/Agentfile.yaml`) or an explicit `--agentfile <path>` flag — both single-Agentfile shapes. There's no first-class way to compose one global manifest + N workspaces × M per-repo manifests.
 
     The operator's mental model is "I have these workspaces; agentbrew should know what every repo in every workspace wants and reconcile that into the target agent configs." Today that requires running `agentbrew sync --agentfile <path>` once per repo across N workspaces — friction that scales with workspace count × repo count.
@@ -251,6 +235,10 @@
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security
+  - **Hypothesis**: once `get-uri` accepts a patched `basic-ftp`, removing the override drops one pinned transitive dependency with no new audit finding.
+  - **Measurement**: `npm view get-uri dependencies.basic-ftp` and `npm audit --json | jq '.vulnerabilities["basic-ftp"]'`.
+  - **Pivot**: if `get-uri` has not widened its range by the next quarterly review, keep the pin and close this task with that reason.
+  - **Anchor**: the `basic-ftp` 5.x denial-of-service advisory; dependency audit 2026-10-16.
   - **Details**: `package.json` pins `basic-ftp` to 6.2.3 through `overrides` because `get-uri@8` asks for `^5.3.1`, and 5.x has an open denial-of-service advisory. Remove the override when `get-uri` (via `promptfoo` > `proxy-agent`) widens its range to a patched release, so the pin stops hiding upstream drift.
   - **Files**: package.json, package-lock.json
   - **Acceptance**: (1) the `basic-ftp` entry is gone from `overrides`; (2) `npm audit` stays free of high findings from `basic-ftp`.
@@ -259,6 +247,10 @@
 - [ ] (Publish-only step) File the staged upstream issue at `neiii/bridle` (upstream relocated 2026-05-02 from `superwall/bridle`) noting `harness-locate` uses singular `skill/` and `command/` for OpenCode but the official OpenCode docs use plural.
   - **ID**: bridle-opencode-path-issue
   - **Tags**: upstream-contribution, bridle, scout, blocked-explicit-permission, publish-only
+  - **Hypothesis**: filing the staged issue gets the OpenCode singular and plural path mismatch fixed or closed upstream, so the next path audit stops flagging it.
+  - **Measurement**: `gh issue list --repo neiii/bridle --state all --search opencode` (state of the filed issue).
+  - **Pivot**: no maintainer response within 90 days: drop the task (VISION 90-day rule).
+  - **Anchor**: `docs/audits/harness-locate-cross-check.md`; VISION "delegate, contribute, absorb".
   - **Details**: Surfaced from the 2026-04-26 `audit-harness-locate-paths` audit (see [`docs/audits/harness-locate-cross-check.md`](docs/audits/harness-locate-cross-check.md)). Bridle's `harness-locate::opencode` returns `~/.config/opencode/skill/` (singular) and `~/.config/opencode/command/` (singular). Per [OpenCode docs](https://opencode.ai/docs/skills) (2026-04-26), the actual paths are plural: `~/.config/opencode/skills/<name>/SKILL.md` and `~/.config/opencode/commands/<name>.md`.
 
     **Draft staged 2026-04-26 (PR #814)** in [`docs/audits/bridle-opencode-issue-draft.md`](docs/audits/bridle-opencode-issue-draft.md). The draft includes the title, body, source-code line references (`opencode.rs:41-46` for `commands_dir`, `opencode.rs:73-78` for `skills_dir`), suggested diff, and a filing checklist for the publish step.
@@ -289,6 +281,10 @@
 - [ ] Propose managed-section marker convention as an ecosystem-wide spec (upstream contribution).
   - **ID**: ecosystem-contrib-managed-section-convention
   - **Tags**: ecosystem, contribution, standards
+  - **Hypothesis**: one upstream PR that links the marker spec gets at least one more tool to use the shared format, so marker collisions between tools stay at zero.
+  - **Measurement**: the upstream PR state (`gh pr view <url> --json state`) and the tools listed as using the format in `docs/specs/managed-section-markers.md`.
+  - **Pivot**: no response within 90 days: keep the spec local and close the task.
+  - **Anchor**: `docs/specs/managed-section-markers.md`.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     Multiple tools now write to the same agent config files (CLAUDE.md, AGENTS.md, `.cursor/rules/`). Without a shared convention, they collide. agentbrew uses `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->`. Caliber uses `<!-- caliber:managed:<name> -->` / `<!-- /caliber:managed:<name> -->`. React Doctor writes directly without markers. No standard exists.
     File a lightweight spec proposal — a gist or small repo — documenting: (a) marker format (`<!-- <tool-name>:managed:<section-name> -->`), (b) ownership semantics (only the owning tool may modify content inside its markers; other tools must preserve the block verbatim), (c) marker placement (top-level sections in markdown, can contain valid markdown), (d) nesting (disallowed — markers must be section-siblings, not nested), (e) test patterns (regex + examples). Link from agentbrew's VISION.md and file a drive-by PR on Caliber / Warden / React Doctor repos linking to the spec with a one-sentence "we'd like to align on this marker convention."
@@ -301,6 +297,10 @@
 - [ ] Trust-building PRs on vercel-labs/skills from the drafts staged in `fyodoriv/skills`
   - **ID**: contribute-trust-building-pr-skills-cli
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, bug-fix
+  - **Hypothesis**: landing the staged fixes upstream builds maintainer trust, so larger delegation asks get reviewed; at least one PR merges.
+  - **Measurement**: `gh pr list --repo vercel-labs/skills --author fyodoriv --state merged --json number --jq length`.
+  - **Pivot**: no merge within 90 days of filing: stop filing and keep the fixes local where agentbrew needs them.
+  - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Contribution roadmap.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     **DO NOT claim this task without explicit user approval** (P3 policy).
 
@@ -350,6 +350,10 @@
 - [ ] RFC comment on vercel-labs/skills [issue #268](https://github.com/vercel-labs/skills/issues/268) + [issue #455](https://github.com/vercel-labs/skills/issues/455) — user-created skill preservation classifier.
   - **ID**: contribute-rfc-comment-issues-268-455-user-safety-classifier
   - **Tags**: upstream-contribution, skills-cli, blocked-explicit-permission, data-safety
+  - **Hypothesis**: an RFC comment with agentbrew's classifier taxonomy shapes the upstream fix, so the merged fix preserves user-created skills.
+  - **Measurement**: `gh issue view 268 --repo vercel-labs/skills --json state,comments`.
+  - **Pivot**: if issue #268 closes without a preservation fix, keep agentbrew's own classifier and close this task.
+  - **Anchor**: `docs/competition/vercel-skills-cli-vs-agentbrew.md` § Feature 7.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
     **DO NOT claim this task without explicit user approval** (P3 policy).
     Source: [docs/competition/vercel-skills-cli-vs-agentbrew.md § "Feature 7: User-created skill preservation"](../docs/competition/vercel-skills-cli-vs-agentbrew.md#7-user-created-skill-preservation--4-competing-bug-fix-prs-in-flight) and [Contribution roadmap row 3](../docs/competition/vercel-skills-cli-vs-agentbrew.md#contribution-roadmap--priority-ordered). Research (2026-04-19) found the user-safety direction has **4 competing bug-fix PRs already open** ([#609](https://github.com/vercel-labs/skills/pull/609), [#611](https://github.com/vercel-labs/skills/pull/611), [#869](https://github.com/vercel-labs/skills/pull/869), [#944](https://github.com/vercel-labs/skills/pull/944)) plus related bug reports ([#268](https://github.com/vercel-labs/skills/issues/268), [#455](https://github.com/vercel-labs/skills/issues/455), [#606](https://github.com/vercel-labs/skills/issues/606)). Filing a 5th implementation hurts: the queue is saturated and maintainers haven't merged any of them yet. The right move is RFC input on the design, not another competing PR.

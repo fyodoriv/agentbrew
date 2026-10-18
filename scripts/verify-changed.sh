@@ -39,7 +39,7 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
-fast_paths='^(skill-plugins/|hooks/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|\.prereg-allowlist$|[A-Za-z_-]+\.md$)'
+fast_paths='^(skill-plugins/|hooks/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|[A-Za-z_-]+\.md$)'
 other="$(grep -vE "$fast_paths" <<<"$changed" || true)"
 if [[ -n "$other" ]]; then
   echo "verify:changed: these files need the full gate:"
@@ -50,7 +50,7 @@ fi
 
 # Paths whose fast gate is enough for merge: prose and data that agents read,
 # not code that runs. Hooks and skill scripts still need the full gate.
-merge_ready_paths='^(skill-plugins/.*\.md$|skill-plugins/.*/evals/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|\.prereg-allowlist$|[A-Za-z_-]+\.md$)'
+merge_ready_paths='^(skill-plugins/.*\.md$|skill-plugins/.*/evals/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|[A-Za-z_-]+\.md$)'
 needs_full="$(grep -vE "$merge_ready_paths" <<<"$changed" || true)"
 
 verdict() {

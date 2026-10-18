@@ -44,7 +44,7 @@ if (kind === "sync") {
   const parts = Object.keys(by).sort().map((k) => k + "=" + rate(by[k]));
   console.log(parts.length ? parts.join(",") : "(stub)");
 } else if (kind === "gate") {
-  const g = ev.filter((e) => e.event === "gate" && e.mode === "full" && Number.isFinite(e.ms));
+  const g = ev.filter((e) => e.event === "gate" && e.mode === "full" && e.ok && e.cached_steps === 0 && Number.isFinite(e.ms));
   console.log(median(g.slice(-10).map((e) => e.ms)));
 }
 ' "$1" "$2"

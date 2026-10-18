@@ -77,6 +77,14 @@ describe("README opening", () => {
     expect(opening).toMatch(/```(bash|sh)\n/);
     expect(opening).toContain("(docs/README.md)");
   });
+
+  it("opens with the one-line setup, which ends with the doctor", () => {
+    const firstBlock = opening.match(/```(?:bash|sh)\n([\s\S]*?)```/)?.[1] ?? "";
+    expect(firstBlock.trim().split("\n")).toHaveLength(1);
+    expect(firstBlock).toContain("scripts/install.sh run");
+    // install.sh run's last agentbrew call is the doctor (src/install-script.test.ts).
+    expect(read("scripts/install.sh")).toMatch(/"\$AGENTBREW_CMD" status --ci/);
+  });
 });
 
 describe("relativeLinks", () => {

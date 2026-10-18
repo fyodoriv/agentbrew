@@ -11,7 +11,13 @@
 
 The agent explains what will change, asks your preferences, backs up your current agent settings, installs, heals drift, and restores the backup by itself if anything critical fails. Undo later with `bash scripts/install.sh restore`. Details: [`INSTALL.md`](INSTALL.md).
 
-Or install by hand:
+Or set it up in one line (clone, back up, install, heal, verify; it ends with the doctor, `agentbrew status --ci`):
+
+```bash
+git clone https://github.com/fyodoriv/agentbrew.git ~/agentbrew && bash ~/agentbrew/scripts/install.sh run
+```
+
+Or try it without a clone:
 
 ```bash
 npx agentbrew              # try it — detects agents, installs recommended set, schedules drift repair
@@ -655,7 +661,7 @@ npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
 npm run lint:rules                     # Minsky rule checks on this repo (part of verify)
 ```
 
-`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed. Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block; `.prereg-allowlist` lists the older tasks that predate the gate. Minsky has no script for rules 8 and 16, so two local checks run in `npm run verify`: `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
+`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed. Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block, with no grandfathered tasks; `npm run verify` also runs `@tasks-md/lint --require-prereg` on `TASKS.md`. Minsky has no script for rules 8 and 16, so two local checks run in `npm run verify`: `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
 
 `npm run verify` also runs `scripts/check-rule-3-test-first.mjs`, the test-first half of rule 3. It fails when the branch (committed or not) changes a non-test file under `src/` but changes no test file, unless a commit message on the branch has a `Test exemption: <reason>` line. It compares against `origin/main` (`--base <ref>` or `TEST_FIRST_BASE` to change it) and skips when that ref has no merge base.
 

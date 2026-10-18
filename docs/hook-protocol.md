@@ -250,6 +250,18 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
   and be covered by `scripts/run-hook-fixtures.sh`. That script (part of
   `npm run verify`) fails and names the missing file when a
   `hooks/checks/<id>.sh` has no `<id>.test.sh`.
+- The runner runs each fixture the way a stock Mac runs hooks: `/bin/bash`
+  (3.2 on macOS), `PATH` of only `/usr/bin:/bin` plus a shim dir with that
+  bash, the real `node`, and `/usr/bin/jq` (Apple's jq 1.7) when present, an
+  empty `HOME`, and no other environment. So GNU tools, a newer jq, or the
+  owner's dotfiles cannot hide a bash 3.2 or BSD bug. `HOOK_FIXTURES_HOST_ENV=1`
+  runs with your own shell instead; `HOOK_FIXTURE_BASH` picks another bash.
+- Bash 3.2 traps that fixtures hit: a `case` pattern inside `"$(...)"` needs
+  the leading `(` (`case "$x" in (*a*) ...`); a `{"a","b"}` JSON literal inside
+  `"$(...)"` brace-expands, so build JSON with `jq -n --arg`; jq 1.7 cannot
+  parse `capture(...)?.n`, write `(capture(...).n)?`. A test that sets `HOME`
+  must first link the real `node` (`node -p process.execPath`) onto `PATH`,
+  because Volta and asdf shims look for node under `HOME`.
 - Every bypass must be discoverable from the script header and the manifest's
   `bypassEnvVar`.
 - PRs that change high-impact agent artifacts must include same-PR deterministic

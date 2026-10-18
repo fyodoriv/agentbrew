@@ -171,19 +171,6 @@
 
 ## P2
 
-- [ ] Hook fixture tests pass on stock macOS, and CI proves it
-  - **ID**: hook-tests-macos-ci
-  - **Tags**: ci, hooks, macos, tests
-  - **Details**: CI runs only on `ubuntu-latest` (bash 5), but agentbrew targets Macs (bash 3.2, BSD tools, Volta/asdf node shims under `HOME`). On a stock Mac several hook fixture files failed: two are fixed in the macOS hook-tests PR; still failing are `gh-pr-body-requires-docs` Test 11, `goal-retro-before-stop`, `memory-sync-projects-session-end`, `perf-brief`, and `perf-task-review`. Add a `macos-latest` job for the hook fixture tests and fix the remaining five.
-  - **Files**: `.github/workflows/ci.yml`, `hooks/checks/*.test.sh`
-  - **Output**: code
-  - **Acceptance**: `bash hooks/checks/<name>.test.sh` passes for every hook on macOS bash 3.2, and the macOS CI job is green.
-  - **Hypothesis**: hook test failures seen only by Mac contributors go to zero.
-  - **Measurement**: the new macOS CI job.
-  - **Success**: green macOS job on `main` for 2 weeks.
-  - **Pivot**: if the macOS runner is too slow, run it nightly instead of per PR.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Tests never read or write the real `~/.config/agentbrew`, `~/.claude`, or the repo tree
   - **ID**: tests-isolated-home
   - **Tags**: tests, safety

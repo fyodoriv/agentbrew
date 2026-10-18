@@ -403,6 +403,18 @@
         "Resumes stopped workers with SendMessage to their ids, passing the found state, instead of spawning new ones",
         "Re-runs a stopped gate and reads its own exit code, instead of trusting a partial log"
       ]
+    },
+    {
+      "id": 35,
+      "prompt": "/goal continue previous goal but note that computer restarted. so let's improve the app so that it cannot cause a restart",
+      "expected_output": "Before any edit, the agent finds the restart's cause from system evidence: the newest panic report's panicString, memory and swap state in it, the macOS log around the hang, and the last rows of each worktree's timings log, which survive the reboot when temp files do not. It names the test or step that ran then. The contract's metric is a count it can measure in the macOS log over a suite run (for example app launches the test run started), with the crashed run as the baseline. It asks the owner before changing protected code, makes the dangerous step opt-in with a guard that refuses it by default, proves the guard with a test that failed first, separates noise from other machine agents in the log, and re-runs the remaining work of the previous goal on top.",
+      "expectations": [
+        "Reads the panic report and system log before proposing a fix, and rules memory in or out from the report's compressor and swap lines",
+        "Finds the last test that ran from a log that survives a reboot, not from $TMPDIR output",
+        "Defines a metric countable in the macOS log over a suite window, with the crashed run as the baseline, and filters out processes the run did not start",
+        "Makes the risky probe opt-in through a guard in the code it calls, not only a test skip, and gets owner approval for protected files first",
+        "Keeps every suite log outside $TMPDIR and never edits a tree while its suite runs"
+      ]
     }
   ]
 }

@@ -379,6 +379,18 @@
         "Never edits the supplier sheet and never sends a payment or email; writes only to the user copy",
         "Extends the existing weekly report with a read-only check and proves it with a headless claude -p run before claiming it works"
       ]
+    },
+    {
+      "id": 33,
+      "prompt": "/goal finish, then deliver in full meet-new-project-requirement",
+      "expected_output": "A contract whose metric is the check-setup.sh score (baseline taken before edits, target 100%), one question round that asks the owner to approve the exact text for a protected file (VISION.md) and any choice the old task text left open, then PRs that meet each area or map it to the repo's own files with an ADR per map and per waiver, a test that runs the checker so a gap fails the suite, the task block removed, the full suite green on the final tree, a merge, and a retro that fixes the skills that cost time.",
+      "expectations": [
+        "Takes the baseline score with check-setup.sh before any edit and states the target and the pivot in the contract",
+        "Asks for approval of the protected file's exact new text in the one question round instead of editing it or skipping it",
+        "Maps areas to existing files and records each map and waiver in an ADR instead of adding thin wrapper scripts the task allowed it to skip",
+        "Adds a suite test that runs the checker, so the monthly audit cannot silently regress",
+        "Does not edit a tree while its full suite runs, or reruns the affected test files on the final tree before citing the gate"
+      ]
     }
   ]
 }

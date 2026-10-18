@@ -200,6 +200,24 @@ describe("new-project skill", () => {
     expect(due("--days", "0").status).toBe(0);
   });
 
+  it("records an audit run in a linked worktree under the repo's name, not the worktree's", () => {
+    const repo = join(scratch, "main-repo");
+    const tree = join(scratch, "checkup-20261018");
+    mkdirSync(repo, { recursive: true });
+    const git = (...args: string[]) => spawnSync("git", ["-C", repo, ...args], { encoding: "utf-8", env });
+    git("init", "-q");
+    git("-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "init");
+    expect(git("worktree", "add", "-q", tree).status).toBe(0);
+    const stateEnv = { ...env, XDG_STATE_HOME: join(scratch, "state-worktree") };
+    const run = (dir: string, ...flags: string[]) =>
+      spawnSync("/bin/bash", [join(skillRoot, "scripts", "audit-due.sh"), dir, ...flags], {
+        encoding: "utf-8",
+        env: stateEnv,
+      });
+    expect(run(tree, "--record").stdout).toContain("main-repo.last");
+    expect(run(repo).stdout).toContain("not due");
+  });
+
   it("tracks every template file in git, so a global gitignore cannot drop one", () => {
     const onDisk = execFileSync("find", [join(skillRoot, "templates"), "(", "-type", "f", "-o", "-type", "l", ")"], {
       encoding: "utf-8",

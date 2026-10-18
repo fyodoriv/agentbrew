@@ -4,7 +4,8 @@
 # Usage: audit-due.sh <repo-dir> [--days N]   prints "due" (exit 0) or "not due, last run YYYY-MM-DD" (exit 1)
 #        audit-due.sh <repo-dir> --record     stamps today as the last run
 #
-# State lives outside the repo: ${XDG_STATE_HOME:-~/.local/state}/new-project-audit/<repo-name>.last
+# State lives outside the repo: ${XDG_STATE_HOME:-~/.local/state}/new-project-audit/<repo-name>.last,
+# where <repo-name> is the main checkout's folder, also when it runs in a linked worktree.
 # Runs under macOS /bin/bash 3.2.
 set -euo pipefail
 
@@ -21,7 +22,11 @@ done
 [ -n "$dir" ] && [ -d "$dir" ] || usage
 
 state="${XDG_STATE_HOME:-$HOME/.local/state}/new-project-audit"
-stamp="$state/$(basename "$(cd "$dir" && pwd)").last"
+# Name the record after the main checkout, so a run in a linked worktree counts for the repo.
+top="$(cd "$dir" && pwd)"
+common="$(git -C "$top" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+case "$common" in */.git) top="${common%/.git}" ;; esac
+stamp="$state/$(basename "$top").last"
 
 if [ "$record" = 1 ]; then
   mkdir -p "$state"

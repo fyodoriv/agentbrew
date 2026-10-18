@@ -21,6 +21,8 @@ const checkSetup = join(skillRoot, "scripts", "check-setup.sh");
 const scratch = mkdtempSync(join(tmpdir(), "new-project-"));
 // The copy fallback is the default here; the Copier tests below opt in.
 const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", NEW_PROJECT_NO_COPIER: "1" };
+// The gate's own NO_CACHE=1 run must not leak into the cache test below.
+delete env.NO_CACHE;
 const gitEnv = {
   ...env,
   GIT_AUTHOR_NAME: "t",

@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it } from "vitest";
 const SCRIPT = resolve(import.meta.dirname, "..", "..", "scripts", "verify.sh");
 const roots: string[] = [];
 const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+// The gate's own NO_CACHE=1 run must not leak into these cache tests.
+delete gitEnv.NO_CACHE;
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });

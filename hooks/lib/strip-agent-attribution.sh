@@ -79,7 +79,7 @@ _strip_agent_attribution_in_stream() {
 
   input=$(cat)
   stripped_vendor_attribution=0
-  if grep -iqE "$combined_re" <<<"$input"; then
+  if printf '%s\n' "$input" | grep -iqE "$combined_re"; then  # pipefail-ok: printf never fails
     stripped_vendor_attribution=1
   fi
 
@@ -93,7 +93,7 @@ _strip_agent_attribution_in_stream() {
   # If we stripped vendor attribution AND the result lacks the
   # footer, append it. Otherwise emit the input unchanged (modulo
   # trailing-blank trimming, which is invisible to GitHub).
-  if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$footer_re" <<<"$filtered"; then
+  if [ "$stripped_vendor_attribution" = "1" ] && ! printf '%s' "$filtered" | grep -qE "$footer_re"; then  # pipefail-ok: printf never fails
     printf '%s\n\n---\n_🤖 Written by an agent, not %s. Ping me if this looks off._\n' "$filtered" "$(_agent_footer_name)"
   else
     printf '%s\n' "$filtered"

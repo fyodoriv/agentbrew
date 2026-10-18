@@ -30,8 +30,8 @@ function fakeHome(): string {
   );
   const cache = join(home, ".cache", "agentbrew");
   mkdirSync(cache, { recursive: true });
-  const decision = (hookId: string, decision: string, ts = "2026-10-15T10:00:00.000Z") =>
-    JSON.stringify({ timestamp: ts, hookId, decision, reason: "private reason text" });
+  const decision = (hookId: string, decision: string, ts = "2026-10-15T10:00:00.000Z", sessionId = "sess-1") =>
+    JSON.stringify({ timestamp: ts, hookId, decision, reason: "private reason text", sessionId });
   writeFileSync(
     join(cache, "hook-decisions.jsonl"),
     [
@@ -39,6 +39,8 @@ function fakeHome(): string {
       decision("verify-before-completion", "allow"),
       decision("private-org-hook", "block"),
       decision("verify-before-completion", "block", "2026-01-01T00:00:00.000Z"),
+      // Fixture-run rows carry no sessionId; metrics must skip them.
+      decision("selectors-pure", "block", "2026-10-15T10:00:00.000Z", ""),
     ].join("\n"),
   );
   writeFileSync(
@@ -58,6 +60,18 @@ afterEach(() => {
 });
 
 describe("agentbrew metrics", () => {
+  it("counts only hook decisions that carry a session id", async () => {
+    const metrics = await collectUsageMetrics({
+      home: fakeHome(),
+      env: {},
+      nowMs: NOW,
+      days: 7,
+      version: "9.9.9",
+      perfScript: join(import.meta.dirname, "..", "..", "templates", "scripts", "agent-perf.mjs"),
+    });
+    expect(metrics.hooks.top.map((s) => s.hookId)).not.toContain("selectors-pure");
+  });
+
   it("collects agent time, hook decisions in the window, and MCP health from local logs", async () => {
     const metrics = await collectUsageMetrics({
       home: fakeHome(),

@@ -35,6 +35,11 @@ if [[ -z "$fixtures" ]]; then
   exit 0
 fi
 
+# Keep fixture decisions out of the real ~/.cache/agentbrew log.
+fixture_log_dir="$(mktemp -d "${TMPDIR:-/tmp}/hook-fixtures.XXXXXX")"
+trap 'rm -rf "$fixture_log_dir"' EXIT
+export HOOK_DECISIONS_LOG="$fixture_log_dir/hook-decisions.jsonl"
+
 echo "Hook fixture tests:"
 while IFS= read -r fixture; do
   [[ -n "$fixture" ]] || continue

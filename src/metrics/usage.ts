@@ -128,13 +128,17 @@ interface HookRow {
   decision?: string;
 }
 
-/** One hook-log line inside the window, or undefined. */
+/**
+ * One hook-log line inside the window, or undefined. Rows without a
+ * sessionId come from fixture runs or hook tests, not a real agent
+ * session, so they are skipped.
+ */
 function parseHookRow(line: string, sinceMs: number): HookRow | undefined {
   if (!line) return undefined;
   try {
-    const row = JSON.parse(line) as { timestamp?: string; hookId?: string; decision?: string };
+    const row = JSON.parse(line) as { timestamp?: string; hookId?: string; decision?: string; sessionId?: string };
     const ts = Date.parse(row.timestamp ?? "");
-    if (!row.hookId || Number.isNaN(ts) || ts < sinceMs) return undefined;
+    if (!row.hookId || !row.sessionId || Number.isNaN(ts) || ts < sinceMs) return undefined;
     return { hookId: row.hookId, decision: row.decision };
   } catch {
     return undefined;

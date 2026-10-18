@@ -156,6 +156,21 @@ A `warn` hook on `UserPromptSubmit` can add context instead of a stderr line.
 It prints `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`
 on stdout and exits `0`. Claude Code ignores a top-level `additionalContext`.
 
+## Decision log
+
+Each verdict helper calls `log_decision` in `hooks/lib/log-decision.sh`. It
+appends one JSON line to `~/.cache/agentbrew/hook-decisions.jsonl`.
+
+- `HOOK_DECISIONS_LOG` overrides the log path.
+  `scripts/run-hook-fixtures.sh` and `scripts/verify-changed.sh` point it
+  at a temp file, so fixture runs never touch the real log.
+- A row gets `sessionId` from `HOOK_SESSION_ID`, or from `.session_id` in
+  the hook's `INPUT` variable. Name the stdin variable `INPUT` in new hooks.
+- `agentbrew metrics` counts only rows with a `sessionId`. Rows from older
+  hooks or fixture runs without one are skipped.
+- A hook test that runs a check script directly should export
+  `HOOK_DECISIONS_LOG` to a temp file too.
+
 ## Goal setting
 
 Claude Code's built-in `/goal <condition>` fires `UserPromptSubmit`, and the

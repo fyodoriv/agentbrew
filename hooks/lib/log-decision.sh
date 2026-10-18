@@ -20,7 +20,16 @@
 #     "reason": "...",
 #     "toolName": "Edit" | "Bash" | ... (when available),
 #     "event": "PreToolUse" | ... (when available),
-#     "latencyMs": int (when measurable) }
+#     "latencyMs": int (when measurable),
+#     "sessionId": "..." (when known) }
+#
+# sessionId comes from HOOK_SESSION_ID, else from `.session_id` in the
+# hook's INPUT variable (every check reads stdin into INPUT). Rows from a
+# real agent session carry it; fixture runs pipe fake JSON without it, so
+# `agentbrew metrics` counts only rows with a sessionId.
+#
+# HOOK_DECISIONS_LOG overrides the log file path. The fixture runner and
+# hook tests point it at a temp file so they never touch the real log.
 #
 # The log is append-only and bounded by a daily rotation: at the start of
 # each day the previous file is moved to hook-decisions.<date>.jsonl.
@@ -33,8 +42,8 @@ __LOG_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./bootstrap-endpoint-path.sh
 source "$__LOG_LIB_DIR/bootstrap-endpoint-path.sh"
 
-__LOG_DIR="${HOME}/.cache/agentbrew"
-__LOG_FILE="${__LOG_DIR}/hook-decisions.jsonl"
+__LOG_FILE="${HOOK_DECISIONS_LOG:-${HOME}/.cache/agentbrew/hook-decisions.jsonl}"
+__LOG_DIR="$(dirname "$__LOG_FILE")"
 
 # Ensure the log dir exists. Done lazily on the first call.
 __ensure_log_dir() {
@@ -63,6 +72,10 @@ log_decision() {
   # back to printf if jq isn't available — log lines may be ugly but the
   # hook itself stays functional.
   local jq_bin="${DOTFILES_JQ:-$(command -v jq 2>/dev/null || true)}"
+  local session_id="${HOOK_SESSION_ID:-}"
+  if [ -z "$session_id" ] && [ -n "${INPUT:-}" ] && [ -n "$jq_bin" ]; then
+    session_id="$("$jq_bin" -r '.session_id // empty' <<<"$INPUT" 2>/dev/null || true)"
+  fi
   if [ -n "$jq_bin" ]; then
     "$jq_bin" -nc \
       --arg timestamp "$timestamp" \
@@ -72,6 +85,7 @@ log_decision() {
       --arg toolName "${HOOK_TOOL_NAME:-}" \
       --arg event "${HOOK_EVENT_NAME:-}" \
       --arg latencyMs "${HOOK_LATENCY_MS:-}" \
+      --arg sessionId "$session_id" \
       '{
         timestamp: $timestamp,
         hookId: $hookId,
@@ -80,7 +94,8 @@ log_decision() {
       }
       + (if $toolName != "" then { toolName: $toolName } else {} end)
       + (if $event != "" then { event: $event } else {} end)
-      + (if $latencyMs != "" then { latencyMs: ($latencyMs | tonumber) } else {} end)' >> "$__LOG_FILE" 2>/dev/null || true
+      + (if $latencyMs != "" then { latencyMs: ($latencyMs | tonumber) } else {} end)
+      + (if $sessionId != "" then { sessionId: $sessionId } else {} end)' >> "$__LOG_FILE" 2>/dev/null || true
   else
     # jq missing — write a minimal line. Better some data than none.
     printf '{"timestamp":"%s","hookId":"%s","decision":"%s","reason":"%s"}\n' \

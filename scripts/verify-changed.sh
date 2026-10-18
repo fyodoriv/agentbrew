@@ -101,6 +101,9 @@ if has '^hooks/'; then
   if has '^hooks/(lib/|manifest\.yaml$)'; then
     step bash scripts/run-hook-fixtures.sh
   else
+    # Keep single-hook test decisions out of the real decision log.
+    HOOK_DECISIONS_LOG="$(mktemp "${TMPDIR:-/tmp}/hook-decisions.XXXXXX")"
+    export HOOK_DECISIONS_LOG
     while IFS= read -r id; do
       [[ -f "hooks/checks/$id.test.sh" ]] && step bash "hooks/checks/$id.test.sh"
     done < <(grep -E '^hooks/checks/' <<<"$changed" | sed -E 's#^hooks/checks/##; s#(\.test)?\.sh$##' | sort -u)

@@ -95,7 +95,8 @@ that current-session approval.
 
 `hook-observation.sh` reports how the deterministic hooks in `hooks/manifest.yaml`
 have behaved over a trailing window, reading the runtime decision log that
-`hooks/lib/log-decision.sh` writes to `~/.cache/agentbrew/hook-decisions.jsonl`.
+`hooks/lib/log-decision.sh` writes to `~/.cache/agentbrew/hook-decisions.jsonl`
+(or to `HOOK_DECISIONS_LOG`; see `docs/hook-protocol.md` "Decision log").
 
 ```bash
 scripts/hook-observation.sh [--since DAYS] [--log PATH] [--manifest PATH] [--strict]

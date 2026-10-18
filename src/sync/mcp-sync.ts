@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { getStateServers } from "../agentfile.js";
 import { loadCatalog } from "../catalog/types.js";
+import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
 import { errorMessage } from "../core/errors.js";
@@ -549,9 +550,15 @@ function readDeployedServerNames(agent: AgentConfig): string[] {
   }
 }
 
-function syncDetectedMcpPermissions(agents: AgentConfig[], servers: McpServer[], dryRun: boolean): void {
+function syncDetectedMcpPermissions(
+  agents: AgentConfig[],
+  servers: McpServer[],
+  dryRun: boolean,
+  keepClaudePermissions: boolean,
+): void {
   for (const agent of getMcpPermissionAgents(agents)) {
     if (!agent.mcpPermissionsConfig) continue;
+    if (agent.name === "claude-code" && keepClaudePermissions) continue;
     syncMcpPermissions(agent.mcpPermissionsConfig.file, servers, {
       dryRun,
       deployedServerNames: readDeployedServerNames(agent),
@@ -913,7 +920,7 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   );
   warnOpenCodeDroppedEnv(detectedAgents, servers, log, quiet);
   runStdioOnlyRemotePrune(state.agents, managedNames, log, { dryRun, quiet });
-  syncDetectedMcpPermissions(state.agents, servers, dryRun);
+  syncDetectedMcpPermissions(state.agents, servers, dryRun, keepsClaudePermissions(state));
   const totals = aggregateAndLogResults(agentResults, log, { quiet, verbose, dryRun });
 
   if (!dryRun) persistManagedNames(manifest, managedNames, sharedManifest);

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
+import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import { logSkipped } from "../core/logger.js";
 import { defaultDeployDir } from "../hooks/deploy.js";
 import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
@@ -186,7 +187,11 @@ function fileWritePermissionDrift(agentName: string, settings: SettingsJson): Dr
 
 function permissionDefaultsDrift(agentName: string, settings: SettingsJson): DriftItem[] {
   const drift: DriftItem[] = [];
-  if (agentName === "claude-code" && !hasClaudeCodePermissionDefaults(settings)) {
+  if (
+    agentName === "claude-code" &&
+    !keepsClaudePermissions(loadState()) &&
+    !hasClaudeCodePermissionDefaults(settings)
+  ) {
     drift.push({
       agent: agentName,
       type: "hooks",

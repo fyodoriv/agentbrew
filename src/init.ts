@@ -74,6 +74,7 @@ function detectAndSave(previousState?: AgentBrewState): InitResult | undefined {
   if (previousState?.skillSourceDirs) state.skillSourceDirs = previousState.skillSourceDirs;
   if (previousState?.agentSourceDirs) state.agentSourceDirs = previousState.agentSourceDirs;
   if (previousState?.commandSourceDirs) state.commandSourceDirs = previousState.commandSourceDirs;
+  if (previousState?.claudePermissions) state.claudePermissions = previousState.claudePermissions;
 
   // One-time migration hints fire when an upgraded user runs init/sync against
   // a state.yaml that still carries removed fields. Each removed field is

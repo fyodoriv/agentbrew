@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { getConfigServers, getStateServers } from "../agentfile.js";
+import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import { logSkipped } from "../core/logger.js";
 import { MCP_INTERSECTION_AGENTS } from "../core/mcp-agent-map.js";
 import { getAdapter } from "../mcp/adapters.js";
@@ -183,6 +184,7 @@ function getMcpPermissionAgents(stateAgents: AgentConfig[]): Array<Omit<AgentCon
 
 function checkMcpPermissionDriftForAgent(agent: Omit<AgentConfig, "detected">, stateNames: Set<string>): DriftItem[] {
   if (!agent.mcpPermissionsConfig) return [];
+  if (agent.name === "claude-code" && keepsClaudePermissions(loadState())) return [];
   const configPath = expandHome(agent.mcpPermissionsConfig.file);
   if (!existsSync(configPath)) return [];
   const config = readJsonConfig(configPath);

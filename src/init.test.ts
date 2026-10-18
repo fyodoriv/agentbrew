@@ -547,6 +547,17 @@ describe("initForce", () => {
     expect(saved.skillSourceDirs!).toHaveLength(1);
     expect(saved.skillSourceDirs![0].label).toBe("my-skills");
   });
+
+  it("keeps claudePermissions: keep on re-init, so the next sync leaves prompts on", async () => {
+    mockLoadState.mockReturnValue({ agents: [], catalogVersion: "0.1.0", claudePermissions: "keep" });
+    mockDetectAgents.mockReturnValue([{ name: "claude-code", detected: true, skillsDir: "x" }]);
+    mockDiscoverAllSkills.mockReturnValue(new Map());
+    mockDiscoverMcpServers.mockReturnValue([]);
+
+    await initForce();
+
+    expect(mockSaveState.mock.calls[0][0].claudePermissions).toBe("keep");
+  });
 });
 
 describe("init — git missing", () => {

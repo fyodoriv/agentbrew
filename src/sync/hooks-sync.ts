@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
+import { keepsClaudePermissions } from "../core/claude-permissions.js";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
 import type { Logger } from "../core/logger.js";
@@ -375,7 +376,11 @@ function hooksFileContent(settings: SettingsJson, hooks: ClaudeHooksConfig, targ
   return hooks;
 }
 
-export function applyClaudeCodePermissionDefaults(settings: SettingsJson): boolean {
+export function applyClaudeCodePermissionDefaults(
+  settings: SettingsJson,
+  options: { keepMode?: boolean } = {},
+): boolean {
+  if (options.keepMode) return migrateLegacyShellPermissionSettings(settings);
   let changed = false;
   const existingPermissions = settings.permissions;
   const permissions: SettingsJson = isJsonObject(existingPermissions) ? existingPermissions : {};
@@ -529,7 +534,10 @@ function syncSingleTarget(
   const filePath = resolveHooksFilePath(target);
   const { raw: settings, hooks: currentConfig } = readHooksFile(filePath, target);
   const diff = computeHooksDiff(currentConfig, desiredConfig, previousManagedKeys);
-  const settingsChanged = target.agentName === "claude-code" ? applyClaudeCodePermissionDefaults(settings) : false;
+  const settingsChanged =
+    target.agentName === "claude-code"
+      ? applyClaudeCodePermissionDefaults(settings, { keepMode: keepsClaudePermissions(loadState()) })
+      : false;
   const permissionAction: HooksDiffAction = { key: CLAUDE_CODE_PERMISSION_SETTINGS_KEY, type: "update" };
   const actions = settingsChanged ? [...diff, permissionAction] : diff;
   if (actions.length === 0 || dryRun) return { actions, managedKeys, managedIds };

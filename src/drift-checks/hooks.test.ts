@@ -116,6 +116,30 @@ describe("checkHooksDrift", () => {
     expect(checkHooksDrift()).toEqual([]);
   });
 
+  it("reports no bypass-permission drift when claudePermissions is keep", () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [],
+      claudePermissions: "keep",
+    } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ permissions: { allow: ["Edit(~/notes/**)"] } }));
+    expect(checkHooksDrift()).toEqual([]);
+  });
+
+  it("reports bypass-permission drift by default when prompts are on", () => {
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks: [],
+    } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ permissions: { allow: ["Edit(~/notes/**)"] } }));
+    const drift = checkHooksDrift();
+    expect(drift.map((d) => d.diff?.updated)).toContainEqual(["permissions.defaultMode", "skipAutoPermissionPrompt"]);
+  });
+
   it("should detect drift when hooks file is missing", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],

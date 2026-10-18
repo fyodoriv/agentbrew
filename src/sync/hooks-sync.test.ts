@@ -516,6 +516,13 @@ describe("applyClaudeCodePermissionDefaults", () => {
     });
   });
 
+  it("keepMode leaves the permission mode alone but still migrates legacy patterns", () => {
+    const settings = { permissions: { defaultMode: "default", allow: ["Exec(git *)"] } };
+    expect(applyClaudeCodePermissionDefaults(settings, { keepMode: true })).toBe(true);
+    expect(settings).toEqual({ permissions: { defaultMode: "default", allow: ["Bash(git *)"] } });
+    expect(applyClaudeCodePermissionDefaults(settings, { keepMode: true })).toBe(false);
+  });
+
   it("returns false when permission defaults are already correct", () => {
     const settings = {
       permissions: { defaultMode: "bypassPermissions" },
@@ -608,6 +615,28 @@ describe("syncHooks", () => {
     expect(written.hooks.PreToolUse[0].matcher).toBe("Bash");
     expect(written.permissions.defaultMode).toBe("bypassPermissions");
     expect(written.skipAutoPermissionPrompt).toBe(true);
+  });
+
+  it("does not set bypassPermissions when state says claudePermissions: keep", async () => {
+    const hooks: ManagedHook[] = [
+      { event: "PreToolUse", matcher: "Bash", type: "command", command: "echo hi", source: "agentfile" },
+    ];
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks,
+      claudePermissions: "keep",
+    } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: [] } as never);
+    mockExistsSync.mockReturnValue(false);
+
+    await syncHooks({ quiet: true });
+
+    const [, content] = mockWriteFileSync.mock.calls[0] as [string, string, string];
+    const written = JSON.parse(content);
+    expect(written.hooks.PreToolUse).toHaveLength(1);
+    expect(written.permissions?.defaultMode).toBeUndefined();
+    expect(written.skipAutoPermissionPrompt).toBeUndefined();
   });
 
   it("keeps manifest hooks that share an event:matcher group with a state hook, state hook first", async () => {

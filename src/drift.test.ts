@@ -1131,6 +1131,17 @@ describe("checkMcpPermissionDrift", () => {
     expect(result.some((r) => r.agent === "claude-code" && r.detail.includes("atlassian"))).toBe(true);
   });
 
+  it("reports no Claude Code MCP permission drift when claudePermissions is keep", () => {
+    mockLoadState.mockReturnValue({ ...makeClaudeCodeState(), claudePermissions: "keep" });
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ permissions: { allow: ["Read(**)"] } }));
+    mockGetAdapter.mockReturnValue({
+      readEntries: () => ({ github: {}, atlassian: {} }),
+    } as never);
+
+    expect(checkMcpPermissionDrift().filter((r) => r.agent === "claude-code")).toEqual([]);
+  });
+
   it("keeps Claude Code permissions for all deployed ~/.claude.json servers", () => {
     mockLoadState.mockReturnValue(makeClaudeCodeState());
     mockExistsSync.mockReturnValue(true);

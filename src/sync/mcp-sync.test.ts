@@ -212,6 +212,31 @@ describe("syncMcpServers", () => {
   });
 });
 
+describe("syncMcpServers with claudePermissions: keep", () => {
+  it("adds no mcp__<server>__* allow rules to Claude Code settings", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [makeMcpAgentDef("claude-code")],
+      sources: [],
+      mcpServers: [makeServer({ name: "context7" })],
+      catalogVersion: "0.1.0",
+      claudePermissions: "keep",
+    });
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockImplementation((path) =>
+      String(path).endsWith("/.claude/settings.json") ? JSON.stringify({ permissions: { allow: ["Read(**)"] } }) : "{}",
+    );
+
+    await syncMcpServers(undefined, { manifest: { hashes: {} } });
+
+    const settingsWrites = mockWriteFileSync.mock.calls.filter(([path]) =>
+      String(path).endsWith("/.claude/settings.json"),
+    );
+    for (const [, content] of settingsWrites) {
+      expect(String(content)).not.toContain("mcp__context7__*");
+    }
+  });
+});
+
 describe("addMcpServer", () => {
   it("returns early when not initialized", async () => {
     mockLoadState.mockReturnValue(undefined);

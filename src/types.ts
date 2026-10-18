@@ -361,6 +361,15 @@ export interface AgentBrewState {
    */
   skillInstallMode?: "auto" | "delegate" | "native";
   /**
+   * Machine-local choice for Claude Code permissions.
+   *   - `"manage"` (default): sync sets `permissions.defaultMode:
+   *     bypassPermissions`, `skipAutoPermissionPrompt: true`, and an
+   *     `mcp__<server>__*` allow rule for every configured MCP server.
+   *   - `"keep"`: sync leaves the person's permission settings alone and
+   *     drift checks do not report them, so permission prompts stay on.
+   */
+  claudePermissions?: "manage" | "keep";
+  /**
    * Default model id deployed to every detected agent that declares a
    * `modelConfig` surface in agents.yaml (see `src/sync/model-sync.ts`).
    * Set from the Agentfile's `defaultModel:` key; absent means model sync

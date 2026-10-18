@@ -278,6 +278,19 @@ You are a senior developer with custom edits.
     expect(mockMkdirSync).not.toHaveBeenCalled();
   });
 
+  it("treats a missing agents folder as empty and does not create it with nothing to deploy", async () => {
+    // A new Claude Code setup has no ~/.claude/agents; sync must not error or create it.
+    mockExistsSync.mockReturnValue(false);
+    mockReaddirSync.mockImplementation(() => {
+      throw Object.assign(new Error("ENOENT: no such file or directory, scandir"), { code: "ENOENT" });
+    });
+    mockLoadState.mockReturnValue(undefined);
+    vi.mocked(loadManifest).mockImplementation(() => ({ hashes: {} }));
+
+    await expect(syncAgentDefs({ prune: true })).resolves.toBeUndefined();
+    expect(mockMkdirSync).not.toHaveBeenCalled();
+  });
+
   it("prunes only manifest-tracked files not in source", async () => {
     mockExistsSync.mockReturnValue(true);
     let callCount = 0;
@@ -394,6 +407,8 @@ describe("syncAgentDefs — subdir format", () => {
       }
       if (path.includes("agentbrew/agents")) return true;
       if (path.endsWith("AGENT.md")) return true;
+      // The target agents folders exist: this agent already deployed there.
+      if (/\/agents$/.test(path)) return true;
       return false;
     });
     mockReaddirSync.mockImplementation(() => {

@@ -223,19 +223,6 @@
   - **Pivot**: if a global setup file breaks real-e2e, scope it to unit tests.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
-- [ ] `sync` treats a missing `~/.claude/agents` folder as empty
-  - **ID**: sync-missing-agents-dir
-  - **Tags**: sync, new-users, bug
-  - **Details**: Every `agentbrew sync` on a new Claude Code setup prints "1 sync error(s): [agents] ENOENT: no such file or directory, scandir '~/.claude/agents'". A missing folder is normal; the error teaches people to ignore sync errors.
-  - **Files**: `src/sync/` (agents sync)
-  - **Output**: code
-  - **Acceptance**: `agentbrew sync` with no `~/.claude/agents` reports 0 sync errors and creates the folder only when it deploys an agent.
-  - **Hypothesis**: false sync errors on new machines go from 1 per sync to 0.
-  - **Measurement**: `agentbrew sync` output on a clean HOME.
-  - **Success**: zero errors.
-  - **Pivot**: none needed.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] The install plan lists every behaviour change the recommended set makes
   - **ID**: install-plan-discloses-behaviour
   - **Tags**: install, new-users, safety, ux

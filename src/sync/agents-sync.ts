@@ -251,6 +251,8 @@ function pruneStaleAgents(
   manifest: Manifest,
   dryRun: boolean,
 ): number {
+  // A missing folder has nothing to prune (new setups have no ~/.claude/agents).
+  if (!existsSync(targetDir)) return 0;
   if (target.format === "subdir") {
     return pruneSubdirEntries(targetDir, sourceNameSet, manifest, dryRun);
   }
@@ -325,7 +327,8 @@ export async function syncAgentDefs(options?: SyncOptions, ctx?: Partial<Context
   const targetResults = await Promise.all(
     targets.map(async (target) => {
       const targetDir = expandHome(target.dir);
-      if (!dryRun) mkdirSync(targetDir, { recursive: true });
+      // Create the folder only when there is an agent to deploy into it.
+      if (!dryRun && allAgents.size > 0) mkdirSync(targetDir, { recursive: true });
 
       let synced = 0;
       let skipped = 0;

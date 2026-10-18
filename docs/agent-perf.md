@@ -103,8 +103,13 @@ dominant command, so the cheap prefix does not hide the slow step:
 
 Why this rule and not "always the last command": a pipe puts the slow
 producer first, and a check-then-build line puts it last. The known-heavy list
-covers both without storing anything beyond the key. Only the first line of a
-multi-line command is read.
+covers both without storing anything beyond the key.
+
+A multi-line command is read whole: each newline splits commands like `;`,
+and heredoc bodies (`<<'EOF'` … `EOF`) are skipped as data. Rows written
+before 2026-10-18 read only the first line, so a heredoc or multi-line
+`printf` step (`python3 <arg>`, `cat <arg>`, `git fetch`) carried the time of
+the build or test commands after it. Treat those old keys with care.
 
 For each simple command, the hook first drops `cd X &&`, `VAR=value`, `(`, and the `env`,
 `nice`, `time`, `nohup`, `command`, `exec`, and `timeout` wrappers with their

@@ -194,19 +194,6 @@
 
 ## P2
 
-- [ ] Agent `git fetch` calls finish in seconds
-  - **ID**: speed-up-git-fetch
-  - **Tags**: perf, git, agents
-  - **Details**: The 2026-10-18 time review: `git fetch` in agentbrew sessions cost 1m18s/day (14 calls in 2 sessions, p95 4m31s). A 4-minute fetch of one GitHub repo points at a stall (sandbox proxy, `--all` over many remotes, or a fetch per worktree), not at data size. First find the slow calls with `agent-perf.mjs report --session <id>`, then fix the cause: fetch once per session, fetch only `origin`, or set `fetch.parallel`/`--filter=blob:none` where it helps.
-  - **Files**: `AGENTS.md`, `skill-plugins/`, `docs/`
-  - **Output**: code
-  - **Acceptance**: the cause is named in the PR with the session evidence, and a repeat time review shows the step under its target.
-  - **Hypothesis**: removing the stall drops `git fetch` p95 from 4m31s to under 30 s.
-  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `git fetch` line).
-  - **Success**: p95 under 30 s over 7 days.
-  - **Pivot**: if the slow calls are all sandbox proxy stalls, move the fix to the sandbox network config and close this task.
-  - **Anchor**: tooling-checkup agent time review 2026-10-18.
-
 - [ ] "No recommended set" during install means no source downloads and no extra skills
   - **ID**: init-skip-install-skips-source-fetch
   - **Tags**: init, install, new-users, perf

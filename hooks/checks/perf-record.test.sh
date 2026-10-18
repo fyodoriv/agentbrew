@@ -120,6 +120,20 @@ check "Test 11b (no token, path, or reason text in log)" "$(grep -Eq 'ghp_FAKE|/
 run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PreToolUse",session_id:"s1",cwd:$cwd,tool_name:"Read",tool_input:{file_path:"/a/b.md"},tool_use_id:"toolu_\"x/../y"}')" >/dev/null
 check "Test 12 (id sanitized: $(last_row))" "$(last_row | jq -e '.id=="toolu_xy" and .key=="Read:md"' >/dev/null && echo 0 || echo 1)"
 
+# Test 13: a multi-line command keys its slowest line, not its first.
+# A multi-line printf hid "npm ci; npm run verify" behind "git fetch".
+MULTI=$'cd w && git fetch -q origin && printf \'feat: x\n\nbody line\n\' > m.txt && git commit -qF m.txt; npm ci --silent; npm run verify > v.log'
+run_hook "$(bash_payload "$MULTI")" >/dev/null
+check "Test 13a (multi-line printf → npm ci: $(last_row))" "$(last_row | jq -e '.key=="npm ci"' >/dev/null && echo 0 || echo 1)"
+# A heredoc body is data: "make deploy" inside it is not a command.
+HEREDOC=$'cat > notes.md <<\'EOF\'\nmake deploy\nEOF\ngit fetch -q origin\nnpm run verify'
+run_hook "$(bash_payload "$HEREDOC")" >/dev/null
+check "Test 13b (heredoc body skipped → npm run verify: $(last_row))" "$(last_row | jq -e '.key=="npm run verify"' >/dev/null && echo 0 || echo 1)"
+# Plain lines on their own lines still key like a ";" chain.
+LINES=$'git fetch -q origin\ngit status'
+run_hook "$(bash_payload "$LINES")" >/dev/null
+check "Test 13c (newline is a separator → git status: $(last_row))" "$(last_row | jq -e '.key=="git status"' >/dev/null && echo 0 || echo 1)"
+
 echo ""
 echo "perf-record.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then

@@ -21,6 +21,11 @@ markdown is the database, and `private/` holds the user's data.
 - **Tools**: few and consolidated, clear parameter names, error messages that
   say how to fix the call.
 - **Risk**: anything that sends, pays, posts, or deletes asks the user first.
+- **Data exits**: list every path data can leave by (git, logs, hosted
+  models, backups, sync between machines, and the agent's own transcript,
+  since stdout goes to the model provider) with one guard and one canary test
+  each, in `docs/privacy.md`. Prefer an allowlist `.gitignore` for `private/`
+  repos.
 - **Simple first**: one prompt plus files before an agent loop; cap loop iterations.
 - **Weekly gardening**: a skill proposes memory and knowledge clean-ups for the
   user to approve. It never rewrites them silently.

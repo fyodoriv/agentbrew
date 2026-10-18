@@ -169,6 +169,11 @@ continue?". The user set a goal so that they can be away.
   its commits ahead, uncommitted files, and push state. Resume each stopped
   worker with its saved context (`SendMessage` to its id) and give it that
   state; never assume a stopped worker's PR landed.
+- A re-issued `/goal` (for example "continue previous goal") resets the
+  contract file, and the edit hook blocks every write until it is saved again.
+  Re-print the prior contract in chat (same scope, plus a progress line and
+  any criteria added mid-goal), save it, then continue. Do not start a new
+  intake or question round for the same goal.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you

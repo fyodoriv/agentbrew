@@ -415,6 +415,18 @@
         "Makes the risky probe opt-in through a guard in the code it calls, not only a test skip, and gets owner approval for protected files first",
         "Keeps every suite log outside $TMPDIR and never edits a tree while its suite runs"
       ]
+    },
+    {
+      "id": 36,
+      "prompt": "/goal continue previous goal (the first goal built half of a new app; the contract file is now empty and the user then adds 'it must also work with slack, jira, and zoom' mid-run)",
+      "expected_output": "The agent re-prints the earlier contract with a progress line, saves it to the contract file before its first edit, skips a second intake and question round, adds the mid-run request as a new done-criterion in the contract file (and grows the metric's denominator with a note), delivers it with tests in the same run, and reports both the original and added criteria with evidence.",
+      "expectations": [
+        "Re-saves the contract (Done when, Metric, Pivot) before the first edit after the re-issued /goal, instead of retrying blocked writes",
+        "Does not ask a new question round for the continued goal",
+        "Adds the mid-run request to the contract file as a criterion and says so in one line",
+        "Updates the metric denominator transparently (old and new totals) rather than silently",
+        "Final report covers the added criterion with its own evidence"
+      ]
     }
   ]
 }

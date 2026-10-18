@@ -139,7 +139,12 @@ both return the whole command.
 The manifest `verdict` names what the script itself emits. A hook that only
 detects text that another tool rewrites later declares `warn`, not `mutate`.
 The attribution hooks work this way: the dotfiles `gh` wrapper and
-`commit-msg` hook do the strip. `src/hooks/manifest.test.ts` checks that each
+`commit-msg` hook do the strip. The shared helper
+`hooks/lib/strip-agent-attribution.sh` puts the agent footer before a
+trailing git trailer block (`Task:`, `Signed-off-by:`), because git reads
+trailers only from the last paragraph. To check trailers like `git log` does,
+run `git interpret-trailers --parse --no-divider`: without the flag, git
+stops at the footer's `---` line and misses them. `src/hooks/manifest.test.ts` checks that each
 script can emit its declared verdict: `block` needs `verdict_block` or a
 `"decision":"block"` line, `warn` needs `verdict_warn` or added context,
 `mutate` needs `verdict_mutate`, and an `allow` script calls none of them.

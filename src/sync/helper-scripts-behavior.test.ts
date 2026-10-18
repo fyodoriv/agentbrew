@@ -147,7 +147,9 @@ describe("verify-vision-trace.sh", () => {
     expect(out).toContain("goals declared: 2 (G1, G2)");
     expect(out).toContain("cited ids: G1");
     expect(out).toContain("✓ G1 — Curate, not host");
-    expect(out).not.toContain("S3");
+    // "S3" in the PR text must not be read as a goal id. Word boundaries keep the
+    // check from tripping on the random temp-dir suffix (e.g. helper-script-repo-jS3pv7).
+    expect(out).not.toMatch(/\bS3\b/);
   });
 
   it("fails when a cited goal id is missing", () => {

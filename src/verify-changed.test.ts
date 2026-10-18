@@ -39,6 +39,39 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).toContain("src/feature.ts");
   });
 
+  it("calls a skill, eval, docs, and task-queue diff merge-ready", () => {
+    const root = repoWithChange("skill-plugins/workflow/demo/SKILL.md");
+    for (const file of ["skill-plugins/workflow/demo/evals/evals.json", "docs/guide.md", "TASKS.md", "README.md"]) {
+      mkdirSync(join(root, file, ".."), { recursive: true });
+      writeFileSync(join(root, file), "x\n");
+    }
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("merge-ready");
+    expect(result.stdout).not.toContain("run full npm run verify before merge");
+  });
+
+  it("asks for the full gate before merge when a hook or skill script changes", () => {
+    for (const file of ["hooks/checks/demo.sh", "skill-plugins/workflow/demo/scripts/run.sh"]) {
+      const root = repoWithChange(file);
+      const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout, file).toContain("run full npm run verify before merge");
+      expect(result.stdout, file).toContain(file);
+      expect(result.stdout, file).not.toContain("merge-ready");
+    }
+  });
+
+  it("sends a source or package change to the full gate in a dry run", () => {
+    for (const file of ["src/feature.ts", "scripts/tool.sh", "package.json"]) {
+      const root = repoWithChange(file);
+      const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout, file).toContain("these files need the full gate:");
+      expect(result.stdout, file).not.toContain("merge-ready");
+    }
+  });
+
   it("reports no changes when the tree matches the base", () => {
     const root = mkdtempSync(join(tmpdir(), "verify-changed-"));
     roots.push(root);

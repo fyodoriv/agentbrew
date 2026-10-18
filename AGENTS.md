@@ -25,7 +25,7 @@ Run every command from the repo root.
 | Rule lints (Minsky rules on this repo) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
-| Fast gate for a skill, hook, docs, rules, or task-queue diff | `npm run verify:changed` — seconds; any other path runs the full gate |
+| Fast gate; says `merge-ready` when no full gate is needed | `npm run verify:changed` — seconds |
 | Full gate | `npm run verify` — takes several minutes; run it in the background |
 | One-step install e2e (real `scripts/install.sh` in a sandboxed scratch HOME) | `npm run test:install-e2e` — both gates run it only when an install path changes |
 | Build | `npm run build` |
@@ -56,7 +56,7 @@ Run every command from the repo root.
 Full text and examples: [`docs/editing-rules.md`](docs/editing-rules.md), which also
 maps each rule to its check. Other files cite these numbers.
 
-1. Run `npm run verify` before you say a change is done.
+1. Pass the `## Delivery` gate before you say a change is done.
 2. Update the docs that match a behavior change in the same PR (see `## Docs upkeep`).
 3. Agent definitions live in `src/core/agents.yaml`.
 4. Runtime state lives in `~/.config/agentbrew/state.yaml`. Never hardcode paths.
@@ -100,7 +100,8 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run verify:changed`. Then run the full `npm run verify` once, before merge, and the leak check:
+3. Iterate with `npm run verify:changed`. Unless it says `merge-ready`, run the full `npm run verify` once before merge.
+   Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.
 5. Push and open a PR. The body has `## Summary`, `## Details`, `## Docs`, a hypothesis block, and `## Visual proof` (a pasted terminal transcript).

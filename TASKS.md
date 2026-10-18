@@ -233,19 +233,6 @@
   - **Pivot**: if a later sync needs the source cache, fetch lazily on first `agentbrew install` instead.
   - **Anchor**: Basili et al. 1994 (GQM); install e2e timing 2026-10-16.
 
-- [ ] Skill, eval, and docs-only PRs merge on the fast gate alone
-  - **ID**: verify-changed-sufficient-for-skill-only-diffs
-  - **Tags**: perf, gates, agents
-  - **Details**: AGENTS.md Delivery says to run the full `npm run verify` once before merge even when `npm run verify:changed` already covers the diff. On 2026-10-16 an eval-only `evals.json` change passed `verify:changed` in seconds, then spent 3m26s in the full gate with no new signal. Every goal retro ships such a PR. Let `verify:changed` print "merge-ready" when the diff touches only skill, eval, docs, rules, or task-queue paths, and update AGENTS.md Delivery to accept it.
-  - **Files**: `scripts/verify-changed.*`, `AGENTS.md` (Delivery)
-  - **Output**: code
-  - **Acceptance**: a skill-only branch gets "merge-ready" from `verify:changed`; any `src/` or `hooks/` path still requires the full gate.
-  - **Hypothesis**: gate time for skill/eval-only PRs drops from about 210 s to under 30 s with no rise in post-merge failures on `main`.
-  - **Measurement**: `node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 30` (`npm run verify` count and sum on skill-only branches) plus full-gate results on `main` after such merges.
-  - **Success**: zero `main` breaks traced to fast-gate-only merges over 30 days, and those gates finish under 30 s.
-  - **Pivot**: any `main` break caused by a skill-only merge -> restore the full gate for that path class.
-  - **Anchor**: Forsgren, Humble, Kim 2018 (lead time); agent-perf report 2026-10-16 (npm run verify 3m26s on an eval-only PR).
-
 - [ ] Hook decision counts show real blocks, not test-fixture noise
   - **ID**: hook-decision-log-excludes-fixtures
   - **Tags**: hooks, metrics, telemetry

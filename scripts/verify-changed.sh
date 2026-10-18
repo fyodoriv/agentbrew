@@ -2,15 +2,30 @@
 # Fast gate for a diff that touches only skills, hooks, docs, rule templates,
 # or the task queue. It runs the checks those paths can break, in seconds.
 # Any other changed path (src/, scripts/, package files, configs) runs the
-# full `npm run verify` instead. The full gate still runs once before merge.
+# full `npm run verify` instead.
 #
-# Usage: bash scripts/verify-changed.sh [base-ref]   (default: origin/main)
+# When it passes, it prints a verdict:
+# - "merge-ready": the diff touches only skill docs, evals, docs, rule
+#   templates, root *.md files, or the task queue. No full gate is needed.
+# - "run full npm run verify before merge": a hook, a skill script, or another
+#   code path changed.
+#
+# Usage: bash scripts/verify-changed.sh [base-ref] [--dry-run]
+#   base-ref defaults to origin/main. --dry-run prints the verdict and exits
+#   without running any check.
 #
 # <!-- scope: human-approved task verify-changed-fast-gate (filed in #132); this file closes it -->
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
-base_ref="${1:-origin/main}"
+base_ref="origin/main"
+dry_run=0
+for arg in "$@"; do
+  case "$arg" in
+  --dry-run) dry_run=1 ;;
+  *) base_ref="$arg" ;;
+  esac
+done
 base="$(git merge-base HEAD "$base_ref")"
 
 changed="$(
@@ -29,7 +44,28 @@ other="$(grep -vE "$fast_paths" <<<"$changed" || true)"
 if [[ -n "$other" ]]; then
   echo "verify:changed: these files need the full gate:"
   sed 's/^/  /' <<<"$other"
+  [[ "$dry_run" == 1 ]] && exit 0
   exec npm run verify
+fi
+
+# Paths whose fast gate is enough for merge: prose and data that agents read,
+# not code that runs. Hooks and skill scripts still need the full gate.
+merge_ready_paths='^(skill-plugins/.*\.md$|skill-plugins/.*/evals/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|\.prereg-allowlist$|[A-Za-z_-]+\.md$)'
+needs_full="$(grep -vE "$merge_ready_paths" <<<"$changed" || true)"
+
+verdict() {
+  echo ""
+  if [[ -z "$needs_full" ]]; then
+    echo "verify:changed: merge-ready. The diff touches only skill, eval, docs, rules, or task-queue paths; no full gate is needed."
+  else
+    echo "verify:changed passed. These code paths changed, so run full npm run verify before merge:"
+    sed 's/^/  /' <<<"$needs_full"
+  fi
+}
+
+if [[ "$dry_run" == 1 ]]; then
+  verdict
+  exit 0
 fi
 
 step() {
@@ -92,5 +128,4 @@ if [[ -f "$HOME/.config/oss-readiness/oss-readiness.env" ]]; then
   [[ "$leaks" == "0" ]] || exit 1
 fi
 
-echo ""
-echo "verify:changed passed. Run the full npm run verify once before merge."
+verdict

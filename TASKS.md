@@ -184,19 +184,6 @@
   - **Pivot**: if detection is fragile, print the version and the nodejs.org link only.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
-- [ ] Tests never read or write the real `~/.config/agentbrew`, `~/.claude`, or the repo tree
-  - **ID**: tests-isolated-home
-  - **Tags**: tests, safety
-  - **Details**: After an install on the same Mac, the real `manifest.json` held test fixture names (`new-server`, `existing`), `vitest run` left untracked `context/chatgpt.md` and `context/claude-desktop.md` in the repo, and several tests fail only on a Mac that already has agentbrew (integration commands lifecycle and clean-slate sync, sanitize-history, storybook smoke, install-other not-found, mcp probe env). Give every test a temp `HOME` and output dir by default (vitest setup file), and fail a test that touches the real paths.
-  - **Files**: `vitest.config.ts`, a vitest setup file, the tests above
-  - **Output**: code
-  - **Acceptance**: running `npm run test:all` twice on a Mac with agentbrew installed leaves `~/.config/agentbrew`, `~/.claude*` and `git status` unchanged, and all tests pass.
-  - **Hypothesis**: tests that depend on the developer's own machine go to zero.
-  - **Measurement**: checksum of the real config dirs before/after `npm run test:all`; `git status --porcelain`.
-  - **Success**: no change and no failures.
-  - **Pivot**: if a global setup file breaks real-e2e, scope it to unit tests.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] The install plan lists every behaviour change the recommended set makes
   - **ID**: install-plan-discloses-behaviour
   - **Tags**: install, new-users, safety, ux

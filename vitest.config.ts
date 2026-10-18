@@ -10,7 +10,7 @@ export default defineConfig({
       fsModuleCache: true,
     },
     include: ["src/**/*.test.ts"],
-    setupFiles: ["./vitest.tasks-guard.ts"],
+    setupFiles: ["./vitest.isolated-home.ts", "./vitest.tasks-guard.ts"],
     // Tests never write the content-free event log (docs/observability.md).
     env: { AGENTBREW_EVENTS: "0" },
     coverage: {

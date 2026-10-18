@@ -18,7 +18,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, unlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -587,7 +587,12 @@ describe("probeMcpServer", () => {
         ${makeFakeServer({})}
       `;
       const originalEnv = process.env.GITHUB_TOKEN;
+      const originalPath = process.env.PATH;
       delete process.env.GITHUB_TOKEN;
+      // A fake `gh` keeps the test off the developer's real gh login.
+      const binDir = mkdtempSync(join(tmpdir(), "probe-fake-gh-"));
+      writeFileSync(join(binDir, "gh"), "#!/bin/sh\necho fake-token-for-test\n", { mode: 0o755 });
+      process.env.PATH = `${binDir}:${originalPath}`;
       const ghToken = execFileSync("gh", ["auth", "token"], { stdio: "pipe", timeout: 5_000 }).toString().trim();
       try {
         const r = await probeMcpServer(
@@ -601,8 +606,10 @@ describe("probeMcpServer", () => {
           { stripEnv: ["GITHUB_TOKEN"] },
         );
         expect(r.status).toBe("ok");
-        expect(ghToken.length).toBeGreaterThan(0);
+        expect(ghToken).toBe("fake-token-for-test");
       } finally {
+        process.env.PATH = originalPath;
+        rmSync(binDir, { recursive: true, force: true });
         if (originalEnv === undefined) delete process.env.GITHUB_TOKEN;
         else process.env.GITHUB_TOKEN = originalEnv;
       }

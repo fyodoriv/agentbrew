@@ -111,6 +111,21 @@ describe("syncModels", () => {
     expect(written.permissions).toEqual({ defaultMode: "bypassPermissions" });
   });
 
+  it("changes only the model value in settings.json text", async () => {
+    const path = writeClaudeSettings({});
+    const original = `{
+  "model": "claude-opus-4-8",
+  "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "printf 'x\\u000a'" }] }] }
+}
+`;
+    writeFileSync(path, original);
+    vi.mocked(loadState).mockReturnValue(stateWith({ agents: [agent("claude-code")] }));
+
+    await syncModels({ quiet: true });
+
+    expect(readFileSync(path, "utf-8")).toBe(original.replace("claude-opus-4-8", "claude-5-fable-max"));
+  });
+
   it("writes TOML for codex using the per-agent override id", async () => {
     const path = writeCodexConfig({ mcpServers: { playwright: { command: "npx" } } });
     vi.mocked(loadState).mockReturnValue(

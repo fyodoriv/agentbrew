@@ -64,6 +64,10 @@ Agentfile defaultModel/Effort    →  model-sync.ts                →  ~/.claud
                                                                       has no file surface (app-managed/UI model state).
 ```
 
+These three modules write `~/.claude/settings.json` through `src/core/json-text-edit.ts`.
+It edits only the values that changed, so the person's own text keeps its exact bytes
+(escapes such as `\u000a`, one-line arrays, CRLF line ends).
+
 ### Deterministic hooks
 
 Hook definitions live in `hooks/manifest.yaml`; executable checks live in `hooks/checks/`. The runtime contract is documented in [`docs/hook-protocol.md`](hook-protocol.md). When adding a hook, add a shell fixture next to it when the behavior is deterministic and register the script in the manifest.

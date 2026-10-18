@@ -236,19 +236,6 @@
   - **Pivot**: if the list gets long, link to one generated doc instead.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
-- [ ] Merging hooks into settings.json keeps existing commands byte-for-byte
-  - **ID**: hooks-merge-preserves-text
-  - **Tags**: hooks, sync
-  - **Details**: When sync rewrites `~/.claude/settings.json`, the person's own hook commands come back re-escaped (a literal newline in a printf string became `\n`). It still works, but backups and diffs show changes the person did not make.
-  - **Files**: `src/sync/hooks-sync.ts`
-  - **Output**: code
-  - **Acceptance**: a settings.json with a user hook containing a newline is unchanged byte-for-byte after `agentbrew sync` (apart from managed keys).
-  - **Hypothesis**: unexplained diffs in user hooks after sync go to zero.
-  - **Measurement**: unit test round-trip.
-  - **Success**: the round-trip test passes.
-  - **Pivot**: if JSON re-serialisation can't keep it, document it and keep the semantic check.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

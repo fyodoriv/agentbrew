@@ -64,6 +64,22 @@ describe("syncStatusLine", () => {
     expect(syncStatusLine({ settingsPath, manifest, dryRun: false })).toBe("unchanged");
   });
 
+  it("keeps the rest of the file byte-for-byte when it installs", () => {
+    const original = `{
+  "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "printf 'x\\u000a'" }] }] },
+  "model": "opus"
+}
+`;
+    writeFileSync(settingsPath, original);
+    const manifest: Manifest = { hashes: {} };
+
+    expect(syncStatusLine({ settingsPath, manifest, dryRun: false })).toBe("installed");
+
+    const text = readFileSync(settingsPath, "utf-8");
+    expect(text.startsWith(original.slice(0, original.lastIndexOf("\n}")))).toBe(true);
+    expect(readSettings().statusLine).toEqual(desiredStatusLine());
+  });
+
   it("never overwrites a statusLine that agentbrew did not write", () => {
     const users = { type: "command", command: "~/bin/my-status.sh", padding: 1 };
     writeSettings({ statusLine: users });

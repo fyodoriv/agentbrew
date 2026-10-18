@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { existingText, jsonTextFor } from "../core/json-text-edit.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
 import { HELPER_SCRIPTS_DIR } from "../paths.js";
@@ -68,7 +69,7 @@ export function syncStatusLine(options: {
   if (action !== "unchanged") {
     settings.statusLine = desired;
     mkdirSync(dirname(options.settingsPath), { recursive: true });
-    writeFileAtomicSync(options.settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+    writeFileAtomicSync(options.settingsPath, jsonTextFor(existingText(options.settingsPath), settings), "utf-8");
   }
   options.manifest.managedStatusLine = desired;
   return action;

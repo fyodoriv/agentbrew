@@ -24,7 +24,12 @@ describe("install e2e trigger", () => {
   });
 
   it("runs the pack e2e when the packed hooks or template rules change", () => {
-    for (const path of ["package.json", "hooks/manifest.yaml", "templates/rules/testing.mdc", "src/sync/hooks-sync.ts"]) {
+    for (const path of [
+      "package.json",
+      "hooks/manifest.yaml",
+      "templates/rules/testing.mdc",
+      "src/sync/hooks-sync.ts",
+    ]) {
       expect(decide(path), path).toContain("install e2e: pack");
     }
     expect(decide("hooks/checks/perf-record.sh")).toContain("skip");

@@ -107,6 +107,55 @@ TEST8_EXIT=$(MINSKY_PIPELINE=1 bash -c "echo '$TEST8_INPUT' | bash '$SCRIPT' 2>/
 TEST8_EXIT=$(echo "$TEST8_EXIT" | tail -1)
 assert_exit_code "Test 8 (MINSKY_PIPELINE bypass allows)" 0 "$TEST8_EXIT"
 
+# Tests 9-11: the shared strip library (hooks/lib/strip-agent-attribution.sh)
+# keeps git trailers last. git reads trailers only from the last paragraph.
+# `--no-divider` reads them the way `git log %(trailers)` does: without it,
+# git treats the footer's `---` line as a patch divider.
+LIB="$(dirname "$SCRIPT")/../lib/strip-agent-attribution.sh"
+LIB_TMP=$(mktemp -d)
+FOOTER_LINE='_🤖 Written by an agent, not Fyodor. Ping me if this looks off._'
+
+run_lib_strip() {
+  AGENT_FOOTER_NAME=Fyodor GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    bash -c '. "$1"; _strip_agent_attribution_in_file "$2" >/dev/null' _ "$LIB" "$1" </dev/null
+}
+
+assert_true() {
+  local label="$1"
+  shift
+  if "$@"; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1))
+    FAIL_DETAILS+=("$label")
+  fi
+}
+
+# Test 9: Task/Task-Claim trailers plus a stripped vendor Co-Authored-By line.
+MSG9="$LIB_TMP/msg9"
+printf 'fix: x\n\nBody text.\n\nTask: fix-the-thing\nTask-Claim: abc123\nCo-Authored-By: Claude <noreply@anthropic.com>\n' > "$MSG9"
+run_lib_strip "$MSG9"
+TRAILERS9=$(git interpret-trailers --parse --no-divider < "$MSG9")
+assert_true "Test 9 (Task trailer still parsed)" grep -qx 'Task: fix-the-thing' <<<"$TRAILERS9"
+assert_true "Test 9 (Task-Claim trailer still parsed)" grep -qx 'Task-Claim: abc123' <<<"$TRAILERS9"
+assert_true "Test 9 (footer present)" grep -qxF "$FOOTER_LINE" "$MSG9"
+assert_true "Test 9 (vendor line stripped)" test "$(grep -c 'Co-Authored-By' "$MSG9")" = 0
+
+# Test 10: no trailers left after the strip → footer stays at the end.
+MSG10="$LIB_TMP/msg10"
+printf 'fix: x\n\nBody text.\nCo-Authored-By: Claude <noreply@anthropic.com>\n' > "$MSG10"
+run_lib_strip "$MSG10"
+assert_true "Test 10 (footer is the last line)" test "$(tail -1 "$MSG10")" = "$FOOTER_LINE"
+assert_true "Test 10 (divider before footer)" test "$(tail -2 "$MSG10" | head -1)" = '---'
+
+# Test 11: plain prose ending, nothing to strip → message unchanged.
+MSG11="$LIB_TMP/msg11"
+printf 'fix: x\n\nFixes the bug: it was slow.\n' > "$MSG11"
+cp "$MSG11" "$MSG11.before"
+run_lib_strip "$MSG11"
+assert_true "Test 11 (plain prose unchanged)" cmp -s "$MSG11" "$MSG11.before"
+rm -rf "$LIB_TMP"
+
 # Report
 echo ""
 echo "git-strip-agent-attribution.sh: $PASS passed, $FAIL failed"

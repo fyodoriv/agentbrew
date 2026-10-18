@@ -18,6 +18,8 @@
 #   2. If we stripped any vendor line, appends the canonical
 #      tool-neutral footer ("not <first name>") so readers can still tell the commit
 #      was agent-authored.
+#      The footer goes before a trailing git trailer block (Task:,
+#      Signed-off-by:) so git still parses those trailers.
 #   3. Orchestrator pipelines (e.g. minsky) are exempt — set
 #      MINSKY_PIPELINE=1 to bypass entirely. Bypass mode preserves
 #      the caller's commit message as-is so the orchestrator stays
@@ -138,18 +140,40 @@ _strip_agent_attribution_in_file() {
   fi
 
   # If we just stripped vendor attribution, the commit was almost
-  # certainly agent-authored — append the footer so readers
+  # certainly agent-authored — add the footer so readers
   # know an agent wrote it. We do NOT touch commits that had no
   # vendor attribution (those are human commits).
   if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$footer_re" "$msg_file"; then
     tmp_file=$(mktemp)
-    # Trim trailing blank lines so the appended footer stays cleanly spaced.
+    # Trim trailing blank lines so the footer stays cleanly spaced.
     awk 'BEGIN{n=0} {a[++n]=$0} END{
       while (n>0 && a[n] ~ /^[[:space:]]*$/) n--
       for (i=1;i<=n;i++) print a[i]
     }' "$msg_file" > "$tmp_file"
-    cleaned=$(cat "$tmp_file")
-    printf '%s\n\n---\n_🤖 Written by an agent, not %s. Ping me if this looks off._\n' "$cleaned" "$(_agent_footer_name)" > "$msg_file"
+    # git reads trailers (Task:, Signed-off-by:, ...) only from the last
+    # paragraph. When git parses a trailer block there, put the footer
+    # before that paragraph so the trailers stay last. `--no-divider`
+    # matches `git log %(trailers)`: it does not stop at a `---` line.
+    keep_trailers_last=0
+    if [ -n "$(git interpret-trailers --parse --no-divider < "$tmp_file" 2>/dev/null || true)" ]; then
+      keep_trailers_last=1
+    fi
+    footer=$(printf -- '---\n_🤖 Written by an agent, not %s. Ping me if this looks off._' "$(_agent_footer_name)")
+    AGENT_ATTR_FOOTER="$footer" awk -v move="$keep_trailers_last" '{a[++n]=$0} END{
+      # s = blank line before the last paragraph (skip trailing # comments).
+      s=n+1
+      if (move == 1) {
+        e=n
+        while (e>0 && (a[e] ~ /^#/ || a[e] ~ /^[[:space:]]*$/)) e--
+        for (i=e; i>0; i--) if (a[i] ~ /^[[:space:]]*$/) { s=i; break }
+      }
+      b=s-1
+      while (b>0 && a[b] ~ /^[[:space:]]*$/) b--
+      for (i=1;i<=b;i++) print a[i]
+      print ""
+      print ENVIRON["AGENT_ATTR_FOOTER"]
+      if (s <= n) { print ""; for (i=s+1;i<=n;i++) print a[i] }
+    }' "$tmp_file" > "$msg_file"
     rm -f "$tmp_file"
     echo "🤖 Appended tool-neutral agent footer (agent-attribution-footer rule)."
     echo ""

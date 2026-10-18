@@ -95,6 +95,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Hook scripts run under macOS `/bin/bash` 3.2: no `printf '%(...)T'`, no `${var,,}`. Keep a long jq program in a `hooks/lib/*.jq` file (sync deploys `lib/` whole); a jq program inside a single-quoted bash string breaks on its first `'`. Write a JSON default as `"${INPUT:-{\}}"`: `"${INPUT:-{}}"` appends a stray `}` when `INPUT` is set. `scripts/lint-security.sh` rejects it.
 - The install e2e (`real-e2e/scenarios/us24-one-step-install.test.ts`) runs under `sandbox-exec` on macOS: writes outside its scratch folder and the real `launchctl` fail it. Add a new install path to the triggers in `scripts/install-e2e-if-needed.sh`.
 - Task fields need the list dash: `  - **Field**: value`. Parsers and the docs tests ignore a bare `  **Field**:` line, which once hid many tasks from rule 9. `npx @tasks-md/lint --fix TASKS.md` adds the dash. Review the queue with `/review-tasks` (`agentbrew install review-tasks`).
+- `git interpret-trailers --parse` stops at a `---` line (patch divider), so it misses trailers that `git log %(trailers)` reads. Add `--no-divider` to match `git log`. The strip-attribution footer goes before a trailing trailer block for this reason.
 
 ## Delivery
 

@@ -191,7 +191,7 @@
   - **Success**: under 10 min/day, with no rise in `until` calls that time out.
   - **Pivot**: still over 30 min/day after 7 days -> make the hook block loops with `sleep` under 30 s, or drop the hint and file a skill change instead.
   - **Anchor**: tooling-checkup agent time review 2026-10-18; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-owner — 2026-10-18: the hook merged in agentbrew; the owner turns it on by adding `  - poll-loop-hint` under `enabled:` in the dotfiles hooks overlay (`~/.config/agentbrew/hooks-overlay/manifest.yaml`), then runs `agentbrew sync`. The 7-day measurement starts then.
+  - **Blocked**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). Measure on or after 2026-10-25 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the `until <arg>` overall line), then close or pivot.
 
 ## P2
 

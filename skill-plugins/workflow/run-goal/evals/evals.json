@@ -355,6 +355,18 @@
         "Adds a case for a different angle, or edits an existing expectation, and says which",
         "Records the PR for run-goal in the retro file, and the PR is merged before the line is written"
       ]
+    },
+    {
+      "id": 31,
+      "prompt": "/goal another machine is now working on dotfiles and agentbrew so they work on another Mac; implement all unblocked tasks (mid-goal the user adds: 'sometimes my Mac says focus timer complete, I don't want it')",
+      "expected_output": "The contract counts the unblocked P0-P2 tasks per repo as the baseline and names P3 as out of scope unless the user allows it. The agent finds the other machine's open PRs, maps their files against the remaining tasks, asks once how to split, and never merges or edits the other person's PRs. It adds the mid-goal request to the contract as a new done-criterion and ships it in this run. A task that needs days of data is re-marked Blocked with a dated measurement step, not faked. Worker claims are re-checked before the goal check line.",
+      "expectations": [
+        "Baseline metric is the count of open unblocked P0-P2 tasks, recomputed on origin at the end",
+        "Lists the other machine's open PRs and the files they touch before starting overlapping tasks; does not merge them",
+        "Adds the mid-goal request to the saved contract file as a done-criterion and delivers it with red/green proof",
+        "Marks a task that needs a 7-day measurement as Blocked: needs-time with a date and command, and counts it against the allowed Blocked budget",
+        "Re-runs a worker's reported score or side effect (for example the setup score or a LaunchAgent path) before printing its Goal check line"
+      ]
     }
   ]
 }

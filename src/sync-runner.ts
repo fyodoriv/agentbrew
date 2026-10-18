@@ -403,8 +403,10 @@ export function buildSyncModules(options: {
  * Post-mutation auto-sync: runs all sync categories quietly after state changes
  * (e.g. install, add, remove) so all agents stay in sync automatically.
  */
-export async function autoSync(): Promise<void> {
+export async function autoSync(options?: { installAgentfileItems?: boolean }): Promise<void> {
   console.log(chalk.dim("\n  Syncing to all agents..."));
-  await runSyncWithErrorCollection(buildSyncModules({ quiet: true }));
+  await runSyncWithErrorCollection(buildSyncModules({ quiet: true }), {
+    installAgentfileItems: options?.installAgentfileItems ?? true,
+  });
   console.log(chalk.dim("  ✓ Synced."));
 }

@@ -112,8 +112,9 @@ function printInitSummary(result: InitResult, options?: { skipInstall?: boolean;
     console.log(chalk.bold("\n── Next steps ──────────────────────────────\n"));
     if (skipInstall) {
       console.log(`  ${chalk.cyan("agentbrew install --recommended")}   Install curated skills + MCP servers`);
+      console.log(`  ${chalk.cyan("agentbrew sync")}                    Install the skills your Agentfiles list`);
     }
-    if (skipSync) {
+    if (skipSync && !skipInstall) {
       console.log(`  ${chalk.cyan("agentbrew sync")}                    Deploy everything to all agents`);
     }
     console.log(`  ${chalk.cyan("agentbrew catalog")}                 Browse the full catalog`);
@@ -137,9 +138,13 @@ async function postInit(result: InitResult, options?: { skipInstall?: boolean; s
     installShellHook();
   }
 
-  // Auto-fetch sources
-  console.log(chalk.bold("\nFetching sources...\n"));
-  await fetchSources();
+  // --skip-install (the installer's "no recommended" answer) means no
+  // downloads: skip the catalog source fetch. `agentbrew install` adds a
+  // source on first use, so nothing later depends on this fetch.
+  if (!options?.skipInstall) {
+    console.log(chalk.bold("\nFetching sources...\n"));
+    await fetchSources();
+  }
 
   // Always install recommended + sync — both are idempotent no-ops on a
   // fully-synced system (installRecommended returns early when `pending.total
@@ -152,7 +157,7 @@ async function postInit(result: InitResult, options?: { skipInstall?: boolean; s
   }
 
   if (!options?.skipSync) {
-    await autoSync();
+    await autoSync({ installAgentfileItems: !options?.skipInstall });
   }
 
   printInitSummary(result, options);

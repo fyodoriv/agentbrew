@@ -194,19 +194,6 @@
 
 ## P2
 
-- [ ] "No recommended set" during install means no source downloads and no extra skills
-  - **ID**: init-skip-install-skips-source-fetch
-  - **Tags**: init, install, new-users, perf
-  - **Details**: The one-step install e2e (2026-10-16) showed that `agentbrew init --skip-install` (the installer's `--no-recommended` answer) still fetches every catalog source (about 20 git repos, 20-25 s) and installs the skills listed in the generated global Agentfile. A user who answered "No" still gets downloads and skills. Skip the source fetch and the Agentfile skill installs when `--skip-install` is set, and say in the summary how to add them later.
-  - **Files**: `src/init.ts`, `src/fetch-sources.ts`, `real-e2e/scenarios/us24-one-step-install.test.ts`
-  - **Output**: code
-  - **Acceptance**: the us24 fast e2e with `--no-recommended` shows no "Fetching" lines and no "Installing skill" lines.
-  - **Hypothesis**: the fast install e2e drops from about 30 s to under 10 s per test, and a "No" answer installs zero skills.
-  - **Measurement**: `npm run test:install-e2e` timing plus a grep of the run output for "Fetching" and "Installing skill".
-  - **Success**: under 10 s per test and zero fetches with `--no-recommended`.
-  - **Pivot**: if a later sync needs the source cache, fetch lazily on first `agentbrew install` instead.
-  - **Anchor**: Basili et al. 1994 (GQM); install e2e timing 2026-10-16.
-
 - [ ] npm users get the same hooks and per-file rules as clone users
   - **ID**: npm-package-ships-hooks-and-rules
   - **Tags**: packaging, hooks, rules, new-users

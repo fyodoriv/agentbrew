@@ -64,6 +64,10 @@ Ask these together, in one round:
 Map the answers to flags: No to 1 → `--no-recommended`, No to 2 →
 `--no-auto-repair`, No to 3 → `--no-shell-hook`.
 
+With `--no-recommended`, setup downloads nothing: it fetches no catalog
+sources and installs no skills, not even the ones an Agentfile lists. Add
+them later with `agentbrew install --recommended` or `agentbrew sync`.
+
 ## 4. Install
 
 Get a clear yes to the plan, then run:

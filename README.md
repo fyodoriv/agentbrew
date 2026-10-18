@@ -563,6 +563,7 @@ See [docs/COMPETITION.md](docs/COMPETITION.md) for the full analysis. Run `npm r
 agentbrew                              Status dashboard (auto-init on first run)
 agentbrew init [--force] [--skip-install] [--skip-sync]
                                        Detect agents + install recommended + sync (idempotent)
+                                       --skip-install: no source fetch, no skill installs
 agentbrew status [--verbose] [--fix] [--ci] [--json]
                                        Show agents, servers, sources, skills, drift
 agentbrew sync [--dry-run] [--no-prune] [--only <modules>] [--rollback]

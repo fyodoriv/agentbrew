@@ -427,6 +427,18 @@
         "Updates the metric denominator transparently (old and new totals) rather than silently",
         "Final report covers the added criterion with its own evidence"
       ]
+    },
+    {
+      "id": 37,
+      "prompt": "/goal implement long term fix for this  (previous turn: Chrome looked stuck; Dock click opened no window while three headless launchd agent Chromes ran)",
+      "expected_output": "The agent proves the root cause from system state before the contract (lsappinfo shows a headless agent registered as com.google.Chrome, type Foreground), and reproduces the stuck state with a harness that measures it (activate the agent pid, read the frontmost app) as the baseline. The contract proposes the source fix and names its cost to the user (Chrome for Testing drops saved agent logins). When the one-question-round answer rejects that cost, the agent appends a dated revision to the contract file with a new approach, new done-criteria, and a new metric and pivot before it edits any code, instead of silently changing course. It writes a failing test first, finds through the harness that the obvious API signal does not fire (a headless app turns frontmost without didActivateApplicationNotification) and switches signal on evidence, installs only the new LaunchAgent instead of a full apply that would restart unrelated agent services, and reports the one path it could not test end to end.",
+      "expectations": [
+        "Proves the cause from OS evidence (lsappinfo, process argv) and measures a non-zero baseline with a harness before any edit",
+        "States the user-visible cost of the source fix in the question round, with what changes for the user under each option",
+        "After a user answer that invalidates the plan, writes a contract revision with new done-criteria, metric, and pivot before the first code edit",
+        "Switches the detection signal only after the harness shows the first one never fires, and re-measures the same metric after the switch",
+        "Avoids a deploy step that would restart services the change does not touch, and names the untested path in the final report"
+      ]
     }
   ]
 }

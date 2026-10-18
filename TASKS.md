@@ -220,19 +220,6 @@
   - **Pivot**: if a later sync needs the source cache, fetch lazily on first `agentbrew install` instead.
   - **Anchor**: Basili et al. 1994 (GQM); install e2e timing 2026-10-16.
 
-- [ ] Skill, eval, and docs-only PRs merge on the fast gate alone
-  - **ID**: verify-changed-sufficient-for-skill-only-diffs
-  - **Tags**: perf, gates, agents
-  - **Details**: AGENTS.md Delivery says to run the full `npm run verify` once before merge even when `npm run verify:changed` already covers the diff. On 2026-10-16 an eval-only `evals.json` change passed `verify:changed` in seconds, then spent 3m26s in the full gate with no new signal. Every goal retro ships such a PR. Let `verify:changed` print "merge-ready" when the diff touches only skill, eval, docs, rules, or task-queue paths, and update AGENTS.md Delivery to accept it.
-  - **Files**: `scripts/verify-changed.*`, `AGENTS.md` (Delivery)
-  - **Output**: code
-  - **Acceptance**: a skill-only branch gets "merge-ready" from `verify:changed`; any `src/` or `hooks/` path still requires the full gate.
-  - **Hypothesis**: gate time for skill/eval-only PRs drops from about 210 s to under 30 s with no rise in post-merge failures on `main`.
-  - **Measurement**: `node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 30` (`npm run verify` count and sum on skill-only branches) plus full-gate results on `main` after such merges.
-  - **Success**: zero `main` breaks traced to fast-gate-only merges over 30 days, and those gates finish under 30 s.
-  - **Pivot**: any `main` break caused by a skill-only merge -> restore the full gate for that path class.
-  - **Anchor**: Forsgren, Humble, Kim 2018 (lead time); agent-perf report 2026-10-16 (npm run verify 3m26s on an eval-only PR).
-
 - [ ] Hook decision counts show real blocks, not test-fixture noise
   - **ID**: hook-decision-log-excludes-fixtures
   - **Tags**: hooks, metrics, telemetry
@@ -258,19 +245,6 @@
   - **Success**: hook ids match a clone install exactly.
   - **Pivot**: if the package size grows past 2x, ship only the default-on hooks.
   - **Anchor**: Basili et al. 1994 (GQM); finding from the 2026-10-16 portability audit.
-
-- [ ] New agentbrew worktrees get dependencies in seconds, not minutes
-  - **ID**: worktree-deps-apfs-clone
-  - **Tags**: perf, worktrees, agents
-  - **Details**: Every agent worktree runs `npm ci` (4-5 min each in the run-goal build, about ten times in one session). When the worktree's `package-lock.json` matches the main checkout's, an APFS clone (`cp -cR <main>/node_modules ./node_modules`) took 11 s on 2026-10-16, and the docs tests passed on it. Add a `scripts/worktree-deps.sh` that clones when the lockfiles match and falls back to `npm ci` otherwise, and point the AGENTS.md worktree gotcha at it. A symlinked `node_modules` stays banned (it breaks `src/cli.test.ts`); a clone is a real copy.
-  - **Files**: `scripts/worktree-deps.sh`, `AGENTS.md` (Gotchas, Delivery)
-  - **Output**: code
-  - **Acceptance**: on a fresh worktree with a matching lockfile, the script finishes in under 30 s and `npm run verify` passes; with a changed lockfile it runs `npm ci`.
-  - **Hypothesis**: worktree setup drops from about 270 s to under 30 s when lockfiles match, with no test that passes only on a clean install.
-  - **Measurement**: `time scripts/worktree-deps.sh` versus `time npm ci` on the same fresh worktree; `npm run verify` result on the cloned tree.
-  - **Success**: under 30 s and verify green on 5 consecutive worktrees.
-  - **Pivot**: any verify failure that a clean `npm ci` fixes -> keep `npm ci` and drop the clone path.
-  - **Anchor**: agent-perf report 2026-10-16 (npm ci 5m02s and 4m15s in one turn); Forsgren, Humble, Kim 2018 (lead time).
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga

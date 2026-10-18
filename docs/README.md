@@ -23,6 +23,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`measure-context-budget.md`](measure-context-budget.md) | How do I measure how much context agentbrew adds to each session? | both |
+| [`observability.md`](observability.md) | Where are the logs, which events and errors are recorded, and how does the health check show each fix? | both |
 | [`metrics.md`](metrics.md) | How do we know agentbrew works? Each metric with its goal, pivot, and command. | both |
 | [`agent-perf.md`](agent-perf.md) | Which agent steps take the longest? The perf log, its privacy rules, and `agent-perf.mjs`. | both |
 | [`learn-project.md`](learn-project.md) | How do I use the `learn-project` skill to study a codebase? | human |

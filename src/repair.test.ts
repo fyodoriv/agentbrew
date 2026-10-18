@@ -99,6 +99,12 @@ vi.mock("./repair-log.js", () => ({
   saveRepairLog: vi.fn(),
 }));
 
+vi.mock("./core/events.js", () => ({
+  recordEvent: vi.fn(),
+  storyForModule: vi.fn(() => "US08"),
+}));
+
+import { recordEvent } from "./core/events.js";
 import {
   checkAgentDefsDrift,
   checkBrokenSymlinks,
@@ -171,6 +177,27 @@ beforeEach(() => {
 });
 
 describe("fix", () => {
+  it("records one content-free repair event with the drift counts", async () => {
+    mockLoadState.mockReturnValue(makeState() as never);
+    mockCollectDrift.mockReturnValue([
+      { agent: "kiro", type: "mcp", detail: "missing server: a" },
+      { agent: "kiro", type: "rules", detail: "no managed section" },
+    ]);
+    mockCheckMcpDrift.mockReturnValueOnce([{ agent: "kiro", type: "mcp", detail: "missing server: a" }]);
+    await fix();
+    expect(vi.mocked(recordEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "repair",
+        story: "US06",
+        ok: false,
+        driftBefore: 2,
+        repaired: 1,
+        remaining: 1,
+        types: ["mcp"],
+      }),
+    );
+  });
+
   it("returns early when state is missing", async () => {
     mockLoadState.mockReturnValue(undefined);
 

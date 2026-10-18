@@ -20,3 +20,12 @@ map.vision: VISION.md
 # the table, gate speed included. src/docs/metrics-doc.test.ts fails on a row
 # without a goal, pivot, or command, or a metric the script does not print.
 map.metrics: docs/metrics.md scripts/metrics.sh src/docs/metrics-doc.test.ts
+
+# docs/observability.md has Logs (content-free JSONL events from
+# src/core/events.ts: allow-listed fields only, off in tests through
+# vitest.config.ts), Errors (local only, no external reporter by accepted push
+# back; each error event names its story), and Health check: agentbrew status
+# --ci (src/health.ts) instead of scripts/doctor.sh, by accepted push back.
+# Every drift item prints its fix from src/drift-fixes.ts, a record over every
+# DriftItem type, so a type without a fix fails tsc.
+map.observability: docs/observability.md src/core/events.ts src/core/events.test.ts src/health.ts src/drift-fixes.ts

@@ -24,6 +24,7 @@ import {
 } from "./drift.js";
 import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { checkUserStatusLine } from "./drift-checks/statusline.js";
+import { driftFix } from "./drift-fixes.js";
 import { fix } from "./repair.js";
 import { requireState } from "./state.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -74,7 +75,7 @@ function outputHealthCi(
   } else {
     console.error(`drift=${allDrift.length} status=failed`);
     for (const item of allDrift) {
-      console.error(`  ${item.agent} [${item.type}] ${item.detail}`);
+      console.error(`  ${item.agent} [${item.type}] ${item.detail} — fix: ${driftFix(item)}`);
     }
     const repairHint =
       syncDrift.length === allDrift.length
@@ -94,13 +95,18 @@ function printHealthHeader(state: AgentBrewState): void {
   console.log(`  Sources: ${getStateSources(state).length} tracked`);
 }
 
+/** The fix for one drift item, dimmed, for human output. */
+function fixSuffix(item: DriftItem): string {
+  return chalk.dim(` — fix: ${driftFix(item)}`);
+}
+
 /** Print warning drift items with a title. */
 function printWarningSection(title: string, items: DriftItem[], showAgent: boolean): void {
   if (items.length === 0) return;
   console.log(chalk.bold(`\n${title}\n`));
   for (const item of items) {
     const prefix = showAgent ? `${item.agent} — ` : "";
-    console.error(`  ${ICON_WARNING} ${prefix}${item.detail}`);
+    console.error(`  ${ICON_WARNING} ${prefix}${item.detail}${fixSuffix(item)}`);
   }
 }
 
@@ -134,7 +140,7 @@ async function printDriftStatus(
       chalk.bold(`\nDrift: ${chalk.yellow(`${syncDrift.length} issue(s)`)} ${breakdown} — auto-repairing...\n`),
     );
     for (const item of syncDrift) {
-      console.error(`  ${ICON_WARNING} ${item.agent} [${item.type}] — ${item.detail}`);
+      console.error(`  ${ICON_WARNING} ${item.agent} [${item.type}] — ${item.detail}${fixSuffix(item)}`);
     }
     await fix();
     return true;
@@ -158,7 +164,7 @@ function printSkillValiditySection(skillValidity: DriftItem[]): void {
   if (skillValidity.length === 0) return;
   console.log(chalk.bold(`\nSkill validation: ${chalk.yellow(`${skillValidity.length} invalid skill(s)`)}\n`));
   for (const item of skillValidity) {
-    console.error(`  ${ICON_WARNING} ${item.agent} — ${item.detail}`);
+    console.error(`  ${ICON_WARNING} ${item.agent} — ${item.detail}${fixSuffix(item)}`);
   }
   console.log(chalk.dim(`\n  Fix skill frontmatter manually, then run ${chalk.white("agentbrew skills validate")}.\n`));
 }
@@ -167,7 +173,7 @@ function printCliBuildDriftSection(cliBuildDrift: DriftItem[]): void {
   if (cliBuildDrift.length === 0) return;
   console.log(chalk.bold(`\nCLI build: ${chalk.yellow("stale")}\n`));
   for (const item of cliBuildDrift) {
-    console.error(`  ${ICON_WARNING} ${item.detail}`);
+    console.error(`  ${ICON_WARNING} ${item.detail}${fixSuffix(item)}`);
   }
 }
 
@@ -255,7 +261,7 @@ async function displayInteractiveDrift(sections: DriftSections, autoFix: boolean
     const breakdown = formatDriftSummary(syncDrift);
     console.log(chalk.bold(`\nDrift: ${chalk.red(`${syncDrift.length} issue(s)`)} ${breakdown}\n`));
     for (const item of syncDrift) {
-      console.error(`  ${ICON_ERROR} ${item.agent} [${item.type}] — ${item.detail}`);
+      console.error(`  ${ICON_ERROR} ${item.agent} [${item.type}] — ${item.detail}${fixSuffix(item)}`);
     }
     const repairCommand = syncDrift.some((item) => item.type === "rules-source")
       ? "agentbrew rules dedupe && agentbrew sync"

@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { SYNC_ERRORS_PATH } from "../paths.js";
 import { expandHome } from "../utils.js";
+import { recordEvent, storyForModule } from "./events.js";
 import { logSkipped } from "./logger.js";
 
 /** Base error for all agentbrew operations. */
@@ -118,6 +119,10 @@ function writeSyncErrorLog(log: SyncErrorLog): void {
 }
 
 export function saveSyncErrors(collector: SyncErrorCollector): void {
+  for (const error of collector.errors) {
+    const module = error instanceof SyncError ? error.module : undefined;
+    recordEvent({ event: "error", story: storyForModule(module), ok: false, code: error.code, module });
+  }
   writeSyncErrorLog({
     lastSyncAt: new Date().toISOString(),
     errors: collector.errors.map((error) => ({

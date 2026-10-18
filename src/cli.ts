@@ -39,6 +39,7 @@ import { registerOpsCommands } from "./commands/cli-ops.js";
 import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
+import { recordEvent } from "./core/events.js";
 import { printMotd } from "./motd.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
 import { registerTeamCommands } from "./team/commands/cli-team.js";
@@ -198,6 +199,17 @@ interface SyncCommandOptions {
 }
 
 async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
+  const started = Date.now();
+  let ok = false;
+  try {
+    await runSyncCommand(options);
+    ok = !process.exitCode;
+  } finally {
+    if (!options.dryRun) recordEvent({ event: "sync", story: "US08", ok, ms: Date.now() - started });
+  }
+}
+
+async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   if (await handleSyncEarlyExits(options)) return;
 
   const syncOpts = {

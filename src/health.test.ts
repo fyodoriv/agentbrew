@@ -321,7 +321,7 @@ describe("healthCheck --ci mode", () => {
     mockReadFileSync.mockReturnValue('{"mcpServers":{}}');
 
     await healthCheck({ autoFix: false, ci: true });
-    expect(console.error).toHaveBeenCalledWith("  kiro [mcp] missing server: srv1");
+    expect(console.error).toHaveBeenCalledWith("  kiro [mcp] missing server: srv1 — fix: agentbrew sync --only mcp");
   });
 
   it("includes agent/server/source counts", async () => {

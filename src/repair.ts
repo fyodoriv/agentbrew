@@ -1,5 +1,7 @@
 import { join } from "node:path";
 import chalk from "chalk";
+import { AgentBrewError } from "./core/errors.js";
+import { recordEvent } from "./core/events.js";
 import { logSkipped } from "./core/logger.js";
 import type { DriftItem } from "./drift.js";
 import {
@@ -125,6 +127,17 @@ const AUTO_FIXABLE_TYPES: ReadonlySet<DriftItem["type"]> = new Set([
 ]);
 
 export async function fix(): Promise<void> {
+  const started = Date.now();
+  try {
+    await runFix(started);
+  } catch (e) {
+    const code = e instanceof AgentBrewError ? e.code : "UNEXPECTED";
+    recordEvent({ event: "error", story: "US06", ok: false, code, ms: Date.now() - started });
+    throw e;
+  }
+}
+
+async function runFix(started: number): Promise<void> {
   const state = requireState();
   if (!state) return;
 
@@ -223,6 +236,16 @@ export async function fix(): Promise<void> {
   const repairedDrift = driftBefore.filter((d) => !remainingKeys.has(`${d.agent}:${d.type}:${d.detail}`));
   const repaired: RepairAction[] = repairedDrift.map((d) => ({ type: d.type, agent: d.agent, detail: d.detail }));
   saveRepairLog(repaired);
+  recordEvent({
+    event: "repair",
+    story: "US06",
+    ok: remainingItems.length === 0,
+    ms: Date.now() - started,
+    driftBefore: driftBefore.length,
+    repaired: repaired.length,
+    remaining: remainingItems.length,
+    types: remainingItems.map((d) => d.type),
+  });
 
   // Report what was fixed
   if (repaired.length > 0) {

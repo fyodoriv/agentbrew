@@ -11,6 +11,8 @@ export default defineConfig({
     },
     include: ["src/**/*.test.ts"],
     setupFiles: ["./vitest.tasks-guard.ts"],
+    // Tests never write the content-free event log (docs/observability.md).
+    env: { AGENTBREW_EVENTS: "0" },
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

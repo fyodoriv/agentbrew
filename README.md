@@ -312,6 +312,8 @@ agentbrew status --fix         # detailed drift check + auto-repair
 agentbrew status --ci          # exit 1 on drift (CI-friendly)
 ```
 
+Every drift item ends with its fix (`— fix: <command>`). Each sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (no telemetry; `AGENTBREW_EVENTS=0` turns it off). See [`docs/observability.md`](docs/observability.md).
+
 When the global CLI runs from a git checkout (for example after `npm link`), `agentbrew status` also checks that its `dist/` is current. Each build writes `dist/build-info.json` with the commit it came from. If the checkout later moved to a commit that changes `src/`, `templates/`, `package.json`, `package-lock.json`, or `tsup.config.ts`, status reports `CLI build: stale` with the rebuild command. `agentbrew status --fix` rebuilds in place.
 
 The `Auto-repair` line in `agentbrew status` shows what the scheduler really does, not only whether its file exists. It says `active` only after a successful run in the last 90 minutes. Other states:

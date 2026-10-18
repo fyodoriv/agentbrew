@@ -1,5 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
@@ -9,7 +19,20 @@ const skillRoot = join(process.cwd(), "skill-plugins", "workflow", "new-project"
 const scaffold = join(skillRoot, "scripts", "scaffold.sh");
 const checkSetup = join(skillRoot, "scripts", "check-setup.sh");
 const scratch = mkdtempSync(join(tmpdir(), "new-project-"));
-const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" };
+// The copy fallback is the default here; the Copier tests below opt in.
+const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", NEW_PROJECT_NO_COPIER: "1" };
+const gitEnv = {
+  ...env,
+  GIT_AUTHOR_NAME: "t",
+  GIT_AUTHOR_EMAIL: "t@example.com",
+  GIT_COMMITTER_NAME: "t",
+  GIT_COMMITTER_EMAIL: "t@example.com",
+};
+const copierEnv: NodeJS.ProcessEnv = { ...gitEnv, NEW_PROJECT_NO_COPIER: "" };
+// Copier runs from PATH or through uvx (which may need the network once).
+const copierCmd = ["copier", "uvx copier@9.19.1"].find(
+  (cmd) => spawnSync("bash", ["-c", `${cmd} --version`], { env: copierEnv, encoding: "utf-8" }).status === 0,
+);
 const profiles = [
   { profile: "tool", stack: "ts" },
   { profile: "assistant", stack: "python" },
@@ -176,7 +199,9 @@ describe("new-project skill", () => {
   });
 
   it("tracks every template file in git, so a global gitignore cannot drop one", () => {
-    const onDisk = execFileSync("find", [join(skillRoot, "templates"), "-type", "f"], { encoding: "utf-8" })
+    const onDisk = execFileSync("find", [join(skillRoot, "templates"), "(", "-type", "f", "-o", "-type", "l", ")"], {
+      encoding: "utf-8",
+    })
       .trim()
       .split("\n").length;
     const tracked = execFileSync("git", ["ls-files", join(skillRoot, "templates")], { encoding: "utf-8" })
@@ -203,12 +228,81 @@ describe("new-project skill", () => {
   });
 
   it("ships valid YAML templates and a valid evals file", () => {
-    yaml.load(readFileSync(join(skillRoot, "templates", "assistant", "config", "models.yaml"), "utf-8"));
+    const assistant = (dir: string) => `{% if PROFILE == 'assistant' %}${dir}{% endif %}`;
+    yaml.load(readFileSync(join(skillRoot, "templates", assistant("config"), "models.yaml"), "utf-8"));
     yaml.loadAll(
-      readFileSync(join(skillRoot, "templates", "assistant", "evals", "cases", "001-start-session.yaml"), "utf-8"),
+      readFileSync(join(skillRoot, "templates", assistant("evals"), "cases", "001-start-session.yaml"), "utf-8"),
     );
     const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "utf-8"));
     expect(evals.skill_name).toBe("new-project");
     expect(JSON.stringify(evals)).toMatch(/interview prep/);
+  });
+
+  describe.skipIf(!copierCmd)("with Copier (skips when neither copier nor uvx copier@9.19.1 runs)", () => {
+    const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env: gitEnv, encoding: "utf-8" });
+    const files = (dir: string) =>
+      execFileSync("bash", ["-c", "find . \\( -type f -o -type l \\) ! -path './.git/*' | sort"], {
+        cwd: dir,
+        encoding: "utf-8",
+      });
+
+    it.each(profiles)("writes the same $profile files as the copy fallback, plus the answers file", ({
+      profile,
+      stack,
+    }) => {
+      const viaCopy = join(scratch, `copy-${profile}`);
+      const viaCopier = join(scratch, `copier-${profile}`);
+      const args = ["--profile", profile, "--name", "same", "--stack", stack, "--owner", "Ann", "--description", "D."];
+      execFileSync("/bin/bash", [scaffold, viaCopy, ...args], { env });
+      execFileSync("/bin/bash", [scaffold, viaCopier, ...args], { env: copierEnv });
+      rmSync(join(viaCopier, ".copier-answers.yml"));
+      expect(files(viaCopier)).toBe(files(viaCopy));
+      const diff = spawnSync("diff", ["-r", "--no-dereference", "-x", ".git", viaCopy, viaCopier], {
+        encoding: "utf-8",
+      });
+      expect(diff.stdout + diff.stderr).toBe("");
+    });
+
+    it("brings a template fix into an older repo and keeps the repo's own edits", () => {
+      // A versioned template: the skill files in their own git repo.
+      const tpl = join(scratch, "template-repo");
+      for (const part of ["copier.yml", "templates", "scripts"]) {
+        cpSync(join(skillRoot, part), join(tpl, part), { recursive: true, verbatimSymlinks: true });
+      }
+      git(tpl, "init", "-q", "-b", "main");
+      git(tpl, "add", "-A");
+      git(tpl, "commit", "-qm", "template v1");
+
+      const repo = join(scratch, "updated");
+      const out = execFileSync(
+        "/bin/bash",
+        [join(tpl, "scripts", "scaffold.sh"), repo, "--profile", "tool", "--name", "u", "--stack", "ts"],
+        {
+          env: copierEnv,
+          encoding: "utf-8",
+        },
+      );
+      expect(out).toContain("created .copier-answers.yml");
+      expect(readFileSync(join(repo, ".copier-answers.yml"), "utf-8")).toMatch(/_commit: \S+/);
+      appendFileSync(join(repo, "README.md"), "Local note kept by the repo.\n");
+      git(repo, "add", "-A");
+      git(repo, "commit", "-qm", "scaffold plus a local edit");
+
+      appendFileSync(join(tpl, "templates", "docs", "learnings.md"), "- Template fix line from v2.\n");
+      git(tpl, "commit", "-qam", "template v2");
+
+      const update = spawnSync("bash", ["-c", `${copierCmd} update --defaults --quiet --vcs-ref HEAD`], {
+        cwd: repo,
+        env: copierEnv,
+        encoding: "utf-8",
+      });
+      expect(update.status, update.stderr).toBe(0);
+      expect(readFileSync(join(repo, "docs", "learnings.md"), "utf-8")).toContain("- Template fix line from v2.");
+      expect(readFileSync(join(repo, "README.md"), "utf-8")).toContain("Local note kept by the repo.");
+      expect(git(repo, "status", "--porcelain")).not.toContain(".rej");
+      const result = score(repo, "tool");
+      expect(result.status, result.out).toBe(0);
+      expect(result.pass).toBe(result.total);
+    });
   });
 });

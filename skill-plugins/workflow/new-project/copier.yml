@@ -1,0 +1,32 @@
+# Copier template for the new-project skill.
+# scripts/scaffold.sh fills every answer; run it instead of `copier copy`.
+# Later template fixes reach a repo with `copier update` (see SKILL.md).
+_subdirectory: templates
+_answers_file: .copier-answers.yml
+_templates_suffix: ""
+_preserve_symlinks: true
+_envops:
+  # Templates use {{VAR}} only. Shell code such as ${#arr[@]} must not start a comment.
+  comment_start_string: "{##"
+  comment_end_string: "##}"
+  keep_trailing_newline: true
+
+NAME: {type: str, help: Project name}
+PROFILE: {type: str, choices: [tool, assistant, side-project], help: Project profile}
+STACK: {type: str, choices: [ts, python, rust, none], default: none, help: Stack}
+DESCRIPTION: {type: str, default: "FILL: one sentence on what it does and for whom."}
+OWNER: {type: str, default: "FILL: copyright holder"}
+# Derived by scaffold.sh from PROFILE and STACK. Stored so updates replay them.
+PROFILE_LABEL: {type: str, default: ""}
+STACK_LABEL: {type: str, default: ""}
+COMMANDS_TABLE: {type: str, default: ""}
+SETUP_EXTRA: {type: str, default: ""}
+DOCTOR_EXTRA: {type: str, default: ""}
+ERRORS_EXTRA: {type: str, default: ""}
+ROUTING_ROWS: {type: str, default: ""}
+PROFILE_RULES: {type: str, default: ""}
+DOCS_ROWS: {type: str, default: ""}
+AGENTFILE_SKILLS: {type: str, default: ""}
+GITIGNORE_EXTRA: {type: str, default: ""}
+DATE: {type: str, default: ""}
+YEAR: {type: str, default: ""}

@@ -114,41 +114,88 @@ case "$profile" in
 [ -f config/models.yaml ] && ok \"config/models.yaml present\" || fail \"config/models.yaml missing\" \"restore it from git\"" ;;
 esac
 
-NAME="$name" DESCRIPTION="$description" PROFILE="$profile" OWNER="$owner"
+NAME="$name" DESCRIPTION="$description" PROFILE="$profile" STACK="$stack" OWNER="$owner"
 DATE="$(date +%Y-%m-%d)" YEAR="$(date +%Y)"
-export NAME DESCRIPTION PROFILE PROFILE_LABEL STACK_LABEL COMMANDS_TABLE SETUP_EXTRA DOCTOR_EXTRA ERRORS_EXTRA \
-  ROUTING_ROWS PROFILE_RULES DOCS_ROWS AGENTFILE_SKILLS GITIGNORE_EXTRA OWNER DATE YEAR
+VARS="NAME DESCRIPTION PROFILE STACK PROFILE_LABEL STACK_LABEL COMMANDS_TABLE SETUP_EXTRA DOCTOR_EXTRA ERRORS_EXTRA
+  ROUTING_ROWS PROFILE_RULES DOCS_ROWS AGENTFILE_SKILLS GITIGNORE_EXTRA OWNER DATE YEAR"
+# shellcheck disable=SC2086
+export $VARS
 
-mkdir -p "$dir"
+collapse() {
+  # An empty multi-line value leaves a blank line; drop runs of blank lines.
+  perl -0pi -e 's/\n{3,}/\n\n/g; s/\n+\z/\n/' "$1"
+}
+
+# Copier path: the repo records .copier-answers.yml and can pull template fixes
+# later with `copier update`. Used only for a new or empty dir, because copier
+# would ask before it touches an existing file.
+copier_cmd() {
+  [ -z "${NEW_PROJECT_NO_COPIER:-}" ] || return 1
+  if command -v copier >/dev/null 2>&1; then echo copier; return; fi
+  if command -v uvx >/dev/null 2>&1 && uvx "copier@$COPIER_VERSION" --version >/dev/null 2>&1; then
+    echo "uvx copier@$COPIER_VERSION"; return
+  fi
+  return 1
+}
+COPIER_VERSION="${NEW_PROJECT_COPIER_VERSION:-9.19.1}"
+
+scaffold_with_copier() {
+  # Template source: the git repo root when it carries copier.yml (versioned,
+  # so `copier update` works), else this skill dir (copy only, no updates).
+  src="$here"
+  root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null || true)"
+  [ -n "$root" ] && [ -f "$root/copier.yml" ] && src="$root"
+  set -- copy --defaults --quiet --vcs-ref HEAD
+  for v in $VARS; do set -- "$@" --data "$v=$(printenv "$v")"; done
+  # shellcheck disable=SC2086
+  $cmd "$@" "$src" "$dir" </dev/null >/dev/null || return 1
+  (cd "$dir" && find . \( -type f -o -type l \) ! -path './.git/*' | sed 's|^\./||' | sort) | while IFS= read -r rel; do
+    [ -L "$dir/$rel" ] || [ "$rel" = .copier-answers.yml ] || collapse "$dir/$rel"
+    echo "created $rel"
+  done
+  [ "$src" = "$here" ] && echo "note: template is not in git; 'copier update' will not work for this repo"
+  return 0
+}
+
+render_path() {
+  # Turn a Copier template path into the output path; print nothing to skip it.
+  # Supports {{ 'literal' }} and {% if PROFILE ==|!= 'x' %}name{% endif %}.
+  printf '%s\n' "$1" | perl -ne '
+    chomp; next if /_copier_/;
+    s/\{\{ \x27([^\x27]*)\x27 \}\}/$1/g;
+    s/\{% if PROFILE (==|!=) \x27([^\x27]*)\x27 %\}(.*?)\{% endif %\}/(($1 eq "==") == ($ENV{PROFILE} eq $2)) ? $3 : ""/ge;
+    next if m{(^|/)(/|$)};
+    print "$_\n";'
+}
+
 render() {
   # render <src> <dest-rel>: substitute {{VAR}} from the environment; keep existing files.
   src="$1" dest="$dir/$2"
   if [ -e "$dest" ] || [ -L "$dest" ]; then echo "kept    $2"; return; fi
   mkdir -p "$(dirname "$dest")"
   perl -pe 's/\{\{([A-Z_]+)\}\}/exists $ENV{$1} ? $ENV{$1} : $&/ge' "$src" > "$dest"
-  # An empty multi-line value leaves a blank line; drop runs of blank lines.
-  perl -0pi -e 's/\n{3,}/\n\n/g; s/\n+\z/\n/' "$dest"
+  collapse "$dest"
   [ -x "$src" ] && chmod +x "$dest"
   echo "created $2"
 }
 
-copy_tree() {
-  # copy_tree <template-root>: render every file under it, keeping relative paths.
-  root="$1"
-  (cd "$root" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r rel; do
-    out="$rel"; [ "$rel" = gitignore ] && out=.gitignore; [ "$rel" = env.example ] && out=.env.example; [ "$rel" = TASKS.template.md ] && out=TASKS.md
-    render "$root/$rel" "$out"
+scaffold_with_copy() {
+  mkdir -p "$dir"
+  (cd "$tpl" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r rel; do
+    out="$(render_path "$rel")"
+    if [ -n "$out" ]; then render "$tpl/$rel" "$out"; fi
   done
+  if [ ! -e "$dir/CLAUDE.md" ] && [ ! -L "$dir/CLAUDE.md" ]; then
+    ln -s AGENTS.md "$dir/CLAUDE.md"; echo "created CLAUDE.md -> AGENTS.md"
+  else
+    echo "kept    CLAUDE.md"
+  fi
 }
 
-copy_tree "$tpl/common"
-[ -d "$tpl/$profile" ] && copy_tree "$tpl/$profile"
-case "$profile" in assistant|side-project) render "$tpl/shared/privacy.md" docs/privacy.md ;; esac
-
-if [ ! -e "$dir/CLAUDE.md" ] && [ ! -L "$dir/CLAUDE.md" ]; then
-  ln -s AGENTS.md "$dir/CLAUDE.md"; echo "created CLAUDE.md -> AGENTS.md"
+if [ -z "$(ls -A "$dir" 2>/dev/null)" ] && cmd="$(copier_cmd)" && scaffold_with_copier; then
+  :
 else
-  echo "kept    CLAUDE.md"
+  scaffold_with_copy
 fi
 [ -d "$dir/.git" ] || git -C "$dir" init -q -b main 2>/dev/null || echo "note: git init failed; run it yourself"
 

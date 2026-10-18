@@ -1,0 +1,7 @@
+# Makes this repo the Copier template source for the new-project skill, so
+# repos it scaffolds can pull template fixes with `copier update`.
+# The questions live in the skill; see skill-plugins/workflow/new-project/SKILL.md.
+---
+!include skill-plugins/workflow/new-project/copier.yml
+---
+_subdirectory: skill-plugins/workflow/new-project/templates

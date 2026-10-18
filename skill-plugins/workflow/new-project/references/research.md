@@ -79,9 +79,6 @@ Toolchain picks are in [stacks.md](stacks.md).
 
 - **No per-repo hook files.** agentbrew deploys hooks to every agent; a second
   copy in `.claude/settings.json` would drift.
-- **No template engine yet.** [Copier](https://github.com/copier-org/copier)
-  can push template fixes into old repos (`copier update`). Adopt it if more
-  than a few repos come from this skill.
 - **No heavy agile process** (BMAD-style personas). It is too much for solo projects.
 - **No `just` dependency.** `scripts/check.sh` needs nothing installed. Add a
   `justfile` that calls it if you like the verbs.

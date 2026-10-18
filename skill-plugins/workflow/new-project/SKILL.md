@@ -70,6 +70,10 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
      --stack ts|python|rust|none --description "<one sentence>"
    ```
 
+   With Copier installed (or `uvx` on PATH), it renders the Copier template
+   and writes `.copier-answers.yml`. Without Copier, or into a non-empty dir,
+   it copies the same files and the repo cannot pull updates.
+
 5. **Run the stack generator** inside `<dir>` (table in `stacks.md`), add the
    lint, typecheck, and test entries, and add one smoke test. Then run
    `scripts/setup.sh` once; it must end with `doctor: all checks passed`.
@@ -96,6 +100,22 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
    create a remote only if the user asked. Report the score, the stack, the
    first task in `TASKS.md`, and any marker the user must still fill.
 
+## Pull template fixes later
+
+`templates/` is a [Copier](https://github.com/copier-org/copier) template
+(`copier.yml` here; the agentbrew root `copier.yml` makes it versioned). A repo
+with `.copier-answers.yml` pulls later template fixes and keeps its own edits:
+
+```bash
+cd <repo> && git status --short   # must be clean
+uvx copier@9.19.1 update --defaults --vcs-ref HEAD
+bash <this-skill>/scripts/check-setup.sh . --profile <profile>
+```
+
+Resolve any conflict markers or `*.rej` files, then commit. Template paths use
+Jinja names, such as `{% if PROFILE == 'tool' %}LICENSE{% endif %}`; the copy
+fallback in `scaffold.sh` reads the same names.
+
 ## Defaults
 
 - Stack: by project type (step 3). Ask only when two rows fit equally.
@@ -118,7 +138,8 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
 - `lefthook install` fails when a global `core.hooksPath` is set; `setup.sh`
   then skips it with a note. The gate still runs the same checks.
 - A global gitignore can hide template files (one once listed `TASKS.md`).
-  Templates that a global ignore might match are stored as `*.template.md`;
+  Templates that a global ignore might match are stored under a Jinja name,
+  such as `{{ 'TASKS.md' }}`;
   the contract test fails if any template file is not tracked by git.
 - `check-setup.sh` checks structure, not quality. After it passes, read VISION
   and the first user story with the user.

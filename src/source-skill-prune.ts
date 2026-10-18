@@ -53,6 +53,22 @@ export function pruneDroppedAgentfileSkills(
   return pruned;
 }
 
+/**
+ * True when a hand-added source (`origin: "user"`, set by `agentbrew install`)
+ * still backs a skill installed by hand: one that the last applied
+ * authoritative Agentfile did not list. The authoritative source prune keeps
+ * such a source, so a hand install survives the next sync.
+ * Call it before `pruneDroppedAgentfileSkills` updates `state.agentfileSkills`.
+ */
+export function backsHandInstalledSkill(
+  source: { origin?: string; skillsInstalled?: string[] },
+  state: AgentBrewState,
+): boolean {
+  if (source.origin !== "user") return false;
+  const agentfileOwned = new Set(state.agentfileSkills ?? []);
+  return (source.skillsInstalled ?? []).some((skill) => !agentfileOwned.has(skill));
+}
+
 /** Remove one skill folder from the installed-skills staging dir. No-op in dry-run. */
 export function removeInstalledSkillStaging(name: string, dryRun: boolean): void {
   const skillDir = join(expandHome(INSTALLED_SKILLS_DIR), name);

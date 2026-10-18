@@ -19,7 +19,11 @@ import { ensureMemoryMcpServer, mergeMemoryPackPaths } from "./memory/enable.js"
 import { resolveMemoryPackPaths } from "./memory/pack-paths.js";
 import { SHARED_RULES_PATH } from "./paths.js";
 import { stripRulesDuplicatingExisting } from "./rules-hygiene.js";
-import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
+import {
+  backsHandInstalledSkill,
+  pruneDroppedAgentfileSkills,
+  removeInstalledSkillStaging,
+} from "./source-skill-prune.js";
 import { loadState, saveState } from "./state.js";
 import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
@@ -198,7 +202,10 @@ function mergeAgentfileSources(
     const agentfileSkills = new Set(agentfile.skills ?? []);
     const backsAgentfileSkill = (s: { skillsInstalled?: string[] }): boolean =>
       (s.skillsInstalled ?? []).some((skill) => agentfileSkills.has(skill));
-    finalSources = sources.filter((s) => agentfileSourceUrls.has(s.url) || isTeamOwned(s) || backsAgentfileSkill(s));
+    finalSources = sources.filter(
+      (s) =>
+        agentfileSourceUrls.has(s.url) || isTeamOwned(s) || backsAgentfileSkill(s) || backsHandInstalledSkill(s, state),
+    );
   }
   if (added.length > 0 || finalSources.length !== sources.length) state.sources = finalSources;
 

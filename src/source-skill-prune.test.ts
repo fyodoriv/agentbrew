@@ -2,7 +2,11 @@ import { existsSync, mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
+import {
+  backsHandInstalledSkill,
+  pruneDroppedAgentfileSkills,
+  removeInstalledSkillStaging,
+} from "./source-skill-prune.js";
 import type { AgentBrewState } from "./types.js";
 
 function stateWith(skillsInstalled: string[], extra: Partial<AgentBrewState> = {}): AgentBrewState {
@@ -76,5 +80,29 @@ describe("removeInstalledSkillStaging", () => {
     } finally {
       process.env.HOME = previousHome;
     }
+  });
+});
+
+describe("backsHandInstalledSkill", () => {
+  const byHand = (state: AgentBrewState) => ({ ...state.sources![0], origin: "user" });
+
+  it("is true for a hand-added source whose skill no Agentfile listed", () => {
+    const state = stateWith(["manual"]);
+    expect(backsHandInstalledSkill(byHand(state), state)).toBe(true);
+  });
+
+  it("is false for a hand-added source whose skills all came from the last Agentfile", () => {
+    const state = stateWith(["a"], { agentfileSkills: ["a"] });
+    expect(backsHandInstalledSkill(byHand(state), state)).toBe(false);
+  });
+
+  it("is false for a hand-added source with no installed skills", () => {
+    const state = stateWith([]);
+    expect(backsHandInstalledSkill(byHand(state), state)).toBe(false);
+  });
+
+  it("is false for a source that was not added by hand", () => {
+    const state = stateWith(["manual"]);
+    expect(backsHandInstalledSkill(state.sources![0], state)).toBe(false);
   });
 });

@@ -673,6 +673,15 @@ npm run lint:rules                     # Minsky rule checks on this repo (part o
 
 `npm run verify` also runs `scripts/check-rule-3-test-first.mjs`, the test-first half of rule 3. It fails when the branch (committed or not) changes a non-test file under `src/` but changes no test file, unless a commit message on the branch has a `Test exemption: <reason>` line. It compares against `origin/main` (`--base <ref>` or `TEST_FIRST_BASE` to change it) and skips when that ref has no merge base.
 
+`npm run verify` starts with `scripts/check-lockfile-sync.sh`. It runs `npm ci --dry-run` with npm 10 on a temp copy of `package.json` and `package-lock.json`, and fails when they disagree. Newer npm accepts some lockfiles that npm 10 rejects, so a lockfile can pass for you and still break `npm ci` for npm 10 users. The step is cached until a package file changes. npm 10 comes from the npx cache; with no network and no cache, the check fails in seconds with a clear message. `lefthook.yml` runs the same check on pre-push when a pushed commit touches a package file (only when lefthook installs the repo's hooks; a global `core.hooksPath` that does not call lefthook skips it, and then `npm run verify` is the catch).
+
+### How `main` health is checked
+
+GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
+
+1. `npm run verify` is the full gate. Every PR runs it before merge.
+2. `npm run checkup` runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
+
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 
 Agent-facing artifacts are also testable build inputs. The inventory in `src/agent-artifacts/inventory.ts` discovers repo-owned prompts/configuration (`Agentfile.yaml`, `src/catalog.yaml`, `templates/AGENTS.md`, `src/core/agents.yaml`, `hooks/manifest.yaml`, `hooks/checks/*`, built-in skills, and catalog CLI command markdown) and classifies each record as `{ kind, name, sourcePath, targetAgents, risk, coverage }`. Run the static gate when touching those surfaces:

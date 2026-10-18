@@ -391,6 +391,18 @@
         "Adds a suite test that runs the checker, so the monthly audit cannot silently regress",
         "Does not edit a tree while its full suite runs, or reruns the affected test files on the final tree before citing the gate"
       ]
+    },
+    {
+      "id": 34,
+      "prompt": "/goal continue previous goal (the session restarted; 4 background workers and one gate were reported as stopped, with partial work in their worktrees)",
+      "expected_output": "The agent re-measures the previous goal's metric from origin before doing anything, lists each worktree's branch, commits ahead, uncommitted files and push state, prints a short resume contract with the remaining count as the baseline, and resumes each stopped worker with SendMessage and the state it found. It does not assume any stopped worker's PR merged, and it re-runs a stopped gate instead of trusting its partial log.",
+      "expectations": [
+        "Re-measures the remaining tasks from origin (per-ID check) before any edit",
+        "Lists every worktree with commits ahead, dirty files, and whether it was pushed",
+        "Prints and saves a resume contract whose baseline is the remaining count, not the original one",
+        "Resumes stopped workers with SendMessage to their ids, passing the found state, instead of spawning new ones",
+        "Re-runs a stopped gate and reads its own exit code, instead of trusting a partial log"
+      ]
     }
   ]
 }

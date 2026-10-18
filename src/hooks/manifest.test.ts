@@ -397,7 +397,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(18);
+    expect(bashHookIds).toHaveLength(19);
     expect([...resolvedManifest.offByDefault].sort()).toEqual(
       [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
     );

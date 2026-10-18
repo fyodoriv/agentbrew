@@ -526,3 +526,15 @@ hooks:
     sourceRule: 'docs/agent-perf.md "Hooks that use the log"'
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
+  - id: poll-loop-hint
+    description: Hint, never block, when a Bash call polls with an until/while loop that sleeps; name background runs and blocking waits instead
+    event: PreToolUse
+    matcher: Bash
+    script: checks/poll-loop-hint.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_POLL_LOOP_HINT
+    sourceRule: 'docs/agent-perf.md "Hooks that use the log" (2026-10-18 agent time review: until loops were the top recurring step)'
+    agents: ["claude-code"]
+    defaultEnabled: false

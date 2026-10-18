@@ -8,6 +8,8 @@
 # So any edit to any file the repo holds re-runs every step. Files outside the
 # repo (a Minsky checkout for lint:rules, ~/.config) are not in the key; run
 # NO_CACHE=1 npm run verify after changing them. NO_CACHE=1 always runs all.
+# A step named in step_inputs is keyed on its listed paths only (plus the node
+# version and its command), so it stays cached while other files change.
 #
 # Usage: bash scripts/verify.sh            (npm run verify)
 #        NO_CACHE=1 bash scripts/verify.sh
@@ -26,16 +28,27 @@ mkdir -p "$cache_dir"
 now_ms() { node -e 'console.log(Date.now())'; }
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
-# input_hash: one hash over the path and content of every file the repo holds.
+# input_hash [paths...]: one hash over the path and content of every file the
+# repo holds, or of the files under the given paths only (then origin/main is
+# not in the key).
 input_hash() {
   {
     node --version
-    git rev-parse -q --verify origin/main 2>/dev/null || echo no-origin-main
-    git ls-files -co --exclude-standard | sort -u | while IFS= read -r f; do
+    if [ "$#" = 0 ]; then
+      git rev-parse -q --verify origin/main 2>/dev/null || echo no-origin-main
+    fi
+    git ls-files -co --exclude-standard -- "$@" | sort -u | while IFS= read -r f; do
       [ -f "$f" ] && printf '%s\n' "$f"
     done >"$cache_dir/.files"
     paste "$cache_dir/.files" <(git hash-object --stdin-paths <"$cache_dir/.files")
   } | git hash-object --stdin
+}
+
+# step_inputs <name>: the paths a step depends on, when it is not the whole repo.
+step_inputs() {
+  case "$1" in
+  lockfile-sync) echo "package.json package-lock.json scripts/check-lockfile-sync.sh scripts/stubs" ;;
+  esac
 }
 
 inputs="$(input_hash)"
@@ -57,8 +70,11 @@ step() {
   local name="$1"
   shift
   steps=$((steps + 1))
-  local key
-  key="$(printf '%s\n%s\n' "$inputs" "$*" | git hash-object --stdin)"
+  local key base="$inputs" paths
+  paths="$(step_inputs "$name")"
+  # shellcheck disable=SC2086 # the path list splits on spaces by design
+  [ -z "$paths" ] || base="$(input_hash $paths)"
+  key="$(printf '%s\n%s\n' "$base" "$*" | git hash-object --stdin)"
   if [ "${NO_CACHE:-0}" != 1 ] && [ "$(cat "$cache_dir/$name" 2>/dev/null)" = "$key" ]; then
     cached_steps=$((cached_steps + 1))
     echo "--- $name: cached (inputs unchanged since it passed)"
@@ -89,6 +105,7 @@ step() {
 # plan through VERIFY_PLAN=<file>).
 default_plan() {
   cat <<'PLAN'
+lockfile-sync bash scripts/check-lockfile-sync.sh
 build-pipeline bash scripts/build-pipeline-guard.sh --full
 typecheck npx tsc --noEmit
 biome npx biome check src scripts real-e2e --error-on-warnings

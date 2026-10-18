@@ -35,7 +35,7 @@ T1=$(run_hook '{"hook_event_name":"SessionStart"}')
 assert_exit_code "Test 1 (SessionStart → allow)" 0 "$T1"
 
 # Test 2: non-SessionStart event → bypass (exit 0), logged with its reason
-T2=$(HOME="$TMP/t2" run_hook '{"hook_event_name":"Stop"}')
+T2=$(HOME="$TMP/t2" HOOK_DECISIONS_LOG="$TMP/t2/.cache/agentbrew/hook-decisions.jsonl" run_hook '{"hook_event_name":"Stop"}')
 assert_exit_code "Test 2 (Stop → bypass)" 0 "$T2"
 if grep -q '"reason":"event Stop is not SessionStart"' "$TMP/t2/.cache/agentbrew/hook-decisions.jsonl" 2>/dev/null; then
   PASS=$((PASS + 1))

@@ -47,7 +47,7 @@ assert_exit_code "Test 4 (not gh pr)" 0 "$(run_hook "$TEST4_INPUT" | tail -1)"
 # branch is skipped and the reason falls through to "no --body arg detected".
 FIXTURE_HOME="$(mktemp -d)"
 TEST5='{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh pr edit 12 --body-file /tmp/body.md"}}'
-echo "$TEST5" | HOME="$FIXTURE_HOME" bash "$SCRIPT" >/dev/null 2>&1
+echo "$TEST5" | HOME="$FIXTURE_HOME" HOOK_DECISIONS_LOG="$FIXTURE_HOME/.cache/agentbrew/hook-decisions.jsonl" bash "$SCRIPT" >/dev/null 2>&1
 assert_exit_code "Test 5 (--body-file exit)" 0 "$?"
 LOG_TEXT="$(cat "$FIXTURE_HOME/.cache/agentbrew/hook-decisions.jsonl" 2>/dev/null || true)"
 if [[ "$LOG_TEXT" == *"--body-file used"* ]]; then

@@ -2,6 +2,8 @@
 # Test fixture for checks/memory-sync-projects-session-end.sh.
 
 set -uo pipefail
+# This test reads the decision log under its temp HOME.
+unset HOOK_DECISIONS_LOG
 
 SCRIPT="$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0")")/memory-sync-projects-session-end.sh"
 TMP="$(mktemp -d)"

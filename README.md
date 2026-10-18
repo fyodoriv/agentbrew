@@ -117,6 +117,8 @@ A cold offline `agentbrew init` still finishes: it detects agents, writes MCP co
 skillInstallMode: native
 ```
 
+Re-running `agentbrew init` keeps this setting and every other one you set in `state.yaml` (for example `claudePermissions`, `team`, `hooks`, `declinedMcpServers`, and the model keys). Init rebuilds only the detected agents and merges the MCP server list.
+
 #### Fallback failure modes
 
 Every delegation failure prints `Delegated skill install networking` at the top of the error block — that's the anchor to this section. The fallback automatically engages: native registration still runs, the source still lands in `state.sources`, and only the selected skill is marked for deployment through agentbrew's own scan instead of `npx skills add`. The 4 failure modes below cover what the operator typically sees in the wild:

@@ -99,6 +99,8 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
 9. **First commit** on `main`: `chore: scaffold <name> (<profile>)`. Push or
    create a remote only if the user asked. Report the score, the stack, the
    first task in `TASKS.md`, and any marker the user must still fill.
+   Then run `scripts/check.sh` again: before the first commit, gates that
+   scan tracked files (leak and secret scans) find nothing to scan and pass vacuously.
 
 ## Pull template fixes later
 

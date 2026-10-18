@@ -156,6 +156,16 @@
         "docs/privacy.md lists data exits including the agent transcript (stdout), each with a guard and a test",
         "Uses an allowlist .gitignore and adds the hooks folder to it"
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "my assistant repo's README grew a long command list and check-setup now fails the setup check",
+      "expected_output": "The agent reads the failing check's label, sees that the docs/README.md link must appear in the first 60 lines of the README, adds a docs-map line near the top instead of trimming useful content, and reruns check-setup to 100%.",
+      "expectations": [
+        "Reads the check label or script to learn the 60-line docs-link rule",
+        "Keeps the README content and adds the docs map link near the top",
+        "Reruns check-setup and shows 100%"
+      ]
     }
   ]
 }

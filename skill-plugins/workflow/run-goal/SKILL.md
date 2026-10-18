@@ -174,6 +174,11 @@ continue?". The user set a goal so that they can be away.
   Re-print the prior contract in chat (same scope, plus a progress line and
   any criteria added mid-goal), save it, then continue. Do not start a new
   intake or question round for the same goal.
+- Facts from the web (company processes, API terms, research claims): give
+  a research subagent a written file to fill, a rule to open every URL it
+  cites, and an "omit what you cannot verify" rule. Run it in parallel with
+  the code. Then add a gate step that fails when a claim has no source, so
+  later edits cannot drop them.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you

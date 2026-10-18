@@ -121,7 +121,7 @@ check "[observability] docs/observability.md has Logs, Errors, Health check" \
   sh -c 'for h in Logs Errors "Health check"; do grep -qE "^## +$h" docs/observability.md || exit 1; done'
 check "[observability] scripts/doctor.sh health check is executable" test -x scripts/doctor.sh
 check "[user-stories] docs/user-stories.md maps stories to e2e tests" sh -c 'grep -q "tests/e2e/" docs/user-stories.md'
-check "[setup] one-line setup scripts/setup.sh, first in the README quickstart" readme_quickstart
+check "[setup] one-line setup scripts/setup.sh, first in the README quickstart, and a docs/README.md link in the first 60 lines" readme_quickstart
 check "[e2e] scripts/e2e.sh runs at least one tests/e2e test" sh -c 'test -x scripts/e2e.sh && ls tests/e2e/* >/dev/null 2>&1'
 check "[self-improving] check.sh logs step timings to .metrics/" sh -c 'test -x scripts/check.sh && grep -q ".metrics/events.jsonl" scripts/check.sh'
 check "[self-improving] RECURRING.md schedules a speed review" sh -c 'grep -qi "speed review" RECURRING.md'

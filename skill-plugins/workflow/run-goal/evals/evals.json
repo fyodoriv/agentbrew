@@ -439,6 +439,18 @@
         "Switches the detection signal only after the harness shows the first one never fires, and re-measures the same metric after the switch",
         "Avoids a deploy step that would restart services the change does not touch, and names the untested path in the final report"
       ]
+    },
+    {
+      "id": 38,
+      "prompt": "/goal add full descriptions of every interview step for every target company, with tips, and list sources for every strategy and company fact",
+      "expected_output": "The agent delegates web research to a subagent that writes one structured file, opens every URL it cites, and omits unverifiable facts, while the agent builds the code in parallel. It converts the research into committed knowledge files where every fact cites a source id, adds a gate step that fails on any unsourced claim, falls back to a clearly labeled default for companies without sources, and spot-checks sources through an independent grader.",
+      "expectations": [
+        "Research runs in a subagent in parallel with coding, with an explicit open-every-URL and omit-if-unverified rule",
+        "Every committed fact cites a source id that resolves to an https URL",
+        "A gate step fails when any rule, tip, or company fact lacks a source",
+        "Unknown companies get a labeled default, never an invented loop",
+        "The final grader spot-checks cited URLs against their claims"
+      ]
     }
   ]
 }

@@ -232,19 +232,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] A hand-installed catalog skill from a new source survives sync under a global Agentfile
-  - **ID**: hand-install-survives-agentfile-prune
-  - **Tags**: scout, agentfile, install, bug
-  - **Details**: Found while adding the `minsky` catalog entry. In a scratch `HOME` with the global Agentfile that `agentbrew init` writes (a `sources:` list, no `skills:`), `agentbrew install minsky` printed "installed" and copied the skill to `~/.config/agentbrew/installed-skills/minsky`, but the source `fyodoriv/minsky` was gone from `state.yaml` afterwards and `~/.claude/skills/minsky` was never linked. With the Agentfile moved away, the same install linked the skill. README says "Skills you installed by hand stay." Either keep the hand-installed source through the authoritative prune, or have `install` add the skill to the Agentfile and say so.
-  - **Files**: `src/agentfile.ts`, `src/catalog/install.ts`, `src/source-skill-prune.ts`
-  - **Output**: code
-  - **Acceptance**: in a scratch `HOME` after `agentbrew init --skip-install --skip-sync`, `agentbrew install <catalog skill from a new source>` leaves the source in state and links the skill into `~/.claude/skills/`; a test covers it.
-  - **Hypothesis**: hand installs under a global Agentfile stop vanishing, so "installed" output matches what agents see.
-  - **Measurement**: the scratch-HOME repro above: `ls ~/.claude/skills/<name>` after install (now missing).
-  - **Success**: the link exists and a second `agentbrew sync` keeps it.
-  - **Pivot**: if pruning is the intended Agentfile contract, make `install` print that the Agentfile will drop the skill and how to keep it.
-  - **Anchor**: README "Agentfile" (hand installs stay); Basili et al. 1994 (GQM).
-
 ## P3
 
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host

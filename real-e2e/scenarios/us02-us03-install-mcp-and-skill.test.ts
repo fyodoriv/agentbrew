@@ -5,7 +5,12 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { runScenarioCli, runScenarioEval, runWithScenarioSandbox } from "../../src/real-e2e/scenario-fixture.js";
+import {
+  runScenarioCli,
+  runScenarioEval,
+  runWithScenarioSandbox,
+  seedScenarioState,
+} from "../../src/real-e2e/scenario-fixture.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -104,4 +109,47 @@ describe("us02/us03 install mcp and skill", () => {
       // unit-test concern after slice 4a flipped the cutover.
     });
   }, 60_000);
+
+  it("keeps a hand-installed catalog skill from a new source under a global Agentfile", async () => {
+    await runWithScenarioSandbox("us02-us03-install-mcp-and-skill", async ({ rootDir }) => {
+      const homeDir = join(rootDir, "home");
+      const repoRoot = resolve(import.meta.dirname, "..", "..");
+      const extraEnv = { AGENTBREW_MCPM_BIN: join(rootDir, "missing-mcpm") };
+      const sourceCacheDir = join(homeDir, ".cache", "agentbrew", "sources", "obra_superpowers");
+      const localSource = join(rootDir, "my-skills");
+      mkdirSync(join(homeDir, ".claude", "skills"), { recursive: true });
+      mkdirSync(join(localSource, "my-skill"), { recursive: true });
+      writeFileSync(join(localSource, "my-skill", "SKILL.md"), "# My skill\n", "utf-8");
+
+      // A seeded source cache keeps the catalog install offline.
+      mkdirSync(join(sourceCacheDir, "verification-before-completion"), { recursive: true });
+      writeFileSync(join(sourceCacheDir, "verification-before-completion", "SKILL.md"), "# Verify\n", "utf-8");
+      const git = (...args: string[]) => execFileAsync("git", args, { cwd: sourceCacheDir });
+      await git("init");
+      await git("add", ".");
+      await git("-c", "user.name=e2e", "-c", "user.email=e2e@example.com", "commit", "-m", "chore: seed");
+
+      // The global Agentfile that `agentbrew init` writes: a `sources:` list and no `skills:`.
+      // The catalog skill's source (obra/superpowers) is not on that list.
+      await seedScenarioState(homeDir, repoRoot);
+      writeFileSync(join(homeDir, ".config", "agentbrew", "Agentfile.yaml"), `sources:\n  - ${localSource}\n`, "utf-8");
+
+      const result = await runScenarioCli({
+        repoRoot,
+        homeDir,
+        args: ["install", "verification-before-completion"],
+        extraEnv,
+      });
+      expect(result.stdout).toContain("Skill 'verification-before-completion' installed");
+
+      const stateAfterInstall = readFileSync(join(homeDir, ".config", "agentbrew", "state.yaml"), "utf-8");
+      expect(stateAfterInstall).toContain("obra/superpowers");
+      expect(existsSync(join(homeDir, ".claude", "skills", "verification-before-completion"))).toBe(true);
+
+      // A second sync keeps it.
+      await runScenarioCli({ repoRoot, homeDir, args: ["sync"], extraEnv });
+      expect(readFileSync(join(homeDir, ".config", "agentbrew", "state.yaml"), "utf-8")).toContain("obra/superpowers");
+      expect(existsSync(join(homeDir, ".claude", "skills", "verification-before-completion"))).toBe(true);
+    });
+  }, 120_000);
 });

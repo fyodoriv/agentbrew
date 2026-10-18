@@ -3,6 +3,7 @@ import TOML from "@iarna/toml";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
+import { existingText, jsonTextFor } from "../core/json-text-edit.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import { loadState } from "../state.js";
@@ -94,9 +95,9 @@ function readConfigFile(filePath: string, format: ModelConfig["format"]): Record
   return parsed as Record<string, unknown>;
 }
 
-function serializeConfigFile(config: Record<string, unknown>, format: ModelConfig["format"]): string {
+function serializeConfigFile(config: Record<string, unknown>, format: ModelConfig["format"], filePath: string): string {
   if (format === "toml") return TOML.stringify(config as TOML.JsonMap);
-  return `${JSON.stringify(config, null, 2)}\n`;
+  return jsonTextFor(existingText(filePath), config);
 }
 
 type TargetOutcome =
@@ -151,7 +152,7 @@ function syncSingleTarget(target: ModelTarget, run: ModelPlan): TargetOutcome {
   if (changes.length === 0) return { kind: "up-to-date" };
 
   if (!run.dryRun) {
-    writeFileAtomicSync(filePath, serializeConfigFile(config, target.modelConfig.format), "utf-8");
+    writeFileAtomicSync(filePath, serializeConfigFile(config, target.modelConfig.format, filePath), "utf-8");
   }
   return { kind: "updated", changes };
 }

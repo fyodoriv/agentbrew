@@ -36,6 +36,22 @@ describe("hook fixture coverage gate", () => {
     expect(result.stderr).not.toContain("hooks/checks/bar.test.sh");
   });
 
+  it.runIf(process.platform === "darwin")("runs fixtures like a stock Mac: /bin/bash 3.2, empty HOME, Apple jq", () => {
+    const root = repoWith({
+      "foo.sh": "#!/bin/bash\n",
+      "foo.test.sh":
+        'echo "bash=$BASH_VERSION"\necho "home=$HOME"\necho "bash-on-path=$(command -v bash)"\necho "jq=$(readlink "$(command -v jq)")"\n[ -z "$(ls -A "$HOME")" ] || exit 7\n',
+    });
+
+    const result = run(root);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toMatch(/bash=3\.2\./);
+    expect(result.stdout).not.toContain(`home=${process.env.HOME}\n`);
+    expect(result.stdout).toMatch(/bash-on-path=.*\/bin\/bash/);
+    expect(result.stdout).toContain("jq=/usr/bin/jq");
+  });
+
   it("passes when every check script has a fixture", () => {
     const root = repoWith({ "foo.sh": "#!/bin/bash\n", "foo.test.sh": "exit 0\n" });
 

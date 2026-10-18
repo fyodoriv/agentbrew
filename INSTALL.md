@@ -37,7 +37,7 @@ bash <DIR>/scripts/install.sh plan
 
 Show the person the output in your own short words:
 
-- what they need (Node.js 20+, git, about 5 minutes, network),
+- what they need (Node.js 20.11+, git, about 5 minutes, network),
 - what will change (agent settings, skills, rules, a background job, a shell
   hook),
 - what changes in Claude Code: the hook count, the `/goal` behaviour (edits
@@ -48,7 +48,9 @@ Show the person the output in your own short words:
 - how to undo later (`bash <DIR>/scripts/install.sh restore`).
 
 If the plan lists a missing tool, help install it first, then show the plan
-again.
+again. For an old Node.js, the plan names the version it found and one
+upgrade command for the version manager in use (Volta, fnm, nvm, mise, or
+Homebrew).
 
 ## 3. Ask for preferences
 

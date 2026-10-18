@@ -1101,6 +1101,57 @@ describe("syncHooks", () => {
 
     await expect(syncHooks({ quiet: true })).resolves.not.toThrow();
   });
+
+  it("keeps the user's own settings text byte-for-byte when it adds managed hooks", async () => {
+    // Escapes that JSON.parse + JSON.stringify rewrite: \u000a (a newline),
+    // \/ (a slash), \u2192 (an arrow), and a one-line array.
+    const userHook = `{
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf 'done\\u000a' > \\/tmp\\/stop.log \\u2192 ok"
+          }
+        ]
+      }`;
+    const original = `{
+  "env": { "EDITOR": "vim" },
+  "permissions": {
+    "allow": ["Bash(git status)", "Read"],
+    "defaultMode": "bypassPermissions"
+  },
+  "skipAutoPermissionPrompt": true,
+  "hooks": {
+    "Stop": [
+      ${userHook}
+    ]
+  }
+}
+`;
+    const hooks: ManagedHook[] = [
+      { event: "Stop", matcher: "*", type: "command", command: "echo managed", source: "agentfile" },
+    ];
+    mockLoadState.mockReturnValue({
+      mcpServers: [],
+      agents: [{ name: "claude-code", detected: true }],
+      hooks,
+    } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: [] } as never);
+    mockExistsSync.mockImplementation((p) => String(p).endsWith("/.claude/settings.json"));
+    mockReadFileSync.mockReturnValue(original);
+
+    await syncHooks({ quiet: true });
+
+    expect(mockWriteFileSync).toHaveBeenCalledOnce();
+    const [, content] = mockWriteFileSync.mock.calls[0] as [string, string, string];
+    expect(JSON.parse(content).hooks.Stop).toHaveLength(2);
+    expect(content).toContain(userHook);
+    expect(content).toContain('"env": { "EDITOR": "vim" }');
+    expect(content).toContain('"allow": ["Bash(git status)", "Read"]');
+    // Only the managed Stop group was added; removing it gives back the original bytes.
+    const managedGroup = JSON.parse(content).hooks.Stop[1];
+    expect(managedGroup.hooks[0].command).toBe("echo managed");
+    expect(content.replace(/,\s*\{\s*"matcher": "\*"[\s\S]*?"echo managed"[\s\S]*?\}\s*\]\s*\}/u, "")).toBe(original);
+  });
 });
 
 // `listHooks()` was removed 2026-05-03 alongside the hidden `agentbrew hooks

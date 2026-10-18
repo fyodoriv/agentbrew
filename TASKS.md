@@ -171,32 +171,6 @@
 
 ## P2
 
-- [ ] The installer says which Node version it found and how to upgrade it
-  - **ID**: install-node-version-message
-  - **Tags**: install, new-users, ux
-  - **Details**: With Node 18 installed (Volta), `scripts/install.sh plan` printed "Node.js 20 or newer is missing", so the person looks for a missing install instead of an old one. Print the found version and the fix for the version manager in use (`volta install node@22`, `fnm install 22`, `nvm install 22`, or `brew install node`).
-  - **Files**: `scripts/install.sh`, `INSTALL.md`
-  - **Output**: code
-  - **Acceptance**: with Node 18 on PATH, `install.sh plan` prints "Node.js 18 found; 20.11+ needed" and one upgrade command that matches the detected manager.
-  - **Hypothesis**: first-run installs that stop at the Node check and need a second attempt drop to zero in the install e2e.
-  - **Measurement**: `npm run test:install-e2e` with a Node 18 fixture.
-  - **Success**: the message names the found version and a working command.
-  - **Pivot**: if detection is fragile, print the version and the nodejs.org link only.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
-- [ ] Hook fixture tests pass on stock macOS, and CI proves it
-  - **ID**: hook-tests-macos-ci
-  - **Tags**: ci, hooks, macos, tests
-  - **Details**: CI runs only on `ubuntu-latest` (bash 5), but agentbrew targets Macs (bash 3.2, BSD tools, Volta/asdf node shims under `HOME`). On a stock Mac several hook fixture files failed: two are fixed in the macOS hook-tests PR; still failing are `gh-pr-body-requires-docs` Test 11, `goal-retro-before-stop`, `memory-sync-projects-session-end`, `perf-brief`, and `perf-task-review`. Add a `macos-latest` job for the hook fixture tests and fix the remaining five.
-  - **Files**: `.github/workflows/ci.yml`, `hooks/checks/*.test.sh`
-  - **Output**: code
-  - **Acceptance**: `bash hooks/checks/<name>.test.sh` passes for every hook on macOS bash 3.2, and the macOS CI job is green.
-  - **Hypothesis**: hook test failures seen only by Mac contributors go to zero.
-  - **Measurement**: the new macOS CI job.
-  - **Success**: green macOS job on `main` for 2 weeks.
-  - **Pivot**: if the macOS runner is too slow, run it nightly instead of per PR.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
 - [ ] Tests never read or write the real `~/.config/agentbrew`, `~/.claude`, or the repo tree
   - **ID**: tests-isolated-home
   - **Tags**: tests, safety
@@ -208,19 +182,6 @@
   - **Measurement**: checksum of the real config dirs before/after `npm run test:all`; `git status --porcelain`.
   - **Success**: no change and no failures.
   - **Pivot**: if a global setup file breaks real-e2e, scope it to unit tests.
-  - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
-
-- [ ] Merging hooks into settings.json keeps existing commands byte-for-byte
-  - **ID**: hooks-merge-preserves-text
-  - **Tags**: hooks, sync
-  - **Details**: When sync rewrites `~/.claude/settings.json`, the person's own hook commands come back re-escaped (a literal newline in a printf string became `\n`). It still works, but backups and diffs show changes the person did not make.
-  - **Files**: `src/sync/hooks-sync.ts`
-  - **Output**: code
-  - **Acceptance**: a settings.json with a user hook containing a newline is unchanged byte-for-byte after `agentbrew sync` (apart from managed keys).
-  - **Hypothesis**: unexplained diffs in user hooks after sync go to zero.
-  - **Measurement**: unit test round-trip.
-  - **Success**: the round-trip test passes.
-  - **Pivot**: if JSON re-serialisation can't keep it, document it and keep the semantic check.
   - **Anchor**: first install on a Mac new to the tools, 2026-10-18 (agentbrew recommended set + dotfiles core).
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0

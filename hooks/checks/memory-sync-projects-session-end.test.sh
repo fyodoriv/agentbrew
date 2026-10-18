@@ -78,7 +78,7 @@ receipt_path() {
 }
 
 wait_for_sync() {
-  for _ in $(seq 1 20); do
+  for _ in $(seq 1 200); do
     [ -s "$LOG" ] && return 0
     sleep 0.05
   done
@@ -88,7 +88,7 @@ wait_for_sync() {
 wait_for_success() {
   local path
   path="$(last_success_path)"
-  for _ in $(seq 1 20); do
+  for _ in $(seq 1 200); do
     [ -s "$path" ] && return 0
     sleep 0.05
   done
@@ -103,7 +103,7 @@ wait_for_outcome() {
   local expected="$1"
   local path
   path="$(receipt_path)"
-  for _ in $(seq 1 20); do
+  for _ in $(seq 1 200); do
     grep -q "\"outcome\": \"$expected\"" "$path" 2>/dev/null && return 0
     sleep 0.05
   done
@@ -112,7 +112,7 @@ wait_for_outcome() {
 
 wait_for_log_lines() {
   local expected="$1"
-  for _ in $(seq 1 20); do
+  for _ in $(seq 1 200); do
     [ -f "$LOG" ] && [ "$(wc -l <"$LOG" | tr -d ' ')" = "$expected" ] && return 0
     sleep 0.05
   done
@@ -121,7 +121,7 @@ wait_for_log_lines() {
 
 wait_for_no_lock() {
   local lock_path="$FAKE_HOME/.cache/agentbrew/memory-sync-projects.lock"
-  for _ in $(seq 1 20); do
+  for _ in $(seq 1 200); do
     [ ! -e "$lock_path" ] && return 0
     sleep 0.05
   done

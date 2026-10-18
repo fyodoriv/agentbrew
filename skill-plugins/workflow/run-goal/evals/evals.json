@@ -391,6 +391,54 @@
         "Adds a suite test that runs the checker, so the monthly audit cannot silently regress",
         "Does not edit a tree while its full suite runs, or reruns the affected test files on the final tree before citing the gate"
       ]
+    },
+    {
+      "id": 34,
+      "prompt": "/goal continue previous goal (the session restarted; 4 background workers and one gate were reported as stopped, with partial work in their worktrees)",
+      "expected_output": "The agent re-measures the previous goal's metric from origin before doing anything, lists each worktree's branch, commits ahead, uncommitted files and push state, prints a short resume contract with the remaining count as the baseline, and resumes each stopped worker with SendMessage and the state it found. It does not assume any stopped worker's PR merged, and it re-runs a stopped gate instead of trusting its partial log.",
+      "expectations": [
+        "Re-measures the remaining tasks from origin (per-ID check) before any edit",
+        "Lists every worktree with commits ahead, dirty files, and whether it was pushed",
+        "Prints and saves a resume contract whose baseline is the remaining count, not the original one",
+        "Resumes stopped workers with SendMessage to their ids, passing the found state, instead of spawning new ones",
+        "Re-runs a stopped gate and reads its own exit code, instead of trusting a partial log"
+      ]
+    },
+    {
+      "id": 35,
+      "prompt": "/goal continue previous goal but note that computer restarted. so let's improve the app so that it cannot cause a restart",
+      "expected_output": "Before any edit, the agent finds the restart's cause from system evidence: the newest panic report's panicString, memory and swap state in it, the macOS log around the hang, and the last rows of each worktree's timings log, which survive the reboot when temp files do not. It names the test or step that ran then. The contract's metric is a count it can measure in the macOS log over a suite run (for example app launches the test run started), with the crashed run as the baseline. It asks the owner before changing protected code, makes the dangerous step opt-in with a guard that refuses it by default, proves the guard with a test that failed first, separates noise from other machine agents in the log, and re-runs the remaining work of the previous goal on top.",
+      "expectations": [
+        "Reads the panic report and system log before proposing a fix, and rules memory in or out from the report's compressor and swap lines",
+        "Finds the last test that ran from a log that survives a reboot, not from $TMPDIR output",
+        "Defines a metric countable in the macOS log over a suite window, with the crashed run as the baseline, and filters out processes the run did not start",
+        "Makes the risky probe opt-in through a guard in the code it calls, not only a test skip, and gets owner approval for protected files first",
+        "Keeps every suite log outside $TMPDIR and never edits a tree while its suite runs"
+      ]
+    },
+    {
+      "id": 36,
+      "prompt": "/goal continue previous goal (the first goal built half of a new app; the contract file is now empty and the user then adds 'it must also work with slack, jira, and zoom' mid-run)",
+      "expected_output": "The agent re-prints the earlier contract with a progress line, saves it to the contract file before its first edit, skips a second intake and question round, adds the mid-run request as a new done-criterion in the contract file (and grows the metric's denominator with a note), delivers it with tests in the same run, and reports both the original and added criteria with evidence.",
+      "expectations": [
+        "Re-saves the contract (Done when, Metric, Pivot) before the first edit after the re-issued /goal, instead of retrying blocked writes",
+        "Does not ask a new question round for the continued goal",
+        "Adds the mid-run request to the contract file as a criterion and says so in one line",
+        "Updates the metric denominator transparently (old and new totals) rather than silently",
+        "Final report covers the added criterion with its own evidence"
+      ]
+    },
+    {
+      "id": 37,
+      "prompt": "/goal implement long term fix for this  (previous turn: Chrome looked stuck; Dock click opened no window while three headless launchd agent Chromes ran)",
+      "expected_output": "The agent proves the root cause from system state before the contract (lsappinfo shows a headless agent registered as com.google.Chrome, type Foreground), and reproduces the stuck state with a harness that measures it (activate the agent pid, read the frontmost app) as the baseline. The contract proposes the source fix and names its cost to the user (Chrome for Testing drops saved agent logins). When the one-question-round answer rejects that cost, the agent appends a dated revision to the contract file with a new approach, new done-criteria, and a new metric and pivot before it edits any code, instead of silently changing course. It writes a failing test first, finds through the harness that the obvious API signal does not fire (a headless app turns frontmost without didActivateApplicationNotification) and switches signal on evidence, installs only the new LaunchAgent instead of a full apply that would restart unrelated agent services, and reports the one path it could not test end to end.",
+      "expectations": [
+        "Proves the cause from OS evidence (lsappinfo, process argv) and measures a non-zero baseline with a harness before any edit",
+        "States the user-visible cost of the source fix in the question round, with what changes for the user under each option",
+        "After a user answer that invalidates the plan, writes a contract revision with new done-criteria, metric, and pivot before the first code edit",
+        "Switches the detection signal only after the harness shows the first one never fires, and re-measures the same metric after the switch",
+        "Avoids a deploy step that would restart services the change does not touch, and names the untested path in the final report"
+      ]
     }
   ]
 }

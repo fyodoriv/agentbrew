@@ -17,6 +17,7 @@
 #        LOCKFILE_SYNC_TIMEOUT  seconds before the check gives up; default 180
 # Exit:  0 in sync, 1 out of sync, 2 npm could not run (network, timeout).
 # Runs under macOS /bin/bash 3.2.
+# <!-- scope: human-approved task main-stays-installable (TASKS.md); this file closes it -->
 set -uo pipefail
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" || exit 2

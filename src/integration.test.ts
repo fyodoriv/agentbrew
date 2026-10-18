@@ -1,10 +1,12 @@
 import {
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -293,6 +295,22 @@ function captureLog(): { calls: () => string; reset: () => void } {
       errSpy.mockRestore();
     },
   };
+}
+
+/**
+ * A scratch copy of the repo inputs that sync reads (templates/, plus a read-only
+ * link to skill-plugins/). Instructions sync writes generated context/*.md under
+ * AGENTBREW_DIR, so pointing it at the real repo would write into the checkout.
+ */
+function scratchRepoRoot(): string {
+  const repoRoot = join(import.meta.dirname, "..");
+  const root = join(TEST_HOME, "agentbrew-src");
+  mkdirSync(root, { recursive: true });
+  cpSync(join(repoRoot, "templates"), join(root, "templates"), { recursive: true });
+  if (!existsSync(join(root, "skill-plugins"))) {
+    symlinkSync(join(repoRoot, "skill-plugins"), join(root, "skill-plugins"));
+  }
+  return root;
 }
 
 // ── Setup & teardown ────────────────────────────────────────────────────────
@@ -1024,9 +1042,7 @@ describe("clean-slate new user", () => {
     cleanState();
     setupAgentDirs();
 
-    // Set AGENTBREW_DIR to repo root so instructions sync finds templates/AGENTS.md
-    const repoRoot = join(import.meta.dirname, "..");
-    process.env.AGENTBREW_DIR = repoRoot;
+    process.env.AGENTBREW_DIR = scratchRepoRoot();
 
     // Init: detect agents and save state
     const agents = detectAgents();
@@ -1094,8 +1110,7 @@ describe("clean-slate new user", () => {
     cleanState();
     setupAgentDirs();
 
-    const repoRoot = join(import.meta.dirname, "..");
-    process.env.AGENTBREW_DIR = repoRoot;
+    process.env.AGENTBREW_DIR = scratchRepoRoot();
 
     const agents = detectAgents();
     const detectedNames = new Set(agents.filter((a) => a.detected).map((a) => a.name));

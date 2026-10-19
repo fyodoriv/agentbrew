@@ -86,6 +86,8 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--verbose` | debug | Per-item detail for debugging; the default is a summary. |
 | `--verify` | knob | Checks locked SHAs instead of writing the lock; a different job. |
 | `--yes` | disruptive | Skips confirmation prompts; prompts stay on by default. |
+| `--workspace-name` | knob | Picks one named workspace from the tasks CLI config; `workspaceRoots:` in the Agentfile is the default. |
+| `--workspaces` | knob | Points at workspace folders for one run; `workspaceRoots:` in the Agentfile is the default. |
 
 ## Audit result (2026-10-16)
 

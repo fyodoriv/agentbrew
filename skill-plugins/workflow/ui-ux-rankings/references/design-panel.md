@@ -55,8 +55,12 @@ When the panel stalls:
   for can be called noise the next (an accent shadow on every card). Act only on fixes that two or
   more raters name in the same round; a single rater's taste is not a finding.
 - Stills cannot show motion, so The FWA and Godly stay near 5 to 6 for any static capture. When the
-  page has motion, add a short frame strip (three frames of the transition) to the folder and say
-  what it shows, or report that those judges were rated without motion.
+  page has motion, shoot a frame strip of each main transition (`rankings.cjs frames`, which pauses
+  every animation at exact times), add a MOTION.txt that says what each strip shows, or report that
+  those judges were rated without motion. Look at the strips yourself first: a strip once showed a
+  see-through double exposure because an older rule later in the stylesheet overrode the new animation.
+- Tell raters which content is placeholder (synthetic art, stub prompts), and say in the report that
+  you did: they then rate the design, not the fixture.
 - Placeholder art reads as placeholder: Content and Creativity stay low until the fixture looks
   like the real thing. Improve the fixture before the page when raters name the content.
 - If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what

@@ -39,6 +39,7 @@ node $S/rankings.cjs all http://127.0.0.1:8000/page.html "http://127.0.0.1:8000/
 npx -y lighthouse@13 http://127.0.0.1:8000/page.html --only-categories=performance,accessibility,best-practices \
   --output=json --output-path=lh.json --quiet      # mobile; add --preset=desktop for desktop
 node $S/rankings.cjs shots http://127.0.0.1:8000/page.html --out ui-shots
+node $S/rankings.cjs frames http://127.0.0.1:8000/page.html --click '.card' --at 40,140,460 --out ui-shots  # a motion strip
 ```
 
 List every view a user reaches (modes, tabs, dev or admin views, dialogs opened by a hash) as its own

@@ -865,6 +865,12 @@ skills:
     category: design
     recommended: false
 
+  - name: web-quality-audit
+    description: "Measure a web page's UI and UX quality with Lighthouse (performance, accessibility, best practices, SEO), Core Web Vitals and WCAG 2.2, then fix the findings by severity. Use for \"audit my site\", \"UX efficiency\", \"a11y audit\". Don't use for visual design direction (use frontend-design or taste)."
+    source: addyosmani/web-quality-skills
+    category: quality
+    recommended: false
+
   - name: effective-ui-design
     description: "Effective UI Design — the technical layer that Anthropic's frontend-design leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, form :user-valid/:user-invalid patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
     source: sebastian-software/effective-ui-design-skill
@@ -1905,8 +1911,8 @@ bundles:
     description: "Verification habits: check before claiming done, test first, debug systematically, doubt each decision, and keep code smells out."
     members: [verification-before-completion, test-driven-development, systematic-debugging, doubt-driven-development, code-smells-aware]
   - name: frontend-kit
-    description: "Build and check web UI: design guidance, shadcn components, web design rules, Playwright practices, and the Playwright MCP server."
-    members: [frontend-design, shadcn, web-design-guidelines, playwright-best-practices, playwright]
+    description: "Build and check web UI: design guidance, shadcn components, web design rules, Lighthouse and WCAG audits, Playwright practices, and the Playwright MCP server."
+    members: [frontend-design, shadcn, web-design-guidelines, web-quality-audit, playwright-best-practices, playwright]
   - name: mcp-essentials
     description: "Common MCP servers: library docs (context7), browser control (playwright), GitHub, and step-by-step reasoning."
     members: [context7, playwright, github, sequential-thinking]

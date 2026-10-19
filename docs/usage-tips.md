@@ -5,6 +5,12 @@ using the agent better, such as `💡 Paste the exact error and command; a
 paraphrase makes the agent guess.` It never blocks and adds no model context:
 the tip is a `systemMessage`, shown to you and not sent to the model.
 
+Not an agentbrew user? The same hook ships as a standalone Claude Code plugin,
+[fyodoriv/claude-usage-tips](https://github.com/fyodoriv/claude-usage-tips):
+`/plugin marketplace add fyodoriv/claude-usage-tips`, then
+`/plugin install usage-tips@claude-usage-tips`. Both write the same log, so
+the report below reads either. Change a tip in both places.
+
 ## Turn it on
 
 Add `usage-tip` under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`,

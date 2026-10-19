@@ -430,9 +430,34 @@ function writeOpencodeProviderConfig(model: string): void {
   mkdirSync(expandHome("~/.config/opencode"), { recursive: true });
 
   const config = readMcpJson(configPath) as Record<string, unknown>;
-  config.provider = { ollama: { url: OLLAMA_URL } };
-  config.model = { big: model, small: model };
-  writeMcpJson(configPath, config);
+  writeMcpJson(configPath, buildOpencodeProviderConfig(config, model));
+}
+
+/** Return `existing` with the bootstrap's `provider` and `model` keys set.
+ *
+ *  Shape follows https://opencode.ai/config.json (pinned by a trimmed copy in
+ *  src/mcp/fixtures/ and opencode-bootstrap.test.ts):
+ *  - `model` is a `provider/model` string.
+ *  - `provider.ollama` is an OpenAI-compatible custom provider. The schema
+ *    marks `provider` deprecated in favour of `providers`, but `providers`
+ *    has no `baseURL` field yet, and released opencode builds read `provider`.
+ *  - An old object-shaped `small_model` is dropped; opencode then falls back
+ *    to `model`. Exported for the schema test. */
+export function buildOpencodeProviderConfig(existing: Record<string, unknown>, model: string): Record<string, unknown> {
+  const config: Record<string, unknown> = {
+    ...existing,
+    provider: {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Ollama (local)",
+        options: { baseURL: OLLAMA_URL },
+        models: { [model]: { name: model } },
+      },
+    },
+    model: `ollama/${model}`,
+  };
+  if (typeof config.small_model !== "string") delete config.small_model;
+  return config;
 }
 
 /** Ensure skills and commands directories exist. */

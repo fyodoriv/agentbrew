@@ -373,19 +373,6 @@
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
 
-- [ ] `agentbrew setup opencode` writes a model and provider shape current opencode accepts
-  - **ID**: opencode-bootstrap-config-shape
-  - **Tags**: opencode, bootstrap, models, scout
-  - **Details**: `writeOpencodeProviderConfig` (`src/mcp/opencode-bootstrap.ts`) writes `model: { big, small }` and `provider: { ollama: { url } }`. Current opencode docs describe `model` and `small_model` as `provider/model` strings, and a custom provider as `provider.<id>` with `npm`, `options.baseURL`, and `models`. opencode's config schema rejects unknown keys, so this bootstrap may leave an invalid config. Found while closing `unify-opencode-bootstrap-model-with-default-model` (2026-10-16). Check the schema at https://opencode.ai/config.json first.
-  - **Research**: 2026-10-16 — the live schema (https://opencode.ai/config.json) confirms the bug: `model` must be a `provider/model` string or `{ providerID, model, variant? }` with `additionalProperties: false`, so `{ big, small }` is invalid. `small_model` is a deprecated string. `provider` is deprecated in favour of `providers` (`Config.ProviderEncoded`); a custom provider takes `npm`, `options.baseURL`, and `models`. Write `model: "ollama/<tag>"` and a `providers.ollama` block, then validate against the schema in the test.
-  - **Files**: `src/mcp/opencode-bootstrap.ts`, its test
-  - **Acceptance**: the written `model`, `small_model`, and `provider` keys validate against the opencode config schema; a test pins the shape.
-  - **Hypothesis**: the bootstrap writes an old shape; fixing it makes a fresh `agentbrew setup opencode` produce a config opencode loads.
-  - **Measurement**: validate the written `opencode.json` against https://opencode.ai/config.json with a JSON schema validator in a test fixture.
-  - **Success**: 0 schema errors.
-  - **Pivot**: if the current shape still validates, close this task with the schema evidence.
-  - **Anchor**: opencode config docs (https://opencode.ai/docs/config/), models and providers pages.
-
 - [ ] `agentbrew catalog` can order catalog skills by their public skills.sh install count
   - **ID**: catalog-browse-skills-sh-install-counts
   - **Tags**: catalog, ux, delegation

@@ -100,6 +100,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md` (test-enforced).
 - The gate cache key holds only repo files. After a change outside the repo, run `NO_CACHE=1 npm run verify`.
+- opencode.json rejects unknown keys. The opencode bootstrap writes `model: "ollama/<tag>"` and a `provider.ollama` block; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins that shape. Refresh it from https://opencode.ai/config.json when opencode changes its schema.
 - Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
 
 ## Delivery

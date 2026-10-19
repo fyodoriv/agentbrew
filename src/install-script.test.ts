@@ -243,7 +243,9 @@ esac
   it("run measures the agent setup before it changes anything, and saves the outcome", () => {
     const { home, run } = sandbox();
     expect(run("run", "--yes").status).toBe(0);
-    const receipt = JSON.parse(readFileSync(join(home, ".local", "state", "agentbrew", "install-receipt.json"), "utf-8"));
+    const receipt = JSON.parse(
+      readFileSync(join(home, ".local", "state", "agentbrew", "install-receipt.json"), "utf-8"),
+    );
     // The sandbox had one skill and a settings.json without defaultMode or hooks.
     expect(receipt.before).toMatchObject({ claude_skills: 1, claude_hooks: 0, claude_permissions: "default" });
     expect(receipt.before.claude_md_bytes).toBe(0);
@@ -266,7 +268,7 @@ esac
   });
 
   it("gains compares the receipt with now and says when there is none", () => {
-    const { home, run } = sandbox();
+    const { run } = sandbox();
     expect(run("gains").stdout).toMatch(/No install receipt yet/);
     expect(run("run", "--yes").status).toBe(0);
     const out = run("gains").stdout;

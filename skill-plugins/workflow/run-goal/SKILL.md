@@ -192,7 +192,9 @@ continue?". The user set a goal so that they can be away.
   parts. Come back to it later.
 - A new request from the user mid-goal joins the goal: add it to the
   contract file as a done-criterion, say so in one line, and deliver it in
-  this run.
+  this run. A request to drop something works the same way: mark the
+  criterion dropped in the contract file, shrink the metric's denominator,
+  and stop all work on it.
   A request to remove something also gets a guard test that fails if it
   comes back (code, config and docs). Do not start a separate session for it unless the user asks.
 - Approvals the user already gave in this session, in standing rules, or in
@@ -235,6 +237,10 @@ same flags on the unchanged base (a detached worktree) and compare the two
 failure lists. Only a failure on both lists is pre-existing. A wait loop on
 a background job must run outside the agent sandbox: `pgrep` and `ps` fail
 inside it, so the loop exits at once and looks finished.
+
+For UI work, open the screenshots of every view yourself and read them for
+wrong content, not only for presence. Tests that assert "the view shows
+text" miss logic bugs such as the same task repeated on every day.
 
 When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not

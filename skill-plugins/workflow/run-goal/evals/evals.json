@@ -486,6 +486,18 @@
         "Reruns the live outside-judge check after the port",
         "Lists every earlier chat ask in the final Goal check lines"
       ]
+    },
+    {
+      "id": 42,
+      "prompt": "/goal finish everything I listed in this chat, and make the app a TypeScript web app with several views (mid-run: 'let's completely drop Notion')",
+      "expected_output": "The agent lists every earlier request with its status, marks the dropped Notion criterion in the contract and shrinks the metric, asks one question round about architecture (TS UI on the existing core vs rewrite), builds and tests the web views, then opens a screenshot of every view and fixes logic bugs the tests missed before reporting.",
+      "expectations": [
+        "Contract enumerates prior requests and marks human-only or unbounded ones explicitly",
+        "The dropped item is marked dropped in the contract file and the metric denominator shrinks",
+        "Asks before choosing a rewrite over a UI on the tested core",
+        "Reads every view's screenshot and fixes wrong content (not only missing content)",
+        "Final report shows fresh gate output and the metric at the target"
+      ]
     }
   ]
 }

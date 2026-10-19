@@ -204,6 +204,7 @@
 
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
   - **ID**: workspace-aware-sync
+  - **Blocked**: needs-user-approval — P3 needs explicit owner permission to start; its Pivot (only `~/apps/tooling` has per-repo Agentfiles, re-checked 2026-10-16) points to closing it, which is the owner's call.
   - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host
   - **Hypothesis**: one `agentbrew sync` applies every per-repo Agentfile in the declared workspaces, so manual `sync --agentfile` runs drop from one per repo to zero.
   - **Measurement**: `fd -g Agentfile.yaml ~/apps -d 3 | wc -l` (repos that need a manual run today) before and after.

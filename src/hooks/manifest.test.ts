@@ -73,6 +73,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "jira-no-grandchildren",
   "gdoc-comment-preservation",
   "gdoc-surgical-edit-only",
+  "usage-tip",
   "perf-task-review",
 ];
 

@@ -538,3 +538,15 @@ hooks:
     sourceRule: 'docs/agent-perf.md "Hooks that use the log" (2026-10-18 agent time review: until loops were the top recurring step)'
     agents: ["claude-code"]
     defaultEnabled: false
+
+  # ── Usage coaching ──
+  - id: usage-tip
+    description: End each turn with one short tip on using the agent better, and log whether later prompts adopt it
+    event: Stop
+    script: checks/usage-tip.sh
+    tier: deterministic
+    verdict: allow
+    bypassEnvVar: HOOK_BYPASS_USAGE_TIP
+    sourceRule: 'docs/usage-tips.md'
+    agents: ["claude-code"]
+    defaultEnabled: false

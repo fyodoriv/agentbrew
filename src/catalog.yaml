@@ -865,6 +865,12 @@ skills:
     category: design
     recommended: false
 
+  - name: ui-ux-rankings
+    description: "Measure and improve a page's UI and UX with many rankings, one round each: axe-core WCAG 2.2, Vercel interface guidelines, touch targets, contrast in both themes, keyboard, Reduce motion, readability, Nielsen, task time, Lighthouse, scale, and a design-award-style rating. Use for 'rate my UI' or 'iterate until it scores 8/10'. Don't use for one Lighthouse run (use web-quality-audit)."
+    source: fyodoriv/agentbrew
+    category: quality
+    recommended: false
+
   - name: web-quality-audit
     description: "Measure a web page's UI and UX quality with Lighthouse (performance, accessibility, best practices, SEO), Core Web Vitals and WCAG 2.2, then fix the findings by severity. Use for \"audit my site\", \"UX efficiency\", \"a11y audit\". Don't use for visual design direction (use frontend-design or taste)."
     source: addyosmani/web-quality-skills
@@ -1912,7 +1918,7 @@ bundles:
     members: [verification-before-completion, test-driven-development, systematic-debugging, doubt-driven-development, code-smells-aware]
   - name: frontend-kit
     description: "Build and check web UI: design guidance, shadcn components, web design rules, Lighthouse and WCAG audits, Playwright practices, and the Playwright MCP server."
-    members: [frontend-design, shadcn, web-design-guidelines, web-quality-audit, playwright-best-practices, playwright]
+    members: [frontend-design, shadcn, web-design-guidelines, web-quality-audit, ui-ux-rankings, playwright-best-practices, playwright]
   - name: mcp-essentials
     description: "Common MCP servers: library docs (context7), browser control (playwright), GitHub, and step-by-step reasoning."
     members: [context7, playwright, github, sequential-thinking]

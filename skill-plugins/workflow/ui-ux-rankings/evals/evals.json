@@ -1,0 +1,47 @@
+{
+  "skill_name": "ui-ux-rankings",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Rate the UI of our dashboard at http://127.0.0.1:3000/ and tell me what to fix first.",
+      "expected_output": "Runs rankings.cjs all on every view of the dashboard plus Lighthouse, scores the expert rankings, and names the worst ranking with its findings and a first fix.",
+      "expectations": [
+        "Runs scripts/rankings.cjs all with every reachable view as its own URL",
+        "Runs Lighthouse (mobile at least) or says why it could not",
+        "Reports each ranking as a number, not only prose",
+        "Names the lowest ranking first and one concrete fix for it"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Iterate on the settings page until every ranking is green, one ranking per round, and commit each round.",
+      "expected_output": "Measures a baseline, fixes one ranking per round worst first, re-runs that ranking and rankings.cjs all after each fix, and commits with before and after in the message.",
+      "expectations": [
+        "Records a baseline for every ranking before changing code",
+        "Each round fixes one ranking and re-runs rankings.cjs all, not only the ranking it fixed",
+        "Each commit message names the ranking and its before and after numbers",
+        "Stops only when the measured rankings meet the --min target and states any ranking not run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Make this page look cool and modern and rate it like the top design award sites would, until it's 8/10.",
+      "expected_output": "Takes shots in both themes at phone and desktop, rates with the ten-judge design panel and its anchors, changes the look in rounds while keeping every measured ranking, and reports the panel as one agent's judgment.",
+      "expectations": [
+        "Uses rankings.cjs shots and rates from phone and desktop screenshots in light and dark",
+        "Scores all ten judges in references/design-panel.md and reports the mean",
+        "Re-runs rankings.cjs all after each look change and fixes any measured ranking that dropped",
+        "Says the rating is one agent's judgment against public criteria, not a jury"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Just run Lighthouse on my homepage and give me the scores.",
+      "expected_output": "Points to web-quality-audit (or runs a single Lighthouse pass) rather than the full multi-round rankings workflow.",
+      "expectations": [
+        "Does not start the multi-round rankings workflow for a single Lighthouse request",
+        "Mentions web-quality-audit or runs one Lighthouse pass and reports its category scores"
+      ]
+    }
+  ]
+}

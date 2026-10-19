@@ -145,6 +145,9 @@ fallback in `scaffold.sh` reads the same names.
 - A skill `description:` with `: ` inside is invalid YAML frontmatter, and
   agents then skip the skill. Use ` - ` or quote the value; an assistant's
   `evals/run.sh` should parse every `skills/*/SKILL.md`.
+- Before a first push, grep the new repo for your name and home path: the scaffold
+  records `OWNER` in `.copier-answers.yml`. `scaffold.sh` already repoints an absolute
+  `CLAUDE.md` symlink and drops a local `_src_path`.
 - A global gitignore can hide template files (one once listed `TASKS.md`).
   Templates that a global ignore might match are stored under a Jinja name,
   such as `{{ 'TASKS.md' }}`;

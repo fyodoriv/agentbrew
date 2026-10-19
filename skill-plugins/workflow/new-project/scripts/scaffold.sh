@@ -154,7 +154,21 @@ scaffold_with_copier() {
     echo "created $rel"
   done
   [ "$src" = "$here" ] && echo "note: template is not in git; 'copier update' will not work for this repo"
+  portable_outputs "$([ "$src" = "$here" ] && echo local)"
   return 0
+}
+
+portable_outputs() {
+  # An installed skill copy can hold CLAUDE.md as an absolute symlink into the template
+  # cache, and Copier records the local template path. Both break or leak in a pushed
+  # repo: point CLAUDE.md at AGENTS.md, and drop the local path when it cannot update anyway.
+  if [ -L "$dir/CLAUDE.md" ] && [ "$(readlink "$dir/CLAUDE.md")" != AGENTS.md ]; then
+    ln -sfn AGENTS.md "$dir/CLAUDE.md"; echo "fixed   CLAUDE.md -> AGENTS.md"
+  fi
+  if [ "${1:-}" = local ] && [ -f "$dir/.copier-answers.yml" ] && grep -q '^_src_path: /' "$dir/.copier-answers.yml"; then
+    perl -pi -e 's{^_src_path: /.*}{_src_path: new-project skill (local copy; not updatable)}' "$dir/.copier-answers.yml"
+    echo "fixed   .copier-answers.yml _src_path (no local path)"
+  fi
 }
 
 render_path() {

@@ -474,6 +474,18 @@
         "Removal covers code, config and docs",
         "A guard test fails if the removed integration comes back"
       ]
+    },
+    {
+      "id": 41,
+      "prompt": "(mid-goal) user: so in this case let's completely drop Notion — then a new /goal: make it a TypeScript web app first, keep Notion only for super simple things, and make sure everything from this chat is done",
+      "expected_output": "The agent treats the new goal as a superseding contract: posts a v2 contract that lists every earlier ask from the chat as done-criteria, keeps the existing e2e stories as the spec for the port, ports the engine to TypeScript with the same CLI so the stories pass unchanged, adds UI tests per view at phone and desktop width, reduces Notion to a simple export, re-runs the live outside judge (sources + link check), and only then ships and retros.",
+      "expectations": [
+        "Posts a new contract before edits and saves it to the contract file",
+        "Reuses the existing story tests as the port's acceptance spec",
+        "Adds per-view UI tests at phone width",
+        "Reruns the live outside-judge check after the port",
+        "Lists every earlier chat ask in the final Goal check lines"
+      ]
     }
   ]
 }

@@ -17,6 +17,11 @@ Vite by default), even when the logic is Python or Rust. The logic serves JSON
 to the UI (a local API for private apps). A Markdown report or a notes-app page
 is not a UI for anything people plan or navigate in.
 
+**UI rule (owner, 2026-10-18):** if the product has a UI with more than one view (plan
+ahead, switch views, phone use), pick TypeScript (Vite + React, Hono API) even for an
+`assistant` profile, and keep Notion or other note tools for simple exports only. A Python
+assistant that later needs views gets ported; keep its e2e shell stories as the spec.
+
 Ask the user only when two rows fit equally. Record the choice in an ADR.
 
 ## Generators and toolchain

@@ -189,6 +189,17 @@
         "An ADR records the TypeScript-for-multi-view-UI rule",
         "The gate and CI build, lint, typecheck and test the web app"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "new project: a things-to-do assistant for a couple, with week, month, year views and voting from phones",
+      "expected_output": "The agent picks the assistant profile but the TypeScript stack (Vite + React + Hono) because the UI has several views, scaffolds, checks that CLAUDE.md is a relative symlink to AGENTS.md and that .copier-answers.yml holds no local path or private name before the first push, and records the stack choice in an ADR.",
+      "expectations": [
+        "Chooses TypeScript because the UI has more than one view",
+        "CLAUDE.md is a symlink to AGENTS.md, not an absolute path",
+        "No local home path or owner name is pushed in .copier-answers.yml",
+        "Writes an ADR for the stack"
+      ]
     }
   ]
 }

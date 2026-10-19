@@ -48,3 +48,17 @@ Rules:
   checker cannot see (a pill painted behind a label, text in a pseudo-element) is a red flag: prefer
   one that keeps the measured rankings true.
 - Keep scope: a look change adds no feature the product does not need.
+
+When the panel stalls:
+
+- Blind raters disagree by about half a point on the same screenshots, and a fix one round asks
+  for can be called noise the next (an accent shadow on every card). Act only on fixes that two or
+  more raters name in the same round; a single rater's taste is not a finding.
+- Stills cannot show motion, so The FWA and Godly stay near 5 to 6 for any static capture. When the
+  page has motion, add a short frame strip (three frames of the transition) to the folder and say
+  what it shows, or report that those judges were rated without motion.
+- Placeholder art reads as placeholder: Content and Creativity stay low until the fixture looks
+  like the real thing. Improve the fixture before the page when raters name the content.
+- If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what
+  holds them back, and the options (a bolder concept, real content, motion evidence), instead of
+  polishing further. Never report the target as met when blind raters did not give it.

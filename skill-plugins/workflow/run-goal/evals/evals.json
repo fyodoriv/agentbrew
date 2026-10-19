@@ -521,6 +521,30 @@
         "Each fact gets a bounded number of attempts, then stays unverified with a reason",
         "Derived fixtures are regenerated once, after every subagent finishes"
       ]
+    },
+    {
+      "id": 45,
+      "prompt": "/goal run image tuning experiments until 8am, use fewer tokens, report before/after (mid-run the Claude usage limit hit; on resume one judge step had scored 0 items and exited 0)",
+      "expected_output": "The contract names the 8am deadline and keeps a last slot for the long held-out measurement. Long jobs run in the background with capped waits, and the agent reads only score lines. On resume it checks that each step produced output, and reruns only the judge step that scored 0 items. Each experiment has a paired control arm and a second-sample check before it is kept. The report says when a kept change worked by a different mechanism than predicted.",
+      "expectations": [
+        "The contract names the deadline and reserves a final slot for the held-out measurement",
+        "Long jobs run in the background with capped waits; only score lines are read",
+        "On resume, a step that exited 0 but scored 0 items is treated as failed and rerun alone",
+        "Each kept experiment has a paired control arm and a second-sample check",
+        "The report flags a kept change that worked by a different mechanism than predicted"
+      ]
+    },
+    {
+      "id": 46,
+      "prompt": "/goal deliver all unblocked agentbrew/dotfiles tasks",
+      "expected_output": "The agent lists every open task in both repos, sorts them into unblocked and blocked with the cited reason, and puts the unblocked count in the contract as the metric. Before it codes a task, it checks git history for the task ID or its files; a task that already shipped gets its stale block closed with fresh evidence, not a second implementation. It runs independent tasks as parallel workers within the parallel cap, and leaves an unrelated staged change in the main checkout alone.",
+      "expectations": [
+        "The metric is the count of unblocked tasks, with a baseline taken before any edit",
+        "Each blocked task is named with its Blocked or approval reason, not silently skipped",
+        "A task whose code already shipped is closed with fresh evidence instead of re-implemented",
+        "Independent tasks run as parallel workers within the parallel cap, each in its own worktree",
+        "Someone else's uncommitted change in the main checkout is left untouched"
+      ]
     }
   ]
 }

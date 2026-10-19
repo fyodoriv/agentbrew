@@ -155,15 +155,6 @@
 
 ## P1
 
-- [ ] Worktrees reuse node_modules instead of a fresh npm ci
-  - **ID**: worktree-node-modules-clone
-  - **Details**: Every agent worktree runs `npm ci`, which took 6m5s on 2026-10-18 (plus vitest warm-up). A symlinked `node_modules` fails the gate's `npm ls` check. On APFS, `cp -cR <main>/node_modules <worktree>/` makes a copy-on-write clone in seconds that `npm ls` accepts when `package-lock.json` matches. Add this to the worktree setup path (and fall back to `npm ci` when the lockfile differs). Spike 2026-10-18: the clone took 11 s and `npm run verify:changed` passed on it; strict `npm ls --all` still exits 1 because the main checkout has extraneous packages, so the clone source must be a clean `npm ci` tree.
-  - **Hypothesis**: worktree setup drops from about 360 s to under 15 s when the lockfile matches main.
-  - **Measurement**: `time` of the worktree setup step, plus `npm run verify:changed` exit code in the new worktree.
-  - **Success**: under 15 s and the gate passes.
-  - **Pivot**: if `npm ls` rejects clones, try `npm ci --prefer-offline` with a warm cache instead.
-  - **Anchor**: Apple APFS clone files (copy-on-write), `cp -c` in macOS cp(1).
-
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

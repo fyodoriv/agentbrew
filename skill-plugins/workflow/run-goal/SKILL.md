@@ -177,6 +177,12 @@ continue?". The user set a goal so that they can be away.
   its commits ahead, uncommitted files, and push state. Resume each stopped
   worker with its saved context (`SendMessage` to its id) and give it that
   state; never assume a stopped worker's PR landed.
+- After a usage-limit gap, check that each step produced its output, not
+  only that it exited 0. A judge step that scored 0 items failed; rerun
+  only that step.
+- Before you build a task from a queue, search git history for its ID and
+  files. A task that already shipped gets its stale block closed with fresh
+  evidence, not a second implementation.
 - A re-issued `/goal` (for example "continue previous goal") resets the
   contract file, and the edit hook blocks every write until it is saved again.
   Re-print the prior contract in chat (same scope, plus a progress line and

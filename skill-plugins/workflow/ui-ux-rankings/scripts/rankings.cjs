@@ -157,9 +157,13 @@ const rankings = {
             "[aria-pressed=true], [aria-selected=true], [aria-current]:not([aria-current=false])",
           )) {
             if (!on.offsetParent) continue;
+            const attr = ["aria-pressed", "aria-selected", "aria-current"].find((n) => on.hasAttribute(n));
             const off = [...on.parentElement.children].find(
               (x) =>
-                x !== on && x.offsetParent && !x.matches("[aria-pressed=true], [aria-selected=true], [aria-current]"),
+                x !== on &&
+                x.offsetParent &&
+                x.hasAttribute(attr) &&
+                !["true", "page", "step", "location", "date", "time"].includes(x.getAttribute(attr)),
             );
             if (!off) continue;
             const bg = __ratio(__bg(on), __bg(off)),
@@ -207,7 +211,13 @@ const rankings = {
           );
           const covered =
             !/skip/i.test(e.className) &&
-            bars.some((b) => top < b.getBoundingClientRect().bottom - 2 && +getComputedStyle(b).zIndex >= 0);
+            bars.some(
+              (b) =>
+                top < b.getBoundingClientRect().bottom - 2 &&
+                e.getBoundingClientRect().right > b.getBoundingClientRect().left &&
+                e.getBoundingClientRect().left < b.getBoundingClientRect().right &&
+                +getComputedStyle(b).zIndex >= 0,
+            );
           return { k: e.dataset.kbk ?? e.outerHTML.slice(0, 60), ring, covered };
         });
         if (!f || seen.has(f.k)) continue;

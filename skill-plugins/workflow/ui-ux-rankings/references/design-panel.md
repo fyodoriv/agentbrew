@@ -1,8 +1,19 @@
 # Design panel: rate a page as ten design-award and gallery sites would
 
 Rate from the `shots` screenshots (phone and desktop, light and dark), each judge by its own published
-criteria. Score 0 to 10 with one decimal; the panel score is the plain mean. This is one agent's
-judgment against those criteria, never a jury's verdict: say so when you report it.
+criteria. Score 0 to 10 with one decimal; the panel score is the plain mean. This is agents' judgment
+against those criteria, never a jury's verdict: say so when you report it.
+
+**The agent that changed the page never scores it.** Its own scores ran 1.5 to 2.5 points above
+blind raters' on the same screenshots. Rate with three blind raters: fresh subagents that read only
+this file and the screenshots (copy both to a new folder; name no earlier score, no history, no
+target), each with a different reviewer stance (an independent critic, a strict Awwwards/CSSDA
+juror, a Mobbin/Land-book/Webby curator). The panel score is the mean of their means; their
+"top fixes" are the next round's work. Use new raters each round, so none anchors on its last score.
+
+**Screenshots come from realistic data.** Raters judge what they see: three one-panel pages or one
+item per group read as empty and broken. Build the fixture at real size (a full book, a day of
+work, a long list) before rating.
 
 | Judge | What it rewards | How to score |
 |---|---|---|
@@ -29,7 +40,8 @@ Rules:
 
 - Rate what the screenshots show at both sizes and in both themes. A flaw in one of the four caps every
   judge at 7 (overlap, cut-off text, a broken phone layout).
-- Name the two lowest judges and the one change that would lift each. Make that change, re-shoot,
+- Ask each rater for the three changes that would lift the lowest scores most, naming screenshot
+  and element. Fixes that two or three raters name come first. Make that change, re-shoot,
   re-rate. Stop at the target (default 8.0).
 - Never raise the design score by lowering a measured ranking. Re-run `rankings.cjs all` after every
   look change; a measured ranking that drops below 100 is fixed before the next rating. An effect a

@@ -48,6 +48,20 @@ editorial tiers.
 
 ## Follow-up
 
-`catalog-browse-skills-sh-install-counts` in TASKS.md: `agentbrew catalog
---sort installs` shows catalog skills ordered by their skills.sh install
-count, with an offline fallback to the editorial order.
+`catalog-browse-skills-sh-install-counts` tried Option C and took its Pivot
+on 2026-10-19. The option was dropped; the catalog keeps the editorial order.
+
+Evidence from the live API on 2026-10-19:
+
+- The search response shape still matches: `skills[]` with `name`,
+  `skillId`, `source`, and `installs`.
+- The public search endpoint allows 30 requests per minute. Request 31 gets
+  HTTP 429, `retry-after: 60`, and the message "Rate limit exceeded. Maximum
+  30 requests per minute. For higher limits, use the official API at
+  /api/v1/ with an API key."
+- The catalog has 211 skills from 34 sources. One query per skill, or even
+  one per source, goes over the limit on every `catalog` run.
+
+Revisit only if skills.sh offers a keyless bulk endpoint (many skills per
+request) or a published counts file. An API key is out of scope: agentbrew
+must install cleanly without one.

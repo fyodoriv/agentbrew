@@ -155,15 +155,6 @@
 
 ## P1
 
-- [ ] Worktrees reuse node_modules instead of a fresh npm ci
-  - **ID**: worktree-node-modules-clone
-  - **Details**: Every agent worktree runs `npm ci`, which took 6m5s on 2026-10-18 (plus vitest warm-up). A symlinked `node_modules` fails the gate's `npm ls` check. On APFS, `cp -cR <main>/node_modules <worktree>/` makes a copy-on-write clone in seconds that `npm ls` accepts when `package-lock.json` matches. Add this to the worktree setup path (and fall back to `npm ci` when the lockfile differs). Spike 2026-10-18: the clone took 11 s and `npm run verify:changed` passed on it; strict `npm ls --all` still exits 1 because the main checkout has extraneous packages, so the clone source must be a clean `npm ci` tree.
-  - **Hypothesis**: worktree setup drops from about 360 s to under 15 s when the lockfile matches main.
-  - **Measurement**: `time` of the worktree setup step, plus `npm run verify:changed` exit code in the new worktree.
-  - **Success**: under 15 s and the gate passes.
-  - **Pivot**: if `npm ls` rejects clones, try `npm ci --prefer-offline` with a warm cache instead.
-  - **Anchor**: Apple APFS clone files (copy-on-write), `cp -c` in macOS cp(1).
-
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents
@@ -373,14 +364,3 @@
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
 
-- [ ] `agentbrew catalog` can order catalog skills by their public skills.sh install count
-  - **ID**: catalog-browse-skills-sh-install-counts
-  - **Tags**: catalog, ux, delegation
-  - **Details**: Follow-up of `catalog-install-popularity-signal` (decision: [`docs/decisions/catalog-install-popularity-signal.md`](docs/decisions/catalog-install-popularity-signal.md)). The skills.sh search API (`GET https://skills.sh/api/search?q=<name>&limit=<n>`) returns an `installs` count per skill. Read it for catalog skills only, behind a `--sort installs` option on `agentbrew catalog`, with a short timeout and an offline fallback to the editorial order. Send only the search text; no user data. MCP servers and rules keep the editorial tiers.
-  - **Files**: `src/catalog/browse.ts`, `src/commands/cli-catalog.ts`, their tests, README "Install a skill or MCP server"
-  - **Acceptance**: `agentbrew catalog --skills --sort installs` lists catalog skills by skills.sh installs, highest first; a test with a stubbed fetch covers the order, a timeout, and a skill skills.sh does not know.
-  - **Hypothesis**: an ecosystem-wide install count shows which catalog skills people actually use, which a one-machine log cannot.
-  - **Measurement**: `agentbrew catalog --skills --sort installs --json | jq '.[0:5] | map(.installs)'` returns descending numbers.
-  - **Success**: the top of the `--sort installs` list shows non-zero install counts, highest first.
-  - **Pivot**: if the skills.sh API changes shape or rate-limits browse, drop the option and keep the editorial order.
-  - **Anchor**: VISION.md "Delegate, contribute, absorb"; skills.sh public search API.

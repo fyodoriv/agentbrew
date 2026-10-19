@@ -556,6 +556,18 @@
         "Counts are compared with the live source (N/N)",
         "The views are read on the real imported data, read-only, before the done claim"
       ]
+    },
+    {
+      "id": 47,
+      "prompt": "/goal fix all bugs on my website (it sits behind Cloudflare Access) eg too long events and weird input fields, give every event a short description, and let people submit requests that Claude works off in the checkup",
+      "expected_output": "The agent cannot sign in, so it runs the site's own server function locally over the published snapshots, takes a numeric baseline (card height p95 at phone width), finds the root cause of each visible bug with a failing test first, adds the request queue end to end (UI, API, CLI, checkup step, skill, e2e story), deploys, and reports honestly that the signed-in live check was not possible.",
+      "expectations": [
+        "Reproduces the signed-in site locally with the real server code and published data instead of asking the user to click",
+        "Takes a numeric baseline before edits and reports before/after",
+        "Each bug fix starts with a failing test",
+        "Does not write test data into the shared production store",
+        "States plainly which live checks were blocked by the sign-in"
+      ]
     }
   ]
 }

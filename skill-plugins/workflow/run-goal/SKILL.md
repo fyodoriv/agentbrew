@@ -193,6 +193,10 @@ continue?". The user set a goal so that they can be away.
   cites, and an "omit what you cannot verify" rule. Run it in parallel with
   the code. Then add a gate step that fails when a claim has no source, so
   later edits cannot drop them.
+- A deployed site behind a sign-in (Cloudflare Access, SSO) is still checkable:
+  run the same server code locally over the published data, and measure there.
+  A test that sets a data-dir variable from `mktemp` must check that `mktemp`
+  worked; an empty variable falls back to the real data folder.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you

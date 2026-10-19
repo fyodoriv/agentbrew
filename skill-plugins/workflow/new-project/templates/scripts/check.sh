@@ -11,6 +11,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-full}"
+# Agent sandboxes often block ~/.cache/uv and a root-owned ~/.npm; use a temp cache then.
+[ -w "${UV_CACHE_DIR:-$HOME/.cache/uv}" ] || export UV_CACHE_DIR="${TMPDIR:-/tmp}/uv-cache"
+[ -w "$HOME/.npm/_cacache" ] || export npm_config_cache="${TMPDIR:-/tmp}/npm-cache"
 mkdir -p .metrics/cache
 
 key=""

@@ -149,5 +149,13 @@ fallback in `scaffold.sh` reads the same names.
   Templates that a global ignore might match are stored under a Jinja name,
   such as `{{ 'TASKS.md' }}`;
   the contract test fails if any template file is not tracked by git.
+- The setup check reads only the **first line** of the README's first code
+  block: it must be `scripts/setup.sh`. Put `git clone … && cd …` in the prose
+  above the block, not as its first line.
+- Python story tests may be pytest files named `tests/e2e/test_usNN_*.py`;
+  `check-docs.sh` checks them like `us-NN-*.sh` files.
+- An existing repo with a Rust core in a subfolder (`engine/Cargo.toml`) needs
+  its own `cargo test --manifest-path …` step in `check.sh`; the template only
+  detects a root `Cargo.toml`.
 - `check-setup.sh` checks structure, not quality. After it passes, read VISION
   and the first user story with the user.

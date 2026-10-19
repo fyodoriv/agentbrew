@@ -166,6 +166,18 @@
         "Keeps the README content and adds the docs map link near the top",
         "Reruns check-setup and shows 100%"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "evolve my existing Rust + Python cash-forecast repo into a personal assistant and follow all my app standards",
+      "expected_output": "The agent scores the repo with check-setup.sh --profile assistant first (baseline), scaffolds the missing files into the non-empty repo without overwriting, adds an engine step for the subfolder Cargo.toml, names pytest story tests tests/e2e/test_usNN_*.py and lists them in docs/user-stories.md, keeps scripts/setup.sh as the first line of the README's first code block, and reruns check-setup --strict to 100%.",
+      "expectations": [
+        "Takes the check-setup baseline before editing",
+        "Scaffolds into the existing repo and keeps existing files",
+        "Adds a gate step for the subfolder Cargo.toml",
+        "Story tests named test_usNN are listed and checked by check-docs",
+        "Shows check-setup --strict at 100%"
+      ]
     }
   ]
 }

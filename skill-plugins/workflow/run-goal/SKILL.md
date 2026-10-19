@@ -157,6 +157,11 @@ continue?". The user set a goal so that they can be away.
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first.
+- A goal with more than five requirements gets a traceability test: one
+  entry per requirement, mapped to the files and tests that meet it. It fails
+  when a mapped path is missing, and it is the coverage metric in the contract.
+- A subagent that stops on a usage limit keeps its work. After the reset,
+  resume it with `SendMessage`; do not redo its work or start a new agent.
 - Work in small verified steps. Run the guard after each change that matters.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the

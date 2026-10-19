@@ -202,37 +202,6 @@
 
 ## P3
 
-- [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
-  - **ID**: workspace-aware-sync
-  - **Blocked**: needs-user-approval — P3 needs explicit owner permission to start; its Pivot (only `~/apps/tooling` has per-repo Agentfiles, re-checked 2026-10-16) points to closing it, which is the owner's call.
-  - **Tags**: architecture, agentfile, workspace, multi-repo, multi-workspace, curator-not-host
-  - **Hypothesis**: one `agentbrew sync` applies every per-repo Agentfile in the declared workspaces, so manual `sync --agentfile` runs drop from one per repo to zero.
-  - **Measurement**: `fd -g Agentfile.yaml ~/apps -d 3 | wc -l` (repos that need a manual run today) before and after.
-  - **Pivot**: if only one workspace still has per-repo Agentfiles at the next review, close this task as not needed.
-  - **Anchor**: tasks.md `workspace-mode-nested-repos`; the 2026-10-16 re-check note below.
-  - **Details**: Companion to `tasksmd/tasks.md` task `workspace-mode-nested-repos` (filed 2026-05-12 PR upstream). Operators frequently have **multiple** workspace folders on the same host — the operator at 2026-05-12 has 5 workspaces under `~/apps/` (`tooling`, `acme`, `learning`, `_inventory`, `docs`), several containing their own per-repo `Agentfile.yaml`. Today `agentbrew sync` takes either no Agentfile (uses global `~/.config/agentbrew/Agentfile.yaml`) or an explicit `--agentfile <path>` flag — both single-Agentfile shapes. There's no first-class way to compose one global manifest + N workspaces × M per-repo manifests.
-
-    The operator's mental model is "I have these workspaces; agentbrew should know what every repo in every workspace wants and reconcile that into the target agent configs." Today that requires running `agentbrew sync --agentfile <path>` once per repo across N workspaces — friction that scales with workspace count × repo count.
-
-    **Outcome-shaped** (multi-workspace, N=1 is just a degenerate case):
-
-    1. Operator runs `agentbrew sync` (no flag) — if `workspaceRoots:` is declared in the global Agentfile, agentbrew iterates **every declared workspace** and processes every per-repo Agentfile within each. If no workspaces are declared, behaviour is unchanged (single-Agentfile, backwards compat).
-    2. Explicit scoping: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` (comma list) OR `agentbrew sync --workspace-name tooling` (config-name lookup, mirrors the `tasks` CLI's flag shape from the foundation task).
-    3. `agentbrew status` reports per-workspace, per-repo: discovered Agentfiles, declared sources, deployed targets, collision warnings.
-    4. Skills/commands/rules/MCPs are namespaced by `<workspace>::<repo>` so collisions across workspaces (two repos declaring the same MCP from different versions, etc.) surface as actionable diagnostics rather than silent last-write-wins.
-
-    Implementation hints (not load-bearing):
-    - Adds `workspaceRoots: [<path1>, <path2>, ...]` to the global `Agentfile.yaml` schema (plural; single-workspace setups declare a 1-element list). Schema validation rejects mixed `workspaceRoot:` (singular) + `workspaceRoots:` (plural).
-    - Adds `--workspaces <path1,path2,...>` (plural, comma-separated) + `--workspace-name <name>` flags on `sync`, `status`, `lint`, `health`. The singular `--workspace <path>` flag is shorthand for a 1-element list (kept for ergonomics).
-    - Reads the same `~/.config/tasks-md/workspaces.yaml` config the `tasks` CLI uses (foundation task) — so adding a workspace via `tasks workspaces add` automatically picks it up here. Don't reinvent the discovery layer.
-    - Reuses the `.tasks-md-workspace` sentinel from `tasksmd/tasks.md`.
-    - If command sources land later: in multi-workspace mode, every workspace × every repo's `commandSources:` declaration aggregates.
-    - Composes with `catalog-minsky-observer-skill` (sibling P1 above): once Minsky has a catalog entry, the per-repo Agentfile in `~/apps/tooling/minsky/` declares it via `skills: [minsky-observer]` instead of `skillSources: [...]`, and the workspace-sync picks it up like any other.
-  - **Files**: `src/cli.ts` (workspace + workspaces + workspace-name flags + Agentfile-discovery), `src/sync/skills-sync.ts`, `src/sync/command-sync.ts`, `src/sync/rules-sync.ts`, `src/sync/mcp-sync.ts` (all extended to handle the merged-from-N-workspaces-×-M-Agentfiles input), `src/health.ts` (per-workspace + per-repo health rollup), `src/core/workspaces.ts` (new — reads `~/.config/tasks-md/workspaces.yaml`), `templates/AGENTS.md` (multi-workspace docs), `docs/VISION.md` (multi-workspace as a first-class concept), tests.
-  - **Acceptance**: (a) `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme` exits 0 + deploys every per-repo Agentfile's declarations across both workspaces; (b) per-workspace × per-repo sources are namespaced (collision reports `<workspace>::<repo>` for both sides); (c) `agentbrew status` lists discovered Agentfiles + deployed targets, grouped by workspace; (d) multi-workspace mode is backwards-compatible (zero workspaces declared → single-Agentfile behaviour unchanged); (e) reads `~/.config/tasks-md/workspaces.yaml` if present (shared with the `tasks` CLI); (f) tests cover the cross-workspace merge-conflict path.
-  - **Re-checked 2026-10-16**: on this machine only `~/apps/tooling` holds per-repo `Agentfile.yaml` files (5 repos); no other `~/apps/*` folder has one, and `~/.config/tasks-md/workspaces.json` does not exist. The tasks CLI now ships `tasks workspaces` with that JSON file (not `workspaces.yaml`), so read that path. Applying a per-repo Agentfile writes into the one global state, so the merge and collision rules need a design before code. Parked by a goal run after its 45-minute cap; pick it up only when a second workspace with per-repo Agentfiles exists.
-  - **Surfaced-by**: Operator multi-workspace setup at `~/apps/` containing 5 workspaces (`tooling`, `acme`, `learning`, `_inventory`, `docs`) as of 2026-05-12. Foundation task in `tasksmd/tasks.md` (workspace-mode-nested-repos) ships the spec + parser + shared config-file surface; this task closes the agentbrew side.
-
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security

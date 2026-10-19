@@ -89,6 +89,8 @@ export interface Agentfile {
   memory?: { enabled?: boolean };
   /** Relative paths to memory pack directories (resolved at apply/team set). */
   memoryPacks?: string[];
+  /** Workspace folders (paths or `tasks workspaces` names) whose per-repo Agentfiles `sync` folds in. See src/core/workspaces.ts. */
+  workspaceRoots?: string[];
 }
 
 // ── Agentfile names (checked in priority order) ───────────────────────────────
@@ -188,7 +190,12 @@ export function parseAgentfile(content: string): Agentfile {
     repo: parseRepo(raw.repo),
     project: parseProject(raw.project),
     ...parseAgentfileMemoryFields(raw),
+    workspaceRoots: parseStringList(raw.workspaceRoots),
   };
+}
+
+function parseStringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string") : undefined;
 }
 
 /** Keep string values (trimmed) and explicit nulls; drop everything else. */

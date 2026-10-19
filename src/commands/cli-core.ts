@@ -3,6 +3,15 @@ import type { Command } from "commander";
 import { cliMissingArg } from "../core/cli-error.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 
+interface StatusCommandOptions {
+  verbose?: boolean;
+  json?: boolean;
+  fix?: boolean;
+  ci?: boolean;
+  workspaces?: string;
+  workspaceName?: string;
+}
+
 /**
  * Register top-level commands (init, status, add, remove, import, update,
  * upgrade, export, run, setup) on the root commander program.
@@ -59,7 +68,9 @@ export function registerCoreCommands(program: Command): void {
     .option("--json", "Output as JSON")
     .option("--fix", "Auto-repair any detected drift")
     .option("--ci", "CI mode: no color, exit 1 on drift")
-    .action(async (options: { verbose?: boolean; json?: boolean; fix?: boolean; ci?: boolean }) => {
+    .option("--workspaces <paths>", "Also list per-repo Agentfiles in these workspace folders (comma-separated)")
+    .option("--workspace-name <name>", "Like --workspaces, for one workspace named in the tasks CLI config")
+    .action(async (options: StatusCommandOptions) => {
       if (options.fix || options.ci || options.json) {
         const { healthCheck } = await import("../health.js");
         await healthCheck({ autoFix: options.fix, ci: options.ci, json: options.json, verbose: options.verbose });
@@ -67,6 +78,8 @@ export function registerCoreCommands(program: Command): void {
       }
       const { status } = await import("../status.js");
       await status({ verbose: options.verbose });
+      const { printWorkspaceStatus } = await import("../core/workspaces.js");
+      printWorkspaceStatus(options);
     });
 
   program

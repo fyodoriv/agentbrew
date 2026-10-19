@@ -194,6 +194,18 @@ Agentfile `commands:` directories are extra source dirs for the same command syn
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
+### Workspaces
+
+If you keep many repos, each with its own `Agentfile.yaml`, one sync can apply all of them. List the workspace folders in the global Agentfile:
+
+```yaml
+workspaceRoots:
+  - ~/apps/tooling
+  - acme            # a name from `tasks workspaces` (~/.config/tasks-md/workspaces.json)
+```
+
+Or pass them per run: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme`, or `--workspace-name acme`. Each direct child folder of a workspace that holds an Agentfile is a repo, named `<workspace>::<repo>`. Sync merges every repo Agentfile, then the global (or `--agentfile`) Agentfile last, into `~/.config/agentbrew/generated/workspace-Agentfile.yaml` and applies that. The base Agentfile wins every conflict. Between repos the later one wins, and sync warns when two repos declare an MCP server, `defaultModel`, or `defaultEffort` differently, naming both repos. A repo's `task_backend`, `repo`, and `project` stay with that repo. `agentbrew status --workspaces ...` (or with `workspaceRoots:` declared) lists each workspace's repos, their MCP servers and skills, and which ones are deployed. With no workspaces declared, sync works as before.
+
 Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, including downstream per-agent sync changes for Agentfile-only MCP servers, sources, commands, agents, rules, and hooks, without updating `state.yaml` or installing anything. Add `--agentfile <path>` to preview an explicit dotfiles Agentfile before making it authoritative.
 
 ## Sync
@@ -590,6 +602,7 @@ agentbrew sync [--dry-run] [--no-prune] [--only <modules>] [--rollback]
                                        Deploy + repair drift (prunes by default)
 agentbrew sync --pull                  Fetch latest from sources, then deploy
 agentbrew sync --agentfile <path>      Apply an Agentfile before syncing (dotfiles workflow)
+agentbrew sync --workspaces <paths>    Also apply every per-repo Agentfile in these workspaces
 agentbrew sync --no-prune --agentfile <path>
                                        Add/update from that Agentfile, keep existing state entries
 agentbrew sync --dry-run --agentfile <path>

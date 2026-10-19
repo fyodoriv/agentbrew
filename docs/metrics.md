@@ -22,7 +22,7 @@ history is not a real zero.
 | `sync_fail_rate`: share of `agentbrew sync` runs that end with an error | US08 | ≤ 5% | > 20%: stop new sync features until the top error is fixed | `bash scripts/metrics.sh` (reads `sync` events) |
 | `repair_fail_rate`: share of scheduled repairs (`agentbrew fix`) that leave drift or fail | US06 | ≤ 5% | > 20%: move the drift types that never clear out of the repair loop | `bash scripts/metrics.sh` (reads `repair` events) |
 | `story_fail_rate`: failed events per story, last 30 days | each story | ≤ 5% per story | > 20% for one story: that story's next task becomes P0 | `bash scripts/metrics.sh` (groups `sync`, `command`, `repair`, and `error` events by `story`) |
-| `zero_to_configured_s`: cold one-step install to a clean `agentbrew status --ci` | US01 | ≤ 120 s | > 300 s: cut install steps or delegate them | `time E2E_COLD=1 npm run test:install-e2e` (no run is recorded yet, so `metrics.sh` prints `(stub)`) |
+| `zero_to_configured_s`: cold one-step install to a clean `agentbrew status --ci` | US01 | ≤ 120 s | > 300 s: cut install steps or delegate them | `bash scripts/metrics.sh` (reads `run.seconds` from the install receipt that `scripts/install.sh run` saves; `(stub)` without a finished run) |
 | `gate_ms`: median wall time of the last 10 passing, fully uncached `npm run verify` runs | contributor | ≤ 300000 ms | > 600000 ms: split the slowest step or cache it | `bash scripts/metrics.sh` (reads `.metrics/gate-timings.jsonl`) |
 
 ## Notes

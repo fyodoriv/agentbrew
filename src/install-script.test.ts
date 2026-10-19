@@ -239,4 +239,40 @@ esac
     expect(ok.run("restore").status).toBe(0);
     expect(readFileSync(join(ok.home, ".claude", "settings.json"), "utf-8")).toBe('{"user":"original"}\n');
   });
+
+  it("run measures the agent setup before it changes anything, and saves the outcome", () => {
+    const { home, run } = sandbox();
+    expect(run("run", "--yes").status).toBe(0);
+    const receipt = JSON.parse(readFileSync(join(home, ".local", "state", "agentbrew", "install-receipt.json"), "utf-8"));
+    // The sandbox had one skill and a settings.json without defaultMode or hooks.
+    expect(receipt.before).toMatchObject({ claude_skills: 1, claude_hooks: 0, claude_permissions: "default" });
+    expect(receipt.before.claude_md_bytes).toBe(0);
+    // Measured before init added the com.agentbrew.check LaunchAgent.
+    expect(receipt.before.launchagents).toBe(0);
+    expect(receipt.run.ok).toBe(true);
+    expect(typeof receipt.run.seconds).toBe("number");
+  });
+
+  it("a failed install records the failed step, and a rerun keeps the first before", () => {
+    const { home, run } = sandbox("init");
+    expect(run("run", "--yes").status).toBe(1);
+    const path = join(home, ".local", "state", "agentbrew", "install-receipt.json");
+    const first = JSON.parse(readFileSync(path, "utf-8"));
+    expect(first.run).toMatchObject({ ok: false, failed_step: "agent setup (agentbrew init)" });
+    mkdirSync(join(home, ".claude", "skills", "added-later"), { recursive: true });
+    run("run", "--yes");
+    const second = JSON.parse(readFileSync(path, "utf-8"));
+    expect(second.before).toEqual(first.before);
+  });
+
+  it("gains compares the receipt with now and says when there is none", () => {
+    const { home, run } = sandbox();
+    expect(run("gains").stdout).toMatch(/No install receipt yet/);
+    expect(run("run", "--yes").status).toBe(0);
+    const out = run("gains").stdout;
+    expect(out).toMatch(/Metric +Before +Now/);
+    expect(out).toMatch(/Claude skills +1 +1/);
+    expect(out).toMatch(/LaunchAgents +0 +1/);
+    expect(out).toMatch(/Time to configured: \d+ s/);
+  });
 });

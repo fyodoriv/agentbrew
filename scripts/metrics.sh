@@ -63,6 +63,13 @@ row "sync_ms" "${sync_ms:-(stub)}" "<= 2000" "> 10000"
 row "sync_fail_rate" "${sync_fail:-(stub)}" "<= 5%" "> 20%"
 row "repair_fail_rate" "${repair_fail:-(stub)}" "<= 5%" "> 20%"
 row "story_fail_rate" "${stories:-(stub)}" "<= 5% each" "> 20% for one"
-# No cold install run records its time yet (docs/metrics.md).
-row "zero_to_configured_s" "(stub)" "<= 120" "> 300"
+# Time to configured from the install receipt (scripts/install.sh run);
+# (stub) without a receipt or when the last run did not finish.
+receipt="${AGENTBREW_INSTALL_RECEIPT:-${XDG_STATE_HOME:-$HOME/.local/state}/agentbrew/install-receipt.json}"
+zero_s="$(node -e '
+try {
+  const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf-8"));
+  console.log(r.run && r.run.ok && Number.isFinite(r.run.seconds) ? r.run.seconds : "(stub)");
+} catch { console.log("(stub)"); }' "$receipt" 2>/dev/null)"
+row "zero_to_configured_s" "${zero_s:-(stub)}" "<= 120" "> 300"
 row "gate_ms" "${gate_ms:-(stub)}" "<= 300000" "> 600000"

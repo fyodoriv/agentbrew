@@ -90,6 +90,13 @@ Get a clear yes to the plan, then run:
 bash <DIR>/scripts/install.sh run --yes [flags from step 3]
 ```
 
+Measure first. The first thing `run` does, before any change, is save the
+agent setup already on the machine (Claude Code skills, hooks, CLAUDE.md size,
+permission mode, LaunchAgents) to an install receipt
+(`~/.local/state/agentbrew/install-receipt.json`), with the time to
+configured at the end. Do not change the agent setup by hand before `run`.
+When dotfiles installs agentbrew, dotfiles' receipt holds the earlier "before".
+
 The script backs up, builds, links the `agentbrew` command, runs
 `agentbrew init`, heals with `agentbrew status --fix`, verifies with
 `agentbrew lint`, and ends with the doctor, `agentbrew status --ci`, which
@@ -104,6 +111,8 @@ Tell the person:
 - where the backup is and how to undo (`install.sh restore`),
 - `agentbrew status` shows what is set up; `agentbrew metrics` shows how it
   behaves on their machine,
+- what the install changed: `bash <DIR>/scripts/install.sh gains` (before vs
+  now, time to configured); run it again in about a week,
 - if anything in the install was wrong or confusing, they can fix it and
   send it upstream from their own fork. Offer to do it with them: create a
   branch, make the fix, add or update a test and the docs, run

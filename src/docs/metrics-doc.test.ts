@@ -39,11 +39,11 @@ function metricRows(markdown: string): MetricRow[] {
     });
 }
 
-function runMetrics(eventsFile: string): string {
+function runMetrics(eventsFile: string, receipt = join(scratch, "no-receipt.json")): string {
   return execFileSync("bash", [join(repoRoot, "scripts/metrics.sh")], {
     cwd: repoRoot,
     encoding: "utf-8",
-    env: { ...process.env, AGENTBREW_EVENTS_FILE: eventsFile },
+    env: { ...process.env, AGENTBREW_EVENTS_FILE: eventsFile, AGENTBREW_INSTALL_RECEIPT: receipt },
   });
 }
 
@@ -75,6 +75,15 @@ describe("scripts/metrics.sh", () => {
     for (const name of ["sync_ms", "sync_fail_rate", "repair_fail_rate", "story_fail_rate"]) {
       expect(out, name).toMatch(new RegExp(`^${name} +\\(stub\\)`, "m"));
     }
+  });
+
+  it("reads zero_to_configured_s from the install receipt, (stub) without one", () => {
+    expect(runMetrics(join(scratch, "missing.jsonl"))).toMatch(/^zero_to_configured_s +\(stub\)/m);
+    const receipt = join(scratch, "install-receipt.json");
+    writeFileSync(receipt, JSON.stringify({ before: {}, run: { ok: true, seconds: 97 } }));
+    expect(runMetrics(join(scratch, "missing.jsonl"), receipt)).toMatch(/^zero_to_configured_s +97 /m);
+    writeFileSync(receipt, JSON.stringify({ before: {}, run: { ok: false, seconds: 12 } }));
+    expect(runMetrics(join(scratch, "missing.jsonl"), receipt)).toMatch(/^zero_to_configured_s +\(stub\)/m);
   });
 
   it("reads rates and medians from the event log", () => {

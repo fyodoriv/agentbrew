@@ -8,6 +8,7 @@
 #   scripts/install.sh run [flags]          Back up, install, set up, heal, verify
 #   scripts/install.sh restore [BACKUP_ID]  Put the backed-up settings back (latest by default)
 #   scripts/install.sh backups              List backups
+#   scripts/install.sh gains                Compare this machine now with the install receipt
 #
 # Flags for `run` (the answers to the INSTALL.md questions):
 #   --no-recommended   Skip the recommended skills and MCP servers
@@ -250,7 +251,101 @@ do_restore() {
   say "  ✓ Restored your settings from backup $id"
 }
 
+# ── Install receipt (state-dir scope; kept until the user deletes it) ─────
+# `run` measures the agent setup before it changes anything, so the gains of
+# the install can be shown later (`install.sh gains`). Plain shell: node may
+# not exist yet. install-before.json is written once and never overwritten,
+# so a repeated run keeps the true before. When dotfiles installs agentbrew,
+# dotfiles' own receipt holds the earlier, truer before.
+receipt_dir() { printf '%s/agentbrew' "${XDG_STATE_HOME:-$HOME/.local/state}"; }
+_claude_dir() { printf '%s' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; }
+measure_claude_skills() {
+  local n=0 entry
+  for entry in "$(_claude_dir)/skills"/*; do [ -e "$entry" ] && n=$((n + 1)); done
+  printf '%s\n' "$n"
+}
+measure_claude_hooks() {
+  local f n
+  f="$(_claude_dir)/settings.json"
+  [ -f "$f" ] || { printf '0\n'; return; }
+  # Count the "command" key only; "type": "command" holds the same word.
+  n="$(grep -o '"command"[[:space:]]*:' "$f" 2>/dev/null | wc -l | tr -d ' ')"
+  printf '%s\n' "${n:-0}"
+}
+measure_claude_md_bytes() {
+  local f
+  f="$(_claude_dir)/CLAUDE.md"
+  [ -f "$f" ] && wc -c <"$f" | tr -d ' ' || printf '0\n'
+}
+measure_claude_permissions() {
+  local f mode
+  f="$(_claude_dir)/settings.json"
+  [ -f "$f" ] || { printf 'none\n'; return; }
+  mode="$(grep -o '"defaultMode"[[:space:]]*:[[:space:]]*"[A-Za-z]*"' "$f" 2>/dev/null | head -1 | sed -E 's/.*"([A-Za-z]*)"$/\1/')"
+  printf '%s\n' "${mode:-default}"
+}
+measure_launchagents() {
+  local n=0 plist
+  for plist in "$HOME/Library/LaunchAgents"/*.plist; do [ -e "$plist" ] && n=$((n + 1)); done
+  printf '%s\n' "$n"
+}
+_receipt_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+receipt_begin() {
+  local dir
+  dir="$(receipt_dir)"
+  mkdir -p "$dir" 2>/dev/null || return 0
+  RECEIPT_STARTED_AT="$(_receipt_now)"
+  RECEIPT_START_S="$(date +%s)"
+  [ -s "$dir/install-before.json" ] && return 0
+  printf '{"taken_at":"%s","launchagents":%s,"claude_skills":%s,"claude_hooks":%s,"claude_md_bytes":%s,"claude_permissions":"%s"}\n' \
+    "$RECEIPT_STARTED_AT" "$(measure_launchagents)" "$(measure_claude_skills)" "$(measure_claude_hooks)" \
+    "$(measure_claude_md_bytes)" "$(measure_claude_permissions)" >"$dir/install-before.json" 2>/dev/null || true
+}
+
+# receipt_finish <true|false> [failed step]: a record, never a failing step.
+receipt_finish() {
+  [ -n "${RECEIPT_START_S:-}" ] || return 0
+  local dir before failed=""
+  dir="$(receipt_dir)"
+  before="$(cat "$dir/install-before.json" 2>/dev/null)" || before=""
+  [ -n "$before" ] || before="null"
+  [ -z "${2:-}" ] || failed=",\"failed_step\":\"$(printf '%s' "$2" | tr -d '"\\')\""
+  printf '{"before":%s,"run":{"started_at":"%s","finished_at":"%s","seconds":%s,"ok":%s%s}}\n' \
+    "$before" "$RECEIPT_STARTED_AT" "$(_receipt_now)" "$(($(date +%s) - RECEIPT_START_S))" "$1" "$failed" \
+    >"$dir/install-receipt.json" 2>/dev/null || true
+  RECEIPT_START_S=""
+}
+
+cmd_gains() {
+  local receipt
+  receipt="$(receipt_dir)/install-receipt.json"
+  [ -s "$receipt" ] || { say "No install receipt yet. 'install.sh run' saves one; then run this again."; return 0; }
+  command -v node >/dev/null 2>&1 || { say "install.sh gains needs node."; return 1; }
+  RECEIPT="$receipt" NOW_LA="$(measure_launchagents)" NOW_SKILLS="$(measure_claude_skills)" \
+    NOW_HOOKS="$(measure_claude_hooks)" NOW_MD="$(measure_claude_md_bytes)" NOW_PERMS="$(measure_claude_permissions)" \
+    node -e '
+const r = JSON.parse(require("fs").readFileSync(process.env.RECEIPT, "utf-8"));
+const b = r.before || {}; const e = process.env;
+const v = (x) => (x === undefined || x === null ? "n/a" : String(x));
+const row = (name, before, now) => console.log(name.padEnd(22) + v(before).padStart(10) + v(now).padStart(10));
+console.log(`Since the install (${v(b.taken_at)})`);
+console.log("Metric".padEnd(22) + "Before".padStart(10) + "Now".padStart(10));
+row("LaunchAgents", b.launchagents, e.NOW_LA);
+row("Claude skills", b.claude_skills, e.NOW_SKILLS);
+row("Claude hooks", b.claude_hooks, e.NOW_HOOKS);
+row("CLAUDE.md (bytes)", b.claude_md_bytes, e.NOW_MD);
+row("Claude permissions", b.claude_permissions, e.NOW_PERMS);
+const s = r.run && r.run.seconds;
+if (Number.isFinite(s)) {
+  const t = s >= 60 ? Math.round(s / 60) + " min" : s + " s";
+  console.log("Time to configured: " + t + (r.run.ok ? "" : " (the run did not finish: " + v(r.run.failed_step) + ")"));
+}
+'
+}
+
 critical() {
+  receipt_finish false "$1"
   say ""
   say "✗ Critical error during $1. Restoring your previous settings..."
   if do_restore "$BACKUP_ID"; then
@@ -276,6 +371,8 @@ cmd_run() {
     shift
   done
   [ "$yes" -eq 1 ] || { say "Show the plan first (install.sh plan), then rerun with --yes."; exit 2; }
+  # Before anything changes: the "before" half of the install receipt.
+  receipt_begin
 
   step "1/7 Check prerequisites"
   preflight || { say "Install the missing tools above, then run again. Nothing was changed."; exit 1; }
@@ -314,10 +411,12 @@ cmd_run() {
   "$AGENTBREW_CMD" lint || critical "verification (agentbrew lint)"
   "$AGENTBREW_CMD" status --ci || say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."
 
+  receipt_finish true
   step "Done"
   say "agentbrew is installed. Backup: $BACKUP_ROOT/$BACKUP_ID"
   say "Undo any time: bash $REPO_DIR/scripts/install.sh restore $BACKUP_ID"
   say "See what it does on your machine: agentbrew metrics"
+  say "See what the install changed (now, and again in a week): bash $REPO_DIR/scripts/install.sh gains"
   say ""
   say "Found something to fix in agentbrew while installing? Send it upstream:"
   say "  cd $REPO_DIR && git switch -c fix/<short-name>"
@@ -329,6 +428,7 @@ case "${1:-}" in
   plan) cmd_plan ;;
   run) shift; cmd_run "$@" ;;
   restore) shift; do_restore "${1:-}" ;;
+  gains) cmd_gains ;;
   backups) ls -1 "$BACKUP_ROOT" 2>/dev/null || say "No backups yet." ;;
   -h|--help|help|"") usage ;;
   *) say "Unknown command: $1"; usage; exit 2 ;;

@@ -250,6 +250,10 @@ inside it, so the loop exits at once and looks finished.
 For UI work, open the screenshots of every view yourself and read them for
 wrong content, not only for presence. Tests that assert "the view shows
 text" miss logic bugs such as the same task repeated on every day.
+When the goal brings the user's own data into the app (an import, a sync),
+also open the views on that real data, read-only, after the synthetic tests
+pass. Real data finds what seeds hide: dates without a time zone, raw markup
+in text, slow paths at real sizes, and template values a check flags.
 
 When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not

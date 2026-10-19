@@ -545,6 +545,17 @@
         "Independent tasks run as parallel workers within the parallel cap, each in its own worktree",
         "Someone else's uncommitted change in the main checkout is left untouched"
       ]
+    },
+    {
+      "id": 45,
+      "prompt": "/goal find my career pages in Notion and merge them all into this app",
+      "expected_output": "The agent maps each Notion kind to an app feature, builds the importer test-first on a synthetic bundle, has fetch subagents write the private bundle files directly (counts only in chat), checks counts against the live source, and then opens the app's views on the real imported data, read-only, fixing what only real data shows before it reports.",
+      "expectations": [
+        "Fetch subagents write private files directly; the main chat sees counts only",
+        "The importer is tested on synthetic data before the real import",
+        "Counts are compared with the live source (N/N)",
+        "The views are read on the real imported data, read-only, before the done claim"
+      ]
     }
   ]
 }

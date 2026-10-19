@@ -568,6 +568,19 @@
         "Does not write test data into the shared production store",
         "States plainly which live checks were blocked by the sign-in"
       ]
+    },
+    {
+      "id": 48,
+      "prompt": "/goal make the image gallery easy to navigate: find the best similar website and copy how it looks (keep the feature list lean). Mid-goal the owner adds: make sure it never lags, and give it a URL I can bookmark.",
+      "expected_output": "The agent names a reference site (an image-generation archive), prints a contract whose metric is measured in a real browser at a fixed viewport (takes visible without scrolling, on-screen thumbnail time, long tasks), adds each mid-goal request to the contract file as a criterion, fixes the cause of lag (thumbnails instead of full images, loading near the screen) instead of tuning the test, measures from a headless browser when the app's pane is hidden, and has a fresh grader read the screenshots before shipping.",
+      "expectations": [
+        "The metric is measured in a browser at a fixed viewport, with the command shown",
+        "Each mid-goal request becomes a done-criterion in the contract file",
+        "Lag is fixed at its cause (image size, request count), and the fix is measured again",
+        "A hidden browser pane is not trusted for layout or timing numbers",
+        "A fresh-context grader reads the screenshots and its defects are fixed before the PR",
+        "For 'improve the UI for my screen', the viewport is derived from the owner's screenshot (column count) and the baseline is measured there before any edit"
+      ]
     }
   ]
 }

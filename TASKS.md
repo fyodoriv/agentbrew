@@ -386,14 +386,3 @@
   - **Pivot**: if the current shape still validates, close this task with the schema evidence.
   - **Anchor**: opencode config docs (https://opencode.ai/docs/config/), models and providers pages.
 
-- [ ] `agentbrew catalog` can order catalog skills by their public skills.sh install count
-  - **ID**: catalog-browse-skills-sh-install-counts
-  - **Tags**: catalog, ux, delegation
-  - **Details**: Follow-up of `catalog-install-popularity-signal` (decision: [`docs/decisions/catalog-install-popularity-signal.md`](docs/decisions/catalog-install-popularity-signal.md)). The skills.sh search API (`GET https://skills.sh/api/search?q=<name>&limit=<n>`) returns an `installs` count per skill. Read it for catalog skills only, behind a `--sort installs` option on `agentbrew catalog`, with a short timeout and an offline fallback to the editorial order. Send only the search text; no user data. MCP servers and rules keep the editorial tiers.
-  - **Files**: `src/catalog/browse.ts`, `src/commands/cli-catalog.ts`, their tests, README "Install a skill or MCP server"
-  - **Acceptance**: `agentbrew catalog --skills --sort installs` lists catalog skills by skills.sh installs, highest first; a test with a stubbed fetch covers the order, a timeout, and a skill skills.sh does not know.
-  - **Hypothesis**: an ecosystem-wide install count shows which catalog skills people actually use, which a one-machine log cannot.
-  - **Measurement**: `agentbrew catalog --skills --sort installs --json | jq '.[0:5] | map(.installs)'` returns descending numbers.
-  - **Success**: the top of the `--sort installs` list shows non-zero install counts, highest first.
-  - **Pivot**: if the skills.sh API changes shape or rate-limits browse, drop the option and keep the editorial order.
-  - **Anchor**: VISION.md "Delegate, contribute, absorb"; skills.sh public search API.

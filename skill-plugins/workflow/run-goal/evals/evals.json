@@ -510,6 +510,17 @@
         "The agent never writes, sends or uses a secret the user pasted in chat, and asks for it to be rotated",
         "Verification starts 2+ sessions concurrently and every one reaches the service"
       ]
+    },
+    {
+      "id": 44,
+      "prompt": "/goal verify the 67 estimated facts in my knowledge base against primary sources",
+      "expected_output": "The agent splits the files across a few research subagents with disjoint files, limits them to web fetch and search (no browser tools), caps attempts per fact, has them save after each file, regenerates any derived fixtures once all finish, and reports estimates before and after with the reasons for the rest.",
+      "expectations": [
+        "Subagents get disjoint file sets",
+        "Browser tools are forbidden for research subagents",
+        "Each fact gets a bounded number of attempts, then stays unverified with a reason",
+        "Derived fixtures are regenerated once, after every subagent finishes"
+      ]
     }
   ]
 }

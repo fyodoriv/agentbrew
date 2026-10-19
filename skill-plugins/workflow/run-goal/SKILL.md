@@ -162,6 +162,9 @@ continue?". The user set a goal so that they can be away.
   when a mapped path is missing, and it is the coverage metric in the contract.
 - A subagent that stops on a usage limit keeps its work. After the reset,
   resume it with `SendMessage`; do not redo its work or start a new agent.
+- Research subagents use web fetch and search only, never browser tools: a
+  browser call can hang for hours. Give each fact two fetch attempts, then
+  keep it marked unverified with the reason, and save after each file.
 - Work in small verified steps. Run the guard after each change that matters.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the

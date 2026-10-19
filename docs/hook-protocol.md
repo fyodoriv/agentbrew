@@ -218,7 +218,11 @@ count, even when it cites an old commit. A rule that also required a merged
 `run-goal` PR was removed: goal sessions in other folders cannot write the
 agentbrew repo through the sandbox, so the gate blocked three times and gave
 up. Such runs file a task and cite its id instead. It gives up after
-three blocks, so a goal can always end. On success it deletes the contract.
+three blocks, so a goal can always end. It never deletes the contract: a
+retro often passes mid-goal (an earlier version deleted it on the first
+passing Stop, so a goal lost its contract four times in one run and a skill
+used later was no longer checked). The next `/goal` replaces the contract,
+and files older than seven days are removed.
 
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was

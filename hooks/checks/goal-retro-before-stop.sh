@@ -26,10 +26,11 @@
 # **State** (session-file scope, shared with goal-set-loads-run-goal and
 # goal-contract-before-edit): the hook acts only while
 # `<session_id>.contract.md` exists (a goal with a saved contract). It counts
-# its blocks in `<session_id>.stopblocks`. On success, or after three blocks,
-# it deletes the contract and the counter so the session can end. The retro
-# file stays for review; goal-set-loads-run-goal deletes retro files older
-# than seven days.
+# its blocks in `<session_id>.stopblocks`. On success it clears the counter;
+# after three blocks it leaves the counter at the limit and allows. It never
+# deletes the contract: a retro often passes mid-goal, and a later skill must
+# still be listed. goal-set-loads-run-goal replaces both files on the next
+# /goal and deletes files older than seven days.
 #
 # **Bypass**: `HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1`
 #
@@ -66,10 +67,10 @@ if [ ! -f "$CONTRACT" ]; then
   verdict_allow "$HOOK_ID" "no active goal contract"
 fi
 
-finish() {
-  rm -f "$CONTRACT" "$COUNTER"
-  verdict_allow "$HOOK_ID" "$1"
-}
+# Never delete the contract here: a retro often passes mid-goal, and the
+# contract is the goal's record for the rest of the run (it is replaced by the
+# next /goal and aged out after seven days by goal-set-loads-run-goal).
+
 
 TRANSCRIPT="$(json_get "$INPUT" '.transcript_path')"
 SKILLS=""
@@ -94,14 +95,16 @@ for skill in $SKILLS; do
 done
 
 if [ -z "$MISSING" ]; then
-  finish "retro lists every skill used"
+  rm -f "$COUNTER"
+  verdict_allow "$HOOK_ID" "retro lists every skill used"
 fi
 
 blocks=0
 [ -f "$COUNTER" ] && blocks="$(cat "$COUNTER" 2>/dev/null || echo 0)"
 case "$blocks" in "" | *[!0-9]*) blocks=0 ;; esac
 if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
-  finish "gave up after $MAX_BLOCKS blocks; missing:$MISSING"
+  # The counter stays at the limit, so later Stops in this goal allow too.
+  verdict_allow "$HOOK_ID" "gave up after $MAX_BLOCKS blocks; missing:$MISSING"
 fi
 echo $((blocks + 1)) >"$COUNTER"
 

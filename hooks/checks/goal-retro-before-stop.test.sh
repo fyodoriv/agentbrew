@@ -45,9 +45,18 @@ printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: no new edit. Ev
 expect "run-goal 'no new edit ... already covers' still blocks" 2 "$(run s1)"
 printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: new eval, PR #130\n' >"$RUN_GOAL_STATE_DIR/s1.retro.md"
 expect "every skill with evidence allows" 0 "$(run s1)"
-expect "contract removed on success" 0 "$(has s1.contract.md)"
+# The goal may still be running after a retro passes (a mid-goal retro);
+# the contract is the goal's record, so a Stop never deletes it.
+expect "contract kept on success" 1 "$(has s1.contract.md)"
 expect "counter removed on success" 0 "$(has s1.stopblocks)"
 expect "retro kept for review" 1 "$(has s1.retro.md)"
+expect "a later Stop with the same retro still allows" 0 "$(run s1)"
+expect "contract still kept after a second passing Stop" 1 "$(has s1.contract.md)"
+# Work goes on and uses a new skill: the gate must still see it.
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"code-review"}}]}}' >>"$TX"
+expect "a skill used after the retro blocks again" 2 "$(run s1)"
+printf -- '- code-review: Step 6a test, PR #171\n' >>"$RUN_GOAL_STATE_DIR/s1.retro.md"
+expect "listing the new skill allows again" 0 "$(run s1)"
 
 touch "$RUN_GOAL_STATE_DIR/s2.contract.md"
 printf -- '- run-goal: task run-goal-eval-123\n' >"$RUN_GOAL_STATE_DIR/s2.retro.md"
@@ -55,7 +64,8 @@ expect "skill read via SKILL.md must be listed" 2 "$(run s2)"
 expect "second block" 2 "$(run s2)"
 expect "third block" 2 "$(run s2)"
 expect "gives up after three blocks" 0 "$(run s2)"
-expect "contract removed after giving up" 0 "$(has s2.contract.md)"
+expect "contract kept after giving up" 1 "$(has s2.contract.md)"
+expect "stays given up on the next Stop" 0 "$(run s2)"
 
 touch "$RUN_GOAL_STATE_DIR/s3.contract.md"
 expect "bypass allows" 0 "$(run s3 HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1)"

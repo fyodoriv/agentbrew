@@ -44,6 +44,9 @@ async function open(browser, url, size, scheme = "light", extra = {}) {
   }); // each view from a clean start
   await p.goto(url);
   await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    for (const a of document.getAnimations()) a.finish(); // measure the resting page, not a fade-in frame
+  });
   return p;
 }
 

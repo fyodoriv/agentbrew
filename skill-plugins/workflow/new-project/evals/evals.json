@@ -178,6 +178,17 @@
         "Story tests named test_usNN are listed and checked by check-docs",
         "Shows check-setup --strict at 100%"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "my Python finance assistant prints a long strategy document; users need to plan ahead and switch between views",
+      "expected_output": "The agent keeps the Python logic, adds a local JSON API, and builds the UI as a TypeScript web app (React + Vite) with one view per section and a planning view; it records the choice in an ADR and adds the web lint, typecheck, test and build to scripts/check.sh and CI.",
+      "expectations": [
+        "UI is TypeScript, not Python templates or a notes app",
+        "Logic stays in the existing language behind a JSON API",
+        "An ADR records the TypeScript-for-multi-view-UI rule",
+        "The gate and CI build, lint, typecheck and test the web app"
+      ]
     }
   ]
 }

@@ -463,6 +463,17 @@
         "Private data stays unread even when the agent's own app run is blocked by the sandbox",
         "The question round asks only about shipping approval and genuine scope choices"
       ]
+    },
+    {
+      "id": 40,
+      "prompt": "/goal ensure everything I listed in this chat is done, and make the UI a web app in TypeScript (then, mid-run: drop Notion completely)",
+      "expected_output": "The agent first checks what is still open from earlier goals in the chat (unmerged PRs, pending CI, retro lines) and finishes it with evidence. It builds the web app in TypeScript. On the mid-run request it updates the contract's criterion in place, removes every trace (code, connector, scope, docs, tests), and adds a guard test that fails if the integration returns.",
+      "expectations": [
+        "Earlier goals' open items are listed and closed with evidence (merged PRs, green CI)",
+        "The mid-run change edits the saved contract, not just the chat",
+        "Removal covers code, config and docs",
+        "A guard test fails if the removed integration comes back"
+      ]
     }
   ]
 }

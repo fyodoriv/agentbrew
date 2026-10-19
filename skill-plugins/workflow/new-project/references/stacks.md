@@ -12,6 +12,11 @@ the generator owns the manifest, and `scripts/check.sh` finds it.
 | Heavy app: hot loops, big files, native desktop, low memory, single static binary | Rust | speed and memory safety; small binaries; Tauri for desktop UIs |
 | Mixed (Rust core, TS UI) | Rust + TypeScript | [Tauri](https://tauri.app/) or a Rust CLI with a TS web UI |
 
+**Owner rule: a UI with more than one view is a TypeScript web app** (React +
+Vite by default), even when the logic is Python or Rust. The logic serves JSON
+to the UI (a local API for private apps). A Markdown report or a notes-app page
+is not a UI for anything people plan or navigate in.
+
 Ask the user only when two rows fit equally. Record the choice in an ADR.
 
 ## Generators and toolchain

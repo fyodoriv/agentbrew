@@ -654,6 +654,18 @@
         "Finishes the drafts' Pending items and merges by each repo's delivery rules",
         "Merges the default branch into a shared draft branch instead of rebasing or force-pushing it"
       ]
+    },
+    {
+      "id": 53,
+      "prompt": "/goal I need a dashboard view for this app that shows what is most efficient to do at work right now, today, this week, this month, this quarter, this year, this company, with an explanation why",
+      "expected_output": "The agent maps each horizon to a ranking the app already has, and builds no new opaque model. Every 'why' quotes the numbers behind the rank, so the user can check it. The metric counts the horizons rendered with a non-empty why on seeded data. The agent reads the screenshot itself and fixes wrong content that the presence tests miss: one horizon repeating another, or a claim that cannot be true for tied items. The seed data is extended so that every horizon has real data, and an empty horizon shows the action that would create its data instead of invented advice.",
+      "expectations": [
+        "Each horizon is tied to an existing, named ranking or data source in the contract",
+        "Each 'why' contains the numbers used by the ranking, not generic advice",
+        "The metric is horizons-with-why on seeded data, measured by a browser test",
+        "The agent opens the screenshot and fixes duplicated or overclaiming content before the PR",
+        "Empty horizons name the action that creates their data"
+      ]
     }
   ]
 }

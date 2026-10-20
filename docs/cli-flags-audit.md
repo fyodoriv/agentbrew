@@ -77,6 +77,8 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--skip-ccusage` | opt-out | Opt-out of a default (ccusage runs by default). |
 | `--skip-install` | opt-out | Opt-out of a default (init installs by default). |
 | `--skip-sync` | opt-out | Opt-out of a default (init syncs by default). |
+| `--revoke` | knob | Removes a plugin signer instead of adding one; a different action. |
+| `--signer` | knob | Supplies an SSH public key; input, not behavior. |
 | `--sources` | knob | Filters browse output to sources. |
 | `--threshold` | knob | Coverage threshold value for `--ci`. |
 | `--timeout` | knob | Probe timeout value. |

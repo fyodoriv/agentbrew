@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Signed company plugins** (#208 step 4): `plugin add` installs only from
+  SSH-signed tags checked against `~/.config/agent-plugins/allowed_signers`
+  (shared with dotfiles). New `plugin trust` / `--revoke` and
+  `plugin rollback`. The lock records the signer; a revoked signer fails sync.
 
 - **One-step install with your agent** — tell Claude Code (or Cursor, Codex)
   "Install agentbrew by following …/INSTALL.md". `scripts/install.sh` explains

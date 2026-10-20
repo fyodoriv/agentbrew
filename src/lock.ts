@@ -38,6 +38,10 @@ export interface PluginLockEntry {
   commit: string;
   tree: string;
   capabilitiesHash: string;
+  /** SSH public key that signed the tag (`<type> <base64>`). */
+  signer: string;
+  /** The entry before the last change; `plugin rollback` re-pins it. */
+  previous?: PluginLockEntry;
   /** Files and config keys the plugin emitted; `plugin remove` deletes them. */
   artifacts: string[];
   lockedAt: string;

@@ -3,7 +3,7 @@
  * section, and `plugin add/list/remove` with a tree hash.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
@@ -16,12 +16,15 @@ const { home, previousHome } = vi.hoisted(() => {
   const previous = process.env.HOME;
   const dir = mk(j(td(), "plugins-home-"));
   process.env.HOME = dir;
+  process.env.GIT_CONFIG_GLOBAL = "/dev/null";
+  process.env.GIT_CONFIG_NOSYSTEM = "1";
   return { home: dir, previousHome: previous };
 });
 
-import { findLockViolations, readLock } from "../lock.js";
+import { findLockViolations, readLock, writeLock } from "../lock.js";
 import { validateManifest } from "./manifest.js";
-import { addPlugin, listPlugins, parsePluginSpec, pluginDir, removePlugin } from "./store.js";
+import { allowedSignersPath, revokeSigner, trustSigner } from "./signers.js";
+import { addPlugin, listPlugins, parsePluginSpec, pluginDir, removePlugin, rollbackPlugin } from "./store.js";
 
 const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
 const MANIFEST = {
@@ -36,13 +39,42 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, env: GIT_ENV, encoding: "utf-8", stdio: "pipe" }).trim();
 }
 
-function makePluginRepo(manifest: unknown = MANIFEST, tag = "v1.0.0"): string {
+const KEYS = mkdtempSync(join(tmpdir(), "plugin-keys-"));
+function makeKey(name: string): { file: string; pub: string } {
+  const file = join(KEYS, name);
+  if (!existsSync(file)) execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "", "-f", file]);
+  return { file, pub: readFileSync(`${file}.pub`, "utf-8").trim() };
+}
+const SIGNER = makeKey("signer");
+const OTHER = makeKey("other");
+
+/** A plugin repo whose `tag` is SSH-signed by `key` (or lightweight when key is null). */
+function makePluginRepo(manifest: unknown = MANIFEST, tag = "v1.0.0", key: { file: string } | null = SIGNER): string {
   const dir = mkdtempSync(join(tmpdir(), "plugin-src-"));
   writeFileSync(join(dir, "agentbrew-plugin.yaml"), yaml.dump(manifest));
   git(dir, "init", "-q");
   git(dir, "add", ".");
   git(dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "init");
-  git(dir, "tag", tag);
+  if (key) {
+    git(
+      dir,
+      "-c",
+      "gpg.format=ssh",
+      "-c",
+      `user.signingkey=${key.file}`,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@example.com",
+      "tag",
+      "-s",
+      tag,
+      "-m",
+      tag,
+    );
+  } else {
+    git(dir, "tag", tag);
+  }
   return dir;
 }
 
@@ -94,7 +126,7 @@ describe("parsePluginSpec", () => {
 describe("plugin add / list / remove", () => {
   it("add clones the ref, validates, and locks commit, tree and capabilities hash", () => {
     const src = makePluginRepo();
-    const entry = addPlugin(`${src}@v1.0.0`, { yes: true });
+    const entry = addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
 
     expect(entry.name).toBe("acme");
     expect(existsSync(join(pluginDir("acme"), "agentbrew-plugin.yaml"))).toBe(true);
@@ -108,26 +140,107 @@ describe("plugin add / list / remove", () => {
 
   it("add refuses an invalid manifest and leaves nothing behind", () => {
     const src = makePluginRepo({ ...MANIFEST, bootstrap: "./x.sh" });
-    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true })).toThrow(/manifest/i);
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub })).toThrow(/manifest/i);
     expect(existsSync(pluginDir("acme"))).toBe(false);
     expect(readLock().plugins ?? []).toEqual([]);
   });
 
   it("add refuses without approval when not confirmed", () => {
     const src = makePluginRepo();
-    expect(() => addPlugin(`${src}@v1.0.0`, { yes: false })).toThrow(/approval/i);
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: false, signer: SIGNER.pub })).toThrow(/approval/i);
     expect(existsSync(pluginDir("acme"))).toBe(false);
   });
 
   it("add refuses a name that is already installed", () => {
     const src = makePluginRepo();
+    addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub })).toThrow(/already installed/);
+  });
+
+  it("add records the signer and writes it to the shared allowed-signers file", () => {
+    const src = makePluginRepo();
+    const entry = addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
+    expect(entry.signer).toBe(SIGNER.pub);
+    expect(readFileSync(allowedSignersPath(), "utf-8")).toContain(`acme namespaces="git" ${SIGNER.pub}`);
+  });
+
+  it("add refuses an unsigned (lightweight) tag", () => {
+    const src = makePluginRepo(MANIFEST, "v1.0.0", null);
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub })).toThrow(/signed tag/i);
+    expect(existsSync(pluginDir("acme"))).toBe(false);
+  });
+
+  it("add refuses a tag signed by a key the user did not approve", () => {
+    const src = makePluginRepo(MANIFEST, "v1.0.0", OTHER);
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub })).toThrow(/signature/i);
+    expect(readLock().plugins ?? []).toEqual([]);
+  });
+
+  it("add refuses when no signer is trusted for the plugin", () => {
+    const src = makePluginRepo();
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true })).toThrow(/no trusted signer/i);
+  });
+
+  it("a signer trusted for another plugin name is not trusted for this one", () => {
+    trustSigner("globex", SIGNER.pub);
+    const src = makePluginRepo();
+    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true })).toThrow(/no trusted signer/i);
+  });
+
+  it("trust then add works without --signer; revoke makes sync fail closed", () => {
+    trustSigner("acme", SIGNER.pub);
+    const src = makePluginRepo();
     addPlugin(`${src}@v1.0.0`, { yes: true });
-    expect(() => addPlugin(`${src}@v1.0.0`, { yes: true })).toThrow(/already installed/);
+    expect(findLockViolations([])).toEqual([]);
+
+    revokeSigner("acme", SIGNER.pub);
+
+    expect(findLockViolations([]).map((v) => `${v.source} ${v.currentSha}`)).toEqual(["plugin acme signer revoked"]);
+  });
+
+  it("rollback re-pins the previous lock entry after verifying it", () => {
+    const src = makePluginRepo();
+    git(src, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "two", "--allow-empty");
+    git(
+      src,
+      "-c",
+      "gpg.format=ssh",
+      "-c",
+      `user.signingkey=${SIGNER.file}`,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@example.com",
+      "tag",
+      "-s",
+      "v1.1.0",
+      "-m",
+      "v1.1.0",
+    );
+    const old = addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
+    removePlugin("acme");
+    const current = addPlugin(`${src}@v1.1.0`, { yes: true });
+    const lock = readLock();
+    lock.plugins = [{ ...current, previous: { ...old, previous: undefined } }];
+    writeLock(lock);
+
+    const rolled = rollbackPlugin("acme");
+
+    expect(rolled.ref).toBe("v1.0.0");
+    expect(rolled.commit).toBe(old.commit);
+    expect(rolled.previous?.ref).toBe("v1.1.0");
+    expect(findLockViolations([])).toEqual([]);
+  });
+
+  it("rollback without a previous entry is an error", () => {
+    const src = makePluginRepo();
+    addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
+    expect(() => rollbackPlugin("acme")).toThrow(/no previous/i);
   });
 
   it("remove deletes the checkout and the lock entry", () => {
     const src = makePluginRepo();
-    addPlugin(`${src}@v1.0.0`, { yes: true });
+    addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
     removePlugin("acme");
     expect(existsSync(pluginDir("acme"))).toBe(false);
     expect(readLock().plugins ?? []).toEqual([]);
@@ -135,7 +248,7 @@ describe("plugin add / list / remove", () => {
 
   it("sync check: a changed byte in the plugin checkout is a lock violation", () => {
     const src = makePluginRepo();
-    addPlugin(`${src}@v1.0.0`, { yes: true });
+    addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
     expect(findLockViolations([])).toEqual([]);
 
     appendFileSync(join(pluginDir("acme"), "agentbrew-plugin.yaml"), "\n# tampered\n");

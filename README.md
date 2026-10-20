@@ -495,10 +495,16 @@ A plugin is a git repo with `agentbrew-plugin.yaml` at its root. The schema is `
 
 <!-- runnable: false reason="needs AGENTBREW_PLUGINS_V2=1 and a reachable plugin repo" -->
 ```bash
-agentbrew plugin add git@git.example.com:acme/agentbrew-acme.git@v1.0.0   # shows capabilities, asks once
+agentbrew plugin add git@git.example.com:acme/agentbrew-acme.git@v1.0.0 --signer "ssh-ed25519 AAAA..."   # shows capabilities and signer, asks once
 agentbrew plugin list
+agentbrew plugin trust acme --signer "ssh-ed25519 BBBB..."            # add a signer (key rotation); --revoke removes one
+agentbrew plugin rollback acme                                         # re-pin the previous lock entry
 agentbrew plugin remove acme
 ```
+
+- The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
+- Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
+- Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
 - `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
 - It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.

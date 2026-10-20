@@ -224,7 +224,7 @@ Hard boundaries. Out of scope unless a specific [trigger in the dissolution anal
 - **Absorbed features from competitors** — contribute to them or point users at them directly
 - **Backwards compatibility (pre-v1)** — one user today; removals are one commit
 - **A mirror of the team skills registry** — skills live in one dedicated repo; agentbrew registers it, not mirrors it
-- **Telemetry** — no client-side telemetry; leaderboards belong to skills.sh
+- **Telemetry** — no default client-side telemetry; only the opt-in weekly aggregate share (`agentbrew metrics share`); leaderboards belong to skills.sh
 - **Bi-directional sync** — agentbrew is one-way (Agentfile → agent configs)
 - **A daemon separate from the OS scheduler** — auto-repair uses launchd / systemd / Windows Task Scheduler
 
@@ -235,7 +235,7 @@ the full boundaries.
 
 - Not a per-agent config UI (NG1), and not a skill author or host (NG2).
 - No bespoke support for excluded agents (NG3) and no new work for frozen ones (NG4).
-- No telemetry: every log stays on the user's machine.
+- No telemetry by default. Opt-in sharing of weekly aggregate numbers only; never content, paths, or names.
 - No content hosting, registry, IDE extension, framework, or daemon of its own.
 
 ## Coexistence with other tools

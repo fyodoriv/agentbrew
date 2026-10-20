@@ -22,6 +22,7 @@ import {
 import { checkLaunchAgentPathDrift } from "./drift-checks/launchagent-path.js";
 import { driftFix } from "./drift-fixes.js";
 import { runMcpHealCycle } from "./mcp/heal-cycle.js";
+import { maybeScheduledShare } from "./metrics/weekly.js";
 import { snapshotAgentConfigs } from "./ops.js";
 import type { RepairAction } from "./repair-log.js";
 import { saveRepairLog } from "./repair-log.js";
@@ -291,4 +292,7 @@ async function runFix(started: number): Promise<void> {
   }
 
   reportRemainingDrift(remainingItems, driftBefore);
+
+  // Opt-in weekly metrics share (#346). Off unless `metrics share --schedule weekly`.
+  maybeScheduledShare();
 }

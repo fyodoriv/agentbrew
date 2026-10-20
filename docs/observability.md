@@ -1,8 +1,10 @@
 # Observability
 
 How to see what agentbrew did on this machine, what failed, and how to fix it.
-Everything stays on the machine. agentbrew has no telemetry and no external
-error reporter ([`VISION.md`](VISION.md) § Non-goals).
+Everything stays on the machine by default. agentbrew has no default
+telemetry and no external error reporter ([`VISION.md`](VISION.md) §
+Non-goals). The one exit is the opt-in
+[weekly metrics share](#weekly-metrics-share-opt-in).
 
 ## Logs
 
@@ -73,3 +75,45 @@ drift=1 status=failed
 
 The fixes live in `DRIFT_FIXES` in `src/drift-fixes.ts`. Its type is a record
 over every `DriftItem` type, so a new drift type without a fix fails `tsc`.
+
+## Weekly metrics share (opt-in)
+
+The only data that can leave the machine. It is off by default, and it
+carries numbers only: never content, paths, or names.
+
+**Provider contract.** Each tool writes one file per ISO week to
+`~/.local/share/<tool>/metrics/weekly-<YYYY-Www>.json`. The file matches
+[`src/metrics/weekly-metrics.schema.json`](../src/metrics/weekly-metrics.schema.json):
+
+```json
+{ "tool": "agentbrew", "version": "0.4.0", "week": "2026-W43",
+  "machine_id": "<32 hex chars>", "metrics": { "sync_runs": 12, "sync_ok_rate": 1 } }
+```
+
+Only `tool`, `version`, `week`, and `machine_id` are strings, and each must
+match a strict pattern. Every metric is a number. `machine_id` is random and
+made on this machine (`~/.local/share/agentbrew/metrics/machine-id`, mode
+600). A sibling tool copies the schema file as is. A file that fails the
+schema is never sent; `share` names it and skips it.
+
+**agentbrew metrics.** From the last 7 days of the event log: `sync_runs`,
+`sync_ok_rate`, `sync_p95_ms`, `repair_runs`, `drift_repaired`,
+`commands_run`, `errors_total`, and `errors_usNN` per user story.
+
+**Command.** `agentbrew metrics share` writes agentbrew's provider file,
+collects every valid provider file, and prints the exact payload.
+
+| Step | What happens |
+|---|---|
+| First run | Dry run: prints the payload, sends nothing. |
+| Later runs | Sends to the sink. `--dry-run` always previews; `--send` skips the preview. |
+| `--sink <spec>` | `dir:<path>` copies files to `<path>/<tool>/<machine_id>/`. `git:<path>` does the same in a git checkout and commits (you push). `none` sends nothing. Saved. |
+| `--schedule weekly` | The scheduled `agentbrew fix` sends once per ISO week. `--schedule off` stops it. Saved. |
+
+The base repo sets no sink. An org overlay or plugin sets
+`AGENTBREW_METRICS_SINK` (same spec). A saved `--sink` wins over it. The
+config lives in `~/.config/agentbrew/metrics-share.json`.
+
+`AGENTBREW_EVENTS=0` turns off the event log, the provider file, the share,
+and the schedule. Tests: `src/metrics/weekly.test.ts` (including the "no
+strings except the four" check).

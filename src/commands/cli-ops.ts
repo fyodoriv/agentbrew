@@ -6,6 +6,7 @@ import { lint } from "../lint.js";
 import { measureContextBudget } from "../measure/context-budget.js";
 import { parseContextBudgetStaleDuration } from "../measure/context-budget-throttle.js";
 import { collectUsageMetrics, renderUsageShare, renderUsageText } from "../metrics/usage.js";
+import { runShare, type ShareResult } from "../metrics/weekly.js";
 
 function resolveStaleDuration(value?: string): { ifStaleMs?: number; error?: string } {
   if (!value) return {};
@@ -20,6 +21,20 @@ function resolveStaleDuration(value?: string): { ifStaleMs?: number; error?: str
  * Registers ops/maintenance commands: fix, lint, measure, metrics, contribute.
  * Extracted from cli.ts to keep the entry point concise.
  */
+/** --dry-run wins, --send forces a send, otherwise the saved review state decides. */
+function shareDryRunFlag(options: { dryRun?: boolean; send?: boolean }): boolean | undefined {
+  if (options.dryRun) return true;
+  return options.send ? false : undefined;
+}
+
+function printShareResult(result: ShareResult): void {
+  if (result.payload.length) console.log(JSON.stringify(result.payload, null, 2));
+  for (const bad of result.invalid)
+    console.error(`Skipped invalid provider file ${bad.path}: ${bad.errors.join(", ")}`);
+  console.log(result.message);
+  if (result.dryRun && result.payload.length) console.log("Run it again (or pass --send) to send this payload.");
+}
+
 export function registerOpsCommands(program: Command, version = "unknown"): void {
   program
     .command("fix", { hidden: true })
@@ -76,18 +91,18 @@ export function registerOpsCommands(program: Command, version = "unknown"): void
       },
     );
 
-  program
-    .command("metrics")
+  const metrics = program.command("metrics");
+  metrics
     .description("Show local agent time, hook, and MCP metrics; --share writes a privacy-safe Markdown snapshot")
     .option("--days <n>", "Days to cover", "7")
     .option("--json", "Print the metrics as JSON")
     .option("--share [file]", "Write an aggregate-only Markdown snapshot to <file> (default: stdout)")
     .action(async (options: { days: string; json?: boolean; share?: string | boolean }) => {
-      const metrics = await collectUsageMetrics({ days: Number(options.days), version });
+      const usage = await collectUsageMetrics({ days: Number(options.days), version });
       if (options.json) {
-        console.log(JSON.stringify(metrics, null, 2));
+        console.log(JSON.stringify(usage, null, 2));
       } else if (options.share) {
-        const markdown = renderUsageShare(metrics);
+        const markdown = renderUsageShare(usage);
         if (typeof options.share === "string") {
           writeFileSync(options.share, markdown);
           console.log(`Wrote ${options.share}. Review it, then attach it to an issue or PR.`);
@@ -95,7 +110,35 @@ export function registerOpsCommands(program: Command, version = "unknown"): void
           process.stdout.write(markdown);
         }
       } else {
-        console.log(renderUsageText(metrics));
+        console.log(renderUsageText(usage));
+      }
+    });
+
+  metrics
+    .command("share")
+    .description("Opt-in: send weekly aggregate numbers (no content) to a sink; the first run is a dry run")
+    .option("--dry-run", "Print what would leave this machine; send nothing")
+    .option("--send", "Send now, even before a reviewed dry run")
+    .option("--sink <spec>", "Where to send: dir:<path>, git:<path>, or none (saved)")
+    .option("--schedule <when>", "weekly or off: send once a week from the auto-repair scheduler (saved)")
+    .action((options: { dryRun?: boolean; send?: boolean; sink?: string; schedule?: string }) => {
+      if (options.schedule && options.schedule !== "weekly" && options.schedule !== "off") {
+        console.error("--schedule takes weekly or off.");
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        printShareResult(
+          runShare({
+            version,
+            sink: options.sink,
+            schedule: options.schedule as "weekly" | "off" | undefined,
+            dryRun: shareDryRunFlag(options),
+          }),
+        );
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exitCode = 1;
       }
     });
 

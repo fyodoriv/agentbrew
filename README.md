@@ -470,6 +470,8 @@ Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-p
 
 `agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers. `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
 
+`agentbrew metrics share` is an opt-in weekly share of aggregate numbers only. The first run is a dry run that prints the exact payload. Pick a sink with `--sink dir:<path>`, `--sink git:<path>`, or `--sink none`; the base install has no default sink (an org overlay can set `AGENTBREW_METRICS_SINK`). `--schedule weekly` sends once a week from the auto-repair scheduler. `AGENTBREW_EVENTS=0` turns it all off. Details: [`docs/observability.md`](docs/observability.md#weekly-metrics-share-opt-in).
+
 ## Share config across a team
 
 Commit an `Agentfile.yaml` to a git repo; teammates clone it and symlink it as their global Agentfile.
@@ -652,6 +654,7 @@ agentbrew upgrade [--check]            Check for / install CLI updates
 agentbrew env {check|sanitize}         Review env vars that could leak across sessions
 agentbrew completions                  Shell completions (bash, zsh, fish)
 agentbrew metrics [--days N] [--json] [--share [file]]
+agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none] [--schedule weekly|off]
                                        Local agent time, hook, and MCP metrics;
                                        --share writes a privacy-safe snapshot
 agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]

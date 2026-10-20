@@ -13,9 +13,14 @@ vi.mock("../measure/context-budget.js", () => ({
   measureContextBudget: vi.fn().mockReturnValue({ snapshot: {}, writtenPaths: [], exitCode: 0 }),
 }));
 
+vi.mock("../metrics/weekly.js", () => ({
+  runShare: vi.fn().mockReturnValue({ dryRun: true, payload: [], invalid: [], sent: 0, message: "Dry run" }),
+}));
+
 import { fix } from "../health.js";
 import { lint } from "../lint.js";
 import { measureContextBudget } from "../measure/context-budget.js";
+import { runShare } from "../metrics/weekly.js";
 import { registerOpsCommands } from "./cli-ops.js";
 import { buildTestProgram } from "./test-program.js";
 
@@ -117,6 +122,25 @@ describe("registerOpsCommands", () => {
     it("`clean` is not a valid command", async () => {
       const program = buildProgram();
       await expect(program.parseAsync(["node", "test", "clean", "my-skill"])).rejects.toThrow();
+    });
+  });
+
+  describe("metrics share command", () => {
+    it("defaults to the saved dry-run state and passes the sink", async () => {
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "metrics", "share", "--sink", "dir:/tmp/x"]);
+      expect(vi.mocked(runShare)).toHaveBeenCalledWith(
+        expect.objectContaining({ sink: "dir:/tmp/x", dryRun: undefined }),
+      );
+    });
+
+    it("--dry-run forces a dry run and --send forces a send", async () => {
+      await buildProgram().parseAsync(["node", "test", "metrics", "share", "--dry-run"]);
+      expect(vi.mocked(runShare)).toHaveBeenLastCalledWith(expect.objectContaining({ dryRun: true }));
+      await buildProgram().parseAsync(["node", "test", "metrics", "share", "--send", "--schedule", "weekly"]);
+      expect(vi.mocked(runShare)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dryRun: false, schedule: "weekly" }),
+      );
     });
   });
 });

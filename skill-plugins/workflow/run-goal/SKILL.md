@@ -265,6 +265,11 @@ Read the gate's own exit status, not a line that a wrapper printed. In
 `gate; echo "exit $?"` run in the background, the background task reports
 the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
+A count check such as `grep -c` exits 1 when the count is 0, so never chain
+the next step on it with `&&`: a clean leak check then skips the commit.
+
+Re-read every issue or PR this goal opened upstream. Another session may have
+shipped it while you worked.
 
 Before you call a failure "pre-existing", run the same test files with the
 same flags on the unchanged base (a detached worktree) and compare the two

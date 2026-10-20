@@ -127,6 +127,7 @@ check "[self-improving] check.sh logs step timings to .metrics/" sh -c 'test -x 
 check "[self-improving] RECURRING.md schedules a speed review" sh -c 'grep -qi "speed review" RECURRING.md'
 check "[self-improving] docs/learnings.md logs predicted vs observed" sh -c 'grep -q "Predicted" docs/learnings.md'
 check "[checkup] scripts/checkup.sh is the repo-wide checkup command" test -x scripts/checkup.sh
+check "[start] one command starts the app: commands/<name>.md declared in Agentfile.yaml, and the README names the start and config set" sh -c 'ls commands/*.md >/dev/null 2>&1 && grep -q "^commands:" Agentfile.yaml && grep -q "config set" README.md'
 check "[checkup] scripts/checkup.sh lists open PRs and branches first" sh -c 'grep -qE "open-work|gh pr list" scripts/checkup.sh'
 check "[caching] check.sh skips unchanged steps by input hash (NO_CACHE=1 forces a full run)" \
   sh -c 'grep -q "NO_CACHE" scripts/check.sh && grep -q "cache" scripts/check.sh'

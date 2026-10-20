@@ -211,6 +211,8 @@ if [ -z "$(ls -A "$dir" 2>/dev/null)" ] && cmd="$(copier_cmd)" && scaffold_with_
 else
   scaffold_with_copy
 fi
+# The agent command is /<name>: the template ships commands/start.md.
+if [ -f "$dir/commands/start.md" ] && [ ! -e "$dir/commands/$name.md" ]; then mv "$dir/commands/start.md" "$dir/commands/$name.md"; echo "created commands/$name.md (/$name)"; fi
 [ -d "$dir/.git" ] || git -C "$dir" init -q -b main 2>/dev/null || echo "note: git init failed; run it yourself"
 
 echo

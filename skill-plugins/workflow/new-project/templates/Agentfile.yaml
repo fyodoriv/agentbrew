@@ -7,3 +7,7 @@ skills:
   - next-task
   - wrap-up
 {{AGENTFILE_SKILLS}}
+
+# /{{NAME}} and other slash commands deploy from here (one agent command starts the app).
+commands:
+  - ./commands

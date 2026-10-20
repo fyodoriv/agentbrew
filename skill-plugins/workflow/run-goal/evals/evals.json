@@ -1000,6 +1000,17 @@
         "When an upstream PR shipped part of the issue, uses the shipped feature locally and files one follow-up issue for the rest",
         "Records the issues-only rule in memory or rules so the next goal follows it"
       ]
+    },
+    {
+      "id": 55,
+      "prompt": "/goal implement an always-running work tracker: daily log of done today + plan for tomorrow for my PM, watch all work sources, update goals from new context, give focus advice, and ask questions to get context (then, mid-goal: 'make the whole app one command by default, as a rule for every app'; 'goals must be approved by me in the UI'; 'PM report in the UI with copy or send'; 'update skills, memories, rules for my other apps')",
+      "expected_output": "The agent first maps the request onto what already exists (the watcher, the focus advice, owner-only goals) and builds only what is missing. It checks the request against the repo's own rules: 'update goals' meets 'only the owner sets goals', and 'send to PM' meets 'never sends'. It asks one round about those conflicts. Each later user message joins the contract file as a numbered done-criterion, with the metric denominator updated. The privacy-critical outputs (the PM draft, the web token, the inbox writes) go to a fresh grader before the push. The agent carries the pattern across apps through every channel the user named: a global shared rule, a memory, the new-project scaffold with a check, and one task in each app's queue under the standing approval.",
+      "expectations": [
+        "The contract names existing pieces it reuses and the rule conflicts it found",
+        "Each mid-goal request appears in the contract file as a new numbered criterion, and the metric denominator changes",
+        "A fresh grader reviews data exits (drafts, tokens, logs) before the push, and each finding gets a red-to-green test",
+        "The cross-app pattern lands in rules, memory, the project scaffold (with a machine check), and a task per named app"
+      ]
     }
   ]
 }

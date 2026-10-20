@@ -27,6 +27,7 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
 | self-improving | timed gate steps in `.metrics/`, a speed review (weekly by default, monthly for quiet repos; it may live in the repo's checkup), `docs/learnings.md` |
 | tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
+| start | one command starts the app: `<name>` with no arguments in the shell and `/<name>` in an agent (`commands/<name>.md`, declared in `Agentfile.yaml`); it sets up what is missing, starts long-running parts with sane defaults, refreshes, and prints what matters now; defaults live in one table and `<name> config` / `<name> config set <key> <value>` show and change them, so agents change settings the way people do (reference: careerbrew) |
 | checkup | `scripts/checkup.sh`: one repo-wide checkup (open PRs and branches first, health, cached gate, broken stories, speed, P0s, monthly audit); every app has one |
 | caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), every file a step reads is in its key (untracked contents too), affected-test selection includes tests that read a changed file, any change re-runs (prove it by editing one file and rerunning the same command), `NO_CACHE=1` forces all |
 

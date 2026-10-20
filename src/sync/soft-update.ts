@@ -66,6 +66,18 @@ function indexRefreshedSource(state: AgentBrewState, source: Source, cachePath: 
 }
 
 /**
+ * Pull and index one source now, with the same rules as sync (#295).
+ * Returns false when the source cannot be fetched. The caller saves state.
+ */
+export function indexSourceNow(state: AgentBrewState, source: Source): boolean {
+  const cachePath = getSourceCachePath(source);
+  if (!cachePath) return false;
+  indexRefreshedSource(state, source, cachePath);
+  source.indexedAt = new Date().toISOString();
+  return true;
+}
+
+/**
  * Refetch stale agentbrew-provided skill sources (catalog, team overlay, global
  * Agentfile). Uses the existing `getSourceCachePath` → `pullLatest` path so
  * offline/auth failures log a single warning and return gracefully — this never

@@ -6,11 +6,13 @@ import { mcpRegistryEnabled, resolveRegistryServer } from "../adapters/mcp-regis
 import { getStateSources } from "../agentfile.js";
 import { cliNotFound } from "../core/cli-error.js";
 import { COMMANDS_DIR } from "../paths.js";
-import { loadState, requireState } from "../state.js";
+import { loadState, requireState, saveState } from "../state.js";
 import { formatSuggestion } from "../suggest.js";
 import { loadSharedRules } from "../sync/rules-sync.js";
-import type { Source } from "../types.js";
+import { indexSourceNow } from "../sync/soft-update.js";
+import type { AgentBrewState, Source } from "../types.js";
 import { ICON_INFO, ICON_SUCCESS } from "../ui/output.js";
+import { refreshInstalledSkills } from "../update.js";
 import { expandHome } from "../utils.js";
 import { findBundle, missingBundleMembers } from "./bundles.js";
 import {
@@ -379,6 +381,8 @@ export async function install(
     return;
   }
 
+  if (await installKnownSourceUrl(state, name)) return;
+
   if (options?.from) {
     await installFromSpecificSource(state, name, options.from);
     flushInstallSummary();
@@ -387,6 +391,30 @@ export async function install(
 
   await installFromCatalog(state, catalog, name, options?.dryRun ?? false, options?.local);
   flushInstallSummary();
+}
+
+const normalizeSourceUrl = (url: string): string => url.replace(/\/+$/, "").replace(/\.git$/, "");
+
+/**
+ * `agentbrew install <url>` for a source already in state (for example a team
+ * overlay source): index it now and deploy with the sync rules (#295).
+ */
+async function installKnownSourceUrl(state: AgentBrewState, name: string): Promise<boolean> {
+  const source = getStateSources(state).find((s) => normalizeSourceUrl(s.url) === normalizeSourceUrl(name));
+  if (!source) return false;
+  if (!indexSourceNow(state, source)) {
+    console.error(chalk.red(`Could not fetch ${source.url}.`));
+    process.exitCode = 1;
+    return true;
+  }
+  saveState(state);
+  refreshInstalledSkills([source]);
+  const skills = source.availableItems.filter((i) => i.type === "skill").length;
+  console.log(
+    `${ICON_SUCCESS} ` +
+      chalk.green(`Indexed ${source.url}: ${skills} skills available, ${source.skillsInstalled.length} installed.`),
+  );
+  return true;
 }
 
 /** Install multiple catalog skills with one summary flush (used by Agentfile sync). */

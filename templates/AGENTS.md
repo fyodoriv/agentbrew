@@ -30,6 +30,8 @@ Pending work lives in the repo-declared backend. Detect it from `Agentfile.yaml`
 - Use the declared issue/task CLI for `task_backend: github-issues`; do not recreate `TASKS.md`.
 - For `TASKS.md`, keep the tasks.md shape and validate it with the repo's task linter. Remove completed blocks.
 - If `.minsky/repo.yaml` exists, keep its required P0/P1 evidence fields.
+- Before starting any task (`/next-task` included), check open pull requests and unmerged branches (`gh pr list --author @me`, `git branch --no-merged`). If one carries that task, continue there; never restart it.
+- To end a session with work in flight, run **`wrap-up`**: it delivers what is done and parks the rest as a draft PR with its task updated.
 
 ## Critical rules
 

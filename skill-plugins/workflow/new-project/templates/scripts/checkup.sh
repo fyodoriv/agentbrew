@@ -30,6 +30,20 @@ if [ -f TASKS.md ]; then
   awk '/^## P0/{f=1; next} /^## /{f=0} f && /^- \[ \]/' TASKS.md | sed 's/^- \[ \] /- /'
 fi
 
+section "Open pull requests and unfinished branches (finish these before new work)"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  gh pr list --author @me --state open --json number,title,isDraft,headRefName \
+    --jq '.[] | "#\(.number) \(if .isDraft then "[draft] " else "" end)\(.title) (\(.headRefName))"' || rc=1
+else
+  echo "gh not signed in; open pull requests not checked"
+fi
+base="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+git for-each-ref --format='%(refname:short)' refs/heads | while read -r b; do
+  ahead="$(git rev-list --count "$base..$b" 2>/dev/null || echo 0)"
+  [ "$ahead" -gt 0 ] && echo "branch $b: $ahead commit(s) not in $base"
+done
+echo "-> per pull request: make checks green, answer reviews, merge; or write what blocks it in the PR and its task"
+
 section "Monthly requirements audit"
 skill="${NEW_PROJECT_SKILL:-$HOME/.claude/skills/new-project}"
 if [ -x "$skill/scripts/audit-due.sh" ]; then

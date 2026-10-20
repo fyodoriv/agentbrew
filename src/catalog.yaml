@@ -128,6 +128,13 @@ skills:
     recommended: true
     rationale: "Context limits are inevitable. A structured handoff with gotchas and ordered next-steps prevents re-discovery work. Adapted from mattpocock/skills."
 
+  - name: wrap-up
+    description: "End a session cleanly: check every touched repo for unfinished work, deliver what is done, and park the rest as a leak-checked draft PR listing what is pending, with its task updated or created."
+    source: fyodoriv/agentbrew
+    category: productivity
+    recommended: true
+    rationale: "Sessions end with work spread over repos: uncommitted files, unpushed commits, promises in chat. One pass that delivers or parks each piece, with a task and a draft PR, means the next session continues instead of rediscovering."
+
   - name: spec-driven-development
     description: "Create specs before coding. Use when starting a significant change or when requirements are unclear."
     source: addyosmani/agent-skills

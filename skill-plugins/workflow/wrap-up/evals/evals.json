@@ -1,0 +1,49 @@
+{
+  "skill_name": "wrap-up",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/wrap-up. I touched the api and web repos today; the web change is done, the api migration is half finished.",
+      "expected_output": "Inventories both repos, delivers the finished web change through the repo's delivery steps, parks the api migration on a pushed branch with a draft PR whose body lists what is pending, updates or creates its task, and reports a table.",
+      "expectations": [
+        "Checks git status, stashes, unpushed commits and open PRs in both repositories before changing anything",
+        "Delivers the finished change only after the repo's gate passes",
+        "Opens or updates a draft PR for the unfinished work with a Pending checklist that names each next step",
+        "Updates or creates the related task and links the PR",
+        "Ends with a table of repository, state, PR link and task ID"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Wrap up. One repo has an uncommitted .env change and a half-written feature.",
+      "expected_output": "Commits only the feature files by path after reading the staged diff, leaves the .env file out, says so, and parks the feature as a draft PR.",
+      "expectations": [
+        "Stages files by path, never git add -A",
+        "Reads the staged diff and keeps the .env file and any secret out of the commit",
+        "Never force-pushes and never resets or deletes uncommitted work",
+        "States in the report that the .env change was left uncommitted on purpose"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Wrap up the session. The work is blocked on a network setting only I can change.",
+      "expected_output": "Parks the work as a draft PR, marks the task Blocked with the reason, and names the setting as the user's next step.",
+      "expectations": [
+        "Adds a Blocked field with the reason to the task",
+        "Writes in the PR's Pending section what unblocks the work",
+        "Names the one next step that is the user's in the final report",
+        "Does not start new work during the wrap-up"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write a handoff document for the next session.",
+      "expected_output": "Points to the handoff skill instead of running the full wrap-up.",
+      "expectations": [
+        "Does not commit, push or open pull requests for a handoff-only request",
+        "Mentions the handoff skill",
+        "Does not claim any repository was delivered"
+      ]
+    }
+  ]
+}

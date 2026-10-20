@@ -171,6 +171,26 @@
 
 ## P2
 
+- [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
+  - **ID**: gate-green-in-linux-cloud
+  - **Tags**: gate, tests, cloud
+  - **Details**: In a Claude Code cloud session (Linux container) on 2026-10-19, `npm run verify:changed` failed
+    on `main`, unrelated to the change under test:
+    - `hooks/checks/hook-large-input-pipefail.test.sh`: 0 of 8 passed. The fake `jq` in the fixture gets the large
+      input as an argument, and Linux rejects it ("Argument list too long"). Pass the input on stdin instead.
+    - `src/sync/instructions-sync.test.ts > loadInstructions > returns undefined when readFileSync throws`:
+      it got the real template instead of `undefined`. The mock does not reach the read path used in this
+      environment.
+    Cloud sessions now rely on this gate before they ship (templates/AGENTS.md "Cloud sessions").
+  - **Files**: `hooks/checks/hook-large-input-pipefail.test.sh`, `src/sync/instructions-sync.test.ts`
+  - **Output**: code
+  - **Acceptance**: `npm run verify:changed` passes on `main` in a Linux cloud container, and still passes on the Mac.
+  - **Hypothesis**: Both failures are test-harness assumptions about macOS, not product bugs; each takes a small test-only fix.
+  - **Measurement**: `npm run verify:changed` on `main` in a cloud session (pass/fail per step)
+  - **Success**: 0 failing steps in the cloud and on the Mac
+  - **Pivot**: a failure is a real product bug on Linux → fix the product code and add a Linux case to the test
+  - **Anchor**: found while shipping fyodoriv/agentbrew#287 on 2026-10-19 (AGENTS.md rule 11: scout while you work)
+
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

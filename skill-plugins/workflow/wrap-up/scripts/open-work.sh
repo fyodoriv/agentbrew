@@ -11,8 +11,8 @@
 #
 # Kinds:
 #   dirty      uncommitted or untracked files
-#   do-not-stage  a path that must never be committed: secrets, keys,
-#              databases, private/ data, or a tracked file .gitignore excludes
+#   do-not-stage  an uncommitted path that must never be committed: secrets,
+#              keys, databases, or private/ data
 #   worktree   an extra worktree with commits or uncommitted files
 #   stash      stashed changes
 #   unpushed   commits on the current branch that no remote has
@@ -94,9 +94,6 @@ check_repo() {
   n="$(git -C "$top" status --porcelain | grep -c .)"
   [ "$n" -gt 0 ] && say dirty "$n uncommitted or untracked file(s) on ${current:-detached HEAD}"
   risky_changes "$top"
-  while IFS= read -r b; do
-    [ -n "$b" ] && say do-not-stage "$b (tracked, but .gitignore excludes it)"
-  done <<<"$(git -C "$top" ls-files -ci --exclude-standard 2>/dev/null)"
   n="$(git -C "$top" stash list | grep -c .)"
   [ "$n" -gt 0 ] && say stash "$n stash(es)"
 

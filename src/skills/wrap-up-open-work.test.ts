@@ -108,6 +108,18 @@ describe("wrap-up open-work.sh", () => {
     expect(r.out).not.toContain(canary);
   });
 
+  it("does not flag a tracked file that a gitignore lists, such as TASKS.md", () => {
+    const work = repo("tracked-ignored");
+    writeFileSync(join(work, "TASKS.md"), "# Tasks\n");
+    git(work, "add", "-f", "TASKS.md");
+    git(work, "commit", "-q", "-m", "docs: tasks");
+    writeFileSync(join(work, ".gitignore"), "TASKS.md\n");
+    git(work, "add", ".gitignore");
+    git(work, "commit", "-q", "-m", "chore: ignore");
+    git(work, "push", "-q", "origin", "main");
+    expect(run(work).out).not.toContain("do-not-stage");
+  });
+
   it("lists extra worktrees with commits, and skips data and bot branches", () => {
     const work = repo("trees");
     const wt = join(scratch, "trees-wt");

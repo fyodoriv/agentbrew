@@ -279,6 +279,10 @@ export interface TeamConfig {
   cachedAt: string;
   lastSyncedAt: string;
   detectedSignals?: string[];
+  /** Absolute path to the overlay checkout. `sync` checks its HEAD against the lock. */
+  path?: string;
+  /** Full overlay commit pinned in `agentbrew.lock` by `team set`. */
+  commitSha?: string;
   /**
    * Absolute path to the team's catalog overlay file (resolved from the
    * overlay Agentfile.yaml's `catalogOverlay:` field, relative to the

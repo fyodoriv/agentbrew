@@ -5,6 +5,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import yaml from "js-yaml";
 import { detectSourceType } from "../../git-source-url.js";
+import { gitHeadOf, lockTeam, unlockTeam } from "../../lock.js";
 import { cloneOrUpdateRepo, deriveRepoName } from "../../mcp/mcp-git.js";
 import { mergeMemoryPackPaths, removeTeamMemoryPackPaths } from "../../memory/enable.js";
 import { resolveMemoryPackPaths } from "../../memory/pack-paths.js";
@@ -120,8 +121,9 @@ function unsetTeam(state: AgentBrewState): void {
     removeTeamMemoryPackPaths(state, state.team.memoryPackPaths);
   }
 
-  // Clear team config
+  // Clear team config and its lock pin
   state.team = undefined;
+  unlockTeam();
 }
 
 /** Format a date as human-readable relative time (e.g., "12 min ago"). */
@@ -256,6 +258,13 @@ async function teamSetAction(state: AgentBrewState, url: string): Promise<void> 
 
   console.log(`${ICON_SUCCESS} Using overlay at ${teamPath}`);
 
+  const commitSha = gitHeadOf(teamPath);
+  if (!commitSha) {
+    console.error(chalk.red(`✗ ${teamPath} is not a git checkout — cannot pin the overlay`));
+    process.exitCode = 1;
+    return;
+  }
+
   // Load and parse Agentfile.yaml
   const agentfile = loadTeamAgentfile(teamPath);
   if (!agentfile) {
@@ -285,6 +294,8 @@ async function teamSetAction(state: AgentBrewState, url: string): Promise<void> 
   state.team = {
     label,
     url,
+    path: teamPath,
+    commitSha,
     cachedAt: now,
     lastSyncedAt: now,
     ...(catalogOverlayPath ? { catalogOverlayPath } : {}),
@@ -296,7 +307,8 @@ async function teamSetAction(state: AgentBrewState, url: string): Promise<void> 
   // Merge Agentfile contents into state
   mergeTeamAgentfile(state, agentfile, label, now, teamPath);
 
+  lockTeam(url, commitSha);
   saveState(state);
-  console.log(`${ICON_SUCCESS} Team "${label}" active`);
+  console.log(`${ICON_SUCCESS} Team "${label}" active, pinned at ${commitSha.slice(0, 8)}`);
   console.log(chalk.dim("  Run `agentbrew sync` to deploy overlay skills to your agents."));
 }

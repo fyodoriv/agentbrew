@@ -220,6 +220,7 @@ function syncStory(options: SyncCommandOptions): string {
 
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   if (await handleSyncEarlyExits(options)) return;
+  if (await refuseSyncOnLockDrift()) return;
 
   const syncOpts = {
     dryRun: options.dryRun,
@@ -304,6 +305,16 @@ async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, option
     await catalogInstall(skillName);
   }
   if (applied.recommendedRequested) await catalogInstall(undefined, { recommended: true });
+}
+
+/** Fail closed when a locked source or the pinned team overlay drifted (issue #208, S1/S2). */
+async function refuseSyncOnLockDrift(): Promise<boolean> {
+  const { loadState } = await import("./state.js");
+  const state = loadState();
+  if (!state) return false;
+  const { refuseLockDrift } = await import("./lock.js");
+  const { getStateSources } = await import("./agentfile.js");
+  return refuseLockDrift(getStateSources(state), state.team);
 }
 
 async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {

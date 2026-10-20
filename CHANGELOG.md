@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `measure context`, the tokscale Cursor usage probe, the Cursor context-ring
   field, and the "Auto-Synced Cursor Rules" strip step.
 
+### Security
+
+- `agentbrew sync` enforces `agentbrew.lock`: it exits 1 and deploys nothing
+  when a locked source drifted or the team overlay checkout moved off its
+  pinned commit. `team set` pins the overlay commit. A missing or broken
+  overlay catalog is now an error (#208).
+
 ### Added
 
 - **One-step install with your agent** — tell Claude Code (or Cursor, Codex)

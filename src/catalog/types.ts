@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { logSkipped } from "../core/logger.js";
@@ -356,18 +356,36 @@ export function loadCatalog(_options: LoadCatalogOptions = {}): Catalog {
   // Team-overlay catalog (story #27). When `state.team` is set, the
   // overlay's catalog merges on top of the generic catalog.yaml. The path
   // is resolved on `team set` and stored in `state.team.catalogOverlayPath`;
-  // cleared on `team unset`. Stale path (cache deleted, etc.) is skipped
-  // silently to avoid crashing the catalog loader.
+  // cleared on `team unset`. A stale or broken path throws (fail closed).
   if (state?.team?.catalogOverlayPath) {
-    try {
-      const overlay = loadYamlFromCandidates<Catalog>([state.team.catalogOverlayPath]);
-      if (overlay) result = mergeCatalog(result, overlay);
-    } catch {
-      // Stale path; skip silently.
-    }
+    result = mergeCatalog(result, loadOverlayCatalog(state.team.catalogOverlayPath));
   }
 
   return result;
+}
+
+/**
+ * Read the team overlay catalog. Fails closed (issue #208, S9): a missing or
+ * broken overlay catalog throws, so a security-relevant entry cannot vanish
+ * without an error.
+ */
+function loadOverlayCatalog(path: string): Catalog {
+  const fix = "Run `agentbrew team set <url>` to refresh the overlay, or `agentbrew team unset`.";
+  if (!existsSync(path)) throw new Error(`Team overlay catalog not found at ${path}. ${fix}`);
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(readFileSync(path, "utf-8"));
+  } catch (e) {
+    throw new Error(`Team overlay catalog at ${path} is not valid YAML: ${errorText(e)}. ${fix}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`Team overlay catalog at ${path} is not a YAML mapping. ${fix}`);
+  }
+  return parsed as Catalog;
+}
+
+function errorText(e: unknown): string {
+  return e instanceof Error ? e.message.split("\n")[0] : String(e);
 }
 
 export interface DisplaySkill {

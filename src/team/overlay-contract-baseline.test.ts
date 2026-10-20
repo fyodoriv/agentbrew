@@ -2,9 +2,8 @@
  * Baseline for the overlay plugin contract (issue #208, step 1 of 12).
  *
  * These tests pin how `team set`, the overlay catalog merge, and the lock
- * behave today. Tests marked `it.fails` prove an open security gap (S1, S2,
- * S9). They pass while the gap exists. Step 2 closes the gaps and flips them
- * to plain `it`. The `it.todo` entries name the stale-state cases from
+ * behave. The S1, S2 and S9 tests were expected-fail in step 1; step 2
+ * closed those gaps and flipped them. The `it.todo` entries name the stale-state cases from
  * Problem 2; step 6 ("one refresh path") turns them into real tests.
  */
 import { execFileSync } from "node:child_process";
@@ -130,8 +129,8 @@ describe("team set — today's behavior", () => {
     expect(JSON.stringify(state)).toBe(before);
   });
 
-  // S1: no pin. Step 2 records the overlay commit in the lock.
-  it.fails("S1: records the overlay commit in agentbrew.lock", async () => {
+  // S1: step 2 records the overlay commit in the lock.
+  it("S1: records the overlay commit in agentbrew.lock", async () => {
     const repo = makeOverlayRepo({ name: "acme" });
     cloneOrUpdateRepo.mockReturnValue(repo.dir);
 
@@ -139,6 +138,30 @@ describe("team set — today's behavior", () => {
 
     const lock = readLock() as { team?: { url: string; sha: string } };
     expect(lock.team).toMatchObject({ url: OVERLAY_URL, sha: repo.head });
+    expect(loadState()?.team).toMatchObject({ path: repo.dir, commitSha: repo.head });
+  });
+
+  it("S1: sync refuses to deploy when the overlay checkout moved off its pin", async () => {
+    const repo = makeOverlayRepo({ name: "acme" });
+    cloneOrUpdateRepo.mockReturnValue(repo.dir);
+    await teamSet(OVERLAY_URL);
+    git(repo.dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "moved", "--allow-empty");
+
+    await runSync("--no-recommended");
+
+    expect(runSyncParallel).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("team unset drops the overlay pin", async () => {
+    const repo = makeOverlayRepo({ name: "acme" });
+    cloneOrUpdateRepo.mockReturnValue(repo.dir);
+    await teamSet(OVERLAY_URL);
+    const program = new Command().exitOverride();
+    registerTeamCommands(program);
+    await program.parseAsync(["node", "test", "team", "unset"]);
+
+    expect(readLock().team).toBeUndefined();
   });
 });
 
@@ -171,13 +194,13 @@ describe("overlay catalog merge — today's behavior", () => {
     expect(merged.rules).toHaveLength(base.rules.length + 1);
   });
 
-  // S9: a broken overlay looks like "no overlay". Step 2 fails closed.
-  it.fails("S9: an unparseable overlay catalog is an error, not a silent skip", () => {
+  // S9: a broken overlay fails closed (step 2).
+  it("S9: an unparseable overlay catalog is an error, not a silent skip", () => {
     setOverlayCatalog("rules: [unclosed");
     expect(() => loadCatalog()).toThrow(/overlay catalog/i);
   });
 
-  it.fails("S9: a missing overlay catalog file is an error, not a silent skip", () => {
+  it("S9: a missing overlay catalog file is an error, not a silent skip", () => {
     setOverlayCatalog(undefined);
     expect(() => loadCatalog()).toThrow(/overlay catalog/i);
   });
@@ -202,14 +225,19 @@ describe("lock — today's behavior", () => {
     writeLock({ locked: [{ source: SOURCE, type: "github", sha: "a".repeat(40), skills: ["one"], lockedAt: "x" }] });
   }
 
-  it("sync deploys even when a locked source drifted (the lock is advisory)", async () => {
+  it("sync deploys when every locked source matches", async () => {
     seedDrift();
+    const state = loadState() as AgentBrewState;
+    (state.sources ?? [])[0]!.commitSha = "a".repeat(40);
+    writeFileSync(join(CONFIG_DIR, "state.yaml"), yaml.dump(state));
+    invalidateState();
     await runSync("--no-recommended");
     expect(runSyncParallel).toHaveBeenCalledTimes(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
-  // S2: verifyLock never runs on sync. Step 2 makes sync fail closed.
-  it.fails("S2: sync refuses to deploy when a locked source drifted", async () => {
+  // S2: sync runs verifyLock and fails closed (step 2).
+  it("S2: sync refuses to deploy when a locked source drifted", async () => {
     seedDrift();
     await runSync("--no-recommended");
     expect(runSyncParallel).not.toHaveBeenCalled();

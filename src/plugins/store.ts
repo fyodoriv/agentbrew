@@ -6,6 +6,7 @@ import chalk from "chalk";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
 import { capabilitiesHash, type PluginManifest, readManifest } from "./manifest.js";
+import { assertMcpServers } from "./mcp-launcher.js";
 import { normalizeKey, signersFor, trustSigner, verifySignedTag } from "./signers.js";
 
 /** Root of installed plugin checkouts: `~/.local/share/agentbrew/plugins/<name>`. */
@@ -62,6 +63,7 @@ function stage(url: string, ref: string, extraSigner?: string): Staged {
     git(pluginsRoot(), "clone", "--quiet", "--depth", "1", "--branch", ref, url, dir);
     const manifest = readManifest(dir);
     assertCapabilities(dir, manifest);
+    assertMcpServers(dir, manifest);
     const keys = [...signersFor(manifest.name)];
     if (extraSigner && !keys.includes(extraSigner)) keys.push(extraSigner);
     const signer = verifySignedTag(dir, ref, manifest.name, keys);

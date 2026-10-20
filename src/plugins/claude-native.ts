@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { type ActivePlugin, activePlugins } from "./contributions.js";
+import { launcherPath, readPluginMcpServers, renderLauncher } from "./mcp-launcher.js";
 
 export const MARKETPLACE_NAME = "agentbrew-plugins";
 
@@ -48,6 +49,23 @@ function emitHooks(plugin: ActivePlugin, root: string): void {
   writeJson(join(root, "hooks", "hooks.json"), { hooks });
 }
 
+/** Launchers for the plugin's MCP servers, named in `.mcp.json` (no secret values). */
+function emitMcp(plugin: ActivePlugin, root: string): void {
+  const servers = readPluginMcpServers(plugin.dir, plugin.manifest);
+  if (servers.length === 0) return;
+  const mcpServers: Record<string, { command: string; args: string[] }> = {};
+  for (const server of servers)
+    mcpServers[server.name] = { command: renderLauncher(plugin.entry.name, server), args: [] };
+  writeJson(join(root, ".mcp.json"), { mcpServers });
+}
+
+/** Drop launchers of plugins or servers that are gone. */
+function pruneLaunchers(keep: Set<string>): void {
+  const dir = dirname(launcherPath("x", "y"));
+  if (!existsSync(dir)) return;
+  for (const file of readdirSync(dir)) if (!keep.has(join(dir, file))) rmSync(join(dir, file), { force: true });
+}
+
 function emitPlugin(plugin: ActivePlugin): { name: string; source: string; version: string; description: string } {
   const { name } = plugin.entry;
   const root = join(marketplaceDir(), "plugins", name);
@@ -56,6 +74,7 @@ function emitPlugin(plugin: ActivePlugin): { name: string; source: string; versi
   const description = `Company plugin ${name}, managed by agentbrew`;
   writeJson(join(root, ".claude-plugin", "plugin.json"), { name, version, description });
   emitHooks(plugin, root);
+  emitMcp(plugin, root);
   return { name, source: `./plugins/${name}`, version, description };
 }
 
@@ -89,6 +108,11 @@ function updateSettings(names: string[]): void {
 export function emitClaudeNative(): void {
   const plugins = activePlugins();
   const entries = plugins.map(emitPlugin);
+  pruneLaunchers(
+    new Set(
+      plugins.flatMap((p) => readPluginMcpServers(p.dir, p.manifest).map((s) => launcherPath(p.entry.name, s.name))),
+    ),
+  );
   const pluginsDir = join(marketplaceDir(), "plugins");
   if (existsSync(pluginsDir)) {
     const keep = new Set(entries.map((e) => e.name));

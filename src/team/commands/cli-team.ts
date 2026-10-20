@@ -160,7 +160,8 @@ function resolveTeamSourceUrl(rawUrl: string, teamPath: string): string {
 
 /**
  * Overlay-local skill dirs ship with the overlay itself, so every skill in them
- * deploys on sync. Remote team sources stay opt-in, one `agentbrew install` per skill.
+ * deploys on sync. Remote team sources are indexed on sync: skills marked
+ * `recommended: true` deploy, the rest install by name (src/sync/soft-update.ts).
  */
 function registerOverlaySkillDir(state: AgentBrewState, dir: string, teamPath: string, origin: string): void {
   const dirs = state.skillSourceDirs ?? [];

@@ -206,6 +206,8 @@ export interface SourceItem {
   name: string;
   description: string;
   type: SourceItemType;
+  /** Skill frontmatter `recommended: true`. Team overlay sources deploy these on sync. */
+  recommended?: true;
 }
 
 export interface Source {

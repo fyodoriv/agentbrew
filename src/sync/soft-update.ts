@@ -1,8 +1,9 @@
 import chalk from "chalk";
-import { getSourceCachePath } from "../catalog/index-source.js";
+import { getSourceCachePath, indexCachedSource } from "../catalog/index-source.js";
+import { ensureInstalledSkillsRegistered } from "../catalog/install-skill.js";
 import { logSkipped } from "../core/logger.js";
 import { loadState, saveState } from "../state.js";
-import type { Source } from "../types.js";
+import type { AgentBrewState, Source } from "../types.js";
 
 /**
  * How old a catalog-origin source's `indexedAt` timestamp must be before
@@ -26,6 +27,8 @@ interface SoftUpdateResult {
 
 function isStale(source: Source, nowMs: number): boolean {
   if (!source.indexedAt) return true;
+  // Older versions stamped `indexedAt` without indexing (#295); re-index once.
+  if ((source.availableItems ?? []).length === 0) return true;
   const indexedAtMs = Date.parse(source.indexedAt);
   if (Number.isNaN(indexedAtMs)) return true;
   return nowMs - indexedAtMs > CATALOG_SOURCE_CACHE_TTL_MS;
@@ -41,6 +44,25 @@ export function isAgentbrewProvidedSkillSource(source: Source): boolean {
   if (source.origin === "catalog" || source.origin === "global") return true;
   if (typeof source.origin === "string" && source.origin.startsWith("team:")) return true;
   return false;
+}
+
+/**
+ * Fill `availableItems` from the refreshed cache, so its skills install by
+ * name. For a team overlay source, also install each skill whose SKILL.md
+ * says `recommended: true` the first time it shows up. A skill the user later
+ * removes is not added back. `refreshInstalledSkills` copies the files (#295).
+ */
+function indexRefreshedSource(state: AgentBrewState, source: Source, cachePath: string): void {
+  const seen = new Set((source.availableItems ?? []).map((i) => i.name));
+  const items = indexCachedSource(source, cachePath);
+  source.availableItems = items;
+  if (!source.origin?.startsWith("team:")) return;
+  const added = items.filter(
+    (i) => i.type === "skill" && i.recommended && !seen.has(i.name) && !source.skillsInstalled.includes(i.name),
+  );
+  if (added.length === 0) return;
+  source.skillsInstalled.push(...added.map((i) => i.name));
+  ensureInstalledSkillsRegistered(state);
 }
 
 /**
@@ -81,6 +103,7 @@ export function softUpdateStaleOverlaySources(options?: { now?: number }): SoftU
       // does not abort the rest of the loop.
       const cachePath = getSourceCachePath(source);
       if (cachePath) {
+        indexRefreshedSource(state, source, cachePath);
         source.indexedAt = new Date(nowMs).toISOString();
         stateMutated = true;
         result.refreshed.push(source.url);

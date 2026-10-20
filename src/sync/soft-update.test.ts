@@ -8,6 +8,7 @@ vi.mock("../state.js", () => ({
 
 vi.mock("../catalog/index-source.js", () => ({
   getSourceCachePath: vi.fn(),
+  indexCachedSource: vi.fn(() => []),
 }));
 
 import { getSourceCachePath } from "../catalog/index-source.js";
@@ -43,7 +44,7 @@ function catalogSource(overrides: Partial<Source> = {}): Source {
     url: "your-org/example-app",
     type: "github",
     skillsInstalled: [],
-    availableItems: [],
+    availableItems: [{ name: "cached-skill", description: "", type: "skill" }],
     addedAt: "2026-01-01T00:00:00.000Z",
     origin: "catalog",
     ...overrides,

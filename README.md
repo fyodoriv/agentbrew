@@ -505,7 +505,7 @@ agentbrew team sync
 agentbrew sync
 ```
 
-The overlay contains pointers only — skill content lives in the source repos. An overlay can declare whole-repo skill registries in its `repo_sources:` block. `agentbrew team set` auto-registers each one as a tracked source with `origin: team`; `agentbrew team unset` removes them symmetrically while preserving anything you added with `agentbrew install` (origin `user`). `agentbrew catalog --sources` flags team-sourced repos with a `[team]` tag so it's obvious which will disappear on `team unset`.
+The overlay contains pointers only — skill content lives in the source repos. An overlay can declare whole-repo skill registries in its `repo_sources:` block. `agentbrew team set` auto-registers each one as a tracked source with `origin: team`; `agentbrew team unset` removes them symmetrically while preserving anything you added with `agentbrew install` (origin `user`). `agentbrew catalog --sources` flags team-sourced repos with a `[team]` tag so it's obvious which will disappear on `team unset`. On `agentbrew sync`, agentbrew indexes each team git source, so `agentbrew install <skill>` finds its skills by name. A skill whose `SKILL.md` frontmatter has `recommended: true` deploys on the first sync that sees it; a skill you later remove is not added back.
 
 An overlay can also list mcpm registry servers that fail on its machines in a `broken_mcpm_registry_servers:` block. `agentbrew sync` adds them to the built-in list: it removes their `mcpm_<name>` wrappers and uninstalls them from mcpm, unless your Agentfile or state defines a server with that name.
 

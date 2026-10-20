@@ -87,15 +87,20 @@ function collectMultilineValue(lines: string[], startIndex: number): { value: st
   return { value: parts.join(" "), endIndex: index };
 }
 
-function parseFrontmatter(content: string): { name?: string; description?: string } {
+function parseFrontmatter(content: string): { name?: string; description?: string; recommended?: true } {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
   if (!match) return {};
 
   const lines = match[1].split("\n");
-  const result: { name?: string; description?: string } = {};
+  const result: { name?: string; description?: string; recommended?: true } = {};
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    if (/^recommended:\s*true\s*$/.test(line)) {
+      result.recommended = true;
+      continue;
+    }
 
     const nameMatch = line.match(/^name:\s*(.+)$/);
     if (nameMatch) {
@@ -149,11 +154,12 @@ function scanSkillsInDir(dirPath: string): SourceItem[] {
 
     try {
       const content = readFileSync(definitionFile, "utf-8");
-      const { name, description } = parseFrontmatter(content);
+      const { name, description, recommended } = parseFrontmatter(content);
       items.push({
         name: name ?? entry.name,
         description: description ?? "",
         type: "skill",
+        ...(recommended ? { recommended } : {}),
       });
     } catch (e) {
       logSkipped("catalog/index-source/push", e);
@@ -182,8 +188,13 @@ function collectSkillIfPresent(parentDir: string, entryName: string, seen: Set<s
 function parseSkillFromFile(filePath: string, fallbackName: string): SourceItem {
   try {
     const content = readFileSync(filePath, "utf-8");
-    const { name, description } = parseFrontmatter(content);
-    return { name: name ?? fallbackName, description: description ?? "", type: "skill" };
+    const { name, description, recommended } = parseFrontmatter(content);
+    return {
+      name: name ?? fallbackName,
+      description: description ?? "",
+      type: "skill",
+      ...(recommended ? { recommended } : {}),
+    };
   } catch (e) {
     logSkipped("catalog/index-source/parseFrontmatter", e);
     return { name: fallbackName, description: "", type: "skill" };
@@ -618,6 +629,12 @@ export function indexSource(source: Source, options?: { sha?: string }): SourceI
     applySourceManifest(source, cachePath);
   }
   return cachePath ? scanDirectoryForAllTypes(cachePath) : [];
+}
+
+/** Index a source from a cache dir that is already cloned or pulled (no second fetch). */
+export function indexCachedSource(source: Source, cachePath: string): SourceItem[] {
+  applySourceManifest(source, cachePath);
+  return scanDirectoryForAllTypes(cachePath);
 }
 
 export function formatItemCounts(items: SourceItem[]): string {

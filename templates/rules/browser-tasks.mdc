@@ -17,7 +17,7 @@ This includes SSO: drive the redirect chain yourself and **poll URL/title plus D
 
 The **only** browser action you may ask the user to perform is a **physical authenticator approval** (biometric or hardware-key tap) — and only **after** you have already driven the attached or isolated browser all the way to that prompt and confirmed (via polling) it will not auto-complete. Even then, phrase it as "tap the approval that's already on your screen," never "go open this URL."
 
-**SSO handoff screenshots in chat (mandatory):** Before any message asking the user to sign in or approve SSO, capture browser-content + full-desktop PNGs to `~/apps/agent-scratch/screenshots/` and **embed at least the desktop screenshot in that same chat message**. The operator must see the auth screen from chat — not hunt for a hidden window. See `sso-background-work` step 7.
+**SSO handoff screenshots in chat (mandatory):** Before any message asking the user to sign in or approve SSO, capture a browser-content PNG to `~/apps/agent-scratch/screenshots/` and **embed it in that same chat message**, naming the browser and tab. Never raise or focus a window; the user switches to it themselves. See `sso-background-work` step 7.
 
 **If SSO still blocks after the initial poll:** load `sso-background-work` — background the blocked task, pick parallel work from TASKS.md, poll auth every 30–60s at task boundaries, resume when the app route loads.
 

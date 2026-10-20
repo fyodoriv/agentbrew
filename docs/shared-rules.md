@@ -85,7 +85,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Do not ask the user to open/navigate/click web pages. Use browser automation.
 - For SSO-gated pages, attach to purpose launchd Chrome (`9223` SSO/dashboard, `9224` debug, `9225` tooling) and work in your own tab.
 - Pin that tab: `agent-browser --session <agent>-<task> --pin-tab connect <port>`, then pass the same `--session` on every command, so agents that share one Chrome never drive each other's tabs.
-- Never launch Chrome on launchd-owned profiles. If auth is required, open the target in a stable **headed** SSO browser, bring it forward, and ask the user to sign in there. Then start a background URL/title/HTML listener polling every 2–5 seconds; resume immediately when authenticated, without waiting for the user to reply “done.” Never claim a CDP tab is visible unless a headed window was surfaced.
+- Never launch Chrome on launchd-owned profiles. If auth is required, open the target in a stable **headed** SSO browser in a background tab, never raise or focus it, and tell the user which page and browser need sign-in. Then start a background URL/title/HTML listener polling every 2–5 seconds; resume immediately when authenticated, without waiting for the user to reply “done.” Never claim a CDP tab is visible to the user.
 - For task-local non-SSO browsers, use `--remote-debugging-port=0`, verify endpoint/PID ownership, then close.
 - For frontend/UI work, invoke `hallmark` before emitting UI changes; run the page-zero-errors gate when the repo requires it.
 

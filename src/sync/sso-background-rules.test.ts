@@ -8,6 +8,7 @@ const REPO_ROOT = join(import.meta.dirname, "..", "..");
 describe("templates/rules — SSO background parallel work", () => {
   const ssoBackground = readFileSync(join(REPO_ROOT, "templates/rules/sso-background-work.mdc"), "utf-8");
   const browserTasks = readFileSync(join(REPO_ROOT, "templates/rules/browser-tasks.mdc"), "utf-8");
+  const sharedRules = readFileSync(join(REPO_ROOT, "docs/shared-rules.md"), "utf-8");
 
   it("sso-background-work.mdc requires background + parallel work, not idle polling", () => {
     expect(ssoBackground).toMatch(/do not sit idle/i);
@@ -16,36 +17,25 @@ describe("templates/rules — SSO background parallel work", () => {
     expect(ssoBackground).toMatch(/page-zero-errors/);
   });
 
-  it("requires an explicit user sign-in request before backgrounding", () => {
+  it("asks the user to sign in without taking app focus (#312)", () => {
     expect(ssoBackground).toMatch(/tell the user exactly what is needed/i);
-    expect(ssoBackground).toMatch(/opened.*visible Chrome window/i);
     expect(ssoBackground).toMatch(/prompt \+ background listener/i);
-    expect(ssoBackground).toMatch(/stable headed SSO session/i);
-    expect(ssoBackground).toMatch(/Never claim a CDP tab is visible/i);
-  });
-
-  it("requires chat-embedded SSO screenshot before asking the user to sign in", () => {
-    expect(ssoBackground).toMatch(/Present the SSO screenshot in chat/i);
-    expect(ssoBackground).toMatch(/embed at least the desktop[\s\S]*screenshot/i);
-    expect(ssoBackground).toMatch(/never ask for SSO without a[\s\S]*screenshot/i);
-    expect(ssoBackground).toMatch(/Forbidden.*visible Chrome window/i);
-    expect(browserTasks).toMatch(/SSO handoff screenshots in chat/i);
-    expect(browserTasks).toMatch(/embed at least the desktop screenshot/i);
-  });
-
-  it("verifies and reopens the headed window before user handoff", () => {
-    expect(ssoBackground).toMatch(/verify the headed handoff/i);
+    expect(ssoBackground).toMatch(/Never raise, activate, or `open -a` a browser window/i);
+    expect(ssoBackground).toMatch(/background tabs only/i);
+    expect(ssoBackground).toMatch(/which page needs sign-in and which browser/i);
+    expect(ssoBackground).toMatch(/user switches to it/i);
     expect(ssoBackground).toMatch(/expected auth URL\/title/i);
     expect(ssoBackground).toMatch(/browser-content screenshot/i);
-    expect(ssoBackground).toMatch(/full desktop screenshot/i);
-    expect(ssoBackground).toMatch(/CDP screenshot only proves page content/i);
-    expect(ssoBackground).toMatch(/process bound to the[\s\S]*CDP port/i);
-    expect(ssoBackground).toMatch(/app-name activation may raise the wrong/i);
-    expect(ssoBackground).toMatch(/activate the headed browser/i);
-    expect(ssoBackground).toMatch(/reopen the same stable headed session/i);
-    expect(ssoBackground).toMatch(/move its window onto the active display/i);
-    expect(ssoBackground).toMatch(/do not ask the user to authenticate/i);
-    expect(ssoBackground).toMatch(/successful `open`, `activate`, or screenshot command[\s\S]*never satisfies/i);
+  });
+
+  it("never tells agents to raise windows or prove a frontmost window (#312)", () => {
+    for (const text of [ssoBackground, browserTasks, sharedRules]) {
+      expect(text).not.toMatch(/bring (it|its window) forward/i);
+      expect(text).not.toMatch(/raise it frontmost/i);
+      expect(text).not.toMatch(/activate the headed browser/i);
+      expect(text).not.toMatch(/full[- ]desktop screenshot/i);
+      expect(text).not.toMatch(/move its window onto the active display/i);
+    }
   });
 
   it("listens to headed page HTML and resumes immediately after auth", () => {

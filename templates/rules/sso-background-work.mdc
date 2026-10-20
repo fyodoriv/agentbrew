@@ -26,35 +26,11 @@ Treat the page as SSO-blocked when any of these match:
 1. **Record blocker state** (one short note): target URL, current URL, CDP port (`9223` / `9224` / `9225`), tab you opened, next verification step (e.g. page-zero on `/releases`)
 2. **Leave the tab open** in the persistent purpose Chrome — do not close/kill Chrome
 3. Run the **initial** attach-first poll from `sso-browser-isolation` (up to 120s). If auth completes, continue the blocked task immediately
-4. If still on auth in a headless/background browser, **open the target in a stable headed SSO session and bring its window forward** per `sso-browser-isolation`. Never claim a CDP tab is visible unless you surfaced a headed window the user can actually see.
-5. **Verify the headed handoff before mentioning it to the user.** Confirm the
-   expected auth URL/title through CDP, take and inspect a fresh browser-content
-   screenshot showing the sign-in controls, activate the headed browser after
-   the page loads, then take and inspect a **full desktop screenshot** showing
-   that exact browser window frontmost with the expected controls visible.
-   When multiple browser instances exist, activate the process bound to the
-   dedicated headed-session CDP port; app-name activation may raise the wrong
-   profile.
-   A CDP screenshot only proves page content; it does not prove the operator can
-   see the window. A successful `open`, `activate`, or screenshot command alone
-   never satisfies this gate.
-6. If any visibility signal fails, the desktop screenshot cannot be captured,
-   the expected browser is absent from it, or the user says the window is not
-   visible, **fix the window and retry before asking**: reopen the same stable
-   headed session, move its window onto the active display, raise it frontmost,
-   and repeat both screenshot inspections. Do not repeat the user handoff until
-   the replacement passes URL/title, browser-content screenshot, full-desktop
-   screenshot, and activation checks. After a second failure, report that the
-   visible handoff is unavailable; do not ask the user to authenticate.
-7. **Present the SSO screenshot in chat before asking.** Save captures under
-   `~/apps/agent-scratch/screenshots/` (`AGENT_SCREENSHOT_DIR`):
-   `sso-handoff-<purpose>-browser.png` and `sso-handoff-<purpose>-desktop.png`.
-   In the **same turn** as the sign-in request, embed at least the desktop
-   screenshot in the chat (markdown image to the absolute PNG path). Prefer
-   desktop; add browser-content if desktop is unclear. The user must be able to
-   see the sign-in screen from chat alone — never ask for SSO without a
-   screenshot attached in that message.
-8. **Tell the user exactly what is needed** in that verified window — for example: “SSO is blocking `<target>`. I opened and verified a visible Chrome window; please complete sign-in/approval there. I will resume and verify automatically.” Do not ask them to find a headless port or repeat a step already completed.
+4. If still on auth, open the target in a stable headed SSO session in **background tabs only**. **Never raise, activate, or `open -a` a browser window**, and never take app focus: the user may be typing in another app, and macOS often blocks the raise anyway.
+5. **Verify the page before mentioning it to the user.** Confirm the expected auth URL/title through CDP and take and inspect a fresh browser-content screenshot showing the sign-in controls. Never claim a CDP tab is visible to the user; say which browser and tab it is in.
+6. If the page is wrong or the session died, reopen the same stable headed session and verify again before asking. After a second failure, report that the handoff is unavailable; do not ask the user to authenticate.
+7. **Present the SSO screenshot in chat before asking.** Save it as `~/apps/agent-scratch/screenshots/sso-handoff-<purpose>-browser.png` (`AGENT_SCREENSHOT_DIR`) and embed it in the **same turn** as the sign-in request (markdown image to the absolute PNG path). Never ask for SSO without a screenshot attached in that message.
+8. **Tell the user exactly what is needed**: which page needs sign-in and which browser it is in — for example: “SSO is blocking `<target>`. The sign-in page is open in a tab of the purpose Chrome (port 9224). Switch to it when it suits you; I will resume and verify automatically.” The user switches to it themselves. Do not ask them to find a headless port or repeat a step already completed.
 9. Start the mandatory **background auth listener** below, then keep productive work moving in parallel. Do not rely on the user replying “done.”
 
 ## Parallel productive work
@@ -119,7 +95,7 @@ timeout—**do not keep waiting**:
 
 1. Preserve the target and current-state evidence, then diagnose it immediately.
 2. Fix the problem in the same session when the fix is safe and reversible
-   (reopen/activate the headed window, restart a dead listener once, re-navigate,
+   (reopen the headed session, restart a dead listener once, re-navigate,
    choose the documented role-bearing account, refresh expired auth, or use an
    available API/MCP path), then re-run the blocked verification.
 3. Do not mistake a different blocker for unfinished authentication or ask the
@@ -137,9 +113,8 @@ timeout—**do not keep waiting**:
 
 ## User SSO handoff
 
-- After the initial 120-second attach-first poll, surface a **headed browser window**. Request sign-in only after CDP URL/title, an inspected browser-content screenshot, an inspected full-desktop screenshot showing the frontmost auth window, browser activation, and **chat-embedded screenshot** (step 7) all agree. Include the target, current SSO page, headed browser identity (stable profile/port or session name), and that the agent will resume automatically.
-- **Forbidden:** “Please complete sign-in in the visible Chrome window” (or similar) with no screenshot embedded in the same chat message.
-- If the user cannot see the window, or desktop capture cannot prove it is visible, fix/reopen the same stable headed session and repeat the complete visibility verification before asking again. Never treat a successful launch, activation, or CDP screenshot as proof of operator visibility.
+- After the initial 120-second attach-first poll, keep the sign-in page in a background tab. Request sign-in only after the CDP URL/title, an inspected browser-content screenshot, and the **chat-embedded screenshot** (step 7) agree. Include the target, current SSO page, browser identity (stable profile/port or session name), and that the agent will resume automatically.
+- **Forbidden:** raising, activating, or focusing any window; and a sign-in request with no screenshot embedded in the same chat message.
 - Default: **prompt + background listener**, not idle foreground polling. Keep working elsewhere while the listener watches the headed page and resumes immediately on authenticated DOM.
 - Only ask for an action the user must perform (password, authenticator, approval); do not ask them to navigate, inspect, or manually verify application state that the agent can handle.
 - If no browser tab or physical authenticator path exists, use the `avoid-human-blocked-actions` doc pattern before asking.

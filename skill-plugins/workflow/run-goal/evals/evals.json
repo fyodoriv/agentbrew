@@ -1011,6 +1011,18 @@
         "A fresh grader reviews data exits (drafts, tokens, logs) before the push, and each finding gets a red-to-green test",
         "The cross-app pattern lands in rules, memory, the project scaffold (with a machine check), and a task per named app"
       ]
+    },
+    {
+      "id": 56,
+      "prompt": "/goal send the PM update to Slack instead of email by default; and every action in the app must run through the CLI, agents, and the UI, with tests for everything; apply this to every software",
+      "expected_output": "The agent measures the baseline as CLI commands against UI and agent paths (for example 110 commands, about 16 in the UI). It generates one action registry from the CLI parser instead of keeping three lists, and adds a parity test as the traceability metric. Commands that cannot run in a browser get written reasons, and actions that are hard to undo get a confirm. Sending, which reverses an earlier 'never sends' rule, stays an explicit owner action (a click or --yes). A grader reviews the runner for argument injection and dangerous actions before the push. The rule reaches every app through the shared rules, memory, the scaffold check, and a task per app.",
+      "expectations": [
+        "The baseline counts commands per path and the metric is parity coverage",
+        "One registry is generated from the CLI; no hand-kept second list",
+        "A parity test fails on a missing path or a missing terminal-only reason",
+        "Sending happens only on an explicit owner action, and the reversed rule is updated in the docs",
+        "The rule is applied to other apps (rules, memory, scaffold check, tasks)"
+      ]
     }
   ]
 }

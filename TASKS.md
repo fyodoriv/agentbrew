@@ -196,18 +196,18 @@
 - [ ] `next-task` continues open PRs and branches before it claims a new task, in every repo
   - **ID**: next-task-open-work-first
   - **Tags**: upstream, task-management, wrap-up
-  - **Details**: `next-task` ships from tasksmd/tasks.md, not this repo. Until that skill checks open work itself, the
-    deployed `templates/AGENTS.md` rule "Open work first" tells agents to run `wrap-up`'s `scripts/open-work.sh` and
-    continue a draft PR from its `## Pending` list before claiming. Upstream change: a step 0 in `next-task` that
-    lists your open PRs and unmerged branches and continues the first unblocked one. Publishing to tasksmd/tasks.md
+  - **Details**: `next-task` ships from tasksmd/tasks.md, not this repo. Done here: the hook
+    `next-task-open-work-first` adds `wrap-up`'s `scripts/open-work.sh` list to the context when `/next-task`
+    starts, and the deployed `templates/AGENTS.md` rule "Open work first" covers agents without hooks. Left: the
+    same step 0 inside `next-task` upstream, so non-Claude agents get it too. Publishing to tasksmd/tasks.md
     needs the owner's approval in the session (rule 14).
-  - **Files**: `templates/AGENTS.md`, `skill-plugins/workflow/wrap-up/scripts/open-work.sh` (upstream: tasksmd/tasks.md `next-task`)
+  - **Files**: `hooks/checks/next-task-open-work-first.sh`, `templates/AGENTS.md` (upstream: tasksmd/tasks.md `next-task`)
   - **Output**: code
   - **Acceptance**: `next-task` in a repo with an open draft PR resumes that PR, with no instruction from AGENTS.md.
   - **Hypothesis**: Agents skip the AGENTS.md rule some of the time; a step inside `next-task` itself is followed every time.
   - **Measurement**: 5 `next-task` runs in a repo with one open draft PR; count runs that resume it
   - **Success**: 5 of 5 resume the draft PR after the upstream change
-  - **Pivot**: upstream declines → keep the AGENTS.md rule and add an agentbrew hook that prints `open-work.sh` output when `next-task` starts
+  - **Pivot**: upstream declines → keep the hook and the AGENTS.md rule; measure non-Claude agents separately
   - **Anchor**: owner request on 2026-10-20: "update next-task so that it observes opened prs/branches before starting to work on any task"
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0

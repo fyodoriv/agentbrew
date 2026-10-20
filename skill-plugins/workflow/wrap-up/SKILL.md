@@ -94,8 +94,9 @@ End with one short message:
 - **Needs you:** each owner step, one line with its task id.
 - **Dropped / asked:** anything you deleted, and the questions.
 
-Then stop. The next session picks this up: `next-task` and the repo checkups
-read the same open work (`scripts/open-work.sh`) before anything else.
+Then stop. The next session picks this up: the repo checkups and `next-task`
+(hook `next-task-open-work-first`) read the same open work
+(`scripts/open-work.sh`) before anything else.
 
 ## Continue open work (other skills call this)
 

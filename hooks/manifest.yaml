@@ -417,6 +417,18 @@ hooks:
     sourceRule: 'skill-plugins/workflow/run-goal/SKILL.md (owner request 2026-10-15: run the goal skill every time a goal is set)'
     agents: ["claude-code"]
 
+  # ── next-task (UserPromptSubmit — continue open PRs and branches first) ──
+
+  - id: next-task-open-work-first
+    description: When next-task starts and wrap-up is installed, add the repo's open PRs, branches, and uncommitted files to the context with the order to continue them first
+    event: UserPromptSubmit
+    script: checks/next-task-open-work-first.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_NEXT_TASK_OPEN_WORK_FIRST
+    sourceRule: 'templates/AGENTS.md "Open work first" (owner request 2026-10-20: next-task observes open PRs and branches before starting a task)'
+    agents: ["claude-code"]
+
   - id: goal-contract-before-edit
     description: After /goal, block the first file edit until the run-goal contract (Done when) is in the transcript
     event: PreToolUse

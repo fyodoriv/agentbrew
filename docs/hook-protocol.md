@@ -185,6 +185,18 @@ appends one JSON line to `~/.cache/agentbrew/hook-decisions.jsonl`.
 - A hook test that runs a check script directly should export
   `HOOK_DECISIONS_LOG` to a temp file too.
 
+## Next task: open work first
+
+`next-task` ships from tasksmd/tasks.md, so agentbrew adds its pre-task step
+from outside. When a prompt starts with `/next-task` (or "next task"),
+`next-task-open-work-first` (UserPromptSubmit) runs the `wrap-up` skill's
+`scripts/open-work.sh` on the session's `cwd`. When that lists open work
+(your PRs, unmerged branches, uncommitted files), the hook adds the list to
+the context with the order to continue it first, from a draft PR's
+`## Pending` list. It skips `git fetch` to stay fast (`OPEN_WORK_NO_FETCH=0`
+turns it back on). It stays silent for other prompts, for a repo with no open
+work, and on machines without `wrap-up`. Installing `wrap-up` is the opt-in.
+
 ## Goal setting
 
 Claude Code's built-in `/goal <condition>` fires `UserPromptSubmit`, and the

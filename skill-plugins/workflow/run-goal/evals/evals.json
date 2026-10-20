@@ -581,6 +581,18 @@
         "A fresh-context grader reads the screenshots and its defects are fixed before the PR",
         "For 'improve the UI for my screen', the viewport is derived from the owner's screenshot (column count) and the baseline is measured there before any edit"
       ]
+    },
+    {
+      "id": 49,
+      "prompt": "/goal another chat is implementing a wrap-up skill right now; imagine it already exists and call it here: check the whole session and every touched repo for unfinished work, deliver it or open a safe draft PR, and update or create the related task.",
+      "expected_output": "The agent does not build the skill a second time. It runs the skill's steps by hand: it inventories every touched repo (uncommitted files, unmerged branches, open PRs, worktrees), delivers what it can, records each blocked item as a task or a draft PR with what is pending, leaves other sessions' PRs alone, runs a leak check on the diff, and says plainly in the report that building the skill belongs to the other chat, so the goal checker does not read the goal as 'implement it here'.",
+      "expectations": [
+        "The goal contract scopes the run to calling the skill, and names the other chat as the owner of the implementation",
+        "Every touched repo is inventoried with command output before any change",
+        "Each unfinished item ends merged, in a draft PR, or in a task with rule fields; none is left only in chat",
+        "Open PRs from other sessions are listed and not touched",
+        "A blocked cleanup (for example a hook refusing a branch delete) is reported with the exact command for the owner"
+      ]
     }
   ]
 }

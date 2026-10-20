@@ -73,7 +73,25 @@ else
   echo "none"
 fi
 
-section "6. Monthly requirements audit (new-project skill)"
+section "6. Open pull requests and unfinished branches (finish these first)"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  prs="$(gh pr list --author @me --state open --json number,title,isDraft,headRefName \
+    --jq '.[] | "#\(.number) \(if .isDraft then "[draft] " else "" end)\(.title) (\(.headRefName))"' 2>/dev/null || true)"
+  if [ -n "$prs" ]; then
+    echo "$prs"
+    ask "There are $(printf '%s\n' "$prs" | grep -c .) open pull request(s). Finish them (their Pending lists) before new work?"
+  else
+    echo "none"
+  fi
+else
+  echo "(skipped) gh is not signed in"
+fi
+git for-each-ref --format='%(refname:short)' refs/heads | while read -r b; do
+  n="$(git rev-list --count "origin/main..$b" 2>/dev/null || echo 0)"
+  [ "$n" -gt 0 ] && echo "branch $b: $n commit(s) not in origin/main"
+done
+
+section "7. Monthly requirements audit (new-project skill)"
 if [ -x "$skill/scripts/audit-due.sh" ] || [ -f "$skill/scripts/audit-due.sh" ]; then
   if due="$(bash "$skill/scripts/audit-due.sh" .)"; then
     echo "$due"

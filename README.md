@@ -684,7 +684,7 @@ npm run lint:rules                     # Minsky rule checks on this repo (part o
 GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
 
 1. `npm run verify` is the full gate. Every PR runs it before merge.
-2. `npm run checkup` runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
+2. `npm run checkup` runs the doctor (`agentbrew status --ci`), the cached gate, metrics, a speed review, and lists open pull requests and unfinished branches to finish first. Run it on a fresh `main` checkout after a burst of merges, or monthly.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 

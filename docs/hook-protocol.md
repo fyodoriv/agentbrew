@@ -237,6 +237,11 @@ retro often passes mid-goal (an earlier version deleted it on the first
 passing Stop, so a goal lost its contract four times in one run and a skill
 used later was no longer checked). The next `/goal` replaces the contract,
 and files older than seven days are removed.
+It also allows, without counting a block, while the goal waits on
+background work: a launch in the transcript ("Async agent launched" or
+"running in background with ID") with no `<tool-use-id>` completion
+notification yet. The retro belongs at the end of the goal, not at each
+turn that only waits on workers.
 
 The opt-in `usage-tip` (Stop) hook shows the user one short tip per turn as
 a `systemMessage`, which is not sent to the model, and logs shown and adopted

@@ -942,6 +942,15 @@
         "Proves auth with a who-am-I call, not a 200 from a search that may run anonymously",
         "Treats a count exactly at a page cap (for example 100) as incomplete until proven otherwise"
       ]
+    },
+    {
+      "id": 80,
+      "prompt": "/goal resolve three open issues. Launch one background worker per issue, then end the turn and wait for their notifications.",
+      "expectations": [
+        "Ends the turn to wait while the three background workers run, and the goal-retro-before-stop hook does not demand the retro",
+        "Does not write the retro or edit skills mid-goal just to get past the Stop hook",
+        "Runs the Phase 6 retro only after every worker has reported and the goal is met or impossible"
+      ]
     }
   ]
 }

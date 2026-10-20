@@ -32,6 +32,13 @@
 # still be listed. goal-set-loads-run-goal replaces both files on the next
 # /goal and deletes files older than seven days.
 #
+# **Waiting on workers** (issue #305): a goal that runs background workers
+# ends turns mid-goal while it waits for their notifications. The retro
+# belongs at the end, so the hook allows (and does not count a block) while
+# a background launch in the transcript has no `<tool-use-id>` completion
+# notification yet. A launch is a tool result that says "Async agent
+# launched" or "running in background with ID".
+#
 # **Bypass**: `HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1`
 #
 # **Configuration** (optional):
@@ -82,6 +89,22 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
         else empty end ]
     | map(sub("^[^:]+:"; "")) | unique | .[]' "$TRANSCRIPT" 2>/dev/null || true)"
 fi
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  RUNNING="$(hook_jq -r -s '
+    def texts: if type == "string" then . elif type == "array" then map(texts) | join("\n")
+      elif type == "object" then ((.text // .content // "") | texts) else "" end;
+    [ .[] | select(.type == "user") | .message.content ] as $c
+    | ([ $c[] | arrays | .[] | select(.type? == "tool_result")
+         | select((.content | texts) | test("Async agent launched|running in background with ID"))
+         | .tool_use_id ]) as $launched
+    | ([ $c[] | texts | scan("<tool-use-id>([^<]+)</tool-use-id>") | .[0] ]) as $done
+    | ($launched - $done) | length' "$TRANSCRIPT" 2>/dev/null || echo 0)"
+  case "$RUNNING" in "" | *[!0-9]*) RUNNING=0 ;; esac
+  if [ "$RUNNING" -gt 0 ]; then
+    verdict_allow "$HOOK_ID" "goal still waiting on $RUNNING background task(s); retro runs at the end"
+  fi
+fi
+
 case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" ;; esac
 
 MISSING=""

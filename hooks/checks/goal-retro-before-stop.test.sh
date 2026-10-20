@@ -67,6 +67,32 @@ expect "gives up after three blocks" 0 "$(run s2)"
 expect "contract kept after giving up" 1 "$(has s2.contract.md)"
 expect "stays given up on the next Stop" 0 "$(run s2)"
 
+# Issue #305: a goal that waits on background workers ends turns mid-goal.
+# The retro belongs at the end, so the hook must not block while a launched
+# background task has no completion notification yet.
+TX_SAVE="$TX"
+TX="$ROOT/bg.jsonl"
+cp "$TX_SAVE" "$TX"
+touch "$RUN_GOAL_STATE_DIR/s4.contract.md"
+bg_launch() { # $1 tool_use id, $2 result text
+  jq -cn --arg i "$1" '{type:"assistant",message:{content:[{type:"tool_use",id:$i,name:"Agent",input:{prompt:"w"}}]}}' >>"$TX"
+  jq -cn --arg i "$1" --arg t "$2" '{type:"user",message:{content:[{type:"tool_result",tool_use_id:$i,content:[{type:"text",text:$t}]}]}}' >>"$TX"
+}
+bg_done() {
+  jq -cn --arg i "$1" '{type:"user",message:{content:("<task-notification>\n<task-id>x</task-id>\n<tool-use-id>" + $i + "</tool-use-id>\n<status>completed</status>")}}' >>"$TX"
+}
+bg_launch toolu_a "Async agent launched successfully."
+bg_launch toolu_b "Async agent launched successfully."
+bg_launch toolu_c "Command running in background with ID: b1. Output is being written to: /x"
+expect "three running workers: no retro demanded" 0 "$(run s4)"
+expect "waiting does not count as a block" 0 "$(has s4.stopblocks)"
+bg_done toolu_a
+bg_done toolu_b
+expect "one worker still running allows" 0 "$(run s4)"
+bg_done toolu_c
+expect "all workers done: retro demanded again" 2 "$(run s4)"
+TX="$TX_SAVE"
+
 touch "$RUN_GOAL_STATE_DIR/s3.contract.md"
 expect "bypass allows" 0 "$(run s3 HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1)"
 expect "unsafe session id allows" 0 "$(run '../x')"

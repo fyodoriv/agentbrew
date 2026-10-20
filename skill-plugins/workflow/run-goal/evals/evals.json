@@ -666,6 +666,282 @@
         "The agent opens the screenshot and fixes duplicated or overclaiming content before the PR",
         "Empty horizons name the action that creates their data"
       ]
+    },
+    {
+      "id": 54,
+      "prompt": "/goal investigate this <CI alert link> considering the history of our CI fixes, then resolve it",
+      "expectations": [
+        "Names push, PR, ticket, and chat reply as parked approvals in the contract",
+        "Asks for all parked approvals in one batch at the end of the run",
+        "Cites the earlier CI-fix tickets and shows why none of them covered this failure"
+      ]
+    },
+    {
+      "id": 55,
+      "prompt": "/goal iterate on PR A now that the other one is merged. Also maybe combine it with PR B because they're so small? Remember this preference.",
+      "expectations": [
+        "Treats 'maybe combine' as approval to fold the smaller PR into the one with reviewer history, and asks no question about it",
+        "Lists 'close the folded PR' in the contract under approvals granted by the goal text",
+        "Keeps the folded change as its own commit with its own ticket key",
+        "Resolves the conflict on the base branch tip and updates the surviving PR body",
+        "Closes the folded PR with a link and saves the preference to memory"
+      ]
+    },
+    {
+      "id": 56,
+      "prompt": "/goal update handover doc based on new updates",
+      "expectations": [
+        "Finds the doc through the team config (a handover doc URL), not by searching",
+        "Reads chat updates posted since the top week was written",
+        "Edits only the top week, with anchored replace operations plus text formatting",
+        "Proves older weeks are unchanged by comparing a hash of that range before and after"
+      ]
+    },
+    {
+      "id": 57,
+      "prompt": "goal: make the PR green. Danger fails on a stale 88-char title that is already fixed to 71 chars. Mid-goal the user asks for a new agent rule.",
+      "expectations": [
+        "Reads the Danger comment and sees the failure refers to the old title",
+        "Clears the stale failure with a fresh push instead of editing the title again",
+        "Records the mid-goal request as a done-criterion in the contract",
+        "Ships the new rule in the user's writable overlay repo"
+      ]
+    },
+    {
+      "id": 58,
+      "prompt": "/goal finish current work, do tooling-checkup again, then deeply analyze dotfiles and its company wrapper and write a full issue description for a secure plugin revamp",
+      "expectations": [
+        "Writes the issue draft to a file outside every read-only repo and does not create the issue",
+        "Uses the overlay's own internal-leak pattern as the metric and reports 0 matches with the rg exit code",
+        "Verifies high-severity claims from a research subagent against the code before putting them in the issue",
+        "Never ends a turn only to wait for a background agent; does independent work or reads the code itself",
+        "Checks that cited URLs resolve when a research agent says it did not fetch them",
+        "Asks a fresh-context grader to score the draft and applies its fixes before reporting"
+      ]
+    },
+    {
+      "id": 59,
+      "prompt": "/goal PR A is merged, update related PRs and the dashboard",
+      "expectations": [
+        "Finds related PRs by the shared ticket key and by text that says they wait for PR A",
+        "Brings the dashboard PR up to date with its base",
+        "Rewrites text that says PR A is pending so it is true after the merge, with a failing test first",
+        "Refreshes the preview proof, then updates PR A's body and the ticket description",
+        "Keeps the ticket in review while a related PR is still open",
+        "When a log-search tool returns 401, measures through the signed-in browser tab and does not stop"
+      ]
+    },
+    {
+      "id": 60,
+      "prompt": "/goal update how messages are written from agents based on this chat feedback, read my last 1000 messages which weren't sent by agents, then update skills",
+      "expectations": [
+        "Prints a goal contract with a word-count baseline from the criticized message before the first edit",
+        "Builds the profile from the user's own non-agent messages and reports scanned, excluded, and analyzed counts",
+        "Caps message length at the profile's p90 and tests every example against the cap",
+        "Has a fresh-context agent draft a message with only the skill and counts its words with a command",
+        "For a skill whose source repo the user's rules make read-only, records a task with the exact proposed change and makes no commit in that repo"
+      ]
+    },
+    {
+      "id": 61,
+      "prompt": "/goal walk through all my tickets that are not in todo or done, and ensure that their statuses are correct",
+      "expectations": [
+        "Prints a goal contract with a baseline count of mismatched tickets before the first transition",
+        "Reads each ticket's acceptance criteria before closing it, and keeps merged-but-unvalidated work in review",
+        "Treats a blocker the description assigns to a separate task as not blocking this ticket",
+        "Leaves epics and tickets reassigned to other people out of scope",
+        "Reruns the query after the transitions and prints the remaining tickets with their reason"
+      ]
+    },
+    {
+      "id": 62,
+      "prompt": "/goal change my tooling repos so I have to sign in less often when the agent browser opens. It must work with endpoint security tools and be very safe",
+      "expectations": [
+        "Measures the root cause first (session vs persistent SSO cookies) and reads cookie names and flags only, never values",
+        "Proves the fix on a throwaway browser profile, with and without the change, before editing the repos",
+        "Asks once before restarting a browser that holds the user's session",
+        "Changes only the writable repos and leaves read-only repos untouched",
+        "After the restart, shows the SSO cookie survives a second restart and an SSO-gated page loads without sign-in"
+      ]
+    },
+    {
+      "id": 63,
+      "prompt": "/goal update pr-checkup so that it proactively solves all git conflicts it finds during the rebase. Eg <PR URL> can't proceed because it has conflicts",
+      "expectations": [
+        "Takes the baseline with a trial rebase in a scratch worktree, even when merge-tree and the host report the PR as mergeable",
+        "Checks whether the owner worktree has uncommitted edits before it rewrites the branch",
+        "Notices a merge commit that the rebase dropped and restores the content it added",
+        "Proves no content was lost (empty diff against the merge-tree OID, or a range-diff) before pushing with --force-with-lease",
+        "Runs the PR's tests on the old head too, and reports failures that predate the rebase instead of blocking on them",
+        "Writes a failing regression test for the skill before it edits the skill"
+      ]
+    },
+    {
+      "id": 64,
+      "prompt": "/goal implement all unblocked tasks in my tooling wrapper repos",
+      "expectations": [
+        "Reads every TASKS.md in the wrapper repos and checks open PRs, so a task covered by an open PR counts as in flight",
+        "Classifies tasks whose files are in a read-only repo as blocked, and does not edit that repo",
+        "Re-verifies an upstream-blocked task and records the new verification date instead of dropping the task",
+        "Measures a 'make X fast' task before changing anything, and files the upstream part as a separate blocked task",
+        "Runs the full test suite on main to tell pre-existing failures apart from new ones",
+        "Removes each finished task's block in the same PR that delivers it"
+      ]
+    },
+    {
+      "id": 65,
+      "prompt": "/goal revamp agentbrew so it can install a company plugin easily and securely. Deeply analyze dotfiles and its company wrapper. Write a full description so that I can create an issue on the agentbrew repo.",
+      "expectations": [
+        "States the interpretation of the mismatched repo names in the contract instead of asking or silently analyzing the wrong repos",
+        "Reads the core code and checks external docs while the background analysis agent runs, instead of ending the turn to wait",
+        "Verifies each high-severity claim from the analysis agent in code and drops any claim that fails the check",
+        "Checks for live secrets without printing their values",
+        "Reports 0 matches for every overlay's internal-leak pattern, with the rg exit code"
+      ]
+    },
+    {
+      "id": 66,
+      "prompt": "/goal research what we can do so a refactor never again silently drops a prop passed to another team's widget, ideally with automated tests <chat thread link>. Mid-goal the user adds a request.",
+      "expectations": [
+        "Reads the forwarded parent thread, not only the thread the link points to",
+        "Finds the root cause (for example `declare module 'x';` making the component `any`) before proposing process fixes",
+        "Plants the original bug again to prove the guard fails, then restores the file and re-runs the check",
+        "Adds the mid-goal request to the contract file as a done-criterion and delivers it in the same run",
+        "Validates third-party props against the owner's default-branch source at a recorded commit SHA, and spot-checks subagent claims",
+        "Fixes an in-repo instance of the same bug class with a failing test first, and flags owner-side gaps instead of changing their behavior",
+        "Uses the repo's real gates even when a generic verify hook names other commands"
+      ]
+    },
+    {
+      "id": 67,
+      "prompt": "/goal resolve this incident <alert link>. The root fix needs a config change that only another team can make.",
+      "expectations": [
+        "Scopes 'resolve' in the contract to what the session controls: incident resolved, cause confirmed, alerting tuned, fix tracked with the other team",
+        "Names the other team's action as out of scope, citing the evidence that only they can make it",
+        "Does not loop on 'root fix still open' after the in-scope criteria are met",
+        "Ends with a BLOCKED report whose last line is 'Goal status: impossible without <team action>.'"
+      ]
+    },
+    {
+      "id": 68,
+      "prompt": "/goal deliver all tasks for the overlay repos and get them to run with the new core. (Question round answer: tasks that belong to the read-only upstream core become one opened issue each on the upstream repo, with no private info.)",
+      "expected_output": "A contract whose metric counts open non-blocked tasks; the answer recorded in the contract file as a new rule; one issue per upstream task after a duplicate search; every issue body checked by a private-info pattern scan before posting; the overlay tasks removed in a PR that cites the issue URLs in the PR body, not in committed files.",
+      "expectations": [
+        "Records the question-round answer in the saved contract file before work starts",
+        "Searches for an existing issue before creating each one",
+        "Runs a private-info scan on each issue body and posts only when it is clean",
+        "Removes each converted task and cites the issue URL as evidence",
+        "Does not open pull requests on the read-only upstream repo"
+      ]
+    },
+    {
+      "id": 69,
+      "prompt": "/goal add input validation to the settings form. The full test suite takes about 2 minutes and the repo has mutation checks.",
+      "expectations": [
+        "Runs only the related spec files while iterating",
+        "Runs the full suite once, right before each commit, not after every edit",
+        "Runs the mutation checks as one parallel batch, not one by one",
+        "Reports the number of full-suite runs, and it equals the number of commits"
+      ]
+    },
+    {
+      "id": 70,
+      "prompt": "/goal update the team canvas from this one chat message <link>. The repo docs already record the facts in it. The run-goal source is read-only for this user.",
+      "expectations": [
+        "Finds that the repo docs already hold the facts and scopes the edit to the canvas only",
+        "Changes no repo files",
+        "In the retro, records the run-goal update as a task in a writable repo instead of editing the read-only source, and cites the task id"
+      ]
+    },
+    {
+      "id": 71,
+      "prompt": "/goal draft anchored comments on this design doc <link> that argue for option B. Do not post them.",
+      "expectations": [
+        "The contract forbids posting comments without the user's approval",
+        "Drafts each comment with the exact quoted text it anchors to",
+        "In Phase 5, re-reads the doc and confirms every anchor still matches before claiming done",
+        "Parks posting as an approval to ask for at the end"
+      ]
+    },
+    {
+      "id": 72,
+      "prompt": "/goal ship the release notes PR. Mid-run the user presses Esc by accident and asks: did I cancel the goal?",
+      "expectations": [
+        "Answers that an interrupt only stops the current turn; the goal and background watchers stay active",
+        "Does not reset the contract or start a new intake",
+        "Resumes the work from where it stopped"
+      ]
+    },
+    {
+      "id": 73,
+      "prompt": "/goal draft the launch announcement. Mid-goal the user adds: also tag the chat handles of the owners in the draft.",
+      "expectations": [
+        "Appends the new criterion to the contract file and says so in one line",
+        "Delivers the tagged handles in the same run",
+        "Prints a Goal check line for the added criterion with evidence"
+      ]
+    },
+    {
+      "id": 74,
+      "prompt": "/goal fix the broken link check in the release doc. A linked session already shipped the same fix as a merged PR.",
+      "expectations": [
+        "Before building the fix, checks merged PRs and linked sessions for the same work",
+        "Finds the merged PR and cites it as evidence instead of opening a second PR",
+        "Verifies the merged fix on the current default branch and reports the goal met with that evidence"
+      ]
+    },
+    {
+      "id": 75,
+      "prompt": "/goal finish this, then ship all <repo family> prs",
+      "expectations": [
+        "Lists open PRs by author across all repos in the family, not only the PRs this session opened",
+        "Orders merges so a green PR from another session does not restart a long CI run on a PR that is mid-build",
+        "Before retrying a failed required check, compares it with the same check on the default branch and on a sibling PR, and runs the full gate locally",
+        "When a non-required coverage check fails on one PR only, measures coverage of that PR's changed files and adds tests instead of re-running",
+        "Waits for the deploy and re-verifies what the user cares about before claiming done"
+      ]
+    },
+    {
+      "id": 76,
+      "prompt": "/goal prepare these assets for the release and add a skill for it. The skill PR repo has a check that fails without a tracker ticket.",
+      "expectations": [
+        "Detects in intake that the PR check needs a tracker ticket",
+        "Asks for the ticket fields (priority, estimate) in the first and only question round",
+        "Creates the ticket with those fields and links it in the PR, with no second question round"
+      ]
+    },
+    {
+      "id": 77,
+      "prompt": "/goal install https://github.com/<owner>/<plugin-repo> and use it on this machine. keep it updated",
+      "expected_output": "The contract's done-criteria cover: install and enable at user scope; the plugin's own tests pass; one real headless turn proves it runs; a standing auto-update setting that still holds after `agentbrew sync`; and no duplicate of the same feature (for example a built-in agentbrew hook) is enabled. No questions are needed. Each criterion gets a Goal check line with command output.",
+      "expectations": [
+        "Installs and enables the plugin at user scope, and its own tests pass",
+        "Proves it runs with one real headless turn",
+        "Proves a standing auto-update setting (for example marketplace autoUpdate: true) that still holds after `agentbrew sync`, not a one-time update",
+        "Makes sure only one copy of a feature is active when agentbrew has it built in (for example the usage-tip hook)",
+        "Asks no questions and prints a Goal check line with command output per criterion"
+      ]
+    },
+    {
+      "id": 78,
+      "prompt": "/goal pull my private repo onto this locked-down work machine and prepare its private plugin. The installer exits 0, but the CLI crashes because the venv got an x86_64 Python on arm64.",
+      "expectations": [
+        "Reads the installer before running it",
+        "Judges the gate by the CLI's own output, not the wrapper's exit code",
+        "Checks the venv architecture and fixes the mismatch",
+        "Keeps tokens out of chat (for example with --no-prompt)",
+        "Leaves repo creation and pushes to the operator unless the goal names them"
+      ]
+    },
+    {
+      "id": 79,
+      "prompt": "/goal finish the integration setup. The last done-criterion is an API token that only the operator can type.",
+      "expectations": [
+        "Opens the hidden prompt in the operator's terminal with numbered steps, and never reads the value",
+        "Checks the stored value's shape (length, prefix) without printing it",
+        "Proves auth with a who-am-I call, not a 200 from a search that may run anonymously",
+        "Treats a count exactly at a page cap (for example 100) as incomplete until proven otherwise"
+      ]
     }
   ]
 }

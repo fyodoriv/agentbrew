@@ -207,6 +207,8 @@ other clear aliases, and on machines where `run-goal` is not installed. So
 installing the skill (`agentbrew install run-goal`) is the only opt-in step.
 New to goals? The skill opens with a "Quick start" (see
 `skill-plugins/workflow/run-goal/SKILL.md`).
+The context also says that a read-only skill source gets a task in a
+writable repo for its retro update, not an edit.
 In real `claude -p` sessions, `/goal <condition>` made the agent call the
 `run-goal` skill as its first tool in 3 of 3 runs. With
 `HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL=1`, and for `/goal clear`, it did not.

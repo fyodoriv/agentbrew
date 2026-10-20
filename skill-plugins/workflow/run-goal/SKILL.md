@@ -91,14 +91,17 @@ So:
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
-   question round. If not, schedule it last.
+   question round. If not, schedule it last. When a PR needs a tracker
+   ticket (a ticket-gated PR check), put the ticket fields (priority,
+   estimate) in the first question round, not a second one.
 7. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions run as the same
    account), drafts included, and unmerged branches and worktrees: the
    `wrap-up` skill's `scripts/open-work.sh`, or `gh pr list --state open`.
    A draft or branch that already does part of the goal is the starting
    point: continue it, and say so in the contract, instead of building a
-   second copy.
+   second copy. Also check recently merged PRs and linked sessions: work
+   another session already shipped is evidence, not a task.
 
 ## Phase 2 — Goal contract
 
@@ -117,6 +120,10 @@ Write the contract in the chat before you change anything. Fill in the template 
   source of each approval: a rule file line, the user's answer, or the goal
   text itself (a goal that names an action approves that action). An approval
   you cannot cite, such as "if the repo rules allow it", is not granted.
+  When the root fix belongs to another team, scope a "resolve" goal to what
+  this session controls (incident resolved, cause confirmed, alerting tuned,
+  fix tracked with that team), and name the other team's action as out of
+  scope. Otherwise the goal checker reads "root fix open" as "not met" forever.
 - **Budget**: rough time or turn budget. Past twice the budget, report and
   re-plan instead of drifting.
 - **Assumptions and risks**: what you believe without proof.
@@ -173,6 +180,13 @@ continue?". The user set a goal so that they can be away.
   browser call can hang for hours. Give each fact two fetch attempts, then
   keep it marked unverified with the reason, and save after each file.
 - Work in small verified steps. Run the guard after each change that matters.
+- While you iterate, run only the related test files. Run the full suite
+  once, right before each commit. Run mutation checks as one parallel batch,
+  not one by one.
+- Never end a turn only to wait for a background agent. Do independent work,
+  or read the code yourself, while it runs.
+- Verify every subagent claim you put in a deliverable. Check high-severity
+  claims in the code, and drop any claim that fails the check.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules and unique log names (`$TMPDIR` is shared), and keep within
@@ -308,6 +322,9 @@ Do this every time, also after a BLOCKED stop. Details:
    for a standing approval for retro skill updates. With one, make the
    change in a worktree of that repo and ship it by its rules. Without one,
    park it and ask at the end with the exact diff.
+   When the skill source is read-only for this user (their rules or the
+   sandbox), do not edit it: record the update as a task, with the exact
+   proposed change, in a repo the user can write, and cite its id.
 5. **Save the retro**: in Claude Code with agentbrew, write the Skills
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The

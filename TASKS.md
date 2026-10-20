@@ -171,6 +171,45 @@
 
 ## P2
 
+- [ ] Skip `npm ci` when the lockfile is unchanged
+  - **ID**: speed-up-npm-ci
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `npm ci` costs 4m15s/day (31x in 10 sessions, p95 5m02s). Most runs reinstall an unchanged lockfile in a fresh worktree.
+  - **Files**: `scripts/worktree-deps.sh`, `AGENTS.md`
+  - **Output**: code
+  - **Acceptance**: the `npm ci` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: reusing `node_modules` when `package-lock.json` is unchanged (or `npm ci --prefer-offline --no-audit --no-fund`) cuts the cost from 4m15s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npm ci` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
+- [ ] Make `npx biome` fast in the inner loop
+  - **ID**: speed-up-npx-biome
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `npx biome` costs 3m58s/day (24x in 5 sessions, p95 6m14s; slowest single call 10m02s). Likely cause: npx resolving the package or checking the whole tree instead of changed files.
+  - **Files**: `package.json`, `AGENTS.md`
+  - **Output**: code
+  - **Acceptance**: the `npx biome` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: calling the local `node_modules/.bin/biome` on changed files only cuts the cost from 3m58s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npx biome` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
+- [ ] Speed up `worktree-deps.sh`
+  - **ID**: speed-up-bash-worktree-deps-sh
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `bash worktree-deps.sh` costs 3m44s/day (24x in 4 sessions, p95 5m31s).
+  - **Files**: `scripts/worktree-deps.sh`
+  - **Output**: code
+  - **Acceptance**: the `bash worktree-deps.sh` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: linking or cloning `node_modules` from the primary checkout when the lockfile matches cuts the cost from 3m44s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `bash worktree-deps.sh` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

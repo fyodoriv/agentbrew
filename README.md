@@ -332,7 +332,10 @@ A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every
 agentbrew status               # configured + drift summary
 agentbrew status --fix         # detailed drift check + auto-repair
 agentbrew status --ci          # exit 1 on drift (CI-friendly)
+agentbrew status --ci --ignore-session-env  # for health checks run by an agent
 ```
+
+**Agent-session env.** `env-hygiene` drift flags vars such as `CLAUDECODE` that leak into child agent sessions. An agent session (for example Claude Code) sets `CLAUDECODE` in its own child processes. So when an agent runs `agentbrew status`, `CLAUDECODE` is in the process env, but that is not machine drift. If the caller is an agent session (`CLAUDECODE` set and no tty), or you pass `--ignore-session-env`, status prints it as a `warning:` line and does not count it as drift. If a shell startup file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, and similar) exports `CLAUDECODE`, it is still drift: that file leaks the var into every session.
 
 Every drift item ends with its fix (`— fix: <command>`). Each sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (no telemetry; `AGENTBREW_EVENTS=0` turns it off). See [`docs/observability.md`](docs/observability.md).
 

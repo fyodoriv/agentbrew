@@ -45,6 +45,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--global` | knob | Scope choice for install. |
 | `--headers` | knob | Supplies HTTP headers; input, not behavior. |
 | `--if-stale` | knob | Skips a fresh snapshot after a given age; the value is the knob. |
+| `--ignore-session-env` | opt-out | Agent callers are already detected by default (CLAUDECODE set, no tty); the flag forces the same warning-not-drift handling for a caller with a tty. |
 | `--include-deprecated` | debug | Shows deprecated catalog entries that are hidden by default. |
 | `--json` | knob | Machine-readable output for scripts; humans get the table by default. |
 | `--local` | knob | Scope choice for install (project folder). |

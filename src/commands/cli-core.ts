@@ -59,15 +59,33 @@ export function registerCoreCommands(program: Command): void {
     .option("--json", "Output as JSON")
     .option("--fix", "Auto-repair any detected drift")
     .option("--ci", "CI mode: no color, exit 1 on drift")
-    .action(async (options: { verbose?: boolean; json?: boolean; fix?: boolean; ci?: boolean }) => {
-      if (options.fix || options.ci || options.json) {
-        const { healthCheck } = await import("../health.js");
-        await healthCheck({ autoFix: options.fix, ci: options.ci, json: options.json, verbose: options.verbose });
-        return;
-      }
-      const { status } = await import("../status.js");
-      await status({ verbose: options.verbose });
-    });
+    .option(
+      "--ignore-session-env",
+      "Report agent-session env vars (CLAUDECODE) as warnings, unless a shell startup file exports them",
+    )
+    .action(
+      async (options: {
+        verbose?: boolean;
+        json?: boolean;
+        fix?: boolean;
+        ci?: boolean;
+        ignoreSessionEnv?: boolean;
+      }) => {
+        if (options.fix || options.ci || options.json) {
+          const { healthCheck } = await import("../health.js");
+          await healthCheck({
+            autoFix: options.fix,
+            ci: options.ci,
+            json: options.json,
+            verbose: options.verbose,
+            ignoreSessionEnv: options.ignoreSessionEnv,
+          });
+          return;
+        }
+        const { status } = await import("../status.js");
+        await status({ verbose: options.verbose });
+      },
+    );
 
   program
     .command("remove [name]")

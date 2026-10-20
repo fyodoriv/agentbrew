@@ -115,6 +115,7 @@ vi.mock("./sync/auto-repair-health.js", () => ({
 }));
 
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { checkEnvHygiene } from "./core/env-sanitize.js";
 import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
 import { fix, healthCheck } from "./health.js";
 import { runMcpHealCycle } from "./mcp/heal-cycle.js";
@@ -282,6 +283,20 @@ describe("healthCheck", () => {
 });
 
 describe("healthCheck --ci mode", () => {
+  it("reports caller CLAUDECODE as a warning, not drift, with ignoreSessionEnv (#348)", async () => {
+    mockLoadState.mockReturnValue(
+      makeState({
+        agents: [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: undefined }],
+      }),
+    );
+    mockExistsSync.mockReturnValue(false);
+    vi.mocked(checkEnvHygiene).mockReturnValueOnce([{ variable: "CLAUDECODE", value: "1" }]);
+    await healthCheck({ autoFix: false, ci: true, ignoreSessionEnv: true });
+    expect(process.exitCode).toBe(0);
+    expect(console.log).toHaveBeenCalledWith("drift=0 status=clean");
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining("warning: shell [env-hygiene] CLAUDECODE"));
+  });
+
   it("outputs plain text and exits 0 when clean", async () => {
     mockLoadState.mockReturnValue(
       makeState({

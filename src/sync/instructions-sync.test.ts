@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -165,11 +165,12 @@ describe("loadInstructions", () => {
   });
 
   it("returns undefined when readFileSync throws", () => {
-    writeAgentsMd();
+    // A directory in the file's place: chmod 000 does not stop root (Linux cloud sessions) from reading.
     const agentsMdPath = join(agentBrewDir, "templates", "AGENTS.md");
-    chmodSync(agentsMdPath, 0o000);
+    rmSync(agentsMdPath, { force: true });
+    mkdirSync(agentsMdPath, { recursive: true });
     expect(loadInstructions()).toBeUndefined();
-    chmodSync(agentsMdPath, 0o644);
+    rmSync(agentsMdPath, { recursive: true });
   });
 });
 

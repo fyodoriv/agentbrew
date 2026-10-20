@@ -40,7 +40,8 @@
       "expected_output": "Points to web-quality-audit (or runs a single Lighthouse pass) rather than the full multi-round rankings workflow.",
       "expectations": [
         "Does not start the multi-round rankings workflow for a single Lighthouse request",
-        "Mentions web-quality-audit or runs one Lighthouse pass and reports its category scores"
+        "Mentions web-quality-audit or runs one Lighthouse pass and reports its category scores",
+      "Does not add the custom rankings script, design panel, or extra audits the user did not ask for"
       ]
     }
   ]

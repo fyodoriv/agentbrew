@@ -121,6 +121,13 @@ skills:
     category: productivity
     recommended: false
 
+  - name: wrap-up
+    description: "Wrap up a session: find unfinished work in every touched repo, deliver what is ready, and put the rest in a leak-checked draft PR with a Pending list and a task per item. Its open-work.sh feeds next-task and the repo checkups."
+    source: fyodoriv/agentbrew
+    category: productivity
+    recommended: true
+    rationale: "Sessions end mid-task (context limits, cloud containers reclaimed). Work left only in a session is lost; a draft PR plus a task is how the next session continues."
+
   - name: handoff
     description: "Compacts a long session into a mktemp handoff document for a fresh agent. References artifacts by path/SHA rather than duplicating content."
     source: fyodoriv/agentbrew

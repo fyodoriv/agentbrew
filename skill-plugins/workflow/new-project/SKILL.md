@@ -27,7 +27,7 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | e2e | `scripts/e2e.sh` and `tests/e2e/`; US-01 is a stranger-install test |
 | self-improving | timed gate steps in `.metrics/`, a speed review (weekly by default, monthly for quiet repos; it may live in the repo's checkup), `docs/learnings.md` |
 | tasks | `TASKS.md` with pre-registered Hypothesis, Measurement, Success, Pivot, Anchor |
-| checkup | `scripts/checkup.sh`: one repo-wide checkup (health, cached gate, broken stories, speed, P0s, monthly audit) |
+| checkup | `scripts/checkup.sh`: one repo-wide checkup (open PRs and branches first, health, cached gate, broken stories, speed, P0s, monthly audit); every app has one |
 | caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), every file a step reads is in its key (untracked contents too), affected-test selection includes tests that read a changed file, any change re-runs (prove it by editing one file and rerunning the same command), `NO_CACHE=1` forces all |
 
 ## Profiles

@@ -174,22 +174,41 @@
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Tags**: gate, tests, cloud
-  - **Details**: In a Claude Code cloud session (Linux container) on 2026-10-19, `npm run verify:changed` failed
-    on `main`, unrelated to the change under test:
-    - `hooks/checks/hook-large-input-pipefail.test.sh`: 0 of 8 passed. The fake `jq` in the fixture gets the large
-      input as an argument, and Linux rejects it ("Argument list too long"). Pass the input on stdin instead.
-    - `src/sync/instructions-sync.test.ts > loadInstructions > returns undefined when readFileSync throws`:
-      it got the real template instead of `undefined`. The mock does not reach the read path used in this
-      environment.
-    Cloud sessions now rely on this gate before they ship (templates/AGENTS.md "Cloud sessions").
-  - **Files**: `hooks/checks/hook-large-input-pipefail.test.sh`, `src/sync/instructions-sync.test.ts`
+  - **Details**: Fixed on 2026-10-20 (fyodoriv/agentbrew#292): the `hook-large-input-pipefail` fixture (jq now reads
+    the 300 KB body with `--rawfile`; Linux caps one argument at 128 KB) and the `instructions-sync` "readFileSync
+    throws" test (root ignores `chmod 000`; a directory now stands in for the file). `npm run verify:changed`
+    passes in the cloud up to `playwright-install`, which the cloud network blocks (`cdn.playwright.dev`; a
+    Chromium is preinstalled at `/opt/pw-browsers`). The full `npx vitest run` still has 15 failures that also
+    fail on `main` in the cloud. Three causes: root ignores file modes (`lint.test.ts` unreadable cases,
+    `manifest.test.ts`, `skills-sync.test.ts` symlink warning), macOS-only paths (`integration-infra.test.ts`
+    LaunchAgent and .zshrc, `mcp-sync-carveout-matrix.test.ts` copilot path, `integration.test.ts` sync
+    convergence and prune), and missing tools (`git-filter-repo`, Copier, storybook, sqlite backup, worktree-deps
+    cloning).
+  - **Files**: `scripts/verify.sh` (playwright step), the test files named in Details
   - **Output**: code
-  - **Acceptance**: `npm run verify:changed` passes on `main` in a Linux cloud container, and still passes on the Mac.
+  - **Acceptance**: `npm run verify` passes on `main` in a Linux cloud container (root user, no Playwright CDN), and still passes on the Mac.
   - **Hypothesis**: Both failures are test-harness assumptions about macOS, not product bugs; each takes a small test-only fix.
   - **Measurement**: `npm run verify:changed` on `main` in a cloud session (pass/fail per step)
   - **Success**: 0 failing steps in the cloud and on the Mac
   - **Pivot**: a failure is a real product bug on Linux → fix the product code and add a Linux case to the test
   - **Anchor**: found while shipping fyodoriv/agentbrew#287 on 2026-10-19 (AGENTS.md rule 11: scout while you work)
+
+- [ ] `next-task` continues open PRs and branches before it claims a new task, in every repo
+  - **ID**: next-task-open-work-first
+  - **Tags**: upstream, task-management, wrap-up
+  - **Details**: `next-task` ships from tasksmd/tasks.md, not this repo. Until that skill checks open work itself, the
+    deployed `templates/AGENTS.md` rule "Open work first" tells agents to run `wrap-up`'s `scripts/open-work.sh` and
+    continue a draft PR from its `## Pending` list before claiming. Upstream change: a step 0 in `next-task` that
+    lists your open PRs and unmerged branches and continues the first unblocked one. Publishing to tasksmd/tasks.md
+    needs the owner's approval in the session (rule 14).
+  - **Files**: `templates/AGENTS.md`, `skill-plugins/workflow/wrap-up/scripts/open-work.sh` (upstream: tasksmd/tasks.md `next-task`)
+  - **Output**: code
+  - **Acceptance**: `next-task` in a repo with an open draft PR resumes that PR, with no instruction from AGENTS.md.
+  - **Hypothesis**: Agents skip the AGENTS.md rule some of the time; a step inside `next-task` itself is followed every time.
+  - **Measurement**: 5 `next-task` runs in a repo with one open draft PR; count runs that resume it
+  - **Success**: 5 of 5 resume the draft PR after the upstream change
+  - **Pivot**: upstream declines → keep the AGENTS.md rule and add an agentbrew hook that prints `open-work.sh` output when `next-task` starts
+  - **Anchor**: owner request on 2026-10-20: "update next-task so that it observes opened prs/branches before starting to work on any task"
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga

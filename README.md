@@ -53,6 +53,7 @@ agentbrew install --recommended           # recommended skills + MCP + rules, in
 agentbrew install verify-everything       # a bundle: a named group of catalog items, installed together
 agentbrew catalog --bundles               # list bundles and their members
 agentbrew install review-tasks            # tasks.md /review-tasks: audit a task queue for stale or misprioritized work
+agentbrew install wrap-up                 # /wrap-up: deliver finished work, draft the rest as a leak-checked PR + task
 agentbrew install --refresh-rules --dry-run   # preview catalog rule text updates (rules only); drop --dry-run to apply
 agentbrew install @anthropic/mcp-proxy    # any npm package (auto-detected as MCP)
 agentbrew install sqlite -- uvx mcp-server-sqlite   # any command as an MCP server
@@ -684,7 +685,7 @@ npm run lint:rules                     # Minsky rule checks on this repo (part o
 GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
 
 1. `npm run verify` is the full gate. Every PR runs it before merge.
-2. `npm run checkup` runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
+2. `npm run checkup` lists your open PRs and unmerged branches first (finish them before new work), then runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 

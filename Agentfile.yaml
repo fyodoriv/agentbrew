@@ -16,6 +16,7 @@ skills:
   - sync-agent-config
   - task-command-center
   - writing-plans
+  - wrap-up
 
 sources:
   - ./skill-plugins/workflow

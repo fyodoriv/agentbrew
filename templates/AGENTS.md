@@ -90,6 +90,10 @@ No completion claims without fresh evidence. Agent-artifact changes need same-PR
 
 A cloud session cannot reach the user's machine, local data or signed-in apps. When the rest of a goal needs them, do not wait or keep asking. Push the work branch, write each unfinished item as a task in the repo's task backend on the default branch (with the steps to run locally), and stop with one short message naming the task ids.
 
+### Open work first
+
+Before you start a task (`next-task` included), list the repo's open work: your open PRs, unmerged branches, uncommitted files (`wrap-up` skill, `scripts/open-work.sh`). Continue an open draft PR from its `## Pending` list before claiming new work. To end a session, run `wrap-up`: deliver what is ready, and put the rest in a leak-checked draft PR plus a task.
+
 ### Docs with every change
 
 Every change updates its docs in the same PR. User-facing behavior goes in the README or how-to; agent workflow and any gotcha that cost time go in the repo's `AGENTS.md`. Every PR body has `## Docs` (docs changed, or `Docs: none — <reason>`); hook `gh-pr-body-requires-docs` enforces it. Repo guides follow agentbrew `docs/agent-guide-baseline.md`.

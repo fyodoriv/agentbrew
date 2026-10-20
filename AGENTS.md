@@ -51,7 +51,6 @@ Run every command from the repo root.
 | Add or close a task | `TASKS.md` (every block needs the rule-9 fields) | [`docs/task-backend-contract.md`](docs/task-backend-contract.md) |
 | Change a leak or privacy gate | `src/oss/no-internal-refs.test.ts` | [`SECURITY.md`](SECURITY.md) |
 | Add a docs test | `src/docs/*.test.ts` | [`docs/README.md`](docs/README.md) |
-| Add a top-level doc | `docs/<name>.md` | a row in [`docs/README.md`](docs/README.md) (test-enforced) |
 
 ## Rules
 
@@ -80,32 +79,30 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 > Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
 
-`src/core/removed-agents.test.ts` fails if a Cursor, Grok, or xAI agent, a `~/.cursor` write path, or a Cursor-only script or LaunchAgent comes back.
-
 ## Gotchas
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it). Deps: `bash scripts/worktree-deps.sh`.
   A symlinked `node_modules` breaks `src/cli.test.ts`.
-- `src/cli.test.ts` can time out under load. Re-run it before you blame your change.
+- `src/cli.test.ts` can time out under load; re-run it before you blame your change.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.
 - Each test file gets a scratch `HOME` and scrubbed `AGENTBREW_*`/`NO_CACHE` env (`vitest.isolated-home.ts`). It fails on writes to the real `~/.config/agentbrew` or `~/.claude`, and on new repo files. Instructions sync writes `context/*.md` under `AGENTBREW_DIR`, so never point it at the repo root in a test; use a scratch copy (`scratchRepoRoot()` in `src/integration.test.ts`).
 - The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`; store templates as `*.template.md`.
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
-- `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out; drop it when upstream fixes it.
+- `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
 - The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
 - `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (`com.agentbrew.check`).
 - `npm run lint:rules` skips each rule without a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`).
-- PR hooks read `gh pr` in command position, even inside your own heredocs; write hook test input with the Write tool.
+- PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - The install e2e (`real-e2e/scenarios/us01-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
-- Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md` (test-enforced).
-- The gate cache key holds only repo files. After a change outside the repo, run `NO_CACHE=1 npm run verify`.
-- opencode.json rejects unknown keys. The opencode bootstrap writes `model: "ollama/<tag>"` and a `provider.ollama` block; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins that shape. Refresh it from https://opencode.ai/config.json when opencode changes its schema.
+- Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
+- The gate cache keys only on repo files; after an outside change, run `NO_CACHE=1 npm run verify`.
+- opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
 - Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
 
 ## Delivery

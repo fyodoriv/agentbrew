@@ -51,9 +51,7 @@ describe("detectAgents", () => {
   it("agents with commandTransform have function values (runtime only)", () => {
     mockExistsSync.mockReturnValue(true);
     const agents = detectAgents();
-    const cursor = agents.find((a) => a.name === "cursor");
     const gemini = agents.find((a) => a.name === "gemini-cli");
-    expect(typeof cursor?.commandTransform).toBe("function");
     expect(typeof gemini?.commandTransform).toBe("function");
   });
 
@@ -148,7 +146,7 @@ describe("discoverAllSkills — single-agent edge cases", () => {
 
 describe("discoverAllSkills", () => {
   it("returns empty map when no agents detected", () => {
-    const agents: AgentConfig[] = [{ name: "cursor", detected: false, skillsDir: "/x" }];
+    const agents: AgentConfig[] = [{ name: "codex", detected: false, skillsDir: "/x" }];
     expect(discoverAllSkills(agents).size).toBe(0);
   });
 

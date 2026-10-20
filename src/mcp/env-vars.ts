@@ -78,7 +78,6 @@ type EnvVarFormat = "standard" | "opencode" | "codex" | "literal";
 
 const AGENT_ENV_FORMAT: Record<string, EnvVarFormat> = {
   "claude-code": "standard",
-  cursor: "standard",
   augment: "standard",
   codex: "codex",
   "gemini-cli": "standard",

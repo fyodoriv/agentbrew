@@ -183,14 +183,14 @@ describe("delegateMcpClientEdit — subprocess behavior", () => {
     process.env.AGENTBREW_MCPM_BIN = fakeBin;
 
     // Mix of intersection (claude-code, cline, codex → codex-cli
-    // rename) and carve-outs (copilot, amp, cursor). The helper must iterate
+    // rename) and carve-outs (copilot, amp, kiro). The helper must iterate
     // across only the intersection subset with name-translated forms.
     const result = delegateMcpClientEdit({
       serverName: "time",
-      agents: ["claude-code", "cline", "codex", "copilot", "amp", "cursor"],
+      agents: ["claude-code", "cline", "codex", "copilot", "amp", "kiro"],
     });
     expect(result.ok).toBe(true);
-    expect(result.carveOuts).toEqual(["copilot", "amp", "cursor"]);
+    expect(result.carveOuts).toEqual(["copilot", "amp", "kiro"]);
     expect(result.perClient.map((r) => r.client)).toEqual(["claude-code", "cline", "codex-cli"]);
     expect(result.perClient.every((r) => r.ok)).toBe(true);
     // Every invocation goes to the log — one line per client with the

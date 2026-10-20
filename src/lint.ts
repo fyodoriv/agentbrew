@@ -273,7 +273,7 @@ function printAgentBloatFinding(finding: AgentBloatFinding, label?: string): voi
   print(`  ${icon} ${target} — ${finding.message}`);
 }
 
-/** Lint repo-owned skills, rule templates, and deployed Cursor .mdc rules for bloat. */
+/** Lint repo-owned skills, and rule templates for bloat. */
 function lintAgentBloat(): { errors: number; warnings: number } {
   console.log("");
   console.log(chalk.bold("Agent bloat\n"));

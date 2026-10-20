@@ -1,5 +1,5 @@
 export type CommandTransform = (content: string) => string;
-export type HooksFormat = "claude-settings" | "claude-direct" | "cursor";
+export type HooksFormat = "claude-settings" | "claude-direct";
 export type HooksScope = "user" | "project";
 
 /**
@@ -60,7 +60,7 @@ export interface AgentConfig {
   mcpFormat?: "json" | "yaml" | "toml" | "opencode" | (string & {});
   mcpPermissionsConfig?: McpPermissionsConfig;
   rulesFile?: string;
-  /** Directory for per-file rules (e.g., ~/.cursor/rules/). */
+  /** Directory for per-file rules (e.g., ~/.my-agent/rules/). */
   rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
@@ -77,8 +77,8 @@ export interface AgentConfig {
   hooksFormat?: HooksFormat;
   hooksScope?: HooksScope;
   /** Where the agent's default-model setting lives (see {@link ModelConfig}).
-   *  Unset means the agent has no file-managed model surface (e.g. Cursor
-   *  stores the model in app-managed/UI state). */
+   *  Unset means the agent has no file-managed model surface (the model
+   *  lives in app-managed/UI state). */
   modelConfig?: ModelConfig;
   /** Skills-only agents with minimal real-world validation. */
   experimental?: boolean;

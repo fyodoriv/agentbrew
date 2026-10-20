@@ -108,15 +108,6 @@ const CARVEOUT_MATRIX: CarveoutRow[] = [
     expectedMcpKey: "amp.mcpServers",
     expectedMcpFormat: undefined, // default JSON
   },
-  {
-    name: "cursor",
-    // Moved from intersection to carve-out. mcpm's `mcpm run` wrapper entries
-    // aren't surfaced to Cursor's agent tool layer; native sync writes direct
-    // commands into ~/.cursor/mcp.json instead.
-    expectedMcpConfig: "~/.cursor/mcp.json",
-    expectedMcpKey: undefined, // default mcpServers
-    expectedMcpFormat: undefined, // default JSON
-  },
 ];
 
 describe("MCP carve-out matrix — per-agent metadata invariants", () => {
@@ -213,7 +204,7 @@ describe("MCP intersection matrix — mcpm-delegated agents", () => {
 // ── Boundary invariants (carve-out + intersection are disjoint, total = both sets) ─
 
 describe("MCP carve-out + intersection boundary invariants", () => {
-  it.each(["claude-code", "cursor", "codex"])("%s preserves the shared HTTP memory transport", (name) => {
+  it.each(["claude-code", "kiro", "codex"])("%s preserves the shared HTTP memory transport", (name) => {
     if (AGENTBREW_ONLY_MCP_AGENTS.has(name)) {
       const entry = getAdapter(defOf(name)).toEntry(SHARED_MEMORY_SERVER, name);
       expect(entry.url).toBe(SHARED_MEMORY_SERVER.url);

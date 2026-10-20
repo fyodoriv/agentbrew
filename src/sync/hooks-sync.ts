@@ -51,18 +51,6 @@ interface ClaudeHookGroup {
 type ClaudeHooksConfig = Record<string, ClaudeHookGroup[]>;
 type SettingsJson = Record<string, unknown>;
 type HooksJson = Record<string, unknown>;
-interface CursorHookItem {
-  command?: string;
-  matcher?: string;
-  prompt?: string;
-  timeout?: number;
-}
-
-interface CursorHooksFile {
-  version: 1;
-  hooks: Record<string, CursorHookItem[]>;
-}
-
 const CLAUDE_CODE_PERMISSION_MODE = "bypassPermissions";
 const CLAUDE_CODE_PERMISSION_SETTINGS_KEY = "settings:permissions.defaultMode";
 const DEFAULT_HOOKS_FORMAT: HooksFormat = "claude-settings";
@@ -116,26 +104,6 @@ export function filterHooksForTarget(hooks: ManagedHook[], agentName: string): M
   return hooks.filter(
     (hook) => hook.agents === undefined || hook.agents.length === 0 || hook.agents.includes(agentName),
   );
-}
-
-const CURSOR_EVENT_NAMES: Record<string, string> = {
-  Notification: "notification",
-  PostToolUse: "postToolUse",
-  PreCompact: "preCompact",
-  PreToolUse: "preToolUse",
-  SessionEnd: "sessionEnd",
-  SessionStart: "sessionStart",
-  Stop: "stop",
-  SubagentStop: "subagentStop",
-  UserPromptSubmit: "beforeSubmitPrompt",
-};
-
-export function cursorEventName(event: string): string {
-  return CURSOR_EVENT_NAMES[event] ?? event.replace(/^./u, (letter) => letter.toLowerCase());
-}
-
-export function toCursorHooksConfig(config: ClaudeHooksConfig): ClaudeHooksConfig {
-  return Object.fromEntries(Object.entries(config).map(([event, groups]) => [cursorEventName(event), groups]));
 }
 
 /** Identity of one deployed hook item: "event:matcher command" (or prompt). */
@@ -289,71 +257,10 @@ function settingsHooks(settings: SettingsJson, hooksKey: string): ClaudeHooksCon
   return isClaudeHooksConfig(hooks) ? hooks : {};
 }
 
-function formatHooksConfig(config: ClaudeHooksConfig, format: HooksFormat): ClaudeHooksConfig {
-  return format === "cursor" ? toCursorHooksConfig(config) : config;
-}
-
-function cursorItemToClaudeItem(item: CursorHookItem): ClaudeHookItem | null {
-  if (typeof item.command === "string") {
-    return { type: "command", command: item.command, timeout: item.timeout };
-  }
-  if (typeof item.prompt === "string") {
-    return { type: "prompt", prompt: item.prompt, timeout: item.timeout };
-  }
-  return null;
-}
-
-function cursorHookGroupFromEntry(entry: unknown): ClaudeHookGroup | null {
-  if (!isJsonObject(entry)) return null;
-  const item = cursorItemToClaudeItem(entry);
-  if (!item) return null;
-  const group: ClaudeHookGroup = { hooks: [item] };
-  if (typeof entry.matcher === "string") group.matcher = entry.matcher;
-  return group;
-}
-
-function cursorHooksToConfig(value: unknown): ClaudeHooksConfig {
-  if (!isJsonObject(value)) return {};
-  const hooks = value.hooks;
-  if (!isJsonObject(hooks)) return {};
-  const config: ClaudeHooksConfig = {};
-  for (const [event, entries] of Object.entries(hooks)) {
-    if (!Array.isArray(entries)) continue;
-    const groups = entries.map(cursorHookGroupFromEntry).filter((group) => group !== null);
-    if (groups.length > 0) config[event] = groups;
-  }
-  return config;
-}
-
-function cursorEntryFromHook(group: ClaudeHookGroup, hook: ClaudeHookItem): CursorHookItem | null {
-  const entry: CursorHookItem = {};
-  if (group.matcher) entry.matcher = group.matcher;
-  if (hook.command) entry.command = hook.command;
-  if (hook.prompt) entry.prompt = hook.prompt;
-  if (hook.timeout !== undefined) entry.timeout = hook.timeout;
-  return entry.command || entry.prompt ? entry : null;
-}
-
-function cursorEntriesForGroup(group: ClaudeHookGroup): CursorHookItem[] {
-  return group.hooks.map((hook) => cursorEntryFromHook(group, hook)).filter((entry) => entry !== null);
-}
-
-function cursorConfigToFile(raw: HooksJson, config: ClaudeHooksConfig): CursorHooksFile & HooksJson {
-  const hooks: Record<string, CursorHookItem[]> = {};
-  for (const [event, groups] of Object.entries(config)) {
-    const entries = groups.flatMap(cursorEntriesForGroup);
-    if (entries.length > 0) hooks[event] = entries;
-  }
-  return { ...raw, version: 1, hooks };
-}
-
 function readHooksFile(filePath: string, target: HooksTarget): { raw: HooksJson; hooks: ClaudeHooksConfig } {
   const raw = readSettingsFile(filePath);
   if (target.format === "claude-settings") {
     return { raw, hooks: settingsHooks(raw, target.hooksKey) };
-  }
-  if (target.format === "cursor") {
-    return { raw, hooks: cursorHooksToConfig(raw) };
   }
   return { raw, hooks: isClaudeHooksConfig(raw) ? (raw as ClaudeHooksConfig) : {} };
 }
@@ -370,9 +277,6 @@ function hooksFileContent(settings: SettingsJson, hooks: ClaudeHooksConfig, targ
   if (target.format === "claude-settings") {
     applyHooksSettings(settings, target.hooksKey, hooks);
     return settings;
-  }
-  if (target.format === "cursor") {
-    return cursorConfigToFile(settings, hooks);
   }
   return hooks;
 }
@@ -525,10 +429,7 @@ function syncSingleTarget(
   manifest: Manifest,
   dryRun: boolean,
 ): { actions: HooksDiffAction[]; managedKeys: string[]; managedIds: string[] } {
-  const desiredConfig = formatHooksConfig(
-    toClaudeHooksConfig(filterHooksForTarget(hooks, target.agentName)),
-    target.format,
-  );
+  const desiredConfig = toClaudeHooksConfig(filterHooksForTarget(hooks, target.agentName));
   const previousManagedKeys = previousManagedKeysForTarget(manifest, target);
   const managedKeys = managedKeysForConfig(desiredConfig);
   const managedIds = managedHookIdsForConfig(desiredConfig);

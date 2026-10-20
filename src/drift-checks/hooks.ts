@@ -33,17 +33,6 @@ interface HooksAgent {
 
 const CLAUDE_CODE_PERMISSION_MODE = "bypassPermissions";
 const DEFAULT_HOOK_MATCHER = "*";
-const CURSOR_EVENT_NAMES: Record<string, string> = {
-  Notification: "notification",
-  PostToolUse: "postToolUse",
-  PreCompact: "preCompact",
-  PreToolUse: "preToolUse",
-  SessionEnd: "sessionEnd",
-  SessionStart: "sessionStart",
-  Stop: "stop",
-  SubagentStop: "subagentStop",
-  UserPromptSubmit: "beforeSubmitPrompt",
-};
 
 function isJsonObject(value: unknown): value is SettingsJson {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -89,7 +78,7 @@ function hookItemText(item: SettingsJson): string | undefined {
   return undefined;
 }
 
-/** Claude groups nest hook items under `hooks`; Cursor entries are flat items. */
+/** Claude groups nest hook items under `hooks`; flat items are read as one group. */
 function groupCommands(group: SettingsJson): string[] {
   const items: unknown[] = Array.isArray(group.hooks) ? group.hooks : [group];
   return items
@@ -98,13 +87,7 @@ function groupCommands(group: SettingsJson): string[] {
     .filter((text) => text !== undefined);
 }
 
-function readCursorHooks(settings: SettingsJson): HooksByEvent {
-  const hooks = settings.hooks;
-  return eventGroupsFromObject(hooks);
-}
-
 function readHooksForAgent(settings: SettingsJson, agent: HooksAgent): HooksByEvent {
-  if (agent.hooksFormat === "cursor") return readCursorHooks(settings);
   if (agent.hooksFormat === "claude-direct") return eventGroupsFromObject(settings);
   return readHooksFromSettings(settings, agent.hooksKey ?? "hooks");
 }
@@ -120,10 +103,6 @@ function hookText(hook: ManagedHook): string {
 /** Identity of one hook: its event:matcher group plus its command (or prompt). */
 function hookIdentity(hook: ManagedHook): string {
   return `${hookKey(hook.event, hook.matcher)} ${hookText(hook)}`;
-}
-
-function cursorEventName(event: string): string {
-  return CURSOR_EVENT_NAMES[event] ?? event.replace(/^./u, (letter) => letter.toLowerCase());
 }
 
 function hookAppliesToAgent(hook: ManagedHook, agentName: string): boolean {
@@ -222,12 +201,8 @@ function isHookPresent(eventGroups: HookGroup[] | undefined, hook: ManagedHook):
   );
 }
 
-function hookEventForAgent(agent: HooksAgent, event: string): string {
-  return agent.hooksFormat === "cursor" ? cursorEventName(event) : event;
-}
-
-function hookKeyForAgent(agent: HooksAgent, hook: ManagedHook): string {
-  return hookKey(hookEventForAgent(agent, hook.event), hook.matcher);
+function hookKeyForAgent(_agent: HooksAgent, hook: ManagedHook): string {
+  return hookKey(hook.event, hook.matcher);
 }
 
 function managedKeysForAgent(manifest: ReturnType<typeof loadManifest>, agent: HooksAgent): Set<string> {
@@ -294,7 +269,7 @@ function findMissingHooks(
     const key = hookKeyForAgent(agent, hook);
     if (!managedKeys.has(key)) continue;
 
-    const eventGroups = deployed[hookEventForAgent(agent, hook.event)];
+    const eventGroups = deployed[hook.event];
     if (!isHookPresent(eventGroups, hook)) {
       missing.push(`${key} ${hookText(hook)}`);
     }

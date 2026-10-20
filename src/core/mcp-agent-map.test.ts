@@ -29,7 +29,7 @@ describe("AGENTBREW_TO_MCPM", () => {
 
 describe("AGENTBREW_ONLY_MCP_AGENTS", () => {
   it("matches AGENTBREW_ONLY_MCP_AGENTS", () => {
-    expect(new Set(AGENTBREW_ONLY_MCP_AGENTS)).toEqual(new Set(["copilot", "opencode", "kiro", "amp", "cursor"]));
+    expect(new Set(AGENTBREW_ONLY_MCP_AGENTS)).toEqual(new Set(["copilot", "opencode", "kiro", "amp"]));
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -50,7 +50,7 @@ describe("AGENTBREW_ONLY_MCP_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_MCP_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_MCP_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_MCP_RATIONALE).sort()).toEqual(["amp", "copilot", "cursor", "kiro", "opencode"]);
+    expect(Object.keys(AGENTBREW_ONLY_MCP_RATIONALE).sort()).toEqual(["amp", "copilot", "kiro", "opencode"]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {
@@ -93,7 +93,7 @@ describe("toMcpmClient", () => {
     expect(toMcpmClient("opencode")).toBeNull();
     expect(toMcpmClient("kiro")).toBeNull();
     expect(toMcpmClient("amp")).toBeNull();
-    expect(toMcpmClient("cursor")).toBeNull();
+    expect(toMcpmClient("amp")).toBeNull();
   });
 
   it("passes through intersection agents unchanged", () => {
@@ -163,11 +163,11 @@ describe("buildMcpmClientList", () => {
 
   describe("carve-out path", () => {
     it("skips agentbrew-only agents and reports them in carveOuts", () => {
-      // The carve-outs (copilot, opencode, kiro, amp,
-      // cursor) have no mcpm-delegated write — caller routes them to native.
-      expect(buildMcpmClientList(["copilot", "opencode", "kiro", "amp", "cursor"])).toEqual({
+      // The carve-outs (copilot, opencode, kiro, amp)
+      // have no mcpm-delegated write — caller routes them to native.
+      expect(buildMcpmClientList(["copilot", "opencode", "kiro", "amp"])).toEqual({
         clients: [],
-        carveOuts: ["copilot", "opencode", "kiro", "amp", "cursor"],
+        carveOuts: ["copilot", "opencode", "kiro", "amp"],
       });
     });
   });
@@ -181,7 +181,6 @@ describe("buildMcpmClientList", () => {
         buildMcpmClientList([
           "claude-code",
           "claude-desktop",
-          "cursor",
           "codex",
           "gemini-cli",
           "goose",
@@ -194,7 +193,7 @@ describe("buildMcpmClientList", () => {
         ]),
       ).toEqual({
         clients: ["claude-code", "claude-desktop", "codex-cli", "gemini-cli", "goose-cli", "cline", "roo-code"],
-        carveOuts: ["cursor", "copilot", "opencode", "kiro", "amp"],
+        carveOuts: ["copilot", "opencode", "kiro", "amp"],
       });
     });
 
@@ -250,7 +249,7 @@ describe("coverage invariant — every MCP-capable agent in agents.yaml is class
 });
 
 describe("primary-agent shared-memory transport parity", () => {
-  const primaryAgents = ["claude-code", "cursor", "codex"];
+  const primaryAgents = ["claude-code", "codex"];
 
   it("routes every primary agent through either mcpm or a native MCP config writer", () => {
     const definitions = loadAgentDefinitions();
@@ -263,6 +262,6 @@ describe("primary-agent shared-memory transport parity", () => {
 
     const transport = buildMcpmClientList(primaryAgents);
     expect(transport.clients).toEqual(["claude-code", "codex-cli"]);
-    expect(transport.carveOuts).toEqual(["cursor"]);
+    expect(transport.carveOuts).toEqual([]);
   });
 });

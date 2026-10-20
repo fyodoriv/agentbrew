@@ -31,7 +31,7 @@
 #   verdict         "block" (exit 2) | "warn" (stderr only) | "mutate" (rewrite tool_input)
 #   bypassEnvVar    optional env var that disables this hook (default: HOOK_BYPASS_<ID_UPPERCASE>)
 #   sourceRule      reference to the original IRON LAW (file:line) the hook implements
-#   agents          which agents to deploy to. Cursor gets event-name transforms.
+#   agents          which agents to deploy to.
 #   async           optional; true lets Claude Code run the hook in the background (the tool call does not wait).
 #   defaultEnabled  optional; false makes the hook opt-in. Its script still deploys, but sync wires it into
 #                   agent hooks files only when the overlay lists its id under `enabled:`. Omit to keep it on.
@@ -53,7 +53,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:826 — "Code Has No Time Stamps (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   # ── Phase 1 hooks (dotfiles wrapper migration — sourceRule = dotfiles/bin/gh + git-hooks/commit-msg) ──
@@ -66,7 +66,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: dotfiles/bin/gh (formalized as hook 2026-05-27) + shared-rules.md:1283 "Agent Attribution Footer (ABSOLUTE)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-rationale
@@ -77,7 +77,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:504 "PR Format (canonical structure + brevity is IRON LAW)" + dotfiles/bin/gh
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-validation
@@ -88,7 +88,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: task-command-center skill "PR validation block (IRON LAW)" + templates/AGENTS.md
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-docs
@@ -99,7 +99,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: docs/agent-guide-baseline.md "Docs With Every Change" + templates/AGENTS.md
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-skill-requires-evals
@@ -110,7 +110,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: templates/AGENTS.md "Skill PRs Must Ship Evals (IRON LAW)" + Anthropic skill-creator / Superpowers writing-skills
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-agent-artifacts-require-tests
@@ -122,7 +122,7 @@ hooks:
     verdict: block
     bypassEnvVar: HOOK_BYPASS_GH_PR_AGENT_ARTIFACTS_REQUIRE_TESTS
     sourceRule: templates/AGENTS.md "Agent Artifact PRs Need Evidence" + src/agent-artifacts/inventory.ts
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: git-commit-conventional
@@ -133,7 +133,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: dotfiles/git-hooks/commit-msg (formalized as hook 2026-05-27)
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: git-strip-agent-attribution
@@ -144,7 +144,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: no-git-add-all
@@ -155,7 +155,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)" + agentbrew/AGENTS.md
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: no-force-push-protected
@@ -166,7 +166,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: no-cross-workspace-publish
@@ -178,7 +178,7 @@ hooks:
     verdict: block
     bypassEnvVar: HOOK_BYPASS_NO_CROSS_WORKSPACE_PUBLISH
     sourceRule: templates/AGENTS.md "Cross-workspace publishing" + dotfiles bin/gh
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: no-commit-no-verify
@@ -189,7 +189,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: agentbrew/TASKS.md policy "do NOT bypass commit hooks (--no-verify)" + dotfiles/TASKS.md
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: no-binary-screenshots
@@ -200,7 +200,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: templates/AGENTS.md:370 "Never Commit Screenshots to Repos (IRON LAW)" + templates/AGENTS.md:396 "Don't Screenshot Test Output (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: selectors-pure
@@ -211,7 +211,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:368 "Selectors Must Be Pure (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: verify-before-completion
@@ -221,7 +221,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:231 "Verify Before Completion (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: a-pr-is-not-ready
     description: Block Stop after gh pr create/ready/merge if PR has failing CI or is behind main
@@ -230,7 +230,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:645 "A PR Is Not Ready Until It's Rebased and Green (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: manual-test-steps-start-at-app-url
     description: Block gh pr create when body has test-plan section but no app URL
@@ -240,7 +240,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:700 "Manual Test Steps Start at the App URL (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: pending-internal-work-needs-ticket
@@ -251,7 +251,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:1063 "Pending Internal Work Must Be Tracked (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: tests-adapt-to-production
     description: Block diff that adds test-accommodation wrappers (*ForTest, __test*, lookup*Spy) in production code
@@ -261,7 +261,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:343 "Tests Adapt to Production, Not the Other Way Around (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: skill-names-user-facing-verbs
@@ -272,7 +272,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:759 "Skill Names Are User-Facing Verbs, Not Internal Jargon (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gh-pr-body-no-review-response
@@ -283,7 +283,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "PR bodies stay artifact-focused; reply to reviewers in comments, not the description"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: gh-pr-body-related-prs-not-first
@@ -294,7 +294,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Never lead with cross-PR navigation; put Related PRs near the bottom"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: async-human-comms-blocks
@@ -304,7 +304,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:135 "Async human comms — ask_human.md (ADOPTED CONVENTION, IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: comment-adjacency
@@ -315,7 +315,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:432 "Comment Adjacency (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: cross-team-code-batch
     description: Warn on gh pr create when diff touches 2+ CODEOWNER teams without BATCH prefix
@@ -325,7 +325,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:311 "Cross-Team Code Touches Batch (HIGHEST PRIORITY IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: env-correct-urls
@@ -336,7 +336,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:811 "Env-Correct URLs (IRON LAW)"
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   - id: comment-brevity-in-tests
@@ -347,7 +347,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: 'shared-rules.md:419 Comment Brevity in Tests IRON LAW'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: comment-proportionality
     description: 'Warn when a Write file has comment-to-code ratio above 50%'
@@ -357,7 +357,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: 'shared-rules.md:865 Comment Proportionality IRON LAW'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
 
   - id: jira-no-grandchildren
     description: 'Block Jira Sub-task creation that would make a 3-level hierarchy'
@@ -367,7 +367,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: 'shared-rules.md:1044 Jira Hierarchy No Grandchildren IRON LAW'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gdoc-comment-preservation
@@ -378,7 +378,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: 'shared-rules.md:1528 GDoc Comment Preservation Rule ABSOLUTE'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   - id: gdoc-surgical-edit-only
@@ -389,7 +389,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: 'shared-rules.md:1540 GDoc Surgical-Edit-Only Rule ABSOLUTE'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   # ── Context budget (SessionStart — throttled background capture) ─────────
@@ -402,7 +402,7 @@ hooks:
     verdict: warn
     bypassEnvVar: HOOK_BYPASS_CONTEXT_BUDGET_MEASURE
     sourceRule: 'context-budget skill + RECURRING.md context-budget-weekly-audit'
-    agents: ["claude-code", "cursor"]
+    agents: ["claude-code"]
     defaultEnabled: false
 
   # ── Goal setting (UserPromptSubmit — loads run-goal on /goal) ───────────

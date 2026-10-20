@@ -51,7 +51,7 @@ interface CarveoutRow {
   name: string;
   /**
    * Expected rulesFile (tilde-prefixed). `undefined` when the agent
-   * doesn't use a single-file rules surface (e.g. cursor uses rulesDir only).
+   * doesn't use a single-file rules surface (e.g. an agent that uses rulesDir only).
    */
   expectedRulesFile?: string;
   /**
@@ -141,9 +141,6 @@ const DELEGATED_MATRIX: DelegatedRow[] = [
   { name: "codex", shape: "rulesFile-only" },
   // gemini-cli: single GEMINI.md.
   { name: "gemini-cli", shape: "rulesFile-only" },
-  // cursor: rulesDir-only — Cursor IDE reads .mdc files from .cursor/rules/
-  // and has no notion of a single global rules file.
-  { name: "cursor", shape: "rulesDir-only" },
   // amp: single AGENTS.md.
   { name: "amp", shape: "rulesFile-only" },
   // cline: single AGENTS.md.

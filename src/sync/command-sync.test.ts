@@ -259,7 +259,7 @@ describe("syncCommands", () => {
     expect(calls).not.toMatch(/- \w.*— skipped \(dir not found\)/);
     // Non-verbose: one summary line that names the exact fix command
     expect(calls).toMatch(/agents? ha(s|ve) no config folder/);
-    expect(calls).toMatch(/run: mkdir -p .*~\/\.cursor\/commands.* && agentbrew sync/);
+    expect(calls).toMatch(/run: mkdir -p .*~\/\.[\w./-]+\/commands.* && agentbrew sync/);
   });
 
   it("creates a missing commands dir when the agent's config folder exists, then deploys", async () => {
@@ -287,7 +287,7 @@ describe("syncCommands", () => {
   });
 
   it("does not create a commands dir on a dry run", async () => {
-    const opencodeRoot = `${homedir()}/.cursor`;
+    const opencodeRoot = `${homedir()}/.config/opencode`;
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
       return path.includes("agentbrew/commands") || path === opencodeRoot;
@@ -397,7 +397,7 @@ describe("syncCommands", () => {
 
     it("reports the actual count when manifest-tracked files are pruned", async () => {
       // Slice 4 of `delegate-commands-to-ai-rules` hardened the contract
-      // for canary agents (claude-code, cursor): they skip when the
+      // for canary agents (claude-code, amp, firebender): they skip when the
       // delegation map is empty (the test-level `vi.mock("./commands-delegate.js")`
       // returns an empty Map). Use a carve-out agent (opencode) here so
       // the prune-count assertion exercises the native path that's
@@ -865,7 +865,7 @@ describe("computeCommandsDiff — delegated content", () => {
 
   it("skips canary agents when the delegation map has no entry for them (slice 4)", () => {
     // Slice 4 of `delegate-commands-to-ai-rules` hardened the contract:
-    // canary agents (claude-code, cursor) MUST get content from the
+    // canary agents (claude-code, amp, firebender) MUST get content from the
     // delegation map. With the map empty, the canary skips — no
     // source-content fallback. Mirrors the rules-sync slice 4
     // evolution. Users without `ai-rules` installed see canary
@@ -976,16 +976,13 @@ describe("computeCommandsDiff — delegated content", () => {
 
   it("applies the target's transform to delegated content", () => {
     const delegated = new Map<string, ReadonlyMap<string, string>>([
-      [
-        "cursor",
-        new Map([["run.md", "---\ndescription: Run\n---\n\n# Run\n\n<!-- turbo -->\n```bash\necho hi\n```\n"]]),
-      ],
+      ["amp", new Map([["run.md", "---\ndescription: Run\n---\n\n# Run\n\n<!-- turbo -->\n```bash\necho hi\n```\n"]])],
     ]);
     const diffs = computeCommandsDiff(
       [{ filename: "run.md", content: "# original source — should be ignored when delegated\n" }],
       [
         {
-          agentName: "cursor",
+          agentName: "amp",
           exists: true,
           transform: (content: string) =>
             content.replace(/^---\n[\s\S]*?\n---\n\n?/, "").replace(/<!--\s*turbo\s*-->/g, "// turbo"),
@@ -1005,9 +1002,9 @@ describe("computeCommandsDiff — delegated content", () => {
 });
 
 describe("CANARY_DELEGATED_AGENTS — slice 2–5 invariants", () => {
-  it("includes claude-code (slice 2), cursor (slice 3), and the slice 5 free-capability gains (amp, firebender)", () => {
+  it("includes claude-code (slice 2) and the slice 5 free-capability gains (amp, firebender)", () => {
     expect(CANARY_DELEGATED_AGENTS.has("claude-code")).toBe(true);
-    expect(CANARY_DELEGATED_AGENTS.has("cursor")).toBe(true);
+    expect(CANARY_DELEGATED_AGENTS.has("cursor")).toBe(false);
     expect(CANARY_DELEGATED_AGENTS.has("amp")).toBe(true);
     expect(CANARY_DELEGATED_AGENTS.has("firebender")).toBe(true);
   });
@@ -1019,7 +1016,7 @@ describe("CANARY_DELEGATED_AGENTS — slice 2–5 invariants", () => {
   });
 
   it("matches the commands delegation canary set", () => {
-    expect([...CANARY_DELEGATED_AGENTS].sort()).toEqual(["claude-code", "cursor", "amp", "firebender"].sort());
+    expect([...CANARY_DELEGATED_AGENTS].sort()).toEqual(["claude-code", "amp", "firebender"].sort());
   });
 });
 
@@ -1052,19 +1049,18 @@ describe("collectCanaryDelegation — slice 2 boundary", () => {
     // When canaries appear AND there are source files, the helper is
     // called with the canary subset (not the full target list). Result
     // is propagated as-is — this is just the boundary, not the diff.
-    // Slice 3: cursor joins the canary set, so a mixed list of canary
-    // + carve-outs + canary all get filtered correctly.
+    // A mixed list of canary + carve-outs + canary gets filtered correctly.
     const stub = new Map<string, Map<string, string>>([
       ["claude-code", new Map([["hello.md", "ai-rules-stub"]])],
-      ["cursor", new Map([["hello.md", "cursor-stub"]])],
+      ["amp", new Map([["hello.md", "amp-stub"]])],
     ]);
     mockDelegateCommandsGenerate.mockReturnValueOnce(stub);
     const result = collectCanaryDelegation(
-      [{ agentName: "opencode" }, { agentName: "claude-code" }, { agentName: "cursor" }, { agentName: "gemini-cli" }],
+      [{ agentName: "opencode" }, { agentName: "claude-code" }, { agentName: "amp" }, { agentName: "gemini-cli" }],
       [{ filename: "hello.md", content: "# Source\n" }],
     );
     expect(mockDelegateCommandsGenerate).toHaveBeenCalledWith({
-      agents: ["claude-code", "cursor"],
+      agents: ["claude-code", "amp"],
       sourceCommands: [{ filename: "hello.md", content: "# Source\n" }],
     });
     expect(result).toBe(stub);

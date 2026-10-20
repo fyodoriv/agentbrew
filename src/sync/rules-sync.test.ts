@@ -687,7 +687,6 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
         "claude-code",
         "codex",
         "gemini-cli",
-        "cursor",
         "amp",
         "cline",
         "copilot",
@@ -697,7 +696,7 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
         "roo-code",
       ]),
     );
-    expect(callArgs.agents).toHaveLength(11);
+    expect(callArgs.agents).toHaveLength(10);
 
     // Each intersection agent's file gets ITS OWN delegated payload, not
     // the shared content and not another agent's delegated payload.
@@ -791,10 +790,6 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
       const w = writes.find((write) => write.path.includes(intersectionPath));
       expect(w).toBeUndefined();
     }
-    // Cursor (rulesDir canary) also skips: no write to
-    // ~/.cursor/rules/agentbrew.md when delegation returns empty.
-    const cursorWrite = writes.find((w) => w.path.includes(".cursor/rules/agentbrew.md"));
-    expect(cursorWrite).toBeUndefined();
 
     // Carve-outs (augment) still use the native shared-rules
     // path — their files ARE rewritten with the deployable shared content.
@@ -826,132 +821,6 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
     const errorCalls = (console.error as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(errorCalls).toContain("ai-rules");
     expect(errorCalls).toContain("Install");
-  });
-});
-
-describe("syncRules — slice 3b cursor rulesDir delegation (delegate-rules-to-ai-rules)", () => {
-  it("writes ai-rules-generated content to ~/.cursor/rules/agentbrew.md with managed markers", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockImplementation((p) => {
-      const path = String(p);
-      // shared-rules exists; rulesFile targets exist; cursor's agentbrew.md
-      // does NOT exist yet (first-time write).
-      if (path.includes("shared-rules")) return true;
-      if (path.includes(".cursor/rules/agentbrew.md")) return false;
-      return true;
-    });
-    mockReadFileSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("shared-rules")) return "shared-rules content";
-      return `${START_MARKER}\nold\n${END_MARKER}`;
-    });
-
-    mockDelegateRulesGenerate.mockReturnValue(
-      new Map([
-        ["claude-code", "delegated claude"],
-        ["codex", "delegated codex"],
-        ["gemini-cli", "delegated gemini"],
-        ["cursor", "delegated cursor consolidated"],
-      ]),
-    );
-
-    const writes: Array<{ path: string; content: string }> = [];
-    mockWriteIfChanged.mockImplementation((path, content) => {
-      writes.push({ path: String(path), content: String(content) });
-      return true;
-    });
-
-    await syncRules();
-
-    // Cursor's consolidated rulesDir file is written with the delegated
-    // content wrapped in managed-section markers.
-    const cursorWrite = writes.find((w) => w.path.includes(".cursor/rules/agentbrew.md"));
-    expect(cursorWrite).toBeDefined();
-    expect(cursorWrite?.content).toContain(START_MARKER);
-    expect(cursorWrite?.content).toContain("delegated cursor consolidated");
-    expect(cursorWrite?.content).toContain(END_MARKER);
-    // Must not leak other agents' delegated content or the raw shared rules.
-    expect(cursorWrite?.content).not.toContain("delegated claude");
-    expect(cursorWrite?.content).not.toContain("shared-rules content");
-  });
-
-  it("preserves user-authored content outside managed markers when agentbrew.md already exists", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("shared-rules")) return "shared-rules content";
-      if (path.includes(".cursor/rules/agentbrew.md")) {
-        // Pre-existing agentbrew.md with user content before markers +
-        // stale managed section that must be replaced.
-        return `# User header\n\nMy rules\n\n${START_MARKER}\nstale\n${END_MARKER}\n\n## User footer\n`;
-      }
-      return `${START_MARKER}\nold\n${END_MARKER}`;
-    });
-
-    mockDelegateRulesGenerate.mockReturnValue(new Map([["cursor", "delegated cursor fresh"]]));
-
-    const writes: Array<{ path: string; content: string }> = [];
-    mockWriteIfChanged.mockImplementation((path, content) => {
-      writes.push({ path: String(path), content: String(content) });
-      return true;
-    });
-
-    await syncRules();
-
-    const cursorWrite = writes.find((w) => w.path.includes(".cursor/rules/agentbrew.md"));
-    expect(cursorWrite).toBeDefined();
-    // User content before + after markers is preserved verbatim.
-    expect(cursorWrite?.content).toContain("# User header");
-    expect(cursorWrite?.content).toContain("My rules");
-    expect(cursorWrite?.content).toContain("## User footer");
-    // Managed section content is replaced (no longer "stale").
-    expect(cursorWrite?.content).toContain("delegated cursor fresh");
-    expect(cursorWrite?.content).not.toContain("stale");
-  });
-
-  it("skips the rulesDir write when cursor is not in the delegated Map (helper returned empty)", async () => {
-    // Simulates ai-rules binary missing / subprocess failure — delegation
-    // returns an empty Map. Cursor falls through to whatever the per-file
-    // rules path does; no agentbrew.md gets written.
-    mockLoadState.mockReturnValue({
-      agents: [],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("shared-rules")) return "shared-rules content";
-      return `${START_MARKER}\nold\n${END_MARKER}`;
-    });
-
-    mockDelegateRulesGenerate.mockReturnValue(new Map());
-
-    const writes: Array<{ path: string; content: string }> = [];
-    mockWriteIfChanged.mockImplementation((path, content) => {
-      writes.push({ path: String(path), content: String(content) });
-      return true;
-    });
-
-    await syncRules();
-
-    // No write to cursor's agentbrew.md — without delegated content there's
-    // nothing to put in the managed section. Per-file rules path still runs
-    // independently (covered by other tests).
-    const cursorWrite = writes.find((w) => w.path.includes(".cursor/rules/agentbrew.md"));
-    expect(cursorWrite).toBeUndefined();
   });
 });
 
@@ -1030,25 +899,20 @@ describe("per-file rules sync error handling", () => {
 });
 
 // Regression guard for getRulesTargets() filter: agents without a `rulesFile`
-// field (e.g. rulesDir-only agents like `cursor`, or MCP/skills-only agents
+// field (e.g. MCP/skills-only agents
 // like `opencode` and `kiro`) must be silently dropped, and agents with one
 // (e.g. `claude-code`, `augment`) must pass through. A flipped filter would
 // either write to every agent (noise) or skip everyone (silent breakage).
 // See TASKS.md `sync-unsupported-agent-coverage-extended`. Slice 3c of
 // `delegate-rules-to-ai-rules` added rulesFile to copilot (and 6 other
 // "free-capability gain" agents), so copilot is no longer a valid
-// exclusion example; `cursor` (rulesDir-only) and `opencode`
-// (MCP+commands only) remain.
+// exclusion example; `opencode` (MCP+commands only) remains.
 describe("getRulesTargets — unsupported-agent skip coverage", () => {
   it("excludes agents without a rulesFile, keeps the ones that have one", () => {
     const targets = getRulesTargets();
     const names = targets.map((t) => t.agentName);
     expect(names).toContain("claude-code");
     expect(names).toContain("augment");
-    // cursor has rulesDir but no rulesFile — filter must exclude it from
-    // the rulesFile target list (it's handled separately via rulesDir
-    // syncing in slice 3b).
-    expect(names).not.toContain("cursor");
     // opencode has mcpConfig + commandsDir but no rulesFile.
     expect(names).not.toContain("opencode");
   });
@@ -1119,14 +983,14 @@ describe("syncRules — augment carve-out (rules at ~/.augment/guidelines.md)", 
 // Agentfile's `excludeAgents`) must get no rules. Creating its rules dir makes
 // the next sync detect the agent again.
 describe("syncRules — undetected agents get no rules", () => {
-  it("writes nothing under ~/.cursor and creates no Cursor dir when cursor is not detected", async () => {
+  it("writes nothing under ~/.codex and creates no Codex dir when codex is not detected", async () => {
     mockLoadState.mockReturnValue({
-      agents: [{ name: "cursor", detected: false }],
+      agents: [{ name: "codex", detected: false }],
       sources: [],
       mcpServers: [],
       catalogVersion: "0.1.0",
     } as unknown as ReturnType<typeof loadState>);
-    mockExistsSync.mockImplementation((p) => !String(p).includes(".cursor/rules/agentbrew.md"));
+    mockExistsSync.mockImplementation((p) => !String(p).includes(".codex/AGENTS.md"));
     mockReadFileSync.mockImplementation((p) =>
       String(p).includes("shared-rules") ? "shared-rules content" : `${START_MARKER}\nold\n${END_MARKER}`,
     );
@@ -1134,7 +998,7 @@ describe("syncRules — undetected agents get no rules", () => {
     mockDelegateRulesGenerate.mockReturnValue(
       new Map([
         ["claude-code", "delegated claude"],
-        ["cursor", "delegated cursor consolidated"],
+        ["codex", "delegated codex"],
       ]),
     );
     const writes: string[] = [];
@@ -1145,8 +1009,8 @@ describe("syncRules — undetected agents get no rules", () => {
 
     await syncRules({ quiet: true });
 
-    expect(writes.filter((w) => w.includes("/.cursor/"))).toEqual([]);
+    expect(writes.filter((w) => w.includes("/.codex/"))).toEqual([]);
     const dirs = vi.mocked(mkdirSync).mock.calls.map((call) => String(call[0]));
-    expect(dirs.filter((d) => d.includes("/.cursor/"))).toEqual([]);
+    expect(dirs.filter((d) => d.includes("/.codex/"))).toEqual([]);
   });
 });

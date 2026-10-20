@@ -53,13 +53,12 @@ function aiRulesBin(): string {
  * `ai-rules generate --agents <name>` output drop, captured 2026-04-27.
  *
  * Multiple agents share `AGENTS.md` because ai-rules treats them as
- * universal-format consumers (codex, cursor, amp, etc.). Slice 2 only
+ * universal-format consumers (codex, amp, etc.). Slice 2 only
  * exercises `claude` (CLAUDE.md), but the full table lives here so
  * slice 3 can broaden without touching this file.
  */
 const AI_RULES_AGENT_FILE: Readonly<Record<string, string>> = Object.freeze({
   claude: "CLAUDE.md",
-  cursor: "AGENTS.md",
   codex: "AGENTS.md",
   gemini: "GEMINI.md",
   amp: "AGENTS.md",

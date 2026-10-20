@@ -5,7 +5,6 @@ import { basename } from "node:path";
 import { loadState } from "../state.js";
 import type { AgentConfig, McpFormatAdapter, McpServer, McpServerEntry } from "../types.js";
 import { expandHome } from "../utils.js";
-import { wrapCursorGuiStdioEntry } from "./cursor-gui-launch.js";
 import { applyEntryUpdate, convertEnvVars, toCanonical } from "./env-vars.js";
 import {
   extractServersFromGoose,
@@ -92,7 +91,7 @@ export class JsonAdapter implements McpFormatAdapter {
       const env = convertEnvVars(server.env, agentName);
       if (Object.keys(env).length > 0) entry.env = env;
     }
-    return wrapCursorGuiStdioEntry(server, entry, agentName);
+    return entry;
   }
 
   /** Compares only agentbrew-managed fields (command, args, env, url, headers).

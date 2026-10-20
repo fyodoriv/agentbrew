@@ -285,7 +285,7 @@ describe("healthCheck --ci mode", () => {
   it("outputs plain text and exits 0 when clean", async () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: undefined }],
+        agents: [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: undefined }],
       }),
     );
     mockExistsSync.mockReturnValue(false);
@@ -328,7 +328,7 @@ describe("healthCheck --ci mode", () => {
     mockLoadState.mockReturnValue(
       makeState({
         agents: [
-          { name: "cursor", detected: true, skillsDir: "x", mcpConfig: undefined },
+          { name: "kiro", detected: true, skillsDir: "x", mcpConfig: undefined },
           { name: "claude-code", detected: true, skillsDir: "y", mcpConfig: undefined },
         ],
         mcpServers: [{ name: "s1", command: "npx", args: [], env: {}, source: "user" }],
@@ -361,7 +361,7 @@ describe("healthCheck --ci mode", () => {
 
 describe("healthCheck --ci with Claude Desktop MCP startup failures", () => {
   const cleanState = () =>
-    makeState({ agents: [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: undefined }] });
+    makeState({ agents: [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: undefined }] });
 
   it("exits 1 when the latest Desktop start logged a connect failure", async () => {
     mockLoadState.mockReturnValue(cleanState());
@@ -480,13 +480,13 @@ describe("checkCommandsDrift", () => {
   it("detects missing commands in agent dir", async () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
       if (path.includes("agentbrew/commands")) return true;
-      if (path.includes(".cursor")) return true;
+      if (path.includes(".config/amp")) return true;
       return false;
     });
     mockReaddirSync.mockImplementation(((p: string) => {
@@ -927,7 +927,7 @@ describe("user additions are not drift", () => {
    * count.
    */
   function setupUserAddedMcp(): ReturnType<typeof makeState> {
-    // Simulate: cursor's mcp.json has "my-custom-server" but state has no MCP servers.
+    // Simulate: an agent mcp.json has "my-custom-server" but state has no MCP servers.
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(
       JSON.stringify({ mcpServers: { "my-custom-server": { command: "node", args: [] } } }),

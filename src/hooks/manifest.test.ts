@@ -93,14 +93,14 @@ describe("loadManifestFile", () => {
           script: checks/no-timestamps.sh
           tier: deterministic
           verdict: block
-          agents: ["claude-code", "cursor"]
+          agents: ["claude-code"]
       `,
     );
 
     const manifest = loadManifestFile(path);
 
     expect(manifest?.hooks[0].id).toBe("no-timestamps");
-    expect(manifest?.hooks[0].agents).toEqual(["claude-code", "cursor"]);
+    expect(manifest?.hooks[0].agents).toEqual(["claude-code"]);
   });
 
   it("rejects unsupported events", () => {
@@ -328,7 +328,7 @@ describe("manifestEntryToManagedHook", () => {
         script: "checks/verify-before-completion.sh",
         tier: "deterministic",
         verdict: "warn",
-        agents: ["claude-code", "cursor"],
+        agents: ["claude-code"],
       },
       "/tmp/deployed-hooks",
     );
@@ -339,7 +339,7 @@ describe("manifestEntryToManagedHook", () => {
       type: "command",
       command: "bash /tmp/deployed-hooks/verify-before-completion.sh",
       timeout: 5,
-      agents: ["claude-code", "cursor"],
+      agents: ["claude-code"],
       source: "agentbrew-hooks-manifest",
     });
   });
@@ -362,18 +362,18 @@ describe("canonical hook manifest", () => {
 
     expect(golden?.event).toBe("PreToolUse");
     expect(golden?.matcher).toBe("Write|Edit");
-    expect(golden?.agents).toEqual(["claude-code", "cursor"]);
-    expect(verifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
+    expect(golden?.agents).toEqual(["claude-code"]);
+    expect(verifyBeforeCompletion?.agents).toEqual(["claude-code"]);
     // code-no-timestamps is an owner-workflow hook: parsed, but off by default.
     expect(resolvedManifest.offByDefault).toContain("code-no-timestamps");
     expect(managedGolden).toBeUndefined();
-    expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code", "cursor"]);
+    expect(managedVerifyBeforeCompletion?.agents).toEqual(["claude-code"]);
     expect(resolvedManifest.hooks.find((hook) => hook.id === "context-budget-measure")).toMatchObject({
       event: "SessionStart",
       script: "checks/context-budget-measure.sh",
       tier: "deterministic",
       verdict: "warn",
-      agents: ["claude-code", "cursor"],
+      agents: ["claude-code"],
     });
     // Opt-in (defaultEnabled: false): the script deploys, but sync does not wire it.
     expect(managed.find((hook) => hook.command?.includes("context-budget-measure.sh"))).toBeUndefined();

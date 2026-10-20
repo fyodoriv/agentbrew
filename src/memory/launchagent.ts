@@ -35,7 +35,7 @@ function escapeXml(value: string): string {
 /**
  * The daemon runs Python through an absolute uvx path, so its PATH must not
  * depend on the caller's Node or DOTFILES_DIR: any plist change reloads the
- * daemon, and Cursor does not reconnect after the refused connection.
+ * daemon, and some MCP clients do not reconnect after the refused connection.
  */
 export function memoryDaemonPath(home: string, uvxBin: string): string {
   const dirs = [dirname(uvxBin), `${home}/.local/bin`, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"];

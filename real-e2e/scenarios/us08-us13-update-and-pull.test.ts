@@ -43,7 +43,7 @@ describe("us08/us13 update and pull", () => {
       expect(pullResult.stdout).toContain("Update complete");
 
       expect(readFileSync(join(syncedSkillDir, "SKILL.md"), "utf-8")).toContain("Source Debug Skill v2");
-      expect(readFileSync(join(homeDir, ".cursor", "mcp.json"), "utf-8")).toContain('"user-postgres"');
+      expect(readFileSync(join(homeDir, ".kiro", "settings", "mcp.json"), "utf-8")).toContain('"user-postgres"');
 
       const manualSkillDir = join(homeDir, ".claude", "skills", "manual-review");
       expect(existsSync(manualSkillDir)).toBe(true);

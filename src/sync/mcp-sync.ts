@@ -14,13 +14,12 @@ import type { Manifest } from "../manifest.js";
 import { loadManifest, saveManifest } from "../manifest.js";
 import { getAdapter, OpenCodeAdapter } from "../mcp/adapters.js";
 import { sweepCatalogPins } from "../mcp/catalog-pin-sweep.js";
-import { finalizeCursorGuiMcpEntries } from "../mcp/cursor-gui-launch.js";
 import {
   type EndpointRepairFileResult,
   type EndpointRepairKind,
   sweepMcpEndpointRepairs,
 } from "../mcp/endpoint-repair.js";
-import { getServers, readMcpJson, setServers, writeMcpJson } from "../mcp/mcp.js";
+import { readMcpJson, writeMcpJson } from "../mcp/mcp.js";
 import { filterInvalidServers } from "../mcp/mcp-validation.js";
 import {
   BROKEN_MCPM_REGISTRY_SERVERS,
@@ -271,17 +270,6 @@ export function computeDiffWithAdapter(
     managedNames?: Set<string>;
   },
 ): McpAgentDiff {
-  // Cursor GUI wrapping is persisted in mcp.json — normalize bare npx/bash -lc
-  // entries before diff so idempotent sync does not emit spurious updates.
-  const existingForDiff =
-    agentName === "cursor"
-      ? (() => {
-          const normalized = structuredClone(existingEntries);
-          finalizeCursorGuiMcpEntries(normalized);
-          return normalized;
-        })()
-      : existingEntries;
-
   const prune = options?.prune ?? false;
   const forcePruneNames = options?.forcePruneNames ?? new Set<string>();
   const managedNames = options?.managedNames;
@@ -290,7 +278,7 @@ export function computeDiffWithAdapter(
 
   for (const server of desiredServers) {
     const entry = adapter.toEntry(server, agentName);
-    const existing = existingForDiff[server.name];
+    const existing = existingEntries[server.name];
 
     if (!existing) {
       actions.push({ type: "add", serverName: server.name, entry });
@@ -301,7 +289,7 @@ export function computeDiffWithAdapter(
 
   // Force-prune names only when --prune is set.
   if (prune) {
-    actions.push(...collectPruneActions(existingForDiff, serverNames, forcePruneNames, managedNames, adapter));
+    actions.push(...collectPruneActions(existingEntries, serverNames, forcePruneNames, managedNames, adapter));
   }
 
   return {
@@ -356,7 +344,6 @@ function validateReadback(
 }
 
 /** Carve-out: shared (every carve-out's per-agent native write goes through this). */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: adapter reconciliation keeps all write outcomes in one transaction
 export function syncWithAdapter(
   adapter: McpFormatAdapter,
   configPath: string,
@@ -381,25 +368,14 @@ export function syncWithAdapter(
     return { added: 0, updated: 0, pruned: 0, error: `read failed: ${errorMessage(err)}` };
   }
 
-  const entriesSnapshot = JSON.stringify(entries);
-  if (agentName === "cursor") {
-    finalizeCursorGuiMcpEntries(entries);
-  }
-  const entriesChangedByFinalize = JSON.stringify(entries) !== entriesSnapshot;
-
   const diff = computeDiffWithAdapter(agentName, servers, entries, adapter, {
     prune: options?.prune,
     forcePruneNames: options?.forcePruneNames,
     managedNames: options?.managedNames,
   });
 
-  if (!dryRun && (diff.actions.length > 0 || entriesChangedByFinalize)) {
-    if (diff.actions.length > 0) {
-      applyDiffToEntries(entries, diff.actions, adapter);
-      if (agentName === "cursor") {
-        finalizeCursorGuiMcpEntries(entries);
-      }
-    }
+  if (!dryRun && diff.actions.length > 0) {
+    applyDiffToEntries(entries, diff.actions, adapter);
     try {
       adapter.writeEntries(expanded, entries, mcpKey);
     } catch (err) {
@@ -941,7 +917,6 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
     runPostSyncPlaywrightIsolatedSweep(state.agents, log, quiet);
     runPostSyncEndpointRepairSweep(servers, quarantined, log, quiet);
     runPostSyncMcpmHygieneSweep(state.agents, servers, quarantined, log, quiet);
-    runPostSyncCursorGuiFinalize(state.agents, log, quiet);
   }
 
   if (!quiet) {
@@ -1076,32 +1051,6 @@ function logQuarantineNotices(quarantined: McpServer[], log: Logger): void {
   // Report on every sync: the block stays in force until its owner lifts it.
   for (const notice of formatQuarantineNotice(quarantined)) {
     log.log(log.dim(`  MCP quarantined — ${notice}`));
-  }
-}
-
-/** Re-apply Cursor GUI stdio wrapping after post-sync sweeps (playwright-isolated only
- *  touches bare `npx` entries; hygiene/github fixes can also leave bare commands). */
-function runPostSyncCursorGuiFinalize(agents: AgentConfig[], log: Logger, quiet: boolean): void {
-  const cursor = agents.find((agent) => agent.name === "cursor" && agent.detected);
-  if (!cursor?.mcpConfig) return;
-
-  const mcpKey = cursor.mcpKey ?? "mcpServers";
-  const configPath = expandHome(cursor.mcpConfig);
-  if (!existsSync(configPath)) return;
-
-  try {
-    const config = readMcpJson(configPath);
-    const entries = getServers(config, mcpKey) as Record<string, Record<string, unknown>>;
-    const snapshot = JSON.stringify(entries);
-    finalizeCursorGuiMcpEntries(entries);
-    if (JSON.stringify(entries) === snapshot) return;
-    setServers(config, entries as Record<string, import("../types.js").McpServerEntry>, mcpKey);
-    writeMcpJson(configPath, config);
-    if (!quiet) {
-      log.log(log.dim("  Re-wrapped Cursor MCP stdio entries for GUI-minimal PATH."));
-    }
-  } catch (e) {
-    logSkipped("mcp-sync/cursor-gui-finalize", e);
   }
 }
 

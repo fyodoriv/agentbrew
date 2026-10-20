@@ -119,8 +119,7 @@ function pushFieldImplicationViolations(entry: RawAgentEntry, violations: string
   if (
     entry.hooksFormat !== undefined &&
     entry.hooksFormat !== "claude-settings" &&
-    entry.hooksFormat !== "claude-direct" &&
-    entry.hooksFormat !== "cursor"
+    entry.hooksFormat !== "claude-direct"
   ) {
     violations.push(`'${name}' has invalid \`hooksFormat\` '${String(entry.hooksFormat)}'`);
   }
@@ -298,23 +297,6 @@ describe("loadAgentDefinitions", () => {
     expect(desktop?.readsFrom).toEqual(["claude-code"]);
   });
 
-  it("cursor has commandTransform for delegated ai-rules output", () => {
-    const cursor = loadAgentDefinitions().find((d) => d.name === "cursor");
-    expect(cursor?.commandTransform).toBeTypeOf("function");
-    expect(cursor?.commandTransform?.("---\ndescription: Run\n---\n\n# Run")).toBe("\n# Run");
-  });
-
-  it("cursor writes hooks to Cursor's native hooks file", () => {
-    const cursor = loadAgentDefinitions().find((d) => d.name === "cursor");
-    expect(cursor?.hooksFile).toBe("~/.cursor/hooks.json");
-    expect(cursor?.hooksFormat).toBe("cursor");
-  });
-
-  it("cursor writes MCP permissions to Cursor CLI config", () => {
-    const cursor = loadAgentDefinitions().find((d) => d.name === "cursor");
-    expect(cursor?.mcpPermissionsConfig?.file).toBe("~/.cursor/cli-config.json");
-  });
-
   it("gemini-cli has mcpConfig, rulesFile, commandTransform, and commandFileExt", () => {
     const gemini = loadAgentDefinitions().find((d) => d.name === "gemini-cli");
     expect(gemini?.skillsDir).toBe("~/.gemini/skills");
@@ -386,8 +368,8 @@ describe("loadAgentDefinitions", () => {
 
 describe("filterReadsFromAgents", () => {
   it("keeps agents without readsFrom", () => {
-    const agents = [{ name: "claude-code" }, { name: "cursor" }];
-    const detected = new Set(["claude-code", "cursor"]);
+    const agents = [{ name: "claude-code" }, { name: "codex" }];
+    const detected = new Set(["claude-code", "codex"]);
     const result = filterReadsFromAgents(agents, detected);
     expect(result).toHaveLength(2);
   });
@@ -469,7 +451,7 @@ describe("agents.yaml consistency", () => {
 
   it("flags commandTransform without commandsDir", () => {
     const violations = findAgentYamlViolations([
-      { name: "broken", skillsDir: "~/x/skills", commandTransform: "cursor" },
+      { name: "broken", skillsDir: "~/x/skills", commandTransform: "gemini" },
     ]);
     expect(violations.some((v) => v.includes("commandTransform"))).toBe(true);
   });
@@ -557,7 +539,7 @@ describe("resolveAgentYamlPath", () => {
 
     it("does not match unrelated `~/...` paths", () => {
       vi.stubEnv("CLAUDE_CONFIG_DIR", "/tmp/myclaude");
-      expect(resolveAgentYamlPath("~/.cursor/rules")).toBe("~/.cursor/rules");
+      expect(resolveAgentYamlPath("~/.my-agent/rules")).toBe("~/.my-agent/rules");
       expect(resolveAgentYamlPath("~/Library/Application Support/Claude/skills")).toBe(
         "~/Library/Application Support/Claude/skills",
       );
@@ -585,7 +567,7 @@ describe("resolveAgentYamlPath", () => {
     vi.stubEnv("CLAUDE_CONFIG_DIR", "/tmp/myclaude");
     vi.stubEnv("XDG_CONFIG_HOME", "/tmp/xdg");
     expect(resolveAgentYamlPath("~/.config/goose/skills")).toBe("~/.config/goose/skills");
-    expect(resolveAgentYamlPath("~/.cursor/rules")).toBe("~/.cursor/rules");
+    expect(resolveAgentYamlPath("~/.my-agent/rules")).toBe("~/.my-agent/rules");
   });
 
   it("preserves absolute paths unchanged", () => {

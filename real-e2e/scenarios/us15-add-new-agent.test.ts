@@ -1,4 +1,4 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -39,8 +39,7 @@ describe("us15 add new agent", () => {
 
       await seedExistingSetup(homeDir, repoRoot, sharedSkillSourceDir);
 
-      mkdirSync(join(homeDir, ".cursor", "skills"), { recursive: true });
-      writeFileSync(join(homeDir, ".cursor", "mcp.json"), `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`, "utf-8");
+      mkdirSync(join(homeDir, ".kiro", "skills"), { recursive: true });
 
       const initResult = await runScenarioCli({
         repoRoot,
@@ -48,11 +47,11 @@ describe("us15 add new agent", () => {
         args: ["init", "--force", "--skip-install", "--skip-sync"],
       });
       expect(initResult.stdout).toContain("Re-initializing agentbrew");
-      expect(initResult.stdout).toContain("cursor");
+      expect(initResult.stdout).toContain("kiro");
 
       const stateYaml = readFileSync(join(homeDir, ".config", "agentbrew", "state.yaml"), "utf-8");
       expect(stateYaml).toContain("name: claude-code");
-      expect(stateYaml).toContain("name: cursor");
+      expect(stateYaml).toContain("name: kiro");
       expect(stateYaml).toContain("team-memory");
 
       const syncResult = await runScenarioCli({
@@ -67,19 +66,15 @@ describe("us15 add new agent", () => {
       expect(syncResult.stdout).toContain("Syncing: skills");
       expect(syncResult.stdout).toContain("✓ Synced");
 
-      const cursorSkillPath = join(homeDir, ".cursor", "skills", "us15-shared-skill");
-      expect(existsSync(cursorSkillPath)).toBe(true);
-      expect(lstatSync(cursorSkillPath).isSymbolicLink()).toBe(true);
+      const kiroSkillPath = join(homeDir, ".kiro", "skills", "us15-shared-skill");
+      expect(existsSync(kiroSkillPath)).toBe(true);
+      expect(lstatSync(kiroSkillPath).isSymbolicLink()).toBe(true);
 
-      // Post-slice-4a (PR #845): cursor is intersection-delegated, so
-      // native sync no longer writes `.cursor/mcp.json`. The "team-memory"
-      // server still lives in agentbrew state.yaml (asserted above) and
-      // would propagate to cursor via `mcpm client edit` if mcpm were on
-      // PATH. The cursor skill-symlink path (above) still exercises the
-      // re-init flow's primary user-visible signal: agentbrew detected
-      // the new agent and synced existing skills to it.
+      // The kiro skill-symlink path (above) exercises the re-init flow's
+      // primary user-visible signal: agentbrew detected the new agent and
+      // synced existing skills to it.
 
-      expect(existsSync(join(homeDir, ".cursor", "skills", "us15-shared-skill"))).toBe(true);
+      expect(existsSync(join(homeDir, ".kiro", "skills", "us15-shared-skill"))).toBe(true);
     });
   }, 120_000);
 });

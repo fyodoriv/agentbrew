@@ -4,7 +4,7 @@ import { resolveTransform } from "./transforms.js";
 
 // All transform/frontmatter helpers ride through `resolveTransform("<key>")(content)`
 // so the tests pin the public API surface that callers (src/core/agents.ts via
-// agents.yaml's `commandTransform: cursor|gemini` field) actually use.
+// agents.yaml's `commandTransform: gemini` field) actually use.
 // Same shape as PR #919 / #921 / #922 / #923: helpers stayed alive only because
 // tests imported them directly.
 
@@ -23,7 +23,7 @@ curl -sf http://localhost:9746/api/v1/health
 `;
 
 // resolveTransform("...") returns a CommandTransform | undefined; tests assume
-// the well-known keys ("cursor", "gemini") are wired and unwrap accordingly.
+// the well-known key ("gemini") is wired and unwrap accordingly.
 function gemini(content: string): string {
   const transform = resolveTransform("gemini");
   if (!transform) throw new Error("resolveTransform('gemini') returned undefined");
@@ -119,12 +119,6 @@ version: 2
 });
 
 describe("resolveTransform", () => {
-  it("resolves cursor transform to a callable function", () => {
-    const transform = resolveTransform("cursor");
-    expect(typeof transform).toBe("function");
-    expect(transform?.("---\ndescription: Run\n---\n\n# Run\n\n<!-- turbo -->")).toBe("\n# Run\n\n// turbo");
-  });
-
   it("resolves gemini transform to a callable function", () => {
     const transform = resolveTransform("gemini");
     expect(typeof transform).toBe("function");

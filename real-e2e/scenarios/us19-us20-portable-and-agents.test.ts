@@ -141,7 +141,6 @@ describe("us19 us20 portable and agents", () => {
       expect(syncResult.stdout).toContain("Syncing: agents");
 
       expect(readFileSync(join(targetHomeDir, ".claude", "agents", "reviewer.md"), "utf-8")).toContain("reviewer");
-      expect(readFileSync(join(targetHomeDir, ".cursor", "agents", "reviewer.md"), "utf-8")).toContain("reviewer");
       expect(readFileSync(join(targetHomeDir, ".codex", "agents", "reviewer.md"), "utf-8")).toContain("reviewer");
     });
   }, 120_000);

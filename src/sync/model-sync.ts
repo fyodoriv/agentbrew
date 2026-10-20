@@ -241,9 +241,8 @@ export function collectModelDrift(): ModelDrift[] {
 
 /**
  * Sync the Agentfile's `defaultModel` to every detected agent that declares a
- * `modelConfig` surface in agents.yaml (claude-code, codex today —
- * Cursor keeps the model in app-managed/UI state, so there is no
- * file surface to manage). `defaultEffort` is written alongside for agents
+ * `modelConfig` surface in agents.yaml (claude-code, codex today; agents
+ * that keep the model in app-managed/UI state have no file surface). `defaultEffort` is written alongside for agents
  * that declare an `effortPath`. Per-agent `modelOverrides` rename or skip
  * individual agents (a skipped agent keeps its own effort too). No-op when
  * state has no `defaultModel`.

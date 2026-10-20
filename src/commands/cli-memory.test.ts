@@ -135,22 +135,6 @@ describe("registerMemoryCommands", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it("reports a manual Cursor reload advisory after daemon recovery", async () => {
-    vi.mocked(memoryLaunchAgentSupported).mockReturnValue(true);
-    vi.mocked(installMemoryLaunchAgents).mockReturnValue({
-      installed: true,
-      changed: true,
-      daemonRestarted: true,
-    });
-
-    const program = buildProgram();
-    await program.parseAsync(["node", "test", "memory", "fix", "--json"]);
-
-    const output = (console.log as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(output).toContain('"cursorReloadRecommended": true');
-    expect(output).toContain("Fully restart Cursor or reload its window manually");
-  });
-
   it("reports an unavailable daemon LaunchAgent even when an old daemon still responds", async () => {
     vi.mocked(memoryLaunchAgentSupported).mockReturnValue(true);
     vi.mocked(installMemoryLaunchAgents).mockReturnValue({

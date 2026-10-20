@@ -37,9 +37,8 @@ _agentbrew_detect() {
   _agentbrew_last_dir="$PWD"
   local found=()
   [[ -f Agentfile || -f Agentfile.yaml || -f Agentfile.yml ]] && found+=(Agentfile)
-  [[ -d .claude/skills || -d .cursor/skills ]] && found+=(skills)
-  [[ -d .cursor/rules ]] && found+=(rules)
-  [[ -f .cursor/mcp.json || -f .mcp.json ]] && found+=(MCP)
+  [[ -d .claude/skills ]] && found+=(skills)
+  [[ -f .mcp.json ]] && found+=(MCP)
   [[ -f AGENTS.md ]] && found+=(AGENTS.md)
   (( \${#found[@]} )) || return
   printf '\\033[2m  ⚡ agentbrew: %s detected. Run \\\`agentbrew\\\` for details.\\033[0m\\n' "\${found[*]}"
@@ -70,9 +69,8 @@ function _agentbrew_detect --on-variable PWD
   set -g _agentbrew_last_dir "$PWD"
   set -l found
   test -f Agentfile; or test -f Agentfile.yaml; or test -f Agentfile.yml; and set -a found Agentfile
-  test -d .claude/skills; or test -d .cursor/skills; and set -a found skills
-  test -d .cursor/rules; and set -a found rules
-  test -f .cursor/mcp.json; or test -f .mcp.json; and set -a found MCP
+  test -d .claude/skills; and set -a found skills
+  test -f .mcp.json; and set -a found MCP
   test -f AGENTS.md; and set -a found AGENTS.md
   test (count $found) -eq 0; and return
   printf '\\033[2m  ⚡ agentbrew: %s detected. Run \`agentbrew\` for details.\\033[0m\\n' (string join " " $found)

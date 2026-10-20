@@ -108,8 +108,8 @@ describe("Per-agent path schema", () => {
   });
 
   it("no agent's skillsDir is a subdirectory of another agent's (catches accidental nesting)", () => {
-    // E.g., if cursor's skillsDir is ~/.cursor/skills and someone adds
-    // ~/.cursor/skills/something — the inner agent would shadow the outer.
+    // E.g., if an agent's skillsDir is ~/.my-agent/skills and someone adds
+    // ~/.my-agent/skills/something — the inner agent would shadow the outer.
     const dirs = AGENT_DEFINITIONS.map((a) => ({ name: a.name, dir: a.skillsDir })).filter((d) => d.dir);
     for (const outer of dirs) {
       for (const inner of dirs) {
@@ -212,10 +212,6 @@ describe("Feature-presence stays declared in agents.yaml (drift guard)", () => {
 
   const EXPECTED_SURFACES = [
     { name: "claude-code", surfaces: ["skills", "rules-file", "commands", "agents", "hooks", "mcp-config"] },
-    {
-      name: "cursor",
-      surfaces: ["skills", "rules-dir", "commands", "agents", "hooks", "mcp-config", "mcp-permissions"],
-    },
     { name: "gemini-cli", surfaces: ["skills", "rules-file", "commands", "mcp-config"] },
     { name: "claude-desktop", surfaces: ["skills", "rules-file", "commands", "agents", "mcp-config"] },
     { name: "kiro", surfaces: ["skills", "mcp-config"] },
@@ -248,18 +244,6 @@ describe("Default-model surface (modelConfig)", () => {
   // G6 parity status for the model surface, per primary agent:
   //   claude-code — ~/.claude/settings.json "model" (documented setting)
   //   codex       — ~/.codex/config.toml "model" (documented setting)
-  //   cursor      — N/A: the model lives in app-managed account state
-  //                 (~/.cursor/cli-config.json `model` object is written by the
-  //                 app; `cursor-agent models` is account-gated). No declarative
-  //                 file surface exists to manage. Cursor's CLI docs mark that
-  //                 `model` object "CLI-managed" and say it may be overwritten:
-  //                 https://cursor.com/docs/cli/reference/configuration
-  //                 Upstream search (2026-10-15): no request for a config-file
-  //                 default model exists. The closest open requests ask for a
-  //                 UI default per mode:
-  //                 https://forum.cursor.com/t/default-model-selection-per-mode-agent-ask-plan-debug/150676
-  //                 https://forum.cursor.com/t/agent-mode-specific-default-model-saving/146385
-  //                 Revisit in RECURRING.md quarterly-dissolution-reeval, Check 3.
   const EXPECTED_MODEL_SURFACES = ["claude-code", "codex"];
 
   it("exactly the documented agents declare modelConfig", () => {

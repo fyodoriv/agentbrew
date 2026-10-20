@@ -42,7 +42,7 @@ beforeEach(() => {
 describe("importFromAgent", () => {
   it("returns early when not initialized", async () => {
     mockLoadState.mockReturnValue(undefined);
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(mockSaveState).not.toHaveBeenCalled();
   });
 
@@ -61,7 +61,7 @@ describe("importFromAgent", () => {
   it("warns when config file does not exist", async () => {
     mockLoadState.mockReturnValue(makeState());
     mockExistsSync.mockReturnValue(false);
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("not found"));
   });
 
@@ -77,7 +77,7 @@ describe("importFromAgent", () => {
       }),
     );
 
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(mockSaveState).toHaveBeenCalled();
     const saved = mockSaveState.mock.calls[0][0] as AgentBrewState;
     expect(saved.mcpServers).toHaveLength(2);
@@ -101,7 +101,7 @@ describe("importFromAgent", () => {
       }),
     );
 
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(mockSaveState).toHaveBeenCalled();
     const saved = mockSaveState.mock.calls[0][0] as AgentBrewState;
     expect(saved.mcpServers).toHaveLength(2);
@@ -121,7 +121,7 @@ describe("importFromAgent", () => {
       }),
     );
 
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(mockSaveState).not.toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe("importFromAgent", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(JSON.stringify({}));
 
-    await importFromAgent("cursor");
+    await importFromAgent("kiro");
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("No MCP servers found"));
   });
 });
@@ -146,12 +146,12 @@ describe("importAll", () => {
     mockLoadState.mockReturnValue(makeState());
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
-      return path.includes("cursor") || path.includes("claude");
+      return path.includes("kiro") || path.includes("claude");
     });
     mockReadFileSync.mockImplementation((p) => {
       const path = String(p);
-      if (path.includes("cursor")) {
-        return JSON.stringify({ mcpServers: { "cursor-srv": { command: "npx" } } });
+      if (path.includes("kiro")) {
+        return JSON.stringify({ mcpServers: { "kiro-srv": { command: "npx" } } });
       }
       if (path.includes("claude")) {
         return JSON.stringify({ mcpServers: { "claude-srv": { command: "node" } } });
@@ -186,12 +186,12 @@ describe("discoverUnmanagedServers", () => {
   it("returns servers not in state", () => {
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
-      return path.includes("cursor") || path.includes("claude");
+      return path.includes("kiro") || path.includes("claude");
     });
     mockReadFileSync.mockImplementation((p) => {
       const path = String(p);
-      if (path.includes("cursor")) {
-        return JSON.stringify({ mcpServers: { "cursor-srv": { command: "npx" }, known: { command: "node" } } });
+      if (path.includes("kiro")) {
+        return JSON.stringify({ mcpServers: { "kiro-srv": { command: "npx" }, known: { command: "node" } } });
       }
       if (path.includes("claude")) {
         return JSON.stringify({ mcpServers: { "claude-srv": { command: "node" } } });
@@ -202,7 +202,7 @@ describe("discoverUnmanagedServers", () => {
     const stateNames = new Set(["known"]);
     const unmanaged = discoverUnmanagedServers(stateNames);
     const names = unmanaged.map((u) => u.server);
-    expect(names).toContain("cursor-srv");
+    expect(names).toContain("kiro-srv");
     expect(names).toContain("claude-srv");
     expect(names).not.toContain("known");
   });

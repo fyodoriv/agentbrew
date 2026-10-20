@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../core/context.js";
-import { resolveMcpCursorLauncher } from "../mcp/cursor-gui-launch.js";
 import { makeMcpAgentDef } from "../test-utils/mcp-fixtures.js";
 import type { AgentBrewState, McpServer } from "../types.js";
 
@@ -163,11 +162,11 @@ describe("syncMcpServers", () => {
   });
 
   it("keeps the managed loopback memory transport reachable by every primary agent", () => {
-    const primary = ["claude-code", "cursor", "codex"].map((name) => makeMcpAgentDef(name));
+    const primary = ["claude-code", "kiro", "codex"].map((name) => makeMcpAgentDef(name));
     const memory = makeServer({ name: "memory", command: "", args: [], url: "http://127.0.0.1:18765/mcp" });
 
     expect(requiresNativeHttpTransport(memory)).toBe(false);
-    expect(getMcpTargetAgents(primary).map((agent) => agent.name)).toEqual(["cursor"]);
+    expect(getMcpTargetAgents(primary).map((agent) => agent.name)).toEqual(["kiro"]);
     expect(getMcpmIntersectionAgents(primary).map((agent) => agent.name)).toEqual(["claude-code", "codex"]);
   });
 
@@ -183,32 +182,6 @@ describe("syncMcpServers", () => {
 
     await syncMcpServers();
     expect(mockWriteFileSync).toHaveBeenCalled();
-  });
-
-  it("writes Cursor CLI MCP permissions while Cursor MCP config is delegated to mcpm", async () => {
-    mockLoadState.mockReturnValue({
-      agents: [makeMcpAgentDef("cursor", { skillsDir: "x" })],
-      sources: [],
-      mcpServers: [makeServer({ name: "context7" })],
-      catalogVersion: "0.1.0",
-    });
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation((path) => {
-      if (String(path).endsWith("/.cursor/cli-config.json")) {
-        return JSON.stringify({ permissions: { allow: ["Shell(ls)"], deny: [] }, approvalMode: "allowlist" });
-      }
-      return "{}";
-    });
-
-    await syncMcpServers(undefined, { manifest: { hashes: {} } });
-
-    const cliConfigWrite = mockWriteFileSync.mock.calls.find(([path]) =>
-      String(path).endsWith("/.cursor/cli-config.json"),
-    );
-    expect(cliConfigWrite).toBeDefined();
-    const written = JSON.parse(String(cliConfigWrite?.[1]));
-    expect(written.permissions.allow).toEqual(["Shell(ls)", "mcp__context7__*"]);
-    expect(written.approvalMode).toBe("allowlist");
   });
 });
 
@@ -764,7 +737,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" }), makeServer({ name: "atlassian" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     expect(added).toBe(2);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -782,7 +755,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" }), makeServer({ name: "atlassian" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     expect(added).toBe(1);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -800,7 +773,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     expect(added).toBe(0);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
@@ -815,7 +788,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers = [makeServer({ name: "slack-corp" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers, { dryRun: true });
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers, { dryRun: true });
 
     expect(added).toBe(1);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
@@ -825,7 +798,7 @@ describe("syncMcpPermissions", () => {
     mockReadFileSync.mockReturnValue(JSON.stringify({ mcpServers: {} }));
 
     const servers = [makeServer({ name: "minsky" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     expect(added).toBe(1);
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
@@ -851,7 +824,7 @@ describe("syncMcpPermissions", () => {
 
     // State only knows about a different server that's not in mcpServers yet.
     const servers = [makeServer({ name: "agentbrew-managed" })];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     // 3 added: state's `agentbrew-managed` + mcpServers' `organization-developer-portal` + `user-only`.
     expect(added).toBe(3);
@@ -876,7 +849,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers: ReturnType<typeof makeServer>[] = [];
-    const added = syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    const added = syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     expect(added).toBe(0); // already present, nothing to add
     // mockWriteFileSync also should NOT be called because nothing changed.
@@ -897,7 +870,7 @@ describe("syncMcpPermissions", () => {
     );
 
     const servers: ReturnType<typeof makeServer>[] = [];
-    syncMcpPermissions("~/.cursor/cli-config.json", servers);
+    syncMcpPermissions("~/.example-agent/cli-config.json", servers);
 
     const written = JSON.parse((mockWriteFileSync.mock.calls[0][1] as string).toString());
     expect(written.permissions.allow).toContain("mcp__still-there__*"); // kept (in mcpServers)
@@ -956,7 +929,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
     const existing: Record<string, Record<string, unknown>> = {
       "test-server": { command: "npx", args: ["-y", "@test/mcp"] },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json);
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json);
     expect(diff.actions).toHaveLength(0);
     expect(diff.added).toBe(0);
     expect(diff.updated).toBe(0);
@@ -972,7 +945,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
         env: { TOKEN: "a", USER_EXTRA: "keep-me" },
       },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json);
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json);
     expect(diff.actions).toHaveLength(0);
   });
 
@@ -983,7 +956,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
       keep: { command: "npx", args: ["-y", "@test/mcp"] },
       stale: { command: "old", args: ["-y", "@gone"] },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json, {
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json, {
       prune: true,
       forcePruneNames: new Set(["stale"]),
     });
@@ -997,7 +970,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
       keep: { command: "npx", args: ["-y", "@test/mcp"] },
       stale: { command: "old", args: ["-y", "@gone"] },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json, {
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json, {
       prune: false,
       forcePruneNames: new Set(["stale"]),
     });
@@ -1010,7 +983,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
       managed: { command: "x" },
       userAdded: { command: "y" },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json, {
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json, {
       prune: true,
       managedNames: new Set(["managed"]),
     });
@@ -1022,7 +995,7 @@ describe("computeDiffWithAdapter — idempotency and prune", () => {
 
 describe("getMcpTargetAgents", () => {
   // Slice 4a of `delegate-mcp-to-mcpm`: MCP_INTERSECTION_AGENTS
-  // `MCP_INTERSECTION_AGENTS` Set (claude-code, cursor, claude-desktop,
+  // `MCP_INTERSECTION_AGENTS` Set (claude-code, claude-desktop,
   // cline, gemini-cli, codex, goose, roo-code) is filtered out
   // — those clients are populated by `mcpm install` + `mcpm client edit`
   // during `agentbrew mcp install`, not by native sync (cli-removed-commands-allowlist:
@@ -1087,7 +1060,6 @@ describe("getMcpTargetAgents", () => {
       { name: "claude-code", detected: true, skillsDir: "~/.claude/skills" },
       { name: "claude-desktop", detected: true, skillsDir: "~/Library/Application Support/Claude/skills" },
       { name: "cline", detected: true, skillsDir: "~/.cline/skills" },
-      // cursor: moved to carve-outs (mcpm run wrapper not surfaced to agent layer)
       { name: "gemini-cli", detected: true, skillsDir: "~/.gemini/skills" },
       { name: "codex", detected: true, skillsDir: "~/.codex/skills" },
       { name: "goose", detected: true, skillsDir: "~/.config/goose/skills" },
@@ -1098,7 +1070,6 @@ describe("getMcpTargetAgents", () => {
       { name: "opencode", detected: true, skillsDir: "~/.config/opencode/skills" },
       makeMcpAgentDef("kiro"),
       { name: "amp", detected: true, skillsDir: "~/.config/amp/skills" },
-      { name: "cursor", detected: true, skillsDir: "~/.cursor/skills" },
     ];
     const targets = getMcpTargetAgents([...intersectionAgents, ...carveOuts] as never);
     const targetNames = targets.map((t) => t.name);
@@ -1113,7 +1084,6 @@ describe("getMcpTargetAgents", () => {
     expect(targetNames).toContain("opencode");
     expect(targetNames).toContain("kiro");
     expect(targetNames).toContain("amp");
-    expect(targetNames).toContain("cursor");
   });
 });
 
@@ -1192,7 +1162,7 @@ describe("syncWithAdapter — partial failures", () => {
       }
     }
 
-    const result = syncWithAdapter(new ThrowOnRead(), "/tmp/agentbrew-mcp-sync-test.json", [makeServer()], "cursor");
+    const result = syncWithAdapter(new ThrowOnRead(), "/tmp/agentbrew-mcp-sync-test.json", [makeServer()], "kiro");
     expect(result.error).toContain("read failed");
     expect(result.error).toContain("mock read failure");
   });
@@ -1207,7 +1177,7 @@ describe("syncWithAdapter — partial failures", () => {
       }
     }
 
-    const result = syncWithAdapter(new ThrowOnWrite(), "/tmp/agentbrew-mcp-sync-test.json", [makeServer()], "cursor");
+    const result = syncWithAdapter(new ThrowOnWrite(), "/tmp/agentbrew-mcp-sync-test.json", [makeServer()], "kiro");
     expect(result.error).toContain("write failed");
     expect(result.error).toContain("mock write failure");
   });
@@ -1223,7 +1193,7 @@ describe("syncWithAdapter — partial failures", () => {
       }
     }
     const adapter = new TrackWrite();
-    const result = syncWithAdapter(adapter, "/tmp/agentbrew-mcp-dryrun.json", [makeServer()], "cursor", {
+    const result = syncWithAdapter(adapter, "/tmp/agentbrew-mcp-dryrun.json", [makeServer()], "kiro", {
       dryRun: true,
     });
     expect(result.added).toBe(1);
@@ -1245,7 +1215,7 @@ describe("syncWithAdapter — prune deletes entries before write", () => {
       }
     }
     const adapter = new CapturePrune();
-    const result = syncWithAdapter(adapter, "/tmp/agentbrew-mcp-prune-test.json", [], "cursor", {
+    const result = syncWithAdapter(adapter, "/tmp/agentbrew-mcp-prune-test.json", [], "kiro", {
       prune: true,
       managedNames: new Set(["stale"]),
     });
@@ -1274,7 +1244,7 @@ describe("syncWithAdapter — post-write readback validation", () => {
       new CorruptAfterWrite(),
       "/tmp/agentbrew-readback-test.json",
       [makeServer()],
-      "cursor",
+      "kiro",
     );
     expect(result.error).toContain("readback");
   });
@@ -1294,7 +1264,7 @@ describe("syncWithAdapter — post-write readback validation", () => {
       new LoseServerOnWrite(),
       "/tmp/agentbrew-readback-missing.json",
       [makeServer({ name: "important-server" })],
-      "cursor",
+      "kiro",
     );
     expect(result.error).toContain("readback");
     expect(result.error).toContain("important-server");
@@ -1315,7 +1285,7 @@ describe("syncWithAdapter — post-write readback validation", () => {
       new GoodWrite(),
       "/tmp/agentbrew-readback-ok.json",
       [makeServer({ name: "srv-a" }), makeServer({ name: "srv-b" })],
-      "cursor",
+      "kiro",
     );
     expect(result.error).toBeUndefined();
     expect(result.added).toBe(2);
@@ -1352,7 +1322,7 @@ describe("syncWithAdapter — post-write readback validation", () => {
       override writeEntries(): void {}
     }
 
-    syncWithAdapter(new CountReads(), "/tmp/agentbrew-readback-dryrun.json", [makeServer()], "cursor", {
+    syncWithAdapter(new CountReads(), "/tmp/agentbrew-readback-dryrun.json", [makeServer()], "kiro", {
       dryRun: true,
     });
     // Only the initial read, no readback since nothing was written
@@ -1370,9 +1340,8 @@ describe("syncWithAdapter — post-write readback validation", () => {
       override writeEntries(): void {}
     }
 
-    syncWithAdapter(new CountReads(), "/tmp/agentbrew-readback-noop.json", [makeServer()], "cursor");
-    // Initial read; when the overlay launcher exists, finalize-only wrapping persists and triggers readback.
-    expect(readCalls).toBe(resolveMcpCursorLauncher() ? 2 : 1);
+    syncWithAdapter(new CountReads(), "/tmp/agentbrew-readback-noop.json", [makeServer()], "kiro");
+    expect(readCalls).toBe(1);
   });
 });
 
@@ -1390,7 +1359,7 @@ describe("computeDiffWithAdapter — JsonAdapter merge conflicts (applyUpdate)",
     const existing: Record<string, Record<string, unknown>> = {
       "test-server": { command: "old-cmd", args: ["-y", "@test/mcp"] },
     };
-    const diff = computeDiffWithAdapter("cursor", desired, existing, json);
+    const diff = computeDiffWithAdapter("kiro", desired, existing, json);
     expect(diff.actions.some((a) => a.type === "update" && a.serverName === "test-server")).toBe(true);
   });
 
@@ -1399,7 +1368,7 @@ describe("computeDiffWithAdapter — JsonAdapter merge conflicts (applyUpdate)",
       "test-server": { command: "npx", args: ["-y", "@test/mcp"], env: { USER: "keep" } },
     };
     const desired = makeServer({ env: { TOKEN: "from-brew" } });
-    json.applyUpdate(entries, "test-server", json.toEntry(desired, "cursor"));
+    json.applyUpdate(entries, "test-server", json.toEntry(desired, "kiro"));
     expect(entries["test-server"].env).toEqual({ USER: "keep", TOKEN: "from-brew" });
   });
 });
@@ -1460,7 +1429,7 @@ describe("syncMcpServers — unexpected agent errors", () => {
 
 describe("syncMcpServers — unmanaged server discovery logging", () => {
   it("logs detailed discovery output when --discover and unmanaged servers exist", async () => {
-    mockDiscoverUnmanagedServers.mockReturnValue([{ agent: "cursor", server: "extra-srv" }]);
+    mockDiscoverUnmanagedServers.mockReturnValue([{ agent: "kiro", server: "extra-srv" }]);
     mockLoadState.mockReturnValue({
       agents: [makeMcpAgentDef("kiro", { skillsDir: "x" })],
       sources: [],
@@ -1484,7 +1453,7 @@ describe("syncMcpServers — unmanaged server discovery logging", () => {
   });
 
   it("logs compact info when unmanaged exist without --discover", async () => {
-    mockDiscoverUnmanagedServers.mockReturnValue([{ agent: "cursor", server: "orphan" }]);
+    mockDiscoverUnmanagedServers.mockReturnValue([{ agent: "kiro", server: "orphan" }]);
     mockLoadState.mockReturnValue({
       agents: [makeMcpAgentDef("kiro", { skillsDir: "x" })],
       sources: [],
@@ -1530,7 +1499,7 @@ describe("syncMcpServers — unmanaged server discovery logging", () => {
 
   it("truncates unmanaged names in compact mode when more than five", async () => {
     mockDiscoverUnmanagedServers.mockReturnValue(
-      Array.from({ length: 6 }, (_, i) => ({ agent: "cursor", server: `extra-${i}` })),
+      Array.from({ length: 6 }, (_, i) => ({ agent: "kiro", server: `extra-${i}` })),
     );
     mockLoadState.mockReturnValue({
       agents: [makeMcpAgentDef("kiro", { skillsDir: "x" })],

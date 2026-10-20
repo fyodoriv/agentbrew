@@ -39,16 +39,6 @@ describe("detectProjectAssets", () => {
     expect(result?.skills[0].agent).toBe("claude");
   });
 
-  it("detects Cursor rules", () => {
-    const rulesDir = join(tmpDir, ".cursor", "rules");
-    mkdirSync(rulesDir, { recursive: true });
-    writeFileSync(join(rulesDir, "code-style.mdc"), "---\ndescription: test\n---\ncontent");
-    const result = detectProjectAssets(tmpDir);
-    expect(result?.rules).toHaveLength(1);
-    expect(result?.rules[0].agent).toBe("cursor");
-    expect(result?.rules[0].count).toBe(1);
-  });
-
   it("detects AGENTS.md instruction file", () => {
     writeFileSync(join(tmpDir, "AGENTS.md"), "# Project instructions");
     const result = detectProjectAssets(tmpDir);

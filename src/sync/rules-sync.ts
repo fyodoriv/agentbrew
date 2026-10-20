@@ -40,7 +40,6 @@ export const CANARY_DELEGATED_AGENTS: ReadonlySet<string> = new Set([
   "claude-code",
   "codex",
   "gemini-cli",
-  "cursor",
   "amp",
   "cline",
   "copilot",
@@ -299,7 +298,7 @@ interface SyncRuleFileOpts {
 }
 
 /** Carve-out: shared (per-file copy of rules/*.md into a rulesDir agent's dir;
- *  e.g. the cursor / kilo rulesDir entries). */
+ *  e.g. a rulesDir entry). */
 function syncSingleRuleFile(opts: SyncRuleFileOpts): { synced: number; errors: number } {
   const { file, rulesSourceDir, targetDir, agentName, manifest, log, dryRun } = opts;
   try {
@@ -525,8 +524,7 @@ function syncPerFileRulesSafely(
 /** Carve-out: shared (entry-point orchestrator — runs the same diff/apply
  *  pipeline for every carve-out + the delegated bridge in one pass).
  *
- *  `deployRules` = shared rules + compressed skills listing + Cursor-section
- *  strip. Used as ai-rules input AND as carve-out native-path content.
+ *  `deployRules` = shared rules + compressed skills listing. Used as ai-rules input AND as carve-out native-path content.
  *  Slice 4: delegated agents no longer fall back to native content silently;
  *  they skip when the delegation map is empty (see {@link computeRulesDiff}).
  *

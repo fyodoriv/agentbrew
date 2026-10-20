@@ -544,13 +544,13 @@ describe("getAgentDefTargets — unsupported-agent skip coverage", () => {
 // agent's config dir exists.
 describe("undetected agents get no agent definitions", () => {
   it("getAgentDefTargets drops names in the skip set", () => {
-    const names = getAgentDefTargets(new Set(["cursor"])).map((t) => t.agentName);
-    expect(names).not.toContain("cursor");
+    const names = getAgentDefTargets(new Set(["codex"])).map((t) => t.agentName);
+    expect(names).not.toContain("codex");
     expect(names).toContain("claude-code");
   });
 
   it("getAgentDefTargets keeps every agentsDir agent without a skip set", () => {
-    expect(getAgentDefTargets().map((t) => t.agentName)).toContain("cursor");
+    expect(getAgentDefTargets().map((t) => t.agentName)).toContain("codex");
   });
 
   it("syncAgentDefs creates no dir for an agent the state marks not detected", async () => {
@@ -558,13 +558,13 @@ describe("undetected agents get no agent definitions", () => {
     mockReaddirSync.mockReturnValue(["developer.md"] as unknown as ReturnType<typeof readdirSync>);
     mockReadFileSync.mockReturnValue(AGENT_DEF);
     mockLoadState.mockReturnValue({
-      agents: [{ name: "cursor", detected: false }],
+      agents: [{ name: "codex", detected: false }],
     } as unknown as ReturnType<typeof loadState>);
 
     await syncAgentDefs({ quiet: true });
 
     const dirs = mockMkdirSync.mock.calls.map((call) => String(call[0]));
-    expect(dirs.some((d) => d.includes(".cursor/agents"))).toBe(false);
+    expect(dirs.some((d) => d.includes(".codex/agents"))).toBe(false);
     expect(dirs.some((d) => d.includes(".claude/agents"))).toBe(true);
   });
 });

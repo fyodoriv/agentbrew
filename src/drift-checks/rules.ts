@@ -3,7 +3,7 @@ import { logSkipped } from "../core/logger.js";
 import { SHARED_RULES_PATH } from "../paths.js";
 import { dedupeSharedRulesContent } from "../rules-hygiene.js";
 import { loadState } from "../state.js";
-import { compressSkillsListing, stripCursorRulesSection } from "../sync/instructions-content.js";
+import { compressSkillsListing } from "../sync/instructions-content.js";
 import {
   CANARY_DELEGATED_AGENTS,
   collectCanaryDelegation,
@@ -138,12 +138,12 @@ export function checkRulesDrift(): DriftItem[] {
   if (!existsSync(sharedPath)) return [];
 
   // Build fresh shared rules for content comparison. Apply the same
-  // transforms syncRules applies before writing (compressSkillsListing +
-  // stripCursorRulesSection); otherwise drift compares deployed transformed
+  // transform syncRules applies before writing (compressSkillsListing);
+  // otherwise drift compares deployed transformed
   // content against raw content and always reports false-positive drift.
   const userRules = loadSharedRules();
   const sourceDrift = userRules ? checkSharedRulesSourceDrift(userRules) : [];
-  const freshRules = userRules ? stripCursorRulesSection(compressSkillsListing(userRules)) : undefined;
+  const freshRules = userRules ? compressSkillsListing(userRules) : undefined;
 
   // Invoke the same delegation path syncRules uses so drift compares
   // against the actual deployed content for canary agents.

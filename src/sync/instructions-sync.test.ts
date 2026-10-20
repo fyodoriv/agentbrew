@@ -73,7 +73,6 @@ import {
   loadInstructions,
   measureSections,
   mergeInstructionsWithManagedSection,
-  stripCursorRulesSection,
   syncInstructions,
   usesAgentsMdStandardPath,
 } from "./instructions-sync.js";
@@ -750,98 +749,6 @@ describe("compressSkillsListing", () => {
     expect(result).toContain("Some preamble.");
     expect(result).toContain("## Other");
     expect(result).toContain("Keep this too.");
-  });
-});
-
-describe("stripCursorRulesSection", () => {
-  it("strips the Auto-Synced Cursor Rules section and its content", () => {
-    const input = [
-      "# Rules",
-      "",
-      "## Dependency Policy",
-      "Prefer packages over custom code.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "> Auto-generated from cursor/rules/*.mdc by sync-formats.",
-      "",
-      "### code-style",
-      "- Strict typing",
-      "",
-      "### testing",
-      "- Use vitest",
-      "",
-      "## Other Section",
-      "Keep this.",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Dependency Policy");
-    expect(result).toContain("Prefer packages over custom code.");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("code-style");
-    expect(result).not.toContain("Strict typing");
-    expect(result).not.toContain("testing");
-    expect(result).toContain("## Other Section");
-    expect(result).toContain("Keep this.");
-  });
-
-  it("returns content unchanged when no Cursor rules section exists", () => {
-    const input = "# Rules\n\n## Git Safety\nNever force push.\n";
-    expect(stripCursorRulesSection(input)).toBe(input);
-  });
-
-  it("handles Cursor rules section at the end of file", () => {
-    const input = [
-      "# Rules",
-      "",
-      "## Dependency Policy",
-      "Prefer packages.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "> Auto-generated.",
-      "",
-      "### code-style",
-      "- Double quotes",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Dependency Policy");
-    expect(result).toContain("Prefer packages.");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("code-style");
-    expect(result).not.toContain("Double quotes");
-    expect(result).toEqual("# Rules\n\n## Dependency Policy\nPrefer packages.\n");
-  });
-
-  it("preserves content both before and after the stripped section", () => {
-    const input = [
-      "## Before",
-      "Content before.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "### rule-1",
-      "Some rule.",
-      "",
-      "## After",
-      "Content after.",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Before");
-    expect(result).toContain("Content before.");
-    expect(result).toContain("## After");
-    expect(result).toContain("Content after.");
-    expect(result).not.toContain("rule-1");
-  });
-
-  it("handles case-insensitive heading match", () => {
-    const input = "## auto-synced cursor rules\n### rule\nContent.\n";
-    const result = stripCursorRulesSection(input);
-    expect(result).not.toContain("cursor rules");
-    expect(result).not.toContain("Content.");
   });
 });
 

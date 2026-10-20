@@ -9,6 +9,6 @@ describe("docs/shared-rules.md — proactive new-chat guidance", () => {
     expect(sharedRules).toContain("## Chat lifecycle (save tokens)");
     expect(sharedRules).toMatch(/Proactively tell the user to start a new chat/i);
     expect(sharedRules).toMatch(/low-soft-headroom/);
-    expect(sharedRules).toContain("cursor-token-playbook");
+    expect(sharedRules).not.toContain("cursor-token-playbook");
   });
 });

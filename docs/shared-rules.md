@@ -167,7 +167,7 @@ these three axes when a task allows it:
 
 ## Chat lifecycle (save tokens)
 
-**Proactively tell the user to start a new chat** when a trigger matches — one short actionable line at natural boundaries (task done, topic pivot, delivery completion), not a lecture. Load `cursor-token-playbook` for the full checklist.
+**Proactively tell the user to start a new chat** when a trigger matches — one short actionable line at natural boundaries (task done, topic pivot, delivery completion), not a lecture.
 
 - **New chat:** deliverable shipped; unrelated topic/repo; long session (~30–60 min heavy work); re-explaining or re-reading same files; degraded responses; after rules/MCP/skills sync or delivery completion; `latest.json` `low-soft-headroom` alert.
 - **Continue:** same PR / mid-debug / one failure iteration on same scope.

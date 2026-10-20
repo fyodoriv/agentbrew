@@ -35,7 +35,6 @@ export {
   isInstructionsUpToDate,
   measureSections,
   mergeInstructionsWithManagedSection,
-  stripCursorRulesSection,
   usesAgentsMdStandardPath,
 } from "./instructions-content.js";
 

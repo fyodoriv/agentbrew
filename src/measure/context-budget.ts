@@ -3,12 +3,7 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
 import { lint, validateConfig } from "../lint.js";
-import {
-  CONTEXT_BUDGET_LATEST_PATH,
-  CONTEXT_BUDGET_MANUAL_SNAPSHOTS_DIR,
-  CONTEXT_BUDGET_METRICS_DIR,
-  SHARED_RULES_PATH,
-} from "../paths.js";
+import { CONTEXT_BUDGET_LATEST_PATH, CONTEXT_BUDGET_METRICS_DIR, SHARED_RULES_PATH } from "../paths.js";
 import { DEPLOYED_RULES_FILE_CHAR_BUDGET, findSharedRulesBloat, projectedDeployedRulesSize } from "../rules-hygiene.js";
 import { collectStatusData } from "../status.js";
 import {
@@ -16,7 +11,6 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
   measureSections,
-  stripCursorRulesSection,
 } from "../sync/instructions-content.js";
 import { getInstructionsSourcePath } from "../sync/instructions-sync.js";
 import { ICON_ERROR, ICON_SUCCESS, ICON_WARNING } from "../ui/output.js";
@@ -26,13 +20,10 @@ import {
   extractRuntimeTodayFromCcusage,
   type OpenusageRuntimeResult,
   type RuntimeTodayRollup,
-  type TokscaleRuntimeResult,
   tryCcusageDaily,
   tryOpenusageDaily,
-  tryTokscaleToday,
 } from "./context-budget-runtime.js";
 import { CONTEXT_BUDGET_POST_SYNC_INTERVAL_MS, shouldMeasureContextBudget } from "./context-budget-throttle.js";
-import { type CursorMdcInventory, collectCursorMdcInventory } from "./cursor-mdc-inventory.js";
 
 export const CONTEXT_BUDGET_SCHEMA_VERSION = 1 as const;
 
@@ -68,7 +59,6 @@ export interface ContextBudgetSnapshot {
     lintWarnings: number;
   };
   inventory: {
-    cursorMdc?: CursorMdcInventory;
     agentCount: number;
     detectedAgentCount: number;
     mcpServerCount: number;
@@ -82,15 +72,9 @@ export interface ContextBudgetSnapshot {
       daily?: unknown;
       today?: RuntimeTodayRollup;
     };
-    tokscale?: TokscaleRuntimeResult;
     openusage?: OpenusageRuntimeResult;
   };
   alerts: ContextBudgetAlert[];
-  cursorRing: {
-    automated: false;
-    manualSnapshotDir: string;
-    note: string;
-  };
   sources: string[];
 }
 
@@ -101,8 +85,6 @@ export interface MeasureContextBudgetOptions {
   dryRun?: boolean;
   /** Skip ccusage subprocess (tests / faster runs). */
   skipCcusage?: boolean;
-  /** Skip tokscale subprocess (tests / faster runs). */
-  skipTokscale?: boolean;
   /** Skip full `lint()` console output during background post-sync capture. */
   quiet?: boolean;
   /** Skip capture when latest.json measuredAt is newer than this interval (ms). */
@@ -116,9 +98,6 @@ export interface MeasureContextBudgetResult {
   skipped?: boolean;
   skippedReason?: string;
 }
-
-const CURSOR_RING_NOTE =
-  "Cursor's context ring has no public API. When investigating IDE context pressure, note the ring reading in metrics/manual-snapshots/ (freeform markdown or JSON).";
 
 function readSharedRulesContent(): { content: string; bytes: number; lines: number } | undefined {
   const sharedRulesPath = expandHome(SHARED_RULES_PATH);
@@ -162,7 +141,7 @@ function runLintCheck(quiet: boolean): { passed: boolean; errors: number; warnin
     const shared = readSharedRulesContent();
     let extraErrors = 0;
     if (shared) {
-      const deployRules = stripCursorRulesSection(compressSkillsListing(shared.content));
+      const deployRules = compressSkillsListing(shared.content);
       const projected = projectedDeployedRulesSize(readInstructionsContent(), deployRules);
       if (projected > DEPLOYED_RULES_FILE_CHAR_BUDGET) extraErrors++;
       extraErrors += findSharedRulesBloat(shared.content).filter((f) => f.kind !== "section-budget").length;
@@ -176,33 +155,27 @@ function runLintCheck(quiet: boolean): { passed: boolean; errors: number; warnin
   return { passed, errors: validation.errors, warnings: validation.warnings };
 }
 
-function collectRuntimeMetrics(options?: {
-  skipCcusage?: boolean;
-  skipTokscale?: boolean;
-}): ContextBudgetSnapshot["runtime"] {
+function collectRuntimeMetrics(options?: { skipCcusage?: boolean }): ContextBudgetSnapshot["runtime"] {
   const ccusage = options?.skipCcusage
     ? { available: false as const, skippedReason: "skipped by flag" }
     : tryCcusageDaily();
   const ccusageWithToday = ccusage.available
     ? { ...ccusage, today: extractRuntimeTodayFromCcusage(ccusage.daily) }
     : ccusage;
-  const tokscale = options?.skipTokscale || options?.skipCcusage ? undefined : tryTokscaleToday();
   const openusage = options?.skipCcusage ? undefined : tryOpenusageDaily();
   return {
     ccusage: ccusageWithToday,
-    ...(tokscale ? { tokscale } : {}),
     ...(openusage ? { openusage } : {}),
   };
 }
 
 export function buildContextBudgetSnapshot(options?: {
   skipCcusage?: boolean;
-  skipTokscale?: boolean;
   quiet?: boolean;
 }): ContextBudgetSnapshot {
   const shared = readSharedRulesContent();
   const instructions = readInstructionsContent();
-  const deployRules = shared ? stripCursorRulesSection(compressSkillsListing(shared.content)) : "";
+  const deployRules = shared ? compressSkillsListing(shared.content) : "";
   const projectedChars = projectedDeployedRulesSize(instructions, deployRules);
   const projectedTokens = estimateTokens(projectedChars);
   const bloatFindings = shared ? findSharedRulesBloat(shared.content) : [];
@@ -240,23 +213,15 @@ export function buildContextBudgetSnapshot(options?: {
       mcpServerCount: status?.mcpServers.length ?? 0,
       skillCount: countUniqueSkills(status),
       commandCount: status?.commands?.count ?? 0,
-      cursorMdc: collectCursorMdcInventory(),
     },
     runtime,
     alerts,
-    cursorRing: {
-      automated: false,
-      manualSnapshotDir: CONTEXT_BUDGET_MANUAL_SNAPSHOTS_DIR,
-      note: CURSOR_RING_NOTE,
-    },
     sources: [
       "agentbrew lint + rules-hygiene (static projected tokens)",
       "agentbrew status --json (inventory)",
       "optional: bunx ccusage claude daily --json (Claude runtime + runtime.today rollup)",
-      "optional: bunx tokscale --today --client cursor --json (Cursor IDE runtime)",
-      "optional: openusage daily --json (multi-provider daily rollup incl. Cursor local DB)",
+      "optional: openusage daily --json (multi-provider daily rollup)",
       "optional: session-report skill (~/.claude/projects transcripts)",
-      "manual: Cursor context ring → metrics/manual-snapshots/",
     ],
   };
 }
@@ -268,9 +233,7 @@ function datedSnapshotPath(measuredAt: string): string {
 
 export function writeContextBudgetSnapshot(snapshot: ContextBudgetSnapshot): string[] {
   const metricsDir = expandHome(CONTEXT_BUDGET_METRICS_DIR);
-  const manualDir = expandHome(CONTEXT_BUDGET_MANUAL_SNAPSHOTS_DIR);
   mkdirSync(metricsDir, { recursive: true });
-  mkdirSync(manualDir, { recursive: true });
 
   const payload = `${JSON.stringify(snapshot, null, 2)}\n`;
   const datedPath = datedSnapshotPath(snapshot.measuredAt);
@@ -300,11 +263,6 @@ function printRuntimeSummary(runtime: ContextBudgetSnapshot["runtime"]): void {
     }
   } else {
     console.log(`  ${chalk.dim("○")} ccusage skipped — ${runtime.ccusage.skippedReason}`);
-  }
-  if (runtime.tokscale?.available) {
-    console.log(`  ${ICON_SUCCESS} tokscale Cursor today captured`);
-  } else if (runtime.tokscale) {
-    console.log(`  ${chalk.dim("○")} tokscale skipped — ${runtime.tokscale.skippedReason}`);
   }
   if (runtime.openusage?.available) {
     const today = runtime.openusage.today;
@@ -336,11 +294,6 @@ function printHumanSummary(snapshot: ContextBudgetSnapshot, writtenPaths: string
     `  ${chalk.dim("shared-rules.md")} ${s.sharedRulesBytes.toLocaleString()} bytes / ${s.sharedRulesLines} lines`,
   );
   printTopSections(s.topSections);
-  if (inventory.cursorMdc) {
-    console.log(
-      `  ${chalk.dim("Cursor .mdc")} ${inventory.cursorMdc.alwaysAppliedBytes.toLocaleString()} always-applied bytes / ${inventory.cursorMdc.totalBytes.toLocaleString()} total (${inventory.cursorMdc.rulesDir})`,
-    );
-  }
   console.log(`  ${chalk.dim("headroom")} ~${s.softTokenHeadroom.toLocaleString()} tokens to soft target`);
   console.log(
     `  ${chalk.dim("inventory")} ${inventory.detectedAgentCount} agents, ${inventory.mcpServerCount} MCP, ${inventory.skillCount} skills`,
@@ -350,7 +303,6 @@ function printHumanSummary(snapshot: ContextBudgetSnapshot, writtenPaths: string
     const icon = line.includes("over-hard") || line.includes("lint-failed") ? ICON_ERROR : ICON_WARNING;
     console.log(`  ${icon} ${line}`);
   }
-  console.log(chalk.dim(`  Cursor ring: manual only → ${snapshot.cursorRing.manualSnapshotDir}`));
   console.log(chalk.dim(`  wrote ${writtenPaths.join(", ")}`));
 }
 
@@ -366,7 +318,6 @@ export function measureContextBudget(options?: MeasureContextBudgetOptions): Mea
 
   const snapshot = buildContextBudgetSnapshot({
     skipCcusage: options?.skipCcusage,
-    skipTokscale: options?.skipTokscale ?? options?.skipCcusage,
     quiet: options?.quiet ?? options?.json,
   });
   const writtenPaths = options?.dryRun ? [] : writeContextBudgetSnapshot(snapshot);
@@ -389,7 +340,6 @@ export function maybeMeasureContextBudgetAfterSync(): void {
     const result = measureContextBudget({
       quiet: true,
       skipCcusage: true,
-      skipTokscale: true,
       ifStaleMs: CONTEXT_BUDGET_POST_SYNC_INTERVAL_MS,
     });
     if (result.skipped) {

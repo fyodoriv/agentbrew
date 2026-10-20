@@ -127,7 +127,7 @@ import { validateMcpEnvVars } from "./mcp/mcp-setup.js";
 import { validateAllSkills } from "./skills/validate.js";
 import { loadState } from "./state.js";
 import { collectAgentDefs, getAgentDefTargets } from "./sync/agents-sync.js";
-import { compressSkillsListing, stripCursorRulesSection } from "./sync/instructions-content.js";
+import { compressSkillsListing } from "./sync/instructions-content.js";
 import { loadInstructions } from "./sync/instructions-sync.js";
 import { extractManagedSection, loadSharedRules } from "./sync/rules-sync.js";
 
@@ -410,9 +410,9 @@ describe("checkRulesDrift", () => {
     expect(checkRulesDrift()).toEqual([]);
   });
 
-  it("does not flag drift when deployed has the transforms (compressSkillsListing + stripCursorRulesSection) applied", () => {
+  it("does not flag drift when deployed has the transform (compressSkillsListing) applied", () => {
     // Simulate the real sync pipeline: loadSharedRules returns raw content with a verbose
-    // skills listing and a Cursor rules section. Sync strips/compresses both before writing.
+    // skills listing. Sync compresses it before writing.
     // The deployed managed section is the transformed content. Drift must apply the same
     // transforms before comparing, otherwise it always flags false-positive drift.
     //
@@ -430,14 +430,10 @@ describe("checkRulesDrift", () => {
       "",
       "Keep me.",
       "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "Cursor-only content that sync strips for rulesFile agents.",
-      "",
     ].join("\n");
 
     // What sync would write: run raw through the same transforms the sync engine uses.
-    const transformed = stripCursorRulesSection(compressSkillsListing(rawMerged));
+    const transformed = compressSkillsListing(rawMerged);
 
     mockLoadState.mockReturnValue(makeState({ agents: [{ name: "augment", detected: true }] }));
     mockExistsSync.mockImplementation((p) => {
@@ -453,7 +449,7 @@ describe("checkRulesDrift", () => {
     mockExtractManagedSection.mockReturnValue(transformed);
 
     // Before fix: drift reports "managed section out of date" because rawMerged !== transformed.
-    // After fix: drift applies compressSkillsListing + stripCursorRulesSection before compare.
+    // After fix: drift applies compressSkillsListing before compare.
     expect(checkRulesDrift()).toEqual([]);
   });
 

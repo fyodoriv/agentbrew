@@ -175,31 +175,6 @@ export function extractCursorRules(content: string): string {
 }
 
 /**
- * Strip the "Auto-Synced Cursor Rules" section from managed rules content.
- * Removes the `## Auto-Synced Cursor Rules` heading and all content until the
- * next H2 heading (or end of file). Content before and after the section is preserved.
- *
- * These rules are already deployed as per-file rules to agents with rulesDir
- * (Cursor), so including them in the shared rulesFile is redundant.
- */
-export function stripCursorRulesSection(content: string): string {
-  const lines = content.split("\n");
-  const sectionStart = lines.findIndex((line) => /^##\s+Auto-Synced Cursor Rules\b/i.test(line));
-  if (sectionStart === -1) return content;
-
-  const sectionEnd = findSectionEnd(lines, sectionStart);
-  const before = lines.slice(0, sectionStart);
-  const after = lines.slice(sectionEnd);
-
-  // Clean up trailing blank lines from before + leading blank lines from after
-  while (before.length > 0 && before[before.length - 1].trim() === "") before.pop();
-  while (after.length > 0 && after[0].trim() === "") after.shift();
-
-  const result = after.length > 0 ? [...before, "", ...after] : before;
-  return `${result.join("\n").trimEnd()}\n`;
-}
-
-/**
  * Extract markdown heading text (without the `#` prefix) from a heading line.
  * Normalizes by trimming whitespace and converting to lowercase for comparison.
  * Returns undefined if the line is not a heading.

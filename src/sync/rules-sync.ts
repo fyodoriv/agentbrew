@@ -18,7 +18,7 @@ import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_INFO, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { refreshCatalogTemplateRules } from "./catalog-template-rules.js";
-import { compressSkillsListing, stripCursorRulesSection } from "./instructions-sync.js";
+import { compressSkillsListing } from "./instructions-sync.js";
 import { indexOfMarkerAtLineStart } from "./marker-utils.js";
 import { delegateRulesGenerate } from "./rules-delegate.js";
 
@@ -497,7 +497,7 @@ function loadDeployRules(quiet: boolean, log: Logger): string | undefined {
     if (!quiet) log.warn("No shared rules file found.");
     return undefined;
   }
-  return stripCursorRulesSection(compressSkillsListing(userRules));
+  return compressSkillsListing(userRules);
 }
 
 function refreshRulesSafely(manifest: Manifest, dryRun: boolean): void {

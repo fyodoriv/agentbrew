@@ -204,12 +204,6 @@ skills:
     category: meta
     recommended: false
 
-  - name: cursor-token-playbook
-    description: "Daily Cursor token habits — model mix, new chat, @ scoping, MCP discipline, measure context."
-    source: built-in
-    category: meta
-    recommended: false
-
   - name: update-tooling
     description: "Safely refresh a tooling workspace, apply dotfiles and agentbrew state, verify machine health, and rank next work. Don't use for package upgrades or publishing unowned changes."
     source: fyodoriv/dotfiles

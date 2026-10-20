@@ -101,7 +101,7 @@ Every change updates its docs in the same PR. User-facing behavior goes in the R
 ## When you need detail
 
 This file is a compact bootstrap. Load the matching skill or repo-local guide
-for chat/token limits (`cursor-token-playbook`, `context-budget`), agentbrew
+for chat/token limits (`context-budget`), agentbrew
 sync (`agentbrew-status`, `sync-agent-config`), delivery/testing/debugging,
 browser work (`agent-browser`, `sso-browser-isolation`,
 `sso-background-work`, `page-zero-errors`), skill authoring, and UI work.

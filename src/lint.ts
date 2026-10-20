@@ -6,7 +6,6 @@ import {
   type AgentBloatFinding,
   collectAgentBloatFindings,
   lintCommandBloat,
-  lintMdcBloat,
   summarizeAgentBloat,
 } from "./agent-bloat-lint.js";
 import { AGENTFILE_NAMES, getStateServers, getStateSources, loadAgentfile, validateAgentfileMcp } from "./agentfile.js";
@@ -18,7 +17,6 @@ import { getAdapter } from "./mcp/adapters.js";
 import { sweepCatalogPins } from "./mcp/catalog-pin-sweep.js";
 import { sweepPlaywrightIsolated } from "./mcp/playwright-isolated-sweep.js";
 import { sweepMcpConfigs } from "./mcp/resilient-sweep.js";
-import { collectCursorMdcInventory } from "./measure/cursor-mdc-inventory.js";
 import { COMMANDS_DIR, SHARED_RULES_PATH } from "./paths.js";
 import {
   DEPLOYED_RULES_FILE_CHAR_BUDGET,
@@ -35,7 +33,6 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
   measureSections,
-  stripCursorRulesSection,
 } from "./sync/instructions-content.js";
 import { getInstructionsSourcePath } from "./sync/instructions-sync.js";
 import { getSkillSources } from "./sync/skills-sync.js";
@@ -284,18 +281,6 @@ function lintAgentBloat(): { errors: number; warnings: number } {
   const agentBrewDir = process.env.AGENTBREW_DIR ?? resolve(join(import.meta.dirname, ".."));
   const findings = collectAgentBloatFindings({ repoRoot: agentBrewDir });
 
-  const inventory = collectCursorMdcInventory();
-  if (inventory) {
-    for (const file of inventory.files) {
-      const path = join(inventory.rulesDir, file.name);
-      try {
-        findings.push(...lintMdcBloat(readFileSync(path, "utf-8"), path));
-      } catch (e) {
-        logSkipped("lint/mdc-bloat", e);
-      }
-    }
-  }
-
   if (findings.length === 0) {
     console.log(`  ${ICON_SUCCESS} no bloat findings`);
     return { errors: 0, warnings: 0 };
@@ -347,7 +332,7 @@ function lintDeployedSizeBudget(sharedRules: string): { errors: number; warnings
   } catch (e) {
     logSkipped("lint/deployed-size-instructions", e);
   }
-  const deployRules = stripCursorRulesSection(compressSkillsListing(sharedRules));
+  const deployRules = compressSkillsListing(sharedRules);
   const projected = projectedDeployedRulesSize(instructions, deployRules);
   if (projected <= DEFAULT_TOKEN_WARNING_THRESHOLD) return { errors: 0, warnings: 0 };
 

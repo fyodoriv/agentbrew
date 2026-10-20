@@ -11,7 +11,6 @@ import {
   isInstructionsUpToDate,
   measureSections,
   mergeInstructionsWithManagedSection,
-  stripCursorRulesSection,
   usesAgentsMdStandardPath,
 } from "./instructions-content.js";
 
@@ -137,43 +136,6 @@ describe("usesAgentsMdStandardPath", () => {
     expect(usesAgentsMdStandardPath("/home/user/.codex/AGENTS.md")).toBe(true);
     expect(usesAgentsMdStandardPath("/home/user/.claude/CLAUDE.md")).toBe(false);
     expect(usesAgentsMdStandardPath("/home/user/.gemini/GEMINI.md")).toBe(false);
-  });
-});
-
-describe("stripCursorRulesSection", () => {
-  it("returns content unchanged when no Auto-Synced Cursor Rules section", () => {
-    const content = "## Other\nContent\n";
-    expect(stripCursorRulesSection(content)).toBe(content);
-  });
-
-  it("removes the section and preserves surrounding content", () => {
-    const content = [
-      "## Before",
-      "Before content",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "Rule line 1",
-      "Rule line 2",
-      "",
-      "## After",
-      "After content",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(content);
-    expect(result).toContain("## Before");
-    expect(result).toContain("Before content");
-    expect(result).toContain("## After");
-    expect(result).toContain("After content");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("Rule line 1");
-  });
-
-  it("handles section at end of file", () => {
-    const content = ["## Before", "Content", "", "## Auto-Synced Cursor Rules", "Some rules here"].join("\n");
-
-    const result = stripCursorRulesSection(content);
-    expect(result).toContain("## Before");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
   });
 });
 

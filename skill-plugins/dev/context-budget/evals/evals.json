@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Our Cursor sessions feel context-heavy — audit the agentbrew token budget.",
+      "prompt": "Our agent sessions feel context-heavy — audit the agentbrew token budget.",
       "expected_output": "A metrics-driven audit using latest.json and agentbrew measure context, with lint failures and TASKS.md trim candidates.",
       "expectations": [
         "Reads or refreshes ~/.config/agentbrew/metrics/latest.json via agentbrew measure context",
@@ -25,7 +25,7 @@
     },
     {
       "id": 3,
-      "prompt": "Build a custom JSONL parser for Cursor transcripts to track tokens.",
+      "prompt": "Build a custom JSONL parser for agent transcripts to track tokens.",
       "expected_output": "A pushback toward ccusage and session-report instead of a bespoke parser.",
       "expectations": [
         "Declines building a custom JSONL parser or duplicate dashboard",
@@ -36,12 +36,11 @@
     },
     {
       "id": 4,
-      "prompt": "The Cursor context ring shows 85% — what should we trim first?",
-      "expected_output": "Investigation ordered by latest.json topSections, lint output, and TASKS.md P1 trim tasks; manual ring note saved if needed.",
+      "prompt": "Context headroom is low — what should we trim first?",
+      "expected_output": "Investigation ordered by latest.json topSections, lint output, and TASKS.md P1 trim tasks.",
       "expectations": [
         "Uses latest.json topSections and projectedDeployedTokens to prioritize trim targets",
         "Checks TASKS.md for existing trim-shared-rules or token-budget tasks",
-        "Documents that Cursor ring has no API and may suggest manual-snapshots/ logging",
         "Does not delete shared-rules content without an explicit trim task or user approval"
       ]
     }

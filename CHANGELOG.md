@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Cursor and Grok support** (#286). Cursor and Grok support was removed on
+  purpose on 2026-10-19. This first step removes the Cursor token tooling: the
+  `cursor-token-playbook` skill, the Cursor `.mdc` inventory in
+  `measure context`, the tokscale Cursor usage probe, the Cursor context-ring
+  field, and the "Auto-Synced Cursor Rules" strip step.
+
 ### Added
 
 - **One-step install with your agent** — tell Claude Code (or Cursor, Codex)

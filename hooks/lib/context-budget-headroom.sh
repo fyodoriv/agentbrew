@@ -33,7 +33,7 @@ try {
   if (typeof headroom !== "number" || headroom >= threshold) process.exit(0);
   const topHint = top ? ` Top section "${top.heading}" ~${top.tokens} tokens.` : "";
   console.log(
-    `context headroom low: ~${headroom} tokens to soft target (<${threshold}); projected ~${projected} tokens.${topHint} Start a new chat for the next task; load context-budget + cursor-token-playbook before adding rules/skills.`,
+    `context headroom low: ~${headroom} tokens to soft target (<${threshold}); projected ~${projected} tokens.${topHint} Start a new chat for the next task; load context-budget before adding rules/skills.`,
   );
 } catch {
   process.exit(0);

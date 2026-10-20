@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { tryCcusageDaily, tryOpenusageDaily, tryTokscaleToday } from "./context-budget-runtime.js";
+import { tryCcusageDaily, tryOpenusageDaily } from "./context-budget-runtime.js";
 
 vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
 vi.mock("../core/logger.js", () => ({ logSkipped: vi.fn() }));
@@ -33,20 +33,6 @@ describe("context-budget runtime runners", () => {
     expect(result.skippedReason).toContain("ccusage not available");
   });
 
-  it("tokscale tries bunx, npx, then the installed binary", () => {
-    failFor("bunx", "npx");
-    expect(tryTokscaleToday().today).toEqual({ via: "tokscale", totals: { tokens: 7, cost_usd: 0.5 } });
-    expect(run.mock.calls.map((call) => call[0])).toEqual(["bunx", "npx", "tokscale"]);
-  });
-
-  it("tokscale reports a skip reason when every runner fails", () => {
-    failFor("bunx", "npx", "tokscale");
-    expect(tryTokscaleToday()).toEqual({
-      available: false,
-      skippedReason: "tokscale not available (optional: tokscale cursor login && tokscale cursor sync)",
-    });
-  });
-
   it("openusage passes --since today, uses a 60s timeout, and adds the today rollup", () => {
     failFor();
     const result = tryOpenusageDaily("2026-10-12");
@@ -64,7 +50,7 @@ describe("context-budget runtime runners", () => {
 
   it("treats unparseable output as a failed runner", () => {
     run.mockReturnValue("not json" as never);
-    expect(tryTokscaleToday().available).toBe(false);
-    expect(run).toHaveBeenCalledTimes(3);
+    expect(tryCcusageDaily().available).toBe(false);
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });

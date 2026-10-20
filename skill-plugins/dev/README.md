@@ -31,7 +31,6 @@ would naturally live.
 | **agentbrew-manage-permissions** | Manage Claude Code tool permissions. Review allowed/denied tools, add MCP server permissions. |
 | **agentbrew-status** | Check agentbrew health: agents, MCP servers, drift. |
 | **context-budget** | Investigate agentbrew + Cursor context budget via `~/.config/agentbrew/metrics/latest.json` and `agentbrew measure context`. |
-| **cursor-token-playbook** | Daily Cursor token habits — model mix, new chat vs continue, @ scoping, MCP discipline, `.cursorignore`, measure context workflow. |
 | **agentfile-init** | Generate an `Agentfile.yaml` for the current project. |
 | **load-project-context** | Run the canonical-doc discovery script + read every VISION / ARCHITECTURE / MILESTONES / user-stories / competitors file the agentbrew `load-project-context` catalog rule expects. The invokable companion to the rule + Claude Code SessionStart hook shipped from `~/.config/agentbrew/`. |
 | **sync-agent-config** | Syncs all agent rules, memories, skills, and config across tools (Cursor, Claude Code, Codex). |

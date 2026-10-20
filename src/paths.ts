@@ -54,9 +54,6 @@ export const CONTEXT_BUDGET_METRICS_DIR = "~/.config/agentbrew/metrics";
 /** Latest context-budget snapshot — read by agents at session start. */
 export const CONTEXT_BUDGET_LATEST_PATH = "~/.config/agentbrew/metrics/latest.json";
 
-/** Manual Cursor context-ring readings (no API — human/agent notes). */
-export const CONTEXT_BUDGET_MANUAL_SNAPSHOTS_DIR = "~/.config/agentbrew/metrics/manual-snapshots";
-
 /** State path for the installed-skills label used in skillSourceDirs. */
 export const INSTALLED_SKILLS_LABEL = "installed-skills";
 

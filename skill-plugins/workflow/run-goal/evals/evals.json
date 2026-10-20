@@ -963,6 +963,31 @@
         "A reversed earlier decision gets a new ADR that supersedes the old one",
         "After a commit whose output was hidden, the agent checks git log or status before it pushes or opens a PR"
       ]
+    },
+    {
+      "id": 81,
+      "prompt": "/goal be on the lookout for updates of <tool repos>, stay in sync and update plugin repos + local setup when needed. Focus on <one repo>, as another agent works on the rest",
+      "expected_output": "The contract makes the open-ended watch finite and provable: one verified sync pass now, plus a recurring scheduled job as a done-criterion. The job counts as done only after one real run whose report the agent checked against actual state, and one unattended scheduler fire. It respects the ownership split and proves it from history.",
+      "expectations": [
+        "The contract makes the goal finite: one verified sync pass now, plus a recurring job (a scheduled task) as a done-criterion",
+        "The recurring job counts as done only after one real run whose report the agent read and checked against actual state (SHAs, counts), and after a scheduler fire with nobody watching (for example a one-time probe the agent deletes afterwards)",
+        "The job encodes follow-ups: each open upstream issue maps to the local workaround to remove when it closes",
+        "It stays read-only in repos another agent owns, and proves that boundary from history (dirty files, reflog, paths each pulled commit touched), not from the job report",
+        "Waiting on a background run uses a progress marker or a monitor, not repeated polling"
+      ]
+    },
+    {
+      "id": 82,
+      "prompt": "/goal be on the lookout for any issues opened for <repo A>/<repo B>, then resolve them immediately (question round answer: everything, epics included)",
+      "expected_output": "The agent resolves the backlog with at most the user parallel cap of workers, and runs a new-issue watcher whose failures are loud. It proves the watcher works when it stays silent through a known new issue, verifies every worker claim itself, and keeps agent-chosen defaults labelled as such in public text.",
+      "expectations": [
+        "The contract counts open issues per repo as the metric with a baseline, and plans waves that keep workers that edit the same files apart",
+        "The new-issue watcher exits loudly on a failed poll (no 2>/dev/null swallowing), and runs where the network call works (a sandboxed monitor cannot reach the API)",
+        "When the watcher stays silent through an issue the agent knows was opened, the agent treats that as a watcher bug and tests the poll command",
+        "Each worker report is checked with fresh commands (PR state, issue state) before it counts as a Goal check",
+        "Defaults the agent picked for open design questions are never described as the owner decisions in public comments; a wrong attribution gets corrected",
+        "Issues filed mid-goal, including ones the agent files itself, join the metric and get resolved in the same run"
+      ]
     }
   ]
 }

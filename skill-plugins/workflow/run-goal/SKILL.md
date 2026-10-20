@@ -271,6 +271,10 @@ the next step on it with `&&`: a clean leak check then skips the commit.
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.
 
+When the goal changes this machine, re-read the live state (installed files,
+loaded services) right before you report done. A later apply can revert a fix
+that passed earlier.
+
 Before you call a failure "pre-existing", run the same test files with the
 same flags on the unchanged base (a detached worktree) and compare the two
 failure lists. Only a failure on both lists is pre-existing. A wait loop on

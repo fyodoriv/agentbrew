@@ -176,7 +176,7 @@
   - **Details**: Follow the shared rule "One command to start any app" (reference: careerbrew `careerbrew` / `/careerbrew` / `careerbrew config`). Running `agentbrew` with no arguments sets up what is missing, starts any long-running parts with sane defaults (reusing ones already running), refreshes, and prints what matters now and what it needs from the user. Ship `commands/agentbrew.md` and declare `commands: [./commands]` in `Agentfile.yaml`. Keep every default in one table; `agentbrew config` shows each value and its source, and `agentbrew config set <key> <value>` validates and saves it, so agents change settings the way people do.
   - **Hypothesis**: starting agentbrew takes one command instead of a remembered sequence, so a fresh agent or the owner reaches a working state with no lookup.
   - **Measurement**: from a fresh clone, count the commands typed until the app shows its first useful screen (a scripted e2e that runs only `agentbrew` and checks its output).
-  - **Success**: 1 command, and `agentbrew config set` round-trips one setting in the e2e.
+  - **Success**: a single command, and `agentbrew config set` round-trips one setting in the e2e.
   - **Pivot**: if a part cannot start safely by default (a paid service, a secret), the start command prints the exact next step instead of starting it.
   - **Anchor**: Nielsen 1994, "Recognition rather than recall" (usability heuristic 6).
 

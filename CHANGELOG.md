@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **ChatGPT and Claude Desktop context files are no longer empty.**
+  `context/chatgpt.md` and `context/claude-desktop.md` took their body from the
+  "Auto-Synced Cursor Rules" section, which the Cursor removal (#286) deleted.
+  They now carry the whole deployed instructions template.
+
 ### Removed
 
 - **Cursor and Grok support** (#286). Cursor and Grok support was removed on

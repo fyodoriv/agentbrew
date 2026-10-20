@@ -6,7 +6,6 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   deduplicateByHeading,
   estimateTokens,
-  extractCursorRules,
   extractHeadings,
   isInstructionsUpToDate,
   measureSections,
@@ -116,18 +115,6 @@ describe("compressSkillsListing", () => {
     const content = ["## SKILLS", "", "**Cat:** `a`, `b`, `c`, `d`, `e`"].join("\n");
     const result = compressSkillsListing(content);
     expect(result).toContain("5 skills installed");
-  });
-});
-
-describe("extractCursorRules", () => {
-  it("returns empty string when no Auto-Synced Cursor Rules section", () => {
-    expect(extractCursorRules("## Other\nSome content")).toBe("");
-  });
-
-  it("extracts content after the heading, skipping blockquotes and empty lines", () => {
-    const content = ["## Auto-Synced Cursor Rules", "> Auto-generated note", "", "Rule 1", "Rule 2"].join("\n");
-
-    expect(extractCursorRules(content)).toBe("Rule 1\nRule 2\n");
   });
 });
 

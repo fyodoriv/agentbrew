@@ -65,7 +65,6 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   deduplicateByHeading,
   estimateTokens,
-  extractCursorRules,
   extractHeadings,
   getCanonicalInstructionsPath,
   getContextFiles,
@@ -173,20 +172,6 @@ describe("loadInstructions", () => {
   });
 });
 
-describe("extractCursorRules", () => {
-  it("extracts content after Auto-Synced Cursor Rules heading", () => {
-    const rules = extractCursorRules(SAMPLE_AGENTS_MD);
-    expect(rules).toContain("### code-style");
-    expect(rules).toContain("### testing");
-    expect(rules).not.toContain("## Skills");
-    expect(rules).not.toContain("Auto-generated from");
-  });
-
-  it("returns empty string when marker not found", () => {
-    expect(extractCursorRules("no marker here")).toBe("");
-  });
-});
-
 describe("usesAgentsMdStandardPath", () => {
   it("returns true for AGENTS.md paths", () => {
     expect(usesAgentsMdStandardPath("~/.codex/AGENTS.md")).toBe(true);
@@ -249,6 +234,18 @@ describe("syncInstructions", () => {
       expect(existsSync(ctx.path)).toBe(true);
       const content = readFileSync(ctx.path, "utf-8");
       expect(content).toContain("### code-style");
+    }
+  });
+
+  it("fills context files from the whole template, not a removed Cursor section", async () => {
+    writeAgentsMd("# Agent rules\n\n## Rules\n\nAlways run the gate before merge.\n");
+
+    await syncInstructions({ quiet: true });
+
+    for (const ctx of getContextFiles()) {
+      const content = readFileSync(ctx.path, "utf-8");
+      expect(content).toContain("Always run the gate before merge.");
+      expect(content).not.toMatch(/Cursor/);
     }
   });
 

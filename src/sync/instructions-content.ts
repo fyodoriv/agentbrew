@@ -153,27 +153,6 @@ function flushAndStartCategory(
   return { name: parsed.name, count: 0 };
 }
 
-/** Extract the "Auto-Synced Cursor Rules" section (everything after that heading). */
-export function extractCursorRules(content: string): string {
-  const marker = "## Auto-Synced Cursor Rules";
-  const idx = content.indexOf(marker);
-  if (idx === -1) return "";
-
-  const afterMarker = content.slice(idx + marker.length);
-  // Skip the auto-generated note line (starts with ">")
-  const lines = afterMarker.split("\n");
-  let started = false;
-  const result: string[] = [];
-  for (const line of lines) {
-    if (!started) {
-      if (line.startsWith(">") || line.trim() === "") continue;
-      started = true;
-    }
-    if (started) result.push(line);
-  }
-  return `${result.join("\n").trim()}\n`;
-}
-
 /**
  * Extract markdown heading text (without the `#` prefix) from a heading line.
  * Normalizes by trimming whitespace and converting to lowercase for comparison.

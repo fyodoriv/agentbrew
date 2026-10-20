@@ -17,7 +17,6 @@ import { syncHelperScripts } from "./helper-scripts.js";
 import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
-  extractCursorRules,
   isInstructionsUpToDate,
   measureSections,
   mergeInstructionsWithManagedSection,
@@ -30,7 +29,6 @@ export {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   deduplicateByHeading,
   estimateTokens,
-  extractCursorRules,
   extractHeadings,
   isInstructionsUpToDate,
   measureSections,
@@ -84,14 +82,14 @@ export function getContextFiles(): ContextFile[] {
       path: join(contextDir, "chatgpt.md"),
       header:
         "# Custom Instructions for ChatGPT\n\n> Auto-generated from AGENTS.md template. Do not edit directly.\n> Paste this into ChatGPT → Settings → Personalization → Custom Instructions\n\n",
-      contentExtractor: extractCursorRules,
+      contentExtractor: (content) => content,
     },
     {
       name: "claude-desktop",
       path: join(contextDir, "claude-desktop.md"),
       header:
         "# Project Instructions for Claude\n\n> Auto-generated from AGENTS.md template. Do not edit directly.\n> Paste this into a Claude Project → Project Instructions\n\n",
-      contentExtractor: extractCursorRules,
+      contentExtractor: (content) => content,
     },
   ];
 }

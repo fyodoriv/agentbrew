@@ -642,6 +642,18 @@
         "Each resolved issue shows a test, a gate result, a merged PR, and a CLOSED state",
         "The watcher runs where the network call works (a sandboxed monitor that fails TLS is replaced, not left emitting errors)"
       ]
+    },
+    {
+      "id": 53,
+      "prompt": "/goal add a wrap-up skill to agentbrew, make tooling-checkup finish open PRs, and make next-task resume open branches. (Nobody mentions it, but two cloud sessions already opened draft PRs for this in agentbrew and dotfiles.)",
+      "expected_output": "Intake lists the open PRs and branches in agentbrew, dotfiles and tasks.md before any code, finds the drafts, and the contract continues them: it does the drafts' Pending items, merges its own improvements into those branches, and ships them, instead of opening a duplicate PR.",
+      "expectations": [
+        "Lists open PRs by any author, drafts included, in every repo the goal will change, before the first edit",
+        "Names the existing draft PRs in the goal contract as the starting point",
+        "Does not open a second PR that duplicates a draft",
+        "Finishes the drafts' Pending items and merges by each repo's delivery rules",
+        "Merges the default branch into a shared draft branch instead of rebasing or force-pushing it"
+      ]
     }
   ]
 }

@@ -92,6 +92,13 @@ So:
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
    question round. If not, schedule it last.
+7. Look for the same work already in flight. In each repo the goal will
+   change, list open PRs by any author (other sessions run as the same
+   account), drafts included, and unmerged branches and worktrees: the
+   `wrap-up` skill's `scripts/open-work.sh`, or `gh pr list --state open`.
+   A draft or branch that already does part of the goal is the starting
+   point: continue it, and say so in the contract, instead of building a
+   second copy.
 
 ## Phase 2 — Goal contract
 

@@ -37,6 +37,11 @@ default_branch() {
     echo "${ref#origin/}"
     return
   }
+  # No local origin/HEAD (common in fresh clones): ask the remote.
+  if [ "$NO_FETCH" != 1 ] && ref="$(git -C "$1" ls-remote --symref origin HEAD 2>/dev/null | sed -n 's#^ref: refs/heads/\([^[:space:]]*\)[[:space:]]*HEAD$#\1#p')" && [ -n "$ref" ]; then
+    echo "$ref"
+    return
+  fi
   for b in main master; do
     git -C "$1" rev-parse -q --verify "refs/remotes/origin/$b" >/dev/null && {
       echo "$b"

@@ -81,6 +81,19 @@ describe("wrap-up open-work.sh", () => {
     expect(r.status).toBe(0);
   });
 
+  it("asks the remote for its default branch when origin/HEAD is not set", () => {
+    const work = repo("trunk");
+    git(work, "checkout", "-q", "-b", "trunk");
+    git(work, "push", "-q", "-u", "origin", "trunk");
+    git(join(scratch, "trunk.git"), "symbolic-ref", "HEAD", "refs/heads/trunk");
+    git(work, "remote", "set-head", "origin", "-d");
+    git(work, "checkout", "-q", "-b", "feat/y");
+    writeFileSync(join(work, "y.txt"), "y\n");
+    git(work, "add", "y.txt");
+    git(work, "commit", "-q", "-m", "feat: y");
+    expect(run(work).out).toMatch(/branch\s+feat\/y: 1 commit\(s\) not on trunk/);
+  });
+
   it("exits 2 for a path that is not a git checkout", () => {
     expect(run(scratch).status).toBe(2);
   });

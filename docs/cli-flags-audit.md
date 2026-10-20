@@ -79,6 +79,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--skip-sync` | opt-out | Opt-out of a default (init syncs by default). |
 | `--revoke` | knob | Removes a plugin signer instead of adding one; a different action. |
 | `--signer` | knob | Supplies an SSH public key; input, not behavior. |
+| `--cwd` | knob | Supplies the repo checkout to scope plugin rules to; input, not behavior. |
 | `--sources` | knob | Filters browse output to sources. |
 | `--threshold` | knob | Coverage threshold value for `--ci`. |
 | `--timeout` | knob | Probe timeout value. |

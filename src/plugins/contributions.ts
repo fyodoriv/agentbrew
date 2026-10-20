@@ -12,6 +12,7 @@ import type { PluginLockEntry } from "../lock.js";
 import { readLock } from "../lock.js";
 import { frontMatter } from "./capabilities.js";
 import { type PluginManifest, readManifest } from "./manifest.js";
+import { repoAllowed } from "./scope.js";
 import { pluginDir, pluginDrift } from "./store.js";
 
 export interface ActivePlugin {
@@ -48,30 +49,38 @@ function stripFrontMatter(text: string): string {
 }
 
 /**
- * The rules block for one agent: each plugin's rules in a fenced section.
- * A rule goes to the agents in its front matter `agents:`, or to every
- * agent in `capabilities.agents` when it names none. Empty when nothing applies.
+ * The rules block for one agent in one repo: each plugin's rules in a fenced
+ * section. A plugin applies only when `repoId` matches its
+ * `capabilities.repos` (public hosts excluded by default). A rule goes to the
+ * agents in its front matter `agents:`, or to every agent in
+ * `capabilities.agents` when it names none. Empty when nothing applies.
  */
-export function pluginRulesFor(agentName: string): string {
+export function pluginRulesFor(agentName: string, repoId: string | undefined): string {
   const blocks: string[] = [];
   for (const plugin of activePlugins()) {
-    const rulesDir = contributedDir(plugin, "rules");
-    if (!rulesDir) continue;
-    const declared = plugin.manifest.capabilities?.agents ?? [];
-    const rules: string[] = [];
-    for (const file of readdirSync(rulesDir)
-      .filter((f) => f.endsWith(".md"))
-      .sort()) {
-      const text = readFileSync(join(rulesDir, file), "utf-8");
-      const own = frontMatter(text).agents;
-      const targets = Array.isArray(own) ? own.map(String) : declared;
-      if (targets.some((a) => declared.includes(a) && agentMatches(a, agentName))) rules.push(stripFrontMatter(text));
-    }
+    if (!repoAllowed(repoId, plugin.manifest.capabilities?.repos)) continue;
+    const rules = rulesForAgent(plugin, agentName);
     if (rules.length === 0) continue;
     const name = plugin.entry.name;
     blocks.push(`<!-- plugin: ${name} ${plugin.entry.version} -->\n${rules.join("\n\n")}\n<!-- /plugin: ${name} -->`);
   }
   return blocks.join("\n\n");
+}
+
+function rulesForAgent(plugin: ActivePlugin, agentName: string): string[] {
+  const rulesDir = contributedDir(plugin, "rules");
+  if (!rulesDir) return [];
+  const declared = plugin.manifest.capabilities?.agents ?? [];
+  const rules: string[] = [];
+  for (const file of readdirSync(rulesDir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()) {
+    const text = readFileSync(join(rulesDir, file), "utf-8");
+    const own = frontMatter(text).agents;
+    const targets = Array.isArray(own) ? own.map(String) : declared;
+    if (targets.some((a) => declared.includes(a) && agentMatches(a, agentName))) rules.push(stripFrontMatter(text));
+  }
+  return rules;
 }
 
 /** Skill dirs of active plugins; every skill in them deploys. */

@@ -3,6 +3,8 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { CapabilityError } from "./capabilities.js";
+import { pluginRulesFor } from "./contributions.js";
+import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
 
@@ -72,6 +74,11 @@ export function registerPluginCommands(program: Command): void {
           `${chalk.bold(p.name)} ${p.version}  ${p.source}@${p.ref}  commit ${p.commit.slice(0, 8)}  tree ${p.tree.slice(0, 8)}`,
         );
       }
+      console.log(
+        chalk.dim(
+          "Rules: repo-scoped, never written to global rules files. Served per session by `agentbrew plugin rules`; agents without a session hook get none.",
+        ),
+      );
     });
 
   plugin
@@ -98,6 +105,16 @@ export function registerPluginCommands(program: Command): void {
       } catch (e) {
         fail(e);
       }
+    });
+
+  plugin
+    .command("rules")
+    .description("Print the plugin rules that apply to one agent in one repo (for session-start hooks)")
+    .option("--agent <name>", "Agent name", "claude-code")
+    .option("--cwd <dir>", "Repo checkout to scope the rules to (default: current directory)")
+    .action((options: { agent: string; cwd?: string }) => {
+      const block = pluginRulesFor(options.agent, repoIdOf(options.cwd ?? process.cwd()));
+      if (block) console.log(block);
     });
 
   plugin

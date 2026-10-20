@@ -257,9 +257,10 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
     schema: 1,
     name: "acme",
     version: "1.0.0",
-    capabilities: { agents: ["claude"] },
+    capabilities: { agents: ["claude"], repos: { include: ["git.acme.example/**"] } },
     contributes: { rules: "rules/", skills: "skills/", commands: "commands/" },
   };
+  const REPO = "git.acme.example/team/app";
   const KEY = fixtureKey();
   let fixture: PluginFixture;
 
@@ -283,28 +284,28 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
 
   it("a new overlay release reaches agents on the next sync, with no cache merge step", () => {
     repin("v2", { "rules/style.md": "Use active voice." });
-    expect(pluginRulesFor("claude-code")).toContain("Use active voice.");
+    expect(pluginRulesFor("claude-code", REPO)).toContain("Use active voice.");
   });
 
   it("an edited rule reaches agents on sync without `install --refresh-rules`, and is never copied into shared-rules.md", () => {
-    expect(pluginRulesFor("claude-code")).toContain("Use short sentences.");
+    expect(pluginRulesFor("claude-code", REPO)).toContain("Use short sentences.");
     repin("v2", { "rules/style.md": "Edited rule text." });
-    expect(pluginRulesFor("claude-code")).toContain("Edited rule text.");
-    expect(pluginRulesFor("claude-code")).not.toContain("Use short sentences.");
+    expect(pluginRulesFor("claude-code", REPO)).toContain("Edited rule text.");
+    expect(pluginRulesFor("claude-code", REPO)).not.toContain("Use short sentences.");
     expect(existsSync(join(CONFIG_DIR, "shared-rules.md"))).toBe(false);
   });
 
   it("a rule the overlay adds later reaches agents with no recommended gate", () => {
     repin("v2", { "rules/new.md": "Brand new rule." });
-    expect(pluginRulesFor("claude-code")).toContain("Brand new rule.");
+    expect(pluginRulesFor("claude-code", REPO)).toContain("Brand new rule.");
   });
 
   it("the team rules block does not depend on the directory sync runs in", () => {
-    const before = pluginRulesFor("claude-code");
+    const before = pluginRulesFor("claude-code", REPO);
     const cwd = process.cwd();
     try {
       process.chdir(mkdtempSync(join(tmpdir(), "elsewhere-")));
-      expect(pluginRulesFor("claude-code")).toBe(before);
+      expect(pluginRulesFor("claude-code", REPO)).toBe(before);
     } finally {
       process.chdir(cwd);
     }
@@ -325,29 +326,28 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
 
   it("a drifted plugin contributes nothing", () => {
     writeFileSync(join(pluginDir("acme"), "rules", "style.md"), "tampered");
-    expect(pluginRulesFor("claude-code")).toBe("");
+    expect(pluginRulesFor("claude-code", REPO)).toBe("");
     expect(pluginSkillDirs()).toEqual([]);
   });
 
-  it("sync wiring: skills sync scans plugin skills; rules sync appends plugin rules per agent", () => {
+  it("sync wiring: skills sync scans plugin skills; global rules files never get plugin rules", () => {
     expect(getSkillSources().map((src) => src.path)).toContain(join(pluginDir("acme"), "skills"));
-    const [claude, codex] = computeRulesDiff(
+    const [claude] = computeRulesDiff(
       "shared",
-      [
-        { agentName: "claude-code", existingContent: "" },
-        { agentName: "codex", existingContent: "" },
-      ],
-      new Map([
-        ["claude-code", "delegated"],
-        ["codex", "delegated"],
-      ]),
-      pluginRulesFor,
+      [{ agentName: "claude-code", existingContent: "" }],
+      new Map([["claude-code", "delegated"]]),
     );
-    expect(claude?.newContent).toContain("Use short sentences.");
-    expect(codex?.newContent ?? "").not.toContain("Use short sentences.");
+    expect(claude?.newContent ?? "").not.toContain("Use short sentences.");
+  });
+
+  it("rules apply only in included repos; public hosts and unknown repos get nothing", () => {
+    expect(pluginRulesFor("claude-code", "git.acme.example/team/app")).toContain("Use short sentences.");
+    for (const repo of ["github.com/acme/app", "gitlab.com/acme/app", "other.example/x", undefined]) {
+      expect(pluginRulesFor("claude-code", repo)).toBe("");
+    }
   });
 
   it("rules reach only declared agents", () => {
-    expect(pluginRulesFor("codex")).toBe("");
+    expect(pluginRulesFor("codex", REPO)).toBe("");
   });
 });

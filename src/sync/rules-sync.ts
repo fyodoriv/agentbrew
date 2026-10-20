@@ -11,7 +11,6 @@ import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
 import { loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { RULES_DIR, SHARED_RULES_PATH } from "../paths.js";
-import { pluginRulesFor } from "../plugins/contributions.js";
 import { type DedupeResult, dedupeSharedRulesContent } from "../rules-hygiene.js";
 import { requireState } from "../state.js";
 import type { SyncOptions } from "../types.js";
@@ -75,7 +74,6 @@ export function computeRulesDiff(
   mergedRules: string,
   targets: Array<{ agentName: string; existingContent: string | undefined }>,
   delegated?: ReadonlyMap<string, string>,
-  extraFor?: (agentName: string) => string,
 ): RulesTargetDiff[] {
   return targets.map((target) => {
     if (target.existingContent === undefined) {
@@ -85,9 +83,7 @@ export function computeRulesDiff(
     if (delegatedContent === undefined && CANARY_DELEGATED_AGENTS.has(target.agentName)) {
       return { agentName: target.agentName, action: "skipped" as const };
     }
-    const base = delegatedContent ?? mergedRules;
-    const extra = extraFor?.(target.agentName) ?? "";
-    const merged = extra ? `${base}\n\n${extra}` : base;
+    const merged = delegatedContent ?? mergedRules;
     const updated = replaceManagedSection(target.existingContent, merged);
     if (updated !== target.existingContent) {
       return { agentName: target.agentName, action: "updated" as const, newContent: updated };
@@ -554,8 +550,9 @@ export async function syncRules(options?: SyncOptions, ctx?: Partial<Context>): 
   const targets = getAllSyncTargets(skip);
   const targetInputs = targets.map(buildTargetInput);
   const delegated = collectCanaryDelegation(targets, deployRules);
-  // Plugin rules are read from the locked plugin tree on every sync (#208).
-  const diffs = computeRulesDiff(deployRules ?? "", targetInputs, delegated, pluginRulesFor);
+  // Plugin rules never go into global rules files: they are repo-scoped and
+  // served per session by `agentbrew plugin rules` (#208 step 7).
+  const diffs = computeRulesDiff(deployRules ?? "", targetInputs, delegated);
   const deduped = dedupeRulesWritesByResolvedPath(diffs, targetInputs);
 
   if (!quiet) warnWhenDelegationEmpty(delegated, targets, log);

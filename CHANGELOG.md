@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Scoped plugin rules** (#208 step 7): plugin rules leave global rules
+  files. `agentbrew plugin rules` serves them per agent and per repo
+  (`capabilities.repos`); public hosts are excluded by default.
 - **One refresh path for plugins** (#208 step 6): `sync` derives plugin
   rules, skills, and commands from the locked plugin tree every run, so none
   of the overlay stale-state cases apply to v2 plugins.

@@ -508,7 +508,8 @@ agentbrew plugin remove acme
 - `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
 - It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
 - `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
-- On every `agentbrew sync`, rules, skills, and commands are read straight from the locked plugin checkout. Rules go into each declared agent's rules block between `<!-- plugin: <name> -->` markers; nothing is copied into `shared-rules.md` or `state.yaml`, and the result does not depend on the directory you run `sync` in. Removing a plugin removes its rules, skills, and commands on the next sync. A plugin that drifted from its lock contributes nothing.
+- On every `agentbrew sync`, skills and commands are read straight from the locked plugin checkout; nothing is copied into `shared-rules.md` or `state.yaml`, and removing a plugin removes them on the next sync. A plugin that drifted from its lock contributes nothing.
+- Plugin rules are repo-scoped and never written to global rules files. `agentbrew plugin rules --agent <name> [--cwd <dir>]` prints the rules for one agent in one checkout. The repo is the checkout's `origin` remote as `host/path`. It must match `capabilities.repos.include` and not `exclude`; the default is nowhere. Public hosts (`github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`) are excluded unless an include pattern names that host. Agents without a session-start hook get no plugin rules.
 
 ## Team overlays
 

@@ -151,7 +151,7 @@ describe("wrap-up open-work.sh", () => {
       "#!/bin/sh\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
     );
     chmodSync(join(bin, "gh"), 0o755);
-    const ghEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
+    const ghEnv: NodeJS.ProcessEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
     // A BASH_ENV startup file can put another `gh` ahead of the fake one on PATH.
     delete ghEnv.BASH_ENV;
     delete ghEnv.ENV;

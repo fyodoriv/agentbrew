@@ -80,6 +80,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--revoke` | knob | Removes a plugin signer instead of adding one; a different action. |
 | `--signer` | knob | Supplies an SSH public key; input, not behavior. |
 | `--cwd` | knob | Supplies the repo checkout to scope plugin rules to; input, not behavior. |
+| `--strict` | knob | Adds `strictPluginOnlyCustomization` to a printed admin policy; a policy choice for admins, not a default. |
 | `--sources` | knob | Filters browse output to sources. |
 | `--threshold` | knob | Coverage threshold value for `--ci`. |
 | `--timeout` | knob | Probe timeout value. |

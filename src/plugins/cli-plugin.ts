@@ -3,6 +3,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { CapabilityError } from "./capabilities.js";
+import { policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
 import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
@@ -115,6 +116,18 @@ export function registerPluginCommands(program: Command): void {
     .action((options: { agent: string; cwd?: string }) => {
       const block = pluginRulesFor(options.agent, repoIdOf(options.cwd ?? process.cwd()));
       if (block) console.log(block);
+    });
+
+  plugin
+    .command("policy <name>")
+    .description("Print a Claude Code managed-settings fragment for admins (agentbrew never writes system policy)")
+    .option("--strict", "Also set strictPluginOnlyCustomization (always paired with the marketplace allowlist)")
+    .action((name: string, options: { strict?: boolean }) => {
+      try {
+        console.log(JSON.stringify(policyFragment(name, { strict: options.strict === true }), null, 2));
+      } catch (e) {
+        fail(e);
+      }
     });
 
   plugin

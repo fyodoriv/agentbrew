@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Native Claude Code plugins** (#208 step 8): sync emits a local
+  marketplace and one Claude Code plugin per company plugin (hooks plus a
+  session-start rules hook), enabled in user settings. New
+  `plugin policy` prints an admin managed-settings fragment.
 - **Scoped plugin rules** (#208 step 7): plugin rules leave global rules
   files. `agentbrew plugin rules` serves them per agent and per repo
   (`capabilities.repos`); public hosts are excluded by default.

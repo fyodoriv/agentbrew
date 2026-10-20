@@ -222,6 +222,7 @@ function syncStory(options: SyncCommandOptions): string {
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   if (await handleSyncEarlyExits(options)) return;
   if (await refuseSyncOnLockDrift()) return;
+  if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
     dryRun: options.dryRun,
@@ -316,6 +317,17 @@ async function refuseSyncOnLockDrift(): Promise<boolean> {
   const { refuseLockDrift } = await import("./lock.js");
   const { getStateSources } = await import("./agentfile.js");
   return refuseLockDrift(getStateSources(state), state.team);
+}
+
+/** Native Claude Code plugin output for v2 plugins, side by side with file rendering (#208 step 8). */
+async function emitNativePluginOutput(): Promise<void> {
+  try {
+    const { emitClaudeNative } = await import("./plugins/claude-native.js");
+    emitClaudeNative();
+  } catch (e) {
+    console.error(`✗ Native Claude Code plugin output failed: ${e instanceof Error ? e.message : String(e)}`);
+    process.exitCode = 1;
+  }
 }
 
 async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {

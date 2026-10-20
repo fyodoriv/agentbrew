@@ -508,7 +508,7 @@ agentbrew plugin remove acme
 - `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
 - It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
 - `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
-- Plugins do not emit content to agents yet; later steps of #208 add that.
+- On every `agentbrew sync`, rules, skills, and commands are read straight from the locked plugin checkout. Rules go into each declared agent's rules block between `<!-- plugin: <name> -->` markers; nothing is copied into `shared-rules.md` or `state.yaml`, and the result does not depend on the directory you run `sync` in. Removing a plugin removes its rules, skills, and commands on the next sync. A plugin that drifted from its lock contributes nothing.
 
 ## Team overlays
 

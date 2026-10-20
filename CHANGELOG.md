@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **One refresh path for plugins** (#208 step 6): `sync` derives plugin
+  rules, skills, and commands from the locked plugin tree every run, so none
+  of the overlay stale-state cases apply to v2 plugins.
 - **Plugin capabilities** (#208 step 5): undeclared rule agents, hook events,
   MCP servers, and shell-running commands are refused with exit code 3 on
   `plugin add` and `sync`.

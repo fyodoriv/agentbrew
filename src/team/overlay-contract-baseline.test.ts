@@ -3,11 +3,11 @@
  *
  * These tests pin how `team set`, the overlay catalog merge, and the lock
  * behave. The S1, S2 and S9 tests were expected-fail in step 1; step 2
- * closed those gaps and flipped them. The `it.todo` entries name the stale-state cases from
- * Problem 2; step 6 ("one refresh path") turns them into real tests.
+ * closed those gaps and flipped them. The stale-state cases from Problem 2
+ * are covered by the v2 plugin path (step 6, "one refresh path").
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
@@ -22,6 +22,8 @@ const { home, previousHome } = vi.hoisted(() => {
   const previous = process.env.HOME;
   const dir = mk(j(td(), "overlay-baseline-home-"));
   process.env.HOME = dir;
+  process.env.GIT_CONFIG_GLOBAL = "/dev/null";
+  process.env.GIT_CONFIG_NOSYSTEM = "1";
   return { home: dir, previousHome: previous };
 });
 
@@ -41,8 +43,13 @@ vi.mock("../sync-recommended.js", () => ({ shouldInstallRecommendedOnSync: () =>
 import { loadCatalog } from "../catalog/types.js";
 import { buildProgram } from "../cli.js";
 import { readLock, writeLock } from "../lock.js";
+import { pluginCommandDirs, pluginRulesFor, pluginSkillDirs } from "../plugins/contributions.js";
+import { addPlugin, pluginDir, removePlugin } from "../plugins/store.js";
 import { invalidateState, loadState } from "../state.js";
+import { computeRulesDiff } from "../sync/rules-sync.js";
+import { getSkillSources } from "../sync/skills-sync.js";
 import { runSyncParallel } from "../sync-runner.js";
+import { fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import type { AgentBrewState } from "../types.js";
 import { mergeTeamAgentfile, registerTeamCommands } from "./commands/cli-team.js";
 
@@ -245,15 +252,102 @@ describe("lock — today's behavior", () => {
   });
 });
 
-describe("stale overlay state (Problem 2) — fixed by step 6", () => {
-  it.todo("overlay source cache left behind the overlay default branch after `sync --pull` is refreshed by sync");
-  it.todo("an edited catalog rule in the overlay reaches agents on `sync` without `install --refresh-rules`");
-  it.todo("a catalog rule the overlay adds later reaches agents under `sync --no-recommended`");
-  it.todo("the team rules block does not depend on the directory `sync` runs in");
-  it.todo("`skillSourceDirs` entries no tracked source owns are dropped on sync");
-  it.todo("repo-owned commands are linked by agentbrew, not a separate tool");
-  it("baseline: state is readable after seeding", () => {
-    // Keeps the describe block executable while every case above is a todo.
-    expect(loadState()?.agents).toHaveLength(1);
+describe("stale overlay state (Problem 2) — one refresh path from the locked plugin tree (step 6)", () => {
+  const MANIFEST = {
+    schema: 1,
+    name: "acme",
+    version: "1.0.0",
+    capabilities: { agents: ["claude"] },
+    contributes: { rules: "rules/", skills: "skills/", commands: "commands/" },
+  };
+  const KEY = fixtureKey();
+  let fixture: PluginFixture;
+
+  beforeEach(() => {
+    rmSync(join(home, ".local"), { recursive: true, force: true });
+    fixture = pluginFixture(MANIFEST, KEY);
+    fixture.release("v1", {
+      "rules/style.md": "Use short sentences.",
+      "skills/greet/SKILL.md": "---\nname: greet\ndescription: greet\n---\nhi",
+      "commands/hello.md": "say hello",
+    });
+    addPlugin(`${fixture.dir}@v1`, { yes: true, signer: KEY.pub });
+  });
+
+  /** Re-pin to a new signed tag (`plugin update` arrives in step 11). */
+  function repin(tag: string, files: Record<string, string>): void {
+    fixture.release(tag, files);
+    removePlugin("acme");
+    addPlugin(`${fixture.dir}@${tag}`, { yes: true });
+  }
+
+  it("a new overlay release reaches agents on the next sync, with no cache merge step", () => {
+    repin("v2", { "rules/style.md": "Use active voice." });
+    expect(pluginRulesFor("claude-code")).toContain("Use active voice.");
+  });
+
+  it("an edited rule reaches agents on sync without `install --refresh-rules`, and is never copied into shared-rules.md", () => {
+    expect(pluginRulesFor("claude-code")).toContain("Use short sentences.");
+    repin("v2", { "rules/style.md": "Edited rule text." });
+    expect(pluginRulesFor("claude-code")).toContain("Edited rule text.");
+    expect(pluginRulesFor("claude-code")).not.toContain("Use short sentences.");
+    expect(existsSync(join(CONFIG_DIR, "shared-rules.md"))).toBe(false);
+  });
+
+  it("a rule the overlay adds later reaches agents with no recommended gate", () => {
+    repin("v2", { "rules/new.md": "Brand new rule." });
+    expect(pluginRulesFor("claude-code")).toContain("Brand new rule.");
+  });
+
+  it("the team rules block does not depend on the directory sync runs in", () => {
+    const before = pluginRulesFor("claude-code");
+    const cwd = process.cwd();
+    try {
+      process.chdir(mkdtempSync(join(tmpdir(), "elsewhere-")));
+      expect(pluginRulesFor("claude-code")).toBe(before);
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+
+  it("skill dirs come from the lock, so removing the plugin leaves no orphan skill source", () => {
+    expect(pluginSkillDirs().map((d) => d.path)).toEqual([join(pluginDir("acme"), "skills")]);
+    removePlugin("acme");
+    expect(pluginSkillDirs()).toEqual([]);
+    expect(loadState()?.skillSourceDirs ?? []).toEqual([]);
+  });
+
+  it("plugin commands are linked by agentbrew and vanish with the plugin", () => {
+    expect(pluginCommandDirs()).toEqual([join(pluginDir("acme"), "commands")]);
+    removePlugin("acme");
+    expect(pluginCommandDirs()).toEqual([]);
+  });
+
+  it("a drifted plugin contributes nothing", () => {
+    writeFileSync(join(pluginDir("acme"), "rules", "style.md"), "tampered");
+    expect(pluginRulesFor("claude-code")).toBe("");
+    expect(pluginSkillDirs()).toEqual([]);
+  });
+
+  it("sync wiring: skills sync scans plugin skills; rules sync appends plugin rules per agent", () => {
+    expect(getSkillSources().map((src) => src.path)).toContain(join(pluginDir("acme"), "skills"));
+    const [claude, codex] = computeRulesDiff(
+      "shared",
+      [
+        { agentName: "claude-code", existingContent: "" },
+        { agentName: "codex", existingContent: "" },
+      ],
+      new Map([
+        ["claude-code", "delegated"],
+        ["codex", "delegated"],
+      ]),
+      pluginRulesFor,
+    );
+    expect(claude?.newContent).toContain("Use short sentences.");
+    expect(codex?.newContent ?? "").not.toContain("Use short sentences.");
+  });
+
+  it("rules reach only declared agents", () => {
+    expect(pluginRulesFor("codex")).toBe("");
   });
 });

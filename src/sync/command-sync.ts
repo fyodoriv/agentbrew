@@ -10,6 +10,7 @@ import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
 import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { COMMANDS_DIR } from "../paths.js";
+import { pluginCommandDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
 import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
@@ -316,8 +317,10 @@ function refreshCanonicalCommandSources(
 ): void {
   const canonicalDir = getCommandsDir();
   mkdirSync(canonicalDir, { recursive: true });
+  // Never copy plugin commands into the canonical dir: the copy would outlive the plugin.
+  const fromPlugins = new Set(pluginCommandDirs().flatMap((d) => readdirSync(d)));
   for (const { filename, content } of sourceFiles) {
-    if (opts.dryRun) continue;
+    if (opts.dryRun || fromPlugins.has(filename)) continue;
     writeIfChanged(join(canonicalDir, filename), content, opts.manifest);
   }
 }
@@ -481,6 +484,8 @@ function getAllCommandSourceDirs(): string[] {
   for (const dir of state?.commandSourceDirs ?? []) {
     addDir(expandHome(dir.path));
   }
+  // v2 plugin commands come from the locked plugin tree (#208).
+  for (const dir of pluginCommandDirs()) addDir(dir);
 
   return sourceDirs;
 }

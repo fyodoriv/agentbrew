@@ -951,6 +951,18 @@
         "Does not write the retro or edit skills mid-goal just to get past the Stop hook",
         "Runs the Phase 6 retro only after every worker has reported and the goal is met or impossible"
       ]
+    },
+    {
+      "id": 54,
+      "prompt": "/goal ensure that the corporate data is fully kept on corporate machine with nothing being synced anywhere else",
+      "expected_output": "The agent turns 'nothing leaves' into an inventory of every exit that is still open (sync bundles, backups into cloud-synced folders, a data folder inside iCloud or OneDrive, hosted model routes). It writes one audit test with a case per exit, and runs it red on the current code. It guards each exit only for the corporate role, removes code that the change made dead, keeps the coverage that is still valid, and records the reversed decision in a new ADR. Commands whose output it hides are checked by their result: an empty PR after a 'successful' commit means the commit hook refused it.",
+      "expectations": [
+        "The contract lists each open exit, and the metric is exits refused out of the total",
+        "One audit test covers every exit and fails on the code before the change",
+        "Guards are scoped to the corporate role, and a test proves the personal flows still work",
+        "A reversed earlier decision gets a new ADR that supersedes the old one",
+        "After a commit whose output was hidden, the agent checks git log or status before it pushes or opens a PR"
+      ]
     }
   ]
 }

@@ -41,6 +41,7 @@ import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
 import { printMotd } from "./motd.js";
+import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
 import { registerTeamCommands } from "./team/commands/cli-team.js";
 import { update } from "./update.js";
@@ -405,6 +406,7 @@ export function buildProgram(): Command {
   registerInfraCommands(program, autoSync);
   registerEnvCommands(program);
   registerTeamCommands(program);
+  registerPluginCommands(program);
   registerClassifyCommand(program);
   registerBootstrapCommand(program);
   registerInstallCommand(program);

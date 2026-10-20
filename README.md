@@ -487,6 +487,24 @@ Updates flow through git: `(cd ~/.config/agentbrew/team && git pull) && agentbre
 
 Or share without git: `agentbrew export -o my-setup.yaml` → teammate runs `agentbrew import --bundle my-setup.yaml`.
 
+## Company plugins (preview)
+
+The next overlay contract ([#208](https://github.com/fyodoriv/agentbrew/issues/208)) is in progress. Turn it on with `AGENTBREW_PLUGINS_V2=1`.
+
+A plugin is a git repo with `agentbrew-plugin.yaml` at its root. The schema is `src/plugins/agentbrew-plugin.schema.json`; unknown keys are refused.
+
+<!-- runnable: false reason="needs AGENTBREW_PLUGINS_V2=1 and a reachable plugin repo" -->
+```bash
+agentbrew plugin add git@git.example.com:acme/agentbrew-acme.git@v1.0.0   # shows capabilities, asks once
+agentbrew plugin list
+agentbrew plugin remove acme
+```
+
+- `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
+- It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
+- `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
+- Plugins do not emit content to agents yet; later steps of #208 add that.
+
 ## Team overlays
 
 agentbrew supports team-level configuration overlays that extend the base catalog with team-specific skills, MCP servers, and rules. An overlay is a git repo (for example `agentbrew-<org>`) with an `Agentfile.yaml` at its root. It can include:

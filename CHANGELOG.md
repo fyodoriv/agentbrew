@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Company plugins preview** (`AGENTBREW_PLUGINS_V2=1`, #208 step 3):
+  `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
+  lock section with commit, tree hash, and capabilities hash. `sync` refuses
+  a plugin checkout that drifted from its lock.
+
 - **One-step install with your agent** — tell Claude Code (or Cursor, Codex)
   "Install agentbrew by following …/INSTALL.md". `scripts/install.sh` explains
   the plan, takes the answers as flags, backs up your agent settings, builds,

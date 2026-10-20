@@ -6,6 +6,7 @@ import chalk from "chalk";
 import yaml from "js-yaml";
 import { sync as writeFileSync } from "write-file-atomic";
 import { logSkipped } from "./core/logger.js";
+import { pluginDrift } from "./plugins/store.js";
 import { getGitHeadSha } from "./skills/skill-versions.js";
 import type { Source, TeamConfig } from "./types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
@@ -28,9 +29,24 @@ export interface TeamLockEntry {
   lockedAt: string;
 }
 
+/** A v2 plugin pin (issue #208): exact commit and tree, plus what it emitted. */
+export interface PluginLockEntry {
+  name: string;
+  version: string;
+  source: string;
+  ref: string;
+  commit: string;
+  tree: string;
+  capabilitiesHash: string;
+  /** Files and config keys the plugin emitted; `plugin remove` deletes them. */
+  artifacts: string[];
+  lockedAt: string;
+}
+
 export interface LockFile {
   locked: LockEntry[];
   team?: TeamLockEntry;
+  plugins?: PluginLockEntry[];
 }
 
 export function readLock(): LockFile {
@@ -229,6 +245,10 @@ export function findLockViolations(sources: Source[], team?: TeamConfig): LockVi
   if (pin && team?.path && team.url === pin.url) {
     const head = gitHeadOf(team.path) ?? "missing";
     if (head !== pin.sha) violations.push({ source: `team overlay ${pin.url}`, lockedSha: pin.sha, currentSha: head });
+  }
+  for (const plugin of readLock().plugins ?? []) {
+    const drift = pluginDrift(plugin);
+    if (drift) violations.push({ source: `plugin ${plugin.name}`, lockedSha: plugin.commit, currentSha: drift });
   }
   return violations;
 }

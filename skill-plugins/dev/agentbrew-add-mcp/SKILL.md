@@ -10,7 +10,7 @@ description: >
 
 Register one MCP server. Agentbrew syncs it to every agent's native config format.
 
-## Step 0: Pick the right layer (OSS catalog vs. team overlay)
+## Step 0: Pick the right layer (OSS catalog vs. company plugin)
 
 Before adding, decide where the entry lives. Wrong layer = future portability bug.
 
@@ -20,18 +20,18 @@ internal credentials, no VPN, no internal-registry mirror, no marketplace entitl
 | Answer | Layer | Where it lives | Activation |
 |---|---|---|---|
 | **Yes** — works anywhere | OSS-portable | `agentbrew/src/catalog.yaml` (catalog) + `dotfiles/Agentfile.yaml` (activation) | `agentbrew install <name>` or list under `mcp:` |
-| **No** — needs internal infra | Team overlay | `agentbrew-<org>/catalog-overlay.yaml` (catalog) + `dotfiles-<org>/Agentfile.yaml` (activation) | Same shorthand once team overlay is set |
+| **No** — needs internal infra | Company plugin | `agentbrew-<org>/mcp/servers.yaml` (declared in `agentbrew-plugin.yaml`) | `agentbrew plugin add <url>@<signed-tag>` |
 
 Examples:
 - `context7`, `playwright`, `tasks-mcp`, `mcp-atlassian` (public) → OSS catalog
-- `acme-jira-mcp` (`@acme/jira-mcp` from `registry.npmjs.example.com`) → team overlay
+- `acme-jira-mcp` (`@acme/jira-mcp` from `registry.npmjs.example.com`) → company plugin
 - `acme-search-mcp`, `acme-platform-mcp`, `Acme Portal MCP Remote`, `slack-acme`,
-  `acme-google-drive-mcp` → team overlay
+  `acme-google-drive-mcp` → company plugin
 - Any MCP whose `url:` is `*.api.example.com` or whose package is on
-  `registry.npmjs.example.com` → team overlay
+  `registry.npmjs.example.com` → company plugin
 
 **Never** put an organization-specific entry in `agentbrew/src/catalog.yaml` or
-`dotfiles/Agentfile.yaml`. The agentbrew rule #8 ("team overlay lives in the team overlay
+`dotfiles/Agentfile.yaml`. The agentbrew rule #8 ("company content lives in the company plugin
 repo") and dotfiles rule #2 ("Keep contents OSS-portable") guard the OSS side; they catch
 some leaks via lint but the boundary is a contributor responsibility.
 
@@ -42,34 +42,34 @@ boundary with a sample table per repo.
 
 ### From the catalog (recommended)
 
-Once the entry exists in either catalog layer (Step 0), one command installs:
+Once the entry exists in the OSS catalog (Step 0), one command installs:
 
 ```bash
-agentbrew install jira-mcp          # resolves through OSS catalog OR team overlay
-agentbrew install --recommended     # install everything flagged recommended:true in either layer
+agentbrew install jira-mcp          # resolves through the OSS catalog
+agentbrew install --recommended     # install everything flagged recommended:true
 ```
 
-The team overlay is loaded via `agentbrew team set <git-url>` and is searched alongside
-the OSS catalog by `install`. Browse what's available with `agentbrew catalog --mcp`
-(prints both layers, tagged by source).
+Browse what's available with `agentbrew catalog --mcp`. Company MCP servers
+come from a signed plugin instead: `agentbrew plugin add <url>@<signed-tag>`
+installs them, and sync renders a launcher that resolves their secrets at
+start. (agentbrew 1.0 removed `agentbrew team set` and the overlay catalog.)
 
 ### Adding a new catalog entry
 
 If the MCP isn't in any catalog yet, decide which layer per Step 0, then:
 
-1. Edit `<repo>/catalog-overlay.yaml` (overlay) or `agentbrew/src/catalog.yaml` (OSS).
-   Schema: see existing entries (`acme-search-mcp`, `acme-platform-mcp`, etc. in the
-   overlay; `playwright`, `context7` in OSS catalog). Required fields: `name`,
-   `description`, `command` + `args` OR `url`, `category`, `recommended`, `rationale`,
-   `note`. Optional `setup:` block walks users through env-var creation.
+1. OSS: edit `agentbrew/src/catalog.yaml`. Schema: see existing entries
+   (`playwright`, `context7`). Required fields: `name`, `description`,
+   `command` + `args` OR `url`, `category`, `recommended`, `rationale`, `note`.
+   Optional `setup:` block walks users through env-var creation.
+   Company: add the server to the plugin's `mcp/servers.yaml` with every env
+   value as a reference (`env:`, `keychain:`, `op://`) and an exact runtime
+   version, declare its name in `capabilities.mcp_servers`, and run
+   `agentbrew plugin test`.
 2. Open a PR.
-3. After merge, refresh the team cache (overlay only):
-   ```bash
-   agentbrew team unset
-   agentbrew team set <git-url>
-   agentbrew sync
-   ```
-4. The shorthand in any Agentfile (`- jira-mcp`) now resolves through the new entry.
+3. After merge: OSS entries resolve on the next `agentbrew sync --pull`; a company
+   plugin release reaches users through `agentbrew plugin update <name> <signed-tag>`.
+4. The shorthand in any Agentfile (`- jira-mcp`) now resolves through the new OSS entry.
 
 ### Inline `agentbrew install --command ... --args ... --env ...` is a footgun
 

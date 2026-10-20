@@ -111,49 +111,14 @@ describe("getSourceSkills", () => {
 });
 
 describe("catalog loading boundaries", () => {
-  it("keeps the base loader independent from a configured team overlay", () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), "agentbrew-catalog-"));
-    const overlayPath = join(fixtureDir, "catalog-overlay.yaml");
-    writeFileSync(
-      overlayPath,
-      [
-        "mcp_servers:",
-        "  - name: overlay-only-static-analysis-fixture",
-        "    description: Overlay-only fixture",
-        "    category: test",
-        "    recommended: false",
-        "",
-      ].join("\n"),
-    );
-    mockLoadState.mockReturnValue({
-      team: { catalogOverlayPath: overlayPath },
-    } as never);
-
-    try {
-      const runtimeCatalog = loadCatalog();
-      const baseCatalog = loadBaseCatalog();
-
-      expect(runtimeCatalog.mcp_servers.some((server) => server.name === "overlay-only-static-analysis-fixture")).toBe(
-        true,
-      );
-      expect(baseCatalog.mcp_servers.some((server) => server.name === "overlay-only-static-analysis-fixture")).toBe(
-        false,
-      );
-    } finally {
-      mockLoadState.mockReturnValue(undefined);
-      rmSync(fixtureDir, { recursive: true, force: true });
-    }
-  });
-
-  it("carries the team overlay's broken mcpm registry names", () => {
+  it("ignores a legacy team overlay catalog left in state (removed in 1.0)", () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), "agentbrew-catalog-"));
     const overlayPath = join(fixtureDir, "catalog-overlay.yaml");
     writeFileSync(overlayPath, ["broken_mcpm_registry_servers:", "  - example-remote", ""].join("\n"));
     mockLoadState.mockReturnValue({ team: { catalogOverlayPath: overlayPath } } as never);
 
     try {
-      expect(loadCatalog().broken_mcpm_registry_servers).toEqual(["example-remote"]);
-      expect(loadBaseCatalog().broken_mcpm_registry_servers).toBeUndefined();
+      expect(loadCatalog()).toEqual(loadBaseCatalog());
     } finally {
       mockLoadState.mockReturnValue(undefined);
       rmSync(fixtureDir, { recursive: true, force: true });

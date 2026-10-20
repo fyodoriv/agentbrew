@@ -20,8 +20,8 @@ goals:
     name: Curate, not host
     description: agentbrew references upstream skills in their source repos; it never duplicates upstream content. It hosts only its own built-ins and the owner's opt-in workflow skills. Tier 1 = "every developer benefits".
   - id: G2
-    name: Generic by default, extensible via team overlays
-    description: Public catalog stays org-agnostic. org-specific tools live in overlay repos loaded via `agentbrew team set`.
+    name: Generic by default, extensible via signed company plugins
+    description: Public catalog stays org-agnostic. org-specific tools live in company plugin repos installed via `agentbrew plugin add`.
   - id: G3
     name: One sync command does everything
     description: `agentbrew sync` is the single entry point. Never asks the user to run two commands.
@@ -70,13 +70,13 @@ non_goals:
 
 # Vision
 
-**One CLI that curates, syncs, and self-heals AI coding agent config across every tool on a machine.** Generic by default; extensible via team overlays for any org.
+**One CLI that curates, syncs, and self-heals AI coding agent config across every tool on a machine.** Generic by default; extensible via signed company plugins for any org.
 
 ```bash
 npm install -g agentbrew
 agentbrew                    # auto-init, auto-sync — done
 
-agentbrew team set <overlay-url>   # optional — layer on your company's curated set
+agentbrew plugin add <url>@<tag>   # optional — install your company's signed plugin
 ```
 
 ## Problem
@@ -98,7 +98,7 @@ that finds and fixes drift.
 
 **Long-tail agents — best-effort, parity-where-possible:** OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Gemini CLI, GitHub Copilot, plus other experimental surfaces listed in `src/core/agents.yaml`. agentbrew detects and syncs to these too, but only for the sync categories each agent supports natively. New first-party features land for the primary agent set first; long-tail support follows when each agent's underlying API permits.
 
-**Team-extensible: any org with internal tooling.** Internal skills repos, MCP servers needing org-specific env vars, curated tool lists — wrap them in a team-overlay repo with an `Agentfile.yaml` at root. `agentbrew team set <overlay-url>` activates the layer; `team unset` reverses cleanly. agentbrew core has zero knowledge of any specific company; every overlay capability is parameterized through the `team` command. See [US 27: Team overlays](user-stories/27-team-overlay.md) for the schema and lifecycle.
+**Team-extensible: any org with internal tooling.** Internal skills, rules, MCP servers, and hooks ship as a signed company plugin (`agentbrew-plugin.yaml`). `agentbrew plugin add <url>@<tag>` installs it after the user approves its declared capabilities; `plugin remove` reverses it cleanly. agentbrew core has zero knowledge of any specific company. See [US 27: Company plugins](user-stories/27-team-overlay.md).
 
 **Today's user base: one.** Exactly one laptop runs agentbrew today — the author's. Pre-v1, no internal distribution, no public npm publish. **Breaking changes ship in one commit** — no deprecation windows, no migration paths, no backwards-compat scaffolding. When the user base grows past one, we reintroduce that discipline; until then, the CHANGELOG notes breakage but doesn't defer it. This is what makes the delegate-aggressively strategy below possible.
 
@@ -116,7 +116,7 @@ that finds and fixes drift.
 
 **Anti-pattern**: framing a task as "implement X" without first checking "does Y already do X?" is a constitutional violation. The reviewer must reject and ask for the GET/WRAP/CONTRIBUTE evidence before ABSORB is approved.
 
-**Practical consequence: agentbrew's codebase shrinks, not grows.** Every new-feature PR must answer *"Why is this in agentbrew instead of skills CLI / mcpm.sh / block-ai-rules / caliber?"* Valid answers: (a) delegation is blocked by a named constraint; (b) we contributed and upstream rejected/ignored 90+ days; (c) team overlay content; (d) multi-surface glue no upstream tool has.
+**Practical consequence: agentbrew's codebase shrinks, not grows.** Every new-feature PR must answer *"Why is this in agentbrew instead of skills CLI / mcpm.sh / block-ai-rules / caliber?"* Valid answers: (a) delegation is blocked by a named constraint; (b) we contributed and upstream rejected/ignored 90+ days; (c) company plugin content; (d) multi-surface glue no upstream tool has.
 
 **Applied to today's competitors:**
 
@@ -130,14 +130,14 @@ that finds and fixes drift.
 
 ## Core beliefs
 
-- **Curator, not host.** Catalog entries point to source repos. Content never gets copied into agentbrew. The narrow exception: the Bucket-1 skills in `skill-plugins/dev/` that document agentbrew itself (`agentbrew-*`, `agentfile-init`, `sync-agent-config`, `load-project-context`, `context-budget`, plus the agentbrew-process skills `prefer-reuse-over-reinvent`, `verify-vision-trace`, `competitor-spot-check`, `detect-task-backend`, `write-vision`). The generic Bucket-2 skills (debug, plan, refactor, review, commit, pr, rfc, iterate, …) were **deleted and replaced by upstream skill-repo pointers** (obra/Superpowers, Compound Engineering, gstack, Anthropic skills) in the 2026-07-06 shrink pass. New skills go to a source repo, not here. Second exception (owner decision 2026-10-07): the owner's opt-in workflow skills moved from the separate dev-skills repository into `skill-plugins/workflow/`. They deploy only when selected by name, and `skill-plugins/workflow/SOURCES.md` keeps each upstream reference. For the team overlay specifically, the canonical path is a whole-repo pointer in `catalog-overlay.yaml` → `repo_sources:` (e.g. `your-org/team-skills`). `agentbrew team set <overlay-url>` auto-registers every declared repo as a `Source` with `origin: catalog`; `agentbrew sync` soft-updates them on a 30-min TTL (matching the launchagent cadence) so overlay content stays fresh without the user thinking about it; `agentbrew team unset` removes them symmetrically. Adding a new team skill that is already in the registry requires zero agentbrew PRs — it flows through on the next sync.
+- **Curator, not host.** Catalog entries point to source repos. Content never gets copied into agentbrew. The narrow exception: the Bucket-1 skills in `skill-plugins/dev/` that document agentbrew itself (`agentbrew-*`, `agentfile-init`, `sync-agent-config`, `load-project-context`, `context-budget`, plus the agentbrew-process skills `prefer-reuse-over-reinvent`, `verify-vision-trace`, `competitor-spot-check`, `detect-task-backend`, `write-vision`). The generic Bucket-2 skills (debug, plan, refactor, review, commit, pr, rfc, iterate, …) were **deleted and replaced by upstream skill-repo pointers** (obra/Superpowers, Compound Engineering, gstack, Anthropic skills) in the 2026-07-06 shrink pass. New skills go to a source repo, not here. Second exception (owner decision 2026-10-07): the owner's opt-in workflow skills moved from the separate dev-skills repository into `skill-plugins/workflow/`. They deploy only when selected by name, and `skill-plugins/workflow/SOURCES.md` keeps each upstream reference. Company skills live in the company plugin's own repo and deploy from its locked, signed checkout, so a new company skill needs zero agentbrew PRs.
 - **Simple beats clever.** Strong defaults over extensive configuration. One right way over many possible ways. If a decision can be made for the user, make it.
 - **Wrap, don't rewrite.** Delegate over reimplement. Delete aggressively when upstream catches up. Celebrate deletions.
 - **Maintenance is the product.** Non-test source has **crossed the 30K-line "dissolution trigger"** named in the [competition doc](competition/vercel-skills-cli-vs-agentbrew.md#triggers-that-would-flip-the-decision-to-dissolve-now), so shrinking is now the priority, not optional. Near-term target ~20K after the 2026-07-06 shrink-pass P0 deletions land (delete generic skills, drop the custom SKILL.md validator, collapse instructions onto AGENTS.md, delegate MCP-sync/health/context-budget to standards — see TASKS.md landscape review tasks (tag landscape-2026-07-06); long-term target ~5–7K as the minimum-viable orchestrator ([competition doc § "Minimum viable agentbrew"](competition/vercel-skills-cli-vs-agentbrew.md#minimum-viable-agentbrew--the-orchestrator-fallback)). Shrinking the codebase is always a valid PR.
 - **Auto-fix by default.** One command does everything. `agentbrew sync` repairs rules + instructions + skills + commands + MCP + hooks + agent definitions in one pass. No "next steps" footer on the happy path. Repeat runs converge silently.
 - **Never destroy data you didn't create.** Manual edits to agent config survive every sync. `--prune` only touches entries agentbrew created. `sync --rollback` is always available. One violation kills adoption permanently.
 - **Output quality is UX.** Quiet by default; `--verbose` opts into detail. Every error names the affected file and the command that recovers. Honest numbers — every count agrees across every printing site.
-- **Easy to contribute.** Add an entry to `catalog.yaml` or `catalog-overlay.yaml`, open a PR. Never copy skill content into agentbrew — contribute to the source repo instead.
+- **Easy to contribute.** Add an entry to `catalog.yaml` (or ship it in a company plugin), open a PR. Never copy skill content into agentbrew — contribute to the source repo instead.
 - **Per-repo classification glue** — `agentbrew classify <repo-path>` returns `solo` (single-committer over the last year) or `shared` so downstream tools (minsky, safe-admin-merge) can scale safety guards by risk surface. Override file at `~/.config/agentbrew/repo-class.yaml` wins over auto-detection.
 
 ## The essential core
@@ -179,7 +179,7 @@ In the product today and in the essential core. Not deletion candidates.
 | [Portable bundles](user-stories/19-export-import.md) | `agentbrew export / import` moves setup to a new machine |
 | [Rollback](user-stories/26-rollback.md) | `agentbrew sync --rollback` restores from the pre-sync snapshot |
 | [Shell completions + git hooks](user-stories/21-completions-hooks.md) | `agentbrew completions install`; `agentbrew hook install` for post-checkout |
-| [Team overlays](user-stories/27-team-overlay.md) | `agentbrew team set <url>` activates an overlay repo's `catalog-overlay.yaml` + sources + adapters |
+| [Company plugins](user-stories/27-team-overlay.md) | `agentbrew plugin add <url>@<tag>` installs a signed company plugin |
 | [Lock file (SHA tracking)](user-stories/22-lock-reproducible.md) | `agentbrew.lock` records HEAD SHAs; audit trail, not enforced pin |
 
 ### Shipped — being removed
@@ -290,9 +290,9 @@ Every new feature or change answers these in order:
 Each measurable goal has a goal, a pivot, and an exact command in
 [`metrics.md`](metrics.md); `bash scripts/metrics.sh` prints them.
 
-- A new engineer on a team with an overlay goes from zero to fully configured in under 2 minutes
-- `agentbrew team unset` leaves a fully functional generic tool
-- Overlay never touches `src/catalog.yaml` or generic shared code
+- A new engineer on a team with a company plugin goes from zero to fully configured in under 2 minutes
+- `agentbrew plugin remove` leaves a fully functional generic tool
+- A company plugin never touches `src/catalog.yaml` or generic shared code
 - No-op `agentbrew sync` prints ≤5 lines and runs in under 2 seconds; repeat runs converge
 - `agentbrew sync` alone reaches a clean state — no "next steps" footer, no manual `sync --only <module>` chaining
 - `status --fix` is honest — "Fixed N" matches what actually disappears on re-run
@@ -316,15 +316,9 @@ the decision here with its date. These triggers moved here from the
 | Non-test source grows past 30K lines without matching user-story gains. | **Fired.** Decision (in "Maintenance is the product" above since before the 2026-09-30 public release): keep, and shrink. On 2026-10-18 the source is still well past the line and growing, so the next quarterly review must confirm or reverse the decision. `bash scripts/metrics.sh` prints the line count. |
 | A Node.js port of mcpm or ai-rules appears, so full delegation becomes possible. | Not fired. |
 
-## team overlay
+## Company plugins
 
-On an enterprise laptop, agentbrew detects org signals (`github.example.com` in `~/.config/gh/hosts.yml`, `ORG_*` env vars, corporate npm registry) and auto-registers a dedicated team skills repo. `agentbrew team unset` disables it; the generic tool works unchanged.
-
-**The overlay is moving to content-in-one-repo, not code-hosting-N-pointers.** The target architecture:
-
-- **One canonical team skills repo** — an overlay points at one whole-repo source (auto-regenerated registry, validated templates, hand-curated catalog). One repo, not a scattered pointer list in `catalog-overlay.yaml`.
-- **Agentbrew's overlay role shrinks to ~100 LOC of detection + registration.** Detect signal → register one source repo → let skills CLI handle the install. Agentbrew stops maintaining per-skill pointers.
-- **Non-agentbrew users install team skills directly.** `npx skills add your-org/team-skills --agent '*'` — same skills, no middleware.
+agentbrew 1.0 replaced team overlays with signed company plugins ([#208](https://github.com/fyodoriv/agentbrew/issues/208)). A plugin is pinned by commit and tree hash, verified against an allowed-signers file shared with dotfiles, limited to the capabilities it declares, and rendered by the core with no plugin code running at install or sync. Company rules apply only in the repos the plugin includes. `agentbrew plugin remove` leaves the generic tool unchanged.
 
 **Moat.** The defensible position is declarative YAML state + multi-surface sync + drift detection + auto-repair + the team overlay. No single competitor combines that full stack today.
 

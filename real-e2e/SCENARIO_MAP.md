@@ -36,7 +36,7 @@ Run them with `npm run test:real-e2e`.
 - `us24-browse-catalog.test.ts` -> US24 (catalog search, and a clear message for a missing item)
 - `us25-status-and-health.test.ts` -> US25 (`status --ci` names the fix for each drift item; sync and status land in the content-free event log)
 - `us26-rollback.test.ts` -> US26 (no snapshot before the first sync; rollback restores the pre-sync config)
-- `us27-us28-us29-team-overlay-and-packs.test.ts` -> US27, US28, US29 (`team set` and `team unset` from a local overlay repo (the contract each overlay's quickstart and uninstall scripts wrap), overlay memory packs, and a missing pack)
+- `us27-us28-us29-team-overlay-and-packs.test.ts` -> US27, US28, US29 (`team set` explains the 1.0 removal; `plugin migrate`, a signed `plugin add`, `plugin list`, and `plugin remove` from a local repo; a missing memory pack)
 
 ## Grouping rules
 

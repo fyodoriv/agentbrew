@@ -38,6 +38,6 @@ Each story names its outcome metric (`**Metric**:`, a row in [`metrics.md`](../m
 | 24 | [Browse the catalog](24-browse-catalog.md) | See what skills, MCP servers, and rules are available | `agentbrew catalog` |
 | 25 | [Status & health](25-status-and-health.md) | Know what's configured, what's drifting, what's broken | `agentbrew status` |
 | 26 | [Rollback](26-rollback.md) | Undo the last sync in one command from a pre-sync snapshot | `agentbrew sync --rollback` |
-| 27 | [Team overlays](27-team-overlay.md) | Layer your company's curated skills + MCP + rules on top of agentbrew | `agentbrew team set <url>` |
+| 27 | [Company plugins](27-team-overlay.md) | Install your company's signed skills, rules, MCP servers, and hooks | `agentbrew plugin add <url>@<tag>` |
 | 28 | [One-liner setup + uninstall](28-quickstart-uninstall.md) | Each team overlay ships its own quickstart/uninstall scripts | `~/apps/<overlay>/bin/quickstart` |
 | 29 | [Shared memory packs](29-shared-memory-packs.md) | One loopback semantic-memory runtime with explicit packs and managed project-memory ingestion | `agentbrew memory enable` |

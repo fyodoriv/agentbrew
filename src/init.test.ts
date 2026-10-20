@@ -557,18 +557,12 @@ describe("initForce", () => {
     expect(mockSaveState.mock.calls[0][0].claudePermissions).toBe("keep");
   });
 
-  it("keeps every user-set state key on re-init (skillInstallMode, team, hooks, declined servers, models)", async () => {
+  it("keeps every user-set state key on re-init (skillInstallMode, hooks, declined servers, models)", async () => {
     const userSet = {
       declinedMcpServers: ["removed-server"],
       agentfileSkills: ["listed-skill"],
       hooks: [{ event: "PreToolUse", type: "command" as const, command: "echo mine", source: "user" }],
       externalMcpServers: ["external-server"],
-      team: {
-        label: "my-team",
-        url: "https://example.com/overlay.git",
-        cachedAt: "2026-10-18",
-        lastSyncedAt: "2026-10-18",
-      },
       memory: { enabled: true, packPaths: ["/path/to/pack"] },
       organization: true,
       skillInstallMode: "native" as const,
@@ -576,7 +570,8 @@ describe("initForce", () => {
       defaultEffort: "high",
       modelOverrides: { cursor: null },
     };
-    mockLoadState.mockReturnValue({ agents: [], catalogVersion: "0.1.0", ...userSet });
+    const legacyTeam = { label: "my-team", url: "https://example.com/overlay.git" };
+    mockLoadState.mockReturnValue({ agents: [], catalogVersion: "0.1.0", ...userSet, team: legacyTeam } as never);
     mockDetectAgents.mockReturnValue([{ name: "claude-code", detected: true, skillsDir: "x" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
@@ -584,6 +579,8 @@ describe("initForce", () => {
     await initForce();
 
     expect(mockSaveState.mock.calls[0][0]).toMatchObject(userSet);
+    // Team overlays were removed in 1.0: a legacy team block is dropped on re-init.
+    expect(mockSaveState.mock.calls[0][0]).not.toHaveProperty("team");
   });
 });
 

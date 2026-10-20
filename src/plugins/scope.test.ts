@@ -72,14 +72,12 @@ describe("agentbrew plugin rules", () => {
     const out: string[] = [];
     const log = console.log;
     console.log = (msg: string) => out.push(msg);
-    process.env.AGENTBREW_PLUGINS_V2 = "1";
     try {
       const program = new Command().exitOverride();
       registerPluginCommands(program);
       await program.parseAsync(["node", "t", "plugin", "rules", "--cwd", mkdtempSync(join(tmpdir(), "nr-"))]);
     } finally {
       console.log = log;
-      delete process.env.AGENTBREW_PLUGINS_V2;
     }
     expect(out).toEqual([]);
   });

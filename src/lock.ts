@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -8,7 +7,7 @@ import { sync as writeFileSync } from "write-file-atomic";
 import { logSkipped } from "./core/logger.js";
 import { pluginDrift } from "./plugins/store.js";
 import { getGitHeadSha } from "./skills/skill-versions.js";
-import type { Source, TeamConfig } from "./types.js";
+import type { Source } from "./types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
 
 const LOCK_DIR = join(homedir(), ".config", "agentbrew");
@@ -19,13 +18,6 @@ export interface LockEntry {
   type: Source["type"];
   sha: string;
   skills: string[];
-  lockedAt: string;
-}
-
-/** The team overlay pin: the full commit `team set` cloned. */
-export interface TeamLockEntry {
-  url: string;
-  sha: string;
   lockedAt: string;
 }
 
@@ -49,7 +41,6 @@ export interface PluginLockEntry {
 
 export interface LockFile {
   locked: LockEntry[];
-  team?: TeamLockEntry;
   plugins?: PluginLockEntry[];
 }
 
@@ -69,7 +60,7 @@ export function readLock(): LockFile {
 export function writeLock(lock: LockFile): void {
   mkdirSync(dirname(LOCK_FILE), { recursive: true });
   const header =
-    "# agentbrew.lock — auto-generated, records exact commit SHAs for the sources you have installed.\n# `agentbrew sync` refuses to deploy when a source drifts from its SHA. `agentbrew sync --pull` re-locks sources; `agentbrew team set` re-pins the team overlay.\n# Use `agentbrew lock --verify` to check drift between the recorded SHA and what's on disk.\n\n";
+    "# agentbrew.lock — auto-generated, records exact commit SHAs for the sources you have installed.\n# `agentbrew sync` refuses to deploy when a source drifts from its SHA. `agentbrew sync --pull` re-locks sources; `agentbrew plugin update` re-pins a plugin.\n# Use `agentbrew lock --verify` to check drift between the recorded SHA and what's on disk.\n\n";
   const content = yaml.dump(lock, {
     lineWidth: 120,
     noRefs: true,
@@ -195,37 +186,6 @@ export function verifyLock(sources: Source[]): VerifyResult[] {
   return results;
 }
 
-/** Full HEAD commit of a local checkout, or undefined when it is not a git repo. */
-export function gitHeadOf(dir: string): string | undefined {
-  try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
-      cwd: dir,
-      encoding: "utf-8",
-      stdio: "pipe",
-      timeout: 10_000,
-    }).trim();
-  } catch (e) {
-    logSkipped("lock/git-head", e);
-    return undefined;
-  }
-}
-
-/** Pin the team overlay at the commit `team set` cloned. */
-export function lockTeam(url: string, sha: string): TeamLockEntry {
-  const lock = readLock();
-  lock.team = { url, sha, lockedAt: new Date().toISOString() };
-  writeLock(lock);
-  return lock.team;
-}
-
-/** Drop the team overlay pin (on `team unset`). */
-export function unlockTeam(): void {
-  const lock = readLock();
-  if (!lock.team) return;
-  delete lock.team;
-  writeLock(lock);
-}
-
 export interface LockViolation {
   source: string;
   lockedSha: string;
@@ -236,20 +196,14 @@ export interface LockViolation {
  * Locked items that no longer match their pin.
  *
  * A source drifts when its recorded commit differs from the lock. A source
- * with no recorded commit is untracked, not drifted. The team overlay drifts
- * when its checkout HEAD differs from the pinned commit, or when the checkout
- * is gone.
+ * with no recorded commit is untracked, not drifted. A plugin drifts when its
+ * checkout differs from its lock entry (see `pluginDrift`).
  */
-export function findLockViolations(sources: Source[], team?: TeamConfig): LockViolation[] {
+export function findLockViolations(sources: Source[]): LockViolation[] {
   const violations: LockViolation[] = verifyLock(sources)
     .filter((r) => r.currentSha !== undefined && !r.match)
     .map((r) => ({ source: r.source, lockedSha: r.lockedSha, currentSha: r.currentSha as string }));
 
-  const pin = readLock().team;
-  if (pin && team?.path && team.url === pin.url) {
-    const head = gitHeadOf(team.path) ?? "missing";
-    if (head !== pin.sha) violations.push({ source: `team overlay ${pin.url}`, lockedSha: pin.sha, currentSha: head });
-  }
   for (const plugin of readLock().plugins ?? []) {
     const drift = pluginDrift(plugin);
     if (drift) violations.push({ source: `plugin ${plugin.name}`, lockedSha: plugin.commit, currentSha: drift });
@@ -261,8 +215,8 @@ export function findLockViolations(sources: Source[], team?: TeamConfig): LockVi
  * Fail closed when anything locked drifted: print each violation, set exit
  * code 1, and return true so the caller stops before it deploys.
  */
-export function refuseLockDrift(sources: Source[], team?: TeamConfig): boolean {
-  const violations = findLockViolations(sources, team);
+export function refuseLockDrift(sources: Source[]): boolean {
+  const violations = findLockViolations(sources);
   if (violations.length === 0) return false;
   console.error(chalk.red("\n✗ Sync stopped: these items no longer match agentbrew.lock"));
   for (const v of violations) {
@@ -270,7 +224,7 @@ export function refuseLockDrift(sources: Source[], team?: TeamConfig): boolean {
   }
   console.error(
     chalk.dim(
-      "  Run `agentbrew sync --pull` to re-lock sources, or `agentbrew team set <url>` to re-pin the team overlay.\n",
+      "  Run `agentbrew sync --pull` to re-lock sources, or `agentbrew plugin update` / `plugin rollback` to re-pin a plugin.\n",
     ),
   );
   process.exitCode = violations.some((v) => v.currentSha === "capability not declared") ? 3 : 1;

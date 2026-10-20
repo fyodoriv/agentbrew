@@ -32,7 +32,7 @@ $ agentbrew lock --verify
 ✗ shared-rules-repo   e4f5g6h  drift detected (installed: f7g8h9i)
 ```
 
-`agentbrew sync` runs the same check before it deploys. When a source drifted, it prints each one, exits 1, and deploys nothing. The lock also pins the team overlay commit (`team set` writes it), and `sync` refuses an overlay checkout that moved off it.
+`agentbrew sync` runs the same check before it deploys. When a source drifted, it prints each one, exits 1, and deploys nothing. The lock also pins each company plugin (commit, tree hash, signer), and `sync` refuses a plugin checkout that drifted from it.
 
 If a source has drifted, run `agentbrew sync --pull` to fetch the latest and update the lock, or manually reset to the locked version.
 

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — Unreleased
+
+### BREAKING CHANGE
+
+- **Team overlays are removed** (#208 step 12). `agentbrew team set`,
+  `team unset`, and `team status` are gone; `agentbrew team ...` now prints the
+  migration steps and exits 1. The overlay `catalog-overlay.yaml` merge,
+  overlay agent definitions (`agents:`), executable MCP-format adapters
+  (`adapters:`), and the team lock pin are removed too. An old `team:` block in
+  `state.yaml` is ignored. Company content now ships as signed plugins.
+- **The plugin preview flag is gone.** `agentbrew plugin` works without
+  `AGENTBREW_PLUGINS_V2=1`.
+
+### Migration
+
+1. `agentbrew plugin migrate <overlay-checkout>` prints a draft
+   `agentbrew-plugin.yaml` and lists what it could not map. It changes nothing.
+2. Commit the manifest to the overlay repo, fix everything
+   `agentbrew plugin test <checkout>` reports, and push an SSH-signed tag.
+3. On each machine: `agentbrew plugin add <url>@<tag> --signer "<ssh-public-key>"`,
+   then `agentbrew sync`.
+4. Not carried over automatically: remote `sources:` (add them to the catalog),
+   overlay MCP entries (write `mcp/servers.yaml` with secret references and
+   pinned versions), executable adapters, overlay agents, and detect scripts.
+
 ## [Unreleased]
 
 ### Fixed

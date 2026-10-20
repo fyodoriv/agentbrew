@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/agentbrew.svg)](https://www.npmjs.com/package/agentbrew)
 [![license](https://img.shields.io/npm/l/agentbrew.svg)](LICENSE)
 
-**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
+**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. Companies ship private skills, rules, MCP servers, and hooks as signed plugins.
 
 **Install with your AI agent (one step):** open Claude Code (or Codex) and say:
 
@@ -485,13 +485,11 @@ Updates flow through git: `(cd ~/.config/agentbrew/team && git pull) && agentbre
 
 Or share without git: `agentbrew export -o my-setup.yaml` → teammate runs `agentbrew import --bundle my-setup.yaml`.
 
-## Company plugins (preview)
+## Company plugins
 
-The next overlay contract ([#208](https://github.com/fyodoriv/agentbrew/issues/208)) is in progress. Turn it on with `AGENTBREW_PLUGINS_V2=1`.
+A company gives every engineer its private agent setup as a signed plugin ([#208](https://github.com/fyodoriv/agentbrew/issues/208)). A plugin is a git repo with `agentbrew-plugin.yaml` at its root. The schema is `src/plugins/agentbrew-plugin.schema.json`; unknown keys are refused.
 
-A plugin is a git repo with `agentbrew-plugin.yaml` at its root. The schema is `src/plugins/agentbrew-plugin.schema.json`; unknown keys are refused.
-
-<!-- runnable: false reason="needs AGENTBREW_PLUGINS_V2=1 and a reachable plugin repo" -->
+<!-- runnable: false reason="needs a reachable, signed plugin repo" -->
 ```bash
 agentbrew plugin add git@git.example.com:acme/agentbrew-acme.git@v1.0.0 --signer "ssh-ed25519 AAAA..."   # shows capabilities and signer, asks once
 agentbrew plugin list
@@ -508,7 +506,7 @@ agentbrew plugin remove acme
 - Plugin MCP servers (`contributes.mcp_servers`, a YAML list of `{name, command, args, env}`) name every env value as a reference: `env:<NAME>`, `keychain:<item>` (macOS `security`, else `secret-tool`), or `op://...`. Literal values are refused. `npx`/`bunx`/`pnpx` packages must be `pkg@1.2.3`, and `uvx`/`pipx` packages `pkg==1.2.3`; `@latest` or no version is refused. agentbrew writes one launcher per server under `~/.local/share/agentbrew/launchers/` that resolves the references at process start, and the native Claude Code plugin's `.mcp.json` names only the launcher. Other agents do not get plugin MCP servers yet.
 - `plugin update <name> <signed-tag>` verifies the new tag and prints a diff of rules (with text diffs), skills, MCP servers, hooks, and capabilities. It applies nothing until you confirm (`--yes` skips that prompt). A capability change always asks at the terminal, even with `--yes`, and is refused without a terminal. The replaced version stays available to `plugin rollback`.
 - Authoring: `agentbrew plugin new <dir> --name <name>` scaffolds a plugin repo; `agentbrew plugin test [dir]` runs the core's static checks (schema, capabilities, MCP secrets and pins, leak patterns) and exits 1 on any problem; `agentbrew plugin migrate <overlay-dir>` prints a draft `agentbrew-plugin.yaml` from a legacy team overlay plus a list of what it could not map. None of them installs anything.
-- `agentbrew plugin leak-audit [--cwd <dir>]` checks tracked files against every installed plugin's `contributes.leak_patterns` (a YAML list of regexes, kept inside POSIX ERE). It prints file and line only, exits 1 on a match, and exits 2 (fail closed) when a plugin's patterns cannot be read. It needs no preview flag and runs in `npm run verify`. Sync also hands the patterns to the perf log hook, which records a matching project name as `redacted`.
+- `agentbrew plugin leak-audit [--cwd <dir>]` checks tracked files against every installed plugin's `contributes.leak_patterns` (a YAML list of regexes, kept inside POSIX ERE). It prints file and line only, exits 1 on a match, and exits 2 (fail closed) when a plugin's patterns cannot be read. It runs in `npm run verify`. Sync also hands the patterns to the perf log hook, which records a matching project name as `redacted`.
 - `agentbrew plugin policy <name> [--strict]` prints a managed-settings fragment for admins: the marketplace in `extraKnownMarketplaces` and `strictKnownMarketplaces`, the plugin in `enabledPlugins`, and with `--strict` also `strictPluginOnlyCustomization`. agentbrew never writes system policy.
 - Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
@@ -518,31 +516,21 @@ agentbrew plugin remove acme
 - On every `agentbrew sync`, skills and commands are read straight from the locked plugin checkout; nothing is copied into `shared-rules.md` or `state.yaml`, and removing a plugin removes them on the next sync. A plugin that drifted from its lock contributes nothing.
 - Plugin rules are repo-scoped and never written to global rules files. `agentbrew plugin rules --agent <name> [--cwd <dir>]` prints the rules for one agent in one checkout. The repo is the checkout's `origin` remote as `host/path`. It must match `capabilities.repos.include` and not `exclude`; the default is nowhere. Public hosts (`github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`) are excluded unless an include pattern names that host. Agents without a session-start hook get no plugin rules.
 
-## Team overlays
+## Migrating from team overlays (1.0)
 
-agentbrew supports team-level configuration overlays that extend the base catalog with team-specific skills, MCP servers, and rules. An overlay is a git repo (for example `agentbrew-<org>`) with an `Agentfile.yaml` at its root. It can include:
+agentbrew 1.0 removed `agentbrew team set|unset|status` and the overlay `catalog-overlay.yaml` merge. Running `agentbrew team ...` now prints the steps below and exits 1. To move an overlay to a plugin:
 
-- **Catalog overlay** — org-specific skills and MCP servers from private source repos
-- **Environment detection** — optional detect script that fires on signals such as a GitHub Enterprise host in `~/.config/gh/hosts.yml` or org env vars
-- **MCP adapters** — support for a custom desktop app's MCP config format
-
-To use a team overlay:
-
+<!-- runnable: false reason="needs a legacy overlay checkout and a signed plugin repo" -->
 ```bash
-agentbrew team set git@github.example.com:your-org/agentbrew-your-org.git
-agentbrew team sync
-agentbrew sync
+agentbrew plugin migrate ~/path/to/agentbrew-your-org   # prints a draft agentbrew-plugin.yaml + what it could not map
+agentbrew plugin test ~/path/to/agentbrew-your-org      # fix every problem it lists
+git -C ~/path/to/agentbrew-your-org tag -s v1.0.0 -m v1.0.0 && git -C ~/path/to/agentbrew-your-org push --tags
+agentbrew plugin add git@github.example.com:your-org/agentbrew-your-org.git@v1.0.0 --signer "ssh-ed25519 AAAA..."
 ```
 
-The overlay contains pointers only — skill content lives in the source repos. An overlay can declare whole-repo skill registries in its `repo_sources:` block. `agentbrew team set` auto-registers each one as a tracked source with `origin: team`; `agentbrew team unset` removes them symmetrically while preserving anything you added with `agentbrew install` (origin `user`). `agentbrew catalog --sources` flags team-sourced repos with a `[team]` tag so it's obvious which will disappear on `team unset`. On `agentbrew sync`, agentbrew indexes each team git source, so `agentbrew install <skill>` finds its skills by name. A skill whose `SKILL.md` frontmatter has `recommended: true` deploys on the first sync that sees it; a skill you later remove is not added back. `agentbrew install <git-url>` of a source you already track (for example a team source) indexes it right away with the same rules.
+What does not carry over on its own: remote `sources:` (add them to the catalog), overlay MCP entries (write `mcp/servers.yaml` with secret references and pinned versions), executable MCP-format adapters and overlay agent definitions (not supported; agentbrew no longer loads plugin code), detect scripts, and the overlay catalog merge. An old `team:` block in `state.yaml` is ignored.
 
-An overlay `commands:` list (for example `- ./commands`) registers those folders, resolved inside the overlay checkout, as command sources; `agentbrew sync` deploys them and `team unset` removes them. `agentbrew sync --pull` fast-forwards the overlay checkout, re-pins it in the lock, and picks up new overlay entries. A force-pushed or diverged overlay is refused with exit code 1 and keeps its old pin; review it, then run `agentbrew team set <url>` to re-pin.
-
-`team set` pins the overlay: it records the full commit it cloned in `~/.config/agentbrew/agentbrew.lock`. `agentbrew sync` fails closed with exit code 1 and deploys nothing when the overlay checkout moved off that commit, or when a locked source's recorded commit differs from its lock entry. Run `agentbrew team set <url>` to re-pin the overlay, or `agentbrew sync --pull` to re-lock sources. A missing or unparseable overlay `catalog-overlay.yaml` is an error, not a silent skip.
-
-An overlay can also list mcpm registry servers that fail on its machines in a `broken_mcpm_registry_servers:` block. `agentbrew sync` adds them to the built-in list: it removes their `mcpm_<name>` wrappers and uninstalls them from mcpm, unless your Agentfile or state defines a server with that name.
-
-`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog, team overlay `team:<label>`, global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
+`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
 
 ## Supported agents
 
@@ -658,7 +646,7 @@ agentbrew import [--from <agent>]      Discover MCP servers from agent configs
 agentbrew export [-o file]             Export portable config bundle
 agentbrew setup [server]               Configure API keys for MCP servers
 
-agentbrew team {set|unset|status}      Manage team overlays
+agentbrew plugin <subcommand>          Manage signed company plugins
 agentbrew hook install --shell         Install shell hook for project detection
 agentbrew upgrade [--check]            Check for / install CLI updates
 agentbrew env {check|sanitize}         Review env vars that could leak across sessions

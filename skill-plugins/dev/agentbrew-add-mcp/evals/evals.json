@@ -15,11 +15,11 @@
     {
       "id": 2,
       "prompt": "Add this internal Jira MCP from a private npm registry to agentbrew's public catalog.",
-      "expected_output": "A layer decision that keeps internal-only MCP entries in the team overlay.",
+      "expected_output": "A layer decision that keeps internal-only MCP entries in the company plugin.",
       "expectations": [
-        "Uses the litmus test and classifies the registry-internal package as team-overlay content",
+        "Uses the litmus test and classifies the registry-internal package as company-plugin content",
         "Refuses to add the internal MCP to the OSS-portable `src/catalog.yaml`",
-        "Describes the overlay catalog/Agentfile path for shipping the shorthand safely",
+        "Describes the company plugin `mcp/servers.yaml` path (env references, pinned version) for shipping it safely",
         "Keeps environment-variable setup instructions out of plaintext generated config values"
       ]
     },

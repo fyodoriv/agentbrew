@@ -1,154 +1,68 @@
-# Team Overlays
+# Company Plugins
 
-> I work somewhere with internal skills, MCP servers, or auth-bound tools that don't belong in a public catalog. I want one command to layer my team's curated set on top of agentbrew, and one command to remove it cleanly.
+> I work somewhere with internal skills, rules, MCP servers, or hooks that don't belong in a public catalog. I want one command to install my company's set from a signed release, see what it may do before I accept it, and one command to remove it cleanly.
 
-**Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): failed `team` runs.
+**Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): failed `plugin` runs.
 
 **E2E**: [`us27-us28-us29-team-overlay-and-packs.test.ts`](../../real-e2e/scenarios/us27-us28-us29-team-overlay-and-packs.test.ts)
 
+<!-- runnable: false reason="needs a reachable, signed plugin repo" -->
 ```bash
-agentbrew team set <overlay-repo-url>    # install + activate one team overlay
-agentbrew team unset                      # remove (symmetric)
-agentbrew team status                     # show current team
+agentbrew plugin add <url>@<signed-tag> --signer "<ssh-public-key>"   # verify, show capabilities, ask once
+agentbrew plugin list                                                # ref, commit, tree per plugin
+agentbrew plugin update <name> <signed-tag>                          # diff, then apply on confirm
+agentbrew plugin rollback <name>                                     # back to the previous version
+agentbrew plugin remove <name>                                       # everything it emitted goes
 ```
+
+Team overlays (`agentbrew team set`) were removed in agentbrew 1.0. `agentbrew team ...` now prints the migration steps and exits 1. See README "Migrating from team overlays (1.0)".
 
 ## When to use this
 
-When your team or company has:
+When your company has:
 
-- Internal skills repos (not on public GitHub)
-- MCP servers that need org-specific env vars (auth tokens, internal hostnames)
-- Curated lists of recommended tools beyond the generic catalog
-- Special MCP-format adapters (e.g. for desktop apps with custom config files)
+- Internal skills, rules, or commands
+- MCP servers that need company secrets (passed by reference, never written to agent configs)
+- Hooks the company wants every engineer to run
 
-You don't need this if you're using agentbrew standalone — the base tool stays fully functional with no team set. Generic users see no company-specific content anywhere in output, catalog, or state.
+You don't need this if you use agentbrew standalone. With no plugin installed, nobody sees company content in output, catalog, or state.
 
-## Worked example
+## What a plugin repo looks like
 
-An overlay repo named `agentbrew-<org>` is the recommended shape. It registers your org's skill repos as sources, ships an MCP-format adapter for any custom desktop app, and can run a detect script that fires when your GitHub Enterprise host is configured. The `Agentfile.yaml` below shows the full schema.
-
-## What an overlay repo looks like
-
-An overlay is just a git repo with an `Agentfile.yaml` at root. agentbrew clones it on `team set`, reads the Agentfile, and merges its contents into local state with `origin: "team:<label>"`.
+A git repo with `agentbrew-plugin.yaml` at its root. Start one with `agentbrew plugin new <dir> --name <name>` and check it with `agentbrew plugin test <dir>`. The schema is `src/plugins/agentbrew-plugin.schema.json`.
 
 ```yaml
-# Agentfile.yaml at the root of your overlay repo
-name: Acme Engineering            # label for this team
-mcp:                              # MCP servers added by this overlay
-  - acme-internal-mcp
-sources:                          # skill source repos to register
-  - git@github.acme.com:platform/acme-skills.git
-rules: |                          # team-wide rules appended to shared-rules.md
-  ## Team Rules
-  - Use conventional commits
-  - Run tests before push
-
-# Optional overlay fields:
-catalogOverlay: ./catalog-overlay.yaml   # extra catalog entries merged when this team is active
-detect: ./bin/detect.js                  # auto-detect signals; runs on `team set`, prints what fired
-adapters:                                # MCP-format plugins shipped with the overlay
-  - ./adapters/acme-desktop
+schema: 1
+name: acme
+version: 1.0.0
+capabilities:                       # deny by default
+  agents: [claude]
+  repos: { include: ["git.acme.example/**"] }
+  hooks: [Stop]
+  mcp_servers: [acme-jira]
+contributes:
+  rules: rules/
+  skills: skills/
+  commands: commands/
+  hooks: hooks/hooks.json
+  mcp_servers: mcp/servers.yaml      # env values are references: env:, keychain:, op://
+  leak_patterns: leak-patterns.yaml
 ```
 
-agentbrew core knows nothing about the Acme-specific URLs above. It loads this same schema for any overlay.
+## What `plugin add` does
 
-## What `team set` does
+1. Clones the tag into `~/.local/share/agentbrew/plugins/<name>`.
+2. Verifies the SSH tag signature against `~/.config/agent-plugins/allowed_signers` (shared with dotfiles).
+3. Validates the manifest, the capabilities, and the MCP entries. It runs no plugin code.
+4. Shows the capabilities and the signer, and asks once.
+5. Writes the commit, tree hash, capabilities hash, and signer into `agentbrew.lock`.
 
-```
-$ agentbrew team set git@github.acme.com:platform/agentbrew-acme.git
-✓ Cloning overlay to ~/.cache/agentbrew/teams/acme/
-✓ Reading Agentfile.yaml
-✓ Registering sources (1): acme/acme-skills
-✓ Adding MCP servers (1): acme-internal-mcp
-✓ Loading catalog overlay (<count> additional entries from overlay catalog)
-✓ Running detect script: 2 signals matched (github.acme.com, ACME_SSO env var)
-✓ Team "acme" active
+On every `agentbrew sync`, skills and commands come straight from the locked checkout. Rules apply only in included repos and never go into global rules files. Claude Code gets a native plugin with the hooks, MCP launchers, and a session hook for the rules. A checkout that drifts from the lock stops `sync`.
 
-  Run `agentbrew sync` to deploy overlay skills to your agents.
-```
+## Shipping to your team
 
-Overlay `commands:` folders deploy like any command source and leave on `team unset`. `agentbrew sync --pull` fast-forwards the overlay and re-pins it; a force-pushed overlay is refused and keeps its pin.
-
-`team set` also pins the overlay commit in `agentbrew.lock`. `agentbrew sync` refuses to deploy when the checkout moved off that commit; re-run `team set` to re-pin. A missing or broken catalog overlay file is an error, not a silent skip.
-
-Each step is idempotent. Re-running `team set` with the same URL is a no-op. Re-running with a **different** URL cleanly replaces the previous team — see "One team at a time" below.
-
-## What `team unset` does
-
-```
-$ agentbrew team unset
-✓ Removing entries with origin "team:acme"
-✓ Sources: 1 removed, 0 retained (you had no user-added overlap)
-✓ MCP servers: 1 removed
-✓ Catalog overlay: unloaded
-✓ Team unset
-```
-
-Symmetric reversal. Every entry tagged `origin: "team:<label>"` goes away. User-added entries (`origin: "user"`) survive untouched. Already-installed overlay skills stay deployed in your agent config directories — `team unset` controls what the catalog *shows*, not what's *installed*. Run `agentbrew remove <name>` per item if you also want to delete deployed content.
-
-## What `team status` shows
-
-```
-$ agentbrew team status
-Team: acme
-URL:  git@github.acme.com:platform/agentbrew-acme.git
-Last sync: 2026-05-13 07:42 (12 min ago)
-Sources:    1 active
-MCP:        1 active
-Catalog overlay: <count> entries (from team overlay catalog)
-```
-
-Or, when no team is set:
-
-```
-$ agentbrew team status
-No team overlay set.
-Run `agentbrew team set <url>` to install one.
-```
-
-## Generic-mode users (no team overlay)
-
-If you don't use an overlay, you never run `team set`. `agentbrew catalog`, `browse`, `install --recommended`, and `sync` all work standalone on just the generic catalog. State never references any company. Output never mentions any company.
-
-If you want to use agentbrew's curation pattern for your own org, the path is:
-
-1. Create a git repo with an `Agentfile.yaml` at root (see "What an overlay repo looks like")
-2. Add `bin/quickstart` and `bin/uninstall` scripts for one-line setup (see [US 28](28-quickstart-uninstall.md))
-3. Share the repo URL with teammates
-4. Teammates run `agentbrew team set <your-url>`
-
-Any organization can replicate this.
-
-## One team at a time
-
-By design, only **one** team overlay can be active per machine. `team set <new-url>` cleanly replaces any existing team in a single operation:
-
-```
-$ agentbrew team set git@github.globex.com:platform/agentbrew-globex.git
-✓ Existing team "acme" detected — replacing
-✓ Removing entries with origin "team:acme"
-✓ Cloning new overlay to ~/.cache/agentbrew/teams/globex/
-[…]
-✓ Team "globex" active
-```
-
-This avoids merge conflicts between competing team policies and matches dotfiles' single `EXTRA_OVERLAY_ROOT` design .
-
-## 3-tier Agentfile merge
-
-When a team is active, agentbrew composes three Agentfile scopes:
-
-| Scope | Path | Tagged with |
-|-------|------|-------------|
-| **Global** | `~/.config/agentbrew/Agentfile.yaml` | `origin: "global"` |
-| **Team** | `~/.cache/agentbrew/teams/<label>/Agentfile.yaml` | `origin: "team:<label>"` |
-| **Project** | `<repo>/Agentfile.yaml` | `origin: "project"` |
-| **User adds** (via `agentbrew install`) | n/a | `origin: "user"` |
-
-Merge order: **lists union in scope order** (global → team → project); **scalars use most-specific-wins** (project beats team, team beats global). Removal is symmetric per scope — `team unset` removes only `origin: "team:..."` entries; project deactivation removes only `origin: "project"`.
-
-## Reversal property (for contributors)
-
-agentbrew core has zero knowledge of any specific company. All company-specific content lives in overlay repos outside agentbrew. Adding support for a new company is a new overlay repo — no agentbrew PR required.
-
-Contributors editing agentbrew core should never introduce hardcoded references to any specific company — every overlay capability must be parameterized through the `team` command and the `Agentfile.yaml` schema above. The `tests/oss/no-internal-refs.test.ts` lint test enforces this with a ratcheting allowlist that's empty for `src/` post-split.
+1. Create the plugin repo with `agentbrew plugin new`.
+2. Release with a signed tag: `git tag -s v1.0.0 -m v1.0.0`.
+3. Share the repo URL, the tag, and the signer's public key.
+4. Teammates run `agentbrew plugin add <url>@v1.0.0 --signer "<key>"`.
+5. Admins can print a Claude Code managed-settings fragment with `agentbrew plugin policy <name>`.

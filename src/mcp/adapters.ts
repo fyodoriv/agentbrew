@@ -1,8 +1,5 @@
 // Pattern: Adapter (Gamma et al. 1994, Design Patterns). See VISION.md "Pattern conformance index".
 import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import { basename } from "node:path";
-import { loadState } from "../state.js";
 import type { AgentConfig, McpFormatAdapter, McpServer, McpServerEntry } from "../types.js";
 import { expandHome } from "../utils.js";
 import { applyEntryUpdate, convertEnvVars, toCanonical } from "./env-vars.js";
@@ -409,10 +406,8 @@ const tomlAdapter = new TomlAdapter();
  * YamlAdapter (goose) still throws on `readEntries`/`writeEntries`.
  */
 // Core formats are statically dispatched (exhaustiveness-checked via the
-// `satisfies` below). Any other `mcpFormat` string is resolved at runtime from
-// a team-overlay adapter dir — see `loadOverlayAdapter`. Product-specific
-// formats (e.g. the team desktop app's `overlay-desktop`) ship in a
-// team overlay's adapters/<format>/adapter.js, not in core.
+// `satisfies` below). Executable overlay adapters were removed in agentbrew
+// 1.0 (#208): no plugin code is loaded into the sync process.
 type CoreMcpFormat = "json" | "yaml" | "toml" | "opencode";
 
 const MCP_FORMAT_DISPATCH = {
@@ -422,76 +417,14 @@ const MCP_FORMAT_DISPATCH = {
   opencode: opencodeAdapter,
 } satisfies Record<CoreMcpFormat, McpFormatAdapter>;
 
-// ── Team-overlay adapter loading ─────────────────────────────────────────────
-const requireCjs = createRequire(import.meta.url);
-const overlayAdapterCache = new Map<string, McpFormatAdapter | null>();
-
-/** Duck-type check that a loaded module is a usable {@link McpFormatAdapter}. */
-function isMcpFormatAdapter(value: unknown): value is McpFormatAdapter {
-  const a = value as Partial<McpFormatAdapter> | null;
-  return (
-    !!a &&
-    typeof a.readEntries === "function" &&
-    typeof a.writeEntries === "function" &&
-    typeof a.toEntry === "function" &&
-    typeof a.entriesMatch === "function" &&
-    typeof a.applyUpdate === "function" &&
-    typeof a.isPrunable === "function" &&
-    typeof a.discoverServers === "function" &&
-    typeof a.removeServer === "function"
-  );
-}
-
-/**
- * Resolve an MCP-format adapter shipped by the active team overlay. The overlay
- * declares adapter dirs in its Agentfile (`adapters:`), resolved into
- * `state.team.adapterDirs`; each dir's basename is the `mcpFormat` it serves and
- * contains a CommonJS `adapter.js` exporting an McpFormatAdapter class. Cached
- * per format (including negative results). Returns null if none matches.
- */
-function loadOverlayAdapter(format: string): McpFormatAdapter | null {
-  if (overlayAdapterCache.has(format)) return overlayAdapterCache.get(format) ?? null;
-
-  let resolved: McpFormatAdapter | null = null;
-  const dirs = loadState()?.team?.adapterDirs ?? [];
-  for (const dir of dirs) {
-    if (basename(dir) !== format) continue;
-    try {
-      const loaded = requireCjs(dir) as unknown;
-      const AdapterClass = ((loaded as { default?: unknown }).default ?? loaded) as new () => unknown;
-      const instance = typeof AdapterClass === "function" ? new AdapterClass() : loaded;
-      if (isMcpFormatAdapter(instance)) {
-        resolved = instance;
-        break;
-      }
-      console.error(`Overlay MCP adapter "${format}" at ${dir} does not implement McpFormatAdapter — skipping`);
-    } catch (error) {
-      // Loud but non-fatal: a broken overlay adapter must not crash core sync.
-      console.error(`Failed to load overlay MCP adapter "${format}" from ${dir}: ${error}`);
-    }
-  }
-
-  overlayAdapterCache.set(format, resolved);
-  return resolved;
-}
-
-/** Test-only: clear the cached overlay adapters (call after changing state.team). */
-export function resetOverlayAdapterCache(): void {
-  overlayAdapterCache.clear();
-}
-
 export function getAdapter(agent: Pick<AgentConfig, "name" | "mcpFormat">): McpFormatAdapter {
   const format = agent.mcpFormat ?? "json";
   const core = (MCP_FORMAT_DISPATCH as Record<string, McpFormatAdapter>)[format];
   if (core) return core;
 
-  const overlay = loadOverlayAdapter(format);
-  if (overlay) return overlay;
-
   throw new Error(
     `No MCP adapter for format "${format}" (agent "${agent.name}"). ` +
-      `Core formats: ${Object.keys(MCP_FORMAT_DISPATCH).join(", ")}. ` +
-      "Overlay formats are provided by a team adapter dir — run `agentbrew team set <url>` if this format ships in an overlay.",
+      `Core formats: ${Object.keys(MCP_FORMAT_DISPATCH).join(", ")}.`,
   );
 }
 

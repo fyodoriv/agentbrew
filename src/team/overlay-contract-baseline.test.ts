@@ -1,16 +1,15 @@
 /**
  * Baseline for the overlay plugin contract (issue #208, step 1 of 12).
  *
- * These tests pin how `team set`, the overlay catalog merge, and the lock
- * behave. The S1, S2 and S9 tests were expected-fail in step 1; step 2
- * closed those gaps and flipped them. The stale-state cases from Problem 2
- * are covered by the v2 plugin path (step 6, "one refresh path").
+ * Step 1 pinned `team set`, the overlay catalog merge, and the lock. Step 12
+ * removed `team set` and the overlay catalog (agentbrew 1.0), so what stays
+ * is the lock check (S2) and the stale-state cases from Problem 2, which the
+ * plugin path covers (step 6, "one refresh path").
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Command } from "commander";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,11 +26,6 @@ const { home, previousHome } = vi.hoisted(() => {
   return { home: dir, previousHome: previous };
 });
 
-const { cloneOrUpdateRepo } = vi.hoisted(() => ({ cloneOrUpdateRepo: vi.fn() }));
-vi.mock("../mcp/mcp-git.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../mcp/mcp-git.js")>()),
-  cloneOrUpdateRepo,
-}));
 vi.mock("../sync-runner.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../sync-runner.js")>()),
   buildSyncModules: vi.fn(() => []),
@@ -40,9 +34,8 @@ vi.mock("../sync-runner.js", async (importOriginal) => ({
 }));
 vi.mock("../sync-recommended.js", () => ({ shouldInstallRecommendedOnSync: () => false }));
 
-import { loadCatalog } from "../catalog/types.js";
 import { buildProgram } from "../cli.js";
-import { findLockViolations, readLock, writeLock } from "../lock.js";
+import { writeLock } from "../lock.js";
 import { pluginCommandDirs, pluginRulesFor, pluginSkillDirs } from "../plugins/contributions.js";
 import { addPlugin, pluginDir, removePlugin } from "../plugins/store.js";
 import { invalidateState, loadState } from "../state.js";
@@ -51,25 +44,13 @@ import { getSkillSources } from "../sync/skills-sync.js";
 import { runSyncParallel } from "../sync-runner.js";
 import { fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import type { AgentBrewState } from "../types.js";
-import { mergeTeamAgentfile, registerTeamCommands } from "./commands/cli-team.js";
-import { refreshTeamOverlay } from "./team-refresh.js";
 
 const CONFIG_DIR = join(home, ".config", "agentbrew");
-const OVERLAY_URL = "git@github.example.com:acme/agentbrew-acme.git";
+const _OVERLAY_URL = "git@github.example.com:acme/agentbrew-acme.git";
 const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
 
-function git(cwd: string, ...args: string[]): string {
+function _git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, env: GIT_ENV, encoding: "utf-8", stdio: "pipe" }).trim();
-}
-
-/** A committed overlay checkout that `cloneOrUpdateRepo` returns. */
-function makeOverlayRepo(agentfile: Record<string, unknown>): { dir: string; head: string } {
-  const dir = mkdtempSync(join(tmpdir(), "overlay-baseline-repo-"));
-  writeFileSync(join(dir, "Agentfile.yaml"), yaml.dump(agentfile));
-  git(dir, "init", "-q");
-  git(dir, "add", ".");
-  git(dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "init");
-  return { dir, head: git(dir, "rev-parse", "HEAD") };
 }
 
 function seedState(extra: Partial<AgentBrewState> = {}): void {
@@ -83,12 +64,6 @@ function seedState(extra: Partial<AgentBrewState> = {}): void {
   } as AgentBrewState;
   writeFileSync(join(CONFIG_DIR, "state.yaml"), yaml.dump(state));
   invalidateState();
-}
-
-async function teamSet(url: string): Promise<void> {
-  const program = new Command().exitOverride();
-  registerTeamCommands(program);
-  await program.parseAsync(["node", "test", "team", "set", url]);
 }
 
 async function runSync(...flags: string[]): Promise<void> {
@@ -111,107 +86,6 @@ afterAll(() => {
   process.exitCode = undefined;
   process.env.HOME = previousHome;
   rmSync(home, { recursive: true, force: true });
-});
-
-describe("team set — today's behavior", () => {
-  it("clones the overlay with no ref, so it tracks a floating branch", async () => {
-    const repo = makeOverlayRepo({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(repo.dir);
-
-    await teamSet(OVERLAY_URL);
-
-    expect(cloneOrUpdateRepo).toHaveBeenCalledWith(OVERLAY_URL, "agentbrew-acme");
-    expect(loadState()?.team?.label).toBe("acme");
-  });
-
-  it("merges only `sources:`; rules, mcp, hooks and detect keys do not reach state", () => {
-    const state: AgentBrewState = { agents: [], sources: [], catalogVersion: "0.1.0" };
-    const before = JSON.stringify(state);
-    mergeTeamAgentfile(
-      state,
-      { rules: ["acme-rule"], mcp: [{ name: "acme-jira" }], hooks: ["acme-hook"], detect: "./detect.sh" },
-      "acme",
-      "2026-10-20T00:00:00.000Z",
-      "/teams/acme",
-    );
-    expect(JSON.stringify(state)).toBe(before);
-  });
-
-  // S1: step 2 records the overlay commit in the lock.
-  it("S1: records the overlay commit in agentbrew.lock", async () => {
-    const repo = makeOverlayRepo({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(repo.dir);
-
-    await teamSet(OVERLAY_URL);
-
-    const lock = readLock() as { team?: { url: string; sha: string } };
-    expect(lock.team).toMatchObject({ url: OVERLAY_URL, sha: repo.head });
-    expect(loadState()?.team).toMatchObject({ path: repo.dir, commitSha: repo.head });
-  });
-
-  it("S1: sync refuses to deploy when the overlay checkout moved off its pin", async () => {
-    const repo = makeOverlayRepo({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(repo.dir);
-    await teamSet(OVERLAY_URL);
-    git(repo.dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "moved", "--allow-empty");
-
-    await runSync("--no-recommended");
-
-    expect(runSyncParallel).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(1);
-  });
-
-  it("team unset drops the overlay pin", async () => {
-    const repo = makeOverlayRepo({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(repo.dir);
-    await teamSet(OVERLAY_URL);
-    const program = new Command().exitOverride();
-    registerTeamCommands(program);
-    await program.parseAsync(["node", "test", "team", "unset"]);
-
-    expect(readLock().team).toBeUndefined();
-  });
-});
-
-describe("overlay catalog merge — today's behavior", () => {
-  function setOverlayCatalog(content: string | undefined): string {
-    const path = join(home, "catalog-overlay.yaml");
-    if (content !== undefined) writeFileSync(path, content);
-    seedState({
-      team: { label: "acme", url: OVERLAY_URL, cachedAt: "x", lastSyncedAt: "x", catalogOverlayPath: path },
-    });
-    return path;
-  }
-
-  it("overlay entries replace same-name base entries and append new ones", () => {
-    const base = loadCatalog({ includeTeamOverlay: false });
-    const first = base.rules[0];
-    setOverlayCatalog(
-      yaml.dump({
-        rules: [
-          { ...first, description: "overlay wins" },
-          { name: "acme-only-rule", description: "added", source: "acme/rules" },
-        ],
-      }),
-    );
-
-    const merged = loadCatalog();
-
-    expect(merged.rules.find((r) => r.name === first?.name)?.description).toBe("overlay wins");
-    expect(merged.rules.some((r) => r.name === "acme-only-rule")).toBe(true);
-    expect(merged.rules).toHaveLength(base.rules.length + 1);
-  });
-
-  // S9: a broken overlay fails closed (step 2).
-  it("S9: an unparseable overlay catalog is an error, not a silent skip", () => {
-    setOverlayCatalog("rules: [unclosed");
-    expect(() => loadCatalog()).toThrow(/overlay catalog/i);
-  });
-
-  it("S9: a missing overlay catalog file is an error, not a silent skip", () => {
-    setOverlayCatalog(undefined);
-    expect(() => loadCatalog()).toThrow(/overlay catalog/i);
-  });
 });
 
 describe("lock — today's behavior", () => {
@@ -350,76 +224,5 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
 
   it("rules reach only declared agents", () => {
     expect(pluginRulesFor("codex", REPO)).toBe("");
-  });
-});
-
-describe("team overlay commands and sync --pull (#331)", () => {
-  const ID = ["-c", "user.name=t", "-c", "user.email=t@example.com"];
-
-  /** An upstream overlay repo plus a clone that `team set` uses as its checkout. */
-  function upstreamAndClone(agentfile: Record<string, unknown>): { upstream: string; clone: string } {
-    const upstream = makeOverlayRepo(agentfile).dir;
-    mkdirSync(join(upstream, "commands"), { recursive: true });
-    writeFileSync(join(upstream, "commands", "deploy.md"), "deploy it");
-    git(upstream, "add", ".");
-    git(upstream, ...ID, "commit", "-qm", "commands");
-    const clone = join(mkdtempSync(join(tmpdir(), "overlay-clone-")), "agentbrew-acme");
-    git(tmpdir(), "clone", "-q", upstream, clone);
-    return { upstream, clone };
-  }
-
-  it("team set registers overlay commands dirs, and team unset removes them", async () => {
-    const { clone } = upstreamAndClone({ name: "acme", commands: ["./commands"] });
-    cloneOrUpdateRepo.mockReturnValue(clone);
-
-    await teamSet(OVERLAY_URL);
-    expect(loadState()?.commandSourceDirs).toEqual([
-      expect.objectContaining({ path: join(clone, "commands"), origin: "team:acme" }),
-    ]);
-
-    const program = new Command().exitOverride();
-    registerTeamCommands(program);
-    await program.parseAsync(["node", "test", "team", "unset"]);
-    expect(loadState()?.commandSourceDirs ?? []).toEqual([]);
-  });
-
-  it("sync --pull fast-forwards the overlay, re-pins the lock, and picks up new commands dirs", async () => {
-    const { upstream, clone } = upstreamAndClone({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(clone);
-    await teamSet(OVERLAY_URL);
-    writeFileSync(join(upstream, "Agentfile.yaml"), yaml.dump({ name: "acme", commands: ["./commands"] }));
-    git(upstream, ...ID, "commit", "-qam", "add commands");
-    const newHead = git(upstream, "rev-parse", "HEAD");
-
-    const result = refreshTeamOverlay(loadState() as AgentBrewState);
-
-    expect(result.status).toBe("updated");
-    expect(git(clone, "rev-parse", "HEAD")).toBe(newHead);
-    expect(readLock().team?.sha).toBe(newHead);
-    expect(loadState()?.team?.commitSha).toBe(newHead);
-    expect(loadState()?.commandSourceDirs?.map((d) => d.path)).toEqual([join(clone, "commands")]);
-    expect(findLockViolations([], loadState()?.team)).toEqual([]);
-  });
-
-  it("sync --pull refuses a force-pushed overlay and keeps the old pin", async () => {
-    const { upstream, clone } = upstreamAndClone({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(clone);
-    await teamSet(OVERLAY_URL);
-    const pinned = readLock().team?.sha;
-    git(upstream, ...ID, "commit", "-q", "--amend", "-m", "rewritten");
-
-    const result = refreshTeamOverlay(loadState() as AgentBrewState);
-
-    expect(result.status).toBe("failed");
-    expect(result.message).toMatch(/fast-forward/);
-    expect(readLock().team?.sha).toBe(pinned);
-    expect(git(clone, "rev-parse", "HEAD")).toBe(pinned);
-  });
-
-  it("sync --pull with no new overlay commits is up to date", async () => {
-    const { clone } = upstreamAndClone({ name: "acme" });
-    cloneOrUpdateRepo.mockReturnValue(clone);
-    await teamSet(OVERLAY_URL);
-    expect(refreshTeamOverlay(loadState() as AgentBrewState).status).toBe("up-to-date");
   });
 });

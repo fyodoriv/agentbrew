@@ -12,16 +12,16 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
 const evalMatching = evalMatcher(evals.evals);
 
 describe("agentbrew-add-mcp skill contract", () => {
-  it("pins the OSS catalog versus team overlay routing boundary", () => {
+  it("pins the OSS catalog versus company plugin routing boundary", () => {
     requireTerms(skillText, [
-      "Step 0: Pick the right layer (OSS catalog vs. team overlay)",
+      "Step 0: Pick the right layer (OSS catalog vs. company plugin)",
       "Wrong layer = future portability bug.",
       "Litmus test",
       /fresh contributor outside the org install \+ use the MCP with no\s+internal credentials/i,
       "OSS-portable",
-      "Team overlay",
+      "Company plugin",
       "`agentbrew/src/catalog.yaml` (catalog) + `dotfiles/Agentfile.yaml` (activation)",
-      "`agentbrew-<org>/catalog-overlay.yaml` (catalog) + `dotfiles-<org>/Agentfile.yaml` (activation)",
+      "`agentbrew-<org>/mcp/servers.yaml` (declared in `agentbrew-plugin.yaml`)",
       "Never",
       "organization-specific entry",
       "agentbrew/src/catalog.yaml",
@@ -34,7 +34,7 @@ describe("agentbrew-add-mcp skill contract", () => {
       "`context7`, `playwright`, `tasks-mcp`, `mcp-atlassian` (public) → OSS catalog",
       "`acme-jira-mcp`",
       "registry.npmjs.example.com",
-      "team overlay",
+      "company plugin",
       "`acme-search-mcp`, `acme-platform-mcp`, `Acme Portal MCP Remote`, `slack-acme`,",
       "acme-google-drive-mcp",
       "Any MCP whose `url:` is `*.api.example.com`",
@@ -48,7 +48,7 @@ describe("agentbrew-add-mcp skill contract", () => {
       "From the catalog (recommended)",
       "agentbrew install jira-mcp",
       "agentbrew install --recommended",
-      "agentbrew team set <git-url>",
+      "agentbrew plugin add <url>@<signed-tag>",
       "agentbrew catalog --mcp",
       "Inline `agentbrew install --command ... --args ... --env ...` is a footgun",
       "bypassing both catalogs",
@@ -150,7 +150,7 @@ describe("agentbrew-add-mcp skill contract", () => {
         evalMatching(/internal Jira MCP|private npm registry|public catalog/i).prompt,
         expectationText(evalMatching(/internal Jira MCP|private npm registry|public catalog/i)),
       ].join("\n"),
-      [/litmus test/i, /team-overlay|team overlay/i, /refuses to add|Refuses/i, /plaintext generated config/i],
+      [/litmus test/i, /company-plugin|company plugin/i, /refuses to add|Refuses/i, /plaintext generated config/i],
     );
 
     requireTerms(

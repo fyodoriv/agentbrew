@@ -1,9 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { logSkipped } from "../core/logger.js";
 import type { ProbeStatus } from "../mcp/probe.js";
-import { loadState } from "../state.js";
 import type { Source } from "../types.js";
 
 /**
@@ -16,8 +15,7 @@ import type { Source } from "../types.js";
  *
  * The field is OPTIONAL on every catalog interface that includes it —
  * deprecation is a sunset path, not a default. To deprecate an entry,
- * add this object inline in `src/catalog.yaml` (or any overlay's
- * `catalog-overlay.yaml`); no schema migration required for older
+ * add this object inline in `src/catalog.yaml`; no schema migration required for older
  * catalogs that lack the field.
  *
  * Surfaced 2026-05-25 ecosystem audit (subagent report § 14): without
@@ -137,16 +135,9 @@ export interface CatalogCliTool {
  * skill), `CatalogRepoSource` points at an entire GitHub repo — every skill
  * inside is discovered at install time via the deep-scan layer in
  * `src/catalog/index-source.ts`.
- *
- * Used today by the team overlay to declare that every team member
- * should have `your-org/team-skills` (and any future approved
- * registries) registered as a source without having to run `agentbrew
- * install` themselves. Auto-registration runs on `agentbrew team set <overlay-url>`
- * and is removed symmetrically on `agentbrew team unset` so user-added
- * sources survive.
  */
 export interface CatalogRepoSource {
-  /** GitHub owner/repo — must be on github.com for public catalog, or an approved team org for the overlay. */
+  /** GitHub owner/repo on github.com. */
   source: string;
   /** Human-readable description surfaced by `agentbrew catalog --sources`. */
   description: string;
@@ -177,27 +168,16 @@ export interface Catalog {
   bundles?: CatalogBundle[];
   /**
    * Optional list of whole-repo skill sources the catalog auto-registers
-   * on applicable machines. Merged across base + overlay via `mergeCatalog`
-   * (dedup by `source`, overlay wins on conflict).
+   * on applicable machines.
    */
   repo_sources?: CatalogRepoSource[];
   /**
-   * Optional mcpm registry server names that fail on the team's machines and
+   * Optional mcpm registry server names that fail on known machines and
    * have no agentbrew-managed equivalent. Sync removes their `mcpm_<name>`
    * wrappers and uninstalls them from mcpm, unless state defines the name.
-   * Adds to `BROKEN_MCPM_REGISTRY_SERVERS`; base + overlay merge as a union.
+   * Adds to `BROKEN_MCPM_REGISTRY_SERVERS`.
    */
   broken_mcpm_registry_servers?: string[];
-}
-
-interface LoadCatalogOptions {
-  /**
-   * @deprecated Whether to merge the team overlay on top of the generic catalog.
-   * The team overlay is now handled via `agentbrew team set` and the team
-   * overlay's `catalogOverlay:` field in Agentfile.yaml. This option is kept
-   * for backward compatibility with tests and diagnostics.
-   */
-  includeTeamOverlay?: boolean;
 }
 
 export interface LoadBaseCatalogOptions {
@@ -232,77 +212,6 @@ function catalogCandidates(filename: string): string[] {
 }
 
 /**
- * Merge a team overlay catalog into a base catalog. Entries with the same `name`
- * are replaced by the overlay (letting the overlay promote recommended
- * flags, rewrite descriptions for team context, etc.). Entries that only
- * exist in the overlay are appended.
- *
- * ## Why same-name override is a feature, not a bug
- *
- * The primary use case for team overlays is "promote this generic
- * skill to recommended for team members." Same-name override makes that a
- * one-entry change in the overlay's `catalog-overlay.yaml`. If we made it an error or
- * required explicit opt-in, every promotion would require a coordinated
- * multi-file edit.
- *
- * The safety tradeoff is managed by three properties:
- * 1. Overlay edits go through PR review on the overlay repo.
- * 2. The generic entry in `catalog.yaml` is never touched on disk — if
- *    the overlay file is deleted, the generic entry reappears verbatim.
- * 3. When no team is set, the overlay is not loaded at all, so
- *    users always see the unmodified generic catalog.
- *
- * ## How to promote a generic skill in a team overlay
- *
- * Add an entry to the overlay's `catalog-overlay.yaml` with the same `name` as the generic
- * entry. Set `recommended: true` and supply a `rationale`. Optionally
- * override `description`, `category`, or `source` for the team-context
- * version.
- */
-function mergeByKey<T>(base: T[], overlay: T[], key: (item: T) => string): T[] {
-  const overlayByKey = new Map(overlay.map((item) => [key(item), item]));
-  const merged = base.map((item) => overlayByKey.get(key(item)) ?? item);
-  const baseKeys = new Set(base.map(key));
-  for (const item of overlay) {
-    if (!baseKeys.has(key(item))) merged.push(item);
-  }
-  return merged;
-}
-
-function mergeByName<T extends { name: string }>(base: T[], overlay: T[]): T[] {
-  return mergeByKey(base, overlay, (item) => item.name);
-}
-
-/** Merge an optional list, preserving undefined if neither side had entries. */
-function mergeOptionalByKey<T>(
-  base: T[] | undefined,
-  overlay: T[] | undefined,
-  key: (item: T) => string,
-): T[] | undefined {
-  const hasAny = (base?.length ?? 0) > 0 || (overlay?.length ?? 0) > 0;
-  return hasAny ? mergeByKey(base ?? [], overlay ?? [], key) : undefined;
-}
-
-function mergeCatalog(base: Catalog, overlay: Catalog): Catalog {
-  return {
-    skills: mergeByName(base.skills ?? [], overlay.skills ?? []),
-    mcp_servers: mergeByName(base.mcp_servers ?? [], overlay.mcp_servers ?? []),
-    rules: mergeByName(base.rules ?? [], overlay.rules ?? []),
-    cli_tools: mergeOptionalByKey(base.cli_tools, overlay.cli_tools, (item) => item.name),
-    bundles: mergeOptionalByKey(base.bundles, overlay.bundles, (item) => item.name),
-    // repo_sources dedup by `source` (owner/repo) — they don't have `name`. Overlay
-    // wins on conflict so the team overlay can tighten descriptions or change
-    // auto_update semantics for a shared registry without requiring a base edit.
-    repo_sources: mergeOptionalByKey(base.repo_sources, overlay.repo_sources, (item) => item.source),
-    broken_mcpm_registry_servers: mergeOptionalByKey(
-      base.broken_mcpm_registry_servers,
-      overlay.broken_mcpm_registry_servers,
-      (name) => name,
-    ),
-  };
-}
-
-/**
  * Load only the repo-owned catalog.
  *
  * This loader is deliberately independent of agentbrew state. Use it for
@@ -320,72 +229,12 @@ export function loadBaseCatalog(options: LoadBaseCatalogOptions = {}): Catalog {
 }
 
 /**
- * Load the catalog, optionally layering a team overlay on top.
- *
- * ## Loading semantics
- *
- * 1. Always loads `src/catalog.yaml` (or `dist/catalog.yaml` at runtime
- *    when agentbrew ships from a built package). If this file is missing
- *    or unparseable, throws — the generic catalog is mandatory.
- * 2. If a team overlay should be included, loads the overlay's `catalog-overlay.yaml`
- *    from the team's Agentfile.yaml `catalogOverlay:` field and merges it on top via
- *    `mergeCatalog()`. If the overlay file is missing, silently returns the base.
- *
- * ## When the overlay is loaded
- *
- * - By default: whenever `state.team` is set (via `agentbrew team set`).
- * - Explicit opt-in/out: `options.includeTeamOverlay` is reserved for tests
- *   and diagnostics that need to override the default state-based behavior.
- *
- * ## Behaviour when an overlay source repo is unreachable
- *
- * `loadCatalog()` only reads YAML files — it does not touch source repos.
- * If the overlay references `source: some-org/private-repo` and the user
- * can't clone it, `loadCatalog()` still returns the merged catalog. The
- * failure surfaces later at install time: `installSkill()` attempts to
- * fetch the source, logs a classified git error, and reports "can't reach
- * this source" to the user. The overlay entry remains in the catalog so
- * `agentbrew catalog` still shows it.
+ * Load the catalog: the repo-owned `src/catalog.yaml` (or `dist/catalog.yaml`
+ * when agentbrew runs from a built package). Throws when it is missing or
+ * unparseable. Team overlay catalogs were removed in agentbrew 1.0 (#208).
  */
-export function loadCatalog(_options: LoadCatalogOptions = {}): Catalog {
-  const base = loadBaseCatalog();
-
-  const state = _options.includeTeamOverlay === false ? undefined : loadState();
-  let result = base;
-
-  // Team-overlay catalog (story #27). When `state.team` is set, the
-  // overlay's catalog merges on top of the generic catalog.yaml. The path
-  // is resolved on `team set` and stored in `state.team.catalogOverlayPath`;
-  // cleared on `team unset`. A stale or broken path throws (fail closed).
-  if (state?.team?.catalogOverlayPath) {
-    result = mergeCatalog(result, loadOverlayCatalog(state.team.catalogOverlayPath));
-  }
-
-  return result;
-}
-
-/**
- * Read the team overlay catalog. Fails closed (issue #208, S9): a missing or
- * broken overlay catalog throws, so a security-relevant entry cannot vanish
- * without an error.
- */
-function loadOverlayCatalog(path: string): Catalog {
-  const fix = "Run `agentbrew team set <url>` to refresh the overlay, or `agentbrew team unset`.";
-  if (!existsSync(path)) throw new Error(`Team overlay catalog not found at ${path}. ${fix}`);
-  let parsed: unknown;
-  try {
-    parsed = yaml.load(readFileSync(path, "utf-8"));
-  } catch (e) {
-    throw new Error(`Team overlay catalog at ${path} is not valid YAML: ${errorText(e)}. ${fix}`);
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Team overlay catalog at ${path} is not a YAML mapping. ${fix}`);
-  }
-  return parsed as Catalog;
-}
-
-function errorText(e: unknown): string {
-  return e instanceof Error ? e.message.split("\n")[0] : String(e);
+export function loadCatalog(): Catalog {
+  return loadBaseCatalog();
 }
 
 export interface DisplaySkill {

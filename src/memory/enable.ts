@@ -104,14 +104,6 @@ export function mergeMemoryPackPaths(state: AgentBrewState, paths: string[]): vo
   state.memory = { ...state.memory, enabled: state.memory?.enabled, packPaths: [...existing] };
 }
 
-/** Team unset removes overlay pack paths from state but never touches ledgers or SQLite rows. */
-export function removeTeamMemoryPackPaths(state: AgentBrewState, paths: string[]): void {
-  if (!state.memory?.packPaths?.length) return;
-  const remove = new Set(paths);
-  const packPaths = state.memory.packPaths.filter((p) => !remove.has(p));
-  state.memory = { ...state.memory, packPaths };
-}
-
 export function getMemoryPackSearchPaths(state: AgentBrewState, extra: string[] = []): string[] {
   return [...new Set([...(state.memory?.packPaths ?? []), ...extra])];
 }

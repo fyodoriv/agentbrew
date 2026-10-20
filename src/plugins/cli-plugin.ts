@@ -13,11 +13,6 @@ import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
 import { applyUpdate, planUpdate } from "./update.js";
 
-/** The v2 plugin contract ships behind this flag until step 12 of #208. */
-export function pluginsV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.AGENTBREW_PLUGINS_V2 === "1";
-}
-
 function fail(error: unknown): void {
   console.error(chalk.red(`✗ ${error instanceof Error ? error.message : String(error)}`));
   process.exitCode = error instanceof CapabilityError ? error.exitCode : 1;
@@ -25,15 +20,7 @@ function fail(error: unknown): void {
 
 /** Registers `agentbrew plugin add|list|remove` (v2 company plugins, #208). */
 export function registerPluginCommands(program: Command): void {
-  const plugin = program
-    .command("plugin")
-    .description("Manage pinned company plugins (preview; needs AGENTBREW_PLUGINS_V2=1)");
-  plugin.hook("preAction", (_cmd, action) => {
-    // The leak audit is a core gate: it runs (and fails closed) without the preview flag.
-    if (pluginsV2Enabled() || action.name() === "leak-audit") return;
-    console.error(chalk.red("✗ Company plugins are a preview. Set AGENTBREW_PLUGINS_V2=1 to use them."));
-    process.exit(2);
-  });
+  const plugin = program.command("plugin").description("Manage signed company plugins");
 
   plugin
     .command("add <spec>")

@@ -547,7 +547,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 87,
       "prompt": "/goal find my career pages in Notion and merge them all into this app",
       "expected_output": "The agent maps each Notion kind to an app feature, builds the importer test-first on a synthetic bundle, has fetch subagents write the private bundle files directly (counts only in chat), checks counts against the live source, and then opens the app's views on the real imported data, read-only, fixing what only real data shows before it reports.",
       "expectations": [
@@ -632,7 +632,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 88,
       "prompt": "/goal be on the lookout for any issues that other machines open, then resolve them immediately",
       "expected_output": "The agent treats this as an open-ended watch goal. It first resolves any issue already open at baseline. Then it arms a background poller (one event per new issue, errors emitted as events too) and re-arms it on expiry. It never claims the watch is 'done'. The contract states that the watch ends when the user ends the session, and that an issue needing a human-only step gets a comment and stays open. Each issue found gets the full delivery: a reproducing test, the gate, a PR, a merge, and a closed issue, with the evidence printed.",
       "expectations": [
@@ -656,7 +656,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 89,
       "prompt": "/goal I need a dashboard view for this app that shows what is most efficient to do at work right now, today, this week, this month, this quarter, this year, this company, with an explanation why",
       "expected_output": "The agent maps each horizon to a ranking the app already has, and builds no new opaque model. Every 'why' quotes the numbers behind the rank, so the user can check it. The metric counts the horizons rendered with a non-empty why on seeded data. The agent reads the screenshot itself and fixes wrong content that the presence tests miss: one horizon repeating another, or a claim that cannot be true for tied items. The seed data is extended so that every horizon has real data, and an empty horizon shows the action that would create its data instead of invented advice.",
       "expectations": [
@@ -953,7 +953,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 90,
       "prompt": "/goal ensure that the corporate data is fully kept on corporate machine with nothing being synced anywhere else",
       "expected_output": "The agent turns 'nothing leaves' into an inventory of every exit that is still open (sync bundles, backups into cloud-synced folders, a data folder inside iCloud or OneDrive, hosted model routes). It writes one audit test with a case per exit, and runs it red on the current code. It guards each exit only for the corporate role, removes code that the change made dead, keeps the coverage that is still valid, and records the reversed decision in a new ADR. Commands whose output it hides are checked by their result: an empty PR after a 'successful' commit means the commit hook refused it.",
       "expectations": [
@@ -1002,7 +1002,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 91,
       "prompt": "/goal implement an always-running work tracker: daily log of done today + plan for tomorrow for my PM, watch all work sources, update goals from new context, give focus advice, and ask questions to get context (then, mid-goal: 'make the whole app one command by default, as a rule for every app'; 'goals must be approved by me in the UI'; 'PM report in the UI with copy or send'; 'update skills, memories, rules for my other apps')",
       "expected_output": "The agent first maps the request onto what already exists (the watcher, the focus advice, owner-only goals) and builds only what is missing. It checks the request against the repo's own rules: 'update goals' meets 'only the owner sets goals', and 'send to PM' meets 'never sends'. It asks one round about those conflicts. Each later user message joins the contract file as a numbered done-criterion, with the metric denominator updated. The privacy-critical outputs (the PM draft, the web token, the inbox writes) go to a fresh grader before the push. The agent carries the pattern across apps through every channel the user named: a global shared rule, a memory, the new-project scaffold with a check, and one task in each app's queue under the standing approval.",
       "expectations": [
@@ -1044,6 +1044,41 @@
         "A parity test fails on a missing path or a missing terminal-only reason",
         "Sending happens only on an explicit owner action, and the reversed rule is updated in the docs",
         "The rule is applied to other apps (rules, memory, scaffold check, tasks)"
+      ]
+    },
+    {
+      "id": 92,
+      "prompt": "/goal give <doc> one top-level tab about <topic>; the existing subtab should be higher and better organized, with a link to the tracker epic",
+      "expected_output": "The contract keeps the existing tab id (so inbound links survive), measures sections present against a target, and guards the tab count and comment anchors. Edits are surgical. After the fresh-context grader reports defects, the agent fixes them, re-reads the structure, and re-runs the full screenshot sweep from page 1 before reporting.",
+      "expectations": [
+        "Promotes the existing tab instead of creating a new one when links point at it",
+        "Guards tab_count before and after edits",
+        "Re-runs the full visual sweep after every fix, including the grader's fixes",
+        "Reports grader-found defects and their fixes in the final report"
+      ]
+    },
+    {
+      "id": 93,
+      "prompt": "/goal pull latest career app updates, ensure that they all work on this machine, then run it and get reports about what I did today and what I plan to do tomorrow. Iterate with me (the repo was moved to a new folder since the last run; this is a corporate machine where the repo forbids pushes)",
+      "expected_output": "The agent fast-forwards every repo in the workspace and proves 0 commits behind. It runs the full gate, not only the doctor: the doctor passes, but the gate fails because the venv console scripts still point at the old folder. It finds that cause and fixes it with a reinstall, not a delete, then re-runs the gate to green. It starts the app, checks that the web app answers, and prints the done-today and plan-for-tomorrow reports from real data. It reads the real output for wrong content: duplicate items (170 listed, 69 unique), an all-time count shown as today's, and a top task the user does not know. It traces the unknown task to the agent session that filed it before it asks the user what to do. Because pushes are forbidden here, it offers issues upstream, scans their text against the sensitive-terms list, and opens them only after the user says yes. It follows the user's choice on each item, including 'keep as is'.",
+      "expectations": [
+        "Every workspace repo is fast-forwarded and shown 0 behind origin",
+        "The full gate runs; a stale venv after a folder move is found and fixed without deleting it",
+        "The reports come from real data and are read for wrong content (duplicates, all-time counts, unknown tasks)",
+        "An unknown task is traced to its source (an agent session) before the user is asked about it",
+        "On a no-push machine, bugs go upstream as issues only after a yes and a sensitive-terms scan"
+      ]
+    },
+    {
+      "id": 94,
+      "prompt": "/goal provide a slash goal prompt for my coworker: get latest agentbrew and dotfiles, set up the company plugins on a corporate machine, set up the career app with its company plugin, enable automated telemetry to measure user gains and performance, make setup straightforward, let onboarded devs' agents push updates to the repos they use, and open issues instead of pushing to personal repos",
+      "expected_output": "The agent lists each requirement and checks the code for each one before it writes. It finds that a vision non-goal ('No telemetry') conflicts with the telemetry request, quotes it, and asks: opt-in aggregates, local only, or full telemetry. It finds single-user settings hardcoded in the company plugin. It files one issue per gap in the repo that owns it, scans github.com issue text against the sensitive-terms list, and pushes nothing. It writes the coworker's /goal prompt so that each requirement maps to a command or skill, or to an issue URL, and so that the prompt measures readiness before and after. A fresh grader checks the prompt against every requirement.",
+      "expectations": [
+        "A vision conflict is quoted and resolved by a question before any issue is written",
+        "Each requirement maps to an existing command or skill, or to an issue URL",
+        "Issues go to the repo that owns each gap; github.com text passes a sensitive-terms scan; no push",
+        "The coworker prompt is generic, idempotent, and records before/after readiness",
+        "A fresh-context grader checks the prompt against every requirement"
       ]
     }
   ]

@@ -571,6 +571,13 @@ describe("validateEvals", () => {
     expect(validateEvals("/skills/demo")).toEqual([]);
   });
 
+  it("errors when two evals share an id", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(evalsJson([validEval(1), validEval(2), validEval(2), validEval(3)]));
+    const issues = validateEvals("/skills/demo");
+    expect(issues.map((i) => i.message)).toContain("evals/evals.json has duplicate id 2");
+  });
+
   it("errors when evals/evals.json is missing", () => {
     mockExistsSync.mockReturnValue(false);
     const issues = validateEvals("/skills/demo");

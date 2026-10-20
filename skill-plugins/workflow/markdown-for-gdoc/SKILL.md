@@ -134,6 +134,18 @@ nuke):
 - Order ops descending by `startIndex` so earlier edits don't invalidate
   later indices.
 
+**Re-read after every text change:**
+
+- Re-read the structure (for example `docs_get_structured`) after **every**
+  text replace or delete. Never reuse indices across a text change, even a
+  small one: style and bullet calls then hit the wrong paragraphs.
+- Deleting a blank paragraph merges it with its neighbor, and the merged
+  paragraph keeps the style of the one before it. Before you delete one,
+  note the `named_style` of the paragraph after it, and re-apply that style
+  right away (a HEADING_2 can turn into a bulleted NORMAL_TEXT).
+- After any text change next to a heading, re-check that heading's
+  `named_style`.
+
 ## Tabbed-document list safety (ABSOLUTE)
 
 Before any list edit, inspect the active MCP tool schema and identify the exact

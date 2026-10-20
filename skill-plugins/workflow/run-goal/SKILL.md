@@ -271,6 +271,9 @@ the next step on it with `&&`: a clean leak check then skips the commit.
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.
 
+When the grader finds a defect and you fix it, re-run that criterion's proof
+from scratch. A fix can break something the earlier proof covered.
+
 When the goal changes this machine, re-read the live state (installed files,
 loaded services) right before you report done. A later apply can revert a fix
 that passed earlier.

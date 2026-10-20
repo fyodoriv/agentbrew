@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
 import { lint, validateConfig } from "../lint.js";
 import { CONTEXT_BUDGET_LATEST_PATH, CONTEXT_BUDGET_METRICS_DIR, SHARED_RULES_PATH } from "../paths.js";
+import { pruneOldMetrics } from "../plugins/leak-audit.js";
 import { DEPLOYED_RULES_FILE_CHAR_BUDGET, findSharedRulesBloat, projectedDeployedRulesSize } from "../rules-hygiene.js";
 import { collectStatusData } from "../status.js";
 import {
@@ -240,6 +241,8 @@ export function writeContextBudgetSnapshot(snapshot: ContextBudgetSnapshot): str
   const latestPath = expandHome(CONTEXT_BUDGET_LATEST_PATH);
   writeFileSync(datedPath, payload, "utf-8");
   writeFileSync(latestPath, payload, "utf-8");
+  // Telemetry retention (#208 step 10): dated snapshots older than 180 days go.
+  pruneOldMetrics(metricsDir, 180);
   return [datedPath, latestPath];
 }
 

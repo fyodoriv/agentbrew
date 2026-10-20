@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Core leak audit** (#208 step 10): `agentbrew plugin leak-audit` reads
+  plugin leak patterns as data, fails closed, and runs in `npm run verify`.
+  The perf log redacts matching project names; context-budget snapshots are
+  kept for 180 days.
 - **Plugin MCP secrets by reference** (#208 step 9): plugin MCP env values
   must be `env:`, `keychain:` or `op://` references, runtimes must be pinned,
   and generated launchers resolve secrets at start so no agent config holds them.

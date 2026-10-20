@@ -5,6 +5,7 @@ import { ICON_SUCCESS } from "../ui/output.js";
 import { CapabilityError } from "./capabilities.js";
 import { policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
+import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
@@ -24,8 +25,9 @@ export function registerPluginCommands(program: Command): void {
   const plugin = program
     .command("plugin")
     .description("Manage pinned company plugins (preview; needs AGENTBREW_PLUGINS_V2=1)");
-  plugin.hook("preAction", () => {
-    if (pluginsV2Enabled()) return;
+  plugin.hook("preAction", (_cmd, action) => {
+    // The leak audit is a core gate: it runs (and fails closed) without the preview flag.
+    if (pluginsV2Enabled() || action.name() === "leak-audit") return;
     console.error(chalk.red("✗ Company plugins are a preview. Set AGENTBREW_PLUGINS_V2=1 to use them."));
     process.exit(2);
   });
@@ -116,6 +118,24 @@ export function registerPluginCommands(program: Command): void {
     .action((options: { agent: string; cwd?: string }) => {
       const block = pluginRulesFor(options.agent, repoIdOf(options.cwd ?? process.cwd()));
       if (block) console.log(block);
+    });
+
+  plugin
+    .command("leak-audit")
+    .description(
+      "Fail when tracked files match an installed plugin's leak patterns (exit 1), or patterns are unreadable (exit 2)",
+    )
+    .option("--cwd <dir>", "Repo checkout to audit (default: current directory)")
+    .action((options: { cwd?: string }) => {
+      try {
+        const findings = auditRepo(options.cwd ?? process.cwd());
+        for (const f of findings) console.error(`✗ ${f.file}:${f.line} matches a leak pattern of plugin ${f.plugin}`);
+        if (findings.length > 0) process.exitCode = 1;
+        else console.log("✓ leak audit: no plugin leak pattern matches");
+      } catch (e) {
+        console.error(chalk.red(`✗ leak audit failed closed: ${e instanceof Error ? e.message : String(e)}`));
+        process.exitCode = e instanceof LeakPatternError ? e.exitCode : 2;
+      }
     });
 
   plugin

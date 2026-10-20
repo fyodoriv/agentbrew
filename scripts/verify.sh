@@ -110,6 +110,7 @@ build-pipeline bash scripts/build-pipeline-guard.sh --full
 typecheck npx tsc --noEmit
 biome npx biome check src scripts real-e2e --error-on-warnings
 lint-security bash scripts/lint-security.sh
+leak-audit npx tsx src/cli.ts plugin leak-audit
 lint-artifacts bash scripts/lint-repo-artifacts.sh
 hook-fixtures bash scripts/run-hook-fixtures.sh
 lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md

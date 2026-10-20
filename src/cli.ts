@@ -325,6 +325,8 @@ async function emitNativePluginOutput(): Promise<void> {
   try {
     const { emitClaudeNative } = await import("./plugins/claude-native.js");
     emitClaudeNative();
+    const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
+    writeRedactPatterns();
   } catch (e) {
     console.error(`✗ Native Claude Code plugin output failed: ${e instanceof Error ? e.message : String(e)}`);
     process.exitCode = 1;

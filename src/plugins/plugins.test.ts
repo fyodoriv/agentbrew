@@ -3,7 +3,7 @@
  * section, and `plugin add/list/remove` with a tree hash.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
@@ -236,6 +236,34 @@ describe("plugin add / list / remove", () => {
     const src = makePluginRepo();
     addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
     expect(() => rollbackPlugin("acme")).toThrow(/no previous/i);
+  });
+
+  it("add refuses a plugin whose contributions exceed its capabilities (exit code 3)", () => {
+    const src = makePluginRepo({ ...MANIFEST, capabilities: {}, contributes: { rules: "rules/" } });
+    mkdirSync(join(src, "rules"));
+    writeFileSync(join(src, "rules", "a.md"), "rule");
+    git(src, "add", ".");
+    git(src, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "rules");
+    git(
+      src,
+      "-c",
+      "gpg.format=ssh",
+      "-c",
+      `user.signingkey=${SIGNER.file}`,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@example.com",
+      "tag",
+      "-s",
+      "v2.0.0",
+      "-m",
+      "v2.0.0",
+    );
+    expect(() => addPlugin(`${src}@v2.0.0`, { yes: true, signer: SIGNER.pub })).toThrow(
+      /capability not declared: agents \* \(plugin acme\)/,
+    );
+    expect(existsSync(pluginDir("acme"))).toBe(false);
   });
 
   it("remove deletes the checkout and the lock entry", () => {

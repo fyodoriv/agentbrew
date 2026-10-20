@@ -2,6 +2,7 @@ import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import type { Command } from "commander";
 import { ICON_SUCCESS } from "../ui/output.js";
+import { CapabilityError } from "./capabilities.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
 
@@ -12,7 +13,7 @@ export function pluginsV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean 
 
 function fail(error: unknown): void {
   console.error(chalk.red(`✗ ${error instanceof Error ? error.message : String(error)}`));
-  process.exitCode = 1;
+  process.exitCode = error instanceof CapabilityError ? error.exitCode : 1;
 }
 
 /** Registers `agentbrew plugin add|list|remove` (v2 company plugins, #208). */

@@ -273,7 +273,7 @@ export function refuseLockDrift(sources: Source[], team?: TeamConfig): boolean {
       "  Run `agentbrew sync --pull` to re-lock sources, or `agentbrew team set <url>` to re-pin the team overlay.\n",
     ),
   );
-  process.exitCode = 1;
+  process.exitCode = violations.some((v) => v.currentSha === "capability not declared") ? 3 : 1;
   return true;
 }
 

@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Plugin capabilities** (#208 step 5): undeclared rule agents, hook events,
+  MCP servers, and shell-running commands are refused with exit code 3 on
+  `plugin add` and `sync`.
 - **Signed company plugins** (#208 step 4): `plugin add` installs only from
   SSH-signed tags checked against `~/.config/agent-plugins/allowed_signers`
   (shared with dotfiles). New `plugin trust` / `--revoke` and

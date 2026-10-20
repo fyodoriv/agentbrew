@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
+import { assertCapabilities, checkCapabilities } from "./capabilities.js";
 import { capabilitiesHash, type PluginManifest, readManifest } from "./manifest.js";
 import { normalizeKey, signersFor, trustSigner, verifySignedTag } from "./signers.js";
 
@@ -60,6 +61,7 @@ function stage(url: string, ref: string, extraSigner?: string): Staged {
   try {
     git(pluginsRoot(), "clone", "--quiet", "--depth", "1", "--branch", ref, url, dir);
     const manifest = readManifest(dir);
+    assertCapabilities(dir, manifest);
     const keys = [...signersFor(manifest.name)];
     if (extraSigner && !keys.includes(extraSigner)) keys.push(extraSigner);
     const signer = verifySignedTag(dir, ref, manifest.name, keys);
@@ -165,6 +167,7 @@ export function pluginDrift(entry: PluginLockEntry): string | undefined {
     if (git(dir, "rev-parse", "HEAD") !== entry.commit) return git(dir, "rev-parse", "HEAD");
     if (git(dir, "rev-parse", "HEAD^{tree}") !== entry.tree) return "tree changed";
     if (git(dir, "status", "--porcelain", "--untracked-files=all") !== "") return "modified";
+    if (checkCapabilities(dir, readManifest(dir)).length > 0) return "capability not declared";
   } catch {
     return "unreadable";
   }

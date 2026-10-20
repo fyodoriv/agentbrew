@@ -502,6 +502,7 @@ agentbrew plugin remove acme
 
 - The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
 - Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
+- Capabilities are deny by default. Each rule needs its agents in `capabilities.agents` (front matter `agents:`, or any declared agent), each hook event in `capabilities.hooks` (`Event` or `Event:matcher`), each MCP server in `capabilities.mcp_servers`, and a command that runs shell (`allowed-tools: Bash` or `` !`cmd` ``) needs `commands_exec: true`. Anything else fails with exit code 3 and `capability not declared: <kind> <value> (plugin <name>)`, on `plugin add` and on `sync`.
 - Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
 - `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.

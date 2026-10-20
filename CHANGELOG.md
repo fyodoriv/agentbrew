@@ -72,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Memory daemon on Python 3.15** — the memory LaunchAgent and `memory`
+  CLI calls now pass `uvx --python 3.13`. On a Mac where uv had Python 3.15,
+  the daemon failed to install `onnxruntime` and every agent saw
+  `ECONNREFUSED` for the `memory` MCP server.
+
 - **Competitor spot-check can target a repo by path** —
   `competitor-spot-check.sh --root <repo-dir> "<feature>"` scans that repo
   instead of the shell cwd, so an agent that cannot `cd` (or has a stale

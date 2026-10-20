@@ -605,6 +605,19 @@
         "The new skill gets an eval case, and README and AGENTS.md both name it",
         "The report keeps the real-machine task open and says what only the user can do there"
       ]
+    },
+    {
+      "id": 51,
+      "prompt": "/goal completely implement all opened issues",
+      "expected_output": "The agent resolves 'opened issues' before the contract: it lists both the GitHub issues and the repo's task queue, says which one the goal means (the open GitHub issues) and leaves the other out of scope in writing. The contract has one done-criterion per issue, taken from each issue's own 'Done when', plus gate, PR, and 0 open issues as the metric. Each fix gets a test that fails on the unchanged code first. A done-criterion that needs a deploy step (for example a sync that installs a command) is proven by removing the deployed output and showing the real tool recreates it. A fresh-context grader checks every issue before the first push.",
+      "expectations": [
+        "The contract names which backlog 'opened issues' means and puts the other backlog out of scope",
+        "There is one done-criterion per issue, copied from each issue's own 'Done when'",
+        "The metric is the open-issue count with baseline and target 0, measured by a runnable command",
+        "At least one fix shows a test failing on the unchanged code before it passes",
+        "A deploy-type criterion is proven by recreating the deployed output, not by a dry run alone",
+        "A separate grader reviews every issue before the PR is pushed"
+      ]
     }
   ]
 }

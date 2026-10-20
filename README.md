@@ -269,6 +269,11 @@ advisory. Fully restart Cursor or use **Developer: Reload Window** yourself;
 agentbrew never quits Cursor, kills processes, or edits `~/.cursor/mcp.json`.
 Cold login ordering should start memory before the IDE.
 
+The daemon runs on Python 3.13 (`uvx --python 3.13`). uvx otherwise picks the
+newest Python it has, and the service's `onnxruntime` dependency has no wheels
+for Python 3.15 yet. Without the pin, the install fails, nothing listens on
+port 18765, and agents report `ECONNREFUSED` for the `memory` server.
+
 In an `Agentfile.yaml`, `memory.enabled` makes the same lifecycle part of the normal one-command sync:
 
 ```yaml

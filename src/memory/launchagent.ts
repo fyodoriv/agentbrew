@@ -4,7 +4,7 @@ import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { buildLaunchAgentPath, LAUNCHAGENT_LANG, resolveAgentBrewCliJsPath } from "../sync/scheduler-paths.js";
-import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC } from "./constants.js";
+import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
 import { memoryLaunchAgentLogDir } from "./paths.js";
 
@@ -56,10 +56,7 @@ export function buildMemoryDaemonPlist(home: string, logDir: string, uvxBin: str
   <key>ProgramArguments</key>
   <array>
     <string>${uvxBin}</string>
-    <string>--system-certs</string>
-    <string>--from</string>
-    <string>${MEMORY_PINNED_SPEC}</string>
-    <string>memory</string>
+${MEMORY_UVX_ARGS.map((arg) => `    <string>${escapeXml(arg)}</string>`).join("\n")}
     <string>server</string>
     <string>--streamable-http</string>
     <string>--sse-host</string>

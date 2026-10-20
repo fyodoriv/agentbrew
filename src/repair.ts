@@ -20,6 +20,7 @@ import {
   formatDriftSummary,
 } from "./drift.js";
 import { checkLaunchAgentPathDrift } from "./drift-checks/launchagent-path.js";
+import { driftFix } from "./drift-fixes.js";
 import { runMcpHealCycle } from "./mcp/heal-cycle.js";
 import { snapshotAgentConfigs } from "./ops.js";
 import type { RepairAction } from "./repair-log.js";
@@ -52,11 +53,28 @@ function isUserActionOnly(item: DriftItem): boolean {
   return false;
 }
 
-function reportRemainingDrift(remainingItems: DriftItem[]): void {
+const driftKey = (d: DriftItem): string => `${d.agent}:${d.type}:${d.detail}`;
+
+/**
+ * Drift that one full pass did not change. Another pass would not change it
+ * either, so `status --fix` reports it with its fix hint and stops (#279).
+ */
+function reportUnfixableDrift(remainingItems: DriftItem[], driftBefore: DriftItem[]): void {
+  const before = new Set(driftBefore.map(driftKey));
+  const stuck = remainingItems.filter((d) => before.has(driftKey(d)));
+  if (stuck.length === 0) return;
+  console.log(chalk.yellow(`\n${stuck.length} issue(s) did not change after a full sync; cannot fix automatically:\n`));
+  for (const item of stuck) {
+    console.error(`  ${ICON_ERROR} ${item.agent} [${item.type}] ${item.detail} — fix: ${driftFix(item)}`);
+  }
+}
+
+function reportRemainingDrift(remainingItems: DriftItem[], driftBefore: DriftItem[] = []): void {
   if (remainingItems.length === 0) {
     console.log(ICON_SUCCESS + chalk.bold(" All drift resolved.\n"));
     return;
   }
+  reportUnfixableDrift(remainingItems, driftBefore);
 
   const userActionItems = remainingItems.filter(isUserActionOnly);
   const syncFailedItems = remainingItems.filter((d) => !isUserActionOnly(d));
@@ -163,39 +181,54 @@ async function runFix(started: number): Promise<void> {
 
   console.log(chalk.bold("\nFixing sync drift...\n"));
 
-  await syncMcpServers();
+  // One pass only: `status --fix` never loops sync. Each step prints its time
+  // so a slow step is visible (#279).
+  const step = async (name: string, run: () => unknown): Promise<void> => {
+    const stepStarted = Date.now();
+    try {
+      await run();
+    } finally {
+      console.log(chalk.dim(`  ${name.padEnd(12)} ${Date.now() - stepStarted} ms`));
+    }
+  };
+
+  await step("mcp", () => syncMcpServers());
   // syncInstructions must run before syncRules so the managed rules section
   // (appended by syncRules) is not overwritten by the raw AGENTS.md template.
-  await syncInstructions({ quiet: true });
+  await step("instructions", () => syncInstructions({ quiet: true }));
   // syncRules dedupes shared-rules.md before it deploys the rules.
-  await syncRules();
-  await syncCommands();
-  await syncSkills({ quiet: true });
-  // syncSkills now calls cleanBrokenSymlinksGlobally internally, but fix()
-  // still invokes it explicitly as a belt-and-braces guarantee — a syncSkills
-  // early-return (e.g. "no agents detected" before sweep) should not leave
-  // broken symlinks around when the user explicitly asked for repair.
-  cleanBrokenSymlinksGlobally();
-  await syncAgentDefs({ quiet: true });
+  await step("rules", () => syncRules());
+  await step("commands", () => syncCommands());
+  await step("skills", async () => {
+    await syncSkills({ quiet: true });
+    // syncSkills calls cleanBrokenSymlinksGlobally internally, but fix() still
+    // invokes it explicitly: a syncSkills early-return (e.g. "no agents
+    // detected") should not leave broken symlinks when the user asked for repair.
+    cleanBrokenSymlinksGlobally();
+  });
+  await step("agents", () => syncAgentDefs({ quiet: true }));
   // syncHooks is the only path that materializes hooks drift fixes — without
   // this call, hooks items in `driftBefore` would be falsely classified as
-  // "fixed" by the diff below (same class of bug as the mcp-permissions one
-  // pre-2026-04-27). See sync-idempotent-and-complete issue 4.
-  await syncHooks({ quiet: true });
-  await syncModels({ quiet: true });
+  // "fixed" by the diff below. See sync-idempotent-and-complete issue 4.
+  await step("hooks", () => syncHooks({ quiet: true }));
+  await step("models", () => syncModels({ quiet: true }));
   if (process.platform === "darwin" && checkLaunchAgentPathDrift().length > 0) {
+    await step("launchagent", async () => {
+      try {
+        await installLaunchAgent();
+        await repairAgentbrewLaunchAgentPaths();
+      } catch (e) {
+        logSkipped("repair/installLaunchAgent", e);
+      }
+    });
+  }
+  await step("mcp-heal", async () => {
     try {
-      await installLaunchAgent();
-      await repairAgentbrewLaunchAgentPaths();
+      await runMcpHealCycle();
     } catch (e) {
-      logSkipped("repair/installLaunchAgent", e);
+      logSkipped("repair/runMcpHealCycle", e);
     }
-  }
-  try {
-    await runMcpHealCycle();
-  } catch (e) {
-    logSkipped("repair/runMcpHealCycle", e);
-  }
+  });
 
   // Re-check only auto-fixable drift types (skill-validity requires manual fixes).
   // Every check that contributes to `driftBefore` (via `collectDrift`) and is in
@@ -257,5 +290,5 @@ async function runFix(started: number): Promise<void> {
     console.log();
   }
 
-  reportRemainingDrift(remainingItems);
+  reportRemainingDrift(remainingItems, driftBefore);
 }

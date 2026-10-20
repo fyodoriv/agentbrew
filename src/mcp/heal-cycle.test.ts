@@ -431,4 +431,32 @@ describe("runMcpHealCycle", () => {
       if (existsSync(logPath)) unlinkSync(logPath);
     }
   });
+  it("runs the sync heal at most once per cycle, however many pairs need it (#279)", async () => {
+    const names = ["a", "b", "c", "d"];
+    const surfaces: ProbeSurface[] = [
+      { agent: "cursor", servers: Object.fromEntries(names.map((n) => [n, { command: `${n}-mcp`, args: [] }])) },
+    ];
+    const probeAll = vi.fn(async (input: ProbeSurface[]) =>
+      input.flatMap((surface) =>
+        Object.keys(surface.servers).map((name) =>
+          result({ name, agent: surface.agent, status: "launch_failed", error: "spawn ENOENT" }),
+        ),
+      ),
+    );
+    const syncHeal = vi.fn(async () => ({ healed: true, action: "agentbrew-sync-mcp" }));
+
+    const cycle = await runMcpHealCycle({
+      surfaces,
+      probeAll,
+      healActions: new Map([["sync", syncHeal]]),
+      writeSnapshot: vi.fn(),
+      writeFollowups: vi.fn(),
+      loadPerCore: () => 0,
+      now: () => new Date("2026-10-20T12:00:00.000Z"),
+    });
+
+    expect(syncHeal).toHaveBeenCalledTimes(1);
+    expect(cycle.attempts.map((a) => a.name)).toEqual(names);
+    expect(cycle.attempts.every((a) => a.action === "agentbrew-sync-mcp")).toBe(true);
+  });
 });

@@ -143,13 +143,23 @@ async function collectHealAttempts(
   deferred: ReadonlySet<ProbeResult>,
 ): Promise<McpHealAttempt[]> {
   const attempts: McpHealAttempt[] = [];
+  // A sync heal rewrites every server config, so one run covers every pair
+  // that needs it. Running it once per failing pair looped full MCP syncs
+  // (#279). Later pairs reuse the first sync outcome.
+  let syncAttempt: McpHealAttempt | undefined;
   for (const failure of failures) {
     if (deferred.has(failure)) continue;
     if (isSuppressedFailure(failure, suppressionByServer)) continue;
     const category = categorizeProbeResult(failure);
     const action = category ? healActions.get(category) : undefined;
     if (!category || !action) continue;
-    attempts.push(await runHealAction(failure, action, category, attemptedAt));
+    if (category === "sync" && syncAttempt) {
+      attempts.push({ ...syncAttempt, name: failure.name, agent: failure.agent, status: failure.status });
+      continue;
+    }
+    const attempt = await runHealAction(failure, action, category, attemptedAt);
+    if (category === "sync") syncAttempt = attempt;
+    attempts.push(attempt);
   }
   return attempts;
 }

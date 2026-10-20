@@ -520,4 +520,43 @@ describe("fix", () => {
     expect(logOutput).toContain("commands");
     expect(logOutput).toContain("instructions");
   });
+  it("reports drift that one pass did not change as not fixable, with its fix hint (#279)", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    const stuck = { agent: "claude-code", type: "mcp" as const, detail: "missing server: chrome-devtools" };
+    mockCollectDrift.mockReturnValueOnce([stuck]);
+    mockCheckMcpDrift.mockReturnValueOnce([stuck]);
+
+    await fix();
+
+    expect(mockSyncMcpServers).toHaveBeenCalledTimes(1);
+    const out = [
+      ...(console.log as ReturnType<typeof vi.fn>).mock.calls,
+      ...(console.error as ReturnType<typeof vi.fn>).mock.calls,
+    ]
+      .flat()
+      .join("\n");
+    expect(out).toContain("cannot fix automatically");
+    expect(out).toContain("chrome-devtools — fix: agentbrew sync --only mcp");
+  });
+
+  it("prints how long each sync step took (#279)", async () => {
+    mockLoadState.mockReturnValue(makeState());
+
+    await fix();
+
+    const out = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join("\n");
+    for (const step of [
+      "mcp",
+      "instructions",
+      "rules",
+      "commands",
+      "skills",
+      "agents",
+      "hooks",
+      "models",
+      "mcp-heal",
+    ]) {
+      expect(out).toMatch(new RegExp(`${step}\\s+\\d+ ms`));
+    }
+  });
 });

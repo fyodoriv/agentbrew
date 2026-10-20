@@ -60,6 +60,9 @@ The map lives in `storyForModule` in `src/core/events.ts`.
 `scripts/doctor.sh` alias for a CLI command). It prints no color and exits 1
 on drift. `agentbrew status` is the same check for people, and
 `agentbrew status --fix` repairs what it can.
+It runs one sync pass and prints the time of each step. The MCP heal runs
+the MCP sync at most once. Drift that the pass did not change is listed as
+"cannot fix automatically", each item with its fix.
 
 Every drift item ends with its fix, for example:
 

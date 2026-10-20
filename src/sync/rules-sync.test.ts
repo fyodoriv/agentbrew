@@ -674,7 +674,7 @@ describe("syncRules — slice 3a–3c canary delegation (delegate-rules-to-ai-ru
 
     await syncRules();
 
-    // Helper called once with every canary agent (rulesFile + rulesDir).
+    // Helper called once with every canary agent.
     // Slice 3c expanded the set from 4 to 11 by adding the 7
     // free-capability gain agents (amp, cline, copilot, firebender,
     // goose, kilo, roo-code). The 3 rulesFile canaries tested for
@@ -853,48 +853,6 @@ describe("rules deduplication — shared paths", () => {
     // Count writes to CLAUDE.md — should be exactly 1, not 2
     const claudeWrites = writePaths.filter((p) => p.includes("CLAUDE.md"));
     expect(claudeWrites).toHaveLength(1);
-  });
-});
-
-describe("per-file rules sync error handling", () => {
-  it("logs a warning and continues when a per-file rule write fails", async () => {
-    // Setup: state with agents, shared rules exist so syncRules proceeds
-    mockLoadState.mockReturnValue({
-      agents: [{ name: "claude-code", detected: true, skillsDir: "~/.claude/skills" }],
-      sources: [],
-      mcpServers: [],
-      catalogVersion: "0",
-    });
-
-    // shared-rules.md exists with content
-    mockExistsSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("shared-rules.md")) return true;
-      if (path.includes("agentbrew/rules")) return true;
-      return true;
-    });
-
-    mockReadFileSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("shared-rules.md")) return "# Rules\nSome rules.";
-      // Per-file rule read throws to simulate permission error
-      if (path.includes("agentbrew/rules")) throw new Error("permission denied");
-      return `${START_MARKER}\n# Rules\n${END_MARKER}`;
-    });
-
-    // rules dir has one file
-    mockReaddirSync.mockImplementation((p) => {
-      const path = String(p);
-      if (path.includes("agentbrew/rules")) return ["broken-rule.md"] as never;
-      return [] as never;
-    });
-
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await syncRules();
-
-    // The error should be logged (via log.warn which uses console.warn)
-    // and sync should complete without throwing
-    warnSpy.mockRestore();
   });
 });
 

@@ -16,11 +16,7 @@
 #
 # OPTIONAL SYNC SURFACES (enable the corresponding sync by setting the field)
 #   rulesFile: string — path to a single rules file. Agentbrew injects its
-#         managed section between markers (see src/sync/rules-sync.ts). May
-#         coexist with rulesDir.
-#   rulesDir: string — path to a per-file rules directory (e.g. ~/.my-agent/rules/).
-#         One file per rule; agentbrew only touches its own filenames. May
-#         coexist with rulesFile.
+#         managed section between markers (see src/sync/rules-sync.ts).
 #   commandsDir: string — path to commands directory. Commands are .md files
 #         transformed per-agent on write.
 #   commandTransform: "gemini" | ... — transform key
@@ -65,7 +61,7 @@
 #         is detected, this agent is filtered out of skills/commands/agents
 #         sync to avoid double-writes. MCP stays separate.
 #   experimental: true — skills-only agent with minimal real-world
-#         validation. Implies no rulesFile/rulesDir/commandsDir/agentsDir/
+#         validation. Implies no rulesFile/commandsDir/agentsDir/
 #         hooksFile/mcpConfig — experimental agents are tested by the
 #         author's laptop only. A dedicated unit test
 #         (src/core/agents.test.ts) enforces the "experimental ⇒ skills-only"

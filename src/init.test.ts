@@ -429,7 +429,6 @@ describe("initForce", () => {
         detected: true,
         skillsDir: "~/.cursor/skills",
         mcpConfig: "~/.cursor/mcp.json",
-        rulesDir: "~/.cursor/rules",
         commandsDir: "~/.cursor/commands",
         agentsDir: "~/.cursor/agents",
         commandTransform: (s: string) => s,
@@ -447,7 +446,6 @@ describe("initForce", () => {
     expect(agent.name).toBe("cursor");
     expect(agent.skillsDir).toBe("~/.cursor/skills");
     expect(agent.mcpConfig).toBe("~/.cursor/mcp.json");
-    expect(agent.rulesDir).toBe("~/.cursor/rules");
     expect(agent.commandsDir).toBe("~/.cursor/commands");
     expect(agent.agentsDir).toBe("~/.cursor/agents");
     expect(agent.commandFileExt).toBe(".md");

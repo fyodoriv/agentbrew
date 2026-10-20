@@ -55,7 +55,6 @@ const SHARED_PATH_ALLOWLIST: ReadonlySet<string> = new Set([
 const FEATURES = [
   { feature: "skills", field: "skillsDir" as const, required: true },
   { feature: "rules-file", field: "rulesFile" as const, required: false },
-  { feature: "rules-dir", field: "rulesDir" as const, required: false },
   { feature: "commands", field: "commandsDir" as const, required: false },
   { feature: "agents", field: "agentsDir" as const, required: false },
   { feature: "hooks", field: "hooksFile" as const, required: false },
@@ -151,16 +150,13 @@ describe("Carve-out classification stays consistent with agents.yaml", () => {
     }
   });
 
-  it("AGENTBREW_ONLY_RULES_AGENTS subset every agent has rulesFile or rulesDir", () => {
+  it("AGENTBREW_ONLY_RULES_AGENTS subset every agent has rulesFile", () => {
     for (const carveout of AGENTBREW_ONLY_RULES_AGENTS) {
       const agent = AGENT_DEFINITIONS.find((a) => a.name === carveout);
       expect(agent, `Unknown rules carve-out: ${carveout}`).toBeDefined();
-      // Rules carve-outs MUST have either rulesFile or rulesDir to write to.
+      // Rules carve-outs MUST have a rulesFile to write to.
       if (agent) {
-        expect(
-          agent.rulesFile !== undefined || agent.rulesDir !== undefined,
-          `${carveout} is a rules carve-out but has neither rulesFile nor rulesDir`,
-        ).toBe(true);
+        expect(agent.rulesFile !== undefined, `${carveout} is a rules carve-out but has no rulesFile`).toBe(true);
       }
     }
   });

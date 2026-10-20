@@ -60,8 +60,6 @@ export interface AgentConfig {
   mcpFormat?: "json" | "yaml" | "toml" | "opencode" | (string & {});
   mcpPermissionsConfig?: McpPermissionsConfig;
   rulesFile?: string;
-  /** Directory for per-file rules (e.g., ~/.my-agent/rules/). */
-  rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
   /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (AGENT.md per subdir). */

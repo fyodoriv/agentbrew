@@ -14,7 +14,7 @@ import { CANARY_DELEGATED_AGENTS } from "./rules-sync.js";
  * The 36K-LOC `rules-sync.test.ts` extensively covers per-rule SYNC behavior
  * (merged content, replaceManagedSection, dedup, drift detection). This file
  * is the orthogonal lock: per-AGENT METADATA correctness, so a future change
- * that flips an agent's rulesFile / rulesDir or moves an agent across the
+ * that flips an agent's rulesFile or moves an agent across the
  * delegation boundary fails loudly here even when the integration tests pass.
  *
  * Surfaced 2026-05-25 ecosystem audit (subagent report § "Test Coverage Holes").
@@ -41,7 +41,7 @@ function defOf(name: string): Omit<AgentConfig, "detected"> {
 
 // ── Carve-out matrix (native rules write target) ──────────────────────────
 //
-// Each row pins (a) the expected rulesFile and/or rulesDir paths, (b) the
+// Each row pins (a) the expected rulesFile path, (b) the
 // classification (in AGENTBREW_ONLY_RULES_AGENTS, NOT in CANARY_DELEGATED_AGENTS).
 // A carve-out that drifts on either path silently breaks rules sync for that
 // agent — this matrix is the regression fence.
@@ -51,15 +51,9 @@ interface CarveoutRow {
   name: string;
   /**
    * Expected rulesFile (tilde-prefixed). `undefined` when the agent
-   * doesn't use a single-file rules surface (e.g. an agent that uses rulesDir only).
+   * has no single-file rules surface.
    */
   expectedRulesFile?: string;
-  /**
-   * Expected rulesDir (tilde-prefixed). `undefined` when the agent
-   * doesn't have a per-file rules dir (e.g. augment has only
-   * a single rules file).
-   */
-  expectedRulesDir?: string;
 }
 
 const CARVEOUT_MATRIX: CarveoutRow[] = [
@@ -87,14 +81,9 @@ describe("Rules carve-out matrix — per-agent metadata invariants", () => {
       expect(() => defOf(row.name)).not.toThrow();
     });
 
-    it(`rulesFile is ${row.expectedRulesFile ?? "(none — rulesDir-only agent)"}`, () => {
+    it(`rulesFile is ${row.expectedRulesFile}`, () => {
       const def = defOf(row.name);
       expect(def.rulesFile).toBe(row.expectedRulesFile);
-    });
-
-    it(`rulesDir is ${row.expectedRulesDir ?? "(none — rulesFile-only agent)"}`, () => {
-      const def = defOf(row.name);
-      expect(def.rulesDir).toBe(row.expectedRulesDir);
     });
 
     it("is classified as native carve-out (in AGENTBREW_ONLY_RULES_AGENTS, NOT in CANARY_DELEGATED_AGENTS)", () => {
@@ -125,13 +114,8 @@ describe("Rules carve-out matrix — per-agent metadata invariants", () => {
 interface DelegatedRow {
   /** Agent name. */
   name: string;
-  /**
-   * Whether this agent expects a single-file rules surface (rulesFile only)
-   * or a per-file dir (rulesDir only) or both. Pinned per-row because the
-   * shape varies and a structural change should surface as a focused
-   * per-row failure rather than a sweeping integration regression.
-   */
-  shape: "rulesFile-only" | "rulesDir-only" | "both";
+  /** Rules surface shape; every live agent writes a single rules file. */
+  shape: "rulesFile-only";
 }
 
 const DELEGATED_MATRIX: DelegatedRow[] = [
@@ -170,20 +154,7 @@ describe("Rules delegated matrix — ai-rules-managed agents", () => {
 
     it(`has expected rules-surface shape: ${row.shape}`, () => {
       const def = defOf(row.name);
-      switch (row.shape) {
-        case "rulesFile-only":
-          expect(def.rulesFile).toBeDefined();
-          expect(def.rulesDir).toBeUndefined();
-          break;
-        case "rulesDir-only":
-          expect(def.rulesFile).toBeUndefined();
-          expect(def.rulesDir).toBeDefined();
-          break;
-        case "both":
-          expect(def.rulesFile).toBeDefined();
-          expect(def.rulesDir).toBeDefined();
-          break;
-      }
+      expect(def.rulesFile).toBeDefined();
     });
   });
 

@@ -30,7 +30,6 @@ interface RawAgentEntry {
   mcpConfigVscodeExt?: unknown;
   mcpConfigVscodeSettings?: unknown;
   rulesFile?: unknown;
-  rulesDir?: unknown;
   commandsDir?: unknown;
   agentsDir?: unknown;
   agentsDirFormat?: unknown;
@@ -55,7 +54,6 @@ const EXPERIMENTAL_FORBIDDEN_FIELDS = [
   "mcpConfigVscodeExt",
   "mcpConfigVscodeSettings",
   "rulesFile",
-  "rulesDir",
   "commandsDir",
   "agentsDir",
   "hooksFile",

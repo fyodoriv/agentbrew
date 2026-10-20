@@ -40,18 +40,16 @@ describe("makeMcpAgentDef", () => {
     expect(agent.mcpConfig).toBeUndefined();
   });
 
-  it("preserves optional mcpKey/mcpFormat/rulesFile/rulesDir/commandsDir overrides", () => {
+  it("preserves optional mcpKey/mcpFormat/rulesFile/commandsDir overrides", () => {
     const agent = makeMcpAgentDef("overlay-desktop", {
       mcpKey: "mcpServers",
       mcpFormat: "overlay-desktop",
       rulesFile: "~/.overlay-desktop/rules.md",
-      rulesDir: "~/.overlay-desktop/rules/",
       commandsDir: "~/.overlay-desktop/commands/",
     });
     expect(agent.mcpKey).toBe("mcpServers");
     expect(agent.mcpFormat).toBe("overlay-desktop");
     expect(agent.rulesFile).toBe("~/.overlay-desktop/rules.md");
-    expect(agent.rulesDir).toBe("~/.overlay-desktop/rules/");
     expect(agent.commandsDir).toBe("~/.overlay-desktop/commands/");
   });
 
@@ -60,7 +58,6 @@ describe("makeMcpAgentDef", () => {
     expect(agent.mcpKey).toBeUndefined();
     expect(agent.mcpFormat).toBeUndefined();
     expect(agent.rulesFile).toBeUndefined();
-    expect(agent.rulesDir).toBeUndefined();
     expect(agent.commandsDir).toBeUndefined();
   });
 });

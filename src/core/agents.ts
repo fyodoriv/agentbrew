@@ -29,7 +29,6 @@ interface AgentYamlEntry {
   mcpConfigVscodeExt?: { extensionId: string; filename: string };
   mcpConfigVscodeSettings?: boolean;
   rulesFile?: string;
-  rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
   agentsDirFormat?: "flat" | "subdir";
@@ -138,7 +137,6 @@ function applyOptionalFields(config: Omit<AgentConfig, "detected">, entry: Agent
   if (entry.mcpFormat) config.mcpFormat = entry.mcpFormat;
   applyMcpPermissionsConfig(config, entry);
   if (entry.rulesFile) config.rulesFile = resolveAgentYamlPath(entry.rulesFile);
-  if (entry.rulesDir) config.rulesDir = resolveAgentYamlPath(entry.rulesDir);
   if (entry.commandsDir) config.commandsDir = resolveAgentYamlPath(entry.commandsDir);
   if (entry.agentsDir) config.agentsDir = resolveAgentYamlPath(entry.agentsDir);
   if (entry.agentsDirFormat) config.agentsDirFormat = entry.agentsDirFormat;

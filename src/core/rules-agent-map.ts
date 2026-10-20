@@ -25,7 +25,7 @@
  *
  * Sources:
  *   - agentbrew canonical: `src/core/agents.yaml` filtered to entries with
- *     `rulesFile` or `rulesDir`
+ *     `rulesFile`
  *   - ai-rules canonical: `ai-rules list-agents` v1.6.0 2026-04-27
  *
  * See `docs/competition/block-ai-rules-vs-agentbrew.md` § Agent coverage

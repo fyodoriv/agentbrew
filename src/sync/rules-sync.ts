@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { dirname } from "node:path";
 import chalk from "chalk";
 import { sync as writeFileSync } from "write-file-atomic";
 import { undetectedAgentNames } from "../agents.js";
@@ -10,7 +10,7 @@ import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
 import { loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
-import { RULES_DIR, SHARED_RULES_PATH } from "../paths.js";
+import { SHARED_RULES_PATH } from "../paths.js";
 import { type DedupeResult, dedupeSharedRulesContent } from "../rules-hygiene.js";
 import { requireState } from "../state.js";
 import type { SyncOptions } from "../types.js";
@@ -27,7 +27,7 @@ const END_MARKER = "<!-- agentbrew:end -->";
 
 /**
  * The agents whose rules go through `ai-rules generate` (rulesFile +
- * rulesDir kinds, unified by {@link getAllSyncTargets}). The native
+ * {@link getAllSyncTargets}). The native
  * carve-out (augment) plus claude-desktop transitively
  * stay on the native path — see `AGENTBREW_ONLY_RULES_RATIONALE` in
  * `src/core/rules-agent-map.ts`. If `ai-rules` is missing the delegated
@@ -169,12 +169,10 @@ export function dedupeSharedRulesFile(options?: { dryRun?: boolean }): DedupeRes
   return result;
 }
 
-/** Discriminated unified target. `"file"` = agent rulesFile (skipped if
- *  absent); `"dir"` = `<rulesDir>/agentbrew.md` (created on demand). */
+/** One agent rulesFile target (skipped when the file is absent). */
 interface DiffTarget {
   agentName: string;
   expandedPath: string;
-  kind: "file" | "dir";
   existingContent: string | undefined;
 }
 
@@ -209,9 +207,7 @@ function processRuleDiff(
   return { ...result, missingFile: 0 };
 }
 
-/** Carve-out: shared (per-target writer; "file" kind writes carve-out rulesFile,
- *  "dir" kind writes the rulesDir/agentbrew.md consolidated file used by the
- *  delegated bridge). */
+/** Carve-out: shared (per-target writer for an agent rulesFile). */
 function writeRuleDiff(
   diff: RuleDiff,
   target: DiffTarget,
@@ -221,7 +217,6 @@ function writeRuleDiff(
 ): { synced: number; errors: number } {
   try {
     if (!options.dryRun) {
-      if (target.kind === "dir") mkdirSync(dirname(target.expandedPath), { recursive: true });
       writeIfChanged(target.expandedPath, diff.newContent ?? "", manifest);
     }
     const icon = options.dryRun ? log.blue("~") : log.green("✓");
@@ -287,85 +282,9 @@ export function dedupeRulesWritesByResolvedPath(
   return { diffs: entries.map((e) => e.diff), targetInputs: entries.map((e) => e.target) };
 }
 
-interface SyncRuleFileOpts {
-  file: string;
-  rulesSourceDir: string;
-  targetDir: string;
-  agentName: string;
-  manifest: Manifest;
-  log: Logger;
-  dryRun: boolean;
-}
-
-/** Carve-out: shared (per-file copy of rules/*.md into a rulesDir agent's dir;
- *  e.g. a rulesDir entry). */
-function syncSingleRuleFile(opts: SyncRuleFileOpts): { synced: number; errors: number } {
-  const { file, rulesSourceDir, targetDir, agentName, manifest, log, dryRun } = opts;
-  try {
-    const sourceContent = readFileSync(join(rulesSourceDir, file), "utf-8");
-    const targetPath = join(targetDir, file);
-    if (dryRun && !existsSync(targetPath)) {
-      log.log(`  ${log.blue("~")} ${agentName}: would add rule ${log.cyan(basename(file, ".md"))}`);
-      return { synced: 1, errors: 0 };
-    }
-    if (!dryRun) {
-      const written = writeIfChanged(targetPath, sourceContent, manifest);
-      return { synced: written ? 1 : 0, errors: 0 };
-    }
-    return { synced: 0, errors: 0 };
-  } catch (err) {
-    const message = errorMessage(err);
-    log.warn(`${agentName}: failed to sync rule ${file} — ${message}`);
-    return { synced: 0, errors: 1 };
-  }
-}
-
-/** Carve-out: shared (per-file rules sync — copies ~/.config/agentbrew/rules/*.md
- *  into every detected rulesDir-bearing agent's dir, distinct from the consolidated
- *  agentbrew.md write that the delegated bridge produces). */
-function syncPerFileRules(
-  manifest: Manifest,
-  log: Logger,
-  dryRun: boolean,
-  skip: ReadonlySet<string>,
-): { synced: number; errors: number } {
-  let synced = 0;
-  let errors = 0;
-  const rulesSourceDir = expandHome(RULES_DIR);
-  if (!existsSync(rulesSourceDir)) return { synced, errors };
-
-  const ruleFiles = readdirSync(rulesSourceDir).filter((f) => f.endsWith(".md") || f.endsWith(".mdc"));
-  if (ruleFiles.length === 0) return { synced, errors };
-
-  const rulesTargets = AGENT_DEFINITIONS.filter((a) => a.rulesDir !== undefined && !skip.has(a.name)).map((a) => ({
-    agent: a.name,
-    dir: a.rulesDir ?? "",
-  }));
-
-  for (const target of rulesTargets) {
-    const targetDir = expandHome(target.dir);
-    if (!dryRun) mkdirSync(targetDir, { recursive: true });
-
-    for (const file of ruleFiles) {
-      const result = syncSingleRuleFile({
-        file,
-        rulesSourceDir,
-        targetDir,
-        agentName: target.agent,
-        manifest,
-        log,
-        dryRun,
-      });
-      synced += result.synced;
-      errors += result.errors;
-    }
-  }
-  return { synced, errors };
-}
-
 /** Carve-out: shared (reads each carve-out's existing file content for the diff;
- *  rulesDir kind treats absent as empty so the create-on-demand path triggers). */
-function buildTargetInput(target: { agentName: string; expandedPath: string; kind: "file" | "dir" }): DiffTarget {
+ *  absent stays undefined so the diff skips it). */
+function buildTargetInput(target: { agentName: string; expandedPath: string }): DiffTarget {
   const { expandedPath } = target;
   let existingContent: string | undefined;
   if (existsSync(expandedPath)) {
@@ -374,10 +293,8 @@ function buildTargetInput(target: { agentName: string; expandedPath: string; kin
     } catch (e) {
       logSkipped("sync/rules-sync/buildTargetInput", e);
     }
-  } else if (target.kind === "dir") {
-    existingContent = "";
   }
-  return { agentName: target.agentName, expandedPath, kind: target.kind, existingContent };
+  return { agentName: target.agentName, expandedPath, existingContent };
 }
 
 /** Carve-out: shared (final summary line covering carve-outs + delegated bridge). */
@@ -457,28 +374,16 @@ export function collectCanaryDelegation(
   return delegateRulesGenerate({ agents: canaryAgents, sharedRules: deployRules });
 }
 
-/** Carve-out: shared (combined target list — rulesFile agents get
- *  `kind: "file"`; rulesDir canary agents get `kind: "dir"` pointing at
- *  `<rulesDir>/agentbrew.md`. Both shapes share `applyRuleDiffs`).
+/** Carve-out: shared (rulesFile targets minus agents the state marks not detected).
  *
  *  Used by `syncRules` only — external callers (initRules, showRules,
  *  drift) iterate rulesFile-only via {@link getRulesTargets}. */
-function getAllSyncTargets(
-  skip: ReadonlySet<string>,
-): Array<{ agentName: string; expandedPath: string; kind: "file" | "dir" }> {
+function getAllSyncTargets(skip: ReadonlySet<string>): Array<{ agentName: string; expandedPath: string }> {
   const fileTargets = getRulesTargets().map((t) => ({
     agentName: t.agentName,
     expandedPath: expandHome(t.path),
-    kind: "file" as const,
   }));
-  const dirTargets = AGENT_DEFINITIONS.filter(
-    (a) => a.rulesDir !== undefined && CANARY_DELEGATED_AGENTS.has(a.name),
-  ).map((a) => ({
-    agentName: a.name,
-    expandedPath: join(expandHome(a.rulesDir ?? ""), "agentbrew.md"),
-    kind: "dir" as const,
-  }));
-  return [...fileTargets, ...dirTargets].filter((target) => !skip.has(target.agentName));
+  return fileTargets.filter((target) => !skip.has(target.agentName));
 }
 
 function maybeDedupeSharedRules(dryRun: boolean): void {
@@ -507,20 +412,6 @@ function refreshRulesSafely(manifest: Manifest, dryRun: boolean): void {
   }
 }
 
-function syncPerFileRulesSafely(
-  manifest: Manifest,
-  log: Logger,
-  dryRun: boolean,
-  skip: ReadonlySet<string>,
-): { synced: number; errors: number } {
-  try {
-    return syncPerFileRules(manifest, log, dryRun, skip);
-  } catch (e) {
-    logSkipped("sync/rules-sync/syncPerFileRules", e);
-    return { synced: 0, errors: 0 };
-  }
-}
-
 /** Carve-out: shared (entry-point orchestrator — runs the same diff/apply
  *  pipeline for every carve-out + the delegated bridge in one pass).
  *
@@ -528,8 +419,7 @@ function syncPerFileRulesSafely(
  *  Slice 4: delegated agents no longer fall back to native content silently;
  *  they skip when the delegation map is empty (see {@link computeRulesDiff}).
  *
- *  Slice 4b: one target list (file + dir kinds), one delegation call, one
- *  apply pass — kind discriminant chooses create-on-demand vs skip-if-missing. */
+ *  One target list, one delegation call, one apply pass. */
 export async function syncRules(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, log } = parseSyncOpts(options, ctx);
   const state = ctx?.state?.require({ quiet }) ?? requireState({ quiet });
@@ -565,20 +455,8 @@ export async function syncRules(options?: SyncOptions, ctx?: Partial<Context>): 
   // Refresh catalog-owned per-file rules from repo templates before deploy.
   refreshRulesSafely(manifest, dryRun);
 
-  // Per-file rules sync — copies ~/.config/agentbrew/rules/*.md verbatim into
-  // each rulesDir-bearing agent's dir. Distinct from the consolidated
-  // <rulesDir>/agentbrew.md write above (that holds shared rules).
-  const perFileResult = syncPerFileRulesSafely(manifest, log, dryRun, skip);
-
   if (!dryRun && !sharedManifest) saveManifest(manifest);
-  if (!quiet)
-    logRulesSyncSummary(
-      log,
-      diffResult.synced + perFileResult.synced,
-      diffResult.errors + perFileResult.errors,
-      dryRun,
-      diffResult.missingFile,
-    );
+  if (!quiet) logRulesSyncSummary(log, diffResult.synced, diffResult.errors, dryRun, diffResult.missingFile);
 }
 
 /** Carve-out: shared (one-time bootstrap — extracts existing rules content from

@@ -630,6 +630,18 @@
         "The metric is printed before and after fixes with the Pivot threshold applied",
         "Nothing is sent, posted, or deleted outside scratch space or the new work's own folders"
       ]
+    },
+    {
+      "id": 52,
+      "prompt": "/goal be on the lookout for any issues that other machines open, then resolve them immediately",
+      "expected_output": "The agent treats this as an open-ended watch goal. It first resolves any issue already open at baseline. Then it arms a background poller (one event per new issue, errors emitted as events too) and re-arms it on expiry. It never claims the watch is 'done'. The contract states that the watch ends when the user ends the session, and that an issue needing a human-only step gets a comment and stays open. Each issue found gets the full delivery: a reproducing test, the gate, a PR, a merge, and a closed issue, with the evidence printed.",
+      "expectations": [
+        "An issue already open at baseline is resolved before or while the watcher is armed",
+        "The watcher emits an event per new issue and an event on poll errors, so silence is not mistaken for success",
+        "The contract says the watch has no natural end and names the stop condition",
+        "Each resolved issue shows a test, a gate result, a merged PR, and a CLOSED state",
+        "The watcher runs where the network call works (a sandboxed monitor that fails TLS is replaced, not left emitting errors)"
+      ]
     }
   ]
 }

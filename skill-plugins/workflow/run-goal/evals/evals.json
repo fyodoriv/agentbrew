@@ -581,6 +581,30 @@
         "A fresh-context grader reads the screenshots and its defects are fixed before the PR",
         "For 'improve the UI for my screen', the viewport is derived from the owner's screenshot (column count) and the baseline is measured there before any edit"
       ]
+    },
+    {
+      "id": 49,
+      "prompt": "/goal another chat is implementing a wrap-up skill right now; imagine it already exists and call it here: check the whole session and every touched repo for unfinished work, deliver it or open a safe draft PR, and update or create the related task.",
+      "expected_output": "The agent does not build the skill a second time. It runs the skill's steps by hand: it inventories every touched repo (uncommitted files, unmerged branches, open PRs, worktrees), delivers what it can, records each blocked item as a task or a draft PR with what is pending, leaves other sessions' PRs alone, runs a leak check on the diff, and says plainly in the report that building the skill belongs to the other chat, so the goal checker does not read the goal as 'implement it here'.",
+      "expectations": [
+        "The goal contract scopes the run to calling the skill, and names the other chat as the owner of the implementation",
+        "Every touched repo is inventoried with command output before any change",
+        "Each unfinished item ends merged, in a draft PR, or in a task with rule fields; none is left only in chat",
+        "Open PRs from other sessions are listed and not touched",
+        "A blocked cleanup (for example a hook refusing a branch delete) is reported with the exact command for the owner"
+      ]
+    },
+    {
+      "id": 50,
+      "prompt": "/goal ensure that the corporate machine is ready to start using the app and creating a plugin for it; add a separate skill and README + AGENTS.md docs (the real corporate machine is not reachable from this session)",
+      "expected_output": "The agent does not claim the remote machine is ready. It turns 'ready' into a checkable proof: a rehearsal e2e that runs the documented runbook on synthetic data in a temp data root and asserts the readiness command prints N/N. It takes a baseline first, separates test artifacts (such as a fixed synthetic name tripping a repo-term scan) from real doc gaps before it edits the runbook, adds the skill with an eval case, updates both docs, runs the full gate, and leaves the real-machine task open.",
+      "expectations": [
+        "The contract proves readiness with a rehearsal test on synthetic data, not with prose or a claim about the unreachable machine",
+        "A baseline readiness count is recorded before any fix",
+        "A failing check caused by the test's own data is fixed in the test, not by weakening the product check or the runbook",
+        "The new skill gets an eval case, and README and AGENTS.md both name it",
+        "The report keeps the real-machine task open and says what only the user can do there"
+      ]
     }
   ]
 }

@@ -39,6 +39,7 @@ node $S/rankings.cjs all http://127.0.0.1:8000/page.html "http://127.0.0.1:8000/
 npx -y lighthouse@13 http://127.0.0.1:8000/page.html --only-categories=performance,accessibility,best-practices \
   --output=json --output-path=lh.json --quiet      # mobile; add --preset=desktop for desktop
 node $S/rankings.cjs shots http://127.0.0.1:8000/page.html --out ui-shots
+node $S/rankings.cjs frames http://127.0.0.1:8000/page.html --click '.card' --at 40,140,460 --out ui-shots  # a motion strip
 ```
 
 List every view a user reaches (modes, tabs, dev or admin views, dialogs opened by a hash) as its own
@@ -52,7 +53,7 @@ The expert rankings have no script. Score them by hand and write the numbers dow
 | Nielsen's 10 heuristics | severity 0-4 per problem; report the total. A modal with no visible way out is a 3 |
 | Task time (KLM) | K .28 s, P 1.1 s, B .1 s, M 1.35 s per step; time the 4 to 8 most common tasks; report the sum |
 | Scale | bytes and time a phone loads for the largest realistic data set (Playwright `response` sizes, or Lighthouse LCP and total byte weight) |
-| Design panel | [references/design-panel.md](references/design-panel.md), from the `shots` screenshots |
+| Design panel | three blind rater subagents, [references/design-panel.md](references/design-panel.md), from the `shots` screenshots; never self-scored |
 
 ## 3. One round per ranking
 
@@ -78,5 +79,6 @@ the project's agent guide: ranking, before → after. Name what was tried and dr
 - Measure before and after every change; never report a score you did not re-run.
 - A ranking you cannot run here (no Chrome, no network for the guidelines) is reported as not run,
   with the next step, never as passed.
-- Report the design panel as one agent's judgment against public criteria, not as an award.
+- Report the design panel as blind agents' judgment against public criteria, not as an award; never
+  report a score the changing agent gave its own work.
 - Add no feature the product does not need; a look change keeps every measured ranking where it was.

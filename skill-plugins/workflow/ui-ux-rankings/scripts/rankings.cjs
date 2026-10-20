@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measured UI/UX rankings for any web page. Each ranking prints a 0-100 score and its findings.
 //
-//   node rankings.cjs <ranking|all|shots> <url> [<url> ...] [--min 95] [--json] [--out DIR]
+//   node rankings.cjs <ranking|all|shots|frames> <url> [<url> ...] [--min 95] [--json] [--out DIR]
 //
 // Rankings: axe (axe-core WCAG 2.2 AA + best practice), targets (44 px on touch, 24 px WCAG 2.5.8),
 // contrast (text, both themes), state (selected controls differ by 3:1, WCAG 1.4.11), keyboard (every
@@ -9,6 +9,8 @@
 // readability (12 px floor, 15 px paragraphs and <= 90 characters a line on a phone).
 // `shots` writes phone and desktop screenshots in both themes to --out (default ./ui-shots) for the
 // design panel (references/design-panel.md). Name a view by appending #label: http://x/page.html#page.
+// `frames` writes a motion strip: it does --click SELECTOR or --key KEY on a desktop dark page, pauses every
+// animation at each --at time (ms, default 40,140,460) and shoots it, so a rater can judge motion from stills.
 //
 // Needs playwright and axe-core: run it with NODE_PATH pointing at a folder that has both (SKILL.md).
 // Chrome: CHROME_PATH, else Playwright's own browser.
@@ -24,6 +26,9 @@ const flag = (name, dflt) => {
 const json = args.includes("--json") && args.splice(args.indexOf("--json"), 1);
 const MIN = Number(flag("--min", 0));
 const OUT = flag("--out", "ui-shots");
+const CLICK = flag("--click", "");
+const KEY = flag("--key", "");
+const AT = flag("--at", "40,140,460").split(",").map(Number);
 const [ranking, ...urls] = args;
 const SIZES = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 800 } };
 const VIEWS = urls.map((u) => [u.replace(/^https?:\/\/[^/]+\//, "") || "/", u]);
@@ -39,6 +44,9 @@ async function open(browser, url, size, scheme = "light", extra = {}) {
   }); // each view from a clean start
   await p.goto(url);
   await p.waitForTimeout(300);
+  await p.evaluate(() => {
+    for (const a of document.getAnimations()) a.finish(); // measure the resting page, not a fade-in frame
+  });
   return p;
 }
 
@@ -157,9 +165,13 @@ const rankings = {
             "[aria-pressed=true], [aria-selected=true], [aria-current]:not([aria-current=false])",
           )) {
             if (!on.offsetParent) continue;
+            const attr = ["aria-pressed", "aria-selected", "aria-current"].find((n) => on.hasAttribute(n));
             const off = [...on.parentElement.children].find(
               (x) =>
-                x !== on && x.offsetParent && !x.matches("[aria-pressed=true], [aria-selected=true], [aria-current]"),
+                x !== on &&
+                x.offsetParent &&
+                x.hasAttribute(attr) &&
+                !["true", "page", "step", "location", "date", "time"].includes(x.getAttribute(attr)),
             );
             if (!off) continue;
             const bg = __ratio(__bg(on), __bg(off)),
@@ -207,7 +219,13 @@ const rankings = {
           );
           const covered =
             !/skip/i.test(e.className) &&
-            bars.some((b) => top < b.getBoundingClientRect().bottom - 2 && +getComputedStyle(b).zIndex >= 0);
+            bars.some(
+              (b) =>
+                top < b.getBoundingClientRect().bottom - 2 &&
+                e.getBoundingClientRect().right > b.getBoundingClientRect().left &&
+                e.getBoundingClientRect().left < b.getBoundingClientRect().right &&
+                +getComputedStyle(b).zIndex >= 0,
+            );
           return { k: e.dataset.kbk ?? e.outerHTML.slice(0, 60), ring, covered };
         });
         if (!f || seen.has(f.k)) continue;
@@ -299,13 +317,41 @@ const rankings = {
       }
     return { score: 100, findings: files };
   },
+  async frames(browser) {
+    // not a ranking: frames of one transition, paused with the Web Animations API (exact, unlike timed shots)
+    fs.mkdirSync(OUT, { recursive: true });
+    const files = [];
+    for (const [name, url] of VIEWS) {
+      const p = await open(browser, url, "desktop", "dark");
+      await p.evaluate(() => {
+        for (const a of document.getAnimations()) a.finish();
+      });
+      if (CLICK) await p.click(CLICK);
+      if (KEY) await p.keyboard.press(KEY);
+      for (const [i, ms] of AT.entries()) {
+        await p.evaluate(
+          (t) =>
+            document.getAnimations().forEach((a) => {
+              a.pause();
+              a.currentTime = t;
+            }),
+          ms,
+        );
+        const file = path.join(OUT, `motion-${name.replace(/[^\w.-]+/g, "_")}-${i + 1}-of-${AT.length}-${ms}ms.png`);
+        await p.screenshot({ path: file });
+        files.push(file);
+      }
+      await p.context().close();
+    }
+    return { score: 100, findings: files };
+  },
 };
 const MEASURED = ["axe", "targets", "contrast", "state", "keyboard", "motion", "readability"];
 
 (async () => {
   if ((!rankings[ranking] && ranking !== "all") || !urls.length) {
     console.error(
-      `Usage: node rankings.cjs <${MEASURED.join("|")}|all|shots> <url> [...] [--min 95] [--json] [--out DIR]`,
+      `Usage: node rankings.cjs <${MEASURED.join("|")}|all|shots|frames> <url> [...] [--min 95] [--json] [--out DIR] [--click SEL | --key KEY] [--at 40,140,460]`,
     );
     process.exit(2);
   }
@@ -319,5 +365,5 @@ const MEASURED = ["axe", "targets", "contrast", "state", "keyboard", "motion", "
       console.log(`${r}: ${v.score}/100, ${v.findings.length} finding(s)`);
       for (const f of v.findings.slice(0, 40)) console.log(`  ${f}`);
     }
-  process.exit(Object.entries(results).some(([r, v]) => r !== "shots" && v.score < MIN) ? 1 : 0);
+  process.exit(Object.entries(results).some(([r, v]) => !["shots", "frames"].includes(r) && v.score < MIN) ? 1 : 0);
 })();

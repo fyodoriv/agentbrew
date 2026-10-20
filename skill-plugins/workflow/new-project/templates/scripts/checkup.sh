@@ -18,7 +18,10 @@ if [ -f "$open_work" ]; then
 else
   git status --short
   if command -v gh >/dev/null 2>&1; then gh pr list --author @me --state open || true; fi
-  echo "(wrap-up skill not installed; showed git status and your open PRs)"
+  base="$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+  git branch --no-merged "$base" 2>/dev/null | grep -v -e tasks-claims -e dependabot/ || true
+  git worktree list | sed -n '2,$p'
+  echo "(wrap-up skill not installed; showed git status, your open PRs, unmerged branches and worktrees)"
 fi
 
 section "Health"

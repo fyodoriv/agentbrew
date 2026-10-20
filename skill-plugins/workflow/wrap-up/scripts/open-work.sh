@@ -11,12 +11,16 @@
 #
 # Kinds:
 #   dirty      uncommitted or untracked files
+#   do-not-stage  a path that must never be committed: secrets, keys,
+#              databases, private/ data, or a tracked file .gitignore excludes
+#   worktree   an extra worktree with commits or uncommitted files
 #   stash      stashed changes
 #   unpushed   commits on the current branch that no remote has
 #   branch     a local branch with commits not on the default branch
 #   pr         an open pull request by you (draft, checks, merge state)
 #   unknown    the script could not check; check by hand
 #
+# It prints paths, branch names and counts only, never file contents.
 # Exit 0 when nothing is open, 1 when something is, 2 on bad input.
 # Runs under macOS /bin/bash 3.2.
 
@@ -29,6 +33,31 @@ open=0
 say() {
   printf '  %-9s %s\n' "$1" "$2"
   open=1
+}
+
+# Paths that must never be committed (repo-relative).
+risky() {
+  case "$1" in
+    .env.example | .env.sample | .env.template | */.env.example | */.env.sample | */.env.template) return 1 ;;
+    .env | .env.* | */.env | */.env.*) return 0 ;;
+    *.pem | *.key | *.p12 | *.pfx | *.kdbx | *id_rsa* | *id_ed25519*) return 0 ;;
+    *.sqlite | *.sqlite3 | *.sqlite-wal | *.sqlite-shm | *.db) return 0 ;;
+    *credentials* | *secret* | *.token) return 0 ;;
+    private/* | */private/*) return 0 ;;
+  esac
+  return 1
+}
+
+# The risky paths among a checkout's uncommitted and untracked files.
+risky_changes() {
+  local line path
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    path="${line:3}"
+    path="${path#\"}"
+    path="${path%\"}"
+    if risky "$path"; then say do-not-stage "$path${2:+ (in $2)}"; fi
+  done <<<"$(git -C "$1" status --porcelain --untracked-files=all 2>/dev/null)"
 }
 
 default_branch() {
@@ -64,6 +93,10 @@ check_repo() {
 
   n="$(git -C "$top" status --porcelain | grep -c .)"
   [ "$n" -gt 0 ] && say dirty "$n uncommitted or untracked file(s) on ${current:-detached HEAD}"
+  risky_changes "$top"
+  while IFS= read -r b; do
+    [ -n "$b" ] && say do-not-stage "$b (tracked, but .gitignore excludes it)"
+  done <<<"$(git -C "$top" ls-files -ci --exclude-standard 2>/dev/null)"
   n="$(git -C "$top" stash list | grep -c .)"
   [ "$n" -gt 0 ] && say stash "$n stash(es)"
 
@@ -79,6 +112,8 @@ check_repo() {
   local b ahead merged
   while IFS= read -r b; do
     [ -n "$b" ] && [ "$b" != "$base" ] || continue
+    # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
+    case "$b" in tasks-claims | gh-pages | dependabot/* | renovate/*) continue ;; esac
     ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
     [ "$ahead" -gt 0 ] || continue
     # A squash-merged branch keeps its commits: skip it when merging it would
@@ -89,6 +124,26 @@ check_repo() {
     fi
     say branch "$b: $ahead commit(s) not on $base"
   done <<<"$(git -C "$top" for-each-ref --format='%(refname:short)' refs/heads)"
+
+  # Extra worktrees (the first entry is the checkout itself).
+  local wt line wb dirty first=1
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) wt="${line#worktree }"; wb="" ;;
+      "branch "*) wb="${line#branch refs/heads/}" ;;
+      "" | end-of-list)
+        if [ "$first" = 1 ]; then first=0; continue; fi
+        [ -n "${wt:-}" ] && [ "$wt" != "$top" ] || continue
+        ahead=0
+        [ -n "$wb" ] && ahead="$(git -C "$top" rev-list --count "origin/$base..$wb" 2>/dev/null || echo 0)"
+        dirty="$(git -C "$wt" status --porcelain 2>/dev/null | grep -c .)"
+        if [ "$ahead" -gt 0 ] || [ "$dirty" -gt 0 ]; then
+          say worktree "$wt [${wb:-detached}]: $ahead commit(s) not on $base, $dirty uncommitted file(s)"
+          risky_changes "$wt" "worktree ${wb:-detached}"
+        fi ;;
+    esac
+  # $(...) strips the blank line that ends the last entry; the marker ends it.
+  done <<<"$(git -C "$top" worktree list --porcelain; echo end-of-list)"
 
   [ "$NO_GH" = 1 ] && return 0
   if ! command -v gh >/dev/null 2>&1; then

@@ -21,8 +21,9 @@ exactly what is left.
    or ran a branch-changing command in (read the transcript, not only the
    working directory), plus any paths the user passed.
 2. Run `scripts/open-work.sh <repo> ...` from this skill's folder. It prints
-   one line per item: `dirty`, `stash`, `unpushed`, `branch`, `pr`, or
-   `unknown`. Exit 1 means something is open.
+   one line per item: `dirty`, `do-not-stage`, `worktree`, `stash`,
+   `unpushed`, `branch`, `pr`, or `unknown`, with paths, branch names and
+   counts only. Exit 1 means something is open.
 3. Add what no script can see: promises in the transcript ("I'll add a test
    later", a step the user asked for that you skipped), failing checks you
    left, review comments you did not answer, and steps that need the owner
@@ -54,17 +55,20 @@ For each repo with `draft` items:
    (amounts, account names, payees, real names other than the owner's
    handle), or a file from an ignored private folder. Run the repo's leak
    gate when it has one (`scripts/leak-check.sh`, a pre-push privacy hook,
-   or the leak check in its AGENTS.md). Stage files by name, never
-   `git add -A`. A draft PR is still published: treat it as public.
+   or the leak check in its AGENTS.md); on a public repo, always run the
+   owner's private-reference check. Never stage a path that `open-work.sh`
+   lists as `do-not-stage`. Stage files by name, never `git add -A`. A draft
+   PR is still published: treat it as public.
 2. **Task.** Update the task in `TASKS.md` that the work belongs to, or
    create one. Use the repo's task shape (for tasks.md: an outcome title, the
    why, and the pre-registered Hypothesis, Success, Pivot, Measurement, and
-   Anchor). Write the exact next step and what blocks it. Steps that need the
-   owner go in as their own task with the commands to run on their machine.
+   Anchor). Write the exact next step and what blocks it, and add
+   `**PR**: <url>` so `next-task` matches the task to this PR. Steps that need
+   the owner go in as their own task with the commands to run on their machine.
 3. **Commit and push** to the session branch, or `wip/<topic>` when you have
    none (conventional header, no `--no-verify`).
 4. **Draft PR.** Open it as a draft, or update the existing one for that
-   branch. The body follows the repo's PR shape and always has:
+   branch (an unfinished ready PR goes back to draft: `gh pr ready --undo`). The body follows the repo's PR shape and always has:
 
    ```markdown
    ## Summary
@@ -85,6 +89,11 @@ For each repo with `draft` items:
 Owner-only steps with no code change go straight into `TASKS.md` on the
 default branch (through a PR when the repo forbids direct pushes).
 
+When the user's rules forbid a push (an employer's GitHub Enterprise from a
+personal machine, a pipeline branch without its token, a third-party repo with
+no fork), commit on the branch, keep it local, and say where it is in the task
+and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
+
 ## 4. Report
 
 End with one short message:
@@ -95,7 +104,7 @@ End with one short message:
 - **Dropped / asked:** anything you deleted, and the questions.
 
 Then stop. The next session picks this up: the repo checkups and `next-task`
-(hook `next-task-open-work-first`) read the same open work
+(its "Continue open work" step, and the hook `next-task-open-work-first`) read the same open work
 (`scripts/open-work.sh`) before anything else.
 
 ## Continue open work (other skills call this)
@@ -109,5 +118,5 @@ an open PR:
    rebase or force-push someone else's branch).
 2. **Red checks:** reproduce the failure locally, fix it, push.
 3. **Review comments:** fix or answer each one, then resolve it.
-4. **Green, nothing pending:** mark it ready and merge per the repo's
+4. **Green, nothing pending:** mark it ready (`gh pr ready <number>`) and merge per the repo's
    delivery rules. A PR that only waits on a person stays as it is; say so.

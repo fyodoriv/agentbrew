@@ -84,6 +84,17 @@ describe("new-project skill", () => {
     expect(readFileSync(join(dir, "AGENTS.md"), "utf-8")).not.toMatch(/\{\{[A-Z_]+\}\}/);
   });
 
+  it("fails an app whose checkup does not list open PRs and branches first", () => {
+    const dir = join(scratch, "no-open-work");
+    scaffoldInto(dir, "side-project", "none");
+    const label = "FAIL [checkup] scripts/checkup.sh lists open PRs and branches first";
+    expect(score(dir, "side-project").out).not.toContain(label);
+    writeFileSync(join(dir, "scripts", "checkup.sh"), "#!/usr/bin/env bash\nscripts/doctor.sh\n");
+    const result = score(dir, "side-project");
+    expect(result.out).toContain(label);
+    expect(result.status).toBe(1);
+  });
+
   it.each(profiles)("strict mode fails a fresh $profile scaffold until FILL: markers are replaced", ({ profile }) => {
     const dir = join(scratch, profile);
     expect(score(dir, profile, "--strict").status).toBe(1);

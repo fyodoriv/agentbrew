@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -92,6 +92,84 @@ describe("wrap-up open-work.sh", () => {
     git(work, "add", "y.txt");
     git(work, "commit", "-q", "-m", "feat: y");
     expect(run(work).out).toMatch(/branch\s+feat\/y: 1 commit\(s\) not on trunk/);
+  });
+
+  it("flags secrets and private data as do-not-stage, never prints contents, and spares .env.example", () => {
+    const work = repo("risky");
+    const canary = "CANARY-SECRET-5531";
+    writeFileSync(join(work, ".env"), `TOKEN=${canary}\n`);
+    writeFileSync(join(work, ".env.example"), "TOKEN=\n");
+    mkdirSync(join(work, "private"));
+    writeFileSync(join(work, "private", "rows.csv"), `${canary}\n`);
+    const r = run(work);
+    expect(r.out).toMatch(/do-not-stage\s+\.env$/m);
+    expect(r.out).toMatch(/do-not-stage\s+private\/rows\.csv/);
+    expect(r.out).not.toMatch(/do-not-stage\s+\.env\.example/);
+    expect(r.out).not.toContain(canary);
+  });
+
+  it("lists extra worktrees with commits, and skips data and bot branches", () => {
+    const work = repo("trees");
+    const wt = join(scratch, "trees-wt");
+    git(work, "worktree", "add", "-q", "-b", "feat/wt", wt);
+    writeFileSync(join(wt, "w.txt"), "w\n");
+    git(wt, "add", "w.txt");
+    git(wt, "commit", "-q", "-m", "feat: w");
+    for (const b of ["tasks-claims", "dependabot/npm/foo"]) {
+      git(work, "checkout", "-q", "-b", b, "main");
+      writeFileSync(join(work, `${b.replaceAll("/", "-")}.txt`), "x\n");
+      git(work, "add", ".");
+      git(work, "commit", "-q", "-m", "data");
+    }
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/worktree\s+\S*trees-wt \[feat\/wt\]: 1 commit\(s\) not on main/);
+    expect(r.out).not.toContain("tasks-claims");
+    expect(r.out).not.toContain("dependabot/");
+  });
+
+  it("finds every seeded situation of unfinished work (recall metric)", () => {
+    const work = repo("all");
+    const wt = join(scratch, "all-wt");
+    git(work, "worktree", "add", "-q", "-b", "feat/wt", wt);
+    writeFileSync(join(wt, "w.txt"), "w\n");
+    git(wt, "add", "w.txt");
+    git(wt, "commit", "-q", "-m", "feat: w");
+    git(work, "checkout", "-q", "-b", "feat/local");
+    writeFileSync(join(work, "l.txt"), "l\n");
+    git(work, "add", "l.txt");
+    git(work, "commit", "-q", "-m", "feat: l");
+    writeFileSync(join(work, "a.txt"), "stashed\n");
+    git(work, "stash", "push", "-q", "-m", "wip");
+    writeFileSync(join(work, "a.txt"), "dirty\n");
+    writeFileSync(join(work, "notes.txt"), "n\n");
+    writeFileSync(join(work, ".env"), "TOKEN=x\n");
+    const bin = join(scratch, "bin-all");
+    mkdirSync(bin);
+    writeFileSync(
+      join(bin, "gh"),
+      "#!/bin/sh\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
+    );
+    chmodSync(join(bin, "gh"), 0o755);
+    const ghEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
+    // A BASH_ENV startup file can put another `gh` ahead of the fake one on PATH.
+    delete ghEnv.BASH_ENV;
+    delete ghEnv.ENV;
+    const out = spawnSync("bash", [openWork, work], { env: ghEnv, encoding: "utf-8" }).stdout;
+    const seen = {
+      "dirty tracked": /dirty\s+3 uncommitted/.test(out),
+      untracked: /dirty\s+3 uncommitted/.test(out),
+      unpushed: /unpushed\s+1 commit\(s\) on feat\/local/.test(out),
+      branch: /branch\s+feat\/local: 1 commit/.test(out),
+      worktree: /worktree\s+\S*all-wt \[feat\/wt\]/.test(out),
+      stash: /stash\s+1 stash/.test(out),
+      pr: /pr\s+#8 ready, checks red/.test(out),
+      "draft pr": /pr\s+#7 draft, checks green/.test(out),
+      "do-not-stage": /do-not-stage\s+\.env$/m.test(out),
+    };
+    const found = Object.values(seen).filter(Boolean).length;
+    console.log(`open-work recall: ${found}/${Object.keys(seen).length}`);
+    expect(seen, out).toEqual(Object.fromEntries(Object.keys(seen).map((k) => [k, true])));
   });
 
   it("exits 2 for a path that is not a git checkout", () => {

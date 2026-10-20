@@ -89,6 +89,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`; store templates as `*.template.md`.
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
+- A test that puts a fake `gh` (or any tool) first on `PATH` must delete `BASH_ENV` and `ENV` from the child env: the owner's `BASH_ENV` file puts the dotfiles `bin/` shims back in front.
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out; drop it when upstream fixes it.
 - The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
 - `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (`com.agentbrew.check`).

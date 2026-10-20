@@ -10,7 +10,7 @@
 agentbrew sync                # bare sync warns about user-added servers
 agentbrew sync --discover     # detailed listing of user-added servers
 agentbrew import              # import from all agents into agentbrew state
-agentbrew import --from cursor  # import from a specific agent
+agentbrew import --from kiro    # import from a specific agent
 ```
 
 ## How it works
@@ -27,7 +27,7 @@ Sync is bidirectional. The normal flow pushes agentbrew state to agents. Discove
    ```
    Discovered <count> server(s) not in agentbrew:
 
-     + my-server (found in cursor)
+     + my-server (found in kiro)
      + other-srv (found in codex)
 
      Run `agentbrew import` to add them to all agents.

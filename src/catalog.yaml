@@ -409,7 +409,7 @@ skills:
     recommended: false
 
   - name: sync-agent-config
-    description: "Syncs all agent rules, memories, skills, and config across tools (Cursor, Claude Code, Codex)."
+    description: "Syncs all agent rules, memories, skills, and config across tools (Claude Code, Codex, and more)."
     source: built-in
     category: meta
     recommended: false

@@ -24,19 +24,13 @@ description: One-line description of what this command does
 
 Instructions here. This runs first.
 
-<!-- turbo -->
-
-## 2. Second step (auto-runs in Cursor without confirmation)
+## 2. Second step
 
 More instructions.
 ```
 
 Frontmatter fields:
 - `description` — shown in each agent's command picker and agent UIs
-
-Annotations:
-- `<!-- turbo -->` above a step → becomes `// turbo` in Cursor (auto-runs
-  without user confirmation prompt)
 
 Or register an existing file:
 ```bash
@@ -48,8 +42,7 @@ agentbrew commands add /path/to/command.md
 | Agent       | Transformation                                  |
 |-------------|------------------------------------------------|
 | Claude Code | Kept as-is (Markdown)                          |
-| Cursor      | YAML frontmatter stripped; `<!-- turbo -->` → `// turbo` |
-| Gemini CLI  | Kept as-is                                     |
+| Gemini CLI  | Converted to TOML (`.toml`): `description` + `prompt` |
 
 ## Deploy & Verify
 
@@ -62,7 +55,7 @@ agentbrew commands list         # verify deployed commands
 Check that the command appears in the target agent's directory:
 ```bash
 ls ~/.claude/commands/       # Claude Code
-ls ~/.cursor/commands/       # Cursor
+ls ~/.gemini/commands/       # Gemini CLI
 ```
 
 ## Edit an Existing Command
@@ -92,6 +85,6 @@ agentbrew sync --only commands   # re-sync to clean up per-agent files
 
 ## Constraints (Do NOT)
 
-- **Do NOT edit per-agent copies** (`~/.claude/commands/`, `~/.cursor/commands/`, etc.) — agentbrew overwrites them on every sync, losing your changes
+- **Do NOT edit per-agent copies** (`~/.claude/commands/`, `~/.gemini/commands/`, etc.) — agentbrew overwrites them on every sync, losing your changes
 - **Do NOT skip `agentbrew sync` (or `agentbrew sync --only commands`)** after creating or editing — the canonical file has no effect until deployed
 - **Do NOT put secrets or tokens in command files** — they are plaintext and deployed to all agent directories

@@ -15,7 +15,7 @@ Split documentation by reader — never one blob for humans and agents.
 | Artifact | Audience | Optimize for |
 | -------- | -------- | ------------ |
 | `README.md` (repo or skill folder) | Humans | Concise overview: what it is, who owns it, how to install/get help, links outward. Scannable in under ~2 minutes. |
-| `SKILL.md`, `references/`, `evals/`, `AGENTS.md`, `.cursor/rules` | Agents | Procedure fidelity, constraints, copy-paste commands, progressive disclosure. Shorter `SKILL.md` + deep `references/` beats one long `SKILL.md` body. |
+| `SKILL.md`, `references/`, `evals/`, `AGENTS.md` | Agents | Procedure fidelity, constraints, copy-paste commands, progressive disclosure. Shorter `SKILL.md` + deep `references/` beats one long `SKILL.md` body. |
 
 **Do NOT** put agent runbooks, CLI one-liners, controller loops, or TDD iron-law prose in README — agents load `SKILL.md` and `references/`, not README. **Do NOT** duplicate the same procedures in README and SKILL; link once from README to SKILL/references.
 
@@ -108,7 +108,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 - Global/user agent config belongs under `~/.config/agentbrew/`.
 - Skills are symlinks to source repos; before editing a skill, inspect the symlink and edit the source path.
-- Do not write new config into `.claude/`, `.cursor/`, or other agent-specific directories unless explicitly asked; agentbrew owns generated target files.
+- Do not write new config into `.claude/`, `.codex/`, or other agent-specific directories unless explicitly asked; agentbrew owns generated target files.
 
 ## Ambition with models
 
@@ -163,7 +163,7 @@ these three axes when a task allows it:
 - Be concise and direct. Say what you are doing before long-running or risky
   commands.
 - Do not give concrete time estimates.
-- Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** and Cursor user rules — do not duplicate them here.
+- Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** — do not duplicate them here.
 
 ## Chat lifecycle (save tokens)
 

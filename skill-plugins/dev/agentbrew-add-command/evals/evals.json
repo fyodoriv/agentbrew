@@ -14,13 +14,13 @@
     },
     {
       "id": 2,
-      "prompt": "Can you make step two of this Cursor workflow auto-run without prompting?",
-      "expected_output": "A command edit that uses the documented turbo annotation and explains the per-agent transform.",
+      "prompt": "Why does my new command show up as a .toml file in Gemini CLI?",
+      "expected_output": "An explanation of the Gemini CLI per-agent transform that keeps the canonical Markdown file as the only source.",
       "expectations": [
-        "Uses `<!-- turbo -->` above the intended step in the canonical command file",
-        "Explains that agentbrew transforms the annotation to Cursor's `// turbo` form",
-        "Does not place Cursor-specific command content directly in `~/.cursor/commands/`",
-        "Runs a commands-only sync after editing the canonical file"
+        "Explains that agentbrew converts the canonical Markdown command to TOML for Gemini CLI",
+        "Points to the canonical command file under `~/.config/agentbrew/commands/`",
+        "Does not edit the generated `~/.gemini/commands/` copy directly",
+        "Runs a commands-only sync (`agentbrew sync --only commands`) after editing the canonical file"
       ]
     },
     {

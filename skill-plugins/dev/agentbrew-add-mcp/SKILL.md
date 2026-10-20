@@ -2,7 +2,7 @@
 name: agentbrew-add-mcp
 description: >
   Add an MCP server to agentbrew so all agents can use it. One command registers it —
-  Claude, Cursor, Codex configs auto-generate on sync. Use when the user says "add MCP
+  Claude, Codex, Kiro configs auto-generate on sync. Use when the user says "add MCP
   server", "connect to X", or "I want all agents to use Y tool".
 ---
 
@@ -136,7 +136,7 @@ Targets:
   Kiro (`~/.kiro/settings/mcp.json`),
   Copilot (`~/Library/.../Code/User/settings.json`), OpenCode, Amp, Overlay Desktop.
 - **mcpm-managed (`MCP_INTERSECTION_AGENTS`)** — agentbrew bridges to `mcpm`:
-  Claude Code (`~/.claude.json`), Cursor (`~/.cursor/mcp.json`), Codex,
+  Claude Code (`~/.claude.json`), Codex,
   Claude Desktop, Cline, Gemini CLI, Goose, Roo Code.
 
 ## Remove
@@ -158,7 +158,7 @@ agentbrew remove <name>          # top-level — auto-detects type, removes ever
 
 ## Constraints (Do NOT)
 
-- **Do NOT edit agent MCP configs directly** (`~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, etc.) — agentbrew overwrites them on sync
+- **Do NOT edit agent MCP configs directly** (`~/.claude.json`, `~/.kiro/settings/mcp.json`, etc.) — agentbrew overwrites them on sync
 - **Do NOT hardcode API keys or secrets** in the `agentbrew mcp add` command — use `-e KEY` and set the value in your environment
 - **Do NOT add a server without testing it first** — a broken MCP server silently breaks tool availability in all agents
 - **Do NOT skip `--ref`** for git-installed servers in team setups — unpinned sources break reproducibility when the repo updates

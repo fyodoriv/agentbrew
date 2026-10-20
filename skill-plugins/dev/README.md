@@ -30,10 +30,10 @@ would naturally live.
 | **agentbrew-add-skill** | Add a skill source to agentbrew so it deploys to all agents. |
 | **agentbrew-manage-permissions** | Manage Claude Code tool permissions. Review allowed/denied tools, add MCP server permissions. |
 | **agentbrew-status** | Check agentbrew health: agents, MCP servers, drift. |
-| **context-budget** | Investigate agentbrew + Cursor context budget via `~/.config/agentbrew/metrics/latest.json` and `agentbrew measure context`. |
+| **context-budget** | Investigate agentbrew context budget via `~/.config/agentbrew/metrics/latest.json` and `agentbrew measure context`. |
 | **agentfile-init** | Generate an `Agentfile.yaml` for the current project. |
 | **load-project-context** | Run the canonical-doc discovery script + read every VISION / ARCHITECTURE / MILESTONES / user-stories / competitors file the agentbrew `load-project-context` catalog rule expects. The invokable companion to the rule + Claude Code SessionStart hook shipped from `~/.config/agentbrew/`. |
-| **sync-agent-config** | Syncs all agent rules, memories, skills, and config across tools (Cursor, Claude Code, Codex). |
+| **sync-agent-config** | Syncs all agent rules, memories, skills, and config across tools (Claude Code, Codex, and more). |
 | **prefer-reuse-over-reinvent** | GET-don't-IMPLEMENT decision discipline — VISION cites this skill as the operational wrapper for the delegate/contribute/absorb strategy. |
 | **verify-vision-trace** | Validates PR bodies against the `pr-vision-trace` CI gate (Vision goal, User story, Competitor prior art). |
 | **competitor-spot-check** | Queries the loaded competitor corpus to produce the Competitor prior art line for vision-trace PR bodies. |

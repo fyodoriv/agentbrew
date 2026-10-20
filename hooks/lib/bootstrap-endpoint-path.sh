@@ -1,8 +1,8 @@
 #!/bin/bash
 # Bootstrap dotfiles/bin + fnm node before agentbrew hook subprocesses run.
 #
-# Claude Code / Cursor hooks use sandbox PATH (/opt/homebrew/bin:/usr/bin:/bin)
-# without dotfiles shims unless we prepend here. Cursor wraps some hooks via
+# Claude Code hooks use sandbox PATH (/opt/homebrew/bin:/usr/bin:/bin)
+# without dotfiles shims unless we prepend here. Some hooks are wrapped via
 # with-endpoint-path.sh; deployed hooks under ~/.claude/codeassist/hooks-scripts/
 # must bootstrap themselves.
 #

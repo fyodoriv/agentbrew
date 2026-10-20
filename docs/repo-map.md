@@ -37,12 +37,12 @@ agentbrew state                     sync engine                     target
 ───────────────                     ───────────                     ──────
 state.yaml (mcpServers)          →  mcp-sync.ts                  →  Native MCP writes for `AGENTBREW_ONLY_MCP_AGENTS`
                                                                       (paths pinned in src/sync/mcp-sync-carveout-matrix.test.ts,
-                                                                      e.g. ~/.cursor/mcp.json,
+                                                                      e.g. ~/.kiro/settings/mcp.json,
                                                                       ~/.config/opencode/opencode.json); intersection clients
                                                                       in `MCP_INTERSECTION_AGENTS` delegate to `mcpm install` +
                                                                       `mcpm client edit` via mcp-delegate.ts. agents.yaml
-                                                                      `mcpPermissionsConfig` also writes permissions.allow for
-                                                                      Cursor CLI.
+                                                                      `mcpPermissionsConfig` also writes permissions.allow
+                                                                      (no core agent uses it today).
 shared-rules.md                  →  rules-sync.ts                →  Native writes for `AGENTBREW_ONLY_RULES_AGENTS` (paths in
                                                                       src/sync/rules-sync-carveout-matrix.test.ts); agents in
                                                                       `CANARY_DELEGATED_AGENTS` go through `ai-rules generate`
@@ -51,17 +51,15 @@ shared-rules.md                  →  rules-sync.ts                →  Native w
                                                                       `CANARY_DELEGATED_AGENTS` go through `ai-rules generate`
                                                                       via commands-delegate.ts
 installed skills + opt-in dirs  →  skills-sync.ts               →  ~/.*/skills/* (symlinks — agents with readsFrom are skipped)
-~/.config/agentbrew/agents/      →  agents-sync.ts               →  ~/.claude/agents/*.md, ~/.cursor/agents/*.md, etc.
+~/.config/agentbrew/agents/      →  agents-sync.ts               →  ~/.claude/agents/*.md, ~/.codex/agents/*.md, etc.
 templates/AGENTS.md              →  instructions-sync.ts         →  ~/.claude/CLAUDE.md, ~/.augment/guidelines.md, etc.
 templates/scripts/* +            →  helper-scripts.ts            →  ~/.config/agentbrew/scripts/* (only missing or
   scripts/check-pr-vision-trace.mjs                                   agentbrew-written files)
-Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key),
-                                                                      ~/.cursor/hooks.json
+Agentfile hooks                  →  hooks-sync.ts                →  ~/.claude/settings.json (hooks key)
 agent-perf.mjs statusline        →  statusline-sync.ts           →  ~/.claude/settings.json (statusLine; only absent or
   (called from hooks-sync.ts)                                         agentbrew-written values)
 Agentfile defaultModel/Effort    →  model-sync.ts                →  ~/.claude/settings.json (model, effortLevel),
-                                                                      ~/.codex/config.toml (model, model_reasoning_effort). Cursor
-                                                                      has no file surface (app-managed/UI model state).
+                                                                      ~/.codex/config.toml (model, model_reasoning_effort).
 ```
 
 These three modules write `~/.claude/settings.json` through `src/core/json-text-edit.ts`.
@@ -101,7 +99,6 @@ Then run `agentbrew sync`. The source repo owns the skill files — agentbrew ju
 | Target path | Owner | Notes |
 |-------------|-------|-------|
 | `~/.claude/` | **agentbrew** | CLAUDE.md, commands/, agents/ (shared by claude-code + claude-desktop Cowork) |
-| `~/.cursor/` | **agentbrew** | mcp.json, cli-config.json (MCP permissions), rules/, commands/, agents/ |
 | `~/.augment/` | **agentbrew** | guidelines.md |
 | `~/.codex/` | **agentbrew** | AGENTS.md, config.toml, agents/ |
 | `~/.config/opencode/` | **agentbrew** | skills/, commands/, opencode.json |

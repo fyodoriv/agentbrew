@@ -684,7 +684,6 @@ This is an example agentbrew command. Edit or replace this file.
 
 ## Steps
 
-<!-- turbo -->
 \`\`\`bash
 echo "Hello from agentbrew!"
 \`\`\`

@@ -36,9 +36,9 @@ takes one or more comma-separated modules
 (`mcp,rules,commands,agents,skills,hooks,instructions`):
 
 ```bash
-agentbrew sync --only mcp        # MCP servers → Claude, Cursor, Codex, Kiro, etc.
+agentbrew sync --only mcp        # MCP servers → Claude, Codex, Kiro, etc.
 agentbrew sync --only rules      # shared rules → all agents
-agentbrew sync --only commands   # slash commands → Cursor, Claude Code, etc.
+agentbrew sync --only commands   # slash commands → Claude Code, Gemini CLI, etc.
 agentbrew sync --only skills     # skill symlinks → all agent skill dirs
 ```
 
@@ -56,20 +56,19 @@ agentbrew status --fix     # confirm no remaining drift (and auto-repair if any)
 **Token overhead check**: after syncing, estimate the deployed instructions file size:
 `wc -c ~/.claude/CLAUDE.md | awk '{print int($1/4) " tokens"}'`. Target: under ~8K tokens.
 If over budget, check for cross-section duplication (Git Safety, Commit Format, Dependency
-Policy appear in both template and shared-rules.md) and Cursor rules deployed to non-Cursor
-agents. See `docs/instructions-analysis.md` for trimming guidance.
+Policy appear in both template and shared-rules.md). See `docs/instructions-analysis.md` for trimming guidance.
 
 ## What Gets Synced Where
 
 ```
-state.yaml (mcpServers)        → mcp-sync      → ~/.cursor/mcp.json
-                                                  ~/.kiro/settings/mcp.json
+state.yaml (mcpServers)        → mcp-sync      → ~/.kiro/settings/mcp.json
+                                                  ~/.config/opencode/opencode.json
 shared-rules.md                → rules-sync    → ~/.augment/guidelines.md
                                                   ~/.codex/AGENTS.md
-~/.config/agentbrew/commands/  → command-sync  → ~/.cursor/commands/
-                                                  ~/.claude/commands/
+~/.config/agentbrew/commands/  → command-sync  → ~/.claude/commands/
+                                                  ~/.gemini/commands/
 skill-plugins/ + sources       → skills-sync   → ~/.claude/skills/
-                                                  ~/.cursor/skills/ (every agent)
+                                                  ~/.codex/skills/ (every agent)
 templates/AGENTS.md            → instructions  → ~/.claude/CLAUDE.md
                                                   ~/.augment/guidelines.md
 ```

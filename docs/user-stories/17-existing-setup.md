@@ -1,6 +1,6 @@
 # Existing Setup
 
-> I already have MCP servers in Cursor and skills in Claude Code. I install agentbrew. What happens to my stuff?
+> I already have MCP servers in Kiro and skills in Claude Code. I install agentbrew. What happens to my stuff?
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init` on an existing setup is the US01 command.
 
@@ -10,7 +10,7 @@
 
 Your machine has:
 
-- **Cursor** (`~/.cursor/mcp.json`): MCP servers such as context7, playwright, postgres, github, slack
+- **Kiro** (`~/.kiro/settings/mcp.json`): MCP servers such as context7, playwright, postgres, github, slack
 - **Claude Code** (`~/.claude.json`): MCP servers such as context7, filesystem
 - **Claude Code** (`~/.claude/skills/`): debug, commit, review (manually installed skill directories)
 - **Codex**: no MCP servers configured
@@ -30,7 +30,7 @@ agentbrew
 Detecting agents...
 
   ✓ claude-code
-  ✓ cursor
+  ✓ kiro
   ✓ codex
 ```
 
@@ -44,14 +44,14 @@ AgentBrew reads each agent's config file and imports your servers into its state
   ✓ <count> existing skills preserved
 ```
 
-Imported servers are deduplicated (context7 appears in both Cursor and Claude Code — agentbrew keeps one entry). Your original config files are **not modified** at this point.
+Imported servers are deduplicated (context7 appears in both Kiro and Claude Code — agentbrew keeps one entry). Your original config files are **not modified** at this point.
 
 ### Sync deploys to all agents
 
 When agentbrew syncs, it writes your registered MCP servers to **every** agent's config:
 
-- Cursor keeps its servers and gains any missing from other agents (e.g. filesystem from Claude Code)
-- Claude Code keeps its servers and gains any missing from Cursor (e.g. playwright, postgres, github, slack)
+- Kiro keeps its servers and gains any missing from other agents (e.g. filesystem from Claude Code)
+- Claude Code keeps its servers and gains any missing from Kiro (e.g. playwright, postgres, github, slack)
 - Codex had none → gets the merged set
 
 Your skills (debug, commit, review) are **not touched** — they're directories, not agentbrew symlinks.
@@ -65,7 +65,7 @@ agentbrew status
 ```
 agentbrew status
 
-  Agents:       <count> detected (claude-code, cursor, codex)
+  Agents:       <count> detected (claude-code, kiro, codex)
   MCP Servers:  <count> registered
   Skills:       <count> in library across <count> sources
   Sources:      <count> tracked
@@ -74,9 +74,9 @@ agentbrew status
 
 Every detected agent now shares the same merged MCP server set. Your manually installed skill directories are untouched.
 
-## What if I add a server to Cursor manually later?
+## What if I add a server to Kiro manually later?
 
-AgentBrew does not touch servers it doesn't know about. If you manually add a new server to `~/.cursor/mcp.json`:
+AgentBrew does not touch servers it doesn't know about. If you manually add a new server to `~/.kiro/settings/mcp.json`:
 
 ```bash
 agentbrew sync    # your manual server is left alone

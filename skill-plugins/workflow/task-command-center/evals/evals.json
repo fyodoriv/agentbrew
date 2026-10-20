@@ -86,7 +86,7 @@
         "Updates the task-command-center skill or the matching repo rule in its source repo before product code",
         "Removes a duplicate action handler when the shell already registers the canonical one",
         "Replaces unsafe casts such as `as never` with the typed API",
-        "Does not edit ~/.cursor/skills mirrors without agentbrew sync from source"
+        "Does not edit ~/.claude/skills mirrors without agentbrew sync from source"
       ]
     },
     {

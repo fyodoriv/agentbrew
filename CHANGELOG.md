@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   detection, the shell hook, hook-manifest targets, and installer backups.
   agentbrew no longer writes under `~/.cursor`. Files it wrote there before
   stay; delete them by hand if you no longer want them.
+  The last step updates the docs and skills, regenerates the README agent
+  matrix, adds the author's note to `AGENTS.md` and the README "Supported
+  agents" section, and adds `src/core/removed-agents.test.ts`, which fails if
+  a Cursor, Grok, or xAI agent, a `~/.cursor` write path, or a Cursor-only
+  script or LaunchAgent comes back. The `agentbrew-add-command` skill no
+  longer documents the Cursor-only `<!-- turbo -->` annotation.
 
 ### Security
 

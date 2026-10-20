@@ -6,10 +6,9 @@ primary_agents:
   # The "main use case" agent set. Every sync surface that exists for ANY
   # agent must work for ALL of these. Auto-repair every 30 minutes verifies
   # parity. If you are adding a sync feature and it only works for Claude
-  # Code, it's not done — extend it to Cursor / Codex before merge. See G4
+  # Code, it's not done — extend it to Codex before merge. See G4
   # and G6 below.
   - claude-code
-  - cursor
   - codex
 frozen_agents:
   # Deprecated 2026-10-02 (owner decision). Existing support and tests stay,
@@ -28,7 +27,7 @@ goals:
     description: `agentbrew sync` is the single entry point. Never asks the user to run two commands.
   - id: G4
     name: Every agent from a single source of truth
-    description: One Agentfile.yaml drives Claude Code, Cursor, Codex, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, and every other agent in `agents.yaml`.
+    description: One Agentfile.yaml drives Claude Code, Codex, OpenCode, Kiro, Amp, Goose, Cline, Roo Code, and every other agent in `agents.yaml`.
   - id: G5
     name: Drift detection + auto-repair
     description: `agentbrew fix` runs every 30 minutes via launchagent. State and MCP runtime health are verifiable; config corruption and common MCP regressions are detectable and automatically corrected.
@@ -37,7 +36,7 @@ goals:
     description: |
       Every sync surface (skills, MCP servers, rules, commands, agent definitions,
       hooks, instructions) deploys to every primary agent in
-      `src/sync/per-agent-features.matrix.test.ts` (Claude Code, Cursor, Codex)
+      `src/sync/per-agent-features.matrix.test.ts` (Claude Code, Codex)
       without manual intervention, every 30 minutes via the
       auto-repair launchagent. "Works for Claude Code only" is a regression; gaps
       against any primary agent get filed as P0 tasks. The full matrix is enforced
@@ -46,7 +45,7 @@ goals:
 non_goals:
   - id: NG1
     name: Not a per-agent config UI
-    description: Don't write to ~/.claude/, ~/.cursor/, etc. directly. agentbrew owns those paths.
+    description: Don't write to ~/.claude/, ~/.codex/, etc. directly. agentbrew owns those paths.
   - id: NG2
     name: Not a skill author
     description: Skills live in their source repos. agentbrew indexes them, never forks them.
@@ -85,7 +84,7 @@ agentbrew team set <overlay-url>   # optional — layer on your company's curate
 A developer who uses more than one AI coding agent keeps the same skills, MCP
 servers, rules, commands, hooks, and agent definitions in a separate file
 format for each agent. The copies drift: a server added to Claude Code is
-missing in Cursor, a rule edit reaches one agent and not the others, and an
+missing in Codex, a rule edit reaches one agent and not the others, and an
 agent update breaks a config without any warning. Each agent ships its own
 installer, and none of them owns the whole machine. agentbrew solves this with
 one declarative source (`Agentfile.yaml`), one sync, and a scheduled repair
@@ -95,7 +94,7 @@ that finds and fixes drift.
 
 **Primary user: any developer using AI coding agents.** Install once, configure once, and every agent on the machine gets the same skills, MCP servers, rules, commands, hooks, and agent definitions. The catalog ships with public, generic recommendations that benefit any developer.
 
-**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Cursor, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. Windsurf and Devin support was removed on 2026-10-08. Augment is frozen: it keeps its existing support but gets no new fixes or features ([NG4](#non-goals)). They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
+**Main use cases — first-class, sync-everything, no-manual-steps:** Claude Code, Codex — the primary agent set pinned by `src/sync/per-agent-features.matrix.test.ts`. Windsurf and Devin support was removed on 2026-10-08. Cursor and Grok support was removed on purpose on 2026-10-19; see the note in the README "Supported agents" section. Augment is frozen: it keeps its existing support but gets no new fixes or features ([NG4](#non-goals)). They represent the dominant interactive and non-interactive AI coding surfaces today. Every sync category (skills, MCP, rules, commands, agents, hooks, instructions) deploys to that set every 30 minutes via the auto-repair launchagent. A gap against any primary agent is a P0 regression — see [G6](#goals) and the matrix test for enforcement.
 
 **Long-tail agents — best-effort, parity-where-possible:** OpenCode, Kiro, Amp, Goose, Cline, Roo Code, Gemini CLI, GitHub Copilot, plus other experimental surfaces listed in `src/core/agents.yaml`. agentbrew detects and syncs to these too, but only for the sync categories each agent supports natively. New first-party features land for the primary agent set first; long-tail support follows when each agent's underlying API permits.
 
@@ -175,7 +174,7 @@ In the product today and in the essential core. Not deletion candidates.
 | [Bidirectional sync](user-stories/11-discover-import.md) | `sync --discover` detects user-added servers; `import` propagates them |
 | [Agentfile manifest](user-stories/16-agentfile-project-config.md) | Declarative YAML; `init --from-state` bootstraps from current setup |
 | [Project detection](user-stories/16-agentfile-project-config.md) | Bare `agentbrew` in a project dir surfaces detected agent assets |
-| [Per-file rules](user-stories/04-share-rules.md) | `~/.config/agentbrew/rules/` → Cursor per-file rule dirs |
+| [Per-file rules](user-stories/04-share-rules.md) | `~/.config/agentbrew/rules/` → per-file rule dirs (agents with a `rulesDir`) |
 | [CI integration](user-stories/25-status-and-health.md) | `agentbrew status --ci` exits 1 on drift |
 | [Portable bundles](user-stories/19-export-import.md) | `agentbrew export / import` moves setup to a new machine |
 | [Rollback](user-stories/26-rollback.md) | `agentbrew sync --rollback` restores from the pre-sync snapshot |

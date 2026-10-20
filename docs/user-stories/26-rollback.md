@@ -24,9 +24,9 @@ The snapshot captures every file agentbrew is about to touch in a given sync:
 
 | Path | Restored? | Notes |
 |------|-----------|-------|
-| `~/.cursor/mcp.json`, `~/.claude/*.json`, `~/.codex/config.toml`, etc. | Yes | Every MCP config file for every detected agent |
+| `~/.kiro/settings/mcp.json`, `~/.claude/*.json`, `~/.codex/config.toml`, etc. | Yes | Every MCP config file for every detected agent |
 | `~/.claude/CLAUDE.md`, agent instruction files | Yes | Rules + instructions files |
-| `~/.config/agentbrew/commands/`, `~/.claude/commands/`, `~/.cursor/commands/` | Yes | Command directories |
+| `~/.config/agentbrew/commands/`, `~/.claude/commands/`, `~/.gemini/commands/` | Yes | Command directories |
 | `~/.config/agentbrew/agents/`, per-agent agent-definition dirs | Yes | Agent persona files |
 | Symlinks in `~/.*/skills/` directories | Yes | Skill symlinks — their targets (the source repos) are untouched |
 
@@ -63,7 +63,7 @@ $ agentbrew sync --rollback
 
 Restoring agent configs from: ~/.config/agentbrew/backups/2026-04-19T18-30-22Z/
 
-  ✓ cursor         (~/.cursor/mcp.json)
+  ✓ kiro           (~/.kiro/settings/mcp.json)
   ✓ claude-code    (~/.claude/CLAUDE.md)
   ✓ claude-code    (~/.claude/commands/)
   ✓ codex          (~/.codex/config.toml)
@@ -80,7 +80,7 @@ Exit code 0 on success, 1 if the snapshot is missing or unreadable.
 
 ```bash
 # 1. Notice something broke after a sync
-#    (e.g. Cursor's MCP panel shows "no servers" after you ran agentbrew install)
+#    (e.g. an agent's MCP panel shows "no servers" after you ran agentbrew install)
 
 # 2. Roll back the last sync immediately — this takes seconds
 agentbrew sync --rollback
@@ -91,7 +91,7 @@ agentbrew status
 # 4. Figure out what caused the problem
 agentbrew status --verbose              # is any MCP config suspect?
 agentbrew lint                          # is the Agentfile or state.yaml malformed?
-cat ~/.config/agentbrew/backups/<latest>/.cursor/mcp.json  # what did sync have?
+cat ~/.config/agentbrew/backups/<latest>/.kiro/settings/mcp.json  # what did sync have?
 tail -n 20 ~/.local/share/agentbrew/logs/auto-sync.log  # recent sync history (auto-sync runs)
 
 # 5. Fix the root cause — edit state.yaml, correct the Agentfile, remove a

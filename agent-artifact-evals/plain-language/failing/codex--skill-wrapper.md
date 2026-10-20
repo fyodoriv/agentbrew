@@ -1,6 +1,6 @@
 ---
 name: rule-audit
-description: List Cursor rules that never apply.
+description: List agent rules that never apply.
 ---
 
 # Rule audit

@@ -86,7 +86,6 @@ same event, matcher, and command.
 | Agent | Output path | Format |
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` under the `hooks` key | Claude settings wrapper |
-| Cursor | `~/.cursor/hooks.json` | `{ version: 1, hooks: … }` with native camelCase event names |
 
 Agentbrew tracks managed hook keys per agent in `manifest.json` so stale managed
 entries can be pruned without deleting user-authored hooks in another agent's

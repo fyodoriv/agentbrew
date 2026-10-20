@@ -1,6 +1,6 @@
 # Agent Definitions
 
-> I write a persona once and every agent tool gets it — Claude Code, Cursor, Codex, all of them.
+> I write a persona once and every agent tool gets it — Claude Code, Codex, all of them.
 
 **Metric**: `story_fail_rate` for US20 in [`metrics.md`](../metrics.md): failed `agents` runs and `agents` sync errors.
 
@@ -20,7 +20,6 @@ Agent definitions are Markdown persona files (e.g. `researcher.md`, `reviewer.md
 | Tool | Deployed to |
 |------|------------|
 | Claude Code | `~/.claude/agents/` |
-| Cursor | `~/.cursor/agents/` |
 | Codex | `~/.codex/agents/` |
 
 ## Multiple sources

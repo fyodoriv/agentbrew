@@ -24,7 +24,7 @@ Different agents store rules differently. Some want a single big Markdown file. 
 | Source on your machine | Deployed as | Agents that consume it |
 |---|---|---|
 | `~/.config/agentbrew/shared-rules.md` | Marker-injected section in each agent's instruction file | Claude Code, Augment, Codex, and any other agent with a single rules file |
-| `~/.config/agentbrew/rules/*.md` | One file per rule, copied into the agent's per-file rules directory | Cursor (`~/.cursor/rules/`) |
+| `~/.config/agentbrew/rules/*.md` | One file per rule, copied into the agent's per-file rules directory | Agents with a `rulesDir` in `agents.yaml` (none in the core list today) |
 
 Pick whichever matches your mental model for the rule — if it's a short project convention with a glob (e.g. "in TypeScript files, do X"), put it in `~/.config/agentbrew/rules/typescript.md`. If it's a broader set of coding standards that should always be in context, put it in `shared-rules.md`. Both sync on every `agentbrew sync`; both survive auto-repair.
 
@@ -61,7 +61,7 @@ An explicit user request or a required artifact format can override the default.
 
 ## Per-file rules: one rule per file with optional glob triggers
 
-Some agents — Cursor today — support a per-file rules directory where each `.md` file is a standalone rule with optional activation triggers (a file glob, a description, a priority). AgentBrew mirrors `~/.config/agentbrew/rules/` into every supporting agent's per-file rules directory on sync.
+Some agents support a per-file rules directory where each `.md` file is a standalone rule with optional activation triggers (a file glob, a description, a priority). AgentBrew mirrors `~/.config/agentbrew/rules/` into every supporting agent's per-file rules directory on sync.
 
 A typical per-file rule:
 
@@ -75,9 +75,9 @@ Use strict TypeScript. No `any`. Prefer `unknown` + type guards.
 Use `import type` for type-only imports.
 ```
 
-Place that file at `~/.config/agentbrew/rules/typescript.md` and `agentbrew sync` deploys it to:
+Place that file at `~/.config/agentbrew/rules/typescript.md` and `agentbrew sync` deploys it to each agent that declares a `rulesDir`, for example:
 
-- `~/.cursor/rules/typescript.md`
+- `~/.my-agent/rules/typescript.md`
 
 Frontmatter is passed through untouched — agents that understand `globs`, `description`, and other fields activate the rule accordingly. Agents that don't support per-file rules receive the global `shared-rules.md` instead; they're never forced to consume a format they don't understand.
 
@@ -87,7 +87,7 @@ Frontmatter is passed through untouched — agents that understand `globs`, `des
 |---|---|
 | The rule always applies (language-agnostic) | The rule applies to a subset of files |
 | The rule is short and doesn't need activation metadata | The rule has a file glob or trigger condition |
-| You want every agent to see the rule, including those without per-file support | You're happy with Cursor-only distribution today |
+| You want every agent to see the rule, including those without per-file support | You're happy with per-file-only distribution |
 
 Both sync together. You can use both. If the same content ends up in both places, the agent's own deduplication rules decide what gets shown — agentbrew doesn't block you from mixing.
 
@@ -96,5 +96,5 @@ Both sync together. You can use both. If the same content ends up in both places
 Rules sync is covered by the [US 10: Data safety](10-data-safety.md) guarantee:
 
 - Content outside the `<!-- agentbrew:start/end -->` markers in instruction files is never touched.
-- Per-file rules you authored manually in `~/.cursor/rules/` are preserved; agentbrew only manages files that match entries in `~/.config/agentbrew/rules/`.
+- Per-file rules you authored manually in an agent's rules directory are preserved; agentbrew only manages files that match entries in `~/.config/agentbrew/rules/`.
 - Before sync writes a managed section, it snapshots the file — `agentbrew sync --rollback` restores the previous state if something goes wrong. See [US 26: Rollback](26-rollback.md).

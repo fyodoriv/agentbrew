@@ -41,7 +41,7 @@ Separate from bundles, you can also import MCP servers that were added manually 
 
 ```bash
 agentbrew import                    # scan all agents, import user-added servers
-agentbrew import --from cursor      # import only from Cursor
+agentbrew import --from kiro        # import only from Kiro
 ```
 
 This discovers servers in agent configs that agentbrew doesn't know about and adds them to state — so the next sync deploys them everywhere.

@@ -3,9 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/agentbrew.svg)](https://www.npmjs.com/package/agentbrew)
 [![license](https://img.shields.io/npm/l/agentbrew.svg)](LICENSE)
 
-**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Cursor, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
+**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
 
-**Install with your AI agent (one step):** open Claude Code (or Cursor, Codex) and say:
+**Install with your AI agent (one step):** open Claude Code (or Codex) and say:
 
 > Install agentbrew by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md
 
@@ -83,7 +83,7 @@ multiple repositories. It keeps Jira tasks concise: Jira fields and links own
 UI metadata, explicit non-goals stay excluded, and a requested single PR
 remains one delivery boundary.
 
-High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md). `npm run eval:plain-language` checks sampled chat, docs, PR, code-comment, and skill-wrapper output from Claude Code, Cursor, and Codex against the plain-language rule; pass `--surface <name> <file>` to score your own captured output.
+High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md). `npm run eval:plain-language` checks sampled chat, docs, PR, code-comment, and skill-wrapper output from Claude Code and Codex against the plain-language rule; pass `--surface <name> <file>` to score your own captured output.
 
 Source repos can declare one-time setup in `agentbrew-source.yaml`:
 
@@ -191,7 +191,7 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it. A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off. Dirs from other Agentfiles or added by hand are never removed. State written before ownership existed is kept as is, and a dir that is still declared is claimed on the next sync, so remove an old dropped dir by hand once.
 
-**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). Cursor keeps the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
@@ -201,12 +201,12 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
-- **MCP servers** → JSON (Cursor, Claude), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
-- **MCP permissions** → `permissions.allow` entries for agents that require explicit MCP tool grants (Cursor CLI)
+- **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
+- **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources
-- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to Cursor (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
+- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to agents with a `rulesDir` (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
 - **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run
-- **Hooks** → native hook files (Claude Code settings, Cursor hooks.json)
+- **Hooks** → native hook files (Claude Code settings)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies, and `agentbrew status --verbose` names each kept, missing, or outdated script with its path
@@ -263,11 +263,9 @@ can load relevant durable context. LaunchAgent reconciliation is idempotent: a
 normal sync does not restart a healthy unchanged daemon, but configuration
 drift is rewritten before MCP fanout.
 
-If `memory fix` recovers or restarts the daemon, its JSON result includes
-`cursorReloadRecommended: true` and the human output prints a manual reload
-advisory. Fully restart Cursor or use **Developer: Reload Window** yourself;
-agentbrew never quits Cursor, kills processes, or edits `~/.cursor/mcp.json`.
-Cold login ordering should start memory before the IDE.
+If `memory fix` recovers or restarts the daemon, restart any agent that held
+a stale MCP connection. agentbrew never kills agent processes. Cold login
+ordering should start memory before the IDE.
 
 The daemon runs on Python 3.13 (`uvx --python 3.13`). uvx otherwise picks the
 newest Python it has, and the service's `onnxruntime` dependency has no wheels
@@ -537,6 +535,8 @@ An overlay can also list mcpm registry servers that fail on its machines in a `b
 
 ## Supported agents
 
+> Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
+
 <!-- agent-matrix:start -->
 ### Sync surfaces per agent
 
@@ -665,7 +665,7 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
 
 `agentbrew --help` shows all commands grouped by category. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
 
-`agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and Cursor `.mdc` scope/size checks. See `docs/agent-bloat-lint.md`.
+`agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and `.mdc` rule template scope/size checks. See `docs/agent-bloat-lint.md`.
 
 ## Status and roadmap
 
@@ -748,7 +748,7 @@ scripts/validate-public-release.sh
 
 **Full user guide:** [`docs/learn-project.md`](docs/learn-project.md) — prerequisites, quick starts, six source types, StudyVault layout, pedagogy, troubleshooting.
 
-The `learn-project` skill is a single entrypoint that teaches you a project and then quizzes you. Say "tutor me on X" / "teach me this project" in Claude Code or Cursor and it will: ensure the upstream teach + quiz skills are installed, detect where prep left off (resumable), ask for any missing inputs, gather sources, stage them, build a grounded StudyVault, verify + teach, then run an adaptive quiz.
+The `learn-project` skill is a single entrypoint that teaches you a project and then quizzes you. Say "tutor me on X" / "teach me this project" in Claude Code and it will: ensure the upstream teach + quiz skills are installed, detect where prep left off (resumable), ask for any missing inputs, gather sources, stage them, build a grounded StudyVault, verify + teach, then run an adaptive quiz.
 
 It pulls **six source types** into one grounded StudyVault: local folders/repos, remote enterprise repos + PRs/issues (GitHub MCP), Google Docs incl. all tabs (Drive MCP), Jira issues/epics/initiatives (Jira MCP), loose files (PDF/MD/…), and web pages.
 

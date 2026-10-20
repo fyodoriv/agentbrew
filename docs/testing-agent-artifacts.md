@@ -66,7 +66,7 @@ and passive voice in at most 1 of 5 sentences. Bullets and fenced code are
 not counted as long paragraphs. Each diagnostic names the rule text it
 enforces, so a failure shows the rule gap.
 
-Sampled outputs for Claude Code, Cursor, and Codex live in
+Sampled outputs for Claude Code and Codex live in
 `agent-artifact-evals/plain-language/samples/<agent>/<surface>.<ext>`. Known
 bad outputs live in `agent-artifact-evals/plain-language/failing/`. The
 Promptfoo cases in `agent-artifact-evals/cases/plain-language.yaml` run both

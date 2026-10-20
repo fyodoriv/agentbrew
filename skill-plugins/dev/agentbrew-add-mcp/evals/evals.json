@@ -9,7 +9,7 @@
         "Prefers `agentbrew install context7` or catalog shorthand rather than hand-editing agent config files",
         "Runs `agentbrew sync` after registration so all supported agents receive the server",
         "Verifies the result through agentbrew status and/or the delegated MCP tool where appropriate",
-        "Does not edit `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, or other generated configs directly"
+        "Does not edit `~/.claude.json`, `~/.kiro/settings/mcp.json`, or other generated configs directly"
       ]
     },
     {
@@ -42,7 +42,7 @@
         "Refuses to hardcode the API key, token, or secret in the MCP registration",
         "Uses `agentbrew mcp add` with `-e KEY` and requires the value to be set in the environment",
         "Tests or probes the server before treating it as available to all agents",
-        "Does not edit generated agent MCP configs such as `~/.cursor/mcp.json` directly"
+        "Does not edit generated agent MCP configs such as `~/.kiro/settings/mcp.json` directly"
       ]
     }
   ]

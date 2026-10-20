@@ -1,5 +1,5 @@
 # Agent dependencies for {{NAME}}. Preview: `agentbrew sync --dry-run`. Apply: `agentbrew sync`.
-# Generated per-agent files (.claude/, .cursor/, .codex/) are outputs; edit this file instead.
+# Generated per-agent files (.claude/, .codex/) are outputs; edit this file instead.
 skills:
   - test-driven-development
   - verification-before-completion

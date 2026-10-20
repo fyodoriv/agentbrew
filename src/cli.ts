@@ -274,6 +274,7 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     // Install before the pull, so the pull's deploy includes skills the
     // Agentfile newly requests.
     await installAgentfileItemsBeforePull(applied, options);
+    if (!options.dryRun) await refreshTeamOverlayBeforePull();
     await update({ dryRun: options.dryRun ?? false });
     return true;
   }
@@ -326,6 +327,20 @@ async function emitNativePluginOutput(): Promise<void> {
     emitClaudeNative();
   } catch (e) {
     console.error(`✗ Native Claude Code plugin output failed: ${e instanceof Error ? e.message : String(e)}`);
+    process.exitCode = 1;
+  }
+}
+
+/** Fast-forward the team overlay and re-pin it; refuse a force-push (#331). */
+async function refreshTeamOverlayBeforePull(): Promise<void> {
+  const { loadState } = await import("./state.js");
+  const state = loadState();
+  if (!state?.team) return;
+  const { refreshTeamOverlay } = await import("./team/team-refresh.js");
+  const result = refreshTeamOverlay(state);
+  if (result.status === "updated") console.log(`✓ Team overlay updated and re-pinned at ${result.sha?.slice(0, 8)}`);
+  if (result.status === "failed") {
+    console.error(`✗ ${result.message}`);
     process.exitCode = 1;
   }
 }

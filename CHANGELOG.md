@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Team overlay `commands:` folders now deploy, and `sync --pull`
+  fast-forwards and re-pins the overlay; a force-pushed overlay is refused
+  (#331).
+
+### Fixed
+
 - **ChatGPT and Claude Desktop context files are no longer empty.**
   `context/chatgpt.md` and `context/claude-desktop.md` took their body from the
   "Auto-Synced Cursor Rules" section, which the Cursor removal (#286) deleted.

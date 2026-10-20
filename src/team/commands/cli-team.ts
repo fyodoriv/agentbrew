@@ -112,6 +112,11 @@ function unsetTeam(state: AgentBrewState): void {
     state.mcpServers = state.mcpServers.filter((m) => m.source !== origin);
   }
 
+  // Remove command source dirs with this origin
+  if (state.commandSourceDirs) {
+    state.commandSourceDirs = state.commandSourceDirs.filter((d) => d.origin !== origin);
+  }
+
   // Remove skill source dirs with this origin
   if (state.skillSourceDirs) {
     state.skillSourceDirs = state.skillSourceDirs.filter((d) => d.origin !== origin);
@@ -139,7 +144,7 @@ function getRelativeTime(date: Date): string {
 }
 
 /** Load and parse Agentfile.yaml from the team overlay directory. */
-function loadTeamAgentfile(teamPath: string): Record<string, unknown> | undefined {
+export function loadTeamAgentfile(teamPath: string): Record<string, unknown> | undefined {
   const agentfilePath = join(teamPath, "Agentfile.yaml");
   if (!existsSync(agentfilePath)) {
     console.error(chalk.red(`✗ Agentfile.yaml not found at ${agentfilePath}`));
@@ -183,6 +188,7 @@ export function mergeTeamAgentfile(
   now: string,
   teamPath: string,
 ): void {
+  mergeTeamCommandDirs(state, agentfile, label, teamPath);
   if (!Array.isArray(agentfile.sources)) return;
   const origin = `team:${label}`;
   let sources = state.sources ?? [];
@@ -206,6 +212,25 @@ export function mergeTeamAgentfile(
     });
   }
   state.sources = sources;
+}
+
+/** Register the overlay's `commands:` dirs (resolved inside the checkout) as team-owned command sources (#331). */
+function mergeTeamCommandDirs(
+  state: AgentBrewState,
+  agentfile: Record<string, unknown>,
+  label: string,
+  teamPath: string,
+): void {
+  if (!Array.isArray(agentfile.commands)) return;
+  const origin = `team:${label}`;
+  const dirs = (state.commandSourceDirs ?? []).filter((d) => d.origin !== origin);
+  for (const rel of agentfile.commands) {
+    if (typeof rel !== "string") continue;
+    const path = resolveTeamSourceUrl(rel, teamPath);
+    if (dirs.some((d) => d.path === path)) continue;
+    dirs.push({ label: `${basename(teamPath)}-${basename(path)}`, path, origin });
+  }
+  state.commandSourceDirs = dirs;
 }
 
 /** Resolve a single overlay-relative path from the Agentfile; warn + return

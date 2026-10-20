@@ -42,7 +42,7 @@ vi.mock("../sync-recommended.js", () => ({ shouldInstallRecommendedOnSync: () =>
 
 import { loadCatalog } from "../catalog/types.js";
 import { buildProgram } from "../cli.js";
-import { readLock, writeLock } from "../lock.js";
+import { findLockViolations, readLock, writeLock } from "../lock.js";
 import { pluginCommandDirs, pluginRulesFor, pluginSkillDirs } from "../plugins/contributions.js";
 import { addPlugin, pluginDir, removePlugin } from "../plugins/store.js";
 import { invalidateState, loadState } from "../state.js";
@@ -52,6 +52,7 @@ import { runSyncParallel } from "../sync-runner.js";
 import { fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import type { AgentBrewState } from "../types.js";
 import { mergeTeamAgentfile, registerTeamCommands } from "./commands/cli-team.js";
+import { refreshTeamOverlay } from "./team-refresh.js";
 
 const CONFIG_DIR = join(home, ".config", "agentbrew");
 const OVERLAY_URL = "git@github.example.com:acme/agentbrew-acme.git";
@@ -349,5 +350,76 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
 
   it("rules reach only declared agents", () => {
     expect(pluginRulesFor("codex", REPO)).toBe("");
+  });
+});
+
+describe("team overlay commands and sync --pull (#331)", () => {
+  const ID = ["-c", "user.name=t", "-c", "user.email=t@example.com"];
+
+  /** An upstream overlay repo plus a clone that `team set` uses as its checkout. */
+  function upstreamAndClone(agentfile: Record<string, unknown>): { upstream: string; clone: string } {
+    const upstream = makeOverlayRepo(agentfile).dir;
+    mkdirSync(join(upstream, "commands"), { recursive: true });
+    writeFileSync(join(upstream, "commands", "deploy.md"), "deploy it");
+    git(upstream, "add", ".");
+    git(upstream, ...ID, "commit", "-qm", "commands");
+    const clone = join(mkdtempSync(join(tmpdir(), "overlay-clone-")), "agentbrew-acme");
+    git(tmpdir(), "clone", "-q", upstream, clone);
+    return { upstream, clone };
+  }
+
+  it("team set registers overlay commands dirs, and team unset removes them", async () => {
+    const { clone } = upstreamAndClone({ name: "acme", commands: ["./commands"] });
+    cloneOrUpdateRepo.mockReturnValue(clone);
+
+    await teamSet(OVERLAY_URL);
+    expect(loadState()?.commandSourceDirs).toEqual([
+      expect.objectContaining({ path: join(clone, "commands"), origin: "team:acme" }),
+    ]);
+
+    const program = new Command().exitOverride();
+    registerTeamCommands(program);
+    await program.parseAsync(["node", "test", "team", "unset"]);
+    expect(loadState()?.commandSourceDirs ?? []).toEqual([]);
+  });
+
+  it("sync --pull fast-forwards the overlay, re-pins the lock, and picks up new commands dirs", async () => {
+    const { upstream, clone } = upstreamAndClone({ name: "acme" });
+    cloneOrUpdateRepo.mockReturnValue(clone);
+    await teamSet(OVERLAY_URL);
+    writeFileSync(join(upstream, "Agentfile.yaml"), yaml.dump({ name: "acme", commands: ["./commands"] }));
+    git(upstream, ...ID, "commit", "-qam", "add commands");
+    const newHead = git(upstream, "rev-parse", "HEAD");
+
+    const result = refreshTeamOverlay(loadState() as AgentBrewState);
+
+    expect(result.status).toBe("updated");
+    expect(git(clone, "rev-parse", "HEAD")).toBe(newHead);
+    expect(readLock().team?.sha).toBe(newHead);
+    expect(loadState()?.team?.commitSha).toBe(newHead);
+    expect(loadState()?.commandSourceDirs?.map((d) => d.path)).toEqual([join(clone, "commands")]);
+    expect(findLockViolations([], loadState()?.team)).toEqual([]);
+  });
+
+  it("sync --pull refuses a force-pushed overlay and keeps the old pin", async () => {
+    const { upstream, clone } = upstreamAndClone({ name: "acme" });
+    cloneOrUpdateRepo.mockReturnValue(clone);
+    await teamSet(OVERLAY_URL);
+    const pinned = readLock().team?.sha;
+    git(upstream, ...ID, "commit", "-q", "--amend", "-m", "rewritten");
+
+    const result = refreshTeamOverlay(loadState() as AgentBrewState);
+
+    expect(result.status).toBe("failed");
+    expect(result.message).toMatch(/fast-forward/);
+    expect(readLock().team?.sha).toBe(pinned);
+    expect(git(clone, "rev-parse", "HEAD")).toBe(pinned);
+  });
+
+  it("sync --pull with no new overlay commits is up to date", async () => {
+    const { clone } = upstreamAndClone({ name: "acme" });
+    cloneOrUpdateRepo.mockReturnValue(clone);
+    await teamSet(OVERLAY_URL);
+    expect(refreshTeamOverlay(loadState() as AgentBrewState).status).toBe("up-to-date");
   });
 });

@@ -67,6 +67,8 @@ $ agentbrew team set git@github.acme.com:platform/agentbrew-acme.git
   Run `agentbrew sync` to deploy overlay skills to your agents.
 ```
 
+Overlay `commands:` folders deploy like any command source and leave on `team unset`. `agentbrew sync --pull` fast-forwards the overlay and re-pins it; a force-pushed overlay is refused and keeps its pin.
+
 `team set` also pins the overlay commit in `agentbrew.lock`. `agentbrew sync` refuses to deploy when the checkout moved off that commit; re-run `team set` to re-pin. A missing or broken catalog overlay file is an error, not a silent skip.
 
 Each step is idempotent. Re-running `team set` with the same URL is a no-op. Re-running with a **different** URL cleanly replaces the previous team — see "One team at a time" below.

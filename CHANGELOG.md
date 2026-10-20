@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `cursor-token-playbook` skill, the Cursor `.mdc` inventory in
   `measure context`, the tokscale Cursor usage probe, the Cursor context-ring
   field, and the "Auto-Synced Cursor Rules" strip step.
+  The second step removes the `cursor` agent: its `agents.yaml` entry, the
+  Cursor hooks format, the `cursor` command transform, the Cursor MCP GUI
+  wrapping, and Cursor in the delegation maps, primary agent lists, project
+  detection, the shell hook, hook-manifest targets, and installer backups.
+  agentbrew no longer writes under `~/.cursor`. Files it wrote there before
+  stay; delete them by hand if you no longer want them.
 
 ### Security
 

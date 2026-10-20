@@ -1,7 +1,9 @@
 import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import type { Command } from "commander";
+import yaml from "js-yaml";
 import { ICON_SUCCESS } from "../ui/output.js";
+import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
 import { CapabilityError } from "./capabilities.js";
 import { policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
@@ -140,6 +142,47 @@ export function registerPluginCommands(program: Command): void {
         }
         const entry = applyUpdate(plan, { yes, capabilityApproved });
         console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
+      } catch (e) {
+        fail(e);
+      }
+    });
+
+  plugin
+    .command("new <dir>")
+    .description("Scaffold a plugin repo (manifest, rules, skills, leak patterns)")
+    .requiredOption("--name <name>", "Plugin name (lowercase, digits, dashes)")
+    .action((dir: string, options: { name: string }) => {
+      try {
+        scaffoldPlugin(dir, options.name);
+        console.log(
+          `${ICON_SUCCESS} Plugin ${options.name} scaffolded in ${dir}. Run \`agentbrew plugin test ${dir}\`.`,
+        );
+      } catch (e) {
+        fail(e);
+      }
+    });
+
+  plugin
+    .command("test [dir]")
+    .description("Run the core's static checks on a plugin checkout (schema, capabilities, MCP, leak patterns)")
+    .action((dir?: string) => {
+      const problems = testPlugin(dir ?? process.cwd());
+      for (const p of problems) console.error(`✗ ${p}`);
+      if (problems.length > 0) process.exitCode = 1;
+      else console.log(`${ICON_SUCCESS} plugin test passed`);
+    });
+
+  plugin
+    .command("migrate <overlay-dir>")
+    .description("Draft agentbrew-plugin.yaml from a legacy team overlay; changes nothing")
+    .action((overlayDir: string) => {
+      try {
+        const { manifest, unmapped } = migrateOverlay(overlayDir);
+        console.log(yaml.dump(manifest).trimEnd());
+        if (unmapped.length > 0) {
+          console.error("\nNot mapped (do these by hand):");
+          for (const u of unmapped) console.error(`  - ${u}`);
+        }
       } catch (e) {
         fail(e);
       }

@@ -35,7 +35,11 @@ export interface LeakFinding {
 }
 
 function patternsOf(name: string): LeakPattern[] {
-  const dir = pluginDir(name);
+  return leakPatternsIn(pluginDir(name), name);
+}
+
+/** Leak patterns of the plugin checkout at `dir`. Throws {@link LeakPatternError}. */
+export function leakPatternsIn(dir: string, name: string): LeakPattern[] {
   let rel: unknown;
   try {
     rel = readManifest(dir).contributes?.leak_patterns;

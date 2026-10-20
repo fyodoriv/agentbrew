@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses
   a plugin checkout that drifted from its lock.
+- **Plugin authoring** (#208 step 11): `plugin new`, `plugin test`, and
+  `plugin migrate` (draft a manifest from a legacy overlay).
 - **`plugin update`** (#208 step 11): semantic diff of rules, skills, MCP
   servers, hooks, and capabilities; applies only on confirmation, and a
   capability change always asks. `plugin rollback` returns to the old version.

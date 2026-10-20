@@ -49,14 +49,14 @@ export function describeCapabilities(manifest: PluginManifest): string {
   return lines.length ? lines.join("\n") : "  (none declared)";
 }
 
-interface Staged {
+export interface Staged {
   dir: string;
   manifest: PluginManifest;
   entry: PluginLockEntry;
 }
 
 /** Clone `url@ref` to a staging dir, validate the manifest, verify the signed tag. Runs no plugin code. */
-function stage(url: string, ref: string, extraSigner?: string): Staged {
+export function stage(url: string, ref: string, extraSigner?: string): Staged {
   mkdirSync(pluginsRoot(), { recursive: true });
   const dir = join(pluginsRoot(), `.staging-${process.pid}-${Date.now()}`);
   try {

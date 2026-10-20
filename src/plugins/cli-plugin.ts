@@ -9,6 +9,7 @@ import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
+import { applyUpdate, planUpdate } from "./update.js";
 
 /** The v2 plugin contract ships behind this flag until step 12 of #208. */
 export function pluginsV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -118,6 +119,30 @@ export function registerPluginCommands(program: Command): void {
     .action((options: { agent: string; cwd?: string }) => {
       const block = pluginRulesFor(options.agent, repoIdOf(options.cwd ?? process.cwd()));
       if (block) console.log(block);
+    });
+
+  plugin
+    .command("update <name> <ref>")
+    .description(
+      "Show a diff of rules, skills, MCP servers, hooks, and capabilities for a new signed ref, then apply on confirm",
+    )
+    .option("-y, --yes", "Apply without the diff prompt (a capability change still asks)")
+    .action(async (name: string, ref: string, options: { yes?: boolean }) => {
+      try {
+        const plan = planUpdate(name, ref);
+        console.log(plan.diff);
+        const tty = process.stdin.isTTY === true;
+        let yes = options.yes === true;
+        if (!yes && tty) yes = await confirm({ message: "Apply this update?", default: false });
+        let capabilityApproved = false;
+        if (yes && plan.capabilitiesChanged && tty) {
+          capabilityApproved = await confirm({ message: "The capabilities changed. Approve them?", default: false });
+        }
+        const entry = applyUpdate(plan, { yes, capabilityApproved });
+        console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
+      } catch (e) {
+        fail(e);
+      }
     });
 
   plugin

@@ -155,6 +155,23 @@
 
 ## P1
 
+- [ ] Users can run `/wrap-up` anywhere, and `/next-task` continues open PRs first (land fyodoriv/agentbrew#292)
+  - **ID**: land-wrap-up
+  - **Tags**: wrap-up, delivery
+  - **Details**: The cloud session that built #292 could not finish delivery. On the Mac, in a worktree of
+    `dev/pensive-clarke-ooif1u`: run `npm run verify` (the 14 cloud-only test failures should pass on macOS),
+    then the leak check from AGENTS.md Delivery step 3 (must print `0`). When both pass, mark #292 ready,
+    squash-merge it, `npm run build` in the live checkout, `agentbrew sync`, then merge fyodoriv/dotfiles#191
+    and run `dotfiles apply`. Check: `/next-task` in a repo with an open branch prints the open-work context.
+  - **Files**: the #292 diff
+  - **Output**: code
+  - **Acceptance**: #292 and dotfiles#191 merged; `/wrap-up` installed on the Mac; `/next-task` shows open work first.
+  - **Hypothesis**: the Mac gate passes on the first run because every cloud failure also fails on `main` there only in Linux.
+  - **Measurement**: `npm run verify` exit code and the leak-check count on the Mac
+  - **Success**: verify passes, leak count 0, both PRs merged
+  - **Pivot**: a Mac-only failure in the diff → fix it on the branch before merging
+  - **Anchor**: owner on 2026-10-20: "run /wrap-up on these changes, I will archive this and continue later from mac"
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

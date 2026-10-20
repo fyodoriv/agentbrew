@@ -353,7 +353,7 @@ function shouldSkipDir(name: string, depth: number): boolean {
  * Slice 3 of `delegate-skill-install-to-skills-cli` (2026-04-26):
  * the dispatcher now reads detected agents from state and passes the
  * explicit list through `buildSkillsCliAgentArgs(detectedNames)` —
- * `--agent <claude-code> --agent <cursor> ...` instead of the previous
+ * `--agent <claude-code> --agent <codex> ...` instead of the previous
  * `--agent *` wildcard. This narrows the install to agents the user
  * actually has and surfaces carve-outs as a one-line warning so callers
  * see why their `claude-desktop`/`overlay-desktop` skills must

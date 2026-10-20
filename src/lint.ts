@@ -497,7 +497,7 @@ function lintBarePlaceholders(): { errors: number } {
   }
   console.log(
     chalk.dim(
-      `\n  Strict env-var interpolators importing Claude/Cursor configs crash on bare \${VAR} when the var is unset.\n  Run ${chalk.white("agentbrew sync")} to rewrite ${total} placeholder(s) to the resilient \${VAR:-} form.\n`,
+      `\n  Strict env-var interpolators importing agent MCP configs crash on bare \${VAR} when the var is unset.\n  Run ${chalk.white("agentbrew sync")} to rewrite ${total} placeholder(s) to the resilient \${VAR:-} form.\n`,
     ),
   );
   return { errors: sweep.length };

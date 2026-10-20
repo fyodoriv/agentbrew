@@ -209,7 +209,7 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
     .description(
       "Smoke-test every configured MCP server by spawning it, sending initialize + tools/list, and reporting health",
     )
-    .option("--agent <agent>", "Probe only this agent's MCP config (e.g. cursor, claude-code)")
+    .option("--agent <agent>", "Probe only this agent's MCP config (e.g. kiro, claude-code)")
     .option("--deep", "Add a per-MCP tools/call smoke test (catches token-scope issues like the github 401)")
     .option("--json", "Emit machine-readable JSON instead of a table")
     .option("--timeout <ms>", "Override per-server probe timeout in ms (default 12000 fast, 30000 --deep)")

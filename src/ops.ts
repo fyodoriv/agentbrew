@@ -88,7 +88,7 @@ export function snapshotAgentConfigs(): string | undefined {
   let copied = 0;
   for (const filePath of paths) {
     try {
-      // Encode the relative path as a flat filename: ~/.cursor/mcp.json → .cursor__mcp.json
+      // Encode the relative path as a flat filename: ~/.kiro/mcp.json → .kiro__mcp.json
       const relativePath = relative(home, filePath);
       const flatName = relativePath.replace(/\//g, "__");
       copyFileSync(filePath, join(snapshotDir, flatName));

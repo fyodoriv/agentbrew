@@ -502,7 +502,7 @@ function logRuleStatus(rule: CatalogRule, status: ReturnType<typeof addRuleToSha
     // Disambiguate from the drift "rules — managed section out of date"
     // message: this status is about the snippet being in the
     // source-of-truth `shared-rules.md`, not about agent-side deployed
-    // copies (`~/.claude/CLAUDE.md`, `~/.cursor/rules/`, …) which are
+    // copies (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, …) which are
     // tracked by `checkRulesDrift` under the `[rules]` drift type.
     console.log(`  ${ICON_SUCCESS} ${rule.name} — already in shared-rules.md`);
   } else {

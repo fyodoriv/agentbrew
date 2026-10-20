@@ -61,7 +61,7 @@ export {
  * `rules` → `agent-rules-files`: the install-time message uses
  * `"already in shared-rules.md"` to refer to source-of-truth rule snippets
  * (5 rules in shared-rules.md), while drift items here are stale
- * managed-sections in agent-side rule files (CLAUDE.md, .cursor/rules/, …).
+ * managed-sections in agent-side rule files (CLAUDE.md, AGENTS.md, …).
  * Showing both as "rules" caused the user-reported "5 already present vs
  * 6 out of date" contradiction in `status-numbers-self-consistent`.
  */

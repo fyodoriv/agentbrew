@@ -57,7 +57,7 @@ export interface ServerSample {
 export interface McpAgentFixture {
   /** Agent name — must match `src/core/agents.yaml`. */
   name: string;
-  /** Path under HOME (no leading `~`) — e.g. `.cursor/mcp.json`. */
+  /** Path under HOME (no leading `~`) — e.g. `.kiro/settings/mcp.json`. */
   relativePath: string;
   /** Servers-record key — defaults match `agents.yaml`. */
   mcpKey: string;

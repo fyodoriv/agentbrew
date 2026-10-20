@@ -68,11 +68,14 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--replace` | disruptive | Overwrites existing items on import; unsafe as a default. |
 | `--rollback` | disruptive | Restores the last snapshot over current configs; must stay explicit. |
 | `--rules` | knob | Filters browse output to rules. |
+| `--schedule` | knob | Opts in to (or out of) the weekly metrics send; sending data must never be a default. |
 | `--search` | knob | Search text for browse; input, not behavior. |
+| `--send` | disruptive | Sends metrics without the first-run dry-run review; data leaving the machine is never a default. |
 | `--sequential` | debug | Runs sync modules one by one to isolate a failure; parallel is the default. |
 | `--set` | knob | Writes an explicit override value. |
 | `--share` | knob | Writes an aggregate snapshot to a file; a different output, not a default. |
 | `--shell` | knob | Picks the shell hook only; the default installs both hooks. |
+| `--sink` | knob | Names where shared metrics go; the base repo has no default sink. |
 | `--skills` | knob | Filters browse output to skills. |
 | `--skip-ccusage` | opt-out | Opt-out of a default (ccusage runs by default). |
 | `--skip-install` | opt-out | Opt-out of a default (init installs by default). |

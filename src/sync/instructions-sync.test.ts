@@ -811,11 +811,11 @@ describe("templates/AGENTS.md — public-write-approval-rule regression guard", 
 
     expect(browserSection).toMatch(/attach-first/i);
     expect(browserSection).toMatch(/9223/);
-    expect(browserSection).toMatch(/9224/);
-    expect(browserSection).toMatch(/9225/);
+    expect(browserSection).not.toMatch(/9224|9225/);
+    expect(browserSection).toMatch(/temp-browser/);
     expect(browserSection).toMatch(/sso-background-work/);
     expect(browserSection).toMatch(/background/i);
-    expect(REAL_SHARED_RULES).toMatch(/--remote-debugging-port=0/);
+    expect(REAL_SHARED_RULES).not.toMatch(/--remote-debugging-port=0/);
   });
 });
 

@@ -80,7 +80,7 @@ Never publish under the user's identity without explicit approval for the exact 
 
 ### Browser work
 
-Use browser automation — never ask the user to click. SSO: use attach-first with purpose Chrome (`9223`/`9224`/`9225`), poll up to 120s, then background per `sso-background-work`. Details: shared-rules **## Browser and web UI work**.
+Use browser automation — never ask the user to click. At most three browsers: the user's own (never, unless told), the shared agents Chrome (`9223`, attach-first), and one locked `temp-browser`. SSO: poll up to 120s, then background per `sso-background-work`. Details: shared-rules **## Browser and web UI work**.
 
 ### Verification + security
 

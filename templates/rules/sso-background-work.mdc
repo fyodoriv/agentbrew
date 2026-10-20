@@ -23,14 +23,14 @@ Treat the page as SSO-blocked when any of these match:
 
 ## Immediate actions
 
-1. **Record blocker state** (one short note): target URL, current URL, CDP port (`9223` / `9224` / `9225`), tab you opened, next verification step (e.g. page-zero on `/releases`)
-2. **Leave the tab open** in the persistent purpose Chrome — do not close/kill Chrome
+1. **Record blocker state** (one short note): target URL, current URL, CDP port (`9223`, or the temporary browser port), tab you opened, next verification step (e.g. page-zero on `/releases`)
+2. **Leave the tab open** in the shared agents Chrome — do not close/kill Chrome
 3. Run the **initial** attach-first poll from `sso-browser-isolation` (up to 120s). If auth completes, continue the blocked task immediately
 4. If still on auth, open the target in a stable headed SSO session in **background tabs only**. **Never raise, activate, or `open -a` a browser window**, and never take app focus: the user may be typing in another app, and macOS often blocks the raise anyway.
 5. **Verify the page before mentioning it to the user.** Confirm the expected auth URL/title through CDP and take and inspect a fresh browser-content screenshot showing the sign-in controls. Never claim a CDP tab is visible to the user; say which browser and tab it is in.
 6. If the page is wrong or the session died, reopen the same stable headed session and verify again before asking. After a second failure, report that the handoff is unavailable; do not ask the user to authenticate.
 7. **Present the SSO screenshot in chat before asking.** Save it as `~/apps/agent-scratch/screenshots/sso-handoff-<purpose>-browser.png` (`AGENT_SCREENSHOT_DIR`) and embed it in the **same turn** as the sign-in request (markdown image to the absolute PNG path). Never ask for SSO without a screenshot attached in that message.
-8. **Tell the user exactly what is needed**: which page needs sign-in and which browser it is in — for example: “SSO is blocking `<target>`. The sign-in page is open in a tab of the purpose Chrome (port 9224). Switch to it when it suits you; I will resume and verify automatically.” The user switches to it themselves. Do not ask them to find a headless port or repeat a step already completed.
+8. **Tell the user exactly what is needed**: which page needs sign-in and which browser it is in — for example: “SSO is blocking `<target>`. The sign-in page is open in a tab of the shared agents Chrome (port 9223). Switch to it when it suits you; I will resume and verify automatically.” The user switches to it themselves. Do not ask them to find a headless port or repeat a step already completed.
 9. Start the mandatory **background auth listener** below, then keep productive work moving in parallel. Do not rely on the user replying “done.”
 
 ## Parallel productive work
@@ -75,7 +75,7 @@ while true; do
 done
 ```
 
-Pass the same `--session` on every watcher call. On a shared purpose Chrome, a
+Pass the same `--session` on every watcher call. On the shared agents Chrome, a
 call without `--session` can read another agent's tab and report a false
 login.
 

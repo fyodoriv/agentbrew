@@ -11,7 +11,7 @@ globs: ["**/TASKS.md"]
 
 ## ALWAYS drive the browser yourself
 
-**Never ask the user to open, navigate, paste, or click a URL.** When a task needs a page open, YOU open it. For SSO-gated pages, load the `sso-browser-isolation` skill, use the attach-first workflow: attach to the correct purpose Chrome with `agent-browser connect <port>` or an equivalent CDP attach path, open your own tab, then navigate, snapshot, click, and read results yourself. For non-SSO work, use Playwright MCP or a task-local browser with a random debugging port.
+**Never ask the user to open, navigate, paste, or click a URL.** When a task needs a page open, YOU open it. For SSO-gated pages, load the `sso-browser-isolation` skill, use the attach-first workflow: attach to the shared agents Chrome with `agent-browser connect 9223` or an equivalent CDP attach path, open your own tab, then navigate, snapshot, click, and read results yourself. Use the same browser for non-SSO pages.
 
 This includes SSO: drive the redirect chain yourself and **poll URL/title plus DOM/snapshot changes for up to 120 seconds** — an SSO flow can auto-complete if the device session is still valid, landing back on the target page with no human action. Navigate, then poll before concluding anything is blocked, and continue early if the DOM changes from the auth screen into the target app.
 
@@ -32,17 +32,17 @@ Anti-pattern (do NOT do this): sit in a tight poll loop waiting for SSO. Anti-pa
 ## Browser Mode Selection (CRITICAL)
 
 Default to attach-first.
-There are three valid browser modes on this host. Pick the narrowest one that fits the task.
+Use **at most three browsers** (zero is fine):
 
-### Mode 1 — Attach-first for SSO-gated and dashboard pages
+1. **The user's own browser.** Agents never use it unless the user says so.
+2. **One shared agents Chrome** on port `9223`. The user signs in once. Every agent attaches to it, works in its own tab, and shares its cookies. When it is down, **never start another browser**; report that it is down and which task is blocked.
+3. **One temporary browser** for bot or disposable sign-ins. Each use starts with a fresh profile, deleted after use. Only one agent may hold it.
 
-For **Google Docs/Slides/Drive, Jenkins, Jira, or any other SSO-gated UI**, attach to the existing purpose launchd Chrome and work in your own tab:
+Never raise or focus a window in any of them (see `sso-background-work`).
 
-| Port | Purpose |
-|------|---------|
-| `9223` | dashboard / general SSO |
-| `9224` | debug |
-| `9225` | tooling |
+### Shared agents Chrome (default)
+
+For **Google Docs/Slides/Drive, Jenkins, Jira, any SSO-gated UI, and public pages**, attach and work in your own tab:
 
 ```bash
 PORT=9223
@@ -59,23 +59,21 @@ agent-browser --session "$SESSION" snapshot > ~/apps/agent-scratch/screenshots/p
 command. If the tab closes, commands fail with `tab_gone` instead of driving
 another agent's tab: run `tab new` again.
 
-Preserve the 2026-05-12 tab-stealing fix with per-agent daemons and own-tab discipline. Do not solve tab safety by spawning a timestamp-unique Chrome per SSO task.
+Preserve the 2026-05-12 tab-stealing fix with per-agent daemons and own-tab discipline. Do not solve tab safety by spawning another Chrome.
 
-### Mode 2 — Stable headed session for true isolation
+### Temporary browser (locked)
 
-Use a separate Chrome only when a task truly needs isolation or a human must authenticate in a visible separate window. Use a stable purpose name, not a timestamp, keep the name in your notes, and close it at task end.
+Use it only when a task needs a separate cookie jar (a bot account, a disposable sign-in, an extension, a clean profile):
 
 ```bash
-SESSION_NAME="sso-<purpose>"
-URL='<target-url>'
-agent-browser --headed --session-name "$SESSION_NAME" open "$URL"
-agent-browser --session-name "$SESSION_NAME" get url
-agent-browser --session-name "$SESSION_NAME" snapshot > ~/apps/agent-scratch/screenshots/page-snapshot.txt
+temp-browser acquire --owner '<agent>-<task>' --reason '<why>'   # prints the CDP port
+temp-browser status                                              # who holds it, why, lease
+temp-browser release --owner '<agent>-<task>'                    # deletes the profile
 ```
 
-### Mode 3 — Task-local non-SSO browser
-
-For non-SSO public pages, throwaway fixtures, and one-off local UI checks, launch a task-local browser with `--remote-debugging-port=0`, read `DevToolsActivePort`, verify the endpoint belongs to the spawned PID, and close it when done. Never hardcode ports `9222`–`9225` for this mode.
+- Acquire the lock first. When another agent holds it, report who holds it and why, then wait or ask.
+- Never take it over while the holder's lease is live. An expired lease, or a browser that has exited, may be taken over.
+- Release it as soon as you are done.
 
 ### Hard bans
 
@@ -83,16 +81,17 @@ For non-SSO public pages, throwaway fixtures, and one-off local UI checks, launc
 - ❌ launching Chrome on a launchd-owned profile
 - ❌ setting `AGENT_BROWSER_PROFILE` to a launchd-owned profile
 - ❌ timestamp-unique SSO session names
+- ❌ starting any browser other than the shared agents Chrome or the locked temporary browser
 - ❌ idle tight-loop SSO polling instead of background + parallel work
 - ❌ `pkill -f remote-debugging-port` / `pkill -f "Google Chrome"`
 - ❌ `rm -rf ~/.agent-browser/*`
-- ✅ attach to purpose Chrome first, stable headed session only when needed, random-port task-local browser for non-SSO
+- ✅ attach to the shared agents Chrome first; the locked temporary browser only when isolation is needed
 
 Chrome ProcessSingleton forwards launches against an already-open profile into the running instance (`Opening in existing browser session.`). Agent/browser retries can turn that into a storm of stray windows, so attach to managed Chromes instead of launching at their profiles.
 
 ## SSO Auth Flow
 
-1. Attach to the correct purpose Chrome and navigate to the target URL in your own tab.
+1. Attach to the shared agents Chrome and navigate to the target URL in your own tab.
 2. If the URL is an SSO host (see `sso-background-work` for how hosts are configured) or shows a login page:
    - Take a snapshot/screenshot
    - Poll URL/title and DOM/snapshot changes for up to 120 seconds; SSO may auto-complete

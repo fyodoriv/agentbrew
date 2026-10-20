@@ -83,10 +83,10 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 
 - **Temporary screenshots (IRON LAW):** Save agent/browser verification PNGs under `~/apps/agent-scratch/screenshots/` (override with `AGENT_SCREENSHOT_DIR`). Use descriptive names. Never leave session screenshots in `$HOME`, `/tmp`, or product repos. Playwright MCP `browser_take_screenshot` must use an absolute path in that directory (e.g. `~/apps/agent-scratch/screenshots/<task>-<step>.png`).
 - Do not ask the user to open/navigate/click web pages. Use browser automation.
-- For SSO-gated pages, attach to purpose launchd Chrome (`9223` SSO/dashboard, `9224` debug, `9225` tooling) and work in your own tab.
+- For SSO-gated pages, attach to the one shared agents Chrome (`9223`) and work in your own tab. Use at most three browsers: the user's own (never, unless told), the shared agents Chrome, and one temporary browser held through `temp-browser acquire|release` (fresh profile, one holder at a time; never take over a live lease). Never start another browser when the agents Chrome is down; report it.
 - Pin that tab: `agent-browser --session <agent>-<task> --pin-tab connect <port>`, then pass the same `--session` on every command, so agents that share one Chrome never drive each other's tabs.
 - Never launch Chrome on launchd-owned profiles. If auth is required, open the target in a stable **headed** SSO browser in a background tab, never raise or focus it, and tell the user which page and browser need sign-in. Then start a background URL/title/HTML listener polling every 2–5 seconds; resume immediately when authenticated, without waiting for the user to reply “done.” Never claim a CDP tab is visible to the user.
-- For task-local non-SSO browsers, use `--remote-debugging-port=0`, verify endpoint/PID ownership, then close.
+- Non-SSO pages use the same shared agents Chrome; isolation needs go through the temporary browser lock.
 - For frontend/UI work, invoke `hallmark` before emitting UI changes; run the page-zero-errors gate when the repo requires it.
 
 ## Security and secrets

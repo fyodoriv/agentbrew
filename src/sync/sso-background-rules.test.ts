@@ -86,10 +86,8 @@ describe("templates/rules — SSO background parallel work", () => {
     expect(findings.some((f) => f.ruleId === "mdc-always-apply-broad" && f.severity === "error")).toBe(false);
   });
 
-  it("browser-tasks.mdc enforces attach-first without banning purpose Chrome ports", () => {
+  it("browser-tasks.mdc enforces attach-first to the shared agents Chrome", () => {
     expect(browserTasks).toMatch(/9223/);
-    expect(browserTasks).toMatch(/9224/);
-    expect(browserTasks).toMatch(/9225/);
     expect(browserTasks).toMatch(/agent-browser connect/i);
     expect(browserTasks).not.toMatch(/never attach.*9223/i);
     expect(browserTasks).not.toMatch(/do not attach.*9223/i);

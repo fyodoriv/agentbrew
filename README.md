@@ -527,7 +527,6 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | cline | ✓ | ✓ | ✓ | — | — | — |
 | codex | ✓ | ✓ | ✓ | — | ✓ | — |
 | copilot | ✓ | ✓ | ✓ | — | — | — |
-| cursor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | firebender | ✓ | — | ✓ | ✓ | — | — |
 | gemini-cli | ✓ | ✓ | ✓ | ✓ | — | — |
 | goose | ✓ | ✓ | ✓ | — | — | — |
@@ -549,7 +548,6 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | cline | ✓ | — | ✓ |
 | codex | ✓ | — | — |
 | copilot | ✓ | — | — |
-| cursor | ✓ | — | — |
 | firebender | ✓ | — | — |
 | gemini-cli | ✓ | — | — |
 | goose | ✓ | — | — |

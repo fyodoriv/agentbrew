@@ -87,7 +87,10 @@ So:
 4. List the skills that look relevant. Load them when you reach their step, not
    all at once.
 5. Find the measurement. Look for an existing test, lint, script, counter, or
-   query that can prove the end state. Prefer one that already exists.
+   query that can prove the end state. Prefer one that already exists. For a
+   speed goal, time each part before you pick the lever: the lever a task
+   names may not be where the time goes. A baseline run that fails is the
+   first finding, not a number: fix or report the cause before you compare.
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
@@ -193,6 +196,16 @@ continue?". The user set a goal so that they can be away.
   the user's parallel cap. When a worker reports, check its claims yourself
   (re-run its metric, look at side effects such as LaunchAgents it touched),
   and stop any background job it left running in a removed worktree.
+  Before you start workers on one machine, write a heavy-run rule into the
+  brief: one shared lock (`mkdir` a lock dir; remove it when done) and
+  `nice -n 15` for every heavy run (full suite, test cache, timing), one run
+  at a time. Six workers without it each ran parallel suites, and a 10-core
+  Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
+  near 10 to 25. A timing taken without the lock is invalid: take it again.
+- Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
+  main's tree equals A's head and B contains A's head, resolve every conflict
+  with B's side, then check that the merged tree equals B's tested tree
+  (`git diff <B-tested-sha> HEAD` is empty). Then no new test run is needed.
 - After a session restart (`/goal continue …`, or workers reported as
   stopped): re-measure from `origin` first, then list every worktree with
   its commits ahead, uncommitted files, and push state. Resume each stopped
@@ -297,6 +310,14 @@ criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude
 Managed Agents "outcomes" (a rubric plus a separate grader). Fix what it fails
 before you report.
+
+Before you merge each PR, ask a fresh-context subagent to review its diff,
+also when the full suite is green. In one goal run, reviewers found real
+defects in 6 of 8 green PRs: a crop that picked the wrong figure, a cache entry
+saved under the wrong key, a CLI crash in sandboxed shells, and a fixture that
+missed one path, so a test failed only on the owner's machine. Send each
+finding back to the agent that wrote the code (it keeps its context), then
+review the fix again.
 
 ## Phase 6 — Retro and skill upkeep
 

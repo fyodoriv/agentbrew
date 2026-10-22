@@ -5,6 +5,7 @@ import { addSourceToAgentfile, addToAgentfile, globalAgentfileDir, installToProj
 import { install } from "../catalog/install.js";
 import { isLocalFolderPath, isNpxScopedPackage, isSourceRepoPath } from "../cli-helpers.js";
 import { cliMissingArg } from "../core/cli-error.js";
+import type { DriftItem } from "../drift.js";
 import { syncRules } from "../sync/rules-sync.js";
 import { autoSync } from "../sync-runner.js";
 import { parseKeyValuePairs } from "../utils.js";
@@ -395,10 +396,11 @@ async function handleUnknownCommand(program: Command, args: string[]): Promise<b
  * customizations). Lumping them together produced alarming counts like
  * "Drift: 82 issue(s)" when 81 of them were the user's own work. User-added
  * items are reported separately with a friendlier `agentbrew import` hint.
- * Returns the repairable count for the next-step list.
+ * Returns the repairable items for the next-step list, which names each fix.
  */
-async function showDashboardDrift(): Promise<number> {
+async function showDashboardDrift(): Promise<DriftItem[]> {
   const { collectDrift, formatDriftSummary } = await import("../drift.js");
+  const { syncRepairs } = await import("../drift-fixes.js");
   const drift = collectDrift();
   const userAddedTypes = new Set(["mcp-user-added", "skills-user-added", "commands-user-added"]);
   const userAdded = drift.filter((d) => userAddedTypes.has(d.type));
@@ -406,14 +408,15 @@ async function showDashboardDrift(): Promise<number> {
   if (repairable.length > 0) {
     const breakdown = formatDriftSummary(repairable);
     const suffix = breakdown ? ` ${breakdown}` : "";
-    console.log(chalk.yellow(`  Drift: ${repairable.length} issue(s)${suffix} — run \`agentbrew sync\` to repair\n`));
+    const fix = repairable.every((d) => syncRepairs(d.type)) ? "run `agentbrew sync` to repair" : "fixes below";
+    console.log(chalk.yellow(`  Drift: ${repairable.length} issue(s)${suffix} — ${fix}\n`));
   }
   if (userAdded.length > 0) {
     console.log(
       chalk.dim(`  ${userAdded.length} user-added item(s) not tracked — \`agentbrew import\` to register them\n`),
     );
   }
-  return repairable.length;
+  return repairable;
 }
 
 /** First-run screen when auto-init is off: what is missing and the exact command. Writes nothing. */
@@ -459,10 +462,10 @@ async function showDashboard(): Promise<void> {
     console.log();
   }
 
-  const repairableDrift = await showDashboardDrift();
+  const repairable = await showDashboardDrift();
 
   const { collectDashboardFacts, planNextSteps, printNextSteps } = await import("../next-steps.js");
-  printNextSteps(planNextSteps(collectDashboardFacts(state, repairableDrift)));
+  printNextSteps(planNextSteps(collectDashboardFacts(state, repairable)));
 }
 
 /** Register the default (no-command) action: show status or auto-init. */

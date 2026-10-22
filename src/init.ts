@@ -4,6 +4,7 @@ import { detectAgents, discoverAllSkills } from "./agents.js";
 import { install } from "./catalog/install.js";
 import { fetchSources } from "./fetch-sources.js";
 import { discoverMcpServers } from "./mcp/mcp.js";
+import { autoRepairOptedOut } from "./settings.js";
 import { installShellHook, isShellHookInstalled } from "./shell-hook.js";
 import { defaultState, getStatePath, loadState, saveState } from "./state.js";
 import { applySchemaMigrations, printMigrationHints } from "./state-migrations.js";
@@ -43,6 +44,7 @@ const STATE_KEYS_ON_INIT: Record<keyof AgentBrewState, "rebuild" | "keep"> = {
   organization: "keep",
   skillInstallMode: "keep",
   claudePermissions: "keep",
+  autoRepair: "keep",
   defaultModel: "keep",
   defaultEffort: "keep",
   modelOverrides: "keep",
@@ -157,9 +159,10 @@ function printInitSummary(result: InitResult, options?: { skipInstall?: boolean;
 
 async function postInit(result: InitResult, options?: { skipInstall?: boolean; skipSync?: boolean }): Promise<void> {
   // Auto-install background drift repair (macOS: LaunchAgent, Linux: systemd/cron).
-  // AGENTBREW_NO_AUTO_SYNC=1 and AGENTBREW_NO_SHELL_HOOK=1 let the installer
-  // honour a user's "no background job" / "leave my shell rc alone" answers.
-  if (process.env.AGENTBREW_NO_AUTO_SYNC !== "1" && !isAutoSyncInstalled()) {
+  // `autoRepair: off` in state.yaml (or AGENTBREW_NO_AUTO_SYNC=1 for one run)
+  // and AGENTBREW_NO_SHELL_HOOK=1 honour a user's "no background job" /
+  // "leave my shell rc alone" answers.
+  if (!autoRepairOptedOut(loadState()) && !isAutoSyncInstalled()) {
     console.log(chalk.bold("\nSetting up auto-repair...\n"));
     await installAutoSync();
   }

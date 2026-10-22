@@ -202,6 +202,8 @@ esac
     expect(result.status, result.stdout + result.stderr).toBe(0);
     const calls = readFileSync(log, "utf-8");
     expect(calls).toContain("init --skip-install AUTO_SYNC=1 HOOK=1");
+    // The "no repair job" answer is saved, so later runs do not propose the job again.
+    expect(calls).toContain("config set autoRepair off");
     expect(calls).toContain("status --fix");
     expect(calls).toContain("lint");
     // The run ends with the doctor, after lint.

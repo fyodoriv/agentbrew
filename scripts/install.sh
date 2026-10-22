@@ -12,7 +12,7 @@
 #
 # Flags for `run` (the answers to the INSTALL.md questions):
 #   --no-recommended   Skip the recommended skills and MCP servers
-#   --no-auto-repair   Do not install the background repair job (every 30 min)
+#   --no-auto-repair   Do not install the background repair job (every 30 min); saved as autoRepair: off
 #   --no-shell-hook    Do not add the project-detection line to your shell rc file
 #   --keep-claude-permissions
 #                      Keep Claude Code permission prompts on (claudePermissions: keep)
@@ -400,6 +400,10 @@ cmd_run() {
     say "  ✓ Claude Code permission prompts stay on (claudePermissions: keep)"
   fi
   AGENTBREW_NO_AUTO_INIT=1 "$AGENTBREW_CMD" init ${init_args[@]+"${init_args[@]}"} || critical "agent setup (agentbrew init)"
+  # Save the "no repair job" answer, so later runs of agentbrew never propose the job again.
+  if [ "$auto_repair" -eq 0 ]; then
+    "$AGENTBREW_CMD" config set autoRepair off || say "  ! Could not save it; run: agentbrew config set autoRepair off"
+  fi
 
   step "6/7 Heal"
   if ! "$AGENTBREW_CMD" status --fix; then

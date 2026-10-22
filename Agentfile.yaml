@@ -23,6 +23,7 @@ sources:
   - ./skill-plugins/workflow
   - ./skill-plugins/dev
 
-# /agentbrew starts agentbrew in an agent (it runs bare `agentbrew`).
+# /agentbrew starts agentbrew in an agent (it runs bare `agentbrew`). It also
+# ships built in; this line deploys a checkout's edits.
 commands:
   - ./commands

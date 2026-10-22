@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runScenarioCli, runWithScenarioSandbox, seedScenarioState } from "../../src/real-e2e/scenario-fixture.js";
@@ -7,6 +8,21 @@ import { runScenarioCli, runWithScenarioSandbox, seedScenarioState } from "../..
 // US01: one command starts agentbrew. Bare `agentbrew` is the only command
 // the user types; it prints the state, what needs them, and the exact next
 // command, and it writes nothing. `config set` round-trips one setting.
+
+/** Every file under root with a hash of its content, so any write shows up. */
+function snapshot(root: string): Record<string, string> {
+  const files: Record<string, string> = {};
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (statSync(path).isFile())
+        files[relative(root, path)] = createHash("sha256").update(readFileSync(path)).digest("hex");
+    }
+  };
+  walk(root);
+  return files;
+}
 
 describe("us01 one command start", () => {
   it("bare agentbrew shows the next command on a fresh and on a set-up machine, and config set round-trips", async () => {
@@ -16,20 +32,29 @@ describe("us01 one command start", () => {
       mkdirSync(join(homeDir, ".claude"), { recursive: true });
       const agentbrewDir = join(homeDir, ".config", "agentbrew");
 
-      // Fresh machine: one command, a short screen with the exact next command, no writes.
+      // Fresh machine: one command, a short screen with the exact next command, no writes anywhere.
+      const freshBefore = snapshot(rootDir);
       const fresh = await runScenarioCli({ repoRoot, homeDir, args: [] });
       expect(fresh.stdout).toContain("not initialized");
-      expect(fresh.stdout).toMatch(/Next: agentbrew init/);
+      expect(fresh.stdout).toMatch(/^ {2}Next: agentbrew init$/m);
       expect(existsSync(agentbrewDir)).toBe(false);
+      expect(snapshot(rootDir)).toEqual(freshBefore);
 
-      // Set-up machine: state, then a Next line with the exact command.
+      // Set-up machine with no skills and no repair job: state, the exact Next line, and no writes.
       await seedScenarioState(homeDir, repoRoot);
-      const before = readdirSync(agentbrewDir).sort();
+      const before = snapshot(rootDir);
       const dashboard = await runScenarioCli({ repoRoot, homeDir, args: [] });
       expect(dashboard.stdout).toContain("agentbrew status");
-      expect(dashboard.stdout).toMatch(/Next: agentbrew \S+/);
+      expect(dashboard.stdout).toMatch(/^ {2}Next: agentbrew install --recommended$/m);
+      expect(dashboard.stdout).toMatch(/^ {4}agentbrew auto-sync install +Start the drift-repair job/m);
       expect(dashboard.stdout).toContain("agentbrew config set <key> <value>");
-      expect(readdirSync(agentbrewDir).sort()).toEqual(before);
+      expect(snapshot(rootDir)).toEqual(before);
+
+      // A saved no to the repair job: the next run no longer proposes it.
+      await runScenarioCli({ repoRoot, homeDir, args: ["config", "set", "autoRepair", "off"] });
+      const declined = await runScenarioCli({ repoRoot, homeDir, args: [] });
+      expect(declined.stdout).not.toContain("agentbrew auto-sync install");
+      expect(declined.stdout).toMatch(/Auto-repair: +off/);
 
       // Happy path: config set saves one value; config shows it with its source.
       await runScenarioCli({ repoRoot, homeDir, args: ["config", "set", "claudePermissions", "keep"] });

@@ -16,7 +16,7 @@ export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   "mcp-catalog-pin": "agentbrew sync --only mcp",
   "mcp-env-vars": "agentbrew setup",
   "mcp-playwright-isolated": "agentbrew sync --only mcp",
-  "mcp-stale": "agentbrew sync",
+  "mcp-stale": "agentbrew mcp probe --deep",
   "mcp-permissions": "agentbrew sync --only mcp",
   "mcp-user-added": "optional: agentbrew import",
   models: "agentbrew sync --only models",
@@ -32,6 +32,36 @@ export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   instructions: "agentbrew sync --only instructions",
   launchagent: "agentbrew fix",
 };
+
+/**
+ * Drift types that `fix()` (`agentbrew status --fix`, the repair job)
+ * actually addresses by running sync pipelines. Used to filter out everything
+ * else (skill-validity, env hygiene, user-added items, organization-overlay
+ * mismatches) before computing what was "repaired" — otherwise we'd falsely
+ * claim credit for user-created skills that fix() never touched. See
+ * `user-additions-not-drift` in git log.
+ */
+export const AUTO_FIXABLE_TYPES: ReadonlySet<DriftItem["type"]> = new Set([
+  "mcp",
+  "mcp-bare-placeholder",
+  "mcp-catalog-pin",
+  "mcp-playwright-isolated",
+  "mcp-permissions",
+  "rules-source",
+  "rules",
+  "skills",
+  "commands",
+  "hooks",
+  "instructions",
+  "agents",
+  "launchagent",
+  "models",
+]);
+
+/** True when a plain `agentbrew sync` repairs this drift type (the LaunchAgent needs `agentbrew fix`). */
+export function syncRepairs(type: DriftItem["type"]): boolean {
+  return AUTO_FIXABLE_TYPES.has(type) && DRIFT_FIXES[type].includes("agentbrew sync");
+}
 
 /** The fix command or step for one drift item. */
 export function driftFix(item: Pick<DriftItem, "type">): string {

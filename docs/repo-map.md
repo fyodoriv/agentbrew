@@ -27,7 +27,7 @@ agentbrew/
 │   └── AGENTS.md                   # Shared instruction template (deployed to all agents)
 ├── skill-plugins/dev/              # Dev skills (deployed via symlinks) — see skill-plugins/dev/README.md
 ├── docs/                           # Vision, competition research, user stories, RFCs
-├── commands/agentbrew.md           # /agentbrew: runs bare `agentbrew` in an agent
+├── commands/agentbrew.md           # /agentbrew, built in: sync deploys it (src/sync/builtin-commands.ts)
 ├── Agentfile.yaml                  # Repo-local MCP/skill/source manifest for agentbrew work
 ├── TASKS.md                        # Task queue
 └── README.md

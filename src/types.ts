@@ -330,6 +330,15 @@ export interface AgentBrewState {
    */
   claudePermissions?: "manage" | "keep";
   /**
+   * Machine-local choice for the background drift-repair job.
+   *   - `"on"` (default): `init` installs it and bare `agentbrew` proposes
+   *     `agentbrew auto-sync install` when it is missing.
+   *   - `"off"`: the user said no; `init` skips it and nothing proposes it.
+   *     Set with `agentbrew config set autoRepair off` (the installer's
+   *     `--no-auto-repair` does this).
+   */
+  autoRepair?: "on" | "off";
+  /**
    * Default model id deployed to every detected agent that declares a
    * `modelConfig` surface in agents.yaml (see `src/sync/model-sync.ts`).
    * Set from the Agentfile's `defaultModel:` key; absent means model sync

@@ -72,12 +72,11 @@ vi.mock("../next-steps.js", async (importOriginal) => {
   const agentfile = await import("../agentfile.js");
   return {
     ...original,
-    collectDashboardFacts: vi.fn((state: never, repairableDrift: number) => ({
+    collectDashboardFacts: vi.fn((state: never, drift: Array<{ type: string }>) => ({
       hasSkillsOrServers: agentfile.getStateSources(state).length > 0 || agentfile.getConfigServers().length > 0,
       syncErrors: 0,
-      repairableDrift,
+      drift: drift.map((item) => item.type),
       autoRepair: "active",
-      autoSyncOptedOut: false,
       memoryServiceMissing: false,
       mcpNeedSetup: 0,
       mcpFailing: 0,
@@ -900,6 +899,24 @@ describe("registerDefaultAction", () => {
     // The repairable drift becomes the next step, with the exact command.
     const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
     expect(calls).toMatch(/agentbrew sync[\s\S]*Repair 1 drift issue/);
+  });
+
+  it("does not promise that sync repairs drift sync cannot fix", async () => {
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
+    mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
+    mockCollectDrift.mockReturnValue([
+      { agent: "claude-code", type: "env-hygiene", detail: "FOO may leak" },
+    ] as unknown as ReturnType<typeof collectDrift>);
+    mockGetStateSources.mockReturnValue([{ label: "x", path: "/x" }] as unknown as ReturnType<typeof getStateSources>);
+    mockGetConfigServers.mockReturnValue([]);
+    const program = buildDefaultProgram();
+    await program.parseAsync(["node", "test"]);
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    expect(calls).toMatch(/Drift: 1 issue/);
+    expect(calls).not.toContain("agentbrew sync");
+    expect(calls).toContain("eval $(agentbrew env sanitize)");
   });
 
   it("dashboard does NOT count user-added items (skills/mcp/commands) as drift", async () => {

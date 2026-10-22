@@ -242,6 +242,18 @@ describe("init", () => {
     expect(mockInstallAutoSync).toHaveBeenCalled();
   });
 
+  it("skips the auto-sync job when state.yaml says autoRepair: off (no env needed)", async () => {
+    mockLoadState.mockReturnValue({ agents: [], catalogVersion: "x", autoRepair: "off" } as never);
+    mockDetectAgents.mockReturnValue([
+      { name: "claude-code", detected: true, skillsDir: "~/.claude/skills", mcpConfig: "~/.claude.json" },
+    ]);
+    mockDiscoverAllSkills.mockReturnValue(new Map());
+    mockDiscoverMcpServers.mockReturnValue([]);
+    mockIsAutoSyncInstalled.mockReturnValue(false);
+    await init();
+    expect(mockInstallAutoSync).not.toHaveBeenCalled();
+  });
+
   it("skips the auto-sync job and shell hook when the installer opts out", async () => {
     mockLoadState.mockReturnValue(undefined);
     mockDetectAgents.mockReturnValue([

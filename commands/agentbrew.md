@@ -12,11 +12,13 @@ Then, answer first:
    - `agentbrew init`: first setup. It detects agents, installs the recommended set (downloads), and schedules drift repair.
    - `agentbrew install --recommended`: installs the recommended skills and MCP servers (downloads).
    - `agentbrew sync`: deploys skills, MCP servers, rules, and commands to every agent and repairs drift. Show `agentbrew sync --dry-run` before you ask.
-   - `agentbrew auto-sync install`: starts the background drift-repair job.
+   - `agentbrew auto-sync install`: starts the background drift-repair job. If the user does not want it, run `agentbrew config set autoRepair off`, and nothing proposes it again.
+   - `agentbrew fix`: reinstalls the drift-repair job when it points at an old path.
    - `agentbrew memory fix`: reinstalls the memory background service.
    - `agentbrew setup`: asks for MCP API keys. The user must run it in their own terminal (hidden prompts).
    - `agentbrew mcp probe --deep`: installs and calls each MCP server to find the failing one.
    - A `launchctl` command: give it to the user to run in their own terminal.
+   - Any other fix (for drift that sync cannot repair): it is the fix `agentbrew status --ci` names for that drift. Explain it the same way.
 
 To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`.
 

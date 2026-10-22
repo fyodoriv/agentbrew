@@ -2,6 +2,8 @@ import chalk from "chalk";
 import { getConfigServers, getStateSources } from "./agentfile.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { checkMcpEnvVarsDrift } from "./drift-checks/mcp.js";
+import type { DriftItem } from "./drift-checks/types.js";
+import { DRIFT_FIXES, syncRepairs } from "./drift-fixes.js";
 import { loadMcpHealthSnapshot, unhealthyMcpEntries } from "./mcp/health-snapshot.js";
 import { isMemoryEnabled } from "./memory/enable.js";
 import { isMemoryLaunchAgentInstalled, memoryLaunchAgentSupported } from "./memory/launchagent.js";
@@ -20,10 +22,10 @@ export interface NextStep {
 export interface DashboardFacts {
   hasSkillsOrServers: boolean;
   syncErrors: number;
-  repairableDrift: number;
+  /** Type of each drift item, user-added items left out. */
+  drift: ReadonlyArray<DriftItem["type"]>;
+  /** Already "off" when the user said no to the job, "unsupported" with no scheduler. */
   autoRepair: AutoRepairState;
-  /** `AGENTBREW_NO_AUTO_SYNC=1`: the user chose no background repair job. */
-  autoSyncOptedOut: boolean;
   memoryServiceMissing: boolean;
   mcpNeedSetup: number;
   mcpFailing: number;
@@ -33,13 +35,15 @@ export interface DashboardFacts {
 const REINSTALL_STATES: ReadonlySet<AutoRepairState> = new Set(["not-installed", "broken", "not-loaded", "stale"]);
 
 /** Collect the dashboard facts. Local reads only: no network, no writes. */
-export function collectDashboardFacts(state: AgentBrewState, repairableDrift: number): DashboardFacts {
+export function collectDashboardFacts(
+  state: AgentBrewState,
+  drift: ReadonlyArray<Pick<DriftItem, "type">>,
+): DashboardFacts {
   return {
     hasSkillsOrServers: getStateSources(state).length > 0 || getConfigServers().length > 0,
     syncErrors: loadSyncErrors()?.errors.length ?? 0,
-    repairableDrift,
+    drift: drift.map((item) => item.type),
     autoRepair: probeAutoRepairHealth().state,
-    autoSyncOptedOut: process.env.AGENTBREW_NO_AUTO_SYNC === "1",
     memoryServiceMissing: isMemoryEnabled(state) && memoryLaunchAgentSupported() && !isMemoryLaunchAgentInstalled(),
     mcpNeedSetup: checkMcpEnvVarsDrift().length,
     mcpFailing: unhealthyMcpEntries(loadMcpHealthSnapshot()).length,
@@ -49,7 +53,8 @@ export function collectDashboardFacts(state: AgentBrewState, repairableDrift: nu
 function syncStep(facts: DashboardFacts): NextStep | undefined {
   const parts: string[] = [];
   if (facts.syncErrors > 0) parts.push(`retry the ${facts.syncErrors} error(s) from the last sync`);
-  if (facts.repairableDrift > 0) parts.push(`repair ${facts.repairableDrift} drift issue(s)`);
+  const syncDrift = facts.drift.filter(syncRepairs).length;
+  if (syncDrift > 0) parts.push(`repair ${syncDrift} drift issue(s)`);
   if (parts.length === 0) return undefined;
   const why = parts.join(" and ");
   return {
@@ -58,8 +63,24 @@ function syncStep(facts: DashboardFacts): NextStep | undefined {
   };
 }
 
+/** One step per fix for drift that sync does not repair, named by DRIFT_FIXES; skips fixes already listed. */
+function driftFixSteps(facts: DashboardFacts, listed: ReadonlySet<string>): NextStep[] {
+  const byFix = new Map<string, Map<DriftItem["type"], number>>();
+  for (const type of facts.drift) {
+    if (syncRepairs(type)) continue;
+    const counts = byFix.get(DRIFT_FIXES[type]) ?? new Map<DriftItem["type"], number>();
+    counts.set(type, (counts.get(type) ?? 0) + 1);
+    byFix.set(DRIFT_FIXES[type], counts);
+  }
+  return [...byFix]
+    .filter(([fix]) => !listed.has(fix))
+    .map(([fix, counts]) => ({
+      command: fix,
+      why: `Fix ${[...counts].map(([type, n]) => `${n} ${type} drift item(s)`).join(", ")}; sync does not repair these`,
+    }));
+}
+
 function autoRepairStep(facts: DashboardFacts): NextStep | undefined {
-  if (facts.autoSyncOptedOut) return undefined;
   if (REINSTALL_STATES.has(facts.autoRepair)) {
     return {
       command: "agentbrew auto-sync install",
@@ -93,7 +114,8 @@ export function planNextSteps(facts: DashboardFacts): NextStep[] {
       ? { command: "agentbrew mcp probe --deep", why: `${facts.mcpFailing} MCP server(s) fail their health check` }
       : undefined,
   ];
-  return steps.filter((step): step is NextStep => step !== undefined);
+  const listed = steps.filter((step): step is NextStep => step !== undefined);
+  return [...listed, ...driftFixSteps(facts, new Set(listed.map((step) => step.command)))];
 }
 
 /** Print the next action, the steps after it, and where the settings live. */

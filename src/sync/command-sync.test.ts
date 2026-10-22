@@ -46,6 +46,9 @@ vi.mock("../manifest.js", async () => {
 // (`commands-delegate.test.ts`); here we just need a stub that returns
 // an empty Map so the canary integration falls back to the native
 // transform path under test.
+// Built-in commands (/agentbrew) have their own test (builtin-commands.test.ts); here only user and Agentfile sources.
+vi.mock("./builtin-commands.js", () => ({ builtinCommandsDir: () => undefined }));
+
 vi.mock("./commands-delegate.js", () => ({
   delegateCommandsGenerate: vi.fn(() => new Map()),
 }));

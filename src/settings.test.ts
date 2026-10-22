@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import yaml from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { listSettings, SETTINGS, setSetting } from "./settings.js";
+import { autoRepairOptedOut, listSettings, SETTINGS, setSetting } from "./settings.js";
 import { getStatePath, invalidateState } from "./state.js";
 
 // Real state.yaml round trips in the scratch HOME from vitest.isolated-home.ts.
@@ -31,7 +31,18 @@ describe("settings table", () => {
     expect(rows.map((r) => [r.key, r.value, r.source])).toEqual([
       ["claudePermissions", "manage", "default"],
       ["skillInstallMode", "auto", "default"],
+      ["autoRepair", "on", "default"],
     ]);
+  });
+
+  it("persists a no to the repair job, so every later run honors it", () => {
+    expect(autoRepairOptedOut()).toBe(false);
+    expect(setSetting("autoRepair", "off").ok).toBe(true);
+    invalidateState();
+    expect(autoRepairOptedOut()).toBe(true);
+    vi.stubEnv("AGENTBREW_NO_AUTO_SYNC", "1");
+    expect(autoRepairOptedOut(undefined)).toBe(true);
+    vi.unstubAllEnvs();
   });
 
   it("round-trips one value through state.yaml and keeps the other keys", () => {
@@ -62,7 +73,7 @@ describe("settings table", () => {
   it("refuses an unknown key and names the real keys", () => {
     const result = setSetting("claudePermission", "keep");
     expect(result).toMatchObject({ ok: false, error: "Unknown setting: claudePermission" });
-    expect(result.ok ? "" : result.hint).toContain("claudePermissions, skillInstallMode");
+    expect(result.ok ? "" : result.hint).toContain("claudePermissions, skillInstallMode, autoRepair");
   });
 
   it("refuses a value outside the allowed list and writes nothing", () => {

@@ -20,7 +20,7 @@ import {
   formatDriftSummary,
 } from "./drift.js";
 import { checkLaunchAgentPathDrift } from "./drift-checks/launchagent-path.js";
-import { driftFix } from "./drift-fixes.js";
+import { AUTO_FIXABLE_TYPES, driftFix } from "./drift-fixes.js";
 import { runMcpHealCycle } from "./mcp/heal-cycle.js";
 import { maybeScheduledShare } from "./metrics/weekly.js";
 import { snapshotAgentConfigs } from "./ops.js";
@@ -121,29 +121,6 @@ const SYNC_NEXT_STEPS: ReadonlyArray<readonly [DriftItem["type"], string]> = [
   ["instructions", "agentbrew sync --only instructions — redeploy instructions"],
   ["models", "agentbrew sync --only models — reapply default models"],
 ];
-/**
- * Drift types that `fix()` actually addresses by running sync pipelines.
- * Used to filter out everything else (skill-validity, env hygiene, user-added
- * items, organization-overlay mismatches) before computing what was "repaired" —
- * otherwise we'd falsely claim credit for user-created skills that fix()
- * never touched. See `user-additions-not-drift` in git log.
- */
-const AUTO_FIXABLE_TYPES: ReadonlySet<DriftItem["type"]> = new Set([
-  "mcp",
-  "mcp-bare-placeholder",
-  "mcp-catalog-pin",
-  "mcp-playwright-isolated",
-  "mcp-permissions",
-  "rules-source",
-  "rules",
-  "skills",
-  "commands",
-  "hooks",
-  "instructions",
-  "agents",
-  "launchagent",
-  "models",
-]);
 
 export async function fix(): Promise<void> {
   const started = Date.now();

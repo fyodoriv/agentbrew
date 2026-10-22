@@ -31,6 +31,8 @@ export default defineConfig({
     copyFileSync("src/core/agents.yaml", "dist/agents.yaml");
     cpSync("src/cli-commands", "dist/cli-commands", { recursive: true });
     cpSync("templates", "dist/templates", { recursive: true });
+    // Built-in agent commands (/agentbrew); `agentbrew sync` deploys them (src/sync/command-sync.ts).
+    cpSync("commands", "dist/commands", { recursive: true });
     // `agentbrew sync` installs this CI gate as a helper script (src/sync/helper-scripts.ts).
     mkdirSync("dist/scripts", { recursive: true });
     copyFileSync("scripts/check-pr-vision-trace.mjs", "dist/scripts/check-pr-vision-trace.mjs");

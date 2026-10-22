@@ -11,9 +11,8 @@ import { type DashboardFacts, planNextSteps, printNextSteps } from "./next-steps
 const healthy: DashboardFacts = {
   hasSkillsOrServers: true,
   syncErrors: 0,
-  repairableDrift: 0,
+  drift: [],
   autoRepair: "active",
-  autoSyncOptedOut: false,
   memoryServiceMissing: false,
   mcpNeedSetup: 0,
   mcpFailing: 0,
@@ -29,7 +28,7 @@ describe("planNextSteps", () => {
   });
 
   it("puts the recommended install first, then sync, then the repair job", () => {
-    expect(commands({ hasSkillsOrServers: false, repairableDrift: 2, autoRepair: "not-installed" })).toEqual([
+    expect(commands({ hasSkillsOrServers: false, drift: ["rules", "hooks"], autoRepair: "not-installed" })).toEqual([
       "agentbrew install --recommended",
       "agentbrew sync",
       "agentbrew auto-sync install",
@@ -37,7 +36,7 @@ describe("planNextSteps", () => {
   });
 
   it("names drift and sync errors in one sync step, with the dry-run preview", () => {
-    const [step] = planNextSteps({ ...healthy, syncErrors: 1, repairableDrift: 3 });
+    const [step] = planNextSteps({ ...healthy, syncErrors: 1, drift: ["mcp", "skills", "instructions"] });
     expect(step.command).toBe("agentbrew sync");
     expect(step.why).toBe(
       "Retry the 1 error(s) from the last sync and repair 3 drift issue(s). Preview first: agentbrew sync --dry-run",
@@ -66,8 +65,27 @@ describe("planNextSteps", () => {
     expect(commands({ autoRepair: "disabled" })[0]).toMatch(/^launchctl enable gui\/\$UID\/.+ && agentbrew auto-sync/);
   });
 
-  it("respects AGENTBREW_NO_AUTO_SYNC=1: no repair-job step", () => {
-    expect(commands({ autoRepair: "not-installed", autoSyncOptedOut: true })).toEqual([]);
+  it("proposes nothing when the user turned the repair job off (autoRepair off)", () => {
+    expect(commands({ autoRepair: "off" })).toEqual([]);
+  });
+
+  it("proposes nothing on a platform with no scheduler", () => {
+    expect(commands({ autoRepair: "unsupported" })).toEqual([]);
+  });
+
+  it("counts only drift that sync repairs in the sync step", () => {
+    const steps = planNextSteps({ ...healthy, drift: ["instructions", "hooks", "mcp-env-vars"], mcpNeedSetup: 1 });
+    expect(steps.map((s) => s.command)).toEqual(["agentbrew sync", "agentbrew setup"]);
+    expect(steps[0].why).toMatch(/^Repair 2 drift issue\(s\)\./);
+  });
+
+  it("routes drift that sync cannot fix to its own fix, never to agentbrew sync", () => {
+    expect(commands({ drift: ["mcp-env-vars", "mcp-env-vars", "env-hygiene"], mcpNeedSetup: 2 })).toEqual([
+      "agentbrew setup",
+      "eval $(agentbrew env sanitize)",
+    ]);
+    expect(commands({ drift: ["launchagent"] })).toEqual(["agentbrew fix"]);
+    expect(commands({ drift: ["mcp-stale"], mcpFailing: 1 })).toEqual(["agentbrew mcp probe --deep"]);
   });
 
   it("covers memory, MCP setup, and failing MCP servers", () => {
@@ -92,7 +110,7 @@ describe("printNextSteps", () => {
   }
 
   it("prints one Next line, the rest under Then, and the settings pointer", () => {
-    const out = printed(planNextSteps({ ...healthy, repairableDrift: 1, autoRepair: "not-installed" }));
+    const out = printed(planNextSteps({ ...healthy, drift: ["commands"], autoRepair: "not-installed" }));
     expect(out).toMatch(/Next:.*agentbrew sync/);
     expect(out).toMatch(/Then:[\s\S]*agentbrew auto-sync install/);
     expect(out).toContain("agentbrew config set <key> <value>");
@@ -110,9 +128,8 @@ describe("every possible next step", () => {
   const everything: DashboardFacts = {
     hasSkillsOrServers: false,
     syncErrors: 1,
-    repairableDrift: 1,
+    drift: ["mcp", "launchagent"],
     autoRepair: "not-installed",
-    autoSyncOptedOut: false,
     memoryServiceMissing: true,
     mcpNeedSetup: 1,
     mcpFailing: 1,

@@ -16,6 +16,7 @@ import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { builtinCommandsDir } from "./builtin-commands.js";
 import { delegateCommandsGenerate } from "./commands-delegate.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
@@ -479,6 +480,10 @@ function getAllCommandSourceDirs(): string[] {
   };
 
   addDir(getCommandsDir());
+  // After the global dir, so a copy left there from an older version never wins;
+  // an Agentfile commands dir (below) still overrides a built-in command.
+  const builtin = builtinCommandsDir();
+  if (builtin) addDir(builtin);
 
   const state = loadState();
   for (const dir of state?.commandSourceDirs ?? []) {

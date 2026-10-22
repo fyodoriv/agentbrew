@@ -35,7 +35,22 @@ export const SETTINGS: readonly Setting[] = [
     help: "How remote skill sources install. native skips the skills CLI (offline, or a proxy blocks it).",
     appliesOn: "the next `agentbrew install <source>`",
   },
+  {
+    key: "autoRepair",
+    default: "on",
+    allowed: ["on", "off"],
+    help: "on: init installs the drift-repair job and agentbrew proposes it when missing. off: neither does.",
+    appliesOn: "the next `agentbrew` and `agentbrew init` (off does not remove a job: agentbrew auto-sync uninstall)",
+  },
 ];
+
+/**
+ * True when the user said no to the background repair job: `autoRepair: off`
+ * in state.yaml, or `AGENTBREW_NO_AUTO_SYNC=1` for this process.
+ */
+export function autoRepairOptedOut(state: AgentBrewState | undefined = loadState()): boolean {
+  return process.env.AGENTBREW_NO_AUTO_SYNC === "1" || state?.autoRepair === "off";
+}
 
 /** One row of `agentbrew config`: the value in effect and where it came from. */
 export interface SettingRow {

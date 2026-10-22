@@ -10,7 +10,9 @@ vi.mock("node:fs", () => ({
   }),
 }));
 
-vi.mock("./auto-sync.js", () => ({ activeBackend: vi.fn(() => "none") }));
+vi.mock("./auto-sync.js", () => ({ activeBackend: vi.fn(() => "none"), detectBackend: vi.fn(() => "launchagent") }));
+
+vi.mock("../settings.js", () => ({ autoRepairOptedOut: vi.fn(() => false) }));
 
 vi.mock("./launchagent.js", () => ({
   LAUNCHAGENT_LABEL: "com.agentbrew.check",
@@ -26,6 +28,7 @@ vi.mock("./scheduler-paths.js", () => ({
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   classifyAutoRepair,
   describeAutoRepair,
@@ -33,7 +36,7 @@ import {
   parseSystemctlShow,
   probeAutoRepairHealth,
 } from "./auto-repair-health.js";
-import { activeBackend } from "./auto-sync.js";
+import { activeBackend, detectBackend } from "./auto-sync.js";
 
 const mockSpawnSync = vi.mocked(spawnSync);
 const mockExistsSync = vi.mocked(existsSync);
@@ -91,6 +94,11 @@ describe("classifyAutoRepair", () => {
 
   it("reports not-installed when no backend exists", () => {
     expect(classifyAutoRepair({ backend: "none" }, NOW).state).toBe("not-installed");
+  });
+
+  it("reports off when the user turned the job off, and unsupported when no scheduler exists", () => {
+    expect(classifyAutoRepair({ backend: "none", optedOut: true }, NOW).state).toBe("off");
+    expect(classifyAutoRepair({ backend: "none", supported: false }, NOW).state).toBe("unsupported");
   });
 
   it("reports not-loaded when the plist exists but launchd has no job", () => {
@@ -167,6 +175,14 @@ describe("describeAutoRepair", () => {
     expect(description.detail).toContain("/logs/launchagent.err");
   });
 
+  it("does not offer auto-sync install when the job is off or the platform has no scheduler", () => {
+    const off = describeAutoRepair({ backend: "none", state: "off" });
+    expect(off.detail).toContain("agentbrew config set autoRepair on");
+    expect(off.tone).toBe("ok");
+    const unsupported = describeAutoRepair({ backend: "none", state: "unsupported" });
+    expect(unsupported.detail).not.toContain("auto-sync install");
+  });
+
   it("marks only the active state as ok", () => {
     const active = describeAutoRepair({ backend: "cron", state: "active", lastRunAt: new Date().toISOString() });
     expect(active.tone).toBe("ok");
@@ -200,6 +216,16 @@ describe("parsers", () => {
       lastExitCode: 2,
     });
     expect(parseSystemctlShow("ExecMainExitTimestamp=\nExecMainStatus=0\n")).toEqual({});
+  });
+});
+
+describe("probeAutoRepairHealth — no job installed", () => {
+  it("reports off after the user said no, and unsupported where no scheduler exists", () => {
+    vi.mocked(autoRepairOptedOut).mockReturnValueOnce(true);
+    expect(probeAutoRepairHealth(NOW).state).toBe("off");
+    vi.mocked(detectBackend).mockReturnValueOnce("none");
+    expect(probeAutoRepairHealth(NOW).state).toBe("unsupported");
+    expect(probeAutoRepairHealth(NOW).state).toBe("not-installed");
   });
 });
 

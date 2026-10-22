@@ -190,6 +190,10 @@ continue?". The user set a goal so that they can be away.
   browser call can hang for hours. Give each fact two fetch attempts, then
   keep it marked unverified with the reason, and save after each file.
 - Work in small verified steps. Run the guard after each change that matters.
+- Probe a live tool (Slack, Jira, a browser form) only on a throwaway
+  target you own, such as your own self-DM, never on the deliverable. One
+  probe saved a "test" draft in a team thread; another attached `t.txt` to
+  the real draft.
 - While you iterate, run only the related test files. Run the full suite
   once, right before each commit. Run mutation checks as one parallel batch,
   not one by one.

@@ -15,6 +15,19 @@ Use Vitest or shell fixtures when the invariant is structural or pure:
 
 These tests should run inside `npm run verify`.
 
+A test that runs a skill's scripts for real (scaffolds, Copier) gets slow fast.
+`src/skills/new-project-contract.test.ts` shows the fixes:
+
+- Build each fixture once in `beforeAll`, in parallel, and make it read-only.
+  A test that changes files copies it first.
+- `uvx` sees the scratch `HOME`, so its cache (and a uv-managed Python) starts
+  empty on every run. Point `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` into
+  `node_modules/.cache/uv`.
+- Vitest starts the next sync test without a turn of the event loop. A child
+  process started in the background keeps running, but its promise settles only
+  when the test file yields; an `afterEach` that waits two `setImmediate` turns
+  does that.
+
 ## Promptfoo behavioral evals
 
 Use `npm run eval:agent-artifacts` when the artifact is prompt-like and the

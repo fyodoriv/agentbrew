@@ -80,20 +80,37 @@ const sharedScoreRuns: [string, string, string[]][] = [
   ["side-project-none", "side-project", []],
 ];
 
-type Run = { status: number | null; stdout: string; stderr: string };
+type Run = { status: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
 type TemplateUpdate = { repo: string; out: string; answers: string; update: Run };
+// Each part keeps its own error, so one failed scaffold fails only the tests that use it.
+type Outcome<T> = { value: T } | { error: unknown };
+type CopierResults = { pairs: Map<string, Outcome<void>>; upgrade: Outcome<TemplateUpdate> };
 
 let scratch = "";
-const sharedScores = new Map<string, Run>();
-// The Copier scaffolds start in beforeAll and run while the tests before them run.
-// Settled: it never rejects; the Copier tests report its error.
-let copierWork: Promise<{ value: TemplateUpdate } | { error: unknown }> | undefined;
+const sharedErrors = new Map<string, unknown>();
+const sharedScores = new Map<string, Outcome<Run>>();
+// beforeAll's work. afterAll waits for it before it deletes the scratch dir.
+let sharedWork: Promise<void> | undefined;
+// The Copier scaffolds start in beforeAll and run while the tests before them run. Never rejects.
+let copierWork: Promise<CopierResults> | undefined;
 const COPIER_SUITE = "with Copier (skips when neither copier nor uvx copier@9.19.1 runs)";
+
+function settle<T>(promise: Promise<T>): Promise<Outcome<T>> {
+  return promise.then(
+    (value) => ({ value }),
+    (error: unknown) => ({ error }),
+  );
+}
+
+function unwrap<T>(outcome: Outcome<T>): T {
+  if ("error" in outcome) throw outcome.error;
+  return outcome.value;
+}
 
 /** Like spawnSync, but the event loop keeps running, so the other scaffolds go on meanwhile. */
 function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }): Promise<Run> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"], timeout: SETUP_TIMEOUT });
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf-8").on("data", (chunk: string) => {
@@ -103,27 +120,26 @@ function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: N
       stderr += chunk;
     });
     child.on("error", reject);
-    child.on("close", (status) => resolve({ status, stdout, stderr }));
+    child.on("close", (status, signal) => resolve({ status, signal, stdout, stderr }));
   });
 }
 
 /** Like execFileSync: the output, or an error when the command fails. */
 async function execAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }) {
   const run = await spawnAsync(cmd, args, options);
-  if (run.status !== 0) throw new Error(`${cmd} ${args.join(" ")} exited ${run.status}\n${run.stdout}${run.stderr}`);
+  if (run.status !== 0) {
+    throw new Error(`${cmd} ${args.join(" ")} exited ${run.status ?? run.signal}\n${run.stdout}${run.stderr}`);
+  }
   return run.stdout;
-}
-
-/** Waits for every promise, then throws the first error, so no process outlives a failed setup. */
-async function allDone(promises: Promise<unknown>[]) {
-  for (const result of await Promise.allSettled(promises)) if (result.status === "rejected") throw result.reason;
 }
 
 function git(cwd: string, ...args: string[]) {
   return execFileSync("git", args, { cwd, env: gitEnv, encoding: "utf-8" });
 }
 
+/** A shared scaffold. Throws its scaffold's error when that run failed. */
 function sharedDir(name: string) {
+  if (sharedErrors.has(name)) throw sharedErrors.get(name);
   return join(scratch, "shared", name);
 }
 
@@ -149,9 +165,10 @@ function score(dir: string, profile: string, ...flags: string[]) {
 
 /** The beforeAll score of a shared scaffold. */
 function sharedScore(name: string, ...flags: string[]) {
-  const run = sharedScores.get([name, ...flags].join(" "));
-  if (!run) throw new Error(`no shared score for ${[name, ...flags].join(" ")}`);
-  return parseScore(run);
+  const key = [name, ...flags].join(" ");
+  const run = sharedScores.get(key);
+  if (!run) throw sharedErrors.get(name) ?? new Error(`no shared score for ${key}`);
+  return parseScore(unwrap(run));
 }
 
 function scaffoldArgs(dir: string, profile: string, stack: string) {
@@ -162,20 +179,17 @@ function scaffoldInto(dir: string, profile: string, stack: string) {
   return execFileSync("/bin/bash", scaffoldArgs(dir, profile, stack), { encoding: "utf-8", env });
 }
 
-/** The copy fallback and Copier write each profile with the same answers, into copy-<profile> and copier-<profile>. */
-async function copierPairs() {
-  await allDone(
-    profiles.map(async ({ profile, stack }) => {
-      const viaCopy = join(scratch, `copy-${profile}`);
-      const viaCopier = join(scratch, `copier-${profile}`);
-      const args = ["--profile", profile, "--name", "same", "--stack", stack, "--owner", "Ann", "--description", "D."];
-      await allDone([
-        execAsync("/bin/bash", [scaffold, viaCopy, ...args], { env }),
-        execAsync("/bin/bash", [scaffold, viaCopier, ...args], { env: copierEnv }),
-      ]);
-      await execAsync("chmod", ["-R", "a-w", viaCopy, viaCopier], { env });
-    }),
-  );
+/** Writes one profile with the same answers through the copy fallback and through Copier. */
+async function copierPair(profile: string, stack: string) {
+  const viaCopy = join(scratch, `copy-${profile}`);
+  const viaCopier = join(scratch, `copier-${profile}`);
+  const args = ["--profile", profile, "--name", "same", "--stack", stack, "--owner", "Ann", "--description", "D."];
+  const runs = await Promise.allSettled([
+    execAsync("/bin/bash", [scaffold, viaCopy, ...args], { env }),
+    execAsync("/bin/bash", [scaffold, viaCopier, ...args], { env: copierEnv }),
+  ]);
+  for (const run of runs) if (run.status === "rejected") throw run.reason;
+  await execAsync("chmod", ["-R", "a-w", viaCopy, viaCopier], { env });
 }
 
 /** An older repo, scaffolded from a versioned template, with its own edit; then `copier update` to the template's fix. */
@@ -212,30 +226,33 @@ async function templateUpdate(): Promise<TemplateUpdate> {
 }
 
 /** The template update is the longest chain, so it starts at once; the pairs start after `pairsAfter`. */
-function startCopierWork(pairsAfter: Promise<unknown> = Promise.resolve()) {
-  const work = async (): Promise<TemplateUpdate> => {
-    const [update, pairs] = await Promise.allSettled([templateUpdate(), pairsAfter.then(copierPairs)]);
-    if (update.status === "rejected") throw update.reason;
-    if (pairs.status === "rejected") throw pairs.reason;
-    return update.value;
-  };
-  return work().then(
-    (value) => ({ value }),
-    (error: unknown) => ({ error }),
+async function copierResults(pairsAfter: Promise<unknown> = Promise.resolve()): Promise<CopierResults> {
+  const upgrade = settle(templateUpdate());
+  await pairsAfter;
+  const pairs = new Map<string, Outcome<void>>();
+  await Promise.all(
+    profiles.map(async ({ profile, stack }) => pairs.set(profile, await settle(copierPair(profile, stack)))),
   );
+  return { pairs, upgrade: await upgrade };
 }
 
+/** Builds and scores the shared scaffolds. Never rejects: errors stay with the scaffold or score they belong to. */
 async function buildShared() {
-  await allDone(
-    sharedScaffolds.map(({ name, profile, stack }) =>
-      execAsync("/bin/bash", scaffoldArgs(sharedDir(name), profile, stack), { env }),
-    ),
-  );
-  await allDone(
-    sharedScoreRuns.map(async ([name, profile, flags]) => {
-      const run = await spawnAsync("/bin/bash", [checkSetup, sharedDir(name), "--profile", profile, ...flags], { env });
-      sharedScores.set([name, ...flags].join(" "), run);
+  mkdirSync(join(scratch, "shared"));
+  await Promise.all(
+    sharedScaffolds.map(async ({ name, profile, stack }) => {
+      const dir = join(scratch, "shared", name);
+      const built = await settle(execAsync("/bin/bash", scaffoldArgs(dir, profile, stack), { env }));
+      if ("error" in built) sharedErrors.set(name, built.error);
     }),
+  );
+  await Promise.all(
+    sharedScoreRuns
+      .filter(([name]) => !sharedErrors.has(name))
+      .map(async ([name, profile, flags]) => {
+        const args = [checkSetup, sharedDir(name), "--profile", profile, ...flags];
+        sharedScores.set([name, ...flags].join(" "), await settle(spawnAsync("/bin/bash", args, { env })));
+      }),
   );
 }
 
@@ -249,9 +266,9 @@ function runsSuite(task: RunnerTask, name: string, inside = false): boolean {
 // biome-ignore lint/correctness/noEmptyPattern: vitest passes the file suite only after a destructured context.
 beforeAll(async ({}, file) => {
   scratch = mkdtempSync(join(tmpdir(), "new-project-"));
-  const shared = buildShared();
-  if (copierCmd && runsSuite(file, COPIER_SUITE)) copierWork = startCopierWork(shared.catch(() => undefined));
-  await shared;
+  sharedWork = buildShared();
+  if (copierCmd && runsSuite(file, COPIER_SUITE)) copierWork = copierResults(sharedWork);
+  await sharedWork;
   // Read-only: a test that writes to a shared scaffold fails, instead of breaking the tests after it.
   execFileSync("chmod", ["-R", "a-w", join(scratch, "shared")]);
 }, SETUP_TIMEOUT);
@@ -261,7 +278,7 @@ beforeAll(async ({}, file) => {
 afterEach(() => new Promise<void>((resolve) => setImmediate(() => setImmediate(resolve))));
 
 afterAll(async () => {
-  await copierWork;
+  await Promise.allSettled([sharedWork, copierWork]);
   if (!scratch) return;
   execFileSync("chmod", ["-R", "u+w", scratch]);
   rmSync(scratch, { recursive: true, force: true });
@@ -453,12 +470,10 @@ describe("new-project skill", () => {
   });
 
   describe.skipIf(!copierCmd)(COPIER_SUITE, () => {
-    let upgraded: TemplateUpdate;
+    let copier: CopierResults;
     beforeAll(async () => {
-      copierWork ??= startCopierWork();
-      const done = await copierWork;
-      if ("error" in done) throw done.error;
-      upgraded = done.value;
+      copierWork ??= copierResults();
+      copier = await copierWork;
     }, SETUP_TIMEOUT);
     const files = (dir: string) =>
       execFileSync("bash", ["-c", "find . \\( -type f -o -type l \\) ! -path './.git/*' | sort"], {
@@ -467,6 +482,8 @@ describe("new-project skill", () => {
       });
 
     it.each(profiles)("writes the same $profile files as the copy fallback, plus the answers file", ({ profile }) => {
+      const pair = copier.pairs.get(profile);
+      if (pair && "error" in pair) throw pair.error;
       const viaCopy = join(scratch, `copy-${profile}`);
       const viaCopier = join(scratch, `copier-${profile}`);
       expect(existsSync(join(viaCopier, ".copier-answers.yml"))).toBe(true);
@@ -475,16 +492,14 @@ describe("new-project skill", () => {
         .filter((file) => file !== "./.copier-answers.yml")
         .join("\n");
       expect(copierFiles).toBe(files(viaCopy));
-      const diff = spawnSync(
-        "diff",
-        ["-r", "--no-dereference", "-x", ".git", "-x", ".copier-answers.yml", viaCopy, viaCopier],
-        { encoding: "utf-8" },
-      );
-      expect(diff.stdout + diff.stderr).toBe("");
+      const diff = spawnSync("diff", ["-r", "--no-dereference", "-x", ".git", viaCopy, viaCopier], {
+        encoding: "utf-8",
+      });
+      expect(diff.stdout + diff.stderr).toBe(`Only in ${viaCopier}: .copier-answers.yml\n`);
     });
 
     it("brings a template fix into an older repo and keeps the repo's own edits", () => {
-      const { repo, out, answers, update } = upgraded;
+      const { repo, out, answers, update } = unwrap(copier.upgrade);
       expect(out).toContain("created .copier-answers.yml");
       expect(answers).toMatch(/_commit: \S+/);
       expect(update.status, update.stderr).toBe(0);

@@ -93,8 +93,6 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
-- `uvx` in a test sees the scratch `HOME`, so it downloads Python and the package on every run. Set `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` under `node_modules/.cache/uv`, as `src/skills/new-project-contract.test.ts` does.
-- Vitest starts the next sync test without a turn of the event loop. Child processes that `beforeAll` starts in the background finish, but their promises wait; that file's `afterEach` yields two `setImmediate` turns.
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
 - The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
 - `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (`com.agentbrew.check`).

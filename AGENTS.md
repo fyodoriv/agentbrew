@@ -3,8 +3,8 @@
 ## Start here
 
 agentbrew is a Node.js CLI that syncs skills, MCP servers, rules, commands, and
-agent definitions to every supported AI coding agent. The canonical repo is
-`github.com/fyodoriv/agentbrew`, branch `main`. It is public.
+agent definitions to every supported AI coding agent, for work in any repo. The
+canonical repo is `github.com/fyodoriv/agentbrew`, branch `main`. It is public.
 
 Bug or idea? Offer a [safe report](CONTRIBUTING.md#report-problems-and-ideas).
 
@@ -23,11 +23,11 @@ Run every command from the repo root.
 | Tests for changed files | `npm test` (git-aware) |
 | All tests | `npm run test:all` |
 | Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
-| Rule lints (Minsky rules on this repo) | `npm run lint:rules` |
+| Rule lints (Minsky rules; skipped without `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Fast gate; says `merge-ready` when no full gate is needed | `npm run verify:changed` — seconds |
-| Full gate (cached by input hash; `NO_CACHE=1` runs all) | `npm run verify` — several minutes uncached; run it in the background |
+| Full gate (cached by a repo-file hash; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — several minutes uncached; run it in the background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` |
@@ -40,8 +40,8 @@ Run every command from the repo root.
 | Add or change a supported agent | `src/core/agents.yaml` | README "Supported agents", [`docs/repo-map.md`](docs/repo-map.md) |
 | Add a catalog skill, MCP server, or rule | `src/catalog.yaml` (skill `agentbrew-add-catalog-source`) | README "Install a skill or MCP server" |
 | Change the instructions deployed to every agent | `templates/AGENTS.md` (tests pin its sections) | none beyond the template |
-| Change how rules, MCP, skills, or hooks sync | `src/sync/*-sync.ts`, `src/sync/*-delegate.ts` | [`docs/repo-map.md`](docs/repo-map.md) data flow |
-| Change MCP probe or auto-repair | `src/mcp/probe.ts`, `src/mcp/heal-cycle.ts`, `src/mcp/heal-actions.ts` | README "Drift detection" |
+| Change how rules, MCP, skills, or hooks sync | `src/sync/*-{sync,delegate}.ts` | [`docs/repo-map.md`](docs/repo-map.md) data flow |
+| Change MCP probe or auto-repair | `src/mcp/{probe,heal-cycle,heal-actions}.ts` | README "Drift detection" |
 | Add a deterministic hook | `hooks/manifest.yaml`, `hooks/checks/<id>.sh` + `<id>.test.sh` | [`docs/hook-protocol.md`](docs/hook-protocol.md) |
 | Add or change a CLI command | `src/cli.ts`, `src/commands/` | README "CLI reference" |
 | Add a built-in skill | `skill-plugins/workflow/` with `evals/evals.json` | `skill-plugins/*/README.md` or `SOURCES.md` |
@@ -67,6 +67,7 @@ maps each rule to its check. Other files cite these numbers.
 7. Delete before adding. Shrinking the code is always a valid PR.
 8. Org-specific content goes to the `agentbrew-<org>` overlay, never into shared code or `src/catalog.yaml`.
 8a. New skills go to a source repo or `skill-plugins/workflow/`, not `skill-plugins/dev/`.
+8b. Career-data features belong to careerbrew; agentbrew only deploys their commands from careerbrew's source. Never hand-copy a repo-owned command.
 9. Keep the CLI small. Add a visible command only for a distinct user problem.
 10. Write tasks as outcomes ("users can do X"), with the why.
 11. Scout while you work: record bugs, stale docs, and gaps you see as new tasks in the same PR.
@@ -95,14 +96,12 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
 - The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
 - `agentbrew init` with a temporary `HOME` still runs `launchctl load` in your real GUI domain (`com.agentbrew.check`).
-- `npm run lint:rules` skips each rule without a Minsky checkout (`AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - The install e2e (`real-e2e/scenarios/us01-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
-- The gate cache keys only on repo files; after an outside change, run `NO_CACHE=1 npm run verify`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
 - Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
 

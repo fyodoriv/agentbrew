@@ -1,16 +1,19 @@
 import {
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
   unlinkSync,
 } from "node:fs";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { getSourceCacheDir } from "../catalog/index-source.js";
 import { filterReadsFromAgents } from "../core/agents.js";
@@ -20,7 +23,7 @@ import { errorMessage } from "../core/errors.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import { findAgentbrewRepoRoot } from "../core/repo-root.js";
-import { INSTALLED_SKILLS_DIR } from "../paths.js";
+import { BACKUPS_DIR, INSTALLED_SKILLS_DIR } from "../paths.js";
 import { pluginSkillDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
 import type { AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
@@ -369,6 +372,23 @@ interface SkillTargetDiff {
   skipped: SkillSkipped[];
 }
 
+/** A real directory where sync puts a managed skill symlink. It holds a
+ *  SKILL.md, so it is a copy of the skill, and agents load the copy instead
+ *  of the source (#366). */
+export interface SkillCopy {
+  /** Deploy target: an agent name, or `.agents` for `~/.agents/skills`. */
+  label: string;
+  name: string;
+  /** The copy: `<skillsDir>/<name>`. */
+  path: string;
+  sourcePath: string;
+}
+
+/** A skill copy that sync moved into the backups folder. */
+export interface ReplacedSkillCopy extends SkillCopy {
+  backupPath: string;
+}
+
 export interface SkillsSyncResult {
   agentCount: number;
   skillCount: number;
@@ -377,6 +397,9 @@ export interface SkillsSyncResult {
   /** Per-target skip lists — mirrors SkillTargetDiff.skipped. Empty when no
    *  skill/agent pair triggers a compatibility miss. */
   skipped: Record<string, SkillSkipped[]>;
+  /** Skill copies this run moved to the backups folder and replaced with the
+   *  managed symlink. */
+  replacedCopies: ReplacedSkillCopy[];
 }
 
 // ── Pure functions (no I/O, trivially testable) ─────────────────────────────
@@ -475,13 +498,51 @@ function parseSyncConfig(
   return { quiet, verbose, dryRun, log };
 }
 
+/** Carve-out: shared (copy predicate for sync and `status`). True when
+ *  `dest` is a real directory with a SKILL.md and is not a skill source
+ *  itself. A directory without SKILL.md is the user's own data and stays. */
+function isSkillCopy(dest: string, sourcePath: string, knownSourcePaths: Set<string>): boolean {
+  if (!existsSync(sourcePath) || !existsSync(join(dest, "SKILL.md"))) return false;
+  try {
+    const stat = lstatSync(dest);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) return false;
+    const realDest = realpathSync(dest);
+    if (knownSourcePaths.has(resolve(dest)) || knownSourcePaths.has(realDest)) return false;
+    const realSource = realpathSync(sourcePath);
+    return !isWithinPath(realSource, realDest) && !isWithinPath(realDest, realSource);
+  } catch (e) {
+    logSkipped("sync/skills-sync/isSkillCopy", e);
+    return false;
+  }
+}
+
+/** Carve-out: shared (moves a skill copy into the backups folder so sync can
+ *  link the source in its place; nothing is deleted). */
+function backUpSkillCopy(dest: string, backupPath: string): void {
+  mkdirSync(dirname(backupPath), { recursive: true });
+  try {
+    renameSync(dest, backupPath);
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "EXDEV") throw e;
+    cpSync(dest, backupPath, { recursive: true, verbatimSymlinks: true });
+    rmSync(dest, { recursive: true });
+  }
+}
+
+/** Where one sync run moves skill copies: `<backups>/skill-copies/<stamp>`. */
+interface CopyBackups {
+  root: string;
+  replaced: ReplacedSkillCopy[];
+}
+
 /** Carve-out: shared (collision resolver — protects user-created entries in
  *  every carve-out's skillsDir before we redeploy). */
 function resolveExistingDest(
   dest: string,
+  symlink: { name: string; sourcePath: string },
   skillsDir: string,
   knownSourcePaths: Set<string>,
-): "replaced" | "skip-symlink" | "skip-directory" | "none" {
+): "replaced" | "copy" | "skip-symlink" | "skip-directory" | "none" {
   if (!existsSync(dest)) return "none";
   const destStat = lstatSync(dest);
   if (destStat.isSymbolicLink()) {
@@ -494,7 +555,7 @@ function resolveExistingDest(
     return "skip-symlink";
   }
   if (destStat.isDirectory()) {
-    return "skip-directory";
+    return isSkillCopy(dest, symlink.sourcePath, knownSourcePaths) ? "copy" : "skip-directory";
   }
   return "none";
 }
@@ -504,9 +565,10 @@ function deploySymlinkEntry(
   symlink: { name: string; sourcePath: string },
   diff: SkillTargetDiff,
   knownSourcePaths: Set<string>,
-  verbose: boolean,
-  log: Logger,
+  backups: CopyBackups,
+  options: { verbose: boolean; log: Logger },
 ): "deployed" | "failed" | "skipped" {
+  const { verbose, log } = options;
   const dest = join(diff.skillsDir, symlink.name);
   if (!existsSync(symlink.sourcePath)) {
     if (verbose) {
@@ -515,13 +577,24 @@ function deploySymlinkEntry(
     return "skipped";
   }
   try {
-    const resolution = resolveExistingDest(dest, diff.skillsDir, knownSourcePaths);
+    const resolution = resolveExistingDest(dest, symlink, diff.skillsDir, knownSourcePaths);
     if (resolution === "skip-symlink" || resolution === "skip-directory") {
       if (verbose) {
         const reason = resolution === "skip-symlink" ? "user-created symlink" : "user-created directory";
         log.log(`  ⚠ ${diff.label}: skipping ${symlink.name} (${reason})`);
       }
       return "skipped";
+    }
+    if (resolution === "copy") {
+      const backupPath = join(backups.root, diff.label, symlink.name);
+      backUpSkillCopy(dest, backupPath);
+      backups.replaced.push({
+        label: diff.label,
+        name: symlink.name,
+        path: dest,
+        sourcePath: symlink.sourcePath,
+        backupPath,
+      });
     }
     symlinkSync(symlink.sourcePath, dest);
     return "deployed";
@@ -537,6 +610,7 @@ function deploySymlinkEntry(
 function deployDiffTarget(
   diff: SkillTargetDiff,
   knownSourcePaths: Set<string>,
+  backups: CopyBackups,
   options: { quiet: boolean; verbose: boolean; dryRun: boolean; log: Logger },
 ): { label: string; deployed: number; failed: number; skipped: number } {
   const { quiet, verbose, dryRun, log } = options;
@@ -557,7 +631,7 @@ function deployDiffTarget(
       deployed++;
       continue;
     }
-    const result = deploySymlinkEntry(symlink, diff, knownSourcePaths, verbose, log);
+    const result = deploySymlinkEntry(symlink, diff, knownSourcePaths, backups, { verbose, log });
     if (result === "deployed") deployed++;
     else if (result === "failed") failed++;
     else skipped++;
@@ -669,22 +743,24 @@ function buildDeployTargets(
   return targets;
 }
 
-/** Carve-out: shared (entry-point orchestrator; per-carve-out branching is
- *  data-driven via {@link buildDeployTargets}). */
-export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>): Promise<SkillsSyncResult> {
-  const { quiet, verbose, dryRun, log } = parseSyncConfig(options, ctx);
+interface SkillsPlan {
+  detectedAgents: Omit<AgentConfig, "detected">[];
+  allSkills: Map<string, CollectedSkill>;
+  bySource: Record<string, number>;
+  deployTargets: DeployTarget[];
+  vendorNeutralEnabled: boolean;
+  diffs: SkillTargetDiff[];
+  /** Every scanned skill source path, so sync can tell its own symlinks apart. */
+  knownSourcePaths: Set<string>;
+}
 
-  // ── Read phase ──────────────────────────────────────────────────────────
+/** Carve-out: shared (read and pure diff phases of {@link syncSkills};
+ *  {@link findSkillCopies} reuses them, so `status` checks the same targets
+ *  sync writes). Returns null when no agent is detected. */
+function planSkillsSync(stateAgents: Array<{ name: string; detected: boolean }>): SkillsPlan | null {
   const sources = getSkillSources();
-
-  const _state = ctx?.state ? ctx.state.load() : loadState();
-
-  const detectedAgents = resolveDetectedAgents(_state?.agents ?? []);
-
-  if (detectedAgents.length === 0) {
-    if (!quiet) log.warn("No agents detected — skipping skills sync.");
-    return { agentCount: 0, skillCount: 0, bySource: {}, vendorNeutral: false, skipped: {} };
-  }
+  const detectedAgents = resolveDetectedAgents(stateAgents);
+  if (detectedAgents.length === 0) return null;
 
   const rawScannedSources = sources.map((source) => ({
     label: source.label,
@@ -702,7 +778,6 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
   // per the vercel-labs/skills compatibility matrix.
   const featuresByPath = buildFeatureMap(scannedSources);
 
-  // ── Pure diff phase ─────────────────────────────────────────────────────
   const { skills: allSkills, bySource } = collectSkills(scannedSources, featuresByPath);
 
   const filteredAgentNames = new Set(detectedAgents.map((a) => a.name));
@@ -721,13 +796,72 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
     }
   }
 
+  return { detectedAgents, allSkills, bySource, deployTargets, vendorNeutralEnabled, diffs, knownSourcePaths };
+}
+
+/** Carve-out: shared (every skill copy in the plan's deploy targets). */
+function copiesInPlan(plan: SkillsPlan): SkillCopy[] {
+  const copies: SkillCopy[] = [];
+  for (const diff of plan.diffs) {
+    for (const { name, sourcePath } of diff.symlinks) {
+      const path = join(diff.skillsDir, name);
+      if (isSkillCopy(path, sourcePath, plan.knownSourcePaths)) {
+        copies.push({ label: diff.label, name, path, sourcePath });
+      }
+    }
+  }
+  return copies;
+}
+
+/** Carve-out: shared (every skill copy that stands where sync puts a managed
+ *  symlink, in every deploy target). `status` reports them as skills drift;
+ *  `sync` moves them to the backups folder and links the source (#366). */
+export function findSkillCopies(): SkillCopy[] {
+  const plan = planSkillsSync(loadState()?.agents ?? []);
+  return plan ? copiesInPlan(plan) : [];
+}
+
+/** Carve-out: shared (tells the user about every skill copy sync moved, or
+ *  would move in a dry run. A warning, so compact `sync` output shows it too:
+ *  it changes the skill text agents load). */
+function logSkillCopies(plan: SkillsPlan, backups: CopyBackups, dryRun: boolean, log: Logger): void {
+  if (dryRun) {
+    for (const copy of copiesInPlan(plan)) {
+      log.warn(
+        `  ~ ${copy.label}: ${copy.name} is a copy; sync would move it to the backups folder and link the source`,
+      );
+    }
+    return;
+  }
+  for (const copy of backups.replaced) {
+    log.warn(`  ↻ ${copy.label}: ${copy.name} was a copy; moved it to ${copy.backupPath} and linked the source`);
+  }
+}
+
+/** Carve-out: shared (entry-point orchestrator; per-carve-out branching is
+ *  data-driven via {@link buildDeployTargets}). */
+export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>): Promise<SkillsSyncResult> {
+  const { quiet, verbose, dryRun, log } = parseSyncConfig(options, ctx);
+
+  // ── Read and pure diff phases ───────────────────────────────────────────
+  const _state = ctx?.state ? ctx.state.load() : loadState();
+  const plan = planSkillsSync(_state?.agents ?? []);
+
+  if (!plan) {
+    if (!quiet) log.warn("No agents detected — skipping skills sync.");
+    return { agentCount: 0, skillCount: 0, bySource: {}, vendorNeutral: false, skipped: {}, replacedCopies: [] };
+  }
+  const { detectedAgents, allSkills, bySource, deployTargets, vendorNeutralEnabled, diffs, knownSourcePaths } = plan;
+
   // ── Apply phase ─────────────────────────────────────────────────────────
   if (!quiet) {
     log.log(log.bold("\nSkills sync\n"));
   }
 
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backups: CopyBackups = { root: join(expandHome(BACKUPS_DIR), "skill-copies", stamp), replaced: [] };
   const targetResults = diffs.map((diff) => {
-    const base = deployDiffTarget(diff, knownSourcePaths, { quiet, verbose, dryRun, log });
+    const base = deployDiffTarget(diff, knownSourcePaths, backups, { quiet, verbose, dryRun, log });
     return { ...base, incompatible: diff.skipped.length };
   });
 
@@ -739,6 +873,7 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
   sweepBrokenSymlinksPostSync({ dryRun, verbose, log });
 
   if (!quiet) {
+    logSkillCopies(plan, backups, dryRun, log);
     logSyncOutput({
       targetResults,
       diffs,
@@ -757,6 +892,7 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
     bySource,
     vendorNeutral: vendorNeutralEnabled,
     skipped: skippedByTarget,
+    replacedCopies: backups.replaced,
   };
 }
 

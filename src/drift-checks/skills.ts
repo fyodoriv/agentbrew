@@ -5,11 +5,39 @@ import { filterReadsFromAgents } from "../core/agents.js";
 import { logSkipped } from "../core/logger.js";
 import { validateAllSkills } from "../skills/validate.js";
 import { loadState } from "../state.js";
+import { findSkillCopies, type SkillCopy } from "../sync/skills-sync.js";
 import { AGENT_DEFINITIONS, VENDOR_NEUTRAL_SKILLS_DIR } from "../types.js";
 import { expandHome } from "../utils.js";
 import type { DriftItem } from "./types.js";
 
+/** Skills drift: installed skills missing from an agent, and skill copies
+ *  that stand where sync puts the managed symlink (#366). */
 export function checkSkillsDrift(): DriftItem[] {
+  return [...checkMissingSkills(), ...checkSkillCopies()];
+}
+
+/** Skill copies, or none when the scan fails: a drift check never stops `status`. */
+function skillCopies(): SkillCopy[] {
+  try {
+    return findSkillCopies();
+  } catch (e) {
+    logSkipped("drift/skillCopies", e);
+    return [];
+  }
+}
+
+/** A real directory with a SKILL.md where sync puts a managed symlink hides
+ *  the source: agents keep loading the copy. `agentbrew sync` backs it up and
+ *  links the source. */
+function checkSkillCopies(): DriftItem[] {
+  return skillCopies().map((copy) => ({
+    agent: copy.label,
+    type: "skills" as const,
+    detail: `skill ${copy.name} is a copy, not the managed link: ${copy.path}`,
+  }));
+}
+
+function checkMissingSkills(): DriftItem[] {
   const state = loadState();
   if (!state) return [];
 
@@ -120,6 +148,8 @@ export function checkSkillsValidity(): DriftItem[] {
 export function checkUserCreatedSkills(): DriftItem[] {
   const drift: DriftItem[] = [];
   const seen = new Set<string>();
+  // A copy of a managed skill is skills drift (checkSkillCopies), not a user addition.
+  const copies = new Set(skillCopies().map((copy) => resolve(copy.path)));
 
   const targets = AGENT_DEFINITIONS.filter((a) => existsSync(expandHome(a.skillsDir))).map((a) => ({
     agent: a.name,
@@ -132,7 +162,7 @@ export function checkUserCreatedSkills(): DriftItem[] {
         const entryPath = join(target.skillsDir, entry);
         try {
           const stat = lstatSync(entryPath);
-          if (stat.isSymbolicLink() || !stat.isDirectory()) continue;
+          if (stat.isSymbolicLink() || !stat.isDirectory() || copies.has(resolve(entryPath))) continue;
           if (seen.has(entry)) continue;
           seen.add(entry);
           drift.push({

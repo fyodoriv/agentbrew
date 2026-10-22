@@ -53,7 +53,12 @@ Field meanings and counting rules: agentbrew `docs/agent-perf.md`.
 5. Check `blocked` and `blockedKeys`. A blocked call was attempted but never
    ran (permission prompt, hook block, denial). Each one costs a model round
    trip, so 3 or more in a turn is a speedup target even when no step is slow.
-6. Ignore steps under a minute in total. They are noise.
+6. Check `humanWait`. It lists calls that waited on a person: a prompt or a
+   question before the run, or a call over 30 min (such as a browser site
+   approval). That time is not in `toolMs` or `topKeys`, so never file a
+   speedup task for the step. A long prompt wait points at a permission rule
+   or at unattended work that needed a person.
+7. Ignore steps under a minute in total. They are noise.
 
 ## 3. Find a concrete speedup
 

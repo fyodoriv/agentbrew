@@ -18,7 +18,8 @@
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool
 // calls run inside its Agent call, so adding them would count time twice.
-// Per-step stats include every row. No dependencies; Node 20+.
+// Per-step stats include every row. Human wait (a prompt, a question, a call
+// over 30 min) is kept apart from tool time. No dependencies; Node 20+.
 
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -102,6 +103,65 @@ const isMainThread = (row) => row.agent === null || row.agent === undefined;
 const hasId = (row) => typeof row.id === "string" && row.id !== "";
 
 /**
+ * A call that ran this long waited on a person: a prompt inside the tool
+ * (such as a browser site approval), a sleep, or a hang. No real step in the
+ * log runs this long (Bash stops at 10 min), so its time is human wait.
+ */
+export const LONG_CALL_MS = 30 * 60_000;
+/**
+ * A gap this long from the attempt row to the start of the run is a
+ * permission prompt or a question. duration_ms leaves this gap out. Shorter
+ * gaps are other hooks and queued parallel calls.
+ */
+export const PROMPT_WAIT_MS = 60_000;
+
+const isLongCall = (row) => row.ms >= LONG_CALL_MS;
+
+/**
+ * Calls that waited on a person, kept apart from tool time. "prompt": the
+ * run started PROMPT_WAIT_MS or more after the attempt row; the wait was
+ * never in duration_ms. "over 30 min": the call ran LONG_CALL_MS or more;
+ * summarize() takes its whole time out of tool time and the step ranking.
+ * Counts every row, subagent rows too.
+ */
+export function humanWaits(rows) {
+  const triedAt = new Map();
+  for (const row of rows) {
+    if (row.ev !== "attempt" || !hasId(row)) continue;
+    const call = `${row.sid}\u0000${row.id}`;
+    const t = Date.parse(row.ts);
+    if (Number.isFinite(t) && !triedAt.has(call)) triedAt.set(call, t);
+  }
+  const waits = [];
+  for (const row of rows) {
+    if (!isToolRow(row)) continue;
+    const start = hasId(row) ? triedAt.get(`${row.sid}\u0000${row.id}`) : undefined;
+    const end = Date.parse(row.ts);
+    const gap = start === undefined || !Number.isFinite(end) ? 0 : end - row.ms - start;
+    const prompt = gap >= PROMPT_WAIT_MS;
+    const long = isLongCall(row);
+    if (!prompt && !long) continue;
+    waits.push({
+      ts: row.ts,
+      key: row.key || row.tool || "unknown",
+      ms: (prompt ? gap : 0) + (long ? row.ms : 0),
+      reason: [prompt && "prompt", long && "over 30 min"].filter(Boolean).join(" + "),
+      project: row.project,
+      sid: row.sid,
+      agent: row.agent ?? null,
+    });
+  }
+  waits.sort((a, b) => b.ms - a.ms);
+  return {
+    calls: waits.length,
+    ms: waits.reduce((total, w) => total + w.ms, 0),
+    promptCalls: waits.filter((w) => w.reason.includes("prompt")).length,
+    longCalls: waits.filter((w) => w.reason.includes("over 30 min")).length,
+    longest: waits.slice(0, 10),
+  };
+}
+
+/**
  * Pair attempt rows with completion rows by session and id.
  * attempts: calls with an attempt or denied row. callsWithId: calls with any
  * row that has an id. blocked: attempts with no
@@ -166,9 +226,10 @@ export function formatMs(ms) {
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}m`;
 }
 
-/** Aggregate rows: totals (main thread), per-key stats, slowest calls, failures. */
+/** Aggregate rows: totals (main thread), per-key stats, slowest calls, failures, human wait. */
 export function summarize(rows) {
-  const tools = rows.filter(isToolRow);
+  // A call over 30 min is human wait, not tool time (see humanWaits).
+  const tools = rows.filter((row) => isToolRow(row) && !isLongCall(row));
   const main = tools.filter(isMainThread);
   const byKey = new Map();
   for (const row of tools) {
@@ -205,6 +266,7 @@ export function summarize(rows) {
     topKeys: keys.slice(0, 5),
     slowest,
     failuresByKey: keys.filter((k) => k.failures > 0).map((k) => ({ key: k.key, failures: k.failures, count: k.count })),
+    humanWait: humanWaits(rows),
     ...pairCalls(rows),
   };
 }
@@ -298,7 +360,8 @@ export function formatReport(report) {
   // Session mode has days: null. "latest" resolves to no session id when no row is in scope.
   const where = scope.days === null ? `session ${scope.session ?? "latest (none found)"}` : `last ${scope.days}d`;
   const lines = [`Agent time — ${scope.project}, ${where}`];
-  if (report.calls === 0 && report.keys.length === 0 && !report.attempts) {
+  const wait = report.humanWait ?? { calls: 0 };
+  if (report.calls === 0 && report.keys.length === 0 && !report.attempts && !wait.calls) {
     lines.push("No tool rows yet.");
     return lines.join("\n");
   }
@@ -316,6 +379,11 @@ export function formatReport(report) {
       `Blocked: ${report.blocked} of ${report.attempts} attempted calls never ran (capture ${capture} of ${report.callsWithId} calls with an id).`,
     );
   }
+  if (wait.calls > 0) {
+    lines.push(
+      `Human wait: ${formatMs(wait.ms)} in ${wait.calls} ${wait.calls === 1 ? "call" : "calls"}, not in tool time or the step ranking (${wait.promptCalls} waited on a prompt before the run, ${wait.longCalls} ran over 30 min).`,
+    );
+  }
   lines.push("", "Top steps by total time:");
   for (const k of report.topKeys) {
     const change = k.sumChangePct === undefined ? "" : ` (${signed(k.sumChangePct)})`;
@@ -324,6 +392,12 @@ export function formatReport(report) {
   lines.push("", "Slowest calls:");
   for (const row of report.slowest) {
     lines.push(`  ${formatMs(row.ms)}  ${row.key}  ${row.project ?? ""} ${row.ts ?? ""}${row.ok ? "" : " (failed)"}`);
+  }
+  if (wait.calls > 0) {
+    lines.push("", "Human-wait calls (not in tool time):");
+    for (const w of wait.longest) {
+      lines.push(`  ${formatMs(w.ms)}  ${w.key}  ${w.reason}  ${w.project ?? ""} ${w.ts ?? ""}${w.agent ? ` (${w.agent})` : ""}`);
+    }
   }
   if (report.blockedKeys?.length > 0) {
     lines.push("", "Blocked calls by step (no completion row):");
@@ -425,7 +499,7 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
     // Only consume whole lines; a half-written row waits for the next refresh.
     const cut = text.lastIndexOf("\n") + 1;
     for (const row of sessionRowsFromText(text.slice(0, cut), safeSid)) {
-      if (!isToolRow(row)) continue;
+      if (!isToolRow(row) || isLongCall(row)) continue;
       if (isMainThread(row)) cache.toolMs += row.ms;
       if (row.ms > cache.slowMs) {
         cache.slowMs = row.ms;

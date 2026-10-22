@@ -54,6 +54,17 @@
         "Names one concrete fix for the top blocked key (split the compound Bash command, or meet the hook gate first)",
         "States whether it recurs and either files a task or says Filed: none (one-off)"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "agent-perf.mjs report --all --days 7 says: Human wait: 40h24m in 68 calls, not in tool time or the step ranking. Human-wait calls: 8h45m mcp__Claude_Browser__navigate over 30 min. Top steps by total time: until <arg> 5h47m total, 52x, p95 10m; python3 <arg> 4h50m total, 732x. Which step should get a speedup task?",
+      "expected_output": "Names until <arg> as the speedup target, because it is the top recurring step by tool time. Says the 8h45m navigate call is human wait (a prompt inside the tool), not tool time, so it gets no speedup task.",
+      "expectations": [
+        "Picks until <arg> (the top step by tool time), not mcp__Claude_Browser__navigate",
+        "Says human-wait time is not tool time and is left out of the ranking",
+        "Files no speedup task for the human-wait call; at most points at the prompt or permission that needed a person",
+        "Gives one concrete fix for until <arg>, such as a background run or a blocking wait instead of a sleep loop"
+      ]
     }
   ]
 }

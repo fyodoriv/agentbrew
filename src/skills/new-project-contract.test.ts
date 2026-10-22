@@ -109,19 +109,22 @@ function unwrap<T>(outcome: Outcome<T>): T {
   return outcome.value;
 }
 
+/** Kills a process and all its descendants (bash may have started uvx and python). */
+function killTree(pid: number) {
+  const kids = spawnSync("pgrep", ["-P", String(pid)], { encoding: "utf-8" }).stdout ?? "";
+  for (const kid of kids.split("\n").filter(Boolean)) killTree(Number(kid));
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    // It already ended.
+  }
+}
+
 /** Like spawnSync, but the event loop keeps running, so the other scaffolds go on meanwhile. */
 function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }): Promise<Run> {
   return new Promise((resolve, reject) => {
-    // Its own process group, so a timeout also kills the uvx or python that bash started.
-    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
     child.on("error", reject);
-    const timer = setTimeout(() => {
-      try {
-        if (child.pid) process.kill(-child.pid, "SIGKILL");
-      } catch {
-        // The group already ended.
-      }
-    }, CHILD_TIMEOUT);
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf-8").on("data", (chunk: string) => {
@@ -134,6 +137,13 @@ function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: N
       clearTimeout(timer);
       resolve({ status, signal, stdout, stderr });
     });
+    // A hung child is killed with all it started, and its pipes are closed, so "close" always comes.
+    const timer = setTimeout(() => {
+      if (child.pid) killTree(child.pid);
+      child.stdout.destroy();
+      child.stderr.destroy();
+    }, CHILD_TIMEOUT);
+    timer.unref();
   });
 }
 

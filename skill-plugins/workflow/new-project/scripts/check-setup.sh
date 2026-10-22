@@ -105,6 +105,15 @@ no_tracked_env() {
 
 has_any() { for f in "$@"; do [ -e "$f" ] && return 0; done; return 1; }
 
+upstream_feedback() {
+  grep -qE '^## +Report problems and ideas' CONTRIBUTING.md 2>/dev/null &&
+    grep -q 'is glad to get every report' CONTRIBUTING.md &&
+    grep -q 'agentbrew report' CONTRIBUTING.md &&
+    grep -qi 'only after your yes' CONTRIBUTING.md &&
+    grep -q 'report-problems-and-ideas' AGENTS.md &&
+    grep -qE '^ *- +report-upstream' Agentfile.yaml
+}
+
 no_fill_markers() { ! grep -rIl --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.venv --exclude-dir=target --exclude-dir=dist --exclude-dir=.metrics -w 'FILL' . ; }
 
 # Common: every profile. Each label starts with the required area it proves.
@@ -137,14 +146,17 @@ check "[decisions] docs/decisions/ holds an ADR" sh -c 'ls docs/decisions/*.md >
 check "[agents] Agentfile.yaml declares agent dependencies" test -f Agentfile.yaml
 check "[secrets] .gitignore ignores .env and .metrics/" sh -c 'grep -qE "^/?\.env" .gitignore && grep -qE "^/?\.metrics" .gitignore'
 check "[secrets] no .env file is tracked by git" no_tracked_env
+check "[html-report] scripts/checkup.sh ends with a local HTML page (verdict, blockers, next steps)" sh -c 'grep -q "checkup.html" scripts/checkup.sh'
 
 # Profile-specific checks.
 case "$profile" in
   tool)
     check "[tool] CHANGELOG.md exists" test -f CHANGELOG.md
     check "[tool] LICENSE exists" test -f LICENSE
+    check "[upstream-feedback] CONTRIBUTING.md \"Report problems and ideas\" (author welcome, ask before posting), AGENTS.md links it, Agentfile installs report-upstream" upstream_feedback
     ;;
   assistant)
+    check "[upstream-feedback] CONTRIBUTING.md \"Report problems and ideas\" (author welcome, ask before posting), AGENTS.md links it, Agentfile installs report-upstream" upstream_feedback
     check "[profile] docs/privacy.md exists" test -f docs/privacy.md
     check "[profile] .gitignore ignores private/" gitignore_has 'private'
     check "[profile] config/models.yaml routes models (local first)" test -f config/models.yaml

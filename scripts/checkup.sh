@@ -17,6 +17,9 @@ questions=""
 status=0
 
 section() { printf '\n## %s\n\n' "$1"; }
+# Keep a copy of everything printed: the end of the run turns it into an HTML page.
+log="$(mktemp)"
+exec > >(tee "$log") 2>&1
 ask() { questions="$questions
 $1"; }
 
@@ -99,4 +102,9 @@ else
   echo "none"
 fi
 
+printf '\ncheckup: %s\n' "$([ "$status" = 0 ] && echo healthy || echo "needs work (see above)")"
+# The HTML page (verdict, blockers, next steps, every section) stays local in .metrics/.
+bash scripts/report-html.sh "agentbrew checkup" "$log" .metrics/checkup.html &&
+  printf 'report: %s\n' "$PWD/.metrics/checkup.html"
+rm -f "$log"
 exit "$status"

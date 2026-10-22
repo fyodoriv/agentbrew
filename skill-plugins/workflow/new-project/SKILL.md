@@ -31,6 +31,8 @@ repos. Evidence and sources: [references/research.md](references/research.md)
 | actions | every action runs three ways (CLI, agents, UI) from one list generated from the CLI: `<name> actions --json` for agents, a generated form per action in the UI, terminal-only reasons for hidden-prompt actions, confirm for hard-to-undo ones, and a parity test that fails when a command misses a path (reference: careerbrew `actions.py`) |
 | checkup | `scripts/checkup.sh`: one repo-wide checkup (open PRs and branches first, health, cached gate, broken stories, speed, P0s, monthly audit); every app has one |
 | caching | checkup and tests run fast yet fully: gate steps cached by an input hash (like nx), every file a step reads is in its key (untracked contents too), affected-test selection includes tests that read a changed file, any change re-runs (prove it by editing one file and rerunning the same command), `NO_CACHE=1` forces all |
+| html-report | `scripts/checkup.sh` (and every long run) ends with one self-contained HTML page: the verdict, the blockers, and what to do next, then the next-action questions in chat; the page stays local (`.metrics/checkup.html`, written by `scripts/report-html.sh`) |
+| upstream-feedback | `tool` and `assistant` profiles: `CONTRIBUTING.md` "Report problems and ideas" (the author's welcome, the `agentbrew report` safety steps, a yes before posting, a second yes before a fix PR, the opt-out), a pointer in `AGENTS.md`, and `report-upstream` in `Agentfile.yaml`, so every user's agent offers safe reports to the author |
 
 ## Profiles
 

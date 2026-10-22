@@ -102,6 +102,15 @@ sources:
     GITIGNORE_EXTRA="$PRIVATE_IGNORE" ;;
 esac
 
+# Shareable profiles ship the upstream feedback loop (CONTRIBUTING.md "Report problems and ideas").
+case "$profile" in
+  tool|assistant)
+    ROUTING_ROWS="${ROUTING_ROWS:+$ROUTING_ROWS
+}| Report a problem or idea in $name | follow [\`CONTRIBUTING.md\`](CONTRIBUTING.md#report-problems-and-ideas): ask before posting | none |"
+    AGENTFILE_SKILLS="  - report-upstream${AGENTFILE_SKILLS:+
+$AGENTFILE_SKILLS}" ;;
+esac
+
 SETUP_EXTRA='' DOCTOR_EXTRA='' ERRORS_EXTRA=''
 case "$profile" in
   assistant|side-project)

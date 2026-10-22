@@ -7,6 +7,9 @@ cd "$(dirname "$0")/.."
 
 rc=0
 section() { printf '\n== %s\n' "$1"; }
+# Keep a copy of everything printed: the end of the run turns it into an HTML page.
+log="$(mktemp)"
+exec > >(tee "$log") 2>&1
 
 section "Open work (your PRs, unmerged branches, uncommitted files)"
 open_work="${WRAP_UP_SKILL:-$HOME/.claude/skills/wrap-up}/scripts/open-work.sh"
@@ -57,4 +60,8 @@ else
 fi
 
 printf '\ncheckup: %s\n' "$([ "$rc" = 0 ] && echo healthy || echo "needs work (see above)")"
+# The HTML page (verdict, blockers, next steps, every section) stays local in .metrics/.
+scripts/report-html.sh "{{NAME}} checkup" "$log" .metrics/checkup.html &&
+  printf 'report: %s\n' "$PWD/.metrics/checkup.html"
+rm -f "$log"
 exit "$rc"

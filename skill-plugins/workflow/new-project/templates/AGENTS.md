@@ -18,7 +18,7 @@ Run every command from the repo root.
 |---|---|
 | One-line setup (idempotent) | `scripts/setup.sh` |
 | Health check | `scripts/doctor.sh` |
-| Checkup (whole repo: health, cached gate, broken stories, speed, P0s, monthly audit) | `scripts/checkup.sh` |
+| Checkup (whole repo: health, cached gate, broken stories, speed, P0s, monthly audit) | `scripts/checkup.sh` (ends with a local HTML page, `.metrics/checkup.html`) |
 {{COMMANDS_TABLE}}
 | Fast gate (each commit) | `scripts/check.sh fast` |
 | Full gate with e2e (before you say done; cached by input hash) | `scripts/check.sh` (`NO_CACHE=1` for a full rerun) |

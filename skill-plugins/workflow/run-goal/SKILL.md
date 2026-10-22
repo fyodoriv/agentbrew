@@ -306,8 +306,9 @@ continue?". The user set a goal so that they can be away.
   drafts, and code. Park an edit that needs fresh approval, as the
   fresh-approval bullet below says. Print the goal check line again for
   each criterion the answer touches, with each updated artifact's link or
-  path as its evidence. List a parked edit as parked: its criterion is not
-  done until the edit lands. One run filed tickets from its defaults, and then a mid-goal
+  path as its evidence. For a criterion with a parked edit, print its line
+  with `⏸ parked: <edit>` in place of ✅: it is not done until the edit
+  lands. One run filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
   longer matched the answer.
 - Approvals the user already gave in this session, in standing rules, or in
@@ -355,14 +356,16 @@ commit and push only when it is 0:
 When the gate fails, the whole line also exits 1, so a background task
 reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
-A count check such as `grep -c` flips the gate's exit codes: it exits 1
-when the count is 0 (clean), 0 when it finds a match, and 2 on an error. So
+A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
+the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
 never put it in the gate slot above, and never chain the next step on it
 with `&&`: a clean check then skips the commit, and a check that finds a
-leak lets the commit run. Read the count it prints, and commit only when it
-is exactly 0:
-`n=$(git diff | grep -icE -- "$pattern"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
-An empty count means the check failed.
+leak lets the commit run. Stage first, then read the count it prints for
+`--cached`, and commit only when it is exactly 0:
+`git add …; n=$(git diff --cached | grep -icE -- "${pattern:?}"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+Plain `git diff` skips staged and new files. An empty count means grep
+failed. A failed `git diff` still prints 0, so read its error output before
+you trust 0.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.

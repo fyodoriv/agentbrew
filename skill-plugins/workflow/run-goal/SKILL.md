@@ -86,25 +86,26 @@ So:
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
 4. List the skills that look relevant. Load them when you reach their step, not
    all at once.
-5. Find the measurement. Look for an existing test, lint, script, counter, or
-   query that can prove the end state. Prefer one that already exists. For a
-   speed goal, time each part before you pick the lever: the lever a task
-   names may not be where the time goes. A baseline run that fails is the
-   first finding, not a number: fix or report the cause before you compare.
+5. Find the measurement: an existing test, lint, script, counter, or query
+   that can prove the end state. For a speed goal, time each part before
+   you pick the lever: the lever a task names may not be where the time
+   goes. A failed baseline run is the first finding, not a number: fix or
+   report the cause before you compare.
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
-   question round. If not, schedule it last. When a PR needs a tracker
-   ticket (a ticket-gated PR check), put the ticket fields (priority,
-   estimate) in the first question round, not a second one.
-7. Look for the same work already in flight. In each repo the goal will
-   change, list open PRs by any author (other sessions run as the same
-   account), drafts included, and unmerged branches and worktrees: the
-   `wrap-up` skill's `scripts/open-work.sh`, or `gh pr list --state open`.
-   A draft or branch that already does part of the goal is the starting
-   point: continue it, and say so in the contract, instead of building a
-   second copy. Also check recently merged PRs and linked sessions: work
-   another session already shipped is evidence, not a task.
+   question round. If not, schedule it last. A ticket-gated PR check needs
+   ticket fields (priority, estimate): ask for them in the first round.
+7. Check each tool path a criterion relies on: a Send needs its connector
+   or token, a Save an endpoint that stores the edit. Read the config or
+   endpoint, not the button label.
+8. Look for the same work already in flight. In each repo the goal will
+   change, list open PRs by any author (other sessions share the account),
+   drafts included, and unmerged branches and worktrees (`wrap-up`'s
+   `scripts/open-work.sh`, or `gh pr list --state open`). Continue a draft
+   or branch that already does part of the goal, and say so in the
+   contract. Work another session already shipped (recently merged PRs,
+   linked sessions) is evidence, not a task.
 
 ## Phase 2 — Goal contract
 

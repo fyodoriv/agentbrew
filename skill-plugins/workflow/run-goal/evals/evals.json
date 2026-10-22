@@ -1270,6 +1270,18 @@
         "Attaches the screenshot to the real draft once, after the probe, and re-reads the draft to show it holds only that attachment",
         "Does not send the draft; sending stays out of scope because the goal does not approve it"
       ]
+    },
+    {
+      "id": 111,
+      "prompt": "/goal run my daily-log tool, provide today's results for me at <Slack DM link to my manager> and show everything in its web UI (the tool's UI has a Send button, but the tool has no Slack connector set up, and its draft endpoint does not save edits)",
+      "expected_output": "Proposed by a live run-goal retro (2026-10-21): the contract keeps drafting and posting apart, and posting waits for the user's explicit send. The agent reads the linked message first and copies its format (for example Today/Tomorrow and a focus percentage). In intake it checks the tool's own send path (connector, token) and its save endpoint, so no criterion promises a UI Send or a saved edit that cannot happen. A planned item with no evidence of being done stays in Tomorrow.",
+      "expectations": [
+        "Reads the linked Slack message before drafting and copies its format, not the tool's raw list",
+        "Lists posting as a separate criterion that waits for the user's explicit send",
+        "Checks the tool's send prerequisites (connector, token) during intake, and no criterion relies on the UI Send when they are missing",
+        "Reads the draft endpoint before any criterion promises the UI saves edits",
+        "Keeps planned items with no evidence of being done out of the done list"
+      ]
     }
   ]
 }

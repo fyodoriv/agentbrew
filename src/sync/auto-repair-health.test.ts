@@ -96,6 +96,16 @@ describe("classifyAutoRepair", () => {
     expect(classifyAutoRepair({ backend: "none" }, NOW).state).toBe("not-installed");
   });
 
+  it("reports off in every state once the user turned the job off", () => {
+    expect(classifyAutoRepair({ backend: "launchagent", loaded: false, optedOut: true }, NOW).state).toBe("off");
+    expect(
+      classifyAutoRepair({ backend: "launchagent", loaded: false, disabled: true, optedOut: true }, NOW).state,
+    ).toBe("off");
+    expect(
+      classifyAutoRepair({ backend: "cron", loaded: true, lastRunAt: minutesAgo(600), optedOut: true }, NOW).state,
+    ).toBe("off");
+  });
+
   it("reports off when the user turned the job off, and unsupported when no scheduler exists", () => {
     expect(classifyAutoRepair({ backend: "none", optedOut: true }, NOW).state).toBe("off");
     expect(classifyAutoRepair({ backend: "none", supported: false }, NOW).state).toBe("unsupported");
@@ -173,6 +183,12 @@ describe("describeAutoRepair", () => {
     });
     expect(description.detail).toContain("exit code 78");
     expect(description.detail).toContain("/logs/launchagent.err");
+  });
+
+  it("names the uninstall command when the job is off but still installed", () => {
+    const off = describeAutoRepair({ backend: "launchagent", state: "off" });
+    expect(off.detail).toContain("agentbrew auto-sync uninstall");
+    expect(off.detail).not.toContain("auto-sync install`");
   });
 
   it("does not offer auto-sync install when the job is off or the platform has no scheduler", () => {

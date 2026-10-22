@@ -12,7 +12,7 @@
 #
 # Flags for `run` (the answers to the INSTALL.md questions):
 #   --no-recommended   Skip the recommended skills and MCP servers
-#   --no-auto-repair   Do not install the background repair job (every 30 min); saved as autoRepair: off
+#   --no-auto-repair   Do not install the background repair job (every 30 min); saved as autoRepair off (default: on)
 #   --no-shell-hook    Do not add the project-detection line to your shell rc file
 #   --keep-claude-permissions
 #                      Keep Claude Code permission prompts on (claudePermissions: keep)
@@ -33,6 +33,7 @@ AGENTBREW_CMD="${AGENTBREW_INSTALL_CLI:-$REPO_DIR/dist/cli.js}"
 # Everything agentbrew setup may write. Paths are relative to $HOME.
 BACKUP_PATHS=(
   .claude/settings.json .claude/CLAUDE.md .claude/skills .claude/commands
+  .config/opencode/commands .gemini/commands .config/amp/commands .firebender/commands
   .claude/agents .claude/codeassist .claude.json
   .codex/AGENTS.md .codex/config.toml .codex/skills
   .config/agentbrew .gemini/settings.json .gemini/GEMINI.md
@@ -399,11 +400,11 @@ cmd_run() {
     seed_keep_claude_permissions || critical "saving claudePermissions: keep"
     say "  ✓ Claude Code permission prompts stay on (claudePermissions: keep)"
   fi
+  # Save the repair-job answer before init, so init and every later run honor it (a yes undoes an earlier no).
+  local repair_answer=on
+  [ "$auto_repair" -eq 1 ] || repair_answer=off
+  "$AGENTBREW_CMD" config set autoRepair "$repair_answer" || say "  ! Could not save it; run: agentbrew config set autoRepair $repair_answer"
   AGENTBREW_NO_AUTO_INIT=1 "$AGENTBREW_CMD" init ${init_args[@]+"${init_args[@]}"} || critical "agent setup (agentbrew init)"
-  # Save the "no repair job" answer, so later runs of agentbrew never propose the job again.
-  if [ "$auto_repair" -eq 0 ]; then
-    "$AGENTBREW_CMD" config set autoRepair off || say "  ! Could not save it; run: agentbrew config set autoRepair off"
-  fi
 
   step "6/7 Heal"
   if ! "$AGENTBREW_CMD" status --fix; then

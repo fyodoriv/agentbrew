@@ -18,6 +18,11 @@ const healthy: DashboardFacts = {
   mcpFailing: 0,
 };
 
+/** Drift items of these types, each with a placeholder detail. */
+function d(...types: DashboardFacts["drift"][number]["type"][]): DashboardFacts["drift"] {
+  return types.map((type) => ({ type, detail: `${type} item` }));
+}
+
 function commands(facts: Partial<DashboardFacts>): string[] {
   return planNextSteps({ ...healthy, ...facts }).map((s) => s.command);
 }
@@ -28,7 +33,7 @@ describe("planNextSteps", () => {
   });
 
   it("puts the recommended install first, then sync, then the repair job", () => {
-    expect(commands({ hasSkillsOrServers: false, drift: ["rules", "hooks"], autoRepair: "not-installed" })).toEqual([
+    expect(commands({ hasSkillsOrServers: false, drift: d("rules", "hooks"), autoRepair: "not-installed" })).toEqual([
       "agentbrew install --recommended",
       "agentbrew sync",
       "agentbrew auto-sync install",
@@ -36,7 +41,7 @@ describe("planNextSteps", () => {
   });
 
   it("names drift and sync errors in one sync step, with the dry-run preview", () => {
-    const [step] = planNextSteps({ ...healthy, syncErrors: 1, drift: ["mcp", "skills", "instructions"] });
+    const [step] = planNextSteps({ ...healthy, syncErrors: 1, drift: d("mcp", "skills", "instructions") });
     expect(step.command).toBe("agentbrew sync");
     expect(step.why).toBe(
       "Retry the 1 error(s) from the last sync and repair 3 drift issue(s). Preview first: agentbrew sync --dry-run",
@@ -74,18 +79,32 @@ describe("planNextSteps", () => {
   });
 
   it("counts only drift that sync repairs in the sync step", () => {
-    const steps = planNextSteps({ ...healthy, drift: ["instructions", "hooks", "mcp-env-vars"], mcpNeedSetup: 1 });
+    const steps = planNextSteps({ ...healthy, drift: d("instructions", "hooks", "mcp-env-vars"), mcpNeedSetup: 1 });
     expect(steps.map((s) => s.command)).toEqual(["agentbrew sync", "agentbrew setup"]);
     expect(steps[0].why).toMatch(/^Repair 2 drift issue\(s\)\./);
   });
 
+  it("names the concrete item for drift whose fix is a manual step", () => {
+    const skill = "my-skill: description is missing — Run: agentbrew skills validate";
+    const desktop = "memory failed at Claude Desktop startup (bad URL) — remove the url key from the server entry";
+    const steps = planNextSteps({
+      ...healthy,
+      drift: [
+        { type: "skill-validity", detail: skill },
+        { type: "claude-desktop-mcp", detail: desktop },
+      ],
+    });
+    expect(steps.find((s) => s.command.includes("SKILL.md"))?.why).toContain(skill);
+    expect(steps.find((s) => s.command.includes("Claude Desktop"))?.why).toContain(desktop);
+  });
+
   it("routes drift that sync cannot fix to its own fix, never to agentbrew sync", () => {
-    expect(commands({ drift: ["mcp-env-vars", "mcp-env-vars", "env-hygiene"], mcpNeedSetup: 2 })).toEqual([
+    expect(commands({ drift: d("mcp-env-vars", "mcp-env-vars", "env-hygiene"), mcpNeedSetup: 2 })).toEqual([
       "agentbrew setup",
       "eval $(agentbrew env sanitize)",
     ]);
-    expect(commands({ drift: ["launchagent"] })).toEqual(["agentbrew status --fix"]);
-    expect(commands({ drift: ["mcp-stale"], mcpFailing: 1 })).toEqual(["agentbrew mcp probe --deep"]);
+    expect(commands({ drift: d("launchagent") })).toEqual(["agentbrew status --fix"]);
+    expect(commands({ drift: d("mcp-stale"), mcpFailing: 1 })).toEqual(["agentbrew mcp probe --deep"]);
   });
 
   it("covers memory, MCP setup, and failing MCP servers", () => {
@@ -110,7 +129,7 @@ describe("printNextSteps", () => {
   }
 
   it("prints one Next line, the rest under Then, and the settings pointer", () => {
-    const out = printed(planNextSteps({ ...healthy, drift: ["commands"], autoRepair: "not-installed" }));
+    const out = printed(planNextSteps({ ...healthy, drift: d("commands"), autoRepair: "not-installed" }));
     expect(out).toMatch(/Next:.*agentbrew sync/);
     expect(out).toMatch(/Then:[\s\S]*agentbrew auto-sync install/);
     expect(out).toContain("agentbrew config set <key> <value>");
@@ -128,7 +147,7 @@ describe("every possible next step", () => {
   const everything: DashboardFacts = {
     hasSkillsOrServers: false,
     syncErrors: 1,
-    drift: ["mcp", "launchagent"],
+    drift: d("mcp", "launchagent"),
     autoRepair: "not-installed",
     memoryServiceMissing: true,
     mcpNeedSetup: 1,

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => false),
@@ -118,6 +118,7 @@ import {
   checkSkillsDrift,
   collectDrift,
 } from "./drift.js";
+import { checkLaunchAgentPathDrift } from "./drift-checks/launchagent-path.js";
 import { snapshotAgentConfigs } from "./ops.js";
 import { fix } from "./repair.js";
 import { saveRepairLog } from "./repair-log.js";
@@ -127,6 +128,7 @@ import { getLogDir, trimLogIfNeeded } from "./sync/auto-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
 import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
+import { installLaunchAgent, repairAgentbrewLaunchAgentPaths } from "./sync/launchagent.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
 import { dedupeSharedRulesFile, syncRules } from "./sync/rules-sync.js";
@@ -196,6 +198,36 @@ describe("fix", () => {
         types: ["mcp"],
       }),
     );
+  });
+
+  describe("LaunchAgent drift with autoRepair off", () => {
+    const originalPlatform = process.platform;
+    afterEach(() => {
+      Object.defineProperty(process, "platform", { value: originalPlatform });
+    });
+
+    it("repairs the other agentbrew jobs but never installs or loads the check job", async () => {
+      Object.defineProperty(process, "platform", { value: "darwin" });
+      mockLoadState.mockReturnValue({ ...makeState(), autoRepair: "off" } as never);
+      vi.mocked(checkLaunchAgentPathDrift).mockReturnValue([
+        { agent: "agentbrew", type: "launchagent", detail: "com.agentbrew.memory-maintain uses an old Node" },
+      ]);
+      await fix();
+      expect(vi.mocked(installLaunchAgent)).not.toHaveBeenCalled();
+      expect(vi.mocked(repairAgentbrewLaunchAgentPaths)).toHaveBeenCalled();
+      vi.mocked(checkLaunchAgentPathDrift).mockReturnValue([]);
+    });
+
+    it("still reinstalls the check job when autoRepair is on", async () => {
+      Object.defineProperty(process, "platform", { value: "darwin" });
+      mockLoadState.mockReturnValue(makeState() as never);
+      vi.mocked(checkLaunchAgentPathDrift).mockReturnValue([
+        { agent: "agentbrew", type: "launchagent", detail: "com.agentbrew.check uses an old Node" },
+      ]);
+      await fix();
+      expect(vi.mocked(installLaunchAgent)).toHaveBeenCalled();
+      vi.mocked(checkLaunchAgentPathDrift).mockReturnValue([]);
+    });
   });
 
   it("returns early when state is missing", async () => {

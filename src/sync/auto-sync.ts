@@ -6,9 +6,10 @@ import chokidar from "chokidar";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { autoRepairOptedOut } from "../settings.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
-import { installCron, isCronInstalled, uninstallCron } from "./cron.js";
+import { hasCrontab, installCron, isCronInstalled, uninstallCron } from "./cron.js";
 import {
   getLaunchAgentPlistPath,
   getLegacyPlistsOnDisk,
@@ -163,7 +164,8 @@ export type AutoSyncBackend = "launchagent" | "systemd" | "cron" | "taskschedule
 export function detectBackend(): AutoSyncBackend {
   if (process.platform === "darwin") return "launchagent";
   if (process.platform === "linux") {
-    return hasSystemctl() ? "systemd" : "cron";
+    if (hasSystemctl()) return "systemd";
+    return hasCrontab() ? "cron" : "none";
   }
   if (process.platform === "win32") return "taskscheduler";
   return "none";
@@ -180,6 +182,12 @@ export function activeBackend(): AutoSyncBackend {
 
 /** Install the best available auto-sync backend for the current platform. */
 export async function installAutoSync(): Promise<void> {
+  if (autoRepairOptedOut()) {
+    console.error(chalk.yellow("Auto-repair is off (autoRepair: off), so no job was installed."));
+    console.error(chalk.dim("  Turn it on first: agentbrew config set autoRepair on"));
+    process.exitCode = 1;
+    return;
+  }
   const backend = detectBackend();
   switch (backend) {
     case "launchagent":

@@ -20,7 +20,7 @@ Then, answer first:
    - A `launchctl` command: give it to the user to run in their own terminal.
    - Any other fix (for drift that sync cannot repair): it is the fix `agentbrew status --ci` names for that drift. Explain it the same way.
 
-To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`.
+To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`. If the user does not want this command, run `agentbrew config set builtinCommands off`.
 
 Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
 

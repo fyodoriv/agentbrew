@@ -46,7 +46,7 @@ export interface AutoRepairEvidence {
   logPath?: string;
   /** No job installed: false when this platform has no scheduler agentbrew can use. */
   supported?: boolean;
-  /** No job installed: true when the user turned it off (`autoRepair: off`). */
+  /** True when the user turned the job off (`autoRepair: off`), whatever is installed. */
   optedOut?: boolean;
 }
 
@@ -60,15 +60,16 @@ export interface AutoRepairDescription {
   detail: string;
 }
 
-/** With no job installed: the user turned it off, the platform cannot run one, or it is missing. */
+/** With no job installed: the platform cannot run one, or it is missing. */
 function noJobState(evidence: AutoRepairEvidence): AutoRepairState {
-  if (evidence.optedOut) return "off";
   return evidence.supported === false ? "unsupported" : "not-installed";
 }
 
 /** Decide the scheduler state from evidence. Never reports "active" without a recent run. */
 export function classifyAutoRepair(evidence: AutoRepairEvidence, nowMs: number = Date.now()): AutoRepairHealth {
   const withState = (state: AutoRepairState): AutoRepairHealth => ({ ...evidence, state });
+  // The user's no wins over every scheduler state: nothing proposes to install or enable it.
+  if (evidence.optedOut) return withState("off");
   if (evidence.backend === "none") return withState(noJobState(evidence));
   if (evidence.missingProgram) return withState("broken");
   if (evidence.loaded === false) return withState(evidence.disabled ? "disabled" : "not-loaded");
@@ -92,7 +93,13 @@ export function describeAutoRepair(health: AutoRepairHealth): AutoRepairDescript
     case "unsupported":
       return { tone: "warn", summary: "not available", detail: "this platform has no scheduler agentbrew can use" };
     case "off":
-      return { tone: "ok", summary: "off", detail: "you turned it off; turn on: agentbrew config set autoRepair on" };
+      return backend === "none"
+        ? { tone: "ok", summary: "off", detail: "you turned it off; turn on: agentbrew config set autoRepair on" }
+        : {
+            tone: "warn",
+            summary: "off",
+            detail: `you turned it off, but a ${backend} job is still installed; remove it: agentbrew auto-sync uninstall`,
+          };
     case "not-installed":
       return { tone: "warn", summary: "not installed", detail: REINSTALL_HINT };
     case "broken":
@@ -262,11 +269,11 @@ export function collectAutoRepairEvidence(): AutoRepairEvidence {
     case "taskscheduler":
       return { backend };
     case "none":
-      return { backend, supported: detectBackend() !== "none", optedOut: autoRepairOptedOut() };
+      return { backend, supported: detectBackend() !== "none" };
   }
 }
 
 /** Probe the auto-repair scheduler and classify what it is really doing. */
 export function probeAutoRepairHealth(nowMs: number = Date.now()): AutoRepairHealth {
-  return classifyAutoRepair(collectAutoRepairEvidence(), nowMs);
+  return classifyAutoRepair({ ...collectAutoRepairEvidence(), optedOut: autoRepairOptedOut() }, nowMs);
 }

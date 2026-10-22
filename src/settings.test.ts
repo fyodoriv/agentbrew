@@ -4,6 +4,7 @@ import yaml from "js-yaml";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { autoRepairOptedOut, listSettings, SETTINGS, setSetting } from "./settings.js";
 import { getStatePath, invalidateState } from "./state.js";
+import type { AgentBrewState } from "./types.js";
 
 // Real state.yaml round trips in the scratch HOME from vitest.isolated-home.ts.
 function readStateFile(): Record<string, unknown> {
@@ -32,6 +33,7 @@ describe("settings table", () => {
       ["claudePermissions", "manage", "default"],
       ["skillInstallMode", "auto", "default"],
       ["autoRepair", "on", "default"],
+      ["builtinCommands", "on", "default"],
     ]);
   });
 
@@ -40,8 +42,13 @@ describe("settings table", () => {
     expect(setSetting("autoRepair", "off").ok).toBe(true);
     invalidateState();
     expect(autoRepairOptedOut()).toBe(true);
+  });
+
+  it("treats AGENTBREW_NO_AUTO_SYNC=1 as a no for one run, even when state.yaml says on", () => {
+    const on: AgentBrewState = { agents: [], catalogVersion: "x", autoRepair: "on" };
+    expect(autoRepairOptedOut(on)).toBe(false);
     vi.stubEnv("AGENTBREW_NO_AUTO_SYNC", "1");
-    expect(autoRepairOptedOut(undefined)).toBe(true);
+    expect(autoRepairOptedOut(on)).toBe(true);
     vi.unstubAllEnvs();
   });
 

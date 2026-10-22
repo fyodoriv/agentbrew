@@ -47,7 +47,11 @@ vi.mock("../manifest.js", async () => {
 // an empty Map so the canary integration falls back to the native
 // transform path under test.
 // Built-in commands (/agentbrew) have their own test (builtin-commands.test.ts); here only user and Agentfile sources.
-vi.mock("./builtin-commands.js", () => ({ builtinCommandsDir: () => undefined }));
+vi.mock("./builtin-commands.js", () => ({
+  builtinCommandsDir: () => undefined,
+  builtinCommandNames: () => [],
+  SHIPPED_BUILTIN_COPY_HASHES: new Set(),
+}));
 
 vi.mock("./commands-delegate.js", () => ({
   delegateCommandsGenerate: vi.fn(() => new Map()),

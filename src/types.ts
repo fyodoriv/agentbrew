@@ -339,6 +339,13 @@ export interface AgentBrewState {
    */
   autoRepair?: "on" | "off";
   /**
+   * Machine-local choice for agentbrew's own commands (/agentbrew).
+   *   - `"on"` (default): sync deploys them to every agent.
+   *   - `"off"`: sync deploys none and prunes the copies it deployed. Set with
+   *     `agentbrew config set builtinCommands off` or `agentbrew remove agentbrew`.
+   */
+  builtinCommands?: "on" | "off";
+  /**
    * Default model id deployed to every detected agent that declares a
    * `modelConfig` surface in agents.yaml (see `src/sync/model-sync.ts`).
    * Set from the Agentfile's `defaultModel:` key; absent means model sync

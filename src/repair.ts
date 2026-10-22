@@ -26,6 +26,7 @@ import { maybeScheduledShare } from "./metrics/weekly.js";
 import { snapshotAgentConfigs } from "./ops.js";
 import type { RepairAction } from "./repair-log.js";
 import { saveRepairLog } from "./repair-log.js";
+import { autoRepairOptedOut } from "./settings.js";
 import { requireState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
 import { getLogDir, trimLogIfNeeded } from "./sync/auto-sync.js";
@@ -193,7 +194,8 @@ async function runFix(started: number): Promise<void> {
   if (process.platform === "darwin" && checkLaunchAgentPathDrift().length > 0) {
     await step("launchagent", async () => {
       try {
-        await installLaunchAgent();
+        // The check job itself only when the user wants it; the other agentbrew jobs always.
+        if (!autoRepairOptedOut(state)) await installLaunchAgent();
         await repairAgentbrewLaunchAgentPaths();
       } catch (e) {
         logSkipped("repair/installLaunchAgent", e);

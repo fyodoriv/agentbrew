@@ -42,7 +42,19 @@ export const SETTINGS: readonly Setting[] = [
     help: "on: init installs the drift-repair job and agentbrew proposes it when missing. off: neither does.",
     appliesOn: "the next `agentbrew` and `agentbrew init` (off does not remove a job: agentbrew auto-sync uninstall)",
   },
+  {
+    key: "builtinCommands",
+    default: "on",
+    allowed: ["on", "off"],
+    help: "on: sync deploys agentbrew's own commands (/agentbrew). off: sync removes the copies it deployed.",
+    appliesOn: "the next `agentbrew sync`",
+  },
 ];
+
+/** True when the user turned agentbrew's built-in commands off (`builtinCommands: off`). */
+export function builtinCommandsOff(state: AgentBrewState | undefined = loadState()): boolean {
+  return state?.builtinCommands === "off";
+}
 
 /**
  * True when the user said no to the background repair job: `autoRepair: off`

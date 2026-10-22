@@ -27,6 +27,8 @@ vi.mock("node:child_process", () => ({
   spawnSync: vi.fn(() => ({ status: 0, error: null })),
 }));
 
+vi.mock("../settings.js", () => ({ autoRepairOptedOut: vi.fn(() => false) }));
+
 vi.mock("./scheduler-paths.js", () => ({
   AUTO_SYNC_INTERVAL_MINUTES: 30,
   AUTO_SYNC_INTERVAL_SECONDS: 1800,
@@ -46,6 +48,7 @@ vi.mock("./scheduler-paths.js", () => ({
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   activeBackend,
   autoSyncStatus,
@@ -346,12 +349,21 @@ describe("detectBackend", () => {
     expect(detectBackend()).toBe("systemd");
   });
 
-  it("returns cron on linux without systemctl", () => {
+  it("returns cron on linux without systemctl but with crontab", () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockExecFileSync.mockImplementation(((_cmd: string, args: string[]) => {
+      if (args[0] === "systemctl") throw new Error("not found");
+      return "" as never;
+    }) as unknown as typeof execFileSync);
+    expect(detectBackend()).toBe("cron");
+  });
+
+  it("returns none on linux with neither systemctl nor crontab", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
     mockExecFileSync.mockImplementation(() => {
       throw new Error("not found");
     });
-    expect(detectBackend()).toBe("cron");
+    expect(detectBackend()).toBe("none");
   });
 
   it("returns taskscheduler on win32", () => {
@@ -404,6 +416,15 @@ describe("installAutoSync", () => {
   const originalPlatform = process.platform;
   afterEach(() => {
     Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
+  it("installs nothing when the user turned auto-repair off, and says how to turn it on", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValueOnce(true);
+    mockExecFileSync.mockReturnValue("" as never);
+    await installAutoSync();
+    expect(mockExecFileSync).not.toHaveBeenCalledWith("launchctl", expect.anything(), expect.anything());
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("agentbrew config set autoRepair on"));
   });
 
   it("installs LaunchAgent on macOS", async () => {

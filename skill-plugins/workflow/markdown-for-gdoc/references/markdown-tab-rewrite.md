@@ -6,11 +6,11 @@ Fix the first. Check the second before you "fix" it.
 
 ## Rule 1: give wide tables fixed column widths
 
-This rule covers the tables the given markdown already has. When you only
-rewrite the tab from that markdown, keep its tables as they are and fix
-their widths here. When you write the markdown, or the user asks you to
-change it, keep tables at 5 columns or fewer (the Tables section of
-`SKILL.md`).
+This rule covers every table in the rewritten tab. When you only rewrite
+the tab from markdown you were given, keep its tables as they are. When you
+write the markdown, or the user asks you to change it, keep tables at 5
+columns or fewer (the Tables section of `SKILL.md`), unless the user asks
+for more.
 
 The rewrite tool can leave column widths that add up to more than the text
 width. Then the last columns are cut off in the editor.
@@ -24,9 +24,9 @@ up to more than the text width:
    (`flipPageOrientation` is `true`), use `pageSize.height` instead. If the
    table's section sets its own margins or `flipPageOrientation` (the
    `sectionStyle` of the last section break before the table), use those.
-   In a pageless tab (`documentStyle.documentFormat.documentMode` is
-   `PAGELESS`), use the total width of a table in a sibling tab (not one
-   this rewrite made), or ask the user.
+   A pageless tab has `documentStyle.documentFormat.documentMode` set to
+   `PAGELESS`. There, use the total width of a table in a sibling tab, or
+   ask the user.
 2. Split the text width across the columns. Give longer text a wider
    column. Round each width down to whole points, and add what is left to
    the widest column. The widths must add up to the text width.
@@ -51,7 +51,8 @@ bold is set.
    screenshot are not proof.
 2. Find the font. A run often has no `weightedFontFamily` of its own. Then
    read it from that tab's `namedStyles` entry for the paragraph's
-   `namedStyleType`. Do the same for the other tab in step 3.
+   `namedStyleType`. If that entry does not set it, use the `NORMAL_TEXT`
+   entry. Do the same for the other tab in step 3.
 3. If `bold` is `true`, open an existing tab in the same doc that uses the
    same `weightedFontFamily.fontFamily` and has bold text. Compare its
    screenshot with yours. If its bold looks the same, your bold is correct.
@@ -61,9 +62,9 @@ bold is set.
    (`fontFamily` and `weight`) on both runs, found as in step 2. Do not
    re-apply bold. Tell the user what differs.
 5. If `bold` is missing, check the paragraph's named style in
-   `namedStyles` first. If that style sets bold, the text is bold. If not,
-   or if `bold` is `false`, apply it with `updateTextStyle` over the
-   label's exact range, `range: {startIndex, endIndex, tabId}`, with
+   `namedStyles` first. If that style sets bold, the text is bold: go to
+   step 3. If not, or if `bold` is `false`, apply it with `updateTextStyle`
+   over the label's exact range, `range: {startIndex, endIndex, tabId}`, with
    `textStyle: {bold: true}` and `fields: "bold"`. A range without `tabId`
    writes to the first tab. Then read the run again.
 6. If the user wants a stronger bold, ask before you change the font or its
@@ -72,6 +73,6 @@ bold is set.
 ## Then verify
 
 Both rules are the Fix step (step 3) of the visual verification loop in
-`SKILL.md`. After both, run steps 1 and 2 of the loop again: a structured
-read of the whole tab, then the every-page screenshot sweep. No column may
-be cut off at the right edge.
+`SKILL.md`. After both, restart the loop at step 1: a structured read of
+the whole tab, then the every-page screenshot sweep. Repeat until every page
+passes. No column may be cut off at the right edge.

@@ -13,7 +13,8 @@ Load this file during the visual verification loop in `SKILL.md`.
 - Bold that looks plain in a screenshot: check `textRun.textStyle.bold`
   first, and compare with an existing tab in the same font (Rule 2 in
   [`markdown-tab-rewrite.md`](markdown-tab-rewrite.md)). Re-apply bold only
-  when the API shows it missing or `false`.
+  when the API shows it `false`, or missing and not set by the paragraph's
+  named style.
 
 ## When the browser hits SSO
 

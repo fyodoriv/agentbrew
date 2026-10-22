@@ -10,26 +10,33 @@
  * Every repo, key, and HOME here is scratch. Git reads an empty global
  * config file, never the developer's ~/.gitconfig.
  */
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { home, previousHome } = vi.hoisted(() => {
+const { home, previousEnv } = vi.hoisted(() => {
   const { mkdtempSync: mk, writeFileSync: wf } = require("node:fs") as typeof import("node:fs");
   const { tmpdir: td } = require("node:os") as typeof import("node:os");
   const { join: j } = require("node:path") as typeof import("node:path");
-  const previous = process.env.HOME;
+  const previous = {
+    HOME: process.env.HOME,
+    GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL,
+    GIT_CONFIG_NOSYSTEM: process.env.GIT_CONFIG_NOSYSTEM,
+  };
   const dir = mk(j(td(), "plugin-tag-home-"));
   const gitconfig = j(dir, "scratch.gitconfig");
   wf(gitconfig, "");
   process.env.HOME = dir;
   process.env.GIT_CONFIG_GLOBAL = gitconfig;
   process.env.GIT_CONFIG_NOSYSTEM = "1";
-  return { home: dir, previousHome: previous };
+  return { home: dir, previousEnv: previous };
 });
 
 import { readLock } from "../lock.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
+import { tagObject, verifySignedTag } from "./signers.js";
 import { addPlugin, pluginDir } from "./store.js";
 import { planUpdate } from "./update.js";
 
@@ -71,7 +78,10 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  process.env.HOME = previousHome;
+  for (const [k, v] of Object.entries(previousEnv)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -104,7 +114,7 @@ describe("plugin add: signed-tag attacks", () => {
   it("refuses an unsigned annotated tag", () => {
     fixtureGit(f.dir, ...ID, "tag", "-a", "v2.0.0", "-m", "v2.0.0", evilCommit());
 
-    expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/trusted signer/);
+    expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/SSH signature/);
     expectNothingInstalled();
   });
 
@@ -114,6 +124,50 @@ describe("plugin add: signed-tag attacks", () => {
     expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/not a signed tag/);
     expectNothingInstalled();
   });
+
+  it.skipIf(spawnSync("gpg", ["--version"]).status !== 0)(
+    "refuses an OpenPGP-signed tag, even one whose user ID names the trusted key's fingerprint",
+    () => {
+      const gnupg = mkdtempSync(join(tmpdir(), "plugin-gpg-"));
+      const env = { ...process.env, GNUPGHOME: gnupg };
+      const previous = process.env.GNUPGHOME;
+      try {
+        const fp = execFileSync("ssh-keygen", ["-lf", `${KEY.file}.pub`], { encoding: "utf-8" }).split(/\s+/)[1];
+        execFileSync("gpg", ["--batch", "--passphrase", "", "--quick-gen-key", `forger ${fp}`, "ed25519", "sign"], {
+          env,
+          stdio: "pipe",
+        });
+        const evil = evilCommit();
+        execFileSync(
+          "git",
+          [
+            ...ID,
+            "-c",
+            "gpg.format=openpgp",
+            "-c",
+            "user.signingkey=forger",
+            "tag",
+            "-s",
+            "v2.0.0",
+            "-m",
+            "v2.0.0",
+            evil,
+          ],
+          { cwd: f.dir, env, stdio: "pipe" },
+        );
+        // The forger's key is in the user's keyring, as auto-key-retrieve would leave it.
+        process.env.GNUPGHOME = gnupg;
+
+        expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/SSH signature/);
+        expectNothingInstalled();
+      } finally {
+        if (previous === undefined) delete process.env.GNUPGHOME;
+        else process.env.GNUPGHOME = previous;
+        spawnSync("gpgconf", ["--kill", "all"], { env });
+        rmSync(gnupg, { recursive: true, force: true });
+      }
+    },
+  );
 
   it.each([
     ["a 64-hex name", "a".repeat(64), /object ID/],
@@ -136,6 +190,19 @@ describe("plugin add: signed-tag attacks", () => {
     expect(entry.signer).toBe(KEY.pub);
     expect(fixtureGit(pluginDir("acme"), "rev-parse", "HEAD")).toBe(good);
     expect(fixtureGit(pluginDir("acme"), "status", "--porcelain", "--untracked-files=all")).toBe("");
+  });
+});
+
+describe("tagObject and verifySignedTag", () => {
+  it("resolve and verify exactly refs/tags/<ref>, past a same-named branch and an object-ID-named tag", () => {
+    const evil = evilCommit();
+    fixtureGit(f.dir, "branch", "v1.0.0", evil);
+    fixtureGit(f.dir, ...ID, "tag", "-a", signedTag, "-m", "unsigned", evil);
+    const unsigned = fixtureGit(f.dir, "show-ref", "--verify", "--hash", `refs/tags/${signedTag}`);
+
+    expect(tagObject(f.dir, "v1.0.0")).toBe(signedTag);
+    expect(verifySignedTag(f.dir, "v1.0.0", signedTag, "acme", [KEY.pub])).toBe(KEY.pub);
+    expect(() => verifySignedTag(f.dir, signedTag, unsigned, "acme", [KEY.pub])).toThrow(/SSH signature/);
   });
 });
 

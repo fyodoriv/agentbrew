@@ -5,7 +5,7 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
-import { capabilitiesHash, type PluginManifest, readManifest } from "./manifest.js";
+import { capabilitiesHash, MANIFEST_FILE, type PluginManifest, parseManifest, readManifest } from "./manifest.js";
 import { assertMcpServers } from "./mcp-launcher.js";
 import { assertTagName, normalizeKey, signersFor, tagObject, trustSigner, verifySignedTag } from "./signers.js";
 
@@ -56,10 +56,11 @@ export interface Staged {
 }
 
 /**
- * Fetch exactly `refs/tags/<ref>` from `url` to a staging dir, check out the
- * commit of that tag object by its ID, validate the manifest, and verify the
- * same tag object's signature. A branch with the tag's name never wins, and
- * a name that git could read as an object ID is refused. Runs no plugin code.
+ * Fetch exactly `refs/tags/<ref>` from `url` to a staging dir, verify that
+ * tag object's signature, then check out its commit by ID and validate the
+ * manifest. A branch with the tag's name never wins, and a name that git
+ * could read as an object ID is refused. Nothing is checked out before the
+ * signature passes. Runs no plugin code.
  */
 export function stage(url: string, ref: string, extraSigner?: string): Staged {
   assertTagName(ref);
@@ -71,16 +72,25 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
     git(dir, "fetch", "--quiet", "--no-tags", "--depth", "1", "--end-of-options", url, `${tagRef}:${tagRef}`);
     const tag = tagObject(dir, ref);
     const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
-    git(dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", commit);
-    const manifest = readManifest(dir);
-    assertCapabilities(dir, manifest);
-    assertMcpServers(dir, manifest);
+    let text: string;
+    try {
+      text = git(dir, "cat-file", "blob", `${commit}:${MANIFEST_FILE}`);
+    } catch {
+      throw new Error(`Cannot read plugin manifest ${MANIFEST_FILE} at "${ref}".`);
+    }
+    const manifest = parseManifest(text);
     const keys = [...signersFor(manifest.name)];
     if (extraSigner && !keys.includes(extraSigner)) keys.push(extraSigner);
     const signer = verifySignedTag(dir, ref, tag, manifest.name, keys);
+    git(dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", commit);
     if (git(dir, "rev-parse", "HEAD") !== commit) {
       throw new Error(`The checkout of "${ref}" is not the commit of its signed tag.`);
     }
+    if (JSON.stringify(readManifest(dir)) !== JSON.stringify(manifest)) {
+      throw new Error(`The checkout of "${ref}" does not match its signed manifest.`);
+    }
+    assertCapabilities(dir, manifest);
+    assertMcpServers(dir, manifest);
     const entry: PluginLockEntry = {
       name: manifest.name,
       version: manifest.version,

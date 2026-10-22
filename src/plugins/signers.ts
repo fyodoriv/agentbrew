@@ -135,13 +135,21 @@ export function tagObject(dir: string, ref: string): string {
  * Verify that tag object `oid` (from {@link tagObject} for `ref`) is signed
  * by a key in `keys`. Git gets the object ID, never the name, so it checks
  * exactly that object. Uses a scratch allowed-signers file with only those
- * keys, so the user's own git config cannot widen trust. Returns the key
+ * keys, so the user's own git config cannot widen trust. Git picks the
+ * verifier from the signature block, not from `gpg.format`, so the tag must
+ * carry exactly one SSH signature and the OpenPGP and X.509 verifiers are
+ * disabled: a key in the user's gpg keyring can never pass. Returns the key
  * that signed.
  */
 export function verifySignedTag(dir: string, ref: string, oid: string, principal: string, keys: string[]): string {
   if (keys.length === 0)
     throw new Error(`No trusted signer for plugin "${principal}". Pass --signer <ssh-public-key>.`);
   if (!OBJECT_ID.test(oid)) throw new Error(`"${oid}" is not a tag object ID.`);
+  const body = execFileSync("git", ["cat-file", "tag", oid], { cwd: dir, encoding: "utf-8", stdio: "pipe" });
+  const armor = body.split("\n").filter((line) => line.startsWith("-----BEGIN "));
+  if (armor.length !== 1 || armor[0] !== "-----BEGIN SSH SIGNATURE-----") {
+    throw new Error(`Tag "${ref}" must carry exactly one SSH signature. Plugins install only from SSH-signed tags.`);
+  }
 
   const scratch = mkdtempSync(join(tmpdir(), "agentbrew-signers-"));
   try {
@@ -149,15 +157,27 @@ export function verifySignedTag(dir: string, ref: string, oid: string, principal
     writeFileSync(file, `${keys.map((k) => `${principal} namespaces="git" ${k}`).join("\n")}\n`);
     const result = spawnSync(
       "git",
-      ["-c", "gpg.format=ssh", "-c", `gpg.ssh.allowedSignersFile=${file}`, "verify-tag", oid],
+      [
+        "-c",
+        "gpg.format=ssh",
+        "-c",
+        `gpg.ssh.allowedSignersFile=${file}`,
+        "-c",
+        "gpg.openpgp.program=false",
+        "-c",
+        "gpg.x509.program=false",
+        "verify-tag",
+        oid,
+      ],
       { cwd: dir, encoding: "utf-8" },
     );
-    const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+    const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
     if (result.status !== 0) {
       throw new Error(`Tag "${ref}" signature is not from a trusted signer for "${principal}". ${output.trim()}`);
     }
-    const fp = output.match(/SHA256:[A-Za-z0-9+/=]+/)?.[0];
-    const key = keys.find((k) => fingerprint(k) === fp);
+    // Only ssh-keygen's own result line counts; other output text is not trusted.
+    const good = output.match(/^Good "git" signature for (\S+) with \S+ key (SHA256:[A-Za-z0-9+/=]+)$/m);
+    const key = good?.[1] === principal ? keys.find((k) => fingerprint(k) === good[2]) : undefined;
     if (!key) throw new Error(`Could not match the signing key of "${ref}" to a trusted signer.`);
     return key;
   } finally {

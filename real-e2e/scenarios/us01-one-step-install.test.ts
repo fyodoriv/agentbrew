@@ -110,9 +110,11 @@ beforeAll(() => {
   expect(build.status, build.stderr).toBe(0);
 }, 120_000);
 
+// Cold mode leaves a full node_modules in the scratch root. Deleting it can
+// take longer than the 10 s default hook timeout on a loaded machine.
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+}, 120_000);
 
 describe.concurrent(`us01 one-step install (${COLD ? "cold: npm ci + build" : "fast: built CLI"})`, () => {
   it(

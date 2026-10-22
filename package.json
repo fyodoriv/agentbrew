@@ -37,6 +37,7 @@
     "stage-learn-sources": "tsx scripts/stage-learn-sources.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh",
+    "lint:changed": "bash scripts/lint-changed.sh",
     "lint:fix": "biome check --write src scripts real-e2e",
     "lint:security": "bash scripts/lint-security.sh",
     "lint:artifacts": "bash scripts/lint-repo-artifacts.sh",

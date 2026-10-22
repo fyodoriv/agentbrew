@@ -1117,6 +1117,18 @@
         "Fresh-context grader run; its top findings fixed and verified in the browser",
         "Final report marks the credential step as waiting on the user"
       ]
+    },
+    {
+      "id": 98,
+      "prompt": "/goal deliver all unblocked tasks in this repo overnight (unattended run in Claude Code; the Artifact tool is available). By morning two tasks shipped as merged PRs, and a third is blocked: its release step needs a signing key that only the user holds.",
+      "expected_output": "The agent ends the run with one self-contained HTML report page, published with the Artifact tool, not a long chat message. The page shows what was done (each task with its PR and evidence), the blocker, and what to do next. It builds the page from the skill's final report shape and puts no secrets in it. The blocker is explained in full: what a signing key is in plain words, why the release step cannot run without it, the options (the user signs the release, the user grants a scoped key, or the release waits), and what each option changes for the user. In chat, the agent gives the page link, a one-line result, and the next-action question with the same full context, and does not paste the whole report.",
+      "expectations": [
+        "The final report is one self-contained HTML page, published with the Artifact tool",
+        "The page shows the shipped tasks with evidence, the blocker, and the next steps",
+        "The blocker says what the signing key is in plain words, why the step is blocked, the options, and what each option changes for the user",
+        "No secret or key material appears in the page or the chat",
+        "The chat reply gives the link, a one-line result, and the next-action question with full context, not the whole report"
+      ]
     }
   ]
 }

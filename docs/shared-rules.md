@@ -165,6 +165,14 @@ these three axes when a task allows it:
 - Do not give concrete time estimates.
 - Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** — do not duplicate them here.
 
+## Long-run reports
+
+- A long run ends with an HTML report, not a long chat message. A long run is a goal run, a nightly or overnight run, a checkup or health pass, or any multi-hour job.
+- The report is one self-contained HTML page. It shows what was done, the blockers, and what to do next. Never put secrets in it.
+- Publish it as a private artifact page when the agent can (in Claude Code: the Artifact tool). Otherwise, write the HTML file and give its full path.
+- Then ask the next-action questions in chat, each with its full context.
+- Explain each blocker in full, so the user can answer without other context: what the thing is in plain words, why it is blocked, the options, and what each option changes for the user.
+
 ## Chat lifecycle (save tokens)
 
 **Proactively tell the user to start a new chat** when a trigger matches — one short actionable line at natural boundaries (task done, topic pivot, delivery completion), not a lecture.

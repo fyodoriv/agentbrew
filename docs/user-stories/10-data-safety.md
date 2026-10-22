@@ -15,7 +15,7 @@ AgentBrew never destroys data it didn't create. Manual edits are preserved acros
 | **Rules files** | Everything outside `<!-- agentbrew:start/end -->` markers | The managed section between markers |
 | **Instruction files** | Everything outside `<!-- agentbrew:instructions:start/end -->` markers | The managed section between markers |
 | **MCP configs** | Servers you added manually; extra env vars/fields on managed servers | Server entries that agentbrew registered |
-| **Skills directories** | Directories and symlinks you created manually | Symlinks created by agentbrew |
+| **Skills directories** | Directories and symlinks you created manually | Symlinks created by agentbrew; a copy of a managed skill moves to the backups folder (see below) |
 | **Command files** | Commands you created or edited after deployment | Command files deployed by agentbrew (tracked via manifest hash) |
 | **Agent definitions** | Agent files you created or edited after deployment | Agent files deployed by agentbrew |
 | **Helper scripts** | Any file in `~/.config/agentbrew/scripts/` that agentbrew did not write, or that you edited after deployment | Helper scripts agentbrew installed (tracked via manifest hash) |
@@ -25,6 +25,7 @@ AgentBrew never destroys data it didn't create. Manual edits are preserved acros
 - **MCP merge**: agentbrew uses `Object.assign` merge, not replacement. Your extra env vars and fields on managed servers are kept. Only agentbrew-managed keys are updated.
 - **Rules markers**: agentbrew only writes between `<!-- agentbrew:start -->` and `<!-- agentbrew:end -->`. Everything outside is untouched.
 - **Skills symlinks**: `cleanSymlinks()` only removes symlinks pointing to skill sources registered with agentbrew. User directories and user-created symlinks are preserved.
+- **Skill copies**: a real directory with a `SKILL.md`, named like a skill agentbrew deploys, hides the source, so agents load stale text. Sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` (nothing is deleted) and links the source. A directory without `SKILL.md`, or one that is a registered source itself, stays.
 - **Commands manifest**: agentbrew tracks deployed files via content hashes. Files you created or edited after deployment are treated as user-owned and never overwritten.
 - **Pre-sync snapshots**: every sync creates a timestamped backup. `agentbrew sync --rollback` restores the previous state if something goes wrong.
 

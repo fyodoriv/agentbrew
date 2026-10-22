@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -70,6 +70,58 @@ describe("verify-changed.sh", () => {
       expect(result.stdout, file).toContain("these files need the full gate:");
       expect(result.stdout, file).not.toContain("merge-ready");
     }
+  });
+
+  it("runs only the tests that read a task-queue and eval diff", () => {
+    const root = mkdtempSync(join(tmpdir(), "verify-changed-"));
+    roots.push(root);
+    // Built from parts, so this file does not match its own fixture lines.
+    const tasks = ["TASKS", "md"].join(".");
+    const files: Record<string, string> = {
+      [tasks]: "# Tasks\n",
+      "skill-plugins/workflow/demo/evals/evals.json": "{}\n",
+      "src/reader.test.ts": `readFileSync(join(repoRoot, "${tasks}"));\n`,
+      "src/fixture.test.ts": `writeFileSync(join(work, "${tasks}"), "");\n`,
+      "src/comment.test.ts": `// See ${tasks} \`some-task\`.\n`,
+      "src/names-skill.test.ts": 'read(join(root, "skill-plugins/workflow/demo/SKILL.md"));\n',
+      "src/skills/scanner.test.ts": 'readdirSync(join(root, "skill-plugins"));\n',
+      "src/skills/demo-contract.test.ts": 'join(root, "skill-plugins", "workflow", "demo");\n',
+      "src/skills/other-contract.test.ts": 'join(root, "skill-plugins", "workflow", "other");\n',
+    };
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(join(root, file, ".."), { recursive: true });
+      writeFileSync(join(root, file), text);
+    }
+    git(root, "init", "-q", "-b", "main");
+    git(root, "add", ".");
+    git(root, "-c", "user.email=a@example.com", "-c", "user.name=a", "commit", "-q", "-m", "init");
+    writeFileSync(join(root, tasks), "# Tasks\n\n- [ ] A task\n");
+    writeFileSync(join(root, "skill-plugins/workflow/demo/evals/evals.json"), '{"evals": []}\n');
+
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    const listed = (result.stdout.split("tests to run:\n")[1] ?? "").split("\n\n")[0].split("\n");
+    for (const t of [
+      "src/docs",
+      "src/oss",
+      "src/reader.test.ts",
+      "src/names-skill.test.ts",
+      "src/skills/scanner.test.ts",
+      "src/skills/demo-contract.test.ts",
+    ]) {
+      expect(listed, t).toContain(`  ${t}`);
+    }
+    for (const t of ["src/fixture.test.ts", "src/comment.test.ts", "src/skills/other-contract.test.ts"]) {
+      expect(listed, t).not.toContain(`  ${t}`);
+    }
+    expect(result.stdout).toContain("merge-ready");
+  });
+
+  it("lists only skill scanner tests that exist", () => {
+    const list = readFileSync(SCRIPT, "utf8").match(/^skill_scanners=\((.*)\)$/m)?.[1] ?? "";
+    const scanners = list.split(" ").filter(Boolean);
+    expect(scanners.length).toBeGreaterThan(0);
+    for (const t of scanners) expect(existsSync(resolve(import.meta.dirname, "..", t)), t).toBe(true);
   });
 
   it("reports no changes when the tree matches the base", () => {

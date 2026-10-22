@@ -168,10 +168,13 @@ export function humanWaits(rows) {
  * completion row. captureRate: share of calls with an id (any row) that have
  * an attempt row; null when no row has an id. Rows without an id (written
  * before ids existed) take no part.
+ * `pairRows` (default `rows`) is where the other half of a call is looked
+ * up. A Bash `cd <other repo> && …` writes its attempt row under one project
+ * and its completion row under another, so a per-project view passes every
+ * loaded row here; each call still counts under the project of its own row.
  */
-export function pairCalls(rows) {
+export function pairCalls(rows, pairRows = rows) {
   const tried = new Map();
-  const done = new Set();
   const seen = new Set();
   for (const row of rows) {
     if (!hasId(row)) continue;
@@ -179,20 +182,24 @@ export function pairCalls(rows) {
     if (row.ev === "attempt" || row.ev === "denied") {
       seen.add(call);
       const prev = tried.get(call);
-      tried.set(call, {
-        key: prev?.key ?? row.key ?? row.tool ?? "unknown",
-        recorded: Boolean(prev?.recorded) || row.ev === "attempt",
-      });
+      tried.set(call, { key: prev?.key ?? row.key ?? row.tool ?? "unknown" });
     } else if (isToolRow(row)) {
       seen.add(call);
-      done.add(call);
     }
+  }
+  const done = new Set();
+  const attempted = new Set();
+  for (const row of pairRows) {
+    if (!hasId(row)) continue;
+    const call = `${row.sid}\u0000${row.id}`;
+    if (row.ev === "attempt") attempted.add(call);
+    else if (row.ev !== "denied" && isToolRow(row)) done.add(call);
   }
   const byKey = new Map();
   let blocked = 0;
   let recorded = 0;
-  for (const [call, { key, recorded: hasAttempt }] of tried) {
-    if (hasAttempt) recorded += 1;
+  for (const call of seen) if (attempted.has(call)) recorded += 1;
+  for (const [call, { key }] of tried) {
     if (done.has(call)) continue;
     blocked += 1;
     byKey.set(key, (byKey.get(key) ?? 0) + 1);
@@ -226,8 +233,11 @@ export function formatMs(ms) {
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}m`;
 }
 
-/** Aggregate rows: totals (main thread), per-key stats, slowest calls, failures, human wait. */
-export function summarize(rows) {
+/**
+ * Aggregate rows: totals (main thread), per-key stats, slowest calls,
+ * failures, human wait. `pairRows` goes to pairCalls.
+ */
+export function summarize(rows, pairRows = rows) {
   // A call over 30 min is human wait, not tool time (see humanWaits).
   const tools = rows.filter((row) => isToolRow(row) && !isLongCall(row));
   const main = tools.filter(isMainThread);
@@ -267,7 +277,7 @@ export function summarize(rows) {
     slowest,
     failuresByKey: keys.filter((k) => k.failures > 0).map((k) => ({ key: k.key, failures: k.failures, count: k.count })),
     humanWait: humanWaits(rows),
-    ...pairCalls(rows),
+    ...pairCalls(rows, pairRows),
   };
 }
 
@@ -316,23 +326,27 @@ export function buildReport(opts, { dir = perfDir(), nowMs = Date.now(), cwd = p
   const project = opts.all ? null : opts.project || projectForDir(opts.cwd || cwd);
   const filterProject = (rows) => (project ? rows.filter((row) => row.project === project) : rows);
 
+  // Pair calls on every loaded row, not only this project's (see pairCalls).
   if (opts.session) {
-    const scan = filterProject(loadRows(dir, nowMs - Math.max(days, 31) * DAY_MS, nowMs));
+    const loaded = loadRows(dir, nowMs - Math.max(days, 31) * DAY_MS, nowMs);
+    const scan = filterProject(loaded);
     let sid = opts.session;
     if (sid === "latest") {
       const last = [...scan].reverse().find((row) => row.sid);
       sid = last?.sid ?? null;
     }
     const rows = sid ? scan.filter((row) => row.sid === sid) : [];
-    return { scope: { project: project ?? "all", session: sid, days: null }, ...summarize(rows) };
+    const pairRows = sid ? loaded.filter((row) => row.sid === sid) : [];
+    return { scope: { project: project ?? "all", session: sid, days: null }, ...summarize(rows, pairRows) };
   }
 
   const sinceMs = nowMs - days * DAY_MS;
-  const all = filterProject(loadRows(dir, sinceMs - days * DAY_MS, nowMs));
+  const loaded = loadRows(dir, sinceMs - days * DAY_MS, nowMs);
+  const all = filterProject(loaded);
   const current = all.filter((row) => Date.parse(row.ts) >= sinceMs);
   const previous = all.filter((row) => Date.parse(row.ts) < sinceMs);
-  const now = summarize(current);
-  const before = summarize(previous);
+  const now = summarize(current, loaded);
+  const before = summarize(previous, loaded);
   const beforeByKey = new Map(before.keys.map((k) => [k.key, k]));
   return {
     scope: { project: project ?? "all", session: null, days, since: new Date(sinceMs).toISOString() },

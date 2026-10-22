@@ -160,6 +160,33 @@ describe("attempts and blocked calls", () => {
     expect(brief.split("\n").length).toBeLessThanOrEqual(5);
     expect(brief).toContain("Blocked calls: 3 never ran (top: cd <path> 2x)");
   });
+
+  it("pairs a call whose completion row landed in another project (a cd into another repo)", () => {
+    writeRows([
+      // `cd ~/beta && rg …` starts in alpha; the completion row is written under beta.
+      attempt("cd <path>", "x1"),
+      tool("cd <path>", 800, { id: "x1", project: "beta" }),
+      // The same before the 7-day window, completed after its edge.
+      attempt("cd <path>", "x2", { ts: at(7 * DAY + HOUR) }),
+      tool("cd <path>", 900, { id: "x2", project: "beta", ts: at(7 * DAY - HOUR) }),
+      // A call that never ran anywhere stays blocked.
+      attempt("Edit:ts", "x3"),
+    ]);
+
+    const alpha = buildReport({}, ctx());
+    expect(alpha).toMatchObject({ attempts: 2, blocked: 1, blockedKeys: [{ key: "Edit:ts", count: 1 }] });
+    // Session mode scans 31 days, so it sees x2 too.
+    expect(buildReport({ session: "s1" }, ctx())).toMatchObject({ attempts: 3, blocked: 1 });
+    expect(buildBrief({}, ctx())).toContain("Blocked calls: 1 never ran (top: Edit:ts 1x)");
+
+    // beta's completions (x1, x2) have their attempt rows in alpha, so the attempt hook did capture them.
+    const beta = buildReport({ project: "beta" }, ctx());
+    expect(beta).toMatchObject({ attempts: 0, blocked: 0, callsWithId: 2, captureRate: 1 });
+
+    const all = buildReport({ all: true }, ctx());
+    expect(all).toMatchObject({ attempts: 2, blocked: 1 });
+    expect(alpha.blocked).toBeLessThanOrEqual(all.blocked);
+  });
 });
 
 describe("human wait", () => {

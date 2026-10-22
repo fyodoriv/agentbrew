@@ -7,10 +7,10 @@ Fix the first. Check the second before you "fix" it.
 ## Rule 1: give wide tables fixed column widths
 
 This rule covers every table in the rewritten tab. When you only rewrite
-the tab from markdown you were given, keep their rows and columns as they
-are, and fix only their widths (below). When you write the markdown, or the
-user asks you to change it, keep tables at 5 columns or fewer (the Tables
-section of `SKILL.md`), unless the user asks for more.
+the tab from markdown you were given, keep each table's rows and columns as
+they are, and fix only the widths (below). When you write the markdown, or
+the user asks you to change it, keep tables at 5 columns or fewer (the
+Tables section of `SKILL.md`), unless the user asks for more.
 
 The rewrite tool can leave column widths that add up to more than the text
 width. Then the last columns are cut off in the editor.
@@ -63,11 +63,12 @@ bold is set.
    (`fontFamily` and `weight`) on both runs, found as in step 2. Do not
    re-apply bold. Tell the user what differs.
 5. If `bold` is missing, check the paragraph's named style in
-   `namedStyles` first. If that style sets bold, the text is bold: go to
-   step 3. If not, or if `bold` is `false`, apply it with `updateTextStyle`
-   over the label's exact range, `range: {startIndex, endIndex, tabId}`, with
-   `textStyle: {bold: true}` and `fields: "bold"`. A range without `tabId`
-   writes to the first tab. Then read the run again.
+   `namedStyles` first. If that style sets bold, the text is bold: do
+   steps 3 and 4, then skip to step 6. If not, or if `bold` is `false`,
+   apply it with `updateTextStyle` over the label's exact range,
+   `range: {startIndex, endIndex, tabId}`, with `textStyle: {bold: true}`
+   and `fields: "bold"`. A range without `tabId` writes to the first tab.
+   Then read the run again.
 6. If the user wants a stronger bold, ask before you change the font or its
    weight.
 

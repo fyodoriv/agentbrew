@@ -300,3 +300,26 @@ Claude Code can export OpenTelemetry events with `tool_result.duration_ms`
 (`CLAUDE_CODE_ENABLE_TELEMETRY`), but that needs a collector. The hooks need
 nothing extra. If hook capture misses more than 20% of tool calls, or the
 hook costs more than 50 ms at p95, switch to the OpenTelemetry path.
+
+### Block reasons (`safety_event`)
+
+Claude Code 2.1.307 added the event `claude_code.safety_event`. It fires for
+each tool call that a permission rule, auto mode, a hook, or the sandbox
+stopped or sent back. It names the reason in `category` (for example
+`permission_rule`, `managed_policy`, `permission_mode`, `hook`,
+`auto_mode_block`, `sandbox_network`, `safety_check`) and carries the
+`tool_use_id`, so it could pair with attempt rows.
+
+A probe on 2026-10-22 ran `claude -p` with a deny rule and
+`CLAUDE_CODE_ENABLE_TELEMETRY=1 OTEL_LOGS_EXPORTER=console`:
+
+- In `-p` text mode, the `console` exporter prints the event to stdout, mixed
+  with the reply, as Node `util.inspect` text (not JSON).
+- In `--output-format stream-json` mode, it prints nothing to stdout or
+  stderr. Claude Desktop runs Claude Code in this mode.
+- Claude Code has no file exporter. To capture the event, you need an OTLP
+  receiver (for example `http/json` to a local listener).
+
+So the brief keeps the count of blocked calls by step key, without the
+reason. Try again when Claude Code gets a file exporter, or puts the reason in
+a hook payload.

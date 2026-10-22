@@ -335,18 +335,18 @@
   - **Pivot**: if no upstream channel takes it, add the note to run-goal's references/retro.md instead and close this task.
   - **Anchor**: run-goal retro 2026-10-22; Basili, Caldiera, Rombach 1994 (GQM).
 
-- [ ] Record why tool calls were blocked, from Claude Code `safety_event`
-  - **ID**: ingest-claude-safety-events
-  - **Tags**: perf, hooks, agents, research
-  - **Details**: The 2026-10-21 checkup AI-work research (lens: Depth). Claude Code 2.1.307 added the OpenTelemetry event `claude_code.safety_event` for each tool call that a permission rule, auto mode, a hook, or the sandbox stopped, prompted, or sent back. The session-start perf brief already counts blocked calls (100 in 7 days, each a wasted round trip) but not why. Try: export the event to a local file and add the reason to `agent-perf.mjs report`, so hook and sandbox rules that block the most can be tuned.
-  - **Files**: `scripts/agent-perf.mjs`, `docs/agent-perf.md`
+- [ ] Count a call as blocked only when it never ran in any project, so the brief's blocked count is real
+  - **ID**: perf-blocked-pair-across-projects
+  - **Tags**: perf, metrics, scout
+  - **Details**: Found on 2026-10-22 while closing `ingest-claude-safety-events`. `buildReport` in `templates/scripts/agent-perf.mjs` filters rows by project before `pairCalls`. But a Bash call such as `cd ~/apps/tooling/dotfiles && rg -n …` writes its attempt row under the old cwd's project and its completion row under the new one. The agentbrew 7-day brief showed 185 blocked calls. 160 of them completed under another project (top: `tooling` 52, `dotfiles` 52), so only 25 never ran. The all-projects report (162 blocked) is not affected. Fix: pair attempts with completions on all rows of the window, then count each call under its attempt row's project.
+  - **Files**: `templates/scripts/agent-perf.mjs`, `src/scripts/agent-perf.test.ts`, `docs/agent-perf.md`
   - **Output**: code
-  - **Acceptance**: `agent-perf.mjs report --days 7` prints blocked calls grouped by reason (hook, sandbox, permission, auto mode).
-  - **Hypothesis**: knowing the reason lets the top two blockers be fixed, cutting blocked calls from about 100 to under 50 per 7 days.
-  - **Measurement**: the "Blocked calls" line of the session-start perf brief (`agent-perf.mjs brief`), 7 days after the top two blockers are fixed.
-  - **Success**: under 50 blocked calls per 7 days.
-  - **Pivot**: the event is not emitted locally without an OTLP collector, or blocked calls stay over 80 -> close this task and keep the count-only brief.
-  - **Anchor**: Claude Code 2.1.307 release notes; tooling-checkup AI-work research 2026-10-21.
+  - **Acceptance**: `agent-perf.mjs brief --cwd ~/apps/tooling/agentbrew` counts a call as blocked only when no completion row with the same `sid` and `id` exists in any project. A test with a `cd` into another repo proves it.
+  - **Hypothesis**: the agentbrew brief's blocked count falls from 185 to about 25 per 7 days (the calls that never ran), and the all-projects count does not change.
+  - **Measurement**: the "Blocked calls" line of `node ~/.config/agentbrew/scripts/agent-perf.mjs brief --cwd ~/apps/tooling/agentbrew`, against the "Blocked:" line of `report --all --days 7`, on the same day.
+  - **Success**: a per-project blocked count is never above the all-projects count, and the agentbrew count drops by at least 80%.
+  - **Pivot**: if the drop is under 50%, the split has another cause (for example a removed worktree); find it before changing the pairing.
+  - **Anchor**: perf log check 2026-10-22 (160 of 185 split across projects); Basili, Caldiera, Rombach 1994 (GQM).
 
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal

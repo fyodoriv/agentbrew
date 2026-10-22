@@ -47,7 +47,7 @@ area in brackets.
 
 Repos can push back on any of these: map an area to their own files, waive
 it with a reason, or propose a change to the requirement. See
-[requirements-map.md](requirements-map.md).
+`requirements-map.md` (linked from SKILL.md).
 
 ## 3. Rejected, and why
 

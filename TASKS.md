@@ -250,6 +250,19 @@
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
 
+- [ ] Make the agentbrew test loop fast: `verify:changed`, `npx vitest`, `verify`
+  - **ID**: speed-up-agentbrew-test-loop
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-21 checkup time review (7 days): `npm run verify:changed` costs 12m22s/day (38x in 9 sessions, p95 7m15s), `npx vitest` 12m01s/day (114x in 15 sessions, p95 4m49s), and `npm run verify` 8m49s/day (55x in 14 sessions, p95 4m40s). Together about 33 min/day, the largest agentbrew cost. Agents run whole gates or whole suites while they iterate. Separate from `speed-up-npm-ci` and `speed-up-npx-biome`, which cover installs and lint.
+  - **Files**: `package.json`, `scripts/`, `AGENTS.md`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: the `verify:changed`, `npx vitest`, and `verify` lines in the 7-day agent time review add up to less than the Success threshold.
+  - **Hypothesis**: steering the inner loop to `vitest related <changed files>` and making `verify:changed` skip steps whose inputs did not change cuts their combined cost from about 33 min/day to under 15 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (sum of the agentbrew `npm run verify:changed`, `npx vitest`, and `npm run verify` lines), 7 days after the change lands.
+  - **Success**: under 15 min/day combined.
+  - **Pivot**: still over 25 min/day after 7 days -> profile per step with the perf-review skill and drop this approach.
+  - **Anchor**: tooling-checkup agent time review 2026-10-21; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream
@@ -280,6 +293,32 @@
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
 ## P3
+
+- [ ] Count time spent waiting on a person apart from tool time in agent-perf
+  - **ID**: agent-perf-separate-human-wait
+  - **Tags**: perf, agents, metrics
+  - **Details**: The 2026-10-21 checkup AI-work research (lens: Altitude) asked which outcome the top recurring step stands for. The top step in two checkups in a row is `mcp__Claude_Browser__navigate` at 9.3 h in 7 days, but one single call took 8.8 h: it waited on a site-approval prompt while nobody was there. Without that call the step costs about 0.5 h. `templates/scripts/agent-perf.mjs` counts the whole wait as tool time, so the "slowest recurring" ranking points at the wrong work.
+  - **Files**: `templates/scripts/agent-perf.mjs`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: `agent-perf.mjs report --all --days 7` lists calls that waited on a permission prompt or ran over 30 min as `human-wait`, apart from tool time, and the ranking uses tool time only.
+  - **Hypothesis**: splitting human wait from tool time moves `mcp__Claude_Browser__navigate` out of the top step, and the overall tool time drops from 56.1 h to under 47 h per 7 days with no change in work done.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (overall tool time and top step), on the first checkup after the change lands.
+  - **Success**: the top step is a real recurring step (not one outlier call), and tool time excludes every wait over 30 min.
+  - **Pivot**: the hooks cannot tell a permission wait from a slow call -> cap each call at its p95 in the ranking instead, and close this task.
+  - **Anchor**: tooling-checkup agent time review 2026-10-21; Basili, Caldiera, Rombach 1994 (GQM: the metric must answer the question).
+
+- [ ] Record why tool calls were blocked, from Claude Code `safety_event`
+  - **ID**: ingest-claude-safety-events
+  - **Tags**: perf, hooks, agents, research
+  - **Details**: The 2026-10-21 checkup AI-work research (lens: Depth). Claude Code 2.1.307 added the OpenTelemetry event `claude_code.safety_event` for each tool call that a permission rule, auto mode, a hook, or the sandbox stopped, prompted, or sent back. The session-start perf brief already counts blocked calls (100 in 7 days, each a wasted round trip) but not why. Try: export the event to a local file and add the reason to `agent-perf.mjs report`, so hook and sandbox rules that block the most can be tuned.
+  - **Files**: `scripts/agent-perf.mjs`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: `agent-perf.mjs report --days 7` prints blocked calls grouped by reason (hook, sandbox, permission, auto mode).
+  - **Hypothesis**: knowing the reason lets the top two blockers be fixed, cutting blocked calls from about 100 to under 50 per 7 days.
+  - **Measurement**: the "Blocked calls" line of the session-start perf brief (`agent-perf.mjs brief`), 7 days after the top two blockers are fixed.
+  - **Success**: under 50 blocked calls per 7 days.
+  - **Pivot**: the event is not emitted locally without an OTLP collector, or blocked calls stay over 80 -> close this task and keep the count-only brief.
+  - **Anchor**: Claude Code 2.1.307 release notes; tooling-checkup AI-work research 2026-10-21.
 
 - [ ] Workspace-aware `agentbrew sync` — discover and process per-repo Agentfiles across **one or more workspaces** on one host
   - **ID**: workspace-aware-sync

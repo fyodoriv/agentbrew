@@ -73,7 +73,7 @@ Star counts are rough, taken from the GitHub API on 2026-10-16. Rank by fit, not
 | [open-spaced-repetition](https://github.com/open-spaced-repetition) | FSRS org | `fsrs` (Python) and `ts-fsrs` for tutor scheduling |
 | [yangshun/tech-interview-handbook](https://github.com/yangshun/tech-interview-handbook), [jwasham/coding-interview-university](https://github.com/jwasham/coding-interview-university), [donnemartin/system-design-primer](https://github.com/donnemartin/system-design-primer) | 100k to 300k | interview-prep curricula to link, not copy |
 
-Toolchain picks are in [stacks.md](stacks.md).
+Toolchain picks are in `stacks.md` (linked from SKILL.md).
 
 ## 5. What we chose not to do
 

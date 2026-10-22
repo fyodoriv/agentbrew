@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +8,7 @@ vi.mock("./commands-delegate.js", () => ({ delegateCommandsGenerate: vi.fn(() =>
 
 import { contentHash } from "../manifest.js";
 import { setSetting } from "../settings.js";
-import { invalidateState } from "../state.js";
+import { defaultState, invalidateState, saveState } from "../state.js";
 import { builtinCommandsDir, SHIPPED_BUILTIN_COPY_HASHES } from "./builtin-commands.js";
 import { syncCommands } from "./command-sync.js";
 
@@ -108,6 +108,103 @@ describe("built-in commands", () => {
 
     expect(existsSync(opencodeCopy())).toBe(false);
     expect(existsSync(claudeCopy)).toBe(false);
+  });
+
+  it("an Agentfile commands dir never overwrites the user's own file, and the user's file wins", async () => {
+    const agentfileDir = join(homedir(), "repo", "commands");
+    mkdirSync(agentfileDir, { recursive: true });
+    writeFileSync(join(agentfileDir, "agentbrew.md"), "# repo version\n");
+    saveState({ ...defaultState(), commandSourceDirs: [{ label: "repo", path: agentfileDir }] });
+    invalidateState();
+    mkdirSync(userDir(), { recursive: true });
+    writeFileSync(join(userDir(), "agentbrew.md"), "# my own agentbrew command\n");
+    mkdirSync(join(homedir(), ".config", "opencode", "commands"), { recursive: true });
+
+    await syncCommands({ quiet: true });
+
+    expect(readFileSync(join(userDir(), "agentbrew.md"), "utf-8")).toBe("# my own agentbrew command\n");
+    expect(readFileSync(opencodeCopy(), "utf-8")).toBe("# my own agentbrew command\n");
+  });
+
+  it("never copies an Agentfile dir's built-in-named command into the user's folder", async () => {
+    const agentfileDir = join(homedir(), "repo", "commands");
+    mkdirSync(agentfileDir, { recursive: true });
+    writeFileSync(join(agentfileDir, "agentbrew.md"), "# repo version\n");
+    saveState({ ...defaultState(), commandSourceDirs: [{ label: "repo", path: agentfileDir }] });
+    invalidateState();
+    mkdirSync(userDir(), { recursive: true });
+    mkdirSync(join(homedir(), ".config", "opencode", "commands"), { recursive: true });
+
+    await syncCommands({ quiet: true });
+
+    expect(existsSync(join(userDir(), "agentbrew.md"))).toBe(false);
+    expect(readFileSync(opencodeCopy(), "utf-8")).toBe("# repo version\n");
+    rmSync(join(homedir(), "repo"), { recursive: true, force: true });
+  });
+
+  it("removes a copy in the user's folder that is identical to the current built-in", async () => {
+    mkdirSync(userDir(), { recursive: true });
+    writeFileSync(join(userDir(), "agentbrew.md"), readFileSync(join(repoRoot, "commands", "agentbrew.md"), "utf-8"));
+
+    await syncCommands({ quiet: true });
+
+    expect(existsSync(join(userDir(), "agentbrew.md"))).toBe(false);
+  });
+
+  it("a user override reaches Claude Code without ai-rules, replacing the built-in copy", async () => {
+    const claudeCopy = join(homedir(), ".claude", "commands", "agentbrew.md");
+    mkdirSync(join(homedir(), ".claude", "commands"), { recursive: true });
+    await syncCommands({ quiet: true });
+    expect(readFileSync(claudeCopy, "utf-8")).toContain("Run `agentbrew` with no arguments");
+
+    mkdirSync(userDir(), { recursive: true });
+    writeFileSync(join(userDir(), "agentbrew.md"), "# my own agentbrew command\n");
+    await syncCommands({ quiet: true });
+
+    expect(readFileSync(claudeCopy, "utf-8")).toBe("# my own agentbrew command\n");
+  });
+
+  it("the no-ai-rules fallback is for Claude Code only (amp and firebender cannot read its format)", async () => {
+    mkdirSync(join(homedir(), ".config", "amp", "commands"), { recursive: true });
+    mkdirSync(join(homedir(), ".firebender", "commands"), { recursive: true });
+
+    await syncCommands({ quiet: true });
+
+    expect(readdirSync(join(homedir(), ".config", "amp", "commands"))).toEqual([]);
+    expect(readdirSync(join(homedir(), ".firebender", "commands"))).toEqual([]);
+    rmSync(join(homedir(), ".config", "amp"), { recursive: true, force: true });
+    rmSync(join(homedir(), ".firebender"), { recursive: true, force: true });
+  });
+
+  it("says why Claude Code was skipped when only ai-rules can deploy its commands", async () => {
+    expect(setSetting("builtinCommands", "off").ok).toBe(true);
+    invalidateState();
+    mkdirSync(join(homedir(), ".claude", "commands"), { recursive: true });
+    mkdirSync(userDir(), { recursive: true });
+    writeFileSync(join(userDir(), "mine.md"), "# mine\n");
+    const lines: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...parts: unknown[]) => {
+      lines.push(parts.join(" "));
+    });
+
+    await syncCommands({ quiet: false, verbose: true });
+    vi.restoreAllMocks();
+
+    const out = lines.join("\n");
+    expect(out).toContain("claude-code — skipped (needs ai-rules for these commands)");
+    expect(out).not.toMatch(/claude-code — up to date/);
+  });
+
+  it("turning built-ins off cleans the deployed copies even on a sync that does not prune", async () => {
+    mkdirSync(join(homedir(), ".config", "opencode", "commands"), { recursive: true });
+    await syncCommands({ quiet: true });
+    expect(existsSync(opencodeCopy())).toBe(true);
+
+    expect(setSetting("builtinCommands", "off").ok).toBe(true);
+    invalidateState();
+    await syncCommands({ quiet: true });
+
+    expect(existsSync(opencodeCopy())).toBe(false);
   });
 
   it("ships in the npm package: the build copies commands/ into dist/, which package.json publishes", () => {

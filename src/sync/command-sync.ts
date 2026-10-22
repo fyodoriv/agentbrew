@@ -8,14 +8,7 @@ import { createContext } from "../core/context.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
-import {
-  contentHash,
-  isUserModified,
-  loadManifest,
-  removeFromManifest,
-  saveManifest,
-  writeIfChanged,
-} from "../manifest.js";
+import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { COMMANDS_DIR } from "../paths.js";
 import { pluginCommandDirs } from "../plugins/contributions.js";
 import { builtinCommandsOff } from "../settings.js";
@@ -24,7 +17,7 @@ import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
-import { builtinCommandNames, builtinCommandsDir, SHIPPED_BUILTIN_COPY_HASHES } from "./builtin-commands.js";
+import { builtinCommandNames, builtinCommandsDir, isAgentbrewCopy } from "./builtin-commands.js";
 import { delegateCommandsGenerate } from "./commands-delegate.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
@@ -99,7 +92,7 @@ export function remapFilename(sourceFilename: string, targetExt: string): string
  * evolution.
  */
 export function computeCommandsDiff(
-  sourceFiles: Array<{ filename: string; content: string; builtin?: boolean }>,
+  sourceFiles: Array<{ filename: string; content: string; builtinName?: boolean }>,
   targets: Array<{
     agentName: string;
     exists: boolean;
@@ -129,7 +122,7 @@ interface TargetInput {
 
 function computeSingleTargetDiff(
   target: TargetInput,
-  allSourceFiles: Array<{ filename: string; content: string; builtin?: boolean }>,
+  allSourceFiles: Array<{ filename: string; content: string; builtinName?: boolean }>,
   pruneOptions: { prune: boolean; retired: readonly string[] },
   delegatedForAgent: ReadonlyMap<string, string> | undefined,
   isCanary: boolean,
@@ -145,16 +138,17 @@ function computeSingleTargetDiff(
   // mirroring the rules-sync slice 4 hardening.
   let sourceFiles = allSourceFiles;
   let prune = pruneOptions.prune;
+  const retiredActions: CommandFileAction[] = pruneOptions.retired
+    .map((name) => remapFilename(name, target.fileExt))
+    .filter((name) => target.existingFiles.has(name))
+    .map((filename) => ({ filename, type: "prune" }));
   if (isCanary && delegatedForAgent === undefined) {
-    sourceFiles = allSourceFiles.filter((source) => source.builtin);
-    prune = false;
-    // Built-in commands turned off: prune the copies agentbrew deployed here.
-    const retiredActions: CommandFileAction[] = pruneOptions.prune
-      ? pruneOptions.retired
-          .map((name) => remapFilename(name, target.fileExt))
-          .filter((name) => target.existingFiles.has(name))
-          .map((filename) => ({ filename, type: "prune" }))
+    // Claude Code reads plain markdown, so it gets the built-in commands (or the
+    // user's override of them) natively. amp and firebender have no native format.
+    sourceFiles = NATIVE_FALLBACK_AGENTS.has(target.agentName)
+      ? allSourceFiles.filter((source) => source.builtinName)
       : [];
+    prune = false;
     if (sourceFiles.length === 0 && retiredActions.length > 0) {
       return {
         agentName: target.agentName,
@@ -204,12 +198,21 @@ function computeSingleTargetDiff(
       }
     }
   }
+  // Built-in commands turned off: remove the copies agentbrew deployed, even on a sync that does not prune.
+  for (const action of retiredActions) {
+    if (targetFilenames.has(action.filename) || actions.some((a) => a.filename === action.filename)) continue;
+    actions.push(action);
+    pruneCount++;
+  }
 
   const synced = actions.filter((a) => a.type === "write").length;
   return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneCount };
 }
 
 const identity: CommandTransform = (content) => content;
+
+/** ai-rules canary agents that read plain markdown commands, so built-ins reach them without ai-rules. */
+const NATIVE_FALLBACK_AGENTS: ReadonlySet<string> = new Set(["claude-code"]);
 
 export function getCommandTargets(): CommandTarget[] {
   const withCommands = AGENT_DEFINITIONS.filter((a) => a.commandsDir !== undefined);
@@ -353,19 +356,22 @@ interface WriteActionOpts {
 
 /**
  * Write merged command sources into the canonical commands dir so lint/status
- * see overrides. Built-in commands never go there: that folder is the user's.
+ * see overrides. That folder is the user's: built-in names never go there,
+ * and a file the user created or edited is never overwritten.
  */
 function refreshCanonicalCommandSources(
-  sourceFiles: ReadonlyArray<{ filename: string; content: string; builtin?: boolean }>,
+  sourceFiles: ReadonlyArray<{ filename: string; content: string; builtinName?: boolean }>,
   opts: { dryRun: boolean; manifest: Manifest },
 ): void {
   const canonicalDir = getCommandsDir();
   mkdirSync(canonicalDir, { recursive: true });
   // Never copy plugin commands into the canonical dir: the copy would outlive the plugin.
   const fromPlugins = new Set(pluginCommandDirs().flatMap((d) => readdirSync(d)));
-  for (const { filename, content, builtin } of sourceFiles) {
-    if (opts.dryRun || builtin || fromPlugins.has(filename)) continue;
-    writeIfChanged(join(canonicalDir, filename), content, opts.manifest);
+  for (const { filename, content, builtinName } of sourceFiles) {
+    if (opts.dryRun || builtinName || fromPlugins.has(filename)) continue;
+    const path = join(canonicalDir, filename);
+    if (isUserModified(path, opts.manifest)) continue;
+    writeIfChanged(path, content, opts.manifest);
   }
 }
 
@@ -462,6 +468,8 @@ interface LogCmdDiffOpts {
 
 function logCmdDiffResult(opts: LogCmdDiffOpts): void {
   const { diff, agentSkipped, actualPruned, dryRun, verbose, log } = opts;
+  // A skipped agent already printed why; "up to date" would contradict it.
+  if (diff.skipped) return;
   const changes: string[] = [];
   if (diff.synced > 0) changes.push(`${diff.synced - agentSkipped} updated`);
   if (agentSkipped > 0) changes.push(`${agentSkipped} user-modified`);
@@ -523,7 +531,7 @@ function removeShippedBuiltinCopies(quiet: boolean, log: Logger): string[] {
     const path = join(getCommandsDir(), `${name}.md`);
     if (!existsSync(path)) continue;
     try {
-      if (!SHIPPED_BUILTIN_COPY_HASHES.has(contentHash(readFileSync(path, "utf-8")))) continue;
+      if (!isAgentbrewCopy(name, readFileSync(path, "utf-8"))) continue;
       unlinkSync(path);
       removed.push(path);
       if (!quiet) log.log(log.dim(`  Removed an old agentbrew copy of ${name}.md from ${getCommandsDir()}`));
@@ -628,9 +636,10 @@ function collectAllSourceCommands(
   quiet: boolean,
   verbose: boolean,
   log: Logger,
-): Array<{ filename: string; content: string; builtin: boolean }> {
+  manifest?: Manifest,
+): Array<{ filename: string; content: string; builtinName: boolean }> {
   const sourceFiles = new Map<string, { content: string; filename: string; sourceDir: string }>();
-  const builtinDir = builtinCommandsDir();
+  const builtinNames = new Set(builtinCommandNames().map((name) => `${name}.md`));
 
   for (const sourceDir of sourceDirs) {
     const extra = readSourceCommands(sourceDir, quiet, log);
@@ -647,10 +656,20 @@ function collectAllSourceCommands(
     }
   }
 
-  return [...sourceFiles.values()].map(({ filename, content, sourceDir }) => ({
+  // The user's own version of a built-in command (created or edited in their
+  // folder) beats every source, including a checkout's Agentfile copy of it.
+  if (manifest && sourceDirs.includes(getCommandsDir())) {
+    for (const file of readSourceCommands(getCommandsDir(), true, log)) {
+      if (builtinNames.has(file.filename) && isUserModified(join(getCommandsDir(), file.filename), manifest)) {
+        sourceFiles.set(file.filename, { ...file, sourceDir: getCommandsDir() });
+      }
+    }
+  }
+
+  return [...sourceFiles.values()].map(({ filename, content }) => ({
     filename,
     content,
-    builtin: sourceDir === builtinDir,
+    builtinName: builtinNames.has(filename),
   }));
 }
 
@@ -689,9 +708,13 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
     return;
   }
 
-  const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log);
+  const sharedManifest = ctx?.manifest !== undefined;
+  const manifest = resolveManifest(ctx);
+  for (const path of removedCopies) removeFromManifest(path, manifest);
+  const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
+  const retiredBuiltins = builtinCommandsOff() ? builtinCommandNames().map((name) => `${name}.md`) : [];
 
-  if (sourceFiles.length === 0 && !prune) {
+  if (sourceFiles.length === 0 && !prune && retiredBuiltins.length === 0) {
     warnNoCommands(quiet, log);
     return;
   }
@@ -705,16 +728,12 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const delegated = collectCanaryDelegation(targetInputs, sourceFiles);
 
   // ── Pure diff phase ─────────────────────────────────────────────────────
-  const retiredBuiltins = builtinCommandsOff() ? builtinCommandNames().map((name) => `${name}.md`) : [];
   const diffs = computeCommandsDiff(sourceFiles, targetInputs, { prune, retiredBuiltins }, delegated);
 
   // ── Apply phase ─────────────────────────────────────────────────────────
   const label = getSyncLabel(dryRun, sourceFiles.length);
   if (!quiet) log.log(log.bold(`\n${label}\n`));
 
-  const sharedManifest = ctx?.manifest !== undefined;
-  const manifest = resolveManifest(ctx);
-  for (const path of removedCopies) removeFromManifest(path, manifest);
   refreshCanonicalCommandSources(sourceFiles, { dryRun, manifest });
   const totals = { synced: 0, pruned: 0, skipped: 0, missingDirs: [] as string[] };
 
@@ -791,7 +810,7 @@ export async function listCommands(): Promise<void> {
   }
 
   const log = createContext({ quiet: false }).logger;
-  const files = collectAllSourceCommands(sourceDirs, false, true, log);
+  const files = collectAllSourceCommands(sourceDirs, false, true, log, loadManifest());
 
   console.log(chalk.bold(`\nCommands (${files.length})\n`));
 

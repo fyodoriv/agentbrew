@@ -144,6 +144,37 @@ describe("isLaunchAgentInstalled", () => {
 });
 
 describe("autoSyncStatus", () => {
+  const originalPlatform = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
+  function printed(): string {
+    return [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.error).mock.calls]
+      .map((c) => c.join(" "))
+      .join("\n");
+  }
+
+  it("does not propose the install after the user turned auto-repair off", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValue(true);
+    mockExistsSync.mockReturnValue(false);
+    await autoSyncStatus();
+    vi.mocked(autoRepairOptedOut).mockReturnValue(false);
+    expect(printed()).not.toContain("Install: agentbrew auto-sync install");
+    expect(printed()).toContain("autoRepair");
+  });
+
+  it("does not propose a cron install on Linux with neither systemctl nor crontab", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockExistsSync.mockReturnValue(false);
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error("not found");
+    });
+    await autoSyncStatus();
+    expect(printed()).not.toContain("Install: agentbrew auto-sync install");
+  });
+
   it("shows not installed when no plist", async () => {
     mockExistsSync.mockReturnValue(false);
     await autoSyncStatus();
@@ -584,10 +615,10 @@ describe("autoSyncStatus linux branches", () => {
     mockExistsSync.mockReturnValue(false);
     // hasSystemctl calls execFileSync("which", ...) — throw to signal absent
     // isCronInstalled calls execFileSync("crontab", ...) — return empty string (not installed)
-    mockExecFileSync.mockImplementation((cmd: string) => {
-      if (cmd === "which") throw new Error("no systemctl");
+    mockExecFileSync.mockImplementation(((cmd: string, args: string[]) => {
+      if (cmd === "which" && args[0] === "systemctl") throw new Error("no systemctl");
       return "" as never;
-    });
+    }) as unknown as typeof execFileSync);
     await autoSyncStatus();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("cron job not installed"));
   });

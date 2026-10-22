@@ -9,7 +9,7 @@ import { clean, detectItemTypes } from "./clean.js";
 import { setSetting } from "./settings.js";
 import { requireState } from "./state.js";
 import { formatSuggestion } from "./suggest.js";
-import { builtinCommandNames } from "./sync/builtin-commands.js";
+import { builtinCommandNames, userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
 type ItemType = "mcp" | "source" | "skill" | "command" | "rule";
@@ -131,6 +131,11 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
  */
 function turnOffIfBuiltin(name: string): void {
   if (!builtinCommandNames().includes(name.replace(/\.md$/, ""))) return;
+  // Removing the user's own override brings the built-in back; built-ins stay on.
+  if (userOverridesBuiltin(name)) {
+    console.log(chalk.dim(`  Removing your own ${name}; the built-in one comes back on the next sync.`));
+    return;
+  }
   const result = setSetting("builtinCommands", "off");
   if (result.ok) {
     console.log(

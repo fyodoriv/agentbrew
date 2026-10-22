@@ -39,7 +39,10 @@ vi.mock("./clean.js", () => ({
 
 vi.mock("./settings.js", () => ({ setSetting: vi.fn(() => ({ ok: true })) }));
 
-vi.mock("./sync/builtin-commands.js", () => ({ builtinCommandNames: vi.fn(() => ["agentbrew"]) }));
+vi.mock("./sync/builtin-commands.js", () => ({
+  builtinCommandNames: vi.fn(() => ["agentbrew"]),
+  userOverridesBuiltin: vi.fn(() => false),
+}));
 
 vi.mock("./suggest.js", () => ({
   formatSuggestion: vi.fn(() => undefined),
@@ -67,6 +70,7 @@ import { clean, detectItemTypes } from "./clean.js";
 import { remove } from "./remove.js";
 import { setSetting } from "./settings.js";
 import { loadState } from "./state.js";
+import { userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
 import type { AgentBrewState } from "./types.js";
@@ -225,6 +229,15 @@ describe("remove", () => {
     expect(setSettingMock).toHaveBeenCalledWith("builtinCommands", "off");
     expect(mockClean).toHaveBeenCalledWith("agentbrew", { type: "command", yes: true });
     expect(setSettingMock.mock.invocationCallOrder[0]).toBeLessThan(mockClean.mock.invocationCallOrder[0]);
+  });
+
+  it("removing the user's own override of a built-in removes only that file and keeps built-ins on", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    mockDetectItemTypes.mockReturnValue(["command"]);
+    vi.mocked(userOverridesBuiltin).mockReturnValueOnce(true);
+    await remove("agentbrew", { yes: true });
+    expect(vi.mocked(setSetting)).not.toHaveBeenCalled();
+    expect(mockClean).toHaveBeenCalledWith("agentbrew", { type: "command", yes: true });
   });
 
   it("removing a user command leaves built-in commands on", async () => {

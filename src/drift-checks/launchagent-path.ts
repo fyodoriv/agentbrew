@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { MEMORY_AGENT_LABEL } from "../memory/launchagent.js";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   LAUNCHAGENT_LANG,
   launchAgentPathHasRequiredPrefixes,
@@ -101,6 +102,9 @@ function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
   return drift(`${plistPath}: runs ${program}, which a Node upgrade deletes; use ${stable} — run agentbrew fix`);
 }
 
+/** The drift-repair job's plist (`LAUNCHAGENT_LABEL` in sync/launchagent.ts, which imports this module). */
+const CHECK_JOB_PLIST = "com.agentbrew.check.plist";
+
 /**
  * Detect stale environment on com.agentbrew.* LaunchAgents — PATH missing the
  * node bin dir or dotfiles/bin, or no locale — and a Node path on the
@@ -112,7 +116,10 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
   const home = expandHome("~");
   const items: DriftItem[] = [];
 
+  // With auto-repair off, `agentbrew fix` leaves the check job alone, so its drift could never clear.
+  const skipCheckJob = autoRepairOptedOut();
   for (const plistPath of listAgentbrewLaunchAgentPlists()) {
+    if (skipCheckJob && basename(plistPath) === CHECK_JOB_PLIST) continue;
     let content: string;
     try {
       content = readFileSync(plistPath, "utf-8");

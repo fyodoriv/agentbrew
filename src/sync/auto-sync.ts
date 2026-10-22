@@ -235,6 +235,13 @@ export function isAutoSyncInstalled(): boolean {
   return activeBackend() !== "none";
 }
 
+/** What to do about a missing job: install it, or nothing when the user turned auto-repair off. */
+function installHint(): string {
+  return autoRepairOptedOut()
+    ? "Off by your choice (autoRepair: off); turn on: agentbrew config set autoRepair on"
+    : "Install: agentbrew auto-sync install";
+}
+
 function showLaunchAgentStatus(): void {
   if (process.platform !== "darwin" && !isLaunchAgentInstalled()) return;
   const plistPath = getLaunchAgentPlistPath();
@@ -247,7 +254,7 @@ function showLaunchAgentStatus(): void {
     console.log(`  ${ICON_SUCCESS} LaunchAgent installed (30-min auto-repair)`);
   } else if (process.platform === "darwin") {
     console.error(`  ${chalk.dim("○")} LaunchAgent not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 
   const legacyFound = getLegacyPlistsOnDisk();
@@ -263,7 +270,7 @@ function showSystemdStatus(): void {
     console.log(`  ${ICON_SUCCESS} systemd timer installed (30-min auto-repair)`);
   } else if (process.platform === "linux" && hasSystemctl()) {
     console.error(`  ${chalk.dim("○")} systemd timer not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 }
 
@@ -272,8 +279,12 @@ function showCronStatus(): void {
   if (isCronInstalled()) {
     console.log(`  ${ICON_SUCCESS} cron job installed (30-min auto-repair)`);
   } else if (process.platform === "linux" && !hasSystemctl()) {
+    if (!hasCrontab()) {
+      console.error(`  ${chalk.dim("○")} no scheduler: neither systemctl nor crontab is installed`);
+      return;
+    }
     console.error(`  ${chalk.dim("○")} cron job not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 }
 

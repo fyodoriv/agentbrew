@@ -63,6 +63,8 @@ const required = [
 ];
 // The shared setup holds every real scaffold of the file, so it gets the time a loaded machine needs.
 const SETUP_TIMEOUT = 300_000;
+// One child process (and its children) is killed after this, before a hook times out.
+const CHILD_TIMEOUT = 240_000;
 
 // Scaffolds that beforeAll builds once and then makes read-only. A test that changes files
 // works on a copy from fresh().
@@ -110,7 +112,16 @@ function unwrap<T>(outcome: Outcome<T>): T {
 /** Like spawnSync, but the event loop keeps running, so the other scaffolds go on meanwhile. */
 function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }): Promise<Run> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"], timeout: SETUP_TIMEOUT });
+    // Its own process group, so a timeout also kills the uvx or python that bash started.
+    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    child.on("error", reject);
+    const timer = setTimeout(() => {
+      try {
+        if (child.pid) process.kill(-child.pid, "SIGKILL");
+      } catch {
+        // The group already ended.
+      }
+    }, CHILD_TIMEOUT);
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf-8").on("data", (chunk: string) => {
@@ -119,8 +130,10 @@ function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: N
     child.stderr.setEncoding("utf-8").on("data", (chunk: string) => {
       stderr += chunk;
     });
-    child.on("error", reject);
-    child.on("close", (status, signal) => resolve({ status, signal, stdout, stderr }));
+    child.on("close", (status, signal) => {
+      clearTimeout(timer);
+      resolve({ status, signal, stdout, stderr });
+    });
   });
 }
 
@@ -228,7 +241,7 @@ async function templateUpdate(): Promise<TemplateUpdate> {
 /** The template update is the longest chain, so it starts at once; the pairs start after `pairsAfter`. */
 async function copierResults(pairsAfter: Promise<unknown> = Promise.resolve()): Promise<CopierResults> {
   const upgrade = settle(templateUpdate());
-  await pairsAfter;
+  await settle(pairsAfter);
   const pairs = new Map<string, Outcome<void>>();
   await Promise.all(
     profiles.map(async ({ profile, stack }) => pairs.set(profile, await settle(copierPair(profile, stack)))),
@@ -238,7 +251,7 @@ async function copierResults(pairsAfter: Promise<unknown> = Promise.resolve()): 
 
 /** Builds and scores the shared scaffolds. Never rejects: errors stay with the scaffold or score they belong to. */
 async function buildShared() {
-  mkdirSync(join(scratch, "shared"));
+  mkdirSync(join(scratch, "shared"), { recursive: true });
   await Promise.all(
     sharedScaffolds.map(async ({ name, profile, stack }) => {
       const dir = join(scratch, "shared", name);
@@ -280,8 +293,11 @@ afterEach(() => new Promise<void>((resolve) => setImmediate(() => setImmediate(r
 afterAll(async () => {
   await Promise.allSettled([sharedWork, copierWork]);
   if (!scratch) return;
-  execFileSync("chmod", ["-R", "u+w", scratch]);
-  rmSync(scratch, { recursive: true, force: true });
+  try {
+    execFileSync("chmod", ["-R", "u+w", scratch]);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 }, SETUP_TIMEOUT);
 
 describe("new-project skill", () => {

@@ -298,12 +298,15 @@ continue?". The user set a goal so that they can be away.
   A new rule mid-goal also covers what you already did in this run: fix
   your past output too (for example, merge your back-to-back replies into
   one).
-- A mid-goal answer can change a default the run already used (an
-  unanswered question or an **Assumptions** line). Record the answer in the
-  contract file in place of the default. In the same pass, update every
-  artifact built on that default: tickets, doc sections, drafts, and code.
-  List each one, with its link or path, in the goal check line. One run
-  filed tickets on its default, and a later answer left them all wrong.
+- A mid-goal answer can change a default the run already used (the
+  recommended option of an unanswered question, or an **Assumptions**
+  line). Record the answer in the contract file in place of the default,
+  and fix any done-criterion or metric built on it. In the same pass,
+  update every artifact built on that default: tickets, doc sections,
+  drafts, and code. Print the goal check line again for each criterion it
+  touches, and list each updated artifact with its link or path. One run
+  filed tickets from its defaults, and then a mid-goal answer changed one
+  of those defaults.
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -343,8 +346,10 @@ the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
 A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
 `tail`. Never put `| tail`, or any other pipe, between a gate and the
-commit. Run the gate into a log, read `rc`, and commit only when `rc=0`:
-`gate > gate.log 2>&1; rc=$?; tail -20 gate.log; if [ "$rc" -eq 0 ]; then git commit …; fi`.
+commit. Run the gate into a log under `$TMPDIR`, read `rc`, and commit and
+push only when `$rc` is 0:
+`gate > "$TMPDIR/gate-<name>.log" 2>&1; rc=$?; tail -20 "$TMPDIR/gate-<name>.log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
+When the gate fails, the line's own exit status is not 0 either.
 One run piped a failing suite into `tail`, and its commit and push still ran.
 A count check such as `grep -c` exits 1 when the count is 0, so never chain
 the next step on it with `&&`: a clean leak check then skips the commit.
@@ -393,12 +398,12 @@ review the fix again.
 
 When you resume a worker with `SendMessage` for a fix round, repeat the rule
 in that message: "fresh-context review of the diff before merge". A resumed
-worker acts on its newest message and can skip a rule that only its first
-brief named. In one run, workers resumed for fix rounds merged without that
-review. Later reviews found 9 and 6 more defects in two of those fix PRs,
-one a high-severity data loss, and another unreviewed PR had a
-high-severity trust bypass. Before you count a fix as done, check that the
-worker's report names the review and its outcome.
+worker can miss a rule that only its first brief named. In one run, workers
+resumed for fix rounds merged without that review. Later reviews found 9
+more defects in one fix PR, including a high-severity data loss, and 6 more
+in another. Another unreviewed PR had a high-severity trust bypass. Before
+you count a fix as done, read the review's output yourself, not only the
+worker's report. If no review ran, run one before merge.
 
 ## Phase 6 — Retro and skill upkeep
 

@@ -191,6 +191,7 @@
 
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
+  - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.
   - **Tags**: gate, tests, cloud
   - **Details**: Fixed on 2026-10-20 (fyodoriv/agentbrew#292): the `hook-large-input-pipefail` fixture (jq now reads
     the 300 KB body with `--rawfile`; Linux caps one argument at 128 KB) and the `instructions-sync` "readFileSync
@@ -296,6 +297,19 @@
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
 ## P3
+
+- [ ] Propose a first-run check for the built-in /loop skill
+  - **ID**: propose-loop-skill-first-run-dedupe
+  - **Tags**: retro, third-party-skill, loop, watch-issues
+  - **Details**: Retro of the 2026-10-22 tooling goal. The built-in Claude Code `/loop` skill (third party, not editable here) says "run the parsed prompt now" in dynamic mode. When `/loop /watch-issues` starts right after the agent already ran a watch pass this turn, that re-runs the same pass and can dispatch duplicate workers. The run skipped the re-run by judgment. Proposed upstream change (feedback to Anthropic): in dynamic mode, skip the immediate run when the same prompt already ran earlier in this turn, and say so in the confirmation. Until then, `watch-issues` SKILL.md can note it.
+  - **Files**: none in this repo (upstream feedback); optional one line in `skill-plugins/workflow/watch-issues/SKILL.md`
+  - **Output**: docs
+  - **Acceptance**: the feedback is sent through the Claude Code feedback channel by the owner, or watch-issues documents the workaround.
+  - **Hypothesis**: a first-run check removes duplicate passes when /loop starts right after a manual pass: duplicates 1 per loop start to 0.
+  - **Measurement**: watch pass log (pass start times) on the next 3 loop starts.
+  - **Success**: 0 duplicate passes in 3 starts.
+  - **Pivot**: duplicates never happen in practice -> close as not needed.
+  - **Anchor**: tooling goal retro 2026-10-22; run-goal Phase 6 (third-party skills get a task with the proposed change).
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget

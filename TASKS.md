@@ -334,19 +334,6 @@
   - **Pivot**: if no upstream channel takes it, add the note to run-goal's references/retro.md instead and close this task.
   - **Anchor**: run-goal retro 2026-10-22; Basili, Caldiera, Rombach 1994 (GQM).
 
-- [ ] Count time spent waiting on a person apart from tool time in agent-perf
-  - **ID**: agent-perf-separate-human-wait
-  - **Tags**: perf, agents, metrics
-  - **Details**: The 2026-10-21 checkup AI-work research (lens: Altitude) asked which outcome the top recurring step stands for. The top step in two checkups in a row is `mcp__Claude_Browser__navigate` at 9.3 h in 7 days, but one single call took 8.8 h: it waited on a site-approval prompt while nobody was there. Without that call the step costs about 0.5 h. `templates/scripts/agent-perf.mjs` counts the whole wait as tool time, so the "slowest recurring" ranking points at the wrong work.
-  - **Files**: `templates/scripts/agent-perf.mjs`, `docs/agent-perf.md`
-  - **Output**: code
-  - **Acceptance**: `agent-perf.mjs report --all --days 7` lists calls that waited on a permission prompt or ran over 30 min as `human-wait`, apart from tool time, and the ranking uses tool time only.
-  - **Hypothesis**: splitting human wait from tool time moves `mcp__Claude_Browser__navigate` out of the top step, and the overall tool time drops from 56.1 h to under 47 h per 7 days with no change in work done.
-  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (overall tool time and top step), on the first checkup after the change lands.
-  - **Success**: the top step is a real recurring step (not one outlier call), and tool time excludes every wait over 30 min.
-  - **Pivot**: the hooks cannot tell a permission wait from a slow call -> cap each call at its p95 in the ranking instead, and close this task.
-  - **Anchor**: tooling-checkup agent time review 2026-10-21; Basili, Caldiera, Rombach 1994 (GQM: the metric must answer the question).
-
 - [ ] Record why tool calls were blocked, from Claude Code `safety_event`
   - **ID**: ingest-claude-safety-events
   - **Tags**: perf, hooks, agents, research

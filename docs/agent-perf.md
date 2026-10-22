@@ -135,7 +135,7 @@ Run every command with `node ~/.config/agentbrew/scripts/agent-perf.mjs`.
 
 | Command | Output |
 |---|---|
-| `report [--project NAME \| --all] [--days N] [--json]` | Total tool time and calls, then per-step count, total, p50, p95, and max; the 10 slowest calls; the top 5 steps by total time; failures by step; and the change against the previous window of the same length. Default: the current project, 7 days. |
+| `report [--project NAME \| --all] [--days N] [--json]` | Total tool time and calls, then per-step count, total, p50, p95, and max; the 10 slowest calls; the top 5 steps by total time; the human-wait calls, apart from tool time; failures by step; and the change against the previous window of the same length. Default: the current project, 7 days. |
 | `report --session ID\|latest [--project NAME \| --all] [--json]` | The same for one session. `latest` is the session of the newest row in scope. |
 | `brief [--project NAME]` | At most 5 lines: 7-day tool time, the top 3 steps with p50, the slowest single step, the blocked calls (when there are any), and one speedup candidate (a step that ran 3 or more times and cost at least a minute). Empty when there is no data. |
 | `statusline` | Reads Claude Code status-line JSON on stdin and prints one line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. |
@@ -148,8 +148,28 @@ another folder.
 
 - Totals (`toolMs`, `calls`, `failures`) count only main-thread rows (`agent: null`). A subagent's calls run inside its Agent call, so adding them would count the time twice. `subagentCalls` reports them.
 - Per-step stats (`keys`, `topKeys`, `slowest`) count every row.
+- A call that ran 30 min or more is human wait (below). It is left out of the totals, the per-step stats, the brief, `turn`, and the status line.
 - Percentiles use the nearest-rank method.
 - A row without a number in `ms` does not count toward time. Attempt and denied rows have no `ms`.
+
+### Human wait
+
+A call can wait on a person: a permission prompt, a question, or a prompt
+inside the tool. That time is not tool time, so it must not rank a step. One
+browser `navigate` call once waited 8.8 h on a site-approval prompt and made
+that tool the top step for a week. `humanWait` counts every row (subagent rows
+too) and lists two kinds of wait:
+
+| Reason | How the log shows it | Effect |
+|---|---|---|
+| `prompt` | The run started 60 s or more after the attempt row: completion `ts` − `ms` − attempt `ts`. Claude Code leaves this wait out of `duration_ms`, so it was never tool time. `AskUserQuestion` waits here too. | Listed. The call's own `ms` stays tool time. |
+| `over 30 min` | `ms` is 30 min or more. A prompt inside the tool (a browser site approval) is inside `duration_ms`, and the hooks cannot tell it from a slow call. No real step runs that long: Bash stops at 10 min, and subagent calls peaked at 8 min in the 2026-10-22 data. | The whole call moves out of tool time and the step ranking. |
+
+Limits:
+
+- `PermissionRequest` has no `tool_use_id`, so the hooks cannot pair a prompt with its call. The `prompt` reason is read from the timestamps instead.
+- Timestamps are to the second, and other PreToolUse hooks or a queued parallel call add a few seconds. Gaps under 60 s are not counted: in the 2026-10-22 data, 34 of 207 gaps of 10–60 s overlapped another call of the same session, but only 2 of 66 gaps of 60 s or more did.
+- A prompt inside the tool that is shorter than 30 min stays in tool time.
 
 ### Attempts, blocked calls, and capture rate
 
@@ -178,12 +198,18 @@ input-validation error (above) can make that ratio miss.
   "topKeys": [{ "key": "…", "sumMs": 0, "previousSumMs": 0, "sumChangePct": null }],
   "slowest": [{ "ts": "…", "key": "…", "ms": 0, "project": "…", "sid": "…", "ok": true }],
   "failuresByKey": [{ "key": "…", "failures": 0, "count": 0 }],
+  "humanWait": {
+    "calls": 0, "ms": 0, "promptCalls": 0, "longCalls": 0,
+    "longest": [{ "ts": "…", "key": "…", "ms": 0, "reason": "prompt | over 30 min", "project": "…", "sid": "…", "agent": null }]
+  },
   "attempts": 0, "callsWithId": 0, "blocked": 0, "captureRate": null,
   "blockedKeys": [{ "key": "…", "count": 0 }],
   "previous": { "toolMs": 0, "calls": 0, "toolMsChangePct": null, "callsChangePct": null }
 }
 ```
 
+`humanWait.ms` is the wait: the prompt gap, plus the whole call for
+`over 30 min`. `longest` holds the 10 longest waits.
 `*ChangePct` is `null` when the previous window had no time for that value.
 `--session` reports have no `previous` and no `previousSumMs`.
 `--session` reports set `scope.days` to `null`. When `--session latest` finds no

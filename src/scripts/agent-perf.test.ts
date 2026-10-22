@@ -162,6 +162,81 @@ describe("attempts and blocked calls", () => {
   });
 });
 
+describe("human wait", () => {
+  const NAV = "mcp__Claude_Browser__navigate";
+
+  it("moves a long call (LONG_CALL_MS or more) from tool time to human wait", () => {
+    const summary = summarize([
+      // A site-approval prompt inside the tool: duration_ms holds the whole wait.
+      tool(NAV, 8 * HOUR + 45 * 60_000, { agent: "general-purpose" }),
+      ...[900, 1000, 23_000].map((ms) => tool(NAV, ms, { agent: "general-purpose" })),
+      tool("git status", 36 * 60_000),
+      tool("until <arg>", 10 * 60_000),
+      tool("until <arg>", 9 * 60_000),
+    ]);
+
+    expect(summary.toolMs).toBe(19 * 60_000);
+    expect(summary.calls).toBe(2);
+    expect(summary.keys[0]).toMatchObject({ key: "until <arg>", sumMs: 19 * 60_000 });
+    expect(summary.keys.find((k: { key: string }) => k.key === NAV)).toMatchObject({
+      count: 3,
+      sumMs: 24_900,
+      maxMs: 23_000,
+    });
+    expect(summary.keys.find((k: { key: string }) => k.key === "git status")).toBeUndefined();
+    expect(summary.slowest[0]).toMatchObject({ key: "until <arg>", ms: 10 * 60_000 });
+    expect(summary.humanWait).toMatchObject({
+      calls: 2,
+      ms: 8 * HOUR + 45 * 60_000 + 36 * 60_000,
+      promptCalls: 0,
+      longCalls: 2,
+    });
+    expect(summary.humanWait.longest.map((w: { key: string; reason: string }) => [w.key, w.reason])).toEqual([
+      [NAV, "over 30 min"],
+      ["git status", "over 30 min"],
+    ]);
+  });
+
+  it("counts a wait of a minute or more before the run as a prompt wait, apart from tool time", () => {
+    const summary = summarize([
+      // Attempt 5 min before the completion row, ran 2 s: 4m58s on a permission prompt.
+      attempt("cargo test", "p1", { ts: at(HOUR + 5 * 60_000) }),
+      tool("cargo test", 2000, { id: "p1" }),
+      // 30 s from attempt to run: other hooks and queueing, not a person.
+      attempt("npm test", "q1", { ts: at(HOUR + 31_000) }),
+      tool("npm test", 1000, { id: "q1" }),
+      // A question waits for its answer before it "runs" (duration_ms 0).
+      attempt("AskUserQuestion", "u1", { ts: at(HOUR + 20 * 60_000), tool: "AskUserQuestion" }),
+      tool("AskUserQuestion", 0, { id: "u1", tool: "AskUserQuestion" }),
+    ]);
+
+    expect(summary.toolMs).toBe(3000);
+    expect(summary.calls).toBe(3);
+    expect(summary.humanWait).toMatchObject({ calls: 2, ms: 20 * 60_000 + 298_000, promptCalls: 2, longCalls: 0 });
+    expect(summary.humanWait.longest[0]).toMatchObject({ key: "AskUserQuestion", ms: 20 * 60_000, reason: "prompt" });
+    expect(summary.humanWait.longest[1]).toMatchObject({ key: "cargo test", ms: 298_000, reason: "prompt" });
+  });
+
+  it("lists human-wait calls in the text report and keeps them out of the brief", () => {
+    writeRows([tool(NAV, 8 * HOUR + 45 * 60_000), ...[50_000, 60_000, 70_000].map((ms) => tool("npm run verify", ms))]);
+
+    const text = formatReport(buildReport({}, ctx()));
+    expect(text).toContain("Tool time: 3m00s over 3 main-thread calls");
+    expect(text).toContain(
+      "Human wait: 8h45m in 1 call, not in tool time or the step ranking (0 waited on a prompt before the run, 1 ran over 30 min).",
+    );
+    expect(text).toContain("Human-wait calls (not in tool time):");
+    expect(text).toMatch(/8h45m {2}mcp__Claude_Browser__navigate {2}over 30 min/);
+    expect(text).not.toMatch(/Top steps by total time:\n {2}mcp__Claude_Browser__navigate/);
+    expect(buildBrief({}, ctx())).toContain("Slowest single step: npm run verify 1m10s.");
+  });
+
+  it("leaves a long call (LONG_CALL_MS or more) out of the status line tool time", () => {
+    writeRows([tool("npm run verify", 5000), tool(NAV, 31 * 60_000)]);
+    expect(sessionStats("s1", { dir, nowMs: NOW })).toEqual({ toolMs: 5000, slowKey: "npm run verify", slowMs: 5000 });
+  });
+});
+
 describe("report", () => {
   it("filters by project and window and compares with the previous window", () => {
     writeRows([

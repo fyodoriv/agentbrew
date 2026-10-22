@@ -6,9 +6,10 @@ Fix the first. Check the second before you "fix" it.
 
 ## Rule 1: give wide tables fixed column widths
 
-This rule is for tables that stay wide: 5 columns (the limit in Tables in
-`SKILL.md`), or more when the user asks to keep all the columns. Otherwise,
-split a table with more than 5 columns first.
+This rule is for tables that stay wide: 5 columns (the limit in the Tables
+section of `SKILL.md`), or more when the user asks to keep all the columns.
+Otherwise, split a table with more than 5 columns in the markdown, then
+rewrite the tab again.
 
 The rewrite tool can leave column widths that add up to more than the text
 width. Then the last columns are cut off in the editor.
@@ -20,10 +21,11 @@ up to more than the text width:
    the text width: the tab's `documentStyle.pageSize.width` minus
    `marginLeft` and `marginRight`, all in `PT`. In landscape
    (`flipPageOrientation` is `true`), use `pageSize.height` instead. If the
-   table's section sets its own margins (`sectionStyle`), use those. In a
-   pageless tab (`documentStyle.documentFormat.documentMode` is
-   `PAGELESS`), use the total width of an existing table in this tab or a
-   sibling tab, or ask the user.
+   table's section sets its own margins or `flipPageOrientation` (the
+   `sectionStyle` of the last section break before the table), use those.
+   In a pageless tab (`documentStyle.documentFormat.documentMode` is
+   `PAGELESS`), use the total width of a table in a sibling tab (not one
+   this rewrite made), or ask the user.
 2. Split the text width across the columns. Give longer text a wider
    column. Round each width down to whole points, and add what is left to
    the widest column. The widths must add up to the text width.
@@ -36,12 +38,12 @@ up to more than the text width:
 
 ## Rule 2: check bold in the API before you re-apply it
 
-Some body fonts have a subtle bold. Bold text with a
+A light body font can hide bold. Bold text with a
 `weightedFontFamily.weight` under 400 (a light font) renders at weight 400.
 Then `**bold**` labels look like plain text in a screenshot, although the
 bold is set.
 
-1. Read the label's text run with `documents.get` and
+1. Read every text run in the label with `documents.get` and
    `includeTabsContent: true` (or `docs_get_structured` with the `tab_id`).
    Without `includeTabsContent`, `documents.get` returns the first tab, not
    yours. Check `textRun.textStyle.bold`. The markdown export and the
@@ -55,9 +57,11 @@ bold is set.
    Do not re-apply it, and do not change the font. With no such tab, trust
    the API value.
 4. If the other tab's bold looks heavier, compare `weightedFontFamily`
-   (`fontFamily` and `weight`) on both runs. Do not re-apply bold. Tell the
-   user what differs.
-5. If `bold` is missing or `false`, apply it with `updateTextStyle` over the
+   (`fontFamily` and `weight`) on both runs, found as in step 2. Do not
+   re-apply bold. Tell the user what differs.
+5. If `bold` is missing, check the paragraph's named style in
+   `namedStyles` first. If that style sets bold, the text is bold. If not,
+   or if `bold` is `false`, apply it with `updateTextStyle` over the
    label's exact range, `range: {startIndex, endIndex, tabId}`, with
    `textStyle: {bold: true}` and `fields: "bold"`. A range without `tabId`
    writes to the first tab. Then read the run again.
@@ -66,6 +70,7 @@ bold is set.
 
 ## Then verify
 
-Run the visual verification loop in `SKILL.md` after both rules are done,
-not between them: a structured read of the whole tab, then the every-page
-screenshot sweep. No column may be cut off at the right edge.
+Both rules are the Fix step (step 3) of the visual verification loop in
+`SKILL.md`. After both, run steps 1 and 2 of the loop again: a structured
+read of the whole tab, then the every-page screenshot sweep. No column may
+be cut off at the right edge.

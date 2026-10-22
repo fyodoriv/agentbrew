@@ -191,7 +191,7 @@
         "Sends one updateTableColumnProperties request per column (columnIndices: [i]) with FIXED_WIDTH after the rewrite",
         "Makes the six widths add up to the text width: the page width minus the left and right margins",
         "Checks the labels' bold through textRun.textStyle.bold from the API, not from the screenshot or the markdown export",
-        "Compares the screenshot with an existing tab in the same doc and font before it calls the bold a defect",
+        "When the API shows bold: true, compares the screenshot with an existing tab in the same doc and font before it calls the bold a defect",
         "Does not re-apply bold or change the font when the API already shows bold: true",
         "Re-checks the tab in the browser with the every-page screenshot sweep after the widths change"
       ]

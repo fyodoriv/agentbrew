@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { accessSync, constants, existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
+import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
 import { expandHome } from "../utils.js";
 
@@ -20,13 +21,88 @@ export function getLogDir(): string {
   return expandHome("~/.local/share/agentbrew/logs");
 }
 
+/** Stable Node links that survive a Node upgrade, in the order they are tried. */
+export const STABLE_NODE_LINKS: readonly string[] = ["/opt/homebrew/bin/node", "/usr/local/bin/node"];
+
+export interface SchedulerNodeOptions {
+  /** The running Node. Default: `process.execPath`, which is always a resolved real path. */
+  execPath?: string;
+  /** Default: `process.env`. */
+  env?: NodeJS.ProcessEnv;
+  /** Default: {@link STABLE_NODE_LINKS}. */
+  stableLinks?: readonly string[];
+}
+
+/** AGENTBREW_NODE_BIN values already warned about. Module scope: lives for
+ *  one agentbrew process, so a bad value warns once per run, not per call. */
+const warnedNodeOverrides = new Set<string>();
+
+function realpathOrSelf(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+/** True when `path` is an absolute executable that prints a Node version. */
+function nodeRuns(path: string): boolean {
+  if (!isAbsolute(path)) return false;
+  try {
+    accessSync(path, constants.X_OK);
+    const version = execFileSync(path, ["--version"], { encoding: "utf-8", stdio: "pipe", timeout: 5_000 });
+    return /^v\d+/u.test(String(version).trim());
+  } catch (e) {
+    logSkipped("sync/scheduler-paths/nodeRuns", e);
+    return false;
+  }
+}
+
+/** The Homebrew `opt` link of a Cellar keg Node: `<prefix>/Cellar/<formula>/<version>/bin/node`
+ *  becomes `<prefix>/opt/<formula>/bin/node`. Homebrew moves that link on every upgrade. */
+function homebrewOptNode(execPath: string): string | undefined {
+  const match = /^(.+)\/Cellar\/([^/]+)\/[^/]+\/bin\/node$/u.exec(execPath);
+  return match ? `${match[1]}/opt/${match[2]}/bin/node` : undefined;
+}
+
+function resolveUncached(execPath: string, override: string | undefined, stableLinks: readonly string[]): string {
+  if (override) {
+    if (nodeRuns(override)) return override;
+    if (!warnedNodeOverrides.has(override)) {
+      warnedNodeOverrides.add(override);
+      console.error(chalk.yellow(`AGENTBREW_NODE_BIN=${override} is not a Node that runs; it is ignored.`));
+    }
+  }
+  const real = realpathOrSelf(execPath);
+  const optNode = homebrewOptNode(real);
+  for (const candidate of optNode ? [optNode, ...stableLinks] : stableLinks) {
+    if (existsSync(candidate) && realpathOrSelf(candidate) === real) return candidate;
+  }
+  return execPath;
+}
+
 /**
- * Returns the directory containing the Node binary running agentbrew.
- * Captured at install time so LaunchAgent/systemd PATH includes it,
+ * The Node binary that com.agentbrew.* scheduler jobs run (#356).
+ * 1. `AGENTBREW_NODE_BIN`, verbatim (links are not resolved), when it runs.
+ * 2. A link that points at the running Node and survives upgrades: the
+ *    Homebrew keg's `opt/<formula>/bin/node`, then {@link STABLE_NODE_LINKS}.
+ *    `process.execPath` is a resolved path, so on Homebrew it names the
+ *    versioned Cellar folder that `brew cleanup` deletes after an upgrade.
+ * 3. `process.execPath`.
+ */
+export function resolveSchedulerNode(options: SchedulerNodeOptions = {}): string {
+  const execPath = options.execPath ?? process.execPath;
+  const override = (options.env ?? process.env).AGENTBREW_NODE_BIN?.trim() || undefined;
+  return resolveUncached(execPath, override, options.stableLinks ?? STABLE_NODE_LINKS);
+}
+
+/**
+ * Returns the directory of the Node binary that scheduler jobs run
+ * ({@link resolveSchedulerNode}). LaunchAgent/systemd PATH starts with it,
  * even for NVM, mise, asdf, volta, fnm, and n users.
  */
 export function getNodeBinDir(): string {
-  return dirname(process.execPath);
+  return dirname(resolveSchedulerNode());
 }
 
 function expandDotfilesHome(value: string, home: string): string {
@@ -190,7 +266,7 @@ export function resolveAgentBrewCliJsPath(): string {
  * launchd never relies on `#!/usr/bin/env node` shebang resolution.
  */
 export function buildLaunchAgentFixArgs(): string[] {
-  return [process.execPath, resolveAgentBrewCliJsPath(), "fix"];
+  return [resolveSchedulerNode(), resolveAgentBrewCliJsPath(), "fix"];
 }
 
 /** Resolve the agentbrew binary path — tries `which`, then process.argv, then default. */

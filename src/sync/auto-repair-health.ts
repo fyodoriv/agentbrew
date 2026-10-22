@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { logSkipped } from "../core/logger.js";
+import { extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
 import { isLabelDisabledInLaunchctlOutput } from "../memory/launchagent.js";
 import { formatAge } from "../utils.js";
 import { type AutoSyncBackend, activeBackend } from "./auto-sync.js";
@@ -129,13 +130,6 @@ export function parseLaunchctlPrint(output: string): { lastExitCode?: number; la
   const reason = /^\s*last exit reason = (.+)$/mu.exec(output);
   if (reason) return { lastExitReason: reason[1].trim() };
   return {};
-}
-
-/** Read the ProgramArguments strings from a LaunchAgent plist. */
-export function extractPlistProgramArguments(plistContent: string): string[] {
-  const array = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(plistContent);
-  if (!array) return [];
-  return [...array[1].matchAll(/<string>([^<]*)<\/string>/gu)].map((match) => match[1]);
 }
 
 function extractPlistString(plistContent: string, key: string): string | undefined {

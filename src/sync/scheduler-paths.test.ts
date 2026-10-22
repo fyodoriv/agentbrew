@@ -164,6 +164,8 @@ describe("buildLaunchAgentFixArgs", () => {
     const original = process.argv[1];
     process.argv[1] = "/repo/agentbrew/dist/cli.js";
     vi.mocked(existsSync).mockReturnValue(true);
+    // No stable Node link resolves to the running Node, so the job runs it as is.
+    vi.mocked(realpathSync).mockImplementation(((path: string) => path) as unknown as typeof realpathSync);
     try {
       expect(buildLaunchAgentFixArgs()).toEqual([process.execPath, "/repo/agentbrew/dist/cli.js", "fix"]);
     } finally {

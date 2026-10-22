@@ -357,12 +357,22 @@ The `Auto-repair` line in `agentbrew status` shows what the scheduler really doe
 
 - `not running` — the LaunchAgent plist or systemd timer exists, but launchd or systemd has not loaded it.
 - `disabled` — launchd has the job disabled (for example, by an endpoint safe mode). `agentbrew auto-sync install` cannot load it until `launchctl enable gui/$UID/com.agentbrew.check` clears the flag. Do that only if the job was not disabled on purpose.
-- `broken` — the job points at a program that no longer exists, such as a deleted `dist/cli.js`.
+- `broken` — the job points at a program that no longer exists, such as a deleted `dist/cli.js` or a Node that `brew cleanup` removed. `agentbrew auto-sync status` names the missing program too.
 - `stale` — the last run is older than 90 minutes.
 - `failing` — the last run exited with an error. The line names the exit code and the log file.
 - `not run yet` or `unverified` — no run history exists yet, or agentbrew cannot read it (Windows Task Scheduler).
 
 Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. `agentbrew status --json` includes the same data in `autoRepair`.
+
+**Which Node the job runs.** `agentbrew auto-sync install` writes a Node path that survives a Node upgrade. It uses, in order:
+
+1. `AGENTBREW_NODE_BIN`, as written (links are not resolved), when it is a Node that runs. Use it to pick a Node on purpose, for example one your machine allows in background jobs. agentbrew also writes it into the job's environment, so a later rewrite from inside the job keeps it.
+2. A link to the running Node that package managers keep current: the Homebrew keg link `<prefix>/opt/<formula>/bin/node`, then `/opt/homebrew/bin/node` or `/usr/local/bin/node`. Node reports its own path with all links resolved, which on Homebrew is the versioned `Cellar` folder that `brew cleanup` deletes after `brew upgrade node`.
+3. The running Node's own path (for example an fnm or nvm folder).
+
+The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites the plist from inside the job itself, it does not unload the running job (that would kill it before the reload). It writes the plist, and a detached shell reloads the job after the run ends. An unchanged plist is not reloaded.
+
+`agentbrew status` reports `launchagent` drift when the job's Node no longer exists, or when it runs a versioned path while a link that survives upgrades points at the same Node. `agentbrew fix` then rewrites the plist, so an existing job moves to the stable path on its next run.
 
 ### MCP endpoint repair
 

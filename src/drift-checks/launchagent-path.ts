@@ -5,6 +5,7 @@ import {
   LAUNCHAGENT_LANG,
   launchAgentPathHasRequiredPrefixes,
   resolveDotfilesBinPath,
+  resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
 import { expandHome } from "../utils.js";
 import type { DriftItem } from "./types.js";
@@ -44,6 +45,13 @@ export function plistNodeBinDir(plistContent: string): string | undefined {
   return dirname(program);
 }
 
+/** Read the ProgramArguments strings from a LaunchAgent plist. */
+export function extractPlistProgramArguments(plistContent: string): string[] {
+  const array = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(plistContent);
+  if (!array) return [];
+  return [...array[1].matchAll(/<string>([^<]*)<\/string>/gu)].map((match) => match[1]);
+}
+
 /** True when a LaunchAgent plist sets LANG or LC_ALL. */
 export function plistHasLocale(plistContent: string): boolean {
   return /<key>(?:LANG|LC_ALL)<\/key>/u.test(plistContent);
@@ -71,9 +79,32 @@ export function listAgentbrewLaunchAgentPlists(): string[] {
     .map((name) => join(dir, name));
 }
 
+/** The auto-repair plist; `agentbrew fix` rewrites it wholesale. */
+const CHECK_PLIST = "com.agentbrew.check.plist";
+
+/**
+ * Node drift on the auto-repair plist (#356): its Node is gone, or it runs a
+ * versioned path (such as a Homebrew Cellar folder) while a link that
+ * survives upgrades points at the same Node. A Node picked with
+ * AGENTBREW_NODE_BIN (kept in the job env) is never drift.
+ */
+function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
+  if (basename(plistPath) !== CHECK_PLIST) return [];
+  const program = extractPlistProgramArguments(content)[0];
+  if (!program || !isAbsolute(program) || basename(program) !== "node") return [];
+  const drift = (detail: string): DriftItem[] => [{ agent: "launchagent", type: "launchagent", detail }];
+  if (!existsSync(program)) return drift(`${plistPath}: runs ${program}, which no longer exists — run agentbrew fix`);
+  const override = /<key>AGENTBREW_NODE_BIN<\/key>\s*<string>([^<]*)<\/string>/u.exec(content)?.[1];
+  if (override === program) return [];
+  const stable = resolveSchedulerNode({ execPath: program, env: {} });
+  if (stable === program) return [];
+  return drift(`${plistPath}: runs ${program}, which a Node upgrade deletes; use ${stable} — run agentbrew fix`);
+}
+
 /**
  * Detect stale environment on com.agentbrew.* LaunchAgents — PATH missing the
- * node bin dir or dotfiles/bin, or no locale.
+ * node bin dir or dotfiles/bin, or no locale — and a Node path on the
+ * auto-repair plist that is gone or does not survive upgrades.
  */
 export function checkLaunchAgentPathDrift(): DriftItem[] {
   if (process.platform !== "darwin") return [];
@@ -101,6 +132,8 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
         detail: `${plistPath}: PATH missing node or ${resolveDotfilesBinPath(home)} — run agentbrew fix`,
       });
     }
+
+    items.push(...checkPlistNodeDrift(plistPath, content));
 
     if (!plistHasLocale(content)) {
       items.push({

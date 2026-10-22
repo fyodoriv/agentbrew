@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { userInfo } from "node:os";
 import { dirname } from "node:path";
@@ -8,6 +8,7 @@ import { logSkipped } from "../core/logger.js";
 import {
   ensurePlistLocale,
   extractPlistPath,
+  extractPlistProgramArguments,
   listAgentbrewLaunchAgentPlists,
   plistManagesOwnPath,
   plistNodeBinDir,
@@ -48,6 +49,13 @@ function buildPlistContent(): string {
   const pathValue = buildLaunchAgentPath(home);
   const fixArgs = buildLaunchAgentFixArgs();
   const programArgsXml = fixArgs.map((arg) => `        <string>${arg}</string>`).join("\n");
+  // Keep AGENTBREW_NODE_BIN in the job's env, so a rewrite from inside the job
+  // picks the same Node (#356).
+  const nodeOverride = process.env.AGENTBREW_NODE_BIN?.trim();
+  const nodeOverrideXml =
+    nodeOverride && fixArgs[0] === nodeOverride
+      ? `\n        <key>AGENTBREW_NODE_BIN</key>\n        <string>${nodeOverride}</string>`
+      : "";
   // WorkingDirectory must not be `/` (launchd default). MCP smoke probes inherit
   // this cwd — tasks-mcp used to recurse from `/` and peg the CPU with `fd`.
   const workingDirectory = getLogDir();
@@ -78,7 +86,7 @@ ${programArgsXml}
         <key>LANG</key>
         <string>${LAUNCHAGENT_LANG}</string>
         <key>HOME</key>
-        <string>${home}</string>
+        <string>${home}</string>${nodeOverrideXml}
     </dict>
 </dict>
 </plist>`;
@@ -104,6 +112,40 @@ export function cleanupLegacyAgents(): number {
     }
   }
   return removed;
+}
+
+/** True when this process runs inside the launchd job `label`. launchd sets
+ *  XPC_SERVICE_NAME to the job label in every process it starts for a job. */
+function runsInsideJob(label: string): boolean {
+  return process.env.XPC_SERVICE_NAME === label;
+}
+
+/**
+ * Reload `plistPath` after this process exits (#356). `launchctl unload` on
+ * the job this process runs in kills the process before `launchctl load`
+ * runs, so the job would stay unloaded until the next login. A detached
+ * shell (its own process group, so it outlives the job) waits for this
+ * process to exit, then unloads and loads the plist.
+ */
+function reloadAfterExit(plistPath: string): void {
+  const script = 'while kill -0 "$1" 2>/dev/null; do sleep 1; done; launchctl unload "$0"; launchctl load "$0"';
+  try {
+    spawn("/bin/sh", ["-c", script, plistPath, String(process.pid)], { detached: true, stdio: "ignore" }).unref();
+  } catch (e) {
+    logSkipped("sync/launchagent/reload-after-exit", e);
+  }
+}
+
+/** The first absolute ProgramArguments entry of the auto-repair plist that no
+ *  longer exists, such as a Node that `brew cleanup` deleted. */
+export function missingLaunchAgentProgram(): string | undefined {
+  let content: string;
+  try {
+    content = readFileSync(getLaunchAgentPath(), "utf-8");
+  } catch {
+    return undefined;
+  }
+  return extractPlistProgramArguments(content).find((arg) => arg.startsWith("/") && !existsSync(arg));
 }
 
 /** Reload a LaunchAgent after plist mutation (best-effort). */
@@ -175,6 +217,16 @@ export async function installLaunchAgent(): Promise<void> {
 
   const content = buildPlistContent().replace(/LOGDIR/g, logDir);
 
+  if (runsInsideJob(LAUNCHAGENT_LABEL)) {
+    // `agentbrew fix` inside the job itself: never unload the running job.
+    // An unchanged plist needs no reload, which also stops a reload loop.
+    if (readFileOrEmpty(plistPath) === content) return;
+    writeFileAtomicSync(plistPath, content, "utf-8");
+    reloadAfterExit(plistPath);
+    console.log(`${ICON_SUCCESS} LaunchAgent rewritten; it reloads after this run ends.`);
+    return;
+  }
+
   writeFileAtomicSync(plistPath, content, "utf-8");
 
   try {
@@ -207,6 +259,14 @@ export async function installLaunchAgent(): Promise<void> {
   } else {
     console.error(chalk.yellow("LaunchAgent created but could not be loaded."));
     console.log(`  Load manually: launchctl load "${plistPath}"`);
+  }
+}
+
+function readFileOrEmpty(path: string): string {
+  try {
+    return readFileSync(path, "utf-8");
+  } catch {
+    return "";
   }
 }
 

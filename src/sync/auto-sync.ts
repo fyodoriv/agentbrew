@@ -14,6 +14,7 @@ import {
   getLegacyPlistsOnDisk,
   installLaunchAgent,
   isLaunchAgentInstalled,
+  missingLaunchAgentProgram,
   uninstallLaunchAgent,
 } from "./launchagent.js";
 import { getAgentBrewBin, getLogDir } from "./scheduler-paths.js";
@@ -229,7 +230,12 @@ export function isAutoSyncInstalled(): boolean {
 function showLaunchAgentStatus(): void {
   if (process.platform !== "darwin" && !isLaunchAgentInstalled()) return;
   const plistPath = getLaunchAgentPlistPath();
-  if (existsSync(plistPath)) {
+  const missingProgram = missingLaunchAgentProgram();
+  if (missingProgram) {
+    console.error(
+      `  ${chalk.red("✗")} LaunchAgent runs ${missingProgram}, which no longer exists, so auto-repair stopped — fix: agentbrew auto-sync install`,
+    );
+  } else if (existsSync(plistPath)) {
     console.log(`  ${ICON_SUCCESS} LaunchAgent installed (30-min auto-repair)`);
   } else if (process.platform === "darwin") {
     console.error(`  ${chalk.dim("○")} LaunchAgent not installed`);

@@ -25,10 +25,10 @@ vi.mock("./scheduler-paths.js", () => ({
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
+import { extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
 import {
   classifyAutoRepair,
   describeAutoRepair,
-  extractPlistProgramArguments,
   parseLaunchctlPrint,
   parseSystemctlShow,
   probeAutoRepairHealth,

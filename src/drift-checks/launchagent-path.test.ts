@@ -225,7 +225,8 @@ describe("checkLaunchAgentPathDrift", () => {
       Object.defineProperty(process, "platform", { value: "darwin" });
       mockExistsSync.mockImplementation((p) => {
         const s = String(p);
-        return s.includes("LaunchAgents") || s.includes("dotfiles/bin");
+        // The applied node exists; a missing one is its own drift (#356).
+        return s.includes("LaunchAgents") || s.includes("dotfiles/bin") || s === `${appliedNodeBin}/node`;
       });
       mockReaddirSync.mockReturnValue(["com.agentbrew.check.plist"] as unknown as ReturnType<typeof readdirSync>);
       mockReadFileSync.mockReturnValue(plistWith(pathValue));

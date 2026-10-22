@@ -165,6 +165,20 @@ describe("autoSyncStatus", () => {
     expect(printed()).toContain("autoRepair");
   });
 
+  it("does not propose the install for a broken job after the user turned auto-repair off", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValue(true);
+    // The installed plist runs a Node that no longer exists.
+    mockReadFileSync.mockReturnValue(
+      "<plist><dict><key>ProgramArguments</key><array><string>/gone/node</string></array></dict></plist>" as never,
+    );
+    mockExistsSync.mockReturnValue(false);
+    await autoSyncStatus();
+    vi.mocked(autoRepairOptedOut).mockReturnValue(false);
+    expect(printed()).toContain("/gone/node");
+    expect(printed()).not.toContain("agentbrew auto-sync install");
+  });
+
   it("does not propose a cron install on Linux with neither systemctl nor crontab", async () => {
     Object.defineProperty(process, "platform", { value: "linux" });
     mockExistsSync.mockReturnValue(false);

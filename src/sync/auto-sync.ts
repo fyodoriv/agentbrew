@@ -248,7 +248,7 @@ function showLaunchAgentStatus(): void {
   const missingProgram = missingLaunchAgentProgram();
   if (missingProgram) {
     console.error(
-      `  ${chalk.red("✗")} LaunchAgent runs ${missingProgram}, which no longer exists, so auto-repair stopped — fix: agentbrew auto-sync install`,
+      `  ${chalk.red("✗")} LaunchAgent runs ${missingProgram}, which no longer exists, so auto-repair stopped — ${autoRepairOptedOut() ? "auto-repair is off; remove it: agentbrew auto-sync uninstall" : "fix: agentbrew auto-sync install"}`,
     );
   } else if (existsSync(plistPath)) {
     console.log(`  ${ICON_SUCCESS} LaunchAgent installed (30-min auto-repair)`);

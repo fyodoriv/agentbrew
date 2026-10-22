@@ -207,6 +207,30 @@ describe("built-in commands", () => {
     expect(existsSync(opencodeCopy())).toBe(false);
   });
 
+  it("turning built-ins off keeps a copy the user edited, and --no-prune keeps every copy", async () => {
+    const claudeCopy = join(homedir(), ".claude", "commands", "agentbrew.md");
+    mkdirSync(join(homedir(), ".claude", "commands"), { recursive: true });
+    mkdirSync(join(homedir(), ".config", "opencode", "commands"), { recursive: true });
+    await syncCommands({ quiet: true });
+    writeFileSync(claudeCopy, `${readFileSync(claudeCopy, "utf-8")}\nmy note\n`);
+    expect(setSetting("builtinCommands", "off").ok).toBe(true);
+    invalidateState();
+
+    await syncCommands({ quiet: true, prune: false });
+    expect(existsSync(opencodeCopy())).toBe(true);
+
+    await syncCommands({ quiet: true });
+    expect(readFileSync(claudeCopy, "utf-8")).toContain("my note");
+    expect(existsSync(opencodeCopy())).toBe(false);
+  });
+
+  it("lists every committed agentbrew.md text, so a copy of any of them is recognized", () => {
+    // 0dda32d's text: its refresh still copied an Agentfile's agentbrew.md into the user's folder.
+    expect(SHIPPED_BUILTIN_COPY_HASHES.has("3e7513294fb559270fef357ff159b40acc59eb89549aeffeff85a3626a46bcee")).toBe(
+      true,
+    );
+  });
+
   it("ships in the npm package: the build copies commands/ into dist/, which package.json publishes", () => {
     expect(readFileSync(join(repoRoot, "tsup.config.ts"), "utf-8")).toContain(
       'cpSync("commands", "dist/commands", { recursive: true })',

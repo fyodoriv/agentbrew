@@ -58,6 +58,8 @@ interface CommandFileAction {
   filename: string;
   type: "write" | "prune";
   content?: string;
+  /** A built-in copy left after `builtinCommands: off`; kept when the user edited it. */
+  retired?: boolean;
 }
 
 interface CommandTargetDiff {
@@ -127,7 +129,7 @@ function retiredPruneActions(target: TargetInput, retired: readonly string[]): C
   return retired
     .map((name) => remapFilename(name, target.fileExt))
     .filter((name) => target.existingFiles.has(name))
-    .map((filename) => ({ filename, type: "prune" }));
+    .map((filename) => ({ filename, type: "prune", retired: true }));
 }
 
 /** Write actions for every source whose deployed content differs, and the target names they cover. */
@@ -185,10 +187,10 @@ function computeSingleTargetDiff(
   const { actions, targetFilenames } = writeActions(target, sourceFiles, delegatedForAgent);
   const prune = pruneOptions.prune && !fallback;
   const unmatched = prune ? [...target.existingFiles.keys()].filter((filename) => !targetFilenames.has(filename)) : [];
-  const pruneNames = new Set(unmatched);
   // Built-in commands turned off: remove the copies agentbrew deployed, even on a sync that does not prune.
-  for (const action of retired) if (!targetFilenames.has(action.filename)) pruneNames.add(action.filename);
-  for (const filename of pruneNames) actions.push({ filename, type: "prune" });
+  const retiredNames = new Set(retired.map((action) => action.filename).filter((name) => !targetFilenames.has(name)));
+  const pruneNames = new Set([...unmatched, ...retiredNames]);
+  for (const filename of pruneNames) actions.push({ filename, type: "prune", retired: retiredNames.has(filename) });
 
   const synced = actions.filter((a) => a.type === "write").length;
   return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneNames.size };
@@ -413,6 +415,12 @@ function applySingleAction(opts: ApplyActionOpts): { writeSkipped: boolean; prun
   if (action.type === "write") {
     const skipped = handleWriteAction({ filePath, action, agentName, manifest, quiet, log });
     return { writeSkipped: skipped, prunedFile: false };
+  }
+  // A retired built-in copy the user edited is theirs now: keep it.
+  if (action.retired && isUserModified(filePath, manifest)) {
+    if (!quiet)
+      log.log(log.dim(`  ${agentName}: kept ${action.filename}, which you edited (built-in commands are off)`));
+    return { writeSkipped: false, prunedFile: false };
   }
   // Only prune files that agentbrew deployed (tracked in manifest).
   // applyPruneAction returns false for user-created files — those
@@ -681,6 +689,12 @@ export function collectCanaryDelegation(
   return delegateCommandsGenerate({ agents: canaryAgents, sourceCommands: sourceFiles });
 }
 
+/** Built-in command files to remove after `builtinCommands: off`; an explicit --no-prune keeps them. */
+function retiredBuiltinFiles(options?: SyncOptions): string[] {
+  if (!builtinCommandsOff() || options?.prune === false) return [];
+  return builtinCommandNames().map((name) => `${name}.md`);
+}
+
 export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune } = resolveCmdSyncOptions(options);
   const log = resolveLogger(ctx, quiet, options?.compact);
@@ -697,7 +711,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const manifest = resolveManifest(ctx);
   for (const path of removedCopies) removeFromManifest(path, manifest);
   const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
-  const retiredBuiltins = builtinCommandsOff() ? builtinCommandNames().map((name) => `${name}.md`) : [];
+  const retiredBuiltins = retiredBuiltinFiles(options);
 
   if (sourceFiles.length === 0 && !prune && retiredBuiltins.length === 0) {
     warnNoCommands(quiet, log);

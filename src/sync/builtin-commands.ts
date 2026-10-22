@@ -26,8 +26,9 @@ export function builtinCommandNames(): string[] {
 
 /**
  * sha256 of every `agentbrew.md` text committed before sync stopped copying
- * built-ins into `~/.config/agentbrew/commands/` (#397, #398, #399 and their
- * branches). Sync never copies them there now, so this list never grows. A
+ * built-ins into `~/.config/agentbrew/commands/` (#397, #398, #399, and the
+ * first commit of their follow-up). Sync never copies them there now, so this
+ * list never grows; `isAgentbrewCopy` also matches the current text. A
  * file with one of these exact contents is agentbrew's own stale copy.
  */
 export const SHIPPED_BUILTIN_COPY_HASHES: ReadonlySet<string> = new Set([
@@ -36,6 +37,7 @@ export const SHIPPED_BUILTIN_COPY_HASHES: ReadonlySet<string> = new Set([
   "8422fabc7bd760b316fa0db664301652901277f433a7890c41c6a449e84af2d2",
   "3c69ca803bef71248033096395fc57e5d01c4a1972e78d70dbbe4de5c6edd2d2",
   "addaf373d6d8116c0b738e20778c7cdf4062916bffe8ffea982fa9038c1fda66",
+  "3e7513294fb559270fef357ff159b40acc59eb89549aeffeff85a3626a46bcee",
 ]);
 
 /** True when `content` is agentbrew's own copy of built-in `name`: a shipped text, or the current one. */

@@ -294,6 +294,19 @@
 
 ## P3
 
+- [ ] Make verify:changed run only the matching tests for task-queue and eval-only diffs
+  - **ID**: verify-changed-docs-only-fast
+  - **Tags**: perf, gate, retro
+  - **Details**: A run-goal retro PR (2026-10-22) changed only `TASKS.md` and `skill-plugins/workflow/run-goal/evals/evals.json`. `npm run verify:changed` still ran all 1365 vitest tests (131 s) before it printed "merge-ready … no full gate is needed". Every goal retro ships one such PR. When the diff touches only task-queue, eval, or docs paths, run only the tests that read those files (the TASKS.md schema tests and the eval-file tests).
+  - **Files**: `scripts/verify-changed.*`, `docs/agent-perf.md`
+  - **Output**: code
+  - **Acceptance**: a diff that only changes `TASKS.md` and one `evals.json` finishes `verify:changed` in under 30 s, and still fails on an invalid `**Output**:` value.
+  - **Hypothesis**: retro PR gate time drops from about 131 s to under 30 s, with no missed schema failure.
+  - **Measurement**: `time npm run -s verify:changed` on a branch that only edits `TASKS.md` and one `evals.json`.
+  - **Success**: under 30 s, and an invalid Output value still fails.
+  - **Pivot**: if the tests that read those files cannot be mapped reliably, keep the full run and close this task.
+  - **Anchor**: perf-task-review hook, session 5a0bcbe8 (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
+
 - [ ] Propose an artifact-design note for goal reports with before/after screenshots
   - **ID**: artifact-design-goal-report-shots
   - **Tags**: skills, retro, third-party

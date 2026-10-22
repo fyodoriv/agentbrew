@@ -45,6 +45,17 @@
         "Mentions web-quality-audit or runs one Lighthouse pass and reports its category scores",
         "Does not run the design panel or blind raters for a Lighthouse-only request"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "The design panel sat near 7 for 17 rounds on placeholder art. I swapped in a realistic, model-drawn 12-page fixture, and the blind raters now give 6.7 and 6.2 instead of 7.2 and 6.8. Did the redesign get worse? What next?",
+      "expected_output": "Explains that the realistic fixture raised Content and Creativity but let raters see layout flaws the placeholder hid, so each capped every judge at 7. Treats the drop as a finding list, not a regression of the page, re-baselines on the new fixture, and fixes the flaws that two or more raters named before the next round.",
+      "expectations": [
+        "Says the drop comes from the new fixture exposing layout flaws, not from a worse page",
+        "Lists the named flaws (for example a phone spread at half width, cut-off captions) as the next round's work",
+        "Re-baselines on the new fixture and does not compare new scores with the placeholder rounds",
+        "Does not go back to the placeholder fixture to win back the higher score"
+      ]
     }
   ]
 }

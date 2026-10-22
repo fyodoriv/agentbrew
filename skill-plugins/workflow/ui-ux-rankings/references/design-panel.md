@@ -63,6 +63,12 @@ When the panel stalls:
   you did: they then rate the design, not the fixture.
 - Placeholder art reads as placeholder: Content and Creativity stay low until the fixture looks
   like the real thing. Improve the fixture before the page when raters name the content.
+- A realistic fixture can lower the score. After 17 rounds near 7 on placeholder art, a model-drawn
+  realistic fixture moved two pages down (7.2 to 6.7, 6.8 to 6.2): Content and Creativity rose from
+  about 5 to 6.5-7, but with real art the raters looked at the layout and capped every judge at 7
+  for flaws the placeholder had hidden (a phone spread that used half the width, cut-off captions).
+  Treat that drop as a list of findings, not a regression of the page. Re-baseline on the new
+  fixture, and compare later rounds only with that new baseline.
 - If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what
   holds them back, and the options (a bolder concept, real content, motion evidence), instead of
   polishing further. Never report the target as met when blind raters did not give it.

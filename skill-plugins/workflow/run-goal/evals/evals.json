@@ -1092,6 +1092,19 @@
         "A task with a human-only step keeps only that step open, with the exact commands",
         "Every task ships as its own merged PR with fresh gate output, and the plugin's own check is rerun after the app changes"
       ]
+    },
+    {
+      "id": 96,
+      "prompt": "/goal implement all unblocked tasks, then do a nightly run. Use six parallel implementation subagents on this one Mac.",
+      "expected_output": "Before it starts the six workers, the agent writes a heavy-run rule into their shared brief: one shared lock (a mkdir lock dir) and nice -n 15 for every full suite, test cache run, and timing measurement, one at a time. A timing a worker took without the lock is marked invalid and taken again. Before each PR merges, a fresh-context subagent reviews its diff even when the suite is green, and each finding goes back to the worker that wrote the code. When a squash merge of one PR makes a stacked PR conflict, the agent resolves with the stacked PR's side and shows that the merged tree equals that PR's tested tree.",
+      "expectations": [
+        "The shared brief names a heavy-run lock and a nice level before any worker starts",
+        "Heavy runs (full suite, test cache, timing) run one at a time under the lock",
+        "A timing taken without the lock is reported as invalid and re-taken, not used",
+        "Every PR gets a fresh-context diff review before merge, also when its suite passed",
+        "Review findings go back to the worker that wrote the code, and the fix is reviewed again",
+        "A stacked PR conflict after a squash merge is resolved with the stacked side and checked with an empty diff against its tested tree"
+      ]
     }
   ]
 }

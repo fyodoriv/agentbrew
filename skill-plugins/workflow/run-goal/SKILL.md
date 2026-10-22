@@ -303,7 +303,7 @@ continue?". The user set a goal so that they can be away.
   line). Record the answer in the contract file in place of the default,
   and fix any done-criterion or metric built on it. In the same pass,
   update every artifact built on that default: tickets, doc sections,
-  drafts, and code. Print the goal check line again for each criterion the
+  drafts, and code (park an edit that needs fresh approval, as below). Print the goal check line again for each criterion the
   answer touches, with each updated artifact's link or path as its
   evidence. One run filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
@@ -347,14 +347,17 @@ the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
 A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
 `tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
-its status decides the commit. Run the gate into a log, read `rc`, and
-commit and push only when `$rc` is 0:
+its status decides the commit. Run the gate into a log, read `$rc`, and
+commit and push only when it is 0:
 `log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
 When the gate fails, the whole line also exits 1, so a background task
 reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
-A count check such as `grep -c` exits 1 when the count is 0, so never chain
-the next step on it with `&&`: a clean leak check then skips the commit.
+A count check such as `grep -c` is the opposite: it exits 1 when the count
+is 0 (clean) and 0 when it finds a match. Never put it in the gate slot
+above, and never chain the next step on it with `&&`: a clean leak check
+then skips the commit. Read the count it prints, and commit only when the
+count is 0.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.

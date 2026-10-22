@@ -7,10 +7,10 @@ Fix the first. Check the second before you "fix" it.
 ## Rule 1: give wide tables fixed column widths
 
 This rule covers every table in the rewritten tab. When you only rewrite
-the tab from markdown you were given, keep its tables as they are. When you
-write the markdown, or the user asks you to change it, keep tables at 5
-columns or fewer (the Tables section of `SKILL.md`), unless the user asks
-for more.
+the tab from markdown you were given, keep their rows and columns as they
+are, and fix only their widths (below). When you write the markdown, or the
+user asks you to change it, keep tables at 5 columns or fewer (the Tables
+section of `SKILL.md`), unless the user asks for more.
 
 The rewrite tool can leave column widths that add up to more than the text
 width. Then the last columns are cut off in the editor.
@@ -25,8 +25,8 @@ up to more than the text width:
    table's section sets its own margins or `flipPageOrientation` (the
    `sectionStyle` of the last section break before the table), use those.
    A pageless tab has `documentStyle.documentFormat.documentMode` set to
-   `PAGELESS`. There, use the total width of a table in a sibling tab, or
-   ask the user.
+   `PAGELESS`. There, use the total width of a table in a sibling tab whose
+   last column is not cut off, or ask the user.
 2. Split the text width across the columns. Give longer text a wider
    column. Round each width down to whole points, and add what is left to
    the widest column. The widths must add up to the text width.
@@ -53,8 +53,9 @@ bold is set.
    read it from that tab's `namedStyles` entry for the paragraph's
    `namedStyleType`. If that entry does not set it, use the `NORMAL_TEXT`
    entry. Do the same for the other tab in step 3.
-3. If `bold` is `true`, open an existing tab in the same doc that uses the
-   same `weightedFontFamily.fontFamily` and has bold text. Compare its
+3. If `bold` is `true`, or step 5 found it set by the named style, open an
+   existing tab in the same doc that uses the same
+   `weightedFontFamily.fontFamily` and has bold text. Compare its
    screenshot with yours. If its bold looks the same, your bold is correct.
    Do not re-apply it, and do not change the font. With no such tab, trust
    the API value.

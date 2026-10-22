@@ -12,7 +12,7 @@ Load this file during the visual verification loop in `SKILL.md`.
 - `docs_unbold_paragraph_range` when `find_and_replace` split bold mid-word
 - Bold that looks plain in a screenshot: check `textRun.textStyle.bold`
   first, and compare with an existing tab in the same font (Rule 2 in
-  [`markdown-tab-rewrite.md`](markdown-tab-rewrite.md)). Re-apply bold only
+  [`markdown-tab-rewrite.md`](markdown-tab-rewrite.md)). Apply bold only
   when the API shows it `false`, or missing and not set by the paragraph's
   named style.
 

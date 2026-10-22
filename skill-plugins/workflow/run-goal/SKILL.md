@@ -202,6 +202,25 @@ continue?". The user set a goal so that they can be away.
   at a time. Six workers without it each ran parallel suites, and a 10-core
   Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
   near 10 to 25. A timing taken without the lock is invalid: take it again.
+- Workflow agents: never send a message to an agent that still runs inside
+  a Workflow. The message starts a second copy of it in the same worktree,
+  and the two copies undo each other (one stashed the other's work). To
+  change a running workflow, edit the shared brief that later agents read
+  first, or stop the workflow.
+- Worker briefs name the files the main session owns. Workers never call
+  `update_plan` and never write the goal contract or retro file: they share
+  the session's paths, and one worker that loaded this skill overwrote the
+  main contract.
+- Merge steps rebase only before the first push. After a push, fix a
+  conflict by merging `origin/main` into the branch. A merge prompt that says
+  "rebase again" leads to a force-push, which the user's rules forbid.
+- Before you build a skill or command for a new request, search open PRs and
+  branches in the skill repos. Another session may build the same thing on
+  the same day: reuse it and drop your copy.
+- A Monitor runs in the sandbox, where `gh` can fail with a TLS error. Run
+  the poller as a background shell outside the sandbox that writes to a log,
+  and let the Monitor follow the log. The poller prints a line for every
+  failure, so silence never hides a dead poller.
 - Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
   main's tree equals A's head and B contains A's head, resolve every conflict
   with B's side, then check that the merged tree equals B's tested tree
@@ -220,7 +239,8 @@ continue?". The user set a goal so that they can be away.
 - A re-issued `/goal` (for example "continue previous goal") resets the
   contract file, and the edit hook blocks every write until it is saved again.
   Re-print the prior contract in chat (same scope, plus a progress line and
-  any criteria added mid-goal), save it, then continue. Do not start a new
+  any criteria added mid-goal), save it, then continue. When workers run,
+  save it before any other step: until then the hook blocks their edits too. Do not start a new
   intake or question round for the same goal.
 - Facts from the web (company processes, API terms, research claims): give
   a research subagent a written file to fill, a rule to open every URL it

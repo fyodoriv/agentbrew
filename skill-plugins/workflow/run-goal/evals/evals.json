@@ -1142,6 +1142,20 @@
         "The mid-goal request becomes a contract criterion, ships as its own PR, and is saved as a durable preference",
         "The final report is an HTML page with only demo data, followed by a next-action question"
       ]
+    },
+    {
+      "id": 100,
+      "prompt": "/goal do the repo checkup, then implement all open issues one by one (later re-issued: implement all unblocked issues and tasks; then: once done, keep watching for new issues and implement them at once, as a command or skill). Ultracode is on, so the agent runs workflows with parallel worktrees and a serialized merge queue while the user adds requests mid-goal.",
+      "expected_output": "The agent fixes the red gate first, then ships each issue as its own PR. When it moves to parallel workflows it first makes the fixed test port configurable, gives each worktree its own port, and serializes merges. Worker briefs forbid update_plan, writing the session's goal contract or retro file, force-push, and rebasing a pushed branch (conflicts after a push are fixed by merging origin/main in). It never messages an agent that runs inside a workflow (that starts a duplicate copy); it changes course by editing the shared brief. On each re-issued /goal it saves the contract before anything else, because the edit hook blocks every worker until then. Before building the watch skill it searches open PRs in the skill repos, finds another session's watch-issues skill, drops its own duplicate, and points the repo command at it. Its watch poller runs outside the sandbox with a Monitor on the log, because gh fails TLS inside a Monitor, and the poller prints failure lines. A real new issue gets picked up and its pickup latency is reported. The run ends with an HTML report and a next-action question.",
+      "expectations": [
+        "Each worktree gets its own e2e port before parallel gates run",
+        "Briefs forbid update_plan, writing the session contract or retro file, force-push, and rebasing a pushed branch",
+        "No SendMessage to an agent that is still running inside a workflow; course changes go through the shared brief",
+        "After a re-issued /goal the contract is saved before any other step",
+        "Open PRs in the skill repos are searched before a new skill is built, and a duplicate is dropped in favor of the existing one",
+        "The watch poller runs outside the sandbox, prints failure lines, and a Monitor follows its log",
+        "A new issue is picked up and its latency (issue created to PR opened) is reported"
+      ]
     }
   ]
 }

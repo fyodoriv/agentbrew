@@ -298,6 +298,20 @@ continue?". The user set a goal so that they can be away.
   A new rule mid-goal also covers what you already did in this run: fix
   your past output too (for example, merge your back-to-back replies into
   one).
+- A mid-goal answer can change a default the run already used (the
+  recommended option of an unanswered question, or an **Assumptions**
+  line). Record the answer in the contract file in place of the default,
+  and fix any done-criterion or metric built on it. In the same pass,
+  update every artifact built on that default: tickets, doc sections,
+  drafts, and code. Park an edit that needs fresh approval, as the
+  fresh-approval bullet below says. Print the goal check line again for
+  each criterion the answer touches, with each updated artifact's link or
+  path as its evidence. For a criterion with a parked edit, print it as
+  `Goal check 2/4 ⏸ <criterion> — parked: <edit>`, then the links of the
+  artifacts already updated. It is not done until the edit lands. One run
+  filed tickets from its defaults, and then a mid-goal
+  answer changed one of those defaults, so the tickets built on it no
+  longer matched the answer.
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -335,8 +349,23 @@ Read the gate's own exit status, not a line that a wrapper printed. In
 `gate; echo "exit $?"` run in the background, the background task reports
 the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
-A count check such as `grep -c` exits 1 when the count is 0, so never chain
-the next step on it with `&&`: a clean leak check then skips the commit.
+A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
+`tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
+its status decides the commit. Run the gate into a log, read `$rc`, and
+commit and push only when it is 0:
+`log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
+When the gate fails, the whole line also exits 1, so a background task reports the failure.
+One run piped a failing suite into `tail`, and its commit and push still ran.
+A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
+the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
+never put it in the gate slot above, and never chain the next step on it
+with `&&`: a clean check then skips the commit, and a check that finds a
+leak lets the commit run. Stage first. Then count matches in the staged
+diff, and commit only when the count is exactly 0:
+`git add …; n=; d="${TMPDIR:-/tmp}/staged.diff"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+Plain `git diff` skips staged and new files. Commit only what is staged: no `-a`, no paths after `git commit`.
+A failed `git diff` leaves the count empty, so the commit does not run. An empty count means the check
+did not finish (an unset pattern, a grep error, or a diff grep skipped as binary): find the cause first.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.
@@ -379,6 +408,16 @@ saved under the wrong key, a CLI crash in sandboxed shells, and a fixture that
 missed one path, so a test failed only on the owner's machine. Send each
 finding back to the agent that wrote the code (it keeps its context), then
 review the fix again.
+
+When you resume a worker with `SendMessage` for a fix round, repeat the rule
+in that message: "fresh-context review of the diff before merge". A resumed
+worker can miss a rule that only its first brief named. In one run, workers
+resumed for fix rounds merged without that review. Later reviews found 9
+more defects in one fix PR, including a high-severity data loss, and 6 more
+in another. Another unreviewed PR had a high-severity trust bypass. Before
+you count a fix as done, read the review's output yourself, not only the
+worker's report. If no review ran, run one now. If the PR already merged,
+review the merged diff and send each finding back as a new fix round.
 
 ## Phase 6 — Retro and skill upkeep
 

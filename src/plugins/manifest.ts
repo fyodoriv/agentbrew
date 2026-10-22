@@ -40,9 +40,20 @@ export function validateManifest(value: unknown): ManifestResult {
 
 /** Read and validate the manifest in a plugin checkout. Throws with every schema error. */
 export function readManifest(dir: string): PluginManifest {
+  let text: string;
+  try {
+    text = readFileSync(join(dir, MANIFEST_FILE), "utf-8");
+  } catch (e) {
+    throw new Error(`Cannot read plugin manifest ${MANIFEST_FILE}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  return parseManifest(text);
+}
+
+/** Parse and validate manifest text. Throws with every schema error. */
+export function parseManifest(text: string): PluginManifest {
   let parsed: unknown;
   try {
-    parsed = yaml.load(readFileSync(join(dir, MANIFEST_FILE), "utf-8"));
+    parsed = yaml.load(text);
   } catch (e) {
     throw new Error(`Cannot read plugin manifest ${MANIFEST_FILE}: ${e instanceof Error ? e.message : String(e)}`);
   }

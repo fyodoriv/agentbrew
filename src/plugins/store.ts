@@ -5,9 +5,9 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
-import { capabilitiesHash, type PluginManifest, readManifest } from "./manifest.js";
+import { capabilitiesHash, MANIFEST_FILE, type PluginManifest, parseManifest, readManifest } from "./manifest.js";
 import { assertMcpServers } from "./mcp-launcher.js";
-import { normalizeKey, signersFor, trustSigner, verifySignedTag } from "./signers.js";
+import { assertTagName, normalizeKey, signersFor, tagObject, trustSigner, verifySignedTag } from "./signers.js";
 
 /** Root of installed plugin checkouts: `~/.local/share/agentbrew/plugins/<name>`. */
 export function pluginsRoot(): string {
@@ -55,25 +55,77 @@ export interface Staged {
   entry: PluginLockEntry;
 }
 
-/** Clone `url@ref` to a staging dir, validate the manifest, verify the signed tag. Runs no plugin code. */
+/**
+ * Fetch exactly `refs/tags/<ref>` from `url` to a staging dir, verify that
+ * tag object's signature, then check out its commit by ID and validate the
+ * manifest. A branch with the tag's name never wins, and a name that git
+ * could read as an object ID is refused. Nothing is checked out before the
+ * signature passes. Runs no plugin code.
+ */
 export function stage(url: string, ref: string, extraSigner?: string): Staged {
+  assertTagName(ref);
   mkdirSync(pluginsRoot(), { recursive: true });
   const dir = join(pluginsRoot(), `.staging-${process.pid}-${Date.now()}`);
   try {
-    git(pluginsRoot(), "clone", "--quiet", "--depth", "1", "--branch", ref, url, dir);
-    const manifest = readManifest(dir);
-    assertCapabilities(dir, manifest);
-    assertMcpServers(dir, manifest);
+    const tagRef = `refs/tags/${ref}`;
+    // ls-remote matches name tails, so keep only the exact ref. Its object ID
+    // length tells the staging repo's format (SHA-1 or SHA-256).
+    const listed = git(pluginsRoot(), "ls-remote", "--end-of-options", url, tagRef)
+      .split("\n")
+      .map((line) => line.split("\t"))
+      .find(([, name]) => name === tagRef)?.[0];
+    if (!listed) throw new Error(`"${ref}" is not a tag in ${url}.`);
+    // GIT_DEFAULT_HASH, not --object-format, so git before 2.29 still inits SHA-1.
+    execFileSync("git", ["init", "--quiet", dir], {
+      cwd: pluginsRoot(),
+      stdio: "pipe",
+      timeout: 120_000,
+      env: { ...process.env, GIT_DEFAULT_HASH: listed.length === 64 ? "sha256" : "sha1" },
+    });
+    // Run from pluginsRoot, like ls-remote, so a relative source resolves the same way.
+    const gitDir = join(dir, ".git");
+    git(
+      pluginsRoot(),
+      "--git-dir",
+      gitDir,
+      "fetch",
+      "--quiet",
+      "--no-tags",
+      "--depth",
+      "1",
+      "--end-of-options",
+      url,
+      `${tagRef}:${tagRef}`,
+    );
+    const tag = tagObject(dir, ref);
+    if (tag !== listed) throw new Error(`Tag "${ref}" changed on ${url} while it was fetched. Try again.`);
+    const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
+    let text: string;
+    try {
+      text = git(dir, "cat-file", "blob", `${commit}:${MANIFEST_FILE}`);
+    } catch {
+      throw new Error(`Cannot read plugin manifest ${MANIFEST_FILE} at "${ref}".`);
+    }
+    const manifest = parseManifest(text);
     const keys = [...signersFor(manifest.name)];
     if (extraSigner && !keys.includes(extraSigner)) keys.push(extraSigner);
-    const signer = verifySignedTag(dir, ref, manifest.name, keys);
+    const signer = verifySignedTag(dir, ref, tag, manifest.name, keys);
+    git(dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", commit);
+    if (git(dir, "rev-parse", "HEAD") !== commit) {
+      throw new Error(`The checkout of "${ref}" is not the commit of its signed tag.`);
+    }
+    if (JSON.stringify(readManifest(dir)) !== JSON.stringify(manifest)) {
+      throw new Error(`The checkout of "${ref}" does not match its signed manifest.`);
+    }
+    assertCapabilities(dir, manifest);
+    assertMcpServers(dir, manifest);
     const entry: PluginLockEntry = {
       name: manifest.name,
       version: manifest.version,
       source: url,
       ref,
-      commit: git(dir, "rev-parse", "HEAD"),
-      tree: git(dir, "rev-parse", "HEAD^{tree}"),
+      commit,
+      tree: git(dir, "rev-parse", `${commit}^{tree}`),
       capabilitiesHash: capabilitiesHash(manifest.capabilities),
       signer,
       artifacts: [],

@@ -182,6 +182,20 @@
         "Sets the column widths of both new tables with updateTableColumnProperties so that each total matches the other tables in the tab",
         "Runs a structured read and the every-page screenshot sweep before it says the tab is ready"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "Rewrite the new 'Weekly status' tab of our team doc from this markdown with the replace-tab-with-markdown tool. The tab has no human content and no comments. The markdown has a 6-column table and **bold** labels. The doc has two older tabs in the same body font. After the write, the screenshot shows the last two table columns cut off, and the bold labels look like plain text.",
+      "expected_output": "The agent treats the rewrite as the allowed full-replace case. It sets fixed widths on all six columns, with one updateTableColumnProperties request per column, so that they add up to the text width (the page width minus the left and right margins). It checks bold through the API (textRun.textStyle.bold), not the screenshot, and compares the screenshot with an existing tab in the same doc and font. When the API shows bold: true and the older tab looks the same, it does not re-apply bold or change the font. It re-checks the tab with the every-page screenshot sweep.",
+      "expectations": [
+        "Keeps all six columns; does not split the table or drop columns from the markdown",
+        "Sends one updateTableColumnProperties request per column (columnIndices: [i]) with FIXED_WIDTH after the rewrite",
+        "Makes the six widths add up to the text width: the page width minus the left and right margins",
+        "Checks the labels' bold through textRun.textStyle.bold from the API, not from the screenshot or the markdown export",
+        "When the API shows bold: true, compares the screenshot with an existing tab in the same doc and font before it calls the bold a defect",
+        "Does not re-apply bold or change the font when the API already shows bold: true",
+        "Re-checks the tab in the browser with the every-page screenshot sweep after the widths change"
+      ]
     }
   ]
 }

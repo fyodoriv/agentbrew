@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Install node_modules in a fresh agentbrew worktree, fast.
+# Install node_modules in an agentbrew checkout or worktree, fast.
 #
-# When the worktree's package-lock.json matches the main checkout's, clone the
-# main checkout's node_modules with an APFS copy-on-write clone. One
-# clonefile(2) call on the directory clones the whole tree in the kernel, in
-# about 1 s; `cp -cR` clones file by file and takes about 15 s, so it is only
-# the fallback. The clone is a real copy, so tests see a normal tree; a
-# symlinked node_modules breaks src/cli.test.ts. Otherwise run `npm ci`.
+# 1. When package-lock.json has not changed since the last install by this
+#    script, keep node_modules and exit. node_modules/.worktree-deps-lock.json
+#    holds the lockfile of that install.
+# 2. In a worktree whose package-lock.json matches the main checkout's, clone
+#    the main checkout's node_modules with an APFS copy-on-write clone. One
+#    clonefile(2) call on the directory clones the whole tree in the kernel, in
+#    about 1 s; `cp -cR` clones file by file and takes about 15 s, so it is
+#    only the fallback. The clone is a real copy, so tests see a normal tree; a
+#    symlinked node_modules breaks src/cli.test.ts.
+# 3. Otherwise run `npm ci --prefer-offline --no-audit --no-fund`.
 #
-# After a clone, node_modules/.worktree-deps-lock.json holds the lockfile it
-# matches. A re-run with the same lockfile keeps node_modules and exits.
-#
-# Usage: run from the worktree root.
+# Usage: run from the checkout or worktree root.
 #   bash scripts/worktree-deps.sh [main-checkout]
 # The main checkout defaults to the first entry of `git worktree list`.
 # WORKTREE_DEPS_NPM overrides the npm binary (tests use a stub).
@@ -31,7 +32,10 @@ fi
 
 npm_ci() {
   echo "worktree-deps: $1; running npm ci"
-  "$npm_bin" ci
+  "$npm_bin" ci --prefer-offline --no-audit --no-fund
+  if [[ -d "$target/node_modules" ]]; then
+    cp "$target/package-lock.json" "$stamp"
+  fi
 }
 
 # Clone directory $1 to the new path $2 with one clonefile(2) call (macOS only).
@@ -45,6 +49,10 @@ if [[ ! -f "$target/package-lock.json" ]]; then
   echo "worktree-deps: no package-lock.json in $target" >&2
   exit 1
 fi
+if [[ -d "$target/node_modules" ]] && cmp -s "$target/package-lock.json" "$stamp"; then
+  echo "worktree-deps: node_modules already matches package-lock.json; nothing to do"
+  exit 0
+fi
 if [[ "$(cd "$main" && pwd -P)" == "$(pwd -P)" ]]; then
   npm_ci "this is the main checkout"
   exit 0
@@ -55,10 +63,6 @@ if [[ ! -d "$main/node_modules" ]]; then
 fi
 if ! cmp -s "$target/package-lock.json" "$main/package-lock.json"; then
   npm_ci "package-lock.json differs from the main checkout"
-  exit 0
-fi
-if [[ -d "$target/node_modules" ]] && cmp -s "$target/package-lock.json" "$stamp"; then
-  echo "worktree-deps: node_modules already matches package-lock.json; nothing to do"
   exit 0
 fi
 

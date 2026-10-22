@@ -17,7 +17,7 @@ Run every command from the repo root.
 
 | Task | Command |
 |---|---|
-| Install | `npm ci` |
+| Install | `bash scripts/worktree-deps.sh` |
 | Run the CLI from source | `npm run dev -- <command>` |
 | One test file | `npx vitest run src/path/file.test.ts` |
 | Tests for changed files | `npm test` (git-aware) |
@@ -83,7 +83,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 ## Gotchas
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
-- Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it). Deps: `bash scripts/worktree-deps.sh`.
+- Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under load; re-run it before you blame your change.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.

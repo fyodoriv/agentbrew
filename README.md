@@ -714,7 +714,8 @@ AgentBrew has two config files:
 ## Development
 
 ```bash
-npm ci && npm run dev -- status        # clean bootstrap from the committed lockfile
+bash scripts/worktree-deps.sh          # install deps; no-op when package-lock.json is unchanged
+npm run dev -- status                  # run the CLI from source
 npm test                               # affected Vitest tests (git-aware)
 npm run test:all                       # full Vitest suite
 npm run typecheck && npm run lint      # tsc + biome + lint guards

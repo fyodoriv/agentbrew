@@ -175,6 +175,23 @@ describe("typed accessors", () => {
 });
 
 describe("migrateState", () => {
+  it("drops agents whose support was removed, so status stops checking them", () => {
+    const state = makeState({
+      agents: [
+        { name: "claude-code", detected: true, skillsDir: "~/.claude/skills" },
+        { name: "windsurf", detected: true, skillsDir: "~/.codeium/windsurf/skills" },
+        { name: "devin", detected: true, skillsDir: "~/.devin/skills" },
+      ],
+    });
+    expect(migrateState(state).agents.map((a) => a.name)).toEqual(["claude-code"]);
+  });
+
+  it("drops removed agents from v0 state too", () => {
+    const old = makeState({ agents: [{ name: "windsurf", detected: true, skillsDir: "~/.windsurf/skills" }] });
+    delete (old as unknown as Record<string, unknown>).schemaVersion;
+    expect(migrateState(old).agents).toEqual([]);
+  });
+
   it("adds schemaVersion to v0 state", () => {
     const old = makeState({ schemaVersion: undefined });
     delete (old as unknown as Record<string, unknown>).schemaVersion;

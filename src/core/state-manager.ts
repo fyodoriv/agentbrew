@@ -109,12 +109,20 @@ function validateCachedSkillSourceDirs(
   }
 }
 
+/**
+ * Agents whose support was removed (Windsurf and Devin: #25, 2026-10-08). A state.yaml written
+ * before the removal still lists them, and status then reports drift for agents agentbrew no
+ * longer syncs. Delete an entry here only when no older state.yaml can still name it.
+ */
+const REMOVED_AGENTS = new Set(["windsurf", "devin"]);
+
 export function migrateState(state: AgentBrewState): AgentBrewState {
   const version = state.schemaVersion ?? 0;
 
   if (version >= CURRENT_SCHEMA_VERSION) {
     normalizeSources(state);
     normalizeMcpServers(state);
+    dropRemovedAgents(state);
     return state;
   }
 
@@ -123,8 +131,13 @@ export function migrateState(state: AgentBrewState): AgentBrewState {
   migrated.schemaVersion = CURRENT_SCHEMA_VERSION;
   normalizeSources(migrated);
   normalizeMcpServers(migrated);
+  dropRemovedAgents(migrated);
 
   return migrated;
+}
+
+function dropRemovedAgents(state: AgentBrewState): void {
+  if (Array.isArray(state.agents)) state.agents = state.agents.filter((agent) => !REMOVED_AGENTS.has(agent.name));
 }
 
 /** Ensures every source has valid arrays for skillsInstalled and availableItems.

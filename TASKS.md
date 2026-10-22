@@ -297,6 +297,19 @@
 
 ## P3
 
+- [ ] Propose a first-run check for the built-in /loop skill
+  - **ID**: propose-loop-skill-first-run-dedupe
+  - **Tags**: retro, third-party-skill, loop, watch-issues
+  - **Details**: Retro of the 2026-10-22 tooling goal. The built-in Claude Code `/loop` skill (third party, not editable here) says "run the parsed prompt now" in dynamic mode. When `/loop /watch-issues` starts right after the agent already ran a watch pass this turn, that re-runs the same pass and can dispatch duplicate workers. The run skipped the re-run by judgment. Proposed upstream change (feedback to Anthropic): in dynamic mode, skip the immediate run when the same prompt already ran earlier in this turn, and say so in the confirmation. Until then, `watch-issues` SKILL.md can note it.
+  - **Files**: none in this repo (upstream feedback); optional one line in `skill-plugins/workflow/watch-issues/SKILL.md`
+  - **Output**: docs
+  - **Acceptance**: the feedback is sent through the Claude Code feedback channel by the owner, or watch-issues documents the workaround.
+  - **Hypothesis**: a first-run check removes duplicate passes when /loop starts right after a manual pass: duplicates 1 per loop start to 0.
+  - **Measurement**: watch pass log (pass start times) on the next 3 loop starts.
+  - **Success**: 0 duplicate passes in 3 starts.
+  - **Pivot**: duplicates never happen in practice -> close as not needed.
+  - **Anchor**: tooling goal retro 2026-10-22; run-goal Phase 6 (third-party skills get a task with the proposed change).
+
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
   - **Tags**: skills, design, third-party

@@ -1,0 +1,51 @@
+{
+  "skill_name": "review-pr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/review-pr 42 in example-org/shop (the diff changes `if (discount)` to `if (discount != null)` so a zero discount is kept; one reviewer subagent flags a missing null check that the code already handles two lines above)",
+      "expected_output": "The agent starts a new run folder, reviews the diff with the correctness checklist through a fresh subagent, merges the findings, and runs the verify pass at the PR head. The null-check finding has no failure scenario at the head, so it is disproven and dropped. The agent shows report.md with the kept and dropped counts and asks before it posts. It does not approve the PR.",
+      "expectations": [
+        "Starts the run with `review-run.mjs new --repo example-org/shop --pr 42 --head <sha>` and passes `REVIEW_DIR=<path>` on every later script call",
+        "Writes each reviewer's findings as a JSON array under the run folder's findings/ before it runs merge",
+        "Writes a concrete failure scenario at the PR head for each critical or important finding, and marks the null-check finding disproven so the report drops it",
+        "Shows the draft and the dropped count, then asks before posting; does not run `gh pr review --approve`"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/review-pr https://github.com/example-org/shop/pull/42 again (the author pushed two commits since your last review; that review's run folder still exists; of your three earlier threads, one is fixed, one is still true, and one points at a function the new commits deleted)",
+      "expected_output": "The agent starts a second run folder for the new head and does not copy findings from the earlier one. It lists the earlier review threads with gh, checks each at the new head, and marks them resolved, open, and superseded in threads.json with a note. The open thread is cited, not filed again as a new finding. The draft goes to the user before anything is posted.",
+      "expectations": [
+        "Starts a new run folder for the new head instead of reusing or copying from the earlier run folder",
+        "Lists the earlier review threads with gh before it reviews the new commits",
+        "Marks the three threads resolved, open, and superseded, each with a note from the code at the new head",
+        "Points at the open thread instead of adding it again as a new finding",
+        "Posts nothing until the user approves the draft"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "review PR 7 in example-org/api and tell me why it is red (the first `gh pr view --json mergeable` says UNKNOWN; two checks fail: a unit test in a file the PR changed, and a lint rule that the base branch fixed yesterday)",
+      "expected_output": "The agent asks GitHub for the mergeable state again after a short wait instead of reporting UNKNOWN as clean. It reads each failing check's log before it classifies it. The unit test is pr-caused, with the failing line as evidence; the lint failure is stale-branch, with the base-branch fix as evidence, and the advice is to merge the base into the PR. The classes go into ci.json in the run folder and appear in the draft.",
+      "expectations": [
+        "Queries the mergeable state again before reporting it, and never reports UNKNOWN as clean",
+        "Reads the log of each failing check before classifying it",
+        "Classifies the unit test as pr-caused and the lint failure as stale-branch, each with evidence",
+        "Suggests merging the base branch into the PR for the stale-branch failure",
+        "Writes the classes to ci.json in the run folder"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "review PR 88 in example-org/web (an org overlay listed its folder ~/org-review/checklists, with architecture.md and security.md, in ~/.config/review-pr/checklists; the repo also has .agents/review-checklists/react.md)",
+      "expected_output": "The agent runs `review-run.mjs new` with `--repo-dir` pointing at a clone on the base branch (not the PR head) and gets four checklists: the core correctness one, the overlay's architecture and security ones, and the repo's react one. It reviews the diff once per checklist and writes one findings file per checklist, with the checklist name as each finding's dimension. It does not edit the review-pr skill to add the team checklists, and it asks before it posts.",
+      "expectations": [
+        "Passes --repo-dir pointing at a base-branch clone, not the PR head, and uses the four checklists the script prints: correctness, architecture, security, and react",
+        "Does not edit any review-pr skill file to add the team or repo checklists",
+        "Writes one findings file per checklist, and each finding's dimension names its checklist",
+        "Asks the user before it posts the review"
+      ]
+    }
+  ]
+}

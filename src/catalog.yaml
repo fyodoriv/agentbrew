@@ -553,6 +553,12 @@ skills:
     category: workflow
     recommended: false
 
+  - name: review-pr
+    description: "Review a GitHub PR: a fresh run folder per review, a correctness pass plus team checklists, a verify pass that drops unproven findings, re-review, CI triage, and a draft posted only on the user's yes. Don't use for your own work before merge (use requesting-code-review)."
+    source: fyodoriv/agentbrew
+    category: review
+    recommended: false
+
   - name: grind-report
     description: "Analyze taskgrind marathon logs, score each repo, find root causes, and file tasks. Don't use for live debugging of a running grind."
     source: fyodoriv/agentbrew

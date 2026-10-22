@@ -15,13 +15,17 @@ Then, answer first:
    - `agentbrew auto-sync install`: starts the background drift-repair job. If the user does not want it, run `agentbrew config set autoRepair off`, and nothing proposes it again.
    - `agentbrew fix`: reinstalls the drift-repair job when it points at an old path.
    - `agentbrew memory fix`: reinstalls the memory background service.
-   - `agentbrew setup`: asks for MCP API keys. The user must run it in their own terminal (hidden prompts).
+   - `agentbrew setup`: asks for MCP API keys. The user must run it in their own terminal (interactive prompts).
    - `agentbrew mcp probe --deep`: installs and calls each MCP server to find the failing one.
    - A `launchctl` command: give it to the user to run in their own terminal.
    - Any other fix (for drift that sync cannot repair): it is the fix `agentbrew status --ci` names for that drift. Explain it the same way.
 
 To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`.
 
-Every other command: `agentbrew --help`.
+Every other action: run `agentbrew actions --json`. It lists every command (generated from the CLI), its arguments, and three notes:
+
+- `terminal_only`: only the user can run it. Give them the exact command for their own terminal.
+- `confirm`: it is hard to undo. Say what it changes, and run it only after the user says yes.
+- `agent_note`: what you must do differently, for example a `--dry-run` to show first.
 
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.

@@ -15,7 +15,7 @@ That's it. On first run, agentbrew auto-detects your agents, installs recommende
 
 If you prefer not to install globally: `npx agentbrew` works the same way.
 
-Every later run of `agentbrew` (or `/agentbrew` in an agent) prints the state, what needs you, and a `Next:` line with the exact command. It changes nothing. `agentbrew config set <key> <value>` changes a setting.
+Every later run of `agentbrew` (or `/agentbrew` in an agent) prints the state, what needs you, and a `Next:` line with the exact command. It changes nothing. `agentbrew config set <key> <value>` changes a setting. An agent finds every other command with `agentbrew actions --json`, including which ones the user must run in their own terminal and which need a yes first.
 
 ## What happens
 

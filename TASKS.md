@@ -171,15 +171,6 @@
 
 ## P2
 
-- [ ] Every agentbrew action runs through the CLI, agents, and the UI, with tests
-  - **ID**: action-parity
-  - **Details**: Follow the shared rule "Every action through CLI, agent, and UI, with tests" (reference: careerbrew `src/careerbrew/actions.py`, `careerbrew actions --json`, the Actions view, `tests/unit/test_action_parity.py`). Generate the action list from the CLI parser; expose `agentbrew actions --json` for agents and point `/agentbrew` at it; give the UI a generated form per action (terminal-only actions show their reason and command; hard-to-undo ones ask to confirm); add a parity test. If agentbrew has no UI, the parity test covers CLI and agents and says so.
-  - **Hypothesis**: one generated action list keeps the CLI, agents, and UI in step, so no action is reachable from only one of them.
-  - **Measurement**: the parity test's count of CLI commands missing an agent or UI path (or a written reason).
-  - **Success**: 0 missing, enforced in the repo's gate.
-  - **Pivot**: if generating from the parser is not possible in this stack, keep one registry file that both the CLI and the UI read, never two lists.
-  - **Anchor**: Hunt & Thomas 1999, The Pragmatic Programmer, "DRY: every piece of knowledge must have a single representation".
-
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.

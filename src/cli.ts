@@ -23,6 +23,7 @@ import {
   getHelpExamples,
   shouldInstallAgentfileItems,
 } from "./cli-helpers.js";
+import { registerActionsCommand } from "./commands/cli-actions.js";
 import { registerBootstrapCommand } from "./commands/cli-bootstrap.js";
 import { registerCatalogCommands } from "./commands/cli-catalog.js";
 import { registerClassifyCommand } from "./commands/cli-classify.js";
@@ -103,6 +104,7 @@ export const HELP_COMMAND_GROUPS: ReadonlyArray<{ title: string; names: readonly
       "memory",
       "classify",
       "bootstrap",
+      "actions",
     ],
   },
 ];
@@ -423,6 +425,7 @@ export function buildProgram(): Command {
   registerSyncCommand(program);
   registerCoreCommands(program);
   registerConfigCommand(program);
+  registerActionsCommand(program);
   registerMcpCommands(program, autoSync);
   registerMemoryCommands(program);
   registerCatalogCommands(program);

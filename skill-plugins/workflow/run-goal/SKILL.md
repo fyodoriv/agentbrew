@@ -303,10 +303,11 @@ continue?". The user set a goal so that they can be away.
   line). Record the answer in the contract file in place of the default,
   and fix any done-criterion or metric built on it. In the same pass,
   update every artifact built on that default: tickets, doc sections,
-  drafts, and code. Print the goal check line again for each criterion it
-  touches, and list each updated artifact with its link or path. One run
-  filed tickets from its defaults, and then a mid-goal answer changed one
-  of those defaults.
+  drafts, and code. Print the goal check line again for each criterion the
+  answer touches, with each updated artifact's link or path as its
+  evidence. One run filed tickets from its defaults, and then a mid-goal
+  answer changed one of those defaults, so the tickets built on it no
+  longer matched the answer.
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -345,11 +346,12 @@ Read the gate's own exit status, not a line that a wrapper printed. In
 the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
 (`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
 A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
-`tail`. Never put `| tail`, or any other pipe, between a gate and the
-commit. Run the gate into a log under `$TMPDIR`, read `rc`, and commit and
-push only when `$rc` is 0:
-`gate > "$TMPDIR/gate-<name>.log" 2>&1; rc=$?; tail -20 "$TMPDIR/gate-<name>.log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
-When the gate fails, the line's own exit status is not 0 either.
+`tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
+its status decides the commit. Run the gate into a log, read `rc`, and
+commit and push only when `$rc` is 0:
+`log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
+When the gate fails, the whole line also exits 1, so a background task
+reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
 A count check such as `grep -c` exits 1 when the count is 0, so never chain
 the next step on it with `&&`: a clean leak check then skips the commit.
@@ -403,7 +405,8 @@ resumed for fix rounds merged without that review. Later reviews found 9
 more defects in one fix PR, including a high-severity data loss, and 6 more
 in another. Another unreviewed PR had a high-severity trust bypass. Before
 you count a fix as done, read the review's output yourself, not only the
-worker's report. If no review ran, run one before merge.
+worker's report. If no review ran, run one now. If the PR already merged,
+review the merged diff and send each finding back as a new fix round.
 
 ## Phase 6 — Retro and skill upkeep
 

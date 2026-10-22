@@ -1297,12 +1297,12 @@
     {
       "id": 113,
       "prompt": "/goal ship four open issues with parallel workers. Each worker's first brief says: fresh-context review of the diff before merge. Worker A's PR merged, and a later review found five defects in it. You now resume worker A with SendMessage to fix them in a new PR.",
-      "expected_output": "From the 2026-10-22 orchestrator retro: resumed workers merged fix PRs without a pre-merge review, and later reviews found 9 more defects in one of them and 6 more in another. The SendMessage to worker A repeats the rule 'fresh-context review of the diff before merge' for the fix PR, not only the defect list. The fix PR gets a fresh-context diff review before it merges. Before the agent counts the fix as done, it reads that review's output itself, not only the worker's report, and when no review ran, it runs one before merge.",
+      "expected_output": "From the 2026-10-22 orchestrator retro: resumed workers merged fix PRs without a pre-merge review, and later reviews found 9 more defects in one of them and 6 more in another. The SendMessage to worker A repeats the rule 'fresh-context review of the diff before merge' for the fix PR, not only the defect list. The fix PR gets a fresh-context diff review before it merges. Before the agent counts the fix as done, it reads that review's output itself, not only the worker's report. When no review ran, it runs one; when the PR already merged, it reviews the merged diff and sends the findings back as a new fix round.",
       "expectations": [
         "The SendMessage to worker A repeats the rule 'fresh-context review of the diff before merge' for the fix PR, not only the defect list",
-        "The fix PR gets a fresh-context diff review before it merges, also when its suite is green",
+        "The fix PR gets its own fresh-context review before merge; the review of worker A's first PR does not count for it",
         "Before it counts the fix as done, the agent reads the fix review's output itself, not only the worker's report",
-        "When no review of the fix PR ran, the agent does not count the fix as done and runs the review before merge"
+        "When no review of the fix PR ran, the agent does not count the fix as done; it runs the review, and if the PR already merged, it reviews the merged diff and sends the findings back as a new fix round"
       ]
     }
   ]

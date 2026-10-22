@@ -47,6 +47,9 @@ or the user's words in this session).
      to review and merge (the pass skips drafts). If it is unclear, add a task to the repo's queue
      that names the question. Never comment on, label, or close an issue
      without the user's yes.
+   - Before you start any `task` or `issue`, look for your open PR for it
+     (`gh pr list -R <owner/repo> --author @me --state open --search "<task-id or #N>"`).
+     If one exists, continue that PR instead of starting a second one.
    - `task`: check git history for its ID first. A task that already shipped
      gets its block closed with the evidence.
    - `pr ... red|conflicting`: read the failing log, fix it, push. For a
@@ -65,8 +68,9 @@ or the user's words in this session).
    that needs a person, or an unclear issue you turned into a task, file (or
    keep) a task whose `Blocked` line names the issue or PR, then mark the issue
    or PR key done (step 5), so it stops taking a slot.
-5. **Mark each handled item** right after it merges, its draft PR is open, or
-   (for an issue or PR) it is parked in a task:
+5. **Mark each handled item** as soon as its PR is open (merged or not), or
+   (for an issue or PR) it is parked in a task. A PR that breaks later comes
+   back on its own as a `pr` item:
    `bash <skill-dir>/scripts/watch-pass.sh --done "<kind> <key>"` with the
    line's middle column, for example `--done "issue fyodoriv/dotfiles#244"`.
    Do not mark a parked task: its `Blocked` line already hides it, and it comes

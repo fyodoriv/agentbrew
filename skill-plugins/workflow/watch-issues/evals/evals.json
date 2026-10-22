@@ -62,6 +62,16 @@
         "Uses the line's middle column as the --done argument",
         "Does not mark a parked task with --done"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "/watch-issues (the pass lists new\ttask agentbrew/add-json-flag\tAdd a --json flag; your green PR #390 for add-json-flag is open, waiting on review)",
+      "expected_output": "The agent finds its open PR #390 for the task before starting, continues it (merges when green and allowed) instead of building a second copy, and marks the task done.",
+      "expectations": [
+        "Searches its open PRs for the task ID before starting work",
+        "Does not open a second PR for the same task",
+        "Marks the task done with --done once the PR is open or merged"
+      ]
     }
   ]
 }

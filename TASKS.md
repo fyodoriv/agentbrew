@@ -324,18 +324,18 @@
   - **Pivot**: if upstream declines, keep it in ui-ux-rankings only and close this task.
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
 
-- [ ] Make verify:changed run only the matching tests for task-queue and eval-only diffs
-  - **ID**: verify-changed-docs-only-fast
-  - **Tags**: perf, gate, retro
-  - **Details**: A run-goal retro PR (2026-10-22) changed only `TASKS.md` and `skill-plugins/workflow/run-goal/evals/evals.json`. `npm run verify:changed` still ran all 1365 vitest tests (131 s) before it printed "merge-ready … no full gate is needed". Every goal retro ships one such PR. When the diff touches only task-queue, eval, or docs paths, run only the tests that read those files (the TASKS.md schema tests and the eval-file tests).
-  - **Files**: `scripts/verify-changed.*`, `docs/agent-perf.md`
+- [ ] Run the template-rule readers when a `templates/rules/` diff is merge-ready
+  - **ID**: verify-changed-template-rule-readers
+  - **Tags**: perf, gate
+  - **Details**: The 2026-10-22 read probe of the full suite showed that `src/agent-bloat-lint.test.ts`, `src/sync/helper-scripts.test.ts`, `src/sync/catalog-template-rules.test.ts`, `src/integration.test.ts`, and `src/integration-essential-core.test.ts` read `templates/rules/*.mdc`. `verify:changed` calls such a diff merge-ready but runs none of them, so a broken rule template can reach `main`.
+  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`
   - **Output**: code
-  - **Acceptance**: a diff that only changes `TASKS.md` and one `evals.json` finishes `verify:changed` in under 30 s, and still fails on an invalid `**Output**:` value.
-  - **Hypothesis**: retro PR gate time drops from about 131 s to under 30 s, with no missed schema failure.
-  - **Measurement**: `time npm run -s verify:changed` on a branch that only edits `TASKS.md` and one `evals.json`.
-  - **Success**: under 30 s, and an invalid Output value still fails.
-  - **Pivot**: if the tests that read those files cannot be mapped reliably, keep the full run and close this task.
-  - **Anchor**: perf-task-review hook, session 5a0bcbe8 (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
+  - **Acceptance**: a diff that only changes one `templates/rules/*.mdc` file runs those tests in `verify:changed`.
+  - **Hypothesis**: rule-template breaks caught before merge go from 0 of the readers to all of them, for about 30 s more gate time on such diffs.
+  - **Measurement**: `npm run verify:changed -- --dry-run` on a branch that only edits one `templates/rules/*.mdc` file lists every reader above.
+  - **Success**: every reader above is listed, and the run takes under 60 s.
+  - **Pivot**: if the integration tests make the run take over 2 min, send `templates/rules/` diffs to the full gate instead.
+  - **Anchor**: read probe in the verify-changed-docs-only-fast PR (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
 
 - [ ] Propose an artifact-design note for goal reports with before/after screenshots
   - **ID**: artifact-design-goal-report-shots

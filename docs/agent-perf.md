@@ -300,6 +300,31 @@ lists, so add `session-report` (and `perf-review`) to its `skills:`.
 `statusline` keeps a small per-session cache under `perf/.cache/`. Each
 refresh reads only the bytes appended since the last refresh.
 
+## Fast gate test selection
+
+When a diff touches only skills, hooks, docs, rule templates, or the task
+queue, `npm run verify:changed` (`scripts/verify-changed.sh`) runs only the
+tests that read the changed files:
+
+- `src/docs` and `src/oss` always run. They scan the docs and hold the
+  `TASKS.md` schema tests, so an invalid `**Output**:` value still fails.
+- A test runs when it names a changed file at the end of a quoted path
+  (`"guide.md"`) or a changed skill as a quoted path part (`"run-goal"`). A
+  name in a comment does not count.
+- For `TASKS.md` and `RECURRING.md`, the name counts only on a line with a
+  root path (`join(repoRoot, "TASKS.md")`). Many tests write a fixture
+  `TASKS.md` in a scratch repo.
+- A skill change runs the `src/skills` tests and the tests that read every
+  skill through code. A `src/skills` test that pins one skill
+  (`join(…, "skill-plugins", "<plugin>", "<skill>")`) runs only when that
+  skill changes.
+
+`npm run verify:changed -- --dry-run` prints the test list and the verdict.
+A full-suite read probe (2026-10-22) checked the rules: every test that reads
+`TASKS.md` or an `evals.json` is in the list. On a retro diff (`TASKS.md` and
+one `evals.json`), the run no longer includes the slow contract tests of other
+skills or the sync tests that only use a fixture `TASKS.md`.
+
 ## Why not OpenTelemetry
 
 Claude Code can export OpenTelemetry events with `tool_result.duration_ms`

@@ -11,8 +11,8 @@
 #   code path changed.
 #
 # Usage: bash scripts/verify-changed.sh [base-ref] [--dry-run]
-#   base-ref defaults to origin/main. --dry-run prints the verdict and exits
-#   without running any check.
+#   base-ref defaults to origin/main. --dry-run prints the tests it would run
+#   and the verdict, and exits without running any check.
 #
 # <!-- scope: human-approved task verify-changed-fast-gate (filed in #132); this file closes it -->
 set -euo pipefail
@@ -63,7 +63,75 @@ verdict() {
   fi
 }
 
+has() { grep -qE "$1" <<<"$changed"; }
+
+# The tests that read the changed files:
+# - src/docs and src/oss always run. They scan the docs and the task queue,
+#   and they hold the TASKS.md schema tests (an invalid **Output** fails).
+# - A test runs when it names a changed file as the end of a quoted path
+#   ("TASKS.md") or a changed skill as a quoted path part ("run-goal",
+#   "/run-goal/"). A bare name in a comment ("See TASKS.md `id`") does not
+#   count: it pulled in sync tests that never read the repo file.
+# - Many tests write a fixture TASKS.md in a scratch repo. So for TASKS.md and
+#   RECURRING.md, the name counts only on a line with a root path
+#   (join(repoRoot, "TASKS.md"), process.cwd(), import.meta.dirname).
+# - A skill change runs the src/skills tests, except a test that pins only
+#   other skills (join(…, "skill-plugins", "<plugin>", "<skill>")): it reads
+#   only its own skill. new-project-contract alone takes over a minute.
+# - A skill change also runs the tests that read every skill through code
+#   (found with a read probe of the full suite, 2026-10-22).
+# - A hook change runs src/hooks.
+skill_scanners=(src/agent-bloat-lint.test.ts src/agent-artifacts/inventory.test.ts src/drift-checks/drift-checks.test.ts src/sync/helper-scripts.test.ts)
+root_anchor='[A-Za-z_]*[Rr][Oo][Oo][Tt]|process\.cwd\(\)|import\.meta\.dirname|__dirname'
+changed_skills=""
+tests=(src/docs src/oss)
+
+re_escape() { sed 's/[.[*^$()+?{}|]/\\&/g' <<<"$1"; }
+add_tests_naming() {
+  local t
+  while IFS= read -r t; do tests+=("$t"); done < <(command -p grep -rlE --include='*.test.ts' -e "$1" src 2>/dev/null || true)
+}
+# True when test $1 pins skills and this diff changes none of them.
+pins_other_skills() {
+  local pins pin
+  pins="$(command -p grep -oE '"skill-plugins", "[a-z0-9-]+", "[a-z0-9-]+"' "$1" | sed -E 's/.*"([a-z0-9-]+)"$/\1/' || true)"
+  [[ -n "$pins" ]] || return 1
+  while IFS= read -r pin; do
+    grep -qxF -- "$pin" <<<"$changed_skills" && return 1
+  done <<<"$pins"
+  return 0
+}
+
+while IFS= read -r file; do
+  [[ -e "$file" ]] || continue
+  if [[ "$file" =~ ^skill-plugins/[^/]+/([^/]+)/ ]]; then
+    skill="${BASH_REMATCH[1]}"
+    changed_skills+="$skill"$'\n'
+    add_tests_naming "[\"'/]$(re_escape "$skill")[\"'/]"
+  fi
+  case "$file" in
+  skill-plugins/*/evals/evals.json | skill-plugins/*/SKILL.md) ;;
+  TASKS.md | RECURRING.md) add_tests_naming "($root_anchor)[^;]*[\"']$(re_escape "$file")[\"']" ;;
+  *) add_tests_naming "[\"'/]$(re_escape "$(basename "$file")")[\"']" ;;
+  esac
+done <<<"$changed"
+if has '^skill-plugins/'; then
+  tests+=("${skill_scanners[@]}")
+  while IFS= read -r t; do
+    pins_other_skills "$t" || tests+=("$t")
+  done < <(command -p find src/skills -name '*.test.ts' 2>/dev/null | sort)
+fi
+has '^hooks/' && tests+=(src/hooks)
+
+unique_tests=()
+while IFS= read -r t; do
+  [[ "$t" =~ ^src/(docs|oss)/ ]] && continue
+  unique_tests+=("$t")
+done < <(printf '%s\n' "${tests[@]}" | sort -u)
+
 if [[ "$dry_run" == 1 ]]; then
+  echo "verify:changed: tests to run:"
+  printf '  %s\n' "${unique_tests[@]}"
   verdict
   exit 0
 fi
@@ -73,23 +141,6 @@ step() {
   echo "▶ $*"
   "$@"
 }
-
-has() { grep -qE "$1" <<<"$changed"; }
-
-# Tests that name a changed file or its skill directory, plus the docs and
-# leak tests, which read many of these files.
-tests=(src/docs src/oss)
-while IFS= read -r file; do
-  [[ -e "$file" ]] || continue
-  name="$(basename "$file")"
-  case "$file" in
-  skill-plugins/*/evals/evals.json) name="$(basename "${file%/evals/evals.json}")" ;;
-  skill-plugins/*/SKILL.md) name="$(basename "$(dirname "$file")")" ;;
-  esac
-  while IFS= read -r t; do tests+=("$t"); done < <(command -p grep -rlF --include='*.test.ts' -e "$name" src 2>/dev/null || true)
-done <<<"$changed"
-has '^skill-plugins/' && tests+=(src/skills)
-has '^hooks/' && tests+=(src/hooks)
 
 step node scripts/lint-tasks-stability.mjs TASKS.md
 step node scripts/check-rule-8-pattern-conformance.mjs
@@ -115,8 +166,6 @@ if has '^skill-plugins/'; then
   step npm run --silent eval:agent-artifacts
 fi
 
-unique_tests=()
-while IFS= read -r t; do unique_tests+=("$t"); done < <(printf '%s\n' "${tests[@]}" | sort -u)
 step npx vitest run "${unique_tests[@]}"
 
 # The install playbook drives the one-step install e2e (no-op for other paths).

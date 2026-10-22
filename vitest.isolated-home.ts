@@ -24,6 +24,8 @@ const SCRUBBED_ENV = [
   /^NO_CACHE$/u,
   /^MINSKY_/u,
   /^XDG_/u,
+  /^AGENT_PLUGINS_/u,
+  /^GNUPGHOME$/u,
 ];
 
 for (const key of Object.keys(process.env)) {

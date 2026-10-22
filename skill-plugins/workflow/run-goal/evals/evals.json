@@ -1282,6 +1282,28 @@
         "Reads the draft endpoint before any criterion promises the UI saves edits",
         "Keeps planned items with no evidence of being done out of the done list"
       ]
+    },
+    {
+      "id": 112,
+      "prompt": "/goal plan the billing migration: write the design doc and file one tracker ticket per step. (The question round asked 'Store invoices in Postgres (recommended) or S3?' and got no answer, so the run went on with Postgres. It filed four tickets, two of which set up Postgres tables, and wrote the doc's storage section for Postgres. Mid-goal the user answers: 'use S3'. The last step runs the test suite, then commits and pushes the doc.)",
+      "expected_output": "From issue #401: the agent records the answer in the contract in place of the Postgres default. In the same pass it updates every artifact built on that default (both Postgres tickets, the doc's storage section, and any draft) and checks the other tickets for it. It prints the goal check line again for each criterion the answer touches, and lists each updated artifact with its link or path. The commit step runs the suite into a log with no pipe before the commit, reads the suite's own exit code, and commits and pushes only when rc=0.",
+      "expectations": [
+        "Records 'use S3' in the contract file in place of the Postgres default",
+        "Updates both Postgres tickets and the doc's storage section for S3 in the same pass, and checks the other tickets and drafts for the old default",
+        "Prints the goal check line again for each criterion the answer touches, and lists each updated artifact with its link or path",
+        "Runs the suite with no pipe between it and the commit (no `| tail`), reads the suite's own exit code (rc=$?), and commits and pushes only when rc=0"
+      ]
+    },
+    {
+      "id": 113,
+      "prompt": "/goal ship four open issues with parallel workers. Each worker's first brief says: fresh-context review of the diff before merge. Worker A's PR merged, and a later review found five defects in it. You now resume worker A with SendMessage to fix them in a new PR.",
+      "expected_output": "From the 2026-10-22 orchestrator retro: resumed workers merged fix PRs without a pre-merge review, and later reviews found 9 more defects in one of them and 6 more in another. The SendMessage to worker A repeats the rule 'fresh-context review of the diff before merge' for the fix PR, not only the defect list. The fix PR gets a fresh-context diff review before it merges. Before the agent counts the fix as done, it reads that review's output itself, not only the worker's report. When no review ran, it runs one; when the PR already merged, it reviews the merged diff and sends the findings back as a new fix round.",
+      "expectations": [
+        "The SendMessage to worker A repeats the rule 'fresh-context review of the diff before merge' for the fix PR, not only the defect list",
+        "The fix PR gets its own fresh-context review before merge; the review of worker A's first PR does not count for it",
+        "Before it counts the fix as done, the agent reads the fix review's output itself, not only the worker's report",
+        "When no review of the fix PR ran, the agent does not count the fix as done; it runs the review, and if the PR already merged, it reviews the merged diff and sends the findings back as a new fix round"
+      ]
     }
   ]
 }

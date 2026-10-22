@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** `plugin add`, `update`, and `rollback` install only the commit
+  of the signed tag they verified. Before, an unsigned tag named like the
+  signed tag's object ID, or a branch with the tag's name, could install an
+  unsigned commit. agentbrew now fetches exactly `refs/tags/<ref>`, refuses
+  object-ID names and a signed tag published under another name, and checks
+  that the checkout is the tag's commit. A tag signed with OpenPGP or X.509
+  could also pass when its key was in the user's gpg keyring; now only one
+  SSH signature counts, and it is checked before anything is checked out.
 - Team overlay `commands:` folders now deploy, and `sync --pull`
   fast-forwards and re-pins the overlay; a force-pushed overlay is refused
   (#331).

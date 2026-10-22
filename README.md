@@ -534,6 +534,7 @@ agentbrew plugin remove acme
 ```
 
 - The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
+- agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID, and a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts: an OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.
 - Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
 - Capabilities are deny by default. Each rule needs its agents in `capabilities.agents` (front matter `agents:`, or any declared agent), each hook event in `capabilities.hooks` (`Event` or `Event:matcher`), each MCP server in `capabilities.mcp_servers`, and a command that runs shell (`allowed-tools: Bash` or `` !`cmd` ``) needs `commands_exec: true`. Anything else fails with exit code 3 and `capability not declared: <kind> <value> (plugin <name>)`, on `plugin add` and on `sync`.
 - Claude Code also gets native output, side by side with file rendering. Each plugin becomes a Claude Code plugin in a local marketplace (`~/.local/share/agentbrew/claude-marketplace`), enabled in `~/.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The native plugin carries the plugin's hooks and a `SessionStart` hook that runs `agentbrew plugin rules` for the session's repo. Removing a plugin removes both on the next sync.
@@ -544,7 +545,7 @@ agentbrew plugin remove acme
 - `agentbrew plugin policy <name> [--strict]` prints a managed-settings fragment for admins: the marketplace in `extraKnownMarketplaces` and `strictKnownMarketplaces`, the plugin in `enabledPlugins`, and with `--strict` also `strictPluginOnlyCustomization`. agentbrew never writes system policy.
 - Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
-- `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
+- `plugin add` needs a ref. It fetches the tag to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
 - It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
 - `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
 - On every `agentbrew sync`, skills and commands are read straight from the locked plugin checkout; nothing is copied into `shared-rules.md` or `state.yaml`, and removing a plugin removes them on the next sync. A plugin that drifted from its lock contributes nothing.

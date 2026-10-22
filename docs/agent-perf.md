@@ -175,6 +175,12 @@ Limits:
 
 Pairing uses `sid` plus `id`. Rows without an `id` take no part.
 
+Pairing looks across all projects. A Bash call such as `cd <other repo> && …`
+writes its attempt row under the first project and its completion row under
+the other one. A per-project report finds the other half in every loaded row,
+so that call is not blocked. Each row still counts under its own project. A
+per-project `blocked` count is never above the `--all` count.
+
 | Field | Meaning |
 |---|---|
 | `attempts` | Calls with an attempt or denied row. |

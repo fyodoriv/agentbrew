@@ -16,11 +16,12 @@ agentbrew/
 │   ├── mcp/                        # MCP management (adapters, mcp-git, mcp-setup, mcp-status, mcp-validation, mcp-wizard, etc.)
 │   ├── skills/                     # Skill tools (init-skill, validate, skill-versions, etc.)
 │   ├── core/                       # Core infra (agents.yaml, context, env-sanitize, errors, logger, state-manager, transforms)
-│   ├── ui/                         # Interactive UI (browse)
+│   ├── ui/                         # Terminal output icons (agentbrew has no UI)
 │   ├── health.ts                   # Drift detection + auto-repair
 │   ├── portable.ts                 # Config export/import as portable bundles
 │   ├── settings.ts                 # The one settings table (`agentbrew config`)
 │   ├── next-steps.ts               # Next: lines for bare `agentbrew`
+│   ├── actions.ts                  # Action list from the CLI parser (`agentbrew actions --json`)
 │   ├── types.ts                    # Core interfaces
 │   └── *.test.ts                   # Unit tests (colocated)
 ├── templates/                      # Source templates

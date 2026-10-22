@@ -28,7 +28,7 @@ Requires Node.js 20.11+ and git.
 
 **First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI, pipes, and agents, it changes nothing and prints the command to run (`agentbrew init`). Opt out with `AGENTBREW_NO_AUTO_INIT=1`. `AGENTBREW_NO_AUTO_SYNC=1` skips the background repair job and `AGENTBREW_NO_SHELL_HOOK=1` leaves your shell rc file alone (the one-step installer sets them from your answers).
 
-**One command after that:** `agentbrew` (no arguments) in the shell, or `/agentbrew` in an agent ([`commands/agentbrew.md`](commands/agentbrew.md), deployed by this repo's `Agentfile.yaml`). It prints the state, what needs you, and a `Next:` line with the exact command. It reads local files only and changes nothing. `agentbrew config` shows each setting with its value and source; `agentbrew config set <key> <value>` checks a value and saves it.
+**One command after that:** `agentbrew` (no arguments) in the shell, or `/agentbrew` in an agent ([`commands/agentbrew.md`](commands/agentbrew.md), deployed by this repo's `Agentfile.yaml`). It prints the state, what needs you, and a `Next:` line with the exact command. It reads local files only and changes nothing. `agentbrew config` shows each setting with its value and source; `agentbrew config set <key> <value>` checks a value and saves it. Agents find every other command with `agentbrew actions --json`: one list generated from the CLI, with each command's arguments and whether it needs the user's own terminal or a yes first. agentbrew has no UI of its own, so every action runs through the CLI and agents; `src/action-parity.test.ts` fails when a command misses the agent path.
 
 **Who it is for:** developers who use more than one AI coding agent and want one place to manage skills, MCP servers, rules, and commands.
 **Documentation:** start at the [documentation map](docs/README.md). Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first.
@@ -645,6 +645,7 @@ agentbrew                              The one start command: state, what needs 
                                        (auto-init on first run in a terminal; reads only after that)
 agentbrew config [--json]              Each setting with its value, source, and allowed values
 agentbrew config set <key> <value>     Check one setting and save it to state.yaml
+agentbrew actions [--json]             Every action with its arguments and notes (for agents)
 agentbrew init [--force] [--skip-install] [--skip-sync]
                                        Detect agents + install recommended + sync (idempotent)
                                        --skip-install: no source fetch, no skill installs
@@ -706,7 +707,7 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
                                        Override file: ~/.config/agentbrew/repo-class.yaml
 ```
 
-`agentbrew --help` shows all commands grouped by category. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
+`agentbrew --help` shows all commands grouped by category. `agentbrew actions` lists the same commands for agents, generated from the CLI parser, so a new command appears there by itself. When you add one that needs the user's own terminal (an interactive prompt, a foreground loop) or is hard to undo, add it to `TERMINAL_ONLY` or `CONFIRM` in `src/actions.ts`; a hidden command needs a reason in `NOT_ACTIONS`. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
 
 `agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and `.mdc` rule template scope/size checks. See `docs/agent-bloat-lint.md`.
 

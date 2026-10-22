@@ -99,6 +99,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - The install e2e (`real-e2e/scenarios/us01-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
+- Never hand a plugin ref name to git as a revision: `git verify-tag <40-hex>` reads an object ID, and `clone --branch` prefers a branch. Resolve it with `tagObject()` in `src/plugins/signers.ts` and use the object ID.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.

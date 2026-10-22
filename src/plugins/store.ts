@@ -7,7 +7,7 @@ import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
 import { capabilitiesHash, type PluginManifest, readManifest } from "./manifest.js";
 import { assertMcpServers } from "./mcp-launcher.js";
-import { normalizeKey, signersFor, trustSigner, verifySignedTag } from "./signers.js";
+import { assertTagName, normalizeKey, signersFor, tagObject, trustSigner, verifySignedTag } from "./signers.js";
 
 /** Root of installed plugin checkouts: `~/.local/share/agentbrew/plugins/<name>`. */
 export function pluginsRoot(): string {
@@ -55,25 +55,39 @@ export interface Staged {
   entry: PluginLockEntry;
 }
 
-/** Clone `url@ref` to a staging dir, validate the manifest, verify the signed tag. Runs no plugin code. */
+/**
+ * Fetch exactly `refs/tags/<ref>` from `url` to a staging dir, check out the
+ * commit of that tag object by its ID, validate the manifest, and verify the
+ * same tag object's signature. A branch with the tag's name never wins, and
+ * a name that git could read as an object ID is refused. Runs no plugin code.
+ */
 export function stage(url: string, ref: string, extraSigner?: string): Staged {
+  assertTagName(ref);
   mkdirSync(pluginsRoot(), { recursive: true });
   const dir = join(pluginsRoot(), `.staging-${process.pid}-${Date.now()}`);
   try {
-    git(pluginsRoot(), "clone", "--quiet", "--depth", "1", "--branch", ref, url, dir);
+    git(pluginsRoot(), "init", "--quiet", dir);
+    const tagRef = `refs/tags/${ref}`;
+    git(dir, "fetch", "--quiet", "--no-tags", "--depth", "1", "--end-of-options", url, `${tagRef}:${tagRef}`);
+    const tag = tagObject(dir, ref);
+    const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
+    git(dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", commit);
     const manifest = readManifest(dir);
     assertCapabilities(dir, manifest);
     assertMcpServers(dir, manifest);
     const keys = [...signersFor(manifest.name)];
     if (extraSigner && !keys.includes(extraSigner)) keys.push(extraSigner);
-    const signer = verifySignedTag(dir, ref, manifest.name, keys);
+    const signer = verifySignedTag(dir, ref, tag, manifest.name, keys);
+    if (git(dir, "rev-parse", "HEAD") !== commit) {
+      throw new Error(`The checkout of "${ref}" is not the commit of its signed tag.`);
+    }
     const entry: PluginLockEntry = {
       name: manifest.name,
       version: manifest.version,
       source: url,
       ref,
-      commit: git(dir, "rev-parse", "HEAD"),
-      tree: git(dir, "rev-parse", "HEAD^{tree}"),
+      commit,
+      tree: git(dir, "rev-parse", `${commit}^{tree}`),
       capabilitiesHash: capabilitiesHash(manifest.capabilities),
       signer,
       artifacts: [],

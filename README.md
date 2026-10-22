@@ -719,6 +719,7 @@ npm run dev -- status                  # run the CLI from source
 npm test                               # affected Vitest tests (git-aware)
 npm run test:all                       # full Vitest suite
 npm run typecheck && npm run lint      # tsc + biome + lint guards
+npm run lint:changed                   # biome on changed files only (inner loop)
 npm run verify                         # full gate: build smoke + typecheck + lint + tests
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version

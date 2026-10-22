@@ -22,7 +22,7 @@ Run every command from the repo root.
 | One test file | `npx vitest run src/path/file.test.ts` |
 | Tests for changed files | `npm test` (git-aware) |
 | All tests | `npm run test:all` |
-| Typecheck / lint | `npx tsc --noEmit` / `npx biome check src scripts` |
+| Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
 | Rule lints (Minsky rules on this repo) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |

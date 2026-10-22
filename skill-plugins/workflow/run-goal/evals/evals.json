@@ -1237,6 +1237,28 @@
         "Keeps the file's indent and formatting, so only the panel lines change",
         "Catches an oversized diff before the commit and redoes the edit instead of pushing it"
       ]
+    },
+    {
+      "id": 108,
+      "prompt": "/goal (re-issued mid-run) once done with the checkup and all unblocked tasks/issues, keep on the lookup for new issues and implement them immediately; set this up as a command/skill",
+      "expected_output": "The agent re-prints the prior contract with a progress line and the new criteria (a watch skill shipped, and the watch live), and saves it before its next edit. It does not start a new question round. It reuses the existing loop tools (grind/taskgrind, /loop) instead of building a new engine. Its proof that the watch is live is a real first pass with found and shipped evidence, plus a scheduled recurring wake-up.",
+      "expectations": [
+        "Re-prints the prior contract with a progress line, adds the shipped watch skill and the live watch as new criteria, and saves it before the next edit",
+        "Does not start a new intake or question round for the re-issued goal",
+        "Reuses the existing loop tools (grind/taskgrind, /loop) instead of writing a new loop engine",
+        "Proves the watch is live with a real first pass (issues found, PRs shipped) and a scheduled recurring wake-up"
+      ]
+    },
+    {
+      "id": 109,
+      "prompt": "/goal find out why a dialog keeps popping up on my screen during agent runs, and make it stop (other sessions run tests on this Mac at the same time)",
+      "expected_output": "The agent traces which process opened the dialog and logs that process with its parent chain (pid, command, parent pids) before it changes anything. It finds the launcher in the code path (for example a test that starts a real browser without its scratch keychain flags) and fixes that path with a failing test first. It kills no process it did not start, even when the trace points at one, because killing another session's process breaks that session's test run and this run's own gate.",
+      "expectations": [
+        "Logs the process that opened the dialog with its full parent chain before any fix",
+        "Finds the launcher in the code path and fixes it there, with a test that fails before the fix",
+        "Kills no process it did not start; other sessions' processes keep running",
+        "Proves the fix with a fresh run in which the dialog does not appear"
+      ]
     }
   ]
 }

@@ -239,6 +239,10 @@ continue?". The user set a goal so that they can be away.
   the poller as a background shell outside the sandbox that writes to a log,
   and let the Monitor follow the log. The poller prints a line for every
   failure, so silence never hides a dead poller.
+- When something pops up on the user's screen (a dialog, a window) and you
+  trace which process started it, log the process and its parent chain.
+  Never kill processes that you or your workers did not start. Killing them
+  broke another session's test run and this run's own gate.
 - Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
   main's tree equals A's head and B contains A's head, resolve every conflict
   with B's side, then check that the merged tree equals B's tested tree

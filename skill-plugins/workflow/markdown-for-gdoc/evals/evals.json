@@ -168,6 +168,20 @@
         "Re-checks the named_style of headings next to any text change",
         "Runs an every-page screenshot sweep after the last fix"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "Append a status section with two tables to a child tab of a shared PRD that has human content. The append tool you have writes at index 1 of the tab, not at its end.",
+      "expected_output": "The agent catches the misplaced insert with a structured read, deletes only its own range, inserts again at the tab's last newline with an explicit index and tabId, resets the inherited styles, fixes the empty paragraph and cell styles of each table, sets the table widths to match the other tables, and passes the every-page screenshot sweep before it says the tab is ready.",
+      "expectations": [
+        "Does not trust the append tool on a child tab; inserts with insertText at an explicit location.index together with the tabId",
+        "Reads the tab structure right after the write, before any styling, and sees that the new text landed at index 1 above the title",
+        "Checks that the misplaced range holds only its own text, deletes only that range, and confirms the title text and its HEADING_1 style are unchanged",
+        "After inserting at the tab's last newline, removes bullets and sets NORMAL_TEXT over the whole new range before it applies HEADING_2, bullets, and links",
+        "After each insertTable, sets the empty paragraph before the table and every cell paragraph to NORMAL_TEXT, and bolds each header cell from the cell start + 1",
+        "Sets the column widths of both new tables with updateTableColumnProperties so that each total matches the other tables in the tab",
+        "Runs a structured read and the every-page screenshot sweep before it says the tab is ready"
+      ]
     }
   ]
 }

@@ -123,7 +123,8 @@ nuke):
    abort if the count is not exactly 1.
 2. `deleteContentRange + insertText + updateTextStyle` for cell rewrites
    that need hyperlinks. Operate cell-by-cell, never broader.
-3. `insertText` for a new paragraph at a specific index.
+3. `insertText` for a new paragraph at an explicit index, then reset
+   inherited styles.
 
 **Dry-run discipline** before any batch of edits:
 
@@ -152,6 +153,8 @@ Before any list edit, inspect the active MCP tool schema and identify the exact
 target tab.
 
 - Every write to a child or non-default tab must include its exact `tab_id`.
+- Text or a table into a child tab: no append tool (it can write at index 1).
+  Follow [`references/child-tab-inserts.md`](references/child-tab-inserts.md).
 - Do not use `apply_bullets` or `remove_bullets` on a non-default tab when the
   active schema has no `tab_id`. A tab-less Google Docs range targets the
   default/legacy body and can silently reformat another tab.

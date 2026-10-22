@@ -164,6 +164,13 @@ docs, memory, or a quick experiment can answer.
 - Unattended run (`claude -p`, a scheduled worker, no question tool, or the
   prompt says nobody is around): ask nothing. Pick the recommended default
   and record it under **Assumptions**.
+- When the user answers with a free-text message instead of the options,
+  treat it as the answer. Add each new request in it as a done-criterion,
+  and do not re-ask the questions it skipped.
+- When the goal asks you to check the user's understanding, ask in plain
+  chat text, not the question picker. When the user re-issues the goal as
+  "finish", ship the rest without waiting, and grade the answers when they
+  come.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 
@@ -186,10 +193,21 @@ continue?". The user set a goal so that they can be away.
 - While you iterate, run only the related test files. Run the full suite
   once, right before each commit. Run mutation checks as one parallel batch,
   not one by one.
+- Right before each commit, re-check the current branch and stage exact file
+  paths, never a folder. Another session can switch a shared checkout
+  mid-run, and a folder add sweeps in its untracked files.
+- After a scripted edit, check that `git diff --stat` shows only the lines
+  you meant to change. A script that wrote a different indent turned a
+  one-panel change into a diff of thousands of lines.
 - Never end a turn only to wait for a background agent. Do independent work,
   or read the code yourself, while it runs.
 - Verify every subagent claim you put in a deliverable. Check high-severity
   claims in the code, and drop any claim that fails the check.
+- When two subagents or docs contradict each other, settle it from the
+  primary source (code at a SHA, the tracker record). List the losing docs
+  as stale findings in the deliverable.
+- A gate you write yourself is unproven. Plant one violation of each rule it
+  checks, see it fail, then trust its clean count.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules and unique log names (`$TMPDIR` is shared), and keep within
@@ -251,6 +269,10 @@ continue?". The user set a goal so that they can be away.
   run the same server code locally over the published data, and measure there.
   A test that sets a data-dir variable from `mktemp` must check that `mktemp`
   worked; an empty variable falls back to the real data folder.
+- When a goal keeps source data word for word, store what a tool wrote to
+  disk (a saved tool-result file, a CLI's stdout) or the tool's reply copied
+  without changes. Never summarize while copying. Give the store a way to
+  replace a bad copy, and name the rows copied by hand in the report.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you
@@ -264,6 +286,9 @@ continue?". The user set a goal so that they can be away.
   and stop all work on it.
   A request to remove something also gets a guard test that fails if it
   comes back (code, config and docs). Do not start a separate session for it unless the user asks.
+  A new rule mid-goal also covers what you already did in this run: fix
+  your past output too (for example, merge your back-to-back replies into
+  one).
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -312,7 +337,9 @@ from scratch. A fix can break something the earlier proof covered.
 
 When the goal changes this machine, re-read the live state (installed files,
 loaded services) right before you report done. A later apply can revert a fix
-that passed earlier.
+that passed earlier. When the fix is a scheduled job, prove it with a run the
+scheduler starts, not a manual load. Re-read the job's files and its loaded
+state after that run, because the job itself can rewrite or unload the fix.
 
 Before you call a failure "pre-existing", run the same test files with the
 same flags on the unchanged base (a detached worktree) and compare the two
@@ -332,7 +359,9 @@ When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude
 Managed Agents "outcomes" (a rubric plus a separate grader). Fix what it fails
-before you report.
+before you report. A deterministic gate proves the shape, not the facts. When
+a gate passes but the grader fails, move the grader's failures into the gate
+as new tests.
 
 Before you merge each PR, ask a fresh-context subagent to review its diff,
 also when the full suite is green. In one goal run, reviewers found real

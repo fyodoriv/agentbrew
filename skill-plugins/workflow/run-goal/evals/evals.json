@@ -1156,6 +1156,87 @@
         "The watch poller runs outside the sandbox, prints failure lines, and a Monitor follows its log",
         "A new issue is picked up and its latency (issue created to PR opened) is reported"
       ]
+    },
+    {
+      "id": 101,
+      "prompt": "/goal understand the upcoming work on <feature> in <host app>; check chat, docs, memory, and repos. I need an estimate of what to do and sizes. Stop early if you don't know something. Every statement needs a citation. (Mid-goal the user adds two expectations: 'I expect a refactor so the component takes more inputs' and 'we must find out who starts the job under test'.)",
+      "expected_output": "The contract's metric is the share of work items with a size and a valid citation, measured by a gate script. The one question round asks about the scope fork found in the sources (two readings of the deliverable) and about the team's size scale before any sizing. When two subagents contradict each other, the agent settles it from primary code at a recorded SHA and lists the losing docs as stale findings. Each mid-goal expectation becomes a section or work item backed by code evidence. The gate is proven to fail on planted violations before its clean result is reported.",
+      "expectations": [
+        "Asks about a scope fork found in the sources before sizing, with both readings explained in plain words",
+        "Uses the team's existing size scale (asks if unclear) instead of inventing one",
+        "Builds a citation gate, plants an uncited line, a dangling id, and an unsized item, and shows it fails before trusting rc=0",
+        "Settles a subagent contradiction from primary source code at a SHA and records the stale docs as findings",
+        "Cites the user's own chat statement as its own source, never as if a doc said it",
+        "Turns each mid-goal expectation into evidence-backed content in the same deliverable"
+      ]
+    },
+    {
+      "id": 102,
+      "prompt": "/goal get a skill/command that explains a project to me. Use web search for the best practices first, then add it, then use it on this project",
+      "expected_output": "Researches primary sources first and writes them into the skill's references, adds the skill with a deterministic checker and tests red then green, runs it on a real project, and has a fresh-context grader check the result. When the grader fails more checklist items than the contract's pivot line even though the checker passed, the agent restructures the template and checker (tests first) instead of patching the one output, then re-runs the grader. Right before each commit it re-checks the current branch and stages exact file paths.",
+      "expectations": [
+        "Best-practice sources are fetched and cited in the skill, not just summarized in chat",
+        "The checker is proven with planted violations before its PASS is trusted",
+        "A grader runs after the checker passes; a checker PASS alone does not close the criterion",
+        "Crossing the pivot line leads to a template/checker restructure with new failing tests first, then a re-grade",
+        "Right before each commit, re-checks the current branch and stages exact file paths, never a folder"
+      ]
+    },
+    {
+      "id": 103,
+      "prompt": "/goal build a local event feeder that pulls six work-tool sources into my dashboard and keeps every event's original text. In the question round, the user ignores the options and writes: 'also refresh projects A and B, and every row of sheet S is its own project'",
+      "expected_output": "The agent adds a criterion for each new request to the contract file, does not re-ask the skipped questions, applies the recommended default only to reversible choices, and parks an approval-class choice it still needs, then asks about it once at the end. It stores each event from what a tool wrote to disk (a saved tool-result file, a CLI's stdout) or from the reply copied unchanged, never a shortened retype. The store has a replace path for bad copies, and the report names the rows copied by hand.",
+      "expectations": [
+        "Adds each new request in the message as a done-criterion in the contract file",
+        "Does not re-ask the questions the message skipped",
+        "Uses defaults only for reversible choices, and parks an approval-class choice for one question at the end",
+        "Stores event text from a tool's saved output or an unchanged copy, never a summary or a shortened retype",
+        "The report names the rows that were copied by hand, and the store can replace a bad copy"
+      ]
+    },
+    {
+      "id": 104,
+      "prompt": "/goal Yeah we need to have everything auto updated, find a fix  (previous turn: a personal repo's slash command was made global from a local checkout; the 30-minute auto-sync LaunchAgent has not run for months)",
+      "expected_output": "The agent finds why the scheduled job stopped (it was disabled, or it pins a binary that no longer runs) and which sources the job never refreshes. It fixes each one with the smallest owned change, and files the root cause upstream as an issue when the code belongs to a parent app. It proves the fix with a run that the scheduler starts, then re-reads the job's plist and loaded state after that run, and catches a job that rewrites or unloads its own fix. It reports which sources now refresh, with each cache HEAD compared to the remote default branch.",
+      "expectations": [
+        "The root cause of the dead job is named with evidence (disabled flag, pinned binary, last-run time)",
+        "Proof uses a run the scheduler started, not only a manual load",
+        "After that run, the plist and loaded state are re-read, and a self-revert is caught and fixed",
+        "Sources that only refresh on an explicit pull are found and covered",
+        "Parent-app code is not edited; its root cause goes to an issue"
+      ]
+    },
+    {
+      "id": 105,
+      "prompt": "/goal let's finish this completely and in the end produce an updated prd about it <doc url>  (previous turn: the goal asked to check the user's understanding before a PR; the user rejected the question picker)",
+      "expected_output": "Re-prints the prior contract with progress and the new PRD criterion, asks the check questions as plain text in chat with no picker and no answer key, ships the PR and the command update without waiting for answers, and updates the named doc tab with a structured read plus a full screenshot sweep.",
+      "expectations": [
+        "No second question-picker call after the rejection; questions go in chat as plain text",
+        "Shipping does not block on the answers, and the report says they are still pending",
+        "The contract is re-printed and saved before any edit, with the new criterion added",
+        "The named doc gets the updated PRD, checked with a structured read and a screenshot sweep"
+      ]
+    },
+    {
+      "id": 106,
+      "prompt": "/goal iterate on <project> until its open PR is ready. Mid-goal the user sends three messages: a link to a chat thread with a reviewer ask, a team rename, and a new rule: 'never post two PR comments in a row'.",
+      "expected_output": "Each mid-goal message joins the contract as a done-criterion, with a one-line note. The agent reads the linked chat thread before it answers the PR comments, finds that the reviewer's real ask there differs from the PR comment, and acts on the chat ask. The new rule also fixes the agent's own past output: it merges its back-to-back PR replies into one, rather than only changing future behavior. A rule merged into a config overlay counts as deployed only when the generated agent file contains it; when the sync skips it, the report says so.",
+      "expectations": [
+        "Adds each mid-goal message to the contract file as a done-criterion and says so in one line",
+        "Reads the linked chat thread before it answers the PR comments, and acts on the reviewer's fuller ask from chat",
+        "Applies the new rule to its own past output by merging its back-to-back replies into one",
+        "Checks the generated agent file for the new rule after the sync, and reports a skipped sync instead of calling the rule deployed"
+      ]
+    },
+    {
+      "id": 107,
+      "prompt": "/goal add a panel to an existing JSON dashboard and update its PR (the dashboard file uses 4-space indent; the quickest edit is a script that loads the JSON and writes it back)",
+      "expected_output": "The agent makes the edit keep the file's own formatting (4-space indent, key order, final newline). After the scripted edit it checks `git diff --stat` against the intended size before it commits. A diff of thousands of lines for a one-panel change is a formatting bug: it redoes the edit, so the PR diff shows only the new panel.",
+      "expectations": [
+        "Runs `git diff --stat` after the scripted edit and compares it with the intended size",
+        "Keeps the file's indent and formatting, so only the panel lines change",
+        "Catches an oversized diff before the commit and redoes the edit instead of pushing it"
+      ]
     }
   ]
 }

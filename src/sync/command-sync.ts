@@ -120,59 +120,24 @@ interface TargetInput {
   existingFiles: Map<string, string>;
 }
 
-function computeSingleTargetDiff(
-  target: TargetInput,
-  allSourceFiles: Array<{ filename: string; content: string; builtinName?: boolean }>,
-  pruneOptions: { prune: boolean; retired: readonly string[] },
-  delegatedForAgent: ReadonlyMap<string, string> | undefined,
-  isCanary: boolean,
-): CommandTargetDiff {
-  if (!target.exists) {
-    return { agentName: target.agentName, skipped: true, skipReason: "no-dir", actions: [], synced: 0, pruned: 0 };
-  }
+type SourceFile = { filename: string; content: string; builtinName?: boolean };
 
-  // Slice 4: canary agents (claude-code, amp, firebender) MUST get content from
-  // the delegation map. When the map has no entry for a canary agent (no
-  // `ai-rules`), the agent gets only agentbrew's built-in commands, written
-  // natively, and nothing is pruned; everything else waits for ai-rules,
-  // mirroring the rules-sync slice 4 hardening.
-  let sourceFiles = allSourceFiles;
-  let prune = pruneOptions.prune;
-  const retiredActions: CommandFileAction[] = pruneOptions.retired
+/** Prune actions for built-in copies left after `builtinCommands: off` (applied only to manifest-tracked files). */
+function retiredPruneActions(target: TargetInput, retired: readonly string[]): CommandFileAction[] {
+  return retired
     .map((name) => remapFilename(name, target.fileExt))
     .filter((name) => target.existingFiles.has(name))
     .map((filename) => ({ filename, type: "prune" }));
-  if (isCanary && delegatedForAgent === undefined) {
-    // Claude Code reads plain markdown, so it gets the built-in commands (or the
-    // user's override of them) natively. amp and firebender have no native format.
-    sourceFiles = NATIVE_FALLBACK_AGENTS.has(target.agentName)
-      ? allSourceFiles.filter((source) => source.builtinName)
-      : [];
-    prune = false;
-    if (sourceFiles.length === 0 && retiredActions.length > 0) {
-      return {
-        agentName: target.agentName,
-        skipped: false,
-        actions: retiredActions,
-        synced: 0,
-        pruned: retiredActions.length,
-      };
-    }
-    if (sourceFiles.length === 0) {
-      return {
-        agentName: target.agentName,
-        skipped: true,
-        skipReason: "no-ai-rules",
-        actions: [],
-        synced: 0,
-        pruned: 0,
-      };
-    }
-  }
+}
 
+/** Write actions for every source whose deployed content differs, and the target names they cover. */
+function writeActions(
+  target: TargetInput,
+  sourceFiles: SourceFile[],
+  delegatedForAgent: ReadonlyMap<string, string> | undefined,
+): { actions: CommandFileAction[]; targetFilenames: Set<string> } {
   const actions: CommandFileAction[] = [];
   const targetFilenames = new Set<string>();
-
   for (const source of sourceFiles) {
     const targetFilename = remapFilename(source.filename, target.fileExt);
     targetFilenames.add(targetFilename);
@@ -183,30 +148,50 @@ function computeSingleTargetDiff(
     // Carve-outs (not in CANARY_DELEGATED_AGENTS) read source content + apply transform.
     const baseContent = delegatedForAgent?.get(source.filename) ?? source.content;
     const transformed = target.transform(baseContent);
-    const existing = target.existingFiles.get(targetFilename);
-    if (existing !== transformed) {
+    if (target.existingFiles.get(targetFilename) !== transformed) {
       actions.push({ filename: targetFilename, type: "write", content: transformed });
     }
   }
+  return { actions, targetFilenames };
+}
 
-  let pruneCount = 0;
-  if (prune) {
-    for (const [filename] of target.existingFiles) {
-      if (!targetFilenames.has(filename)) {
-        actions.push({ filename, type: "prune" });
-        pruneCount++;
-      }
-    }
+function computeSingleTargetDiff(
+  target: TargetInput,
+  allSourceFiles: SourceFile[],
+  pruneOptions: { prune: boolean; retired: readonly string[] },
+  delegatedForAgent: ReadonlyMap<string, string> | undefined,
+  isCanary: boolean,
+): CommandTargetDiff {
+  if (!target.exists) {
+    return { agentName: target.agentName, skipped: true, skipReason: "no-dir", actions: [], synced: 0, pruned: 0 };
   }
+
+  // Slice 4: canary agents (claude-code, amp, firebender) MUST get content from
+  // the delegation map. With no entry for a canary agent (no `ai-rules`),
+  // Claude Code, which reads plain markdown, still gets agentbrew's built-in
+  // commands (or the user's override of them) natively; amp and firebender get
+  // nothing; nothing is pruned except retired built-ins. Mirrors rules-sync.
+  const retired = retiredPruneActions(target, pruneOptions.retired);
+  const fallback = isCanary && delegatedForAgent === undefined;
+  const sourceFiles = !fallback
+    ? allSourceFiles
+    : NATIVE_FALLBACK_AGENTS.has(target.agentName)
+      ? allSourceFiles.filter((source) => source.builtinName)
+      : [];
+  if (fallback && sourceFiles.length === 0 && retired.length === 0) {
+    return { agentName: target.agentName, skipped: true, skipReason: "no-ai-rules", actions: [], synced: 0, pruned: 0 };
+  }
+
+  const { actions, targetFilenames } = writeActions(target, sourceFiles, delegatedForAgent);
+  const prune = pruneOptions.prune && !fallback;
+  const unmatched = prune ? [...target.existingFiles.keys()].filter((filename) => !targetFilenames.has(filename)) : [];
+  const pruneNames = new Set(unmatched);
   // Built-in commands turned off: remove the copies agentbrew deployed, even on a sync that does not prune.
-  for (const action of retiredActions) {
-    if (targetFilenames.has(action.filename) || actions.some((a) => a.filename === action.filename)) continue;
-    actions.push(action);
-    pruneCount++;
-  }
+  for (const action of retired) if (!targetFilenames.has(action.filename)) pruneNames.add(action.filename);
+  for (const filename of pruneNames) actions.push({ filename, type: "prune" });
 
   const synced = actions.filter((a) => a.type === "write").length;
-  return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneCount };
+  return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneNames.size };
 }
 
 const identity: CommandTransform = (content) => content;

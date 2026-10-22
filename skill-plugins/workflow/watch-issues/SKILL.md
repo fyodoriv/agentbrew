@@ -32,7 +32,7 @@ or the user's words in this session).
    `bash <skill-dir>/scripts/watch-pass.sh [repo...]`
    It prints up to five items not handled yet (`--limit K` changes it), broken
    PRs first, then your own issues, then tasks P0 to P2, then other people's
-   issues. Each line is `new<TAB><kind> <key><TAB><text>`; the middle column is
+   issues, with one slot always kept for other people's issues. Each line is `new<TAB><kind> <key><TAB><text>`; the middle column is
    the exact `--done` argument. The last line is
    `watch: N new (showing S), M handled`. A `skip` line names a failed read.
    The list leaves out P3 tasks (they need the user's yes; `--include-p3`
@@ -61,8 +61,12 @@ or the user's words in this session).
    heavy runs.
 4. **Park what needs a person** (a secret, 2FA, sudo, a public write the rules
    do not approve): add a `**Blocked**:` line to the task with the exact human
-   step, and collect the question for the end of the pass.
-5. **Mark each shipped item** right after it merges or its draft PR is open:
+   step, and collect the question for the end of the pass. For an issue or PR
+   that needs a person, or an unclear issue you turned into a task, file (or
+   keep) a task whose `Blocked` line names the issue or PR, then mark the issue
+   or PR key done (step 5), so it stops taking a slot.
+5. **Mark each handled item** right after it merges, its draft PR is open, or
+   (for an issue or PR) it is parked in a task:
    `bash <skill-dir>/scripts/watch-pass.sh --done "<kind> <key>"` with the
    line's middle column, for example `--done "issue fyodoriv/dotfiles#244"`.
    Do not mark a parked task: its `Blocked` line already hides it, and it comes

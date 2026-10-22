@@ -5,7 +5,8 @@
 #   With no REPO_DIR, it reads one path per line from ~/.config/watch-issues/repos,
 #   else it watches the current git repo.
 # It prints up to K (default 5) items not handled yet, in this order: broken PRs, issues
-# the signed-in user filed, tasks (P0 to P2, file order), issues from others. Each line is
+# the signed-in user filed, tasks (P0 to P2, file order), issues from others (one slot is
+# kept for an issue from others when there is one). Each line is
 #   new<TAB><kind> <key><TAB><text>
 # where "<kind> <key>" is the exact --done argument. Then "watch: N new (showing S), M handled".
 # A PR key carries its state and head commit, so a PR that breaks again shows up as new.
@@ -35,10 +36,17 @@ touch "$seen"
 
 if [ "${#done_items[@]}" -gt 0 ]; then
   for item in "${done_items[@]}"; do
+    tab="$(printf '\t')"
     case "$item" in
-      "issue "?*|"task "?*|"pr "?*) ;;
-      *) echo "watch: not an item key: $item (use the second column of a pass line)" >&2; exit 1 ;;
+      *"$tab"*|*" ") ok=0 ;;
+      "task "?*) ok=1 ;;
+      *) ok=0
+         printf '%s\n' "$item" | grep -qE '^issue [^ /]+/[^ /]+#[0-9]+$' && ok=1
+         printf '%s\n' "$item" | grep -qE '^pr [^ /]+/[^ /]+#[0-9]+ (red|conflicting) [0-9a-f]{7}$' && ok=1 ;;
     esac
+    if [ "$ok" -ne 1 ]; then
+      echo "watch: not an item key: $item (use the second column of a pass line)" >&2; exit 1
+    fi
     grep -qxF "$item" "$seen" || printf '%s\n' "$item" >>"$seen"
   done
   echo "watch: recorded ${#done_items[@]} handled item(s)"
@@ -156,12 +164,18 @@ for repo in "${repos[@]}"; do
   fi
 done
 
+# One slot is kept for an outside issue (a user's report) when there is one, so reports
+# never wait behind a long task queue.
+reserve=0
+[ -s "$work/outside" ] && [ "$limit" -ge 2 ] && reserve=1
 shown=0
-for b in $buckets; do
+show() { # show <bucket> <max total>
   while IFS= read -r line; do
-    [ "$shown" -lt "$limit" ] || break
+    [ "$shown" -lt "$2" ] || break
     printf '%s\n' "$line"; shown=$((shown + 1))
-  done <"$work/$b"
-done
+  done <"$work/$1"
+}
+for b in pr owner task; do show "$b" $((limit - reserve)); done
+show outside "$limit"
 echo "watch: $new_count new (showing $shown), $open_count handled"
 exit 0

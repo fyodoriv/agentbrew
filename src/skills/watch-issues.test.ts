@@ -188,7 +188,7 @@ describe("watch-issues pass", () => {
       "pr acme/demo#7 red abcdef1",
       "issue acme/demo#13",
       "task demo/fix-sync-crash",
-      "task demo/add-flag",
+      "issue acme/demo#12",
     ]);
     expect(lastLine(out)).toBe("watch: 6 new (showing 4), 0 handled");
   });
@@ -209,11 +209,30 @@ describe("watch-issues pass", () => {
     expect(out).toContain(line("pr acme/demo#7 conflicting 9999999", "red one"));
   });
 
-  it("--done rejects a malformed key", () => {
+  it("--done rejects a malformed key, a pasted line with a tab, and a wrong-shaped PR key", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
-    const result = run(root, fakeGh(root, []), ["--done", "acme/demo#12"]);
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("not an item key");
+    const bin = fakeGh(root, []);
+    for (const bad of [
+      "acme/demo#12",
+      "issue acme/demo#21\tby me (owner): needs sudo",
+      "pr acme/demo#7 red",
+      "issue acme/demo#12 ",
+    ]) {
+      const result = run(root, bin, ["--done", bad]);
+      expect(result.status, bad).toBe(1);
+      expect(result.stderr).toContain("not an item key");
+    }
+  });
+
+  it("keeps one slot for an outside issue even behind a long queue", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
+    const out = pass(root, fakeGh(root, ISSUES, [PRS[0]]), ["--limit", "3", fixtureRepo(root)]);
+    const keys = out
+      .trim()
+      .split("\n")
+      .filter((l) => l.startsWith("new\t"))
+      .map((l) => l.split("\t")[1]);
+    expect(keys).toEqual(["pr acme/demo#7 red abcdef1", "issue acme/demo#13", "issue acme/demo#12"]);
   });
 
   it("--include-p3 adds P3 tasks", () => {

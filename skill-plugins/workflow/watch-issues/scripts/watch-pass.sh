@@ -1,37 +1,44 @@
 #!/usr/bin/env bash
 # One watch pass: list what needs work in each repo, and mark what was not handled yet.
-# Usage: watch-pass.sh [--include-p3] [--state-dir DIR] [REPO_DIR...]
+# Usage: watch-pass.sh [--include-p3] [--limit K] [--state-dir DIR] [REPO_DIR...]
 #        watch-pass.sh [--state-dir DIR] --done "<kind> <key>" [--done ...]
 #   With no REPO_DIR, it reads one path per line from ~/.config/watch-issues/repos,
 #   else it watches the current git repo.
-# It prints one line per item:
-#   new|open  issue  <owner/name>#<n>  by <login> (owner|outside): <title>
-#   new|open  task   <repo>/<task-id>: <title>
-#   new|open  pr     <owner/name>#<n>  <conflicting|red>: <title>
-# then "watch: N new, M open". "open" means an earlier pass already handled it (--done).
+# It prints up to K (default 5) items not handled yet, in this order: broken PRs, issues
+# the signed-in user filed, tasks (P0 to P2, file order), issues from others. Each line is
+#   new<TAB><kind> <key><TAB><text>
+# where "<kind> <key>" is the exact --done argument. Then "watch: N new (showing S), M handled".
+# A PR key carries its state and head commit, so a PR that breaks again shows up as new.
 # It never changes a repo. --done appends handled items to the seen list; nothing else is written.
 set -uo pipefail
 
 include_p3=0
+limit=5
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/watch-issues"
 repos=()
 done_items=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --include-p3) include_p3=1; shift ;;
+    --limit) limit="${2:?--limit needs a number}"; shift 2 ;;
     --state-dir) state_dir="${2:?--state-dir needs a folder}"; shift 2 ;;
     --done) done_items+=("${2:?--done needs \"<kind> <key>\"}"); shift 2 ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) repos+=("$1"); shift ;;
   esac
 done
 
+export GIT_TERMINAL_PROMPT=0
 mkdir -p "$state_dir"
 seen="$state_dir/seen"
 touch "$seen"
 
 if [ "${#done_items[@]}" -gt 0 ]; then
   for item in "${done_items[@]}"; do
+    case "$item" in
+      "issue "?*|"task "?*|"pr "?*) ;;
+      *) echo "watch: not an item key: $item (use the second column of a pass line)" >&2; exit 1 ;;
+    esac
     grep -qxF "$item" "$seen" || printf '%s\n' "$item" >>"$seen"
   done
   echo "watch: recorded ${#done_items[@]} handled item(s)"
@@ -52,11 +59,15 @@ if [ "${#repos[@]}" -eq 0 ]; then
 fi
 
 new_count=0 open_count=0
-emit() { # emit <kind> <key> <text>
-  if grep -qxF "$1 $2" "$seen"; then
-    printf 'open  %-5s %s\n' "$1" "$3"; open_count=$((open_count + 1))
+buckets=$'pr\nowner\ntask\noutside'
+work="$(mktemp -d "${TMPDIR:-/tmp}/watch-pass.XXXXXX")"
+trap 'rm -rf "$work"' EXIT
+for b in $buckets; do : >"$work/$b"; done
+emit() { # emit <bucket> <kind> <key> <text>
+  if grep -qxF "$2 $3" "$seen"; then
+    open_count=$((open_count + 1))
   else
-    printf 'new   %-5s %s\n' "$1" "$3"; new_count=$((new_count + 1))
+    printf 'new\t%s %s\t%s\n' "$2" "$3" "$4" >>"$work/$1"; new_count=$((new_count + 1))
   fi
 }
 
@@ -93,7 +104,7 @@ for repo in "${repos[@]}"; do
     echo "skip  $repo: not a git checkout"; continue
   fi
   name="$(basename "$repo")"
-  slug="$(git -C "$repo" remote get-url origin 2>/dev/null |
+  slug="$(git -C "$repo" config --get remote.origin.url 2>/dev/null |
     sed -nE 's#/*$##; s#\.git$##; s#.*github\.com[:/]+([^/]+/[^/]+)$#\1#p')"
   def="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
   [ -n "$def" ] || def="$(git -C "$repo" ls-remote --symref origin HEAD 2>/dev/null |
@@ -105,7 +116,7 @@ for repo in "${repos[@]}"; do
       echo "skip  $name: git fetch failed (showing the last fetched queue)"
     if tasks="$(git -C "$repo" show "origin/$def:TASKS.md" 2>/dev/null)"; then
       while IFS="$(printf '\t')" read -r key title; do
-        [ -n "$key" ] && emit task "$name/$key" "$name/$key: $title"
+        [ -n "$key" ] && emit task task "$name/$key" "$title"
       done < <(printf '%s\n' "$tasks" | ready_tasks)
     fi
   fi
@@ -116,32 +127,41 @@ for repo in "${repos[@]}"; do
     while IFS="$(printf '\t')" read -r num who title; do
       [ -n "$num" ] || continue
       whose=outside; [ -n "$me" ] && [ "$who" = "$me" ] && whose=owner
-      emit issue "$slug#$num" "$slug#$num by $who ($whose): $title"
+      emit "$whose" issue "$slug#$num" "by $who ($whose): $title"
     done <<<"$issues"
   else
     echo "skip  $name: gh issue list failed (signed in? gh auth status)"
   fi
 
-  # Your open PRs that need a fix. Drafts and PRs whose branch a worktree has checked out
-  # (another session working on it) are left alone.
+  # Your open PRs that need a fix. Drafts, PRs whose branch a worktree here has checked out,
+  # and PRs updated in the last 30 minutes (another session may be on them) are left alone.
   busy="$(git -C "$repo" worktree list --porcelain 2>/dev/null | sed -n 's#^branch refs/heads/##p')"
   if prs="$(gh pr list -R "$slug" --author @me --state open --limit 50 \
-      --json number,title,headRefName,isDraft,mergeable,statusCheckRollup \
-      --jq '.[] | select(.isDraft | not) | [.number, .headRefName, .title,
+      --json number,title,headRefName,headRefOid,isDraft,mergeable,statusCheckRollup,updatedAt \
+      --jq '.[] | select(.isDraft | not)
+          | select((now - (.updatedAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)) > 1800)
+          | [.number, .headRefName, .headRefOid[0:7], .title,
           (if .mergeable == "CONFLICTING" then "conflicting"
            elif ([.statusCheckRollup[]? | (.conclusion // .state)]
                  | any(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT"
                        or . == "STARTUP_FAILURE" or . == "ACTION_REQUIRED")) then "red"
            else "" end)] | @tsv' 2>/dev/null)"; then
-    while IFS="$(printf '\t')" read -r num head title why; do
+    while IFS="$(printf '\t')" read -r num head sha title why; do
       [ -n "$num" ] && [ -n "$why" ] || continue
       printf '%s\n' "$busy" | grep -qxF "$head" && continue
-      emit pr "$slug#$num" "$slug#$num $why: $title"
+      emit pr pr "$slug#$num $why $sha" "$title"
     done <<<"$prs"
   else
     echo "skip  $name: gh pr list failed (signed in? gh auth status)"
   fi
 done
 
-echo "watch: $new_count new, $open_count open"
+shown=0
+for b in $buckets; do
+  while IFS= read -r line; do
+    [ "$shown" -lt "$limit" ] || break
+    printf '%s\n' "$line"; shown=$((shown + 1))
+  done <"$work/$b"
+done
+echo "watch: $new_count new (showing $shown), $open_count handled"
 exit 0

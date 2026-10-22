@@ -249,6 +249,7 @@
   - **Success**: under 1 min/day.
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+  - **Blocked**: needs-time — 2026-10-22: one clonefile(2) call replaces `cp -cR`, and a re-run with an unchanged lockfile keeps `node_modules` (PR feat/speed-up-bash-worktree-deps-sh). Local run: fresh worktree 11.7–13.3 s → 1.2 s, re-run 16.3–18.9 s → 0.07 s. 7-day baseline before the change: 6m52s/day (35x in 6 sessions, p95 6m31s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `bash worktree-deps.sh` line), then close or pivot.
 
 - [ ] Make the agentbrew test loop fast: `verify:changed`, `npx vitest`, `verify`
   - **ID**: speed-up-agentbrew-test-loop

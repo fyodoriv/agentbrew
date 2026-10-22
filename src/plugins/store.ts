@@ -67,9 +67,30 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
   mkdirSync(pluginsRoot(), { recursive: true });
   const dir = join(pluginsRoot(), `.staging-${process.pid}-${Date.now()}`);
   try {
-    git(pluginsRoot(), "init", "--quiet", dir);
     const tagRef = `refs/tags/${ref}`;
-    git(dir, "fetch", "--quiet", "--no-tags", "--depth", "1", "--end-of-options", url, `${tagRef}:${tagRef}`);
+    // ls-remote matches name tails, so keep only the exact ref. Its object ID
+    // length tells the staging repo's format (SHA-1 or SHA-256).
+    const listed = git(pluginsRoot(), "ls-remote", "--end-of-options", url, tagRef)
+      .split("\n")
+      .map((line) => line.split("\t"))
+      .find(([, name]) => name === tagRef)?.[0];
+    if (!listed) throw new Error(`"${ref}" is not a tag in ${url}.`);
+    git(pluginsRoot(), "init", "--quiet", `--object-format=${listed.length === 64 ? "sha256" : "sha1"}`, dir);
+    // Run from pluginsRoot, like ls-remote, so a relative source resolves the same way.
+    const gitDir = join(dir, ".git");
+    git(
+      pluginsRoot(),
+      "--git-dir",
+      gitDir,
+      "fetch",
+      "--quiet",
+      "--no-tags",
+      "--depth",
+      "1",
+      "--end-of-options",
+      url,
+      `${tagRef}:${tagRef}`,
+    );
     const tag = tagObject(dir, ref);
     const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
     let text: string;

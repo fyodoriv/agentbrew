@@ -132,6 +132,16 @@ export function tagObject(dir: string, ref: string): string {
 }
 
 /**
+ * The key fingerprint from ssh-keygen's result line in `git verify-tag`
+ * output, when that line names `principal`. Any other text, such as a gpg
+ * user ID that contains a fingerprint, is ignored.
+ */
+export function signingFingerprint(output: string, principal: string): string | undefined {
+  const good = output.match(/^Good "git" signature for (\S+) with \S+ key (SHA256:[A-Za-z0-9+/=]+)$/m);
+  return good?.[1] === principal ? good[2] : undefined;
+}
+
+/**
  * Verify that tag object `oid` (from {@link tagObject} for `ref`) is signed
  * by a key in `keys`. Git gets the object ID, never the name, so it checks
  * exactly that object. Uses a scratch allowed-signers file with only those
@@ -175,9 +185,8 @@ export function verifySignedTag(dir: string, ref: string, oid: string, principal
     if (result.status !== 0) {
       throw new Error(`Tag "${ref}" signature is not from a trusted signer for "${principal}". ${output.trim()}`);
     }
-    // Only ssh-keygen's own result line counts; other output text is not trusted.
-    const good = output.match(/^Good "git" signature for (\S+) with \S+ key (SHA256:[A-Za-z0-9+/=]+)$/m);
-    const key = good?.[1] === principal ? keys.find((k) => fingerprint(k) === good[2]) : undefined;
+    const fp = signingFingerprint(output, principal);
+    const key = fp ? keys.find((k) => fingerprint(k) === fp) : undefined;
     if (!key) throw new Error(`Could not match the signing key of "${ref}" to a trusted signer.`);
     return key;
   } finally {

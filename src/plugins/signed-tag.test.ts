@@ -14,6 +14,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { home, previousEnv } = vi.hoisted(() => {
@@ -36,7 +37,7 @@ const { home, previousEnv } = vi.hoisted(() => {
 
 import { readLock } from "../lock.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
-import { tagObject, verifySignedTag } from "./signers.js";
+import { signingFingerprint, tagObject, verifySignedTag } from "./signers.js";
 import { addPlugin, pluginDir } from "./store.js";
 import { planUpdate } from "./update.js";
 
@@ -49,6 +50,22 @@ const MANIFEST = {
   capabilities: { agents: ["claude"] },
   contributes: {},
 };
+
+/**
+ * A scratch GNUPGHOME with a forger's key whose user ID holds the trusted SSH
+ * key's fingerprint, or undefined when gpg or its agent cannot run here (the
+ * test then skips). afterAll stops its gpg-agent and deletes it.
+ */
+const FORGER_GNUPG = ((): string | undefined => {
+  const dir = mkdtempSync(join(tmpdir(), "plugin-gpg-"));
+  const env = { ...process.env, GNUPGHOME: dir };
+  const fp = execFileSync("ssh-keygen", ["-lf", `${KEY.file}.pub`], { encoding: "utf-8" }).split(/\s+/)[1];
+  const args = ["--batch", "--passphrase", "", "--quick-gen-key", `forger ${fp}`, "ed25519", "sign"];
+  if (spawnSync("gpg", args, { env, stdio: "pipe" }).status === 0) return dir;
+  spawnSync("gpgconf", ["--kill", "all"], { env, stdio: "pipe" });
+  rmSync(dir, { recursive: true, force: true });
+  return undefined;
+})();
 
 let f: PluginFixture;
 /** Commit and object ID of the real signed tag v1.0.0. */
@@ -83,6 +100,10 @@ afterAll(() => {
     else process.env[k] = v;
   }
   rmSync(home, { recursive: true, force: true });
+  if (FORGER_GNUPG) {
+    spawnSync("gpgconf", ["--kill", "all"], { env: { ...process.env, GNUPGHOME: FORGER_GNUPG }, stdio: "pipe" });
+    rmSync(FORGER_GNUPG, { recursive: true, force: true });
+  }
 });
 
 describe("plugin add: signed-tag attacks", () => {
@@ -125,46 +146,23 @@ describe("plugin add: signed-tag attacks", () => {
     expectNothingInstalled();
   });
 
-  it.skipIf(spawnSync("gpg", ["--version"]).status !== 0)(
+  it.skipIf(!FORGER_GNUPG)(
     "refuses an OpenPGP-signed tag, even one whose user ID names the trusted key's fingerprint",
     () => {
-      const gnupg = mkdtempSync(join(tmpdir(), "plugin-gpg-"));
-      const env = { ...process.env, GNUPGHOME: gnupg };
-      const previous = process.env.GNUPGHOME;
+      const gnupg = FORGER_GNUPG as string;
+      const sign = ["-c", "gpg.format=openpgp", "-c", "user.signingkey=forger", "tag", "-s", "v2.0.0", "-m", "v2.0.0"];
+      execFileSync("git", [...ID, ...sign, evilCommit()], {
+        cwd: f.dir,
+        env: { ...process.env, GNUPGHOME: gnupg },
+        stdio: "pipe",
+      });
+      // The forger's key is in the user's keyring, as auto-key-retrieve would leave it.
+      process.env.GNUPGHOME = gnupg;
       try {
-        const fp = execFileSync("ssh-keygen", ["-lf", `${KEY.file}.pub`], { encoding: "utf-8" }).split(/\s+/)[1];
-        execFileSync("gpg", ["--batch", "--passphrase", "", "--quick-gen-key", `forger ${fp}`, "ed25519", "sign"], {
-          env,
-          stdio: "pipe",
-        });
-        const evil = evilCommit();
-        execFileSync(
-          "git",
-          [
-            ...ID,
-            "-c",
-            "gpg.format=openpgp",
-            "-c",
-            "user.signingkey=forger",
-            "tag",
-            "-s",
-            "v2.0.0",
-            "-m",
-            "v2.0.0",
-            evil,
-          ],
-          { cwd: f.dir, env, stdio: "pipe" },
-        );
-        // The forger's key is in the user's keyring, as auto-key-retrieve would leave it.
-        process.env.GNUPGHOME = gnupg;
-
         expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/SSH signature/);
         expectNothingInstalled();
       } finally {
-        if (previous === undefined) delete process.env.GNUPGHOME;
-        else process.env.GNUPGHOME = previous;
-        spawnSync("gpgconf", ["--kill", "all"], { env });
-        rmSync(gnupg, { recursive: true, force: true });
+        delete process.env.GNUPGHOME;
       }
     },
   );
@@ -203,6 +201,56 @@ describe("tagObject and verifySignedTag", () => {
     expect(tagObject(f.dir, "v1.0.0")).toBe(signedTag);
     expect(verifySignedTag(f.dir, "v1.0.0", signedTag, "acme", [KEY.pub])).toBe(KEY.pub);
     expect(() => verifySignedTag(f.dir, signedTag, unsigned, "acme", [KEY.pub])).toThrow(/SSH signature/);
+  });
+});
+
+describe("signingFingerprint", () => {
+  const FP = "SHA256:4XgAIWK94lNDAIY3oMsDeDep1ni5C2CwUhkjAIkbYy8";
+  it.each([
+    ["ssh-keygen's result line", `Good "git" signature for acme with ED25519 key ${FP}\n`, FP],
+    ["a result line for another principal", `Good "git" signature for globex with ED25519 key ${FP}\n`, undefined],
+    ["a gpg user ID that holds a fingerprint", `gpg: Good signature from "forger ${FP}" [unknown]\n`, undefined],
+    ["a result line inside other text", `x Good "git" signature for acme with ED25519 key ${FP}\n`, undefined],
+  ])("reads %s", (_label, output, expected) => {
+    expect(signingFingerprint(output, "acme")).toBe(expected);
+  });
+});
+
+describe("object formats", () => {
+  it("installs a signed tag from a SHA-256 repo", () => {
+    const dir = mkdtempSync(join(tmpdir(), "plugin-src-sha256-"));
+    fixtureGit(dir, "init", "-q", "--object-format=sha256");
+    writeFileSync(join(dir, "agentbrew-plugin.yaml"), yaml.dump(MANIFEST));
+    fixtureGit(dir, "add", "-A");
+    fixtureGit(dir, ...ID, "commit", "-qm", "init");
+    fixtureGit(
+      dir,
+      ...ID,
+      "-c",
+      "gpg.format=ssh",
+      "-c",
+      `user.signingkey=${KEY.file}`,
+      "tag",
+      "-s",
+      "v1.0.0",
+      "-m",
+      "v1",
+    );
+
+    const entry = addPlugin(`${dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+
+    expect(entry.commit).toBe(fixtureGit(dir, "rev-parse", "v1.0.0^{commit}"));
+    expect(entry.commit).toHaveLength(64);
+  });
+
+  it("installs a SHA-1 repo when the user's git defaults to SHA-256", () => {
+    const config = process.env.GIT_CONFIG_GLOBAL as string;
+    writeFileSync(config, "[init]\n\tdefaultObjectFormat = sha256\n");
+    try {
+      expect(addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub }).commit).toBe(good);
+    } finally {
+      writeFileSync(config, "");
+    }
   });
 });
 

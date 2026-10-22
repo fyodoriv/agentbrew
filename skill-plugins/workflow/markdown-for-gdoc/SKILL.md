@@ -172,7 +172,9 @@ human reconciliation. Don't full-replace as a shortcut.
 
 **Sole legitimate full-replace case**: a tab with zero human content
 (agent-generated dashboard rebuilt every run). Even then, list anchored
-comments first; if any exist, fall back to surgical.
+comments first; if any exist, fall back to surgical. After the rewrite, fix
+wide tables and check bold with
+[`references/markdown-tab-rewrite.md`](references/markdown-tab-rewrite.md).
 
 ## Visual verification loop (ABSOLUTE)
 

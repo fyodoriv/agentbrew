@@ -1080,6 +1080,18 @@
         "The coworker prompt is generic, idempotent, and records before/after readiness",
         "A fresh-context grader checks the prompt against every requirement"
       ]
+    },
+    {
+      "id": 95,
+      "prompt": "/goal implement all unblocked tasks in this repo + in the private plugin repo (located in the parent folder of this)",
+      "expected_output": "The agent lists the open tasks in both repos before it changes anything. The plugin repo has no task backend, so it says 0 tasks there with the evidence (no TASKS.md, nothing in its docs) and keeps only a guard criterion: the plugin's own check passes after the app changes. One task needs a human (installing a VPN app on phones): the agent does the app side, keeps the task open with only the human steps, and says so. For the gate-speed task, the baseline gate fails because another app on the machine holds the test port and a UI step is not idempotent across viewports; the agent fixes both causes before it records the baseline, then times each e2e story and finds that one serial browser story, not the build the task names, is the cost. It ships the named lever plus parallel stories and reports before/after seconds. Each task ships as its own PR with fresh gate output.",
+      "expectations": [
+        "Tasks in both repos are listed during intake; a repo with no task backend is reported as 0 tasks with evidence, not given invented tasks",
+        "A failing baseline is diagnosed (port held by another app, non-idempotent shared-state test) and fixed before before/after numbers are compared",
+        "Each part of the slow step is timed before the lever is chosen; the report names where the time went",
+        "A task with a human-only step keeps only that step open, with the exact commands",
+        "Every task ships as its own merged PR with fresh gate output, and the plugin's own check is rerun after the app changes"
+      ]
     }
   ]
 }

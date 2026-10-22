@@ -87,7 +87,10 @@ So:
 4. List the skills that look relevant. Load them when you reach their step, not
    all at once.
 5. Find the measurement. Look for an existing test, lint, script, counter, or
-   query that can prove the end state. Prefer one that already exists.
+   query that can prove the end state. Prefer one that already exists. For a
+   speed goal, time each part before you pick the lever: the lever a task
+   names may not be where the time goes. A baseline run that fails is the
+   first finding, not a number: fix or report the cause before you compare.
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the

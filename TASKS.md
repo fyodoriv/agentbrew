@@ -250,19 +250,6 @@
   - **Anchor**: tooling-checkup agent time review 2026-10-21; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
   - **Blocked**: needs-time — 2026-10-22: `verify:changed` now runs `tsc`, `lint:changed`, and `vitest related` on a code diff instead of the whole `npm run verify`; the full gate keys the hook fixtures on the files they run and shares its step cache across worktrees; AGENTS.md points the inner loop at `npm test` (PR feat/speed-up-agentbrew-test-loop). Measured split of the 7 days before (perf log joined to the commands): about half of the `verify:changed` time was code diffs that ran the full gate, and most `npx vitest` time was whole folders and `new-project-contract.test.ts`. Local runs: a one-file `src/` diff 9m52s (old path, the full gate, load ~90) → 30 s (load 77); hook fixtures 128 s → 0.7 s cached in a second worktree. 7-day baseline before the change: 39m32s/day (`npx vitest` 15m36s, `verify:changed` 15m07s, `verify` 8m49s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (sum of the agentbrew `npm run verify:changed`, `npx vitest`, and `npm run verify` lines), then close or pivot.
 
-- [ ] Make `new-project-contract.test.ts` cost under 20 s
-  - **ID**: speed-up-new-project-contract-test
-  - **Tags**: perf, agents
-  - **Details**: Found while timing the test loop (2026-10-22). `src/skills/new-project-contract.test.ts` took 81 s at load 38, the slowest test file in the suite, and it runs in every full gate. Agents also ran it on its own 9 times in 7 days (median 61 s). The time goes to real scaffolds: "brings a template fix into an older repo" 16 s, the three Copier comparisons 7–8 s each, and the three scaffold-and-score cases 4–6 s each.
-  - **Files**: `src/skills/new-project-contract.test.ts`, `skill-plugins/workflow/new-project/scripts/`
-  - **Output**: code
-  - **Acceptance**: the file runs in under 20 s on the owner's Mac at a load under 10, with the same checks.
-  - **Hypothesis**: scaffolding once per profile and sharing it across the cases cuts the file from 81 s to under 20 s, and the full gate by about a minute.
-  - **Measurement**: `npx vitest run src/skills/new-project-contract.test.ts --reporter=json --outputFile=<file>`, file duration.
-  - **Success**: the file takes under 20 s and keeps all its assertions.
-  - **Pivot**: if the cases cannot share a scaffold, move the Copier cases to a real-e2e scenario and keep the copy-fallback cases in the unit suite.
-  - **Anchor**: test-loop timing in the speed-up-agentbrew-test-loop PR (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
-
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

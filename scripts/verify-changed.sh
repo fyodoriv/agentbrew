@@ -82,7 +82,7 @@ has() { grep -qE "$1" <<<"$changed"; }
 #   (join(repoRoot, "TASKS.md"), process.cwd(), import.meta.dirname).
 # - A skill change runs the src/skills tests, except a test that pins only
 #   other skills (join(…, "skill-plugins", "<plugin>", "<skill>")): it reads
-#   only its own skill. new-project-contract alone takes over a minute.
+#   only its own skill. new-project-contract alone takes about 15 s.
 # - A skill change also runs the tests that read every skill through code
 #   (found with a read probe of the full suite, 2026-10-22).
 # - A hook change runs src/hooks.

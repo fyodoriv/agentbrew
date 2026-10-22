@@ -1,7 +1,8 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -13,12 +14,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, type RunnerTask } from "vitest";
 
 const skillRoot = join(process.cwd(), "skill-plugins", "workflow", "new-project");
 const scaffold = join(skillRoot, "scripts", "scaffold.sh");
 const checkSetup = join(skillRoot, "scripts", "check-setup.sh");
-const scratch = mkdtempSync(join(tmpdir(), "new-project-"));
 // The copy fallback is the default here; the Copier tests below opt in.
 const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", NEW_PROJECT_NO_COPIER: "1" };
 // The gate's own NO_CACHE=1 run must not leak into the cache test below.
@@ -30,7 +30,16 @@ const gitEnv = {
   GIT_COMMITTER_NAME: "t",
   GIT_COMMITTER_EMAIL: "t@example.com",
 };
-const copierEnv: NodeJS.ProcessEnv = { ...gitEnv, NEW_PROJECT_NO_COPIER: "" };
+// uv keeps its cache and Pythons under HOME, which is a new scratch dir for each test file
+// (vitest.isolated-home.ts), so each run downloaded Python and Copier again. Keep them in
+// node_modules/.cache, next to the vitest cache, where the next run finds them.
+const uvDir = join(process.cwd(), "node_modules", ".cache", "uv");
+const copierEnv: NodeJS.ProcessEnv = {
+  ...gitEnv,
+  NEW_PROJECT_NO_COPIER: "",
+  UV_CACHE_DIR: env.UV_CACHE_DIR ?? join(uvDir, "cache"),
+  UV_PYTHON_INSTALL_DIR: env.UV_PYTHON_INSTALL_DIR ?? join(uvDir, "python"),
+};
 // Copier runs from PATH or through uvx (which may need the network once).
 const copierCmd = ["copier", "uvx copier@9.19.1"].find(
   (cmd) => spawnSync("bash", ["-c", `${cmd} --version`], { env: copierEnv, encoding: "utf-8" }).status === 0,
@@ -52,32 +61,216 @@ const required = [
   "checkup",
   "caching",
 ];
+// The shared setup holds every real scaffold of the file, so it gets the time a loaded machine needs.
+const SETUP_TIMEOUT = 300_000;
 
-afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+// Scaffolds that beforeAll builds once and then makes read-only. A test that changes files
+// works on a copy from fresh().
+const sharedScaffolds: { name: string; profile: string; stack: string }[] = [
+  ...profiles.map(({ profile, stack }) => ({ name: profile, profile, stack })),
+  { name: "tool-none", profile: "tool", stack: "none" },
+  { name: "side-project-none", profile: "side-project", stack: "none" },
+];
+// check-setup.sh runs on the shared scaffolds, once each: [scaffold name, profile, flags].
+const sharedScoreRuns: [string, string, string[]][] = [
+  ...profiles.flatMap(({ profile }): [string, string, string[]][] => [
+    [profile, profile, []],
+    [profile, profile, ["--strict"]],
+  ]),
+  ["side-project-none", "side-project", []],
+];
 
-function score(dir: string, profile: string, ...flags: string[]) {
-  const run = spawnSync("/bin/bash", [checkSetup, dir, "--profile", profile, ...flags], { encoding: "utf-8", env });
+type Run = { status: number | null; stdout: string; stderr: string };
+type TemplateUpdate = { repo: string; out: string; answers: string; update: Run };
+
+let scratch = "";
+const sharedScores = new Map<string, Run>();
+// The Copier scaffolds start in beforeAll and run while the tests before them run.
+// Settled: it never rejects; the Copier tests report its error.
+let copierWork: Promise<{ value: TemplateUpdate } | { error: unknown }> | undefined;
+const COPIER_SUITE = "with Copier (skips when neither copier nor uvx copier@9.19.1 runs)";
+
+/** Like spawnSync, but the event loop keeps running, so the other scaffolds go on meanwhile. */
+function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }): Promise<Run> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf-8").on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.setEncoding("utf-8").on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (status) => resolve({ status, stdout, stderr }));
+  });
+}
+
+/** Like execFileSync: the output, or an error when the command fails. */
+async function execAsync(cmd: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }) {
+  const run = await spawnAsync(cmd, args, options);
+  if (run.status !== 0) throw new Error(`${cmd} ${args.join(" ")} exited ${run.status}\n${run.stdout}${run.stderr}`);
+  return run.stdout;
+}
+
+/** Waits for every promise, then throws the first error, so no process outlives a failed setup. */
+async function allDone(promises: Promise<unknown>[]) {
+  for (const result of await Promise.allSettled(promises)) if (result.status === "rejected") throw result.reason;
+}
+
+function git(cwd: string, ...args: string[]) {
+  return execFileSync("git", args, { cwd, env: gitEnv, encoding: "utf-8" });
+}
+
+function sharedDir(name: string) {
+  return join(scratch, "shared", name);
+}
+
+/** A writable copy of a shared scaffold, for a test that changes files. */
+function fresh(name: string, copy: string) {
+  const dir = join(scratch, copy);
+  cpSync(sharedDir(name), dir, { recursive: true, verbatimSymlinks: true });
+  execFileSync("chmod", ["-R", "u+w", dir]);
+  return dir;
+}
+
+function parseScore(run: Run) {
   const match = /score: (\d+)\/(\d+)/.exec(run.stdout);
   expect(match, run.stdout + run.stderr).not.toBeNull();
   return { status: run.status, pass: Number(match?.[1]), total: Number(match?.[2]), out: run.stdout };
 }
 
-function scaffoldInto(dir: string, profile: string, stack: string) {
-  return execFileSync(
-    "/bin/bash",
-    [scaffold, dir, "--profile", profile, "--name", `demo-${profile}`, "--stack", stack],
-    {
-      encoding: "utf-8",
-      env,
-    },
+function score(dir: string, profile: string, ...flags: string[]) {
+  return parseScore(
+    spawnSync("/bin/bash", [checkSetup, dir, "--profile", profile, ...flags], { encoding: "utf-8", env }),
   );
 }
 
+/** The beforeAll score of a shared scaffold. */
+function sharedScore(name: string, ...flags: string[]) {
+  const run = sharedScores.get([name, ...flags].join(" "));
+  if (!run) throw new Error(`no shared score for ${[name, ...flags].join(" ")}`);
+  return parseScore(run);
+}
+
+function scaffoldArgs(dir: string, profile: string, stack: string) {
+  return [scaffold, dir, "--profile", profile, "--name", `demo-${profile}`, "--stack", stack];
+}
+
+function scaffoldInto(dir: string, profile: string, stack: string) {
+  return execFileSync("/bin/bash", scaffoldArgs(dir, profile, stack), { encoding: "utf-8", env });
+}
+
+/** The copy fallback and Copier write each profile with the same answers, into copy-<profile> and copier-<profile>. */
+async function copierPairs() {
+  await allDone(
+    profiles.map(async ({ profile, stack }) => {
+      const viaCopy = join(scratch, `copy-${profile}`);
+      const viaCopier = join(scratch, `copier-${profile}`);
+      const args = ["--profile", profile, "--name", "same", "--stack", stack, "--owner", "Ann", "--description", "D."];
+      await allDone([
+        execAsync("/bin/bash", [scaffold, viaCopy, ...args], { env }),
+        execAsync("/bin/bash", [scaffold, viaCopier, ...args], { env: copierEnv }),
+      ]);
+      await execAsync("chmod", ["-R", "a-w", viaCopy, viaCopier], { env });
+    }),
+  );
+}
+
+/** An older repo, scaffolded from a versioned template, with its own edit; then `copier update` to the template's fix. */
+async function templateUpdate(): Promise<TemplateUpdate> {
+  // A versioned template: the skill files in their own git repo.
+  const tpl = join(scratch, "template-repo");
+  for (const part of ["copier.yml", "templates", "scripts"]) {
+    cpSync(join(skillRoot, part), join(tpl, part), { recursive: true, verbatimSymlinks: true });
+  }
+  git(tpl, "init", "-q", "-b", "main");
+  git(tpl, "add", "-A");
+  git(tpl, "commit", "-qm", "template v1");
+
+  const repo = join(scratch, "updated");
+  const out = await execAsync(
+    "/bin/bash",
+    [join(tpl, "scripts", "scaffold.sh"), repo, "--profile", "tool", "--name", "u", "--stack", "ts"],
+    { env: copierEnv },
+  );
+  const answersFile = join(repo, ".copier-answers.yml");
+  const answers = existsSync(answersFile) ? readFileSync(answersFile, "utf-8") : "";
+  appendFileSync(join(repo, "README.md"), "Local note kept by the repo.\n");
+  git(repo, "add", "-A");
+  git(repo, "commit", "-qm", "scaffold plus a local edit");
+
+  appendFileSync(join(tpl, "templates", "docs", "learnings.md"), "- Template fix line from v2.\n");
+  git(tpl, "commit", "-qam", "template v2");
+
+  const update = await spawnAsync("bash", ["-c", `${copierCmd} update --defaults --quiet --vcs-ref HEAD`], {
+    cwd: repo,
+    env: copierEnv,
+  });
+  return { repo, out, answers, update };
+}
+
+/** The template update is the longest chain, so it starts at once; the pairs start after `pairsAfter`. */
+function startCopierWork(pairsAfter: Promise<unknown> = Promise.resolve()) {
+  const work = async (): Promise<TemplateUpdate> => {
+    const [update, pairs] = await Promise.allSettled([templateUpdate(), pairsAfter.then(copierPairs)]);
+    if (update.status === "rejected") throw update.reason;
+    if (pairs.status === "rejected") throw pairs.reason;
+    return update.value;
+  };
+  return work().then(
+    (value) => ({ value }),
+    (error: unknown) => ({ error }),
+  );
+}
+
+async function buildShared() {
+  await allDone(
+    sharedScaffolds.map(({ name, profile, stack }) =>
+      execAsync("/bin/bash", scaffoldArgs(sharedDir(name), profile, stack), { env }),
+    ),
+  );
+  await allDone(
+    sharedScoreRuns.map(async ([name, profile, flags]) => {
+      const run = await spawnAsync("/bin/bash", [checkSetup, sharedDir(name), "--profile", profile, ...flags], { env });
+      sharedScores.set([name, ...flags].join(" "), run);
+    }),
+  );
+}
+
+/** True when this run has a test in the suite `name`: a -t filter can skip them all. */
+function runsSuite(task: RunnerTask, name: string, inside = false): boolean {
+  const within = inside || task.name === name;
+  if (task.type === "test") return within && task.mode === "run";
+  return task.tasks.some((child) => runsSuite(child, name, within));
+}
+
+// biome-ignore lint/correctness/noEmptyPattern: vitest passes the file suite only after a destructured context.
+beforeAll(async ({}, file) => {
+  scratch = mkdtempSync(join(tmpdir(), "new-project-"));
+  const shared = buildShared();
+  if (copierCmd && runsSuite(file, COPIER_SUITE)) copierWork = startCopierWork(shared.catch(() => undefined));
+  await shared;
+  // Read-only: a test that writes to a shared scaffold fails, instead of breaking the tests after it.
+  execFileSync("chmod", ["-R", "a-w", join(scratch, "shared")]);
+}, SETUP_TIMEOUT);
+
+// Vitest starts the next test without a turn of the event loop, so the Copier work would not see its
+// child processes end until the Copier tests. Two setImmediate turns always include one I/O poll.
+afterEach(() => new Promise<void>((resolve) => setImmediate(() => setImmediate(resolve))));
+
+afterAll(async () => {
+  await copierWork;
+  if (!scratch) return;
+  execFileSync("chmod", ["-R", "u+w", scratch]);
+  rmSync(scratch, { recursive: true, force: true });
+}, SETUP_TIMEOUT);
+
 describe("new-project skill", () => {
-  it.each(profiles)("scaffolds a $profile repo that scores 100%", ({ profile, stack }) => {
-    const dir = join(scratch, profile);
-    scaffoldInto(dir, profile, stack);
-    const result = score(dir, profile);
+  it.each(profiles)("scaffolds a $profile repo that scores 100%", ({ profile }) => {
+    const dir = sharedDir(profile);
+    const result = sharedScore(profile);
     expect(result.out).not.toContain("FAIL");
     expect(result.status).toBe(0);
     expect(readlinkSync(join(dir, "CLAUDE.md"))).toBe("AGENTS.md");
@@ -85,10 +278,9 @@ describe("new-project skill", () => {
   });
 
   it("fails an app whose checkup does not list open PRs and branches first", () => {
-    const dir = join(scratch, "no-open-work");
-    scaffoldInto(dir, "side-project", "none");
+    const dir = fresh("side-project-none", "no-open-work");
     const label = "FAIL [checkup] scripts/checkup.sh lists open PRs and branches first";
-    expect(score(dir, "side-project").out).not.toContain(label);
+    expect(sharedScore("side-project-none").out).not.toContain(label);
     writeFileSync(join(dir, "scripts", "checkup.sh"), "#!/usr/bin/env bash\nscripts/doctor.sh\n");
     const result = score(dir, "side-project");
     expect(result.out).toContain(label);
@@ -96,8 +288,8 @@ describe("new-project skill", () => {
   });
 
   it.each(profiles)("strict mode fails a fresh $profile scaffold until FILL: markers are replaced", ({ profile }) => {
-    const dir = join(scratch, profile);
-    expect(score(dir, profile, "--strict").status).toBe(1);
+    expect(sharedScore(profile, "--strict").status).toBe(1);
+    const dir = fresh(profile, `filled-${profile}`);
     execFileSync("bash", ["-c", "grep -rIlw 'FILL' --exclude-dir=.git . | xargs perl -pi -e 's/\\bFILL\\b/Filled/g'"], {
       cwd: dir,
     });
@@ -105,17 +297,12 @@ describe("new-project skill", () => {
   });
 
   it.each(profiles)("enforces every required area for $profile", ({ profile }) => {
-    const areas =
-      /areas: (.*)/
-        .exec(score(join(scratch, profile), profile).out)?.[1]
-        .trim()
-        .split(" ") ?? [];
+    const areas = /areas: (.*)/.exec(sharedScore(profile).out)?.[1].trim().split(" ") ?? [];
     for (const area of required) expect(areas, area).toContain(area);
   });
 
   it("runs the one-line setup, e2e, docs check, and speed report in a fresh scaffold", () => {
-    const dir = join(scratch, "run");
-    scaffoldInto(dir, "side-project", "none");
+    const dir = fresh("side-project-none", "run");
     const run = (script: string) =>
       execFileSync("bash", [join(dir, "scripts", script)], { cwd: dir, encoding: "utf-8", env });
     expect(run("setup.sh")).toContain("doctor: all checks passed");
@@ -129,8 +316,7 @@ describe("new-project skill", () => {
   });
 
   it("keeps check-docs and e2e right with prose, helpers, and required env keys", () => {
-    const dir = join(scratch, "edge");
-    scaffoldInto(dir, "tool", "none");
+    const dir = fresh("tool-none", "edge");
     const stories = join(dir, "docs", "user-stories.md");
     writeFileSync(stories, `${readFileSync(stories, "utf-8")}\nSee tests/e2e/us-01-setup.sh.\n`);
     mkdirSync(join(dir, "tests", "e2e", "fixtures"), { recursive: true });
@@ -143,8 +329,7 @@ describe("new-project skill", () => {
   });
 
   it("fails check-docs when a story test does not name its story id", () => {
-    const dir = join(scratch, "story-id");
-    scaffoldInto(dir, "tool", "none");
+    const dir = fresh("tool-none", "story-id");
     const test = join(dir, "tests", "e2e", "us-01-setup.sh");
     writeFileSync(test, readFileSync(test, "utf-8").replaceAll("US-01", "story one"));
     const result = spawnSync("/bin/bash", [join(dir, "scripts", "check-docs.sh")], {
@@ -157,8 +342,7 @@ describe("new-project skill", () => {
   });
 
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {
-    const dir = join(scratch, "mapped");
-    scaffoldInto(dir, "tool", "none");
+    const dir = fresh("tool-none", "mapped");
     renameSync(join(dir, "docs", "VISION.md"), join(dir, "VISION.md"));
     expect(score(dir, "tool").status).toBe(1);
     mkdirSync(join(dir, ".agents"), { recursive: true });
@@ -176,8 +360,7 @@ describe("new-project skill", () => {
   });
 
   it("caches gate steps by input hash and re-runs them after any change", () => {
-    const dir = join(scratch, "cached");
-    scaffoldInto(dir, "tool", "none");
+    const dir = fresh("tool-none", "cached");
     const gitEnv = { ...env, CHECK_OFFLINE: "1", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.com" };
     execFileSync("git", ["add", "-A"], { cwd: dir, env: gitEnv });
     const check = (extra: Record<string, string> = {}) =>
@@ -269,64 +452,41 @@ describe("new-project skill", () => {
     expect(JSON.stringify(evals)).toMatch(/interview prep/);
   });
 
-  describe.skipIf(!copierCmd)("with Copier (skips when neither copier nor uvx copier@9.19.1 runs)", () => {
-    const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env: gitEnv, encoding: "utf-8" });
+  describe.skipIf(!copierCmd)(COPIER_SUITE, () => {
+    let upgraded: TemplateUpdate;
+    beforeAll(async () => {
+      copierWork ??= startCopierWork();
+      const done = await copierWork;
+      if ("error" in done) throw done.error;
+      upgraded = done.value;
+    }, SETUP_TIMEOUT);
     const files = (dir: string) =>
       execFileSync("bash", ["-c", "find . \\( -type f -o -type l \\) ! -path './.git/*' | sort"], {
         cwd: dir,
         encoding: "utf-8",
       });
 
-    it.each(profiles)("writes the same $profile files as the copy fallback, plus the answers file", ({
-      profile,
-      stack,
-    }) => {
+    it.each(profiles)("writes the same $profile files as the copy fallback, plus the answers file", ({ profile }) => {
       const viaCopy = join(scratch, `copy-${profile}`);
       const viaCopier = join(scratch, `copier-${profile}`);
-      const args = ["--profile", profile, "--name", "same", "--stack", stack, "--owner", "Ann", "--description", "D."];
-      execFileSync("/bin/bash", [scaffold, viaCopy, ...args], { env });
-      execFileSync("/bin/bash", [scaffold, viaCopier, ...args], { env: copierEnv });
-      rmSync(join(viaCopier, ".copier-answers.yml"));
-      expect(files(viaCopier)).toBe(files(viaCopy));
-      const diff = spawnSync("diff", ["-r", "--no-dereference", "-x", ".git", viaCopy, viaCopier], {
-        encoding: "utf-8",
-      });
+      expect(existsSync(join(viaCopier, ".copier-answers.yml"))).toBe(true);
+      const copierFiles = files(viaCopier)
+        .split("\n")
+        .filter((file) => file !== "./.copier-answers.yml")
+        .join("\n");
+      expect(copierFiles).toBe(files(viaCopy));
+      const diff = spawnSync(
+        "diff",
+        ["-r", "--no-dereference", "-x", ".git", "-x", ".copier-answers.yml", viaCopy, viaCopier],
+        { encoding: "utf-8" },
+      );
       expect(diff.stdout + diff.stderr).toBe("");
     });
 
     it("brings a template fix into an older repo and keeps the repo's own edits", () => {
-      // A versioned template: the skill files in their own git repo.
-      const tpl = join(scratch, "template-repo");
-      for (const part of ["copier.yml", "templates", "scripts"]) {
-        cpSync(join(skillRoot, part), join(tpl, part), { recursive: true, verbatimSymlinks: true });
-      }
-      git(tpl, "init", "-q", "-b", "main");
-      git(tpl, "add", "-A");
-      git(tpl, "commit", "-qm", "template v1");
-
-      const repo = join(scratch, "updated");
-      const out = execFileSync(
-        "/bin/bash",
-        [join(tpl, "scripts", "scaffold.sh"), repo, "--profile", "tool", "--name", "u", "--stack", "ts"],
-        {
-          env: copierEnv,
-          encoding: "utf-8",
-        },
-      );
+      const { repo, out, answers, update } = upgraded;
       expect(out).toContain("created .copier-answers.yml");
-      expect(readFileSync(join(repo, ".copier-answers.yml"), "utf-8")).toMatch(/_commit: \S+/);
-      appendFileSync(join(repo, "README.md"), "Local note kept by the repo.\n");
-      git(repo, "add", "-A");
-      git(repo, "commit", "-qm", "scaffold plus a local edit");
-
-      appendFileSync(join(tpl, "templates", "docs", "learnings.md"), "- Template fix line from v2.\n");
-      git(tpl, "commit", "-qam", "template v2");
-
-      const update = spawnSync("bash", ["-c", `${copierCmd} update --defaults --quiet --vcs-ref HEAD`], {
-        cwd: repo,
-        env: copierEnv,
-        encoding: "utf-8",
-      });
+      expect(answers).toMatch(/_commit: \S+/);
       expect(update.status, update.stderr).toBe(0);
       expect(readFileSync(join(repo, "docs", "learnings.md"), "utf-8")).toContain("- Template fix line from v2.");
       expect(readFileSync(join(repo, "README.md"), "utf-8")).toContain("Local note kept by the repo.");

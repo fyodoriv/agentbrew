@@ -66,6 +66,25 @@ vi.mock("../init.js", () => ({
   init: vi.fn(),
 }));
 
+// Real next-step planning and printing; the machine facts come from the mocks above, the rest is healthy.
+vi.mock("../next-steps.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../next-steps.js")>();
+  const agentfile = await import("../agentfile.js");
+  return {
+    ...original,
+    collectDashboardFacts: vi.fn((state: never, repairableDrift: number) => ({
+      hasSkillsOrServers: agentfile.getStateSources(state).length > 0 || agentfile.getConfigServers().length > 0,
+      syncErrors: 0,
+      repairableDrift,
+      autoRepair: "active",
+      autoSyncOptedOut: false,
+      memoryServiceMissing: false,
+      mcpNeedSetup: 0,
+      mcpFailing: 0,
+    })),
+  };
+});
+
 import { addSource } from "../add-source.js";
 import {
   addSourceToAgentfile,
@@ -668,11 +687,10 @@ describe("registerInstallCommand", () => {
       });
       installCmd?.outputHelp();
       const rendered = writes.join("");
-      // The pointer must name the exact config key (so the user can grep
-      // their state.yaml for it) AND name the README section (so they can
-      // find the 4-failure-mode table for triage).
-      expect(rendered).toContain("skillInstallMode: native");
-      expect(rendered).toContain("~/.config/agentbrew/state.yaml");
+      // The pointer must name the exact command that sets the key (no hand
+      // edit of state.yaml) AND name the README section (so they can find
+      // the 4-failure-mode table for triage).
+      expect(rendered).toContain("agentbrew config set skillInstallMode native");
       expect(rendered).toContain("Delegated skill install networking");
     });
   });
@@ -767,7 +785,9 @@ describe("registerDefaultAction", () => {
   });
 
   it("shows dashboard when state exists", async () => {
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([]);
     mockGetStateSources.mockReturnValue([]);
@@ -802,6 +822,22 @@ describe("registerDefaultAction", () => {
       await program.parseAsync(["node", "test"]);
       expect(mockInit).not.toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining("not initialized"));
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("agentbrew init"));
+      expect(mockStatus).not.toHaveBeenCalled();
+    } finally {
+      process.stdout.isTTY = origIsTTY;
+    }
+  });
+
+  it("treats a state.yaml with no agents (config set before init) as not set up", async () => {
+    mockLoadState.mockReturnValue({ agents: [], claudePermissions: "keep" } as unknown as ReturnType<typeof loadState>);
+    const origIsTTY = process.stdout.isTTY;
+    process.stdout.isTTY = undefined as unknown as typeof process.stdout.isTTY;
+    try {
+      const program = buildDefaultProgram();
+      await program.parseAsync(["node", "test"]);
+      expect(mockStatus).not.toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("agentbrew init"));
     } finally {
       process.stdout.isTTY = origIsTTY;
     }
@@ -849,7 +885,9 @@ describe("registerDefaultAction", () => {
   });
 
   it("shows drift count when drift exists", async () => {
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([
       { agent: "cursor", type: "mcp", detail: "missing server: foo" },
@@ -859,6 +897,9 @@ describe("registerDefaultAction", () => {
     const program = buildDefaultProgram();
     await program.parseAsync(["node", "test"]);
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Drift"));
+    // The repairable drift becomes the next step, with the exact command.
+    const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c.join(" ")).join("\n");
+    expect(calls).toMatch(/agentbrew sync[\s\S]*Repair 1 drift issue/);
   });
 
   it("dashboard does NOT count user-added items (skills/mcp/commands) as drift", async () => {
@@ -868,7 +909,9 @@ describe("registerDefaultAction", () => {
     // number alarmed users into running `agentbrew sync` to "repair" things
     // that were their own customizations. The dashboard must filter those
     // out and show a breakdown.
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([
       { agent: "cursor", type: "mcp", detail: "missing server: foo" },
@@ -891,7 +934,9 @@ describe("registerDefaultAction", () => {
   });
 
   it("shows next action hint when no skills and no servers", async () => {
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([]);
     mockGetStateSources.mockReturnValue([]);
@@ -902,7 +947,9 @@ describe("registerDefaultAction", () => {
   });
 
   it("shows quick actions when skills or servers exist", async () => {
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([]);
     mockGetStateSources.mockReturnValue([{ label: "x", path: "/x" }] as unknown as ReturnType<typeof getStateSources>);
@@ -913,7 +960,9 @@ describe("registerDefaultAction", () => {
   });
 
   it("shows project assets when detected", async () => {
-    mockLoadState.mockReturnValue({ mcpServers: {} } as unknown as ReturnType<typeof loadState>);
+    mockLoadState.mockReturnValue({ mcpServers: {}, agents: [{ name: "claude-code" }] } as unknown as ReturnType<
+      typeof loadState
+    >);
     mockDetectProjectAssets.mockReturnValue({ skills: 2 } as unknown as ReturnType<typeof detectProjectAssets>);
     mockFormatProjectAssets.mockReturnValue("  Project: 2 skills");
     mockCollectDrift.mockReturnValue([]);

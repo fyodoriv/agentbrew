@@ -26,7 +26,9 @@ npm install -g agentbrew   # or install globally for faster startup + tab comple
 
 Requires Node.js 20.11+ and git.
 
-**First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI or pipes, it prints help. Opt out with `AGENTBREW_NO_AUTO_INIT=1`. `AGENTBREW_NO_AUTO_SYNC=1` skips the background repair job and `AGENTBREW_NO_SHELL_HOOK=1` leaves your shell rc file alone (the one-step installer sets them from your answers).
+**First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI, pipes, and agents, it changes nothing and prints the command to run (`agentbrew init`). Opt out with `AGENTBREW_NO_AUTO_INIT=1`. `AGENTBREW_NO_AUTO_SYNC=1` skips the background repair job and `AGENTBREW_NO_SHELL_HOOK=1` leaves your shell rc file alone (the one-step installer sets them from your answers).
+
+**One command after that:** `agentbrew` (no arguments) in the shell, or `/agentbrew` in an agent ([`commands/agentbrew.md`](commands/agentbrew.md), deployed by this repo's `Agentfile.yaml`). It prints the state, what needs you, and a `Next:` line with the exact command. It reads local files only and changes nothing. `agentbrew config` shows each setting with its value and source; `agentbrew config set <key> <value>` checks a value and saves it.
 
 **Who it is for:** developers who use more than one AI coding agent and want one place to manage skills, MCP servers, rules, and commands.
 **Documentation:** start at the [documentation map](docs/README.md). Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first.
@@ -102,10 +104,10 @@ agentbrew install composio                 # deploys Composio Connect MCP (1000+
 agentbrew setup composio                   # guided wizard → saves to ~/.zshenv.secrets
 ```
 
-**Claude Code permissions.** By default, `sync` turns Claude Code's permission prompts off. It sets `permissions.defaultMode` to `bypassPermissions`, sets `skipAutoPermissionPrompt: true`, and adds an `mcp__<server>__*` allow rule for every configured MCP server. Claude then runs tools without asking. To keep your own permission settings and prompts, add this line to `~/.config/agentbrew/state.yaml`. After that, `sync`, `init`, and drift repair do not change them:
+**Claude Code permissions.** By default, `sync` turns Claude Code's permission prompts off. It sets `permissions.defaultMode` to `bypassPermissions`, sets `skipAutoPermissionPrompt: true`, and adds an `mcp__<server>__*` allow rule for every configured MCP server. Claude then runs tools without asking. To keep your own permission settings and prompts, run this. After that, `sync`, `init`, and drift repair do not change them:
 
-```yaml
-claudePermissions: keep   # default: manage
+```bash
+agentbrew config set claudePermissions keep   # default: manage
 ```
 
 On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` writes this line before setup, so the prompts are never turned off. `install.sh plan` lists this and the other Claude Code changes (hooks, `/goal` behaviour, always-loaded CLAUDE.md size) before anything changes.
@@ -116,10 +118,10 @@ On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` 
 
 **Delegated skill install networking.** Remote skill sources are installed through Vercel's `skills` CLI for agents it supports. That subprocess may need egress to `registry.npmjs.org` (to resolve the `skills` package), GitHub or the source Git host (to fetch the skill repo), and `skills.sh` (for risk-assessment metadata). If a proxy blocks any of those hosts, configure npm/git proxy settings first; agentbrew will still fall back to its native scanner when the subprocess fails.
 
-A cold offline `agentbrew init` still finishes: it detects agents, writes MCP config, and skips each skill source it cannot clone with a `source unreachable` warning (retested 2026-10-16, see [`docs/decisions/first-run-offline-warmup.md`](docs/decisions/first-run-offline-warmup.md)). Run `agentbrew init` or `agentbrew sync --pull` again when online to fetch the skipped skills. If a source is cloned but the skills CLI is not in the npm cache, the install fails with `ENOTCACHED` and falls back to the native path. To skip the skills CLI fully on an offline machine, set the machine-local override in `~/.config/agentbrew/state.yaml` and switch it back to `auto` when online again:
+A cold offline `agentbrew init` still finishes: it detects agents, writes MCP config, and skips each skill source it cannot clone with a `source unreachable` warning (retested 2026-10-16, see [`docs/decisions/first-run-offline-warmup.md`](docs/decisions/first-run-offline-warmup.md)). Run `agentbrew init` or `agentbrew sync --pull` again when online to fetch the skipped skills. If a source is cloned but the skills CLI is not in the npm cache, the install fails with `ENOTCACHED` and falls back to the native path. To skip the skills CLI fully on an offline machine, set the machine-local override, and switch it back to `auto` when online again:
 
-```yaml
-skillInstallMode: native
+```bash
+agentbrew config set skillInstallMode native
 ```
 
 Re-running `agentbrew init` keeps this setting and every other one you set in `state.yaml` (for example `claudePermissions`, `team`, `hooks`, `declinedMcpServers`, and the model keys). Init rebuilds only the detected agents and merges the MCP server list.
@@ -638,7 +640,10 @@ See [docs/COMPETITION.md](docs/COMPETITION.md) for the full analysis. Run `npm r
 ## CLI reference
 
 ```
-agentbrew                              Status dashboard (auto-init on first run)
+agentbrew                              The one start command: state, what needs you, Next: command
+                                       (auto-init on first run in a terminal; reads only after that)
+agentbrew config [--json]              Each setting with its value, source, and allowed values
+agentbrew config set <key> <value>     Check one setting and save it to state.yaml
 agentbrew init [--force] [--skip-install] [--skip-sync]
                                        Detect agents + install recommended + sync (idempotent)
                                        --skip-install: no source fetch, no skill installs

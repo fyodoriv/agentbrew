@@ -27,6 +27,7 @@ import { registerBootstrapCommand } from "./commands/cli-bootstrap.js";
 import { registerCatalogCommands } from "./commands/cli-catalog.js";
 import { registerClassifyCommand } from "./commands/cli-classify.js";
 import { registerCompletionCommands } from "./commands/cli-completions.js";
+import { registerConfigCommand } from "./commands/cli-config.js";
 import { registerCoreCommands } from "./commands/cli-core.js";
 import { registerEnvCommands } from "./commands/cli-env.js";
 import { registerHooksCommands } from "./commands/cli-hooks.js";
@@ -67,7 +68,7 @@ export const HELP_COMMAND_GROUPS: ReadonlyArray<{ title: string; names: readonly
   // runs), so `init` no longer needs to be in the top-line UX. Everything else
   // either has a narrower purpose (install/catalog/remove for ad-hoc catalog
   // ops, upgrade for the CLI itself) or has been demoted to "Advanced".
-  { title: "Core", names: ["sync", "status"] },
+  { title: "Core", names: ["sync", "status", "config"] },
   { title: "Catalog", names: ["catalog", "install", "remove"] },
   { title: "Ops", names: ["upgrade"] },
   // Commands documented in user-stories / VISION.md / README.md but not part
@@ -421,6 +422,7 @@ export function buildProgram(): Command {
   configureProgramRoot(program);
   registerSyncCommand(program);
   registerCoreCommands(program);
+  registerConfigCommand(program);
   registerMcpCommands(program, autoSync);
   registerMemoryCommands(program);
   registerCatalogCommands(program);

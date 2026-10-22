@@ -19,12 +19,15 @@ agentbrew/
 │   ├── ui/                         # Interactive UI (browse)
 │   ├── health.ts                   # Drift detection + auto-repair
 │   ├── portable.ts                 # Config export/import as portable bundles
+│   ├── settings.ts                 # The one settings table (`agentbrew config`)
+│   ├── next-steps.ts               # Next: lines for bare `agentbrew`
 │   ├── types.ts                    # Core interfaces
 │   └── *.test.ts                   # Unit tests (colocated)
 ├── templates/                      # Source templates
 │   └── AGENTS.md                   # Shared instruction template (deployed to all agents)
 ├── skill-plugins/dev/              # Dev skills (deployed via symlinks) — see skill-plugins/dev/README.md
 ├── docs/                           # Vision, competition research, user stories, RFCs
+├── commands/agentbrew.md           # /agentbrew: runs bare `agentbrew` in an agent
 ├── Agentfile.yaml                  # Repo-local MCP/skill/source manifest for agentbrew work
 ├── TASKS.md                        # Task queue
 └── README.md

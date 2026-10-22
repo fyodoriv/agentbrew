@@ -4,7 +4,7 @@
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): failed `init` runs; `zero_to_configured_s` times the install.
 
-**E2E**: [`us01-get-started.test.ts`](../../real-e2e/scenarios/us01-get-started.test.ts), [`us01-one-step-install.test.ts`](../../real-e2e/scenarios/us01-one-step-install.test.ts), [`us01-us21-npm-package-hooks.test.ts`](../../real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts)
+**E2E**: [`us01-get-started.test.ts`](../../real-e2e/scenarios/us01-get-started.test.ts), [`us01-one-command-start.test.ts`](../../real-e2e/scenarios/us01-one-command-start.test.ts), [`us01-one-step-install.test.ts`](../../real-e2e/scenarios/us01-one-step-install.test.ts), [`us01-us21-npm-package-hooks.test.ts`](../../real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts)
 
 ```bash
 npm install -g agentbrew
@@ -14,6 +14,8 @@ agentbrew
 That's it. On first run, agentbrew auto-detects your agents, installs recommended skills + MCP servers, syncs everything, and sets up background drift repair. No separate `init` step needed.
 
 If you prefer not to install globally: `npx agentbrew` works the same way.
+
+Every later run of `agentbrew` (or `/agentbrew` in an agent) prints the state, what needs you, and a `Next:` line with the exact command. It changes nothing. `agentbrew config set <key> <value>` changes a setting.
 
 ## What happens
 

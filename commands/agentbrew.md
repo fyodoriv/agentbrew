@@ -1,0 +1,25 @@
+---
+description: Start agentbrew (agent config state, what needs you, next step) and walk the user through it
+allowed-tools: Bash(agentbrew:*)
+---
+
+Run `agentbrew` with no arguments. If `agentbrew` is not on PATH, run `npx agentbrew`. It is safe and fast: it reads local files only, makes no network calls, and changes nothing. It prints the agents, MCP servers, skills, last sync, drift, and the drift-repair job, then a `Next:` line with the exact command and a `Then:` list.
+
+Then, answer first:
+
+1. One line: are this machine's agents in sync? Say "Nothing needs you now" when the screen says so.
+2. Each `Next:` and `Then:` item: say in plain words what the command does and what changes for the user. Run it only after the user says yes:
+   - `agentbrew init`: first setup. It detects agents, installs the recommended set (downloads), and schedules drift repair.
+   - `agentbrew install --recommended`: installs the recommended skills and MCP servers (downloads).
+   - `agentbrew sync`: deploys skills, MCP servers, rules, and commands to every agent and repairs drift. Show `agentbrew sync --dry-run` before you ask.
+   - `agentbrew auto-sync install`: starts the background drift-repair job.
+   - `agentbrew memory fix`: reinstalls the memory background service.
+   - `agentbrew setup`: asks for MCP API keys. The user must run it in their own terminal (hidden prompts).
+   - `agentbrew mcp probe --deep`: installs and calls each MCP server to find the failing one.
+   - A `launchctl` command: give it to the user to run in their own terminal.
+
+To change a setting the user asks for, run `agentbrew config` (each setting, its value, its source, and the allowed values). Then run `agentbrew config set <key> <value>`: it checks the value and saves it. Never hand-edit `~/.config/agentbrew/state.yaml` or generated agent config under `~/.claude/`.
+
+Every other command: `agentbrew --help`.
+
+If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.

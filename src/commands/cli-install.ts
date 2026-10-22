@@ -1,14 +1,7 @@
 import chalk from "chalk";
 import type { Command } from "commander";
 import { addSource } from "../add-source.js";
-import {
-  addSourceToAgentfile,
-  addToAgentfile,
-  getConfigServers,
-  getStateSources,
-  globalAgentfileDir,
-  installToProject,
-} from "../agentfile.js";
+import { addSourceToAgentfile, addToAgentfile, globalAgentfileDir, installToProject } from "../agentfile.js";
 import { install } from "../catalog/install.js";
 import { isLocalFolderPath, isNpxScopedPackage, isSourceRepoPath } from "../cli-helpers.js";
 import { cliMissingArg } from "../core/cli-error.js";
@@ -375,8 +368,8 @@ Examples:
   agentbrew install ./local/skills    Add a local folder as skill source
 
 Offline / corporate-proxy environments:
-  Set 'skillInstallMode: native' in ~/.config/agentbrew/state.yaml to skip
-  the delegated 'npx skills add' subprocess and use the native scanner only.
+  Run 'agentbrew config set skillInstallMode native' to skip the
+  delegated 'npx skills add' subprocess and use the native scanner only.
   See README "Delegated skill install networking" for the 4 failure modes.`,
     );
 }
@@ -402,8 +395,9 @@ async function handleUnknownCommand(program: Command, args: string[]): Promise<b
  * customizations). Lumping them together produced alarming counts like
  * "Drift: 82 issue(s)" when 81 of them were the user's own work. User-added
  * items are reported separately with a friendlier `agentbrew import` hint.
+ * Returns the repairable count for the next-step list.
  */
-async function showDashboardDrift(): Promise<void> {
+async function showDashboardDrift(): Promise<number> {
   const { collectDrift, formatDriftSummary } = await import("../drift.js");
   const drift = collectDrift();
   const userAddedTypes = new Set(["mcp-user-added", "skills-user-added", "commands-user-added"]);
@@ -419,23 +413,34 @@ async function showDashboardDrift(): Promise<void> {
       chalk.dim(`  ${userAdded.length} user-added item(s) not tracked — \`agentbrew import\` to register them\n`),
     );
   }
+  return repairable.length;
 }
 
-/** Show status dashboard with project assets, drift info, and next action hints. */
-async function showDashboard(program: Command): Promise<void> {
+/** First-run screen when auto-init is off: what is missing and the exact command. Writes nothing. */
+function printNotSetUp(): void {
+  console.log(chalk.bold("\nagentbrew is not initialized on this machine yet.\n"));
+  console.log(`  ${chalk.cyan.bold("Next:")} ${chalk.cyan("agentbrew init")}`);
+  console.log(chalk.dim("        Detects your agents, installs the recommended skills and MCP servers,"));
+  console.log(chalk.dim("        and schedules drift repair. No downloads: agentbrew init --skip-install"));
+  console.log(chalk.dim("  All commands: agentbrew --help\n"));
+}
+
+/**
+ * Bare `agentbrew`: the one start command. First run in a terminal sets up
+ * what is missing (`init`). Later runs print the state, what needs the user,
+ * and the exact next command. They never write or use the network.
+ */
+async function showDashboard(): Promise<void> {
   const { existsSync } = await import("node:fs");
   const { getStatePath, loadState } = await import("../state.js");
   const { status } = await import("../status.js");
   const state = loadState();
-  if (!state) {
+  // A state.yaml with no agents (for example from `config set` before init) is not set up yet.
+  if (!state || (state.agents?.length ?? 0) === 0) {
     const stateFileExists = existsSync(getStatePath());
     const noAutoInit = process.env.AGENTBREW_NO_AUTO_INIT === "1" || !process.stdout.isTTY;
     if (noAutoInit) {
-      program.outputHelp();
-      console.log(
-        chalk.dim("  agentbrew is not initialized. Run `agentbrew init` to detect your agents,\n") +
-          chalk.dim("  install recommended skills + MCP servers, and set up background drift repair.\n"),
-      );
+      printNotSetUp();
       const stateLoadFailed = stateFileExists && process.exitCode !== undefined && process.exitCode !== 0;
       process.exitCode = stateLoadFailed ? process.exitCode : 0;
       return;
@@ -454,25 +459,16 @@ async function showDashboard(program: Command): Promise<void> {
     console.log();
   }
 
-  await showDashboardDrift();
+  const repairableDrift = await showDashboardDrift();
 
-  const hasSkills = getStateSources(state).length > 0;
-  const hasServers = getConfigServers().length > 0;
-  if (!hasSkills && !hasServers) {
-    console.log(chalk.cyan("  Next: agentbrew install --recommended\n"));
-  } else {
-    console.log(chalk.dim("  Quick actions:"));
-    console.log(chalk.dim("    agentbrew sync               Deploy + repair drift"));
-    console.log(chalk.dim("    agentbrew install <name>      Add a skill or MCP server"));
-    console.log(chalk.dim("    agentbrew catalog             Browse available items"));
-    console.log(chalk.dim("    agentbrew status --verbose    Full details\n"));
-  }
+  const { collectDashboardFacts, planNextSteps, printNextSteps } = await import("../next-steps.js");
+  printNextSteps(planNextSteps(collectDashboardFacts(state, repairableDrift)));
 }
 
 /** Register the default (no-command) action: show status or auto-init. */
 export function registerDefaultAction(program: Command): void {
   program.action(async (_options: Record<string, unknown>, cmd: Command) => {
     if (await handleUnknownCommand(program, cmd.args)) return;
-    await showDashboard(program);
+    await showDashboard();
   });
 }

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { type Command, CommanderError } from "commander";
@@ -228,12 +228,30 @@ describe("cli entry point", () => {
 
   // ── Default action (no command) ────────────────────────────────────────
 
-  it("no command with AGENTBREW_NO_AUTO_INIT shows help hint", async () => {
-    const { stdout, stderr, exitCode } = await cli();
-    const output = stdout + stderr;
-    // With no state and auto-init disabled, should show help or init hint
+  it("no command on a fresh machine prints the exact next command and writes nothing", async () => {
+    const { stdout, exitCode } = await cli();
     expect(exitCode).toBe(0);
-    expect(output.length).toBeGreaterThan(0);
+    expect(stdout).toContain("not initialized");
+    expect(stdout).toMatch(/Next:.*agentbrew init/);
+    expect(existsSync(join(homedir(), ".config", "agentbrew", "state.yaml"))).toBe(false);
+  });
+
+  it("config set round-trips one setting through config --json", async () => {
+    try {
+      const set = await cli("config", "set", "skillInstallMode", "native");
+      expect(set.exitCode).toBe(0);
+      const { stdout } = await cli("config", "--json");
+      // In process, the motd hook cannot see --json in process.argv and prints first.
+      const { settings } = JSON.parse(stdout.slice(stdout.indexOf("{"))) as {
+        settings: Array<{ key: string; value: string; source: string }>;
+      };
+      expect(settings.find((s) => s.key === "skillInstallMode")).toMatchObject({
+        value: "native",
+        source: "state.yaml",
+      });
+    } finally {
+      rmSync(join(homedir(), ".config", "agentbrew"), { recursive: true, force: true });
+    }
   });
 });
 

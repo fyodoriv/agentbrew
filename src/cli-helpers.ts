@@ -121,7 +121,7 @@ export function shouldInstallAgentfileItems(only?: string): boolean {
 export function getHelpExamples(): string[] {
   return [
     "Examples:",
-    "  agentbrew                           Dashboard + quick actions",
+    "  agentbrew                           State, what needs you, and the next command",
     "  agentbrew install debug             Install a skill from the catalog",
     "  agentbrew install context7          Install an MCP server from the catalog",
     "  agentbrew install srv -- npx @my/pkg Add a custom MCP server",

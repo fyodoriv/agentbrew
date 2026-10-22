@@ -11,6 +11,7 @@ Run them with `npm run test:real-e2e`.
 ## Scenarios
 
 - `us01-get-started.test.ts` -> US01
+- `us01-one-command-start.test.ts` -> US01 (bare `agentbrew` prints the next command on a fresh and a set-up machine and writes nothing; `config set` round-trips one setting)
 - `us01-one-step-install.test.ts` -> US01 (one-step install (`scripts/install.sh`): fast mode on the built CLI, cold mode (`E2E_COLD=1`) with `npm ci` + build; run by `scripts/install-e2e-if-needed.sh` only when an install path changes)
 - `us01-us21-npm-package-hooks.test.ts` -> US01, US21 (packs the repo, installs it with npm in a scratch prefix, and checks that hooks and template rules deploy like a clone; run by `scripts/install-e2e-if-needed.sh` when a packed path changes)
 - `us02-us03-install-mcp-and-skill.test.ts` -> US02, US03

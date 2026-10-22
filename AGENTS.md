@@ -43,7 +43,7 @@ Run every command from the repo root.
 | Change how rules, MCP, skills, or hooks sync | `src/sync/*-{sync,delegate}.ts` | [`docs/repo-map.md`](docs/repo-map.md) data flow |
 | Change MCP probe or auto-repair | `src/mcp/{probe,heal-cycle,heal-actions}.ts` | README "Drift detection" |
 | Add a deterministic hook | `hooks/manifest.yaml`, `hooks/checks/<id>.sh` + `<id>.test.sh` | [`docs/hook-protocol.md`](docs/hook-protocol.md) |
-| Add or change a CLI command | `src/cli.ts`, `src/commands/` | README "CLI reference" |
+| Add or change a CLI command or setting | `src/cli.ts`, `src/commands/`, `src/settings.ts` | README "CLI reference" |
 | Add a built-in skill | `skill-plugins/workflow/` with `evals/evals.json` | `skill-plugins/*/README.md` or `SOURCES.md` |
 | Change the Agentfile format | `src/agentfile*.ts` | README "Agentfile" |
 | Change default models | `src/sync/model-sync.ts` | README "Agentfile" |
@@ -86,7 +86,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
-- `src/cli.test.ts` can time out under load; re-run it before you blame your change.
+- `src/cli.test.ts` can time out under load; re-run it first.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.
 - Each test file gets a scratch `HOME` and scrubbed `AGENTBREW_*`/`NO_CACHE` env (`vitest.isolated-home.ts`). It fails on writes to the real `~/.config/agentbrew` or `~/.claude`, and on new repo files. Instructions sync writes `context/*.md` under `AGENTBREW_DIR`, so never point it at the repo root in a test; use a scratch copy (`scratchRepoRoot()` in `src/integration.test.ts`).
 - The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`; store templates as `*.template.md`.

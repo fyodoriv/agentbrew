@@ -11,11 +11,11 @@
  * config file, never the developer's ~/.gitconfig.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import yaml from "js-yaml";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 const { home, previousEnv } = vi.hoisted(() => {
   const { mkdtempSync: mk, writeFileSync: wf } = require("node:fs") as typeof import("node:fs");
@@ -38,7 +38,7 @@ const { home, previousEnv } = vi.hoisted(() => {
 import { readLock } from "../lock.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { signingFingerprint, tagObject, verifySignedTag } from "./signers.js";
-import { addPlugin, pluginDir } from "./store.js";
+import { addPlugin, pluginDir, pluginsRoot } from "./store.js";
 import { planUpdate } from "./update.js";
 
 const KEY = fixtureKey();
@@ -92,6 +92,10 @@ beforeEach(() => {
   f.release("v1.0.0", { "README.md": "signed\n" });
   good = fixtureGit(f.dir, "rev-parse", "v1.0.0^{commit}");
   signedTag = fixtureGit(f.dir, "rev-parse", "refs/tags/v1.0.0");
+});
+
+afterEach(() => {
+  rmSync(f.dir, { recursive: true, force: true });
 });
 
 afterAll(() => {
@@ -168,6 +172,22 @@ describe("plugin add: signed-tag attacks", () => {
   );
 
   it.each([
+    ["only a branch", "v2.0.0"],
+    ["only a branch named refs/tags/<ref>", "refs/tags/v2.0.0"],
+  ])("refuses a source with %s and no tag of that exact name", (_label, branch) => {
+    fixtureGit(f.dir, "branch", branch, evilCommit());
+
+    expect(() => addPlugin(`${f.dir}@v2.0.0`, { yes: true, signer: KEY.pub })).toThrow(/"v2\.0\.0" is not a tag in/);
+    expectNothingInstalled();
+  });
+
+  it("resolves a relative source from the plugins folder, as before", () => {
+    mkdirSync(pluginsRoot(), { recursive: true });
+
+    expect(addPlugin(`${relative(pluginsRoot(), f.dir)}@v1.0.0`, { yes: true, signer: KEY.pub }).commit).toBe(good);
+  });
+
+  it.each([
     ["a 64-hex name", "a".repeat(64), /object ID/],
     ["an invalid tag name", "v1..0", /not a valid tag name/],
   ])("refuses %s before it fetches anything", (_label, ref, error) => {
@@ -219,6 +239,7 @@ describe("signingFingerprint", () => {
 describe("object formats", () => {
   it("installs a signed tag from a SHA-256 repo", () => {
     const dir = mkdtempSync(join(tmpdir(), "plugin-src-sha256-"));
+    onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
     fixtureGit(dir, "init", "-q", "--object-format=sha256");
     writeFileSync(join(dir, "agentbrew-plugin.yaml"), yaml.dump(MANIFEST));
     fixtureGit(dir, "add", "-A");

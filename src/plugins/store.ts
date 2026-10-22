@@ -75,7 +75,13 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
       .map((line) => line.split("\t"))
       .find(([, name]) => name === tagRef)?.[0];
     if (!listed) throw new Error(`"${ref}" is not a tag in ${url}.`);
-    git(pluginsRoot(), "init", "--quiet", `--object-format=${listed.length === 64 ? "sha256" : "sha1"}`, dir);
+    // GIT_DEFAULT_HASH, not --object-format, so git before 2.29 still inits SHA-1.
+    execFileSync("git", ["init", "--quiet", dir], {
+      cwd: pluginsRoot(),
+      stdio: "pipe",
+      timeout: 120_000,
+      env: { ...process.env, GIT_DEFAULT_HASH: listed.length === 64 ? "sha256" : "sha1" },
+    });
     // Run from pluginsRoot, like ls-remote, so a relative source resolves the same way.
     const gitDir = join(dir, ".git");
     git(
@@ -92,6 +98,7 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
       `${tagRef}:${tagRef}`,
     );
     const tag = tagObject(dir, ref);
+    if (tag !== listed) throw new Error(`Tag "${ref}" changed on ${url} while it was fetched. Try again.`);
     const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
     let text: string;
     try {

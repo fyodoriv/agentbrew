@@ -300,11 +300,26 @@ lists, so add `session-report` (and `perf-review`) to its `skills:`.
 `statusline` keeps a small per-session cache under `perf/.cache/`. Each
 refresh reads only the bytes appended since the last refresh.
 
-## Fast gate test selection
+## Inner-loop gate
 
-When a diff touches only skills, hooks, docs, rule templates, or the task
-queue, `npm run verify:changed` (`scripts/verify-changed.sh`) runs only the
-tests that read the changed files:
+`npm run verify:changed` (`scripts/verify-changed.sh`) runs only the checks
+that the changed files can break. The 2026-10-22 review of agent commands
+showed why: most of its time went to code diffs, where it ran the whole
+`npm run verify` (6 to 10 minutes) on every iteration.
+
+| Diff | What runs |
+|---|---|
+| Skills, hooks, docs, rule templates, task queue | The lints, the tests that read those files, and the skill or hook checks. |
+| Code (`src/`, `scripts/`, `real-e2e/`, `templates/`) | The same, plus `npx tsc --noEmit` and `npm run lint:changed` when source files changed, and `vitest related` on the changed source files instead of the whole suite. |
+| Package files, `tsconfig`, vitest, Biome, or knip config | The full `npm run verify`. |
+
+A code diff ends with "run full npm run verify before merge": run the full
+gate once, before merge, not in the loop. `npm test` runs `vitest related` on
+the diff alone; prefer it to a whole folder (`npx vitest run src/`).
+
+### Test selection
+
+The tests that read the changed files:
 
 - `src/docs` and `src/oss` always run. They scan the docs and hold the
   `TASKS.md` schema tests, so an invalid `**Output**:` value still fails.
@@ -315,15 +330,28 @@ tests that read the changed files:
   root path (`join(repoRoot, "TASKS.md")`). Many tests write a fixture
   `TASKS.md` in a scratch repo.
 - A skill change runs the `src/skills` tests and the tests that read every
-  skill through code. A `src/skills` test that pins one skill
+  skill through code, including the skill size caps (`agent-bloat-lint` for
+  the `docs/skill-baselines.json` growth cap, `skill-structural` for the hard
+  token cap). A `src/skills` test that pins one skill
   (`join(…, "skill-plugins", "<plugin>", "<skill>")`) runs only when that
   skill changes.
 
-`npm run verify:changed -- --dry-run` prints the test list and the verdict.
+`npm run verify:changed -- --dry-run` prints the tests, the steps, and the
+verdict.
 A full-suite read probe (2026-10-22) checked the rules: every test that reads
 `TASKS.md` or an `evals.json` is in the list. On a retro diff (`TASKS.md` and
 one `evals.json`), the run no longer includes the slow contract tests of other
 skills or the sync tests that only use a fixture `TASKS.md`.
+
+### Full gate cache
+
+`npm run verify` skips a step that already passed on the same inputs. The
+cache lives in the git common dir (`.git/agentbrew-gate-cache`), so all
+worktrees share it. The hook fixtures (about 2 minutes) are keyed on the
+files they run: `hooks/`, `templates/scripts/`, the wrap-up skill, and
+`scripts/run-hook-fixtures.sh`. So a new worktree skips them when another
+worktree already passed them on the same files. A test fails when a hook
+fixture reaches a repo path that the key leaves out.
 
 ## Why not OpenTelemetry
 

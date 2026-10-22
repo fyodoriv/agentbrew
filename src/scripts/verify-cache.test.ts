@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -104,6 +104,66 @@ describe("scripts/verify.sh cache", () => {
     writeFileSync(join(repo, "package.json"), '{"name":"p","dependencies":{"x":"1"}}\n');
     run();
     expect(runs()).toBe(2);
+  });
+
+  it("keys the hook-fixtures step on the files the fixtures run", () => {
+    const { repo, run, runs } = scratchRepo();
+    writeFileSync(join(repo, "plan.txt"), "hook-fixtures bash count.sh\n");
+    mkdirSync(join(repo, "hooks"));
+    writeFileSync(join(repo, "hooks", "a.sh"), "true\n");
+    run();
+    writeFileSync(join(repo, "a.txt"), "two\n");
+    expect(run().stdout).toContain("hook-fixtures: cached");
+    expect(runs()).toBe(1);
+    writeFileSync(join(repo, "hooks", "a.sh"), "false\n");
+    run();
+    expect(runs()).toBe(2);
+  });
+
+  it("lists every repo path that a hook fixture reaches outside hooks/", () => {
+    const inputs = (readFileSync(SCRIPT, "utf-8").match(/^\s*hook-fixtures\) echo "([^"]+)"/m)?.[1] ?? "").split(" ");
+    expect(inputs).toContain("hooks");
+    const hooksDir = resolve(import.meta.dirname, "..", "..", "hooks");
+    const reached = new Set<string>();
+    for (const dir of ["checks", "lib"]) {
+      for (const name of readdirSync(join(hooksDir, dir))) {
+        if (!name.endsWith(".sh")) continue;
+        // Comment lines may name paths in other repos (shellcheck source=).
+        const text = readFileSync(join(hooksDir, dir, name), "utf-8")
+          .split("\n")
+          .filter((line) => !line.trim().startsWith("#"))
+          .join("\n");
+        for (const m of text.matchAll(/\.\.\/\.\.\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*)/g)) reached.add(m[1]);
+        for (const m of text.matchAll(/\.\.\/\.\." && pwd\)\/([A-Za-z0-9_./-]+)/g)) reached.add(m[1]);
+      }
+    }
+    expect(reached.size).toBeGreaterThan(0);
+    for (const path of reached) {
+      expect(
+        inputs.some((input) => path === input || path.startsWith(`${input}/`)),
+        `${path} is not in the hook-fixtures inputs`,
+      ).toBe(true);
+    }
+  });
+
+  it("shares the cache with the other worktrees of the repo", () => {
+    const { repo, run, runs } = scratchRepo();
+    expect(run().status).toBe(0);
+    const worktree = `${repo}-wt`;
+    roots.push(worktree);
+    execFileSync("git", ["worktree", "add", "-q", "--detach", worktree], { cwd: repo, env: gitEnv, stdio: "pipe" });
+    const second = spawnSync("bash", ["scripts/verify.sh"], {
+      cwd: worktree,
+      encoding: "utf-8",
+      env: {
+        ...gitEnv,
+        VERIFY_PLAN: join(repo, "plan.txt"),
+        COUNT_FILE: join(repo, "..", `${repo.split("/").pop()}.count`),
+      },
+    });
+    expect(second.status, second.stderr).toBe(0);
+    expect(second.stdout).toContain("count: cached");
+    expect(runs()).toBe(1);
   });
 
   it("logs each step and the gate to .metrics/gate-timings.jsonl", () => {

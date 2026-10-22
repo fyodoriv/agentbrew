@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Fast gate for a diff that touches only skills, hooks, docs, rule templates,
-# or the task queue. It runs the checks those paths can break, in seconds.
-# Any other changed path (src/, scripts/, package files, configs) runs the
-# full `npm run verify` instead.
+# Inner-loop gate: it runs only the checks that the changed files can break.
+# - A skill, hook, docs, rule-template, or task-queue diff runs the lints and
+#   the tests that read those files, in seconds.
+# - A code diff (src/, scripts/, real-e2e/, templates/) also runs the
+#   typecheck and Biome when source files changed, and `vitest related` on the
+#   changed source files, instead of the whole suite.
+# - A change to the build or test setup (package files, tsconfig, vitest or
+#   Biome config) runs the full `npm run verify`.
 #
 # When it passes, it prints a verdict:
 # - "merge-ready": the diff touches only skill docs, evals, docs, rule
@@ -11,8 +15,8 @@
 #   code path changed.
 #
 # Usage: bash scripts/verify-changed.sh [base-ref] [--dry-run]
-#   base-ref defaults to origin/main. --dry-run prints the tests it would run
-#   and the verdict, and exits without running any check.
+#   base-ref defaults to origin/main. --dry-run prints the tests and the steps
+#   it would run and the verdict, and exits without running any check.
 #
 # <!-- scope: human-approved task verify-changed-fast-gate (filed in #132); this file closes it -->
 set -euo pipefail
@@ -39,11 +43,12 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
-fast_paths='^(skill-plugins/|hooks/|docs/|templates/rules/|TASKS\.md$|RECURRING\.md$|[A-Za-z_-]+\.md$)'
-other="$(grep -vE "$fast_paths" <<<"$changed" || true)"
-if [[ -n "$other" ]]; then
+# Files that every test or build depends on: only the full gate covers them.
+full_gate_paths='^(package\.json|package-lock\.json|\.npmrc|\.node-version|tsconfig[^/]*\.json|tsup\.config\.ts|vitest[^/]*\.ts|biome\.json|knip\.json)$'
+full="$(grep -E "$full_gate_paths" <<<"$changed" || true)"
+if [[ -n "$full" ]]; then
   echo "verify:changed: these files need the full gate:"
-  sed 's/^/  /' <<<"$other"
+  sed 's/^/  /' <<<"$full"
   [[ "$dry_run" == 1 ]] && exit 0
   exec npm run verify
 fi
@@ -129,14 +134,30 @@ while IFS= read -r t; do
   unique_tests+=("$t")
 done < <(printf '%s\n' "${tests[@]}" | sort -u)
 
+# Changed source files that still exist. `vitest related` runs every test
+# that imports one of them (a changed test file counts as its own test).
+code_re='^(src|scripts|real-e2e)/.*\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$'
+code_files=()
+while IFS= read -r f; do
+  [[ -f "$f" ]] && code_files+=("$f")
+done < <(grep -E "$code_re" <<<"$changed" || true)
+
 if [[ "$dry_run" == 1 ]]; then
   echo "verify:changed: tests to run:"
   printf '  %s\n' "${unique_tests[@]}"
-  verdict
-  exit 0
+  if [[ "${#code_files[@]}" -gt 0 ]]; then
+    echo "verify:changed: plus the tests related to:"
+    printf '  %s\n' "${code_files[@]}"
+  fi
+  echo "verify:changed: steps:"
 fi
 
+# step <command...>: run it, or print it in a dry run.
 step() {
+  if [[ "$dry_run" == 1 ]]; then
+    echo "  $*"
+    return 0
+  fi
   echo ""
   echo "▶ $*"
   "$@"
@@ -147,14 +168,26 @@ step node scripts/check-rule-8-pattern-conformance.mjs
 step node scripts/check-rule-16-defaults.mjs
 step bash scripts/lint-repo-artifacts.sh
 
-if has '^hooks/'; then
+# Typecheck and Biome only when source files changed (tsc covers deletions).
+if has '^(src|scripts|real-e2e)/.*\.(ts|tsx|mts|cts)$'; then
+  step npx tsc --noEmit
+fi
+if [[ "${#code_files[@]}" -gt 0 ]]; then
+  step env LINT_CHANGED_BASE="$base_ref" bash scripts/lint-changed.sh
+fi
+if has '^(hooks|scripts|src)/'; then
   step bash scripts/lint-security.sh
+fi
+
+if has '^hooks/'; then
   if has '^hooks/(lib/|manifest\.yaml$)'; then
     step bash scripts/run-hook-fixtures.sh
   else
     # Keep single-hook test decisions out of the real decision log.
-    HOOK_DECISIONS_LOG="$(mktemp "${TMPDIR:-/tmp}/hook-decisions.XXXXXX")"
-    export HOOK_DECISIONS_LOG
+    if [[ "$dry_run" == 0 ]]; then
+      HOOK_DECISIONS_LOG="$(mktemp "${TMPDIR:-/tmp}/hook-decisions.XXXXXX")"
+      export HOOK_DECISIONS_LOG
+    fi
     while IFS= read -r id; do
       [[ -f "hooks/checks/$id.test.sh" ]] && step bash "hooks/checks/$id.test.sh"
     done < <(grep -E '^hooks/checks/' <<<"$changed" | sed -E 's#^hooks/checks/##; s#(\.test)?\.sh$##' | sort -u)
@@ -166,10 +199,26 @@ if has '^skill-plugins/'; then
   step npm run --silent eval:agent-artifacts
 fi
 
-step npx vitest run "${unique_tests[@]}"
+if [[ "${#code_files[@]}" -gt 0 ]]; then
+  # `vitest related` needs files, so expand the always-run directories.
+  related_args=()
+  while IFS= read -r t; do related_args+=("$t"); done < <(
+    for t in "${unique_tests[@]}"; do
+      if [[ -d "$t" ]]; then command -p find "$t" -name '*.test.ts'; else printf '%s\n' "$t"; fi
+    done | sort -u
+  )
+  step npx vitest related --run --passWithNoTests "${code_files[@]}" "${related_args[@]}"
+else
+  step npx vitest run "${unique_tests[@]}"
+fi
 
 # The install playbook drives the one-step install e2e (no-op for other paths).
 step bash scripts/install-e2e-if-needed.sh "$base_ref"
+
+if [[ "$dry_run" == 1 ]]; then
+  verdict
+  exit 0
+fi
 
 if [[ -f "$HOME/.config/oss-readiness/oss-readiness.env" ]]; then
   # shellcheck disable=SC1091

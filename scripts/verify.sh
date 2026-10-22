@@ -11,6 +11,11 @@
 # A step named in step_inputs is keyed on its listed paths only (plus the node
 # version and its command), so it stays cached while other files change.
 #
+# The cache lives in the git common dir, so every worktree of this repo shares
+# it: a key is a file name, and a pass in one worktree skips the same step on
+# the same inputs in another (hook-fixtures, for example). Keys older than 14
+# days are pruned. AGENTBREW_GATE_CACHE_DIR overrides the location.
+#
 # Usage: bash scripts/verify.sh            (npm run verify)
 #        NO_CACHE=1 bash scripts/verify.sh
 # Runs under macOS /bin/bash 3.2.
@@ -21,9 +26,11 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # Gate runs call the CLI (skills:coverage); keep them out of the event log.
 export AGENTBREW_EVENTS=0
 metrics_dir="${AGENTBREW_METRICS_DIR:-.metrics}"
-cache_dir="$metrics_dir/gate-cache"
+common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo "$metrics_dir")"
+cache_dir="${AGENTBREW_GATE_CACHE_DIR:-$common_dir/agentbrew-gate-cache}"
 timings="$metrics_dir/gate-timings.jsonl"
-mkdir -p "$cache_dir"
+mkdir -p "$cache_dir" "$metrics_dir"
+find "$cache_dir" -type f -mtime +14 -delete 2>/dev/null || true
 
 now_ms() { node -e 'console.log(Date.now())'; }
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -39,8 +46,8 @@ input_hash() {
     fi
     git ls-files -co --exclude-standard -- "$@" | sort -u | while IFS= read -r f; do
       [ -f "$f" ] && printf '%s\n' "$f"
-    done >"$cache_dir/.files"
-    paste "$cache_dir/.files" <(git hash-object --stdin-paths <"$cache_dir/.files")
+    done >"$metrics_dir/.gate-files"
+    paste "$metrics_dir/.gate-files" <(git hash-object --stdin-paths <"$metrics_dir/.gate-files")
   } | git hash-object --stdin
 }
 
@@ -48,6 +55,9 @@ input_hash() {
 step_inputs() {
   case "$1" in
   lockfile-sync) echo "package.json package-lock.json scripts/check-lockfile-sync.sh scripts/stubs" ;;
+  # The fixtures run hook scripts, the perf helper, and the wrap-up skill's
+  # open-work script (src/scripts/verify-cache.test.ts checks this list).
+  hook-fixtures) echo "hooks templates/scripts skill-plugins/workflow/wrap-up scripts/run-hook-fixtures.sh" ;;
   esac
 }
 
@@ -75,8 +85,9 @@ step() {
   # shellcheck disable=SC2086 # the path list splits on spaces by design
   [ -z "$paths" ] || base="$(input_hash $paths)"
   key="$(printf '%s\n%s\n' "$base" "$*" | git hash-object --stdin)"
-  if [ "${NO_CACHE:-0}" != 1 ] && [ "$(cat "$cache_dir/$name" 2>/dev/null)" = "$key" ]; then
+  if [ "${NO_CACHE:-0}" != 1 ] && [ -f "$cache_dir/$name/$key" ]; then
     cached_steps=$((cached_steps + 1))
+    touch "$cache_dir/$name/$key"
     echo "--- $name: cached (inputs unchanged since it passed)"
     printf '{"ts":"%s","event":"step","step":"%s","ms":0,"ok":true,"cached":true}\n' "$(ts)" "$name" >>"$timings"
     return 0
@@ -92,12 +103,12 @@ step() {
   [ "$rc" = 0 ] || ok=false
   printf '{"ts":"%s","event":"step","step":"%s","ms":%s,"ok":%s,"cached":false}\n' "$(ts)" "$name" "$ms" "$ok" >>"$timings"
   if [ "$rc" != 0 ]; then
-    rm -f "$cache_dir/$name"
+    rm -f "$cache_dir/$name/$key"
     echo "--- $name: FAILED in ${ms} ms (rc=$rc)"
     finish false
     exit "$rc"
   fi
-  printf '%s' "$key" >"$cache_dir/$name"
+  mkdir -p "$cache_dir/$name" && : >"$cache_dir/$name/$key"
   echo "--- $name: ok in ${ms} ms"
 }
 
@@ -128,7 +139,7 @@ install-e2e bash scripts/install-e2e-if-needed.sh
 PLAN
 }
 
-plan_file="$cache_dir/.plan"
+plan_file="$metrics_dir/.gate-plan"
 if [ -n "${VERIFY_PLAN:-}" ]; then cp "$VERIFY_PLAN" "$plan_file"; else default_plan >"$plan_file"; fi
 while read -r -a line; do
   [ "${#line[@]}" -gt 1 ] || continue

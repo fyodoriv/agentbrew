@@ -32,11 +32,27 @@ function repoWithChange(file: string): string {
 }
 
 describe("verify-changed.sh", () => {
-  it("sends a source change to the full gate", () => {
+  it("runs the typecheck, Biome, and related tests for a source change, not the full gate", () => {
     const root = repoWithChange("src/feature.ts");
-    const result = spawnSync("bash", [SCRIPT, "main"], { cwd: root, encoding: "utf8" });
-    expect(result.stdout).toContain("these files need the full gate:");
-    expect(result.stdout).toContain("src/feature.ts");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).not.toContain("these files need the full gate:");
+    expect(result.stdout).toContain("plus the tests related to:\n  src/feature.ts\n");
+    expect(result.stdout).toContain("  npx tsc --noEmit\n");
+    expect(result.stdout).toContain("  env LINT_CHANGED_BASE=main bash scripts/lint-changed.sh\n");
+    expect(result.stdout).toMatch(/^ {2}npx vitest related --run --passWithNoTests src\/feature\.ts /m);
+    expect(result.stdout).toContain("run full npm run verify before merge");
+  });
+
+  it("runs neither the typecheck nor Biome for a shell script change", () => {
+    const root = repoWithChange("scripts/tool.sh");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("  bash scripts/lint-security.sh\n");
+    expect(result.stdout).not.toContain("tsc --noEmit");
+    expect(result.stdout).not.toContain("lint-changed.sh");
+    expect(result.stdout).toMatch(/^ {2}npx vitest run /m);
+    expect(result.stdout).toContain("run full npm run verify before merge");
   });
 
   it("calls a skill, eval, docs, and task-queue diff merge-ready", () => {
@@ -62,8 +78,8 @@ describe("verify-changed.sh", () => {
     }
   });
 
-  it("sends a source or package change to the full gate in a dry run", () => {
-    for (const file of ["src/feature.ts", "scripts/tool.sh", "package.json"]) {
+  it("sends a package, TypeScript, or test-setup change to the full gate", () => {
+    for (const file of ["package.json", "package-lock.json", "tsconfig.json", "vitest.config.ts", "biome.json"]) {
       const root = repoWithChange(file);
       const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
@@ -100,7 +116,11 @@ describe("verify-changed.sh", () => {
 
     const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
-    const listed = (result.stdout.split("tests to run:\n")[1] ?? "").split("\n\n")[0].split("\n");
+    const lines = (result.stdout.split("tests to run:\n")[1] ?? "").split("\n");
+    const listed = lines.slice(
+      0,
+      lines.findIndex((line) => !line.startsWith("  ")),
+    );
     for (const t of [
       "src/docs",
       "src/oss",
@@ -114,6 +134,25 @@ describe("verify-changed.sh", () => {
     for (const t of ["src/fixture.test.ts", "src/comment.test.ts", "src/skills/other-contract.test.ts"]) {
       expect(listed, t).not.toContain(`  ${t}`);
     }
+    expect(result.stdout).toContain("merge-ready");
+  });
+
+  it("runs the skill size checks when only a SKILL.md changes", () => {
+    // agent-bloat-lint holds the per-skill size cap (docs/skill-baselines.json);
+    // skill-structural holds the hard token cap.
+    const root = mkdtempSync(join(tmpdir(), "verify-changed-"));
+    roots.push(root);
+    mkdirSync(join(root, "src", "skills"), { recursive: true });
+    writeFileSync(join(root, "src", "skills", "skill-structural.test.ts"), "checkSkillStructure(dir);\n");
+    git(root, "init", "-q", "-b", "main");
+    git(root, "add", ".");
+    git(root, "-c", "user.email=a@example.com", "-c", "user.name=a", "commit", "-q", "-m", "init");
+    mkdirSync(join(root, "skill-plugins", "workflow", "demo"), { recursive: true });
+    writeFileSync(join(root, "skill-plugins", "workflow", "demo", "SKILL.md"), "# Demo\n");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("  src/agent-bloat-lint.test.ts\n");
+    expect(result.stdout).toContain("  src/skills/skill-structural.test.ts\n");
     expect(result.stdout).toContain("merge-ready");
   });
 

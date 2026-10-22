@@ -20,14 +20,14 @@ Run every command from the repo root.
 | Install | `bash scripts/worktree-deps.sh` |
 | Run the CLI from source | `npm run dev -- <command>` |
 | One test file | `npx vitest run src/path/file.test.ts` |
-| Tests for changed files | `npm test` (git-aware) |
+| Tests for the diff (not a folder) | `npm test` (`vitest related`) |
 | All tests | `npm run test:all` |
 | Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
 | Rule lints (Minsky rules; skipped without `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
-| Fast gate; says `merge-ready` when no full gate is needed | `npm run verify:changed` — seconds |
-| Full gate (cached by a repo-file hash; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — several minutes uncached; run it in the background |
+| Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
+| Full gate (step cache shared by worktrees; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — minutes; run once, in the background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` |

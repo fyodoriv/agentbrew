@@ -139,7 +139,8 @@ function spawnAsync(cmd: string, args: string[], options: { cwd?: string; env: N
     });
     // A hung child is killed with all it started, and its pipes are closed, so "close" always comes.
     const timer = setTimeout(() => {
-      if (child.pid) killTree(child.pid);
+      // Only while it runs: after it exits, its pid may already belong to another process.
+      if (child.pid && child.exitCode === null && child.signalCode === null) killTree(child.pid);
       child.stdout.destroy();
       child.stderr.destroy();
     }, CHILD_TIMEOUT);

@@ -6,10 +6,11 @@ Fix the first. Check the second before you "fix" it.
 
 ## Rule 1: give wide tables fixed column widths
 
-This rule is for tables that stay wide: 5 columns (the limit in the Tables
-section of `SKILL.md`), or more when the user asks to keep all the columns.
-Otherwise, split a table with more than 5 columns in the markdown, then
-rewrite the tab again.
+This rule covers the tables the given markdown already has. When you only
+rewrite the tab from that markdown, keep its tables as they are and fix
+their widths here. When you write the markdown, or the user asks you to
+change it, keep tables at 5 columns or fewer (the Tables section of
+`SKILL.md`).
 
 The rewrite tool can leave column widths that add up to more than the text
 width. Then the last columns are cut off in the editor.

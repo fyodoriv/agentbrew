@@ -28,6 +28,9 @@ echo "$* AUTO_SYNC=\${AGENTBREW_NO_AUTO_SYNC:-} HOOK=\${AGENTBREW_NO_SHELL_HOOK:
 if [ "$1" = init ]; then
   { echo "--- state.yaml at init:"; cat "$HOME/.config/agentbrew/state.yaml" 2>/dev/null; } >> "${log}"
   echo '{"user":"changed"}' > "$HOME/.claude/settings.json"
+  mkdir -p "$HOME/.config/opencode/commands" "$HOME/.gemini/commands"
+  echo cmd > "$HOME/.config/opencode/commands/agentbrew.md"
+  echo cmd > "$HOME/.gemini/commands/agentbrew.toml"
   mkdir -p "$HOME/.config/agentbrew" "$HOME/Library/LaunchAgents"
   echo state > "$HOME/.config/agentbrew/state.yaml"
   echo plist > "$HOME/Library/LaunchAgents/com.agentbrew.check.plist"
@@ -202,8 +205,9 @@ esac
     expect(result.status, result.stdout + result.stderr).toBe(0);
     const calls = readFileSync(log, "utf-8");
     expect(calls).toContain("init --skip-install AUTO_SYNC=1 HOOK=1");
-    // The "no repair job" answer is saved, so later runs do not propose the job again.
+    // The "no repair job" answer is saved before init, so init and later runs honor it.
     expect(calls).toContain("config set autoRepair off");
+    expect(calls.indexOf("config set autoRepair off")).toBeLessThan(calls.indexOf("init --skip-install"));
     expect(calls).toContain("status --fix");
     expect(calls).toContain("lint");
     // The run ends with the doctor, after lint.
@@ -216,6 +220,15 @@ esac
     expect(backups.stdout.trim()).toMatch(/^\d{8}-\d{6}$/);
   });
 
+  it("a yes to the repair job saves autoRepair on before init, undoing an earlier no", () => {
+    const { log, run } = sandbox();
+    const result = run("run", "--yes");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    const calls = readFileSync(log, "utf-8");
+    expect(calls).toContain("config set autoRepair on");
+    expect(calls.indexOf("config set autoRepair on")).toBeLessThan(calls.indexOf("init "));
+  });
+
   it("restores the exact previous settings by itself when verification fails", () => {
     const { home, log, run } = sandbox("lint");
     const result = run("run", "--yes");
@@ -225,6 +238,9 @@ esac
     expect(readFileSync(join(home, ".claude", "settings.json"), "utf-8")).toBe('{"user":"original"}\n');
     expect(readFileSync(join(home, ".zshrc"), "utf-8")).toBe("# my zshrc\n");
     expect(readFileSync(join(home, ".claude", "skills", "mine", "SKILL.md"), "utf-8")).toBe("my skill\n");
+    // Command copies sync wrote for other agents go too.
+    expect(existsSync(join(home, ".config", "opencode", "commands"))).toBe(false);
+    expect(existsSync(join(home, ".gemini", "commands"))).toBe(false);
     expect(existsSync(join(home, ".config", "agentbrew"))).toBe(false);
     expect(existsSync(join(home, "Library", "LaunchAgents", "com.agentbrew.check.plist"))).toBe(false);
     expect(readFileSync(log, "utf-8")).toContain("launchctl bootout");

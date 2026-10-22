@@ -21,6 +21,17 @@ function readCrontab(): string {
   }
 }
 
+/** True when `crontab` is on PATH; a bare Linux box can have neither it nor systemctl. */
+export function hasCrontab(): boolean {
+  try {
+    execFileSync("which", ["crontab"], { stdio: "pipe", timeout: 5_000 });
+    return true;
+  } catch (e) {
+    logSkipped("sync/cron/hasCrontab", e);
+    return false;
+  }
+}
+
 /** Install a cron job that runs drift repair every 30 minutes. */
 export async function installCron(): Promise<void> {
   const logDir = getLogDir();

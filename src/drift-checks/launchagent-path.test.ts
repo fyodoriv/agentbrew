@@ -6,12 +6,15 @@ vi.mock("node:fs", () => ({
   readdirSync: vi.fn(),
 }));
 
+vi.mock("../settings.js", () => ({ autoRepairOptedOut: vi.fn(() => false) }));
+
 vi.mock("../utils.js", () => ({
   expandHome: vi.fn((p: string) => p.replace("~", "/home/user")),
 }));
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   buildLaunchAgentPath,
   launchAgentPathHasRequiredPrefixes,
@@ -161,6 +164,21 @@ describe("checkLaunchAgentPathDrift", () => {
     } finally {
       Object.defineProperty(process, "platform", { value: original });
     }
+  });
+
+  it("skips the check job's plist once the user turned auto-repair off (its fix would never run)", () => {
+    const original = process.platform;
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValueOnce(true);
+    mockExistsSync.mockImplementation((p) => String(p).includes("LaunchAgents"));
+    mockReaddirSync.mockReturnValue(["com.agentbrew.check.plist"] as unknown as ReturnType<typeof readdirSync>);
+    mockReadFileSync.mockReturnValue(`<?xml version="1.0"?>
+<plist><dict>
+<key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string>
+</dict></plist>`);
+
+    expect(checkLaunchAgentPathDrift()).toEqual([]);
+    Object.defineProperty(process, "platform", { value: original });
   });
 
   it("flags stale com.agentbrew.check plist missing dotfiles bin", () => {

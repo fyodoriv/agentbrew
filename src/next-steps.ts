@@ -22,8 +22,8 @@ export interface NextStep {
 export interface DashboardFacts {
   hasSkillsOrServers: boolean;
   syncErrors: number;
-  /** Type of each drift item, user-added items left out. */
-  drift: ReadonlyArray<DriftItem["type"]>;
+  /** Each drift item (type and detail), user-added items left out. */
+  drift: ReadonlyArray<Pick<DriftItem, "type" | "detail">>;
   /** Already "off" when the user said no to the job, "unsupported" with no scheduler. */
   autoRepair: AutoRepairState;
   memoryServiceMissing: boolean;
@@ -37,12 +37,12 @@ const REINSTALL_STATES: ReadonlySet<AutoRepairState> = new Set(["not-installed",
 /** Collect the dashboard facts. Local reads only: no network, no writes. */
 export function collectDashboardFacts(
   state: AgentBrewState,
-  drift: ReadonlyArray<Pick<DriftItem, "type">>,
+  drift: ReadonlyArray<Pick<DriftItem, "type" | "detail">>,
 ): DashboardFacts {
   return {
     hasSkillsOrServers: getStateSources(state).length > 0 || getConfigServers().length > 0,
     syncErrors: loadSyncErrors()?.errors.length ?? 0,
-    drift: drift.map((item) => item.type),
+    drift: drift.map(({ type, detail }) => ({ type, detail })),
     autoRepair: probeAutoRepairHealth().state,
     memoryServiceMissing: isMemoryEnabled(state) && memoryLaunchAgentSupported() && !isMemoryLaunchAgentInstalled(),
     mcpNeedSetup: checkMcpEnvVarsDrift().length,
@@ -53,7 +53,7 @@ export function collectDashboardFacts(
 function syncStep(facts: DashboardFacts): NextStep | undefined {
   const parts: string[] = [];
   if (facts.syncErrors > 0) parts.push(`retry the ${facts.syncErrors} error(s) from the last sync`);
-  const syncDrift = facts.drift.filter(syncRepairs).length;
+  const syncDrift = facts.drift.filter((item) => syncRepairs(item.type)).length;
   if (syncDrift > 0) parts.push(`repair ${syncDrift} drift issue(s)`);
   if (parts.length === 0) return undefined;
   const why = parts.join(" and ");
@@ -63,21 +63,27 @@ function syncStep(facts: DashboardFacts): NextStep | undefined {
   };
 }
 
-/** One step per fix for drift that sync does not repair, named by DRIFT_FIXES; skips fixes already listed. */
+/** Items shown per fix; `agentbrew status --ci` lists the rest. */
+const ITEMS_PER_FIX = 3;
+
+/**
+ * One step per fix for drift that sync does not repair, named by DRIFT_FIXES.
+ * The step names the items themselves (which skill, which server), since the
+ * fix text alone can say "the item". Skips fixes already listed.
+ */
 function driftFixSteps(facts: DashboardFacts, listed: ReadonlySet<string>): NextStep[] {
-  const byFix = new Map<string, Map<DriftItem["type"], number>>();
-  for (const type of facts.drift) {
-    if (syncRepairs(type)) continue;
-    const counts = byFix.get(DRIFT_FIXES[type]) ?? new Map<DriftItem["type"], number>();
-    counts.set(type, (counts.get(type) ?? 0) + 1);
-    byFix.set(DRIFT_FIXES[type], counts);
+  const byFix = new Map<string, string[]>();
+  for (const item of facts.drift) {
+    if (syncRepairs(item.type)) continue;
+    byFix.set(DRIFT_FIXES[item.type], [...(byFix.get(DRIFT_FIXES[item.type]) ?? []), item.detail]);
   }
   return [...byFix]
     .filter(([fix]) => !listed.has(fix))
-    .map(([fix, counts]) => ({
-      command: fix,
-      why: `Fix ${[...counts].map(([type, n]) => `${n} ${type} drift item(s)`).join(", ")}; sync does not repair these`,
-    }));
+    .map(([fix, details]) => {
+      const more = details.length - ITEMS_PER_FIX;
+      const rest = more > 0 ? `; and ${more} more (agentbrew status --ci lists them)` : "";
+      return { command: fix, why: `${details.slice(0, ITEMS_PER_FIX).join("; ")}${rest}` };
+    });
 }
 
 function autoRepairStep(facts: DashboardFacts): NextStep | undefined {

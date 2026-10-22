@@ -72,10 +72,10 @@ vi.mock("../next-steps.js", async (importOriginal) => {
   const agentfile = await import("../agentfile.js");
   return {
     ...original,
-    collectDashboardFacts: vi.fn((state: never, drift: Array<{ type: string }>) => ({
+    collectDashboardFacts: vi.fn((state: never, drift: Array<{ type: string; detail: string }>) => ({
       hasSkillsOrServers: agentfile.getStateSources(state).length > 0 || agentfile.getConfigServers().length > 0,
       syncErrors: 0,
-      drift: drift.map((item) => item.type),
+      drift: drift.map(({ type, detail }) => ({ type, detail })),
       autoRepair: "active",
       memoryServiceMissing: false,
       mcpNeedSetup: 0,

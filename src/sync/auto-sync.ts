@@ -6,9 +6,10 @@ import chokidar from "chokidar";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { autoRepairOptedOut } from "../settings.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
-import { installCron, isCronInstalled, uninstallCron } from "./cron.js";
+import { hasCrontab, installCron, isCronInstalled, uninstallCron } from "./cron.js";
 import {
   getLaunchAgentPlistPath,
   getLegacyPlistsOnDisk,
@@ -163,7 +164,8 @@ export type AutoSyncBackend = "launchagent" | "systemd" | "cron" | "taskschedule
 export function detectBackend(): AutoSyncBackend {
   if (process.platform === "darwin") return "launchagent";
   if (process.platform === "linux") {
-    return hasSystemctl() ? "systemd" : "cron";
+    if (hasSystemctl()) return "systemd";
+    return hasCrontab() ? "cron" : "none";
   }
   if (process.platform === "win32") return "taskscheduler";
   return "none";
@@ -180,6 +182,12 @@ export function activeBackend(): AutoSyncBackend {
 
 /** Install the best available auto-sync backend for the current platform. */
 export async function installAutoSync(): Promise<void> {
+  if (autoRepairOptedOut()) {
+    console.error(chalk.yellow("Auto-repair is off (autoRepair: off), so no job was installed."));
+    console.error(chalk.dim("  Turn it on first: agentbrew config set autoRepair on"));
+    process.exitCode = 1;
+    return;
+  }
   const backend = detectBackend();
   switch (backend) {
     case "launchagent":
@@ -227,19 +235,26 @@ export function isAutoSyncInstalled(): boolean {
   return activeBackend() !== "none";
 }
 
+/** What to do about a missing job: install it, or nothing when the user turned auto-repair off. */
+function installHint(): string {
+  return autoRepairOptedOut()
+    ? "Off by your choice (autoRepair: off); turn on: agentbrew config set autoRepair on"
+    : "Install: agentbrew auto-sync install";
+}
+
 function showLaunchAgentStatus(): void {
   if (process.platform !== "darwin" && !isLaunchAgentInstalled()) return;
   const plistPath = getLaunchAgentPlistPath();
   const missingProgram = missingLaunchAgentProgram();
   if (missingProgram) {
     console.error(
-      `  ${chalk.red("✗")} LaunchAgent runs ${missingProgram}, which no longer exists, so auto-repair stopped — fix: agentbrew auto-sync install`,
+      `  ${chalk.red("✗")} LaunchAgent runs ${missingProgram}, which no longer exists, so auto-repair stopped — ${autoRepairOptedOut() ? "auto-repair is off; remove it: agentbrew auto-sync uninstall" : "fix: agentbrew auto-sync install"}`,
     );
   } else if (existsSync(plistPath)) {
     console.log(`  ${ICON_SUCCESS} LaunchAgent installed (30-min auto-repair)`);
   } else if (process.platform === "darwin") {
     console.error(`  ${chalk.dim("○")} LaunchAgent not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 
   const legacyFound = getLegacyPlistsOnDisk();
@@ -255,7 +270,7 @@ function showSystemdStatus(): void {
     console.log(`  ${ICON_SUCCESS} systemd timer installed (30-min auto-repair)`);
   } else if (process.platform === "linux" && hasSystemctl()) {
     console.error(`  ${chalk.dim("○")} systemd timer not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 }
 
@@ -264,8 +279,12 @@ function showCronStatus(): void {
   if (isCronInstalled()) {
     console.log(`  ${ICON_SUCCESS} cron job installed (30-min auto-repair)`);
   } else if (process.platform === "linux" && !hasSystemctl()) {
+    if (!hasCrontab()) {
+      console.error(`  ${chalk.dim("○")} no scheduler: neither systemctl nor crontab is installed`);
+      return;
+    }
     console.error(`  ${chalk.dim("○")} cron job not installed`);
-    console.log(chalk.dim("    Install: agentbrew auto-sync install"));
+    console.log(chalk.dim(`    ${installHint()}`));
   }
 }
 

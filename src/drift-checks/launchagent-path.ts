@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { MEMORY_AGENT_LABEL } from "../memory/launchagent.js";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   LAUNCHAGENT_LANG,
   launchAgentPathHasRequiredPrefixes,
@@ -112,7 +113,10 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
   const home = expandHome("~");
   const items: DriftItem[] = [];
 
+  // With auto-repair off, `agentbrew fix` leaves the check job alone, so its drift could never clear.
+  const skipCheckJob = autoRepairOptedOut();
   for (const plistPath of listAgentbrewLaunchAgentPlists()) {
+    if (skipCheckJob && basename(plistPath) === CHECK_PLIST) continue;
     let content: string;
     try {
       content = readFileSync(plistPath, "utf-8");

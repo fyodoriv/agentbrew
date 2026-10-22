@@ -47,7 +47,11 @@ vi.mock("../manifest.js", async () => {
 // an empty Map so the canary integration falls back to the native
 // transform path under test.
 // Built-in commands (/agentbrew) have their own test (builtin-commands.test.ts); here only user and Agentfile sources.
-vi.mock("./builtin-commands.js", () => ({ builtinCommandsDir: () => undefined }));
+vi.mock("./builtin-commands.js", () => ({
+  builtinCommandsDir: () => undefined,
+  builtinCommandNames: () => [],
+  SHIPPED_BUILTIN_COPY_HASHES: new Set(),
+}));
 
 vi.mock("./commands-delegate.js", () => ({
   delegateCommandsGenerate: vi.fn(() => new Map()),
@@ -55,6 +59,7 @@ vi.mock("./commands-delegate.js", () => ({
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { loadManifest, writeIfChanged } from "../manifest.js";
 import { loadState } from "../state.js";
@@ -179,7 +184,10 @@ describe("syncCommands", () => {
   });
 
   it("writes merged overrides into the canonical ~/.config/agentbrew/commands dir", async () => {
-    const manifestHashes: Record<string, string> = {};
+    // The canonical copy is one agentbrew wrote (tracked, unmodified), so the merge may update it.
+    const manifestHashes: Record<string, string> = {
+      [join(homedir(), ".config", "agentbrew", "commands", "shared.md")]: "mock-hash",
+    };
     vi.mocked(loadManifest).mockImplementation(() => ({ hashes: manifestHashes }));
     mockLoadState.mockReturnValue({
       agents: [],
@@ -210,6 +218,30 @@ describe("syncCommands", () => {
     expect(mockWriteIfChanged).toHaveBeenCalledWith(
       expect.stringContaining(".config/agentbrew/commands/shared.md"),
       "# Project command",
+      expect.anything(),
+    );
+  });
+
+  it("never overwrites a command the user created in ~/.config/agentbrew/commands", async () => {
+    vi.mocked(loadManifest).mockImplementation(() => ({ hashes: {} }));
+    mockLoadState.mockReturnValue({
+      agents: [],
+      catalogVersion: "test",
+      commandSourceDirs: [{ label: "project", path: "/tmp/project/commands", origin: "agentfile" }],
+    });
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockImplementation(
+      (path) => (String(path).includes("commands") ? ["shared.md"] : []) as unknown as ReturnType<typeof readdirSync>,
+    );
+    mockReadFileSync.mockImplementation((path) =>
+      String(path) === "/tmp/project/commands/shared.md" ? "# Project command" : "# Global command",
+    );
+
+    await syncCommands();
+
+    expect(mockWriteIfChanged).not.toHaveBeenCalledWith(
+      expect.stringContaining(".config/agentbrew/commands/shared.md"),
+      expect.anything(),
       expect.anything(),
     );
   });

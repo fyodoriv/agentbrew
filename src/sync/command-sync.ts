@@ -11,12 +11,13 @@ import type { Manifest } from "../manifest.js";
 import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { COMMANDS_DIR } from "../paths.js";
 import { pluginCommandDirs } from "../plugins/contributions.js";
+import { builtinCommandsOff } from "../settings.js";
 import { loadState } from "../state.js";
 import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
-import { builtinCommandsDir } from "./builtin-commands.js";
+import { builtinCommandNames, builtinCommandsDir, isAgentbrewCopy } from "./builtin-commands.js";
 import { delegateCommandsGenerate } from "./commands-delegate.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
@@ -57,11 +58,15 @@ interface CommandFileAction {
   filename: string;
   type: "write" | "prune";
   content?: string;
+  /** A built-in copy left after `builtinCommands: off`; kept when the user edited it. */
+  retired?: boolean;
 }
 
 interface CommandTargetDiff {
   agentName: string;
   skipped: boolean;
+  /** Why the agent was skipped: its commands folder is missing, or it needs ai-rules for every command. */
+  skipReason?: "no-dir" | "no-ai-rules";
   actions: CommandFileAction[];
   synced: number;
   pruned: number;
@@ -89,7 +94,7 @@ export function remapFilename(sourceFilename: string, targetExt: string): string
  * evolution.
  */
 export function computeCommandsDiff(
-  sourceFiles: Array<{ filename: string; content: string }>,
+  sourceFiles: Array<{ filename: string; content: string; builtinName?: boolean }>,
   targets: Array<{
     agentName: string;
     exists: boolean;
@@ -97,14 +102,15 @@ export function computeCommandsDiff(
     fileExt: string;
     existingFiles: Map<string, string>;
   }>,
-  options?: { prune?: boolean },
+  options?: { prune?: boolean; retiredBuiltins?: readonly string[] },
   delegated?: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): CommandTargetDiff[] {
   const prune = options?.prune ?? false;
+  const retired = options?.retiredBuiltins ?? [];
   return targets.map((target) => {
     const isCanary = CANARY_DELEGATED_AGENTS.has(target.agentName);
     const delegatedForAgent = delegated?.get(target.agentName);
-    return computeSingleTargetDiff(target, sourceFiles, prune, delegatedForAgent, isCanary);
+    return computeSingleTargetDiff(target, sourceFiles, { prune, retired }, delegatedForAgent, isCanary);
   });
 }
 
@@ -116,29 +122,24 @@ interface TargetInput {
   existingFiles: Map<string, string>;
 }
 
-function computeSingleTargetDiff(
+type SourceFile = { filename: string; content: string; builtinName?: boolean };
+
+/** Prune actions for built-in copies left after `builtinCommands: off` (applied only to manifest-tracked files). */
+function retiredPruneActions(target: TargetInput, retired: readonly string[]): CommandFileAction[] {
+  return retired
+    .map((name) => remapFilename(name, target.fileExt))
+    .filter((name) => target.existingFiles.has(name))
+    .map((filename) => ({ filename, type: "prune", retired: true }));
+}
+
+/** Write actions for every source whose deployed content differs, and the target names they cover. */
+function writeActions(
   target: TargetInput,
-  sourceFiles: Array<{ filename: string; content: string }>,
-  prune: boolean,
+  sourceFiles: SourceFile[],
   delegatedForAgent: ReadonlyMap<string, string> | undefined,
-  isCanary: boolean,
-): CommandTargetDiff {
-  if (!target.exists) {
-    return { agentName: target.agentName, skipped: true, actions: [], synced: 0, pruned: 0 };
-  }
-
-  // Slice 4: canary agents (claude-code, amp, firebender) MUST get content from
-  // the delegation map. When the map has no entry for a canary agent,
-  // the agent skips — no source fallback. Users without `ai-rules`
-  // installed will see canary commands skip, mirroring the rules-sync
-  // slice 4 hardening.
-  if (isCanary && delegatedForAgent === undefined) {
-    return { agentName: target.agentName, skipped: true, actions: [], synced: 0, pruned: 0 };
-  }
-
+): { actions: CommandFileAction[]; targetFilenames: Set<string> } {
   const actions: CommandFileAction[] = [];
   const targetFilenames = new Set<string>();
-
   for (const source of sourceFiles) {
     const targetFilename = remapFilename(source.filename, target.fileExt);
     targetFilenames.add(targetFilename);
@@ -149,27 +150,56 @@ function computeSingleTargetDiff(
     // Carve-outs (not in CANARY_DELEGATED_AGENTS) read source content + apply transform.
     const baseContent = delegatedForAgent?.get(source.filename) ?? source.content;
     const transformed = target.transform(baseContent);
-    const existing = target.existingFiles.get(targetFilename);
-    if (existing !== transformed) {
+    if (target.existingFiles.get(targetFilename) !== transformed) {
       actions.push({ filename: targetFilename, type: "write", content: transformed });
     }
   }
+  return { actions, targetFilenames };
+}
 
-  let pruneCount = 0;
-  if (prune) {
-    for (const [filename] of target.existingFiles) {
-      if (!targetFilenames.has(filename)) {
-        actions.push({ filename, type: "prune" });
-        pruneCount++;
-      }
-    }
+function computeSingleTargetDiff(
+  target: TargetInput,
+  allSourceFiles: SourceFile[],
+  pruneOptions: { prune: boolean; retired: readonly string[] },
+  delegatedForAgent: ReadonlyMap<string, string> | undefined,
+  isCanary: boolean,
+): CommandTargetDiff {
+  if (!target.exists) {
+    return { agentName: target.agentName, skipped: true, skipReason: "no-dir", actions: [], synced: 0, pruned: 0 };
   }
 
+  // Slice 4: canary agents (claude-code, amp, firebender) MUST get content from
+  // the delegation map. With no entry for a canary agent (no `ai-rules`),
+  // Claude Code, which reads plain markdown, still gets agentbrew's built-in
+  // commands (or the user's override of them) natively; amp and firebender get
+  // nothing; nothing is pruned except retired built-ins. Mirrors rules-sync.
+  const retired = retiredPruneActions(target, pruneOptions.retired);
+  const fallback = isCanary && delegatedForAgent === undefined;
+  const sourceFiles = !fallback
+    ? allSourceFiles
+    : NATIVE_FALLBACK_AGENTS.has(target.agentName)
+      ? allSourceFiles.filter((source) => source.builtinName)
+      : [];
+  if (fallback && sourceFiles.length === 0 && retired.length === 0) {
+    return { agentName: target.agentName, skipped: true, skipReason: "no-ai-rules", actions: [], synced: 0, pruned: 0 };
+  }
+
+  const { actions, targetFilenames } = writeActions(target, sourceFiles, delegatedForAgent);
+  const prune = pruneOptions.prune && !fallback;
+  const unmatched = prune ? [...target.existingFiles.keys()].filter((filename) => !targetFilenames.has(filename)) : [];
+  // Built-in commands turned off: remove the copies agentbrew deployed, even on a sync that does not prune.
+  const retiredNames = new Set(retired.map((action) => action.filename).filter((name) => !targetFilenames.has(name)));
+  const pruneNames = new Set([...unmatched, ...retiredNames]);
+  for (const filename of pruneNames) actions.push({ filename, type: "prune", retired: retiredNames.has(filename) });
+
   const synced = actions.filter((a) => a.type === "write").length;
-  return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneCount };
+  return { agentName: target.agentName, skipped: false, actions, synced, pruned: pruneNames.size };
 }
 
 const identity: CommandTransform = (content) => content;
+
+/** ai-rules canary agents that read plain markdown commands, so built-ins reach them without ai-rules. */
+const NATIVE_FALLBACK_AGENTS: ReadonlySet<string> = new Set(["claude-code"]);
 
 export function getCommandTargets(): CommandTarget[] {
   const withCommands = AGENT_DEFINITIONS.filter((a) => a.commandsDir !== undefined);
@@ -311,18 +341,24 @@ interface WriteActionOpts {
   log: Logger;
 }
 
-/** Write merged command sources into the canonical commands dir so lint/status see overrides. */
+/**
+ * Write merged command sources into the canonical commands dir so lint/status
+ * see overrides. That folder is the user's: built-in names never go there,
+ * and a file the user created or edited is never overwritten.
+ */
 function refreshCanonicalCommandSources(
-  sourceFiles: ReadonlyArray<{ filename: string; content: string }>,
+  sourceFiles: ReadonlyArray<{ filename: string; content: string; builtinName?: boolean }>,
   opts: { dryRun: boolean; manifest: Manifest },
 ): void {
   const canonicalDir = getCommandsDir();
   mkdirSync(canonicalDir, { recursive: true });
   // Never copy plugin commands into the canonical dir: the copy would outlive the plugin.
   const fromPlugins = new Set(pluginCommandDirs().flatMap((d) => readdirSync(d)));
-  for (const { filename, content } of sourceFiles) {
-    if (opts.dryRun || fromPlugins.has(filename)) continue;
-    writeIfChanged(join(canonicalDir, filename), content, opts.manifest);
+  for (const { filename, content, builtinName } of sourceFiles) {
+    if (opts.dryRun || builtinName || fromPlugins.has(filename)) continue;
+    const path = join(canonicalDir, filename);
+    if (isUserModified(path, opts.manifest)) continue;
+    writeIfChanged(path, content, opts.manifest);
   }
 }
 
@@ -380,6 +416,12 @@ function applySingleAction(opts: ApplyActionOpts): { writeSkipped: boolean; prun
     const skipped = handleWriteAction({ filePath, action, agentName, manifest, quiet, log });
     return { writeSkipped: skipped, prunedFile: false };
   }
+  // A retired built-in copy the user edited is theirs now: keep it.
+  if (action.retired && isUserModified(filePath, manifest)) {
+    if (!quiet)
+      log.log(log.dim(`  ${agentName}: kept ${action.filename}, which you edited (built-in commands are off)`));
+    return { writeSkipped: false, prunedFile: false };
+  }
   // Only prune files that agentbrew deployed (tracked in manifest).
   // applyPruneAction returns false for user-created files — those
   // survive and don't count toward the "N pruned" summary.
@@ -419,6 +461,8 @@ interface LogCmdDiffOpts {
 
 function logCmdDiffResult(opts: LogCmdDiffOpts): void {
   const { diff, agentSkipped, actualPruned, dryRun, verbose, log } = opts;
+  // A skipped agent already printed why; "up to date" would contradict it.
+  if (diff.skipped) return;
   const changes: string[] = [];
   if (diff.synced > 0) changes.push(`${diff.synced - agentSkipped} updated`);
   if (agentSkipped > 0) changes.push(`${agentSkipped} user-modified`);
@@ -469,6 +513,28 @@ function warnNoCommands(quiet: boolean, log: Logger): void {
   log.log(`Add .md files to: ${getCommandsDir()}`);
 }
 
+/**
+ * Older agentbrew versions copied /agentbrew into the user's commands folder
+ * (#399). Delete such a copy only when its content is exactly a text agentbrew
+ * shipped; any other content is the user's and stays (and wins over the built-in).
+ */
+function removeShippedBuiltinCopies(quiet: boolean, log: Logger): string[] {
+  const removed: string[] = [];
+  for (const name of builtinCommandNames()) {
+    const path = join(getCommandsDir(), `${name}.md`);
+    if (!existsSync(path)) continue;
+    try {
+      if (!isAgentbrewCopy(name, readFileSync(path, "utf-8"))) continue;
+      unlinkSync(path);
+      removed.push(path);
+      if (!quiet) log.log(log.dim(`  Removed an old agentbrew copy of ${name}.md from ${getCommandsDir()}`));
+    } catch (e) {
+      logSkipped("sync/command-sync/removeShippedBuiltinCopies", e);
+    }
+  }
+  return removed;
+}
+
 function getAllCommandSourceDirs(): string[] {
   const sourceDirs: string[] = [];
   const seen = new Set<string>();
@@ -479,13 +545,13 @@ function getAllCommandSourceDirs(): string[] {
     sourceDirs.push(dir);
   };
 
-  addDir(getCommandsDir());
-  // After the global dir, so a copy left there from an older version never wins;
-  // an Agentfile commands dir (below) still overrides a built-in command.
-  const builtin = builtinCommandsDir();
-  if (builtin) addDir(builtin);
-
+  // Built-in commands rank lowest: the user's own folder and every Agentfile
+  // dir (below) override them. `builtinCommands: off` drops them.
   const state = loadState();
+  const builtin = builtinCommandsDir();
+  if (builtin && !builtinCommandsOff(state)) addDir(builtin);
+  addDir(getCommandsDir());
+
   for (const dir of state?.commandSourceDirs ?? []) {
     addDir(expandHome(dir.path));
   }
@@ -532,6 +598,10 @@ function processSingleDiff(opts: ProcessDiffOpts): {
     // (many agents detected, most without a commands/ dir yet).
     // Verbose mode keeps the detail for debugging; non-verbose shows a
     // single collapsed summary line that names the mkdir fix.
+    if (diff.skipReason === "no-ai-rules") {
+      if (!quiet && verbose) log.log(log.dim(`  - ${diff.agentName} — skipped (needs ai-rules for these commands)`));
+      return { synced: 0, pruned: 0, skipped: 0, missingDir: 0 };
+    }
     if (!quiet && verbose) log.log(log.dim(`  - ${diff.agentName} — skipped (dir not found)`));
     return { synced: 0, pruned: 0, skipped: 0, missingDir: 1 };
   }
@@ -559,8 +629,10 @@ function collectAllSourceCommands(
   quiet: boolean,
   verbose: boolean,
   log: Logger,
-): Array<{ filename: string; content: string }> {
+  manifest?: Manifest,
+): Array<{ filename: string; content: string; builtinName: boolean }> {
   const sourceFiles = new Map<string, { content: string; filename: string; sourceDir: string }>();
+  const builtinNames = new Set(builtinCommandNames().map((name) => `${name}.md`));
 
   for (const sourceDir of sourceDirs) {
     const extra = readSourceCommands(sourceDir, quiet, log);
@@ -577,7 +649,21 @@ function collectAllSourceCommands(
     }
   }
 
-  return [...sourceFiles.values()].map(({ filename, content }) => ({ filename, content }));
+  // The user's own version of a built-in command (created or edited in their
+  // folder) beats every source, including a checkout's Agentfile copy of it.
+  if (manifest && sourceDirs.includes(getCommandsDir())) {
+    for (const file of readSourceCommands(getCommandsDir(), true, log)) {
+      if (builtinNames.has(file.filename) && isUserModified(join(getCommandsDir(), file.filename), manifest)) {
+        sourceFiles.set(file.filename, { ...file, sourceDir: getCommandsDir() });
+      }
+    }
+  }
+
+  return [...sourceFiles.values()].map(({ filename, content }) => ({
+    filename,
+    content,
+    builtinName: builtinNames.has(filename),
+  }));
 }
 
 /**
@@ -603,20 +689,31 @@ export function collectCanaryDelegation(
   return delegateCommandsGenerate({ agents: canaryAgents, sourceCommands: sourceFiles });
 }
 
+/** Built-in command files to remove after `builtinCommands: off`; an explicit --no-prune keeps them. */
+function retiredBuiltinFiles(options?: SyncOptions): string[] {
+  if (!builtinCommandsOff() || options?.prune === false) return [];
+  return builtinCommandNames().map((name) => `${name}.md`);
+}
+
 export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune } = resolveCmdSyncOptions(options);
   const log = resolveLogger(ctx, quiet, options?.compact);
 
   // ── Read phase ──────────────────────────────────────────────────────────
+  const removedCopies = dryRun ? [] : removeShippedBuiltinCopies(quiet, log);
   const sourceDirs = getAllCommandSourceDirs();
   if (sourceDirs.length === 0) {
     warnNoCommandsDir(quiet, log);
     return;
   }
 
-  const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log);
+  const sharedManifest = ctx?.manifest !== undefined;
+  const manifest = resolveManifest(ctx);
+  for (const path of removedCopies) removeFromManifest(path, manifest);
+  const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
+  const retiredBuiltins = retiredBuiltinFiles(options);
 
-  if (sourceFiles.length === 0 && !prune) {
+  if (sourceFiles.length === 0 && !prune && retiredBuiltins.length === 0) {
     warnNoCommands(quiet, log);
     return;
   }
@@ -630,14 +727,12 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const delegated = collectCanaryDelegation(targetInputs, sourceFiles);
 
   // ── Pure diff phase ─────────────────────────────────────────────────────
-  const diffs = computeCommandsDiff(sourceFiles, targetInputs, { prune }, delegated);
+  const diffs = computeCommandsDiff(sourceFiles, targetInputs, { prune, retiredBuiltins }, delegated);
 
   // ── Apply phase ─────────────────────────────────────────────────────────
   const label = getSyncLabel(dryRun, sourceFiles.length);
   if (!quiet) log.log(log.bold(`\n${label}\n`));
 
-  const sharedManifest = ctx?.manifest !== undefined;
-  const manifest = resolveManifest(ctx);
   refreshCanonicalCommandSources(sourceFiles, { dryRun, manifest });
   const totals = { synced: 0, pruned: 0, skipped: 0, missingDirs: [] as string[] };
 
@@ -714,7 +809,7 @@ export async function listCommands(): Promise<void> {
   }
 
   const log = createContext({ quiet: false }).logger;
-  const files = collectAllSourceCommands(sourceDirs, false, true, log);
+  const files = collectAllSourceCommands(sourceDirs, false, true, log, loadManifest());
 
   console.log(chalk.bold(`\nCommands (${files.length})\n`));
 

@@ -6,8 +6,10 @@ import { getConfigServers, getStateSources } from "./agentfile.js";
 import { removeRuleFromSharedRules } from "./catalog/install-other.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clean, detectItemTypes } from "./clean.js";
+import { setSetting } from "./settings.js";
 import { requireState } from "./state.js";
 import { formatSuggestion } from "./suggest.js";
+import { builtinCommandNames, userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
 type ItemType = "mcp" | "source" | "skill" | "command" | "rule";
@@ -114,11 +116,31 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       await clean(resolved.name, { type: "skill", yes: true });
       break;
     case "command":
+      turnOffIfBuiltin(resolved.name);
       await clean(resolved.name, { type: "command", yes: true });
       break;
     case "rule":
       reportRuleRemoval(resolved.name);
       break;
+  }
+}
+
+/**
+ * A built-in command (/agentbrew) comes back on every sync, so removing one
+ * turns built-in commands off first; `config set builtinCommands on` undoes it.
+ */
+function turnOffIfBuiltin(name: string): void {
+  if (!builtinCommandNames().includes(name.replace(/\.md$/, ""))) return;
+  // Removing the user's own override brings the built-in back; built-ins stay on.
+  if (userOverridesBuiltin(name)) {
+    console.log(chalk.dim(`  Removing your own ${name}; the built-in one comes back on the next sync.`));
+    return;
+  }
+  const result = setSetting("builtinCommands", "off");
+  if (result.ok) {
+    console.log(
+      chalk.dim(`  ${name} is built in: built-in commands are now off (undo: agentbrew config set builtinCommands on)`),
+    );
   }
 }
 

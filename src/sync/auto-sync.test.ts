@@ -27,6 +27,8 @@ vi.mock("node:child_process", () => ({
   spawnSync: vi.fn(() => ({ status: 0, error: null })),
 }));
 
+vi.mock("../settings.js", () => ({ autoRepairOptedOut: vi.fn(() => false) }));
+
 vi.mock("./scheduler-paths.js", () => ({
   AUTO_SYNC_INTERVAL_MINUTES: 30,
   AUTO_SYNC_INTERVAL_SECONDS: 1800,
@@ -46,6 +48,7 @@ vi.mock("./scheduler-paths.js", () => ({
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { autoRepairOptedOut } from "../settings.js";
 import {
   activeBackend,
   autoSyncStatus,
@@ -141,6 +144,51 @@ describe("isLaunchAgentInstalled", () => {
 });
 
 describe("autoSyncStatus", () => {
+  const originalPlatform = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
+  function printed(): string {
+    return [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.error).mock.calls]
+      .map((c) => c.join(" "))
+      .join("\n");
+  }
+
+  it("does not propose the install after the user turned auto-repair off", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValue(true);
+    mockExistsSync.mockReturnValue(false);
+    await autoSyncStatus();
+    vi.mocked(autoRepairOptedOut).mockReturnValue(false);
+    expect(printed()).not.toContain("Install: agentbrew auto-sync install");
+    expect(printed()).toContain("autoRepair");
+  });
+
+  it("does not propose the install for a broken job after the user turned auto-repair off", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValue(true);
+    // The installed plist runs a Node that no longer exists.
+    mockReadFileSync.mockReturnValue(
+      "<plist><dict><key>ProgramArguments</key><array><string>/gone/node</string></array></dict></plist>" as never,
+    );
+    mockExistsSync.mockReturnValue(false);
+    await autoSyncStatus();
+    vi.mocked(autoRepairOptedOut).mockReturnValue(false);
+    expect(printed()).toContain("/gone/node");
+    expect(printed()).not.toContain("agentbrew auto-sync install");
+  });
+
+  it("does not propose a cron install on Linux with neither systemctl nor crontab", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockExistsSync.mockReturnValue(false);
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error("not found");
+    });
+    await autoSyncStatus();
+    expect(printed()).not.toContain("Install: agentbrew auto-sync install");
+  });
+
   it("shows not installed when no plist", async () => {
     mockExistsSync.mockReturnValue(false);
     await autoSyncStatus();
@@ -346,12 +394,21 @@ describe("detectBackend", () => {
     expect(detectBackend()).toBe("systemd");
   });
 
-  it("returns cron on linux without systemctl", () => {
+  it("returns cron on linux without systemctl but with crontab", () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    mockExecFileSync.mockImplementation(((_cmd: string, args: string[]) => {
+      if (args[0] === "systemctl") throw new Error("not found");
+      return "" as never;
+    }) as unknown as typeof execFileSync);
+    expect(detectBackend()).toBe("cron");
+  });
+
+  it("returns none on linux with neither systemctl nor crontab", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
     mockExecFileSync.mockImplementation(() => {
       throw new Error("not found");
     });
-    expect(detectBackend()).toBe("cron");
+    expect(detectBackend()).toBe("none");
   });
 
   it("returns taskscheduler on win32", () => {
@@ -404,6 +461,15 @@ describe("installAutoSync", () => {
   const originalPlatform = process.platform;
   afterEach(() => {
     Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
+  it("installs nothing when the user turned auto-repair off, and says how to turn it on", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    vi.mocked(autoRepairOptedOut).mockReturnValueOnce(true);
+    mockExecFileSync.mockReturnValue("" as never);
+    await installAutoSync();
+    expect(mockExecFileSync).not.toHaveBeenCalledWith("launchctl", expect.anything(), expect.anything());
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("agentbrew config set autoRepair on"));
   });
 
   it("installs LaunchAgent on macOS", async () => {
@@ -563,10 +629,10 @@ describe("autoSyncStatus linux branches", () => {
     mockExistsSync.mockReturnValue(false);
     // hasSystemctl calls execFileSync("which", ...) — throw to signal absent
     // isCronInstalled calls execFileSync("crontab", ...) — return empty string (not installed)
-    mockExecFileSync.mockImplementation((cmd: string) => {
-      if (cmd === "which") throw new Error("no systemctl");
+    mockExecFileSync.mockImplementation(((cmd: string, args: string[]) => {
+      if (cmd === "which" && args[0] === "systemctl") throw new Error("no systemctl");
       return "" as never;
-    });
+    }) as unknown as typeof execFileSync);
     await autoSyncStatus();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("cron job not installed"));
   });

@@ -13,7 +13,7 @@ Then, answer first:
    - `agentbrew install --recommended`: installs the recommended skills and MCP servers (downloads).
    - `agentbrew sync`: deploys skills, MCP servers, rules, and commands to every agent and repairs drift. Show `agentbrew sync --dry-run` before you ask.
    - `agentbrew auto-sync install`: starts the background drift-repair job. If the user does not want it, run `agentbrew config set autoRepair off`, and nothing proposes it again.
-   - `agentbrew fix`: reinstalls the drift-repair job when it points at an old path.
+   - `agentbrew status --fix`: repairs drift and reinstalls the drift-repair job when it points at an old path.
    - `agentbrew memory fix`: reinstalls the memory background service.
    - `agentbrew setup`: asks for MCP API keys. The user must run it in their own terminal (interactive prompts).
    - `agentbrew mcp probe --deep`: installs and calls each MCP server to find the failing one.

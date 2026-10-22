@@ -84,7 +84,7 @@ describe("planNextSteps", () => {
       "agentbrew setup",
       "eval $(agentbrew env sanitize)",
     ]);
-    expect(commands({ drift: ["launchagent"] })).toEqual(["agentbrew fix"]);
+    expect(commands({ drift: ["launchagent"] })).toEqual(["agentbrew status --fix"]);
     expect(commands({ drift: ["mcp-stale"], mcpFailing: 1 })).toEqual(["agentbrew mcp probe --deep"]);
   });
 

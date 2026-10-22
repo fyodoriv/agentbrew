@@ -30,7 +30,7 @@ export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   "commands-user-added": "optional: agentbrew import",
   hooks: "agentbrew sync --only hooks",
   instructions: "agentbrew sync --only instructions",
-  launchagent: "agentbrew fix",
+  launchagent: "agentbrew status --fix",
 };
 
 /**
@@ -58,7 +58,7 @@ export const AUTO_FIXABLE_TYPES: ReadonlySet<DriftItem["type"]> = new Set([
   "models",
 ]);
 
-/** True when a plain `agentbrew sync` repairs this drift type (the LaunchAgent needs `agentbrew fix`). */
+/** True when a plain `agentbrew sync` repairs this drift type (the LaunchAgent needs `agentbrew status --fix`). */
 export function syncRepairs(type: DriftItem["type"]): boolean {
   return AUTO_FIXABLE_TYPES.has(type) && DRIFT_FIXES[type].includes("agentbrew sync");
 }

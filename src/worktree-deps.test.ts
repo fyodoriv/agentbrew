@@ -27,16 +27,17 @@ function setup(opts: { worktreeLock: string; mainModules?: boolean; env?: Record
   }
   const log = join(root, "npm.log");
   const npm = join(root, "npm-stub");
-  writeFileSync(npm, `#!/bin/sh\necho "$@" >> "${log}"\n`);
+  writeFileSync(npm, `#!/bin/sh\necho "$@" >> "${log}"\nmkdir -p node_modules && touch node_modules/from-npm-ci\n`);
   chmodSync(npm, 0o755);
-  const run = () =>
+  const runIn = (cwd: string) =>
     spawnSync("bash", [SCRIPT, main], {
-      cwd: wt,
+      cwd,
       encoding: "utf8",
       env: { ...process.env, WORKTREE_DEPS_NPM: npm, ...opts.env },
     });
+  const run = () => runIn(wt);
   const npmCalls = () => (existsSync(log) ? readFileSync(log, "utf8") : "");
-  return { main, wt, run, npmCalls };
+  return { main, wt, run, runIn, npmCalls };
 }
 
 describe("worktree-deps.sh", () => {
@@ -91,13 +92,42 @@ describe("worktree-deps.sh", () => {
     expect(readFileSync(join(wt, "node_modules", "dep", "index.js"), "utf8")).toContain("module.exports");
   });
 
-  it("runs npm ci when the lockfiles differ", () => {
+  it("runs npm ci with --prefer-offline --no-audit --no-fund when the lockfiles differ", () => {
     const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":2}\n' });
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("package-lock.json differs");
-    expect(npmCalls().trim()).toBe("ci");
-    expect(existsSync(join(wt, "node_modules"))).toBe(false);
+    expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
+    expect(existsSync(join(wt, "node_modules", "from-npm-ci"))).toBe(true);
+    expect(existsSync(join(wt, "node_modules", "dep"))).toBe(false);
+  });
+
+  it("skips npm ci when the lockfile has not changed since the last npm ci", () => {
+    const { run, npmCalls } = setup({ worktreeLock: '{"lock":2}\n' });
+    expect(run().status).toBe(0);
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("node_modules already matches package-lock.json");
+    expect(npmCalls().trim().split("\n")).toHaveLength(1);
+  });
+
+  it("runs npm ci again when the lockfile changed since the last npm ci", () => {
+    const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":2}\n' });
+    expect(run().status).toBe(0);
+    writeFileSync(join(wt, "package-lock.json"), '{"lock":4}\n');
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("running npm ci");
+    expect(npmCalls().trim().split("\n")).toHaveLength(2);
+  });
+
+  it("skips npm ci in the main checkout when the lockfile is unchanged", () => {
+    const { main, runIn, npmCalls } = setup({ worktreeLock: '{"lock":1}\n', mainModules: false });
+    expect(runIn(main).stdout).toContain("this is the main checkout");
+    const result = runIn(main);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("node_modules already matches package-lock.json");
+    expect(npmCalls().trim().split("\n")).toHaveLength(1);
   });
 
   it("runs npm ci when the main checkout has no node_modules", () => {
@@ -105,6 +135,6 @@ describe("worktree-deps.sh", () => {
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("main checkout has no node_modules");
-    expect(npmCalls().trim()).toBe("ci");
+    expect(npmCalls().trim()).toBe("ci --prefer-offline --no-audit --no-fund");
   });
 });

@@ -223,6 +223,7 @@
   - **Success**: under 1 min/day.
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+  - **Blocked**: needs-time — 2026-10-22: `scripts/worktree-deps.sh` skips `npm ci` when `package-lock.json` is unchanged since its last install, runs `npm ci --prefer-offline --no-audit --no-fund` otherwise, and AGENTS.md now names it as the install command (PR feat/speed-up-npm-ci). Local run on the `npm ci` path: re-run 14.4–16.6 s → 0.02 s; a fresh install stays 9–11 s with a warm cache. 7-day baseline before the change: 4m59s/day (38x in 11 sessions, p95 5m02s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npm ci` line; add the `bash worktree-deps.sh` line, where installs move), then close or pivot.
 
 - [ ] Make `npx biome` fast in the inner loop
   - **ID**: speed-up-npx-biome

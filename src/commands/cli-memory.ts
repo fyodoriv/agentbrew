@@ -166,8 +166,6 @@ async function repairMemoryRuntime(): Promise<{
     maintainDisabled?: boolean;
     reason?: string;
   };
-  cursorReloadRecommended: boolean;
-  cursorReloadAdvisory?: string;
   maintainOk: boolean;
   command: string;
   stderr?: string;
@@ -177,10 +175,9 @@ async function repairMemoryRuntime(): Promise<{
   const launchAgent = supported
     ? installMemoryLaunchAgents()
     : { installed: false, changed: false, reason: "no boot persistence on non-macOS" };
-  let daemonRecoveryOccurred = launchAgent.daemonRestarted ?? false;
   let mcpHealthy = launchAgent.changed ? await waitForMemoryMcpHealthy() : await mcpToolsListHealthy();
   if (!mcpHealthy && supported) {
-    daemonRecoveryOccurred = kickstartMemoryDaemon() || daemonRecoveryOccurred;
+    kickstartMemoryDaemon();
     mcpHealthy = await waitForMemoryMcpHealthy();
   }
   const bootstrapHealthy = mcpHealthy && (await mcpBootstrapProfileHealthy());
@@ -195,19 +192,11 @@ async function repairMemoryRuntime(): Promise<{
     maintenanceLaunchAgentFailure(launchAgent),
     !maintenance.ok ? maintenance.stderr || "memory maintain failed" : "",
   ].filter(Boolean);
-  const cursorReloadRecommended = daemonRecoveryOccurred;
   return {
     ok: failures.length === 0,
     mcpHealthy,
     bootstrapHealthy,
     launchAgent,
-    cursorReloadRecommended,
-    ...(cursorReloadRecommended
-      ? {
-          cursorReloadAdvisory:
-            "The memory daemon was recovered. Fully restart Cursor or reload its window manually so its in-process MCP host drops any stale connection.",
-        }
-      : {}),
     maintainOk: maintenance.ok,
     command: maintenance.command,
     stderr: maintenance.stderr || undefined,
@@ -353,9 +342,6 @@ export function registerMemoryCommands(program: Command): void {
         process.exitCode = 1;
       } else if (!options.json) {
         console.log("Memory fix complete — MCP and behavioral bootstrap are healthy.");
-      }
-      if (payload.cursorReloadRecommended && !options.json) {
-        console.log(`Advisory: ${payload.cursorReloadAdvisory}`);
       }
     });
 

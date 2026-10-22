@@ -30,14 +30,14 @@ agentbrew memory pack uninstall <id> # dry-run unless --confirm; pack-tagged row
 | --- | --- | --- |
 | Memory runtime (daemon, SQLite, backups) | **agentbrew** | Org-neutral; delegates to pinned `mcp-memory-service[sqlite]==11.7.0` via `uvx` |
 | Generic / example packs | **agentbrew** | Fixture under `src/memory/fixtures/` — never org-specific content |
-| Private / team packs | **team overlay** | Declared in overlay `Agentfile.yaml` `memoryPacks:` paths; agentbrew discovers and persists resolved paths only |
+| Private / company packs | **company repo** | Declared in an Agentfile `memoryPacks:` path; agentbrew discovers and persists resolved paths only |
 | Local DB, backups, memory IDs | **never committed** | Live under `~/Library/Application Support/mcp-memory/` and `~/.config/agentbrew/memory-packs/` |
 
 ## Invariants
 
 1. **Explicit pack install** — packs are never auto-loaded from overlay discovery alone. `memory pack install` (or `sync` refreshing **installed** ledgers only) writes records.
 2. **Sync refreshes installed only** — `agentbrew sync` reconciles packs listed in `~/.config/agentbrew/memory-packs/<id>.json` ledgers, not every discovered pack path.
-3. **`team unset` never deletes pack memories** — overlay removal clears catalog/MCP wiring and resolved pack paths from state; SQLite rows and ledgers remain on disk.
+3. **Removing a pack path never deletes pack memories** — SQLite rows and ledgers remain on disk until `memory pack uninstall --confirm`.
 4. **Shared HTTP transport** — one loopback Streamable HTTP endpoint (`127.0.0.1:18765/mcp`) fans out to all agents via MCP sync; avoids duplicate Python/ONNX processes per agent.
 5. **Discovery is a health invariant** — readiness completes Streamable HTTP `initialize` → `notifications/initialized` → `tools/list`, preserves `MCP-Session-Id`, accepts JSON/SSE, and fails when `tools/list` is empty or unavailable.
 6. **Bootstrap is a health invariant** — the managed daemon always sets `MCP_BOOTSTRAP_ENABLED=true` and caps bootstrap at 1,536 tokens; `memory doctor` fails when `get_bootstrap_profile` is disabled or unavailable.
@@ -47,7 +47,7 @@ agentbrew memory pack uninstall <id> # dry-run unless --confirm; pack-tagged row
 10. **Managed registration self-heals** — when `memory.enabled` is true, state contains one valid managed `memory` HTTP server. `agentbrew sync` repairs a missing or malformed entry before fan-out, and `agentbrew memory fix` also restores daemon readiness without replacing the SQLite database or deleting memory rows.
 11. **Agentfile declarations converge** — base and overlay `memory.enabled` declarations merge monotonically, and `memoryPacks` paths are normalized relative to their declaring Agentfiles before they enter state. Generating an Agentfile preserves these fields without serializing the managed HTTP transport as a generic MCP entry.
 12. **Claude project-memory ingestion is managed** — `agentbrew memory sync-projects` is the only project-file ingestion transport. Normal runs ingest only stores whose hashed metadata fingerprint changed; `--force` is the explicit recovery re-ingest. Records carry `claude-project-memory`, readable `project:<slug>`, and collision-resistant `project-source:sha256:…` tags. The readable label may collide and is never the sole provenance key. Recall remains global by default; callers use the source tag only for intentional filtering. The command exits zero when the daemon is unavailable and records only hashed file-tree metadata, counts, timestamps, and bounded scheduler outcomes. Claude Code's non-blocking `SessionEnd` hook records a receipt and debounces only after success; the daily job remains recovery.
-13. **Primary-agent recall is shared** — Claude Code, Cursor, and Codex receive the same managed loopback memory MCP through the normal fan-out. Claude's project directory is one source, not a separate memory backend.
+13. **Primary-agent recall is shared** — Claude Code and Codex receive the same managed loopback memory MCP through the normal fan-out. Claude's project directory is one source, not a separate memory backend.
 14. **Transport hardening is evidence-gated** — the pinned 11.7 runtime continues to use its compatible session-based discovery path until `memory transport-report` records loopback, Origin, unauthenticated-access, timeout, and five-primary-agent compatibility evidence. The report is read-only and does not make an authentication or protocol migration decision.
 
 ## Pack layout (v1)
@@ -66,14 +66,14 @@ my-pack/
 memory:
   enabled: true
 memoryPacks:
-  - ./packs/acme-internal   # overlay-relative; resolved at team set, not auto-installed
+  - ./packs/acme-internal   # Agentfile-relative; resolved on apply, not auto-installed
 ```
 
 ## When to use
 
 - **Enable memory** when you want cross-agent semantic recall without per-agent stdio MCP processes.
 - **Install a pack** when you have curated, versioned knowledge (runbooks, conventions) to seed the store.
-- **Team overlay packs** when org-specific content must stay out of the public agentbrew repo — ship packs in the overlay repo, declare paths in `memoryPacks:`.
+- **Company packs** when org-specific content must stay out of the public agentbrew repo — ship packs in a private repo, declare paths in `memoryPacks:`.
 - **Claude project files** when a durable Claude Code fact should be searchable
   from every primary agent — `agentbrew memory sync-projects` (or its
   non-blocking session and daily triggers) indexes the source files without
@@ -82,5 +82,5 @@ memoryPacks:
 ## Related
 
 - [US 03: Add MCP server](03-add-mcp-server.md) — catalog `memory` entry and HTTP URL pattern
-- [US 27: Team overlays](27-team-overlay.md) — overlay-owned private packs
+- [US 27: Company plugins](27-team-overlay.md) — signed company content
 - [US 06: Drift detection](06-drift-detection.md) — `sync` / `fix` ensure memory daemon before MCP fanout

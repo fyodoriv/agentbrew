@@ -1,6 +1,23 @@
 /** Pinned upstream memory service spec — matches dotfiles mcp-memory-launchagent. */
 export const MEMORY_PINNED_SPEC = "mcp-memory-service[sqlite]==11.7.0" as const;
 
+/**
+ * Python version uvx uses for the memory service. Without a pin, uvx picks the
+ * newest Python it has. onnxruntime ships wheels only up to 3.14, so on 3.15
+ * the install fails and the daemon never listens.
+ */
+export const MEMORY_PYTHON_VERSION = "3.13" as const;
+
+/** uvx arguments that run the pinned upstream `memory` CLI. */
+export const MEMORY_UVX_ARGS = [
+  "--python",
+  MEMORY_PYTHON_VERSION,
+  "--system-certs",
+  "--from",
+  MEMORY_PINNED_SPEC,
+  "memory",
+] as const;
+
 export const MEMORY_MCP_HOST = "127.0.0.1";
 export const MEMORY_MCP_PORT = 18765;
 

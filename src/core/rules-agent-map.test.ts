@@ -300,9 +300,8 @@ describe("coverage invariant — every rules-capable agent in agents.yaml is cla
     ]);
 
     const defs = loadAgentDefinitions();
-    // Filter to rules-capable agents only — agents with a rulesFile or
-    // rulesDir field on the loaded AgentConfig.
-    const rulesCapable = defs.filter((d) => d.rulesFile !== undefined || d.rulesDir !== undefined);
+    // Filter to rules-capable agents only — agents with a rulesFile.
+    const rulesCapable = defs.filter((d) => d.rulesFile !== undefined);
 
     const unclassified: string[] = [];
     for (const d of rulesCapable) {

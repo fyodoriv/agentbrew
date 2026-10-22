@@ -59,7 +59,7 @@ agentbrew sync
 ```
 
 `agentbrew sync` reads the Agentfile from the current directory and:
-- Registers MCP servers → deployed to Claude, Cursor, Codex, etc.
+- Registers MCP servers → deployed to Claude, Codex, Kiro, etc.
 - Adds skill sources → skills symlinked to all agents
 - Merges rules → injected into every agent's instruction file
 - Adds command sources → commands deployed to all agents
@@ -123,11 +123,11 @@ List of directories containing Markdown command files. Deployed to all agents, a
 
 ### Agent personas (`agents:`)
 
-List of directories containing agent persona definitions (`.md` files). Deployed to all agents that support personas (Claude Code, Cursor, Codex, etc.).
+List of directories containing agent persona definitions (`.md` files). Deployed to all agents that support personas (Claude Code, Codex, etc.).
 
 ### Lifecycle hooks (`hooks:`)
 
-List of hook entries with event, matcher, and command/prompt. Deployed to native hook surfaces for agents that support them, including Claude Code settings, Cursor hooks.json.
+List of hook entries with event, matcher, and command/prompt. Deployed to native hook surfaces for agents that support them, including Claude Code settings.
 
 ## Merge priority
 

@@ -23,7 +23,7 @@ export function buildAgentMatrix(): AgentMatrixRow[] {
     name: definition.name,
     skills: Boolean(definition.skillsDir),
     mcp: Boolean(definition.mcpConfig),
-    rules: Boolean(definition.rulesFile) || Boolean(definition.rulesDir),
+    rules: Boolean(definition.rulesFile),
     commands: Boolean(definition.commandsDir),
     agents: Boolean(definition.agentsDir),
     hooks: Boolean(definition.hooksFile),

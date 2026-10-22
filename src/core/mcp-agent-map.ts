@@ -85,15 +85,6 @@ export const AGENTBREW_ONLY_MCP_RATIONALE: Readonly<Record<string, string>> = Ob
   // config lives at `~/.config/amp/settings.json` under an `amp.mcpServers`
   // key.
   amp: "Not in mcpm's client list; small adapter contribute candidate (slice 6 of delegate-mcp-to-mcpm).",
-
-  // cursor: moved from intersection to carve-out. mcpm's `mcpm client edit
-  // cursor` writes `mcpm_<name>` wrapper entries (command: mcpm, args: [run,
-  // <name>]) into ~/.cursor/mcp.json. Cursor lists those in the MCP UI but
-  // does NOT expose them to its agent tool layer (CallMcpTool only sees
-  // direct-command entries). Native sync writes the resolved command/args
-  // directly, matching the entries Cursor's agent layer actually surfaces.
-  cursor:
-    "mcpm's `mcpm run` wrapper entries aren't surfaced to Cursor's agent tool layer. Native sync writes direct commands.",
 });
 
 /**
@@ -126,9 +117,6 @@ export const AGENTBREW_ONLY_MCP_AGENTS: ReadonlySet<string> = new Set(Object.key
  */
 export const MCP_INTERSECTION_AGENTS: ReadonlySet<string> = new Set([
   "claude-code",
-  // cursor: moved to AGENTBREW_ONLY_MCP_RATIONALE (mcpm `mcpm run` wrapper
-  // entries aren't surfaced to Cursor's agent tool layer; native sync writes
-  // direct commands instead)
   "claude-desktop",
   "cline",
   "gemini-cli",

@@ -17,7 +17,7 @@ If you prefer not to install globally: `npx agentbrew` works the same way.
 
 ## What happens
 
-1. **Detect agents** — scans for known config directories (`~/.claude/`, `~/.cursor/`, `~/.codex/`, etc.). The README agent matrix lists every recognized agent.
+1. **Detect agents** — scans for known config directories (`~/.claude/`, `~/.codex/`, `~/.kiro/`, etc.). The README agent matrix lists every recognized agent.
 2. **Discover existing config** — reads each agent's MCP config and skills directory, deduplicates by name.
 3. **Save state** — writes `~/.config/agentbrew/state.yaml` (human-readable YAML, version-controlled).
 4. **Install drift repair** — platform-native scheduler runs `agentbrew status --fix` every 30 minutes (LaunchAgent on macOS, systemd/cron on Linux).
@@ -34,7 +34,7 @@ $ agentbrew
 Detecting agents...
 
   ✓ claude-code
-  ✓ cursor
+  ✓ codex
   ✓ codex
 
 Discovering existing config...

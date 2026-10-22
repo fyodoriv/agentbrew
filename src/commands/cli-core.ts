@@ -8,6 +8,7 @@ interface StatusCommandOptions {
   json?: boolean;
   fix?: boolean;
   ci?: boolean;
+  ignoreSessionEnv?: boolean;
   workspaces?: string;
   workspaceName?: string;
 }
@@ -70,10 +71,20 @@ export function registerCoreCommands(program: Command): void {
     .option("--ci", "CI mode: no color, exit 1 on drift")
     .option("--workspaces <paths>", "Also list per-repo Agentfiles in these workspace folders (comma-separated)")
     .option("--workspace-name <name>", "Like --workspaces, for one workspace named in the tasks CLI config")
+    .option(
+      "--ignore-session-env",
+      "Report agent-session env vars (CLAUDECODE) as warnings, unless a shell startup file exports them",
+    )
     .action(async (options: StatusCommandOptions) => {
       if (options.fix || options.ci || options.json) {
         const { healthCheck } = await import("../health.js");
-        await healthCheck({ autoFix: options.fix, ci: options.ci, json: options.json, verbose: options.verbose });
+        await healthCheck({
+          autoFix: options.fix,
+          ci: options.ci,
+          json: options.json,
+          verbose: options.verbose,
+          ignoreSessionEnv: options.ignoreSessionEnv,
+        });
         return;
       }
       const { status } = await import("../status.js");
@@ -120,7 +131,7 @@ export function registerCoreCommands(program: Command): void {
   program
     .command("import")
     .description("Import user-added MCP servers from agent configs into agentbrew (syncs to all agents)")
-    .option("--from <agent>", "Import from a specific agent (e.g., cursor, codex)")
+    .option("--from <agent>", "Import from a specific agent (e.g., codex, gemini-cli)")
     .option("--bundle <file>", "Import from an agentbrew export bundle (.yaml or .json)")
     .option("--replace", "Replace existing items instead of skipping (with --bundle)")
     .option("--dry-run", "Preview import without applying changes (with --bundle)")
@@ -159,7 +170,7 @@ export function registerCoreCommands(program: Command): void {
       `
 Examples:
   agentbrew import                    Import servers from all agent configs
-  agentbrew import --from cursor      Import only from Cursor
+  agentbrew import --from codex       Import only from Codex
   agentbrew import --bundle backup.yaml  Restore from an export bundle
   agentbrew import --bundle b.yaml --dry-run  Preview bundle import`,
     );

@@ -79,10 +79,6 @@
     "tokens": 1468,
     "lines": 144
   },
-  "cursor-token-playbook": {
-    "tokens": 1109,
-    "lines": 79
-  },
   "detect-task-backend": {
     "tokens": 476,
     "lines": 58

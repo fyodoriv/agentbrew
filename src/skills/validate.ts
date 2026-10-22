@@ -386,8 +386,15 @@ export function validateEvals(skillDir: string): ValidationIssue[] {
       field: "evals",
     });
   }
+  const seenIds = new Set<unknown>();
   for (const [index, entry] of evals.entries()) {
     issues.push(...validateEvalEntry(entry, index));
+    const id = (entry as { id?: unknown } | null)?.id;
+    if (id === undefined) continue;
+    if (seenIds.has(id)) {
+      issues.push({ severity: "error", message: `evals/evals.json has duplicate id ${String(id)}`, field: "evals" });
+    }
+    seenIds.add(id);
   }
   return issues;
 }

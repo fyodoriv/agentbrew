@@ -45,6 +45,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--global` | knob | Scope choice for install. |
 | `--headers` | knob | Supplies HTTP headers; input, not behavior. |
 | `--if-stale` | knob | Skips a fresh snapshot after a given age; the value is the knob. |
+| `--ignore-session-env` | opt-out | Agent callers are already detected by default (CLAUDECODE set, no tty); the flag forces the same warning-not-drift handling for a caller with a tty. |
 | `--include-deprecated` | debug | Shows deprecated catalog entries that are hidden by default. |
 | `--json` | knob | Machine-readable output for scripts; humans get the table by default. |
 | `--local` | knob | Scope choice for install (project folder). |
@@ -68,15 +69,22 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--replace` | disruptive | Overwrites existing items on import; unsafe as a default. |
 | `--rollback` | disruptive | Restores the last snapshot over current configs; must stay explicit. |
 | `--rules` | knob | Filters browse output to rules. |
+| `--schedule` | knob | Opts in to (or out of) the weekly metrics send; sending data must never be a default. |
 | `--search` | knob | Search text for browse; input, not behavior. |
+| `--send` | disruptive | Sends metrics without the first-run dry-run review; data leaving the machine is never a default. |
 | `--sequential` | debug | Runs sync modules one by one to isolate a failure; parallel is the default. |
 | `--set` | knob | Writes an explicit override value. |
 | `--share` | knob | Writes an aggregate snapshot to a file; a different output, not a default. |
 | `--shell` | knob | Picks the shell hook only; the default installs both hooks. |
+| `--sink` | knob | Names where shared metrics go; the base repo has no default sink. |
 | `--skills` | knob | Filters browse output to skills. |
 | `--skip-ccusage` | opt-out | Opt-out of a default (ccusage runs by default). |
 | `--skip-install` | opt-out | Opt-out of a default (init installs by default). |
 | `--skip-sync` | opt-out | Opt-out of a default (init syncs by default). |
+| `--revoke` | knob | Removes a plugin signer instead of adding one; a different action. |
+| `--signer` | knob | Supplies an SSH public key; input, not behavior. |
+| `--cwd` | knob | Supplies the repo checkout to scope plugin rules to; input, not behavior. |
+| `--strict` | knob | Adds `strictPluginOnlyCustomization` to a printed admin policy; a policy choice for admins, not a default. |
 | `--sources` | knob | Filters browse output to sources. |
 | `--threshold` | knob | Coverage threshold value for `--ci`. |
 | `--timeout` | knob | Probe timeout value. |

@@ -25,7 +25,6 @@ interface McpAgentFixtureOptions {
   mcpKey?: string;
   mcpFormat?: AgentConfig["mcpFormat"];
   rulesFile?: string;
-  rulesDir?: string;
   commandsDir?: string;
 }
 
@@ -75,7 +74,6 @@ export function makeMcpAgentDef(name = "kiro", options: McpAgentFixtureOptions =
   if (options.mcpKey !== undefined) result.mcpKey = options.mcpKey;
   if (options.mcpFormat !== undefined) result.mcpFormat = options.mcpFormat;
   if (options.rulesFile !== undefined) result.rulesFile = options.rulesFile;
-  if (options.rulesDir !== undefined) result.rulesDir = options.rulesDir;
   if (options.commandsDir !== undefined) result.commandsDir = options.commandsDir;
   return result;
 }

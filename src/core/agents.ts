@@ -2,7 +2,6 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import yaml from "js-yaml";
-import { loadState } from "../state.js";
 import type {
   AgentConfig,
   HooksFormat,
@@ -29,7 +28,6 @@ interface AgentYamlEntry {
   mcpConfigVscodeExt?: { extensionId: string; filename: string };
   mcpConfigVscodeSettings?: boolean;
   rulesFile?: string;
-  rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
   agentsDirFormat?: "flat" | "subdir";
@@ -138,7 +136,6 @@ function applyOptionalFields(config: Omit<AgentConfig, "detected">, entry: Agent
   if (entry.mcpFormat) config.mcpFormat = entry.mcpFormat;
   applyMcpPermissionsConfig(config, entry);
   if (entry.rulesFile) config.rulesFile = resolveAgentYamlPath(entry.rulesFile);
-  if (entry.rulesDir) config.rulesDir = resolveAgentYamlPath(entry.rulesDir);
   if (entry.commandsDir) config.commandsDir = resolveAgentYamlPath(entry.commandsDir);
   if (entry.agentsDir) config.agentsDir = resolveAgentYamlPath(entry.agentsDir);
   if (entry.agentsDirFormat) config.agentsDirFormat = entry.agentsDirFormat;
@@ -194,32 +191,9 @@ export function loadAgentDefinitions(): Omit<AgentConfig, "detected">[] {
     throw new Error(`Failed to parse agents.yaml: ${errorMessage(error)}`);
   }
 
-  // Merge agents the active team overlay registers (deduped — core wins on a
-  // name collision), so an overlay can ship custom agents (e.g. overlay-desktop)
-  // without baking them into core agents.yaml.
-  const coreNames = new Set(entries.map((e) => e.name));
-  const overlayEntries = loadOverlayAgentEntries().filter((e) => !coreNames.has(e.name));
-
-  cached = [...entries, ...overlayEntries].map(mapYamlEntryToConfig);
+  cached = entries.map(mapYamlEntryToConfig);
 
   return cached;
-}
-
-/**
- * Load agent entries from the active team overlay's agents YAML
- * (`state.team.agentsOverlayPath`), if set. Loud-but-non-fatal on errors — a
- * broken overlay must not crash core agent loading.
- */
-function loadOverlayAgentEntries(): AgentYamlEntry[] {
-  try {
-    const overlayPath = loadState()?.team?.agentsOverlayPath;
-    if (!overlayPath) return [];
-    const parsed = yaml.load(readFileSync(overlayPath, "utf-8")) as AgentYamlEntry[] | null;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error(`Failed to load overlay agents: ${errorMessage(error)}`);
-    return [];
-  }
 }
 
 /** Reset cache — for testing only */

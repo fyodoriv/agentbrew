@@ -27,7 +27,7 @@ $ agentbrew status
 
 agentbrew status
 
-  Agents:         3 detected (claude-code, cursor, codex)
+  Agents:         3 detected (claude-code, codex, kiro)
   MCP Ready:      5/5 (0 need setup) — run `agentbrew setup`
   Sources:        3 registered (vercel-labs/skills, trailofbits/skills, personal)
   Skills:         47 in library across 3 sources
@@ -58,7 +58,7 @@ On macOS, status also reads the latest Claude Desktop start in `~/Library/Logs/C
 
 ```
   Drift:          6 issue(s)
-    Rules:        ✗ <count> agent(s) missing managed section — cursor, codex
+    Rules:        ✗ <count> agent(s) missing managed section — codex, gemini-cli
     Skills:       ✗ <count> broken symlink(s) — debug, plan
     MCP servers:  ⚠ <count> server needs env var — github (GITHUB_TOKEN)
 

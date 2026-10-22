@@ -34,7 +34,16 @@ third-party equivalent in the current source inventory:
 `companion-task-groom`, `companion-test-gaps`, `git-diagnose-codebase`,
 `grind`, `grind-report`, `handoff`, `markdown-for-gdoc`, `perf-review`, `project-audit`,
 `rfc`, `run-goal`, `strategic-review`, `sweep`, `task-command-center`,
-`to-issues`, and `ubiquitous-language`.
+`to-issues`, `ubiquitous-language`, and `wrap-up`.
+
+## Built on third-party audits
+
+`ui-ux-rankings` wraps axe-core (Deque, MPL-2.0), Lighthouse, the Vercel Web Interface
+Guidelines (`vercel-labs/web-interface-guidelines`, fetched at run time) and points to the
+`web-quality-audit` skill (`addyosmani/web-quality-skills`) for single Lighthouse runs. Local
+delta: one script (`scripts/rankings.cjs`) for the rankings those leave out (touch targets,
+selected-state contrast and readability in both themes, focus under sticky bars, Reduce motion),
+the round-per-ranking loop, KLM task time, scale checks, and a design-panel rubric.
 
 AgentBrew installs a skill from this directory only when it is selected by name
 (catalog entry with `source: fyodoriv/agentbrew`, or an Agentfile `skills:` list).

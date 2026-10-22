@@ -127,9 +127,9 @@ import { loadSharedRules, saveSharedRules, syncRules } from "./sync/rules-sync.j
 
 /** Agent parent dirs we create in TEST_HOME so detectAgents() picks them up.
  *  kiro is the canonical MCP carve-out — its mcp config is exercised by the
- *  cross-agent sync block. cursor + augment are kept so detection asserts
- *  multi-agent presence (cursor is intersection-skip for MCP but still detected). */
-const AGENT_DIRS = [".cursor", ".augment", ".kiro"];
+ *  cross-agent sync block. gemini + augment are kept so detection asserts
+ *  multi-agent presence (gemini-cli is intersection-skip for MCP but still detected). */
+const AGENT_DIRS = [".gemini", ".augment", ".kiro"];
 
 const MCP_CONFIGS: Record<string, string> = {
   ".kiro/settings/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
@@ -190,8 +190,8 @@ describe("essential core: agent detection (US 01, US 15)", () => {
     const agents = detectAgents();
     const detected = agents.filter((a) => a.detected).map((a) => a.name);
 
-    // We created .cursor, .augment, .kiro parent dirs.
-    expect(detected).toContain("cursor");
+    // We created .gemini, .augment, .kiro parent dirs.
+    expect(detected).toContain("gemini-cli");
     expect(detected).toContain("augment");
     expect(detected).toContain("kiro");
   });

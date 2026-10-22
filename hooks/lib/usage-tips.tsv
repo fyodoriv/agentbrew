@@ -1,0 +1,11 @@
+# id	trigger	adopt_regex	text
+# trigger: short | correction | long | error | any. adopt_regex: an ERE matched against a later prompt in
+# the same session; "-" means adoption is not detectable. Keep each text under 100 characters.
+done-looks-like	short	.{120,}	Say what done looks like: the file, the check to run, the expected result.
+clear-after-corrections	correction	^/clear	Corrected twice? /clear and restart with one sharper prompt that holds what you learned.
+compact-with-focus	long	^/compact	Long session: /compact <what matters next> keeps answers sharp and cheaper.
+paste-error-verbatim	error	(Error|error:|Traceback|FAILED|exit code)	Paste the exact error and command; a paraphrase makes the agent guess.
+ask-for-proof	any	(run|show).{0,40}(test|output|check)	Ask for proof: "run the tests and show the output" beats "is it done?".
+name-the-file	any	@[^ ]+\.[a-z]+	Point at code with @path/to/file instead of describing where it lives.
+plan-first	any	(plan|Plan)	For multi-file changes, ask for a plan first (Shift+Tab to plan mode), then approve.
+one-goal-per-prompt	any	-	One goal per prompt; queue the next one after this one is verified.

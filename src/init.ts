@@ -39,7 +39,6 @@ const STATE_KEYS_ON_INIT: Record<keyof AgentBrewState, "rebuild" | "keep"> = {
   commandSourceDirs: "keep",
   hooks: "keep",
   externalMcpServers: "keep",
-  team: "keep",
   memory: "keep",
   organization: "keep",
   skillInstallMode: "keep",
@@ -55,7 +54,7 @@ function detectAndSave(previousState?: AgentBrewState): InitResult | undefined {
 
   if (detectedAgents.length === 0) {
     console.log(chalk.yellow("No AI coding agents detected."));
-    console.log("Install at least one agent (Claude Code, Cursor, Codex, etc.) and try again.");
+    console.log("Install at least one agent (Claude Code, Codex, Gemini CLI, etc.) and try again.");
     return undefined;
   }
 

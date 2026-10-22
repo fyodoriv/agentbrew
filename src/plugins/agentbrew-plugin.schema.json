@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fyodoriv/agentbrew/src/plugins/agentbrew-plugin.schema.json",
+  "title": "agentbrew-plugin.yaml",
+  "description": "Manifest of an agentbrew company plugin (issue #208). Schema version 1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "version"],
+  "properties": {
+    "schema": { "const": 1 },
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?$" },
+    "requires_core": { "type": "string", "minLength": 1 },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agents": { "$ref": "#/$defs/names" },
+        "repos": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": { "$ref": "#/$defs/names" },
+            "exclude": { "$ref": "#/$defs/names" }
+          }
+        },
+        "hooks": { "$ref": "#/$defs/names" },
+        "mcp_servers": { "$ref": "#/$defs/names" },
+        "network_hosts": { "$ref": "#/$defs/names" },
+        "commands_exec": { "type": "boolean" },
+        "secrets": { "$ref": "#/$defs/names" }
+      }
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skills": { "$ref": "#/$defs/relPath" },
+        "rules": { "$ref": "#/$defs/relPath" },
+        "agents": { "$ref": "#/$defs/relPath" },
+        "commands": { "$ref": "#/$defs/relPath" },
+        "hooks": { "$ref": "#/$defs/relPath" },
+        "mcp_servers": { "$ref": "#/$defs/relPath" },
+        "memory_packs": { "$ref": "#/$defs/relPath" },
+        "catalog": { "$ref": "#/$defs/relPath" },
+        "leak_patterns": { "$ref": "#/$defs/relPath" },
+        "options": { "type": "object" },
+        "native": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "names": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "relPath": { "type": "string", "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$" }
+  }
+}

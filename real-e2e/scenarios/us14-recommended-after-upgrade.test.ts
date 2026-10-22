@@ -76,7 +76,7 @@ describe("us14 recommended after upgrade", () => {
 
       cpSync(join(fixtureDir, "home"), homeDir, { recursive: true });
       mkdirSync(join(homeDir, ".claude"), { recursive: true });
-      mkdirSync(join(homeDir, ".cursor"), { recursive: true });
+      mkdirSync(join(homeDir, ".codex"), { recursive: true });
 
       await createSkillSourceRepo(remoteRoot, "vercel-labs", "skills", [
         { name: "find-skills", description: "Find installable skills" },

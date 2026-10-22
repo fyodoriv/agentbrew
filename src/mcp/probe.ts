@@ -139,7 +139,7 @@ export interface ProbeOptions {
 export interface ProbeResult {
   /** Server name as registered in the agent config. */
   name: string;
-  /** Agent label (`claude-code`, `cursor`, `codex`, …). */
+  /** Agent label (`claude-code`, `kiro`, `codex`, …). */
   agent: string;
   status: ProbeStatus;
   /** Total elapsed milliseconds from spawn to result. */

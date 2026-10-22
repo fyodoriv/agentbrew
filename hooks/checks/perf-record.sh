@@ -75,6 +75,21 @@ done
 PROJECT="${PROJECT//[^A-Za-z0-9._-]/_}"
 [ -n "$PROJECT" ] || PROJECT="unknown"
 
+# Redact a project whose name matches a plugin leak pattern (written by
+# `agentbrew sync`, one POSIX ERE per line).
+REDACT="${XDG_STATE_HOME:-$HOME/.local/state}/agentbrew/redact-patterns.txt"
+if [ -f "$REDACT" ]; then
+  shopt -s nocasematch
+  while IFS= read -r RE || [ -n "$RE" ]; do
+    [ -n "$RE" ] || continue
+    if [[ "$PROJECT" =~ $RE ]]; then
+      PROJECT="redacted"
+      break
+    fi
+  done <"$REDACT"
+  shopt -u nocasematch
+fi
+
 PERF_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/agentbrew/perf"
 LOG="$PERF_DIR/$MONTH.jsonl"
 umask 077

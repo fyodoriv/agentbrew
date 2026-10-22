@@ -7,10 +7,10 @@
  * `delegate-commands-to-ai-rules` task — see TASKS.md and
  * [the ai-rules commands-and-skills doc](https://raw.githubusercontent.com/block/ai-rules/main/docs/commands-and-skills.md).
  *
- * ai-rules supports commands generation for AMP, Claude Code, Cursor, and
- * Firebender. agentbrew's commands-capable agents are claude-code, cursor,
+ * ai-rules supports commands generation for AMP, Claude Code, and
+ * Firebender, among others. agentbrew's commands-capable agents include claude-code,
  * gemini-cli, claude-desktop, and opencode. The intersection
- * after rename is claude-code and cursor; the rest stay native because
+ * after rename is claude-code; the rest stay native because
  * ai-rules' commands-and-skills surface does not cover them today.
  *
  * Differences from the sibling rules map:
@@ -39,7 +39,7 @@
  *     `commandsDir`.
  *   - ai-rules canonical:
  *     [docs/commands-and-skills.md](https://raw.githubusercontent.com/block/ai-rules/main/docs/commands-and-skills.md)
- *     (amp, claude, cursor, firebender) at v1.6.0.
+ *     (amp, claude, firebender, and others) at v1.6.0.
  */
 
 /** Agentbrew canonical name → ai-rules canonical name. */
@@ -115,7 +115,7 @@ export const AGENTBREW_ONLY_COMMANDS_AGENTS: ReadonlySet<string> = new Set(
 /**
  * Translate an agentbrew agent name to the name ai-rules expects on the
  * `--agents <name>` flag for the commands generation surface. Returns:
- *   - the same name if it's in the strict intersection (`cursor`) — pass-through
+ *   - the same name if it's in the strict intersection (`amp`) — pass-through
  *   - the remapped name for entries in {@link AGENTBREW_TO_AI_RULES}
  *   - null for the carve-outs (gemini-cli,
  *     claude-desktop, opencode) — caller should route to native installer
@@ -159,8 +159,8 @@ export function fromAiRulesCommandsAgent(aiRulesName: string): string {
  *   buildAiRulesCommandsAgentList("all")
  *   // → { agents: ["*"], carveOuts: [] }
  *
- *   buildAiRulesCommandsAgentList(["claude-code", "cursor"])
- *   // → { agents: ["claude", "cursor"], carveOuts: [] }
+ *   buildAiRulesCommandsAgentList(["claude-code", "amp"])
+ *   // → { agents: ["claude", "amp"], carveOuts: [] }
  *
  *   buildAiRulesCommandsAgentList(["claude-code", "gemini-cli"])
  *   // → { agents: ["claude"], carveOuts: ["gemini-cli"] }

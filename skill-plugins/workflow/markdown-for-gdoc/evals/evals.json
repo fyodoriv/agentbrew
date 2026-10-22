@@ -156,6 +156,18 @@
         "Restarts the complete screenshot sweep at page 1 after any fix because pagination may have changed",
         "Does not tell the user to review the document until every page passes the screenshot sweep"
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "Promote a doc subtab to top level and reorganize it with surgical inserts; one step removes a blank line above a heading, and a later small replace runs before bullet styling",
+      "expected_output": "The agent dry-runs each anchor to a match count of 1, re-reads the structure after every replace, records the next paragraph style before deleting a blank paragraph and re-applies the heading style right after, never reuses indices across a text change, and finishes with an every-page screenshot sweep after the last fix.",
+      "expectations": [
+        "Dry-runs each find anchor to a match count of exactly 1",
+        "Re-reads the document structure after every text replace before any index-based call",
+        "Before deleting a blank paragraph, records the next paragraph style and re-applies it afterwards",
+        "Re-checks the named_style of headings next to any text change",
+        "Runs an every-page screenshot sweep after the last fix"
+      ]
     }
   ]
 }

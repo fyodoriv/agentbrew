@@ -85,7 +85,6 @@ reviews/`), and the `**Last-fired**:` line is bumped.
     6. **A Node.js port of mcpm or block/ai-rules emerges** — solves the ecosystem-mismatch problem.
 
     **Check 3 — Delegation re-run.** For any subsystem currently in terminal state "(b) Keep native, blocker X" from a prior delegation evaluation — has the blocker gone away? (e.g. corporate proxy policy changed, Python runtime stabilized, block/ai-rules got a Node port). If yes, re-run the delegation task.
-    Also re-check the Cursor default-model gap: does Cursor now document a config-file default model? If yes, add Cursor `modelConfig` in `src/core/agents.yaml` and update the comment in `src/sync/per-agent-features.matrix.test.ts` (it lists the upstream links checked on 2026-10-15).
 
     **Outcome** (each quarter): a short decision doc at `docs/competition/dissolution-reviews/<YYYY-QN>.md` with five sections:
     (a) **Contribution pulse** — per-upstream-thread status (engaged / rejected / ignored 90+ days); any capabilities absorbed this quarter.
@@ -117,6 +116,6 @@ reviews/`), and the `**Last-fired**:` line is bumped.
   **Cadence**: weekly
   **Next**: 2026-06-22
   **Output**: measurement
-  **Details**: Run `agentbrew measure context` (or `bash ~/apps/tooling/agentbrew/scripts/measure-context-budget.sh` from dotfiles launchd if wired). Read `~/.config/agentbrew/metrics/latest.json`. Compare `projectedDeployedTokens` and `topSections` to prior `context-budget-*.json` files. Run `agentbrew lint` — every error is a P1/P2 fix or a new TASKS.md entry with quoted metrics. For Claude-heavy weeks, optionally run `bunx ccusage weekly` or invoke the `session-report` skill. Cursor ring: log manual readings to `metrics/manual-snapshots/` when IDE pressure is reported (no API).
+  **Details**: Run `agentbrew measure context` (or `bash ~/apps/tooling/agentbrew/scripts/measure-context-budget.sh` from dotfiles launchd if wired). Read `~/.config/agentbrew/metrics/latest.json`. Compare `projectedDeployedTokens` and `topSections` to prior `context-budget-*.json` files. Run `agentbrew lint` — every error is a P1/P2 fix or a new TASKS.md entry with quoted metrics. For Claude-heavy weeks, optionally run `bunx ccusage weekly` or invoke the `session-report` skill.
   **Files**: `~/.config/agentbrew/metrics/latest.json`, `~/.config/agentbrew/metrics/context-budget-*.json`, TASKS.md (token/trim tasks)
   **Acceptance**: (a) `latest.json` refreshed within 7 days of merge; (b) PR or session note lists delta vs prior snapshot (tokens, top 3 sections, skill/MCP counts); (c) every lint error tied to an open TASKS.md task or fixed in the same firing; (d) no custom JSONL parsers or duplicate ccusage dashboards added.

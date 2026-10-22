@@ -12,12 +12,12 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
 const evalMatching = evalMatcher(evals.evals);
 
 describe("agentbrew-add-catalog-source skill contract", () => {
-  it("pins shared catalog versus team overlay routing", () => {
+  it("pins shared catalog versus company plugin routing", () => {
     requireTerms(skillText, [
       "Decision tree — which catalog file?",
-      "YES → the team overlay's catalog-overlay.yaml",
-      "Owner MUST be an approved team namespace",
-      "Visible only after `agentbrew team set <overlay-url>`",
+      "YES → the company plugin repo (agentbrew-plugin.yaml)",
+      "released as a signed tag",
+      "Visible only after `agentbrew plugin add <url>@<tag>`",
       "NO  → src/catalog.yaml",
       "Source is a public repo or truly generic built-in",
       "Never mix",
@@ -56,27 +56,25 @@ describe("agentbrew-add-catalog-source skill contract", () => {
   it("pins validation and local verification before readiness claims", () => {
     requireTerms(skillText, [
       "Run the validator(s)",
-      "yaml-lint catalog-overlay.yaml",
+      "agentbrew plugin test <plugin-checkout>",
       "npx vitest run src/catalog/catalog.test.ts",
       "Verify local",
-      "agentbrew team unset && agentbrew catalog --json",
-      "agentbrew team set <overlay-url>",
-      "same-name overrides",
+      "agentbrew catalog --json",
+      "agentbrew plugin update <name> <new-signed-tag>",
       "If either count surprises you",
       "Stop and re-read",
     ]);
   });
 
-  it("preserves whole-repo source guidance for team overlays", () => {
+  it("preserves whole-repo source guidance", () => {
     requireTerms(skillText, [
-      "For a new whole-repo source (team overlay only)",
+      "For a new whole-repo source",
       "repo_sources:",
-      "source: team-namespace/new-skills-registry",
+      "source: owner/skills-registry",
       "auto_update defaults to true",
-      "On `agentbrew team set <overlay-url>` the repo auto-registers",
-      "On `agentbrew team unset` it's",
-      "removed symmetrically",
-      "Prefer this over per-skill entries",
+      "soft-updates it on a 30-min TTL",
+      "company plugin's `skills/` dir",
+      "Prefer this over per-skill",
       "whenever a repo has more than ~2 skills",
     ]);
   });
@@ -87,7 +85,7 @@ describe("agentbrew-add-catalog-source skill contract", () => {
       "under `mcp_servers:`",
       "env:",
       "setupLink:",
-      "For overlay MCP servers add a `setup:` block",
+      "For company MCP servers, use the plugin's `mcp/servers.yaml`",
       "For a new rule",
       "Rules go under `rules:`",
       "rules are the one exception",
@@ -136,10 +134,10 @@ describe("agentbrew-add-catalog-source skill contract", () => {
         expectationText(evalMatching(/internal portal-only MCP|company agents/i)),
       ].join("\n"),
       [
-        /team-overlay|overlay/i,
+        /company-plugin|company plugin/i,
         /Refuses to add|not.*src\/catalog\.yaml/i,
         /setup instructions/i,
-        /overlay validation/i,
+        /plugin validation/i,
       ],
     );
 
@@ -155,7 +153,7 @@ describe("agentbrew-add-catalog-source skill contract", () => {
         evalMatching(/repo_sources|whole repo|more than two skills/i).prompt,
         expectationText(evalMatching(/repo_sources|whole repo|more than two skills/i)),
       ].join("\n"),
-      [/repo_sources/i, /team overlay/i, /prefer/i, /auto-registers|auto-update/i],
+      [/repo_sources/i, /company plugin/i, /prefer/i, /auto-registers|auto-update/i],
     );
   });
 });

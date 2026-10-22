@@ -34,7 +34,7 @@ Validating agentbrew config...
   ✓ state.yaml (<agents> agents, <mcp> MCP servers)
 
 MCP configs
-  ✓ cursor
+  ✓ codex
   ✓ claude-code
   ✓ codex
 

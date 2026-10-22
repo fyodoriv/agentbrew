@@ -88,7 +88,7 @@ The steps below are for an existing repo.
 - The root `Agentfile.yaml` declares the MCP servers, catalog skills, and local
   skill source needed to work on agentbrew itself.
 - Generated per-agent outputs live under user config directories such as
-  `~/.claude/`, `~/.cursor/`, and `~/.codex/`; they are deployment
+  `~/.claude/` and `~/.codex/`; they are deployment
   targets, not source files.
 - `templates/AGENTS.md` is the global instruction template deployed by
   agentbrew. `AGENTS.md` is the repo-specific contributor guide for this

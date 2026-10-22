@@ -6,10 +6,7 @@ vi.mock("../drift-checks/hooks.js", () => ({
 
 vi.mock("../state.js", () => ({
   loadState: vi.fn(() => ({
-    agents: [
-      { name: "claude-code", detected: true },
-      { name: "cursor", detected: true },
-    ],
+    agents: [{ name: "claude-code", detected: true }],
   })),
 }));
 
@@ -29,11 +26,11 @@ describe("runHooksVerify", () => {
     expect(runHooksVerify()).toBe(0);
   });
 
-  it("returns 1 and prints drift for cursor", () => {
+  it("returns 1 and prints drift for claude-code", () => {
     mockCheckHooksDrift.mockReturnValue([
-      { agent: "cursor", type: "hooks", detail: "missing hook(s): preToolUse:Bash" },
+      { agent: "claude-code", type: "hooks", detail: "missing hook(s): preToolUse:Bash" },
     ]);
-    expect(runHooksVerify({ agent: "cursor" })).toBe(1);
+    expect(runHooksVerify({ agent: "claude-code" })).toBe(1);
   });
 
   it("rejects unknown agents", () => {
@@ -42,7 +39,7 @@ describe("runHooksVerify", () => {
 
   it("emits JSON when requested", () => {
     const log = vi.spyOn(console, "log");
-    runHooksVerify({ json: true, agent: "cursor" });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('"cursor"'));
+    runHooksVerify({ json: true, agent: "claude-code" });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('"claude-code"'));
   });
 });

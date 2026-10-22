@@ -1,6 +1,6 @@
 # Global Agent Context
 
-Agentbrew manages skills, MCP servers, rules, commands, hooks, and agent definitions for this machine. Generated agent files under `~/.claude/`, `~/.cursor/`, `~/.codex/`, and similar agent dirs are outputs; edit the source repo or `~/.config/agentbrew/` source, then run `agentbrew sync`.
+Agentbrew manages skills, MCP servers, rules, commands, hooks, and agent definitions for this machine. Generated agent files under `~/.claude/`, `~/.codex/`, and similar agent dirs are outputs; edit the source repo or `~/.config/agentbrew/` source, then run `agentbrew sync`.
 
 ## Installed skills
 
@@ -80,11 +80,19 @@ Never publish under the user's identity without explicit approval for the exact 
 
 ### Browser work
 
-Use browser automation — never ask the user to click. SSO: use attach-first with purpose Chrome (`9223`/`9224`/`9225`), poll up to 120s, then background per `sso-background-work`. Details: shared-rules **## Browser and web UI work**.
+Use browser automation — never ask the user to click. At most three browsers: the user's own (never, unless told), the shared agents Chrome (`9223`, attach-first), and one locked `temp-browser`. SSO: poll up to 120s, then background per `sso-background-work`. Details: shared-rules **## Browser and web UI work**.
 
 ### Verification + security
 
 No completion claims without fresh evidence. Agent-artifact changes need same-PR tests/evals or `Agent artifact test exemption: <reason>`. Defensive security only; never expose or commit secrets.
+
+### Cloud sessions
+
+A cloud session cannot reach the user's machine, local data or signed-in apps. When the rest of a goal needs them, do not wait or keep asking. Push the work branch, write each unfinished item as a task in the repo's task backend on the default branch (with the steps to run locally), and stop with one short message naming the task ids.
+
+### Open work first
+
+Before you start a task (`next-task` included), list the repo's open work: your open PRs, unmerged branches, uncommitted files (`wrap-up` skill, `scripts/open-work.sh`). Continue an open draft PR from its `## Pending` list before claiming new work. To end a session, run `wrap-up`: deliver what is ready, and put the rest in a leak-checked draft PR plus a task.
 
 ### Docs with every change
 
@@ -93,7 +101,7 @@ Every change updates its docs in the same PR. User-facing behavior goes in the R
 ## When you need detail
 
 This file is a compact bootstrap. Load the matching skill or repo-local guide
-for chat/token limits (`cursor-token-playbook`, `context-budget`), agentbrew
+for chat/token limits (`context-budget`), agentbrew
 sync (`agentbrew-status`, `sync-agent-config`), delivery/testing/debugging,
 browser work (`agent-browser`, `sso-browser-isolation`,
 `sso-background-work`, `page-zero-errors`), skill authoring, and UI work.

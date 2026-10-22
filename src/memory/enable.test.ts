@@ -8,7 +8,6 @@ import {
   isManagedMemoryServer,
   isMemoryEnabled,
   mergeMemoryPackPaths,
-  removeTeamMemoryPackPaths,
 } from "./enable.js";
 
 vi.mock("./launchagent.js", () => ({
@@ -73,12 +72,5 @@ describe("memory enable state wiring", () => {
     expect(isMemoryEnabled(state)).toBe(false);
     expect(state.mcpServers?.some((s) => s.source === MEMORY_MANAGED_SOURCE)).toBe(false);
     expect(state.memory?.packPaths).toEqual(["/tmp/pack-a"]);
-  });
-
-  it("team unset removes overlay pack paths without touching enabled flag", () => {
-    const state = baseState();
-    mergeMemoryPackPaths(state, ["/tmp/global", "/tmp/team-pack"]);
-    removeTeamMemoryPackPaths(state, ["/tmp/team-pack"]);
-    expect(state.memory?.packPaths).toEqual(["/tmp/global"]);
   });
 });

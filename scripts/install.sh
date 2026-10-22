@@ -34,7 +34,6 @@ AGENTBREW_CMD="${AGENTBREW_INSTALL_CLI:-$REPO_DIR/dist/cli.js}"
 BACKUP_PATHS=(
   .claude/settings.json .claude/CLAUDE.md .claude/skills .claude/commands
   .claude/agents .claude/codeassist .claude.json
-  .cursor/mcp.json .cursor/rules .cursor/skills .cursor/hooks.json
   .codex/AGENTS.md .codex/config.toml .codex/skills
   .config/agentbrew .gemini/settings.json .gemini/GEMINI.md
   .zshrc .bashrc .bash_profile .config/fish/config.fish
@@ -162,7 +161,7 @@ cmd_plan() {
   say "  - A network connection (npm and GitHub)."
   step "What will happen"
   say "  1. Back up your current agent settings to $BACKUP_ROOT/<time>/"
-  say "     (Claude Code, Cursor, Codex, Gemini settings, skills, rules; shell rc files)."
+  say "     (Claude Code, Codex, Gemini settings, skills, rules; shell rc files)."
   say "  2. Build agentbrew in $REPO_DIR (npm ci, npm run build)."
   say "  3. Link the 'agentbrew' command into $BIN_DIR."
   say "  4. Run 'agentbrew init': detect your agents, install the recommended skills,"

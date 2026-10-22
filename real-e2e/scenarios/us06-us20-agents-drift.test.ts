@@ -26,10 +26,8 @@ describe("us06/us20 agents drift", () => {
       expect(initialSync.stdout).toContain("Syncing: agents");
 
       const claudeManagedAgent = join(homeDir, ".claude", "agents", "reviewer.md");
-      const cursorManagedAgent = join(homeDir, ".cursor", "agents", "reviewer.md");
 
       expect(readFileSync(claudeManagedAgent, "utf-8")).toContain("Check the diff");
-      expect(readFileSync(cursorManagedAgent, "utf-8")).toContain("Check the diff");
       expect(readFileSync(claudeLocalAgent, "utf-8")).toContain("Keep this local agent.");
 
       rmSync(claudeManagedAgent);

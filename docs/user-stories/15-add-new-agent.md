@@ -1,6 +1,6 @@
 # Add a New Agent to an Existing Setup
 
-> I installed Cursor yesterday. How do I get my skills and MCP servers deployed to it?
+> I installed Kiro yesterday. How do I get my skills and MCP servers deployed to it?
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init --force` is the US01 command.
 
@@ -24,7 +24,7 @@ After the initial `agentbrew init`, new agents are NOT auto-detected on `agentbr
 
 ## What `init --force` does
 
-1. Re-scans for known agent config directories (`~/.claude/`, `~/.cursor/`, etc.)
+1. Re-scans for known agent config directories (`~/.claude/`, `~/.kiro/`, etc.)
 2. Adds newly detected agents to state (existing agents are preserved)
 3. Discovers any existing config in the new agent (MCP servers, skills)
 4. Re-syncs everything to all agents (including the new one)

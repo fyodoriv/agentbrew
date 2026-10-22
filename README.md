@@ -3,9 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/agentbrew.svg)](https://www.npmjs.com/package/agentbrew)
 [![license](https://img.shields.io/npm/l/agentbrew.svg)](LICENSE)
 
-**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Cursor, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. On enterprise laptops the `catalog-overlay.yaml` overlay auto-enables for recommended internal skills.
+**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. Companies ship private skills, rules, MCP servers, and hooks as signed plugins.
 
-**Install with your AI agent (one step):** open Claude Code (or Cursor, Codex) and say:
+**Install with your AI agent (one step):** open Claude Code (or Codex) and say:
 
 > Install agentbrew by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md
 
@@ -53,6 +53,7 @@ agentbrew install --recommended           # recommended skills + MCP + rules, in
 agentbrew install verify-everything       # a bundle: a named group of catalog items, installed together
 agentbrew catalog --bundles               # list bundles and their members
 agentbrew install review-tasks            # tasks.md /review-tasks: audit a task queue for stale or misprioritized work
+agentbrew install wrap-up                 # /wrap-up: deliver finished work, draft the rest as a leak-checked PR + task
 agentbrew install --refresh-rules --dry-run   # preview catalog rule text updates (rules only); drop --dry-run to apply
 agentbrew install @anthropic/mcp-proxy    # any npm package (auto-detected as MCP)
 agentbrew install sqlite -- uvx mcp-server-sqlite   # any command as an MCP server
@@ -82,7 +83,7 @@ multiple repositories. It keeps Jira tasks concise: Jira fields and links own
 UI metadata, explicit non-goals stay excluded, and a requested single PR
 remains one delivery boundary.
 
-High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md). `npm run eval:plain-language` checks sampled chat, docs, PR, code-comment, and skill-wrapper output from Claude Code, Cursor, and Codex against the plain-language rule; pass `--surface <name> <file>` to score your own captured output.
+High-risk prompt-like artifacts also have deterministic Promptfoo checks. Use Vitest for structural or pure-helper invariants, Promptfoo evals for policy/behavior drift in prompt-like files, and explicit exemptions only when neither layer fits. Run `npm run eval:agent-artifacts` directly, or see [Testing agent artifacts](docs/testing-agent-artifacts.md). `npm run eval:plain-language` checks sampled chat, docs, PR, code-comment, and skill-wrapper output from Claude Code and Codex against the plain-language rule; pass `--surface <name> <file>` to score your own captured output.
 
 Source repos can declare one-time setup in `agentbrew-source.yaml`:
 
@@ -190,7 +191,7 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it. A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off. Dirs from other Agentfiles or added by hand are never removed. State written before ownership existed is kept as is, and a dir that is still declared is claimed on the next sync, so remove an old dropped dir by hand once.
 
-**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). Cursor keeps the model in app-managed/UI state, so there is no file surface to manage. `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`) merge in file order; duplicate MCP or hook entries keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
@@ -212,12 +213,12 @@ Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, includ
 
 One command translates the source of truth into every agent's native format.
 
-- **MCP servers** → JSON (Cursor, Claude), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
-- **MCP permissions** → `permissions.allow` entries for agents that require explicit MCP tool grants (Cursor CLI)
+- **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
+- **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources
-- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules`, then deploy to Cursor (`browser-tasks.mdc`, `sso-background-work.mdc`, etc.). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
+- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules` (no current agent reads a per-file rules dir, so they are not deployed further). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
 - **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run
-- **Hooks** → native hook files (Claude Code settings, Cursor hooks.json)
+- **Hooks** → native hook files (Claude Code settings)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies, and `agentbrew status --verbose` names each kept, missing, or outdated script with its path
@@ -274,11 +275,14 @@ can load relevant durable context. LaunchAgent reconciliation is idempotent: a
 normal sync does not restart a healthy unchanged daemon, but configuration
 drift is rewritten before MCP fanout.
 
-If `memory fix` recovers or restarts the daemon, its JSON result includes
-`cursorReloadRecommended: true` and the human output prints a manual reload
-advisory. Fully restart Cursor or use **Developer: Reload Window** yourself;
-agentbrew never quits Cursor, kills processes, or edits `~/.cursor/mcp.json`.
-Cold login ordering should start memory before the IDE.
+If `memory fix` recovers or restarts the daemon, restart any agent that held
+a stale MCP connection. agentbrew never kills agent processes. Cold login
+ordering should start memory before the IDE.
+
+The daemon runs on Python 3.13 (`uvx --python 3.13`). uvx otherwise picks the
+newest Python it has, and the service's `onnxruntime` dependency has no wheels
+for Python 3.15 yet. Without the pin, the install fails, nothing listens on
+port 18765, and agents report `ECONNREFUSED` for the `memory` server.
 
 In an `Agentfile.yaml`, `memory.enabled` makes the same lifecycle part of the normal one-command sync:
 
@@ -340,7 +344,10 @@ A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every
 agentbrew status               # configured + drift summary
 agentbrew status --fix         # detailed drift check + auto-repair
 agentbrew status --ci          # exit 1 on drift (CI-friendly)
+agentbrew status --ci --ignore-session-env  # for health checks run by an agent
 ```
+
+**Agent-session env.** `env-hygiene` drift flags vars such as `CLAUDECODE` that leak into child agent sessions. An agent session (for example Claude Code) sets `CLAUDECODE` in its own child processes. So when an agent runs `agentbrew status`, `CLAUDECODE` is in the process env, but that is not machine drift. If the caller is an agent session (`CLAUDECODE` set and no tty), or you pass `--ignore-session-env`, status prints it as a `warning:` line and does not count it as drift. If a shell startup file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, and similar) exports `CLAUDECODE`, it is still drift: that file leaks the var into every session.
 
 Every drift item ends with its fix (`— fix: <command>`). Each sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (no telemetry; `AGENTBREW_EVENTS=0` turns it off). See [`docs/observability.md`](docs/observability.md).
 
@@ -443,9 +450,9 @@ agentbrew lint                     # actionable static failures (duplicate headi
 bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully if missing)
 ```
 
-**Cursor context ring:** no API — append manual readings to `~/.config/agentbrew/metrics/manual-snapshots/` (see `context-budget` skill). **What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), Cursor `.mdc` byte inventory, top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional tokscale Cursor today JSON, optional openusage daily JSON with `runtime.openusage.today` rollup.
+**What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional openusage daily JSON with `runtime.openusage.today` rollup.
 
-**What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude), tokscale (Cursor), and openusage (multi-provider). agentbrew only runs them and keeps their JSON. The rest is agentbrew-specific, so no standard tool computes it: the projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, the Cursor `.mdc` byte inventory, headroom alerts, and the capture throttle.
+**What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude) and openusage (multi-provider). agentbrew only runs them and keeps their JSON. The rest is agentbrew-specific, so no standard tool computes it: the projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, headroom alerts, and the capture throttle.
 
 **Automatic refresh (throttled):**
 
@@ -456,8 +463,6 @@ bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully
 | Cron/launchd (`scripts/measure-context-budget.sh`) | weekly | full (optional ccusage) |
 
 Skip a scheduled capture: `HOOK_BYPASS_CONTEXT_BUDGET_MEASURE=1`. Force refresh anytime: `agentbrew measure context`.
-
-**Cursor context ring:** no public API — note IDE ring readings under `~/.config/agentbrew/metrics/manual-snapshots/` when investigating IDE pressure.
 
 **Agents:** load the `context-budget` skill (or `templates/rules/context-budget-hygiene.mdc` when deployed) and read `~/.config/agentbrew/metrics/latest.json` before trim work. Weekly cadence: `RECURRING.md` → `context-budget-weekly-audit`.
 
@@ -480,6 +485,8 @@ Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-p
 
 `agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers. `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
 
+`agentbrew metrics share` is an opt-in weekly share of aggregate numbers only. The first run is a dry run that prints the exact payload. Pick a sink with `--sink dir:<path>`, `--sink git:<path>`, or `--sink none`; the base install has no default sink (an org overlay can set `AGENTBREW_METRICS_SINK`). `--schedule weekly` sends once a week from the auto-repair scheduler. `AGENTBREW_EVENTS=0` turns it all off. Details: [`docs/observability.md`](docs/observability.md#weekly-metrics-share-opt-in).
+
 ## Share config across a team
 
 Commit an `Agentfile.yaml` to a git repo; teammates clone it and symlink it as their global Agentfile.
@@ -495,29 +502,56 @@ Updates flow through git: `(cd ~/.config/agentbrew/team && git pull) && agentbre
 
 Or share without git: `agentbrew export -o my-setup.yaml` → teammate runs `agentbrew import --bundle my-setup.yaml`.
 
-## Team overlays
+## Company plugins
 
-agentbrew supports team-level configuration overlays that extend the base catalog with team-specific skills, MCP servers, and rules. An overlay is a git repo (for example `agentbrew-<org>`) with an `Agentfile.yaml` at its root. It can include:
+A company gives every engineer its private agent setup as a signed plugin ([#208](https://github.com/fyodoriv/agentbrew/issues/208)). A plugin is a git repo with `agentbrew-plugin.yaml` at its root. The schema is `src/plugins/agentbrew-plugin.schema.json`; unknown keys are refused.
 
-- **Catalog overlay** — org-specific skills and MCP servers from private source repos
-- **Environment detection** — optional detect script that fires on signals such as a GitHub Enterprise host in `~/.config/gh/hosts.yml` or org env vars
-- **MCP adapters** — support for a custom desktop app's MCP config format
-
-To use a team overlay:
-
+<!-- runnable: false reason="needs a reachable, signed plugin repo" -->
 ```bash
-agentbrew team set git@github.example.com:your-org/agentbrew-your-org.git
-agentbrew team sync
-agentbrew sync
+agentbrew plugin add git@git.example.com:acme/agentbrew-acme.git@v1.0.0 --signer "ssh-ed25519 AAAA..."   # shows capabilities and signer, asks once
+agentbrew plugin list
+agentbrew plugin trust acme --signer "ssh-ed25519 BBBB..."            # add a signer (key rotation); --revoke removes one
+agentbrew plugin update acme v1.1.0                                    # diff, then apply on confirm
+agentbrew plugin rollback acme                                         # re-pin the previous lock entry
+agentbrew plugin remove acme
 ```
 
-The overlay contains pointers only — skill content lives in the source repos. An overlay can declare whole-repo skill registries in its `repo_sources:` block. `agentbrew team set` auto-registers each one as a tracked source with `origin: team`; `agentbrew team unset` removes them symmetrically while preserving anything you added with `agentbrew install` (origin `user`). `agentbrew catalog --sources` flags team-sourced repos with a `[team]` tag so it's obvious which will disappear on `team unset`.
+- The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
+- Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
+- Capabilities are deny by default. Each rule needs its agents in `capabilities.agents` (front matter `agents:`, or any declared agent), each hook event in `capabilities.hooks` (`Event` or `Event:matcher`), each MCP server in `capabilities.mcp_servers`, and a command that runs shell (`allowed-tools: Bash` or `` !`cmd` ``) needs `commands_exec: true`. Anything else fails with exit code 3 and `capability not declared: <kind> <value> (plugin <name>)`, on `plugin add` and on `sync`.
+- Claude Code also gets native output, side by side with file rendering. Each plugin becomes a Claude Code plugin in a local marketplace (`~/.local/share/agentbrew/claude-marketplace`), enabled in `~/.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The native plugin carries the plugin's hooks and a `SessionStart` hook that runs `agentbrew plugin rules` for the session's repo. Removing a plugin removes both on the next sync.
+- Plugin MCP servers (`contributes.mcp_servers`, a YAML list of `{name, command, args, env}`) name every env value as a reference: `env:<NAME>`, `keychain:<item>` (macOS `security`, else `secret-tool`), or `op://...`. Literal values are refused. `npx`/`bunx`/`pnpx` packages must be `pkg@1.2.3`, and `uvx`/`pipx` packages `pkg==1.2.3`; `@latest` or no version is refused. agentbrew writes one launcher per server under `~/.local/share/agentbrew/launchers/` that resolves the references at process start, and the native Claude Code plugin's `.mcp.json` names only the launcher. Other agents do not get plugin MCP servers yet.
+- `plugin update <name> <signed-tag>` verifies the new tag and prints a diff of rules (with text diffs), skills, MCP servers, hooks, and capabilities. It applies nothing until you confirm (`--yes` skips that prompt). A capability change always asks at the terminal, even with `--yes`, and is refused without a terminal. The replaced version stays available to `plugin rollback`.
+- Authoring: `agentbrew plugin new <dir> --name <name>` scaffolds a plugin repo; `agentbrew plugin test [dir]` runs the core's static checks (schema, capabilities, MCP secrets and pins, leak patterns) and exits 1 on any problem; `agentbrew plugin migrate <overlay-dir>` prints a draft `agentbrew-plugin.yaml` from a legacy team overlay plus a list of what it could not map. None of them installs anything.
+- `agentbrew plugin leak-audit [--cwd <dir>]` checks tracked files against every installed plugin's `contributes.leak_patterns` (a YAML list of regexes, kept inside POSIX ERE). It prints file and line only, exits 1 on a match, and exits 2 (fail closed) when a plugin's patterns cannot be read. It runs in `npm run verify`. Sync also hands the patterns to the perf log hook, which records a matching project name as `redacted`.
+- `agentbrew plugin policy <name> [--strict]` prints a managed-settings fragment for admins: the marketplace in `extraKnownMarketplaces` and `strictKnownMarketplaces`, the plugin in `enabledPlugins`, and with `--strict` also `strictPluginOnlyCustomization`. agentbrew never writes system policy.
+- Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
-An overlay can also list mcpm registry servers that fail on its machines in a `broken_mcpm_registry_servers:` block. `agentbrew sync` adds them to the built-in list: it removes their `mcpm_<name>` wrappers and uninstalls them from mcpm, unless your Agentfile or state defines a server with that name.
+- `plugin add` needs a ref. It clones the ref to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
+- It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
+- `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
+- On every `agentbrew sync`, skills and commands are read straight from the locked plugin checkout; nothing is copied into `shared-rules.md` or `state.yaml`, and removing a plugin removes them on the next sync. A plugin that drifted from its lock contributes nothing.
+- Plugin rules are repo-scoped and never written to global rules files. `agentbrew plugin rules --agent <name> [--cwd <dir>]` prints the rules for one agent in one checkout. The repo is the checkout's `origin` remote as `host/path`. It must match `capabilities.repos.include` and not `exclude`; the default is nowhere. Public hosts (`github.com`, `gitlab.com`, `bitbucket.org`, `codeberg.org`) are excluded unless an include pattern names that host. Agents without a session-start hook get no plugin rules.
 
-`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog, team overlay `team:<label>`, global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
+## Migrating from team overlays (1.0)
+
+agentbrew 1.0 removed `agentbrew team set|unset|status` and the overlay `catalog-overlay.yaml` merge. Running `agentbrew team ...` now prints the steps below and exits 1. To move an overlay to a plugin:
+
+<!-- runnable: false reason="needs a legacy overlay checkout and a signed plugin repo" -->
+```bash
+agentbrew plugin migrate ~/path/to/agentbrew-your-org   # prints a draft agentbrew-plugin.yaml + what it could not map
+agentbrew plugin test ~/path/to/agentbrew-your-org      # fix every problem it lists
+git -C ~/path/to/agentbrew-your-org tag -s v1.0.0 -m v1.0.0 && git -C ~/path/to/agentbrew-your-org push --tags
+agentbrew plugin add git@github.example.com:your-org/agentbrew-your-org.git@v1.0.0 --signer "ssh-ed25519 AAAA..."
+```
+
+What does not carry over on its own: remote `sources:` (add them to the catalog), overlay MCP entries (write `mcp/servers.yaml` with secret references and pinned versions), executable MCP-format adapters and overlay agent definitions (not supported; agentbrew no longer loads plugin code), detect scripts, and the overlay catalog merge. An old `team:` block in `state.yaml` is ignored.
+
+`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
 
 ## Supported agents
+
+> Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
 
 <!-- agent-matrix:start -->
 ### Sync surfaces per agent
@@ -533,7 +567,6 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | cline | ✓ | ✓ | ✓ | — | — | — |
 | codex | ✓ | ✓ | ✓ | — | ✓ | — |
 | copilot | ✓ | ✓ | ✓ | — | — | — |
-| cursor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | firebender | ✓ | — | ✓ | ✓ | — | — |
 | gemini-cli | ✓ | ✓ | ✓ | ✓ | — | — |
 | goose | ✓ | ✓ | ✓ | — | — | — |
@@ -555,7 +588,6 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | cline | ✓ | — | ✓ |
 | codex | ✓ | — | — |
 | copilot | ✓ | — | — |
-| cursor | ✓ | — | — |
 | firebender | ✓ | — | — |
 | gemini-cli | ✓ | — | — |
 | goose | ✓ | — | — |
@@ -632,12 +664,13 @@ agentbrew import [--from <agent>]      Discover MCP servers from agent configs
 agentbrew export [-o file]             Export portable config bundle
 agentbrew setup [server]               Configure API keys for MCP servers
 
-agentbrew team {set|unset|status}      Manage team overlays
+agentbrew plugin <subcommand>          Manage signed company plugins
 agentbrew hook install --shell         Install shell hook for project detection
 agentbrew upgrade [--check]            Check for / install CLI updates
 agentbrew env {check|sanitize}         Review env vars that could leak across sessions
 agentbrew completions                  Shell completions (bash, zsh, fish)
 agentbrew metrics [--days N] [--json] [--share [file]]
+agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none] [--schedule weekly|off]
                                        Local agent time, hook, and MCP metrics;
                                        --share writes a privacy-safe snapshot
 agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]
@@ -650,7 +683,7 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
 
 `agentbrew --help` shows all commands grouped by category. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
 
-`agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and Cursor `.mdc` scope/size checks. See `docs/agent-bloat-lint.md`.
+`agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and `.mdc` rule template scope/size checks. See `docs/agent-bloat-lint.md`.
 
 ## Status and roadmap
 
@@ -697,7 +730,7 @@ npm run lint:rules                     # Minsky rule checks on this repo (part o
 GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
 
 1. `npm run verify` is the full gate. Every PR runs it before merge.
-2. `npm run checkup` runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
+2. `npm run checkup` lists your open PRs and unmerged branches first (finish them before new work), then runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. Run it on a fresh `main` checkout after a burst of merges, or monthly.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
 
@@ -733,7 +766,7 @@ scripts/validate-public-release.sh
 
 **Full user guide:** [`docs/learn-project.md`](docs/learn-project.md) — prerequisites, quick starts, six source types, StudyVault layout, pedagogy, troubleshooting.
 
-The `learn-project` skill is a single entrypoint that teaches you a project and then quizzes you. Say "tutor me on X" / "teach me this project" in Claude Code or Cursor and it will: ensure the upstream teach + quiz skills are installed, detect where prep left off (resumable), ask for any missing inputs, gather sources, stage them, build a grounded StudyVault, verify + teach, then run an adaptive quiz.
+The `learn-project` skill is a single entrypoint that teaches you a project and then quizzes you. Say "tutor me on X" / "teach me this project" in Claude Code and it will: ensure the upstream teach + quiz skills are installed, detect where prep left off (resumable), ask for any missing inputs, gather sources, stage them, build a grounded StudyVault, verify + teach, then run an adaptive quiz.
 
 It pulls **six source types** into one grounded StudyVault: local folders/repos, remote enterprise repos + PRs/issues (GitHub MCP), Google Docs incl. all tabs (Drive MCP), Jira issues/epics/initiatives (Jira MCP), loose files (PDF/MD/…), and web pages.
 

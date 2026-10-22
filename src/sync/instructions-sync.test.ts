@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -65,7 +65,6 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   deduplicateByHeading,
   estimateTokens,
-  extractCursorRules,
   extractHeadings,
   getCanonicalInstructionsPath,
   getContextFiles,
@@ -73,7 +72,6 @@ import {
   loadInstructions,
   measureSections,
   mergeInstructionsWithManagedSection,
-  stripCursorRulesSection,
   syncInstructions,
   usesAgentsMdStandardPath,
 } from "./instructions-sync.js";
@@ -165,25 +163,12 @@ describe("loadInstructions", () => {
   });
 
   it("returns undefined when readFileSync throws", () => {
-    writeAgentsMd();
+    // A directory in the file's place: chmod 000 does not stop root (Linux cloud sessions) from reading.
     const agentsMdPath = join(agentBrewDir, "templates", "AGENTS.md");
-    chmodSync(agentsMdPath, 0o000);
+    rmSync(agentsMdPath, { force: true });
+    mkdirSync(agentsMdPath, { recursive: true });
     expect(loadInstructions()).toBeUndefined();
-    chmodSync(agentsMdPath, 0o644);
-  });
-});
-
-describe("extractCursorRules", () => {
-  it("extracts content after Auto-Synced Cursor Rules heading", () => {
-    const rules = extractCursorRules(SAMPLE_AGENTS_MD);
-    expect(rules).toContain("### code-style");
-    expect(rules).toContain("### testing");
-    expect(rules).not.toContain("## Skills");
-    expect(rules).not.toContain("Auto-generated from");
-  });
-
-  it("returns empty string when marker not found", () => {
-    expect(extractCursorRules("no marker here")).toBe("");
+    rmSync(agentsMdPath, { recursive: true });
   });
 });
 
@@ -249,6 +234,18 @@ describe("syncInstructions", () => {
       expect(existsSync(ctx.path)).toBe(true);
       const content = readFileSync(ctx.path, "utf-8");
       expect(content).toContain("### code-style");
+    }
+  });
+
+  it("fills context files from the whole template, not a removed Cursor section", async () => {
+    writeAgentsMd("# Agent rules\n\n## Rules\n\nAlways run the gate before merge.\n");
+
+    await syncInstructions({ quiet: true });
+
+    for (const ctx of getContextFiles()) {
+      const content = readFileSync(ctx.path, "utf-8");
+      expect(content).toContain("Always run the gate before merge.");
+      expect(content).not.toMatch(/Cursor/);
     }
   });
 
@@ -752,98 +749,6 @@ describe("compressSkillsListing", () => {
   });
 });
 
-describe("stripCursorRulesSection", () => {
-  it("strips the Auto-Synced Cursor Rules section and its content", () => {
-    const input = [
-      "# Rules",
-      "",
-      "## Dependency Policy",
-      "Prefer packages over custom code.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "> Auto-generated from cursor/rules/*.mdc by sync-formats.",
-      "",
-      "### code-style",
-      "- Strict typing",
-      "",
-      "### testing",
-      "- Use vitest",
-      "",
-      "## Other Section",
-      "Keep this.",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Dependency Policy");
-    expect(result).toContain("Prefer packages over custom code.");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("code-style");
-    expect(result).not.toContain("Strict typing");
-    expect(result).not.toContain("testing");
-    expect(result).toContain("## Other Section");
-    expect(result).toContain("Keep this.");
-  });
-
-  it("returns content unchanged when no Cursor rules section exists", () => {
-    const input = "# Rules\n\n## Git Safety\nNever force push.\n";
-    expect(stripCursorRulesSection(input)).toBe(input);
-  });
-
-  it("handles Cursor rules section at the end of file", () => {
-    const input = [
-      "# Rules",
-      "",
-      "## Dependency Policy",
-      "Prefer packages.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "> Auto-generated.",
-      "",
-      "### code-style",
-      "- Double quotes",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Dependency Policy");
-    expect(result).toContain("Prefer packages.");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("code-style");
-    expect(result).not.toContain("Double quotes");
-    expect(result).toEqual("# Rules\n\n## Dependency Policy\nPrefer packages.\n");
-  });
-
-  it("preserves content both before and after the stripped section", () => {
-    const input = [
-      "## Before",
-      "Content before.",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "### rule-1",
-      "Some rule.",
-      "",
-      "## After",
-      "Content after.",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(input);
-    expect(result).toContain("## Before");
-    expect(result).toContain("Content before.");
-    expect(result).toContain("## After");
-    expect(result).toContain("Content after.");
-    expect(result).not.toContain("rule-1");
-  });
-
-  it("handles case-insensitive heading match", () => {
-    const input = "## auto-synced cursor rules\n### rule\nContent.\n";
-    const result = stripCursorRulesSection(input);
-    expect(result).not.toContain("cursor rules");
-    expect(result).not.toContain("Content.");
-  });
-});
-
 // ── public-write-approval-rule regression guard (TASKS.md task) ─────────────
 //
 // Incident: Devin session `leeward-notify` opened an unsolicited PR because the
@@ -903,11 +808,11 @@ describe("templates/AGENTS.md — public-write-approval-rule regression guard", 
 
     expect(browserSection).toMatch(/attach-first/i);
     expect(browserSection).toMatch(/9223/);
-    expect(browserSection).toMatch(/9224/);
-    expect(browserSection).toMatch(/9225/);
+    expect(browserSection).not.toMatch(/9224|9225/);
+    expect(browserSection).toMatch(/temp-browser/);
     expect(browserSection).toMatch(/sso-background-work/);
     expect(browserSection).toMatch(/background/i);
-    expect(REAL_SHARED_RULES).toMatch(/--remote-debugging-port=0/);
+    expect(REAL_SHARED_RULES).not.toMatch(/--remote-debugging-port=0/);
   });
 });
 

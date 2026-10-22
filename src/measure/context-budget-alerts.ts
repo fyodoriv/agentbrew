@@ -33,7 +33,7 @@ export function buildContextBudgetAlerts(snapshot: Pick<ContextBudgetSnapshot, "
     alerts.push({
       severity: "warn",
       code: "low-soft-headroom",
-      message: `only ~${s.softTokenHeadroom.toLocaleString()} tokens headroom to soft target (<${SOFT_HEADROOM_ALERT_THRESHOLD.toLocaleString()}) —${topHint}; start a new chat for the next task; load cursor-token-playbook + context-budget skills before adding rules/skills`,
+      message: `only ~${s.softTokenHeadroom.toLocaleString()} tokens headroom to soft target (<${SOFT_HEADROOM_ALERT_THRESHOLD.toLocaleString()}) —${topHint}; start a new chat for the next task; load the context-budget skill before adding rules/skills`,
     });
   }
 

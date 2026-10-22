@@ -25,18 +25,13 @@ describe("agentbrew-add-command skill contract", () => {
     ]);
   });
 
-  it("documents Cursor turbo annotations and per-agent transformations", () => {
+  it("documents per-agent transformations", () => {
     requireTerms(skillText, [
       "Format Transformations Per Agent",
-      "Cursor",
-      "YAML frontmatter stripped",
-      "`<!-- turbo -->` → `// turbo`",
-      "above a step",
-      "auto-runs",
-      "without user confirmation prompt",
       "Claude Code | Kept as-is",
-      "Gemini CLI  | Kept as-is",
+      "Gemini CLI  | Converted to TOML",
     ]);
+    expect(skillText).not.toMatch(/cursor|turbo/i);
   });
 
   it("requires deploy and verification steps after command changes", () => {
@@ -48,7 +43,7 @@ describe("agentbrew-add-command skill contract", () => {
       "verify deployed commands",
       "Check that the command appears in the target agent's directory",
       "ls ~/.claude/commands/",
-      "ls ~/.cursor/commands/",
+      "ls ~/.gemini/commands/",
     ]);
   });
 
@@ -71,7 +66,7 @@ describe("agentbrew-add-command skill contract", () => {
       "agentbrew won't",
       "overwrite files it didn't create",
       "Do NOT edit per-agent copies",
-      "`~/.claude/commands/`, `~/.cursor/commands/`, etc.",
+      "`~/.claude/commands/`, `~/.gemini/commands/`, etc.",
       "agentbrew overwrites them on every sync",
       "losing your changes",
     ]);
@@ -100,7 +95,7 @@ describe("agentbrew-add-command skill contract", () => {
     }
   });
 
-  it("covers creation, turbo, generated-copy correction, and secret-refusal eval scenarios", () => {
+  it("covers creation, Gemini transform, generated-copy correction, and secret-refusal eval scenarios", () => {
     requireTerms(
       [
         evalMatching(/release-checklist|all my agents/i).prompt,
@@ -111,10 +106,10 @@ describe("agentbrew-add-command skill contract", () => {
 
     requireTerms(
       [
-        evalMatching(/step two|auto-run without prompting/i).prompt,
-        expectationText(evalMatching(/step two|auto-run without prompting/i)),
+        evalMatching(/\.toml file in Gemini CLI/i).prompt,
+        expectationText(evalMatching(/\.toml file in Gemini CLI/i)),
       ].join("\n"),
-      [/<!-- turbo -->/i, /\/\/ turbo/i, /canonical command file/i, /commands-only sync|sync --only commands/i],
+      [/TOML/i, /canonical command file/i, /commands-only sync|sync --only commands/i],
     );
 
     requireTerms(

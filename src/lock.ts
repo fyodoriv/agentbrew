@@ -5,6 +5,7 @@ import chalk from "chalk";
 import yaml from "js-yaml";
 import { sync as writeFileSync } from "write-file-atomic";
 import { logSkipped } from "./core/logger.js";
+import { pluginDrift } from "./plugins/store.js";
 import { getGitHeadSha } from "./skills/skill-versions.js";
 import type { Source } from "./types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
@@ -20,8 +21,27 @@ export interface LockEntry {
   lockedAt: string;
 }
 
+/** A v2 plugin pin (issue #208): exact commit and tree, plus what it emitted. */
+export interface PluginLockEntry {
+  name: string;
+  version: string;
+  source: string;
+  ref: string;
+  commit: string;
+  tree: string;
+  capabilitiesHash: string;
+  /** SSH public key that signed the tag (`<type> <base64>`). */
+  signer: string;
+  /** The entry before the last change; `plugin rollback` re-pins it. */
+  previous?: PluginLockEntry;
+  /** Files and config keys the plugin emitted; `plugin remove` deletes them. */
+  artifacts: string[];
+  lockedAt: string;
+}
+
 export interface LockFile {
   locked: LockEntry[];
+  plugins?: PluginLockEntry[];
 }
 
 export function readLock(): LockFile {
@@ -40,7 +60,7 @@ export function readLock(): LockFile {
 export function writeLock(lock: LockFile): void {
   mkdirSync(dirname(LOCK_FILE), { recursive: true });
   const header =
-    "# agentbrew.lock — auto-generated, records exact commit SHAs for the sources you have installed.\n# Note: these SHAs are tracked, not enforced. `agentbrew sync --pull` re-resolves sources to latest.\n# Use `agentbrew lock --verify` to check drift between the recorded SHA and what's on disk.\n\n";
+    "# agentbrew.lock — auto-generated, records exact commit SHAs for the sources you have installed.\n# `agentbrew sync` refuses to deploy when a source drifts from its SHA. `agentbrew sync --pull` re-locks sources; `agentbrew plugin update` re-pins a plugin.\n# Use `agentbrew lock --verify` to check drift between the recorded SHA and what's on disk.\n\n";
   const content = yaml.dump(lock, {
     lineWidth: 120,
     noRefs: true,
@@ -164,6 +184,51 @@ export function verifyLock(sources: Source[]): VerifyResult[] {
   }
 
   return results;
+}
+
+export interface LockViolation {
+  source: string;
+  lockedSha: string;
+  currentSha: string;
+}
+
+/**
+ * Locked items that no longer match their pin.
+ *
+ * A source drifts when its recorded commit differs from the lock. A source
+ * with no recorded commit is untracked, not drifted. A plugin drifts when its
+ * checkout differs from its lock entry (see `pluginDrift`).
+ */
+export function findLockViolations(sources: Source[]): LockViolation[] {
+  const violations: LockViolation[] = verifyLock(sources)
+    .filter((r) => r.currentSha !== undefined && !r.match)
+    .map((r) => ({ source: r.source, lockedSha: r.lockedSha, currentSha: r.currentSha as string }));
+
+  for (const plugin of readLock().plugins ?? []) {
+    const drift = pluginDrift(plugin);
+    if (drift) violations.push({ source: `plugin ${plugin.name}`, lockedSha: plugin.commit, currentSha: drift });
+  }
+  return violations;
+}
+
+/**
+ * Fail closed when anything locked drifted: print each violation, set exit
+ * code 1, and return true so the caller stops before it deploys.
+ */
+export function refuseLockDrift(sources: Source[]): boolean {
+  const violations = findLockViolations(sources);
+  if (violations.length === 0) return false;
+  console.error(chalk.red("\n✗ Sync stopped: these items no longer match agentbrew.lock"));
+  for (const v of violations) {
+    console.error(`  ${ICON_ERROR} ${v.source} — locked ${v.lockedSha.slice(0, 8)}, now ${v.currentSha.slice(0, 8)}`);
+  }
+  console.error(
+    chalk.dim(
+      "  Run `agentbrew sync --pull` to re-lock sources, or `agentbrew plugin update` / `plugin rollback` to re-pin a plugin.\n",
+    ),
+  );
+  process.exitCode = violations.some((v) => v.currentSha === "capability not declared") ? 3 : 1;
+  return true;
 }
 
 /** Display lock file status. */

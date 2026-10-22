@@ -7,7 +7,6 @@ import {
   checkBarePlaceholdersDrift,
   checkBrokenSymlinks,
   checkCommandsDrift,
-  checkEnvHygieneDrift,
   checkHooksDrift,
   checkInstructionsDrift,
   checkLaunchAgentPathDrift,
@@ -23,6 +22,7 @@ import {
   formatDriftSummary,
 } from "./drift.js";
 import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js";
+import { classifyEnvHygiene } from "./drift-checks/env.js";
 import { checkUserStatusLine } from "./drift-checks/statusline.js";
 import { driftFix } from "./drift-fixes.js";
 import { fix } from "./repair.js";
@@ -281,6 +281,7 @@ export async function healthCheck(options?: {
   ci?: boolean;
   json?: boolean;
   verbose?: boolean;
+  ignoreSessionEnv?: boolean;
 }): Promise<void> {
   const autoFix = options?.autoFix ?? false;
   const ci = options?.ci ?? false;
@@ -295,7 +296,10 @@ export async function healthCheck(options?: {
   const mcpDrift = checkMcpDrift();
   const mcpEnvDrift = checkMcpEnvVarsDrift();
   const mcpBarePlaceholdersDrift = checkBarePlaceholdersDrift();
-  const envHygieneDrift = checkEnvHygieneDrift();
+  // Session vars set by the calling agent are warnings; shell-startup exports stay drift (#348).
+  const { drift: envHygieneDrift, sessionWarnings } = classifyEnvHygiene({
+    ignoreSessionEnv: options?.ignoreSessionEnv,
+  });
   const desktopMcpDrift = checkClaudeDesktopMcpDrift();
   const rulesDrift = checkRulesDrift();
   const skillsDrift = checkSkillsDrift();
@@ -345,6 +349,11 @@ export async function healthCheck(options?: {
   if (options?.json) {
     outputHealthJson(state, allDrift, userAddedDrift);
     return;
+  }
+
+  for (const item of sessionWarnings) {
+    const line = `warning: ${item.agent} [${item.type}] ${item.detail}`;
+    console.log(ci ? line : chalk.yellow(`  ${line}`));
   }
 
   if (ci) {

@@ -95,7 +95,7 @@ export function checkCommandsDrift(): DriftItem[] {
   const targets = filterReadsFromAgents(allTargets, detectedNames);
 
   // Slice 4 of `delegate-commands-to-ai-rules`: canary agents (claude-code,
-  // cursor) skip sync when ai-rules isn't producing output for them. Drift
+  // amp, firebender) skip sync when ai-rules isn't producing output for them. Drift
   // must mirror the same skip semantics — otherwise it false-positives
   // every "missing command" right after a successful sync against an
   // ai-rules-less environment. The pattern matches `checkRulesDrift`

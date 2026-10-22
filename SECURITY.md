@@ -62,6 +62,11 @@ Three independent leak categories are blocked:
    the org overlay's `oss-readiness.env`. The check lives in
    [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).
 
+   Company plugins (#208) also ship leak patterns as data
+   (`contributes.leak_patterns`). `agentbrew plugin leak-audit` checks tracked
+   files against them, runs as the `leak-audit` step of `npm run verify`, and
+   fails closed (exit 2) when an installed plugin's patterns cannot be read.
+
 2. **Identity leaks** — git commits authored or committed by a private
    email. These appear in `git log` and identify both the company and the
    person. Source of truth: `OSS_READINESS_PRIVATE_EMAIL_PATTERN` in the org

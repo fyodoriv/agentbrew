@@ -26,7 +26,7 @@ import type { CatalogSkill } from "./types.js";
 const installedSkillsPath = expandHome(INSTALLED_SKILLS_DIR);
 
 /** Ensures the installed-skills directory is registered as a skillSourceDir in state. */
-function ensureInstalledSkillsRegistered(state: AgentBrewState): boolean {
+export function ensureInstalledSkillsRegistered(state: AgentBrewState): boolean {
   const dirs = state.skillSourceDirs ?? [];
   const normalizedTarget = installedSkillsPath.replace(/\/+$/, "");
   const alreadyRegistered = dirs.some((d) => expandHome(d.path).replace(/\/+$/, "") === normalizedTarget);

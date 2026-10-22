@@ -53,16 +53,14 @@ $ cd my-project && agentbrew
   Project agent assets:
     Agentfile — declarative manifest
     <count> skill(s) in .claude/skills/
-    2 rule(s) in .cursor/rules/
     AGENTS.md — project instructions
 ```
 
 **What it scans for** (fast — only `existsSync` checks):
 
 - `Agentfile`, `Agentfile.yaml`, `Agentfile.yml`
-- `.claude/skills/`, `.cursor/skills/`
-- `.cursor/rules/`
-- `.claude/commands/`, `.cursor/commands/`
+- `.claude/skills/`
+- `.claude/commands/`
 - `AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`
 
 ## Per-project MCP overrides
@@ -82,7 +80,7 @@ Run `agentbrew sync` from the repo root to apply. Project servers merge into you
 
 ## Per-file rules
 
-Place rule files in `~/.config/agentbrew/rules/` to deploy them as per-file rules to agents that support it (Cursor at `~/.cursor/rules/`):
+Place rule files in `~/.config/agentbrew/rules/` to deploy them as per-file rules to agents that declare a `rulesDir` (none in the core list today):
 
 ```markdown
 ---

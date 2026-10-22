@@ -33,7 +33,7 @@ agentbrew install tutor --from bevibing/tutor-skills
 
 ### 2. Use a supported agent
 
-Works in **Cursor**, **Claude Code**, and other agents agentbrew syncs skills to. Invoke with natural language (see [How to invoke](#how-to-invoke)).
+Works in **Claude Code** and other agents agentbrew syncs skills to. Invoke with natural language (see [How to invoke](#how-to-invoke)).
 
 ### 3. MCP servers (only what your sources need)
 

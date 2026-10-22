@@ -106,7 +106,7 @@ vi.mock("./shell-hook.js", () => ({
 // install path so users get intersection-client config writes back. Without
 // this mock, every integration test that touches the catalog install of
 // an MCP server would hit a 60s subprocess timeout because the test home
-// detects cursor + codex (intersection agents).
+// detects codex (an intersection agent).
 vi.mock("./sync/mcp-delegate.js", () => ({
   isMcpmAvailable: vi.fn(() => true),
   delegateMcpInstall: vi.fn(() => ({ ok: false, carveOuts: [] })),
@@ -200,20 +200,14 @@ import { expandHome } from "./utils.js";
 
 /** Agent directories we'll create in TEST_HOME to simulate installed agents */
 // Slice 4a of `delegate-mcp-to-mcpm`: kiro (carve-out) is added so MCP
-// integration tests still exercise the native sync path. Cursor is an
-// intersection agent now and skip native MCP sync; their
-// dirs stay in the fixture for skills/commands/rules tests, but MCP
-// integration assertions target kiro instead.
-const AGENT_DIRS = [".cursor", ".config/opencode", ".augment", ".codex", ".kiro"];
+// integration tests still exercise the native sync path. MCP integration
+// assertions target kiro.
+const AGENT_DIRS = [".config/opencode", ".augment", ".codex", ".kiro"];
 
 /** MCP config files for agents that support them.
  *  Slice 4a: kiro is the canonical native-sync MCP target for integration
- *  tests because cursor is now an intersection-skip agent. The
- *  cursor path is still seeded so the fixture's drift /
- *  user-added scenarios still see realistic config files even though
- *  those agents skip native sync. */
+ *  tests. */
 const MCP_CONFIGS: Record<string, string> = {
-  ".cursor/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
   ".kiro/settings/mcp.json": JSON.stringify({ mcpServers: {} }, null, 2),
 };
 
@@ -228,8 +222,6 @@ function setupAgentDirs(): void {
     mkdirSync(join(TEST_HOME, dir, "skills"), { recursive: true });
     mkdirSync(join(TEST_HOME, dir, "commands"), { recursive: true });
   }
-  // Cursor also needs commands dir at top level
-  mkdirSync(join(TEST_HOME, ".cursor", "commands"), { recursive: true });
 
   for (const [path, content] of Object.entries(MCP_CONFIGS)) {
     const full = join(TEST_HOME, path);
@@ -365,9 +357,9 @@ describe("agent detection", () => {
     const agents = detectAgents();
     const detected = agents.filter((a) => a.detected);
 
-    // We created .cursor, .config/opencode, .augment, .codex dirs
+    // We created .config/opencode, .augment, .codex dirs
     const names = detected.map((a) => a.name);
-    expect(names).toContain("cursor");
+    expect(names).not.toContain("cursor");
     expect(names).toContain("opencode");
     expect(names).toContain("augment");
     expect(names).toContain("codex");
@@ -381,14 +373,14 @@ describe("agent detection", () => {
   });
 
   it("discovers skills in agent directories", () => {
-    // Create a skill in cursor
-    const skillDir = join(TEST_HOME, ".cursor", "skills", "debug");
+    // Create a skill in codex
+    const skillDir = join(TEST_HOME, ".codex", "skills", "debug");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "# Debug Skill");
 
     const agents = detectAgents();
-    const cursor = agents.find((a) => a.name === "cursor")!;
-    const skills = discoverAllSkills([cursor]);
+    const codex = agents.find((a) => a.name === "codex")!;
+    const skills = discoverAllSkills([codex]);
 
     expect(skills.size).toBeGreaterThanOrEqual(1);
     expect(skills.has("debug")).toBe(true);
@@ -410,8 +402,6 @@ describe("MCP server lifecycle", () => {
 
   // Carve-out vs intersection classification (current as of 2026-05-19):
   // - `kiro` is a native carve-out → gets the direct write
-  // - `cursor` is a native carve-out because mcpm wrappers are not surfaced
-  //   to Cursor's agent tool layer
   it("add → list → sync → verify in agent configs → remove", async () => {
     const log = captureLog();
 
@@ -435,10 +425,6 @@ describe("MCP server lifecycle", () => {
     expect(kiroConfig.mcpServers?.["test-db"]).toBeDefined();
     expect(kiroConfig.mcpServers?.["test-db"]?.command).toBe("npx");
 
-    // Verify cursor is written directly (native carve-out).
-    const cursorConfig = readMcpJson(join(TEST_HOME, ".cursor", "mcp.json"));
-    expect(cursorConfig.mcpServers?.["test-db"]).toBeDefined();
-
     // Remove
     const log4 = captureLog();
     await removeMcpServer("test-db");
@@ -460,7 +446,7 @@ describe("MCP server lifecycle", () => {
     expect((state.mcpServers ?? [])[0].args).toEqual(["v2"]);
   });
 
-  // Slice 4a: cursor is intersection-skip; native preservation logic
+  // Slice 4a: native preservation logic
   // is exercised against kiro (carve-out) instead.
   it("sync preserves user-added servers in agent configs", async () => {
     // Deploy an agentbrew-managed server
@@ -505,12 +491,12 @@ describe("MCP server lifecycle", () => {
     await syncMcpServers();
     log1.reset();
 
-    // Manually add a user server to cursor config
-    const cursorPath = join(TEST_HOME, ".cursor", "mcp.json");
-    const config = readMcpJson(cursorPath);
+    // Manually add a user server to kiro config
+    const kiroPath = join(TEST_HOME, ".kiro", "settings", "mcp.json");
+    const config = readMcpJson(kiroPath);
     config.mcpServers = config.mcpServers ?? {};
     (config.mcpServers as Record<string, unknown>)["user-only"] = { command: "node", args: [] };
-    writeMcpJson(cursorPath, config);
+    writeMcpJson(kiroPath, config);
 
     // Discover should find user-only but not managed
     const stateNames = new Set((state.mcpServers ?? []).map((s) => s.name));
@@ -520,7 +506,7 @@ describe("MCP server lifecycle", () => {
     expect(names).not.toContain("managed");
   });
 
-  // Slice 4a: cursor is intersection-skip; prune semantics are
+  // Slice 4a: prune semantics are
   // exercised against kiro (carve-out) instead.
   it("sync with --prune removes agentbrew-managed servers, preserves user-added", async () => {
     // First sync: deploy "stale" and "keep" — records them in manifest.managedMcpServers
@@ -566,21 +552,21 @@ describe("MCP server lifecycle", () => {
     state.mcpServers = [{ name: "dry-test", command: "echo", args: [], env: {}, source: "user" }];
     saveState(state);
 
-    const cursorPath = join(TEST_HOME, ".cursor", "mcp.json");
-    const before = readFileSync(cursorPath, "utf-8");
+    const kiroPath = join(TEST_HOME, ".kiro", "settings", "mcp.json");
+    const before = readFileSync(kiroPath, "utf-8");
 
     const log = captureLog();
     await syncMcpServers({ dryRun: true });
     log.reset();
 
-    const after = readFileSync(cursorPath, "utf-8");
+    const after = readFileSync(kiroPath, "utf-8");
     expect(after).toBe(before);
   });
 
   // Slice 2 of `bridge-mcp-sync-to-mcpm-for-intersection`: when state
   // mutates without going through `agentbrew install` (hand-edits to
   // state.yaml, `Agentfile.yaml mcp:` imports, etc.), `agentbrew sync`
-  // must still bridge the new servers to mcpm so cursor / claude-code
+  // must still bridge the new servers to mcpm so claude-code
   // / codex etc. see them in their actual config files.
   it("sync after state.yaml hand-edit bridges new server to mcpm for the intersection", async () => {
     const mockDelegateMcpNew = vi.mocked(delegateMcpNew);
@@ -604,7 +590,7 @@ describe("MCP server lifecycle", () => {
     mockDelegateMcpClientEdit.mockReturnValue({
       ok: true,
       carveOuts: [],
-      perClient: [{ client: "cursor", ok: true }],
+      perClient: [{ client: "claude-code", ok: true }],
     });
 
     // Hand-edit state.yaml: add a server directly without going
@@ -743,8 +729,8 @@ describe("commands lifecycle", () => {
     await syncCommands();
     log3.reset();
 
-    // Slice 4 of `delegate-commands-to-ai-rules`: cursor is now a
-    // canary agent that delegates to `ai-rules generate`. The
+    // Slice 4 of `delegate-commands-to-ai-rules`: canary agents are
+    // delegated to `ai-rules generate`. The
     // assertion pivots to opencode — a carve-out agent that keeps the
     // native source-read path. Verifies the carve-out path still
     // deploys correctly post-slice-4.
@@ -759,12 +745,12 @@ describe("commands lifecycle", () => {
     // Sync first — this deploys hello.md and tracks it in the manifest
     await syncCommands();
 
-    // Verify hello.md is deployed to cursor
-    const cursorCmdDir = join(TEST_HOME, ".cursor", "commands");
-    expect(existsSync(join(cursorCmdDir, "hello.md"))).toBe(true);
+    // Verify hello.md is deployed to opencode
+    const agentCmdDir = join(TEST_HOME, ".config", "opencode", "commands");
+    expect(existsSync(join(agentCmdDir, "hello.md"))).toBe(true);
 
-    // Manually add an extra command to cursor (simulates user creating a command)
-    writeFileSync(join(cursorCmdDir, "user-cmd.md"), "user content");
+    // Manually add an extra command to opencode (simulates user creating a command)
+    writeFileSync(join(agentCmdDir, "user-cmd.md"), "user content");
 
     // Remove hello.md from the source so it becomes "stale" in agentbrew's view
     const commandsDir = expandHome("~/.config/agentbrew/commands");
@@ -774,7 +760,7 @@ describe("commands lifecycle", () => {
     await syncCommands({ prune: true });
 
     // user-created command should survive prune (not in manifest)
-    expect(existsSync(join(cursorCmdDir, "user-cmd.md"))).toBe(true);
+    expect(existsSync(join(agentCmdDir, "user-cmd.md"))).toBe(true);
   });
 });
 
@@ -841,7 +827,7 @@ describe("health check & fix", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  // Slice 4a: cursor is intersection-skip; auto-fix writes to kiro
+  // Slice 4a: auto-fix writes to kiro
   // (carve-out) instead.
   it("auto-fix repairs MCP drift", async () => {
     const state = makeState({
@@ -877,7 +863,7 @@ describe("status", () => {
     expect(output).toContain("Agents");
     expect(output).toContain("MCP Servers");
     expect(output).toContain("Sources");
-    expect(output).toContain("cursor"); // detected agent
+    expect(output).toContain("codex"); // detected agent
     log.reset();
   });
 
@@ -920,8 +906,8 @@ describe("end-to-end sync flow", () => {
     await syncCommands();
     log2.reset();
 
-    // 6. Verify MCP deployed (slice 4a: native sync writes to kiro
-    // carve-out, not cursor — cursor is mcpm-managed and skipped).
+    // 6. Verify MCP deployed (slice 4a: native sync writes to the kiro
+    // carve-out).
     const kiroMcp = readMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"));
     expect(kiroMcp.mcpServers?.["e2e-server"]).toBeDefined();
     expect(kiroMcp.mcpServers?.["e2e-server"]?.args).toEqual(["e2e-pkg"]);
@@ -931,14 +917,9 @@ describe("end-to-end sync flow", () => {
     expect(augmentRules).toContain("E2E Rules");
     expect(augmentRules).toContain("Always test");
 
-    // 8. Slice 4 of `delegate-commands-to-ai-rules`: cursor is now a
-    // canary agent that delegates to ai-rules. When ai-rules is on
-    // PATH, cursor's command file gets written by agentbrew with
-    // ai-rules' content (frontmatter intact since cursor's transform
-    // is identity post-slice-4). When ai-rules is missing, the
-    // canary skips and the file isn't written. The test sandbox can
-    // be either — we assert on the opencode carve-out path which is
-    // unaffected by slice 4.
+    // 8. Canary command agents delegate to ai-rules and skip when it is
+    // missing. We assert on the opencode carve-out path, which is
+    // unaffected by that.
 
     // 9. Verify opencode command (carve-out — keeps the native path).
     const wsCmd = readFileSync(join(TEST_HOME, ".config", "opencode", "commands", "deploy.md"), "utf-8");
@@ -958,8 +939,8 @@ describe("end-to-end sync flow", () => {
 
 describe("MCP server discovery", () => {
   it("discovers servers from existing agent configs", () => {
-    // Put a server in cursor's config
-    writeMcpJson(join(TEST_HOME, ".cursor", "mcp.json"), {
+    // Put a server in kiro's config
+    writeMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"), {
       mcpServers: {
         "existing-srv": { command: "npx", args: ["existing-pkg"] },
       },
@@ -971,13 +952,12 @@ describe("MCP server discovery", () => {
     expect(servers.some((s) => s.name === "existing-srv")).toBe(true);
 
     // Reset
-    writeMcpJson(join(TEST_HOME, ".cursor", "mcp.json"), { mcpServers: {} });
+    writeMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"), { mcpServers: {} });
   });
 
   it("deduplicates servers across agents", () => {
-    writeMcpJson(join(TEST_HOME, ".cursor", "mcp.json"), {
-      mcpServers: { shared: { command: "npx", args: ["shared"] } },
-    });
+    const opencodeConfig = join(TEST_HOME, ".config", "opencode", "opencode.json");
+    writeFileSync(opencodeConfig, JSON.stringify({ mcp: { shared: { type: "local", command: ["npx", "shared"] } } }));
     writeMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"), {
       mcpServers: { shared: { command: "npx", args: ["shared"] } },
     });
@@ -989,6 +969,7 @@ describe("MCP server discovery", () => {
     expect(sharedCount).toBe(1);
 
     // Reset
+    rmSync(opencodeConfig, { force: true });
     for (const [path, content] of Object.entries(MCP_CONFIGS)) {
       writeFileSync(join(TEST_HOME, path), content);
     }
@@ -1256,7 +1237,7 @@ describe("clean-slate new user", () => {
     }
     // Agent names and data survived
     const names = loaded.agents.map((a) => a.name);
-    expect(names).toContain("cursor");
+    expect(names).toContain("codex");
     expect(names).toContain("claude-code");
   });
 });
@@ -1517,8 +1498,8 @@ describe("catalog install → skill deployment (US02)", () => {
   });
 
   it("manual skills in agent dirs are preserved after install + sync", async () => {
-    // Create a manual (user-created) skill directory in cursor
-    const manualSkillDir = join(TEST_HOME, ".cursor", "skills", "my-manual-skill");
+    // Create a manual (user-created) skill directory in codex
+    const manualSkillDir = join(TEST_HOME, ".codex", "skills", "my-manual-skill");
     mkdirSync(manualSkillDir, { recursive: true });
     writeFileSync(join(manualSkillDir, "SKILL.md"), "# My Manual Skill");
 
@@ -1674,11 +1655,11 @@ describe("update lifecycle (US08)", () => {
     log1.reset();
 
     // Verify symlink exists and points to source
-    const cursorSkill = join(TEST_HOME, ".cursor", "skills", "dev-skill");
-    expect(existsSync(cursorSkill)).toBe(true);
+    const agentSkill = join(TEST_HOME, ".codex", "skills", "dev-skill");
+    expect(existsSync(agentSkill)).toBe(true);
 
     // Read content via symlink — should see v1
-    const v1Content = readFileSync(join(cursorSkill, "SKILL.md"), "utf-8");
+    const v1Content = readFileSync(join(agentSkill, "SKILL.md"), "utf-8");
     expect(v1Content).toContain("Dev Skill v1");
 
     // Modify source to v2
@@ -1690,7 +1671,7 @@ describe("update lifecycle (US08)", () => {
     log2.reset();
 
     // Verify content via agent dir now shows v2 (symlink points to source)
-    const v2Content = readFileSync(join(cursorSkill, "SKILL.md"), "utf-8");
+    const v2Content = readFileSync(join(agentSkill, "SKILL.md"), "utf-8");
     expect(v2Content).toContain("Dev Skill v2");
     expect(v2Content).toContain("Refreshed");
 
@@ -1698,7 +1679,7 @@ describe("update lifecycle (US08)", () => {
     rmSync(localSource, { recursive: true, force: true });
   });
 
-  // Slice 4a: cursor is intersection-skip; native preserve-unmanaged
+  // Slice 4a: native preserve-unmanaged
   // logic is exercised against kiro (carve-out) instead.
   it("update() preserves manual MCP servers added outside agentbrew", async () => {
     // State with a managed MCP server
@@ -2382,7 +2363,7 @@ describe("Agentfile parse → apply → sync (US16)", () => {
     expect(rules).toContain("TypeScript strict mode");
   });
 
-  // Slice 4a: cursor is intersection-skip; native Agentfile-driven sync
+  // Slice 4a: native Agentfile-driven sync
   // writes to kiro (carve-out) instead.
   it("applyAgentfile + syncMcpServers deploys servers to agent configs", () => {
     writeFileSync(
@@ -2495,7 +2476,7 @@ describe("cross-repo Agentfile → sync → teammate gets same setup (US23)", { 
     }
   });
 
-  // Slice 4a: cursor is intersection-skip; teammate's Agentfile-driven
+  // Slice 4a: teammate's Agentfile-driven
   // sync writes to kiro (carve-out) instead.
   it("teammate clones project with Agentfile and syncs — MCP servers deployed", () => {
     writeFileSync(
@@ -2520,8 +2501,7 @@ describe("cross-repo Agentfile → sync → teammate gets same setup (US23)", { 
     expect(result!.serversAdded).toContain("team-api");
     expect(result!.serversAdded).toContain("team-db");
 
-    // Verify deployed to kiro (carve-out) — cursor is
-    // intersection-skip and only gets populated via mcpm.
+    // Verify deployed to kiro (carve-out).
     const kiroMcp = readMcpJson(join(TEST_HOME, ".kiro", "settings", "mcp.json"));
     expect(kiroMcp.mcpServers?.["team-api"]).toBeDefined();
     expect(kiroMcp.mcpServers?.["team-db"]).toBeDefined();
@@ -2678,12 +2658,12 @@ describe("Agentfile local path source → sync deploys skills to all agents (US2
     await syncSkills();
 
     // Verify symlinks exist in agent skill dirs
-    const cursorSkill = join(TEST_HOME, ".cursor", "skills", "my-repo-skill");
-    expect(existsSync(cursorSkill)).toBe(true);
-    expect(lstatSync(cursorSkill).isSymbolicLink()).toBe(true);
+    const agentSkill = join(TEST_HOME, ".codex", "skills", "my-repo-skill");
+    expect(existsSync(agentSkill)).toBe(true);
+    expect(lstatSync(agentSkill).isSymbolicLink()).toBe(true);
 
     // Verify content is readable via the symlink
-    const content = readFileSync(join(cursorSkill, "SKILL.md"), "utf-8");
+    const content = readFileSync(join(agentSkill, "SKILL.md"), "utf-8");
     expect(content).toContain("my-repo-skill");
   });
 
@@ -2709,7 +2689,7 @@ describe("Agentfile local path source → sync deploys skills to all agents (US2
     await syncSkills();
 
     for (const skillName of ["skill-alpha", "skill-beta", "skill-gamma"]) {
-      expect(existsSync(join(TEST_HOME, ".cursor", "skills", skillName))).toBe(true);
+      expect(existsSync(join(TEST_HOME, ".codex", "skills", skillName))).toBe(true);
     }
   });
 
@@ -2743,7 +2723,7 @@ describe("Agentfile local path source → sync deploys skills to all agents (US2
     saveState(state);
     await syncSkills();
 
-    const symlink = join(TEST_HOME, ".cursor", "skills", "live-skill", "SKILL.md");
+    const symlink = join(TEST_HOME, ".codex", "skills", "live-skill", "SKILL.md");
     expect(readFileSync(symlink, "utf-8")).toBe("# v1");
 
     // Edit source directly — symlink should reflect immediately (no re-sync needed)
@@ -2918,10 +2898,10 @@ describe("agent definitions sync (US20)", () => {
     await syncAgentDefs({ quiet: true });
     log.reset();
 
-    // Verify deployed to Cursor (flat format: reviewer.md)
-    const cursorAgentFile = join(TEST_HOME, ".cursor", "agents", "reviewer.md");
-    expect(existsSync(cursorAgentFile)).toBe(true);
-    const content = readFileSync(cursorAgentFile, "utf-8");
+    // Verify deployed to Codex (flat format: reviewer.md)
+    const agentAgentFile = join(TEST_HOME, ".codex", "agents", "reviewer.md");
+    expect(existsSync(agentAgentFile)).toBe(true);
+    const content = readFileSync(agentAgentFile, "utf-8");
     expect(content).toContain("Code Reviewer");
   });
 
@@ -2939,10 +2919,10 @@ describe("agent definitions sync (US20)", () => {
   });
 
   it("user-created agent definitions in target dirs are preserved after sync", async () => {
-    // Create a user-owned agent definition directly in cursor
-    const cursorAgentsDir = join(TEST_HOME, ".cursor", "agents");
-    mkdirSync(cursorAgentsDir, { recursive: true });
-    writeFileSync(join(cursorAgentsDir, "my-custom.md"), "# Custom\nMy personal agent.\n");
+    // Create a user-owned agent definition directly in codex
+    const agentAgentsDir = join(TEST_HOME, ".codex", "agents");
+    mkdirSync(agentAgentsDir, { recursive: true });
+    writeFileSync(join(agentAgentsDir, "my-custom.md"), "# Custom\nMy personal agent.\n");
 
     // Create a source with a different definition
     writeFileSync(join(AGENT_DEF_SOURCE, "managed.md"), "# Managed\nAgentbrew-managed agent.\n");
@@ -2953,12 +2933,12 @@ describe("agent definitions sync (US20)", () => {
     log.reset();
 
     // User's custom definition should still exist
-    expect(existsSync(join(cursorAgentsDir, "my-custom.md"))).toBe(true);
-    const customContent = readFileSync(join(cursorAgentsDir, "my-custom.md"), "utf-8");
+    expect(existsSync(join(agentAgentsDir, "my-custom.md"))).toBe(true);
+    const customContent = readFileSync(join(agentAgentsDir, "my-custom.md"), "utf-8");
     expect(customContent).toContain("My personal agent");
 
     // Managed definition should also be deployed
-    expect(existsSync(join(cursorAgentsDir, "managed.md"))).toBe(true);
+    expect(existsSync(join(agentAgentsDir, "managed.md"))).toBe(true);
   });
 
   it("syncAgentDefs is idempotent — second sync produces no errors", async () => {
@@ -2975,8 +2955,8 @@ describe("agent definitions sync (US20)", () => {
     log2.reset();
 
     // File still exists after second sync
-    const cursorFile = join(TEST_HOME, ".cursor", "agents", "helper.md");
-    expect(existsSync(cursorFile)).toBe(true);
+    const agentFile = join(TEST_HOME, ".codex", "agents", "helper.md");
+    expect(existsSync(agentFile)).toBe(true);
   });
 
   it("syncAgentDefs with dry-run does not write files", async () => {
@@ -2988,8 +2968,8 @@ describe("agent definitions sync (US20)", () => {
     log.reset();
 
     // File should NOT exist in any agent dir
-    const cursorFile = join(TEST_HOME, ".cursor", "agents", "dryrun-agent.md");
-    expect(existsSync(cursorFile)).toBe(false);
+    const agentFile = join(TEST_HOME, ".codex", "agents", "dryrun-agent.md");
+    expect(existsSync(agentFile)).toBe(false);
   });
 });
 

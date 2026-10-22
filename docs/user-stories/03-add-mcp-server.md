@@ -33,14 +33,13 @@ agentbrew install remote-server --url https://api.example.com/mcp --headers "Aut
 | Agent | Config file | Format |
 |-------|------------|--------|
 | Claude Code | `~/.claude.json` | JSON |
-| Cursor | `~/.cursor/mcp.json` | JSON |
 | Codex | `~/.codex/config.toml` | TOML |
 | Goose | `~/.config/goose/config.yaml` | YAML |
 | + 7 more | Various | Auto-detected |
 
 MCP servers you added manually to any agent's config file are preserved — agentbrew only writes servers it manages and leaves your custom entries untouched.
 
-Agents whose CLI requires explicit MCP tool grants also get matching `permissions.allow` entries, including Cursor CLI's `~/.cursor/cli-config.json`.
+Agents whose CLI requires explicit MCP tool grants also get matching `permissions.allow` entries. No core agent needs this today.
 
 ## Manage servers
 

@@ -10,6 +10,7 @@ import { logSkipped } from "../core/logger.js";
 import type { Manifest } from "../manifest.js";
 import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { COMMANDS_DIR } from "../paths.js";
+import { pluginCommandDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
 import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
@@ -24,10 +25,8 @@ import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
  * via agentbrew's native transforms.
  *
  * Slice 2 (PR #889) shipped delegation for `claude-code` only.
- * Slice 3 (PR #890) added `cursor` — the CANARY_DELEGATED_AGENTS commands intersection.
  * Slice 4 (PR #891) hardened the contract: canary agents missing from
- * the delegation map SKIP — no source fallback. Cursor still applies
- * its native transform after delegation.
+ * the delegation map SKIP — no source fallback.
  * Slice 5 (this PR) adds `amp` + `firebender` as free-capability gains.
  * They had no `commandsDir` before; ai-rules covers them upstream so
  * adding the user-level paths to agents.yaml + this Set unlocks
@@ -42,7 +41,7 @@ import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
  * (`src/core/commands-agent-map.ts`). Exported so {@link computeCommandsDiff}
  * can apply the slice 4 skip semantics.
  */
-export const CANARY_DELEGATED_AGENTS: ReadonlySet<string> = new Set(["claude-code", "cursor", "amp", "firebender"]);
+export const CANARY_DELEGATED_AGENTS: ReadonlySet<string> = new Set(["claude-code", "amp", "firebender"]);
 
 interface CommandTarget {
   agentName: string;
@@ -127,7 +126,7 @@ function computeSingleTargetDiff(
     return { agentName: target.agentName, skipped: true, actions: [], synced: 0, pruned: 0 };
   }
 
-  // Slice 4: canary agents (claude-code, cursor) MUST get content from
+  // Slice 4: canary agents (claude-code, amp, firebender) MUST get content from
   // the delegation map. When the map has no entry for a canary agent,
   // the agent skips — no source fallback. Users without `ai-rules`
   // installed will see canary commands skip, mirroring the rules-sync
@@ -145,8 +144,7 @@ function computeSingleTargetDiff(
     // Slices 2–4: prefer ai-rules-generated content as the source for
     // delegated agents, then apply the agent's native transform on
     // top. For claude-code (identity) the transform is a no-op so the
-    // delegated content survives byte-for-byte. For cursor, delegated
-    // ai-rules output is converted to Cursor's command format.
+    // delegated content survives byte-for-byte.
     // Carve-outs (not in CANARY_DELEGATED_AGENTS) read source content + apply transform.
     const baseContent = delegatedForAgent?.get(source.filename) ?? source.content;
     const transformed = target.transform(baseContent);
@@ -292,7 +290,7 @@ function buildTargetInputs(targets: CommandTarget[], dryRun: boolean): ExtendedT
  * source — including user-created ones — and the summary counted them
  * as pruned even though `applyPruneAction` silently skipped them. On
  * a real laptop with many user-created commands in `~/.claude/commands/`
- * and more in `~/.cursor/commands/`, every sync printed inflated `N pruned` while
+ * and more in other agent command dirs, every sync printed inflated `N pruned` while
  * actually deleting nothing. Filed as the
  * `command-sync-prune-count-honest` scout in TASKS.md.
  */
@@ -319,8 +317,10 @@ function refreshCanonicalCommandSources(
 ): void {
   const canonicalDir = getCommandsDir();
   mkdirSync(canonicalDir, { recursive: true });
+  // Never copy plugin commands into the canonical dir: the copy would outlive the plugin.
+  const fromPlugins = new Set(pluginCommandDirs().flatMap((d) => readdirSync(d)));
   for (const { filename, content } of sourceFiles) {
-    if (opts.dryRun) continue;
+    if (opts.dryRun || fromPlugins.has(filename)) continue;
     writeIfChanged(join(canonicalDir, filename), content, opts.manifest);
   }
 }
@@ -484,6 +484,8 @@ function getAllCommandSourceDirs(): string[] {
   for (const dir of state?.commandSourceDirs ?? []) {
     addDir(expandHome(dir.path));
   }
+  // v2 plugin commands come from the locked plugin tree (#208).
+  for (const dir of pluginCommandDirs()) addDir(dir);
 
   return sourceDirs;
 }
@@ -687,7 +689,6 @@ This is an example agentbrew command. Edit or replace this file.
 
 ## Steps
 
-<!-- turbo -->
 \`\`\`bash
 echo "Hello from agentbrew!"
 \`\`\`

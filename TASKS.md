@@ -171,6 +171,85 @@
 
 ## P2
 
+- [ ] Every agentbrew action runs through the CLI, agents, and the UI, with tests
+  - **ID**: action-parity
+  - **Details**: Follow the shared rule "Every action through CLI, agent, and UI, with tests" (reference: careerbrew `src/careerbrew/actions.py`, `careerbrew actions --json`, the Actions view, `tests/unit/test_action_parity.py`). Generate the action list from the CLI parser; expose `agentbrew actions --json` for agents and point `/agentbrew` at it; give the UI a generated form per action (terminal-only actions show their reason and command; hard-to-undo ones ask to confirm); add a parity test. If agentbrew has no UI, the parity test covers CLI and agents and says so.
+  - **Hypothesis**: one generated action list keeps the CLI, agents, and UI in step, so no action is reachable from only one of them.
+  - **Measurement**: the parity test's count of CLI commands missing an agent or UI path (or a written reason).
+  - **Success**: 0 missing, enforced in the repo's gate.
+  - **Pivot**: if generating from the parser is not possible in this stack, keep one registry file that both the CLI and the UI read, never two lists.
+  - **Anchor**: Hunt & Thomas 1999, The Pragmatic Programmer, "DRY: every piece of knowledge must have a single representation".
+
+- [ ] One command starts agentbrew: `agentbrew` in the shell, `/agentbrew` in an agent
+  - **ID**: one-command-start
+  - **Details**: Follow the shared rule "One command to start any app" (reference: careerbrew `careerbrew` / `/careerbrew` / `careerbrew config`). Running `agentbrew` with no arguments sets up what is missing, starts any long-running parts with sane defaults (reusing ones already running), refreshes, and prints what matters now and what it needs from the user. Ship `commands/agentbrew.md` and declare `commands: [./commands]` in `Agentfile.yaml`. Keep every default in one table; `agentbrew config` shows each value and its source, and `agentbrew config set <key> <value>` validates and saves it, so agents change settings the way people do.
+  - **Hypothesis**: starting agentbrew takes one command instead of a remembered sequence, so a fresh agent or the owner reaches a working state with no lookup.
+  - **Measurement**: from a fresh clone, count the commands typed until the app shows its first useful screen (a scripted e2e that runs only `agentbrew` and checks its output).
+  - **Success**: a single command, and `agentbrew config set` round-trips one setting in the e2e.
+  - **Pivot**: if a part cannot start safely by default (a paid service, a secret), the start command prints the exact next step instead of starting it.
+  - **Anchor**: Nielsen 1994, "Recognition rather than recall" (usability heuristic 6).
+
+- [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
+  - **ID**: gate-green-in-linux-cloud
+  - **Tags**: gate, tests, cloud
+  - **Details**: Fixed on 2026-10-20 (fyodoriv/agentbrew#292): the `hook-large-input-pipefail` fixture (jq now reads
+    the 300 KB body with `--rawfile`; Linux caps one argument at 128 KB) and the `instructions-sync` "readFileSync
+    throws" test (root ignores `chmod 000`; a directory now stands in for the file). `npm run verify:changed`
+    passes in the cloud up to `playwright-install`, which the cloud network blocks (`cdn.playwright.dev`; a
+    Chromium is preinstalled at `/opt/pw-browsers`). The full `npx vitest run` still has 15 failures that also
+    fail on `main` in the cloud. Three causes: root ignores file modes (`lint.test.ts` unreadable cases,
+    `manifest.test.ts`, `skills-sync.test.ts` symlink warning), macOS-only paths (`integration-infra.test.ts`
+    LaunchAgent and .zshrc, `mcp-sync-carveout-matrix.test.ts` copilot path, `integration.test.ts` sync
+    convergence and prune), and missing tools (`git-filter-repo`, Copier, storybook, sqlite backup, worktree-deps
+    cloning).
+  - **Files**: `scripts/verify.sh` (playwright step), the test files named in Details
+  - **Output**: code
+  - **Acceptance**: `npm run verify` passes on `main` in a Linux cloud container (root user, no Playwright CDN), and still passes on the Mac.
+  - **Hypothesis**: Both failures are test-harness assumptions about macOS, not product bugs; each takes a small test-only fix.
+  - **Measurement**: `npm run verify:changed` on `main` in a cloud session (pass/fail per step)
+  - **Success**: 0 failing steps in the cloud and on the Mac
+  - **Pivot**: a failure is a real product bug on Linux → fix the product code and add a Linux case to the test
+  - **Anchor**: found while shipping fyodoriv/agentbrew#287 on 2026-10-19 (AGENTS.md rule 11: scout while you work)
+
+- [ ] Skip `npm ci` when the lockfile is unchanged
+  - **ID**: speed-up-npm-ci
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `npm ci` costs 4m15s/day (31x in 10 sessions, p95 5m02s). Most runs reinstall an unchanged lockfile in a fresh worktree.
+  - **Files**: `scripts/worktree-deps.sh`, `AGENTS.md`
+  - **Output**: code
+  - **Acceptance**: the `npm ci` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: reusing `node_modules` when `package-lock.json` is unchanged (or `npm ci --prefer-offline --no-audit --no-fund`) cuts the cost from 4m15s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npm ci` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
+- [ ] Make `npx biome` fast in the inner loop
+  - **ID**: speed-up-npx-biome
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `npx biome` costs 3m58s/day (24x in 5 sessions, p95 6m14s; slowest single call 10m02s). Likely cause: npx resolving the package or checking the whole tree instead of changed files.
+  - **Files**: `package.json`, `AGENTS.md`
+  - **Output**: code
+  - **Acceptance**: the `npx biome` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: calling the local `node_modules/.bin/biome` on changed files only cuts the cost from 3m58s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npx biome` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
+- [ ] Speed up `worktree-deps.sh`
+  - **ID**: speed-up-bash-worktree-deps-sh
+  - **Tags**: perf, agents
+  - **Details**: The 2026-10-20 checkup time review: `bash worktree-deps.sh` costs 3m44s/day (24x in 4 sessions, p95 5m31s).
+  - **Files**: `scripts/worktree-deps.sh`
+  - **Output**: code
+  - **Acceptance**: the `bash worktree-deps.sh` line in the 7-day agent time review is under the Success threshold.
+  - **Hypothesis**: linking or cloning `node_modules` from the primary checkout when the lockfile matches cuts the cost from 3m44s/day to under 1 min/day.
+  - **Measurement**: `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `bash worktree-deps.sh` line), 7 days after the change lands.
+  - **Success**: under 1 min/day.
+  - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
+  - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
+
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
   - **Tags**: delegate, mcp, catalog, upstream

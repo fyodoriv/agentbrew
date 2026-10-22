@@ -25,7 +25,7 @@
  *
  * Sources:
  *   - agentbrew canonical: `src/core/agents.yaml` filtered to entries with
- *     `rulesFile` or `rulesDir`
+ *     `rulesFile`
  *   - ai-rules canonical: `ai-rules list-agents` v1.6.0 2026-04-27
  *
  * See `docs/competition/block-ai-rules-vs-agentbrew.md` § Agent coverage
@@ -96,7 +96,7 @@ export const AGENTBREW_ONLY_RULES_AGENTS: ReadonlySet<string> = new Set(Object.k
 /**
  * Translate an agentbrew agent name to the name ai-rules expects on the
  * `--agents <name>` flag. Returns:
- *   - the same name if it's in the strict intersection (cursor, codex,
+ *   - the same name if it's in the strict intersection (codex,
  *     amp, cline, copilot, firebender, goose) — pass-through
  *   - the remapped name for entries in {@link AGENTBREW_TO_AI_RULES}
  *   - null for the carve-outs (augment) — caller
@@ -142,8 +142,8 @@ export function fromAiRulesAgent(aiRulesName: string): string {
  *   buildAiRulesAgentList("all")
  *   // → { agents: ["*"], carveOuts: [] }
  *
- *   buildAiRulesAgentList(["claude-code", "cursor"])
- *   // → { agents: ["claude", "cursor"], carveOuts: [] }
+ *   buildAiRulesAgentList(["claude-code", "codex"])
+ *   // → { agents: ["claude", "codex"], carveOuts: [] }
  *
  *   buildAiRulesAgentList(["claude-code", "augment"])
  *   // → { agents: ["claude"], carveOuts: ["augment"] }

@@ -44,7 +44,7 @@ function checkAgentDefForTarget(
 
 /**
  * Detect missing or modified agent definition files (persona markdown files
- * deployed to agent directories like ~/.claude/agents/, ~/.cursor/agents/).
+ * deployed to agent directories like ~/.claude/agents/, ~/.codex/agents/).
  * Compares source definitions against deployed targets using direct content comparison.
  */
 export function checkAgentDefsDrift(): DriftItem[] {

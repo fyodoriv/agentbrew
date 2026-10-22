@@ -8,6 +8,22 @@ cd "$(dirname "$0")/.."
 rc=0
 section() { printf '\n== %s\n' "$1"; }
 
+section "Open work (your PRs, unmerged branches, uncommitted files)"
+open_work="${WRAP_UP_SKILL:-$HOME/.claude/skills/wrap-up}/scripts/open-work.sh"
+if [ -f "$open_work" ]; then
+  if ! bash "$open_work" .; then
+    rc=1
+    echo "-> finish these first: conflicts, red checks, review comments, then merge (wrap-up skill, \"Continue open work\")"
+  fi
+else
+  git status --short
+  if command -v gh >/dev/null 2>&1; then gh pr list --author @me --state open || true; fi
+  base="$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+  git branch --no-merged "$base" 2>/dev/null | grep -v -e tasks-claims -e dependabot/ || true
+  git worktree list | sed -n '2,$p'
+  echo "(wrap-up skill not installed; showed git status, your open PRs, unmerged branches and worktrees)"
+fi
+
 section "Health"
 scripts/doctor.sh || rc=1
 

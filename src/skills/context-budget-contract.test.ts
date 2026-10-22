@@ -22,12 +22,11 @@ describe("context-budget skill contract", () => {
     expect(skillText).toContain("agentbrew measure context");
     expect(skillText).toContain("agentbrew lint");
     expect(skillText).toContain("bunx ccusage");
-    expect(skillText).toContain("manual-snapshots");
     expect(skillText).toMatch(/no API/i);
     expect(skillText).toContain("GET, don't build");
     expect(skillText).toContain("SessionStart hook");
     expect(skillText).toContain("context-budget-measure");
-    expect(skillText).toContain("cursor-token-playbook");
+    expect(skillText).not.toContain("cursor-token-playbook");
     expect(skillText).toMatch(/start a new chat/i);
   });
 

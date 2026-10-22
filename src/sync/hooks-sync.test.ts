@@ -53,13 +53,6 @@ vi.mock("../types.js", async (importOriginal) => {
         hooksFormat: "claude-settings",
       },
       {
-        name: "cursor",
-        detected: true,
-        skillsDir: "~/.cursor/skills",
-        hooksFile: "~/.cursor/hooks.json",
-        hooksFormat: "cursor",
-      },
-      {
         name: "project-hooks-agent",
         detected: true,
         skillsDir: "~/.config/project-hooks-agent/skills",
@@ -101,7 +94,6 @@ import {
   mergeHooksConfig,
   syncHooks,
   toClaudeHooksConfig,
-  toCursorHooksConfig,
 } from "./hooks-sync.js";
 import { syncStatusLine } from "./statusline-sync.js";
 
@@ -234,14 +226,14 @@ describe("Claude Code hook control fields", () => {
       if: "Bash(git commit:*)",
       statusMessage: "Verifying",
     });
-    expect(toClaudeHooksConfig(filterHooksForTarget(hooks, "cursor"))).toEqual({});
+    expect(toClaudeHooksConfig(filterHooksForTarget(hooks, "codex"))).toEqual({});
   });
 });
 
 describe("filterHooksForTarget", () => {
   it("keeps hooks with no agent filter for every target", () => {
     const hooks: ManagedHook[] = [{ event: "PreToolUse", type: "command", command: "echo x", source: "agentfile" }];
-    expect(filterHooksForTarget(hooks, "cursor")).toEqual(hooks);
+    expect(filterHooksForTarget(hooks, "codex")).toEqual(hooks);
   });
 
   it("keeps only hooks targeted at the requested agent", () => {
@@ -256,26 +248,12 @@ describe("filterHooksForTarget", () => {
       {
         event: "PreToolUse",
         type: "command",
-        command: "cursor",
+        command: "codex",
         source: "agentbrew-hooks-manifest",
-        agents: ["cursor"],
+        agents: ["codex"],
       },
     ];
-    expect(filterHooksForTarget(hooks, "cursor").map((hook) => hook.command)).toEqual(["cursor"]);
-  });
-});
-
-describe("toCursorHooksConfig", () => {
-  it("transforms Claude event names to Cursor event names", () => {
-    expect(
-      toCursorHooksConfig({
-        PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo x" }] }],
-        UserPromptSubmit: [{ hooks: [{ type: "prompt", prompt: "check" }] }],
-      }),
-    ).toEqual({
-      preToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo x" }] }],
-      beforeSubmitPrompt: [{ hooks: [{ type: "prompt", prompt: "check" }] }],
-    });
+    expect(filterHooksForTarget(hooks, "codex").map((hook) => hook.command)).toEqual(["codex"]);
   });
 });
 
@@ -406,7 +384,7 @@ describe("mergeHooksConfig", () => {
   });
 
   it("replaces an agentbrew hook that a post-sync step put behind a wrapper", () => {
-    // dotfiles wraps deployed Cursor hooks: "<wrapper> <agentbrew command>".
+    // dotfiles may wrap deployed hooks: "<wrapper> <agentbrew command>".
     // That hook is still agentbrew's, so sync must not keep it next to the new copy.
     const existing = {
       stop: [{ matcher: "*", hooks: [{ type: "command" as const, command: "/opt/wrap.sh bash /deploy/a.sh" }] }],
@@ -552,7 +530,7 @@ describe("syncHooks", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],
       // Both agents in state; only claude-code has a hooksFile in the
-      // AGENT_DEFINITIONS mock above. cursor must be skipped.
+      // AGENT_DEFINITIONS mock above. unsupported must be skipped.
       agents: [
         { name: "claude-code", detected: true },
         { name: "unsupported", detected: true },
@@ -681,36 +659,6 @@ describe("syncHooks", () => {
     ]);
   });
 
-  it("writes Cursor hooks.json with native camelCase event names", async () => {
-    const hooks: ManagedHook[] = [
-      {
-        event: "PreToolUse",
-        matcher: "Bash",
-        type: "command",
-        command: "echo cursor",
-        source: "agentfile",
-        agents: ["cursor"],
-      },
-    ];
-    mockLoadState.mockReturnValue({
-      mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
-      hooks,
-    } as never);
-    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: [] } as never);
-    mockExistsSync.mockReturnValue(false);
-
-    await syncHooks({ quiet: true });
-
-    expect(mockWriteFileSync).toHaveBeenCalledOnce();
-    const [filePath, content] = mockWriteFileSync.mock.calls[0] as [string, string, string];
-    expect(filePath).toContain("/home/test/.cursor/hooks.json");
-    const written = JSON.parse(content);
-    expect(written.version).toBe(1);
-    expect(written.hooks.preToolUse[0].matcher).toBe("Bash");
-    expect(written.hooks.preToolUse[0].command).toBe("echo cursor");
-  });
-
   it("writes project-scoped hooks.v1.json project-locally with Claude direct format", async () => {
     const hooks: ManagedHook[] = [
       {
@@ -737,63 +685,6 @@ describe("syncHooks", () => {
     const written = JSON.parse(content);
     expect(written.hooks).toBeUndefined();
     expect(written.Stop[0].hooks[0].command).toBe("echo project-hooks");
-  });
-
-  it("does not prune same-key Cursor user hooks from Claude-only legacy managed keys", async () => {
-    const hooks: ManagedHook[] = [
-      {
-        event: "PreToolUse",
-        matcher: "Write",
-        type: "command",
-        command: "echo claude",
-        source: "agentfile",
-        agents: ["claude-code"],
-      },
-    ];
-    mockLoadState.mockReturnValue({
-      mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
-      hooks,
-    } as never);
-    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeys: ["PreToolUse:Write"] } as never);
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify({
-        version: 1,
-        hooks: { preToolUse: [{ matcher: "Write", command: "user-cursor" }] },
-      }),
-    );
-
-    await syncHooks({ quiet: true });
-
-    expect(mockWriteFileSync).not.toHaveBeenCalled();
-  });
-
-  it("uses per-agent managed keys to prune stale Cursor hooks", async () => {
-    mockLoadState.mockReturnValue({
-      mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
-      hooks: [],
-    } as never);
-    mockLoadManifest.mockReturnValue({
-      hashes: {},
-      managedHookKeys: ["PreToolUse:Write"],
-      managedHookKeysByAgent: { cursor: ["preToolUse:Write"] },
-    } as never);
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify({
-        version: 1,
-        hooks: { preToolUse: [{ matcher: "Write", command: "old-cursor" }] },
-      }),
-    );
-
-    await syncHooks({ quiet: true });
-
-    expect(mockWriteFileSync).toHaveBeenCalledOnce();
-    const written = JSON.parse(mockWriteFileSync.mock.calls[0][1] as string);
-    expect(written.version).toBe(1);
-    expect(written.hooks.preToolUse).toBeUndefined();
   });
 
   it("writes Claude Code permission defaults even when hooks are already current", async () => {

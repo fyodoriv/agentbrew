@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The repo-wide checkup (`npm run checkup`): health, the cached gate, metrics,
-# the gate speed review, open P0 tasks, and the monthly requirements audit,
+# The repo-wide checkup (`npm run checkup`): open PRs and branches, health, the
+# cached gate, metrics, the gate speed review, open P0 tasks, and the monthly
+# requirements audit,
 # then at most three questions for the owner.
 #
 # Run it monthly (RECURRING.md `monthly-checkup`) or after a burst of work.
@@ -18,6 +19,11 @@ status=0
 section() { printf '\n## %s\n\n' "$1"; }
 ask() { questions="$questions
 $1"; }
+
+section "0. Open work (your PRs, unmerged branches, uncommitted files)"
+if ! bash skill-plugins/workflow/wrap-up/scripts/open-work.sh .; then
+  ask "Open work is listed above. Finish it first (wrap-up skill, \"Continue open work\": conflicts, red checks, reviews, then merge)?"
+fi
 
 section "1. Health (agentbrew status --ci, the doctor)"
 if ! npx tsx src/cli.ts status --ci; then

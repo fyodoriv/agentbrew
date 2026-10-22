@@ -41,6 +41,7 @@ import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
 import { printMotd } from "./motd.js";
+import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
 import { registerTeamCommands } from "./team/commands/cli-team.js";
 import { update } from "./update.js";
@@ -223,6 +224,8 @@ function syncStory(options: SyncCommandOptions): string {
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   if (!options.rollback) await handleSyncWorkspaces(options);
   if (await handleSyncEarlyExits(options)) return;
+  if (await refuseSyncOnLockDrift()) return;
+  if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
     dryRun: options.dryRun,
@@ -316,6 +319,29 @@ async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, option
   if (applied.recommendedRequested) await catalogInstall(undefined, { recommended: true });
 }
 
+/** Fail closed when a locked source or plugin drifted (issue #208, S1/S2). */
+async function refuseSyncOnLockDrift(): Promise<boolean> {
+  const { loadState } = await import("./state.js");
+  const state = loadState();
+  if (!state) return false;
+  const { refuseLockDrift } = await import("./lock.js");
+  const { getStateSources } = await import("./agentfile.js");
+  return refuseLockDrift(getStateSources(state));
+}
+
+/** Native Claude Code plugin output for v2 plugins, side by side with file rendering (#208 step 8). */
+async function emitNativePluginOutput(): Promise<void> {
+  try {
+    const { emitClaudeNative } = await import("./plugins/claude-native.js");
+    emitClaudeNative();
+    const { writeRedactPatterns } = await import("./plugins/leak-audit.js");
+    writeRedactPatterns();
+  } catch (e) {
+    console.error(`✗ Native Claude Code plugin output failed: ${e instanceof Error ? e.message : String(e)}`);
+    process.exitCode = 1;
+  }
+}
+
 async function handleSyncFirstRun(options: SyncCommandOptions): Promise<void> {
   if (options.only || options.dryRun) return;
   const { loadState } = await import("./state.js");
@@ -407,6 +433,7 @@ export function buildProgram(): Command {
   registerInfraCommands(program, autoSync);
   registerEnvCommands(program);
   registerTeamCommands(program);
+  registerPluginCommands(program);
   registerClassifyCommand(program);
   registerBootstrapCommand(program);
   registerInstallCommand(program);

@@ -24,17 +24,16 @@ describe("us05/us06 commands and drift", () => {
       expect(initialSync.stdout).toContain("Syncing: commands");
 
       const claudeManagedCommand = join(homeDir, ".claude", "commands", "deploy.md");
-      const cursorManagedCommand = join(homeDir, ".cursor", "commands", "deploy.md");
-      const cursorUserCommand = join(homeDir, ".cursor", "commands", "local-only.md");
+      const opencodeManagedCommand = join(homeDir, ".config", "opencode", "commands", "deploy.md");
+      const opencodeUserCommand = join(homeDir, ".config", "opencode", "commands", "local-only.md");
 
       expect(readFileSync(claudeManagedCommand, "utf-8")).toContain("description: Deploy the current repo");
-      expect(readFileSync(cursorManagedCommand, "utf-8")).toContain("# Deploy");
-      expect(readFileSync(cursorManagedCommand, "utf-8")).not.toContain("description: Deploy the current repo");
-      expect(readFileSync(cursorUserCommand, "utf-8")).toContain("Keep my local workflow");
+      expect(readFileSync(opencodeManagedCommand, "utf-8")).toContain("# Deploy");
+      expect(readFileSync(opencodeUserCommand, "utf-8")).toContain("Keep my local workflow");
       expect(readFileSync(tasksFile, "utf-8")).toBe(tasksBefore);
 
-      rmSync(cursorManagedCommand);
-      expect(existsSync(cursorManagedCommand)).toBe(false);
+      rmSync(opencodeManagedCommand);
+      expect(existsSync(opencodeManagedCommand)).toBe(false);
 
       const repairResult = await runScenarioCli({
         args: ["status", "--fix"],
@@ -42,12 +41,11 @@ describe("us05/us06 commands and drift", () => {
         repoRoot,
       });
       expect(repairResult.stdout).toContain("auto-repairing");
-      expect(repairResult.stdout).toContain("cursor [commands] — missing command: deploy.md");
+      expect(repairResult.stdout).toContain("opencode [commands] — missing command: deploy.md");
       expect(repairResult.stdout).toContain("All drift resolved");
 
-      expect(readFileSync(cursorManagedCommand, "utf-8")).toContain("# Deploy");
-      expect(readFileSync(cursorManagedCommand, "utf-8")).not.toContain("description: Deploy the current repo");
-      expect(readFileSync(cursorUserCommand, "utf-8")).toContain("Keep my local workflow");
+      expect(readFileSync(opencodeManagedCommand, "utf-8")).toContain("# Deploy");
+      expect(readFileSync(opencodeUserCommand, "utf-8")).toContain("Keep my local workflow");
     });
   }, 120_000);
 });

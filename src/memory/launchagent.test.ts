@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEMORY_DAEMON_ENVIRONMENT } from "./constants.js";
+import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PYTHON_VERSION } from "./constants.js";
 import {
   buildMemoryDaemonPlist,
   isLabelDisabledInLaunchctlOutput,
@@ -36,6 +36,14 @@ describe("memory LaunchAgent", () => {
       else process.env.DOTFILES_DIR = original;
       if (execPath) Object.defineProperty(process, "execPath", execPath);
     }
+  });
+
+  it("pins the Python that uvx runs the service on", () => {
+    const plist = buildMemoryDaemonPlist("/Users/test", "/Users/test/logs", "/opt/homebrew/bin/uvx");
+    expect(plist).toContain(
+      `<string>/opt/homebrew/bin/uvx</string>\n    <string>--python</string>\n    <string>${MEMORY_PYTHON_VERSION}</string>`,
+    );
+    expect(plist).toContain("<string>memory</string>\n    <string>server</string>");
   });
 
   it("puts the uvx directory first on the daemon PATH, once", () => {

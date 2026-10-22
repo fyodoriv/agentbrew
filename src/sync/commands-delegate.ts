@@ -77,7 +77,6 @@ function aiRulesBin(): string {
  */
 const AI_RULES_COMMANDS_PATH: Readonly<Record<string, { dir: string; suffix: string; ext: string }>> = Object.freeze({
   claude: { dir: ".claude/commands/ai-rules", suffix: "", ext: ".md" },
-  cursor: { dir: ".cursor/commands/ai-rules", suffix: "", ext: ".md" },
   amp: { dir: ".agents/commands", suffix: "-ai-rules", ext: ".md" },
   firebender: { dir: ".firebender/commands", suffix: "-ai-rules", ext: ".mdc" },
 });
@@ -104,7 +103,7 @@ interface DelegateCommandsGenerateOptions {
  *
  * Pure caller responsibility:
  *   - Apply any agent-specific transform agentbrew expects on the content
- *     (claude/cursor are identity today, so the delegated content matches
+ *     (claude is identity today, so the delegated content matches
  *     the native output byte-for-byte for the slice 2 canary).
  *   - Route carve-outs (`gemini-cli`, `claude-desktop`,
  *     `opencode`) to the native command-sync path.
@@ -248,7 +247,7 @@ function readPerAgentCommands(
 /**
  * Translate an ai-rules-generated filename back to the agentbrew source
  * filename. ai-rules drops files at one of two shapes:
- *   - No-suffix agents (claude/cursor): output filename === source filename
+ *   - No-suffix agents (claude): output filename === source filename
  *     (`hello.md` → `hello.md`).
  *   - Suffix agents (amp/firebender): `<name><suffix>.<ext>` →
  *     `<name>.md`. We strip the suffix and replace the extension.

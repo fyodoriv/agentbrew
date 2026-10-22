@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fyodoriv/agentbrew/blob/main/src/metrics/weekly-metrics.schema.json",
+  "title": "Weekly metrics provider file",
+  "description": "One tool's aggregate numbers for one ISO week. A tool writes it to ~/.local/share/<tool>/metrics/weekly-<YYYY-Www>.json. Only tool, version, week, and machine_id are strings; every metric is a number. Copy this file as is into sibling tools.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tool", "version", "week", "machine_id", "metrics"],
+  "properties": {
+    "tool": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,40}$" },
+    "version": { "type": "string", "pattern": "^[0-9A-Za-z.+-]{1,40}$" },
+    "week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+    "machine_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "description": "Random id made on this machine. It is not derived from any hardware or account."
+    },
+    "metrics": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+      "additionalProperties": { "type": "number" }
+    }
+  }
+}

@@ -1074,7 +1074,7 @@ describe("status — unconfigured agents hint", () => {
 
   it("shows hint in verbose mode with per-agent config paths", async () => {
     mockLoadState.mockReturnValue({
-      agents: [{ name: "cursor", detected: true, skillsDir: "~/.cursor/skills", mcpConfig: "~/.cursor/mcp.json" }],
+      agents: [{ name: "kiro", detected: true, skillsDir: "~/.kiro/skills", mcpConfig: "~/.kiro/settings/mcp.json" }],
       sources: [],
       mcpServers: [],
       catalogVersion: "0.1.0",
@@ -1084,7 +1084,7 @@ describe("status — unconfigured agents hint", () => {
 
     const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(calls).toContain("Needs setup");
-    expect(calls).toContain("cursor");
+    expect(calls).toContain("kiro");
   });
 
   it("does not show hint when all config files exist", async () => {

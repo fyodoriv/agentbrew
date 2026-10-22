@@ -14,10 +14,6 @@ function extractFrontmatterField(content: string, field: string): string | undef
   return fieldMatch?.[1]?.trim();
 }
 
-function toCursorFormat(content: string): string {
-  return stripFrontmatter(content).replace(/<!--\s*turbo\s*-->/g, "// turbo");
-}
-
 function toGeminiFormat(content: string): string {
   const description = extractFrontmatterField(content, "description") ?? "";
   let body = stripFrontmatter(content).trim();
@@ -46,7 +42,6 @@ function toGeminiFormat(content: string): string {
 }
 
 const TRANSFORM_MAP: Record<string, CommandTransform> = {
-  cursor: toCursorFormat,
   gemini: toGeminiFormat,
 };
 

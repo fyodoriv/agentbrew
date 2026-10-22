@@ -16,13 +16,16 @@ FAIL_DETAILS=()
 run_case() {
   local label="$1" script="$2" file_path="$3" first="$4" repeat="$5" expected="$6" needle="${7:-}"
   local body input out err rc
+  body="$(mktemp)"
   if [ "$repeat" = "1" ]; then
-    body="$(yes "$first" | head -c 300000)"
+    yes "$first" | head -c 300000 >"$body"
   else
-    body="$first"$'\n'"$(head -c 300000 /dev/zero | tr '\0' 'a')"
+    { printf '%s\n' "$first"; head -c 300000 /dev/zero | tr '\0' 'a'; } >"$body"
   fi
-  input="$(jq -n --arg p "$file_path" --arg c "$body" \
+  # --rawfile, not --arg: Linux rejects one argument over 128 KB.
+  input="$(jq -n --arg p "$file_path" --rawfile c "$body" \
     '{hook_event_name:"PostToolUse",tool_name:"Write",tool_input:{file_path:$p,content:$c}}')"
+  rm -f "$body"
   err="$(mktemp)"
   out="$(printf '%s' "$input" | bash "$DIR/$script" 2>"$err")"
   rc=$?

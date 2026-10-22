@@ -19,7 +19,7 @@ describe("AGENT_DEFINITIONS", () => {
   it("includes all expected agent names", () => {
     const names = AGENT_DEFINITIONS.map((a) => a.name);
     expect(names).toContain("claude-code");
-    expect(names).toContain("cursor");
+    expect(names).not.toContain("cursor");
     expect(names).toContain("augment");
     expect(names).toContain("codex");
     expect(names).toContain("gemini-cli");
@@ -141,9 +141,6 @@ describe("AGENT_DEFINITIONS", () => {
   });
 
   it("agents without rules have undefined rulesFile", () => {
-    const cursor = AGENT_DEFINITIONS.find((a) => a.name === "cursor");
-    expect(cursor?.rulesFile).toBeUndefined();
-
     const kiro = AGENT_DEFINITIONS.find((a) => a.name === "kiro");
     expect(kiro?.rulesFile).toBeUndefined();
   });
@@ -158,16 +155,6 @@ describe("AGENT_DEFINITIONS", () => {
       expect(agent.skillsDir).toBeDefined();
       expect(agent.skillsDir).toContain("skills");
     }
-  });
-
-  it("cursor keeps commandTransform after delegation strips frontmatter", () => {
-    const cursor = AGENT_DEFINITIONS.find((a) => a.name === "cursor");
-    expect(cursor?.commandTransform?.("---\ndescription: Run\n---\n\n# Run")).toBe("\n# Run");
-  });
-
-  it("cursor declares Cursor CLI MCP permissions config", () => {
-    const cursor = AGENT_DEFINITIONS.find((a) => a.name === "cursor");
-    expect(cursor?.mcpPermissionsConfig?.file).toBe("~/.cursor/cli-config.json");
   });
 
   it("claude-code has no commandTransform (identity)", () => {
@@ -207,13 +194,11 @@ describe("AGENT_DEFINITIONS", () => {
     // Verify data survived
     expect(sanitized.length).toBe(AGENT_DEFINITIONS.length);
     const names = sanitized.map((a: Record<string, unknown>) => a.name);
-    expect(names).toContain("cursor");
     expect(names).toContain("claude-code");
   });
 
-  it("only cursor and gemini-cli have commandTransform after command delegation", () => {
+  it("only gemini-cli has commandTransform after command delegation", () => {
     const withTransform = AGENT_DEFINITIONS.filter((a) => a.commandTransform).map((a) => a.name);
-    expect(withTransform).toEqual(expect.arrayContaining(["cursor", "gemini-cli"]));
-    expect(withTransform).toHaveLength(2);
+    expect(withTransform).toEqual(["gemini-cli"]);
   });
 });

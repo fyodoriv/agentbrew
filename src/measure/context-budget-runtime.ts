@@ -48,12 +48,6 @@ export function extractRuntimeTodayFromCcusage(
 import { execFileSync } from "node:child_process";
 import { logSkipped } from "../core/logger.js";
 
-export interface TokscaleRuntimeResult {
-  available: boolean;
-  skippedReason?: string;
-  today?: unknown;
-}
-
 export interface OpenusageDailyPayload {
   totals?: {
     cost_usd?: number;
@@ -119,24 +113,6 @@ export function tryCcusageDaily(): { available: boolean; skippedReason?: string;
   return {
     available: false,
     skippedReason: "ccusage not available (install via bunx/npx ccusage or skip for static-only metrics)",
-  };
-}
-
-/** Optional Cursor IDE usage via tokscale API cache (`tokscale cursor login` first). */
-export function tryTokscaleToday(): TokscaleRuntimeResult {
-  const result = runFirstJson(
-    "tokscale",
-    [
-      { command: "bunx", args: ["tokscale@latest", "--today", "--client", "cursor", "--json"] },
-      { command: "npx", args: ["-y", "tokscale", "--today", "--client", "cursor", "--json"] },
-      { command: "tokscale", args: ["--today", "--client", "cursor", "--json"] },
-    ],
-    45_000,
-  );
-  if (result.ok) return { available: true, today: result.json };
-  return {
-    available: false,
-    skippedReason: "tokscale not available (optional: tokscale cursor login && tokscale cursor sync)",
   };
 }
 

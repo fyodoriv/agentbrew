@@ -45,4 +45,4 @@ Update `docs/skill-baselines.json` in the same PR when intentionally growing a b
 
 **Optional delegated validators (not CI gates):** `skill-validator` skill or upstream CLI for frontmatter/spec checks before publishing skills; `agentbrew lint` remains authoritative in CI.
 
-**Optional audit tools:** `scripts/audit-context-tree.sh` wraps Repomix `--token-count-tree`; runtime usage via `bunx ccusage`, `openusage daily --json`, or `bunx tokscale` (see `context-budget` skill and [`competition/token-usage-tools.md`](competition/token-usage-tools.md)).
+**Optional audit tools:** `scripts/audit-context-tree.sh` wraps Repomix `--token-count-tree`; runtime usage via `bunx ccusage` or `openusage daily --json` (see `context-budget` skill and [`competition/token-usage-tools.md`](competition/token-usage-tools.md)).

@@ -200,6 +200,16 @@
         "No local home path or owner name is pushed in .copier-answers.yml",
         "Writes an ADR for the stack"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "new project: a personal assistant that tracks my reading; I want to just run one command and have it work",
+      "expected_output": "The scaffold starts the app with one command: `<name>` with no arguments in the shell and `/<name>` in an agent (commands/<name>.md declared in Agentfile.yaml). It uses sane defaults from one table, and `<name> config` / `config set` show and change them. check-setup's [start] check passes.",
+      "expectations": [
+        "commands/<name>.md exists and Agentfile.yaml declares commands",
+        "The README quickstart names the one-command start and `config set`",
+        "check-setup.sh reports PASS for the [start] area"
+      ]
     }
   ]
 }

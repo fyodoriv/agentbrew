@@ -26,7 +26,7 @@ describe("us02/us03 install mcp and skill", () => {
 
       cpSync(join(fixtureDir, "home"), homeDir, { recursive: true });
       mkdirSync(join(homeDir, ".claude", "skills"), { recursive: true });
-      mkdirSync(join(homeDir, ".cursor", "skills"), { recursive: true });
+      mkdirSync(join(homeDir, ".kiro", "skills"), { recursive: true });
       mkdirSync(join(sourceCacheDir, "verification-before-completion"), { recursive: true });
 
       await execFileAsync("git", ["init"], { cwd: sourceCacheDir });
@@ -85,7 +85,7 @@ describe("us02/us03 install mcp and skill", () => {
         existsSync(join(homeDir, ".config", "agentbrew", "installed-skills", "verification-before-completion")),
       ).toBe(true);
       expect(existsSync(join(homeDir, ".claude", "skills", "verification-before-completion"))).toBe(true);
-      expect(existsSync(join(homeDir, ".cursor", "skills", "verification-before-completion"))).toBe(true);
+      expect(existsSync(join(homeDir, ".kiro", "skills", "verification-before-completion"))).toBe(true);
 
       const stateYaml = readFileSync(join(homeDir, ".config", "agentbrew", "state.yaml"), "utf-8");
       expect(stateYaml).toContain("verification-before-completion");

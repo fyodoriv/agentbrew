@@ -6,12 +6,10 @@ import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   deduplicateByHeading,
   estimateTokens,
-  extractCursorRules,
   extractHeadings,
   isInstructionsUpToDate,
   measureSections,
   mergeInstructionsWithManagedSection,
-  stripCursorRulesSection,
   usesAgentsMdStandardPath,
 } from "./instructions-content.js";
 
@@ -120,60 +118,11 @@ describe("compressSkillsListing", () => {
   });
 });
 
-describe("extractCursorRules", () => {
-  it("returns empty string when no Auto-Synced Cursor Rules section", () => {
-    expect(extractCursorRules("## Other\nSome content")).toBe("");
-  });
-
-  it("extracts content after the heading, skipping blockquotes and empty lines", () => {
-    const content = ["## Auto-Synced Cursor Rules", "> Auto-generated note", "", "Rule 1", "Rule 2"].join("\n");
-
-    expect(extractCursorRules(content)).toBe("Rule 1\nRule 2\n");
-  });
-});
-
 describe("usesAgentsMdStandardPath", () => {
   it("matches AGENTS.md basename only", () => {
     expect(usesAgentsMdStandardPath("/home/user/.codex/AGENTS.md")).toBe(true);
     expect(usesAgentsMdStandardPath("/home/user/.claude/CLAUDE.md")).toBe(false);
     expect(usesAgentsMdStandardPath("/home/user/.gemini/GEMINI.md")).toBe(false);
-  });
-});
-
-describe("stripCursorRulesSection", () => {
-  it("returns content unchanged when no Auto-Synced Cursor Rules section", () => {
-    const content = "## Other\nContent\n";
-    expect(stripCursorRulesSection(content)).toBe(content);
-  });
-
-  it("removes the section and preserves surrounding content", () => {
-    const content = [
-      "## Before",
-      "Before content",
-      "",
-      "## Auto-Synced Cursor Rules",
-      "Rule line 1",
-      "Rule line 2",
-      "",
-      "## After",
-      "After content",
-    ].join("\n");
-
-    const result = stripCursorRulesSection(content);
-    expect(result).toContain("## Before");
-    expect(result).toContain("Before content");
-    expect(result).toContain("## After");
-    expect(result).toContain("After content");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
-    expect(result).not.toContain("Rule line 1");
-  });
-
-  it("handles section at end of file", () => {
-    const content = ["## Before", "Content", "", "## Auto-Synced Cursor Rules", "Some rules here"].join("\n");
-
-    const result = stripCursorRulesSection(content);
-    expect(result).toContain("## Before");
-    expect(result).not.toContain("Auto-Synced Cursor Rules");
   });
 });
 

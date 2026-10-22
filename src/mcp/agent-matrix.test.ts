@@ -157,7 +157,7 @@ describe("Agent matrix coverage", () => {
   // The list below is the set of (json/yaml) agents that DO use bash-style
   // placeholders. overlay-desktop, codex (toml), opencode are deliberately
   // out of scope — see `agent-matrix.fixtures.ts` file comment.
-  const EXPECTED_AGENTS_IN_MATRIX = ["claude-code", "cursor", "gemini-cli", "claude-desktop", "kiro", "amp", "goose"];
+  const EXPECTED_AGENTS_IN_MATRIX = ["claude-code", "gemini-cli", "claude-desktop", "kiro", "amp", "goose"];
 
   it("MCP_AGENT_MATRIX covers every expected agent", () => {
     const matrixNames = new Set(MCP_AGENT_MATRIX.map((a) => a.name));

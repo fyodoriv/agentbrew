@@ -58,7 +58,6 @@ describe("context-budget snapshot", () => {
     expect(snapshot.inventory.skillCount).toBe(2);
     expect(snapshot.runtime.ccusage.available).toBe(false);
     expect(snapshot.alerts).toEqual([]);
-    expect(snapshot.cursorRing.automated).toBe(false);
     expect(snapshot.sources).toContain("agentbrew lint + rules-hygiene (static projected tokens)");
   });
 

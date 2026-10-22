@@ -44,8 +44,8 @@ describe("us07/us17 source and existing setup", () => {
       expect(stateYaml).toContain(sourceDir);
       expect(stateYaml).toContain("source-debug-skill");
 
-      const cursorMcp = readFileSync(join(homeDir, ".cursor", "mcp.json"), "utf-8");
-      expect(cursorMcp).toContain('"user-postgres"');
+      const kiroMcp = readFileSync(join(homeDir, ".kiro", "settings", "mcp.json"), "utf-8");
+      expect(kiroMcp).toContain('"user-postgres"');
 
       const manualSkillDir = join(homeDir, ".claude", "skills", "manual-review");
       expect(existsSync(manualSkillDir)).toBe(true);

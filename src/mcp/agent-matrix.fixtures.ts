@@ -57,7 +57,7 @@ export interface ServerSample {
 export interface McpAgentFixture {
   /** Agent name — must match `src/core/agents.yaml`. */
   name: string;
-  /** Path under HOME (no leading `~`) — e.g. `.cursor/mcp.json`. */
+  /** Path under HOME (no leading `~`) — e.g. `.kiro/settings/mcp.json`. */
   relativePath: string;
   /** Servers-record key — defaults match `agents.yaml`. */
   mcpKey: string;
@@ -147,20 +147,12 @@ export const MCP_AGENT_MATRIX: McpAgentFixture[] = [
     notes: "Devin explicitly imports ~/.claude.json — historic regression source #1.",
   },
   {
-    name: "cursor",
-    relativePath: ".cursor/mcp.json",
-    mcpKey: "mcpServers",
-    mcpFormat: "json",
-    render: (s) => renderJson("mcpServers", s),
-    notes: "Devin explicitly imports ~/.cursor/mcp.json — historic regression source #2.",
-  },
-  {
     name: "gemini-cli",
     relativePath: ".gemini/settings.json",
     mcpKey: "mcpServers",
     mcpFormat: "json",
     render: (s) => renderJson("mcpServers", s),
-    notes: "mcpm-managed; same crash risk as cursor.",
+    notes: "mcpm-managed; same crash risk as claude-code.",
   },
   {
     name: "claude-desktop",

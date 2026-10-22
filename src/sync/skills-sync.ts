@@ -21,6 +21,7 @@ import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import { findAgentbrewRepoRoot } from "../core/repo-root.js";
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
+import { pluginSkillDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
 import type { AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS, DEFAULT_SUPPORTED_SKILL_FEATURES, VENDOR_NEUTRAL_SKILLS_DIR } from "../types.js";
@@ -247,8 +248,10 @@ export function getSkillSources(): SkillSource[] {
     path: join(agentBrewDir, "skill-plugins", "dev"),
     scanner: scanSkillDirs,
   };
-  // User sources first (higher priority), then built-in
-  return [...localSources, ...uniqueLegacy, builtIn];
+  // v2 plugin skill dirs come from the lock on every sync, never from state (#208).
+  const pluginSources: SkillSource[] = pluginSkillDirs().map((d) => ({ ...d, scanner: scanSkillDirs }));
+  // User sources first (higher priority), then plugins, then built-in
+  return [...localSources, ...uniqueLegacy, ...pluginSources, builtIn];
 }
 
 /** Carve-out: shared (per-entry user-data preserver; isolating this keeps

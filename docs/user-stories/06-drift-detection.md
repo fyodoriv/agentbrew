@@ -34,7 +34,7 @@ agentbrew status --ci        # machine-readable output, exit 1 on drift
 | MCP server missing from an agent's config | Yes |
 | MCP runtime probe failing after sync | Yes for registered heal actions; otherwise P0 follow-up + status warning |
 | MCP env vars not configured | No — run `agentbrew setup` |
-| MCP tool permissions out of sync (Cursor CLI) | Yes |
+| MCP tool permissions out of sync (agents with `mcpPermissionsConfig`) | Yes |
 | Rules managed section missing | Yes |
 | Skill symlinks missing | Yes |
 | Broken skill symlinks | Yes |

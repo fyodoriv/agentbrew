@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { MEMORY_PINNED_SPEC } from "./constants.js";
+import { MEMORY_UVX_ARGS } from "./constants.js";
 
 export interface MemoryInvokeOptions {
   memoryBin?: string;
@@ -46,7 +46,7 @@ export function invokeMemory(
   if (memoryBin) {
     result = spawnSync(memoryBin, args, { encoding: "utf-8", env });
   } else if (uvxBin) {
-    result = spawnSync(uvxBin, ["--system-certs", "--from", MEMORY_PINNED_SPEC, "memory", ...args], {
+    result = spawnSync(uvxBin, [...MEMORY_UVX_ARGS, ...args], {
       encoding: "utf-8",
       env,
     });

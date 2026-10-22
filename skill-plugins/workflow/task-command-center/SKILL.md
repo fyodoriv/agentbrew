@@ -176,7 +176,7 @@ Main checkout on `feat/{description}-{TICKET}`; use the repo's delivery and veri
 
 On PR review feedback — **encode standards in agentbrew first** (separate commit): this SKILL, the matching repo rule, evals/contracts; repo `.agents/skills/*` = pointers only. Push agentbrew before product code. Reference rule sections in PR body. Re-verify. Refresh **every** chain PR **`## Merge / deployment order`** when order changes.
 
-**Anti-patterns:** fix-then-backfill rules; edit `~/.cursor/skills/` mirrors; skip eval updates on new IRON LAW; deploy-order table lists only current repo.
+**Anti-patterns:** fix-then-backfill rules; edit `~/.claude/skills/` mirrors; skip eval updates on new IRON LAW; deploy-order table lists only current repo.
 
 ## Merge / deployment order (cross-repo chains)
 
@@ -215,7 +215,7 @@ SSO: attach-first `9223`; background per `sso-background-work`. Slack: one diges
 - **Do NOT** duplicate `plan` / `load-project-context` — invoke those skills.
 - **Do NOT** mix implementation assumptions into the immutable product contract.
 - **Do NOT** replace Jira descriptions for transient status or lane changes.
-- **Do NOT** edit `~/.cursor/` / `~/.claude/` mirrors — source + sync.
+- **Do NOT** edit `~/.claude/` / `~/.codex/` mirrors — source + sync.
 
 ## Execution and verification safety
 

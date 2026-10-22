@@ -5,9 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — Unreleased
+
+### BREAKING CHANGE
+
+- **Team overlays are removed** (#208 step 12). `agentbrew team set`,
+  `team unset`, and `team status` are gone; `agentbrew team ...` now prints the
+  migration steps and exits 1. The overlay `catalog-overlay.yaml` merge,
+  overlay agent definitions (`agents:`), executable MCP-format adapters
+  (`adapters:`), and the team lock pin are removed too. An old `team:` block in
+  `state.yaml` is ignored. Company content now ships as signed plugins.
+- **The plugin preview flag is gone.** `agentbrew plugin` works without
+  `AGENTBREW_PLUGINS_V2=1`.
+
+### Migration
+
+1. `agentbrew plugin migrate <overlay-checkout>` prints a draft
+   `agentbrew-plugin.yaml` and lists what it could not map. It changes nothing.
+2. Commit the manifest to the overlay repo, fix everything
+   `agentbrew plugin test <checkout>` reports, and push an SSH-signed tag.
+3. On each machine: `agentbrew plugin add <url>@<tag> --signer "<ssh-public-key>"`,
+   then `agentbrew sync`.
+4. Not carried over automatically: remote `sources:` (add them to the catalog),
+   overlay MCP entries (write `mcp/servers.yaml` with secret references and
+   pinned versions), executable adapters, overlay agents, and detect scripts.
+
 ## [Unreleased]
 
+### Fixed
+
+- Team overlay `commands:` folders now deploy, and `sync --pull`
+  fast-forwards and re-pins the overlay; a force-pushed overlay is refused
+  (#331).
+
+### Fixed
+
+- **ChatGPT and Claude Desktop context files are no longer empty.**
+  `context/chatgpt.md` and `context/claude-desktop.md` took their body from the
+  "Auto-Synced Cursor Rules" section, which the Cursor removal (#286) deleted.
+  They now carry the whole deployed instructions template.
+
+### Removed
+
+- **Cursor and Grok support** (#286). Cursor and Grok support was removed on
+  purpose on 2026-10-19. This first step removes the Cursor token tooling: the
+  `cursor-token-playbook` skill, the Cursor `.mdc` inventory in
+  `measure context`, the tokscale Cursor usage probe, the Cursor context-ring
+  field, and the "Auto-Synced Cursor Rules" strip step.
+  The second step removes the `cursor` agent: its `agents.yaml` entry, the
+  Cursor hooks format, the `cursor` command transform, the Cursor MCP GUI
+  wrapping, and Cursor in the delegation maps, primary agent lists, project
+  detection, the shell hook, hook-manifest targets, and installer backups.
+  agentbrew no longer writes under `~/.cursor`. Files it wrote there before
+  stay; delete them by hand if you no longer want them.
+  The last step updates the docs and skills, regenerates the README agent
+  matrix, adds the author's note to `AGENTS.md` and the README "Supported
+  agents" section, and adds `src/core/removed-agents.test.ts`, which fails if
+  a Cursor, Grok, or xAI agent, a `~/.cursor` write path, or a Cursor-only
+  script or LaunchAgent comes back. The `agentbrew-add-command` skill no
+  longer documents the Cursor-only `<!-- turbo -->` annotation.
+
+### Security
+
+- `agentbrew sync` enforces `agentbrew.lock`: it exits 1 and deploys nothing
+  when a locked source drifted or the team overlay checkout moved off its
+  pinned commit. `team set` pins the overlay commit. A missing or broken
+  overlay catalog is now an error (#208).
+
 ### Added
+
+- **Company plugins preview** (`AGENTBREW_PLUGINS_V2=1`, #208 step 3):
+  `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
+  lock section with commit, tree hash, and capabilities hash. `sync` refuses
+  a plugin checkout that drifted from its lock.
+- **Plugin authoring** (#208 step 11): `plugin new`, `plugin test`, and
+  `plugin migrate` (draft a manifest from a legacy overlay).
+- **`plugin update`** (#208 step 11): semantic diff of rules, skills, MCP
+  servers, hooks, and capabilities; applies only on confirmation, and a
+  capability change always asks. `plugin rollback` returns to the old version.
+- **Core leak audit** (#208 step 10): `agentbrew plugin leak-audit` reads
+  plugin leak patterns as data, fails closed, and runs in `npm run verify`.
+  The perf log redacts matching project names; context-budget snapshots are
+  kept for 180 days.
+- **Plugin MCP secrets by reference** (#208 step 9): plugin MCP env values
+  must be `env:`, `keychain:` or `op://` references, runtimes must be pinned,
+  and generated launchers resolve secrets at start so no agent config holds them.
+- **Native Claude Code plugins** (#208 step 8): sync emits a local
+  marketplace and one Claude Code plugin per company plugin (hooks plus a
+  session-start rules hook), enabled in user settings. New
+  `plugin policy` prints an admin managed-settings fragment.
+- **Scoped plugin rules** (#208 step 7): plugin rules leave global rules
+  files. `agentbrew plugin rules` serves them per agent and per repo
+  (`capabilities.repos`); public hosts are excluded by default.
+- **One refresh path for plugins** (#208 step 6): `sync` derives plugin
+  rules, skills, and commands from the locked plugin tree every run, so none
+  of the overlay stale-state cases apply to v2 plugins.
+- **Plugin capabilities** (#208 step 5): undeclared rule agents, hook events,
+  MCP servers, and shell-running commands are refused with exit code 3 on
+  `plugin add` and `sync`.
+- **Signed company plugins** (#208 step 4): `plugin add` installs only from
+  SSH-signed tags checked against `~/.config/agent-plugins/allowed_signers`
+  (shared with dotfiles). New `plugin trust` / `--revoke` and
+  `plugin rollback`. The lock records the signer; a revoked signer fails sync.
 
 - **One-step install with your agent** — tell Claude Code (or Cursor, Codex)
   "Install agentbrew by following …/INSTALL.md". `scripts/install.sh` explains
@@ -71,6 +170,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skip reasons. The README lists which measurements stay native and why.
 
 ### Fixed
+
+- **Memory daemon on Python 3.15** — the memory LaunchAgent and `memory`
+  CLI calls now pass `uvx --python 3.13`. On a Mac where uv had Python 3.15,
+  the daemon failed to install `onnxruntime` and every agent saw
+  `ECONNREFUSED` for the `memory` MCP server.
 
 - **Competitor spot-check can target a repo by path** —
   `competitor-spot-check.sh --root <repo-dir> "<feature>"` scans that repo

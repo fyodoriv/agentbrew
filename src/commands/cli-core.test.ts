@@ -225,6 +225,12 @@ describe("registerCoreCommands", () => {
       expect(mockHealthCheck).toHaveBeenCalledWith({ autoFix: undefined, ci: true, json: undefined });
     });
 
+    it("passes ignoreSessionEnv when --ignore-session-env is passed", async () => {
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "status", "--ci", "--ignore-session-env"]);
+      expect(mockHealthCheck).toHaveBeenCalledWith(expect.objectContaining({ ci: true, ignoreSessionEnv: true }));
+    });
+
     it("calls healthCheck with json when --json is passed", async () => {
       const program = buildProgram();
       await program.parseAsync(["node", "test", "status", "--json"]);

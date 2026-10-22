@@ -65,9 +65,9 @@ vi.mock("./sync/rules-sync.js", async (importOriginal) => {
 // Slice 4 of `delegate-commands-to-ai-rules`: mirror the rules-sync
 // pattern above for command-sync. Re-export the real
 // CANARY_DELEGATED_AGENTS Set so the drift-checks/commands.ts slice 4
-// skip check sees claude-code + cursor; stub `collectCanaryDelegation`
+// skip check sees the canary agents; stub `collectCanaryDelegation`
 // to return content for both canaries so the drift surface still
-// includes them (and the existing assertions for cursor drift still
+// includes them (and the existing assertions for canary drift still
 // fire). Tests that need the "canary skips drift" path can override
 // the stub per-test.
 vi.mock("./sync/command-sync.js", async (importOriginal) => {
@@ -127,7 +127,7 @@ import { validateMcpEnvVars } from "./mcp/mcp-setup.js";
 import { validateAllSkills } from "./skills/validate.js";
 import { loadState } from "./state.js";
 import { collectAgentDefs, getAgentDefTargets } from "./sync/agents-sync.js";
-import { compressSkillsListing, stripCursorRulesSection } from "./sync/instructions-content.js";
+import { compressSkillsListing } from "./sync/instructions-content.js";
 import { loadInstructions } from "./sync/instructions-sync.js";
 import { extractManagedSection, loadSharedRules } from "./sync/rules-sync.js";
 
@@ -410,9 +410,9 @@ describe("checkRulesDrift", () => {
     expect(checkRulesDrift()).toEqual([]);
   });
 
-  it("does not flag drift when deployed has the transforms (compressSkillsListing + stripCursorRulesSection) applied", () => {
+  it("does not flag drift when deployed has the transform (compressSkillsListing) applied", () => {
     // Simulate the real sync pipeline: loadSharedRules returns raw content with a verbose
-    // skills listing and a Cursor rules section. Sync strips/compresses both before writing.
+    // skills listing. Sync compresses it before writing.
     // The deployed managed section is the transformed content. Drift must apply the same
     // transforms before comparing, otherwise it always flags false-positive drift.
     //
@@ -430,14 +430,10 @@ describe("checkRulesDrift", () => {
       "",
       "Keep me.",
       "",
-      "## Auto-Synced Cursor Rules",
-      "",
-      "Cursor-only content that sync strips for rulesFile agents.",
-      "",
     ].join("\n");
 
     // What sync would write: run raw through the same transforms the sync engine uses.
-    const transformed = stripCursorRulesSection(compressSkillsListing(rawMerged));
+    const transformed = compressSkillsListing(rawMerged);
 
     mockLoadState.mockReturnValue(makeState({ agents: [{ name: "augment", detected: true }] }));
     mockExistsSync.mockImplementation((p) => {
@@ -453,7 +449,7 @@ describe("checkRulesDrift", () => {
     mockExtractManagedSection.mockReturnValue(transformed);
 
     // Before fix: drift reports "managed section out of date" because rawMerged !== transformed.
-    // After fix: drift applies compressSkillsListing + stripCursorRulesSection before compare.
+    // After fix: drift applies compressSkillsListing before compare.
     expect(checkRulesDrift()).toEqual([]);
   });
 
@@ -555,7 +551,7 @@ describe("checkSkillsDrift", () => {
   it("skips non-detected agents", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: false, skillsDir: "/tmp/skills" }],
+        agents: [{ name: "codex", detected: false, skillsDir: "/tmp/skills" }],
         sources: [{ url: "u/r", type: "local", skillsInstalled: ["my-skill"], availableItems: [], addedAt: "" }],
       }),
     );
@@ -691,7 +687,7 @@ describe("checkBrokenSymlinks", () => {
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
       // Skills dirs exist
-      if (path.includes("~/.claude/skills") || path.includes("~/.cursor/skills")) return true;
+      if (path.includes("~/.claude/skills") || path.includes("~/.codex/skills")) return true;
       // The resolved absolute path for the broken symlink does NOT exist
       if (path.endsWith("/.agents/skills/deleted")) return false;
       // The literal relative string also does not exist
@@ -740,12 +736,12 @@ describe("checkCommandsDrift", () => {
   it("reports drift when agent is missing a command file", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockImplementation((p) => {
       const path = String(p);
-      return path.includes("agentbrew/commands") || path.includes(".cursor/commands");
+      return path.includes("agentbrew/commands") || path.includes(".config/amp/commands");
     });
     mockReaddirSync.mockImplementation(((p: string) => {
       if (String(p).includes("agentbrew/commands")) return ["my-cmd.md"];
@@ -754,13 +750,13 @@ describe("checkCommandsDrift", () => {
 
     const result = checkCommandsDrift();
     expect(result.some((d) => d.detail.includes("missing command"))).toBe(true);
-    expect(result.some((d) => d.agent === "cursor" && d.type === "commands")).toBe(true);
+    expect(result.some((d) => d.agent === "amp" && d.type === "commands")).toBe(true);
   });
 
   it("reports drift when agent commands dir is missing", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockImplementation((p) => String(p).includes("agentbrew/commands"));
@@ -774,17 +770,17 @@ describe("checkCommandsDrift", () => {
     // so the detail names the exact mkdir command, not a bare sync.
     const missing = result.find((d) => d.detail.startsWith("commands directory missing"));
     expect(missing).toBeDefined();
-    expect(missing?.detail).toContain("mkdir -p ~/.cursor/commands && agentbrew sync");
+    expect(missing?.detail).toContain("mkdir -p ~/.config/amp/commands && agentbrew sync");
   });
 
   it("points at agentbrew sync when the agent's config folder exists", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockImplementation(
-      (p) => String(p).includes("agentbrew/commands") || String(p).endsWith("/.cursor"),
+      (p) => String(p).includes("agentbrew/commands") || String(p).endsWith("/.config/amp"),
     );
     mockReaddirSync.mockImplementation(((p: string) => {
       if (String(p).includes("agentbrew/commands")) return ["my-cmd.md"];
@@ -799,7 +795,7 @@ describe("checkCommandsDrift", () => {
   it("returns empty when all commands are present", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockReturnValue(true);
@@ -909,7 +905,7 @@ describe("checkInstructionsDrift", () => {
   it("skips non-detected agents", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: false, skillsDir: "x", rulesFile: "~/.cursor/rules.md" }],
+        agents: [{ name: "codex", detected: false, skillsDir: "x", rulesFile: "~/.codex/rules.md" }],
       }),
     );
     mockLoadInstructions.mockReturnValue("# content");
@@ -1042,7 +1038,7 @@ describe("collectDrift", () => {
     mockValidateMcpEnvVars.mockReturnValue([{ serverName: "github", missingVars: ["GITHUB_TOKEN"] }]);
     mockValidateAllSkills.mockReturnValue({ total: 0, valid: 0, withErrors: 0, withWarnings: 0, results: [] });
     mockLoadInstructions.mockReturnValue(undefined);
-    // skill missing: cursor skillsDir + my-skill/SKILL.md does not exist (existsSync returns true for everything else)
+    // skill missing: codex skillsDir + my-skill/SKILL.md does not exist (existsSync returns true for everything else)
     mockExistsSync.mockImplementation((p) => !String(p).includes("my-skill/SKILL.md"));
 
     const result = collectDrift();
@@ -1053,56 +1049,6 @@ describe("collectDrift", () => {
 });
 
 describe("checkMcpPermissionDrift", () => {
-  function makeCursorState() {
-    return makeState({
-      agents: [
-        {
-          name: "cursor",
-          detected: true,
-          skillsDir: "~/.cursor/skills",
-        },
-      ],
-      mcpServers: [
-        {
-          name: "context7",
-          command: "npx",
-          args: [],
-          env: {},
-          source: "user",
-        },
-      ],
-    });
-  }
-
-  it("flags Cursor CLI config missing a state-managed MCP permission", () => {
-    mockLoadState.mockReturnValue(makeCursorState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(JSON.stringify({ permissions: { allow: ["Shell(ls)"] } }));
-    mockGetAdapter.mockReturnValue({
-      readEntries: () => ({}),
-    } as never);
-
-    const result = checkMcpPermissionDrift();
-
-    expect(result).toHaveLength(1);
-    expect(result[0].agent).toBe("cursor");
-    expect(result[0].type).toBe("mcp-permissions");
-    expect(result[0].detail).toContain("context7");
-  });
-
-  it("keeps Cursor permissions for user-added servers deployed in mcp.json", () => {
-    mockLoadState.mockReturnValue(makeCursorState());
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify({ permissions: { allow: ["Shell(ls)", "mcp__context7__*", "mcp__manual__*"] } }),
-    );
-    mockGetAdapter.mockReturnValue({
-      readEntries: () => ({ manual: {} }),
-    } as never);
-
-    expect(checkMcpPermissionDrift()).toEqual([]);
-  });
-
   function makeClaudeCodeState() {
     return makeState({
       agents: [{ name: "claude-code", detected: true, skillsDir: "~/.claude/skills" }],
@@ -1249,7 +1195,7 @@ describe("checkUserAddedMcpServers", () => {
     ]);
   });
 
-  // Slice 4a: cursor + claude-code are now intersection-skip agents.
+  // Slice 4a: claude-code and the other mcpm agents are now intersection-skip agents.
   // Use AGENTBREW_ONLY_MCP_AGENTS entries kiro + amp to exercise the dedup logic.
   it("deduplicates across agents", () => {
     mockLoadState.mockReturnValue(
@@ -1437,7 +1383,7 @@ describe("checkCommandsDrift — additional edge cases", () => {
   it("reports 'commands directory unreadable' when agent commands dir readdirSync throws", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [{ name: "cursor", detected: true, skillsDir: "x", commandsDir: "~/.cursor/commands" }],
+        agents: [{ name: "amp", detected: true, skillsDir: "x", commandsDir: "~/.config/amp/commands" }],
       }),
     );
     mockExistsSync.mockReturnValue(true);
@@ -1448,7 +1394,7 @@ describe("checkCommandsDrift — additional edge cases", () => {
 
     const result = checkCommandsDrift();
     expect(result.some((d) => d.detail === "commands directory unreadable")).toBe(true);
-    expect(result.some((d) => d.agent === "cursor" && d.type === "commands")).toBe(true);
+    expect(result.some((d) => d.agent === "amp" && d.type === "commands")).toBe(true);
   });
 
   it("uses non-.md extension when commandFileExt differs (e.g. .toml for gemini-cli)", () => {
@@ -1493,7 +1439,7 @@ describe("checkMcpDrift — mcpKey and multi-agent", () => {
     expect(readSpy).toHaveBeenCalledWith(expect.any(String), "amp.mcpServers");
   });
 
-  // Slice 4a: cursor + claude-code are intersection-skip; swap to two
+  // Slice 4a: claude-code and the other mcpm agents are intersection-skip; swap to two
   // carve-outs (kiro + amp) so the multi-agent independence is still
   // exercised by the native drift checker.
   it("evaluates each detected MCP agent independently", () => {
@@ -1580,7 +1526,7 @@ describe("checkUserCreatedCommands — unreadable directories", () => {
 
 // ── Partial failures and inner IO skips (multi-agent / multi-entry) ───────────
 
-// Slice 4a: cursor + claude-code are intersection-skip; swap to two
+// Slice 4a: claude-code and the other mcpm agents are intersection-skip; swap to two
 // carve-outs (kiro + amp) so the multi-agent partial-failure path is
 // still exercised by the native drift checker.
 describe("checkMcpDrift — partial failure across agents", () => {
@@ -1661,7 +1607,7 @@ describe("checkUserCreatedSkills — inner entry errors", () => {
   });
 });
 
-// Slice 4a: cursor + claude-code are intersection-skip; swap to kiro +
+// Slice 4a: claude-code and the other mcpm agents are intersection-skip; swap to kiro +
 // amp carve-outs so the user-added partial-failure path is still
 // exercised by the native drift checker.
 describe("checkUserAddedMcpServers — partial failure across agents", () => {
@@ -1855,7 +1801,7 @@ describe("formatDriftSummary", () => {
   it("groups items by type and returns parenthesized breakdown", () => {
     const items = [
       { agent: "claude", type: "mcp" as const, detail: "missing" },
-      { agent: "cursor", type: "mcp" as const, detail: "missing" },
+      { agent: "codex", type: "mcp" as const, detail: "missing" },
       { agent: "claude", type: "skills" as const, detail: "missing" },
       { agent: "claude", type: "rules" as const, detail: "stale" },
     ];

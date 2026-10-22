@@ -14,7 +14,7 @@ Following VISION.md's "delegate, contribute, absorb" framework, agentbrew's road
 | **M1 — Delegate to skills CLI** | ✅ Done (2026-04-28) | Parent task closed; residual sandbox/proxy/offline gate closed 2026-05-02. `npx skills add` is the primary path for delegated targets. |
 | **M2 — Delegate to mcpm.sh** | ✅ Done (2026-04-27) | The client intersection delegates to `mcpm install` + `mcpm client edit`; compatibility exceptions stay native. Upstream adapter PRs are filed. |
 | **M3 — Delegate to block/ai-rules** | ✅ Done (2026-04-28) | Supported intersections delegate to `ai-rules generate`; native exceptions stay documented by the routing matrices. |
-| **M4 — team overlay extraction** | 🟡 In progress | Catalog overlay extracted to `agentbrew-<org>` repo (2026-05). Legacy `src/commands/cli-team.ts` + `src/core/team-detect.ts` pending full extraction (tracked in TASKS.md). |
+| **M4 — team overlay extraction** | ✅ Done (1.0) | Team overlays replaced by signed company plugins (#208); `agentbrew team` and the overlay catalog merge removed in 1.0. |
 | **M5 — Auto-load project context** | 🟢 Active | Catalog rule `load-project-context` + Claude Code SessionStart hook + `project-context-loader` skill ship together. Every agent session, every repo: VISION/ARCHITECTURE/MILESTONES/user-stories/competitors load into context. |
 | **M6 — Public OSS release** | ⏸️ Deferred | Triggers when delete-rate stays flat for 3 months (codebase has stopped shrinking). Until then, single-user discipline applies: breaking changes ship in one commit, no migration paths. |
 
@@ -25,7 +25,7 @@ The current operating mode is **"delete before add"**. Non-test source line targ
 Valid answers (from VISION.md § "Strategy: delegate, contribute, absorb"):
 - (a) Delegation blocked by a named constraint
 - (b) We contributed and upstream rejected or ignored for 90+ days
-- (c) team overlay content
+- (c) company plugin content
 - (d) Multi-surface glue no upstream tool has
 
 ## Where work happens

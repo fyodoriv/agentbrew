@@ -1,0 +1,10 @@
+schema: 1
+name: e2e-team
+version: 1.0.0
+capabilities:
+  agents: [claude]
+  repos:
+    include: []
+contributes:
+  skills: skills/
+  memory_packs: packs/

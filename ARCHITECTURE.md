@@ -130,7 +130,7 @@ See [`docs/repo-map.md` § "Repo layout"](docs/repo-map.md#repo-layout) for the 
 
 - `src/sync/*.ts` is the per-engine sync module set; one file per concern.
 - `src/core/agents.yaml` is the runtime-loaded agent definition catalog — adding a new agent goes here, not in TypeScript.
-- `src/catalog.yaml` lists installable skills, MCP servers, and rules in declarative form. The team overlay lives in a separate `agentbrew-<org>` repo.
+- `src/catalog.yaml` lists installable skills, MCP servers, and rules in declarative form. Company content ships as signed plugins (`src/plugins/`) from a separate `agentbrew-<org>` repo.
 - `skill-plugins/dev/` holds only skills that document agentbrew itself (`agentbrew-*`, `agentfile-init`, `sync-agent-config`); all other skill content lives in source repos that agentbrew references — never duplicates.
 - `templates/AGENTS.md` is the cross-agent instruction template that gets composed and deployed by `instructions-sync.ts`.
 

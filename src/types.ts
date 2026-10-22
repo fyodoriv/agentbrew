@@ -1,5 +1,5 @@
 export type CommandTransform = (content: string) => string;
-export type HooksFormat = "claude-settings" | "claude-direct" | "cursor";
+export type HooksFormat = "claude-settings" | "claude-direct";
 export type HooksScope = "user" | "project";
 
 /**
@@ -60,8 +60,6 @@ export interface AgentConfig {
   mcpFormat?: "json" | "yaml" | "toml" | "opencode" | (string & {});
   mcpPermissionsConfig?: McpPermissionsConfig;
   rulesFile?: string;
-  /** Directory for per-file rules (e.g., ~/.cursor/rules/). */
-  rulesDir?: string;
   commandsDir?: string;
   agentsDir?: string;
   /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (AGENT.md per subdir). */
@@ -77,8 +75,8 @@ export interface AgentConfig {
   hooksFormat?: HooksFormat;
   hooksScope?: HooksScope;
   /** Where the agent's default-model setting lives (see {@link ModelConfig}).
-   *  Unset means the agent has no file-managed model surface (e.g. Cursor
-   *  stores the model in app-managed/UI state). */
+   *  Unset means the agent has no file-managed model surface (the model
+   *  lives in app-managed/UI state). */
   modelConfig?: ModelConfig;
   /** Skills-only agents with minimal real-world validation. */
   experimental?: boolean;
@@ -206,6 +204,8 @@ export interface SourceItem {
   name: string;
   description: string;
   type: SourceItemType;
+  /** Skill frontmatter `recommended: true`. Team overlay sources deploy these on sync. */
+  recommended?: true;
 }
 
 export interface Source {
@@ -271,40 +271,6 @@ export interface MemoryConfig {
   packPaths?: string[];
 }
 
-export interface TeamConfig {
-  label: string;
-  url: string;
-  cachedAt: string;
-  lastSyncedAt: string;
-  detectedSignals?: string[];
-  /**
-   * Absolute path to the team's catalog overlay file (resolved from the
-   * overlay Agentfile.yaml's `catalogOverlay:` field, relative to the
-   * cached team-clone root). When set, `loadCatalog()` merges this YAML on
-   * top of the generic `catalog.yaml`. Cleared on `team unset`.
-   */
-  catalogOverlayPath?: string;
-  /**
-   * Absolute paths to MCP-format adapter directories the overlay provides
-   * (resolved from the overlay Agentfile.yaml's `adapters:` list). Each dir's
-   * basename is the `mcpFormat` it serves and contains a CommonJS `adapter.js`
-   * exporting an {@link McpFormatAdapter} class. `getAdapter()` loads these
-   * lazily for any non-core format. Lets the overlay ship formats (e.g.
-   * overlay-desktop) without baking them into core. Cleared on `team unset`.
-   */
-  adapterDirs?: string[];
-  /**
-   * Absolute path to the overlay's agents YAML (resolved from the overlay
-   * Agentfile.yaml's `agents:` field). `loadAgentDefinitions()` merges these
-   * entries on top of core `agents.yaml`, so the overlay can register custom
-   * agents (e.g. overlay-desktop) without baking them into core. Cleared on
-   * `team unset`.
-   */
-  agentsOverlayPath?: string;
-  /** Absolute memory pack dirs from overlay memoryPacks: — cleared on team unset. */
-  memoryPackPaths?: string[];
-}
-
 export interface AgentBrewState {
   schemaVersion?: number;
   agents: AgentConfig[];
@@ -322,12 +288,6 @@ export interface AgentBrewState {
   hooks?: ManagedHook[];
   externalMcpServers?: string[];
   catalogVersion: string;
-  /**
-   * Team overlay configuration — when set, the overlay's Agentfile.yaml is
-   * merged into the catalog and state with origin: "team:<label>". Only one
-   * team can be active at a time. Managed via `agentbrew team set|unset`.
-   */
-  team?: TeamConfig;
   /** Shared memory runtime — local DB paths and pack discovery only. */
   memory?: MemoryConfig;
   /**

@@ -155,7 +155,7 @@ function mergeAgentfileMcp(
     const preservedNames = state.memory?.enabled === true ? new Set([MEMORY_MANAGED_SERVER_NAME]) : new Set<string>();
     // Servers `init` found already configured in an agent (source "discovered")
     // belong to the person, not to any Agentfile. Dropping them here made the
-    // next MCP sync prune them from ~/.claude.json, ~/.cursor/mcp.json, etc.
+    // next MCP sync prune them from ~/.claude.json, ~/.kiro/settings/mcp.json, etc.
     const isKept = (s: McpServer): boolean =>
       agentfileServerNames.has(s.name) || preservedNames.has(s.name) || s.source === "discovered";
     finalServers = stateServers.filter(isKept);

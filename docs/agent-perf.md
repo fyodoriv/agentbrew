@@ -47,7 +47,11 @@ To turn them off on one machine, list the IDs under `disabled:` in
 
 Path: `${XDG_STATE_HOME:-~/.local/state}/agentbrew/perf/YYYY-MM.jsonl`. One
 file per UTC month, append-only, mode `600`. When a new month file starts, the
-hook deletes month files older than 180 days.
+hook deletes month files older than 180 days. When an installed company
+plugin ships leak patterns, `agentbrew sync` writes them to
+`${XDG_STATE_HOME:-~/.local/state}/agentbrew/redact-patterns.txt`, and the hook
+logs a project whose name matches one as `redacted`. Dated context-budget
+snapshots under `~/.config/agentbrew/metrics/` are also kept for 180 days.
 
 Tool row:
 

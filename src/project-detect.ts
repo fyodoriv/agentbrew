@@ -10,7 +10,7 @@ interface ProjectAssets {
   agentfile?: string;
   /** Project skills directories (e.g., .claude/skills/ with N skills). */
   skills: Array<{ agent: string; count: number }>;
-  /** Project rules directories (e.g., .cursor/rules/ with N files). */
+  /** Project rules directories (e.g., .my-agent/rules/ with N files). */
   rules: Array<{ agent: string; count: number }>;
   /** Project commands directories. */
   commands: Array<{ agent: string; count: number }>;
@@ -19,17 +19,11 @@ interface ProjectAssets {
 }
 
 /** Agent directories to scan for project-level assets. */
-const SKILL_DIRS = [
-  { agent: "claude", dir: ".claude/skills" },
-  { agent: "cursor", dir: ".cursor/skills" },
-];
+const SKILL_DIRS = [{ agent: "claude", dir: ".claude/skills" }];
 
-const RULES_DIRS = [{ agent: "cursor", dir: ".cursor/rules" }];
+const RULES_DIRS: Array<{ agent: string; dir: string }> = [];
 
-const COMMAND_DIRS = [
-  { agent: "claude", dir: ".claude/commands" },
-  { agent: "cursor", dir: ".cursor/commands" },
-];
+const COMMAND_DIRS = [{ agent: "claude", dir: ".claude/commands" }];
 
 const INSTRUCTION_FILES = ["AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md"];
 

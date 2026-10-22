@@ -29,7 +29,7 @@ The catalog is a curated directory of agent resources — skills, MCP servers, a
 | **Rule sets** | Multi-rule Markdown files deployed to every agent's instruction file | Curated defaults shipped with agentbrew |
 | **Sources** | GitHub repos you can register as skill providers | Any repo with `SKILL.md` files |
 
-When a team overlay is active (`agentbrew team set <url>`), the overlay's `catalog-overlay.yaml` adds a second tier of recommended items pointing at the org's internal source repos — see [US 27: Team overlays](27-team-overlay.md) for the schema and lifecycle.
+Company content ships as signed plugins rather than catalog entries — see [US 27: Company plugins](27-team-overlay.md). The overlay `catalog-overlay.yaml` merge was removed in agentbrew 1.0.
 
 ## Recommended vs. optional
 

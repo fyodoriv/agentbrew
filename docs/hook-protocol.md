@@ -86,7 +86,6 @@ same event, matcher, and command.
 | Agent | Output path | Format |
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` under the `hooks` key | Claude settings wrapper |
-| Cursor | `~/.cursor/hooks.json` | `{ version: 1, hooks: … }` with native camelCase event names |
 
 Agentbrew tracks managed hook keys per agent in `manifest.json` so stale managed
 entries can be pruned without deleting user-authored hooks in another agent's
@@ -185,6 +184,18 @@ appends one JSON line to `~/.cache/agentbrew/hook-decisions.jsonl`.
 - A hook test that runs a check script directly should export
   `HOOK_DECISIONS_LOG` to a temp file too.
 
+## Next task: open work first
+
+`next-task` ships from tasksmd/tasks.md, so agentbrew adds its pre-task step
+from outside. When a prompt starts with `/next-task` (or "next task"),
+`next-task-open-work-first` (UserPromptSubmit) runs the `wrap-up` skill's
+`scripts/open-work.sh` on the session's `cwd`. When that lists open work
+(your PRs, unmerged branches, uncommitted files), the hook adds the list to
+the context with the order to continue it first, from a draft PR's
+`## Pending` list. It skips `git fetch` to stay fast (`OPEN_WORK_NO_FETCH=0`
+turns it back on). It stays silent for other prompts, for a repo with no open
+work, and on machines without `wrap-up`. Installing `wrap-up` is the opt-in.
+
 ## Goal setting
 
 Claude Code's built-in `/goal <condition>` fires `UserPromptSubmit`, and the
@@ -195,6 +206,8 @@ other clear aliases, and on machines where `run-goal` is not installed. So
 installing the skill (`agentbrew install run-goal`) is the only opt-in step.
 New to goals? The skill opens with a "Quick start" (see
 `skill-plugins/workflow/run-goal/SKILL.md`).
+The context also says that a read-only skill source gets a task in a
+writable repo for its retro update, not an edit.
 In real `claude -p` sessions, `/goal <condition>` made the agent call the
 `run-goal` skill as its first tool in 3 of 3 runs. With
 `HOOK_BYPASS_GOAL_SET_LOADS_RUN_GOAL=1`, and for `/goal clear`, it did not.
@@ -223,6 +236,15 @@ retro often passes mid-goal (an earlier version deleted it on the first
 passing Stop, so a goal lost its contract four times in one run and a skill
 used later was no longer checked). The next `/goal` replaces the contract,
 and files older than seven days are removed.
+It also allows, without counting a block, while the goal waits on
+background work: a launch in the transcript ("Async agent launched" or
+"running in background with ID") with no `<tool-use-id>` completion
+notification yet. The retro belongs at the end of the goal, not at each
+turn that only waits on workers.
+
+The opt-in `usage-tip` (Stop) hook shows the user one short tip per turn as
+a `systemMessage`, which is not sent to the model, and logs shown and adopted
+tips. [`usage-tips.md`](usage-tips.md) covers the catalog and the report.
 
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was

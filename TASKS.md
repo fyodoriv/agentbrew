@@ -292,6 +292,71 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] The perf review hook counts a background agent launch as a call that ran
+  - **ID**: perf-review-background-agent-ran
+  - **Tags**: perf, hooks, agents
+  - **Details**: On 2026-10-22 the Stop hook `hooks/checks/perf-task-review.sh` flagged four `agent:general-purpose` calls as "never ran this turn". All four were `Agent` calls with `run_in_background: true`; each started and later reported. A background launch returns at once and leaves no completion row in `perf-record.sh`, so the review counts it as blocked and forces an extra "Time review" round trip on every turn that dispatches a worker.
+  - **Files**: `hooks/checks/perf-record.sh`, `hooks/checks/perf-task-review.sh`, `hooks/checks/perf-task-review.test.sh`
+  - **Output**: code
+  - **Acceptance**: a turn whose only "missing" rows are background agent launches gets no "never ran" line, and a real blocked call still does.
+  - **Hypothesis**: recording the launch result for background agents drops false "never ran" flags on dispatch turns from about 1 per turn to 0.
+  - **Measurement**: `bash hooks/checks/perf-task-review.test.sh` with a fixture session of 4 background launches and 1 denied call.
+  - **Success**: 0 false flags, the denied call still flagged.
+  - **Pivot**: if the hook cannot see the launch result, drop `Agent` calls with `run_in_background` from the blocked count by name.
+  - **Anchor**: session 4c0513ff (2026-10-22) agent-perf report; perf-review skill.
+
+- [ ] `install --git` and `mcp add --git` run unattended with `--yes`
+  - **ID**: git-install-env-prompt-yes
+  - **Tags**: cli, agents
+  - **Details**: Found by the action-parity worker (PR #398). Both commands always prompt for missing env vars, even with `--yes`, so an agent cannot run them unattended. `agentbrew actions --json` marks them with an agent note for now. With `--yes` and no terminal, they should take values from the environment or a `--env KEY=VALUE` option, and fail with the list of missing keys instead of waiting on a prompt.
+  - **Files**: `src/commands/cli-mcp.ts`, the `install --git` path, `src/actions.ts` (drop the note when fixed)
+  - **Output**: code
+  - **Acceptance**: `agentbrew mcp add x --git <repo> --yes` with no terminal either finishes or exits non-zero naming the missing keys; it never waits.
+  - **Hypothesis**: a non-interactive path makes both commands runnable by agents: neither command hangs when run unattended.
+  - **Measurement**: a vitest case per command that runs it with stdin closed and a 5 s timeout.
+  - **Success**: both exit within 5 s with a clear result.
+  - **Pivot**: if env values cannot be passed safely, keep the prompt and make `actions --json` mark both terminal-only.
+  - **Anchor**: PR #398 review notes (2026-10-22); the owner's "Every action through CLI, agent, and UI" rule.
+
+- [ ] The installer and README change settings with `agentbrew config set`
+  - **ID**: installer-uses-config-set
+  - **Tags**: cli, docs, install
+  - **Details**: PR #397 added `agentbrew config set` as the one way to change a setting. Two places still bypass it: `seed_keep_claude_permissions` in `scripts/install.sh:146` hand-writes `claudePermissions: keep` into `state.yaml`, and three README fallback rows (`README.md:136-139`) tell users to "set `skillInstallMode: native`" by hand.
+  - **Files**: `scripts/install.sh`, `README.md`, the installer test
+  - **Output**: code
+  - **Acceptance**: the installer saves `claudePermissions keep` through `agentbrew config set`, and the README rows name `agentbrew config set skillInstallMode native`.
+  - **Hypothesis**: one write path removes hand edits of `state.yaml`: places that write settings by hand go from 2 to 0.
+  - **Measurement**: `rg -n "claudePermissions: keep|set .skillInstallMode: native" scripts README.md` plus the installer test.
+  - **Success**: 0 hand-written setting paths; the installer test passes.
+  - **Pivot**: if the CLI is not on PATH at that install step, call it by the absolute path the installer already uses.
+  - **Anchor**: PR #397 and #402 review notes (2026-10-22).
+
+- [ ] MCP git installs pin a tag or commit, never a same-named branch
+  - **ID**: mcp-git-ref-exact
+  - **Tags**: security, mcp
+  - **Details**: Found by the PR #403 worker. `src/mcp/mcp-git.ts:100` and `:110` run `git clone --branch <ref>` and `git checkout <ref>` with no `--end-of-options`. `clone --branch` picks a branch over a tag with the same name, so `--ref v1.0.0` can install a branch's code. That path has no signature check, so no trust is bypassed, but the pinned ref is not what the user asked for. Apply the exact-ref approach from PR #403 (`refs/tags/<ref>`, checkout by commit ID, `--end-of-options`).
+  - **Files**: `src/mcp/mcp-git.ts`, its tests
+  - **Output**: code
+  - **Acceptance**: with a branch and a tag both named `v1.0.0`, `mcp add --git <repo> --ref v1.0.0` installs the tag's commit, and a ref starting with `-` is refused.
+  - **Hypothesis**: exact-ref resolution drops wrong-ref installs in the branch-shadow case from 1 to 0.
+  - **Measurement**: a vitest case with a scratch repo that has a branch and a tag of the same name.
+  - **Success**: the tag's commit is installed.
+  - **Pivot**: if a ref can be a branch by design, require `--ref refs/heads/<name>` for branches and treat bare names as tags.
+  - **Anchor**: PR #403 (2026-10-22); git-clone docs on `--branch`.
+
+- [ ] Plugin test fixtures delete their temp dirs, and interactive `plugin add` installs what it showed
+  - **ID**: plugin-fixture-cleanup-and-single-fetch
+  - **Tags**: tests, plugins, security
+  - **Details**: Found by the PR #403 worker. (1) `fixtureKey()` and `pluginFixture()` in `src/test-utils/plugin-fixture.ts` never delete their temp dirs: on 2026-10-22 `$TMPDIR` held 2,640 `plugin-src-*` and 348 `plugin-keys-*` folders, the latter with throwaway private keys. (2) An interactive `plugin add` fetches twice (`src/plugins/cli-plugin.ts:36` and `:42`): the user approves what the first fetch showed, but the second fetch is installed. Only the trusted signer could use the gap; still, install the object the user approved.
+  - **Files**: `src/test-utils/plugin-fixture.ts`, `src/plugins/cli-plugin.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: a full plugin test run leaves 0 new `plugin-src-*` or `plugin-keys-*` folders, and `plugin add` installs the exact commit it showed for approval.
+  - **Hypothesis**: cleanup hooks and one fetch drop leaked fixture dirs per run from hundreds to 0 and approval-to-install drift from possible to impossible.
+  - **Measurement**: count the folders in `$TMPDIR` before and after `npx vitest run src/plugins`; a vitest case that changes the remote between the two fetches.
+  - **Success**: 0 leaked folders; the install matches the approved commit.
+  - **Pivot**: if one fetch is not possible in the interactive flow, re-check the second fetch's tag object against the approved one and refuse a change.
+  - **Anchor**: PR #403 (2026-10-22).
+
 ## P3
 
 - [ ] Propose a first-run check for the built-in /loop skill

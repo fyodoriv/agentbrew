@@ -306,9 +306,10 @@ continue?". The user set a goal so that they can be away.
   drafts, and code. Park an edit that needs fresh approval, as the
   fresh-approval bullet below says. Print the goal check line again for
   each criterion the answer touches, with each updated artifact's link or
-  path as its evidence. For a criterion with a parked edit, print its line
-  with `⏸ parked: <edit>` in place of ✅: it is not done until the edit
-  lands. One run filed tickets from its defaults, and then a mid-goal
+  path as its evidence. For a criterion with a parked edit, print it as
+  `Goal check 2/4 ⏸ <criterion> — parked: <edit>`, then the links of the
+  artifacts already updated. It is not done until the edit lands. One run
+  filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
   longer matched the answer.
 - Approvals the user already gave in this session, in standing rules, or in
@@ -360,12 +361,14 @@ A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
 the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
 never put it in the gate slot above, and never chain the next step on it
 with `&&`: a clean check then skips the commit, and a check that finds a
-leak lets the commit run. Stage first, then read the count it prints for
-`--cached`, and commit only when it is exactly 0:
-`git add …; n=$(git diff --cached | grep -icE -- "${pattern:?}"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
-Plain `git diff` skips staged and new files. An empty count means grep
-failed. A failed `git diff` still prints 0, so read its error output before
-you trust 0.
+leak lets the commit run. Stage first. Then count matches in the staged
+diff, and commit only when the count is exactly 0:
+`git add …; n=; d="${TMPDIR:-/tmp}/staged.diff"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+Plain `git diff` skips staged and new files. Commit only what is staged:
+no `-a` and no paths after `git commit`. A failed `git diff` leaves the
+count empty, so the commit does not run. An empty count means the check
+did not finish (an unset pattern, a grep error, or a diff grep skipped as
+binary): do not commit; find the cause.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.

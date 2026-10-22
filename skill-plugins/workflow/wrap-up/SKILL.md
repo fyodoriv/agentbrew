@@ -96,12 +96,19 @@ and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
 
 ## 4. Report
 
-End with one short message:
+End with one self-contained HTML page (shared-rules **## Long-run reports**):
+publish it as a private Artifact when the Artifact tool exists, else send the
+file or give its full path. It holds:
 
 - **Delivered:** each PR link, merged.
 - **Draft:** each draft PR link and its pending task ids.
-- **Needs you:** each owner step, one line with its task id.
+- **Needs you:** each owner step with its task id, explained in plain words:
+  what it is, why only the owner can do it, and what it changes.
 - **Dropped / asked:** anything you deleted, and the questions.
+
+In chat, give the page link and one line (delivered N, drafted M), then ask
+the questions from the page. Without a way to write HTML, post the same list
+as one short message.
 
 Then stop. The next session picks this up: the repo checkups and `next-task`
 (its "Continue open work" step, and the hook `next-task-open-work-first`) read the same open work

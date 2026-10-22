@@ -65,6 +65,16 @@
         "Does not commit, push, or remove the other agent's worktree",
         "Names both in the report as left alone, with the reason"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "wrap up (this session merged two PRs, left one draft PR with a pending owner step, and deleted one scratch branch)",
+      "expected_output": "The agent ends with one HTML page (delivered, draft with pending task ids, needs-you steps explained, dropped items) published as a private Artifact, then gives the link and a one-line summary in chat and asks the open questions.",
+      "expectations": [
+        "Ends with an HTML page published as a private Artifact or a file path",
+        "Explains the owner step on the page: what it is, why only the owner can do it, what it changes",
+        "Chat holds the page link, one summary line, and the questions from the page"
+      ]
     }
   ]
 }

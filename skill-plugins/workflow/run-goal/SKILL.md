@@ -303,9 +303,11 @@ continue?". The user set a goal so that they can be away.
   line). Record the answer in the contract file in place of the default,
   and fix any done-criterion or metric built on it. In the same pass,
   update every artifact built on that default: tickets, doc sections,
-  drafts, and code (park an edit that needs fresh approval, as below). Print the goal check line again for each criterion the
-  answer touches, with each updated artifact's link or path as its
-  evidence. One run filed tickets from its defaults, and then a mid-goal
+  drafts, and code. Park an edit that needs fresh approval, as the
+  fresh-approval bullet below says. Print the goal check line again for
+  each criterion the answer touches, with each updated artifact's link or
+  path as its evidence. List a parked edit as parked: its criterion is not
+  done until the edit lands. One run filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
   longer matched the answer.
 - Approvals the user already gave in this session, in standing rules, or in
@@ -353,11 +355,14 @@ commit and push only when it is 0:
 When the gate fails, the whole line also exits 1, so a background task
 reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
-A count check such as `grep -c` is the opposite: it exits 1 when the count
-is 0 (clean) and 0 when it finds a match. Never put it in the gate slot
-above, and never chain the next step on it with `&&`: a clean leak check
-then skips the commit. Read the count it prints, and commit only when the
-count is 0.
+A count check such as `grep -c` flips the gate's exit codes: it exits 1
+when the count is 0 (clean), 0 when it finds a match, and 2 on an error. So
+never put it in the gate slot above, and never chain the next step on it
+with `&&`: a clean check then skips the commit, and a check that finds a
+leak lets the commit run. Read the count it prints, and commit only when it
+is exactly 0:
+`n=$(git diff | grep -icE -- "$pattern"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+An empty count means the check failed.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.

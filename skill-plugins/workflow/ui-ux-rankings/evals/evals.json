@@ -56,6 +56,29 @@
         "Re-baselines on the new fixture and does not compare new scores with the placeholder rounds",
         "Does not go back to the placeholder fixture to win back the higher score"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Build a settings page for our web app with a list of 300 saved filters, light and dark mode, that works on phones.",
+      "expected_output": "Before writing UI the agent reads references/comfort-patterns.md and builds to it: 44 px targets, 14 px minimum text, the list capped with 'Show N more', state-specific controls with rare actions behind a menu, an accent checked for 4.5:1 contrast in both themes. It pins the comfort budget as gate tests (an axe + target + text + overflow audit over every view in both themes with reduced motion, and a tap-count test per everyday job), runs them, and reports the numbers.",
+      "expectations": [
+        "Reads references/comfort-patterns.md before writing UI",
+        "Adds an audit test over every view on phone and desktop, light and dark, with reduced motion",
+        "Adds a tap-count test with a budget per everyday job",
+        "Caps the 300-item list instead of rendering all of it",
+        "Reports measured numbers, not an opinion"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I redesigned the app. Is the new design actually better than the old one?",
+      "expected_output": "The agent takes before and after screenshots of the same views, gives a fresh agent A/B pairs in random order, keeps the key in a folder that agent does not read, scores the verdicts against the key, and reports 'preferred on N of M screens' with the judge's reasons, then lists the real issues the judge named. It never answers from its own opinion of its work.",
+      "expectations": [
+        "Before/after screenshots of the same views",
+        "A/B order randomized; the judge never sees the key",
+        "Reports preference as N of M screens, scored against the key",
+        "Lists the issues the judge named and which are real"
+      ]
     }
   ]
 }

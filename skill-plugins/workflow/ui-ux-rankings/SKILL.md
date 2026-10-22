@@ -6,8 +6,9 @@ description: >
   keyboard, Reduce motion and dark scheme, readability, Nielsen's heuristics, task time (KLM),
   Lighthouse, performance at real scale, and a design panel that rates the look as ten design-award
   sites would. Use for "rate my UI", "UX audit", "make it look modern", "iterate on the UI until it
-  scores N", or before shipping a page. Don't use for one Lighthouse run alone (use
-  web-quality-audit) or for creative direction from scratch (use frontend-design).
+  scores N", before shipping a page, and before building or reshaping any UI (build to its comfort
+  budget from the start). Don't use for one Lighthouse run alone (use web-quality-audit) or for
+  creative direction from scratch (use frontend-design).
 ---
 
 # UI and UX rankings
@@ -18,10 +19,22 @@ third-party audits it wraps (axe-core, Lighthouse via `web-quality-audit`, the V
 themes, focus hidden under sticky bars, Reduce motion, phone readability, task time, behavior at
 real scale, and a design rating.
 
+## Build to the budget from the start
+
+Before you write UI, read [references/comfort-patterns.md](references/comfort-patterns.md) and
+build to it: a home view that opens on what needs the user, touch targets of at least 44 px, text of
+at least 14 px, one add button everywhere, state-specific controls with rare actions behind "⋯",
+capped lists, friendly dates, and an accent picked by measured contrast in both themes. Pin the
+comfort budget as a test in the repo's gate: no serious axe problem, no touch target under 44 px,
+no text under 14 px, no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work instead of finding all of it.
+
 ## 0. Serve the page with realistic, synthetic data
 
 Rankings lie on toy data. Build the page from a fixture as large as real use (a long list, a full
 book, a thousand items) and serve it on 127.0.0.1. Never point the tools at private user data.
+After the synthetic rankings pass, open the main views once on a scratch copy of the owner's real
+data, read-only and local (never sent anywhere, screenshots never committed). Real data finds what
+fixtures hide: 100+ item lists, shouting ALL-CAPS titles, crowded queues.
 
 ## 1. Set up the tools once
 
@@ -54,6 +67,7 @@ The expert rankings have no script. Score them by hand and write the numbers dow
 | Task time (KLM) | K .28 s, P 1.1 s, B .1 s, M 1.35 s per step; time the 4 to 8 most common tasks; report the sum |
 | Scale | bytes and time a phone loads for the largest realistic data set (Playwright `response` sizes, or Lighthouse LCP and total byte weight) |
 | Design panel | three blind rater subagents, [references/design-panel.md](references/design-panel.md), from the `shots` screenshots; never self-scored |
+| Preference vs before | one fresh agent gets before/after screenshots per view as A/B pairs in random order; the key stays in a folder it does not read; report "preferred on N of M screens" and fix the issues it names |
 
 ## 3. One round per ranking
 
@@ -73,6 +87,9 @@ expert rankings meet their targets, and the design panel reaches its target (def
 
 Add one regression test that pins what each round fixed (the markup and CSS hooks), and a table in
 the project's agent guide: ranking, before → after. Name what was tried and dropped, and why.
+Pin the comfort budget itself as gate tests: one audit test over every view (phone and desktop,
+light and dark, reduced motion, after the view loaded), and one tap-count test that asserts each
+everyday job's budget.
 
 ## Rules
 
@@ -82,3 +99,7 @@ the project's agent guide: ranking, before → after. Name what was tried and dr
 - Report the design panel as blind agents' judgment against public criteria, not as an award; never
   report a score the changing agent gave its own work.
 - Add no feature the product does not need; a look change keeps every measured ranking where it was.
+- Audit the settled screen: run axe with reduced motion after the view loaded. A view that is
+  fading in reads as low contrast and fails at random.
+- In UI tests, wait for the state you branch on (`await expect(nav).toBeVisible()`); `isVisible()`
+  does not wait, and a loading screen sends the helper down the wrong path.

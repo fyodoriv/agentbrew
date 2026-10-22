@@ -294,6 +294,19 @@
 
 ## P3
 
+- [ ] Propose the comfort budget to the third-party frontend-design skill
+  - **ID**: frontend-design-comfort-budget
+  - **Tags**: skills, design, third-party
+  - **Details**: `frontend-design` (anthropics/claude-plugins-official) drives creative direction but says nothing about comfort: touch targets of at least 44 px, text of at least 14 px, contrast-checked accents in both themes, a home view that opens on what needs the user, and capped lists. On sidequest (2026-10-22) those rules took audit findings from 60 to 0, cut taps per everyday job by a third, and won a blind comparison on 16 of 17 screens. They now live in our own `ui-ux-rankings` (`references/comfort-patterns.md`), which `docs/shared-rules.md` loads for all UI work. Propose a short "comfort floor" section upstream, with this data, through the `report-upstream` skill.
+  - **Files**: none in this repo (upstream proposal); `skill-plugins/workflow/ui-ux-rankings/references/comfort-patterns.md` is the source text
+  - **Output**: docs
+  - **Acceptance**: the upstream issue or PR is filed after the owner approves the exact text, or this task records why it was not filed.
+  - **Hypothesis**: with a comfort floor in frontend-design, a fresh UI built with it alone has no touch target under 44 px and no text under 14 px on a phone.
+  - **Measurement**: `rankings.cjs all` on a page built by a fresh agent with only frontend-design loaded.
+  - **Success**: no touch target under 44 px and no text under 14 px.
+  - **Pivot**: if upstream declines, keep it in ui-ux-rankings only and close this task.
+  - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
+
 - [ ] Make verify:changed run only the matching tests for task-queue and eval-only diffs
   - **ID**: verify-changed-docs-only-fast
   - **Tags**: perf, gate, retro

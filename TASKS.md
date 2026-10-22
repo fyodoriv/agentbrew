@@ -294,6 +294,19 @@
 
 ## P3
 
+- [ ] Propose an artifact-design note for goal reports with before/after screenshots
+  - **ID**: artifact-design-goal-report-shots
+  - **Tags**: skills, retro, third-party
+  - **Details**: Retro of the 2026-10-22 sidequest UI goal. `artifact-design` is a third-party (Anthropic) skill, so the change goes upstream as a proposal, not an edit. A goal report with before/after screenshots cost three tries. Two things went wrong: Playwright `setContent` cannot load `file://` images, and full-page phone screenshots must be cropped to the device viewport (iPhone 13 = 390x664), or the fixed tab bar lands mid-image. Proposed note for the skill: "For a goal report, embed before/after screenshots as JPEG data URIs cropped to the device viewport (open the PNG itself, set width and height:auto, then clip), about 100 KB each."
+  - **Files**: none in this repo (upstream proposal); `skill-plugins/workflow/run-goal/evals/evals.json` eval 99 covers the run-goal side
+  - **Output**: docs
+  - **Acceptance**: the proposal is sent upstream, or the note lives in a user-owned skill that wraps artifact-design.
+  - **Hypothesis**: with the note, a screenshot report takes 1 try instead of 3.
+  - **Measurement**: tries to a correct crop in the next goal report with screenshots (session transcript).
+  - **Success**: 1 try.
+  - **Pivot**: if no upstream channel takes it, add the note to run-goal's references/retro.md instead and close this task.
+  - **Anchor**: run-goal retro 2026-10-22; Basili, Caldiera, Rombach 1994 (GQM).
+
 - [ ] Count time spent waiting on a person apart from tool time in agent-perf
   - **ID**: agent-perf-separate-human-wait
   - **Tags**: perf, agents, metrics

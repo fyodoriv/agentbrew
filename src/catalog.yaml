@@ -547,6 +547,12 @@ skills:
     category: workflow
     recommended: false
 
+  - name: watch-issues
+    description: "Keeps watching repos: each pass lists new issues, unblocked tasks, and red PRs, ships each fix, and repeats on a schedule (/loop)."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
   - name: grind-report
     description: "Analyze taskgrind marathon logs, score each repo, find root causes, and file tasks. Don't use for live debugging of a running grind."
     source: fyodoriv/agentbrew

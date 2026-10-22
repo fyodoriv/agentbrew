@@ -60,6 +60,41 @@ describe("checkForAutoUpgrade", () => {
     process.argv[1] = origArgv1;
   });
 
+  it("still checks when 'npx' is only part of a folder name", () => {
+    const origArgv1 = process.argv[1];
+    process.argv[1] = "/x/wt/speed-up-npx-biome/dist/cli.js";
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockExecFileSync.mockImplementation((cmd, args) => {
+      const argsArr = args as string[];
+      if (cmd === "npm" && argsArr?.includes("view")) return "99.0.0\n";
+      if (cmd === "npm" && argsArr?.includes("prefix")) return "/usr/local/lib/node_modules\n";
+      return "";
+    });
+
+    checkForAutoUpgrade();
+
+    expect(mockExecFileSync).toHaveBeenCalledWith("npm", ["view", "agentbrew", "version"], expect.anything());
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("npm i -g agentbrew"));
+    spy.mockRestore();
+    process.argv[1] = origArgv1;
+  });
+
+  it("does nothing when running from the Windows npx cache", () => {
+    const origArgv1 = process.argv[1];
+    process.argv[1] = "C:\\Users\\me\\AppData\\Local\\npm-cache\\_npx\\abc123\\node_modules\\agentbrew\\dist\\cli.js";
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    checkForAutoUpgrade();
+
+    expect(mockExecFileSync).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    process.argv[1] = origArgv1;
+  });
+
   it("writes cache after checking npm", () => {
     mockExecFileSync.mockReturnValue("99.0.0\n");
     vi.spyOn(console, "log").mockImplementation(() => {});

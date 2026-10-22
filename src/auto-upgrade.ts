@@ -56,9 +56,14 @@ function getCurrentVersion(): string {
   }
 }
 
+// npx runs packages from the npm cache folder `_npx` (for example
+// ~/.npm/_npx/<hash>/node_modules/...). Match that whole path segment, so a
+// folder name such as `speed-up-npx-biome` does not count.
+const NPX_CACHE_SEGMENT = /[\\/]_npx[\\/]/;
+
 function isNpxRun(): boolean {
   const execPath = process.argv[1] ?? "";
-  return execPath.includes("npx") || execPath.includes("_npx");
+  return NPX_CACHE_SEGMENT.test(execPath);
 }
 
 function isGlobalInstall(): boolean {

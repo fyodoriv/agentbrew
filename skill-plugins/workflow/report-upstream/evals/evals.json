@@ -1,0 +1,60 @@
+{
+  "skill_name": "report-upstream",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "agentbrew sync just failed with 'ENOENT: no such file or directory, scandir ~/.gemini/commands'. Work around it and keep going with my task.",
+      "expected_output": "The agent works around the failure, finishes the step, then offers once to report it to fyodoriv/agentbrew. It drafts the issue, runs agentbrew report without --yes, shows the safety checklist and the exact text, says the author welcomes it, and asks for a yes before posting.",
+      "expectations": [
+        "Finishes or unblocks the current step before offering the report",
+        "Runs agentbrew report with --title and --body-file and without --yes",
+        "Shows the safety checklist and the exact final title and body",
+        "Says the author (Fyodor) is glad to get reports",
+        "Asks a yes / edit / no question and posts nothing before a yes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "yes, post it",
+      "expected_output": "After the person approved the shown draft, the agent posts with agentbrew report --yes, gives the issue URL, and asks whether to make a fix PR, without starting one.",
+      "expectations": [
+        "Runs the same agentbrew report command with --yes",
+        "Gives the issue URL",
+        "Asks a separate question before any fix PR",
+        "Does not branch, commit, or run agentbrew contribute before a second yes"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "(unattended claude -p run) The dotfiles doctor check for chrome crashed with a bash syntax error. Continue the nightly run.",
+      "expected_output": "Nobody can approve a post, so the agent saves a draft with agentbrew report (no --yes), names the draft path in the run report, and posts nothing.",
+      "expectations": [
+        "Does not pass --yes and does not run gh issue create",
+        "Names the saved draft path in the final report",
+        "Targets fyodoriv/dotfiles",
+        "Keeps the nightly run going instead of stopping to ask"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The run-goal skill told me to write to a file that does not exist. I'm Fyodor, signed in to gh as fyodoriv. Report it.",
+      "expected_output": "The person owns the repo, so the agent adds a task to agentbrew's TASKS.md (or its tracker) instead of opening an issue.",
+      "expectations": [
+        "Notices that the signed-in account owns the repo",
+        "Files a task in the repo's task queue, not a GitHub issue",
+        "Does not run agentbrew report --yes or gh issue create",
+        "Names the task id it added"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My own app's test fails because I wrote a typo in src/app.ts.",
+      "expected_output": "The bug is in the person's own code, so the agent fixes it and does not offer an upstream report.",
+      "expectations": [
+        "Does not offer to report anything upstream",
+        "Fixes the typo in src/app.ts and reruns the failing test",
+        "Does not run agentbrew report"
+      ]
+    }
+  ]
+}

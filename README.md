@@ -676,6 +676,11 @@ agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none]
 agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]
                                        Open a PR from this branch upstream
                                        (forks the repo when you lack push access)
+agentbrew report --title <t> --body-file <f> [--repo <owner/name>] [--yes] [--dry-run]
+agentbrew report --off | --on
+                                       Draft an issue for a tool's repo: scrub private
+                                       details, show the exact text, post only with --yes
+                                       (see CONTRIBUTING.md "Report problems and ideas")
 agentbrew classify <repo-path>         Classify a repo as solo or shared (downstream
                                        safety-rail input — minsky, etc.)
                                        Override file: ~/.config/agentbrew/repo-class.yaml

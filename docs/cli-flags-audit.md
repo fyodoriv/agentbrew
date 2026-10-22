@@ -56,6 +56,8 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--no-install` | opt-out | Opt-out of a default (install runs by default). |
 | `--no-prune` | opt-out | Opt-out of a default (sync prunes by default). |
 | `--no-recommended` | opt-out | Opt-out of a default (sync installs the recommended set by default). |
+| `--off` | opt-out | Offering upstream reports is the default; `agentbrew report --off` turns the offers off on this machine. |
+| `--on` | knob | Undoes `agentbrew report --off`; offers are already on by default. |
 | `--only` | knob | Limits sync to named modules; the default syncs all. |
 | `--output` | knob | Output file path. |
 | `--project` | knob | Scope choice (project Agentfile). |
@@ -67,6 +69,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--ref` | knob | Git ref for a source; input, not behavior. |
 | `--refresh-rules` | disruptive | Replaces edited catalog rule blocks; must stay explicit. |
 | `--replace` | disruptive | Overwrites existing items on import; unsafe as a default. |
+| `--repo` | knob | Names the repo to report to; the default is the upstream of the current checkout. |
 | `--rollback` | disruptive | Restores the last snapshot over current configs; must stay explicit. |
 | `--rules` | knob | Filters browse output to rules. |
 | `--schedule` | knob | Opts in to (or out of) the weekly metrics send; sending data must never be a default. |

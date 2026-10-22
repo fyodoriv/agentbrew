@@ -6,9 +6,10 @@ agentbrew is a Node.js CLI that syncs skills, MCP servers, rules, commands, and
 agent definitions to every supported AI coding agent. The canonical repo is
 `github.com/fyodoriv/agentbrew`, branch `main`. It is public.
 
-Read this file first. Then open only the doc that the routing table names. Do
-not read `README.md` end to end; it is the user manual. `CLAUDE.md` is a symlink
-to this file. The full docs map is [`docs/README.md`](docs/README.md).
+Bug or idea? Offer a [safe report](CONTRIBUTING.md#report-problems-and-ideas).
+
+Read this file first, then only the doc the routing table names. `README.md`
+is the user manual. `CLAUDE.md` links here. Docs map: [`docs/README.md`](docs/README.md).
 
 ## Commands
 
@@ -74,7 +75,7 @@ maps each rule to its check. Other files cite these numbers.
 14. Publishing outside `fyodoriv/agentbrew` (npm, releases, other repos, Slack, Jira) needs explicit approval in the current session.
 15. Never mock `expandHome` as identity in a test that writes files.
 
-Also: no counts of agents, skills, tests, or files in docs or comments (CI checks it).
+Also: no counts of agents, skills, tests, or files in docs or comments.
 Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 > Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!

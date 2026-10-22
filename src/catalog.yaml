@@ -306,6 +306,13 @@ skills:
     category: development
     rationale: "Makes goal-driven autonomous runs measurable and review-ready. The goal-set-loads-run-goal hook loads it on every /goal once it is installed."
 
+  - name: report-upstream
+    description: "Offers to report a tool's failures and improvement ideas as an issue on its repo: scrubs private details, shows the exact text, posts only after a yes."
+    source: fyodoriv/agentbrew
+    category: development
+    recommended: true
+    rationale: "Every user of agentbrew-managed tools can tell the authors what broke, safely and with consent; the always-loaded rule names this skill."
+
   - name: new-project
     description: "Starts a new repo with an agent-ready setup for a tool, a personal AI assistant, or a private side project: interview, stack pick (TS, Python, Rust), scaffold, and a deterministic setup score. Don't use for an existing repo (use the agent guide baseline) or a throwaway spike (use prototype)."
     source: fyodoriv/agentbrew

@@ -51,6 +51,16 @@ action. Preserve required formats and verbatim code, commands, logs, JSON, or
 user text. Add a code comment only when it clarifies the code; do not add one
 only for this rule.
 
+### Report tool problems upstream
+
+When agentbrew, dotfiles, careerbrew, or another tool with a "Report problems
+and ideas" section in its CONTRIBUTING.md fails, surprises you, or could work
+better, offer once to report it to that tool's repo. Its author is glad to get
+every report. Follow the `report-upstream` skill: scrub with
+`agentbrew report` (no `--yes`), show the safety checklist and the exact text,
+and post only after the person says yes. Offer a fix PR only after a second
+yes. Never offer when `agentbrew report --off` was run.
+
 ### Ambition with models
 
 Aim past the literal task on three axes. **Altitude**: ask for the goal

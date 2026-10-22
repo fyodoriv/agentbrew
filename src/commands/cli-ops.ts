@@ -7,6 +7,7 @@ import { measureContextBudget } from "../measure/context-budget.js";
 import { parseContextBudgetStaleDuration } from "../measure/context-budget-throttle.js";
 import { collectUsageMetrics, renderUsageShare, renderUsageText } from "../metrics/usage.js";
 import { runShare, type ShareResult } from "../metrics/weekly.js";
+import { report } from "../report.js";
 
 function resolveStaleDuration(value?: string): { ifStaleMs?: number; error?: string } {
   if (!value) return {};
@@ -157,4 +158,32 @@ export function registerOpsCommands(program: Command, version = "unknown"): void
         process.exitCode = 1;
       }
     });
+
+  program
+    .command("report")
+    .description("Draft an issue for the tool's repo: scrub private details, show the exact text, post only with --yes")
+    .option("--title <title>", "Issue title")
+    .option("--body-file <file>", "Markdown draft of the issue body")
+    .option("--repo <owner/name>", "Repo to report to (default: the upstream of this checkout)")
+    .option("--yes", "Post the issue; pass only after the person read the draft and said yes")
+    .option("--dry-run", "Show the checklist and draft; post nothing even with --yes")
+    .option("--off", "Stop agents from offering reports on this machine")
+    .option("--on", "Let agents offer reports again (they still ask before posting)")
+    .action(
+      (options: {
+        title?: string;
+        bodyFile?: string;
+        repo?: string;
+        yes?: boolean;
+        dryRun?: boolean;
+        off?: boolean;
+        on?: boolean;
+      }) => {
+        const result = report(options);
+        if (!result.ok) {
+          console.error(`agentbrew report: ${result.error}`);
+          process.exitCode = 1;
+        }
+      },
+    );
 }

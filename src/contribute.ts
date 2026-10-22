@@ -75,7 +75,7 @@ interface Step {
   args: string[];
 }
 
-function readRemotes(run: Runner, cwd: string): Map<string, string> {
+export function readRemotes(run: Runner, cwd: string): Map<string, string> {
   const remotes = new Map<string, string>();
   for (const line of run("git", ["remote", "-v"], cwd).stdout.split("\n")) {
     const [name, url, kind] = line.split(/\s+/);
@@ -85,7 +85,7 @@ function readRemotes(run: Runner, cwd: string): Map<string, string> {
 }
 
 /** Upstream = the `upstream` remote, else the fork parent of origin, else origin. */
-function resolveUpstream(run: Runner, cwd: string, remotes: Map<string, string>): string | undefined {
+export function resolveUpstream(run: Runner, cwd: string, remotes: Map<string, string>): string | undefined {
   const named = githubSlug(remotes.get("upstream") ?? "");
   if (named) return named;
   const originSlug = githubSlug(remotes.get("origin") ?? "");

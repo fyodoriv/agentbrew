@@ -2017,7 +2017,7 @@ rules:
     recommended: true
     rationale: "Local copies under the agent folders drift from their sources and never reach other machines or users. Extending the owning repo keeps one copy and lets everyone get the fix (#442)."
     content: |
-      Before you write a new skill, command, rule, or hook, search the installed sources (`agentbrew status --verbose`, `agentbrew catalog --search <word>`) and extend the closest one. Put reusable work in the owning repo, not in `~/.claude/` or another agent folder. When the owning repo is not yours, offer once to open an issue or a PR.
+      Before you write a new skill, command, rule, or hook, search the installed sources (`agentbrew status --verbose` lists their paths; search those folders and `agentbrew catalog --search <word>`) and extend the closest one. Put reusable work in the owning repo, not in `~/.claude/` or another agent folder. When the owning repo is not yours, offer once to open an issue or a PR.
 
   - name: pr-vision-trace
     description: "Add `## Vision trace` to PR bodies only when the repo has adopted the pr-vision-trace CI gate — never on enterprise GHE product repos."

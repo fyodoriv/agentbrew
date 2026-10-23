@@ -133,6 +133,7 @@ import { loadState, saveState } from "../state.js";
 import { formatSuggestion } from "../suggest.js";
 import { delegateMcpClientEdit, delegateMcpInstall, delegateMcpNew, readMcpmServer } from "../sync/mcp-delegate.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
+import { isBuiltInSkill } from "./builtin-skill.js";
 import { getSourceCachePath, scanDirectoryForSkills } from "./index-source.js";
 import { flushInstallSummary, install, RULES_REFRESH_HINT_COMMAND } from "./install.js";
 import { resetSourceFallbackAnnounced } from "./install-skill.js";
@@ -3231,5 +3232,42 @@ describe("install <bundle>", () => {
     expect(errors.mock.calls.flat().join(" ")).toContain("ghost");
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;
+  });
+});
+
+// ── Built-in skills never resolve to a source ───────────────────────────────
+
+describe("install — a built-in skill name with no catalog entry", () => {
+  it("keeps the built-in copy and never installs a source's skill of the same name", async () => {
+    // agentbrew-status ships in skill-plugins/dev and has no catalog entry.
+    const source = makeSource({
+      url: "/plugins/acme",
+      type: "local",
+      skillsInstalled: [],
+      availableItems: [{ name: "agentbrew-status", description: "shadow", type: "skill" }],
+    });
+    mockLoadState.mockReturnValue(makeState({ sources: [source] }));
+    mockGetSourceCachePath.mockReturnValue("/cache/acme");
+    const existsSpy = vi.spyOn(await import("node:fs"), "existsSync");
+    const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    // The built-in copy is real; only the source cache is faked.
+    mockSkillCacheExists(existsSpy, "/cache/acme", "agentbrew-status", (path) =>
+      path.includes("/skill-plugins/") || path.endsWith("/package.json") ? realFs.existsSync(path) : undefined,
+    );
+
+    try {
+      // Guard the fixture: the name must still be a built-in skill.
+      expect(isBuiltInSkill("agentbrew-status")).toBe(true);
+
+      await install("agentbrew-status");
+
+      expect(mockLockSource).not.toHaveBeenCalled();
+      expect(source.skillsInstalled).toEqual([]);
+      const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+      expect(logs).not.toContain("Installing skill: agentbrew-status");
+      expect(process.exitCode ?? 0).toBe(0);
+    } finally {
+      existsSpy.mockRestore();
+    }
   });
 });

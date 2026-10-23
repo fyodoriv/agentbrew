@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { isBuiltInSkill } from "../catalog/builtin-skill.js";
 import { getSourceCachePath, indexCachedSource } from "../catalog/index-source.js";
 import { ensureInstalledSkillsRegistered } from "../catalog/install-skill.js";
 import { logSkipped } from "../core/logger.js";
@@ -57,8 +58,14 @@ function indexRefreshedSource(state: AgentBrewState, source: Source, cachePath: 
   const items = indexCachedSource(source, cachePath);
   source.availableItems = items;
   if (!source.origin?.startsWith("team:")) return;
+  // A built-in skill name is never claimed: the built-in copy stays.
   const added = items.filter(
-    (i) => i.type === "skill" && i.recommended && !seen.has(i.name) && !source.skillsInstalled.includes(i.name),
+    (i) =>
+      i.type === "skill" &&
+      i.recommended &&
+      !seen.has(i.name) &&
+      !source.skillsInstalled.includes(i.name) &&
+      !isBuiltInSkill(i.name),
   );
   if (added.length === 0) return;
   source.skillsInstalled.push(...added.map((i) => i.name));

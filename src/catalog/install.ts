@@ -15,6 +15,7 @@ import type { AgentBrewState, Source } from "../types.js";
 import { ICON_INFO, ICON_SUCCESS } from "../ui/output.js";
 import { refreshInstalledSkills } from "../update.js";
 import { expandHome } from "../utils.js";
+import { isBuiltInSkill } from "./builtin-skill.js";
 import { findBundle, missingBundleMembers } from "./bundles.js";
 import {
   addRuleToSharedRules,
@@ -320,6 +321,12 @@ async function installFromCatalog(
   if (cliTool) {
     warnIfDeprecated(name, "CLI tool", cliTool);
     await installCliTool(cliTool);
+    return;
+  }
+  // A built-in skill resolves to its built-in copy only: a registry or a
+  // source that ships the same name must never replace it.
+  if (isBuiltInSkill(name)) {
+    installSummary.alreadyInstalled.push(name);
     return;
   }
   if (await tryInstallFromRegistry(catalog, name, dryRun)) return;

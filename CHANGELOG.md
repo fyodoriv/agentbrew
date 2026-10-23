@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** a built-in skill name with no catalog entry now resolves to
+  agentbrew's own copy. Before, `agentbrew install`, an Agentfile `skills:`
+  list, and `sync --pull` searched every source for it, so a source (a local
+  one ranks first) that shipped the same name replaced the built-in skill.
+  `sync --pull` no longer installs a team source's `recommended` skill with a
+  built-in name either. An explicit `install <name> --from <source>` still
+  replaces it.
 - `agentbrew init`, `sync`, `auto-sync install`, and `memory enable` with a
   scratch `HOME` no longer load, unload, enable, or restart the real user's
   launchd jobs (`com.agentbrew.check` and the memory daemons). launchd is per

@@ -77,7 +77,9 @@ function getCatalogPins(): CatalogPin[] {
 /**
  * The pin policy is catalog data: a stdio server whose catalog args name an
  * npm package at an exact version (`tasks-mcp@0.10.2`) is pinned, and the
- * sweep rewrites floating copies (`tasks-mcp`, `tasks-mcp@latest`) to it.
+ * sweep rewrites floating copies (`tasks-mcp`, `tasks-mcp@latest`) and exact
+ * pins older than the catalog's to it. Newer exact pins, ranges (`^0.5.0`),
+ * and tags (`@next`) are left alone on purpose.
  */
 export function pinsFromCatalog(servers: CatalogMcpServer[]): CatalogPin[] {
   return servers.flatMap((server) => {

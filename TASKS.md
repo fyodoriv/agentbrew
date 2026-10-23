@@ -286,7 +286,7 @@
   - **Files**: `src/catalog.yaml`, its tests
   - **Output**: code
   - **Acceptance**: with a key set, `agentbrew mcp probe --deep context7` is `ok`; with no key, the entry still starts and works within the free quota.
-  - **Hypothesis**: passing an optional API key drops context7 quota failures in the deep probe from every run after the quota resets late in the month to 0.
+  - **Hypothesis**: passing an optional API key drops context7 quota failures in the deep probe, which happen on every run once the free quota runs out, to 0. Each deep probe spends one free call (`resolve-library-id`); the 30-minute repair job never runs deep probes.
   - **Measurement**: `agentbrew mcp probe --deep --json context7` after the key is set.
   - **Success**: status `ok`.
   - **Pivot**: if an optional env var cannot stay unset safely, document the key as a manual `agentbrew mcp setup context7` step instead.

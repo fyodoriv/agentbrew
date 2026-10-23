@@ -43,10 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Drift repair now also raises an exact `tasks-mcp` pin older than the
-  catalog's (for example `tasks-mcp@0.5.0` left in VS Code settings). That
-  version's `list_tasks` walks the whole home folder, so `mcp probe --deep`
-  timed out under load. A newer exact pin stays as you set it.
+- Drift repair now also raises an exact pin of a catalog-pinned MCP package
+  that is older than the catalog's (for example `tasks-mcp@0.5.0` left in VS
+  Code settings). That version's `list_tasks` walks the whole home folder, so
+  `mcp probe --deep` timed out under load. A newer exact pin, a range, or a
+  tag stays as you set it.
 - `agentbrew sync` and `agentbrew status` now name a command you made in
   `~/.config/agentbrew/commands` when an Agentfile or plugin dir with the
   same name replaces it for your agents. Before, it was replaced silently.

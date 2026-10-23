@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { loadCatalog } from "../catalog/types.js";
 import {
   pinsFromCatalog,
   sweepOneJsonConfigForCatalogPins,
@@ -45,6 +46,14 @@ describe("pinsFromCatalog", () => {
     ]);
   });
 });
+
+/** A version newer than the catalog's tasks-mcp pin, whatever that pin is. */
+const NEWER = (() => {
+  const pin = pinsFromCatalog(loadCatalog().mcp_servers).find((p) => p.serverName === "tasks-mcp");
+  const version = pin?.args.at(-1)?.split("@").pop() ?? "0.0.0";
+  const [major = "0"] = version.split(".");
+  return `${Number(major) + 1}.0.0`;
+})();
 
 describe("sweepOneJsonConfigForCatalogPins", () => {
   let tmp: string;
@@ -124,7 +133,8 @@ describe("sweepOneJsonConfigForCatalogPins", () => {
   });
 
   it("keeps an exact pin newer than the catalog's", () => {
-    const original = { mcpServers: { "tasks-mcp": { command: "npx", args: ["-y", "tasks-mcp@0.11.0"] } } };
+    // Read from the live catalog, so this case stays newer when the pin moves.
+    const original = { mcpServers: { "tasks-mcp": { command: "npx", args: ["-y", `tasks-mcp@${NEWER}`] } } };
     const path = write("new-pin.json", original);
     expect(sweepOneJsonConfigForCatalogPins(path, "mcpServers", false)).toEqual({ fixedCount: 0, findings: [] });
     expect(read(path)).toEqual(original);

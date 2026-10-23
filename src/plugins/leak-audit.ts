@@ -15,6 +15,7 @@ import { join } from "node:path";
 import yaml from "js-yaml";
 import { sync as writeFileSync } from "write-file-atomic";
 import { readLock } from "../lock.js";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 import { readManifest } from "./manifest.js";
 import { pluginDir } from "./store.js";
 
@@ -77,8 +78,11 @@ const MAX_FILE_BYTES = 2_000_000;
 export function auditRepo(repoDir: string): LeakFinding[] {
   const patterns = loadLeakPatterns();
   if (patterns.length === 0) return [];
+  // The folder wins over a git hook's GIT_DIR, or the audit would list (and
+  // miss leaks in) the hook's repository instead of repoDir.
   const files = execFileSync("git", ["ls-files", "-z"], {
     cwd: repoDir,
+    env: cacheGitEnv(),
     encoding: "utf-8",
     maxBuffer: 64 * 1024 * 1024,
   })

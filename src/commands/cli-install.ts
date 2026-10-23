@@ -35,7 +35,7 @@ export async function applyAgentfileAndInstall(
   if (result.skillsToInstall.length > 0) {
     const { install: catalogInstall } = await import("../catalog/install.js");
     for (const skillName of result.skillsToInstall) {
-      await catalogInstall(skillName);
+      await catalogInstall(skillName, { skillOnly: true });
     }
   }
   // Install recommended set if requested

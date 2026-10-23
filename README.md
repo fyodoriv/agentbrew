@@ -71,7 +71,7 @@ agentbrew skills coverage --builtins      # require in-repo skill eval coverage
 agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
-**Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`.
+**Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
 
 **Pin a git install.** `agentbrew install --git <url> --ref <ref>` (also `mcp add --git`) checks out one exact commit:
 
@@ -398,7 +398,7 @@ The `Auto-repair` line in `agentbrew status` shows what the scheduler really doe
 - `failing` — the last run exited with an error. The line names the exit code and the log file.
 - `not run yet` or `unverified` — no run history exists yet, or agentbrew cannot read it (Windows Task Scheduler).
 
-Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. `agentbrew status --json` includes the same data in `autoRepair`.
+Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. launchd is per user, not per `HOME`: when `HOME` is not your home folder (a scratch `HOME` in a test or a sandbox), agentbrew never loads, unloads, enables, or restarts a launchd job, so your real jobs are untouched. `auto-sync install` still writes its plist under that `HOME`; `memory enable` skips its plists. `agentbrew status --json` includes the same data in `autoRepair`.
 
 **Which Node the job runs.** `agentbrew auto-sync install` writes a Node path that survives a Node upgrade. It uses, in order:
 

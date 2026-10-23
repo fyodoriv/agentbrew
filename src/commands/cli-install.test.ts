@@ -731,8 +731,8 @@ describe("applyAgentfileAndInstall", () => {
     } as unknown as ReturnType<typeof applyAgentfile>);
     await applyAgentfileAndInstall("/path/to/Agentfile.yaml");
     expect(mockInstall).toHaveBeenCalledTimes(2);
-    expect(mockInstall).toHaveBeenCalledWith("debug");
-    expect(mockInstall).toHaveBeenCalledWith("review");
+    expect(mockInstall).toHaveBeenCalledWith("debug", { skillOnly: true });
+    expect(mockInstall).toHaveBeenCalledWith("review", { skillOnly: true });
   });
 
   it("installs recommended set when requested", async () => {

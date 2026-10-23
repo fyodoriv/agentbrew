@@ -279,46 +279,33 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] The plugin leak audit and plugin scope check always read the folder they are given, even under a git hook
-  - **ID**: git-hook-env-plugin-audit-scope
-  - **Tags**: git, plugins
-  - **Details**: `auditRepo` in `src/plugins/leak-audit.ts` (`git ls-files`) and `repoIdOf` in `src/plugins/scope.ts` (`git remote get-url origin`) run git in a given folder with the raw process env. Under a git hook's `GIT_DIR` they read the hook's repository instead, so the leak audit can scan the wrong files and the scope check can name the wrong repo. Both are read-only. Inside a hook, `GIT_DIR` often names the same repository on purpose, so first check each caller: pass `cacheGitEnv()` from `src/mcp/git-ref.ts` only where the folder argument must win.
-  - **Files**: `src/plugins/leak-audit.ts`, `src/plugins/scope.ts`, their tests
+- [ ] `agentbrew` with a scratch HOME on Linux never changes the real user's crontab or systemd timer
+  - **ID**: scratch-home-linux-scheduler
+  - **Tags**: install, scheduler, safety
+  - **Details**: The macOS fix routes every `launchctl` change through `src/core/launchctl.ts`, which skips it when HOME is not the user's home folder. Linux has the same per-user problem: `src/sync/cron.ts` pipes a new table to `crontab -` (the real user's crontab, with scratch-HOME paths), and `src/sync/systemd.ts` runs `systemctl --user enable --now` and `disable --now agentbrew-check.timer`, which act on the real timer by name. Reuse the same HOME check (renamed for all schedulers) before each change.
+  - **Files**: `src/sync/cron.ts`, `src/sync/systemd.ts`, `src/core/launchctl.ts`, their tests
   - **Output**: code
-  - **Acceptance**: with `GIT_DIR` set to another repository, `auditRepo(dir)` lists the files of `dir` and `repoIdOf(dir)` returns the origin of `dir`.
-  - **Hypothesis**: making the folder argument authoritative drops audits and scope checks of the wrong repository under a hook from possible to 0.
-  - **Measurement**: a vitest case per function that sets `GIT_DIR` to a scratch repository and checks the result names the given folder.
-  - **Success**: both cases pass.
-  - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
-  - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
-
-- [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
-  - **ID**: init-scratch-home-launchd
-  - **Tags**: install, launchd, safety
-  - **Details**: Found while fixing dotfiles #293. A test run of `agentbrew init` and `sync` with `HOME` set to a scratch folder replaced 3 real launchd jobs (`com.agentbrew.check`, `com.agentbrew.mcp-memory`, `com.agentbrew.mcp-memory-maintain`) for the real user, pointing them at the scratch folder. The memory server was down for minutes. launchd is per user, not per HOME, so agentbrew must refuse to load a LaunchAgent whose paths are outside the real home, or skip launchd when HOME is not the user's home.
-  - **Files**: `src/sync/auto-sync.ts`, the memory service LaunchAgent code, their tests
-  - **Output**: code
-  - **Acceptance**: with HOME set to a scratch folder, `init` writes no LaunchAgent to the real user's launchd.
-  - **Hypothesis**: a HOME check before every launchctl call drops real jobs replaced by scratch runs from 3 to 0.
-  - **Measurement**: a vitest case with a fake `launchctl` and a scratch HOME.
-  - **Success**: no launchctl load of a scratch path.
-  - **Pivot**: if detection is unreliable, add an opt-in env var that tests set to disable launchd.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
-
-- [ ] `agentbrew install load-project-context` installs the built-in skill, or says which one it installs
-  - **ID**: catalog-rule-skill-name-clash
-  - **Tags**: catalog, skills, rules
-  - **Details**: Found by the #430 review. `load-project-context` is both a catalog rule (`src/catalog.yaml`, no `source:`) and a built-in skill in `skill-plugins/dev/`. `installFromCatalog` checks catalog skills, MCP servers, rules, and CLI tools before built-in skills, so `agentbrew install load-project-context` installs the rule, and an Agentfile `skills:` entry with that name does the same. A user who asks for the skill gets the rule and no message. No other catalog rule, MCP server, or CLI tool shares a name with a built-in skill today (four catalog skills do, with `source: built-in`, which is fine).
-  - **Files**: `src/catalog/install.ts`, `src/catalog.yaml`, `src/catalog/install.test.ts`, a catalog lint test
-  - **Output**: code
-  - **Acceptance**: `agentbrew install load-project-context` installs what the user asked for (or asks, in a terminal), an Agentfile `skills:` entry always installs the skill, and a catalog lint fails when a new rule, MCP server, or CLI tool takes a built-in skill's name (catalog skills with `source: built-in` are allowed).
-  - **Hypothesis**: resolving `skills:` entries to skills first and linting name clashes drops catalog names that install the wrong kind of item from 1 to 0.
-  - **Measurement**: `npx vitest run src/catalog/install.test.ts src/catalog/catalog.test.ts` with a case for `install("load-project-context")`, one for an Agentfile `skills: [load-project-context]`, and a catalog test that lists names shared between built-in skills and catalog rules, MCP servers, and CLI tools.
-  - **Success**: the skill installs for a `skills:` entry, and the lint finds 0 shared names (or only an allowlisted one with a reason).
-  - **Pivot**: if the rule and the skill must keep one name, rename the rule (for example `load-project-context-rule`) and keep an alias with a deprecation note.
-  - **Anchor**: #430 pre-merge review (2026-10-23).
+  - **Acceptance**: with HOME set to a scratch folder, `auto-sync install` and `uninstall` on Linux make no `crontab` write and no `systemctl --user` change.
+  - **Hypothesis**: the HOME check before each scheduler change drops real crontab or timer changes from scratch-HOME runs from possible to 0.
+  - **Measurement**: a vitest case with fake `crontab` and `systemctl` first on PATH and a scratch HOME.
+  - **Success**: the fakes record no change call.
+  - **Pivot**: if HOME detection is unreliable on Linux, read the home folder from `getent passwd`.
+  - **Anchor**: review of the PR for `init-scratch-home-launchd` (2026-10-23).
 
 ## P3
+
+- [ ] The catalog name lint covers bundles, and a skill-only dry run previews
+  - **ID**: catalog-name-lint-bundles-dry-run
+  - **Tags**: catalog, skills, tests
+  - **Details**: Found by the review of the `catalog-rule-skill-name-clash` PR. (1) `src/catalog/catalog-name-clash.test.ts` checks rules, MCP servers, and CLI tools, but not bundles; a bundle named like a built-in skill would win a bare `agentbrew install` the same way. (2) The skill-only branch of `installFromCatalog` (`src/catalog/install.ts`) skips `showCatalogDryRun`, so a future caller that passes `skillOnly` with `dryRun: true` would install a catalog skill for real. No caller does that today.
+  - **Files**: `src/catalog/catalog-name-clash.test.ts`, `src/catalog/install.ts`, `src/catalog/install.test.ts`
+  - **Output**: code
+  - **Acceptance**: the lint lists bundle names too, and `install(name, { skillOnly: true, dryRun: true })` previews a catalog skill without installing it.
+  - **Hypothesis**: unchecked kinds of catalog names that can shadow a built-in skill drop from 1 (bundles) to 0, and skill-only dry runs that install for real drop from possible to 0.
+  - **Measurement**: `npx vitest run src/catalog/catalog-name-clash.test.ts src/catalog/install.test.ts` with a bundle in the checked list and a skill-only dry-run case.
+  - **Success**: both cases pass.
+  - **Pivot**: if no skill-only dry-run caller ever appears, delete the dry-run case and keep a comment instead.
+  - **Anchor**: review of the `catalog-rule-skill-name-clash` PR (2026-10-23).
 
 - [ ] The run-goal skill stays well under the 500-line skill limit
   - **ID**: run-goal-size

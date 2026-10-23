@@ -70,6 +70,20 @@ describe("leak audit", () => {
     expect(findings).toEqual([{ file: "a.md", line: 2, plugin: "acme" }]);
   });
 
+  it("audits the given checkout, not the repo a git hook's GIT_DIR points at", () => {
+    install({ patterns: ["acme-internal"] });
+    const repo = repoWith({ "leak.md": "acme-internal\n" });
+    const hookRepo = repoWith({ "other.md": "fine\n" });
+    vi.stubEnv("GIT_DIR", join(hookRepo, ".git"));
+    // A pre-commit hook also sets GIT_INDEX_FILE; copy that env on purpose.
+    vi.stubEnv("GIT_INDEX_FILE", join(hookRepo, ".git", "index"));
+    try {
+      expect(auditRepo(repo)).toEqual([{ file: "leak.md", line: 1, plugin: "acme" }]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("is clean with no plugins installed", () => {
     expect(auditRepo(repoWith({ "a.md": "acme-internal" }))).toEqual([]);
   });

@@ -8,6 +8,7 @@
  * that host explicitly.
  */
 import { execFileSync } from "node:child_process";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 
 export const PUBLIC_HOSTS = ["github.com", "gitlab.com", "bitbucket.org", "codeberg.org"];
 
@@ -29,7 +30,13 @@ export function normalizeRemote(url: string): string {
 /** The repo id of the checkout at `dir`, or undefined when it has no origin. */
 export function repoIdOf(dir: string): string | undefined {
   try {
-    const url = execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, encoding: "utf-8", stdio: "pipe" });
+    // The folder wins over a git hook's GIT_DIR: the caller names the checkout.
+    const url = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd: dir,
+      env: cacheGitEnv(),
+      encoding: "utf-8",
+      stdio: "pipe",
+    });
     return normalizeRemote(url);
   } catch {
     return undefined;

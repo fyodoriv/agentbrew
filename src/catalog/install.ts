@@ -290,8 +290,15 @@ async function installFromCatalog(
   catalog: ReturnType<typeof loadCatalog>,
   name: string,
   dryRun: boolean,
-  local?: string,
+  opts: { local?: string; skillOnly?: boolean } = {},
 ): Promise<void> {
+  const { local, skillOnly = false } = opts;
+  // An Agentfile `skills:` entry names a skill: never a bundle, MCP server,
+  // rule, or CLI tool that happens to share the name.
+  if (skillOnly) {
+    await installSkillByName(state, catalog, name, { dryRun, local });
+    return;
+  }
   const bundle = findBundle(catalog, name);
   if (bundle) {
     await installBundle(state, catalog, bundle, dryRun);
@@ -315,12 +322,34 @@ async function installFromCatalog(
   if (rule) {
     warnIfDeprecated(name, "rule", rule);
     installRule(rule);
+    if (isBuiltInSkill(name)) {
+      console.log(
+        chalk.dim(`  ${name} is also a built-in skill; agentbrew always deploys it, so only the rule was installed.`),
+      );
+    }
     return;
   }
   const cliTool = (catalog.cli_tools ?? []).find((t) => t.name === name);
   if (cliTool) {
     warnIfDeprecated(name, "CLI tool", cliTool);
     await installCliTool(cliTool);
+    return;
+  }
+  await installSkillByName(state, catalog, name, { dryRun, local, checkCatalog: false });
+}
+
+/** Resolve `name` as a skill: catalog skill, then built-in, then registry, then sources. */
+async function installSkillByName(
+  state: NonNullable<ReturnType<typeof requireState>>,
+  catalog: ReturnType<typeof loadCatalog>,
+  name: string,
+  opts: { dryRun: boolean; local?: string; checkCatalog?: boolean },
+): Promise<void> {
+  const { dryRun, local, checkCatalog = true } = opts;
+  const skill = checkCatalog ? catalog.skills.find((s) => s.name === name) : undefined;
+  if (skill) {
+    warnIfDeprecated(name, "skill", skill);
+    await installSkill(skill, installSummary, local);
     return;
   }
   // A built-in skill resolves to its built-in copy only: a registry or a
@@ -368,6 +397,8 @@ export async function install(
     dryRun?: boolean;
     local?: string;
     refreshRules?: boolean;
+    /** The name comes from an Agentfile `skills:` list: resolve it as a skill only. */
+    skillOnly?: boolean;
   },
 ): Promise<void> {
   resetInstallSummary();
@@ -401,7 +432,10 @@ export async function install(
     return;
   }
 
-  await installFromCatalog(state, catalog, name, options?.dryRun ?? false, options?.local);
+  await installFromCatalog(state, catalog, name, options?.dryRun ?? false, {
+    local: options?.local,
+    skillOnly: options?.skillOnly,
+  });
   flushInstallSummary();
 }
 
@@ -439,7 +473,7 @@ export async function installSkills(names: readonly string[]): Promise<void> {
   if (!state) return;
   const catalog = loadCatalog();
   for (const name of names) {
-    await installFromCatalog(state, catalog, name, false);
+    await installFromCatalog(state, catalog, name, false, { skillOnly: true });
   }
 }
 

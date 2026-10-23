@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
 import { buildLaunchAgentPath, LAUNCHAGENT_LANG, resolveAgentBrewCliJsPath } from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
@@ -128,12 +128,12 @@ ${programArgsXml}
 }
 
 function loadPlist(plistPath: string): void {
-  execFileSync("launchctl", ["load", plistPath], { stdio: "pipe" });
+  runLaunchctl(["load", plistPath], { stdio: "pipe" });
 }
 
 function unloadPlist(plistPath: string): void {
   try {
-    execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe" });
+    runLaunchctl(["unload", plistPath], { stdio: "pipe" });
   } catch {
     // may not be loaded
   }
@@ -141,7 +141,7 @@ function unloadPlist(plistPath: string): void {
 
 function isPlistLoaded(label: string): boolean {
   try {
-    execFileSync("launchctl", ["print", `gui/${userInfo().uid}/${label}`], { stdio: "pipe" });
+    runLaunchctl(["print", `gui/${userInfo().uid}/${label}`], { stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -154,7 +154,7 @@ export function isLabelDisabledInLaunchctlOutput(output: string, label: string):
 
 function isPlistDisabled(label: string): boolean {
   try {
-    const output = execFileSync("launchctl", ["print-disabled", `gui/${userInfo().uid}`], {
+    const output = runLaunchctl(["print-disabled", `gui/${userInfo().uid}`], {
       encoding: "utf-8",
     });
     return isLabelDisabledInLaunchctlOutput(output, label);
@@ -187,7 +187,7 @@ function reconcilePlist(
   if (disabled) return { changed: contentChanged, loaded: false, disabled: true, reloaded: false };
   try {
     if (options.required) {
-      execFileSync("launchctl", ["enable", `gui/${userInfo().uid}/${label}`], { stdio: "pipe" });
+      runLaunchctl(["enable", `gui/${userInfo().uid}/${label}`], { stdio: "pipe" });
     }
     loadPlist(plistPath);
     const loaded = isPlistLoaded(label);
@@ -239,7 +239,7 @@ export interface MemoryLaunchAgentIdentity {
 export function memoryLaunchAgentIdentity(): MemoryLaunchAgentIdentity {
   let output: string;
   try {
-    output = execFileSync("launchctl", ["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
+    output = runLaunchctl(["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -278,6 +278,9 @@ export function installMemoryLaunchAgents(): {
 } {
   if (!memoryLaunchAgentSupported()) {
     return { installed: false, reason: "no boot persistence on non-macOS" };
+  }
+  if (!launchdTargetsThisHome()) {
+    return { installed: false, reason: "launchd not changed: HOME is not your home folder" };
   }
   const home = homedir();
   const logDir = memoryLaunchAgentLogDir();
@@ -320,9 +323,9 @@ export function uninstallMemoryLaunchAgents(): void {
 }
 
 export function kickstartMemoryDaemon(): boolean {
-  if (!memoryLaunchAgentSupported()) return false;
+  if (!memoryLaunchAgentSupported() || !launchdTargetsThisHome()) return false;
   try {
-    execFileSync("launchctl", ["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
+    runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
       stdio: "pipe",
     });
     return true;

@@ -1,9 +1,7 @@
 /** Scoped rules, step 7 of #208: repo host include/exclude, public hosts excluded by default. */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { normalizeRemote, repoAllowed, repoIdOf } from "./scope.js";
 
 describe("normalizeRemote", () => {
@@ -57,11 +55,11 @@ describe("repoAllowed", () => {
 describe("repoIdOf", () => {
   it("reads the origin remote of a checkout, and is undefined elsewhere", () => {
     const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
-    const dir = mkdtempSync(join(tmpdir(), "scope-repo-"));
+    const dir = fixtureDir("scope-repo-");
     execFileSync("git", ["init", "-q"], { cwd: dir, env });
     execFileSync("git", ["remote", "add", "origin", "git@git.acme.example:team/app.git"], { cwd: dir, env });
     expect(repoIdOf(dir)).toBe("git.acme.example/team/app");
-    expect(repoIdOf(mkdtempSync(join(tmpdir(), "not-repo-")))).toBeUndefined();
+    expect(repoIdOf(fixtureDir("not-repo-"))).toBeUndefined();
   });
 });
 
@@ -75,7 +73,7 @@ describe("agentbrew plugin rules", () => {
     try {
       const program = new Command().exitOverride();
       registerPluginCommands(program);
-      await program.parseAsync(["node", "t", "plugin", "rules", "--cwd", mkdtempSync(join(tmpdir(), "nr-"))]);
+      await program.parseAsync(["node", "t", "plugin", "rules", "--cwd", fixtureDir("nr-")]);
     } finally {
       console.log = log;
     }

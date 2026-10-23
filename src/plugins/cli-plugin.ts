@@ -10,7 +10,7 @@ import { pluginRulesFor } from "./contributions.js";
 import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
-import { addPlugin, listPlugins, removePlugin, rollbackPlugin } from "./store.js";
+import { applyAdd, listPlugins, planAdd, removePlugin, rollbackPlugin } from "./store.js";
 import { applyUpdate, planUpdate } from "./update.js";
 
 function fail(error: unknown): void {
@@ -29,17 +29,18 @@ export function registerPluginCommands(program: Command): void {
     .option("--signer <ssh-public-key>", "Trust this SSH key for the plugin (approved with the capabilities)")
     .action(async (spec: string, options: { yes?: boolean; signer?: string }) => {
       try {
+        // Fetch once: the install is the exact checkout shown for approval.
+        const plan = planAdd(spec, { signer: options.signer });
         let yes = options.yes === true;
         if (!yes && process.stdin.isTTY) {
-          // Dry pass prints the capabilities, then we ask once.
           try {
-            addPlugin(spec, { yes: false, signer: options.signer });
+            yes = await confirm({ message: "Approve these capabilities and install?", default: false });
           } catch (e) {
-            if (!(e instanceof Error && /need approval/.test(e.message))) throw e;
+            plan.discard();
+            throw e;
           }
-          yes = await confirm({ message: "Approve these capabilities and install?", default: false });
         }
-        const entry = addPlugin(spec, { yes, signer: options.signer });
+        const entry = applyAdd(plan, { yes });
         console.log(
           `${ICON_SUCCESS} Plugin ${entry.name} pinned at ${entry.commit.slice(0, 8)} (tree ${entry.tree.slice(0, 8)})`,
         );

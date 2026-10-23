@@ -565,7 +565,7 @@ agentbrew plugin remove acme
 - `agentbrew plugin policy <name> [--strict]` prints a managed-settings fragment for admins: the marketplace in `extraKnownMarketplaces` and `strictKnownMarketplaces`, the plugin in `enabledPlugins`, and with `--strict` also `strictPluginOnlyCustomization`. agentbrew never writes system policy.
 - Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
 
-- `plugin add` needs a ref. It fetches the tag to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code.
+- `plugin add` needs a ref. It fetches the tag to `~/.local/share/agentbrew/plugins/<name>`, validates the manifest, and runs no plugin code. It fetches once and installs the exact checkout it showed for approval, even if the tag moves while you answer.
 - It records the commit, tree hash, and capabilities hash under `plugins:` in `agentbrew.lock`.
 - `agentbrew sync` fails closed when a plugin checkout differs from its lock entry, including an uncommitted change.
 - On every `agentbrew sync`, skills and commands are read straight from the locked plugin checkout; nothing is copied into `shared-rules.md` or `state.yaml`, and removing a plugin removes them on the next sync. A plugin that drifted from its lock contributes nothing.

@@ -1,7 +1,6 @@
 /** Core leak audit and telemetry redaction: step 10 of #208. */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +18,7 @@ const { home, previousHome } = vi.hoisted(() => {
   return { home: dir, previousHome: previous };
 });
 
-import { fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
+import { fixtureDir, fixtureGit, fixtureKey, pluginFixture } from "../test-utils/plugin-fixture.js";
 import {
   auditRepo,
   LeakPatternError,
@@ -44,7 +43,7 @@ function install(patterns: unknown, name = "acme"): void {
 }
 
 function repoWith(files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "audit-repo-"));
+  const dir = fixtureDir("audit-repo-");
   fixtureGit(dir, "init", "-q");
   for (const [rel, body] of Object.entries(files)) writeFileSync(join(dir, rel), body);
   fixtureGit(dir, "add", ".");
@@ -123,11 +122,11 @@ describe("telemetry redaction", () => {
     writeRedactPatterns(state);
     expect(readFileSync(redactPatternsPath(state), "utf-8")).toBe("acme-secret-[a-z]+\n");
 
-    const secretRepo = join(mkdtempSync(join(tmpdir(), "p-")), "acme-secret-project");
+    const secretRepo = join(fixtureDir("p-"), "acme-secret-project");
     execFileSync("mkdir", ["-p", join(secretRepo, ".git")]);
     expect(JSON.parse(runHook(state, secretRepo)).project).toBe("redacted");
 
-    const plainRepo = join(mkdtempSync(join(tmpdir(), "p-")), "public-thing");
+    const plainRepo = join(fixtureDir("p-"), "public-thing");
     execFileSync("mkdir", ["-p", join(plainRepo, ".git")]);
     expect(JSON.parse(runHook(state, plainRepo)).project).toBe("public-thing");
   });
@@ -139,7 +138,7 @@ describe("telemetry redaction", () => {
   });
 
   it("prunes context-budget metric files older than the retention window", () => {
-    const dir = mkdtempSync(join(tmpdir(), "metrics-"));
+    const dir = fixtureDir("metrics-");
     const old = join(dir, "context-budget-2025-01-01.json");
     const fresh = join(dir, "context-budget-2026-10-19.json");
     const other = join(dir, "latest.json");

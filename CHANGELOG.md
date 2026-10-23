@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew config set claudePermissions keep` instead of editing
   `state.yaml` by hand, and the README's offline rows name
   `agentbrew config set skillInstallMode native`.
+- Interactive `plugin add` fetches the plugin once and installs the exact
+  checkout it showed for approval. Before, it fetched again after the prompt,
+  so a tag moved in between could install other code than the one approved.
 - **Security:** `agentbrew setup` never prints a secret value. Before, it
   printed the full `export` lines when you declined to save, showed the
   first and last 4 characters in its review, showed the current value as

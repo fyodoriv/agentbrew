@@ -41,7 +41,8 @@ describe("launchctl guard", () => {
 });
 
 // Files that spawn a shell running launchctl changes and check
-// launchdTargetsThisHome() before the spawn.
+// launchdTargetsThisHome() before the spawn. They are exempt from the shell
+// checks only; a direct launchctl spawn is flagged everywhere.
 const GUARDED_SHELL = new Set(["sync/launchagent.ts"]);
 const SPAWN = "(?:execFileSync|execFile|spawnSync|spawn|execSync|exec|execa)\\(";
 const CHANGE_VERB = "(?:load|unload|bootstrap|bootout|enable|disable|kickstart|kill|remove|submit)";
@@ -64,7 +65,7 @@ describe("launchctl call sites", () => {
         if (!name.endsWith(".ts") || name.endsWith(".test.ts") || path.endsWith(join("core", "launchctl.ts"))) continue;
         const text = readFileSync(path, "utf-8");
         const rel = relative(root, path);
-        if ((direct.test(text) || viaShell.test(text) || shellScript.test(text)) && !GUARDED_SHELL.has(rel)) {
+        if (direct.test(text) || ((viaShell.test(text) || shellScript.test(text)) && !GUARDED_SHELL.has(rel))) {
           offenders.push(rel);
         }
       }

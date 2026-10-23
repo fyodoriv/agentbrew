@@ -4,6 +4,10 @@
 // Log: ${XDG_STATE_HOME:-~/.local/state}/agentbrew/perf/YYYY-MM.jsonl
 // Tool row: {"project","ts","sid","tool","ms","ok","key","id","agent"}
 // Attempt row: {"project","ts","sid","ev":"attempt","tool","key","id","agent"}
+//   ("bg": true on tool and attempt rows marks a background Agent or Task
+//   launch. Its completion row comes when the worker ends, often in a later
+//   turn, so the launch counts as ran unless a denied row names it, and the
+//   worker's run time stays out of tool time, the ranking, and human wait.)
 // Denied row: {"project","ts","sid","ev":"denied","tool","key","id","agent"}
 // Turn row: {"project","ts","sid","ev":"turn"}
 // "id" (tool_use_id) pairs an attempt with its completion. An attempt with
@@ -99,6 +103,8 @@ function sessionRows(dir, sid, nowMs = Date.now()) {
 }
 
 const isToolRow = (row) => typeof row.ms === "number" && row.ev !== "turn";
+/** A background agent's completion row: its ms is the worker's run, not tool time. */
+const isBackground = (row) => row.bg === true;
 const isMainThread = (row) => row.agent === null || row.agent === undefined;
 const hasId = (row) => typeof row.id === "string" && row.id !== "";
 
@@ -134,7 +140,7 @@ export function humanWaits(rows) {
   }
   const waits = [];
   for (const row of rows) {
-    if (!isToolRow(row)) continue;
+    if (!isToolRow(row) || isBackground(row)) continue;
     const start = hasId(row) ? triedAt.get(`${row.sid}\u0000${row.id}`) : undefined;
     const end = Date.parse(row.ts);
     const gap = start === undefined || !Number.isFinite(end) ? 0 : end - row.ms - start;
@@ -189,12 +195,19 @@ export function pairCalls(rows, pairRows = rows) {
   }
   const done = new Set();
   const attempted = new Set();
+  const launched = new Set();
+  const denied = new Set();
   for (const row of pairRows) {
     if (!hasId(row)) continue;
     const call = `${row.sid}\u0000${row.id}`;
-    if (row.ev === "attempt") attempted.add(call);
-    else if (row.ev !== "denied" && isToolRow(row)) done.add(call);
+    if (row.ev === "attempt") {
+      attempted.add(call);
+      if (row.bg === true) launched.add(call);
+    } else if (row.ev === "denied") denied.add(call);
+    else if (isToolRow(row)) done.add(call);
   }
+  // A background launch ran unless it was denied.
+  for (const call of launched) if (!denied.has(call)) done.add(call);
   const byKey = new Map();
   let blocked = 0;
   let recorded = 0;
@@ -239,7 +252,7 @@ export function formatMs(ms) {
  */
 export function summarize(rows, pairRows = rows) {
   // A call over 30 min is human wait, not tool time (see humanWaits).
-  const tools = rows.filter((row) => isToolRow(row) && !isLongCall(row));
+  const tools = rows.filter((row) => isToolRow(row) && !isLongCall(row) && !isBackground(row));
   const main = tools.filter(isMainThread);
   const byKey = new Map();
   for (const row of tools) {
@@ -513,7 +526,7 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
     // Only consume whole lines; a half-written row waits for the next refresh.
     const cut = text.lastIndexOf("\n") + 1;
     for (const row of sessionRowsFromText(text.slice(0, cut), safeSid)) {
-      if (!isToolRow(row) || isLongCall(row)) continue;
+      if (!isToolRow(row) || isLongCall(row) || isBackground(row)) continue;
       if (isMainThread(row)) cache.toolMs += row.ms;
       if (row.ms > cache.slowMs) {
         cache.slowMs = row.ms;

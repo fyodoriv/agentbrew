@@ -11,6 +11,7 @@
 #   ${XDG_STATE_HOME:-$HOME/.local/state}/agentbrew/perf/YYYY-MM.jsonl
 # Tool row: {"project","ts","sid","tool","ms","ok","key","id","agent"}
 # Attempt row: {"project","ts","sid","ev":"attempt","tool","key","id","agent"} (PreToolUse)
+# Tool and attempt rows add "bg":true for an Agent or Task call with run_in_background.
 # Denied row: {"project","ts","sid","ev":"denied","tool","key","id","agent"} (PermissionDenied)
 # Turn row: {"project","ts","sid","ev":"turn"} (from UserPromptSubmit)
 # "id" is the tool_use_id. It pairs an attempt with its completion, so a

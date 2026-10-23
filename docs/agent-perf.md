@@ -83,6 +83,7 @@ Turn row:
 | `key` | The step key (below). |
 | `id` | Claude Code `tool_use_id`, kept only as an opaque pairing key (`[A-Za-z0-9_-]`). Rows written before this field existed have none. |
 | `agent` | `agent_type` when a subagent ran the call, else `null`. |
+| `bg` | `true` on the attempt and tool rows of an `Agent` or `Task` call with `run_in_background`. Absent otherwise. The tool row comes when the worker ends, often in a later turn; its `ms` is the worker's run time, so it stays out of tool time, the step ranking, and human wait. |
 
 ### Step key and privacy
 
@@ -184,7 +185,7 @@ per-project `blocked` count is never above the `--all` count.
 | Field | Meaning |
 |---|---|
 | `attempts` | Calls with an attempt or denied row. |
-| `blocked` | Attempts with no completion row (PostToolUse or PostToolUseFailure) of the same `sid` and `id`. The call never ran: a permission prompt, a hook block, or a denial. A call that is still running also counts until it ends. |
+| `blocked` | Attempts with no completion row (PostToolUse or PostToolUseFailure) of the same `sid` and `id`. The call never ran: a permission prompt, a hook block, or a denial. A call that is still running also counts until it ends. A background agent launch (`bg`) returns at once and its completion row comes when the worker ends, so it counts as ran unless a denied row names it. A hook-blocked background launch therefore does not count. |
 | `blockedKeys` | `blocked` by step key, most first: `[{ "key", "count" }]`. |
 | `callsWithId` | Calls with any row that has an `id`. |
 | `captureRate` | Calls with an attempt row ÷ `callsWithId`. `1` means every call that reached the log has its attempt recorded. `null` without `id` rows. |

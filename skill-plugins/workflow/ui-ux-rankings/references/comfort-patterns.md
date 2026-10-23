@@ -14,6 +14,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 | Serious or critical axe problems, every view | 0 |
 | Touch targets under 44 px on a phone | 0 |
 | Text under 14 px | 0 (body 16 px) |
+| Text that spills out of its box (an id over a narrow column, a number broken over two lines) | 0 |
 | Views that scroll sideways | 0 |
 | Taps per everyday job | a number per job, asserted (for example rate 1, vote 1, add 2) |
 
@@ -67,6 +68,16 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 
 ## Measuring right
 
+- **Check spills, not only scrolling.** Raising text to 14 px turns some overflow from "scrolls"
+  into "spills": an inline-block id runs over the next column, a number cell wraps "0.571" over
+  two lines. A sideways-scroll check sees neither. Count inline text wider than its nearest
+  block, and number cells whose text sits on more than one line (careerbrew, 2026-10-22: a blind
+  judge found both after the budget had passed).
+- **Audit the crowded state.** Run the budget after the steps that fill the views (a goal set,
+  cards graded), in the same order as the full suite. A fresh seed hid both spills above. The
+  tap-count test is the exception: it runs first, on fresh demo state.
+- **Turn each judge loss into a check.** When the blind judge prefers "before" on a screen, find
+  the cause, add a check that fails on it, revert the fix once to see the check fail, then fix.
 - **Audit the settled screen.** Run axe with reduced motion on, after the view has loaded. A view
   that is still fading in reads as low contrast and fails at random.
 - **Wait for the state, not for luck.** Playwright's `isVisible()` does not wait. Before a helper

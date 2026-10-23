@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] The perf review hook counts a background agent launch as a call that ran
-  - **ID**: perf-review-background-agent-ran
-  - **Tags**: perf, hooks, agents
-  - **Details**: On 2026-10-22 the Stop hook `hooks/checks/perf-task-review.sh` flagged four `agent:general-purpose` calls as "never ran this turn". All four were `Agent` calls with `run_in_background: true`; each started and later reported. A background launch returns at once and leaves no completion row in `perf-record.sh`, so the review counts it as blocked and forces an extra "Time review" round trip on every turn that dispatches a worker.
-  - **Files**: `hooks/checks/perf-record.sh`, `hooks/checks/perf-task-review.sh`, `hooks/checks/perf-task-review.test.sh`
-  - **Output**: code
-  - **Acceptance**: a turn whose only "missing" rows are background agent launches gets no "never ran" line, and a real blocked call still does.
-  - **Hypothesis**: recording the launch result for background agents drops false "never ran" flags on dispatch turns from about 1 per turn to 0.
-  - **Measurement**: `bash hooks/checks/perf-task-review.test.sh` with a fixture session of 4 background launches and 1 denied call.
-  - **Success**: 0 false flags, the denied call still flagged.
-  - **Pivot**: if the hook cannot see the launch result, drop `Agent` calls with `run_in_background` from the blocked count by name.
-  - **Anchor**: session 4c0513ff (2026-10-22) agent-perf report; perf-review skill.
-
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli

@@ -7,8 +7,7 @@
  * plugin path covers (step 6, "one refresh path").
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,7 +41,7 @@ import { invalidateState, loadState } from "../state.js";
 import { computeRulesDiff } from "../sync/rules-sync.js";
 import { getSkillSources } from "../sync/skills-sync.js";
 import { runSyncParallel } from "../sync-runner.js";
-import { fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
+import { fixtureDir, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import type { AgentBrewState } from "../types.js";
 
 const CONFIG_DIR = join(home, ".config", "agentbrew");
@@ -179,7 +178,7 @@ describe("stale overlay state (Problem 2) — one refresh path from the locked p
     const before = pluginRulesFor("claude-code", REPO);
     const cwd = process.cwd();
     try {
-      process.chdir(mkdtempSync(join(tmpdir(), "elsewhere-")));
+      process.chdir(fixtureDir("elsewhere-"));
       expect(pluginRulesFor("claude-code", REPO)).toBe(before);
     } finally {
       process.chdir(cwd);

@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the ssh command, so a private SSH repo fails fast instead of waiting
   on a passphrase or host-key prompt (plink and putty commands are left
   alone, since they do not take `-o`).
+- The `perf-task-review` Stop hook no longer counts a background agent
+  launch (`Agent` with `run_in_background`) as a call that never ran, and a
+  worker's run time no longer counts as tool time in the turn its result
+  lands in. Turns that dispatch workers are no longer asked for a time
+  review for them. A denied launch is still flagged; a background launch
+  that a hook blocks now counts as ran.
 - `install.sh run --keep-claude-permissions` saves the setting with
   `agentbrew config set claudePermissions keep` instead of editing
   `state.yaml` by hand, and the README's offline rows name

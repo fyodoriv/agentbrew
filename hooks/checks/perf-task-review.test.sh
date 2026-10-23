@@ -45,6 +45,12 @@ attempt() { # $1 sid, $2 key, $3 id
 done_row() { # $1 sid, $2 key, $3 id
   printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","tool":"Bash","ms":10,"ok":true,"key":"%s","id":"%s","agent":null}\n' "$1" "$2" "$3" >>"$LOG"
 }
+bg_launch() { # $1 sid, $2 id: a background Agent launch (its attempt row only)
+  printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","ev":"attempt","tool":"Agent","key":"agent:general-purpose","id":"%s","agent":null,"bg":true}\n' "$1" "$2" >>"$LOG"
+}
+denied() { # $1 sid, $2 key, $3 id
+  printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","ev":"denied","tool":"Bash","key":"%s","id":"%s","agent":null}\n' "$1" "$2" "$3" >>"$LOG"
+}
 turn() { printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"%s","ev":"turn"}\n' "$1" >>"$LOG"; }
 run_hook() { # $1 input json; prints stdout, sets RC file
   printf '%s' "$1" | bash "$SCRIPT" 2>/dev/null
@@ -120,6 +126,28 @@ attempt long "cd <path>" v3
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active":false}')"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
 check "Test 8 (time + blocked in one reason)" "$(case "$REASON" in (*"6m40s in tools"*"3 tool calls never ran"*) echo 0 ;; (*) echo 1 ;; esac)"
+
+# Session "dispatch": 4 background Agent launches (no completion row) and 1 denied call.
+turn dispatch
+for n in 1 2 3 4; do bg_launch dispatch "w$n"; done
+attempt dispatch "git push" w5
+denied dispatch "git push" w5
+# A background launch that was denied still counts as never ran.
+turn bgdenied
+bg_launch bgdenied x1
+printf '{"project":"p","ts":"2026-10-15T12:00:00Z","sid":"bgdenied","ev":"denied","tool":"Agent","key":"agent:general-purpose","id":"x1","agent":null}\n' >>"$LOG"
+
+# Test 9: background launches count as ran; only the denied call is flagged.
+OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"dispatch","stop_hook_active":false}')"
+check "Test 9a (4 background launches + 1 denied → below MIN_BLOCKED 3: $OUT)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+OUT="$(AGENTBREW_PERF_REVIEW_MIN_BLOCKED=1 run_hook '{"hook_event_name":"Stop","session_id":"dispatch","stop_hook_active":false}')"
+REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
+check "Test 9b (denied call still flagged: $REASON)" "$(case "$REASON" in (*"1 tool calls never ran"*"git push 1x"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 9c (no agent launch flagged)" "$(case "$REASON" in (*"agent:"*) echo 1 ;; (*) echo 0 ;; esac)"
+
+# Test 10: a denied background launch is still flagged.
+OUT="$(AGENTBREW_PERF_REVIEW_MIN_BLOCKED=1 run_hook '{"hook_event_name":"Stop","session_id":"bgdenied","stop_hook_active":false}')"
+check "Test 10 (denied background launch flagged: $OUT)" "$(printf '%s' "$OUT" | jq -e '.reason|contains("agent:general-purpose 1x")' >/dev/null 2>&1 && echo 0 || echo 1)"
 
 echo ""
 echo "perf-task-review.sh: $PASS passed, $FAIL failed"

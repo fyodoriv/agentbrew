@@ -15,6 +15,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 | Touch targets under 44 px on a phone | 0 |
 | Text under 14 px | 0 (body 16 px) |
 | Text that spills out of its box (an id over a narrow column, a number broken over two lines) | 0 |
+| Raw ISO dates in app text (code, typed values, and the owner's imported notes excepted) | 0 |
 | Views that scroll sideways | 0 |
 | Taps per everyday job | a number per job, asserted (for example rate 1, vote 1, add 2) |
 
@@ -42,7 +43,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
   under every date.
 - **Cap long lists** at the top 10 to 15 items, then a "Show N more" button. Real lists (100+
   items) hide this need from the demo data.
-- **Friendly dates** ("Tue Mar 12", "Apr 5–7", "in 3 days"), never ISO strings in the UI. Read
+- **Friendly dates** ("Tue Mar 12", "Apr 5–7", "in 3 days"), never ISO strings in the UI (same exceptions as the budget row). Read
   ISO dates as calendar days, not shifted by the browser's time zone.
 - **Empty states shrink.** An empty month or section is one quiet dashed line, not a full card.
 - **Tidy source text at intake.** For example, title-case shouting ALL-CAPS titles in one place,
@@ -51,7 +52,10 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 ## Touch, type and color
 
 - **Inline links get an invisible tap area:** `display: inline-block; padding: 12px 0;
-  margin: -12px 0`. The link reaches 44 px without moving the layout.
+  margin: -12px 0`. The link reaches 44 px without moving the layout. Give it `vertical-align:
+  top`, or a list bullet sits beside the link's last line. A link inside a sentence needs the
+  height only (WCAG 2.5.8 exempts it): a 44 px minimum width pushed a short word away from its
+  comma ("Goals ,").
 - **Icon-only buttons** are 44 × 44 px and carry an `aria-label`. Flex rows shrink small buttons:
   give them `flex: none`.
 - **Tiles with a hint line** get `aria-label` (the name) plus `aria-describedby` (the hint), so the
@@ -91,5 +95,15 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 - **Look at real data last,** read-only, on a scratch copy of the owner's data served locally. Never
   send it anywhere, and never commit its screenshots. Large real lists, ALL-CAPS titles and
   crowded "needs you" queues showed up only there.
-- **Crop phone screenshots to the device viewport** (iPhone 13 = 390 × 664) for reports.
-  Full-page shots put fixed bars mid-image.
+- **Take phone screenshots at the device viewport** (iPhone 13 = 390 × 664) for reports.
+  Full-page shots put fixed bars mid-image, and a sticky phone header lands on top of the content
+  in every full-page and element picture: keep the phone header static. Take report screenshots
+  at capture time (`page.screenshot()` without `fullPage`); cropping afterwards with image tools
+  cost three tries and was dropped.
+- **Review the whole picture set after the gate,** not a sample: a fresh agent reads every
+  approved picture for cut-off text, ISO dates, doubled lines, and missing spaces. Each miss is
+  a gap in a check or in the seed: a goal approved before the check ran hid an ISO date, and a
+  flex link dropped the space before a date ("Plan forMon Oct 19"). Approved pictures can be
+  stale under `--update-snapshots=changed`: when one looks wrong, redraw the set with `=all`.
+- **Fixtures say what the code says.** A hand-written answer in a picture test ("Missed" listing
+  one of two missed criteria) reads as a bug: copy the real function's output shape.

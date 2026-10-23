@@ -5,9 +5,11 @@
 
 **One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. Companies ship private skills, rules, MCP servers, and hooks as signed plugins.
 
-**Install with your AI agent (one step):** open Claude Code (or Codex) and say:
+**Install or update with your AI agent (one step):** open Claude Code (or Codex) and say:
 
-> Install agentbrew by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md
+```text
+Install or update agentbrew on this machine by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md (it updates an existing clone). Then run `agentbrew sync` so every agent gets the current rules. Audit the skills and commands already on this machine against these repos and propose adopt or merge for each one. From now on, extend these repos instead of building local copies. At the end, list anything that could work better and offer an issue or PR for each.
+```
 
 The agent explains what will change, asks your preferences, backs up your current agent settings, installs, heals drift, and restores the backup by itself if anything critical fails. Undo later with `bash scripts/install.sh restore`. Details: [`INSTALL.md`](INSTALL.md).
 

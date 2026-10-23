@@ -20,7 +20,7 @@ describe("run-goal evals", () => {
   it("cover a stale repo gate in a 'get PR to green' goal (#445)", () => {
     const cases = evals.filter((e) => /get .*to green/i.test(e.prompt) && /stale/i.test(e.prompt));
     expect(cases).toHaveLength(1);
-    expect(cases[0]?.expectations.join(" ")).toMatch(/no code edit/i);
+    expect(cases[0]?.expectations.join(" ")).toMatch(/no code edits/i);
   });
 
   it("keep eval ids unique", () => {

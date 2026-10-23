@@ -106,15 +106,30 @@ check_repo() {
     [ "$n" -gt 0 ] && say unpushed "$n commit(s) on $current"
   fi
 
-  local b ahead merged
+  local b ahead merged fork pid back base_pids
+  # Patch ids of the base's recent commits: a squash merge is one of them.
+  base_pids="$(git -C "$top" log -p --no-merges --format='commit %H' -n 1000 "origin/$base" 2>/dev/null | git -C "$top" patch-id --stable | cut -d' ' -f1)"
   while IFS= read -r b; do
     [ -n "$b" ] && [ "$b" != "$base" ] || continue
     # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
     case "$b" in tasks-claims | gh-pages | dependabot/* | renovate/*) continue ;; esac
     ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
     [ "$ahead" -gt 0 ] || continue
-    # A squash-merged branch keeps its commits: skip it when merging it would
-    # leave the base unchanged (needs git 2.38+; older git reports it).
+    # A squash-merged branch keeps its commits: skip it when its whole diff is
+    # one commit on the base that no later commit reverts (still true after the
+    # base changes the same lines), or when merging it would leave the base
+    # unchanged (needs git 2.38+).
+    fork="$(git -C "$top" merge-base "origin/$base" "$b" 2>/dev/null)" || fork=""
+    pid=""
+    back=""
+    if [ -n "$fork" ]; then
+      pid="$(git -C "$top" diff "$fork" "$b" | git -C "$top" patch-id --stable | cut -d' ' -f1)"
+      back="$(git -C "$top" diff "$b" "$fork" | git -C "$top" patch-id --stable | cut -d' ' -f1)"
+    fi
+    # More copies of the change than reverts of it: a revert of a revert counts as re-applied.
+    if [ -n "$pid" ] && [ "$(grep -cx "$pid" <<<"$base_pids")" -gt "$(grep -cx "$back" <<<"$base_pids")" ]; then
+      continue
+    fi
     if merged="$(git -C "$top" merge-tree --write-tree "origin/$base" "$b" 2>/dev/null)" &&
       [ "$merged" = "$(git -C "$top" rev-parse "origin/$base^{tree}")" ]; then
       continue

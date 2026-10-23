@@ -81,6 +81,46 @@ describe("wrap-up open-work.sh", () => {
     expect(r.status).toBe(0);
   });
 
+  it("skips a squash-merged branch after main changes the same lines", () => {
+    // A three-way merge of the branch then conflicts with main's newer lines; its whole diff still matches the squash commit.
+    const work = repo("squashed-then-moved");
+    git(work, "checkout", "-q", "-b", "feat/done");
+    writeFileSync(join(work, "a.txt"), "a\nb\n");
+    git(work, "commit", "-qam", "feat: b");
+    writeFileSync(join(work, "a.txt"), "a\nb\nc\n");
+    git(work, "commit", "-qam", "feat: c");
+    git(work, "push", "-q", "-u", "origin", "feat/done");
+    git(work, "checkout", "-q", "main");
+    git(work, "merge", "-q", "--squash", "feat/done");
+    git(work, "commit", "-q", "-m", "feat: b and c (#1)");
+    writeFileSync(join(work, "a.txt"), "a\nB\nC\n");
+    git(work, "commit", "-qam", "fix: capitals (#2)");
+    git(work, "push", "-q", "origin", "main");
+    git(work, "checkout", "-q", "-b", "feat/open");
+    writeFileSync(join(work, "a.txt"), "a\nB\nC\nd\n");
+    git(work, "commit", "-qam", "feat: d");
+    const r = run(work);
+    expect(r.out).not.toContain("feat/done");
+    expect(r.out).toContain("feat/open");
+    expect(r.status).toBe(1); // feat/open is open work
+  });
+
+  it("lists a squash-merged branch again after main reverts it", () => {
+    const work = repo("squashed-then-reverted");
+    git(work, "checkout", "-q", "-b", "feat/undone");
+    writeFileSync(join(work, "u.txt"), "u\n");
+    git(work, "add", "u.txt");
+    git(work, "commit", "-q", "-m", "feat: u");
+    git(work, "push", "-q", "-u", "origin", "feat/undone");
+    git(work, "checkout", "-q", "main");
+    git(work, "merge", "-q", "--squash", "feat/undone");
+    git(work, "commit", "-q", "-m", "feat: u (#1)");
+    git(work, "revert", "--no-edit", "HEAD");
+    git(work, "push", "-q", "origin", "main");
+    const r = run(work);
+    expect(r.out).toContain("feat/undone");
+  });
+
   it("asks the remote for its default branch when origin/HEAD is not set", () => {
     const work = repo("trunk");
     git(work, "checkout", "-q", "-b", "trunk");

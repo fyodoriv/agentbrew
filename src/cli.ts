@@ -427,6 +427,15 @@ export function buildProgram(): Command {
   registerCoreCommands(program);
   registerConfigCommand(program);
   program
+    .command("audit-skills")
+    .description("List local skills and commands no source owns, each marked merge, merge?, or adopt")
+    .option("--json", "Output as JSON")
+    .option("--into <repo>", "The repo to adopt items into (named on each adopt line)")
+    .action(async (options: { json?: boolean; into?: string }) => {
+      const { showSkillAudit } = await import("./audit-skills.js");
+      showSkillAudit(options);
+    });
+  program
     .command("work")
     .description("Print the day plan for /work: checkup steps, the machine rule, watch mode, and end of day")
     .option("--json", "Output as JSON")

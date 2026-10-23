@@ -19,6 +19,9 @@ export function installFakeTools(
   const bin = join(dir, "bin");
   mkdirSync(bin);
   const log = join(dir, "calls.log");
+  for (const key of [...tools, ...Object.keys(exitCodes)]) {
+    if (!/^[\w. -]+$/.test(key)) throw new Error(`fake tool name or key must be plain: ${key}`);
+  }
   for (const tool of tools) {
     const cases = Object.entries(exitCodes)
       .filter(([key]) => key === tool || key.startsWith(`${tool} `))

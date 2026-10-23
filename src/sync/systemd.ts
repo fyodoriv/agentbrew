@@ -70,7 +70,7 @@ export async function installSystemdTimer(): Promise<void> {
   writeFileAtomicSync(getSystemdTimerPath(), buildSystemdTimer(), "utf-8");
 
   if (!userSchedulersTargetThisHome()) {
-    console.log(`${ICON_SUCCESS} systemd units written; systemd not changed, because HOME is not your home folder.`);
+    console.log(chalk.yellow("systemd units written; systemd not changed, because HOME is not your home folder."));
     console.log(`  Timer: ${getSystemdTimerPath()}`);
     return;
   }
@@ -117,6 +117,10 @@ export async function uninstallSystemdTimer(): Promise<void> {
     // Best effort
   }
 
+  if (!userSchedulersTargetThisHome()) {
+    console.log(chalk.yellow("systemd units removed; systemd not changed, because HOME is not your home folder."));
+    return;
+  }
   console.log(`${ICON_SUCCESS} systemd timer uninstalled.`);
 }
 

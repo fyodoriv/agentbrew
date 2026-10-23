@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
+import { probeLaunchctl } from "../core/launchctl.js";
 import { logSkipped } from "../core/logger.js";
+import { probeSystemctlUser } from "../core/user-scheduler.js";
 import { extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
 import { isLabelDisabledInLaunchctlOutput } from "../memory/launchagent.js";
 import { autoRepairOptedOut } from "../settings.js";
@@ -173,16 +175,6 @@ export function parseSystemctlShow(output: string): { lastRunAt?: string; lastEx
 
 // ── Probes ───────────────────────────────────────────────────────
 
-/** Run a probe command. Returns undefined when it could not run (missing binary or timeout). */
-function runProbe(command: string, args: string[]): { status: number; stdout: string } | undefined {
-  const result = spawnSync(command, args, { encoding: "utf-8", timeout: PROBE_TIMEOUT_MS });
-  if (result.error || result.status === null) {
-    logSkipped(`sync/auto-repair-health/${command}`, result.error);
-    return undefined;
-  }
-  return { status: result.status, stdout: result.stdout };
-}
-
 function latestMtime(paths: string[]): string | undefined {
   let latest: number | undefined;
   for (const path of paths) {
@@ -208,11 +200,11 @@ function launchAgentEvidence(): AutoRepairEvidence {
   const missingProgram = extractPlistProgramArguments(plist).find((arg) => arg.startsWith("/") && !existsSync(arg));
 
   const domain = `gui/${userInfo().uid}`;
-  const probe = runProbe("launchctl", ["print", `${domain}/${LAUNCHAGENT_LABEL}`]);
+  const probe = probeLaunchctl(["print", `${domain}/${LAUNCHAGENT_LABEL}`], PROBE_TIMEOUT_MS);
   const loaded = probe === undefined ? undefined : probe.status === 0;
   const exit = probe?.status === 0 ? parseLaunchctlPrint(probe.stdout) : {};
   const lastRunAt = latestMtime([stdoutPath, stderrPath]);
-  const disabledProbe = loaded === false ? runProbe("launchctl", ["print-disabled", domain]) : undefined;
+  const disabledProbe = loaded === false ? probeLaunchctl(["print-disabled", domain], PROBE_TIMEOUT_MS) : undefined;
   const disabled =
     disabledProbe?.status === 0 ? isLabelDisabledInLaunchctlOutput(disabledProbe.stdout, LAUNCHAGENT_LABEL) : undefined;
 
@@ -229,18 +221,12 @@ function launchAgentEvidence(): AutoRepairEvidence {
 }
 
 function systemdEvidence(): AutoRepairEvidence {
-  const active = runProbe("systemctl", ["--user", "is-active", SYSTEMD_TIMER]);
+  const active = probeSystemctlUser(["is-active", SYSTEMD_TIMER], PROBE_TIMEOUT_MS);
   const loaded = active === undefined ? undefined : active.stdout.trim() === "active";
-  const show = runProbe("systemctl", [
-    "--user",
-    "show",
-    SYSTEMD_SERVICE,
-    "--timestamp=unix",
-    "-p",
-    "ExecMainExitTimestamp",
-    "-p",
-    "ExecMainStatus",
-  ]);
+  const show = probeSystemctlUser(
+    ["show", SYSTEMD_SERVICE, "--timestamp=unix", "-p", "ExecMainExitTimestamp", "-p", "ExecMainStatus"],
+    PROBE_TIMEOUT_MS,
+  );
   const history = show?.status === 0 ? parseSystemctlShow(show.stdout) : {};
   return {
     backend: "systemd",

@@ -1,4 +1,4 @@
-import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
+import { type ExecFileSyncOptions, execFileSync, spawnSync } from "node:child_process";
 import chalk from "chalk";
 import { homeIsUsersHome } from "./home-guard.js";
 
@@ -32,4 +32,16 @@ export function runLaunchctl(args: string[], options: ExecFileSyncOptions = {}):
   }
   const output = execFileSync("launchctl", args, { stdio: "pipe", ...options, encoding: "utf-8" });
   return String(output ?? "");
+}
+
+/**
+ * A read-only launchctl query that reports its exit status. Returns undefined
+ * when launchctl could not run (missing binary or timeout). Refuses verbs that
+ * change launchd, so a probe never needs the HOME guard.
+ */
+export function probeLaunchctl(args: string[], timeoutMs: number): { status: number; stdout: string } | undefined {
+  if (!READ_ONLY_VERBS.has(args[0] ?? "")) throw new Error(`probeLaunchctl is read-only; got "${args[0] ?? ""}"`);
+  const result = spawnSync("launchctl", args, { encoding: "utf-8", timeout: timeoutMs });
+  if (result.error || result.status === null) return undefined;
+  return { status: result.status, stdout: result.stdout };
 }

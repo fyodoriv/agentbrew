@@ -48,7 +48,21 @@ export function writeCrontabTable(table: string): SpawnSyncReturns<Buffer> | und
 }
 
 /**
- * The one owner of `systemctl --user` calls. Read-only verbs always run. A
+ * A read-only `systemctl --user` query that reports its exit status. Returns
+ * undefined when systemctl could not run (missing binary or timeout). Refuses
+ * verbs that change the user manager. The verb must be the first argument.
+ */
+export function probeSystemctlUser(args: string[], timeoutMs: number): { status: number; stdout: string } | undefined {
+  if (!SYSTEMCTL_READ_ONLY.has(args[0] ?? ""))
+    throw new Error(`probeSystemctlUser is read-only; got "${args[0] ?? ""}"`);
+  const result = spawnSync("systemctl", ["--user", ...args], { encoding: "utf-8", timeout: timeoutMs });
+  if (result.error || result.status === null) return undefined;
+  return { status: result.status, stdout: result.stdout };
+}
+
+/**
+ * The one owner of `systemctl --user` calls. The verb must be the first
+ * argument; a leading flag makes a read look like a change, so it is skipped. Read-only verbs always run. A
  * verb that changes the user manager (daemon-reload, enable, disable, start,
  * stop, ...) is skipped and returns undefined when HOME is not the user's
  * home folder.

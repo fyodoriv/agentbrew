@@ -28,7 +28,7 @@ function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
-function escape(name: string): string {
+function escapeRegExp(name: string): string {
   return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
@@ -40,16 +40,17 @@ export function schedulerCallSites(source: string): Array<"direct" | "shell" | "
 
   if (new RegExp(`${SPAWN}${CALL_SPAN}${SHELL_LITERAL}`).test(code)) kinds.add("shell");
   for (const match of code.matchAll(new RegExp(`(?:const|let|var)\\s+(\\w+)\\s*=\\s*${SHELL_LITERAL}`, "g"))) {
-    if (new RegExp(`${SPAWN}${CALL_SPAN}\\b${escape(match[1] ?? "")}\\b`).test(code)) kinds.add("shell");
+    if (new RegExp(`${SPAWN}${CALL_SPAN}\\b${escapeRegExp(match[1] ?? "")}\\b`).test(code)) kinds.add("shell");
   }
 
   for (const match of code.matchAll(new RegExp(`(?:const|let|var)\\s+(\\w+)\\s*=\\s*${TOOL_LITERAL}`, "g"))) {
-    if (new RegExp(`${SPAWN}\\s*${escape(match[1] ?? "")}\\b`).test(code)) kinds.add("variable");
+    if (new RegExp(`${SPAWN}\\s*${escapeRegExp(match[1] ?? "")}\\b`).test(code)) kinds.add("variable");
   }
   for (const match of code.matchAll(/function\s+(\w+)\s*\(\s*(\w+)/g)) {
     const [, wrapper = "", param = ""] = match;
-    const spawnsParam = new RegExp(`${SPAWN}\\s*${escape(param)}\\b`).test(code);
-    if (spawnsParam && new RegExp(`\\b${escape(wrapper)}\\(\\s*${TOOL_LITERAL}`).test(code)) kinds.add("variable");
+    const spawnsParam = new RegExp(`${SPAWN}\\s*${escapeRegExp(param)}\\b`).test(code);
+    if (spawnsParam && new RegExp(`\\b${escapeRegExp(wrapper)}\\(\\s*${TOOL_LITERAL}`).test(code))
+      kinds.add("variable");
   }
 
   return [...kinds];

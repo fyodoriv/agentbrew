@@ -34,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A failed `install --git` or `agentbrew mcp update` now exits 1. Before,
+  a refused ref, a clone or pull error, or a missing entrypoint printed an
+  error and exited 0. `mcp update` on a tag or commit pin now says that
+  agentbrew pulls only a branch pin and prints the install command that
+  moves the pin, instead of a network hint. A re-pin or update whose build
+  fails no longer registers the previous commit's build output (`dist/`):
+  a build that fails at a commit the cache has no build output from (no
+  successful build, and not a fresh clone of it) is a failed install, and
+  with no build script an entrypoint that the commit does not contain is
+  refused. agentbrew removes none of your files. A
+  cache cloned by an older agentbrew counts as unbuilt until one build
+  succeeds. `mcp update` before `agentbrew init` now exits 1 too.
 - **Security:** `install --git` and `mcp update` reuse a cached repo in
   `~/.config/agentbrew/mcp-repos/<name>` only when its `origin` is the
   requested repo. Before, a second `--git` URL under the same server name

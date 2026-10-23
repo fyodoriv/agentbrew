@@ -102,9 +102,13 @@ Clones the repo, builds if needed, auto-detects the entrypoint, prompts for env 
 agentbrew mcp add my-server --git https://github.com/org/my-mcp-server
 agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.2.0
 
-# Pull latest changes and re-sync
+# Pull latest changes and re-sync (a branch install only)
 agentbrew mcp update my-server
 ```
+
+`mcp update` follows only a branch pin. On a tag or commit pin, such as `--ref v1.2.0`,
+it exits 1. To move a tag or commit pin, run `mcp add` again with a new `--ref`:
+`agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.3.0`.
 
 Repos are cached at `~/.config/agentbrew/mcp-repos/<name>`. Entrypoint detection checks
 `dist/index.js`, `build/index.js`, `index.js`, `run_server.py`, `server.py`, and

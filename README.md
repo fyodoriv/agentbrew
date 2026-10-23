@@ -75,7 +75,11 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 - A short name is looked up as a tag first, then as a branch. A tag wins over a branch with the same name. To pin that branch, pass `--ref refs/heads/<name>`.
 - A full commit ID works: 40 hex, or 64 hex in a SHA-256 repo. A short commit ID, or another revision such as `HEAD~1`, is refused.
-- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit, and `mcp update` fails on it: run the install again with a new `--ref`.
+- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit: `mcp update` exits 1 on it and prints the install command, with `--ref <tag|branch|commit>`, that moves the pin.
+- A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew removes none of your files in the cache; after a re-pin whose build is refused, the cache stays at the new commit.
+- A build that fails at a commit the cache has no build output from counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it; a failed build at that commit may still use it.
+- With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
+- Known limit: when a successful build writes its output to a new place (`build/` instead of `dist/`), detection can still pick the old `dist/` first. Delete the old output dir in the cache.
 - A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
 - Each server's repo is cached at `~/.config/agentbrew/mcp-repos/<name>`, and that dir is reused only for the repo that cloned it. Another URL under the same name is refused, and so is a cache dir with no `origin` remote, a symlink, or a linked worktree. To keep both repos, install the new one under another name (`agentbrew install <other-name> --git <url>`). To replace it, delete the dir.
 - A trailing `.git` or `/` on a URL does not make it another repo, but the ssh and https forms of one repo do. A local path is recorded as an absolute one.

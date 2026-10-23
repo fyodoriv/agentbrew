@@ -70,6 +70,8 @@ describe("agentbrew-add-mcp skill contract", () => {
       "agentbrew mcp add my-server --git https://github.com/org/my-mcp-server",
       "agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.2.0",
       "agentbrew mcp update my-server",
+      "`mcp update` follows only a branch pin",
+      "To move a tag or commit pin, run `mcp add` again with a new `--ref`",
       "~/.config/agentbrew/mcp-repos/<name>",
       "Entrypoint detection checks",
       "package.json",
@@ -126,7 +128,7 @@ describe("agentbrew-add-mcp skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-add-mcp");
-    expect(evals.evals).toHaveLength(4);
+    expect(evals.evals).toHaveLength(5);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {
@@ -139,7 +141,7 @@ describe("agentbrew-add-mcp skill contract", () => {
     }
   });
 
-  it("covers public install, internal-overlay refusal, git promotion, and secret-refusal eval scenarios", () => {
+  it("covers public install, internal-overlay refusal, git promotion, tag-pin move, and secret-refusal eval scenarios", () => {
     requireTerms(
       [evalMatching(/Context7|live docs/i).prompt, expectationText(evalMatching(/Context7|live docs/i))].join("\n"),
       [/agentbrew install context7/i, /agentbrew sync/i, /status|delegated MCP tool/i, /generated configs directly/i],
@@ -159,6 +161,11 @@ describe("agentbrew-add-mcp skill contract", () => {
         expectationText(evalMatching(/GitHub repo as an MCP server|for the team if it works/i)),
       ].join("\n"),
       [/--git/i, /Tests or probes/i, /--ref|reproducible version/i, /catalog layer/i],
+    );
+
+    requireTerms(
+      [evalMatching(/pinned to v1\.2\.0/i).prompt, expectationText(evalMatching(/pinned to v1\.2\.0/i))].join("\n"),
+      [/--ref v1\.3\.0/i, /not .*`agentbrew mcp update`|`mcp update`.*cannot/i, /verif/i, /by hand/i],
     );
 
     requireTerms(

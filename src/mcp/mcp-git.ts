@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
 import { input } from "@inquirer/prompts";
 import chalk from "chalk";
@@ -18,6 +18,9 @@ import {
   CacheRefusal,
   cacheGitEnv,
   checkoutPinnedRef,
+  headCommit,
+  isDetachedHead,
+  isInHeadCommit,
   isLocalRepoPath,
 } from "./git-ref.js";
 import { extractEnvVars, isEnvVarResolved } from "./mcp-setup.js";
@@ -107,6 +110,12 @@ function updateCachedRepo(repoDir: string, gitUrl: string, gitRef?: string): voi
       // checkoutPinnedRef fetches only what the ref needs, so a moved tag never blocks it.
       checkoutPinnedRef(repoDir, gitRef, env);
     } else {
+      if (isDetachedHead(repoDir, env)) {
+        throw new CacheRefusal(
+          `${repoDir} is pinned to a tag or commit, and agentbrew pulls only a branch pin. ` +
+            `To move the pin or follow a branch, run \`agentbrew install ${basename(repoDir)} --git '${gitUrl}' --ref <tag|branch|commit>\`.`,
+        );
+      }
       execFileSync("git", ["fetch", "--tags"], { cwd: repoDir, env, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
       execFileSync("git", ["pull"], { cwd: repoDir, env, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
     }
@@ -183,14 +192,60 @@ export function resolveHeadSha(repoDir: string): string {
 
 // ── Build step ────────────────────────────────────────────────────────────────
 
+/** File in the cache's `.git` that names the commit the cache's build output comes from. */
+const BUILT_COMMIT_FILE = "agentbrew-built-commit";
+
+/** What `buildRepoIfNeeded` did, for deciding which build output belongs to HEAD. */
+export interface BuildOutcome {
+  /** A build script ran (`npm install` + `npm run build`). */
+  ran: boolean;
+  /** The build succeeded. */
+  ok: boolean;
+  /** Before this build, the cache's build output was known to come from the checked-out commit. */
+  headBuiltBefore: boolean;
+}
+
+/** Record HEAD as the commit the build output in `repoDir` comes from. */
+function recordBuiltCommit(repoDir: string): void {
+  try {
+    writeFileSync(join(repoDir, ".git", BUILT_COMMIT_FILE), `${headCommit(repoDir)}\n`);
+  } catch (e) {
+    logSkipped("mcp/mcp-git/recordBuiltCommit", e);
+  }
+}
+
+/** True when the cache's build output in `repoDir` is known to come from the checked-out commit. */
+function headWasBuilt(repoDir: string): boolean {
+  const head = headCommit(repoDir);
+  try {
+    return head !== "" && readFileSync(join(repoDir, ".git", BUILT_COMMIT_FILE), "utf-8").trim() === head;
+  } catch {
+    return false;
+  }
+}
+
+/** Forget which commit the build output comes from: it is from another commit now. */
+function forgetBuiltCommit(repoDir: string): void {
+  try {
+    unlinkSync(join(repoDir, ".git", BUILT_COMMIT_FILE));
+  } catch (e) {
+    logSkipped("mcp/mcp-git/forgetBuiltCommit", e);
+  }
+}
+
 /**
- * Run `npm install` + `npm run build` for a Node.js repo if a build script is present.
- * Emits a warning (instead of throwing) on failure so the install can continue with any
- * pre-built files that may already exist in the repo.
+ * Run `npm install` + `npm run build` for a Node.js repo if a build script is
+ * present. A failure is a warning here; the callers decide with
+ * {@link assertBuildUsable} whether pre-built files may run. No build output or user file is deleted.
+ * The record names the commit the cache's build output comes from: written
+ * after a successful build, and after any build of a fresh clone, whose files
+ * all come from HEAD.
  */
-export function buildRepoIfNeeded(repoDir: string): void {
+export function buildRepoIfNeeded(repoDir: string, freshClone = false): BuildOutcome {
+  const headBuiltBefore = headWasBuilt(repoDir);
+  const outcome: BuildOutcome = { ran: false, ok: false, headBuiltBefore };
   const packageJsonPath = join(repoDir, "package.json");
-  if (!existsSync(packageJsonPath)) return;
+  if (!existsSync(packageJsonPath)) return outcome;
 
   let hasBuildScript = false;
   try {
@@ -200,11 +255,14 @@ export function buildRepoIfNeeded(repoDir: string): void {
     hasBuildScript = Boolean(packageJson.scripts?.build);
   } catch (e) {
     logSkipped("mcp/mcp-git/Boolean", e);
-    return;
+    return outcome;
   }
 
-  if (!hasBuildScript) return;
+  if (!hasBuildScript) return outcome;
 
+  // At a new commit the record is stale until this build succeeds; a failed
+  // build must not let partial output pass as a later re-pin's own.
+  if (!headBuiltBefore) forgetBuiltCommit(repoDir);
   console.log(chalk.dim("  Running npm install + build..."));
   try {
     // cacheGitEnv: a build script that runs git (husky's prepare) must not act on a GIT_DIR repo.
@@ -216,10 +274,56 @@ export function buildRepoIfNeeded(repoDir: string): void {
       timeout: NPM_BUILD_TIMEOUT_MS,
     });
     execFileSync("npm", ["run", "build"], { cwd: repoDir, env, stdio: "pipe", timeout: NPM_BUILD_TIMEOUT_MS });
+    recordBuiltCommit(repoDir);
+    return { ...outcome, ran: true, ok: true };
   } catch (error) {
     const message = errorMessage(error);
-    console.log(chalk.yellow(`  ⚠ Build step failed: ${message}. Continuing with pre-built files.`));
+    console.log(chalk.yellow(`  ⚠ Build step failed: ${message}.`));
+    if (freshClone) recordBuiltCommit(repoDir);
+    return { ...outcome, ran: true, ok: false };
   }
+}
+
+/**
+ * Throw when the build failed at a commit the cache's build output is not
+ * known to come from: that output may come from another commit, even behind
+ * a tracked shim that loads it. A fresh clone holds only this commit's files,
+ * so its pre-built files may still run, and so may the output of an earlier
+ * successful build of this same commit.
+ */
+export function assertBuildUsable(repoDir: string, build: BuildOutcome, freshClone: boolean, gitUrl: string): void {
+  if (!build.ran || build.ok || freshClone || build.headBuiltBefore) return;
+  const head = headCommit(repoDir).slice(0, 12) || "HEAD";
+  throw new Error(
+    `The build failed at ${head}, and this cache has no build output known to come from it, so its output may come ` +
+      `from another commit. Nothing was registered or saved. The cache stays at ${head}, and a server registered ` +
+      "from it earlier runs these files. Fix the build, or pin a ref whose build works: " +
+      `\`agentbrew install ${basename(repoDir)} --git '${gitUrl}' --ref <ref>\`. To start over from a fresh clone, ` +
+      `move any files you keep in ${repoDir}, delete it, and run that install command.`,
+  );
+}
+
+/**
+ * Throw when no build ran and the entrypoint is neither in the checked-out
+ * commit nor output of a successful build of it: it is left over from a build
+ * at another commit (a commit that dropped its build script, for example).
+ */
+export function assertEntrypointUsable(
+  repoDir: string,
+  entrypoint: DetectedEntrypoint,
+  build: BuildOutcome,
+  freshClone: boolean,
+): void {
+  const script = entrypoint.args[0];
+  if (build.ran || freshClone || build.headBuiltBefore || !script) return;
+  const rel = relative(repoDir, script);
+  // git tree paths use `/` on every platform.
+  if (isInHeadCommit(repoDir, rel.split(sep).join("/"))) return;
+  const outside = rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+  const hint = outside ? "" : ` Delete ${script} and run the install again.`;
+  throw new Error(
+    `${script} is not in the checked-out commit, and no build of that commit made it: it is left over from an earlier build.${hint}`,
+  );
 }
 
 // ── Entrypoint detection ──────────────────────────────────────────────────────
@@ -307,6 +411,31 @@ export async function promptForMissingEnvVars(
 // ── Main install flow ─────────────────────────────────────────────────────────
 
 /**
+ * Build the cached repo and detect its entrypoint. Prints why and sets exit
+ * code 1 when there is none, or when a failed or skipped build would register
+ * output from another commit.
+ */
+function buildAndFindEntrypoint(
+  repoDir: string,
+  gitUrl: string,
+  freshClone: boolean,
+  missingHint: string,
+): DetectedEntrypoint | undefined {
+  const build = buildRepoIfNeeded(repoDir, freshClone);
+  try {
+    assertBuildUsable(repoDir, build, freshClone, gitUrl);
+    const entrypoint = detectEntrypoint(repoDir);
+    if (!entrypoint) throw new Error(missingHint);
+    assertEntrypointUsable(repoDir, entrypoint, build, freshClone);
+    return entrypoint;
+  } catch (error) {
+    console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
+    process.exitCode = 1;
+    return undefined;
+  }
+}
+
+/**
  * Install an MCP server from a git URL.
  * Clones the repo into the agentbrew cache, optionally builds it, detects the
  * entrypoint, prompts for any missing env vars, registers in state, and syncs
@@ -327,30 +456,26 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
   console.log(chalk.bold(`\nInstalling MCP server from git: ${chalk.cyan(gitUrl)}\n`));
 
   // 1. Clone or update the repo
+  const freshClone = !existsSync(repoDir);
   let clonedDir: string;
   try {
     clonedDir = cloneOrUpdateRepo(sourceUrl, serverName, options?.ref);
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
+    process.exitCode = 1;
     return;
   }
 
-  // 2. Build if a build script is present
-  buildRepoIfNeeded(clonedDir);
-
-  // 3. Detect entrypoint
-  const entrypoint = detectEntrypoint(clonedDir);
-  if (!entrypoint) {
-    const candidates = ENTRYPOINT_CANDIDATES.join(", ");
-    console.log(
-      chalk.red(
-        `  ✗ Could not detect entrypoint in ${clonedDir}.\n` +
-          `    Expected one of: ${candidates}\n` +
-          `    Use 'agentbrew install ${serverName} -c <command> -a <args...>' to add manually.`,
-      ),
-    );
-    return;
-  }
+  // 2-3. Build if a build script is present, then detect an entrypoint from this commit
+  const entrypoint = buildAndFindEntrypoint(
+    clonedDir,
+    sourceUrl,
+    freshClone,
+    `Could not detect entrypoint in ${clonedDir}.\n` +
+      `    Expected one of: ${ENTRYPOINT_CANDIDATES.join(", ")}\n` +
+      `    Use 'agentbrew install ${serverName} -c <command> -a <args...>' to add manually.`,
+  );
+  if (!entrypoint) return;
 
   console.log(chalk.dim(`  Detected entrypoint: ${entrypoint.command} ${entrypoint.args.join(" ")}`));
 
@@ -402,11 +527,15 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
 
   const { requireState, saveState } = await import("../state.js");
   const state = requireState();
-  if (!state) return;
+  if (!state) {
+    process.exitCode = 1;
+    return;
+  }
 
   const server = getStateServers(state).find((s) => s.name === serverName);
   if (!server) {
     console.error(chalk.red(`  ✗ MCP server '${serverName}' not found in state.`));
+    process.exitCode = 1;
     return;
   }
 
@@ -416,12 +545,14 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
         `  ✗ '${serverName}' was not installed from git.\n    'agentbrew mcp update' only updates git-installed servers.\n    Use 'agentbrew install' to reconfigure it manually.`,
       ),
     );
+    process.exitCode = 1;
     return;
   }
 
   console.log(chalk.bold(`\nUpdating ${chalk.cyan(serverName)} from git...\n`));
 
   const repoDir = join(GIT_CACHE_DIR, serverName);
+  const freshClone = !existsSync(repoDir);
   try {
     cloneOrUpdateRepo(server.gitUrl, serverName);
   } catch (error) {
@@ -432,16 +563,17 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
         chalk.dim("  Check the repo URL and your network connection, then retry with `agentbrew mcp update`."),
       );
     }
+    process.exitCode = 1;
     return;
   }
 
-  buildRepoIfNeeded(repoDir);
-
-  const entrypoint = detectEntrypoint(repoDir);
-  if (!entrypoint) {
-    console.error(chalk.red("  ✗ Could not detect entrypoint after update. Server config unchanged."));
-    return;
-  }
+  const entrypoint = buildAndFindEntrypoint(
+    repoDir,
+    server.gitUrl,
+    freshClone,
+    "Could not detect entrypoint after update. Server config unchanged.",
+  );
+  if (!entrypoint) return;
 
   const newSha = resolveHeadSha(repoDir);
   server.command = entrypoint.command;

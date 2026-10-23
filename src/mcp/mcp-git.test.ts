@@ -50,6 +50,9 @@ vi.mock("./git-ref.js", () => ({
   assertPinnedRef: vi.fn(),
   cacheGitEnv: vi.fn(() => CACHE_ENV),
   checkoutPinnedRef: vi.fn(),
+  headCommit: vi.fn(() => "abc1234"),
+  isDetachedHead: vi.fn(() => false),
+  isInHeadCommit: vi.fn(() => true),
   isLocalRepoPath: vi.fn(() => false),
 }));
 
@@ -468,6 +471,10 @@ describe("installMcpFromGit", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   it("logs error and returns when clone fails", async () => {
     mockExistsSync.mockReturnValue(false);
     mockSpawnSync.mockReturnValue({ status: 1, stderr: Buffer.from("auth error") } as ReturnType<typeof spawnSync>);
@@ -475,6 +482,7 @@ describe("installMcpFromGit", () => {
     await installMcpFromGit("https://github.com/org/my-mcp.git");
 
     expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
   });
 
   it("logs error and returns when no entrypoint is detected", async () => {
@@ -488,6 +496,7 @@ describe("installMcpFromGit", () => {
     await installMcpFromGit("https://github.com/org/my-mcp.git");
 
     expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
   });
 
   it("registers and syncs when entrypoint is found", async () => {
@@ -643,6 +652,10 @@ describe("updateMcpFromGit", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   it("returns early without logging when requireState returns undefined", async () => {
     mockRequireState.mockReturnValue(undefined);
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -652,6 +665,7 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).not.toHaveBeenCalled();
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -663,6 +677,7 @@ describe("updateMcpFromGit", () => {
     await updateMcpFromGit("nonexistent");
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not found in state"));
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -676,6 +691,7 @@ describe("updateMcpFromGit", () => {
     await updateMcpFromGit("my-server");
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("was not installed from git"));
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -736,6 +752,7 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("git fetch failed"));
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -790,6 +807,7 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Could not detect entrypoint after update"));
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 });

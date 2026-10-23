@@ -331,20 +331,20 @@
   - **Pivot**: if one fetch is not possible in the interactive flow, re-check the second fetch's tag object against the approved one and refuse a change.
   - **Anchor**: PR #403 (2026-10-22).
 
-- [ ] A failed `--git` install exits non-zero, and a re-pin never runs the old build
-  - **ID**: mcp-git-install-failure-exit-and-clean-build
-  - **Tags**: mcp, cli
-  - **Details**: Found by the round-2 and round-3 reviews of the `mcp-git-ref-exact` PR. (1) `installMcpFromGit` and `updateMcpFromGit` in `src/mcp/mcp-git.ts` print a clone, checkout, or pull error and return without `process.exitCode = 1`, so a refused `--ref --detach`, or `mcp update` on a tag or commit pin, exits 0 and a script cannot tell. The `mcp update` hint ("Check the repo URL and your network connection") is wrong for a pin; the README says to install again with a new `--ref`. (2) Re-pinning a cached repo keeps ignored build output such as `dist/`. When the new build fails, `buildRepoIfNeeded` continues "with pre-built files", and `detectEntrypoint` picks the old commit's `dist/index.js` while state records the new ref.
-  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git.test.ts`, `src/mcp/mcp-git-ref.test.ts`
-  - **Output**: code
-  - **Acceptance**: `agentbrew install --git <repo> --ref --detach` and `agentbrew mcp update <tag-pinned server>` exit 1 with the right hint, and a re-pin whose build fails never registers an entrypoint built from another commit.
-  - **Hypothesis**: setting the exit code and removing ignored build output before a re-pin drops silent failures (exit 0 on a refused ref; stale entrypoint after a failed build) from 2 to 0.
-  - **Measurement**: a vitest case for each: the exit code after a refused ref, and a cached repo with a stale `dist/index.js` whose new build fails.
-  - **Success**: both cases pass.
-  - **Pivot**: if removing ignored files deletes files users rely on, re-clone into a fresh dir and swap it in instead.
-  - **Anchor**: round-2 and round-3 reviews of the `mcp-git-ref-exact` PR (2026-10-22).
-
 ## P3
+
+- [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
+  - **ID**: mcp-git-repin-build-output
+  - **Tags**: mcp, cli
+  - **Details**: Left over from the `mcp-git-install-failure-exit-and-clean-build` PR. That PR refuses a failed build at a commit the cache never built, but two gaps remain, and both also exist on main. (1) A successful build that writes its output somewhere new (v1 builds `dist/index.js`, v2 builds `build/index.js`), or a build that writes nothing, leaves the old untracked output, and `detectEntrypoint` picks `dist/index.js` first. Three designs were tried in that PR's review. A built-commit record alone missed shims and moved output. Deleting ignored files before a build deleted users' OAuth tokens, `.pem` files, `.venv`, and files from global excludes. An mtime snapshot accepted stale files on a repeat run and refused incremental `tsc` builds whose entry file did not change. (2) A refused re-pin leaves the cache at the new commit, with that commit's `node_modules`, while the registered server still runs from the cache. (3) The PR refuses conservatively: a failed build on a non-fresh re-pin is refused even for a Python server with a side JS build or a committed `dist/`, and a cache from an older agentbrew counts as unbuilt until one build succeeds. A tracked shim whose commit drops its build script can still load old ignored output.
+  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`
+  - **Output**: code
+  - **Acceptance**: with v1 building `dist/index.js` and v2 building `build/index.js`, a v2 install registers `build/index.js` on every run; a refused re-pin leaves the cache at the commit the server was registered from; no user file in the cache (for example `token.json`) is deleted.
+  - **Hypothesis**: building a new commit in a fresh clone and swapping it in on success, carrying over only files the user lists, drops stale-output registrations and mixed-commit caches after a refused re-pin from 2 cases to 0.
+  - **Measurement**: vitest cases in `src/mcp/mcp-git-install.test.ts`: moved output dir (run twice), no-op build, and a refused re-pin followed by a check of the cache's HEAD.
+  - **Success**: all three cases pass, and the existing cases in that file still pass.
+  - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
+  - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
 
 - [ ] Every `git clone` of a user URL ends options before the URL
   - **ID**: git-clone-url-end-of-options

@@ -16,7 +16,8 @@ type Git = (...args: string[]) => string;
 
 /**
  * agentbrew refused to use a cache dir (not its own repo, another repo's
- * origin, a symlink). Retrying cannot help; the message says what to do.
+ * origin, a symlink, a pin that `mcp update` cannot pull). Retrying cannot
+ * help; the message says what to do.
  */
 export class CacheRefusal extends Error {}
 
@@ -184,6 +185,30 @@ export function assertOwnRepo(repoDir: string, env: NodeJS.ProcessEnv = cacheGit
 
 /** A `scheme://` prefix, the way git tells a URL from a path. */
 const SCHEME_URL = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
+
+/** True when HEAD in the cache is detached: a tag or commit pin, which `git pull` cannot follow. */
+export function isDetachedHead(repoDir: string, env: NodeJS.ProcessEnv = cacheGitEnv()): boolean {
+  return spawnSync("git", ["symbolic-ref", "--quiet", "HEAD"], { cwd: repoDir, env, stdio: "pipe" }).status === 1;
+}
+
+/** The commit at HEAD in the cache, or "" when git cannot read it. */
+export function headCommit(repoDir: string, env: NodeJS.ProcessEnv = cacheGitEnv()): string {
+  try {
+    return gitIn(repoDir, env)("rev-parse", "--verify", "HEAD");
+  } catch {
+    return "";
+  }
+}
+
+/** True when `file` (relative to the cache) is in the HEAD commit's tree. */
+export function isInHeadCommit(repoDir: string, file: string, env: NodeJS.ProcessEnv = cacheGitEnv()): boolean {
+  try {
+    gitIn(repoDir, env)("cat-file", "-e", `HEAD:${file}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** True when git reads `url` as a local path: no `scheme://`, and no `host:` before the first `/`. */
 export function isLocalRepoPath(url: string): boolean {

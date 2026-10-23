@@ -225,25 +225,10 @@ continue?". The user set a goal so that they can be away.
   at a time. Six workers without it each ran parallel suites, and a 10-core
   Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
   near 10 to 25. A timing taken without the lock is invalid: take it again.
-- Workflow agents: never send a message to an agent that still runs inside
-  a Workflow. The message starts a second copy of it in the same worktree,
-  and the two copies undo each other (one stashed the other's work). To
-  change a running workflow, edit the shared brief that later agents read
-  first, or stop the workflow.
-- Worker briefs name the files the main session owns. Workers never call
-  `update_plan` and never write the goal contract or retro file: they share
-  the session's paths, and one worker that loaded this skill overwrote the
-  main contract.
-- Merge steps rebase only before the first push. After a push, fix a
-  conflict by merging `origin/main` into the branch. A merge prompt that says
-  "rebase again" leads to a force-push, which the user's rules forbid.
-- Before you build a skill or command for a new request, search open PRs and
-  branches in the skill repos. Another session may build the same thing on
-  the same day: reuse it and drop your copy.
-- A Monitor runs in the sandbox, where `gh` can fail with a TLS error. Run
-  the poller as a background shell outside the sandbox that writes to a log,
-  and let the Monitor follow the log. The poller prints a line for every
-  failure, so silence never hides a dead poller.
+- Running parallel workers or workflows (worktrees, a merge queue, a watch
+  loop): read [references/parallel-workers.md](references/parallel-workers.md)
+  first. It covers messages to running agents, session-owned files, merges
+  after a push, scripted conflict fixes, and watch pollers.
 - When something pops up on the user's screen (a dialog, a window) and you
   trace which process started it, log the process and its parent chain.
   Never kill processes that you or your workers did not start. Killing them

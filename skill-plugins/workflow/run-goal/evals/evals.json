@@ -1304,6 +1304,21 @@
         "Before it counts the fix as done, the agent reads the fix review's output itself, not only the worker's report",
         "When no review of the fix PR ran, the agent does not count the fix as done; it runs the review, and if the PR already merged, it reviews the merged diff and sends the findings back as a new fix round"
       ]
+    },
+    {
+      "id": 114,
+      "prompt": "/goal keep on the lookup for new issues and implement them immediately (the agent already runs three workflows with parallel worktrees and a serialized merge queue; every merge to main makes the other open PRs show merge conflicts, and a stop hook blocks the turn while any PR conflicts)",
+      "expected_output": "The agent reads references/parallel-workers.md before steering the workers. To clear a conflict on a worker's PR it pushes only that worker's own merge commit as a fast-forward, never a merge of its own, and never force-pushes. When it resolves a conflict by script it keeps both sides only in append-only files; for the task queue it takes main's version and applies only the branch's own change, so finished tasks do not come back, and it strips all four git markers. It proposes one file per PR for the append-only learnings log because GitHub ignores merge=union. While a worker resolves a conflict, it waits on local git state with a Monitor instead of spinning on the stop hook. It stops at the first failed step of a commit chain. It reports issue-to-pickup and issue-to-merged-PR latency per item.",
+      "expectations": [
+        "Reads references/parallel-workers.md before steering parallel workers",
+        "Pushes only the worker's own merge commit as a fast-forward; no force-push",
+        "Task-queue conflicts: main's version plus the branch's own change, never keep-both",
+        "All four git conflict markers are stripped, the diff3 base line included",
+        "Proposes one file per PR for an append-only log that every PR touches",
+        "Waits on local worktree state with a Monitor while a worker resolves a conflict",
+        "Stops at the first failed step of a commit chain; no forced cleanup after a failure",
+        "Reports two latencies per picked-up item"
+      ]
     }
   ]
 }

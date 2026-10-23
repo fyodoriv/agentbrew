@@ -305,19 +305,6 @@
   - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
   - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
 
-- [ ] A built-in skill with no catalog entry never triggers a search of every source
-  - **ID**: builtin-skill-no-source-search
-  - **Tags**: skills, security
-  - **Details**: Found while fixing dotfiles #293. A `skills:` name that is a built-in skill but has no catalog entry is installed by searching every source, and a local source ranks first. So a plugin's source can replace a built-in skill. Built-in names should resolve to the built-in copy only.
-  - **Files**: `src/skills/` install resolution, its tests
-  - **Output**: code
-  - **Acceptance**: a source that ships a skill named like a built-in never replaces the built-in copy, on install or `sync --pull`.
-  - **Hypothesis**: resolving built-in names to the built-in copy drops built-in skills a source can shadow from all of them to 0.
-  - **Measurement**: a vitest case with a scratch source that ships a skill named like a built-in.
-  - **Success**: the built-in copy stays.
-  - **Pivot**: if some built-in must be overridable, require an explicit `source:` in the Agentfile entry.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
-
 - [ ] A command or agent name clash has one fixed winner and prints a warning
   - **ID**: command-agent-clash-order
   - **Tags**: sync, commands, agents

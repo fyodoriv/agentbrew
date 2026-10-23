@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** a built-in skill name with no catalog entry now resolves to
+  agentbrew's own copy. Before, `agentbrew install`, an Agentfile `skills:`
+  list, and `sync --pull` searched every source for it, so a source (a local
+  one ranks first) that shipped the same name replaced the built-in skill.
 - A command started from a git hook no longer runs plugin-store git commands
   (clone, checkout, tag and signature checks, drift checks) or local-source
   SHA lookups in the hook's repository: they drop `GIT_DIR`, `GIT_WORK_TREE`,

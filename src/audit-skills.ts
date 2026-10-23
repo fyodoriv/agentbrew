@@ -49,37 +49,53 @@ function specificPrefix(short: string, long: string): boolean {
   return short.split("-").length >= 2 && long.startsWith(`${short}-`);
 }
 
-export function auditLocalItems(local: LocalItem[], index: IndexItem[], adoptTarget: string): AuditRow[] {
-  // One pass over the index: exact and normalized names in maps.
-  const exactByKey = new Map<string, IndexItem>();
-  const normalByKey = new Map<string, IndexItem>();
+interface IndexMaps {
+  exact: Map<string, IndexItem>;
+  normal: Map<string, IndexItem>;
+}
+
+const itemKey = (kind: ItemKind, name: string) => `${kind}\u0000${name}`;
+
+/** One pass over the index: exact and normalized names in maps. */
+function indexMaps(index: IndexItem[]): IndexMaps {
+  const exact = new Map<string, IndexItem>();
+  const normal = new Map<string, IndexItem>();
   for (const item of index) {
-    const exactKey = `${item.kind}\u0000${item.name}`;
-    const normalKey = `${item.kind}\u0000${normalize(item.name)}`;
-    if (!exactByKey.has(exactKey)) exactByKey.set(exactKey, item);
-    if (!normalByKey.has(normalKey)) normalByKey.set(normalKey, item);
+    if (!exact.has(itemKey(item.kind, item.name))) exact.set(itemKey(item.kind, item.name), item);
+    if (!normal.has(itemKey(item.kind, normalize(item.name))))
+      normal.set(itemKey(item.kind, normalize(item.name)), item);
   }
+  return { exact, normal };
+}
+
+/** The source a local item duplicates or nearly duplicates, and whether exactly. */
+function closestSource(item: LocalItem, maps: IndexMaps, index: IndexItem[]): { match?: IndexItem; exact: boolean } {
+  const exact = maps.exact.get(itemKey(item.kind, item.name));
+  if (exact) return { match: exact, exact: true };
+  const n = normalize(item.name);
+  const near =
+    maps.normal.get(itemKey(item.kind, n)) ??
+    index.find(
+      (i) => i.kind === item.kind && (specificPrefix(n, normalize(i.name)) || specificPrefix(normalize(i.name), n)),
+    );
+  return { match: near, exact: false };
+}
+
+export function auditLocalItems(local: LocalItem[], index: IndexItem[], adoptTarget: string): AuditRow[] {
+  const maps = indexMaps(index);
   const byKey = new Map<string, AuditRow>();
   for (const item of local) {
-    const key = `${item.kind}\u0000${item.name}`;
-    const row = byKey.get(key);
+    const row = byKey.get(itemKey(item.kind, item.name));
     if (row) {
       if (!row.agents.includes(item.agent)) row.agents.push(item.agent);
       continue;
     }
-    const n = normalize(item.name);
-    const exact = exactByKey.get(key);
-    const near =
-      exact ??
-      normalByKey.get(`${item.kind}\u0000${n}`) ??
-      index.find(
-        (i) => i.kind === item.kind && (specificPrefix(n, normalize(i.name)) || specificPrefix(normalize(i.name), n)),
-      );
-    byKey.set(key, {
+    const { match, exact } = closestSource(item, maps, index);
+    byKey.set(itemKey(item.kind, item.name), {
       kind: item.kind,
       name: item.name,
-      action: exact ? "merge" : near ? "merge?" : "adopt",
-      target: near ? near.source : adoptTarget,
+      action: exact ? "merge" : match ? "merge?" : "adopt",
+      target: match ? match.source : adoptTarget,
       agents: [item.agent],
     });
   }
@@ -114,27 +130,37 @@ function localItems(): LocalItem[] {
   return items.filter((item) => !item.name.startsWith("."));
 }
 
+function skillSourceItems(): IndexItem[] {
+  return getSkillSources().flatMap((source) =>
+    source.scanner(source.path).map((path) => ({ kind: "skill" as const, name: basename(path), source: source.label })),
+  );
+}
+
+function stateSourceItems(): IndexItem[] {
+  return (loadState()?.sources ?? []).flatMap((source) =>
+    (source.availableItems ?? [])
+      .filter((item) => item.type === "skill" || item.type === "command")
+      .map((item) => ({ kind: item.type as ItemKind, name: item.name, source: source.url })),
+  );
+}
+
+function commandDirItems(): IndexItem[] {
+  return getAllCommandSourceDirs()
+    .filter((dir) => existsSync(dir))
+    .flatMap((dir) =>
+      readdirSync(dir)
+        .filter((file) => file.endsWith(".md"))
+        .map((file) => ({ kind: "command" as const, name: file.slice(0, -3), source: dir })),
+    );
+}
+
 function sourceIndex(): IndexItem[] {
-  const index: IndexItem[] = [];
-  for (const source of getSkillSources()) {
-    for (const path of source.scanner(source.path))
-      index.push({ kind: "skill", name: basename(path), source: source.label });
-  }
-  for (const source of loadState()?.sources ?? []) {
-    for (const item of source.availableItems ?? []) {
-      if (item.type === "skill" || item.type === "command")
-        index.push({ kind: item.type, name: item.name, source: source.url });
-    }
-  }
-  for (const skill of loadCatalog().skills)
-    index.push({ kind: "skill", name: skill.name, source: String(skill.source) });
-  for (const dir of getAllCommandSourceDirs()) {
-    if (!existsSync(dir)) continue;
-    for (const file of readdirSync(dir)) {
-      if (file.endsWith(".md")) index.push({ kind: "command", name: file.slice(0, -3), source: dir });
-    }
-  }
-  return index;
+  const catalog = loadCatalog().skills.map((skill) => ({
+    kind: "skill" as const,
+    name: skill.name,
+    source: String(skill.source),
+  }));
+  return [...skillSourceItems(), ...stateSourceItems(), ...catalog, ...commandDirItems()];
 }
 
 /** The adopt target when `--into` is not given. */

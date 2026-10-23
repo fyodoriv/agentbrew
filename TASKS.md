@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] The plugin leak audit and plugin scope check always read the folder they are given, even under a git hook
-  - **ID**: git-hook-env-plugin-audit-scope
-  - **Tags**: git, plugins
-  - **Details**: `auditRepo` in `src/plugins/leak-audit.ts` (`git ls-files`) and `repoIdOf` in `src/plugins/scope.ts` (`git remote get-url origin`) run git in a given folder with the raw process env. Under a git hook's `GIT_DIR` they read the hook's repository instead, so the leak audit can scan the wrong files and the scope check can name the wrong repo. Both are read-only. Inside a hook, `GIT_DIR` often names the same repository on purpose, so first check each caller: pass `cacheGitEnv()` from `src/mcp/git-ref.ts` only where the folder argument must win.
-  - **Files**: `src/plugins/leak-audit.ts`, `src/plugins/scope.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: with `GIT_DIR` set to another repository, `auditRepo(dir)` lists the files of `dir` and `repoIdOf(dir)` returns the origin of `dir`.
-  - **Hypothesis**: making the folder argument authoritative drops audits and scope checks of the wrong repository under a hook from possible to 0.
-  - **Measurement**: a vitest case per function that sets `GIT_DIR` to a scratch repository and checks the result names the given folder.
-  - **Success**: both cases pass.
-  - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
-  - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
-
 - [ ] `agentbrew` with a scratch HOME on Linux never changes the real user's crontab or systemd timer
   - **ID**: scratch-home-linux-scheduler
   - **Tags**: install, scheduler, safety

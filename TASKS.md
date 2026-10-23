@@ -305,19 +305,6 @@
   - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
   - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
 
-- [ ] A command or agent name clash has one fixed winner and prints a warning
-  - **ID**: command-agent-clash-order
-  - **Tags**: sync, commands, agents
-  - **Details**: Found while fixing dotfiles #293. When two sources ship a command or agent file with the same name, the winner depends on install or state order, and nothing is printed. Use the same rule as skills (#425): the source listed later wins, and `agentbrew status` names the clash.
-  - **Files**: `src/sync/command-sync.ts`, agent sync, `src/catalog/skill-owners.ts`
-  - **Output**: code
-  - **Acceptance**: the same clash gives the same winner in any order, and `status` names it.
-  - **Hypothesis**: one ordering rule makes the winner independent of install order (order-dependent clashes go from 2 types to 0).
-  - **Measurement**: a vitest case that syncs two sources in both orders.
-  - **Success**: same winner both times, and a status line.
-  - **Pivot**: if order must stay, at least print the clash.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
-
 - [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
   - **ID**: init-scratch-home-launchd
   - **Tags**: install, launchd, safety

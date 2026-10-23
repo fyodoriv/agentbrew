@@ -91,7 +91,28 @@ describe("collectAgentDefs", () => {
     expect(bySource.test).toBe(2);
   });
 
-  it("deduplicates by name — first source wins", () => {
+  it("a name clash between user sources: the source listed later wins, in both orders", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockImplementation(
+      (path) => (String(path) === "/builtin" ? [] : ["reviewer.md"]) as unknown as ReturnType<typeof readdirSync>,
+    );
+    const a = { label: "a", path: "/a" };
+    const b = { label: "b", path: "/b" };
+    expect(collectAgentDefs([a, b]).agents.get("reviewer")?.sourceLabel).toBe("b");
+    expect(collectAgentDefs([b, a]).agents.get("reviewer")?.sourceLabel).toBe("a");
+  });
+
+  it("the built-in source is listed last, so it always wins", () => {
+    const sources = getAgentSources({
+      agentSourceDirs: [
+        { label: "a", path: "/a" },
+        { label: "b", path: "/b" },
+      ],
+    } as never);
+    expect(sources.map((s) => s.label)).toEqual(["a", "b", "agentbrew"]);
+  });
+
+  it("deduplicates by name — the source listed later wins", () => {
     mockExistsSync.mockReturnValue(true);
     mockReaddirSync
       .mockReturnValueOnce(["developer.md"] as unknown as ReturnType<typeof readdirSync>)
@@ -102,10 +123,10 @@ describe("collectAgentDefs", () => {
       { label: "secondary", path: "/secondary" },
     ]);
     expect(agents.size).toBe(2);
-    expect(agents.get("developer")?.sourceLabel).toBe("primary");
+    expect(agents.get("developer")?.sourceLabel).toBe("secondary");
     expect(agents.get("researcher")?.sourceLabel).toBe("secondary");
-    expect(bySource.primary).toBe(1);
-    expect(bySource.secondary).toBe(1);
+    expect(bySource.primary).toBeUndefined();
+    expect(bySource.secondary).toBe(2);
   });
 
   it("skips non-existent source directories", () => {
@@ -136,8 +157,8 @@ describe("getAgentSources", () => {
       agentSourceDirs: [{ label: "minsky", path: "/Users/test/minsky/agents" }],
     } as never);
     expect(sources).toHaveLength(2);
-    expect(sources[0].label).toBe("agentbrew");
-    expect(sources[1].label).toBe("minsky");
+    expect(sources[0].label).toBe("minsky");
+    expect(sources[1].label).toBe("agentbrew");
   });
 });
 

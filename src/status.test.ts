@@ -5,6 +5,11 @@ vi.mock("node:fs", async () => {
   return { ...actual, existsSync: vi.fn(() => false), readFileSync: vi.fn(() => ""), readdirSync: vi.fn(() => []) };
 });
 
+vi.mock("./sync/name-clashes.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./sync/name-clashes.js")>();
+  return { ...actual, commandNameClashes: vi.fn(() => []), agentNameClashes: vi.fn(() => []) };
+});
+
 vi.mock("./sync/skills-sync.js", async () => {
   // Keep `collectSkills` real — the cross-site consistency tests in this file
   // assert that `status` and the `collectSkills` helper agree on the canonical
@@ -690,6 +695,25 @@ describe("status skill name clashes", () => {
     await status();
     const out = vi.mocked(console.log).mock.calls.flat().join("\n");
     expect(out).toMatch(/Name clash:.*writing-plans.*fyodoriv\/agentbrew.*obra\/superpowers/);
+  });
+
+  it("names command and agent clashes too, in compact status and --json", async () => {
+    const { commandNameClashes, agentNameClashes } = await import("./sync/name-clashes.js");
+    vi.mocked(commandNameClashes).mockReturnValue([{ name: "review", owner: "team-b", skipped: ["team-a"] }]);
+    vi.mocked(agentNameClashes).mockReturnValue([{ name: "planner", owner: "minsky", skipped: ["acme"] }]);
+    mockLoadState.mockReturnValue(clashingState());
+    await status();
+    const out = vi.mocked(console.log).mock.calls.flat().join("\n");
+    expect(out).toMatch(/Name clash:.*command review from team-b; skipped from team-a/);
+    expect(out).toMatch(/Name clash:.*agent planner from minsky; skipped from acme/);
+
+    vi.mocked(console.log).mockClear();
+    await status({ json: true });
+    const data = JSON.parse(vi.mocked(console.log).mock.calls[0]?.[0] as string);
+    expect(data.commandNameClashes).toEqual([{ name: "review", owner: "team-b", skipped: ["team-a"] }]);
+    expect(data.agentNameClashes).toEqual([{ name: "planner", owner: "minsky", skipped: ["acme"] }]);
+    vi.mocked(commandNameClashes).mockReturnValue([]);
+    vi.mocked(agentNameClashes).mockReturnValue([]);
   });
 
   it("includes the clash in status --json", async () => {

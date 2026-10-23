@@ -1,9 +1,10 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { userInfo } from "node:os";
 import { dirname } from "node:path";
 import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { runLaunchctl } from "../core/launchctl.js";
 import { logSkipped } from "../core/logger.js";
 import {
   ensurePlistLocale,
@@ -98,7 +99,7 @@ export function cleanupLegacyAgents(): number {
   for (const plistPath of getLegacyPlistPaths()) {
     if (!existsSync(plistPath)) continue;
     try {
-      execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+      runLaunchctl(["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
     } catch (e) {
       logSkipped("sync/launchagent/execFileSync", e);
       // May not be loaded
@@ -151,12 +152,12 @@ export function missingLaunchAgentProgram(): string | undefined {
 /** Reload a LaunchAgent after plist mutation (best-effort). */
 function reloadLaunchAgentPlist(plistPath: string): void {
   try {
-    execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
   } catch (e) {
     logSkipped("sync/launchagent/reload-unload", e);
   }
   try {
-    execFileSync("launchctl", ["load", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(["load", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
   } catch (e) {
     logSkipped("sync/launchagent/reload-load", e);
   }
@@ -230,14 +231,14 @@ export async function installLaunchAgent(): Promise<void> {
   writeFileAtomicSync(plistPath, content, "utf-8");
 
   try {
-    execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
   } catch (e) {
     logSkipped("sync/launchagent/execFileSync", e);
     // May not be loaded yet
   }
 
   try {
-    execFileSync("launchctl", ["load", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(["load", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
   } catch (e) {
     logSkipped("sync/launchagent/load", e);
   }
@@ -272,7 +273,7 @@ function readFileOrEmpty(path: string): string {
 
 function launchctlSucceeds(args: string[]): boolean {
   try {
-    execFileSync("launchctl", args, { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(args, { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
     return true;
   } catch (e) {
     logSkipped(`sync/launchagent/${args[0]}`, e);
@@ -282,7 +283,7 @@ function launchctlSucceeds(args: string[]): boolean {
 
 function isLaunchAgentDisabled(domain: string): boolean {
   try {
-    const output = execFileSync("launchctl", ["print-disabled", domain], {
+    const output = runLaunchctl(["print-disabled", domain], {
       encoding: "utf-8",
       stdio: "pipe",
       timeout: LAUNCHCTL_TIMEOUT_MS,
@@ -304,7 +305,7 @@ export async function uninstallLaunchAgent(): Promise<void> {
   }
 
   try {
-    execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
+    runLaunchctl(["unload", plistPath], { stdio: "pipe", timeout: LAUNCHCTL_TIMEOUT_MS });
   } catch (e) {
     logSkipped("sync/launchagent/execFileSync", e);
     // May not be loaded

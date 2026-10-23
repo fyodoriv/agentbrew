@@ -331,19 +331,6 @@
   - **Pivot**: if order must stay, at least print the clash.
   - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
 
-- [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
-  - **ID**: init-scratch-home-launchd
-  - **Tags**: install, launchd, safety
-  - **Details**: Found while fixing dotfiles #293. A test run of `agentbrew init` and `sync` with `HOME` set to a scratch folder replaced 3 real launchd jobs (`com.agentbrew.check`, `com.agentbrew.mcp-memory`, `com.agentbrew.mcp-memory-maintain`) for the real user, pointing them at the scratch folder. The memory server was down for minutes. launchd is per user, not per HOME, so agentbrew must refuse to load a LaunchAgent whose paths are outside the real home, or skip launchd when HOME is not the user's home.
-  - **Files**: `src/sync/auto-sync.ts`, the memory service LaunchAgent code, their tests
-  - **Output**: code
-  - **Acceptance**: with HOME set to a scratch folder, `init` writes no LaunchAgent to the real user's launchd.
-  - **Hypothesis**: a HOME check before every launchctl call drops real jobs replaced by scratch runs from 3 to 0.
-  - **Measurement**: a vitest case with a fake `launchctl` and a scratch HOME.
-  - **Success**: no launchctl load of a scratch path.
-  - **Pivot**: if detection is unreliable, add an opt-in env var that tests set to disable launchd.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
-
 ## P3
 
 - [ ] The run-goal skill stays well under the 500-line skill limit

@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { checkoutPinnedRef } from "./git-ref.js";
+import { assertCacheOrigin, CacheRefusal, checkoutPinnedRef, isLocalRepoPath } from "./git-ref.js";
 import { cloneOrUpdateRepo, GIT_CACHE_DIR } from "./mcp-git.js";
 
 // Real git against scratch source repos. The scratch HOME comes from
@@ -264,5 +264,134 @@ describe("cloneOrUpdateRepo pins the exact ref (real git)", () => {
     expect(() => cloneOrUpdateRepo(source.repo, "sha256-shadow", source.tag.slice(0, 40))).toThrow(
       /not a full commit ID in this repo/,
     );
+  });
+});
+
+describe("cloneOrUpdateRepo uses a cache dir only for the repo that made it (real git)", () => {
+  /** A source repo whose tag `v1.0.0` points at a commit no other fixture has. */
+  function uniqueRepo(name: string): { repo: string; tag: string } {
+    const source = shadowRepo(name);
+    const tag = commitFile(source.repo, `only-in-${name}`);
+    git(source.repo, "tag", "--force", "-a", "v1.0.0", "-m", `v1.0.0 of ${name}`, tag);
+    return { repo: source.repo, tag };
+  }
+
+  it("refuses a cached repo that another URL cloned under the same server name", () => {
+    const first = uniqueRepo("same-name-a");
+    const second = uniqueRepo("same-name-b");
+    const dir = cloneOrUpdateRepo(first.repo, "same-name");
+    const before = head(dir);
+    expect(() => cloneOrUpdateRepo(second.repo, "same-name", "v1.0.0")).toThrow(/holds .*, not /);
+    // A refusal is not wrapped as a failed update: a retry cannot pass.
+    expect(() => cloneOrUpdateRepo(second.repo, "same-name")).toThrow(CacheRefusal);
+    expect(() => cloneOrUpdateRepo(second.repo, "same-name")).not.toThrow(/Failed to update repo/);
+    expect(head(dir)).toBe(before);
+  });
+
+  it("matches a relative local path, from any dir, to the absolute origin git stored", () => {
+    const source = uniqueRepo("relative-src");
+    const cwd = process.cwd();
+    try {
+      process.chdir(root);
+      const dir = cloneOrUpdateRepo("relative-src", "relative-src");
+      process.chdir(source.repo);
+      cloneOrUpdateRepo(".", "relative-src", "v1.0.0");
+      expect(head(dir)).toBe(source.tag);
+    } finally {
+      process.chdir(cwd);
+    }
+  });
+
+  it("compares URL forms: a trailing .git or / matches; ssh and https of one repo do not", () => {
+    const source = uniqueRepo("url-forms");
+    const dir = cloneOrUpdateRepo(source.repo, "url-forms");
+    git(dir, "remote", "set-url", "origin", "https://example.invalid/org/repo.git");
+    expect(() => assertCacheOrigin(dir, "https://example.invalid/org/repo/")).not.toThrow();
+    expect(() => assertCacheOrigin(dir, "https://example.invalid/org/repo/.git")).not.toThrow();
+    expect(() => assertCacheOrigin(dir, "git@example.invalid:org/repo.git")).toThrow(/holds .*, not /);
+    expect(() => assertCacheOrigin(dir, "https://example.invalid/org/other")).toThrow(/install <other-name> --git/);
+    // git fetches from the first URL, `config --get` reads the last: two URLs are refused.
+    git(dir, "config", "--add", "remote.origin.url", "https://example.invalid/org/repo.git");
+    expect(() => assertCacheOrigin(dir, "https://example.invalid/org/repo")).toThrow(/more than one origin URL/);
+    // A relative path from before absolute paths were recorded gets the reinstall hint.
+    git(dir, "config", "--unset-all", "remote.origin.url");
+    git(dir, "config", "remote.origin.url", "https://example.invalid/org/repo.git");
+    expect(() => assertCacheOrigin(dir, "../repo")).toThrow(/--git <absolute path>/);
+  });
+
+  it("still updates when the URL differs only by a trailing slash or /.git", () => {
+    const source = uniqueRepo("same-url-forms");
+    const dir = cloneOrUpdateRepo(source.repo, "same-url-forms");
+    cloneOrUpdateRepo(`${source.repo}/`, "same-url-forms", "v1.0.0");
+    expect(head(dir)).toBe(source.tag);
+    cloneOrUpdateRepo(join(source.repo, ".git"), "same-url-forms", "v1.0.0");
+    expect(head(dir)).toBe(source.tag);
+  });
+
+  it("refuses a cached repo with no origin remote, even with a repo at ./origin in its checkout", () => {
+    const source = uniqueRepo("no-origin");
+    const evil = uniqueRepo("no-origin-evil");
+    const dir = cloneOrUpdateRepo(source.repo, "no-origin");
+    git(dir, "remote", "rename", "origin", "upstream");
+    // Without an `origin` remote, git reads `origin` as this path.
+    git(dir, "clone", "--quiet", "--bare", evil.repo, "origin");
+    const before = head(dir);
+    expect(() => cloneOrUpdateRepo(source.repo, "no-origin", "v1.0.0")).toThrow(/no origin remote/);
+    expect(head(dir)).toBe(before);
+    expect(head(dir)).not.toBe(evil.tag);
+  });
+
+  it("refuses a cache dir that is a linked worktree of another repo, and leaves its branch untouched", () => {
+    const upstream = shadowRepo("worktree-upstream");
+    const dev = shadowRepo("worktree-dev");
+    git(dev.repo, "remote", "add", "origin", upstream.repo);
+    git(dev.repo, "fetch", "--quiet", "origin");
+    git(dev.repo, "checkout", "--quiet", "feature");
+    const unpushed = commitFile(dev.repo, "unpushed-feature");
+    git(dev.repo, "checkout", "--quiet", "main");
+    mkdirSync(GIT_CACHE_DIR, { recursive: true });
+    git(dev.repo, "worktree", "add", "--quiet", join(GIT_CACHE_DIR, "worktree-cache"), "feature");
+    expect(() => cloneOrUpdateRepo(upstream.repo, "worktree-cache", "feature")).toThrow(/not its own git clone/);
+    expect(() => cloneOrUpdateRepo(upstream.repo, "worktree-cache")).toThrow(/not its own git clone/);
+    expect(git(dev.repo, "rev-parse", "refs/heads/feature")).toBe(unpushed);
+  });
+
+  it("refuses a cache whose .git shares another repo's refs through a commondir file", () => {
+    const upstream = shadowRepo("commondir-upstream");
+    const dev = shadowRepo("commondir-dev");
+    git(dev.repo, "remote", "add", "origin", upstream.repo);
+    git(dev.repo, "fetch", "--quiet", "origin");
+    const unpushed = commitFile(dev.repo, "unpushed-main");
+    const dir = cloneOrUpdateRepo(upstream.repo, "commondir-cache");
+    writeFileSync(join(dir, ".git", "commondir"), `${join(dev.repo, ".git")}\n`);
+    expect(() => cloneOrUpdateRepo(upstream.repo, "commondir-cache", "main")).toThrow(/not its own git clone/);
+    expect(git(dev.repo, "rev-parse", "refs/heads/main")).toBe(unpushed);
+  });
+
+  it("refuses a cache dir that is a symlink, and leaves the link target untouched", () => {
+    const upstream = shadowRepo("link-upstream");
+    const target = shadowRepo("link-target");
+    git(target.repo, "remote", "add", "origin", upstream.repo);
+    git(target.repo, "fetch", "--quiet", "origin");
+    const unpushed = commitFile(target.repo, "unpushed");
+    mkdirSync(GIT_CACHE_DIR, { recursive: true });
+    symlinkSync(target.repo, join(GIT_CACHE_DIR, "linked"));
+    expect(() => cloneOrUpdateRepo(upstream.repo, "linked", "main")).toThrow(/is a symlink/);
+    expect(() => cloneOrUpdateRepo(upstream.repo, "linked")).toThrow(/is a symlink/);
+    expect(git(target.repo, "rev-parse", "refs/heads/main")).toBe(unpushed);
+    expect(git(target.repo, "symbolic-ref", "HEAD")).toBe("refs/heads/main");
+  });
+});
+
+describe("isLocalRepoPath", () => {
+  it("tells local paths from remote URLs the way git does", () => {
+    expect(isLocalRepoPath("../mcp")).toBe(true);
+    expect(isLocalRepoPath("/abs/mcp")).toBe(true);
+    expect(isLocalRepoPath("./dir:with-colon")).toBe(true);
+    expect(isLocalRepoPath("./a://b")).toBe(true);
+    expect(isLocalRepoPath("https://example.com/org/mcp.git")).toBe(false);
+    expect(isLocalRepoPath("file:///abs/mcp")).toBe(false);
+    expect(isLocalRepoPath("git@example.com:org/mcp.git")).toBe(false);
+    expect(isLocalRepoPath("host:mcp")).toBe(false);
   });
 });

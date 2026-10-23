@@ -34,6 +34,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** `install --git` and `mcp update` reuse a cached repo in
+  `~/.config/agentbrew/mcp-repos/<name>` only when its `origin` is the
+  requested repo. Before, a second `--git` URL under the same server name
+  installed the first repo's code and recorded the second URL. A cache dir
+  with no `origin` remote (git then read `origin` as a path in the checkout)
+  or a cache dir that is a symlink or a linked worktree (git then ran in or
+  moved another repo's branch) is now refused too. A local path is now
+  recorded as an absolute path; a server installed from a relative path
+  before this change needs one `agentbrew install <name> --git <absolute
+  path>` before `mcp update` works from another dir.
 - `install --git <url> --ref <ref>` and `mcp add --git` install the tag
   when a branch has the same name. Before, `git clone --branch` picked the
   branch. agentbrew now looks the name up as `refs/tags/<ref>`, then

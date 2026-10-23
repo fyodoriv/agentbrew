@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
 import { input } from "@inquirer/prompts";
 import chalk from "chalk";
@@ -11,7 +11,15 @@ import { logSkipped } from "../core/logger.js";
 import type { McpServer } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { checkGitAvailable } from "../utils.js";
-import { assertOwnRepo, assertPinnedRef, cacheGitEnv, checkoutPinnedRef } from "./git-ref.js";
+import {
+  assertCacheOrigin,
+  assertOwnRepo,
+  assertPinnedRef,
+  CacheRefusal,
+  cacheGitEnv,
+  checkoutPinnedRef,
+  isLocalRepoPath,
+} from "./git-ref.js";
 import { extractEnvVars, isEnvVarResolved } from "./mcp-setup.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -86,13 +94,15 @@ export function deriveRepoName(gitUrl: string): string {
 
 // ── Git operations ────────────────────────────────────────────────────────────
 
-/** Refresh the cached repo at `repoDir`, then check out `gitRef` exactly, or pull. */
-function updateCachedRepo(repoDir: string, gitRef?: string): void {
+/** Refresh the cached repo at `repoDir`, cloned from `gitUrl`, then check out `gitRef` exactly, or pull. */
+function updateCachedRepo(repoDir: string, gitUrl: string, gitRef?: string): void {
   console.log(chalk.dim(`  Updating existing repo at ${repoDir}...`));
   try {
-    // Never let git act on a repo that encloses the cache dir, or one that GIT_DIR names.
+    // Never let git act on a repo that encloses the cache dir, or one that GIT_DIR names,
+    // and use the cache only for the repo that made it.
     const env = cacheGitEnv();
     assertOwnRepo(repoDir, env);
+    assertCacheOrigin(repoDir, gitUrl, env);
     if (gitRef) {
       // checkoutPinnedRef fetches only what the ref needs, so a moved tag never blocks it.
       checkoutPinnedRef(repoDir, gitRef, env);
@@ -101,6 +111,7 @@ function updateCachedRepo(repoDir: string, gitRef?: string): void {
       execFileSync("git", ["pull"], { cwd: repoDir, env, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
     }
   } catch (error) {
+    if (error instanceof CacheRefusal) throw error;
     const message = errorMessage(error);
     throw new Error(`Failed to update repo: ${message}`);
   }
@@ -141,7 +152,11 @@ export function cloneOrUpdateRepo(gitUrl: string, repoName: string, gitRef?: str
   validateRepoName(repoName);
   if (gitRef !== undefined) assertPinnedRef(gitRef);
   const repoDir = join(GIT_CACHE_DIR, repoName);
-  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitRef);
+  // A symlink would point git at a repo outside the cache, where `checkout -B` can drop commits.
+  if (lstatSync(repoDir, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    throw new CacheRefusal(`${repoDir} is a symlink. Delete the link (not its target) and run the install again.`);
+  }
+  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitUrl, gitRef);
   else cloneFresh(gitUrl, repoDir, gitRef);
   return repoDir;
 }
@@ -305,13 +320,16 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
 
   const serverName = options?.name ?? deriveRepoName(gitUrl);
   const repoDir = join(GIT_CACHE_DIR, serverName);
+  // git records a local path as an absolute one; state does the same, so a later
+  // `mcp update` run from another dir still matches the cache's origin.
+  const sourceUrl = isLocalRepoPath(gitUrl) ? resolve(gitUrl) : gitUrl;
 
   console.log(chalk.bold(`\nInstalling MCP server from git: ${chalk.cyan(gitUrl)}\n`));
 
   // 1. Clone or update the repo
   let clonedDir: string;
   try {
-    clonedDir = cloneOrUpdateRepo(gitUrl, serverName, options?.ref);
+    clonedDir = cloneOrUpdateRepo(sourceUrl, serverName, options?.ref);
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
     return;
@@ -361,7 +379,7 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
     entrypoint.args,
     {},
     {
-      gitUrl,
+      gitUrl: sourceUrl,
       gitRef: pinnedRef,
     },
   );
@@ -408,7 +426,12 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
     cloneOrUpdateRepo(server.gitUrl, serverName);
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
-    console.log(chalk.dim("  Check the repo URL and your network connection, then retry with `agentbrew mcp update`."));
+    // A refused cache dir says what to do; a retry cannot pass.
+    if (!(error instanceof CacheRefusal)) {
+      console.log(
+        chalk.dim("  Check the repo URL and your network connection, then retry with `agentbrew mcp update`."),
+      );
+    }
     return;
   }
 

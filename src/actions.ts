@@ -100,8 +100,8 @@ export const AGENT_NOTES: Readonly<Record<string, string>> = {
   sync: "show `agentbrew sync --dry-run` before you ask",
   status: "--fix rewrites agent configs like `agentbrew sync`; ask first",
   install:
-    "show --dry-run first; pass --yes after the user says yes, and --from <source> when a name is in several sources; with --git, a server that needs env vars asks for them, so give the user the command",
-  "mcp.add": "with --git, a server that needs env vars asks for them in a prompt; give the user the command",
+    "show --dry-run first; pass --yes after the user says yes, and --from <source> when a name is in several sources; with --git, pass --env KEY for each env var, and --yes so a missing value fails instead of prompting",
+  "mcp.add": "with --git, pass --env KEY for each env var, and --yes so a missing value fails instead of prompting",
   "mcp.probe": "--deep installs and calls each server; ask first",
   "measure.context": "it runs `npx -y ccusage` (a download); pass --quick or --skip-ccusage unless the user agrees",
   "memory.sync-projects": "it adds Claude project memories to the shared store; show --dry-run first",

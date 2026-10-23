@@ -96,15 +96,21 @@ GitHub and Postgres are archived; do not add them.
 
 ## Add from a Git Repo
 
-Clones the repo, builds if needed, auto-detects the entrypoint, prompts for env vars, and syncs.
+Clones the repo, builds if needed, auto-detects the entrypoint, and syncs. Pass `--env KEY` for each env var
+the server needs; agents read its value from their environment. With `--yes` or no terminal, a missing value
+fails with the key's name instead of a prompt, so an agent can run the command itself.
 
 ```bash
 agentbrew mcp add my-server --git https://github.com/org/my-mcp-server
 agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.2.0
 
-# Pull latest changes and re-sync
+# Pull latest changes and re-sync (a branch install only)
 agentbrew mcp update my-server
 ```
+
+`mcp update` follows only a branch pin. On a tag or commit pin, such as `--ref v1.2.0`,
+it exits 1. To move a tag or commit pin, run `mcp add` again with a new `--ref`:
+`agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.3.0`.
 
 Repos are cached at `~/.config/agentbrew/mcp-repos/<name>`. Entrypoint detection checks
 `dist/index.js`, `build/index.js`, `index.js`, `run_server.py`, `server.py`, and

@@ -44,6 +44,17 @@
         "Tests or probes the server before treating it as available to all agents",
         "Does not edit generated agent MCP configs such as `~/.kiro/settings/mcp.json` directly"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "My git-installed MCP server `my-server` is pinned to v1.2.0. Upgrade it to v1.3.0.",
+      "expected_output": "Moves the pin by running `agentbrew mcp add my-server --git <url> --ref v1.3.0` again, because `agentbrew mcp update` follows only a branch pin and exits 1 on a tag pin.",
+      "expectations": [
+        "Runs `agentbrew mcp add my-server --git <url> --ref v1.3.0` (or `agentbrew install my-server --git <url> --ref v1.3.0`) to move the pin",
+        "Does not rely on `agentbrew mcp update`, which cannot move a tag or commit pin",
+        "Verifies the new ref after the install, for example from the success line `my-server installed from git (v1.3.0)`",
+        "Does not edit the cache in `~/.config/agentbrew/mcp-repos/` or generated agent configs by hand"
+      ]
     }
   ]
 }

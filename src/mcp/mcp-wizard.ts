@@ -45,8 +45,11 @@ function getExportStatement(varName: string, value: string): string {
   return `export ${varName}="${safe}"`;
 }
 
-/** Append or update a variable export in the user's shell config file. */
-export function appendToShellConfig(varName: string, value: string): void {
+/**
+ * Append or update a variable export in the user's shell config file. Returns
+ * false when the write fails; the manual hint then names the key, never the value.
+ */
+export function appendToShellConfig(varName: string, value: string): boolean {
   const configPath = getShellConfigPath();
   const exportLine = getExportStatement(varName, value);
 
@@ -57,12 +60,13 @@ export function appendToShellConfig(varName: string, value: string): void {
       const escapedName = escapeRegExp(varName);
       const exportPattern = new RegExp(`^(export ${escapedName}=|set -gx ${escapedName} )`, "m");
       if (exportPattern.test(content)) {
+        // A function, so `$&` or `$1` in the value is not read as a replacement pattern.
         const updated = content.replace(
           new RegExp(`^(export ${escapedName}=.*|set -gx ${escapedName} .*)$`, "m"),
-          exportLine,
+          () => exportLine,
         );
         writeFileAtomicSync(configPath, updated);
-        return;
+        return true;
       }
     }
 
@@ -76,11 +80,13 @@ export function appendToShellConfig(varName: string, value: string): void {
 
     writeFileAtomicSync(configPath, existing + block);
     chmodSync(configPath, 0o600);
+    return true;
   } catch (error) {
     const reason = errorMessage(error);
     console.warn(chalk.yellow(`\n  ⚠ Could not write to ${configPath}: ${reason}`));
-    console.warn(chalk.dim(`    Add this line manually:`));
-    console.warn(chalk.dim(`    ${exportLine}`));
+    console.warn(chalk.dim("    Add this line yourself, with your value:"));
+    console.warn(chalk.dim(`    export ${varName}="…"`));
+    return false;
   }
 }
 

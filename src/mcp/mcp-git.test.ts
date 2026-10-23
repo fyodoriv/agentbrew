@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -37,17 +37,24 @@ vi.mock("../utils.js", async (importOriginal) => {
 });
 
 vi.mock("@inquirer/prompts", () => ({
-  input: vi.fn(),
+  confirm: vi.fn(),
+  password: vi.fn(),
 }));
 
 // Exact-ref checkout runs real git in mcp-git-ref.test.ts. The marker env proves
 // that every cache git call gets cacheGitEnv() (no inherited GIT_DIR).
 const { CACHE_ENV } = vi.hoisted(() => ({ CACHE_ENV: { AGENTBREW_TEST_CACHE_ENV: "1" } }));
 vi.mock("./git-ref.js", () => ({
+  CacheRefusal: class CacheRefusal extends Error {},
+  assertCacheOrigin: vi.fn(),
   assertOwnRepo: vi.fn(),
   assertPinnedRef: vi.fn(),
   cacheGitEnv: vi.fn(() => CACHE_ENV),
   checkoutPinnedRef: vi.fn(),
+  headCommit: vi.fn(() => "abc1234"),
+  isDetachedHead: vi.fn(() => false),
+  isInHeadCommit: vi.fn(() => true),
+  isLocalRepoPath: vi.fn(() => false),
 }));
 
 // ── Imports after mocks ───────────────────────────────────────────────────────
@@ -55,11 +62,11 @@ vi.mock("./git-ref.js", () => ({
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { ExitPromptError } from "@inquirer/core";
-import { input } from "@inquirer/prompts";
+import { password } from "@inquirer/prompts";
 import { requireState, saveState } from "../state.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
 import type { AgentBrewState, McpServer } from "../types.js";
-import { checkoutPinnedRef } from "./git-ref.js";
+import { assertCacheOrigin, CacheRefusal, checkoutPinnedRef, isLocalRepoPath } from "./git-ref.js";
 import {
   buildRepoIfNeeded,
   cloneOrUpdateRepo,
@@ -80,8 +87,10 @@ const mockReadFileSync = vi.mocked(readFileSync);
 const mockAddMcpServer = vi.mocked(addMcpServer);
 const mockRequireState = vi.mocked(requireState);
 const mockSaveState = vi.mocked(saveState);
-const mockInput = vi.mocked(input);
+const mockPassword = vi.mocked(password);
 const mockCheckoutPinnedRef = vi.mocked(checkoutPinnedRef);
+const mockIsLocalRepoPath = vi.mocked(isLocalRepoPath);
+const mockAssertCacheOrigin = vi.mocked(assertCacheOrigin);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -431,25 +440,25 @@ describe("promptForMissingEnvVars", () => {
   it("returns empty object when no env vars are required", async () => {
     const result = await promptForMissingEnvVars({ args: [], env: {} });
     expect(result).toEqual({});
-    expect(mockInput).not.toHaveBeenCalled();
+    expect(mockPassword).not.toHaveBeenCalled();
   });
 
   it("returns empty object when all required vars are already set", async () => {
     process.env.MY_SECRET_KEY = "existing-value";
     const result = await promptForMissingEnvVars({ args: ["${MY_SECRET_KEY}"], env: {} });
     expect(result).toEqual({});
-    expect(mockInput).not.toHaveBeenCalled();
+    expect(mockPassword).not.toHaveBeenCalled();
   });
 
   it("prompts for missing env vars and sets them in process.env", async () => {
-    mockInput.mockResolvedValue("secret-value");
+    mockPassword.mockResolvedValue("secret-value");
     const result = await promptForMissingEnvVars({ args: ["${MY_SECRET_KEY}"], env: {} });
     expect(result).toEqual({ MY_SECRET_KEY: "secret-value" });
     expect(process.env.MY_SECRET_KEY).toBe("secret-value");
   });
 
   it("prompts for multiple missing vars", async () => {
-    mockInput.mockResolvedValueOnce("value-a").mockResolvedValueOnce("value-b");
+    mockPassword.mockResolvedValueOnce("value-a").mockResolvedValueOnce("value-b");
     const result = await promptForMissingEnvVars({
       args: ["${MY_SECRET_KEY}"],
       env: { API_TOKEN: "${API_TOKEN}" },
@@ -463,6 +472,10 @@ describe("installMcpFromGit", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   it("logs error and returns when clone fails", async () => {
     mockExistsSync.mockReturnValue(false);
     mockSpawnSync.mockReturnValue({ status: 1, stderr: Buffer.from("auth error") } as ReturnType<typeof spawnSync>);
@@ -470,6 +483,7 @@ describe("installMcpFromGit", () => {
     await installMcpFromGit("https://github.com/org/my-mcp.git");
 
     expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
   });
 
   it("logs error and returns when no entrypoint is detected", async () => {
@@ -483,6 +497,7 @@ describe("installMcpFromGit", () => {
     await installMcpFromGit("https://github.com/org/my-mcp.git");
 
     expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
   });
 
   it("registers and syncs when entrypoint is found", async () => {
@@ -557,29 +572,51 @@ describe("installMcpFromGit", () => {
     );
   });
 
-  it("cancels gracefully when user exits env var prompt (nonInteractive false)", async () => {
-    // When nonInteractive is false and env vars are needed, ExitPromptError aborts install.
-    // We test the nonInteractive: true case (no prompt, install proceeds) separately above.
-    // For the cancellation path we verify that not calling addMcpServer is the outcome.
-    const repoDir = join(GIT_CACHE_DIR, "my-mcp-env");
+  it("records a local relative path as an absolute one, the way git stores the origin", async () => {
+    const repoDir = join(GIT_CACHE_DIR, "local-mcp");
     const entrypointPath = join(repoDir, "dist/index.js");
-
+    mockIsLocalRepoPath.mockReturnValueOnce(true);
     mockSpawnSync.mockReturnValue({ status: 0, stderr: Buffer.from("") } as ReturnType<typeof spawnSync>);
-    mockExistsSync.mockImplementation((path) => {
-      const p = String(path);
-      return p === repoDir || p === entrypointPath;
-    });
+    mockExistsSync.mockImplementation((path) => String(path) === entrypointPath);
     mockExecFileSync.mockReturnValue(Buffer.from("abc1234\n"));
-    // Simulate the user pressing Ctrl+C at the env var prompt
-    mockInput.mockRejectedValue(new ExitPromptError("cancelled"));
+    mockAddMcpServer.mockResolvedValue(undefined);
 
-    // The entrypoint args reference an env var that is not set, triggering a prompt
-    // We need to make detectEntrypoint return something with env var refs in args.
-    // Since detectEntrypoint reads disk, and the args it returns don't have env vars,
-    // we verify cancellation via the promptForMissingEnvVars mock.
-    // For a clean integration, test with nonInteractive: true (already done above).
-    // Here we just confirm the function does not throw when cancelled.
-    await expect(installMcpFromGit("https://github.com/org/my-mcp-env.git")).resolves.toBeUndefined();
+    await installMcpFromGit("../local-mcp", { nonInteractive: true });
+
+    expect(mockSpawnSync).toHaveBeenCalledWith(
+      "git",
+      expect.arrayContaining([resolve("../local-mcp"), repoDir]),
+      expect.anything(),
+    );
+    expect(mockAddMcpServer).toHaveBeenCalledWith(
+      "local-mcp",
+      expect.any(String),
+      expect.any(Array),
+      {},
+      expect.objectContaining({ gitUrl: resolve("../local-mcp") }),
+    );
+  });
+
+  it("exits 130 when the env var prompt is cancelled with Ctrl-C in a terminal", async () => {
+    const repoDir = join(GIT_CACHE_DIR, "my-mcp-env");
+    mockSpawnSync.mockReturnValue({ status: 0, stderr: Buffer.from("") } as ReturnType<typeof spawnSync>);
+    mockExistsSync.mockImplementation((path) => String(path) === repoDir);
+    mockPassword.mockRejectedValue(new ExitPromptError("cancelled"));
+    delete process.env.CANCEL_TEST_VAR;
+    const streams = [process.stdin, process.stdout] as Array<{ isTTY?: boolean }>;
+    const before = streams.map((stream) => Object.getOwnPropertyDescriptor(stream, "isTTY"));
+    for (const stream of streams) Object.defineProperty(stream, "isTTY", { value: true, configurable: true });
+    try {
+      await installMcpFromGit("https://github.com/org/my-mcp-env.git", { envPairs: ["CANCEL_TEST_VAR"] });
+    } finally {
+      streams.forEach((stream, i) => {
+        const descriptor = before[i];
+        if (descriptor) Object.defineProperty(stream, "isTTY", descriptor);
+        else delete stream.isTTY;
+      });
+    }
+    expect(process.exitCode).toBe(130);
+    expect(mockAddMcpServer).not.toHaveBeenCalled();
   });
 
   it("re-throws non-ExitPromptError from env var prompt", async () => {
@@ -594,13 +631,13 @@ describe("installMcpFromGit", () => {
     mockExecFileSync.mockReturnValue(Buffer.from("abc1234\n"));
 
     // To trigger the catch block at line 266-271, we need promptForMissingEnvVars
-    // to actually call input(). Since detectEntrypoint returns file paths (no env var
+    // to actually call password(). Since detectEntrypoint returns file paths (no env var
     // refs like ${VAR}), we set a real env var in the args so extractEnvVars finds it.
     // Override detectEntrypoint's result by making the entrypoint a path with ${MY_TEST_VAR}.
     // But detectEntrypoint reads from disk — we can't easily inject env var refs into args.
     // Instead, test the re-throw path via promptForMissingEnvVars directly.
     delete process.env.RETHROW_TEST_VAR;
-    mockInput.mockRejectedValue(new Error("unexpected failure"));
+    mockPassword.mockRejectedValue(new Error("unexpected failure"));
 
     await expect(promptForMissingEnvVars({ args: ["${RETHROW_TEST_VAR}"], env: {} })).rejects.toThrow(
       "unexpected failure",
@@ -613,6 +650,10 @@ describe("updateMcpFromGit", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   it("returns early without logging when requireState returns undefined", async () => {
     mockRequireState.mockReturnValue(undefined);
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -622,6 +663,7 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).not.toHaveBeenCalled();
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -633,6 +675,7 @@ describe("updateMcpFromGit", () => {
     await updateMcpFromGit("nonexistent");
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not found in state"));
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -646,6 +689,7 @@ describe("updateMcpFromGit", () => {
     await updateMcpFromGit("my-server");
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("was not installed from git"));
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 
@@ -706,7 +750,36 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("git fetch failed"));
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
+  });
+
+  it("prints a refused cache's own advice, without the network retry hint", async () => {
+    const repoDir = join(GIT_CACHE_DIR, "my-mcp");
+    const server = {
+      name: "my-mcp",
+      command: "node",
+      args: [],
+      env: {},
+      source: "user" as const,
+      gitUrl: "https://github.com/org/my-mcp.git",
+    };
+    mockRequireState.mockReturnValue(makeState([server]));
+    mockExistsSync.mockImplementation((path) => String(path) === repoDir);
+    mockAssertCacheOrigin.mockImplementationOnce(() => {
+      throw new CacheRefusal(`${repoDir} holds https://example.com/other, not https://github.com/org/my-mcp.git.`);
+    });
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await updateMcpFromGit("my-mcp");
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("holds https://example.com/other"));
+    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining("Failed to update repo"));
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("network connection"));
+    expect(mockSaveState).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it("logs error and returns early when detectEntrypoint returns undefined", async () => {
@@ -732,6 +805,7 @@ describe("updateMcpFromGit", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Could not detect entrypoint after update"));
     expect(mockSaveState).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     consoleSpy.mockRestore();
   });
 });

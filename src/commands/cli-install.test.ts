@@ -464,6 +464,27 @@ describe("registerInstallCommand", () => {
       expect(mockAddMcpServer).not.toHaveBeenCalled();
     });
 
+    it("passes --env pairs and --yes to the git install", async () => {
+      const program = buildInstallProgram();
+      await program.parseAsync([
+        "node",
+        "test",
+        "install",
+        "my-server",
+        "--git",
+        "https://github.com/org/mcp",
+        "--env",
+        "API_KEY",
+        "--yes",
+      ]);
+      expect(mockInstallMcpFromGit).toHaveBeenCalledWith("https://github.com/org/mcp", {
+        ref: undefined,
+        name: "my-server",
+        envPairs: ["API_KEY"],
+        nonInteractive: true,
+      });
+    });
+
     it("passes --ref with --git", async () => {
       const program = buildInstallProgram();
       await program.parseAsync([

@@ -37,6 +37,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Interactive `plugin add` fetches the plugin once and installs the exact
   checkout it showed for approval. Before, it fetched again after the prompt,
   so a tag moved in between could install other code than the one approved.
+- `install --git` and `mcp add --git` now pass `--env` to the server
+  (`KEY` alone stores a `${KEY}` reference; `KEY=VALUE` stores the value),
+  and `mcp add` takes `--yes`. With `--yes` or no terminal, a missing env
+  var fails with exit 1 and its name instead of waiting on a prompt, so
+  agents can run both commands. In a terminal, the prompt hides what you
+  type and offers to save the value to the shell secrets file; Ctrl-C there
+  exits 130 instead of 0. Keys are checked before the clone, a bare `KEY`
+  must be upper case, `KEY=VALUE` needs a value, and a re-install keeps
+  the server's other env vars. Before, `--env`
+  was ignored for git installs, and a typed value was lost after the run.
+- A failed `install --git` or `agentbrew mcp update` now exits 1. Before,
+  a refused ref, a clone or pull error, or a missing entrypoint printed an
+  error and exited 0. `mcp update` on a tag or commit pin now says that
+  agentbrew pulls only a branch pin and prints the install command that
+  moves the pin, instead of a network hint. A re-pin or update whose build
+  fails no longer registers the previous commit's build output (`dist/`):
+  a build that fails at a commit the cache has no build output from (no
+  successful build, and not a fresh clone of it) is a failed install, and
+  with no build script an entrypoint that the commit does not contain is
+  refused. agentbrew removes none of your files. A
+  cache cloned by an older agentbrew counts as unbuilt until one build
+  succeeds. `mcp update` before `agentbrew init` now exits 1 too.
+- **Security:** `install --git` and `mcp update` reuse a cached repo in
+  `~/.config/agentbrew/mcp-repos/<name>` only when its `origin` is the
+  requested repo. Before, a second `--git` URL under the same server name
+  installed the first repo's code and recorded the second URL. A cache dir
+  with no `origin` remote (git then read `origin` as a path in the checkout)
+  or a cache dir that is a symlink or a linked worktree (git then ran in or
+  moved another repo's branch) is now refused too. A local path is now
+  recorded as an absolute path; a server installed from a relative path
+  before this change needs one `agentbrew install <name> --git <absolute
+  path>` before `mcp update` works from another dir.
 - `install --git <url> --ref <ref>` and `mcp add --git` install the tag
   when a branch has the same name. Before, `git clone --branch` picked the
   branch. agentbrew now looks the name up as `refs/tags/<ref>`, then

@@ -75,8 +75,20 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 - A short name is looked up as a tag first, then as a branch. A tag wins over a branch with the same name. To pin that branch, pass `--ref refs/heads/<name>`.
 - A full commit ID works: 40 hex, or 64 hex in a SHA-256 repo. A short commit ID, or another revision such as `HEAD~1`, is refused.
-- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit, and `mcp update` fails on it: run the install again with a new `--ref`.
+- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit: `mcp update` exits 1 on it and prints the install command, with `--ref <tag|branch|commit>`, that moves the pin.
+- A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew removes none of your files in the cache; after a re-pin whose build is refused, the cache stays at the new commit.
+- A build that fails at a commit the cache has no build output from counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it; a failed build at that commit may still use it.
+- With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
+- Known limit: when a successful build writes its output to a new place (`build/` instead of `dist/`), detection can still pick the old `dist/` first. Delete the old output dir in the cache.
 - A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
+- Each server's repo is cached at `~/.config/agentbrew/mcp-repos/<name>`, and that dir is reused only for the repo that cloned it. Another URL under the same name is refused, and so is a cache dir with no `origin` remote, a symlink, or a linked worktree. To keep both repos, install the new one under another name (`agentbrew install <other-name> --git <url>`). To replace it, delete the dir.
+- A trailing `.git` or `/` on a URL does not make it another repo, but the ssh and https forms of one repo do. A local path is recorded as an absolute one.
+
+**Env vars for a git install.** `agentbrew install <name> --git <url> --env KEY` (also `mcp add --git`) gives the server env var `KEY` as a `${KEY}` reference, which agents read from their own environment. `--env KEY=VALUE` stores the value as given, so keep secrets out of it. A bare `KEY` must be upper case (letters, digits, and `_`), and `KEY=VALUE` needs a value. A re-install keeps the server's env vars and adds or replaces the ones you pass; to drop one, `agentbrew remove <name>` and install again. agentbrew checks each key in the environment of the shell that runs the install, before it clones:
+
+- With `--yes`, or with no terminal (an agent or a script), a missing key makes the install exit 1 and name the key. It never waits on a prompt.
+- In a terminal, agentbrew asks for each missing value with hidden input, then offers to save it to your shell secrets file (as `agentbrew setup` does). Agents read it there only if your shell startup sources that file. Ctrl-C exits 130.
+- agentbrew prints key names only, never values.
 
 **GitHub MCP.** `agentbrew install github` deploys GitHub's own hosted server (`https://api.githubcopilot.com/mcp/`) with `Authorization: Bearer ${GITHUB_TOKEN}`. The old `@modelcontextprotocol/server-github` npm package is archived. On load, agentbrew moves a saved `github` entry that still names it to the hosted server. A fresh install always writes the hosted server, even on a machine with a local `~/.local/bin/*-github-mcp` launcher: GitHub maintains the hosted server, and the catalog curates rather than hosts. The launcher is used only to repair an old entry: one that still names the archived npm package on a machine that has a launcher, or one whose launcher path no longer exists. To use a launcher for a new install, add the server by hand with the launcher as its command.
 

@@ -181,6 +181,31 @@ describe("appendToShellConfig", () => {
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("MY_KEY"));
   });
 
+  it("returns false and never prints the value when the write fails", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(mkdirSync).mockImplementation(() => {
+      throw new Error("EACCES: permission denied");
+    });
+
+    expect(appendToShellConfig("MY_KEY", "my-secret-value")).toBe(false);
+
+    const output = vi.mocked(console.warn).mock.calls.flat().join("\n");
+    expect(output).toContain("export MY_KEY=");
+    expect(output).not.toContain("my-secret-value");
+  });
+
+  it("keeps a $& in the value literal when it updates an existing line", () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue('export K="old-secret"\n');
+    vi.mocked(writeFileAtomicSync).mockReturnValue(undefined);
+
+    expect(appendToShellConfig("K", "ab$&cd")).toBe(true);
+
+    const writtenContent = vi.mocked(writeFileAtomicSync).mock.calls[0]?.[1] as string;
+    expect(writtenContent).toBe('export K="ab\\$&cd"\n');
+  });
+
   it("appends to shell config on success", () => {
     vi.mocked(existsSync).mockReturnValue(false);
     vi.mocked(mkdirSync).mockReturnValue(undefined);

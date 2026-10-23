@@ -162,6 +162,41 @@ describe("registerMcpCommands", () => {
       expect(mockAddMcpServer).not.toHaveBeenCalled();
     });
 
+    it("keeps a short -y in the server's own args (`-c npx -y pkg`)", async () => {
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "mcp", "add", "srv", "-c", "npx", "-y", "@scope/pkg"]);
+      expect(mockAddMcpServer).toHaveBeenCalledWith(
+        "srv",
+        "npx",
+        expect.arrayContaining(["-y", "@scope/pkg"]),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("passes --env pairs and --yes to the git install", async () => {
+      const program = buildProgram();
+      await program.parseAsync([
+        "node",
+        "test",
+        "mcp",
+        "add",
+        "my-server",
+        "--git",
+        "https://github.com/org/mcp",
+        "--env",
+        "API_KEY",
+        "MODE=fast",
+        "--yes",
+      ]);
+      expect(mockInstallMcpFromGit).toHaveBeenCalledWith("https://github.com/org/mcp", {
+        ref: undefined,
+        name: "my-server",
+        envPairs: ["API_KEY", "MODE=fast"],
+        nonInteractive: true,
+      });
+    });
+
     it("passes --ref with --git", async () => {
       const program = buildProgram();
       await program.parseAsync([

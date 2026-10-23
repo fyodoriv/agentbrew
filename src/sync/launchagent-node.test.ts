@@ -44,6 +44,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 import { checkLaunchAgentPathDrift, extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
+import { AUTO_FIXABLE_TYPES, driftFix } from "../drift-fixes.js";
 import { autoSyncStatus } from "./auto-sync.js";
 import { installLaunchAgent } from "./launchagent.js";
 
@@ -176,6 +177,12 @@ describe("auto-sync LaunchAgent Node path (#356)", () => {
       writeFileSync(plistPath(), plist);
     }
 
+    function nodeDriftTypes(): string[] {
+      return checkLaunchAgentPathDrift()
+        .filter((item) => item.detail.includes("runs "))
+        .map((item) => item.type);
+    }
+
     function nodeDrift(): string[] {
       return checkLaunchAgentPathDrift()
         .map((item) => item.detail)
@@ -225,6 +232,10 @@ describe("auto-sync LaunchAgent Node path (#356)", () => {
 `,
       );
 
+      // Its own type: `agentbrew memory fix` repairs it, and the repair job does not claim it.
+      expect(nodeDriftTypes()).toEqual(["memory-launchagent"]);
+      expect(driftFix({ type: "memory-launchagent" })).toBe("agentbrew memory fix");
+      expect(AUTO_FIXABLE_TYPES.has("memory-launchagent")).toBe(false);
       expect(nodeDrift()).toEqual([
         expect.stringMatching(
           new RegExp(

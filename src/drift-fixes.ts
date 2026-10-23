@@ -31,6 +31,8 @@ export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   hooks: "agentbrew sync --only hooks",
   instructions: "agentbrew sync --only instructions",
   launchagent: "agentbrew status --fix",
+  // Not auto-fixable: the repair job rewrites only the check plist's Node.
+  "memory-launchagent": "agentbrew memory fix",
 };
 
 /**

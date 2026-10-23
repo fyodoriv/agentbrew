@@ -101,7 +101,15 @@ ${daemonEnvironmentXml}
  * folder that `brew upgrade node` deletes (#456).
  */
 export function buildMaintainPlist(home: string, pathValue: string, logDir: string): string {
-  const maintainArgs = [resolveSchedulerNode(), resolveAgentBrewCliJsPath(), "memory", "maintain"];
+  const node = resolveSchedulerNode();
+  const maintainArgs = [node, resolveAgentBrewCliJsPath(), "memory", "maintain"];
+  // Keep AGENTBREW_NODE_BIN in the job env when the job runs it, like the
+  // check job (#356), so drift accepts the chosen Node and a later run keeps it.
+  const nodeOverride = process.env.AGENTBREW_NODE_BIN?.trim();
+  const nodeOverrideXml =
+    nodeOverride && node === nodeOverride
+      ? `\n    <key>AGENTBREW_NODE_BIN</key>\n    <string>${nodeOverride}</string>`
+      : "";
   const programArgsXml = maintainArgs.map((arg) => `    <string>${arg}</string>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -127,7 +135,7 @@ ${programArgsXml}
     <key>PATH</key>
     <string>${pathValue}</string>
     <key>LANG</key>
-    <string>${LAUNCHAGENT_LANG}</string>
+    <string>${LAUNCHAGENT_LANG}</string>${nodeOverrideXml}
   </dict>
   <key>StandardOutPath</key>
   <string>${logDir}/mcp-memory-maintain.out.log</string>

@@ -39,7 +39,9 @@ export interface DriftItem {
     | "commands-user-added"
     | "hooks"
     | "instructions"
-    | "launchagent";
+    | "launchagent"
+    /** Node drift on a memory LaunchAgent; `agentbrew memory fix` rewrites it. */
+    | "memory-launchagent";
   detail: string;
   /** Structured diff data for display (optional — not all drift types populate this). */
   diff?: DriftDiff;

@@ -109,9 +109,9 @@ export function listAgentbrewLaunchAgentPlists(): string[] {
 /** The auto-repair plist; `agentbrew fix` rewrites it wholesale. */
 const CHECK_PLIST = "com.agentbrew.check.plist";
 
-/** The command that rewrites each Node-running plist: memory jobs belong to `memory fix`. */
-function nodeFixCommand(plistPath: string): string {
-  return basename(plistPath).startsWith("com.agentbrew.mcp-memory") ? "agentbrew memory fix" : "agentbrew fix";
+/** Memory jobs belong to `agentbrew memory fix`; the repair job rewrites only the check plist's Node. */
+function isMemoryPlist(plistPath: string): boolean {
+  return basename(plistPath).startsWith("com.agentbrew.mcp-memory");
 }
 
 /**
@@ -121,10 +121,13 @@ function nodeFixCommand(plistPath: string): string {
  * Node picked with AGENTBREW_NODE_BIN (kept in the job env) is never drift.
  */
 function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
-  const fix = nodeFixCommand(plistPath);
+  const memory = isMemoryPlist(plistPath);
+  const fix = memory ? "agentbrew memory fix" : "agentbrew fix";
   const program = extractPlistProgramArguments(content)[0];
   if (!program || !isAbsolute(program) || basename(program) !== "node") return [];
-  const drift = (detail: string): DriftItem[] => [{ agent: "launchagent", type: "launchagent", detail }];
+  const drift = (detail: string): DriftItem[] => [
+    { agent: "launchagent", type: memory ? "memory-launchagent" : "launchagent", detail },
+  ];
   if (!existsSync(program)) return drift(`${plistPath}: runs ${program}, which no longer exists — run ${fix}`);
   const override = /<key>AGENTBREW_NODE_BIN<\/key>\s*<string>([^<]*)<\/string>/u.exec(content)?.[1];
   if (override === program) return [];

@@ -120,4 +120,14 @@ describe("memory maintenance plist Node (#456)", () => {
     const program = /<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)<\/string>/u.exec(plist)?.[1];
     expect(program).toBe("/stable/opt/node/bin/node");
   });
+
+  it("keeps AGENTBREW_NODE_BIN in the job env when the job runs that Node, like the check job", () => {
+    vi.stubEnv("AGENTBREW_NODE_BIN", "/stable/opt/node/bin/node");
+    try {
+      const plist = buildMaintainPlist("/Users/test", "/usr/bin:/bin", "/Users/test/logs");
+      expect(plist).toMatch(/<key>AGENTBREW_NODE_BIN<\/key>\s*<string>\/stable\/opt\/node\/bin\/node<\/string>/u);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

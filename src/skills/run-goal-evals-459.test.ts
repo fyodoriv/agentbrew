@@ -13,7 +13,9 @@ const evals = JSON.parse(readFileSync(join(SKILL_DIR, "evals", "evals.json"), "u
 
 describe("run-goal Q&A and draft grading (#459)", () => {
   it("tells a research or Q&A goal to print the contract once the questions are known", () => {
-    expect(skill).toMatch(/research or Q&A goal[^.]*contract[^.]*questions are known/i);
+    expect(skill).toMatch(
+      /Print the goal contract[\s\S]{0,600}research or Q&A goal, print it as soon as the questions are known/i,
+    );
   });
 
   it("tells the agent to grade a draft others will read before saving or posting it", () => {

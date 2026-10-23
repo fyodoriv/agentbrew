@@ -8,9 +8,13 @@ const read = (path: string) => readFileSync(join(repoRoot, path), "utf-8");
 describe("one-step install with an agent", () => {
   it("README opens with the one sentence a user says to their agent", () => {
     const opening = read("README.md").split("\n").slice(0, 25).join("\n");
+    // The one prompt from #442: install or update, sync, audit, extend these repos.
     expect(opening).toContain(
-      "Install agentbrew by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md",
+      "Install or update agentbrew on this machine by following https://github.com/fyodoriv/agentbrew/blob/main/INSTALL.md (it updates an existing clone). Then run `agentbrew sync` so every agent gets the current rules. Audit the skills and commands already on this machine against these repos and propose adopt or merge for each one. From now on, extend these repos instead of building local copies. At the end, list anything that could work better and offer an issue or PR for each.",
     );
+    expect(
+      opening.match(/by following https:\/\/github\.com\/fyodoriv\/agentbrew\/blob\/main\/INSTALL\.md/g),
+    ).toHaveLength(1);
   });
 
   it("INSTALL.md walks the agent through plan, questions with context, backup-protected run, and a fork PR", () => {

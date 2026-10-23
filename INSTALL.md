@@ -106,6 +106,13 @@ offer to open an issue with the output.
 
 ## 5. Finish
 
+Audit the skills and commands already on this machine. `agentbrew status`
+lists the ones no tracked source owns (`skills-user-added`). For each one,
+search the installed sources (`agentbrew status --verbose` lists their
+paths; search them and `agentbrew catalog --search <name>`), then propose
+"adopt" (move it into the repo that should own it) or "merge" (it duplicates
+or changes a source skill). Change nothing until the person says yes.
+
 Tell the person:
 
 - where the backup is and how to undo (`install.sh restore`),

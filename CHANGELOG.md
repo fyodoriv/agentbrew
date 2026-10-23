@@ -242,6 +242,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A recommended catalog rule, `default-to-these-repos`: before writing a new
+  skill, command, rule, or hook, extend the installed source that owns the
+  closest one. The README now opens with one install-or-update prompt that
+  also syncs, audits local skills and commands, and asks for feedback (#442).
+  INSTALL.md says how to do that audit by hand.
 - `/work`, a built-in command for the work day, and `agentbrew work [--json]`,
   which prints its plan: ordered checkup steps, the machine rule (company
   plugin installed or not), watch mode, and end of day. Agentfiles add steps

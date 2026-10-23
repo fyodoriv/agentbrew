@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew sync` and `agentbrew status` now name a command you made in
+  `~/.config/agentbrew/commands` when an Agentfile or plugin dir with the
+  same name replaces it for your agents. Before, it was replaced silently.
 - A command or agent name that two sources ship now has one fixed winner,
   the same rule as skills: the source listed later wins. Before, commands
   took the later dir and agents the earlier one, and nothing was printed.

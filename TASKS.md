@@ -318,19 +318,6 @@
   - **Pivot**: if the rule and the skill must keep one name, rename the rule (for example `load-project-context-rule`) and keep an alias with a deprecation note.
   - **Anchor**: #430 pre-merge review (2026-10-23).
 
-- [ ] `agentbrew status` names a global command that an Agentfile dir silently overrides
-  - **ID**: global-command-override-unreported
-  - **Tags**: sync, commands
-  - **Details**: Found by the #431 review. Agentfile `commands:` dirs rank above the global `~/.config/agentbrew/commands` folder, so a command the user wrote there (with a name that is not a built-in) is replaced on every sync by an Agentfile dir that ships the same name. The user's own file is kept on disk, but agents get the other one. The new clash finder (`src/sync/name-clashes.ts`) skips the global folder on purpose, because that folder also holds merged copies, so nothing reports this case.
-  - **Files**: `src/sync/name-clashes.ts`, `src/sync/command-sync.ts`, `src/status.ts`, their tests, README "Commands"
-  - **Output**: code
-  - **Acceptance**: when a user-created file in the global folder (not tracked in the manifest as an agentbrew copy) loses to an Agentfile or plugin dir, sync warns and `agentbrew status` shows a `Name clash` line naming the global folder as skipped; agentbrew's own merged copies there never trigger it.
-  - **Hypothesis**: telling user-created files from merged copies by the manifest makes this override visible: silent overrides of a user's own command go from every occurrence to 0.
-  - **Measurement**: `npx vitest run src/sync/name-clashes.test.ts src/sync/command-sync.test.ts src/status.test.ts` with a case for a user-created `review.md` in the global folder plus an Agentfile dir that ships `review.md`, and one for a manifest-tracked merged copy (no warning).
-  - **Success**: the first case warns and shows in status; the second stays silent.
-  - **Pivot**: if the manifest cannot tell them apart reliably, let the user's own file win instead, as it already does for built-in command names.
-  - **Anchor**: #431 pre-merge review (2026-10-23).
-
 ## P3
 
 - [ ] The run-goal skill stays well under the 500-line skill limit

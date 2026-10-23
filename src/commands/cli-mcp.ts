@@ -19,6 +19,7 @@ interface McpAddOptions {
   git?: string;
   ref?: string;
   name?: string;
+  yes?: boolean;
 }
 
 interface CustomAddBridgeInput {
@@ -134,7 +135,10 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
     .description("Add an MCP server (use `agentbrew install` instead)")
     .option("-c, --command <command>", "Server command (for stdio transport)")
     .option("-a, --args <args...>", "Command arguments")
-    .option("-e, --env <pairs...>", "Environment variables (KEY=VALUE)")
+    .option(
+      "-e, --env <pairs...>",
+      "Environment variables (KEY=VALUE; with --git, KEY alone reads $KEY from the environment)",
+    )
     .option("-u, --url <url>", "Server URL (for SSE/HTTP transport)")
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable example in help text
     .option("-H, --headers <pairs...>", "HTTP headers for auth (KEY=VALUE, e.g. Authorization='Bearer ${TOKEN}')")
@@ -144,6 +148,11 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
       "Git tag, branch, or full commit ID to pin; a tag wins over a same-named branch (used with --git)",
     )
     .option("-n, --name <name>", "Override the server name derived from the git repo URL (used with --git)")
+    // Long form only: a short -y belongs to the server's own args (`-c npx -y pkg`).
+    .option(
+      "--yes",
+      "Never prompt: with --git, a missing env var fails with its name (a server's own --yes goes after --)",
+    )
     .allowUnknownOption()
     .allowExcessArguments(true)
     .action(async (name: string | undefined, options: McpAddOptions, cmd: { args: string[] }) => {
@@ -158,7 +167,12 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
       }
       // Git-based install path
       if (options.git) {
-        await installMcpFromGit(options.git, { ref: options.ref, name: options.name ?? name });
+        await installMcpFromGit(options.git, {
+          ref: options.ref,
+          name: options.name ?? name,
+          envPairs: options.env,
+          nonInteractive: options.yes,
+        });
         return;
       }
 

@@ -71,6 +71,8 @@ describe("agentbrew-add-mcp skill contract", () => {
       "agentbrew mcp add my-server --git https://github.com/org/my-mcp-server --ref v1.2.0",
       "agentbrew mcp update my-server",
       "`mcp update` follows only a branch pin",
+      "Pass `--env KEY` for each env var",
+      "With `--yes` or no terminal, a missing value",
       "To move a tag or commit pin, run `mcp add` again with a new `--ref`",
       "~/.config/agentbrew/mcp-repos/<name>",
       "Entrypoint detection checks",

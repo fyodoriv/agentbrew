@@ -34,6 +34,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `install --git` and `mcp add --git` now pass `--env` to the server
+  (`KEY` alone stores a `${KEY}` reference; `KEY=VALUE` stores the value),
+  and `mcp add` takes `--yes`. With `--yes` or no terminal, a missing env
+  var fails with exit 1 and its name instead of waiting on a prompt, so
+  agents can run both commands. In a terminal, the prompt hides what you
+  type and offers to save the value to the shell secrets file; Ctrl-C there
+  exits 130 instead of 0. Keys are checked before the clone, a bare `KEY`
+  must be upper case, `KEY=VALUE` needs a value, and a re-install keeps
+  the server's other env vars. Before, `--env`
+  was ignored for git installs, and a typed value was lost after the run.
 - A failed `install --git` or `agentbrew mcp update` now exits 1. Before,
   a refused ref, a clone or pull error, or a missing entrypoint printed an
   error and exited 0. `mcp update` on a tag or commit pin now says that

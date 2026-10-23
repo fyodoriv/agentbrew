@@ -234,7 +234,12 @@ async function handleLegacyFlagInstall(
   }
   if (options.git) {
     const { installMcpFromGit } = await import("../mcp/mcp-git.js");
-    await installMcpFromGit(options.git, { ref: options.ref, name: name });
+    await installMcpFromGit(options.git, {
+      ref: options.ref,
+      name: name,
+      envPairs: options.env,
+      nonInteractive: options.yes,
+    });
     return true;
   }
   await executeLegacyInstall(name ?? "", options, legacyMcpArgs(options, cmdArgs, knownFlags));
@@ -338,7 +343,10 @@ export function registerInstallCommand(program: Command): void {
     .option("--from <source>", "Install from a specific source")
     .option("-c, --command <command>", "Server command (for MCP stdio transport)")
     .option("-a, --args <args...>", "Command arguments (for MCP)")
-    .option("-e, --env <pairs...>", "Environment variables KEY=VALUE (for MCP)")
+    .option(
+      "-e, --env <pairs...>",
+      "Environment variables KEY=VALUE (for MCP; with --git, KEY alone reads $KEY from the environment)",
+    )
     .option("-u, --url <url>", "Server URL (for MCP SSE/HTTP transport)")
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable example in help text
     .option("-H, --headers <pairs...>", "HTTP headers KEY=VALUE (for MCP, e.g. Authorization='Bearer ${TOKEN}')")

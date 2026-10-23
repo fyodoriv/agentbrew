@@ -96,7 +96,9 @@ GitHub and Postgres are archived; do not add them.
 
 ## Add from a Git Repo
 
-Clones the repo, builds if needed, auto-detects the entrypoint, prompts for env vars, and syncs.
+Clones the repo, builds if needed, auto-detects the entrypoint, and syncs. Pass `--env KEY` for each env var
+the server needs; agents read its value from their environment. With `--yes` or no terminal, a missing value
+fails with the key's name instead of a prompt, so an agent can run the command itself.
 
 ```bash
 agentbrew mcp add my-server --git https://github.com/org/my-mcp-server

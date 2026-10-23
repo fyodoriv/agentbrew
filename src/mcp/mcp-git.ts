@@ -3,7 +3,7 @@ import { existsSync, lstatSync, readFileSync, rmSync, unlinkSync, writeFileSync 
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
-import { input } from "@inquirer/prompts";
+import { confirm, password } from "@inquirer/prompts";
 import chalk from "chalk";
 import { getStateServers } from "../agentfile.js";
 import { errorMessage } from "../core/errors.js";
@@ -24,6 +24,7 @@ import {
   isLocalRepoPath,
 } from "./git-ref.js";
 import { extractEnvVars, isEnvVarResolved } from "./mcp-setup.js";
+import { appendToShellConfig, getShellConfigPath } from "./mcp-wizard.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -64,8 +65,40 @@ interface GitInstallOptions {
   ref?: string;
   /** Override the server name derived from the repo URL. */
   name?: string;
-  /** Skip the interactive env var prompt (non-interactive mode). */
+  /** `--env` pairs for the server: `KEY=VALUE` stores the value, `KEY` alone a `${KEY}` reference. */
+  envPairs?: readonly string[];
+  /** Never prompt (`--yes`): a missing env var fails with its name instead. */
   nonInteractive?: boolean;
+}
+
+/** An env var name a shell can export. */
+const ENV_VAR_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** A `${KEY}` reference name: upper case, as the sync converters in env-vars.ts read it. */
+const ENV_REF_NAME = /^[A-Z_][A-Z0-9_]*$/;
+
+/**
+ * The server env from `--env` pairs. `KEY=VALUE` stores the value as given;
+ * `KEY` alone stores the `${KEY}` reference, which agents read from their own
+ * environment. Throws on a name that is not a valid env var name; the message
+ * names the key only, never a value.
+ */
+export function gitServerEnv(pairs: readonly string[]): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [index, pair] of pairs.entries()) {
+    const eq = pair.indexOf("=");
+    const key = eq < 0 ? pair : pair.slice(0, eq);
+    // Name the entry by position: a pasted secret with no key must not be echoed.
+    // An empty or `=`-only value is refused too: base64 padding makes a token look like KEY=VALUE.
+    const value = eq < 0 ? "" : pair.slice(eq + 1);
+    if (!(eq < 0 ? ENV_REF_NAME : ENV_VAR_NAME).test(key) || (eq >= 0 && /^=*$/.test(value))) {
+      throw new Error(
+        `--env entry ${index + 1} is not KEY=VALUE (with a value) or an upper-case KEY (letters, digits, and _) to read from the environment.`,
+      );
+    }
+    env[key] = eq < 0 ? `\${${key}}` : value;
+  }
+  return env;
 }
 
 // ── Repo name derivation ──────────────────────────────────────────────────────
@@ -397,8 +430,10 @@ export async function promptForMissingEnvVars(
   const collected: Record<string, string> = {};
 
   for (const varName of missingVars) {
-    const value = await input({
+    // Hidden input: a pasted secret never shows on screen or in a terminal log.
+    const value = await password({
       message: `  Paste your ${chalk.cyan(varName)}:`,
+      mask: true,
       validate: (val) => val.trim().length > 0 || "Value cannot be empty",
     });
     collected[varName] = value.trim();
@@ -406,6 +441,74 @@ export async function promptForMissingEnvVars(
   }
 
   return collected;
+}
+
+/** The env of an installed server with this name, so a re-install keeps keys it does not pass again. */
+async function installedServerEnv(serverName: string): Promise<Record<string, string>> {
+  const { requireState } = await import("../state.js");
+  const state = requireState({ quiet: true });
+  const server = state ? getStateServers(state).find((s) => s.name === serverName) : undefined;
+  return { ...(server?.env ?? {}) };
+}
+
+/**
+ * Ask for the missing values with hidden input, then offer to save them to the
+ * shell secrets file, as `agentbrew setup` does: agents read `${KEY}` from
+ * their own environment, so a value kept only in this process would be lost.
+ * Prints key names only.
+ */
+async function promptAndSaveEnvVars(draft: Pick<McpServer, "args" | "env">): Promise<void> {
+  const collected = await promptForMissingEnvVars(draft);
+  const keys = Object.keys(collected);
+  if (keys.length === 0) return;
+  const save = await confirm({
+    message: `  Save ${keys.join(", ")} to ${getShellConfigPath()}, so agents can read them?`,
+    default: true,
+  });
+  if (save) {
+    const saved = Object.entries(collected).filter(([key, value]) => appendToShellConfig(key, value));
+    if (saved.length > 0) {
+      console.log(chalk.dim(`    ✓ Saved ${saved.map(([key]) => key).join(", ")} to ${getShellConfigPath()}`));
+    }
+  } else {
+    console.log(chalk.yellow(`  ⚠ Not saved: agents start the server without ${keys.join(", ")} unless they have it.`));
+  }
+}
+
+/**
+ * True when every env var the server refers to has a value. With `--yes` or
+ * no terminal, a missing one fails with exit 1 and its name, never a value,
+ * so an agent never waits on a prompt. In a terminal, agentbrew asks with
+ * hidden input; Ctrl-C there exits 130.
+ */
+async function envVarsReady(
+  serverName: string,
+  draft: Pick<McpServer, "args" | "env">,
+  nonInteractive: boolean,
+): Promise<boolean> {
+  const missing = extractEnvVars(draft).filter((variable) => !isEnvVarResolved(variable));
+  if (missing.length === 0) return true;
+  // Both ends must be a terminal: a redirected stdout would hide the prompt.
+  if (nonInteractive || !process.stdin.isTTY || !process.stdout.isTTY) {
+    console.error(chalk.red(`  ✗ ${serverName} needs env vars that are not set: ${missing.join(", ")}.`));
+    console.error(
+      chalk.dim(
+        `    Set them in this shell or in ${getShellConfigPath()} and run the install again, or run it in a terminal ` +
+          "without --yes to be asked. (--env KEY=VALUE stores the value as given: only for values that are not secret.)",
+      ),
+    );
+    process.exitCode = 1;
+    return false;
+  }
+  try {
+    await promptAndSaveEnvVars(draft);
+    return true;
+  } catch (error) {
+    if (!(error instanceof ExitPromptError)) throw error;
+    console.log(chalk.yellow("\n  Installation cancelled.\n"));
+    process.exitCode = 130;
+    return false;
+  }
 }
 
 // ── Main install flow ─────────────────────────────────────────────────────────
@@ -449,13 +552,27 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
 
   const serverName = options?.name ?? deriveRepoName(gitUrl);
   const repoDir = join(GIT_CACHE_DIR, serverName);
+  // Check --env before cloning, so a typo fails fast. A re-install keeps the
+  // server's other env vars; the pairs passed now add or replace keys.
+  let env: Record<string, string>;
+  try {
+    // Cheap checks first, so a typo fails before anyone types a secret.
+    validateRepoName(serverName);
+    if (options?.ref !== undefined) assertPinnedRef(options.ref);
+    env = { ...(await installedServerEnv(serverName)), ...gitServerEnv(options?.envPairs ?? []) };
+  } catch (error) {
+    console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
+    process.exitCode = 1;
+    return;
+  }
   // git records a local path as an absolute one; state does the same, so a later
   // `mcp update` run from another dir still matches the cache's origin.
   const sourceUrl = isLocalRepoPath(gitUrl) ? resolve(gitUrl) : gitUrl;
 
   console.log(chalk.bold(`\nInstalling MCP server from git: ${chalk.cyan(gitUrl)}\n`));
 
-  // 1. Clone or update the repo
+  // 1. Every --env key needs a value before the clone and build start; then clone or update
+  if (!(await envVarsReady(serverName, { args: [], env }, options?.nonInteractive === true))) return;
   const freshClone = !existsSync(repoDir);
   let clonedDir: string;
   try {
@@ -479,35 +596,16 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
 
   console.log(chalk.dim(`  Detected entrypoint: ${entrypoint.command} ${entrypoint.args.join(" ")}`));
 
-  // 4. Prompt for any missing env vars
-  if (!options?.nonInteractive) {
-    try {
-      await promptForMissingEnvVars({ args: entrypoint.args, env: {} });
-    } catch (error) {
-      if (error instanceof ExitPromptError) {
-        console.log(chalk.yellow("\n  Installation cancelled.\n"));
-        return;
-      }
-      throw error;
-    }
-  }
-
   // 5. Resolve pinned ref (use provided ref or current HEAD SHA)
   const sha = resolveHeadSha(clonedDir);
   const pinnedRef = options?.ref ?? sha;
 
   // 6. Register in state and sync to all agents
   const { addMcpServer } = await import("../sync/mcp-sync.js");
-  await addMcpServer(
-    serverName,
-    entrypoint.command,
-    entrypoint.args,
-    {},
-    {
-      gitUrl: sourceUrl,
-      gitRef: pinnedRef,
-    },
-  );
+  await addMcpServer(serverName, entrypoint.command, entrypoint.args, env, {
+    gitUrl: sourceUrl,
+    gitRef: pinnedRef,
+  });
 
   console.log(`  ${ICON_SUCCESS} ${serverName} installed from git (${pinnedRef})`);
   console.log(chalk.dim(`    Repo cached at: ${repoDir}\n`));

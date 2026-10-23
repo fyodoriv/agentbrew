@@ -292,19 +292,6 @@
   - **Pivot**: if the hook cannot see the launch result, drop `Agent` calls with `run_in_background` from the blocked count by name.
   - **Anchor**: session 4c0513ff (2026-10-22) agent-perf report; perf-review skill.
 
-- [ ] `install --git` and `mcp add --git` run unattended with `--yes`
-  - **ID**: git-install-env-prompt-yes
-  - **Tags**: cli, agents
-  - **Details**: Found by the action-parity worker (PR #398). Both commands always prompt for missing env vars, even with `--yes`, so an agent cannot run them unattended. `agentbrew actions --json` marks them with an agent note for now. With `--yes` and no terminal, they should take values from the environment or a `--env KEY=VALUE` option, and fail with the list of missing keys instead of waiting on a prompt.
-  - **Files**: `src/commands/cli-mcp.ts`, the `install --git` path, `src/actions.ts` (drop the note when fixed)
-  - **Output**: code
-  - **Acceptance**: `agentbrew mcp add x --git <repo> --yes` with no terminal either finishes or exits non-zero naming the missing keys; it never waits.
-  - **Hypothesis**: a non-interactive path makes both commands runnable by agents: neither command hangs when run unattended.
-  - **Measurement**: a vitest case per command that runs it with stdin closed and a 5 s timeout.
-  - **Success**: both exit within 5 s with a clear result.
-  - **Pivot**: if env values cannot be passed safely, keep the prompt and make `actions --json` mark both terminal-only.
-  - **Anchor**: PR #398 review notes (2026-10-22); the owner's "Every action through CLI, agent, and UI" rule.
-
 - [ ] The installer and README change settings with `agentbrew config set`
   - **ID**: installer-uses-config-set
   - **Tags**: cli, docs, install

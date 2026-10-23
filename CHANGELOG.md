@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew sync` and `agentbrew status` now name a command you made in
+  `~/.config/agentbrew/commands` when an Agentfile or plugin dir with the
+  same name replaces it for your agents. Before, it was replaced silently.
 - An Agentfile `skills:` entry now always installs a skill. Before,
   `skills: [load-project-context]` installed the catalog rule of that name.
   `agentbrew install load-project-context` still installs the rule and now

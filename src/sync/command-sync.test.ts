@@ -274,6 +274,30 @@ describe("syncCommands", () => {
     );
   });
 
+  it("warns when an Agentfile dir replaces a command the user wrote in the global folder", async () => {
+    vi.mocked(loadManifest).mockImplementation(() => ({ hashes: {} }));
+    mockLoadState.mockReturnValue({
+      agents: [],
+      catalogVersion: "test",
+      commandSourceDirs: [{ label: "project", path: "/tmp/project/commands", origin: "agentfile" }],
+    });
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockImplementation(
+      (path) => (String(path).includes("commands") ? ["mine.md"] : []) as unknown as ReturnType<typeof readdirSync>,
+    );
+    mockReadFileSync.mockImplementation((path) =>
+      String(path).startsWith("/tmp/project/") ? "# Project command" : "# My command",
+    );
+
+    await syncCommands();
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Name clash: command mine from /tmp/project/commands; skipped from ~/.config/agentbrew/commands",
+      ),
+    );
+  });
+
   it("does not warn about duplicate command sources on default sync", async () => {
     mockExistsSync.mockReturnValue(true);
     mockLoadState.mockReturnValue({

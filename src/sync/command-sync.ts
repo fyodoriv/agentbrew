@@ -712,7 +712,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const manifest = resolveManifest(ctx);
   for (const path of removedCopies) removeFromManifest(path, manifest);
   const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
-  warnNameClashes("command", commandNameClashes(loadState()), quiet, log);
+  warnNameClashes("command", commandNameClashes(loadState(), manifest), quiet, log);
   const retiredBuiltins = retiredBuiltinFiles(options);
 
   if (sourceFiles.length === 0 && !prune && retiredBuiltins.length === 0) {

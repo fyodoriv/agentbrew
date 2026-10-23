@@ -4,14 +4,16 @@
  * later wins. Built-in commands and the user's own command and agent folders
  * are not sources here; they keep their own documented precedence.
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Logger } from "../core/logger.js";
+import { isUserModified, loadManifest, type Manifest } from "../manifest.js";
 import { AGENTS_DIR, COMMANDS_DIR } from "../paths.js";
 import { pluginCommandDirs } from "../plugins/contributions.js";
 import type { AgentBrewState } from "../types.js";
 import { expandHome } from "../utils.js";
-import { builtinCommandsDir } from "./builtin-commands.js";
+import { builtinCommandNames, builtinCommandsDir } from "./builtin-commands.js";
 
 /** One name that more than one source ships. */
 export interface NameClash {
@@ -69,12 +71,41 @@ function dirSources(paths: string[], skip: Array<string | undefined>): Array<{ l
 
 /**
  * Command names that two or more command source dirs (Agentfile dirs, then
- * plugins) ship. The built-in commands and the global commands folder keep
- * their own precedence (the global folder also holds merged copies).
+ * plugins) ship, the later one winning. The global commands folder counts
+ * only for a file the user made or edited there (not tracked in `manifest`
+ * as agentbrew's merged copy) under a name that is not a built-in command:
+ * an Agentfile or plugin dir with that name replaces it. Built-in commands
+ * keep their own order (your own version of one already wins).
  */
-export function commandNameClashes(state: AgentBrewState | undefined): NameClash[] {
+export function commandNameClashes(
+  state: AgentBrewState | undefined,
+  manifest: Manifest = loadManifest(),
+): NameClash[] {
+  const globalDir = expandHome(COMMANDS_DIR);
+  const builtins = new Set(builtinCommandNames());
   const paths = [...(state?.commandSourceDirs ?? []).map((d) => expandHome(d.path)), ...pluginCommandDirs()];
-  return nameClashes(dirSources(paths, [builtinCommandsDir(), expandHome(COMMANDS_DIR)]));
+  const sources = dirSources(paths, [builtinCommandsDir(), globalDir]);
+  // A copy with the winner's exact content loses nothing (for example after
+  // `agentbrew import`), so only a different file counts.
+  const userCommands = markdownNames(globalDir).filter(
+    (name) =>
+      !builtins.has(name) &&
+      isUserModified(join(globalDir, `${name}.md`), manifest) &&
+      differsFromWinner(join(globalDir, `${name}.md`), name, sources),
+  );
+  if (userCommands.length > 0) sources.unshift({ label: displayPath(globalDir), names: userCommands });
+  return nameClashes(sources);
+}
+
+/** True when the last source that ships `name` has other content than `file`. */
+function differsFromWinner(file: string, name: string, sources: Array<{ label: string; names: string[] }>): boolean {
+  const winner = [...sources].reverse().find((source) => source.names.includes(name));
+  if (!winner) return false;
+  try {
+    return readFileSync(file, "utf-8") !== readFileSync(join(expandHome(winner.label), `${name}.md`), "utf-8");
+  } catch {
+    return true;
+  }
 }
 
 /** Agent names that two or more Agentfile agent dirs ship. The built-in agents folder always wins. */

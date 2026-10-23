@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew status` no longer reports "PATH missing node" for a LaunchAgent
+  whose plist runs a Homebrew Cellar node while PATH has a link to the same
+  node, such as `/opt/homebrew/opt/node/bin` (#441). `status --fix` and sync
+  use the same check, so they no longer rewrite such a plist either.
 - `agentbrew sync` and `agentbrew status` now name a command you made in
   `~/.config/agentbrew/commands` when an Agentfile or plugin dir with the
   same name replaces it for your agents. Before, it was replaced silently.

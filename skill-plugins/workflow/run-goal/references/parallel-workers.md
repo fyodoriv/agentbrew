@@ -46,8 +46,9 @@ Each rule comes from a real failure in a goal run.
   run, a worker turned a feature on and broke 3 of the other worker's tests,
   and a crop one worker added contradicted the other's test. Only the final
   suite found them, an hour before the deadline. After you merge workers'
-  branches, run the per-commit gate on the merged branch at a steady pace
-  (niced, one file at a time if a worker uses the GPU). Route each red test
+  branches, run the per-commit gate on the merged branch at a steady pace,
+  under the shared heavy-run lock (niced, one file at a time if a worker
+  uses the GPU). Route each red test
   to the worker whose commit made it red.
 - In zsh, `$var:` followed by a letter is a modifier (`$h:r` drops an
   extension). Write `"${h}:refs/heads/x"` in refspecs.

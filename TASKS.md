@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] The scheduler call-site tests also catch shell strings and absolute tool paths
-  - **ID**: scheduler-call-site-lint
-  - **Tags**: tests, scheduler
-  - **Details**: `src/core/launchctl.test.ts` and `src/core/user-scheduler.test.ts` fail when a `src` file spawns `launchctl`, `crontab`, or `systemctl` outside `src/core/`, but only for a spawn whose first argument is the tool name. They miss an absolute path (`"/usr/bin/crontab"`), a shell string (`execSync("sh -c 'crontab -'")`), and a tool name passed in a variable. Today no such call exists.
-  - **Files**: `src/core/launchctl.test.ts`, `src/core/user-scheduler.test.ts`
-  - **Output**: code
-  - **Acceptance**: a fixture file with each of the three forms fails the call-site tests.
-  - **Hypothesis**: matching tool names inside string literals, with or without a path, drops undetected direct scheduler calls from 3 known forms to 0.
-  - **Measurement**: a vitest case that runs the call-site check on fixture text for each form.
-  - **Success**: all three forms are flagged, and the real tree still passes.
-  - **Pivot**: if string matching flags too many hint strings, require a spawn call within the same statement.
-  - **Anchor**: review of the PR for `scratch-home-linux-scheduler` (2026-10-23).
-
 ## P3
 
 - [ ] The catalog name lint covers bundles, and a skill-only dry run previews

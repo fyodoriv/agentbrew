@@ -144,10 +144,13 @@ function findUserCommandsForAgent(
 
 /** Detect command files in agent command dirs that are NOT tracked in the manifest.
  *  These are commands users created or edited directly. */
-export function checkUserCreatedCommands(): DriftItem[] {
+export function checkUserCreatedCommands(options: { dedupe?: boolean } = {}): DriftItem[] {
   const manifest = loadManifest();
   const trackedPaths = new Set(Object.keys(manifest.hashes));
   const seen = new Set<string>();
   const targets = AGENT_DEFINITIONS.filter((a) => a.commandsDir && existsSync(expandHome(a.commandsDir)));
-  return targets.flatMap((agent) => findUserCommandsForAgent(agent, trackedPaths, seen));
+  // `dedupe: false` reports a name once per agent (for `audit-skills`).
+  return targets.flatMap((agent) =>
+    findUserCommandsForAgent(agent, trackedPaths, options.dedupe === false ? new Set<string>() : seen),
+  );
 }

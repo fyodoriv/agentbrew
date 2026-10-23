@@ -50,6 +50,15 @@ function specificPrefix(short: string, long: string): boolean {
 }
 
 export function auditLocalItems(local: LocalItem[], index: IndexItem[], adoptTarget: string): AuditRow[] {
+  // One pass over the index: exact and normalized names in maps.
+  const exactByKey = new Map<string, IndexItem>();
+  const normalByKey = new Map<string, IndexItem>();
+  for (const item of index) {
+    const exactKey = `${item.kind}\u0000${item.name}`;
+    const normalKey = `${item.kind}\u0000${normalize(item.name)}`;
+    if (!exactByKey.has(exactKey)) exactByKey.set(exactKey, item);
+    if (!normalByKey.has(normalKey)) normalByKey.set(normalKey, item);
+  }
   const byKey = new Map<string, AuditRow>();
   for (const item of local) {
     const key = `${item.kind}\u0000${item.name}`;
@@ -58,13 +67,14 @@ export function auditLocalItems(local: LocalItem[], index: IndexItem[], adoptTar
       if (!row.agents.includes(item.agent)) row.agents.push(item.agent);
       continue;
     }
-    const sameKind = index.filter((i) => i.kind === item.kind);
-    const exact = sameKind.find((i) => i.name === item.name);
     const n = normalize(item.name);
+    const exact = exactByKey.get(key);
     const near =
       exact ??
-      sameKind.find((i) => normalize(i.name) === n) ??
-      sameKind.find((i) => specificPrefix(n, normalize(i.name)) || specificPrefix(normalize(i.name), n));
+      normalByKey.get(`${item.kind}\u0000${n}`) ??
+      index.find(
+        (i) => i.kind === item.kind && (specificPrefix(n, normalize(i.name)) || specificPrefix(normalize(i.name), n)),
+      );
     byKey.set(key, {
       kind: item.kind,
       name: item.name,
@@ -92,15 +102,16 @@ export function formatAudit(rows: AuditRow[]): string {
 
 function localItems(): LocalItem[] {
   const items: LocalItem[] = [];
-  for (const d of checkUserCreatedSkills()) {
+  for (const d of checkUserCreatedSkills({ dedupe: false })) {
     const name = d.detail.replace(/^user-created skill: /, "");
     items.push({ kind: "skill", name, agent: d.agent });
   }
-  for (const d of checkUserCreatedCommands()) {
+  for (const d of checkUserCreatedCommands({ dedupe: false })) {
     const name = d.detail.replace(/^user-created command: /, "").replace(/\.[^.]+$/, "");
     items.push({ kind: "command", name, agent: d.agent });
   }
-  return items;
+  // Dot-folders such as .trash or .system are agent internals, not skills.
+  return items.filter((item) => !item.name.startsWith("."));
 }
 
 function sourceIndex(): IndexItem[] {

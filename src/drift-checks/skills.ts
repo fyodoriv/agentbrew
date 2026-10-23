@@ -144,8 +144,10 @@ export function checkSkillsValidity(): DriftItem[] {
 }
 
 /** Detect non-symlink skill directories in agent skill dirs.
- *  These are skills users created directly instead of through agentbrew. */
-export function checkUserCreatedSkills(): DriftItem[] {
+ *  These are skills users created directly instead of through agentbrew.
+ *  `dedupe: false` reports a name once per agent (for `audit-skills`). */
+export function checkUserCreatedSkills(options: { dedupe?: boolean } = {}): DriftItem[] {
+  const dedupe = options.dedupe ?? true;
   const drift: DriftItem[] = [];
   const seen = new Set<string>();
   // A copy of a managed skill is skills drift (checkSkillCopies), not a user addition.
@@ -163,7 +165,7 @@ export function checkUserCreatedSkills(): DriftItem[] {
         try {
           const stat = lstatSync(entryPath);
           if (stat.isSymbolicLink() || !stat.isDirectory() || copies.has(resolve(entryPath))) continue;
-          if (seen.has(entry)) continue;
+          if (dedupe && seen.has(entry)) continue;
           seen.add(entry);
           drift.push({
             agent: target.agent,

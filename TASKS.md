@@ -292,19 +292,6 @@
   - **Pivot**: if the hook cannot see the launch result, drop `Agent` calls with `run_in_background` from the blocked count by name.
   - **Anchor**: session 4c0513ff (2026-10-22) agent-perf report; perf-review skill.
 
-- [ ] The installer and README change settings with `agentbrew config set`
-  - **ID**: installer-uses-config-set
-  - **Tags**: cli, docs, install
-  - **Details**: PR #397 added `agentbrew config set` as the one way to change a setting. Two places still bypass it: `seed_keep_claude_permissions` in `scripts/install.sh:146` hand-writes `claudePermissions: keep` into `state.yaml`, and three README fallback rows (`README.md:136-139`) tell users to "set `skillInstallMode: native`" by hand.
-  - **Files**: `scripts/install.sh`, `README.md`, the installer test
-  - **Output**: code
-  - **Acceptance**: the installer saves `claudePermissions keep` through `agentbrew config set`, and the README rows name `agentbrew config set skillInstallMode native`.
-  - **Hypothesis**: one write path removes hand edits of `state.yaml`: places that write settings by hand go from 2 to 0.
-  - **Measurement**: `rg -n "claudePermissions: keep|set .skillInstallMode: native" scripts README.md` plus the installer test.
-  - **Success**: 0 hand-written setting paths; the installer test passes.
-  - **Pivot**: if the CLI is not on PATH at that install step, call it by the absolute path the installer already uses.
-  - **Anchor**: PR #397 and #402 review notes (2026-10-22).
-
 - [ ] Plugin test fixtures delete their temp dirs, and interactive `plugin add` installs what it showed
   - **ID**: plugin-fixture-cleanup-and-single-fetch
   - **Tags**: tests, plugins, security

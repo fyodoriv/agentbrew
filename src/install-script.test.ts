@@ -9,7 +9,7 @@ const SCRIPT = join(import.meta.dirname, "..", "scripts", "install.sh");
 const roots: string[] = [];
 
 /** Temp HOME with existing agent settings, plus stub CLI and launchctl. */
-function sandbox(failOn?: "init" | "lint") {
+function sandbox(failOn?: "init" | "lint" | "config set claudePermissions keep") {
   const root = mkdtempSync(join(tmpdir(), "agentbrew-install-"));
   roots.push(root);
   const home = join(root, "home");
@@ -37,6 +37,7 @@ if [ "$1" = init ]; then
   echo 'source hook' >> "$HOME/.zshrc"
 fi
 [ "$1" = "${failOn ?? "none"}" ] && exit 1
+[ "$*" = "${failOn ?? "none"}" ] && exit 1
 exit 0
 `,
   );
@@ -105,19 +106,35 @@ describe("scripts/install.sh", () => {
     expect(result.stdout).toContain("--keep-claude-permissions");
   });
 
-  it("run --keep-claude-permissions seeds claudePermissions: keep before init and keeps other state", () => {
+  it("run --keep-claude-permissions saves claudePermissions keep with `agentbrew config set` before init", () => {
     const { home, log, run } = sandbox();
     mkdirSync(join(home, ".config", "agentbrew"), { recursive: true });
-    writeFileSync(
-      join(home, ".config", "agentbrew", "state.yaml"),
-      "skillInstallMode: native\nclaudePermissions: manage\n",
-    );
+    writeFileSync(join(home, ".config", "agentbrew", "state.yaml"), "skillInstallMode: native\n");
     const result = run("run", "--yes", "--keep-claude-permissions");
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    const atInit = readFileSync(log, "utf-8").split("--- state.yaml at init:")[1] ?? "";
+    const calls = readFileSync(log, "utf-8");
+    const setAt = calls.indexOf("config set claudePermissions keep");
+    expect(setAt, calls).toBeGreaterThanOrEqual(0);
+    expect(setAt).toBeLessThan(calls.indexOf("\ninit"));
+    // The installer no longer edits state.yaml by hand: the CLI owns every setting.
+    const atInit = calls.split("--- state.yaml at init:")[1] ?? "";
     expect(atInit).toContain("skillInstallMode: native");
-    expect(atInit).toContain("claudePermissions: keep");
-    expect(atInit).not.toContain("claudePermissions: manage");
+    expect(atInit).not.toContain("claudePermissions");
+  });
+
+  it("the installer and the README change settings only through `agentbrew config set`", () => {
+    const script = readFileSync(SCRIPT, "utf-8");
+    expect(script).not.toMatch(/claudePermissions: keep/);
+    const readme = readFileSync(join(import.meta.dirname, "..", "README.md"), "utf-8");
+    expect(readme).not.toMatch(/skillInstallMode: native/);
+  });
+
+  it("restores the backup when `config set claudePermissions keep` fails", () => {
+    const { home, run } = sandbox("config set claudePermissions keep");
+    const result = run("run", "--yes", "--keep-claude-permissions");
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain("Restored your settings");
+    expect(readFileSync(join(home, ".claude", "settings.json"), "utf-8")).toBe('{"user":"original"}\n');
   });
 
   describe("Node.js check", () => {

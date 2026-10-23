@@ -43,7 +43,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
   under every date.
 - **Cap long lists** at the top 10 to 15 items, then a "Show N more" button. Real lists (100+
   items) hide this need from the demo data.
-- **Friendly dates** ("Tue Mar 12", "Apr 5–7", "in 3 days"), never ISO strings in the UI. Read
+- **Friendly dates** ("Tue Mar 12", "Apr 5–7", "in 3 days"), never ISO strings in the UI (same exceptions as the budget row). Read
   ISO dates as calendar days, not shifted by the browser's time zone.
 - **Empty states shrink.** An empty month or section is one quiet dashed line, not a full card.
 - **Tidy source text at intake.** For example, title-case shouting ALL-CAPS titles in one place,
@@ -95,7 +95,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 - **Look at real data last,** read-only, on a scratch copy of the owner's data served locally. Never
   send it anywhere, and never commit its screenshots. Large real lists, ALL-CAPS titles and
   crowded "needs you" queues showed up only there.
-- **Crop phone screenshots to the device viewport** (iPhone 13 = 390 × 664) for reports.
+- **Take phone screenshots at the device viewport** (iPhone 13 = 390 × 664) for reports.
   Full-page shots put fixed bars mid-image, and a sticky phone header lands on top of the content
   in every full-page and element picture: keep the phone header static. Take report screenshots
   at capture time (`page.screenshot()` without `fullPage`); cropping afterwards with image tools

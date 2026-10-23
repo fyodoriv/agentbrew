@@ -26,7 +26,9 @@ build to it: a home view that opens on what needs the user, touch targets of at 
 at least 14 px, one add button everywhere, state-specific controls with rare actions behind "⋯",
 capped lists, friendly dates, and an accent picked by measured contrast in both themes. Pin the
 comfort budget as a test in the repo's gate: no serious axe problem, no touch target under 44 px,
-no text under 14 px, no text that spills out of its box, no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work instead of finding all of it.
+no text under 14 px, no text that spills out of its box, no raw ISO dates in app text,
+no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work
+instead of finding all of it.
 
 ## 0. Serve the page with realistic, synthetic data
 

@@ -26,8 +26,11 @@ vi.mock("../sync/mcp-sync.js", () => ({
   addMcpServer: vi.fn(),
 }));
 
+// One mock for input and password: tests drive either; `mask: true` shows the hidden prompt.
+const { ask } = vi.hoisted(() => ({ ask: vi.fn() }));
 vi.mock("@inquirer/prompts", () => ({
-  input: vi.fn(),
+  input: ask,
+  password: ask,
   confirm: vi.fn(),
   checkbox: vi.fn(),
 }));
@@ -1289,7 +1292,9 @@ describe("setupFromEnv", () => {
   it("skips invalid pairs without =", async () => {
     const { setupFromEnv } = await import("./mcp-setup.js");
     setupFromEnv(["INVALID_NO_EQUALS"]);
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Skipping invalid pair"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Skipping --env entry 1"));
+    // Named by position: the entry may be a secret pasted without its key.
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("INVALID_NO_EQUALS"));
   });
 
   it("skips pairs with empty key or value", async () => {
@@ -1431,7 +1436,7 @@ describe("runMcpSetup --all", () => {
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
 
-  it("masks values in review — short values show dots", async () => {
+  it("reviews key names only — a short value never shows", async () => {
     mockLoadState.mockReturnValue(
       makeState({
         mcpServers: [
@@ -1458,11 +1463,11 @@ describe("runMcpSetup --all", () => {
     ]
       .flat()
       .join(" ");
-    // Short values (<=8 chars) get fully masked
-    expect(output).toContain("••••");
+    expect(output).toContain("GITHUB_TOKEN");
+    expect(output).not.toContain("short");
   });
 
-  it("masks values in review — long values show prefix/suffix", async () => {
+  it("reviews key names only — not even the start or end of a long value", async () => {
     mockLoadState.mockReturnValue(
       makeState({
         mcpServers: [
@@ -1489,10 +1494,9 @@ describe("runMcpSetup --all", () => {
     ]
       .flat()
       .join(" ");
-    // Long values show first 4 + dots + last 4
-    expect(output).toContain("ghp_");
-    expect(output).toContain("3456");
-    expect(output).toContain("•");
+    expect(output).toContain("GITHUB_TOKEN");
+    expect(output).not.toContain("ghp_");
+    expect(output).not.toContain("3456");
   });
 
   it("rejects empty input via the validator", async () => {
@@ -1537,5 +1541,62 @@ describe("runMcpSetup --env", () => {
     expect(mockWriteFileSync).toHaveBeenCalled();
 
     delete process.env.TEST_VAR_SETUP;
+  });
+});
+
+describe("agentbrew setup never prints a value", () => {
+  const GITHUB_STATE = {
+    mcpServers: [
+      {
+        name: "github",
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-github"],
+        env: { GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}" },
+        source: "user" as const,
+      },
+    ],
+  };
+
+  function everythingPrinted(): string {
+    return [
+      ...vi.mocked(console.log).mock.calls,
+      ...vi.mocked(console.error).mock.calls,
+      ...vi.mocked(console.warn).mock.calls,
+      ...vi.mocked(process.stdout.write).mock.calls,
+      ...vi.mocked(process.stderr.write).mock.calls,
+    ]
+      .flat()
+      .map(String)
+      .join("\n");
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    delete process.env.GITHUB_TOKEN;
+  });
+
+  afterEach(() => {
+    delete process.env.GITHUB_TOKEN;
+  });
+
+  it("`setup --all` asks with hidden input and reviews key names only, never a piece of a value", async () => {
+    mockLoadState.mockReturnValue(makeState(GITHUB_STATE));
+    mockInput.mockResolvedValueOnce("AAAAgithub-tokenZZZZ");
+    mockConfirm.mockResolvedValueOnce(false);
+    await runMcpSetup({ all: true });
+    expect(mockInput).toHaveBeenCalledWith(expect.objectContaining({ mask: true }));
+    const printed = everythingPrinted();
+    expect(printed).toContain("GITHUB_TOKEN");
+    for (const piece of ["AAAAgithub-tokenZZZZ", "AAAA", "ZZZZ"]) expect(printed).not.toContain(piece);
+  });
+
+  it("`setup --env` never echoes a malformed pair, which may be a pasted secret", async () => {
+    mockLoadState.mockReturnValue(makeState(GITHUB_STATE));
+    mockShellConfigFs({ exists: false });
+    await runMcpSetup({ env: ["AAAApasted-secretZZZZ", "=AAAAsecond-secretZZZZ"] });
+    const printed = everythingPrinted();
+    for (const piece of ["pasted-secret", "second-secret"]) expect(printed).not.toContain(piece);
   });
 });

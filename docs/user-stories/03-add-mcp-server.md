@@ -86,7 +86,7 @@ When an API key expires or a server URL changes:
 agentbrew setup my-server   # re-run the env var wizard for this server
 ```
 
-The wizard shows which env vars are set and which are missing, then prompts for new values. Updated values are written to your shell config (`.zshenv.secrets` or equivalent) and applied on the next sync.
+The wizard shows which env vars are set and which are missing, then prompts for new values with hidden input; it prints key names only, never a value. Updated values are written to your shell config (`.zshenv.secrets` or equivalent) and applied on the next sync.
 
 To update a server's command or args (e.g., package version bump):
 

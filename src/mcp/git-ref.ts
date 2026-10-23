@@ -25,13 +25,23 @@ export class CacheRefusal extends Error {}
 const KEPT_CONFIG_ENV = new Set(["GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"]);
 
 /**
+ * Env that stops every git login prompt for an unattended run (`--yes` or no
+ * terminal): the terminal prompt, any askpass program (an empty GIT_ASKPASS
+ * also skips core.askPass and SSH_ASKPASS), and Git Credential Manager's
+ * window. Saved credentials (a credential helper, an SSH key) still work, so a
+ * private repo with no saved login fails at once instead of hanging.
+ */
+const UNATTENDED_GIT_ENV = { GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "", GCM_INTERACTIVE: "never" };
+
+/**
  * The caller's env without the variables that point git at another repo
  * (`git rev-parse --local-env-vars`: GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, and
  * more). git exports them to hooks, so an agentbrew run from a hook would
  * otherwise act on that repo instead of the MCP cache. Config set through the
  * env (an `insteadOf` rewrite or an auth header) is kept, as git does for submodules.
+ * With `unattended`, git also never asks for a login ({@link UNATTENDED_GIT_ENV}).
  */
-export function cacheGitEnv(): NodeJS.ProcessEnv {
+export function cacheGitEnv(options: { unattended?: boolean } = {}): NodeJS.ProcessEnv {
   const listed = spawnSync("git", ["rev-parse", "--local-env-vars"], { encoding: "utf-8", stdio: "pipe" }).stdout;
   // The fixed names cover a failed spawn (no git, or EAGAIN under load).
   const local = new Set([
@@ -43,7 +53,10 @@ export function cacheGitEnv(): NodeJS.ProcessEnv {
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     ...(listed ?? "").split("\n"),
   ]);
-  return Object.fromEntries(Object.entries(process.env).filter(([key]) => !local.has(key) || KEPT_CONFIG_ENV.has(key)));
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !local.has(key) || KEPT_CONFIG_ENV.has(key)),
+  );
+  return options.unattended ? { ...env, ...UNATTENDED_GIT_ENV } : env;
 }
 
 function gitIn(repoDir: string, env: NodeJS.ProcessEnv): Git {

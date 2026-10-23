@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
-import { checkbox, confirm, input } from "@inquirer/prompts";
+import { checkbox, confirm, password } from "@inquirer/prompts";
 import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { loadCatalog } from "../catalog/types.js";
@@ -121,16 +121,17 @@ async function collectEnvVarValues(
         printVarInstructions(varName, info);
       }
 
-      const defaultValue = isMissing ? undefined : existingValue;
-      const value = await input({
-        message: isMissing
-          ? `  Paste your ${chalk.cyan(varName)}:`
-          : `  ${chalk.cyan(varName)} ${chalk.dim("(Enter to keep current)")}:`,
-        default: defaultValue,
-        validate: (val) => val.trim().length > 0 || "Value cannot be empty",
+      // Hidden input, and no default: a default would print the current value in the prompt.
+      const keepable = !isMissing && Boolean(existingValue);
+      const value = await password({
+        message: keepable
+          ? `  ${chalk.cyan(varName)} ${chalk.dim("(Enter to keep current)")}:`
+          : `  Paste your ${chalk.cyan(varName)}:`,
+        mask: true,
+        validate: (val) => val.trim().length > 0 || keepable || "Value cannot be empty",
       });
 
-      collected.set(varName, value.trim());
+      collected.set(varName, keepable && value.trim() === "" ? (existingValue ?? "") : value.trim());
     }
   } catch (error) {
     if (error instanceof ExitPromptError) {
@@ -144,11 +145,9 @@ async function collectEnvVarValues(
 
 async function confirmAndApplyVars(serverName: string, collected: Map<string, string>): Promise<boolean> {
   // Phase 2: Confirm and apply all at once
+  // Key names only: not even a masked preview of a value.
   console.log(chalk.bold(`\n  Review — ${serverName}:`));
-  for (const [varName, value] of collected) {
-    const masked = value.length > 8 ? value.slice(0, 4) + "•".repeat(value.length - 8) + value.slice(-4) : "••••";
-    console.log(`    ${chalk.cyan(varName)} = ${chalk.dim(masked)}`);
-  }
+  for (const varName of collected.keys()) console.log(`    ${chalk.cyan(varName)}`);
 
   let shouldSave: boolean;
   try {
@@ -173,10 +172,10 @@ async function confirmAndApplyVars(serverName: string, collected: Map<string, st
     for (const [varName, value] of collected) appendToShellConfig(varName, value);
     console.log(chalk.dim(`    ✓ ${collected.size} var(s) saved to ${getShellConfigPath()}`));
   } else {
-    console.log(chalk.dim("    ℹ Set for this session only. Add manually:"));
-    for (const [varName, value] of collected) {
-      console.log(chalk.dim(`      ${getExportStatement(varName, value)}`));
-    }
+    console.log(
+      chalk.dim(`    ℹ Set for this session only. To keep them, add these lines to ${getShellConfigPath()}:`),
+    );
+    for (const varName of collected.keys()) console.log(chalk.dim(`      export ${varName}="…"`));
   }
 
   console.log(`  ${ICON_SUCCESS} ${serverName} configured.\n`);

@@ -89,6 +89,7 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 - With `--yes`, or with no terminal (an agent or a script), a missing key makes the install exit 1 and name the key. It never waits on a prompt.
 - In a terminal, agentbrew asks for each missing value with hidden input, then offers to save it to your shell secrets file (as `agentbrew setup` does). Agents read it there only if your shell startup sources that file. Ctrl-C exits 130.
 - agentbrew prints key names only, never values.
+- An unattended install (`--yes`, or no terminal on stdin or stdout) also stops git's https login prompt (`GIT_TERMINAL_PROMPT=0`, no askpass program). A private https repo then clones only with saved credentials, such as a credential helper; without them, the clone fails at once instead of waiting.
 
 **GitHub MCP.** `agentbrew install github` deploys GitHub's own hosted server (`https://api.githubcopilot.com/mcp/`) with `Authorization: Bearer ${GITHUB_TOKEN}`. The old `@modelcontextprotocol/server-github` npm package is archived. On load, agentbrew moves a saved `github` entry that still names it to the hosted server. A fresh install always writes the hosted server, even on a machine with a local `~/.local/bin/*-github-mcp` launcher: GitHub maintains the hosted server, and the catalog curates rather than hosts. The launcher is used only to repair an old entry: one that still names the archived npm package on a machine that has a launcher, or one whose launcher path no longer exists. To use a launcher for a new install, add the server by hand with the launcher as its command.
 
@@ -117,7 +118,7 @@ bootstrap: scripts/bootstrap.sh
 
 After adding the source, run `agentbrew bootstrap <source>` to execute the script from that source's local cache. Bootstrap never runs automatically during `install` or `sync`.
 
-**Secrets.** MCP servers that need credentials print per-token instructions after install. The setup wizard fills them in interactively:
+**Secrets.** MCP servers that need credentials print per-token instructions after install. The setup wizard fills them in interactively. It hides what you type and prints key names only, never a value or part of one; to keep a current value, press Enter:
 
 ```bash
 agentbrew install composio                 # deploys Composio Connect MCP (1000+ SaaS apps)

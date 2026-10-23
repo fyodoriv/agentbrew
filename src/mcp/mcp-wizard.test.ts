@@ -14,10 +14,13 @@ vi.mock("write-file-atomic", () => ({
   sync: vi.fn(),
 }));
 
+// One mock for input and password: tests drive either; `mask: true` shows the hidden prompt.
+const { ask } = vi.hoisted(() => ({ ask: vi.fn() }));
 vi.mock("@inquirer/prompts", () => ({
   checkbox: vi.fn(),
   confirm: vi.fn(),
-  input: vi.fn(),
+  input: ask,
+  password: ask,
 }));
 
 vi.mock("../catalog/types.js", () => ({
@@ -309,5 +312,78 @@ describe("setupLink rendering — setupSingleServer", () => {
     expect(output).toContain("Approval required");
     expect(output).toContain("Setup guide:");
     expect(output).toContain("https://docs.google.com/document/d/example/edit");
+  });
+});
+
+describe("the setup wizard never prints a value", () => {
+  // Distinct ends, so a masked preview (first and last 4 characters) is caught too.
+  const SECRET = "AAAAsecret-wizard-valueZZZZ";
+
+  function everythingPrinted(): string {
+    const calls = [
+      ...vi.mocked(console.log).mock.calls,
+      ...vi.mocked(console.error).mock.calls,
+      ...vi.mocked(console.warn).mock.calls,
+      ...vi.mocked(process.stdout.write).mock.calls,
+      ...vi.mocked(process.stderr.write).mock.calls,
+    ];
+    return calls.flat().map(String).join("\n");
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(mkdirSync).mockReturnValue(undefined);
+  });
+
+  it("asks with hidden input, and refuses an empty value when there is none to keep", async () => {
+    mockInput.mockResolvedValue(SECRET);
+    mockConfirm.mockResolvedValue(true);
+    await setupServerEnvVars(makeServer());
+    expect(mockInput).toHaveBeenCalledWith(expect.objectContaining({ mask: true }));
+    const { validate } = mockInput.mock.calls[0]?.[0] as { validate: (value: string) => boolean | string };
+    expect(validate("")).toBe("Value cannot be empty");
+  });
+
+  it("does not offer to keep an empty current value", async () => {
+    process.env.TEST_TOKEN = "";
+    mockInput.mockResolvedValue(SECRET);
+    mockConfirm.mockResolvedValue(false);
+    await setupServerEnvVars(makeServer({ missingVars: [] }));
+    const { validate } = mockInput.mock.calls[0]?.[0] as { validate: (value: string) => boolean | string };
+    expect(validate("")).toBe("Value cannot be empty");
+  });
+
+  it("prints key names only when the user declines to save", async () => {
+    mockInput.mockResolvedValue(SECRET);
+    mockConfirm.mockResolvedValue(false);
+    await setupServerEnvVars(makeServer());
+    const printed = everythingPrinted();
+    expect(printed).toContain("TEST_TOKEN");
+    for (const piece of [SECRET, "AAAA", "ZZZZ"]) expect(printed).not.toContain(piece);
+  });
+
+  it("prints key names only when the values are saved", async () => {
+    mockInput.mockResolvedValue(SECRET);
+    mockConfirm.mockResolvedValue(true);
+    await setupServerEnvVars(makeServer());
+    const printed = everythingPrinted();
+    for (const piece of [SECRET, "AAAA", "ZZZZ"]) expect(printed).not.toContain(piece);
+  });
+
+  it("never shows the current value as the prompt default, and Enter keeps it", async () => {
+    process.env.TEST_TOKEN = SECRET;
+    mockInput.mockResolvedValue("");
+    mockConfirm.mockResolvedValue(false);
+    await setupServerEnvVars(makeServer({ missingVars: [] }));
+    expect(JSON.stringify(mockInput.mock.calls)).not.toContain(SECRET);
+    expect(process.env.TEST_TOKEN).toBe(SECRET);
+    // Enter (empty or blank) is accepted only when a current value exists to keep.
+    const { validate } = mockInput.mock.calls[0]?.[0] as { validate: (value: string) => boolean | string };
+    expect(validate("")).toBe(true);
+    expect(validate("  ")).toBe(true);
+    for (const piece of [SECRET, "AAAA", "ZZZZ"]) expect(everythingPrinted()).not.toContain(piece);
   });
 });

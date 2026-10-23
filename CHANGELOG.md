@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** `agentbrew setup` never prints a secret value. Before, it
+  printed the full `export` lines when you declined to save, showed the
+  first and last 4 characters in its review, showed the current value as
+  the prompt default, echoed what you typed, and echoed a malformed
+  `--env` pair. It now hides input and prints key names only. An
+  unattended `install --git` (`--yes` or no terminal) or `mcp update` (no
+  terminal) also stops git's https login prompts, so a private repo with
+  no saved login fails at once instead of hanging the run.
 - `install --git` and `mcp add --git` now pass `--env` to the server
   (`KEY` alone stores a `${KEY}` reference; `KEY=VALUE` stores the value),
   and `mcp add` takes `--yes`. With `--yes` or no terminal, a missing env

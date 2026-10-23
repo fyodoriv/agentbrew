@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { assertCacheOrigin, CacheRefusal, checkoutPinnedRef, isLocalRepoPath } from "./git-ref.js";
+import { assertCacheOrigin, CacheRefusal, cacheGitEnv, checkoutPinnedRef, isLocalRepoPath } from "./git-ref.js";
 import { cloneOrUpdateRepo, GIT_CACHE_DIR } from "./mcp-git.js";
 
 // Real git against scratch source repos. The scratch HOME comes from
@@ -393,5 +393,18 @@ describe("isLocalRepoPath", () => {
     expect(isLocalRepoPath("file:///abs/mcp")).toBe(false);
     expect(isLocalRepoPath("git@example.com:org/mcp.git")).toBe(false);
     expect(isLocalRepoPath("host:mcp")).toBe(false);
+  });
+});
+
+describe("cacheGitEnv", () => {
+  it("stops every git login prompt for an unattended run, and keeps them otherwise", () => {
+    const unattended = cacheGitEnv({ unattended: true });
+    expect(unattended.GIT_TERMINAL_PROMPT).toBe("0");
+    // Empty GIT_ASKPASS: git then skips core.askPass and SSH_ASKPASS too.
+    expect(unattended.GIT_ASKPASS).toBe("");
+    expect(unattended.GCM_INTERACTIVE).toBe("never");
+    const attended = cacheGitEnv();
+    expect(attended.GIT_TERMINAL_PROMPT).toBe(process.env.GIT_TERMINAL_PROMPT);
+    expect(attended.GIT_ASKPASS).toBe(process.env.GIT_ASKPASS);
   });
 });

@@ -130,13 +130,18 @@ export function deriveRepoName(gitUrl: string): string {
 
 // ── Git operations ────────────────────────────────────────────────────────────
 
+/** An unattended run: `--yes`, or no terminal on stdin or stdout (an agent or a script). Nothing may prompt. */
+function isUnattended(nonInteractive = false): boolean {
+  return nonInteractive || !process.stdin.isTTY || !process.stdout.isTTY;
+}
+
 /** Refresh the cached repo at `repoDir`, cloned from `gitUrl`, then check out `gitRef` exactly, or pull. */
-function updateCachedRepo(repoDir: string, gitUrl: string, gitRef?: string): void {
+function updateCachedRepo(repoDir: string, gitUrl: string, gitRef: string | undefined, unattended: boolean): void {
   console.log(chalk.dim(`  Updating existing repo at ${repoDir}...`));
   try {
     // Never let git act on a repo that encloses the cache dir, or one that GIT_DIR names,
     // and use the cache only for the repo that made it.
-    const env = cacheGitEnv();
+    const env = cacheGitEnv({ unattended });
     assertOwnRepo(repoDir, env);
     assertCacheOrigin(repoDir, gitUrl, env);
     if (gitRef) {
@@ -160,11 +165,11 @@ function updateCachedRepo(repoDir: string, gitUrl: string, gitRef?: string): voi
 }
 
 /** Clone `gitUrl` to `repoDir`. With `gitRef`, clone without a checkout, then check out that exact ref. */
-function cloneFresh(gitUrl: string, repoDir: string, gitRef?: string): void {
+function cloneFresh(gitUrl: string, repoDir: string, gitRef: string | undefined, unattended: boolean): void {
   console.log(chalk.dim(`  Cloning ${gitUrl}...`));
   // -o origin: checkoutPinnedRef reads `origin`, whatever clone.defaultRemoteName says.
   const extraArgs = gitRef ? ["--no-checkout"] : [];
-  const env = cacheGitEnv();
+  const env = cacheGitEnv({ unattended });
   const result = spawnSync("git", ["clone", "-o", "origin", ...extraArgs, "--end-of-options", gitUrl, repoDir], {
     env,
     stdio: "pipe",
@@ -190,7 +195,12 @@ function cloneFresh(gitUrl: string, repoDir: string, gitRef?: string): void {
  * branch with the same name, and a ref that starts with `-` is refused before git runs.
  * Returns the path to the local repo directory.
  */
-export function cloneOrUpdateRepo(gitUrl: string, repoName: string, gitRef?: string): string {
+export function cloneOrUpdateRepo(
+  gitUrl: string,
+  repoName: string,
+  gitRef?: string,
+  options: { unattended?: boolean } = {},
+): string {
   validateRepoName(repoName);
   if (gitRef !== undefined) assertPinnedRef(gitRef);
   const repoDir = join(GIT_CACHE_DIR, repoName);
@@ -198,8 +208,10 @@ export function cloneOrUpdateRepo(gitUrl: string, repoName: string, gitRef?: str
   if (lstatSync(repoDir, { throwIfNoEntry: false })?.isSymbolicLink()) {
     throw new CacheRefusal(`${repoDir} is a symlink. Delete the link (not its target) and run the install again.`);
   }
-  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitUrl, gitRef);
-  else cloneFresh(gitUrl, repoDir, gitRef);
+  // Unattended runs stop git's own login prompts, so a private repo with no saved login fails at once.
+  const unattended = options.unattended ?? isUnattended();
+  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitUrl, gitRef, unattended);
+  else cloneFresh(gitUrl, repoDir, gitRef, unattended);
   return repoDir;
 }
 
@@ -274,7 +286,7 @@ function forgetBuiltCommit(repoDir: string): void {
  * after a successful build, and after any build of a fresh clone, whose files
  * all come from HEAD.
  */
-export function buildRepoIfNeeded(repoDir: string, freshClone = false): BuildOutcome {
+export function buildRepoIfNeeded(repoDir: string, freshClone = false, unattended = isUnattended()): BuildOutcome {
   const headBuiltBefore = headWasBuilt(repoDir);
   const outcome: BuildOutcome = { ran: false, ok: false, headBuiltBefore };
   const packageJsonPath = join(repoDir, "package.json");
@@ -298,8 +310,9 @@ export function buildRepoIfNeeded(repoDir: string, freshClone = false): BuildOut
   if (!headBuiltBefore) forgetBuiltCommit(repoDir);
   console.log(chalk.dim("  Running npm install + build..."));
   try {
-    // cacheGitEnv: a build script that runs git (husky's prepare) must not act on a GIT_DIR repo.
-    const env = cacheGitEnv();
+    // cacheGitEnv: a build script that runs git (husky's prepare) must not act on a GIT_DIR repo,
+    // and an unattended `npm install` of a private git dependency must not wait on a login.
+    const env = cacheGitEnv({ unattended });
     execFileSync("npm", ["install", "--prefer-offline"], {
       cwd: repoDir,
       env,
@@ -489,7 +502,7 @@ async function envVarsReady(
   const missing = extractEnvVars(draft).filter((variable) => !isEnvVarResolved(variable));
   if (missing.length === 0) return true;
   // Both ends must be a terminal: a redirected stdout would hide the prompt.
-  if (nonInteractive || !process.stdin.isTTY || !process.stdout.isTTY) {
+  if (isUnattended(nonInteractive)) {
     console.error(chalk.red(`  ✗ ${serverName} needs env vars that are not set: ${missing.join(", ")}.`));
     console.error(
       chalk.dim(
@@ -523,8 +536,9 @@ function buildAndFindEntrypoint(
   gitUrl: string,
   freshClone: boolean,
   missingHint: string,
+  unattended: boolean,
 ): DetectedEntrypoint | undefined {
-  const build = buildRepoIfNeeded(repoDir, freshClone);
+  const build = buildRepoIfNeeded(repoDir, freshClone, unattended);
   try {
     assertBuildUsable(repoDir, build, freshClone, gitUrl);
     const entrypoint = detectEntrypoint(repoDir);
@@ -576,7 +590,9 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
   const freshClone = !existsSync(repoDir);
   let clonedDir: string;
   try {
-    clonedDir = cloneOrUpdateRepo(sourceUrl, serverName, options?.ref);
+    clonedDir = cloneOrUpdateRepo(sourceUrl, serverName, options?.ref, {
+      unattended: isUnattended(options?.nonInteractive),
+    });
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
     process.exitCode = 1;
@@ -591,6 +607,7 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
     `Could not detect entrypoint in ${clonedDir}.\n` +
       `    Expected one of: ${ENTRYPOINT_CANDIDATES.join(", ")}\n` +
       `    Use 'agentbrew install ${serverName} -c <command> -a <args...>' to add manually.`,
+    isUnattended(options?.nonInteractive),
   );
   if (!entrypoint) return;
 
@@ -670,6 +687,7 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
     server.gitUrl,
     freshClone,
     "Could not detect entrypoint after update. Server config unchanged.",
+    isUnattended(),
   );
   if (!entrypoint) return;
 

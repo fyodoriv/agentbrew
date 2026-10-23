@@ -318,19 +318,6 @@
   - **Pivot**: if one fetch is not possible in the interactive flow, re-check the second fetch's tag object against the approved one and refuse a change.
   - **Anchor**: PR #403 (2026-10-22).
 
-- [ ] agentbrew never prints a secret value, and an unattended git clone never waits on a login prompt
-  - **ID**: setup-secrets-and-git-login-prompt
-  - **Tags**: security, mcp
-  - **Details**: Found in the PR #412 reviews. (a) The `agentbrew setup` wizard prints secret values in several places: the full `export KEY="<value>"` lines when the user declines to save; the first and last 4 characters in its review (single-server and `--all` flows); the current value as the visible prompt default ("Enter to keep current"); echoed input, because `input()` is not hidden; and a malformed `setup --env` pair, which may be a secret pasted with no key. (b) Unattended `install --git` and `mcp update` runs (`--yes`, or no terminal) let git ask for a login on its own terminal prompt or through an askpass program, so a private https clone can wait until the 60 s clone timeout.
-  - **Files**: `src/mcp/mcp-wizard.ts`, `src/mcp/mcp-setup.ts`, `src/mcp/git-ref.ts`, `src/mcp/mcp-git.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: no secret value, or any part of one, appears in stdout or stderr on any wizard path (save, decline, keep current, `--all`, `--env`); prompts hide input; an unattended clone of a repo that asks for a login fails fast with git's "terminal prompts disabled".
-  - **Hypothesis**: names-only output, hidden input, and a no-prompt git env for unattended runs drop wizard paths that print a value from 5 to 0, and git login prompts in unattended runs from possible to none.
-  - **Measurement**: `npx vitest run src/mcp/mcp-wizard.test.ts src/mcp/mcp-setup.test.ts src/mcp/mcp-git-ref.test.ts src/mcp/mcp-git-install.test.ts`: per-path checks of everything printed, and a clone against an HTTP remote that answers 401.
-  - **Success**: all cases pass.
-  - **Pivot**: if a hidden prompt breaks pasting for some terminals, keep `password` without a mask character and document it.
-  - **Anchor**: PR #412 review notes (2026-10-22); git docs on `GIT_TERMINAL_PROMPT` and `GIT_ASKPASS`.
-
 ## P3
 
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back

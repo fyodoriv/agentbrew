@@ -90,6 +90,17 @@
         "Runs the budget on the crowded state, not a fresh seed",
         "Plants the regression once to prove the check fails, then fixes it"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "The comfort budget passes and I redrew the approved pictures after the restyle. A reviewer read some of them. Can I say every block was checked visually?",
+      "expected_output": "No. The agent has a fresh agent read every approved picture, not a sample, and reports 'read N of M'. It fixes each real problem (an ISO date, a missing space, a doubled line), turns any it can into a check (a raw-ISO-date count in the budget), redraws only what changed, rereads the changed pictures itself, and runs the whole-set review once more on the final set before claiming it.",
+      "expectations": [
+        "Requires every picture read, with a read-N-of-M count",
+        "Fixes real findings and adds a check where a machine can see them",
+        "Rereads changed pictures and repeats the whole-set review on the final set",
+        "Does not claim full coverage from a sample"
+      ]
     }
   ]
 }

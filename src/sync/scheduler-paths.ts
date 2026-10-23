@@ -65,6 +65,13 @@ function homebrewOptNode(execPath: string): string | undefined {
   return match ? `${match[1]}/opt/${match[2]}/bin/node` : undefined;
 }
 
+/** fnm's default alias for an fnm-installed Node: `<fnm>/node-versions/<v>/installation/bin/node`
+ *  becomes `<fnm>/aliases/default/bin/node`. fnm moves that alias when the default changes. */
+function fnmDefaultNode(execPath: string): string | undefined {
+  const match = /^(.+)\/node-versions\/[^/]+\/installation\/bin\/node$/u.exec(execPath);
+  return match ? `${match[1]}/aliases/default/bin/node` : undefined;
+}
+
 function resolveUncached(execPath: string, override: string | undefined, stableLinks: readonly string[]): string {
   if (override) {
     if (nodeRuns(override)) return override;
@@ -74,8 +81,8 @@ function resolveUncached(execPath: string, override: string | undefined, stableL
     }
   }
   const real = realpathOrSelf(execPath);
-  const optNode = homebrewOptNode(real);
-  for (const candidate of optNode ? [optNode, ...stableLinks] : stableLinks) {
+  const managerLinks = [homebrewOptNode(real), fnmDefaultNode(real)].filter((link): link is string => !!link);
+  for (const candidate of [...managerLinks, ...stableLinks]) {
     if (existsSync(candidate) && realpathOrSelf(candidate) === real) return candidate;
   }
   return execPath;
@@ -85,7 +92,9 @@ function resolveUncached(execPath: string, override: string | undefined, stableL
  * The Node binary that com.agentbrew.* scheduler jobs run (#356).
  * 1. `AGENTBREW_NODE_BIN`, verbatim (links are not resolved), when it runs.
  * 2. A link that points at the running Node and survives upgrades: the
- *    Homebrew keg's `opt/<formula>/bin/node`, then {@link STABLE_NODE_LINKS}.
+ *    Homebrew keg's `opt/<formula>/bin/node`, fnm's `aliases/default/bin/node`,
+ *    then {@link STABLE_NODE_LINKS}. Each is used only when it points at the
+ *    running Node.
  *    `process.execPath` is a resolved path, so on Homebrew it names the
  *    versioned Cellar folder that `brew cleanup` deletes after an upgrade.
  * 3. `process.execPath`.

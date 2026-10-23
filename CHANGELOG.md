@@ -237,6 +237,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A SessionStart hook, `updates-landed`: when dotfiles' `dotfiles-updates-landed`
+  is installed, the agent gets its once-a-day "updates landed" line and can
+  suggest the checkup. It keeps no state and gives up after 3 seconds (#442).
 - A recommended catalog rule, `default-to-these-repos`: before writing a new
   skill, command, rule, or hook, extend the installed source that owns the
   closest one. The README now opens with one install-or-update prompt that

@@ -6,6 +6,7 @@ import { mcpRegistryEnabled, resolveRegistryServer } from "../adapters/mcp-regis
 import { getStateSources } from "../agentfile.js";
 import { cliNotFound } from "../core/cli-error.js";
 import { redactUrlCredentials } from "../core/redact-url.js";
+import { findAgentbrewRepoRoot } from "../core/repo-root.js";
 import { COMMANDS_DIR } from "../paths.js";
 import { loadState, requireState, saveState } from "../state.js";
 import { formatSuggestion } from "../suggest.js";
@@ -322,8 +323,21 @@ async function installFromCatalog(
     await installCliTool(cliTool);
     return;
   }
+  // A built-in skill resolves to its built-in copy only: a registry or a
+  // source that ships the same name must never replace it.
+  if (isBuiltInSkill(name)) {
+    installSummary.alreadyInstalled.push(name);
+    return;
+  }
   if (await tryInstallFromRegistry(catalog, name, dryRun)) return;
   await searchAndInstallFromSources(state, catalog, name);
+}
+
+/** True when `name` is a skill shipped in agentbrew's own `skill-plugins/dev/`. */
+export function isBuiltInSkill(name: string): boolean {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) return false;
+  const root = process.env.AGENTBREW_DIR ?? findAgentbrewRepoRoot("skill-plugins/dev");
+  return root !== null && existsSync(join(root, "skill-plugins", "dev", name, "SKILL.md"));
 }
 
 /** Install every member of a bundle; refuse the whole bundle when a member is not in the catalog. */

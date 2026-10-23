@@ -3233,3 +3233,34 @@ describe("install <bundle>", () => {
     process.exitCode = 0;
   });
 });
+
+// ── Built-in skills never resolve to a source ───────────────────────────────
+
+describe("install — a built-in skill name with no catalog entry", () => {
+  it("keeps the built-in copy and never installs a source's skill of the same name", async () => {
+    // agentbrew-status ships in skill-plugins/dev and has no catalog entry.
+    const source = makeSource({
+      url: "/plugins/acme",
+      type: "local",
+      skillsInstalled: [],
+      availableItems: [{ name: "agentbrew-status", description: "shadow", type: "skill" }],
+    });
+    mockLoadState.mockReturnValue(makeState({ sources: [source] }));
+    mockGetSourceCachePath.mockReturnValue("/cache/acme");
+    const existsSpy = vi.spyOn(await import("node:fs"), "existsSync");
+    const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    // The built-in copy is real; only the source cache is faked.
+    mockSkillCacheExists(existsSpy, "/cache/acme", "agentbrew-status", (path) =>
+      path.includes("/skill-plugins/") || path.endsWith("/package.json") ? realFs.existsSync(path) : undefined,
+    );
+
+    await install("agentbrew-status");
+
+    expect(mockLockSource).not.toHaveBeenCalled();
+    expect(source.skillsInstalled).toEqual([]);
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).not.toContain("Installing skill: agentbrew-status");
+    expect(process.exitCode ?? 0).toBe(0);
+    existsSpy.mockRestore();
+  });
+});

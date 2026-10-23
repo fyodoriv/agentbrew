@@ -268,8 +268,11 @@ function showLaunchAgentStatus(): void {
 function showSystemdStatus(): void {
   if (process.platform !== "linux" && !isSystemdTimerInstalled()) return;
   if (isSystemdTimerInstalled()) {
-    const note = userSchedulersTargetThisHome() ? "" : chalk.dim(" (not enabled: HOME is not your home folder)");
-    console.log(`  ${ICON_SUCCESS} systemd timer installed (30-min auto-repair)${note}`);
+    if (userSchedulersTargetThisHome()) {
+      console.log(`  ${ICON_SUCCESS} systemd timer installed (30-min auto-repair)`);
+    } else {
+      console.log(`  ${chalk.yellow("○")} systemd units written, not enabled: HOME is not your home folder`);
+    }
   } else if (process.platform === "linux" && hasSystemctl()) {
     console.error(`  ${chalk.dim("○")} systemd timer not installed`);
     console.log(chalk.dim(`    ${installHint()}`));

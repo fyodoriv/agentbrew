@@ -1,6 +1,7 @@
 import { type ExecFileSyncOptions, execFileSync, spawnSync } from "node:child_process";
 import chalk from "chalk";
 import { homeIsUsersHome } from "./home-guard.js";
+import { logSkipped } from "./logger.js";
 
 /** launchctl verbs that only read launchd state. Every other verb changes it. */
 const READ_ONLY_VERBS = new Set(["print", "print-disabled", "list", "blame", "version", "help"]);
@@ -42,6 +43,9 @@ export function runLaunchctl(args: string[], options: ExecFileSyncOptions = {}):
 export function probeLaunchctl(args: string[], timeoutMs: number): { status: number; stdout: string } | undefined {
   if (!READ_ONLY_VERBS.has(args[0] ?? "")) throw new Error(`probeLaunchctl is read-only; got "${args[0] ?? ""}"`);
   const result = spawnSync("launchctl", args, { encoding: "utf-8", timeout: timeoutMs });
-  if (result.error || result.status === null) return undefined;
+  if (result.error || result.status === null) {
+    logSkipped("core/launchctl/probe", result.error);
+    return undefined;
+  }
   return { status: result.status, stdout: result.stdout };
 }

@@ -15,7 +15,7 @@ import type { AgentBrewState, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
-import { agentNameClashes, formatNameClash } from "./name-clashes.js";
+import { agentNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
 interface AgentDefTarget {
@@ -307,8 +307,7 @@ export async function syncAgentDefs(options?: SyncOptions, ctx?: Partial<Context
 
   const sources = getAgentSources();
   const { agents: allAgents, bySource } = collectAgentDefs(sources);
-  if (!quiet)
-    for (const clash of agentNameClashes(loadState())) log.warn(`  ⚠ Name clash: ${formatNameClash("agent", clash)}`);
+  warnNameClashes("agent", agentNameClashes(loadState()), quiet, log);
 
   if (allAgents.size === 0 && !prune) {
     warnNoAgents(quiet, verbose, log);

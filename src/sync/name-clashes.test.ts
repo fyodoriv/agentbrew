@@ -39,7 +39,7 @@ describe("commandNameClashes and agentNameClashes", () => {
     const one = dirWith("review.md", "a.md");
     const two = dirWith("review.md");
     expect(commandNameClashes(state("commandSourceDirs", [one, two]))).toEqual([
-      { name: "review", owner: "src1", skipped: ["src0"] },
+      { name: "review", owner: two, skipped: [one] },
     ]);
   });
 
@@ -47,8 +47,13 @@ describe("commandNameClashes and agentNameClashes", () => {
     const one = dirWith("reviewer.md");
     const two = dirWith("reviewer.md", "planner.md");
     expect(agentNameClashes(state("agentSourceDirs", [two, one]))).toEqual([
-      { name: "reviewer", owner: "src1", skipped: ["src0"] },
+      { name: "reviewer", owner: one, skipped: [two] },
     ]);
+  });
+
+  it("count a dir listed twice once, so it never clashes with itself", () => {
+    const one = dirWith("review.md");
+    expect(commandNameClashes(state("commandSourceDirs", [one, one]))).toEqual([]);
   });
 
   it("return nothing when names do not clash or a dir is missing", () => {

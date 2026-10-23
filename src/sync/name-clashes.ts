@@ -5,9 +5,13 @@
  * are not sources here; they keep their own documented precedence.
  */
 import { existsSync, readdirSync } from "node:fs";
+import { homedir } from "node:os";
+import type { Logger } from "../core/logger.js";
+import { AGENTS_DIR, COMMANDS_DIR } from "../paths.js";
 import { pluginCommandDirs } from "../plugins/contributions.js";
 import type { AgentBrewState } from "../types.js";
 import { expandHome } from "../utils.js";
+import { builtinCommandsDir } from "./builtin-commands.js";
 
 /** One name that more than one source ships. */
 export interface NameClash {
@@ -41,24 +45,51 @@ function markdownNames(dir: string): string[] {
   }
 }
 
-/** Command names that two or more command source dirs (Agentfile dirs, then plugins) ship. */
-export function commandNameClashes(state: AgentBrewState | undefined): NameClash[] {
-  const sources = (state?.commandSourceDirs ?? []).map((d) => ({
-    label: d.label,
-    names: markdownNames(expandHome(d.path)),
-  }));
-  for (const dir of pluginCommandDirs()) sources.push({ label: dir, names: markdownNames(dir) });
-  return nameClashes(sources);
+/** `~/x` for a path under the home folder, so a clash line names each dir. */
+function displayPath(path: string): string {
+  const home = homedir();
+  return path === home || path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 }
 
-/** Agent names that two or more agent source dirs ship. */
+/**
+ * Source dirs in collection order, each path once, minus `skip` (folders
+ * with their own precedence). Labels are paths: two dirs from one
+ * Agentfile share a state label.
+ */
+function dirSources(paths: string[], skip: Array<string | undefined>): Array<{ label: string; names: string[] }> {
+  const seen = new Set(skip.filter((p): p is string => Boolean(p)));
+  const sources: Array<{ label: string; names: string[] }> = [];
+  for (const path of paths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    sources.push({ label: displayPath(path), names: markdownNames(path) });
+  }
+  return sources;
+}
+
+/**
+ * Command names that two or more command source dirs (Agentfile dirs, then
+ * plugins) ship. The built-in commands and the global commands folder keep
+ * their own precedence (the global folder also holds merged copies).
+ */
+export function commandNameClashes(state: AgentBrewState | undefined): NameClash[] {
+  const paths = [...(state?.commandSourceDirs ?? []).map((d) => expandHome(d.path)), ...pluginCommandDirs()];
+  return nameClashes(dirSources(paths, [builtinCommandsDir(), expandHome(COMMANDS_DIR)]));
+}
+
+/** Agent names that two or more Agentfile agent dirs ship. The built-in agents folder always wins. */
 export function agentNameClashes(state: AgentBrewState | undefined): NameClash[] {
-  return nameClashes(
-    (state?.agentSourceDirs ?? []).map((d) => ({ label: d.label, names: markdownNames(expandHome(d.path)) })),
-  );
+  const paths = (state?.agentSourceDirs ?? []).map((d) => expandHome(d.path));
+  return nameClashes(dirSources(paths, [expandHome(AGENTS_DIR)]));
 }
 
 /** One status or sync line for a clash, for example: `command review from b; skipped from a`. */
 export function formatNameClash(kind: "command" | "agent", clash: NameClash): string {
   return `${kind} ${clash.name} from ${clash.owner}; skipped from ${clash.skipped.join(", ")} (the source listed later wins)`;
+}
+
+/** Warn once per clash on a sync that is not quiet. */
+export function warnNameClashes(kind: "command" | "agent", clashes: NameClash[], quiet: boolean, log: Logger): void {
+  if (quiet) return;
+  for (const clash of clashes) log.warn(`  ⚠ Name clash: ${formatNameClash(kind, clash)}`);
 }

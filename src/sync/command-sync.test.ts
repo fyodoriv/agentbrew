@@ -270,7 +270,7 @@ describe("syncCommands", () => {
     );
     expect(mockWriteIfChanged).not.toHaveBeenCalledWith(expect.anything(), "# From A", expect.anything());
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Name clash: command review from team-b; skipped from team-a"),
+      expect.stringContaining("Name clash: command review from /tmp/b/commands; skipped from /tmp/a/commands"),
     );
   });
 

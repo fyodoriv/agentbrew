@@ -19,7 +19,7 @@ import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { builtinCommandNames, builtinCommandsDir, isAgentbrewCopy } from "./builtin-commands.js";
 import { delegateCommandsGenerate } from "./commands-delegate.js";
-import { commandNameClashes, formatNameClash } from "./name-clashes.js";
+import { commandNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
 /**
@@ -712,9 +712,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const manifest = resolveManifest(ctx);
   for (const path of removedCopies) removeFromManifest(path, manifest);
   const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
-  if (!quiet)
-    for (const clash of commandNameClashes(loadState()))
-      log.warn(`  ⚠ Name clash: ${formatNameClash("command", clash)}`);
+  warnNameClashes("command", commandNameClashes(loadState()), quiet, log);
   const retiredBuiltins = retiredBuiltinFiles(options);
 
   if (sourceFiles.length === 0 && !prune && retiredBuiltins.length === 0) {

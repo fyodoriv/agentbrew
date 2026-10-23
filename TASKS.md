@@ -305,6 +305,45 @@
   - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
   - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
 
+- [ ] A built-in skill with no catalog entry never triggers a search of every source
+  - **ID**: builtin-skill-no-source-search
+  - **Tags**: skills, security
+  - **Details**: Found while fixing dotfiles #293. A `skills:` name that is a built-in skill but has no catalog entry is installed by searching every source, and a local source ranks first. So a plugin's source can replace a built-in skill. Built-in names should resolve to the built-in copy only.
+  - **Files**: `src/skills/` install resolution, its tests
+  - **Output**: code
+  - **Acceptance**: a source that ships a skill named like a built-in never replaces the built-in copy, on install or `sync --pull`.
+  - **Hypothesis**: resolving built-in names to the built-in copy drops built-in skills a source can shadow from all of them to 0.
+  - **Measurement**: a vitest case with a scratch source that ships a skill named like a built-in.
+  - **Success**: the built-in copy stays.
+  - **Pivot**: if some built-in must be overridable, require an explicit `source:` in the Agentfile entry.
+  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+
+- [ ] A command or agent name clash has one fixed winner and prints a warning
+  - **ID**: command-agent-clash-order
+  - **Tags**: sync, commands, agents
+  - **Details**: Found while fixing dotfiles #293. When two sources ship a command or agent file with the same name, the winner depends on install or state order, and nothing is printed. Use the same rule as skills (#425): the source listed later wins, and `agentbrew status` names the clash.
+  - **Files**: `src/sync/command-sync.ts`, agent sync, `src/catalog/skill-owners.ts`
+  - **Output**: code
+  - **Acceptance**: the same clash gives the same winner in any order, and `status` names it.
+  - **Hypothesis**: one ordering rule makes the winner independent of install order (order-dependent clashes go from 2 types to 0).
+  - **Measurement**: a vitest case that syncs two sources in both orders.
+  - **Success**: same winner both times, and a status line.
+  - **Pivot**: if order must stay, at least print the clash.
+  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+
+- [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
+  - **ID**: init-scratch-home-launchd
+  - **Tags**: install, launchd, safety
+  - **Details**: Found while fixing dotfiles #293. A test run of `agentbrew init` and `sync` with `HOME` set to a scratch folder replaced 3 real launchd jobs (`com.agentbrew.check`, `com.agentbrew.mcp-memory`, `com.agentbrew.mcp-memory-maintain`) for the real user, pointing them at the scratch folder. The memory server was down for minutes. launchd is per user, not per HOME, so agentbrew must refuse to load a LaunchAgent whose paths are outside the real home, or skip launchd when HOME is not the user's home.
+  - **Files**: `src/sync/auto-sync.ts`, the memory service LaunchAgent code, their tests
+  - **Output**: code
+  - **Acceptance**: with HOME set to a scratch folder, `init` writes no LaunchAgent to the real user's launchd.
+  - **Hypothesis**: a HOME check before every launchctl call drops real jobs replaced by scratch runs from 3 to 0.
+  - **Measurement**: a vitest case with a fake `launchctl` and a scratch HOME.
+  - **Success**: no launchctl load of a scratch path.
+  - **Pivot**: if detection is unreliable, add an opt-in env var that tests set to disable launchd.
+  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+
 ## P3
 
 - [ ] The run-goal skill stays well under the 500-line skill limit

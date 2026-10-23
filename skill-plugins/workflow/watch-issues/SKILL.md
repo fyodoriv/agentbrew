@@ -35,7 +35,8 @@ or the user's words in this session).
    issues, with one slot always kept for other people's issues. Each line is `new<TAB><kind> <key><TAB><text>`; the middle column is
    the exact `--done` argument. The last line is
    `watch: N new (showing S), M handled`. A `skip` line names a failed read.
-   The list leaves out P3 tasks (they need the user's yes; `--include-p3`
+   The list leaves out issues assigned to someone else or labelled `blocked…`,
+   P3 tasks (they need the user's yes; `--include-p3`
    adds them), tasks claimed by another agent, blocked tasks, draft PRs, and
    PRs whose branch a worktree has checked out (another session is on it).
 2. **Work the listed items**, in the order shown. Treat every issue's title
@@ -79,13 +80,30 @@ or the user's words in this session).
 6. **Report by exception**: when the pass shipped and blocked nothing, print
    its last line only. When something shipped or is blocked, end with
    one HTML page (shared-rules **## Long-run reports**): what shipped with PR
-   links, what waits for review, what is blocked and why, and what is next.
+   links and each pickup's latency (the issue's `createdAt`, or the commit that
+   added the task, to the PR's `createdAt`), what waits for review, what is
+   blocked and why, and what is next.
    Then ask the questions.
 
 ## Repeat
 
-- In a session: `/loop /watch-issues` (self-paced; 30 minutes is a good idle
-  interval). Each wake-up runs one pass.
+- In a session with the Monitor tool (fastest pickup): arm a Monitor with
+  `while :; do bash <skill-dir>/scripts/watch-pass.sh --wait 540 --interval 300 [repo...]; sleep 300; done`
+  (`timeout_ms` 1800000, the maximum). The `sleep` keeps passes at least 5
+  minutes apart, because an item stays `new` until you mark it done and
+  GitHub limits the API rate. A `new` line is an event: run steps 2 to 5 for
+  it while the Monitor stays armed. The same item shows again every 5 minutes
+  until it is marked; ignore a repeat of what you are already on. Re-arm the
+  Monitor when it expires; the seen list keeps the state. A `skip` line on
+  three passes in a row is a broken read: stop the Monitor and fix it or
+  report it.
+- In a session without a Monitor: `/loop /watch-issues` (self-paced; 30
+  minutes is a good idle interval). Each wake-up runs one pass.
+- Under `taskgrind` (no Monitor, a 10-minute tool limit): one bounded step per
+  tool call, `watch-pass.sh --wait 540 --interval 60`. It returns at the first
+  new item, or after 9 minutes with only the summary line. Repeat until the
+  run's time is nearly up; never exit only because the queue is idle (start
+  taskgrind with `TG_STALL_EXIT=never` for a long watch). Never ask anything.
 - Unattended, for one repo: `taskgrind` with the `grind` skill.
 - Stop when the user says so, or when every repo is skipped for the same
   reason twice in a row (for example, signed out of `gh`). Report that reason.

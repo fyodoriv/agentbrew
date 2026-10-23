@@ -23,7 +23,9 @@ exactly what is left.
 2. Run `scripts/open-work.sh <repo> ...` from this skill's folder. It prints
    one line per item: `dirty`, `do-not-stage`, `worktree`, `stash`,
    `unpushed`, `branch`, `pr`, or `unknown`, with paths, branch names and
-   counts only. Exit 1 means something is open.
+   counts only. Exit 1 means something is open. A squash-merged branch is not
+   `branch` open work, even after the default branch changed the same lines,
+   unless the default branch reverted it.
 3. Add what no script can see: promises in the transcript ("I'll add a test
    later", a step the user asked for that you skipped), failing checks you
    left, review comments you did not answer, and steps that need the owner

@@ -1364,6 +1364,17 @@
         "Prints fresh check status as proof",
         "Makes no code edits, because the code is not what is red"
       ]
+    },
+    {
+      "id": 119,
+      "prompt": "/goal do the checkup, then be on the lookout for new issues and implement them immediately. While the agent builds issue A (a project list for agents), the owner files issue B, which asks for half of the same commands with a different default. The agent's scripted CSS edit inserts new rules in the middle of an existing multi-selector rule; unit tests pass and the new story's approved picture is drawn from the broken styles.",
+      "expected_output": "The agent adds issue B to the contract file as a done-criterion in one chat line and folds it into issue A's branch and PR (one PR that closes both), adopting B's default and updating A's tests, docs, and e2e to match, instead of a second PR that conflicts. Before merge it runs a fresh-context review of the diff even though the targeted tests pass; the review finds the broken CSS rule, the agent stops the running gate, fixes the rule, redraws and reads the picture again, and reruns the full gate before merging.",
+      "expectations": [
+        "Issue B joins the contract as a done-criterion and ships in the same PR as issue A",
+        "Issue B's default replaces A's in the code, tests, e2e, and docs in the same pass",
+        "A fresh-context review of the diff runs before merge, even with green targeted tests",
+        "After the review's fix, the agent redraws and reads the picture and reruns the full gate before merging"
+      ]
     }
   ]
 }

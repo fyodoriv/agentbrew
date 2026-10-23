@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew plugin add`, `update`, `rollback`, and `remove` now refresh the
+  Claude Code plugin copy right away (#447). Before, a hook that a new plugin
+  version added stayed off until the next `agentbrew sync`.
 - `agentbrew status` names an outdated catalog pin in an agent that
   agentbrew does not manage (for example `tasks-mcp@0.5.0` in VS Code
   settings when Copilot is not detected), with the exact one-line edit. Sync

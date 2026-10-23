@@ -189,6 +189,39 @@ describe("attempts and blocked calls", () => {
   });
 });
 
+describe("background agent launches", () => {
+  const base = {
+    project: "p",
+    ts: "2026-10-15T12:00:00Z",
+    sid: "s",
+    tool: "Agent",
+    key: "agent:general-purpose",
+    agent: null,
+  };
+  const attempt = (id: string) => ({ ...base, ev: "attempt", id, bg: true });
+  const done = (id: string, ms: number) => ({ ...base, ms, ok: true, id, bg: true });
+
+  it("count as ran with no completion row yet, and once when the row arrives", () => {
+    expect(summarize([attempt("a")])).toMatchObject({ attempts: 1, blocked: 0 });
+    expect(summarize([attempt("a"), done("a", 918_013)])).toMatchObject({ attempts: 1, blocked: 0 });
+  });
+
+  it("still count as never ran when a denied row names them", () => {
+    const denied = { ...base, ev: "denied", id: "b" };
+    expect(summarize([attempt("b"), denied])).toMatchObject({
+      blocked: 1,
+      blockedKeys: [{ key: "agent:general-purpose", count: 1 }],
+    });
+  });
+
+  it("leave the worker's run time out of tool time, the step ranking, and human wait", () => {
+    const summary = summarize([done("a", 918_013), done("c", 2_400_000)]);
+    expect(summary.toolMs).toBe(0);
+    expect(summary.keys).toEqual([]);
+    expect(summary.humanWait.calls).toBe(0);
+  });
+});
+
 describe("human wait", () => {
   const NAV = "mcp__Claude_Browser__navigate";
 

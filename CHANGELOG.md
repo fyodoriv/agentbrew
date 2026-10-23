@@ -35,9 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The `perf-task-review` Stop hook no longer counts a background agent
-  launch (`Agent` with `run_in_background`) as a call that never ran, so a
-  turn that dispatches workers is not asked for a time review for it. A
-  denied call is still flagged.
+  launch (`Agent` with `run_in_background`) as a call that never ran, and a
+  worker's run time no longer counts as tool time in the turn its result
+  lands in. Turns that dispatch workers are no longer asked for a time
+  review for them. A denied launch is still flagged; a background launch
+  that a hook blocks now counts as ran.
 - Interactive `plugin add` fetches the plugin once and installs the exact
   checkout it showed for approval. Before, it fetched again after the prompt,
   so a tag moved in between could install other code than the one approved.

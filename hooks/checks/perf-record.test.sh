@@ -115,6 +115,8 @@ run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PreToolUse",session_id:"
 check "Test 10b (background launch → bg true: $(last_row))" "$(last_row | jq -e '.ev=="attempt" and .bg==true and .key=="agent:general-purpose" and .id=="toolu_bg"' >/dev/null && echo 0 || echo 1)"
 run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PreToolUse",session_id:"s1",cwd:$cwd,tool_name:"Agent",tool_input:{subagent_type:"general-purpose",prompt:"x"},tool_use_id:"toolu_fg"}')" >/dev/null
 check "Test 10c (foreground launch → no bg: $(last_row))" "$(last_row | jq -e '.ev=="attempt" and (has("bg")|not)' >/dev/null && echo 0 || echo 1)"
+run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PostToolUse",session_id:"s1",cwd:$cwd,tool_name:"Agent",tool_input:{subagent_type:"general-purpose",run_in_background:true,prompt:"secret prompt text"},tool_use_id:"toolu_bg",duration_ms:918013}')" >/dev/null
+check "Test 10e (background completion → bg true: $(last_row))" "$(last_row | jq -e '.bg==true and .ms==918013 and .id=="toolu_bg"' >/dev/null && echo 0 || echo 1)"
 check "Test 10d (no prompt text in log)" "$(grep -q 'secret prompt text' "$(log_file)" && echo 1 || echo 0)"
 
 # Test 11: PermissionDenied → a denied row with the same id; the reason text is not stored.

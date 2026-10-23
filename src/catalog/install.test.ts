@@ -3271,3 +3271,27 @@ describe("install — a built-in skill name with no catalog entry", () => {
     }
   });
 });
+
+// ── A name that is both a catalog rule and a built-in skill ─────────────────
+
+describe("install — a rule and a built-in skill share a name", () => {
+  it("an Agentfile skills: entry installs the skill, never the rule", async () => {
+    mockLoadState.mockReturnValue(makeState({ sources: [] }));
+    const { installSkills } = await import("./install.js");
+
+    await installSkills(["load-project-context"]);
+
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).not.toContain("Installing rule set: load-project-context");
+  });
+
+  it("agentbrew install <name> installs the rule and says a built-in skill has the name too", async () => {
+    mockLoadState.mockReturnValue(makeState({ sources: [] }));
+
+    await install("load-project-context");
+
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).toContain("Installing rule set: load-project-context");
+    expect(logs).toContain("is also a built-in skill");
+  });
+});

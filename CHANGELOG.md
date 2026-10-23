@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An Agentfile `skills:` entry now always installs a skill. Before,
+  `skills: [load-project-context]` installed the catalog rule of that name.
+  `agentbrew install load-project-context` still installs the rule and now
+  says that a built-in skill shares the name. A catalog test fails when a
+  new rule, MCP server, or CLI tool takes a built-in skill's name.
 - A command or agent name that two sources ship now has one fixed winner,
   the same rule as skills: the source listed later wins. Before, commands
   took the later dir and agents the earlier one, and nothing was printed.

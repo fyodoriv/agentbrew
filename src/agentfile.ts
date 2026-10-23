@@ -66,6 +66,8 @@ export interface Agentfile {
    *  hooks, agents, instructions) skips them. Filesystem dirs are NOT deleted;
    *  the exclusion is purely a sync-time filter. */
   excludeAgents?: string[];
+  /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). */
+  workSteps?: string[];
   /** Default model id to deploy to every detected agent that declares a
    *  `modelConfig` surface in agents.yaml (claude-code, codex today).
    *  Absent means model sync is off. */
@@ -181,6 +183,9 @@ export function parseAgentfile(content: string): Agentfile {
     recommended: raw.recommended === true ? true : undefined,
     excludeAgents: Array.isArray(raw.excludeAgents)
       ? raw.excludeAgents.filter((x): x is string => typeof x === "string")
+      : undefined,
+    workSteps: Array.isArray(raw.workSteps)
+      ? raw.workSteps.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim())
       : undefined,
     defaultModel: typeof raw.defaultModel === "string" && raw.defaultModel.trim() ? raw.defaultModel.trim() : undefined,
     modelOverrides: parseModelOverrides(raw.modelOverrides),
@@ -391,6 +396,7 @@ function serializeAgentfileMemoryFields(agentfile: Agentfile, output: Record<str
 function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   if (agentfile.excludeAgents?.length) output.excludeAgents = agentfile.excludeAgents;
+  if (agentfile.workSteps?.length) output.workSteps = agentfile.workSteps;
   if (agentfile.mcp?.length) output.mcp = agentfile.mcp;
   if (agentfile.skills?.length) output.skills = agentfile.skills;
   if (agentfile.sources?.length) output.sources = agentfile.sources;
@@ -435,6 +441,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
       normalizeSourceDirEntry(value, baseDir),
     );
     merged.excludeAgents = mergeStringEntries(merged.excludeAgents, agentfile.excludeAgents);
+    merged.workSteps = mergeStringEntries(merged.workSteps, agentfile.workSteps);
     merged.hooks = mergeHookEntries(merged.hooks, agentfile.hooks);
     merged.rules = mergeRules(merged.rules, agentfile.rules, baseDir);
     if (agentfile.recommended) merged.recommended = true;

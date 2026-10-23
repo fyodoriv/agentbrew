@@ -426,6 +426,14 @@ export function buildProgram(): Command {
   registerSyncCommand(program);
   registerCoreCommands(program);
   registerConfigCommand(program);
+  program
+    .command("work")
+    .description("Print the day plan for /work: checkup steps, the machine rule, watch mode, and end of day")
+    .option("--json", "Output as JSON")
+    .action(async (options: { json?: boolean }) => {
+      const { showWorkPlan } = await import("./work.js");
+      showWorkPlan(options);
+    });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);
   registerMemoryCommands(program);

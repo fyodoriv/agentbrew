@@ -37,6 +37,7 @@ const STATE_KEYS_ON_INIT: Record<keyof AgentBrewState, "rebuild" | "keep"> = {
   agentfileSkills: "keep",
   skillSourceDirs: "keep",
   agentSourceDirs: "keep",
+  workSteps: "keep",
   commandSourceDirs: "keep",
   hooks: "keep",
   externalMcpServers: "keep",

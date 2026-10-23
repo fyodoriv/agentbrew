@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] `agentbrew install load-project-context` installs the built-in skill, or says which one it installs
-  - **ID**: catalog-rule-skill-name-clash
-  - **Tags**: catalog, skills, rules
-  - **Details**: Found by the #430 review. `load-project-context` is both a catalog rule (`src/catalog.yaml`, no `source:`) and a built-in skill in `skill-plugins/dev/`. `installFromCatalog` checks catalog skills, MCP servers, rules, and CLI tools before built-in skills, so `agentbrew install load-project-context` installs the rule, and an Agentfile `skills:` entry with that name does the same. A user who asks for the skill gets the rule and no message. No other catalog rule, MCP server, or CLI tool shares a name with a built-in skill today (four catalog skills do, with `source: built-in`, which is fine).
-  - **Files**: `src/catalog/install.ts`, `src/catalog.yaml`, `src/catalog/install.test.ts`, a catalog lint test
-  - **Output**: code
-  - **Acceptance**: `agentbrew install load-project-context` installs what the user asked for (or asks, in a terminal), an Agentfile `skills:` entry always installs the skill, and a catalog lint fails when a new rule, MCP server, or CLI tool takes a built-in skill's name (catalog skills with `source: built-in` are allowed).
-  - **Hypothesis**: resolving `skills:` entries to skills first and linting name clashes drops catalog names that install the wrong kind of item from 1 to 0.
-  - **Measurement**: `npx vitest run src/catalog/install.test.ts src/catalog/catalog.test.ts` with a case for `install("load-project-context")`, one for an Agentfile `skills: [load-project-context]`, and a catalog test that lists names shared between built-in skills and catalog rules, MCP servers, and CLI tools.
-  - **Success**: the skill installs for a `skills:` entry, and the lint finds 0 shared names (or only an allowlisted one with a reason).
-  - **Pivot**: if the rule and the skill must keep one name, rename the rule (for example `load-project-context-rule`) and keep an alias with a deprecation note.
-  - **Anchor**: #430 pre-merge review (2026-10-23).
-
 - [ ] `agentbrew status` names a global command that an Agentfile dir silently overrides
   - **ID**: global-command-override-unreported
   - **Tags**: sync, commands
@@ -306,6 +293,19 @@
   - **Anchor**: #431 pre-merge review (2026-10-23).
 
 ## P3
+
+- [ ] The catalog name lint covers bundles, and a skill-only dry run previews
+  - **ID**: catalog-name-lint-bundles-dry-run
+  - **Tags**: catalog, skills, tests
+  - **Details**: Found by the review of the `catalog-rule-skill-name-clash` PR. (1) `src/catalog/catalog-name-clash.test.ts` checks rules, MCP servers, and CLI tools, but not bundles; a bundle named like a built-in skill would win a bare `agentbrew install` the same way. (2) The skill-only branch of `installFromCatalog` (`src/catalog/install.ts`) skips `showCatalogDryRun`, so a future caller that passes `skillOnly` with `dryRun: true` would install a catalog skill for real. No caller does that today.
+  - **Files**: `src/catalog/catalog-name-clash.test.ts`, `src/catalog/install.ts`, `src/catalog/install.test.ts`
+  - **Output**: code
+  - **Acceptance**: the lint lists bundle names too, and `install(name, { skillOnly: true, dryRun: true })` previews a catalog skill without installing it.
+  - **Hypothesis**: unchecked kinds of catalog names that can shadow a built-in skill drop from 1 (bundles) to 0, and skill-only dry runs that install for real drop from possible to 0.
+  - **Measurement**: `npx vitest run src/catalog/catalog-name-clash.test.ts src/catalog/install.test.ts` with a bundle in the checked list and a skill-only dry-run case.
+  - **Success**: both cases pass.
+  - **Pivot**: if no skill-only dry-run caller ever appears, delete the dry-run case and keep a comment instead.
+  - **Anchor**: review of the `catalog-rule-skill-name-clash` PR (2026-10-23).
 
 - [ ] The run-goal skill stays well under the 500-line skill limit
   - **ID**: run-goal-size

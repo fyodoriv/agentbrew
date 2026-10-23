@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An Agentfile `skills:` entry now always installs a skill. Before,
+  `skills: [load-project-context]` installed the catalog rule of that name.
+  `agentbrew install load-project-context` still installs the rule and now
+  says that a built-in skill shares the name. A catalog test fails when a
+  new rule, MCP server, or CLI tool takes a built-in skill's name.
 - On Linux, `agentbrew auto-sync install` and `uninstall` with a scratch
   `HOME` no longer write the real user's crontab or run `systemctl --user`
   enable, disable, or daemon-reload. Both are per user, so agentbrew changes

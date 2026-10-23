@@ -318,7 +318,7 @@ async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, option
   if (!applied || options.dryRun) return;
   const { install: catalogInstall } = await import("./catalog/install.js");
   for (const skillName of applied.skillsToInstall) {
-    await catalogInstall(skillName);
+    await catalogInstall(skillName, { skillOnly: true });
   }
   if (applied.recommendedRequested) await catalogInstall(undefined, { recommended: true });
 }

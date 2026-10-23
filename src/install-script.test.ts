@@ -260,7 +260,8 @@ esac
     expect(existsSync(join(home, ".gemini", "commands"))).toBe(false);
     expect(existsSync(join(home, ".config", "agentbrew"))).toBe(false);
     expect(existsSync(join(home, "Library", "LaunchAgents", "com.agentbrew.check.plist"))).toBe(false);
-    expect(readFileSync(log, "utf-8")).toContain("launchctl bootout");
+    // launchd is per user: a scratch HOME restore removes the plist but never boots out a job.
+    expect(readFileSync(log, "utf-8")).not.toContain("launchctl bootout");
   });
 
   it("restores on a failed setup too, and `restore` undoes a finished install by hand", () => {

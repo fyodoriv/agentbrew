@@ -22,6 +22,18 @@ vi.mock("chokidar", () => ({
   },
 }));
 
+// These cases model a machine whose HOME is the user's home folder; the
+// launchctl guard would skip every change under the scratch test HOME.
+// child_process is mocked below, so this still runs nothing real.
+vi.mock("../core/launchctl.js", async () => {
+  const { execFileSync } = await import("node:child_process");
+  return {
+    launchdTargetsThisHome: () => true,
+    runLaunchctl: (args: string[], options: object = {}) =>
+      String(execFileSync("launchctl", args, { stdio: "pipe", ...options }) ?? ""),
+  };
+});
+
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
   spawnSync: vi.fn(() => ({ status: 0, error: null })),

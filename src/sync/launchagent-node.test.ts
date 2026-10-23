@@ -9,6 +9,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const launchctl = vi.hoisted(() => vi.fn((..._args: unknown[]) => ""));
 const spawnMock = vi.hoisted(() => vi.fn((..._args: unknown[]) => ({ unref: () => undefined })));
 
+// These cases model a machine whose HOME is the user's home folder; the
+// launchctl guard would skip every change under the scratch test HOME.
+// child_process is mocked above, so this still runs nothing real.
+vi.mock("../core/launchctl.js", async () => {
+  const { execFileSync } = await import("node:child_process");
+  return {
+    launchdTargetsThisHome: () => true,
+    runLaunchctl: (args: string[], options: object = {}) =>
+      String(execFileSync("launchctl", args, { stdio: "pipe", ...options }) ?? ""),
+  };
+});
+
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>();
   return {

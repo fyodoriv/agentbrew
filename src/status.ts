@@ -24,6 +24,7 @@ import { getStatePath, requireState } from "./state.js";
 import { type AutoRepairDescription, describeAutoRepair, probeAutoRepairHealth } from "./sync/auto-repair-health.js";
 import { helperScriptStatus, isInstructionsUpToDate, loadInstructions } from "./sync/instructions-sync.js";
 import { formatModelLabel, resolveTargetModel } from "./sync/model-sync.js";
+import { agentNameClashes, commandNameClashes, formatNameClash, type NameClash } from "./sync/name-clashes.js";
 import { collectSkills, getSkillSources } from "./sync/skills-sync.js";
 import { isAgentbrewProvidedSkillSource } from "./sync/soft-update.js";
 import type { Source } from "./types.js";
@@ -60,6 +61,8 @@ interface StatusData {
   syncErrors: Array<{ module?: string; message: string }> | undefined;
   mcpHealth: { failing: number; generatedAt?: string } | undefined;
   skillNameClashes: InstalledSkillClash[];
+  commandNameClashes: NameClash[];
+  agentNameClashes: NameClash[];
   statePath: string;
 }
 
@@ -578,17 +581,23 @@ export function collectStatusData(): StatusData | undefined {
     syncErrors,
     mcpHealth: snapshot ? { failing: unhealthy.length, generatedAt: snapshot.generatedAt } : undefined,
     skillNameClashes: installedSkillClashes(getStateSources(state)),
+    commandNameClashes: commandNameClashes(state),
+    agentNameClashes: agentNameClashes(state),
     statePath: getStatePath(),
   };
 }
 
-/** Print one line per installed skill name that two or more sources ship. */
+/** Print one line per skill, command, or agent name that two or more sources ship. */
 function printSkillNameClashes(state: AgentbrewState, indent: string): void {
   for (const clash of installedSkillClashes(getStateSources(state))) {
     console.log(
       `${indent}Name clash:   ${chalk.yellow(clash.skill)} ${chalk.dim(`installed from ${clash.owner}; skipped from ${clash.skipped.join(", ")} (the source listed later wins)`)}`,
     );
   }
+  for (const clash of commandNameClashes(state))
+    console.log(`${indent}Name clash:   ${chalk.yellow(formatNameClash("command", clash))}`);
+  for (const clash of agentNameClashes(state))
+    console.log(`${indent}Name clash:   ${chalk.yellow(formatNameClash("agent", clash))}`);
 }
 
 /** Print the compact default-model line when the Agentfile manages one. */

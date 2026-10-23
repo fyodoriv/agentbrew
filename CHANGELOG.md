@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A command or agent name that two sources ship now has one fixed winner,
+  the same rule as skills: the source listed later wins. Before, commands
+  took the later dir and agents the earlier one, and nothing was printed.
+  Sync warns, and `agentbrew status` (and `--json`) names each clash.
 - **Security:** `agentbrew plugin leak-audit` and `plugin rules` started from
   a git hook now read the folder they are given. Before, a hook's `GIT_DIR`
   made the leak audit list the hook's repository, so it could miss a leak in
@@ -56,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `sync --pull` no longer installs a team source's `recommended` skill with a
   built-in name either. An explicit `install <name> --from <source>` still
   replaces it.
+- `agentbrew init`, `sync`, `auto-sync install`, and `memory enable` with a
+  scratch `HOME` no longer load, unload, enable, or restart the real user's
+  launchd jobs (`com.agentbrew.check` and the memory daemons). launchd is per
+  user, so agentbrew now changes it only when `HOME` is your home folder.
 - A command started from a git hook no longer runs plugin-store git commands
   (clone, checkout, tag and signature checks, drift checks) or local-source
   SHA lookups in the hook's repository: they drop `GIT_DIR`, `GIT_WORK_TREE`,

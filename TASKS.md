@@ -279,44 +279,44 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] `agentbrew sync --pull` finishes in seconds, even under load
-  - **ID**: sync-pull-speed
-  - **Tags**: performance, sync
-  - **Details**: Two fixes are in: one parallel SHA lookup per source (median 17.0 s to 8.5 s, 2026-10-23), then parallel pulls of cached sources plus skipping installed skills that match their source. The second build measured a median of 4.9 s against 8.4 s for the first (5 interleaved runs, 1-min load 13-26). The final build, which only adds a no-prompt git env and a deduped pull list, measured 10.5 s against 15.2 s at load 19-89, so the target is not yet confirmed at load under 15. The biggest piece left is `npx skills check` (about 1.1 s). Next step: re-measure at load under 15; if the median is under 5 s, close this task.
-  - **Files**: `src/update.ts`, `src/catalog/index-source.ts`
-  - **Output**: measurement
-  - **Acceptance**: the median `sync --pull` on an unchanged setup is below 5 s at load under 15.
-  - **Hypothesis**: with parallel pulls and skipped re-copies in place, the median on an unchanged setup is under 5 s at load under 15.
-  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus timestamped output lines: `agentbrew sync --pull 2>&1 | perl -MTime::HiRes=time -ne 'printf "%.2f %s", time, $_'`.
-  - **Success**: median under 5 s at load under 15.
-  - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
-  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
-
-- [ ] A command or agent name clash has one fixed winner and prints a warning
-  - **ID**: command-agent-clash-order
-  - **Tags**: sync, commands, agents
-  - **Details**: Found while fixing dotfiles #293. When two sources ship a command or agent file with the same name, the winner depends on install or state order, and nothing is printed. Use the same rule as skills (#425): the source listed later wins, and `agentbrew status` names the clash.
-  - **Files**: `src/sync/command-sync.ts`, agent sync, `src/catalog/skill-owners.ts`
+- [ ] `agentbrew` with a scratch HOME on Linux never changes the real user's crontab or systemd timer
+  - **ID**: scratch-home-linux-scheduler
+  - **Tags**: install, scheduler, safety
+  - **Details**: The macOS fix routes every `launchctl` change through `src/core/launchctl.ts`, which skips it when HOME is not the user's home folder. Linux has the same per-user problem: `src/sync/cron.ts` pipes a new table to `crontab -` (the real user's crontab, with scratch-HOME paths), and `src/sync/systemd.ts` runs `systemctl --user enable --now` and `disable --now agentbrew-check.timer`, which act on the real timer by name. Reuse the same HOME check (renamed for all schedulers) before each change.
+  - **Files**: `src/sync/cron.ts`, `src/sync/systemd.ts`, `src/core/launchctl.ts`, their tests
   - **Output**: code
-  - **Acceptance**: the same clash gives the same winner in any order, and `status` names it.
-  - **Hypothesis**: one ordering rule makes the winner independent of install order (order-dependent clashes go from 2 types to 0).
-  - **Measurement**: a vitest case that syncs two sources in both orders.
-  - **Success**: same winner both times, and a status line.
-  - **Pivot**: if order must stay, at least print the clash.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+  - **Acceptance**: with HOME set to a scratch folder, `auto-sync install` and `uninstall` on Linux make no `crontab` write and no `systemctl --user` change.
+  - **Hypothesis**: the HOME check before each scheduler change drops real crontab or timer changes from scratch-HOME runs from possible to 0.
+  - **Measurement**: a vitest case with fake `crontab` and `systemctl` first on PATH and a scratch HOME.
+  - **Success**: the fakes record no change call.
+  - **Pivot**: if HOME detection is unreliable on Linux, read the home folder from `getent passwd`.
+  - **Anchor**: review of the PR for `init-scratch-home-launchd` (2026-10-23).
 
-- [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
-  - **ID**: init-scratch-home-launchd
-  - **Tags**: install, launchd, safety
-  - **Details**: Found while fixing dotfiles #293. A test run of `agentbrew init` and `sync` with `HOME` set to a scratch folder replaced 3 real launchd jobs (`com.agentbrew.check`, `com.agentbrew.mcp-memory`, `com.agentbrew.mcp-memory-maintain`) for the real user, pointing them at the scratch folder. The memory server was down for minutes. launchd is per user, not per HOME, so agentbrew must refuse to load a LaunchAgent whose paths are outside the real home, or skip launchd when HOME is not the user's home.
-  - **Files**: `src/sync/auto-sync.ts`, the memory service LaunchAgent code, their tests
+- [ ] `agentbrew install load-project-context` installs the built-in skill, or says which one it installs
+  - **ID**: catalog-rule-skill-name-clash
+  - **Tags**: catalog, skills, rules
+  - **Details**: Found by the #430 review. `load-project-context` is both a catalog rule (`src/catalog.yaml`, no `source:`) and a built-in skill in `skill-plugins/dev/`. `installFromCatalog` checks catalog skills, MCP servers, rules, and CLI tools before built-in skills, so `agentbrew install load-project-context` installs the rule, and an Agentfile `skills:` entry with that name does the same. A user who asks for the skill gets the rule and no message. No other catalog rule, MCP server, or CLI tool shares a name with a built-in skill today (four catalog skills do, with `source: built-in`, which is fine).
+  - **Files**: `src/catalog/install.ts`, `src/catalog.yaml`, `src/catalog/install.test.ts`, a catalog lint test
   - **Output**: code
-  - **Acceptance**: with HOME set to a scratch folder, `init` writes no LaunchAgent to the real user's launchd.
-  - **Hypothesis**: a HOME check before every launchctl call drops real jobs replaced by scratch runs from 3 to 0.
-  - **Measurement**: a vitest case with a fake `launchctl` and a scratch HOME.
-  - **Success**: no launchctl load of a scratch path.
-  - **Pivot**: if detection is unreliable, add an opt-in env var that tests set to disable launchd.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+  - **Acceptance**: `agentbrew install load-project-context` installs what the user asked for (or asks, in a terminal), an Agentfile `skills:` entry always installs the skill, and a catalog lint fails when a new rule, MCP server, or CLI tool takes a built-in skill's name (catalog skills with `source: built-in` are allowed).
+  - **Hypothesis**: resolving `skills:` entries to skills first and linting name clashes drops catalog names that install the wrong kind of item from 1 to 0.
+  - **Measurement**: `npx vitest run src/catalog/install.test.ts src/catalog/catalog.test.ts` with a case for `install("load-project-context")`, one for an Agentfile `skills: [load-project-context]`, and a catalog test that lists names shared between built-in skills and catalog rules, MCP servers, and CLI tools.
+  - **Success**: the skill installs for a `skills:` entry, and the lint finds 0 shared names (or only an allowlisted one with a reason).
+  - **Pivot**: if the rule and the skill must keep one name, rename the rule (for example `load-project-context-rule`) and keep an alias with a deprecation note.
+  - **Anchor**: #430 pre-merge review (2026-10-23).
+
+- [ ] `agentbrew status` names a global command that an Agentfile dir silently overrides
+  - **ID**: global-command-override-unreported
+  - **Tags**: sync, commands
+  - **Details**: Found by the #431 review. Agentfile `commands:` dirs rank above the global `~/.config/agentbrew/commands` folder, so a command the user wrote there (with a name that is not a built-in) is replaced on every sync by an Agentfile dir that ships the same name. The user's own file is kept on disk, but agents get the other one. The new clash finder (`src/sync/name-clashes.ts`) skips the global folder on purpose, because that folder also holds merged copies, so nothing reports this case.
+  - **Files**: `src/sync/name-clashes.ts`, `src/sync/command-sync.ts`, `src/status.ts`, their tests, README "Commands"
+  - **Output**: code
+  - **Acceptance**: when a user-created file in the global folder (not tracked in the manifest as an agentbrew copy) loses to an Agentfile or plugin dir, sync warns and `agentbrew status` shows a `Name clash` line naming the global folder as skipped; agentbrew's own merged copies there never trigger it.
+  - **Hypothesis**: telling user-created files from merged copies by the manifest makes this override visible: silent overrides of a user's own command go from every occurrence to 0.
+  - **Measurement**: `npx vitest run src/sync/name-clashes.test.ts src/sync/command-sync.test.ts src/status.test.ts` with a case for a user-created `review.md` in the global folder plus an Agentfile dir that ships `review.md`, and one for a manifest-tracked merged copy (no warning).
+  - **Success**: the first case warns and shows in status; the second stays silent.
+  - **Pivot**: if the manifest cannot tell them apart reliably, let the user's own file win instead, as it already does for built-in command names.
+  - **Anchor**: #431 pre-merge review (2026-10-23).
 
 ## P3
 

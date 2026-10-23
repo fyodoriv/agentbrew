@@ -92,6 +92,16 @@
         "Repeats bounded waits instead of exiting just because the queue is idle",
         "Does not ask the user a question"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "/watch-issues ~/apps/careerbrew (the pass lists three new tasks with no Blocked line: one needs the owner's browser cookies, one needs 4 weeks of the owner's real use, one needs the owner's own eval labels)",
+      "expected_output": "The agent does not try to do any of the three: each needs a step only the owner can do. It adds a `**Blocked**:` line to each task naming that exact owner step, ships the task-queue edit through the repo's gate and a PR, and notes that the pass reads TASKS.md from the default branch, so the tasks drop out of the list only after the merge. The next pass prints `watch: 0 new`.",
+      "expectations": [
+        "Does not attempt an owner-only step (cookies, weeks of use, the owner's own labels)",
+        "Adds a Blocked line naming the exact owner step to each of the three tasks",
+        "Ships the edit through the repo's gate and a PR, and reruns the pass after the merge"
+      ]
     }
   ]
 }

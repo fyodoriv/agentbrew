@@ -75,6 +75,16 @@
         "Explains the owner step on the page: what it is, why only the owner can do it, what it changes",
         "Chat holds the page link, one summary line, and the questions from the page"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "wrap up (the repo squash-merges PRs; 50 local branches belong to merged PRs, and main has since changed the same files)",
+      "expected_output": "open-work.sh lists none of the 50 squash-merged branches: each one's whole diff matches one commit on main by patch id, even where a three-way merge would now conflict. It still lists a branch whose squash commit main later reverted, and the agent reports only real open work.",
+      "expectations": [
+        "Squash-merged branches are not listed as open work, even after main changed the same lines",
+        "A branch whose squash commit was reverted on main is listed again",
+        "The agent does not offer to finish or delete the merged branches as if they were open work"
+      ]
     }
   ]
 }

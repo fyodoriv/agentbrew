@@ -1367,6 +1367,17 @@
     },
     {
       "id": 119,
+      "prompt": "/goal do the checkup, then be on the lookout for new issues and implement them immediately. While the agent builds issue A (a project list for agents), the owner files issue B, which asks for half of the same commands with a different default. The agent's scripted CSS edit inserts new rules in the middle of an existing multi-selector rule; unit tests pass and the new story's approved picture is drawn from the broken styles.",
+      "expected_output": "The agent adds issue B to the contract file as a done-criterion in one chat line and folds it into issue A's branch and PR (one PR that closes both), adopting B's default and updating A's tests, docs, and e2e to match, instead of a second PR that conflicts. Before merge it runs a fresh-context review of the diff even though the targeted tests pass; the review finds the broken CSS rule, the agent stops the running gate, fixes the rule, redraws and reads the picture again, and reruns the full gate before merging.",
+      "expectations": [
+        "Issue B joins the contract as a done-criterion and ships in the same PR as issue A",
+        "Issue B's default replaces A's in the code, tests, e2e, and docs in the same pass",
+        "A fresh-context review of the diff runs before merge, even with green targeted tests",
+        "After the review's fix, the agent redraws and reads the picture and reruns the full gate before merging"
+      ]
+    },
+    {
+      "id": 120,
       "prompt": "/goal add a daily summary feature to the company plugin. Mid-goal, the user says: keep the plugin thin and put the logic in the parent app. From this machine, the parent app is issue-only (no edits).",
       "expected_output": "The agent records the new criterion and the changed approach in the contract file. It files the parent-app issue first, with the full generic spec. It shrinks the plugin code to the smallest interim part, which names that issue. It adds the new rule to the rules, the skill, and memory, with a guard test.",
       "expectations": [
@@ -1377,7 +1388,7 @@
       ]
     },
     {
-      "id": 120,
+      "id": 121,
       "prompt": "/goal fix three small bugs in a report renderer; each fix is its own commit, and the test suite is green after each.",
       "expected_output": "After each fix commit the agent runs a fresh-context review of that commit's diff before it merges, even though the suite is green. It fixes what each review finds and reviews the fix again. Its report counts reviews per fix commit: at least one each.",
       "expectations": [

@@ -414,7 +414,7 @@ The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites t
 
 ### MCP endpoint repair
 
-**Catalog version pins.** When the catalog pins an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`), every sync rewrites a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's to that version. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config.
+**Catalog version pins.** When the catalog pins an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`), every sync rewrites a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's to that version. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config. Sync changes only agents agentbrew manages (detected). For an agent it does not manage, such as VS Code Copilot without `~/.copilot`, `agentbrew status` prints an `Outdated pin` line with the exact one-line edit, and `status --json` lists it under `unmanagedOutdatedPins`; neither counts as drift.
 
 Every `agentbrew sync` sweeps each agent's JSON MCP config — the global block
 and every per-project block, including Claude Code's `projects.<path>.mcpServers`

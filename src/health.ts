@@ -26,6 +26,7 @@ import { checkClaudeDesktopMcpDrift } from "./drift-checks/claude-desktop-mcp.js
 import { classifyEnvHygiene } from "./drift-checks/env.js";
 import { checkUserStatusLine } from "./drift-checks/statusline.js";
 import { driftFix } from "./drift-fixes.js";
+import { outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
 import { fix } from "./repair.js";
 import { requireState } from "./state.js";
 import { probeAutoRepairHealth } from "./sync/auto-repair-health.js";
@@ -52,6 +53,16 @@ function outputHealthJson(state: AgentBrewState, allDrift: DriftItem[], userAddi
     userAdditions,
     // Informational, not drift: the later source's copy is installed on purpose.
     skillNameClashes: installedSkillClashes(getStateSources(state)),
+    // Informational, not drift: agentbrew does not manage these agents' files.
+    unmanagedOutdatedPins: outdatedPinsInUnmanagedAgents(state.agents).flatMap((result) =>
+      result.findings.map((finding) => ({
+        agent: result.agentName,
+        file: result.path,
+        entry: finding.path,
+        from: finding.from,
+        to: finding.to,
+      })),
+    ),
   };
   console.log(JSON.stringify(data, null, 2));
   process.exitCode = allDrift.length > 0 ? 1 : 0;

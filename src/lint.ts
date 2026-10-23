@@ -561,13 +561,13 @@ function lintCatalogPins(): { errors: number } {
   const detected = state.agents.filter((agent) => agent.detected);
   const sweep = sweepCatalogPins({ dryRun: true, detected });
   if (sweep.length === 0) {
-    console.log(`  ${ICON_SUCCESS} every detected agent's floating catalog MCP entries are pinned`);
+    console.log(`  ${ICON_SUCCESS} every detected agent's catalog MCP entries are on the catalog's pin`);
     return { errors: 0 };
   }
   let total = 0;
   for (const result of sweep) {
     console.error(
-      `  ${ICON_ERROR} ${chalk.yellow(result.agentName)} — ${result.findings.length} floating catalog MCP entr${result.findings.length === 1 ? "y" : "ies"}`,
+      `  ${ICON_ERROR} ${chalk.yellow(result.agentName)} — ${result.findings.length} outdated catalog MCP entr${result.findings.length === 1 ? "y" : "ies"}`,
     );
     total += result.findings.length;
   }
@@ -758,7 +758,7 @@ function validateCatalogPinsSilent(): string[] {
   const detected = state.agents.filter((agent) => agent.detected);
   return sweepCatalogPins({ dryRun: true, detected }).map(
     (result) =>
-      `${result.agentName}: ${result.findings.length} floating catalog MCP entr${result.findings.length === 1 ? "y" : "ies"}`,
+      `${result.agentName}: ${result.findings.length} outdated catalog MCP entr${result.findings.length === 1 ? "y" : "ies"}`,
   );
 }
 

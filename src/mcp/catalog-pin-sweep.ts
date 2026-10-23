@@ -12,6 +12,10 @@ const EXACT_VERSION_ARG = /^((?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*)@\d+\.\d+\.\
 
 export interface CatalogPinFinding {
   path: string;
+  /** The package argument found, for example `tasks-mcp@0.5.0`. */
+  from?: string;
+  /** The catalog's pinned argument it should be, for example `tasks-mcp@0.10.2`. */
+  to?: string;
 }
 
 export interface CatalogPinFileResult {
@@ -38,6 +42,7 @@ interface CatalogPin {
 interface CatalogPinSlice {
   basePath: string;
   pin: CatalogPin;
+  from: string;
   replaceArgs(args: string[]): void;
 }
 
@@ -153,8 +158,14 @@ function collectServerSlices(servers: unknown, basePath: string, pins: CatalogPi
   for (const [serverName, entry] of Object.entries(servers)) {
     if (!isRecord(entry)) continue;
     const match = matchingPin(serverName, entry, pins);
-    if (match)
-      slices.push({ basePath: `${basePath}.${serverName}`, pin: match.pin, replaceArgs: match.shape.replaceArgs });
+    const from = match?.shape.args.find((arg) => argNeedsPin(arg, match.pin));
+    if (match && from !== undefined)
+      slices.push({
+        basePath: `${basePath}.${serverName}`,
+        pin: match.pin,
+        from,
+        replaceArgs: match.shape.replaceArgs,
+      });
   }
 }
 
@@ -207,7 +218,11 @@ function sweepOneObjectConfigForCatalogPins<T extends Record<string, unknown>>(
     return { fixedCount: 0, findings: [] };
   }
   const slices = collectCatalogPinSlices(config, mcpKey, pins);
-  const findings = slices.map((slice) => ({ path: slice.basePath }));
+  const findings = slices.map((slice) => ({
+    path: slice.basePath,
+    from: slice.from,
+    to: slice.pin.args.at(-1) ?? slice.pin.packageName,
+  }));
   if (findings.length === 0 || dryRun) return { fixedCount: 0, findings };
 
   for (const slice of slices) {
@@ -245,7 +260,11 @@ export function sweepOneTomlConfigForCatalogPins(
   if (!pin) return { fixedCount: 0, findings: [] };
   const parsed = readToml(path);
   const slices = collectCatalogPinSlices(parsed, mcpKey, [pin]);
-  const findings = slices.map((slice) => ({ path: slice.basePath }));
+  const findings = slices.map((slice) => ({
+    path: slice.basePath,
+    from: slice.from,
+    to: slice.pin.args.at(-1) ?? slice.pin.packageName,
+  }));
   if (findings.length === 0 || dryRun) return { fixedCount: 0, findings };
   try {
     const before = readFileSync(path, "utf-8");
@@ -311,4 +330,65 @@ function pickCatalogPinSweepFn(
     default:
       return sweepOneJsonConfigForCatalogPins;
   }
+}
+
+/**
+ * Outdated catalog pins in agents agentbrew does not manage: in state with
+ * `detected: false`. Sync never rewrites these files, because agentbrew does
+ * not own them, but the probe still starts their servers, so status names
+ * each one. An agent missing from state (a fresh install) is not reported.
+ */
+export function outdatedPinsInUnmanagedAgents(
+  agents: Array<Pick<AgentConfig, "name" | "detected">>,
+): CatalogPinFileResult[] {
+  const unmanaged = new Set(agents.filter((agent) => agent.detected === false).map((agent) => agent.name));
+  const results: CatalogPinFileResult[] = [];
+  for (const agent of AGENT_DEFINITIONS) {
+    if (!agent.mcpConfig || !unmanaged.has(agent.name)) continue;
+    const path = expandHome(agent.mcpConfig);
+    if (!existsSync(path)) continue;
+    const sweepFn = pickCatalogPinSweepFn(agent.mcpFormat);
+    if (!sweepFn) continue;
+    const { findings } = sweepFn(path, agent.mcpKey ?? "mcpServers", true);
+    if (findings.length > 0) results.push({ path, agentName: agent.name, fixedCount: 0, findings });
+  }
+  return results;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/** Escape a literal for a perl regex (the s{}{} pattern side). */
+function perlPattern(value: string): string {
+  return value.replace(/[\\/.@$^*+?()[\]{}|-]/g, "\\$&");
+}
+
+/** Escape a literal for a perl replacement (the s{}{} replacement side). */
+function perlReplacement(value: string): string {
+  return value.replace(/[\\@${}]/g, "\\$&");
+}
+
+/**
+ * One status line per outdated pin and file in an unmanaged agent, with the
+ * exact one-line edit. The edit replaces every quoted copy of that pin in
+ * the file, so a file with several findings for one pin gets one line.
+ */
+export function formatUnmanagedPinLines(results: CatalogPinFileResult[]): string[] {
+  const lines: string[] = [];
+  for (const result of results) {
+    const seen = new Set<string>();
+    for (const finding of result.findings) {
+      const from = finding.from;
+      const to = finding.to;
+      if (!from || !to || seen.has(from)) continue;
+      seen.add(from);
+      const entries = result.findings.filter((f) => f.from === from).map((f) => f.path);
+      const edit = `perl -pi -e 's{"${perlPattern(from)}"}{"${perlReplacement(to)}"}g' ${shellQuote(result.path)}`;
+      lines.push(
+        `${from} in ${result.agentName} (${entries.join(", ")}; not managed by agentbrew); the catalog pins ${to}. Update every copy in that file: ${edit}`,
+      );
+    }
+  }
+  return lines;
 }

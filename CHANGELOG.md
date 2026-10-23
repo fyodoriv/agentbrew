@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew status` names an outdated catalog pin in an agent that
+  agentbrew does not manage (for example `tasks-mcp@0.5.0` in VS Code
+  settings when Copilot is not detected), with the exact one-line edit. Sync
+  still leaves those files alone. `status --json` lists them under
+  `unmanagedOutdatedPins`.
 - `agentbrew status` no longer reports "PATH missing node" for a LaunchAgent
   whose plist runs a Homebrew Cellar node while PATH has a link to the same
   node, such as `/opt/homebrew/opt/node/bin` (#441). `status --fix` and sync

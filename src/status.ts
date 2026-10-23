@@ -12,6 +12,7 @@ import { logSkipped } from "./core/logger.js";
 import { checkMcpEnvVarsDrift } from "./drift.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
 import { validateConfig } from "./lint.js";
+import { formatUnmanagedPinLines, outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
 import {
   healDeferredMcpEntries,
   loadMcpHealthSnapshot,
@@ -587,6 +588,13 @@ export function collectStatusData(): StatusData | undefined {
   };
 }
 
+/** One line per outdated catalog pin in an agent agentbrew does not manage. */
+function printUnmanagedOutdatedPins(state: AgentbrewState, indent: string): void {
+  for (const line of formatUnmanagedPinLines(outdatedPinsInUnmanagedAgents(state.agents))) {
+    console.log(`${indent}Outdated pin: ${chalk.yellow(line)}`);
+  }
+}
+
 /** Print one line per skill, command, or agent name that two or more sources ship. */
 function printSkillNameClashes(state: AgentbrewState, indent: string): void {
   for (const clash of installedSkillClashes(getStateSources(state))) {
@@ -682,6 +690,7 @@ export async function status(options?: { json?: boolean; verbose?: boolean }): P
     `  Sources:      ${getStateSources(state).length} tracked${freshness ? chalk.dim(` (${freshness})`) : ""}`,
   );
   printSkillNameClashes(state, "  ");
+  printUnmanagedOutdatedPins(state, "  ");
 
   // Sync errors. Note: this line reports ONLY whether the last `agentbrew
   // sync` invocation completed without errors — it does NOT imply zero drift.
@@ -730,6 +739,7 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printCliBuildSummary("  ");
   printVerboseSourcesSection(state);
   printSkillNameClashes(state, "  ");
+  printUnmanagedOutdatedPins(state, "  ");
   printVerboseSkillsSection();
   printVerboseCommandsSection();
   printVerboseInstructionsSection();

@@ -957,7 +957,7 @@ function runPostSyncCatalogPinSweep(agents: AgentConfig[], log: Logger, quiet: b
     if (totalFixed === 0 || quiet) return;
     log.log(
       log.dim(
-        `  Re-pinned ${totalFixed} floating catalog MCP entr${totalFixed === 1 ? "y" : "ies"} across ${results.length} agent config(s).`,
+        `  Re-pinned ${totalFixed} outdated catalog MCP entr${totalFixed === 1 ? "y" : "ies"} across ${results.length} agent config(s).`,
       ),
     );
   } catch (e) {

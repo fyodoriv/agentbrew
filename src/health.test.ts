@@ -663,6 +663,15 @@ describe("healthCheck --json", () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it("lists outdated pins in unmanaged agents without counting them as drift", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    mockExistsSync.mockReturnValue(false);
+    await healthCheck({ json: true });
+    const data = JSON.parse((console.log as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+    expect(data.unmanagedOutdatedPins).toEqual([]);
+    expect(data.driftCount).toBe(0);
+  });
+
   it("lists skill name clashes without counting them as drift", async () => {
     mockLoadState.mockReturnValue(
       makeState({

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./mcp/catalog-pin-sweep.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./mcp/catalog-pin-sweep.js")>()),
+  outdatedPinsInUnmanagedAgents: vi.fn(() => []),
+}));
+
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return { ...actual, existsSync: vi.fn(() => false), readFileSync: vi.fn(() => ""), readdirSync: vi.fn(() => []) };
@@ -72,6 +77,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { catalogRuleDrift } from "./catalog/install-other.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
+import { outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
 import {
   healDeferredMcpEntries,
   loadMcpHealthSnapshot,
@@ -723,6 +729,28 @@ describe("status skill name clashes", () => {
     expect(data.skillNameClashes).toEqual([
       { skill: "writing-plans", owner: "fyodoriv/agentbrew", skipped: ["obra/superpowers"] },
     ]);
+  });
+});
+
+describe("status outdated pins in unmanaged agents", () => {
+  it("names the pin, the agent, and the exact edit in compact status", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    vi.mocked(outdatedPinsInUnmanagedAgents).mockReturnValueOnce([
+      {
+        path: "/Users/me/Library/Application Support/Code/User/settings.json",
+        agentName: "copilot",
+        fixedCount: 0,
+        findings: [{ path: "mcpServers.tasks-mcp", from: "tasks-mcp@0.5.0", to: "tasks-mcp@0.10.2" }],
+      },
+    ]);
+    await status();
+    const out = vi.mocked(console.log).mock.calls.flat().join("\n");
+    expect(out).toMatch(/Outdated pin:.*tasks-mcp@0\.5\.0 in copilot.*tasks-mcp@0\.10\.2.*perl -pi -e/);
   });
 });
 

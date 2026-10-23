@@ -117,7 +117,7 @@ export function checkCatalogPinDrift(): DriftItem[] {
     (result): DriftItem => ({
       agent: result.agentName,
       type: "mcp-catalog-pin",
-      detail: `${result.findings.length} floating catalog MCP entr${result.findings.length === 1 ? "y" : "ies"} — Run: agentbrew sync`,
+      detail: `${result.findings.length} outdated catalog MCP entr${result.findings.length === 1 ? "y" : "ies"} — Run: agentbrew sync`,
     }),
   );
 }

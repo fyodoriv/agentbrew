@@ -6,7 +6,7 @@ import { redactUrlCredentials } from "../core/redact-url.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
 import { CapabilityError } from "./capabilities.js";
-import { policyFragment } from "./claude-native.js";
+import { emitClaudeNative, policyFragment } from "./claude-native.js";
 import { pluginRulesFor } from "./contributions.js";
 import { auditRepo, LeakPatternError } from "./leak-audit.js";
 import { repoIdOf } from "./scope.js";
@@ -42,6 +42,7 @@ export function registerPluginCommands(program: Command): void {
           }
         }
         const entry = applyAdd(plan, { yes });
+        emitClaudeNative();
         console.log(
           `${ICON_SUCCESS} Plugin ${entry.name} pinned at ${entry.commit.slice(0, 8)} (tree ${entry.tree.slice(0, 8)})`,
         );
@@ -136,6 +137,7 @@ export function registerPluginCommands(program: Command): void {
           capabilityApproved = await confirm({ message: "The capabilities changed. Approve them?", default: false });
         }
         const entry = applyUpdate(plan, { yes, capabilityApproved });
+        emitClaudeNative();
         console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
       } catch (e) {
         fail(e);
@@ -219,6 +221,7 @@ export function registerPluginCommands(program: Command): void {
     .action((name: string) => {
       try {
         const entry = rollbackPlugin(name);
+        emitClaudeNative();
         console.log(`${ICON_SUCCESS} Plugin ${name} rolled back to ${entry.ref} (${entry.commit.slice(0, 8)})`);
       } catch (e) {
         fail(e);
@@ -231,6 +234,7 @@ export function registerPluginCommands(program: Command): void {
     .action((name: string) => {
       try {
         removePlugin(name);
+        emitClaudeNative();
         console.log(`${ICON_SUCCESS} Plugin ${name} removed`);
       } catch (e) {
         fail(e);

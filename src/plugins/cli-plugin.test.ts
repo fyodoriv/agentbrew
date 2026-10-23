@@ -6,8 +6,9 @@
  * Repos, keys, and HOME are scratch. Git reads an empty global config file.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import yaml from "js-yaml";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { home, previousEnv } = vi.hoisted(() => {
@@ -34,6 +35,7 @@ import { confirm } from "@inquirer/prompts";
 import { Command } from "commander";
 import { readLock } from "../lock.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
+import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
@@ -180,5 +182,44 @@ describe("planAdd and applyAdd", () => {
 
     expect(staging()).toEqual([`.staging-${process.pid}-1`]);
     rmSync(join(pluginsRoot(), `.staging-${process.pid}-1`), { recursive: true });
+  });
+});
+
+describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
+  const run = async (...args: string[]) => {
+    const program = new Command().exitOverride();
+    registerPluginCommands(program);
+    await program.parseAsync(["node", "agentbrew", "plugin", ...args]);
+  };
+  const copy = () => join(marketplaceDir(), "plugins", "acme");
+  const hook = JSON.stringify({
+    hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo acme-v2-hook" }] }] },
+  });
+
+  it("add, update, rollback, and remove keep the marketplace copy current", async () => {
+    await run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes");
+    expect(existsSync(copy())).toBe(true);
+    const hooks = () => {
+      const path = join(copy(), "hooks", "hooks.json");
+      return existsSync(path) ? readFileSync(path, "utf-8") : "";
+    };
+    expect(hooks()).not.toContain("acme-v2-hook");
+
+    const manifest = {
+      ...MANIFEST,
+      capabilities: { ...MANIFEST.capabilities, hooks: ["SessionStart"] },
+      contributes: { hooks: "hooks/hooks.json" },
+    };
+    f.release("v2.0.0", { "agentbrew-plugin.yaml": yaml.dump(manifest), "hooks/hooks.json": hook });
+    vi.mocked(confirm).mockResolvedValue(true);
+    await run("update", "acme", "v2.0.0");
+    expect(process.exitCode).toBeUndefined();
+    expect(hooks()).toContain("acme-v2-hook");
+
+    await run("rollback", "acme");
+    expect(hooks()).not.toContain("acme-v2-hook");
+
+    await run("remove", "acme");
+    expect(existsSync(copy())).toBe(false);
   });
 });

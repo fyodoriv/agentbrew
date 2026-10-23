@@ -4,6 +4,8 @@
 // Log: ${XDG_STATE_HOME:-~/.local/state}/agentbrew/perf/YYYY-MM.jsonl
 // Tool row: {"project","ts","sid","tool","ms","ok","key","id","agent"}
 // Attempt row: {"project","ts","sid","ev":"attempt","tool","key","id","agent"}
+//   ("bg": true marks a background Agent or Task launch; it counts as ran
+//   unless a denied row names it, because it may leave no completion row)
 // Denied row: {"project","ts","sid","ev":"denied","tool","key","id","agent"}
 // Turn row: {"project","ts","sid","ev":"turn"}
 // "id" (tool_use_id) pairs an attempt with its completion. An attempt with
@@ -189,12 +191,19 @@ export function pairCalls(rows, pairRows = rows) {
   }
   const done = new Set();
   const attempted = new Set();
+  const launched = new Set();
+  const denied = new Set();
   for (const row of pairRows) {
     if (!hasId(row)) continue;
     const call = `${row.sid}\u0000${row.id}`;
-    if (row.ev === "attempt") attempted.add(call);
-    else if (row.ev !== "denied" && isToolRow(row)) done.add(call);
+    if (row.ev === "attempt") {
+      attempted.add(call);
+      if (row.bg === true) launched.add(call);
+    } else if (row.ev === "denied") denied.add(call);
+    else if (isToolRow(row)) done.add(call);
   }
+  // A background launch ran unless it was denied.
+  for (const call of launched) if (!denied.has(call)) done.add(call);
   const byKey = new Map();
   let blocked = 0;
   let recorded = 0;

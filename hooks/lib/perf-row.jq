@@ -2,7 +2,8 @@
 #
 # Builds one agent perf log row from a Claude Code hook payload.
 # Used by hooks/checks/perf-record.sh. Events: PostToolUse and
-# PostToolUseFailure (tool row), PreToolUse (attempt row), PermissionDenied
+# PostToolUseFailure (tool row), PreToolUse (attempt row; "bg": true for a
+# background Agent or Task launch), PermissionDenied
 # (denied row), UserPromptSubmit (turn row). Output is three lines:
 #   1. the payload cwd (the shell maps it to a project name)
 #   2. the UTC month (YYYY-MM), which names the log file
@@ -138,6 +139,11 @@ def call_id: (.tool_use_id // "") | tostring | gsub("[^A-Za-z0-9_-]"; "") | .[0:
 
 def agent_name: if .agent_type == null then null else (.agent_type | safe_name) end;
 
+# A background agent launch returns at once and may leave no completion row,
+# so its attempt row says so ("bg": true) and the reader counts it as ran.
+def background_launch:
+  ((.tool_name // "") | test("^(Agent|Task)$")) and (.tool_input.run_in_background == true);
+
 (.cwd // "" | tostring) as $cwd
 | now as $now
 | ($now | todate) as $ts
@@ -156,5 +162,6 @@ def agent_name: if .agent_type == null then null else (.agent_type | safe_name) 
     $cwd, $month,
     ({ts: $ts, sid: $sid, ev: (if .hook_event_name == "PreToolUse" then "attempt" else "denied" end),
       tool: ((.tool_name // "unknown") | safe_name), key: step_key, id: call_id, agent: agent_name}
+     + (if .hook_event_name == "PreToolUse" and background_launch then {bg: true} else {} end)
      | tojson | .[1:])
   else empty end

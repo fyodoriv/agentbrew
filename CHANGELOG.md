@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew status` no longer reports "PATH missing node" for a LaunchAgent
+  whose plist runs a Homebrew Cellar node while PATH has a link to the same
+  node, such as `/opt/homebrew/opt/node/bin` (#441). `status --fix` and sync
+  use the same check, so they no longer rewrite such a plist either.
 - Drift repair now also raises an exact pin of a catalog-pinned MCP package
   that is older than the catalog's (for example `tasks-mcp@0.5.0` left in VS
   Code settings). That version's `list_tasks` walks the whole home folder, so

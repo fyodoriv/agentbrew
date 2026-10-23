@@ -271,4 +271,51 @@ describe("watch-issues pass", () => {
     expect(out).toContain(line("task demo/fix-sync-crash", "Fix the sync crash"));
     expect(out).toContain(`skip  ${join(root, "plain")}: not a git checkout`);
   });
+
+  it("skips issues assigned to someone else or labelled blocked", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
+    const issues = [
+      { number: 20, title: "free", author: { login: "someone" }, assignees: [], labels: [] },
+      { number: 21, title: "mine", author: { login: "someone" }, assignees: [{ login: "me" }], labels: [] },
+      { number: 22, title: "taken", author: { login: "someone" }, assignees: [{ login: "other" }], labels: [] },
+      { number: 23, title: "parked", author: { login: "me" }, assignees: [], labels: [{ name: "blocked: owner" }] },
+    ];
+    const out = pass(root, fakeGh(root, issues, []), ["--limit", "50", fixtureRepo(root)]);
+    expect(out).toContain("issue acme/demo#20");
+    expect(out).toContain("issue acme/demo#21");
+    expect(out).not.toContain("#22");
+    expect(out).not.toContain("#23");
+  });
+
+  it("--wait polls until a new item appears, then prints the pass and exits", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
+    const repo = fixtureRepo(root);
+    const bin = fakeGh(root, [], []);
+    for (const k of ["fix-sync-crash", "add-flag", "title:Task without an id"])
+      pass(root, bin, ["--done", `task demo/${k}`]);
+    // An issue arrives 6 s after the wait starts.
+    writeFileSync(
+      join(root, "arrive.sh"),
+      `sleep 6; printf '%s' '${JSON.stringify([{ number: 30, title: "new one", author: { login: "me" }, assignees: [], labels: [] }])}' > ${join(root, "issues.json")}`,
+    );
+    const bg = spawnSync("sh", ["-c", `sh ${join(root, "arrive.sh")} >/dev/null 2>&1 &`]);
+    expect(bg.status).toBe(0);
+    const started = Date.now();
+    const out = pass(root, bin, ["--wait", "30", "--interval", "1", repo]);
+    expect(Date.now() - started).toBeLessThan(20000);
+    expect(Date.now() - started).toBeGreaterThan(5000);
+    expect(out).toContain(line("issue acme/demo#30", "by me (owner): new one"));
+  });
+
+  it("--wait ends with only the summary line when nothing new arrives in time", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
+    const repo = fixtureRepo(root);
+    const bin = fakeGh(root, [], []);
+    for (const k of ["fix-sync-crash", "add-flag", "title:Task without an id"])
+      pass(root, bin, ["--done", `task demo/${k}`]);
+    const started = Date.now();
+    const out = pass(root, bin, ["--wait", "3", "--interval", "1", repo]);
+    expect(Date.now() - started).toBeLessThan(15000);
+    expect(out.trim().split("\n")).toEqual(["watch: 0 new (showing 0), 3 handled"]);
+  });
 });

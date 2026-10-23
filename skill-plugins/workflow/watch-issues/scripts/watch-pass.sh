@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One watch pass: list what needs work in each repo, and mark what was not handled yet.
-# Usage: watch-pass.sh [--include-p3] [--limit K] [--state-dir DIR] [REPO_DIR...]
+# Usage: watch-pass.sh [--include-p3] [--limit K] [--state-dir DIR] [--wait SEC [--interval N]] [REPO_DIR...]
 #        watch-pass.sh [--state-dir DIR] --done "<kind> <key>" [--done ...]
 #   With no REPO_DIR, it reads one path per line from ~/.config/watch-issues/repos,
 #   else it watches the current git repo.
@@ -11,23 +11,51 @@
 # where "<kind> <key>" is the exact --done argument. Then "watch: N new (showing S), M handled".
 # A PR key carries its state and head commit, so a PR that breaks again shows up as new.
 # It never changes a repo. --done appends handled items to the seen list; nothing else is written.
+# --wait SEC runs the pass every N seconds (--interval, default 300) until one shows a new
+# item, then prints that pass; after SEC with nothing new it prints only the last line. Keep
+# SEC under a tool's time limit (540 for a 10-minute limit); a Monitor can run it in a loop.
+# Issues assigned to someone else, or with a label that starts with "blocked", are left out
+# (all assigned issues stay when the signed-in login cannot be read).
 set -uo pipefail
 
 include_p3=0
 limit=5
+wait_sec=0
+interval=300
+pass_args=()
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/watch-issues"
 repos=()
 done_items=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --include-p3) include_p3=1; shift ;;
-    --limit) limit="${2:?--limit needs a number}"; shift 2 ;;
-    --state-dir) state_dir="${2:?--state-dir needs a folder}"; shift 2 ;;
+    --include-p3) include_p3=1; pass_args+=("$1"); shift ;;
+    --limit) limit="${2:?--limit needs a number}"; pass_args+=("$1" "$2"); shift 2 ;;
+    --state-dir) state_dir="${2:?--state-dir needs a folder}"; pass_args+=("$1" "$2"); shift 2 ;;
     --done) done_items+=("${2:?--done needs \"<kind> <key>\"}"); shift 2 ;;
-    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --wait) wait_sec="${2:?--wait needs seconds}"; shift 2 ;;
+    --interval) interval="${2:?--interval needs seconds}"; shift 2 ;;
+    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) repos+=("$1"); shift ;;
   esac
 done
+
+case "$wait_sec$interval" in *[!0-9]*) echo "watch: --wait and --interval take whole seconds" >&2; exit 1 ;; esac
+if [ "$wait_sec" -gt 0 ] && [ "${#done_items[@]}" -eq 0 ]; then
+  [ "$interval" -ge 1 ] || interval=1
+  start="$(date +%s)"
+  while :; do
+    t0="$(date +%s)"
+    out="$(bash "$0" ${pass_args[@]+"${pass_args[@]}"} ${repos[@]+"${repos[@]}"})" || { printf '%s\n' "$out"; exit 1; }
+    if printf '%s\n' "$out" | grep -q '^new'; then printf '%s\n' "$out"; exit 0; fi
+    # Stop before a sleep plus one more pass (as long as this one) would pass SEC.
+    now="$(date +%s)"
+    if [ $(( now - start + interval + now - t0 )) -gt "$wait_sec" ]; then
+      printf '%s\n' "$out" | tail -n 1
+      exit 0
+    fi
+    sleep "$interval"
+  done
+fi
 
 export GIT_TERMINAL_PROMPT=0
 mkdir -p "$state_dir"
@@ -106,6 +134,8 @@ ready_tasks() {
 }
 
 me="$(gh api user --jq .login 2>/dev/null || true)"
+# gh --jq takes no --arg; a GitHub login is letters, digits, and dashes only.
+me_jq=""; printf '%s\n' "$me" | grep -qE '^[A-Za-z0-9-]+$' && me_jq="$me"
 
 for repo in "${repos[@]}"; do
   if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
@@ -130,8 +160,12 @@ for repo in "${repos[@]}"; do
   fi
 
   [ -n "$slug" ] || { echo "skip  $name: origin is not a GitHub repo (issues and PRs not checked)"; continue; }
-  if issues="$(gh issue list -R "$slug" --state open --limit 50 --json number,title,author \
-      --jq '.[] | "\(.number)\t\(.author.login)\t\(.title)"' 2>/dev/null)"; then
+  # Left out: issues assigned to someone else, and issues with a "blocked..." label.
+  if issues="$(gh issue list -R "$slug" --state open --limit 50 --json number,title,author,assignees,labels \
+      --jq '.[]
+        | select("'"$me_jq"'" == "" or ((.assignees // []) | length) == 0 or ((.assignees // []) | any(.login == "'"$me_jq"'")))
+        | select(((.labels // []) | any(.name | ascii_downcase | startswith("blocked"))) | not)
+        | "\(.number)\t\(.author.login)\t\(.title)"' 2>/dev/null)"; then
     while IFS="$(printf '\t')" read -r num who title; do
       [ -n "$num" ] || continue
       whose=outside; [ -n "$me" ] && [ "$who" = "$me" ] && whose=owner

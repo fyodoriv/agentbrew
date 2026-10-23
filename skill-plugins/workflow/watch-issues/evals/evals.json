@@ -72,6 +72,26 @@
         "Does not open a second PR for the same task",
         "Marks the task done with --done once the PR is open or merged"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "/watch-issues in Claude Code with the Monitor tool; the last pass showed nothing new, and the owner wants new issues picked up within minutes, not every 30 minutes.",
+      "expected_output": "The agent arms a Monitor that loops watch-pass.sh --wait 540 --interval 300 with a 300 s sleep between steps, ships each new item as its lines arrive, ignores repeats of the item it is on, re-arms on expiry, and reports each pickup's latency (filed time to PR time).",
+      "expectations": [
+        "Uses a Monitor looping watch-pass.sh --wait with a sleep between steps, not back-to-back passes",
+        "Re-arms the Monitor when it expires",
+        "Reports each pickup's latency from the issue or task's filed time to the PR's open time"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/watch-issues under taskgrind (no Monitor, a 10-minute tool limit); the queue is empty.",
+      "expected_output": "The agent runs watch-pass.sh --wait 540 --interval 60 one bounded step per tool call, ships an item when one arrives, and never asks the user anything.",
+      "expectations": [
+        "Keeps each wait under the 10-minute tool limit (--wait 540 or less)",
+        "Repeats bounded waits instead of exiting just because the queue is idle",
+        "Does not ask the user a question"
+      ]
     }
   ]
 }

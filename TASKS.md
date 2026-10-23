@@ -320,6 +320,19 @@
 
 ## P3
 
+- [ ] The catalog name lint covers bundles, and a skill-only dry run previews
+  - **ID**: catalog-name-lint-bundles-dry-run
+  - **Tags**: catalog, skills, tests
+  - **Details**: Found by the review of the `catalog-rule-skill-name-clash` PR. (1) `src/catalog/catalog-name-clash.test.ts` checks rules, MCP servers, and CLI tools, but not bundles; a bundle named like a built-in skill would win a bare `agentbrew install` the same way. (2) The skill-only branch of `installFromCatalog` (`src/catalog/install.ts`) skips `showCatalogDryRun`, so a future caller that passes `skillOnly` with `dryRun: true` would install a catalog skill for real. No caller does that today.
+  - **Files**: `src/catalog/catalog-name-clash.test.ts`, `src/catalog/install.ts`, `src/catalog/install.test.ts`
+  - **Output**: code
+  - **Acceptance**: the lint lists bundle names too, and `install(name, { skillOnly: true, dryRun: true })` previews a catalog skill without installing it.
+  - **Hypothesis**: unchecked kinds of catalog names that can shadow a built-in skill drop from 1 (bundles) to 0, and skill-only dry runs that install for real drop from possible to 0.
+  - **Measurement**: `npx vitest run src/catalog/catalog-name-clash.test.ts src/catalog/install.test.ts` with a bundle in the checked list and a skill-only dry-run case.
+  - **Success**: both cases pass.
+  - **Pivot**: if no skill-only dry-run caller ever appears, delete the dry-run case and keep a comment instead.
+  - **Anchor**: review of the `catalog-rule-skill-name-clash` PR (2026-10-23).
+
 - [ ] The run-goal skill stays well under the 500-line skill limit
   - **ID**: run-goal-size
   - **Tags**: skills, docs

@@ -290,13 +290,13 @@ async function installFromCatalog(
   catalog: ReturnType<typeof loadCatalog>,
   name: string,
   dryRun: boolean,
-  local?: string,
-  skillOnly = false,
+  opts: { local?: string; skillOnly?: boolean } = {},
 ): Promise<void> {
+  const { local, skillOnly = false } = opts;
   // An Agentfile `skills:` entry names a skill: never a bundle, MCP server,
   // rule, or CLI tool that happens to share the name.
   if (skillOnly) {
-    await installSkillByName(state, catalog, name, dryRun, local);
+    await installSkillByName(state, catalog, name, { dryRun, local });
     return;
   }
   const bundle = findBundle(catalog, name);
@@ -335,7 +335,7 @@ async function installFromCatalog(
     await installCliTool(cliTool);
     return;
   }
-  await installSkillByName(state, catalog, name, dryRun, local, false);
+  await installSkillByName(state, catalog, name, { dryRun, local, checkCatalog: false });
 }
 
 /** Resolve `name` as a skill: catalog skill, then built-in, then registry, then sources. */
@@ -343,10 +343,9 @@ async function installSkillByName(
   state: NonNullable<ReturnType<typeof requireState>>,
   catalog: ReturnType<typeof loadCatalog>,
   name: string,
-  dryRun: boolean,
-  local?: string,
-  checkCatalog = true,
+  opts: { dryRun: boolean; local?: string; checkCatalog?: boolean },
 ): Promise<void> {
+  const { dryRun, local, checkCatalog = true } = opts;
   const skill = checkCatalog ? catalog.skills.find((s) => s.name === name) : undefined;
   if (skill) {
     warnIfDeprecated(name, "skill", skill);
@@ -433,7 +432,10 @@ export async function install(
     return;
   }
 
-  await installFromCatalog(state, catalog, name, options?.dryRun ?? false, options?.local, options?.skillOnly);
+  await installFromCatalog(state, catalog, name, options?.dryRun ?? false, {
+    local: options?.local,
+    skillOnly: options?.skillOnly,
+  });
   flushInstallSummary();
 }
 
@@ -471,7 +473,7 @@ export async function installSkills(names: readonly string[]): Promise<void> {
   if (!state) return;
   const catalog = loadCatalog();
   for (const name of names) {
-    await installFromCatalog(state, catalog, name, false, undefined, true);
+    await installFromCatalog(state, catalog, name, false, { skillOnly: true });
   }
 }
 

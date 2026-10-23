@@ -5,7 +5,7 @@ description: >
   correctness pass plus any team checklists, a verify pass that drops each
   serious finding without a concrete failure at the PR head, earlier threads
   re-checked, CI and merge state triaged, and a draft that the user approves
-  before anything is posted. Use when the user says "review PR <n>", "review
+  before anything is posted. Use when the user says "review PR 123", "review
   this pull request", "re-review", "/review-pr", or "why is this PR red". Don't
   use for checking your own work before you merge it (use
   requesting-code-review) or for answering review feedback on your own PR (use

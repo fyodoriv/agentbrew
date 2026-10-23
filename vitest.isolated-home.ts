@@ -50,7 +50,8 @@ fs.writeFileSync(
   `#!/bin/sh\nprintf '%s\\n' "$*" >> '${join(scratchHome, ".agentbrew-test-launchctl.log")}'\ncase "$1" in print) exit 113 ;; esac\nexit 0\n`,
   { mode: 0o755 },
 );
-process.env.PATH = `${fakeBin}${delimiter}${process.env.PATH ?? ""}`;
+const pathBeforeFake = process.env.PATH;
+process.env.PATH = `${fakeBin}${delimiter}${pathBeforeFake ?? ""}`;
 
 /** Real paths no test may write. */
 const protectedRoots = [join(realHome, ".config", "agentbrew"), join(realHome, ".claude")];
@@ -138,6 +139,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  process.env.PATH = pathBeforeFake;
   fs.rmSync(scratchHome, { recursive: true, force: true });
   const statusAfter = repoStatus();
   if (statusAfter !== statusBefore) {

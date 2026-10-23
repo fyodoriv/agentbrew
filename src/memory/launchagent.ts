@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
-import { runLaunchctl } from "../core/launchctl.js";
+import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
 import { buildLaunchAgentPath, LAUNCHAGENT_LANG, resolveAgentBrewCliJsPath } from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
@@ -279,6 +279,9 @@ export function installMemoryLaunchAgents(): {
   if (!memoryLaunchAgentSupported()) {
     return { installed: false, reason: "no boot persistence on non-macOS" };
   }
+  if (!launchdTargetsThisHome()) {
+    return { installed: false, reason: "launchd not changed: HOME is not your home folder" };
+  }
   const home = homedir();
   const logDir = memoryLaunchAgentLogDir();
   mkdirSync(logDir, { recursive: true });
@@ -320,7 +323,7 @@ export function uninstallMemoryLaunchAgents(): void {
 }
 
 export function kickstartMemoryDaemon(): boolean {
-  if (!memoryLaunchAgentSupported()) return false;
+  if (!memoryLaunchAgentSupported() || !launchdTargetsThisHome()) return false;
   try {
     runLaunchctl(["kickstart", "-k", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], {
       stdio: "pipe",

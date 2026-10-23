@@ -4,7 +4,7 @@ import { userInfo } from "node:os";
 import { dirname } from "node:path";
 import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
-import { runLaunchctl } from "../core/launchctl.js";
+import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
 import { logSkipped } from "../core/logger.js";
 import {
   ensurePlistLocale,
@@ -129,6 +129,7 @@ function runsInsideJob(label: string): boolean {
  * process to exit, then unloads and loads the plist.
  */
 function reloadAfterExit(plistPath: string): void {
+  if (!launchdTargetsThisHome()) return;
   const script = 'while kill -0 "$1" 2>/dev/null; do sleep 1; done; launchctl unload "$0"; launchctl load "$0"';
   try {
     spawn("/bin/sh", ["-c", script, plistPath, String(process.pid)], { detached: true, stdio: "ignore" }).unref();
@@ -217,6 +218,13 @@ export async function installLaunchAgent(): Promise<void> {
   mkdirSync(logDir, { recursive: true });
 
   const content = buildPlistContent().replace(/LOGDIR/g, logDir);
+
+  if (!launchdTargetsThisHome()) {
+    writeFileAtomicSync(plistPath, content, "utf-8");
+    console.log(`${ICON_SUCCESS} LaunchAgent written; launchd not changed, because HOME is not your home folder.`);
+    console.log(`  Plist: ${plistPath}`);
+    return;
+  }
 
   if (runsInsideJob(LAUNCHAGENT_LABEL)) {
     // `agentbrew fix` inside the job itself: never unload the running job.

@@ -1,4 +1,5 @@
 import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { resolve } from "node:path";
 import chalk from "chalk";
@@ -12,7 +13,15 @@ const READ_ONLY_VERBS = new Set(["print", "print-disabled", "list", "blame", "ve
  * same label (2026-10-23, `com.agentbrew.check` and the memory daemon).
  */
 export function launchdTargetsThisHome(): boolean {
-  return resolve(homedir()) === resolve(userInfo().homedir);
+  return realPath(homedir()) === realPath(userInfo().homedir);
+}
+
+function realPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
 }
 
 /** Module scope, process lifetime: print the skip notice once per process. */
@@ -30,7 +39,8 @@ export function runLaunchctl(args: string[], options: ExecFileSyncOptions = {}):
   if (!READ_ONLY_VERBS.has(verb) && !launchdTargetsThisHome()) {
     if (!skipNoticePrinted) {
       skipNoticePrinted = true;
-      console.log(chalk.dim("  Skipped launchd: HOME is not your home folder, and launchd jobs are per user."));
+      // stderr, so JSON output on stdout stays valid.
+      console.error(chalk.dim("  Skipped launchd: HOME is not your home folder, and launchd jobs are per user."));
     }
     return "";
   }

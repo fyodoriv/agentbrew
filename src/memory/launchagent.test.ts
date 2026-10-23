@@ -5,6 +5,7 @@ import {
   buildMemoryDaemonPlist,
   installMemoryLaunchAgents,
   isLabelDisabledInLaunchctlOutput,
+  kickstartMemoryDaemon,
   MEMORY_AGENT_LABEL,
   MEMORY_MAINTAIN_LABEL,
   memoryDaemonPath,
@@ -92,19 +93,17 @@ describe("parseLaunchctlJobIdentity", () => {
 });
 
 describe("memory LaunchAgents under a scratch HOME", () => {
-  it.runIf(process.platform === "darwin")(
-    "writes plists under that HOME but never loads them into the user's launchd",
-    () => {
-      const fake = installFakeLaunchctl();
-      vi.stubEnv("AGENTBREW_UVX_BIN", "/opt/homebrew/bin/uvx");
-      try {
-        installMemoryLaunchAgents();
-        const changes = fake.calls().filter(([verb]) => verb !== "print" && verb !== "print-disabled");
-        expect(changes).toEqual([]);
-      } finally {
-        fake.restore();
-        vi.unstubAllEnvs();
-      }
-    },
-  );
+  it.runIf(process.platform === "darwin")("never loads, enables, or restarts a job in the user's launchd", () => {
+    const fake = installFakeLaunchctl();
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/opt/homebrew/bin/uvx");
+    try {
+      expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, reason: expect.stringContaining("HOME") });
+      expect(kickstartMemoryDaemon()).toBe(false);
+      const changes = fake.calls().filter(([verb]) => verb !== "print" && verb !== "print-disabled");
+      expect(changes).toEqual([]);
+    } finally {
+      fake.restore();
+      vi.unstubAllEnvs();
+    }
+  });
 });

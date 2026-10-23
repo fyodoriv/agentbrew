@@ -32,17 +32,27 @@ describe("launchctl guard", () => {
     expect(fake.calls()).toEqual([["print", "gui/0/none"]]);
   });
 
-  it("changes launchd when HOME is the user's home folder", () => {
-    vi.stubEnv("HOME", userInfo().homedir);
+  it("changes launchd when HOME is the user's home folder, with or without a trailing slash", () => {
+    vi.stubEnv("HOME", `${userInfo().homedir}/`);
     expect(launchdTargetsThisHome()).toBe(true);
-    runLaunchctl(["load", "/nonexistent/real.plist"]);
-    expect(fake.calls()).toEqual([["load", "/nonexistent/real.plist"]]);
+    runLaunchctl(["load", "/nonexistent/real plist.plist"]);
+    expect(fake.calls()).toEqual([["load", "/nonexistent/real plist.plist"]]);
   });
 });
+
+// Files that spawn a shell running launchctl changes and check
+// launchdTargetsThisHome() before the spawn.
+const GUARDED_SHELL = new Set(["sync/launchagent.ts"]);
+const SPAWN = "(?:execFileSync|execFile|spawnSync|spawn|execSync|exec|execa)\\(";
+const CHANGE_VERB = "(?:load|unload|bootstrap|bootout|enable|disable|kickstart|kill|remove|submit)";
 
 describe("launchctl call sites", () => {
   it("every launchctl call in src goes through the guard", () => {
     const root = join(import.meta.dirname, "..");
+    // A direct spawn of launchctl, or a spawned shell script that runs a launchctl change.
+    const direct = new RegExp(`${SPAWN}\\s*["'\`](?:/bin/)?launchctl\\b`);
+    const viaShell = new RegExp(`${SPAWN}[\\s\\S]{0,400}?\\blaunchctl\\s+${CHANGE_VERB}\\b`);
+    const shellScript = new RegExp(`=\\s*["'\`][^"'\`\\n]*\\blaunchctl\\s+${CHANGE_VERB}\\b[^"'\`\\n]*\\$\\d`);
     const offenders: string[] = [];
     const walk = (dir: string): void => {
       for (const name of readdirSync(dir)) {
@@ -52,12 +62,20 @@ describe("launchctl call sites", () => {
           continue;
         }
         if (!name.endsWith(".ts") || name.endsWith(".test.ts") || path.endsWith(join("core", "launchctl.ts"))) continue;
-        if (/(?:execFileSync|execFile|spawnSync|spawn|execSync)\(\s*["'`]launchctl/.test(readFileSync(path, "utf-8"))) {
-          offenders.push(relative(root, path));
+        const text = readFileSync(path, "utf-8");
+        const rel = relative(root, path);
+        if ((direct.test(text) || viaShell.test(text) || shellScript.test(text)) && !GUARDED_SHELL.has(rel)) {
+          offenders.push(rel);
         }
       }
     };
     walk(root);
     expect(offenders).toEqual([]);
+  });
+
+  it("each guarded shell spawn checks the HOME guard first", () => {
+    const text = readFileSync(join(import.meta.dirname, "..", "sync", "launchagent.ts"), "utf-8");
+    const reload = text.slice(text.indexOf("function reloadAfterExit("));
+    expect(reload.slice(0, reload.indexOf("spawn("))).toContain("if (!launchdTargetsThisHome()) return;");
   });
 });

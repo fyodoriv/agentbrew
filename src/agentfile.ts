@@ -66,6 +66,8 @@ export interface Agentfile {
    *  hooks, agents, instructions) skips them. Filesystem dirs are NOT deleted;
    *  the exclusion is purely a sync-time filter. */
   excludeAgents?: string[];
+  /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). */
+  workSteps?: string[];
   /** Default model id to deploy to every detected agent that declares a
    *  `modelConfig` surface in agents.yaml (claude-code, codex today).
    *  Absent means model sync is off. */
@@ -162,6 +164,12 @@ function parseAgentfileMemoryFields(raw: Record<string, unknown>): Pick<Agentfil
 }
 
 /** Parse an Agentfile YAML string into a typed structure. */
+/** `workSteps:` entries: trimmed, non-empty strings only. */
+function parseWorkSteps(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+}
+
 export function parseAgentfile(content: string): Agentfile {
   const raw = yaml.load(content) as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") return {};
@@ -182,6 +190,7 @@ export function parseAgentfile(content: string): Agentfile {
     excludeAgents: Array.isArray(raw.excludeAgents)
       ? raw.excludeAgents.filter((x): x is string => typeof x === "string")
       : undefined,
+    workSteps: parseWorkSteps(raw.workSteps),
     defaultModel: typeof raw.defaultModel === "string" && raw.defaultModel.trim() ? raw.defaultModel.trim() : undefined,
     modelOverrides: parseModelOverrides(raw.modelOverrides),
     defaultEffort:
@@ -388,6 +397,10 @@ function serializeAgentfileMemoryFields(agentfile: Agentfile, output: Record<str
   if (agentfile.memoryPacks?.length) output.memoryPacks = agentfile.memoryPacks;
 }
 
+function serializeAgentfileWorkSteps(agentfile: Agentfile, output: Record<string, unknown>): void {
+  if (agentfile.workSteps?.length) output.workSteps = agentfile.workSteps;
+}
+
 function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   if (agentfile.excludeAgents?.length) output.excludeAgents = agentfile.excludeAgents;
@@ -406,6 +419,7 @@ function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   if (agentfile.repo) output.repo = agentfile.repo;
   if (agentfile.project) output.project = agentfile.project;
   serializeAgentfileMemoryFields(agentfile, output);
+  serializeAgentfileWorkSteps(agentfile, output);
   return output;
 }
 
@@ -435,6 +449,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
       normalizeSourceDirEntry(value, baseDir),
     );
     merged.excludeAgents = mergeStringEntries(merged.excludeAgents, agentfile.excludeAgents);
+    merged.workSteps = mergeStringEntries(merged.workSteps, agentfile.workSteps);
     merged.hooks = mergeHookEntries(merged.hooks, agentfile.hooks);
     merged.rules = mergeRules(merged.rules, agentfile.rules, baseDir);
     if (agentfile.recommended) merged.recommended = true;

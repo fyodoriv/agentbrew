@@ -249,5 +249,8 @@ describe("the /work built-in command (#440)", () => {
     expect(text).toContain("agentbrew work --json");
     expect(text).toMatch(/draft/i);
     expect(text).toMatch(/end of day/i);
+    // A user-only step (#451): read the step's file and follow it.
+    expect(text).toMatch(/`path`/);
+    expect(text).toMatch(/userOnly/);
   });
 });

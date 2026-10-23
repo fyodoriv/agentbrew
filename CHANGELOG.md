@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew work --json` gives each step its file `path` and `userOnly`, and
+  `/work` reads and follows a user-only skill's file when the Skill tool hides
+  it (#451). Before, a step such as `/tooling-checkup` could not run.
 - `agentbrew plugin add`, `update`, `rollback`, and `remove` now refresh the
   Claude Code plugin copy right away (#447). Before, a hook that a new plugin
   version added stayed off until the next `agentbrew sync`.

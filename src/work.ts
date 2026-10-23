@@ -8,10 +8,13 @@
  * order the Agentfiles were applied. state.workSteps records which
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import chalk from "chalk";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
+import { expandHome } from "./utils.js";
 
 /** Built-in first steps: agentbrew's own state check. */
 export const DEFAULT_WORK_STEPS = ["/agentbrew"];
@@ -22,7 +25,12 @@ export interface WorkPlan {
   machine: "company" | "personal";
   /** What the agent may edit, and how it treats public repos. */
   rule: string;
-  steps: Array<{ step: string; from: string }>;
+  /**
+   * `path`: the skill or command file the step runs (null when not found).
+   * `userOnly`: the skill sets `disable-model-invocation: true`, so the
+   * agent's Skill tool hides it; `/work` reads `path` and follows it (#451).
+   */
+  steps: Array<{ step: string; from: string; path: string | null; userOnly: boolean }>;
   watch: string;
   endOfDay: string[];
 }
@@ -53,6 +61,30 @@ function machineRule(plugins: PluginLockEntry[]): Pick<WorkPlan, "machine" | "ru
   };
 }
 
+/**
+ * The file a `/name` step runs, under an agent config root (default
+ * `~/.claude`): a skill's SKILL.md first, then a command file.
+ */
+export function resolveWorkStep(
+  step: string,
+  root = expandHome("~/.claude"),
+): { path: string | null; userOnly: boolean } {
+  const name = step.replace(/^\//, "");
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) return { path: null, userOnly: false };
+  for (const path of [join(root, "skills", name, "SKILL.md"), join(root, "commands", `${name}.md`)]) {
+    if (!existsSync(path)) continue;
+    let text = "";
+    try {
+      text = readFileSync(path, "utf-8");
+    } catch {
+      // Unreadable: still name the file.
+    }
+    const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
+    return { path, userOnly: /^disable-model-invocation:\s*true\s*$/m.test(front) };
+  }
+  return { path: null, userOnly: false };
+}
+
 /** The day plan for this machine. */
 export function buildWorkPlan(state: AgentBrewState | undefined, plugins: PluginLockEntry[]): WorkPlan {
   const seen = new Set<string>();
@@ -60,7 +92,7 @@ export function buildWorkPlan(state: AgentBrewState | undefined, plugins: Plugin
   const add = (step: string, from: string) => {
     if (seen.has(step) || step === END_OF_DAY_STEP) return;
     seen.add(step);
-    steps.push({ step, from });
+    steps.push({ step, from, ...resolveWorkStep(step) });
   };
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
   for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile);

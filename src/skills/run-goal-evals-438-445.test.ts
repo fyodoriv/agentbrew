@@ -23,6 +23,16 @@ describe("run-goal evals", () => {
     expect(cases[0]?.expectations.join(" ")).toMatch(/no code edits/i);
   });
 
+  it("cover a mid-goal request to move logic to the parent app (#453)", () => {
+    const cases = evals.filter((e) => /parent app/i.test(e.prompt) && /issue-only/i.test(e.prompt));
+    expect(cases).toHaveLength(1);
+    expect(cases[0]?.expectations.join(" ")).toMatch(/issue before/i);
+  });
+
+  it("cover reviewing every fix round (#453)", () => {
+    expect(evals.some((e) => e.expectations.some((x) => /review of each fix commit/i.test(x)))).toBe(true);
+  });
+
   it("keep eval ids unique", () => {
     expect(new Set(evals.map((e) => e.id)).size).toBe(evals.length);
   });

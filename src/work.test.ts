@@ -1,8 +1,18 @@
 /** `agentbrew work` (#440): the ordered day plan and the machine rule. */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginLockEntry } from "./lock.js";
 import type { AgentBrewState } from "./types.js";
-import { buildWorkPlan, DEFAULT_WORK_STEPS, END_OF_DAY_STEP, formatWorkPlan, mergeWorkSteps } from "./work.js";
+import {
+  buildWorkPlan,
+  DEFAULT_WORK_STEPS,
+  END_OF_DAY_STEP,
+  formatWorkPlan,
+  mergeWorkSteps,
+  resolveWorkStep,
+} from "./work.js";
 
 const state = (workSteps?: AgentBrewState["workSteps"]): AgentBrewState =>
   ({ agents: [], catalogVersion: "test", workSteps }) as AgentBrewState;
@@ -55,5 +65,40 @@ describe("mergeWorkSteps", () => {
     expect(steps.map((s) => `${s.agentfile}:${s.step}`)).toEqual(["/a:/y2", "/b:/z"]);
     steps = mergeWorkSteps(steps, "/b", []);
     expect(steps.map((s) => s.step)).toEqual(["/y2"]);
+  });
+});
+
+describe("resolveWorkStep (#451)", () => {
+  it("names the file of a user-only skill so /work can read and follow it", () => {
+    const root = mkdtempSync(join(tmpdir(), "work-steps-"));
+    try {
+      mkdirSync(join(root, "skills", "tooling-checkup"), { recursive: true });
+      writeFileSync(
+        join(root, "skills", "tooling-checkup", "SKILL.md"),
+        "---\nname: tooling-checkup\ndisable-model-invocation: true\n---\nbody\n",
+      );
+      mkdirSync(join(root, "commands"), { recursive: true });
+      writeFileSync(join(root, "commands", "agentbrew.md"), "---\ndescription: x\n---\n");
+
+      expect(resolveWorkStep("/tooling-checkup", root)).toEqual({
+        path: join(root, "skills", "tooling-checkup", "SKILL.md"),
+        userOnly: true,
+      });
+      expect(resolveWorkStep("/agentbrew", root)).toEqual({
+        path: join(root, "commands", "agentbrew.md"),
+        userOnly: false,
+      });
+      expect(resolveWorkStep("/missing", root)).toEqual({ path: null, userOnly: false });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("puts path and userOnly on every step of the plan", () => {
+    const plan = buildWorkPlan(state(), []);
+    for (const step of plan.steps) {
+      expect(step).toHaveProperty("path");
+      expect(step).toHaveProperty("userOnly");
+    }
   });
 });

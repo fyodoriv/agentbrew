@@ -1364,6 +1364,28 @@
         "Prints fresh check status as proof",
         "Makes no code edits, because the code is not what is red"
       ]
+    },
+    {
+      "id": 119,
+      "prompt": "/goal add a daily summary feature to the company plugin. Mid-goal, the user says: keep the plugin thin and put the logic in the parent app. From this machine, the parent app is issue-only (no edits).",
+      "expected_output": "The agent records the new criterion and the changed approach in the contract file. It files the parent-app issue first, with the full generic spec. It shrinks the plugin code to the smallest interim part, which names that issue. It adds the new rule to the rules, the skill, and memory, with a guard test.",
+      "expectations": [
+        "Updates the contract file with the new criterion and the changed approach",
+        "Files the parent-app issue before shrinking the plugin, with the full generic spec",
+        "Leaves only a minimal interim plugin part that names the issue",
+        "Adds the rule to rules, skill, and memory with a guard test"
+      ]
+    },
+    {
+      "id": 120,
+      "prompt": "/goal fix three small bugs in a report renderer; each fix is its own commit, and the test suite is green after each.",
+      "expected_output": "After each fix commit the agent runs a fresh-context review of that commit's diff before it merges, even though the suite is green. It fixes what each review finds and reviews the fix again. Its report counts reviews per fix commit: at least one each.",
+      "expectations": [
+        "Runs a fresh-context review of each fix commit, not only the first",
+        "Does not treat a green suite as a substitute for the review",
+        "Reviews the fix of a review finding again",
+        "Reports at least one review per fix commit"
+      ]
     }
   ]
 }

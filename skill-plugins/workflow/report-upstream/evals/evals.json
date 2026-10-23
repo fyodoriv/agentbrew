@@ -55,6 +55,17 @@
         "Fixes the typo in src/app.ts and reruns the failing test",
         "Does not run agentbrew report"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Post feedback to the owners of the artifact-design, dataviz, and workflow-authoring skills, and to the playwright-best-practices skill. I approve all four.",
+      "expected_output": "The agent finds each channel before it posts. The Playwright skill has a public repo (currents-dev/playwright-best-practices-skill): it drafts the issue, scrubs it with `agentbrew report`, shows the exact text, and posts with --yes. The three skills built into the Claude app are not in github.com/anthropics/skills and no tool reaches the app's feedback, so it posts nothing for them: it saves the scrubbed texts in the task queue and tells the person to send them through the app's own feedback. It does not load an unrelated skill that happens to be named 'feedback'.",
+      "expectations": [
+        "Checks the public repo listing before promising a channel",
+        "Posts only the Playwright issue, after showing its exact scrubbed text",
+        "Leaves the three app-built-in notes with the person, with the reason",
+        "Does not treat an unrelated 'feedback' skill as a channel"
+      ]
     }
   ]
 }

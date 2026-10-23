@@ -281,6 +281,19 @@
 
 ## P3
 
+- [ ] `/work` drops the steps of an Agentfile that no longer exists
+  - **ID**: work-steps-prune-gone-agentfile
+  - **Tags**: work, agentfile
+  - **Details**: Found by the #440 review. `state.workSteps` records which Agentfile dir declared each `/work` step, and a sync replaces that Agentfile's steps when it is applied again. An Agentfile that is deleted or moved is never applied again, so its steps stay in state and `agentbrew work` keeps listing them. `commands:` and `agents:` dirs have the same owner field but are pruned on apply.
+  - **Files**: `src/agentfile-apply.ts`, `src/work.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: after the Agentfile that declared a step is gone, the next `agentbrew sync` (or `agentbrew work`) no longer lists that step.
+  - **Hypothesis**: pruning entries whose Agentfile dir is gone drops stale `/work` steps from every such step to 0.
+  - **Measurement**: `npx vitest run src/work.test.ts src/agentfile-apply.test.ts` with a case whose declaring Agentfile dir is removed.
+  - **Success**: the stale step is gone after one sync; steps from present Agentfiles stay in place.
+  - **Pivot**: if a dir can be briefly missing (an unmounted volume), prune only after two syncs in a row find it gone.
+  - **Anchor**: #440 pre-merge review (2026-10-23).
+
 - [ ] The catalog name lint covers bundles, and a skill-only dry run previews
   - **ID**: catalog-name-lint-bundles-dry-run
   - **Tags**: catalog, skills, tests

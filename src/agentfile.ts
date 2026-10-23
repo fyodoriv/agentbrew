@@ -164,6 +164,12 @@ function parseAgentfileMemoryFields(raw: Record<string, unknown>): Pick<Agentfil
 }
 
 /** Parse an Agentfile YAML string into a typed structure. */
+/** `workSteps:` entries: trimmed, non-empty strings only. */
+function parseWorkSteps(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+}
+
 export function parseAgentfile(content: string): Agentfile {
   const raw = yaml.load(content) as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") return {};
@@ -184,9 +190,7 @@ export function parseAgentfile(content: string): Agentfile {
     excludeAgents: Array.isArray(raw.excludeAgents)
       ? raw.excludeAgents.filter((x): x is string => typeof x === "string")
       : undefined,
-    workSteps: Array.isArray(raw.workSteps)
-      ? raw.workSteps.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim())
-      : undefined,
+    workSteps: parseWorkSteps(raw.workSteps),
     defaultModel: typeof raw.defaultModel === "string" && raw.defaultModel.trim() ? raw.defaultModel.trim() : undefined,
     modelOverrides: parseModelOverrides(raw.modelOverrides),
     defaultEffort:
@@ -393,10 +397,13 @@ function serializeAgentfileMemoryFields(agentfile: Agentfile, output: Record<str
   if (agentfile.memoryPacks?.length) output.memoryPacks = agentfile.memoryPacks;
 }
 
+function serializeAgentfileWorkSteps(agentfile: Agentfile, output: Record<string, unknown>): void {
+  if (agentfile.workSteps?.length) output.workSteps = agentfile.workSteps;
+}
+
 function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   if (agentfile.excludeAgents?.length) output.excludeAgents = agentfile.excludeAgents;
-  if (agentfile.workSteps?.length) output.workSteps = agentfile.workSteps;
   if (agentfile.mcp?.length) output.mcp = agentfile.mcp;
   if (agentfile.skills?.length) output.skills = agentfile.skills;
   if (agentfile.sources?.length) output.sources = agentfile.sources;
@@ -412,6 +419,7 @@ function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   if (agentfile.repo) output.repo = agentfile.repo;
   if (agentfile.project) output.project = agentfile.project;
   serializeAgentfileMemoryFields(agentfile, output);
+  serializeAgentfileWorkSteps(agentfile, output);
   return output;
 }
 

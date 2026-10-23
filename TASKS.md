@@ -279,6 +279,86 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] `agentbrew sync --pull` finishes in seconds, even under load
+  - **ID**: sync-pull-speed
+  - **Tags**: performance, sync
+  - **Details**: In a ship-it run on 2026-10-22, `agentbrew sync --pull` took 22.7 s at load 12–15, which was 95% of the ship-it memory step; under heavy load it took 8m36s. Nobody has measured what it pulls: how many sources and plugins it fetches, how many are unchanged, and how much time each fetch, index, and deploy step takes. Measure first, then cut the slowest part (for example skip unchanged sources, fetch in parallel, or index only what changed).
+  - **Files**: `src/fetch-sources.ts`, `src/catalog/index-source.ts`, `src/commands/cli-sync-subcommands.ts`, a new timing report
+  - **Output**: code
+  - **Acceptance**: a per-source timing breakdown of `sync --pull` exists, and the median `sync --pull` on an unchanged setup drops below 5 s at load under 15.
+  - **Hypothesis**: most of the 22.7 s goes to fetching and re-indexing sources that did not change; skipping or parallelizing them cuts the median from 22.7 s to under 5 s.
+  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus the per-source breakdown.
+  - **Success**: median under 5 s at load under 15.
+  - **Pivot**: if fetching is not the main cost, profile the deploy step and move that work behind a changed-files check instead.
+  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load).
+
+- [ ] Two memory syncs at once never lose a ledger update
+  - **ID**: memory-ledger-lock
+  - **Tags**: memory, concurrency
+  - **Details**: `syncClaudeProjectMemories` in `src/memory/project-sync.ts` (around lines 400–409) reads the sync ledger, syncs, and then writes the ledger with no lock. The daily LaunchAgent, the SessionEnd hook, and ship-it can run it at the same time; the last writer wins and drops the other run's stores, so they sync again or their evidence is lost.
+  - **Files**: `src/memory/project-sync.ts`, `src/memory/project-sync-ledger.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: two concurrent `syncClaudeProjectMemories` runs both leave their stores in the ledger.
+  - **Hypothesis**: a lock (or a read-merge-write under a lock) around the ledger update drops lost ledger updates under concurrent runs from possible to 0.
+  - **Measurement**: a vitest case that starts two syncs at once against a scratch ledger and checks both stores are recorded.
+  - **Success**: the concurrent case passes 20 runs in a row.
+  - **Pivot**: if a lock file is unreliable on some file systems, merge the ledger on write (re-read, union, write atomically) instead.
+  - **Anchor**: review of `src/memory/project-sync.ts` (2026-10-22).
+
+- [ ] A set-but-empty `XDG_STATE_HOME` never makes the memory ledger path relative
+  - **ID**: xdg-state-home-empty
+  - **Tags**: memory, config
+  - **Details**: `src/memory/paths.ts` (lines 36, 40, 46) falls back with `??` from `process.env.XDG_STATE_HOME` to `join(home, ".local/state")`. `??` keeps an empty string, so `XDG_STATE_HOME=` makes the sync ledger path relative to the current directory, and the ledger lands wherever the command runs. The XDG spec says an empty value means unset.
+  - **Files**: `src/memory/paths.ts`, its tests
+  - **Output**: code
+  - **Acceptance**: with `XDG_STATE_HOME=""`, the ledger path is under `~/.local/state`.
+  - **Hypothesis**: treating an empty value as unset drops relative ledger paths from 1 case to 0.
+  - **Measurement**: a vitest case for `memoryProjectSyncLedgerPath` with `XDG_STATE_HOME=""` and with it unset.
+  - **Success**: both cases return the same absolute path.
+  - **Pivot**: if other modules read `XDG_STATE_HOME` the same way, add one shared `stateHome()` helper and use it everywhere.
+  - **Anchor**: XDG Base Directory spec ("If $XDG_STATE_HOME is either not set or empty...").
+
+## P3
+
+- [ ] The run-goal skill stays well under the 500-line skill limit
+  - **ID**: run-goal-size
+  - **Tags**: skills, docs
+  - **Details**: `skill-plugins/workflow/run-goal/SKILL.md` is close to the 500-line limit (`SKILL_MAX_LINES` in `src/agent-bloat-lint.ts`). The next edits will trip that lint warning (`SKILL_LINES`). Move reference material (worked examples, long checklists) into `references/` files that SKILL.md links to, as `parallel-workers.md` already is.
+  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/`, its evals
+  - **Output**: docs
+  - **Acceptance**: SKILL.md is under 400 lines, its evals still pass, and every moved section is linked from SKILL.md.
+  - **Hypothesis**: moving reference sections out brings SKILL.md under 400 lines (it was near the limit on 2026-10-22), leaving room for future edits without a lint failure.
+  - **Measurement**: `wc -l skill-plugins/workflow/run-goal/SKILL.md` and the skill's eval and contract tests.
+  - **Success**: under 400 lines with all evals passing.
+  - **Pivot**: if a section cannot move without hurting the evals, keep it and trim duplicated wording instead.
+  - **Anchor**: agentbrew skill lint (500-line limit); `wc -l` on 2026-10-22 (483).
+
+- [ ] The markdown-for-gdoc checklist names its exception for tables wider than 5 columns
+  - **ID**: gdoc-checklist-rewrite-exception
+  - **Tags**: skills, docs
+  - **Details**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md` says to keep tables at most 4–5 columns (line 58) and its final checklist says "tables ≤ 5 columns" (line 109), with no exception, although `references/markdown-tab-rewrite.md` (lines 9–13) already keeps the source's columns in a rewrite. Because SKILL.md does not mention that exception, an agent following the checklist either breaks the rewrite or fails its own check.
+  - **Files**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md`, `references/markdown-tab-rewrite.md`, its evals
+  - **Output**: docs
+  - **Acceptance**: the checklist states when a wider table is allowed (for example a rewrite that must keep the source's columns) and what to do instead otherwise; an eval covers the case.
+  - **Hypothesis**: naming the exception drops conflicting instructions in the skill from 1 to 0.
+  - **Measurement**: the skill's eval for a rewrite with a 6-column table, plus a read of lines 58 and 109.
+  - **Success**: the eval passes and both lines agree.
+  - **Pivot**: if no rewrite really needs a wide table, make the rewrite reference split wide tables and keep the strict rule.
+  - **Anchor**: `markdown-for-gdoc` SKILL.md lines 58 and 109 (2026-10-22).
+
+- [ ] `docs/agent-bloat-lint.md` names every skill folder the lint checks
+  - **ID**: bloat-lint-doc-scope
+  - **Tags**: docs, lint
+  - **Details**: `docs/agent-bloat-lint.md` says the CI check and the baselines (`docs/skill-baselines.json`) cover `skill-plugins/dev/*` (lines 37 and 42), but `src/agent-bloat-lint.ts` (line 351) checks both `dev` and `workflow`. A contributor reading the doc expects `workflow/` skills to be unchecked.
+  - **Files**: `docs/agent-bloat-lint.md`
+  - **Output**: docs
+  - **Acceptance**: the doc names `skill-plugins/dev/*` and `skill-plugins/workflow/*`, matching the code.
+  - **Hypothesis**: matching the doc to the code drops wrong scope claims in the doc to 0.
+  - **Measurement**: `rg -n "skill-plugins/(dev|workflow)" docs/agent-bloat-lint.md src/agent-bloat-lint.ts`.
+  - **Success**: every folder the code checks is named in the doc.
+  - **Pivot**: if the docs test cannot pin it, add a small test that reads the plugin list from the lint and checks the doc.
+  - **Anchor**: `src/agent-bloat-lint.ts:351` vs `docs/agent-bloat-lint.md:37,42` (2026-10-22).
+
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli

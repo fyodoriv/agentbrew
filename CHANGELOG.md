@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Two sources that ship an installed skill with the same name no longer
+  overwrite each other's copy on every `sync --pull`. The source listed later
+  in state wins, and `agentbrew status` (and `--json`) shows the clash.
+- A `sync --pull` started from a git hook no longer pulls, realigns, or resets
+  the hook's repository: cache git commands drop `GIT_DIR`, `GIT_WORK_TREE`,
+  and the other repo-pointing variables.
 - A set-but-empty `XDG_STATE_HOME` no longer saves `agentbrew report` drafts
   in the current directory. They go to `~/.local/state/agentbrew/reports/`.
 - Two `agentbrew memory sync-projects` runs at the same time (for example

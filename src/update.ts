@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import chalk from "chalk";
 import { getStateSources, loadAgentfile } from "./agentfile.js";
-import { getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
+import { findSkillDirInCache, getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
 import { copySkillFromCache, isInstalledSkillCurrent } from "./catalog/install-skill.js";
+import { installedSkillOwners } from "./catalog/skill-owners.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncErrors } from "./core/errors.js";
 import { redactUrlCredentials } from "./core/redact-url.js";
@@ -44,25 +45,45 @@ function refreshSkillResult(source: Source, skillName: string, cachePath: string
 }
 
 /**
+ * Cache path of each remote source with installed skills, plus the one owner
+ * of every installed name (see installedSkillOwners). A source whose cache no
+ * longer has the skill cannot own it, so the next source that ships it does.
+ */
+function refreshPlan(sources: Source[]): { cachePaths: Map<Source, string>; owners: Map<string, string> } {
+  const cachePaths = new Map<Source, string>();
+  for (const source of sources) {
+    if (source.type === "local" || source.skillsInstalled.length === 0) continue;
+    const cachePath = getSourceCachePath(source);
+    if (cachePath) cachePaths.set(source, cachePath);
+  }
+  const owners = installedSkillOwners(sources, (source, name) => {
+    const cachePath = cachePaths.get(source);
+    return cachePath !== undefined && findSkillDirInCache(cachePath, name) !== undefined;
+  });
+  return { cachePaths, owners };
+}
+
+/**
  * Refreshes installed skill files from their source caches when the source SHA
  * has changed since the last install. This is the missing step between "pull latest
  * source" and "sync to agents" — without it, installed-skills/ contains stale copies.
  */
 export function refreshInstalledSkills(sources: Source[], options?: UpdateOptions): RefreshResult[] {
   const results: RefreshResult[] = [];
+  const { cachePaths, owners } = refreshPlan(sources);
 
-  for (const source of sources) {
-    if (source.type === "local") continue;
-    if (source.skillsInstalled.length === 0) continue;
-
-    const cachePath = getSourceCachePath(source);
-    if (!cachePath) continue;
-
+  for (const [source, cachePath] of cachePaths) {
     const skillsToRefresh = options?.skillName
       ? source.skillsInstalled.filter((name) => name === options.skillName)
       : source.skillsInstalled;
 
     for (const skillName of skillsToRefresh) {
+      const owner = owners.get(skillName);
+      // Another source owns this name; copying here would overwrite its copy.
+      if (owner !== undefined && owner !== source.url) {
+        results.push({ source: source.url, skill: skillName, status: "skipped" });
+        continue;
+      }
       results.push(refreshSkillResult(source, skillName, cachePath, options?.dryRun ?? false));
     }
   }

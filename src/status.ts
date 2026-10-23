@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import chalk from "chalk";
 import { AGENTFILE_NAMES, getConfigServers, getStateServers, getStateSources } from "./agentfile.js";
 import { catalogRuleDrift } from "./catalog/install-other.js";
+import { type InstalledSkillClash, installedSkillClashes } from "./catalog/skill-owners.js";
 import { loadCatalog } from "./catalog/types.js";
 import { checkCliBuildDrift } from "./cli-build-health.js";
 import { checkEnvHygiene } from "./core/env-sanitize.js";
@@ -58,6 +59,7 @@ interface StatusData {
   instructions: { targets: number; upToDate: number; outOfDate: number; notDeployed: number } | undefined;
   syncErrors: Array<{ module?: string; message: string }> | undefined;
   mcpHealth: { failing: number; generatedAt?: string } | undefined;
+  skillNameClashes: InstalledSkillClash[];
   statePath: string;
 }
 
@@ -575,8 +577,18 @@ export function collectStatusData(): StatusData | undefined {
     instructions,
     syncErrors,
     mcpHealth: snapshot ? { failing: unhealthy.length, generatedAt: snapshot.generatedAt } : undefined,
+    skillNameClashes: installedSkillClashes(getStateSources(state)),
     statePath: getStatePath(),
   };
+}
+
+/** Print one line per installed skill name that two or more sources ship. */
+function printSkillNameClashes(state: AgentbrewState, indent: string): void {
+  for (const clash of installedSkillClashes(getStateSources(state))) {
+    console.log(
+      `${indent}Name clash:   ${chalk.yellow(clash.skill)} ${chalk.dim(`installed from ${clash.owner}; skipped from ${clash.skipped.join(", ")} (the source listed later wins)`)}`,
+    );
+  }
 }
 
 /** Print the compact default-model line when the Agentfile manages one. */
@@ -660,6 +672,7 @@ export async function status(options?: { json?: boolean; verbose?: boolean }): P
   console.log(
     `  Sources:      ${getStateSources(state).length} tracked${freshness ? chalk.dim(` (${freshness})`) : ""}`,
   );
+  printSkillNameClashes(state, "  ");
 
   // Sync errors. Note: this line reports ONLY whether the last `agentbrew
   // sync` invocation completed without errors — it does NOT imply zero drift.
@@ -707,6 +720,7 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printMcpHealChurnLines("  ");
   printCliBuildSummary("  ");
   printVerboseSourcesSection(state);
+  printSkillNameClashes(state, "  ");
   printVerboseSkillsSection();
   printVerboseCommandsSection();
   printVerboseInstructionsSection();

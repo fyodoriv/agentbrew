@@ -44,6 +44,9 @@ vi.mock("./sync/instructions-sync.js", () => ({
 vi.mock("./catalog/index-source.js", () => ({
   indexAllSources: vi.fn(),
   getSourceCachePath: vi.fn(),
+  findSkillDirInCache: vi.fn((cachePath: string, name: string) =>
+    cachePath.includes("no-skills") ? undefined : `${cachePath}/${name}`,
+  ),
 }));
 
 vi.mock("./catalog/install-skill.js", () => ({
@@ -459,6 +462,30 @@ describe("refreshInstalledSkills", () => {
     const results = refreshInstalledSkills([source]);
     expect(results[0]).toEqual({ source: "user/repo", skill: "debug", status: "unchanged" });
     expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+  });
+
+  it("copies a skill two sources ship only from the source listed later", () => {
+    const first = makeSource({ url: "obra/superpowers", skillsInstalled: ["plan"] });
+    const later = makeSource({ url: "fyodoriv/agentbrew", skillsInstalled: ["plan"] });
+    mockGetSourceCachePath.mockImplementation((s) => `/cache/${s.url}`);
+    mockCopySkillFromCache.mockReturnValue("/installed/plan");
+    const results = refreshInstalledSkills([first, later]);
+    expect(results).toEqual([
+      { source: "obra/superpowers", skill: "plan", status: "skipped" },
+      { source: "fyodoriv/agentbrew", skill: "plan", status: "refreshed" },
+    ]);
+    expect(mockCopySkillFromCache).toHaveBeenCalledTimes(1);
+    expect(mockCopySkillFromCache).toHaveBeenCalledWith("/cache/fyodoriv/agentbrew", "plan");
+  });
+
+  it("falls back to the earlier source when the later one no longer ships the skill", () => {
+    const first = makeSource({ url: "obra/superpowers", skillsInstalled: ["plan"] });
+    const later = makeSource({ url: "org/no-skills", skillsInstalled: ["plan"] });
+    mockGetSourceCachePath.mockImplementation((s) => `/cache/${s.url}`);
+    mockCopySkillFromCache.mockReturnValue("/installed/plan");
+    const results = refreshInstalledSkills([first, later]);
+    expect(results[0]).toEqual({ source: "obra/superpowers", skill: "plan", status: "refreshed" });
+    expect(mockCopySkillFromCache).toHaveBeenCalledWith("/cache/obra/superpowers", "plan");
   });
 
   it("reports failed status when copy returns undefined", () => {

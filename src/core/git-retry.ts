@@ -46,6 +46,8 @@ interface GitExecOptions {
   maxRetries?: number;
   /** Whether this is a network operation that should use the env timeout override. */
   network?: boolean;
+  /** Environment for git (default: the process environment). */
+  env?: NodeJS.ProcessEnv;
 }
 
 /**
@@ -62,6 +64,7 @@ export function gitExec(args: string[], options: GitExecOptions = {}): Buffer {
     try {
       return execFileSync("git", args, {
         cwd: options.cwd,
+        ...(options.env ? { env: options.env } : {}),
         stdio: options.stdio ?? "pipe",
         timeout,
       });

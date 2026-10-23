@@ -1,20 +1,24 @@
 import { execFileSync } from "node:child_process";
 import { errorMessage } from "../core/errors.js";
 import { gitExec } from "../core/git-retry.js";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 
 export type RealignResult =
   | { status: "realigned"; upstream: string; salvageBranch?: string; kept: number }
   | { status: "failed"; reason: string };
 
-function git(cachePath: string, args: string[]): string {
-  return execFileSync("git", args, { cwd: cachePath, stdio: "pipe", timeout: 30_000, encoding: "utf-8" }).trim();
+// Every git call here runs with repo-pointing variables (GIT_DIR, GIT_WORK_TREE,
+// ...) dropped, so a sync started from a git hook resets the cache, never the
+// hook's repo.
+function git(cachePath: string, args: string[], env: NodeJS.ProcessEnv): string {
+  return execFileSync("git", args, { cwd: cachePath, env, stdio: "pipe", timeout: 30_000, encoding: "utf-8" }).trim();
 }
 
-function resolveUpstream(cachePath: string): string {
+function resolveUpstream(cachePath: string, env: NodeJS.ProcessEnv): string {
   try {
-    return git(cachePath, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+    return git(cachePath, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], env);
   } catch {
-    return git(cachePath, ["rev-parse", "--abbrev-ref", "origin/HEAD"]);
+    return git(cachePath, ["rev-parse", "--abbrev-ref", "origin/HEAD"], env);
   }
 }
 
@@ -26,17 +30,18 @@ function resolveUpstream(cachePath: string): string {
  * be fetched (offline); the caller then keeps the cached data and warns.
  */
 export function realignDivergedCache(cachePath: string, now: Date = new Date()): RealignResult {
+  const env = cacheGitEnv();
   try {
-    gitExec(["fetch", "origin", "--quiet"], { cwd: cachePath, timeout: 30_000, network: true });
-    const upstream = resolveUpstream(cachePath);
-    const kept = Number(git(cachePath, ["rev-list", "--count", `${upstream}..HEAD`]));
+    gitExec(["fetch", "origin", "--quiet"], { cwd: cachePath, env, timeout: 30_000, network: true });
+    const upstream = resolveUpstream(cachePath, env);
+    const kept = Number(git(cachePath, ["rev-list", "--count", `${upstream}..HEAD`], env));
     let salvageBranch: string | undefined;
     if (kept > 0) {
-      const shortSha = git(cachePath, ["rev-parse", "--short", "HEAD"]);
+      const shortSha = git(cachePath, ["rev-parse", "--short", "HEAD"], env);
       salvageBranch = `salvage/${now.toISOString().slice(0, 10)}-${shortSha}`;
-      git(cachePath, ["branch", "-f", salvageBranch, "HEAD"]);
+      git(cachePath, ["branch", "-f", salvageBranch, "HEAD"], env);
     }
-    git(cachePath, ["reset", "--hard", "--quiet", upstream]);
+    git(cachePath, ["reset", "--hard", "--quiet", upstream], env);
     return { status: "realigned", upstream, salvageBranch, kept };
   } catch (error) {
     return { status: "failed", reason: errorMessage(error).split("\n")[0] ?? "unknown" };

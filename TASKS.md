@@ -292,18 +292,18 @@
   - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
   - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
 
-- [ ] Two sources that ship a skill with the same name never overwrite each other's installed copy on every sync
-  - **ID**: installed-skill-name-clash
-  - **Tags**: sync, skills
-  - **Details**: `obra/superpowers` and `fyodoriv/agentbrew` both ship `writing-plans`, and both list it in `skillsInstalled`. `refreshInstalledSkills` in `src/update.ts` copies each into the same `installed-skills/writing-plans` folder, so every `sync --pull` re-copies both (two `↑ writing-plans` lines) and the deployed copy is whichever source comes last. Pick one owner per installed name (for example the source that installed it first, or the Agentfile's choice) and skip or warn for the other.
-  - **Files**: `src/update.ts`, `src/catalog/install-skill.ts`, their tests
+- [ ] A command started from a git hook never runs plugin-store or source-SHA git commands in the hook's repository
+  - **ID**: git-hook-env-plugin-store
+  - **Tags**: git, security
+  - **Details**: `src/plugins/store.ts` runs its `git()` helper (`checkout --detach`, `rev-parse` tamper checks) with the raw process env, so a `GIT_DIR` or `GIT_WORK_TREE` inherited from a git hook points it at the hook's repository: it can detach that repository's HEAD or misreport tampering. `getGitHeadSha` in `src/skills/skill-versions.ts` has the same gap for local sources (read-only, but it records the hook repository's SHA). The source caches already drop these variables with `cacheGitEnv()` from `src/mcp/git-ref.ts`.
+  - **Files**: `src/plugins/store.ts`, `src/skills/skill-versions.ts`, their tests
   - **Output**: code
-  - **Acceptance**: a second `sync --pull` on an unchanged setup re-copies no installed skill, and the deployed `writing-plans` comes from one stated source.
-  - **Hypothesis**: one owner per installed skill name drops the clashing re-copies per unchanged `sync --pull` from 2 to 0.
-  - **Measurement**: `agentbrew sync --pull | grep -c '↑ '` twice in a row on an unchanged setup.
-  - **Success**: the second run prints 0 `↑` lines.
-  - **Pivot**: if an owner cannot be chosen safely, install the second copy under a source-qualified name and warn.
-  - **Anchor**: `sync --pull` output, 2026-10-23 (`↑ writing-plans` from two sources on every run).
+  - **Acceptance**: with `GIT_DIR` set to another repository, plugin-store operations and local-source SHA lookups act on their own folder and leave the other repository unchanged.
+  - **Hypothesis**: passing `cacheGitEnv()` to these git calls drops commands that act on a hook's repository from possible to 0.
+  - **Measurement**: a vitest case per module that sets `GIT_DIR` to a scratch repository and checks its HEAD and branches are unchanged.
+  - **Success**: both cases pass.
+  - **Pivot**: if a call must honour a caller's `GIT_DIR` on purpose, scrub only the plugin-store calls and document the exception.
+  - **Anchor**: review of PR for `installed-skill-name-clash` (2026-10-23); `realignDivergedCache` fix in the same PR.
 
 ## P3
 

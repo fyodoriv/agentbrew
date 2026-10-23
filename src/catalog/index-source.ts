@@ -473,6 +473,7 @@ export function getSourceCacheDir(source: Source): string {
 function checkoutSha(cachePath: string, sha: string): void {
   try {
     execFileSync("git", ["checkout", sha, "--quiet"], {
+      env: cacheGitEnv(),
       cwd: cachePath,
       stdio: "pipe",
       timeout: 10_000,
@@ -487,11 +488,13 @@ function checkoutSha(cachePath: string, sha: string): void {
 function fetchAndCheckoutSha(cachePath: string, sha: string): boolean {
   try {
     gitExec(["fetch", "origin", "--quiet"], {
+      env: cacheGitEnv(),
       cwd: cachePath,
       timeout: 30_000,
       network: true,
     });
     execFileSync("git", ["checkout", sha, "--quiet"], {
+      env: cacheGitEnv(),
       cwd: cachePath,
       stdio: "pipe",
       timeout: 10_000,
@@ -507,6 +510,7 @@ function fetchAndCheckoutSha(cachePath: string, sha: string): boolean {
 function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): void {
   try {
     gitExec(["pull", "--ff-only", "--quiet"], {
+      env: cacheGitEnv(),
       cwd: cachePath,
       timeout: 30_000,
       network: true,
@@ -533,6 +537,7 @@ function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): voi
 function cloneNew(source: Source, cachePath: string, targetSha: string | undefined, cacheKey: string): string {
   const gitUrl = toGitUrl(source);
   gitExec(["clone", "--depth", "1", "--quiet", gitUrl, cachePath], {
+    env: cacheGitEnv(),
     timeout: 60_000,
     network: true,
   });
@@ -541,11 +546,13 @@ function cloneNew(source: Source, cachePath: string, targetSha: string | undefin
   if (targetSha) {
     try {
       execFileSync("git", ["fetch", "--unshallow", "--quiet"], {
+        env: cacheGitEnv(),
         cwd: cachePath,
         stdio: "pipe",
         timeout: 60_000,
       });
       execFileSync("git", ["checkout", targetSha, "--quiet"], {
+        env: cacheGitEnv(),
         cwd: cachePath,
         stdio: "pipe",
         timeout: 10_000,

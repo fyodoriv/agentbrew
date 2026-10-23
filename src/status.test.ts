@@ -662,6 +662,46 @@ describe("status --json", () => {
   });
 });
 
+describe("status skill name clashes", () => {
+  const clashingState = () => ({
+    agents: [{ name: "claude-code", detected: true, skillsDir: "x" }],
+    sources: [
+      {
+        url: "obra/superpowers",
+        type: "github" as const,
+        skillsInstalled: ["writing-plans"],
+        availableItems: [],
+        addedAt: "2026-06-13",
+      },
+      {
+        url: "fyodoriv/agentbrew",
+        type: "github" as const,
+        skillsInstalled: ["writing-plans"],
+        availableItems: [],
+        addedAt: "2026-10-16",
+      },
+    ],
+    mcpServers: [],
+    catalogVersion: "0.1.0",
+  });
+
+  it("names the clash, the winner, and the skipped source in compact status", async () => {
+    mockLoadState.mockReturnValue(clashingState());
+    await status();
+    const out = vi.mocked(console.log).mock.calls.flat().join("\n");
+    expect(out).toMatch(/Name clash:.*writing-plans.*fyodoriv\/agentbrew.*obra\/superpowers/);
+  });
+
+  it("includes the clash in status --json", async () => {
+    mockLoadState.mockReturnValue(clashingState());
+    await status({ json: true });
+    const data = JSON.parse(vi.mocked(console.log).mock.calls[0]?.[0] as string);
+    expect(data.skillNameClashes).toEqual([
+      { skill: "writing-plans", owner: "fyodoriv/agentbrew", skipped: ["obra/superpowers"] },
+    ]);
+  });
+});
+
 describe("getSourcesFreshness", () => {
   it("returns undefined for empty sources", () => {
     expect(getSourcesFreshness([])).toBeUndefined();

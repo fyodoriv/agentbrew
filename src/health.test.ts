@@ -663,6 +663,36 @@ describe("healthCheck --json", () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it("lists skill name clashes without counting them as drift", async () => {
+    mockLoadState.mockReturnValue(
+      makeState({
+        sources: [
+          {
+            url: "obra/superpowers",
+            type: "github",
+            skillsInstalled: ["writing-plans"],
+            availableItems: [],
+            addedAt: "2026-06-13",
+          },
+          {
+            url: "fyodoriv/agentbrew",
+            type: "github",
+            skillsInstalled: ["writing-plans"],
+            availableItems: [],
+            addedAt: "2026-10-16",
+          },
+        ],
+      }),
+    );
+    mockExistsSync.mockReturnValue(false);
+    await healthCheck({ json: true });
+    const data = JSON.parse((console.log as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+    expect(data.skillNameClashes).toEqual([
+      { skill: "writing-plans", owner: "fyodoriv/agentbrew", skipped: ["obra/superpowers"] },
+    ]);
+    expect(data.driftCount).toBe(0);
+  });
+
   it("outputs valid JSON with drift items", async () => {
     mockLoadState.mockReturnValue(
       makeState({

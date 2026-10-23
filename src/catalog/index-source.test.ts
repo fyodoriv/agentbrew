@@ -931,6 +931,52 @@ describe("indexAllSources", () => {
   });
 });
 
+describe("synchronous cache pull env", () => {
+  it("drops repo-pointing git variables, so a sync run from a git hook pulls the cache", () => {
+    vi.stubEnv("GIT_DIR", "/some/other/repo/.git");
+    vi.stubEnv("GIT_WORK_TREE", "/some/other/repo");
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockReturnValue([] as never);
+    mockExecFileSync.mockReturnValue("" as never);
+
+    indexSource({
+      url: "org/env-check",
+      type: "github",
+      skillsInstalled: [],
+      availableItems: [],
+      addedAt: "2026-01-01",
+    });
+    vi.unstubAllEnvs();
+
+    const pull = mockExecFileSync.mock.calls.find((c) => c[1]?.includes("pull"));
+    const env = (pull?.[2] as { env?: NodeJS.ProcessEnv } | undefined)?.env;
+    expect(env).toBeDefined();
+    expect(env?.GIT_DIR).toBeUndefined();
+    expect(env?.GIT_WORK_TREE).toBeUndefined();
+  });
+
+  it("drops them from every git call of a fresh clone pinned to a commit", () => {
+    vi.stubEnv("GIT_DIR", "/some/other/repo/.git");
+    mockExistsSync.mockImplementation((p) => !String(p).endsWith(".git"));
+    mockReaddirSync.mockReturnValue([] as never);
+    mockExecFileSync.mockReturnValue("" as never);
+
+    indexSource(
+      { url: "org/clone-check", type: "github", skillsInstalled: [], availableItems: [], addedAt: "2026-01-01" },
+      { sha: "abc123" },
+    );
+    vi.unstubAllEnvs();
+
+    const gitCalls = mockExecFileSync.mock.calls.filter((c) => c[0] === "git");
+    expect(gitCalls.map((c) => c[1]?.[0])).toEqual(expect.arrayContaining(["clone", "fetch", "checkout"]));
+    for (const call of gitCalls) {
+      const env = (call[2] as { env?: NodeJS.ProcessEnv } | undefined)?.env;
+      expect(env?.GIT_DIR).toBeUndefined();
+      expect(env).toBeDefined();
+    }
+  });
+});
+
 describe("indexAllSources parallel fetch", () => {
   const remote = (name: string): Source => ({
     url: `org/${name}`,

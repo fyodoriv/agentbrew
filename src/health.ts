@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { getConfigServers, getStateSources } from "./agentfile.js";
+import { installedSkillClashes } from "./catalog/skill-owners.js";
 import { builtCliRoot, checkCliBuildDrift, rebuildCli } from "./cli-build-health.js";
 import type { DriftItem } from "./drift.js";
 import {
@@ -49,6 +50,8 @@ function outputHealthJson(state: AgentBrewState, allDrift: DriftItem[], userAddi
     // separate field so JSON consumers can see them without inflating the
     // drift count. See `user-additions-not-drift` in git log for rationale.
     userAdditions,
+    // Informational, not drift: the later source's copy is installed on purpose.
+    skillNameClashes: installedSkillClashes(getStateSources(state)),
   };
   console.log(JSON.stringify(data, null, 2));
   process.exitCode = allDrift.length > 0 ? 1 : 0;

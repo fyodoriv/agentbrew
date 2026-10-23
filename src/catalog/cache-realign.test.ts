@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { realignDivergedCache } from "./cache-realign.js";
 
 function git(cwd: string, ...args: string[]): string {
@@ -54,6 +54,26 @@ function divergedCache(): { cache: string; originHead: string; localSha: string 
 }
 
 describe("realignDivergedCache", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("realigns the cache, not the repo a git hook points GIT_DIR at", () => {
+    const { cache, originHead } = divergedCache();
+    const victim = mkdtempSync(join(tmpdir(), "cache-realign-victim-"));
+    git(victim, "init", "-q", "-b", "main");
+    const victimHead = commit(victim, "keep.txt", "keep");
+    vi.stubEnv("GIT_DIR", join(victim, ".git"));
+
+    const result = realignDivergedCache(cache);
+
+    vi.unstubAllEnvs();
+    expect(result.status).toBe("realigned");
+    expect(git(cache, "rev-parse", "HEAD")).toBe(originHead);
+    expect(git(victim, "rev-parse", "HEAD")).toBe(victimHead);
+    expect(git(victim, "branch", "--list", "salvage/*")).toBe("");
+  });
+
   it("resets a diverged cache to upstream and keeps local commits on a salvage branch", () => {
     const { cache, originHead, localSha } = divergedCache();
     expect(() => git(cache, "pull", "--ff-only", "-q")).toThrow();

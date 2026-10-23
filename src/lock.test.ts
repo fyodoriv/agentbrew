@@ -229,6 +229,48 @@ describe("lock", () => {
       expect(updated.locked[0].sha).toBe("abc123def456789");
     });
 
+    it("uses SHAs already looked up this run instead of asking the remote again", () => {
+      lockModule.writeLock({
+        locked: [
+          { source: "test/repo", type: "github", sha: "old-sha", skills: [], lockedAt: "2025-01-01T00:00:00.000Z" },
+        ],
+      });
+      const sources: Source[] = [
+        {
+          url: "test/repo",
+          type: "github",
+          skillsInstalled: [],
+          availableItems: [],
+          addedAt: "2025-01-01T00:00:00.000Z",
+        },
+      ];
+
+      const results = lockModule.updateLock(sources, undefined, new Map([["test/repo", "known-sha"]]));
+
+      expect(results[0]).toMatchObject({ status: "updated", sha: "known-sha" });
+    });
+
+    it("asks the remote for a source whose lookup failed earlier this run", () => {
+      lockModule.writeLock({
+        locked: [
+          { source: "test/repo", type: "github", sha: "old-sha", skills: [], lockedAt: "2025-01-01T00:00:00.000Z" },
+        ],
+      });
+      const sources: Source[] = [
+        {
+          url: "test/repo",
+          type: "github",
+          skillsInstalled: [],
+          availableItems: [],
+          addedAt: "2025-01-01T00:00:00.000Z",
+        },
+      ];
+
+      const results = lockModule.updateLock(sources, undefined, new Map([["other/repo", "unrelated-sha"]]));
+
+      expect(results[0]).toMatchObject({ status: "updated", sha: "abc123def456789" });
+    });
+
     it("reports up-to-date when SHA matches", () => {
       const lock: LockFile = {
         locked: [

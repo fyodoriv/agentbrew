@@ -282,15 +282,15 @@
 - [ ] `agentbrew sync --pull` finishes in seconds, even under load
   - **ID**: sync-pull-speed
   - **Tags**: performance, sync
-  - **Details**: In a ship-it run on 2026-10-22, `agentbrew sync --pull` took 22.7 s at load 12–15, which was 95% of the ship-it memory step; under heavy load it took 8m36s. Nobody has measured what it pulls: how many sources and plugins it fetches, how many are unchanged, and how much time each fetch, index, and deploy step takes. Measure first, then cut the slowest part (for example skip unchanged sources, fetch in parallel, or index only what changed).
-  - **Files**: `src/fetch-sources.ts`, `src/catalog/index-source.ts`, `src/commands/cli-sync-subcommands.ts`, a new timing report
+  - **Details**: On 2026-10-23 (load 26-46, 16 sources), timestamped output of `sync --pull` showed: the skills update check took 1.2 s, fetching and indexing sources one after another took 5.1 s (about 0.3 s each), a second `git ls-remote` pass per source took 4.6 s (recording SHAs) and another 4.1 s (the lock update), and deploy took about 1 s. The SHA passes are fixed: one parallel lookup per source, reused by the lock update, cut the median from 17.0 s to 8.5 s over 5 interleaved runs. What is left is the sequential fetch in `indexAllSources` (`src/catalog/index-source.ts`), which runs a synchronous `git pull` per source; run those fetches in parallel (async git, bounded concurrency) or skip sources whose remote HEAD matches the recorded SHA. Each run also re-copies every installed skill (`↑` lines) even when nothing changed.
+  - **Files**: `src/catalog/index-source.ts`, `src/update.ts`, their tests
   - **Output**: code
-  - **Acceptance**: a per-source timing breakdown of `sync --pull` exists, and the median `sync --pull` on an unchanged setup drops below 5 s at load under 15.
-  - **Hypothesis**: most of the 22.7 s goes to fetching and re-indexing sources that did not change; skipping or parallelizing them cuts the median from 22.7 s to under 5 s.
-  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus the per-source breakdown.
+  - **Acceptance**: the median `sync --pull` on an unchanged setup drops below 5 s at load under 15.
+  - **Hypothesis**: fetching sources in parallel, or skipping sources whose remote HEAD is unchanged, cuts the 5.1 s fetch phase to under 1.5 s and the median from 8.5 s to under 5 s.
+  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus timestamped output lines for the per-phase breakdown: `agentbrew sync --pull 2>&1 | perl -MTime::HiRes=time -ne 'printf "%.2f %s", time, $_'`.
   - **Success**: median under 5 s at load under 15.
   - **Pivot**: if fetching is not the main cost, profile the deploy step and move that work behind a changed-files check instead.
-  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load).
+  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load); sync --pull breakdown, 2026-10-23.
 
 - [ ] A set-but-empty `XDG_STATE_HOME` never puts upstream report drafts in the current directory
   - **ID**: report-drafts-xdg-empty

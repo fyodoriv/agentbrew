@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
+  execFile: vi.fn(),
 }));
 
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import type { Source } from "../types.js";
-import { getGitHeadSha, recordSourceSha } from "./skill-versions.js";
+import { getGitHeadSha, recordSourceSha, recordSourceShas } from "./skill-versions.js";
 
 const mockExecFileSync = vi.mocked(execFileSync);
 
@@ -91,5 +92,39 @@ describe("recordSourceSha", () => {
     const source = makeSource();
     recordSourceSha(source);
     expect(source.commitSha).toBeUndefined();
+  });
+});
+
+describe("recordSourceShas", () => {
+  it("looks up every source's SHA in parallel and returns only fresh ones", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.mocked(execFile).mockImplementation(((
+      _cmd: string,
+      args: string[],
+      _opts: unknown,
+      callback: (error: Error | null, stdout: string) => void,
+    ) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      setTimeout(() => {
+        inFlight -= 1;
+        const url = args[1] ?? "";
+        if (url.includes("broken")) callback(new Error("offline"), "");
+        else callback(null, `sha-${url.split("/").pop()}\tHEAD\n`);
+      }, 20);
+    }) as never);
+    const names = ["a", "b", "c", "broken", ...Array.from({ length: 10 }, (_, i) => `extra${i}`)];
+    const sources = names.map((name) => makeSource({ url: `user/${name}` }));
+
+    const shas = await recordSourceShas(sources);
+
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(8);
+    expect(shas.size).toBe(sources.length - 1);
+    expect(shas.get("user/a")).toBe("sha-a.git");
+    expect(shas.has("user/broken")).toBe(false);
+    expect(sources[0]?.commitSha).toBe("sha-a.git");
+    expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 });

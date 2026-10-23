@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `agentbrew sync --pull` looks up each source's commit once, in parallel,
+  instead of twice one after another. On 16 sources this cut the median
+  run from 17.0 s to 8.5 s.
+
 ### Fixed
 
 - Two `agentbrew memory sync-projects` runs at the same time (for example

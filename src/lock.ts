@@ -103,8 +103,16 @@ export function lockSource(source: Source, skillNames?: string[]): LockEntry | u
   return entry;
 }
 
-/** Update the lock to latest SHA for a source (or all sources). */
-export function updateLock(sources: Source[], sourceUrl?: string): UpdateLockResult[] {
+/**
+ * Update the lock to latest SHA for a source (or all sources). `knownShas`
+ * holds SHAs this run already looked up (by source URL); those sources skip
+ * a second `git ls-remote`.
+ */
+export function updateLock(
+  sources: Source[],
+  sourceUrl?: string,
+  knownShas?: ReadonlyMap<string, string>,
+): UpdateLockResult[] {
   const lock = readLock();
   const results: UpdateLockResult[] = [];
 
@@ -118,7 +126,7 @@ export function updateLock(sources: Source[], sourceUrl?: string): UpdateLockRes
       continue;
     }
 
-    const newSha = getGitHeadSha(source);
+    const newSha = knownShas?.get(source.url) ?? getGitHeadSha(source);
     if (!newSha) {
       results.push({ source: entry.source, status: "error" });
       continue;

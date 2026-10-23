@@ -64,7 +64,7 @@ vi.mock("./lock.js", () => ({
 }));
 
 vi.mock("./skills/skill-versions.js", () => ({
-  recordSourceSha: vi.fn(),
+  recordSourceShas: vi.fn(async () => new Map([["user/repo", "fresh-sha"]])),
 }));
 
 vi.mock("./manifest.js", () => ({
@@ -284,6 +284,22 @@ describe("update", () => {
     await update();
     const logCalls = [...vi.mocked(console.log).mock.calls, ...vi.mocked(console.error).mock.calls].flat().join(" ");
     expect(logCalls).toMatch(/up to date/);
+  });
+
+  it("passes the SHAs it recorded to the lock update, so each source is looked up once", async () => {
+    mockLoadState.mockReturnValue({
+      ...makeState(),
+      sources: [
+        { url: "user/repo", type: "github" as const, skillsInstalled: [], availableItems: [], addedAt: "2026-01-01" },
+      ],
+    });
+    mockExecFileSync.mockReturnValue("up to date" as never);
+    mockReadLock.mockReturnValue({
+      locked: [{ source: "user/repo", type: "github", sha: "abc123", skills: [], lockedAt: "2026-01-01" }],
+    });
+    mockUpdateLock.mockReturnValue([]);
+    await update();
+    expect(mockUpdateLock).toHaveBeenCalledWith(expect.any(Array), undefined, new Map([["user/repo", "fresh-sha"]]));
   });
 
   it("reports lock file error status", async () => {

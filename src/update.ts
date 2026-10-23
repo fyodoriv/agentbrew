@@ -9,7 +9,7 @@ import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncE
 import { redactUrlCredentials } from "./core/redact-url.js";
 import { readLock, updateLock } from "./lock.js";
 import { loadManifest, saveManifest } from "./manifest.js";
-import { recordSourceSha } from "./skills/skill-versions.js";
+import { recordSourceShas } from "./skills/skill-versions.js";
 import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
 import { requireState, saveState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
@@ -106,14 +106,13 @@ function updateBuiltinSkills(): void {
   }
 }
 
-async function reindexSourcesAndRecord(sources: Source[], state: AgentBrewState): Promise<void> {
+async function reindexSourcesAndRecord(sources: Source[], state: AgentBrewState): Promise<Map<string, string>> {
   console.log(chalk.bold("\nSources"));
   await indexAllSources(sources);
-  // Record latest SHAs
-  for (const source of sources) {
-    recordSourceSha(source);
-  }
+  // Record latest SHAs, in parallel; the lock update below reuses them.
+  const shas = await recordSourceShas(sources);
   saveState(state);
+  return shas;
 }
 
 /**
@@ -152,11 +151,11 @@ function printRefreshResults(refreshResults: RefreshResult[]): void {
   }
 }
 
-function printLockResults(sources: Source[]): void {
+function printLockResults(sources: Source[], knownShas: ReadonlyMap<string, string>): void {
   const lock = readLock();
   if (lock.locked.length > 0) {
     console.log(chalk.bold("\nLock file"));
-    const results = updateLock(sources);
+    const results = updateLock(sources, undefined, knownShas);
     for (const result of results) {
       if (result.status === "updated") {
         console.log(
@@ -215,8 +214,13 @@ function updateBuiltinSkillsIfNeeded(options: UpdateOptions | undefined, isDryRu
   }
 }
 
-async function reindexSourcesIfNeeded(sources: Source[], state: AgentBrewState, isDryRun: boolean): Promise<void> {
-  if (sources.length > 0 && !isDryRun) await reindexSourcesAndRecord(sources, state);
+async function reindexSourcesIfNeeded(
+  sources: Source[],
+  state: AgentBrewState,
+  isDryRun: boolean,
+): Promise<Map<string, string>> {
+  if (sources.length > 0 && !isDryRun) return reindexSourcesAndRecord(sources, state);
+  return new Map();
 }
 
 function printSourcePullPlan(sources: Source[], prefix: string): void {
@@ -288,14 +292,14 @@ export async function update(options?: UpdateOptions): Promise<void> {
   // 3. Re-index all sources (pulls latest via git)
   const sources = getStateSources(state);
   if (isDryRun) printSourcePullPlan(sources, prefix);
-  await reindexSourcesIfNeeded(sources, state, isDryRun);
+  const knownShas = await reindexSourcesIfNeeded(sources, state, isDryRun);
 
   // 4. Refresh installed skill files from updated caches (skip writes in dry-run)
   printInstalledSkillUpdates(sources, options, prefix, isDryRun);
 
   // 5. Update lock file with latest SHAs (skip in dry-run)
   if (!isDryRun) {
-    printLockResults(sources);
+    printLockResults(sources, knownShas);
   }
 
   // 6. Refresh slimmed catalog rule bodies into shared-rules.md before deploy

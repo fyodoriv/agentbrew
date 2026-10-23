@@ -1,14 +1,17 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { schedulerCallSites } from "../test-utils/scheduler-call-sites.js";
+import { SCHEDULER_TOOLS, type SchedulerTool, schedulerCallSites } from "../test-utils/scheduler-call-sites.js";
 
 // launchd, the user crontab, and the systemd user manager are per user, so
 // every call goes through src/core/launchctl.ts or src/core/user-scheduler.ts,
 // which skip changes under a scratch HOME. This test finds calls that bypass them.
 
-/** The two owner modules, which call the tools on purpose. */
-const OWNERS = new Set(["core/launchctl.ts", "core/user-scheduler.ts"]);
+/** The owner modules and the tools each may call on purpose. */
+const OWNED: Record<string, readonly SchedulerTool[]> = {
+  "core/launchctl.ts": ["launchctl"],
+  "core/user-scheduler.ts": ["crontab", "systemctl"],
+};
 /**
  * Files that spawn a shell script running a scheduler tool and check the HOME
  * guard before the spawn (pinned in src/core/launchctl.test.ts). They are
@@ -36,6 +39,23 @@ describe("scheduler call-site detector", () => {
       `function runProbe(command: string, args: string[]) {\n  return spawnSync(command, args);\n}\nrunProbe("systemctl", ["--user", "is-active"]);`,
       "variable",
     ],
+    [
+      "a multi-line template script inside a spawn",
+      'spawn("/bin/sh", ["-c", `\n  sleep 1\n  launchctl unload "$0"\n`]);',
+      "shell",
+    ],
+    ["a tool right after an interpolation", "execSync(`${prefix}crontab -l`);", "shell"],
+    [
+      "a tool inside a long argument list",
+      `spawn("/bin/sh", ["-c", "set -e; true", ${'"x", '.repeat(200)}"launchctl load p"]);`,
+      "shell",
+    ],
+    ["a call on child_process", `child_process.spawnSync("crontab", ["-"]);`, "direct"],
+    [
+      "a call hidden after a glob string",
+      `const watch = { ignored: ["**/*.log"] };\nexecFileSync("crontab", ["-"], { input });\n/** doc */\nfunction f() {}`,
+      "direct",
+    ],
   ])("flags %s", (_label, source, kind) => {
     expect(schedulerCallSites(source)).toContain(kind);
   });
@@ -46,6 +66,8 @@ describe("scheduler call-site detector", () => {
     ["a which check", `execFileSync("which", ["crontab"], { stdio: "pipe" });`],
     ["a comment", `// \`launchctl load\` exits 0 even when launchd refuses the job\nexecFileSync("git", ["status"]);`],
     ["a doc comment", `/** Parse \`systemctl show\` output. */\nfunction parse() {}`],
+    ["a regex exec", `const m = /^(\\d+)/.exec(out) ?? fail("launchctl print failed");`],
+    ["a trailing comment", `execFileSync("git", ["status"]); // like \`launchctl load x\``],
   ])("ignores %s", (_label, source) => {
     expect(schedulerCallSites(source)).toEqual([]);
   });
@@ -64,8 +86,8 @@ describe("scheduler call sites in src", () => {
         }
         if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
         const rel = relative(root, path);
-        if (OWNERS.has(rel)) continue;
-        const kinds = schedulerCallSites(readFileSync(path, "utf-8")).filter(
+        const tools = SCHEDULER_TOOLS.filter((tool) => !OWNED[rel]?.includes(tool));
+        const kinds = schedulerCallSites(readFileSync(path, "utf-8"), tools).filter(
           (kind) => !(kind === "shell" && GUARDED_SHELL.has(rel)),
         );
         if (kinds.length > 0) offenders.push(`${rel}: ${kinds.join(", ")}`);

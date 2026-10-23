@@ -79,8 +79,8 @@ export function resolveWorkStep(
     } catch {
       // Unreadable: still name the file.
     }
-    const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
-    return { path, userOnly: /^disable-model-invocation:\s*true\s*$/m.test(front) };
+    const front = /^---\n([\s\S]*?)\n---/.exec(text.replace(/\r\n/g, "\n"))?.[1] ?? "";
+    return { path, userOnly: /^disable-model-invocation:\s*["']?true["']?\s*(#.*)?$/im.test(front) };
   }
   return { path: null, userOnly: false };
 }

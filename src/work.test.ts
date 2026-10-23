@@ -89,6 +89,12 @@ describe("resolveWorkStep (#451)", () => {
         userOnly: false,
       });
       expect(resolveWorkStep("/missing", root)).toEqual({ path: null, userOnly: false });
+      mkdirSync(join(root, "skills", "crlf"), { recursive: true });
+      writeFileSync(
+        join(root, "skills", "crlf", "SKILL.md"),
+        '---\r\nname: crlf\r\ndisable-model-invocation: "true"\r\n---\r\n',
+      );
+      expect(resolveWorkStep("/crlf", root).userOnly).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

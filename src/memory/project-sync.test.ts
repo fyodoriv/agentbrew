@@ -11,7 +11,7 @@ import {
   resolveClaudeProjectsDir,
   syncClaudeProjectMemories,
 } from "./project-sync.js";
-import type { ProjectMemorySyncLedger } from "./project-sync-ledger.js";
+import { type ProjectMemorySyncLedger, readProjectMemorySyncLedger } from "./project-sync-ledger.js";
 
 const tempDirs: string[] = [];
 
@@ -57,6 +57,7 @@ function client(
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -355,5 +356,45 @@ describe("syncClaudeProjectMemories", () => {
       stale: 1,
       status: "drifted",
     });
+  });
+
+  it("keeps both stores when two syncs write the shared ledger at once", async () => {
+    // Each round starts two syncs that read the same ledger, then lets them
+    // finish in the opposite order to their start. The cross-process race is
+    // covered in project-sync-ledger.test.ts.
+    for (let round = 0; round < 20; round += 1) {
+      const root = fixtureRoot();
+      vi.stubEnv("XDG_STATE_HOME", join(root, "state"));
+      const firstProjects = join(root, "first");
+      const secondProjects = join(root, "second");
+      writeStore(firstProjects, "-proj-alpha", { "fact.md": "alpha" });
+      writeStore(secondProjects, "-proj-beta", { "fact.md": "beta" });
+      let releaseFirst: () => void = () => undefined;
+      const firstGate = new Promise<void>((resolveGate) => {
+        releaseFirst = resolveGate;
+      });
+      const first = syncClaudeProjectMemories({
+        projectsDir: firstProjects,
+        client: client({
+          ingest: async () => {
+            await firstGate;
+            return { chunksStored: 1 };
+          },
+        }),
+      });
+      const second = await syncClaudeProjectMemories({
+        projectsDir: secondProjects,
+        client: client({ chunksStored: 2 }),
+      });
+      releaseFirst();
+      const firstResult = await first;
+
+      expect([firstResult.status, second.status]).toEqual(["ok", "ok"]);
+      const ledger = readProjectMemorySyncLedger();
+      expect(Object.values(ledger?.stores ?? {}).map((store) => store.chunksStored)).toEqual(
+        expect.arrayContaining([1, 2]),
+      );
+      expect(Object.keys(ledger?.stores ?? {})).toHaveLength(2);
+    }
   });
 });

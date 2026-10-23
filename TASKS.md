@@ -292,31 +292,18 @@
   - **Pivot**: if fetching is not the main cost, profile the deploy step and move that work behind a changed-files check instead.
   - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load).
 
-- [ ] Two memory syncs at once never lose a ledger update
-  - **ID**: memory-ledger-lock
-  - **Tags**: memory, concurrency
-  - **Details**: `syncClaudeProjectMemories` in `src/memory/project-sync.ts` (around lines 400–409) reads the sync ledger, syncs, and then writes the ledger with no lock. The daily LaunchAgent, the SessionEnd hook, and ship-it can run it at the same time; the last writer wins and drops the other run's stores, so they sync again or their evidence is lost.
-  - **Files**: `src/memory/project-sync.ts`, `src/memory/project-sync-ledger.ts`, their tests
+- [ ] A set-but-empty `XDG_STATE_HOME` never puts upstream report drafts in the current directory
+  - **ID**: report-drafts-xdg-empty
+  - **Tags**: config
+  - **Details**: `saveDraft` in `src/report.ts` falls back with `??` from `process.env.XDG_STATE_HOME`, so `XDG_STATE_HOME=` saves `agentbrew report` drafts under a relative `agentbrew/reports` folder wherever the command runs. The memory paths already treat an empty value as unset (`resolveStateHome` in `src/memory/paths.ts`); share that helper.
+  - **Files**: `src/report.ts`, `src/memory/paths.ts`, their tests
   - **Output**: code
-  - **Acceptance**: two concurrent `syncClaudeProjectMemories` runs both leave their stores in the ledger.
-  - **Hypothesis**: a lock (or a read-merge-write under a lock) around the ledger update drops lost ledger updates under concurrent runs from possible to 0.
-  - **Measurement**: a vitest case that starts two syncs at once against a scratch ledger and checks both stores are recorded.
-  - **Success**: the concurrent case passes 20 runs in a row.
-  - **Pivot**: if a lock file is unreliable on some file systems, merge the ledger on write (re-read, union, write atomically) instead.
-  - **Anchor**: review of `src/memory/project-sync.ts` (2026-10-22).
-
-- [ ] A set-but-empty `XDG_STATE_HOME` never makes the memory ledger path relative
-  - **ID**: xdg-state-home-empty
-  - **Tags**: memory, config
-  - **Details**: `src/memory/paths.ts` (lines 36, 40, 46) falls back with `??` from `process.env.XDG_STATE_HOME` to `join(home, ".local/state")`. `??` keeps an empty string, so `XDG_STATE_HOME=` makes the sync ledger path relative to the current directory, and the ledger lands wherever the command runs. The XDG spec says an empty value means unset.
-  - **Files**: `src/memory/paths.ts`, its tests
-  - **Output**: code
-  - **Acceptance**: with `XDG_STATE_HOME=""`, the ledger path is under `~/.local/state`.
-  - **Hypothesis**: treating an empty value as unset drops relative ledger paths from 1 case to 0.
-  - **Measurement**: a vitest case for `memoryProjectSyncLedgerPath` with `XDG_STATE_HOME=""` and with it unset.
-  - **Success**: both cases return the same absolute path.
-  - **Pivot**: if other modules read `XDG_STATE_HOME` the same way, add one shared `stateHome()` helper and use it everywhere.
-  - **Anchor**: XDG Base Directory spec ("If $XDG_STATE_HOME is either not set or empty...").
+  - **Acceptance**: with `XDG_STATE_HOME=""`, a saved draft lands under `~/.local/state/agentbrew/reports`.
+  - **Hypothesis**: treating an empty value as unset drops relative draft paths from 1 case to 0.
+  - **Measurement**: a vitest case for the draft path with `XDG_STATE_HOME=""` and with it unset.
+  - **Success**: both cases return the same absolute folder.
+  - **Pivot**: if more modules read `XDG_STATE_HOME` with `??`, move the helper to `src/utils.ts` and use it everywhere.
+  - **Anchor**: XDG Base Directory spec ("If $XDG_STATE_HOME is either not set or empty..."); review of PR for `xdg-state-home-empty` (2026-10-23).
 
 ## P3
 

@@ -32,20 +32,24 @@ export function memoryPackLedgerPath(packId: string): string {
   return join(memoryPacksLedgerDir(), `${packId}.json`);
 }
 
+/** The XDG spec treats a set-but-empty `XDG_STATE_HOME` as unset. */
+function resolveStateHome(home: string, stateHome: string | undefined): string {
+  return stateHome || join(home, ".local/state");
+}
+
 export function memoryMaintainMarkerPath(home = homedir()): string {
-  const stateHome = process.env.XDG_STATE_HOME ?? join(home, ".local/state");
-  return join(stateHome, "agentbrew/memory-maintain.ok");
+  return join(resolveStateHome(home, process.env.XDG_STATE_HOME), "agentbrew/memory-maintain.ok");
 }
 
 export function memoryProjectSyncLedgerPath(home = homedir(), stateHome = process.env.XDG_STATE_HOME): string {
-  return join(stateHome ?? join(home, ".local/state"), "agentbrew", MEMORY_PROJECT_SYNC_LEDGER_FILE);
+  return join(resolveStateHome(home, stateHome), "agentbrew", MEMORY_PROJECT_SYNC_LEDGER_FILE);
 }
 
 export function memoryProjectSyncSchedulerReceiptPath(
   home = homedir(),
   stateHome = process.env.XDG_STATE_HOME,
 ): string {
-  return join(stateHome ?? join(home, ".local/state"), "agentbrew", MEMORY_PROJECT_SYNC_SCHEDULER_RECEIPT_FILE);
+  return join(resolveStateHome(home, stateHome), "agentbrew", MEMORY_PROJECT_SYNC_SCHEDULER_RECEIPT_FILE);
 }
 
 export function memoryLaunchAgentLogDir(home = homedir()): string {

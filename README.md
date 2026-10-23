@@ -358,6 +358,11 @@ or unsynced stores. The managed Claude Code `SessionEnd` hook records a
 non-blocking receipt and debounces only after a successful run, so a failed
 child is retried by the next session. The daily job remains the recovery path.
 
+The ledger lives at `$XDG_STATE_HOME/agentbrew/memory-project-sync.json`
+(`~/.local/state` when `XDG_STATE_HOME` is unset or empty). Runs that overlap,
+such as the daily job and a `SessionEnd` hook, take a short lock and merge
+their results, so neither run loses the other's stores.
+
 `agentbrew memory doctor` reports project-sync drift as an advisory and keeps
 startup readiness separate. `agentbrew memory transport-report --json` records
 the loopback, legacy session, Origin, unauthenticated-access, timeout, and

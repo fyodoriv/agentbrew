@@ -406,6 +406,11 @@ export async function syncClaudeProjectMemories(
   const targetResults = targets.length > 0 ? await syncStoreResults(options, env, targets, nextStores, now) : [];
   const results = combineStoreResults(stores, targets, targetResults);
   const result = resultFromStoreResults(stores, results);
-  writeSyncEvidence(result, previous, nextStores, now, options.writeLedger ?? writeProjectMemorySyncLedger);
+  // The default writer merges under a lock with what other runs wrote since
+  // `previous` was read, so concurrent runs keep each other's stores.
+  const writeLedger =
+    options.writeLedger ??
+    ((ledger: ProjectMemorySyncLedger) => writeProjectMemorySyncLedger(ledger, undefined, { base: previous }));
+  writeSyncEvidence(result, previous, nextStores, now, writeLedger);
   return result;
 }

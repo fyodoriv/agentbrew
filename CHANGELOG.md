@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Two `agentbrew memory sync-projects` runs at the same time (for example
+  the daily job and a `SessionEnd` hook) no longer drop each other's stores
+  from the sync ledger. The ledger write now takes a short lock and merges.
+- A set-but-empty `XDG_STATE_HOME` no longer puts the memory sync ledger in
+  the current directory. It falls back to `~/.local/state`, as the XDG spec
+  says.
 - **Security:** a token inside a git URL (`https://user:token@host/...`)
   no longer shows in agentbrew output: the CLI filters all of its stdout
   and stderr, and errors, the debug log, and the saved sync-error log show

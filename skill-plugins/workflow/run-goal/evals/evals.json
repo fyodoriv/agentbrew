@@ -1319,6 +1319,17 @@
         "Stops at the first failed step of a commit chain; no forced cleanup after a failure",
         "Reports two latencies per picked-up item"
       ]
+    },
+    {
+      "id": 115,
+      "prompt": "/goal cover every feature and user story with an e2e test, visually check every block and make it clearer, then update your skills. Mid-goal the user adds: \"afterwards deliver every unblocked task\". The repo's TASKS.md has six tasks: two need weeks of the owner's real use, one needs the owner's labels, and three ask to send feedback to third-party skill repos.",
+      "expected_output": "The agent adds the new request to the contract file as a done-criterion in one line and keeps working on the goal. It reads each task block and sorts it: owner-only (real use, labels, cookies) stays open with its blocker named; a post to a third-party repo is a public action, so it is parked and asked about in one batch at the end, with the exact text. It does not mark a task delivered without a merged change, and it delivers the tasks its own run filed. The goal check line for the criterion lists each task with its status and reason.",
+      "expectations": [
+        "Adds the mid-goal request to the contract as a done-criterion",
+        "Sorts each task: deliverable, owner-only, or needs approval",
+        "Parks third-party posts and asks once at the end with the exact text",
+        "Never reports an owner-gated task as delivered"
+      ]
     }
   ]
 }

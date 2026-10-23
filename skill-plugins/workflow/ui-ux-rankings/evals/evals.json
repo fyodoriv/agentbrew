@@ -79,6 +79,17 @@
         "Reports preference as N of M screens, scored against the key",
         "Lists the issues the judge named and which are real"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "The comfort budget test passes on every view (no axe problems, no text under 14 px, no small targets, no sideways scroll), but the blind judge preferred the old design on the Week and Review screens. What now?",
+      "expected_output": "The agent opens the after screenshots of those two screens itself and names the cause (for example an id that spills over a narrow column, or a number that wraps over two lines after the text grew). It adds a spill check to the budget test (inline text wider than its block, number cells on more than one line), runs it on the crowded state the full suite builds, reverts the fix once to see the check fail, then fixes the CSS and re-runs the budget and the judge.",
+      "expectations": [
+        "Reads the losing screens and names a concrete cause",
+        "Adds a check that fails on that cause (spill or broken number)",
+        "Runs the budget on the crowded state, not a fresh seed",
+        "Plants the regression once to prove the check fails, then fixes it"
+      ]
     }
   ]
 }

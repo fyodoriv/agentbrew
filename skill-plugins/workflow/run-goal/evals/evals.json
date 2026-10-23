@@ -1341,6 +1341,29 @@
         "Routes a cross-worker failure to the worker whose commit caused it",
         "Ships only after the full suite on the integration branch is green"
       ]
+    },
+    {
+      "id": 117,
+      "prompt": "/goal fix the app that blocks restart ('X failed to quit') permanently. The app is started by a LaunchAgent, and its plist on disk already looks correct.",
+      "expected_output": "The agent reproduces first: it sends a quit Apple Event to the exact pid (after checking the method on a control app) and sees the app relaunch. It checks the loaded job with `launchctl print gui/$UID/<label>`, not only the plist file, finds the stale arguments, and reloads the job. It proves the fix with a simulated quit after a scheduler-started run, and reports the metric 'relaunches after quit: 1 -> 0'. It does not report done from the plist alone.",
+      "expectations": [
+        "Reproduces with a quit Apple Event to the exact pid, after a control app check",
+        "Reads the loaded job with launchctl print gui/$UID/<label>, not only the plist on disk",
+        "Proves the fix with a simulated quit after a scheduler-started run of the reloaded job",
+        "Names the metric 'relaunches after quit: 1 -> 0' with before and after numbers"
+      ]
+    },
+    {
+      "id": 118,
+      "prompt": "/goal get PR 812 to green. One required check is red: a repo-specific gate (not the build) whose log says the PR's record is stale after new commits. The gate's own PR comment explains how to refresh it.",
+      "expected_output": "The agent reads the failing check's log and the gate's PR comment before it changes anything. It follows the documented refresh step (for example, append a revision section to the PR's record and recapture), reruns only that check, and prints the fresh check status. It makes no code edits, because the code is not what is red.",
+      "expectations": [
+        "Reads the failing check log and the gate's own PR comment first",
+        "Follows the gate's documented refresh step instead of editing code",
+        "Reruns only the stale check, not the whole pipeline",
+        "Prints fresh check status as proof",
+        "Makes no code edits, because the code is not what is red"
+      ]
     }
   ]
 }

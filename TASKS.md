@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] `agentbrew` with a scratch HOME on Linux never changes the real user's crontab or systemd timer
-  - **ID**: scratch-home-linux-scheduler
-  - **Tags**: install, scheduler, safety
-  - **Details**: The macOS fix routes every `launchctl` change through `src/core/launchctl.ts`, which skips it when HOME is not the user's home folder. Linux has the same per-user problem: `src/sync/cron.ts` pipes a new table to `crontab -` (the real user's crontab, with scratch-HOME paths), and `src/sync/systemd.ts` runs `systemctl --user enable --now` and `disable --now agentbrew-check.timer`, which act on the real timer by name. Reuse the same HOME check (renamed for all schedulers) before each change.
-  - **Files**: `src/sync/cron.ts`, `src/sync/systemd.ts`, `src/core/launchctl.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: with HOME set to a scratch folder, `auto-sync install` and `uninstall` on Linux make no `crontab` write and no `systemctl --user` change.
-  - **Hypothesis**: the HOME check before each scheduler change drops real crontab or timer changes from scratch-HOME runs from possible to 0.
-  - **Measurement**: a vitest case with fake `crontab` and `systemctl` first on PATH and a scratch HOME.
-  - **Success**: the fakes record no change call.
-  - **Pivot**: if HOME detection is unreliable on Linux, read the home folder from `getent passwd`.
-  - **Anchor**: review of the PR for `init-scratch-home-launchd` (2026-10-23).
-
 - [ ] `agentbrew install load-project-context` installs the built-in skill, or says which one it installs
   - **ID**: catalog-rule-skill-name-clash
   - **Tags**: catalog, skills, rules

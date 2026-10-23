@@ -40,16 +40,26 @@ process.env.PLAYWRIGHT_BROWSERS_PATH ??= join(realHome, "Library", "Caches", "ms
 // Fixture repos commit with a test identity, not the developer's ~/.gitconfig.
 fs.writeFileSync(join(scratchHome, ".gitconfig"), "[user]\n\tname = agentbrew test\n\temail = test@example.com\n");
 
-// launchd is per user, not per HOME: a test that reached the real launchctl
-// replaced the user's own jobs (2026-10-23). A recording fake goes first on
-// PATH for every test file. `print` exits 113 (not loaded); other verbs do nothing.
+// launchd, the user crontab, and the systemd user manager are per user, not
+// per HOME: a test that reached the real launchctl replaced the user's own
+// jobs (2026-10-23). Recording fakes go first on PATH for every test file and
+// change nothing. `launchctl print` exits 113 (not loaded), `crontab -l` exits
+// 1 (no table), and `systemctl --user is-active` exits 3 (inactive).
 const fakeBin = join(scratchHome, ".agentbrew-test-bin");
 fs.mkdirSync(fakeBin);
-fs.writeFileSync(
-  join(fakeBin, "launchctl"),
-  `#!/bin/sh\nprintf '%s\\n' "$*" >> '${join(scratchHome, ".agentbrew-test-launchctl.log")}'\ncase "$1" in print) exit 113 ;; esac\nexit 0\n`,
-  { mode: 0o755 },
-);
+const fakeLog = join(scratchHome, ".agentbrew-test-schedulers.log");
+const fakeTools: Record<string, string> = {
+  launchctl: `case "$1" in print) exit 113 ;; esac`,
+  crontab: `[ "$1" = "-" ] && cat > /dev/null\ncase "$1" in -l) exit 1 ;; esac`,
+  systemctl: `case "$2" in is-active) exit 3 ;; esac`,
+};
+for (const [tool, body] of Object.entries(fakeTools)) {
+  fs.writeFileSync(
+    join(fakeBin, tool),
+    `#!/bin/sh\nprintf '%s %s\\n' '${tool}' "$*" >> '${fakeLog}'\n${body}\nexit 0\n`,
+    { mode: 0o755 },
+  );
+}
 const pathBeforeFake = process.env.PATH;
 process.env.PATH = `${fakeBin}${delimiter}${pathBeforeFake ?? ""}`;
 

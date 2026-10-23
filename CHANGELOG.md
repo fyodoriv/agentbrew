@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Linux, `agentbrew auto-sync install` and `uninstall` with a scratch
+  `HOME` no longer write the real user's crontab or run `systemctl --user`
+  enable, disable, or daemon-reload. Both are per user, so agentbrew changes
+  them only when `HOME` is your home folder, as it already does for launchd.
 - A command or agent name that two sources ship now has one fixed winner,
   the same rule as skills: the source listed later wins. Before, commands
   took the later dir and agents the earlier one, and nothing was printed.

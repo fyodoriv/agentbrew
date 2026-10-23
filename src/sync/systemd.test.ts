@@ -5,6 +5,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These cases model a machine whose HOME is the user's home folder; the
+// scheduler guards would skip every change under the scratch test HOME.
+// child_process is mocked below, so this still runs nothing real.
+vi.mock("../core/home-guard.js", () => ({ homeIsUsersHome: () => true }));
+
 vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
 }));

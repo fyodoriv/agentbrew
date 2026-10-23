@@ -1,7 +1,8 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
+import { readCrontabTable, writeCrontabTable } from "../core/user-scheduler.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { AUTO_SYNC_INTERVAL_MINUTES, getAgentBrewBin, getLogDir } from "./scheduler-paths.js";
 
@@ -14,7 +15,7 @@ function getCronEntry(): string {
 
 function readCrontab(): string {
   try {
-    return execFileSync("crontab", ["-l"], { stdio: "pipe", timeout: 5_000 }).toString();
+    return readCrontabTable();
   } catch (e) {
     logSkipped("sync/cron/execFileSync", e);
     return "";
@@ -45,7 +46,12 @@ export async function installCron(): Promise<void> {
 
   const newCrontab = `${existing.trimEnd()}\n${getCronEntry()}\n`;
   try {
-    const result = spawnSync("crontab", ["-"], { input: newCrontab, stdio: ["pipe", "pipe", "pipe"], timeout: 5_000 });
+    const result = writeCrontabTable(newCrontab);
+    if (!result) {
+      console.log(chalk.yellow("cron job not installed: HOME is not your home folder, and crontab is per user."));
+      console.log(chalk.dim(`  Add manually: ${getCronEntry()}`));
+      return;
+    }
     if (result.status !== 0 || result.error) {
       const msg = result.stderr?.toString().trim() || result.error?.message || "unknown error";
       console.error(chalk.red(`Failed to install cron job: ${msg}`));
@@ -76,7 +82,11 @@ export async function uninstallCron(): Promise<void> {
     .join("\n");
 
   try {
-    const result = spawnSync("crontab", ["-"], { input: filtered, stdio: ["pipe", "pipe", "pipe"], timeout: 5_000 });
+    const result = writeCrontabTable(filtered);
+    if (!result) {
+      console.log(chalk.yellow("crontab not changed: HOME is not your home folder, and crontab is per user."));
+      return;
+    }
     if (result.status !== 0 || result.error) {
       const msg = result.stderr?.toString().trim() || result.error?.message || "unknown error";
       console.error(chalk.red(`Failed to update crontab: ${msg}`));

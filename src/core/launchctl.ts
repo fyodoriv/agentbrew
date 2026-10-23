@@ -1,27 +1,13 @@
 import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { homedir, userInfo } from "node:os";
-import { resolve } from "node:path";
 import chalk from "chalk";
+import { homeIsUsersHome } from "./home-guard.js";
 
 /** launchctl verbs that only read launchd state. Every other verb changes it. */
 const READ_ONLY_VERBS = new Set(["print", "print-disabled", "list", "blame", "version", "help"]);
 
-/**
- * True when HOME is the real user's home folder. launchd is per user, not per
- * HOME: a job loaded from a scratch HOME replaces the real user's job of the
- * same label (2026-10-23, `com.agentbrew.check` and the memory daemon).
- */
+/** True when HOME is the real user's home folder (see homeIsUsersHome). */
 export function launchdTargetsThisHome(): boolean {
-  return realPath(homedir()) === realPath(userInfo().homedir);
-}
-
-function realPath(path: string): string {
-  try {
-    return realpathSync(path);
-  } catch {
-    return resolve(path);
-  }
+  return homeIsUsersHome();
 }
 
 /** Module scope, process lifetime: print the skip notice once per process. */

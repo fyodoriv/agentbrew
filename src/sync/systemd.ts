@@ -4,6 +4,7 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { logSkipped } from "../core/logger.js";
+import { runSystemctlUser, userSchedulersTargetThisHome } from "../core/user-scheduler.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { AUTO_SYNC_INTERVAL_MINUTES, getAgentBrewBin, getLogDir, getNodeBinDir } from "./scheduler-paths.js";
@@ -68,12 +69,15 @@ export async function installSystemdTimer(): Promise<void> {
   writeFileAtomicSync(getSystemdServicePath(), buildSystemdService(), "utf-8");
   writeFileAtomicSync(getSystemdTimerPath(), buildSystemdTimer(), "utf-8");
 
+  if (!userSchedulersTargetThisHome()) {
+    console.log(`${ICON_SUCCESS} systemd units written; systemd not changed, because HOME is not your home folder.`);
+    console.log(`  Timer: ${getSystemdTimerPath()}`);
+    return;
+  }
+
   try {
-    execFileSync("systemctl", ["--user", "daemon-reload"], { stdio: "pipe", timeout: 10_000 });
-    execFileSync("systemctl", ["--user", "enable", "--now", "agentbrew-check.timer"], {
-      stdio: "pipe",
-      timeout: 10_000,
-    });
+    runSystemctlUser(["daemon-reload"]);
+    runSystemctlUser(["enable", "--now", "agentbrew-check.timer"]);
     console.log(`${ICON_SUCCESS} systemd timer installed and started.`);
     console.log("  Auto-repair runs every 30 minutes.");
     console.log(`  Service: ${getSystemdServicePath()}`);
@@ -97,10 +101,7 @@ export async function uninstallSystemdTimer(): Promise<void> {
   }
 
   try {
-    execFileSync("systemctl", ["--user", "disable", "--now", "agentbrew-check.timer"], {
-      stdio: "pipe",
-      timeout: 10_000,
-    });
+    runSystemctlUser(["disable", "--now", "agentbrew-check.timer"]);
   } catch (e) {
     logSkipped("sync/systemd/execFileSync", e);
     // May not be active
@@ -110,7 +111,7 @@ export async function uninstallSystemdTimer(): Promise<void> {
   if (existsSync(servicePath)) unlinkSync(servicePath);
 
   try {
-    execFileSync("systemctl", ["--user", "daemon-reload"], { stdio: "pipe", timeout: 10_000 });
+    runSystemctlUser(["daemon-reload"]);
   } catch (e) {
     logSkipped("sync/systemd/execFileSync", e);
     // Best effort

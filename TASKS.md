@@ -321,12 +321,12 @@
 - [ ] `agentbrew install load-project-context` installs the built-in skill, or says which one it installs
   - **ID**: catalog-rule-skill-name-clash
   - **Tags**: catalog, skills, rules
-  - **Details**: Found by the #430 review. `load-project-context` is both a catalog rule (`src/catalog.yaml`, no `source:`) and a built-in skill in `skill-plugins/dev/`. `installFromCatalog` checks catalog skills, MCP servers, rules, and CLI tools before built-in skills, so `agentbrew install load-project-context` installs the rule, and an Agentfile `skills:` entry with that name does the same. A user who asks for the skill gets the rule and no message. No other catalog entry shares a name with a built-in skill today.
+  - **Details**: Found by the #430 review. `load-project-context` is both a catalog rule (`src/catalog.yaml`, no `source:`) and a built-in skill in `skill-plugins/dev/`. `installFromCatalog` checks catalog skills, MCP servers, rules, and CLI tools before built-in skills, so `agentbrew install load-project-context` installs the rule, and an Agentfile `skills:` entry with that name does the same. A user who asks for the skill gets the rule and no message. No other catalog rule, MCP server, or CLI tool shares a name with a built-in skill today (four catalog skills do, with `source: built-in`, which is fine).
   - **Files**: `src/catalog/install.ts`, `src/catalog.yaml`, `src/catalog/install.test.ts`, a catalog lint test
   - **Output**: code
-  - **Acceptance**: `agentbrew install load-project-context` installs what the user asked for (or asks, in a terminal), an Agentfile `skills:` entry always installs the skill, and a catalog lint fails when a new rule, MCP server, or CLI tool takes a built-in skill's name.
+  - **Acceptance**: `agentbrew install load-project-context` installs what the user asked for (or asks, in a terminal), an Agentfile `skills:` entry always installs the skill, and a catalog lint fails when a new rule, MCP server, or CLI tool takes a built-in skill's name (catalog skills with `source: built-in` are allowed).
   - **Hypothesis**: resolving `skills:` entries to skills first and linting name clashes drops catalog names that install the wrong kind of item from 1 to 0.
-  - **Measurement**: a vitest case for `install("load-project-context")` and an Agentfile `skills: [load-project-context]`, plus a catalog test that lists names shared between built-in skills and other catalog kinds.
+  - **Measurement**: `npx vitest run src/catalog/install.test.ts src/catalog/catalog.test.ts` with a case for `install("load-project-context")`, one for an Agentfile `skills: [load-project-context]`, and a catalog test that lists names shared between built-in skills and catalog rules, MCP servers, and CLI tools.
   - **Success**: the skill installs for a `skills:` entry, and the lint finds 0 shared names (or only an allowlisted one with a reason).
   - **Pivot**: if the rule and the skill must keep one name, rename the rule (for example `load-project-context-rule`) and keep an alias with a deprecation note.
   - **Anchor**: #430 pre-merge review (2026-10-23).
@@ -339,7 +339,7 @@
   - **Output**: code
   - **Acceptance**: when a user-created file in the global folder (not tracked in the manifest as an agentbrew copy) loses to an Agentfile or plugin dir, sync warns and `agentbrew status` shows a `Name clash` line naming the global folder as skipped; agentbrew's own merged copies there never trigger it.
   - **Hypothesis**: telling user-created files from merged copies by the manifest makes this override visible: silent overrides of a user's own command go from every occurrence to 0.
-  - **Measurement**: a vitest case with a user-created `review.md` in the global folder and an Agentfile dir that ships `review.md`, and one with a manifest-tracked merged copy (no warning).
+  - **Measurement**: `npx vitest run src/sync/name-clashes.test.ts src/sync/command-sync.test.ts src/status.test.ts` with a case for a user-created `review.md` in the global folder plus an Agentfile dir that ships `review.md`, and one for a manifest-tracked merged copy (no warning).
   - **Success**: the first case warns and shows in status; the second stays silent.
   - **Pivot**: if the manifest cannot tell them apart reliably, let the user's own file win instead, as it already does for built-in command names.
   - **Anchor**: #431 pre-merge review (2026-10-23).

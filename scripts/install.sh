@@ -15,7 +15,7 @@
 #   --no-auto-repair   Do not install the background repair job (every 30 min); saved as autoRepair off (default: on)
 #   --no-shell-hook    Do not add the project-detection line to your shell rc file
 #   --keep-claude-permissions
-#                      Keep Claude Code permission prompts on (claudePermissions: keep)
+#                      Keep Claude Code permission prompts on (config set claudePermissions keep)
 #   --yes              Required: confirms the user agreed to the plan
 #
 # Phases of `run`: preflight -> backup -> build -> link -> setup -> heal ->
@@ -142,18 +142,6 @@ claude_md_kb() {
   echo $(( (template + rules + 512) / 1024 ))
 }
 
-# Sets `claudePermissions: keep` in state.yaml and keeps every other line.
-seed_keep_claude_permissions() {
-  local dir="$HOME/.config/agentbrew" file
-  file="$dir/state.yaml"
-  mkdir -p "$dir" || return 1
-  if [ -f "$file" ]; then
-    grep -v '^claudePermissions:' "$file" > "$file.tmp" || true
-    mv "$file.tmp" "$file" || return 1
-  fi
-  printf 'claudePermissions: keep\n' >> "$file"
-}
-
 cmd_plan() {
   say "agentbrew install plan (nothing has changed yet)"
   step "What you need"
@@ -177,7 +165,7 @@ cmd_plan() {
   say "       (agentbrew instructions plus the recommended rules)."
   say "     - It turns permission prompts off (bypassPermissions) and allows the tools"
   say "       of every MCP server, unless you pass --keep-claude-permissions"
-  say "       (claudePermissions: keep in ~/.config/agentbrew/state.yaml)."
+  say "       (agentbrew config set claudePermissions keep)."
   say "  5. Heal: 'agentbrew status --fix' repairs any drift it finds."
   say "  6. Verify: 'agentbrew lint', then the doctor 'agentbrew status --ci'."
   step "If something goes wrong"
@@ -397,8 +385,9 @@ cmd_run() {
   [ "$auto_repair" -eq 1 ] || export AGENTBREW_NO_AUTO_SYNC=1
   [ "$shell_hook" -eq 1 ] || export AGENTBREW_NO_SHELL_HOOK=1
   if [ "$keep_perms" -eq 1 ]; then
-    seed_keep_claude_permissions || critical "saving claudePermissions: keep"
-    say "  ✓ Claude Code permission prompts stay on (claudePermissions: keep)"
+    # Through the CLI, by the path the installer already uses: it validates and owns every setting.
+    "$AGENTBREW_CMD" config set claudePermissions keep || critical "saving claudePermissions keep"
+    say "  ✓ Claude Code permission prompts stay on (agentbrew config set claudePermissions keep)"
   fi
   # Save the repair-job answer before init, so init and every later run honor it (a yes undoes an earlier no).
   local repair_answer=on

@@ -75,8 +75,8 @@ Ask these together, in one round:
 
 Map the answers to flags: No to 1 → `--no-recommended`, No to 2 →
 `--no-auto-repair`, No to 3 → `--no-shell-hook`, Yes to 4 →
-`--keep-claude-permissions` (it writes `claudePermissions: keep` to
-`~/.config/agentbrew/state.yaml` before setup).
+`--keep-claude-permissions` (it runs `agentbrew config set
+claudePermissions keep` before setup).
 
 With `--no-recommended`, setup downloads nothing: it fetches no catalog
 sources and installs no skills, not even the ones an Agentfile lists. Add

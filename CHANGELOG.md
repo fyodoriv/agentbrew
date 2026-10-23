@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lands in. Turns that dispatch workers are no longer asked for a time
   review for them. A denied launch is still flagged; a background launch
   that a hook blocks now counts as ran.
+- `install.sh run --keep-claude-permissions` saves the setting with
+  `agentbrew config set claudePermissions keep` instead of editing
+  `state.yaml` by hand, and the README's offline rows name
+  `agentbrew config set skillInstallMode native`.
 - Interactive `plugin add` fetches the plugin once and installs the exact
   checkout it showed for approval. Before, it fetched again after the prompt,
   so a tag moved in between could install other code than the one approved.

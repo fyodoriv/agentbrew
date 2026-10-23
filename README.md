@@ -131,7 +131,7 @@ agentbrew setup composio                   # guided wizard → saves to ~/.zshen
 agentbrew config set claudePermissions keep   # default: manage
 ```
 
-On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` writes this line before setup, so the prompts are never turned off. `install.sh plan` lists this and the other Claude Code changes (hooks, `/goal` behaviour, always-loaded CLAUDE.md size) before anything changes.
+On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` runs this command before setup, so the prompts are never turned off. `install.sh plan` lists this and the other Claude Code changes (hooks, `/goal` behaviour, always-loaded CLAUDE.md size) before anything changes.
 
 `keep` does not undo what an earlier `sync` wrote. If `sync` already ran, also remove `defaultMode`, `skipAutoPermissionPrompt`, and any `mcp__*` allow rules you do not want from `~/.claude/settings.json`.
 
@@ -153,10 +153,10 @@ Every delegation failure prints `Delegated skill install networking` at the top 
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
-| `tunneling socket could not be established, statusCode=407` | Corporate HTTP proxy blocked the `registry.npmjs.org` / GitHub egress. | Configure `npm config set proxy` + `git config --global http.proxy`, OR set `skillInstallMode: native` to skip delegation. |
-| `connect ETIMEDOUT <ip>:443` | Network egress hangs (firewall drops on the proxy, VPN required for one of the three hosts). | Verify VPN connection, retry. If repeating, switch to `skillInstallMode: native` — see also the [skill-install-fallback section in TASKS.md](TASKS.md). |
+| `tunneling socket could not be established, statusCode=407` | Corporate HTTP proxy blocked the `registry.npmjs.org` / GitHub egress. | Configure `npm config set proxy` + `git config --global http.proxy`, OR run `agentbrew config set skillInstallMode native` to skip delegation. |
+| `connect ETIMEDOUT <ip>:443` | Network egress hangs (firewall drops on the proxy, VPN required for one of the three hosts). | Verify VPN connection, retry. If repeating, run `agentbrew config set skillInstallMode native` — see also the [skill-install-fallback section in TASKS.md](TASKS.md). |
 | `npm error 404 Not Found - GET https://registry.npmjs.org/<package>` | The `skills` CLI's published package shape changed, OR the source repo's manifest is wrong. | Update agentbrew (`npm install -g agentbrew@latest`). If still 404 after update, file an issue with the failing source URL. |
-| `getaddrinfo ENOTFOUND registry.npmjs.org` (or `ENOTCACHED` / `ECONNREFUSED`) | Registry unreachable: cold offline, DNS broken, or first-run-without-cache. | Run `npx --yes skills --version` once online to warm the cache, then offline retries work. For permanently-offline machines, set `skillInstallMode: native`. |
+| `getaddrinfo ENOTFOUND registry.npmjs.org` (or `ENOTCACHED` / `ECONNREFUSED`) | Registry unreachable: cold offline, DNS broken, or first-run-without-cache. | Run `npx --yes skills --version` once online to warm the cache, then offline retries work. For permanently-offline machines, run `agentbrew config set skillInstallMode native`. |
 
 The above list is anchored to the 4 failure-mode scenarios pinned in `src/add-source.test.ts` (`fallback failure-mode: …`). If a new failure mode shows up in the wild, add a test row in `src/add-source.test.ts` AND a row here so the doc + code surfaces stay aligned.
 

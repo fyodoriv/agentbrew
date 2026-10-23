@@ -217,6 +217,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/work`, a built-in command for the work day, and `agentbrew work [--json]`,
+  which prints its plan: ordered checkup steps, the machine rule (company
+  plugin installed or not), watch mode, and end of day. Agentfiles add steps
+  with `workSteps:` (#440).
 - **Company plugins preview** (`AGENTBREW_PLUGINS_V2=1`, #208 step 3):
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses

@@ -239,3 +239,15 @@ describe("built-in commands", () => {
     expect(pkg.files).toContain("dist");
   });
 });
+
+describe("the /work built-in command (#440)", () => {
+  it("ships commands/work.md, which runs `agentbrew work --json` and keeps public posts as drafts", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, resolve } = await import("node:path");
+    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
+    expect(text).toMatch(/^---\ndescription: /);
+    expect(text).toContain("agentbrew work --json");
+    expect(text).toMatch(/draft/i);
+    expect(text).toMatch(/end of day/i);
+  });
+});

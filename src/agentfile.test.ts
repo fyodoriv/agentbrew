@@ -136,6 +136,13 @@ rules: |
     expect(result.rules).toContain("conventional commits");
   });
 
+  it("parses workSteps for /work and drops non-string or empty entries (#440)", () => {
+    expect(parseAgentfile("workSteps:\n  - /tooling-checkup\n  - 3\n  - ' '\n  - ' /oncall '\n").workSteps).toEqual([
+      "/tooling-checkup",
+      "/oncall",
+    ]);
+  });
+
   it("returns empty object for empty content", () => {
     expect(parseAgentfile("")).toEqual({});
     expect(parseAgentfile("---")).toEqual({});

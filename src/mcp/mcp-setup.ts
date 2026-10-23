@@ -165,23 +165,22 @@ async function setupAllServers(): Promise<void> {
   }
   console.log();
 
-  const { input, confirm } = await import("@inquirer/prompts");
+  const { password, confirm } = await import("@inquirer/prompts");
 
   const collected = new Map<string, string>();
   for (const [varName] of varToServers) {
-    const value = await input({
+    // Hidden input: a pasted secret never shows on screen or in a terminal log.
+    const value = await password({
       message: `  Paste your ${chalk.cyan(varName)}:`,
+      mask: true,
       validate: (val) => val.trim().length > 0 || "Value cannot be empty",
     });
     collected.set(varName, value.trim());
   }
 
-  // Confirm and save
+  // Confirm and save; key names only, not even a masked preview of a value
   console.log(chalk.bold("\n  Review:"));
-  for (const [varName, value] of collected) {
-    const masked = value.length > 8 ? `${value.slice(0, 4)}${"•".repeat(value.length - 8)}${value.slice(-4)}` : "••••";
-    console.log(`    ${chalk.cyan(varName)} = ${chalk.dim(masked)}`);
-  }
+  for (const varName of collected.keys()) console.log(`    ${chalk.cyan(varName)}`);
 
   const shouldSave = await confirm({
     message: `  Save ${collected.size} var(s) to ${getShellConfigPath()}?`,
@@ -218,16 +217,17 @@ export function collectMissingVars(servers: McpServerStatus[]): Map<string, stri
 /** Apply env vars from KEY=VAL pairs without prompting. Writes to shell config and process.env. */
 export function setupFromEnv(pairs: string[]): void {
   let applied = 0;
-  for (const pair of pairs) {
+  // A bad entry is named by position: it may be a secret pasted without its key.
+  for (const [index, pair] of pairs.entries()) {
     const eqIndex = pair.indexOf("=");
     if (eqIndex === -1) {
-      console.error(chalk.yellow(`  ⚠ Skipping invalid pair (expected KEY=VAL): ${pair}`));
+      console.error(chalk.yellow(`  ⚠ Skipping --env entry ${index + 1}: expected KEY=VAL`));
       continue;
     }
     const varName = pair.slice(0, eqIndex);
     const value = pair.slice(eqIndex + 1);
     if (!varName || !value) {
-      console.error(chalk.yellow(`  ⚠ Skipping empty key or value: ${pair}`));
+      console.error(chalk.yellow(`  ⚠ Skipping --env entry ${index + 1}: empty key or value`));
       continue;
     }
     process.env[varName] = value;

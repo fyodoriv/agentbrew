@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -482,4 +482,48 @@ describe("git installs take env values without waiting on a prompt (real git)", 
       expect.anything(),
     );
   }, 5000);
+});
+
+describe("an unattended clone never waits on git's login prompt (real git)", () => {
+  /**
+   * An HTTP git remote that asks for a login on every request, like a private
+   * https repo. It runs in its own process: the clone uses spawnSync, which
+   * blocks this process's event loop, so a server here could never answer.
+   */
+  async function loginServer(): Promise<{ url: string; close: () => void }> {
+    const script = [
+      'const server = require("node:http").createServer((_req, res) => {',
+      '  res.writeHead(401, { "WWW-Authenticate": \'Basic realm="private"\' });',
+      "  res.end();",
+      "});",
+      'server.listen(0, "127.0.0.1", () => console.log(server.address().port));',
+    ].join("\n");
+    const child = spawn(process.execPath, ["-e", script], { stdio: ["ignore", "pipe", "inherit"] });
+    const port = await new Promise<string>((resolve, reject) => {
+      child.stdout.once("data", (data) => resolve(String(data).trim()));
+      child.once("error", reject);
+      child.once("exit", (code) => reject(new Error(`login server exited early (${code})`)));
+    });
+    return { url: `http://127.0.0.1:${port}/org/private-mcp.git`, close: () => child.kill() };
+  }
+
+  for (const [label, options] of [
+    ["--yes", { nonInteractive: true }],
+    ["no terminal", {}],
+  ] as const) {
+    it(`fails fast with ${label} on a repo that needs a login`, async () => {
+      const remote = await loginServer();
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      const started = Date.now();
+      try {
+        await installMcpFromGit(remote.url, { name: "private-mcp", ...options });
+      } finally {
+        remote.close();
+      }
+      expect(process.exitCode).toBe(1);
+      expect(errors).toHaveBeenCalledWith(expect.stringContaining("terminal prompts disabled"));
+      expect(Date.now() - started).toBeLessThan(15_000);
+      expect(mockAddMcpServer).not.toHaveBeenCalled();
+    }, 20_000);
+  }
 });

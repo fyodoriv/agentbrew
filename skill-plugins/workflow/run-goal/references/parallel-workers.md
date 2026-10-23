@@ -41,6 +41,14 @@ Each rule comes from a real failure in a goal run.
   conflict after each merge. A `merge=union` attribute helps local merges
   only: GitHub ignores merge drivers when it decides mergeability. Use one
   file per PR instead.
+- Test the combination, not only each worker. Each worker runs its own tests
+  green, but a switch one worker flips can break the other's tests. In one
+  run, a worker turned a feature on and broke 3 of the other worker's tests,
+  and a crop one worker added contradicted the other's test. Only the final
+  suite found them, an hour before the deadline. After you merge workers'
+  branches, run the per-commit gate on the merged branch at a steady pace
+  (niced, one file at a time if a worker uses the GPU). Route each red test
+  to the worker whose commit made it red.
 - In zsh, `$var:` followed by a letter is a modifier (`$h:r` drops an
   extension). Write `"${h}:refs/heads/x"` in refspecs.
 - Stop at the first failed step of a commit chain. A cleanup that runs

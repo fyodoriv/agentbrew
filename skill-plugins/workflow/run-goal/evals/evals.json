@@ -1330,6 +1330,17 @@
         "Parks third-party posts and asks once at the end with the exact text",
         "Never reports an owner-gated task as delivered"
       ]
+    },
+    {
+      "id": 116,
+      "prompt": "/goal deliver all unblocked tasks then do the nightly run. The repo's task queues hold two tasks, both marked Blocked on an owner answer; no PRs are open. The nightly run starts two worker lanes in separate worktrees and merges their branches into one integration branch. Mid-run, worker A switches on a feature that worker B's code reads; worker B's tests were green before the switch.",
+      "expected_output": "The agent prints the contract first. It proves the first criterion from the baseline with evidence (both tasks carry Blocked lines, the open-PR list is empty) instead of inventing work, and moves on to the nightly run. After merges of the workers' branches it runs the per-commit test gate on the integration branch at a steady, niced pace, so the cross-worker break shows up when it lands. It routes the red test to the worker whose commit made it red, or fixes it after the workers stop, before it ships one pull request.",
+      "expectations": [
+        "Proves 'no unblocked task' with the queue lines and the open-PR list, without inventing tasks",
+        "Runs the test gate on the merged integration branch after merges, not only each worker's own tests",
+        "Routes a cross-worker failure to the worker whose commit caused it",
+        "Ships only after the full suite on the integration branch is green"
+      ]
     }
   ]
 }

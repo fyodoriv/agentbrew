@@ -292,19 +292,6 @@
   - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
   - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
 
-- [ ] The plugin leak audit and plugin scope check always read the folder they are given, even under a git hook
-  - **ID**: git-hook-env-plugin-audit-scope
-  - **Tags**: git, plugins
-  - **Details**: `auditRepo` in `src/plugins/leak-audit.ts` (`git ls-files`) and `repoIdOf` in `src/plugins/scope.ts` (`git remote get-url origin`) run git in a given folder with the raw process env. Under a git hook's `GIT_DIR` they read the hook's repository instead, so the leak audit can scan the wrong files and the scope check can name the wrong repo. Both are read-only. Inside a hook, `GIT_DIR` often names the same repository on purpose, so first check each caller: pass `cacheGitEnv()` from `src/mcp/git-ref.ts` only where the folder argument must win.
-  - **Files**: `src/plugins/leak-audit.ts`, `src/plugins/scope.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: with `GIT_DIR` set to another repository, `auditRepo(dir)` lists the files of `dir` and `repoIdOf(dir)` returns the origin of `dir`.
-  - **Hypothesis**: making the folder argument authoritative drops audits and scope checks of the wrong repository under a hook from possible to 0.
-  - **Measurement**: a vitest case per function that sets `GIT_DIR` to a scratch repository and checks the result names the given folder.
-  - **Success**: both cases pass.
-  - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
-  - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
-
 - [ ] A command or agent name clash has one fixed winner and prints a warning
   - **ID**: command-agent-clash-order
   - **Tags**: sync, commands, agents

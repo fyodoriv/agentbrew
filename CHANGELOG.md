@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** `agentbrew plugin leak-audit` and `plugin rules` started from
+  a git hook now read the folder they are given. Before, a hook's `GIT_DIR`
+  made the leak audit list the hook's repository, so it could miss a leak in
+  the audited folder, and made the rules scope name the wrong repo. `--cwd`
+  must name a checkout: a setup reachable only through `GIT_DIR` and
+  `GIT_WORK_TREE` (a bare dotfiles repo) now fails the audit closed (exit 2).
 - **Security:** a built-in skill name with no catalog entry now resolves to
   agentbrew's own copy. Before, `agentbrew install`, an Agentfile `skills:`
   list, and `sync --pull` searched every source for it, so a source (a local

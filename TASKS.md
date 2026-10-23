@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] `agentbrew sync --pull` finishes in seconds, even under load
-  - **ID**: sync-pull-speed
-  - **Tags**: performance, sync
-  - **Details**: Two fixes are in: one parallel SHA lookup per source (median 17.0 s to 8.5 s, 2026-10-23), then parallel pulls of cached sources plus skipping installed skills that match their source. The second build measured a median of 4.9 s against 8.4 s for the first (5 interleaved runs, 1-min load 13-26). The final build, which only adds a no-prompt git env and a deduped pull list, measured 10.5 s against 15.2 s at load 19-89, so the target is not yet confirmed at load under 15. The biggest piece left is `npx skills check` (about 1.1 s). Next step: re-measure at load under 15; if the median is under 5 s, close this task.
-  - **Files**: `src/update.ts`, `src/catalog/index-source.ts`
-  - **Output**: measurement
-  - **Acceptance**: the median `sync --pull` on an unchanged setup is below 5 s at load under 15.
-  - **Hypothesis**: with parallel pulls and skipped re-copies in place, the median on an unchanged setup is under 5 s at load under 15.
-  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus timestamped output lines: `agentbrew sync --pull 2>&1 | perl -MTime::HiRes=time -ne 'printf "%.2f %s", time, $_'`.
-  - **Success**: median under 5 s at load under 15.
-  - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
-  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
-
 - [ ] The plugin leak audit and plugin scope check always read the folder they are given, even under a git hook
   - **ID**: git-hook-env-plugin-audit-scope
   - **Tags**: git, plugins

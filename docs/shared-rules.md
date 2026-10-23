@@ -170,7 +170,7 @@ these three axes when a task allows it:
 - A long run ends with an HTML report, not a long chat message. A long run is a goal run, a nightly or overnight run, a checkup or health pass, or any multi-hour job.
 - The report is one self-contained HTML page. It shows what was done, the blockers, and what to do next. Never put secrets in it.
 - Publish it as a private artifact page when the agent can (in Claude Code: the Artifact tool). Otherwise, write the HTML file and give its full path.
-- Screenshots in the report: take them at capture time with the viewport only (Playwright `page.screenshot()` without `fullPage`), as JPEG data URIs of about 60 KB each. Never crop a full-page shot afterwards: in one goal, three crop tries with image tools failed and the screenshots were dropped. This covers what the app's built-in artifact-design skill leaves out.
+- Screenshots: capture the viewport only (no `fullPage`) at capture time, as JPEG data URIs of about 60 KB. Do not crop afterwards.
 - Then ask the next-action questions in chat, each with its full context.
 - Explain each blocker in full, so the user can answer without other context: what the thing is in plain words, why it is blocked, the options, and what each option changes for the user.
 

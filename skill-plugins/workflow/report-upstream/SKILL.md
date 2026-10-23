@@ -45,17 +45,18 @@ Do not offer when:
 | careerbrew | `fyodoriv/careerbrew` |
 | a skill installed by agentbrew | its source repo (`agentbrew status --verbose`) |
 | a fork or clone you work in | its upstream (`agentbrew report` finds it) |
-| a skill built into the Claude app (artifact-design, dataviz, workflow-authoring) | no public repo: they are not in `github.com/anthropics/skills`, and no agent tool reaches the app's feedback. Scrub the text, save it in the person's task queue, and tell them to send it through the app's own feedback |
+| a skill built into the Claude app (artifact-design, dataviz, workflow-authoring) | no public repo: scrub the text by hand as in step 2, save it as a task, and tell the person to send it through the app's own feedback; nothing is posted |
 
 When the signed-in GitHub account owns that repo, do not open an issue: add a
 task to the repo's own task queue (`TASKS.md` or its tracker) instead.
 
 ## Steps
 
-0. **Find the channel before you promise one.** Check the table above; for an Anthropic skill, list
-   `gh api 'repos/anthropics/skills/git/trees/HEAD?recursive=1'`. A skill that only shares the
-   word "feedback" (for example a planner's `feedback` skill) is not a channel: read its
-   description before you load it.
+0. **Find the channel before you promise one.** Use the table above. For an
+   Anthropic skill, check its public repo:
+   `gh api 'repos/anthropics/skills/git/trees/HEAD?recursive=1' --jq '.tree[].path' | grep -i <skill>`.
+   A skill that only shares the word "feedback" (a planner's `feedback`
+   skill) is not a channel: read its description before you load it.
 
 1. **Draft** the issue in a Markdown file: what you ran, what you expected,
    what happened (the error line), the tool version (`agentbrew --version`,

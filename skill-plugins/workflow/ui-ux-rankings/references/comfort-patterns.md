@@ -74,10 +74,10 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
   block, and number cells whose text sits on more than one line (careerbrew, 2026-10-22: a blind
   judge found both after the budget had passed).
 - **Audit the crowded state.** Run the budget after the steps that fill the views (a goal set,
-  cards graded), in the same order as the full suite. A fresh seed hid both spills above.
+  cards graded), in the same order as the full suite. A fresh seed hid both spills above. The
+  tap-count test is the exception: it runs first, on fresh demo state.
 - **Turn each judge loss into a check.** When the blind judge prefers "before" on a screen, find
   the cause, add a check that fails on it, revert the fix once to see the check fail, then fix.
-
 - **Audit the settled screen.** Run axe with reduced motion on, after the view has loaded. A view
   that is still fading in reads as low contrast and fails at random.
 - **Wait for the state, not for luck.** Playwright's `isVisible()` does not wait. Before a helper

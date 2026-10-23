@@ -14,7 +14,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export HOME="$TMP/home"
 mkdir -p "$HOME" "$TMP/bin"
-unset HOOK_BYPASS_UPDATES_LANDED AGENTBREW_UPDATES_LANDED_BIN BASH_ENV ENV
+unset HOOK_BYPASS_UPDATES_LANDED AGENTBREW_UPDATES_LANDED_BIN BASH_ENV ENV CLAUDE_CODE_ENTRYPOINT
 PASS=0
 FAIL=0
 FAIL_DETAILS=()
@@ -51,6 +51,16 @@ check "Test 5 (hung script -> silent within 5s, took ${ELAPSED}s)" "$([ -z "$OUT
 printf '#!/bin/sh\necho "Updates landed: y."\n' > "$TMP/bin/dotfiles-updates-landed"
 OUT="$(printf '%s' '{"hook_event_name":"SessionStart"}' | HOOK_BYPASS_UPDATES_LANDED=1 PATH="$TMP/bin:/usr/bin:/bin" bash "$SCRIPT" 2>/dev/null)"
 check "Test 6 (bypass -> silent)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+
+# Test 7: only a fresh, interactive start spends the day's line.
+for src in resume clear compact; do
+  OUT="$(printf '{"hook_event_name":"SessionStart","source":"%s"}' "$src" | PATH="$TMP/bin:/usr/bin:/bin" bash "$SCRIPT" 2>/dev/null)"
+  check "Test 7 (source $src -> silent)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
+done
+OUT="$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | PATH="$TMP/bin:/usr/bin:/bin" bash "$SCRIPT" 2>/dev/null)"
+check "Test 7b (source startup -> context)" "$(printf '%s' "$OUT" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && echo 0 || echo 1)"
+OUT="$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_CODE_ENTRYPOINT=sdk-cli PATH="$TMP/bin:/usr/bin:/bin" bash "$SCRIPT" 2>/dev/null)"
+check "Test 7c (headless sdk entrypoint -> silent)" "$([ -z "$OUT" ] && echo 0 || echo 1)"
 
 echo ""
 echo "updates-landed.sh: $PASS passed, $FAIL failed"

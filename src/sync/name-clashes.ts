@@ -4,8 +4,9 @@
  * later wins. Built-in commands and the user's own command and agent folders
  * are not sources here; they keep their own documented precedence.
  */
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Logger } from "../core/logger.js";
 import { isUserModified, loadManifest, type Manifest } from "../manifest.js";
 import { AGENTS_DIR, COMMANDS_DIR } from "../paths.js";
@@ -82,13 +83,29 @@ export function commandNameClashes(
 ): NameClash[] {
   const globalDir = expandHome(COMMANDS_DIR);
   const builtins = new Set(builtinCommandNames());
-  const userCommands = markdownNames(globalDir).filter(
-    (name) => !builtins.has(name) && isUserModified(`${globalDir}/${name}.md`, manifest),
-  );
   const paths = [...(state?.commandSourceDirs ?? []).map((d) => expandHome(d.path)), ...pluginCommandDirs()];
   const sources = dirSources(paths, [builtinCommandsDir(), globalDir]);
+  // A copy with the winner's exact content loses nothing (for example after
+  // `agentbrew import`), so only a different file counts.
+  const userCommands = markdownNames(globalDir).filter(
+    (name) =>
+      !builtins.has(name) &&
+      isUserModified(join(globalDir, `${name}.md`), manifest) &&
+      differsFromWinner(join(globalDir, `${name}.md`), name, sources),
+  );
   if (userCommands.length > 0) sources.unshift({ label: displayPath(globalDir), names: userCommands });
   return nameClashes(sources);
+}
+
+/** True when the last source that ships `name` has other content than `file`. */
+function differsFromWinner(file: string, name: string, sources: Array<{ label: string; names: string[] }>): boolean {
+  const winner = [...sources].reverse().find((source) => source.names.includes(name));
+  if (!winner) return false;
+  try {
+    return readFileSync(file, "utf-8") !== readFileSync(join(expandHome(winner.label), `${name}.md`), "utf-8");
+  } catch {
+    return true;
+  }
 }
 
 /** Agent names that two or more Agentfile agent dirs ship. The built-in agents folder always wins. */

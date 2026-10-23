@@ -88,4 +88,14 @@ describe("a command the user keeps in the global folder", () => {
 
     expect(commandNameClashes(state("commandSourceDirs", [agentfileDir]), manifest)).toEqual([]);
   });
+
+  it("stays silent for a copy with the winner's exact content, and for a built-in name", () => {
+    mkdirSync(globalDir(), { recursive: true });
+    writeFileSync(join(globalDir(), "same.md"), "# same\n");
+    writeFileSync(join(globalDir(), "agentbrew.md"), "# my agentbrew\n");
+    const agentfileDir = dirWith("agentbrew.md");
+    writeFileSync(join(agentfileDir, "same.md"), "# same\n");
+
+    expect(commandNameClashes(state("commandSourceDirs", [agentfileDir]), { hashes: {} })).toEqual([]);
+  });
 });

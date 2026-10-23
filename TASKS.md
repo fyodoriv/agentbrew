@@ -279,19 +279,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] `context7` keeps answering library-doc lookups after the free monthly quota runs out
-  - **ID**: context7-api-key
-  - **Tags**: mcp, catalog
-  - **Details**: `agentbrew mcp probe --deep context7` on 2026-10-23 returned `smoke_call_failed`. The server started and listed its tools, but `resolve-library-id` answered "Monthly quota exceeded. Create a free API key at https://context7.com/dashboard for more requests." The anonymous Upstash quota is an upstream limit, not an agentbrew bug. The fix needs a key the owner creates; then the catalog entry can pass it as an optional env var (`CONTEXT7_API_KEY`, with setup steps like the other keyed servers) so an unset key still works on the free tier.
-  - **Files**: `src/catalog.yaml`, its tests
-  - **Output**: code
-  - **Acceptance**: with a key set, `agentbrew mcp probe --deep context7` is `ok`; with no key, the entry still starts and works within the free quota.
-  - **Hypothesis**: passing an optional API key drops context7 quota failures in the deep probe, which happen on every run once the free quota runs out, to 0. Each deep probe spends one free call (`resolve-library-id`); the 30-minute repair job never runs deep probes.
-  - **Measurement**: `agentbrew mcp probe --deep --json context7` after the key is set.
-  - **Success**: status `ok`.
-  - **Pivot**: if an optional env var cannot stay unset safely, document the key as a manual `agentbrew mcp setup context7` step instead.
-  - **Anchor**: checkup deep probe, 2026-10-23.
-
 ## P3
 
 - [ ] `/work` drops the steps of an Agentfile that no longer exists

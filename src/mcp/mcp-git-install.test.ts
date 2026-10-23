@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
 import { Command } from "commander";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The install and update flows end to end, with real git and a real `npm run
 // build`; only state and the agent sync are mocked. Scratch HOME comes from
@@ -526,4 +526,124 @@ describe("an unattended clone never waits on git's login prompt (real git)", () 
       expect(mockAddMcpServer).not.toHaveBeenCalled();
     }, 20_000);
   }
+});
+
+describe("a git URL's credentials never reach output or state (real git)", () => {
+  const TOKEN = "tok123secret";
+
+  function printed(): string {
+    return [
+      ...vi.mocked(console.log).mock.calls,
+      ...vi.mocked(console.error).mock.calls,
+      ...vi.mocked(process.stdout.write).mock.calls,
+      ...vi.mocked(process.stderr.write).mock.calls,
+    ]
+      .flat()
+      .map(String)
+      .join("\n");
+  }
+
+  /** A local repo reachable as `https://alice:<token>@mcp.example.invalid/<name>` through an env insteadOf. */
+  function tokenUrl(name: string): { url: string; repo: string; restore: () => void } {
+    const repo = join(root, name);
+    git(root, "init", "--quiet", "-b", "main", repo);
+    writeFileSync(join(repo, "index.js"), "// server\n");
+    git(repo, "add", "index.js");
+    git(repo, "commit", "--quiet", "-m", "server");
+    const url = `https://alice:${TOKEN}@mcp.example.invalid/${name}`;
+    const config = { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: `url.${repo}.insteadOf`, GIT_CONFIG_VALUE_0: url };
+    Object.assign(process.env, config);
+    return {
+      url,
+      repo,
+      restore: () => {
+        for (const key of Object.keys(config)) delete process.env[key];
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  });
+
+  it("installs from a URL with a token, prints no token, and saves the URL without it", async () => {
+    const remote = tokenUrl("token-url");
+    try {
+      await installMcpFromGit(remote.url, { nonInteractive: true });
+    } finally {
+      remote.restore();
+    }
+    expect(process.exitCode).toBeUndefined();
+    expect(printed()).not.toContain(TOKEN);
+    expect(mockAddMcpServer).toHaveBeenCalledWith(
+      "token-url",
+      "node",
+      expect.any(Array),
+      {},
+      expect.objectContaining({ gitUrl: "https://mcp.example.invalid/token-url" }),
+    );
+  });
+
+  it("`mcp update` after the cache is gone fails with a credential-helper hint, and prints no token", async () => {
+    const remote = tokenUrl("token-update");
+    try {
+      await installMcpFromGit(remote.url, { nonInteractive: true });
+    } finally {
+      remote.restore();
+    }
+    rmSync(join(GIT_CACHE_DIR, "token-update"), { recursive: true, force: true });
+    mockRequireState.mockReturnValueOnce(stateWith("token-update", "https://mcp.example.invalid/token-update", "main"));
+    await updateMcpFromGit("token-update");
+    expect(process.exitCode).toBe(1);
+    expect(vi.mocked(console.log)).toHaveBeenCalledWith(expect.stringContaining("credential helper"));
+    expect(printed()).not.toContain(TOKEN);
+  }, 20_000);
+
+  it("prints no token in an error that names the URL", async () => {
+    const first = envRepoFor("token-clash");
+    await installMcpFromGit(first, { name: "token-clash", nonInteractive: true });
+    const remote = tokenUrl("token-clash-b");
+    try {
+      await installMcpFromGit(remote.url, { name: "token-clash", nonInteractive: true });
+    } finally {
+      remote.restore();
+    }
+    expect(process.exitCode).toBe(1);
+    expect(vi.mocked(console.error)).toHaveBeenCalledWith(expect.stringContaining("mcp.example.invalid"));
+    expect(printed()).not.toContain(TOKEN);
+  });
+
+  function envRepoFor(name: string): string {
+    const repo = join(root, name);
+    git(root, "init", "--quiet", "-b", "main", repo);
+    writeFileSync(join(repo, "index.js"), "// server\n");
+    git(repo, "add", "index.js");
+    git(repo, "commit", "--quiet", "-m", "server");
+    return repo;
+  }
+});
+
+describe("an unattended SSH clone never waits on ssh's prompts (real git)", () => {
+  it("runs ssh with BatchMode, so a clone that would prompt fails fast", async () => {
+    const log = join(root, "ssh-args.log");
+    const fakeSsh = join(root, "fake-ssh");
+    writeFileSync(fakeSsh, `#!/bin/sh\necho "$@" >> "${log}"\nexit 255\n`);
+    execFileSync("chmod", ["+x", fakeSsh]);
+    process.env.GIT_SSH_COMMAND = fakeSsh;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const started = Date.now();
+    try {
+      await installMcpFromGit("ssh://git@ssh.example.invalid/org/private-mcp.git", {
+        name: "ssh-private",
+        nonInteractive: true,
+      });
+    } finally {
+      delete process.env.GIT_SSH_COMMAND;
+    }
+    expect(process.exitCode).toBe(1);
+    expect(readFileSync(log, "utf-8")).toContain("-o BatchMode=yes");
+    expect(Date.now() - started).toBeLessThan(15_000);
+  }, 20_000);
 });

@@ -6,6 +6,7 @@ import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
 import { copySkillFromCache } from "./catalog/install-skill.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncErrors } from "./core/errors.js";
+import { redactUrlCredentials } from "./core/redact-url.js";
 import { readLock, updateLock } from "./lock.js";
 import { loadManifest, saveManifest } from "./manifest.js";
 import { recordSourceSha } from "./skills/skill-versions.js";
@@ -222,7 +223,7 @@ function printSourcePullPlan(sources: Source[], prefix: string): void {
   const remote = sources.filter((source) => source.type !== "local");
   if (remote.length === 0) return;
   console.log(chalk.bold(`\n${prefix}Sources`));
-  for (const source of remote) console.log(`  Would pull ${source.url}`);
+  for (const source of remote) console.log(`  Would pull ${redactUrlCredentials(source.url)}`);
 }
 
 function printInstalledSkillUpdates(

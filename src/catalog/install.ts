@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { mcpRegistryEnabled, resolveRegistryServer } from "../adapters/mcp-registry.js";
 import { getStateSources } from "../agentfile.js";
 import { cliNotFound } from "../core/cli-error.js";
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { COMMANDS_DIR } from "../paths.js";
 import { loadState, requireState, saveState } from "../state.js";
 import { formatSuggestion } from "../suggest.js";
@@ -110,7 +111,11 @@ export function flushInstallSummary(): void {
   }
   for (const [url, count] of installSummary.failedSourceSkips) {
     if (count > 0) {
-      console.error(chalk.yellow(`  ⚠ ${url}: ${count} skill${count > 1 ? "s" : ""} skipped (source unreachable)`));
+      console.error(
+        chalk.yellow(
+          `  ⚠ ${redactUrlCredentials(url)}: ${count} skill${count > 1 ? "s" : ""} skipped (source unreachable)`,
+        ),
+      );
     }
   }
   installSummary.failedSourceSkips.clear();
@@ -199,7 +204,7 @@ async function searchAndInstallFromSources(
     const chosen = await select({
       message: `Install '${name}' from which source?`,
       choices: matches.map((m) => ({
-        name: `${m.source.url} — ${m.item.description || "no description"}`,
+        name: `${redactUrlCredentials(m.source.url)} — ${m.item.description || "no description"}`,
         value: m.source.url,
       })),
     });
@@ -403,7 +408,7 @@ async function installKnownSourceUrl(state: AgentBrewState, name: string): Promi
   const source = getStateSources(state).find((s) => normalizeSourceUrl(s.url) === normalizeSourceUrl(name));
   if (!source) return false;
   if (!indexSourceNow(state, source)) {
-    console.error(chalk.red(`Could not fetch ${source.url}.`));
+    console.error(chalk.red(`Could not fetch ${redactUrlCredentials(source.url)}.`));
     process.exitCode = 1;
     return true;
   }
@@ -412,7 +417,9 @@ async function installKnownSourceUrl(state: AgentBrewState, name: string): Promi
   const skills = source.availableItems.filter((i) => i.type === "skill").length;
   console.log(
     `${ICON_SUCCESS} ` +
-      chalk.green(`Indexed ${source.url}: ${skills} skills available, ${source.skillsInstalled.length} installed.`),
+      chalk.green(
+        `Indexed ${redactUrlCredentials(source.url)}: ${skills} skills available, ${source.skillsInstalled.length} installed.`,
+      ),
   );
   return true;
 }

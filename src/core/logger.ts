@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { redactUrlCredentials } from "./redact-url.js";
 
 /** True when AGENTBREW_DEBUG=1 (or truthy) is set in the environment. */
 export const DEBUG = Boolean(process.env.AGENTBREW_DEBUG);
@@ -12,7 +13,8 @@ export const DEBUG = Boolean(process.env.AGENTBREW_DEBUG);
  */
 export function logSkipped(context: string, error: unknown): void {
   if (!DEBUG) return;
-  const msg = error instanceof Error ? error.message : String(error);
+  // Debug output can quote git stderr, which may hold a URL with a token.
+  const msg = redactUrlCredentials(error instanceof Error ? error.message : String(error));
   console.error(chalk.dim(`  [debug] ${context}: ${msg}`));
 }
 

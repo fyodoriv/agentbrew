@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs"
 import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
 import { capabilitiesHash, MANIFEST_FILE, type PluginManifest, parseManifest, readManifest } from "./manifest.js";
@@ -26,7 +27,7 @@ export function parsePluginSpec(spec: string): { url: string; ref: string } {
   const at = spec.lastIndexOf("@");
   const pathEnd = Math.max(spec.lastIndexOf("/"), spec.lastIndexOf(":"));
   if (at <= 0 || at < pathEnd || at === spec.length - 1) {
-    throw new Error(`Plugin spec needs a pinned ref: <url>@<ref> (got "${spec}")`);
+    throw new Error(`Plugin spec needs a pinned ref: <url>@<ref> (got "${redactUrlCredentials(spec)}")`);
   }
   return { url: spec.slice(0, at), ref: spec.slice(at + 1) };
 }
@@ -96,7 +97,7 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
       .split("\n")
       .map((line) => line.split("\t"))
       .find(([, name]) => name === tagRef)?.[0];
-    if (!listed) throw new Error(`"${ref}" is not a tag in ${url}.`);
+    if (!listed) throw new Error(`"${ref}" is not a tag in ${redactUrlCredentials(url)}.`);
     // GIT_DEFAULT_HASH, not --object-format, so git before 2.29 still inits SHA-1.
     execFileSync("git", ["init", "--quiet", dir], {
       cwd: pluginsRoot(),
@@ -120,7 +121,8 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
       `${tagRef}:${tagRef}`,
     );
     const tag = tagObject(dir, ref);
-    if (tag !== listed) throw new Error(`Tag "${ref}" changed on ${url} while it was fetched. Try again.`);
+    if (tag !== listed)
+      throw new Error(`Tag "${ref}" changed on ${redactUrlCredentials(url)} while it was fetched. Try again.`);
     const commit = git(dir, "rev-parse", "--verify", `${tag}^{commit}`);
     let text: string;
     try {
@@ -189,7 +191,9 @@ export function planAdd(spec: string, options: { signer?: string }): AddPlan {
   try {
     const { manifest, entry } = staged;
     assertNotInstalled(manifest.name, readLock());
-    console.log(chalk.bold(`Plugin ${manifest.name} ${manifest.version} (${url}@${ref}) asks for:`));
+    console.log(
+      chalk.bold(`Plugin ${manifest.name} ${manifest.version} (${redactUrlCredentials(url)}@${ref}) asks for:`),
+    );
     console.log(describeCapabilities(manifest));
     console.log(
       `  signed by: ${entry.signer}${signersFor(manifest.name).includes(entry.signer) ? "" : " (new signer)"}`,

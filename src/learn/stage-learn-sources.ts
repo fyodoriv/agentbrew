@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
-
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { resolveGitCloneUrl } from "../git-source-url.js";
 import { expandHome } from "../utils.js";
 
@@ -218,7 +218,7 @@ function runGitClone(spec: string, destination: string, depth: number, dryRun: b
   });
   if (result.status !== 0) {
     const detail = (result.stderr || result.stdout || "").trim();
-    throw new Error(`git clone failed for ${spec}: ${detail}`);
+    throw new Error(`git clone failed for ${redactUrlCredentials(spec)}: ${detail}`);
   }
 }
 

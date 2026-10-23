@@ -10,6 +10,7 @@ import {
   buildSkillsCliAgentArgs,
 } from "./core/agent-name-map.js";
 import { logSkipped } from "./core/logger.js";
+import { redactUrlCredentials } from "./core/redact-url.js";
 import { detectSourceType } from "./git-source-url.js";
 import { lockSource } from "./lock.js";
 import { COMMANDS_DIR } from "./paths.js";
@@ -506,7 +507,7 @@ function lockLocalSource(source: string, targetSource: Source, isRemote: boolean
   if (isRemote) return;
   const lockEntry = lockSource(targetSource, skillName ? [skillName] : undefined);
   if (lockEntry) {
-    console.log(chalk.dim(`  Locked ${source} @${lockEntry.sha.slice(0, 8)}`));
+    console.log(chalk.dim(`  Locked ${redactUrlCredentials(source)} @${lockEntry.sha.slice(0, 8)}`));
   }
 }
 
@@ -544,7 +545,7 @@ function handleClonedRemoteSource(
   }
   registerSkillSourceDir(state, source, indexedSource.items);
   saveState(state);
-  console.log(`\n${ICON_SUCCESS} Source registered: ${source}`);
+  console.log(`\n${ICON_SUCCESS} Source registered: ${redactUrlCredentials(source)}`);
   if (indexedSource.items.length > 0) {
     console.log(`  ${formatItemCounts(indexedSource.items)} available — run \`agentbrew catalog --search\` to browse`);
   } else {
@@ -566,7 +567,7 @@ export async function addSource(source: string, options: AddSourceOptions): Prom
   const sourceType = detectSourceType(source);
   if (!validateLocalSource(source, sourceType)) return;
 
-  console.log(chalk.bold(`\nAdding source: ${source}\n`));
+  console.log(chalk.bold(`\nAdding source: ${redactUrlCredentials(source)}\n`));
   console.log(chalk.dim(`  Type: ${sourceType}`));
 
   const wantsSkill = options.skill !== undefined;
@@ -620,7 +621,9 @@ async function finalizeSource(args: {
 
   const targetSource = getStateSources(state).find((s) => s.url === source);
   if (!targetSource) {
-    console.error(chalk.red(`  Internal error: source '${source}' not found after registration.`));
+    console.error(
+      chalk.red(`  Internal error: source '${redactUrlCredentials(source)}' not found after registration.`),
+    );
     return;
   }
 
@@ -633,7 +636,7 @@ async function finalizeSource(args: {
   lockLocalSource(source, targetSource, isRemote, options.skill);
   saveState(state);
 
-  console.log(`\n${ICON_SUCCESS} Source registered: ${source}`);
+  console.log(`\n${ICON_SUCCESS} Source registered: ${redactUrlCredentials(source)}`);
   if (items.length > 0) {
     console.log(`  ${formatItemCounts(items)} available — run \`agentbrew catalog --search\` to browse`);
   } else {
@@ -724,7 +727,7 @@ export async function removeSource(url: string): Promise<void> {
   if (!state.sources) state.sources = [];
   const index = state.sources.findIndex((s) => s.url === url);
   if (index === -1) {
-    console.error(chalk.red(`Source '${url}' not found.`));
+    console.error(chalk.red(`Source '${redactUrlCredentials(url)}' not found.`));
     console.log(chalk.dim("  Run `agentbrew catalog --sources` to list registered sources."));
     return;
   }
@@ -732,7 +735,7 @@ export async function removeSource(url: string): Promise<void> {
   state.sources.splice(index, 1);
   saveState(state);
 
-  console.log(`${ICON_SUCCESS} Source '${url}' removed from tracking.`);
+  console.log(`${ICON_SUCCESS} Source '${redactUrlCredentials(url)}' removed from tracking.`);
   console.log(chalk.dim("  Skills from this source are still installed. Use `npx skills remove` to uninstall."));
 }
 

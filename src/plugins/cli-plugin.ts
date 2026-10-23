@@ -2,6 +2,7 @@ import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import type { Command } from "commander";
 import yaml from "js-yaml";
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
 import { CapabilityError } from "./capabilities.js";
@@ -14,7 +15,7 @@ import { applyAdd, listPlugins, planAdd, removePlugin, rollbackPlugin } from "./
 import { applyUpdate, planUpdate } from "./update.js";
 
 function fail(error: unknown): void {
-  console.error(chalk.red(`✗ ${error instanceof Error ? error.message : String(error)}`));
+  console.error(chalk.red(`✗ ${redactUrlCredentials(error instanceof Error ? error.message : String(error))}`));
   process.exitCode = error instanceof CapabilityError ? error.exitCode : 1;
 }
 
@@ -56,7 +57,13 @@ export function registerPluginCommands(program: Command): void {
     .action((options: { json?: boolean }) => {
       const plugins = listPlugins();
       if (options.json) {
-        console.log(JSON.stringify(plugins, null, 2));
+        console.log(
+          JSON.stringify(
+            plugins.map((p) => ({ ...p, source: redactUrlCredentials(p.source) })),
+            null,
+            2,
+          ),
+        );
         return;
       }
       if (plugins.length === 0) {
@@ -65,7 +72,7 @@ export function registerPluginCommands(program: Command): void {
       }
       for (const p of plugins) {
         console.log(
-          `${chalk.bold(p.name)} ${p.version}  ${p.source}@${p.ref}  commit ${p.commit.slice(0, 8)}  tree ${p.tree.slice(0, 8)}`,
+          `${chalk.bold(p.name)} ${p.version}  ${redactUrlCredentials(p.source)}@${p.ref}  commit ${p.commit.slice(0, 8)}  tree ${p.tree.slice(0, 8)}`,
         );
       }
       console.log(

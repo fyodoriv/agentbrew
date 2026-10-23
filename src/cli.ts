@@ -42,6 +42,7 @@ import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
+import { installOutputRedaction } from "./core/redact-output.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
@@ -473,12 +474,19 @@ export function isCliEntrypoint(moduleUrl: string, argvPath = process.argv[1]): 
 // Module entrypoint — only runs when invoked directly via `tsx src/cli.ts`, the
 // compiled bin, or an npm-style executable symlink, not when imported by tests.
 if (isCliEntrypoint(import.meta.url)) {
+  // Every write to stdout and stderr hides a token inside a git URL (src/core/redact-output.ts).
+  installOutputRedaction();
   // Catch unhandled promise rejections from async Commander action handlers so the
   // user sees a clean error message rather than a raw Node.js stack dump with an
   // ugly "UnhandledPromiseRejection" header.
-  process.once("unhandledRejection", (reason: unknown) => {
+  process.on("unhandledRejection", (reason: unknown) => {
     const message = errorMessage(reason);
     console.error(chalk.red(`Error: ${message}`));
+    process.exit(1);
+  });
+  // A synchronous throw would reach Node's own printer, which writes past the redaction above.
+  process.on("uncaughtException", (error: unknown) => {
+    console.error(chalk.red(`Error: ${errorMessage(error)}`));
     process.exit(1);
   });
 

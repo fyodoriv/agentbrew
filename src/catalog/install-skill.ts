@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { registerSkillSourceDir } from "../add-source.js";
 import { getStateSources, installSkillToProject } from "../agentfile.js";
 import { cliError, cliNotFound } from "../core/cli-error.js";
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { detectSourceType } from "../git-source-url.js";
 import { lockSource } from "../lock.js";
 import { INSTALLED_SKILLS_DIR, INSTALLED_SKILLS_LABEL } from "../paths.js";
@@ -82,20 +83,24 @@ export async function installFromSource(
     return;
   }
 
-  console.log(chalk.bold(`\nInstalling skill: ${skillName} from ${source.url}\n`));
+  console.log(chalk.bold(`\nInstalling skill: ${skillName} from ${redactUrlCredentials(source.url)}\n`));
 
   // getSourceCachePath logs "Fetching ..." only when an actual network call is made;
   // subsequent skills in the same session hit the in-process cache and stay quiet.
   const cachePath = getSourceCachePath(source);
   if (!cachePath) {
-    cliError(`Failed to fetch source '${source.url}'.`, classifyGitError("", source.url));
+    cliError(`Failed to fetch source '${redactUrlCredentials(source.url)}'.`, classifyGitError("", source.url));
     return;
   }
 
   const destination = copySkillFromCache(cachePath, skillName);
   if (!destination) {
     if (trySourceFallback(cachePath, source.url, skillName)) return;
-    cliNotFound(skillName, `in ${source.url}`, "Run `agentbrew sync --pull` to refresh the source index.");
+    cliNotFound(
+      skillName,
+      `in ${redactUrlCredentials(source.url)}`,
+      "Run `agentbrew sync --pull` to refresh the source index.",
+    );
     return;
   }
 
@@ -113,10 +118,10 @@ export async function installFromSource(
 
   const lockEntry = lockSource(source, [skillName]);
   if (lockEntry) {
-    console.log(chalk.dim(`  Locked ${source.url} @${lockEntry.sha.slice(0, 8)}`));
+    console.log(chalk.dim(`  Locked ${redactUrlCredentials(source.url)} @${lockEntry.sha.slice(0, 8)}`));
   }
 
-  console.log(`\n${ICON_SUCCESS} Skill '${skillName}' installed from ${source.url}.`);
+  console.log(`\n${ICON_SUCCESS} Skill '${skillName}' installed from ${redactUrlCredentials(source.url)}.`);
 }
 
 /** Updates state sources after a catalog skill is successfully installed. */

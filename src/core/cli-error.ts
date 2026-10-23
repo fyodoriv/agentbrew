@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { redactUrlCredentials } from "./redact-url.js";
 
 /**
  * Print a standardised CLI error and set a non-zero exit code.
@@ -11,9 +12,9 @@ import chalk from "chalk";
  * what to run next.
  */
 export function cliError(message: string, ...hints: string[]): void {
-  console.error(chalk.red(message));
+  console.error(chalk.red(redactUrlCredentials(message)));
   for (const hint of hints) {
-    console.log(chalk.dim(`  ${hint}`));
+    console.log(chalk.dim(`  ${redactUrlCredentials(hint)}`));
   }
   process.exitCode = 1;
 }

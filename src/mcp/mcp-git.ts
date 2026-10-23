@@ -8,6 +8,7 @@ import chalk from "chalk";
 import { getStateServers } from "../agentfile.js";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { redactUrlCredentials, stripUrlCredentials } from "../core/redact-url.js";
 import type { McpServer } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { checkGitAvailable } from "../utils.js";
@@ -166,7 +167,7 @@ function updateCachedRepo(repoDir: string, gitUrl: string, gitRef: string | unde
 
 /** Clone `gitUrl` to `repoDir`. With `gitRef`, clone without a checkout, then check out that exact ref. */
 function cloneFresh(gitUrl: string, repoDir: string, gitRef: string | undefined, unattended: boolean): void {
-  console.log(chalk.dim(`  Cloning ${gitUrl}...`));
+  console.log(chalk.dim(`  Cloning ${redactUrlCredentials(gitUrl)}...`));
   // -o origin: checkoutPinnedRef reads `origin`, whatever clone.defaultRemoteName says.
   const extraArgs = gitRef ? ["--no-checkout"] : [];
   const env = cacheGitEnv({ unattended });
@@ -583,7 +584,7 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
   // `mcp update` run from another dir still matches the cache's origin.
   const sourceUrl = isLocalRepoPath(gitUrl) ? resolve(gitUrl) : gitUrl;
 
-  console.log(chalk.bold(`\nInstalling MCP server from git: ${chalk.cyan(gitUrl)}\n`));
+  console.log(chalk.bold(`\nInstalling MCP server from git: ${chalk.cyan(redactUrlCredentials(gitUrl))}\n`));
 
   // 1. Every --env key needs a value before the clone and build start; then clone or update
   if (!(await envVarsReady(serverName, { args: [], env }, options?.nonInteractive === true))) return;
@@ -620,7 +621,8 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
   // 6. Register in state and sync to all agents
   const { addMcpServer } = await import("../sync/mcp-sync.js");
   await addMcpServer(serverName, entrypoint.command, entrypoint.args, env, {
-    gitUrl: sourceUrl,
+    // State holds no URL credentials; the cache's own origin keeps them for fetching.
+    gitUrl: stripUrlCredentials(sourceUrl),
     gitRef: pinnedRef,
   });
 
@@ -672,6 +674,14 @@ export async function updateMcpFromGit(serverName: string): Promise<void> {
     cloneOrUpdateRepo(server.gitUrl, serverName);
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
+    // The saved URL has no token: a fresh clone needs a credential helper, or the URL again.
+    if (freshClone) {
+      console.log(
+        chalk.dim(
+          `  The saved URL keeps no credentials. Set up a git credential helper, or run \`agentbrew install ${serverName} --git <url>\` again with the full URL.`,
+        ),
+      );
+    }
     // A refused cache dir says what to do; a retry cannot pass.
     if (!(error instanceof CacheRefusal)) {
       console.log(

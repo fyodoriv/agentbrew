@@ -408,3 +408,22 @@ describe("cacheGitEnv", () => {
     expect(attended.GIT_ASKPASS).toBe(process.env.GIT_ASKPASS);
   });
 });
+
+describe("cacheGitEnv over SSH", () => {
+  it("adds BatchMode for an unattended run and keeps an existing ssh command", () => {
+    const before = process.env.GIT_SSH_COMMAND;
+    try {
+      delete process.env.GIT_SSH_COMMAND;
+      expect(cacheGitEnv({ unattended: true }).GIT_SSH_COMMAND).toBe("ssh -o BatchMode=yes");
+      process.env.GIT_SSH_COMMAND = "ssh -i ~/.ssh/deploy";
+      expect(cacheGitEnv({ unattended: true }).GIT_SSH_COMMAND).toBe("ssh -i ~/.ssh/deploy -o BatchMode=yes");
+      expect(cacheGitEnv().GIT_SSH_COMMAND).toBe("ssh -i ~/.ssh/deploy");
+      // plink and putty do not take -o: their command is left alone.
+      process.env.GIT_SSH_COMMAND = "plink -batch";
+      expect(cacheGitEnv({ unattended: true }).GIT_SSH_COMMAND).toBe("plink -batch");
+    } finally {
+      if (before === undefined) delete process.env.GIT_SSH_COMMAND;
+      else process.env.GIT_SSH_COMMAND = before;
+    }
+  });
+});

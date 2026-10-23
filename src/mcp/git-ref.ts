@@ -1,7 +1,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { errorMessage } from "../core/errors.js";
+import { stripUrlCredentials } from "../core/redact-url.js";
 
 /** Timeout for one git call on a pinned ref: ls-remote, fetch, checkout. */
 const GIT_REF_TIMEOUT_MS = 30_000;
@@ -34,6 +36,27 @@ const KEPT_CONFIG_ENV = new Set(["GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"]);
 const UNATTENDED_GIT_ENV = { GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "", GCM_INTERACTIVE: "never" };
 
 /**
+ * The ssh command for an unattended run: the user's own (GIT_SSH_COMMAND,
+ * core.sshCommand, or GIT_SSH) with `-o BatchMode=yes`, so ssh fails instead
+ * of asking for a passphrase, a password, or a host-key answer.
+ */
+function batchSshCommand(env: NodeJS.ProcessEnv): string | undefined {
+  // From HOME, so no repo's local config picks the ssh program, as with a plain clone.
+  const config = (key: string) =>
+    spawnSync("git", ["config", "--get", key], {
+      cwd: homedir(),
+      encoding: "utf-8",
+      env,
+      timeout: 5_000,
+    }).stdout?.trim();
+  const program = env.GIT_SSH ? `'${env.GIT_SSH.replace(/'/g, "'\\''")}'` : "";
+  const base = env.GIT_SSH_COMMAND || config("core.sshCommand") || program || "ssh";
+  // plink and putty do not take `-o`: leave their command alone.
+  if (/plink|putty/i.test(`${env.GIT_SSH_VARIANT ?? config("ssh.variant") ?? ""} ${base}`)) return undefined;
+  return /BatchMode/i.test(base) ? base : `${base} -o BatchMode=yes`;
+}
+
+/**
  * The caller's env without the variables that point git at another repo
  * (`git rev-parse --local-env-vars`: GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, and
  * more). git exports them to hooks, so an agentbrew run from a hook would
@@ -56,7 +79,9 @@ export function cacheGitEnv(options: { unattended?: boolean } = {}): NodeJS.Proc
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !local.has(key) || KEPT_CONFIG_ENV.has(key)),
   );
-  return options.unattended ? { ...env, ...UNATTENDED_GIT_ENV } : env;
+  if (!options.unattended) return env;
+  const sshCommand = batchSshCommand(env);
+  return { ...env, ...UNATTENDED_GIT_ENV, ...(sshCommand ? { GIT_SSH_COMMAND: sshCommand } : {}) };
 }
 
 function gitIn(repoDir: string, env: NodeJS.ProcessEnv): Git {
@@ -237,8 +262,9 @@ export function isLocalRepoPath(url: string): boolean {
  */
 function comparableRepoUrl(url: string, base: string): string {
   const text = url.trim();
+  // Credentials do not name another repo: state keeps the URL without them.
   if (!isLocalRepoPath(text))
-    return text
+    return stripUrlCredentials(text)
       .replace(/\/+$/, "")
       .replace(/\.git$/, "")
       .replace(/\/+$/, "");

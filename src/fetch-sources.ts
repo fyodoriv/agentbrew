@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { getStateSources } from "./agentfile.js";
 import { indexSource } from "./catalog/index-source.js";
 import { errorMessage } from "./core/errors.js";
+import { redactUrlCredentials } from "./core/redact-url.js";
 import { detectSourceType } from "./git-source-url.js";
 import { loadSources } from "./sources.js";
 import { requireState, saveState } from "./state.js";
@@ -38,15 +39,15 @@ function fetchSingleSource(source: Source): FetchResult {
 
     if (items.length > 0) {
       const newLabel = newCount > 0 ? chalk.green(` (+${newCount} new)`) : "";
-      console.log(`  ${ICON_SUCCESS} ${source.url} — ${items.length} items${newLabel}`);
+      console.log(`  ${ICON_SUCCESS} ${redactUrlCredentials(source.url)} — ${items.length} items${newLabel}`);
     } else {
-      console.log(`  ${chalk.dim("○")} ${source.url} — no items found`);
+      console.log(`  ${chalk.dim("○")} ${redactUrlCredentials(source.url)} — no items found`);
     }
 
     return { source: source.url, itemCount: items.length, newItems: newCount, skipped: false };
   } catch (error) {
     const message = errorMessage(error);
-    console.log(chalk.yellow(`  ⚠ ${source.url} — ${message}`));
+    console.log(chalk.yellow(`  ⚠ ${redactUrlCredentials(source.url)} — ${message}`));
     return { source: source.url, itemCount: 0, newItems: 0, skipped: false, error: message };
   }
 }
@@ -90,7 +91,7 @@ export async function fetchSources(options?: { force?: boolean }): Promise<Fetch
   for (const source of getStateSources(state)) {
     if (!force && isCacheFresh(source)) {
       results.push({ source: source.url, itemCount: source.availableItems?.length ?? 0, newItems: 0, skipped: true });
-      console.log(chalk.dim(`  ○ ${source.url} — cached (skip)`));
+      console.log(chalk.dim(`  ○ ${redactUrlCredentials(source.url)} — cached (skip)`));
       continue;
     }
     results.push(fetchSingleSource(source));

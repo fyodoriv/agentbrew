@@ -4,6 +4,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import chalk from "chalk";
 import { getSourceCachePath } from "./catalog/index-source.js";
 import { errorMessage } from "./core/errors.js";
+import { redactUrlCredentials } from "./core/redact-url.js";
 import { requireState } from "./state.js";
 import type { Source } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
@@ -45,14 +46,14 @@ export function bootstrapSource(sourceName: string, options: BootstrapOptions = 
 
   const source = sources[0];
   if (!source.bootstrapScript) {
-    console.error(chalk.yellow(`Source '${source.url}' does not declare a bootstrap script.`));
+    console.error(chalk.yellow(`Source '${redactUrlCredentials(source.url)}' does not declare a bootstrap script.`));
     process.exitCode = 1;
     return false;
   }
 
   const cachePath = getSourceCachePath(source);
   if (!cachePath) {
-    console.error(chalk.red(`Could not access source cache for '${source.url}'.`));
+    console.error(chalk.red(`Could not access source cache for '${redactUrlCredentials(source.url)}'.`));
     process.exitCode = 1;
     return false;
   }
@@ -65,17 +66,17 @@ export function bootstrapSource(sourceName: string, options: BootstrapOptions = 
   }
 
   if (options.dryRun) {
-    console.log(chalk.dim(`Would run bootstrap script for ${source.url}: ${scriptPath}`));
+    console.log(chalk.dim(`Would run bootstrap script for ${redactUrlCredentials(source.url)}: ${scriptPath}`));
     return true;
   }
 
   try {
     execFileSync("bash", [scriptPath], { cwd: cachePath, stdio: "inherit", timeout: 600_000 });
   } catch (error) {
-    console.error(chalk.red(`Bootstrap failed for '${source.url}': ${errorMessage(error)}`));
+    console.error(chalk.red(`Bootstrap failed for '${redactUrlCredentials(source.url)}': ${errorMessage(error)}`));
     process.exitCode = 1;
     return false;
   }
-  console.log(`${ICON_SUCCESS} Bootstrap complete: ${source.url}`);
+  console.log(`${ICON_SUCCESS} Bootstrap complete: ${redactUrlCredentials(source.url)}`);
   return true;
 }

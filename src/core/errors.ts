@@ -6,6 +6,7 @@ import { SYNC_ERRORS_PATH } from "../paths.js";
 import { expandHome } from "../utils.js";
 import { recordEvent, storyForModule } from "./events.js";
 import { logSkipped } from "./logger.js";
+import { redactUrlCredentials } from "./redact-url.js";
 
 /** Base error for all agentbrew operations. */
 export class AgentBrewError extends Error {
@@ -80,9 +81,10 @@ export class SyncErrorCollector {
 
 /** Extract a useful message from an unknown caught value. */
 export function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return String(error);
+  // Errors often quote git's stderr, which can hold a URL with a token.
+  if (error instanceof Error) return redactUrlCredentials(error.message);
+  if (typeof error === "string") return redactUrlCredentials(error);
+  return redactUrlCredentials(String(error));
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +130,7 @@ export function saveSyncErrors(collector: SyncErrorCollector): void {
     errors: collector.errors.map((error) => ({
       timestamp: new Date().toISOString(),
       code: error.code,
-      message: error.message,
+      message: redactUrlCredentials(error.message),
       module: error instanceof SyncError ? error.module : undefined,
       agent: error instanceof SyncError ? error.agent : undefined,
     })),

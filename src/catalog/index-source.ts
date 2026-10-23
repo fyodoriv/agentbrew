@@ -20,6 +20,7 @@ function isGitHubEnterprise(url: string): boolean {
 import yaml from "js-yaml";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { redactUrlCredentials } from "../core/redact-url.js";
 import { resolveGitCloneUrl } from "../git-source-url.js";
 import type { Source, SourceItem } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
@@ -573,7 +574,7 @@ function cloneOrPull(source: Source, options?: { sha?: string }): string | undef
     }
 
     // Actual fetch — log once, before the network round-trip
-    console.log(chalk.dim(`  Fetching ${source.url}...`));
+    console.log(chalk.dim(`  Fetching ${redactUrlCredentials(source.url)}...`));
 
     // If a specific SHA is requested, fetch and checkout that commit
     if (targetSha && fetchAndCheckoutSha(cachePath, targetSha)) {
@@ -585,7 +586,7 @@ function cloneOrPull(source: Source, options?: { sha?: string }): string | undef
   }
 
   // Fresh clone — log once, before the network round-trip
-  console.log(chalk.dim(`  Fetching ${source.url}...`));
+  console.log(chalk.dim(`  Fetching ${redactUrlCredentials(source.url)}...`));
   mkdirSync(CACHE_DIR, { recursive: true });
 
   try {
@@ -594,7 +595,7 @@ function cloneOrPull(source: Source, options?: { sha?: string }): string | undef
     const stderr = errorMessage(error);
     const hint = classifyGitError(stderr, source.url);
     sessionFailed.set(source.url, hint);
-    throw new Error(`git clone failed for ${source.url}: ${stderr.split("\n")[0]}. ${hint}`);
+    throw new Error(`git clone failed for ${redactUrlCredentials(source.url)}: ${stderr.split("\n")[0]}. ${hint}`);
   }
 }
 
@@ -652,15 +653,15 @@ export function formatItemCounts(items: SourceItem[]): string {
 
 export async function indexAllSources(sources: Source[]): Promise<void> {
   for (const source of sources) {
-    console.log(chalk.dim(`  Indexing ${source.url}...`));
+    console.log(chalk.dim(`  Indexing ${redactUrlCredentials(source.url)}...`));
     const items = indexSource(source);
     source.availableItems = items;
     source.indexedAt = new Date().toISOString();
 
     if (items.length > 0) {
-      console.log(`  ${ICON_SUCCESS} ${source.url} — ${formatItemCounts(items)}`);
+      console.log(`  ${ICON_SUCCESS} ${redactUrlCredentials(source.url)} — ${formatItemCounts(items)}`);
     } else {
-      console.log(`  ${chalk.dim("○")} ${source.url} — no items found`);
+      console.log(`  ${chalk.dim("○")} ${redactUrlCredentials(source.url)} — no items found`);
     }
   }
 }

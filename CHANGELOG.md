@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Security:** a token inside a git URL (`https://user:token@host/...`)
+  no longer shows in agentbrew output: the CLI filters all of its stdout
+  and stderr, and errors, the debug log, and the saved sync-error log show
+  it as `***`. A git-installed MCP server's saved `gitUrl` leaves it out (an
+  entry saved before keeps it until you install the server again). An
+  unattended git run (`--yes` or no terminal) also adds `-o BatchMode=yes`
+  to the ssh command, so a private SSH repo fails fast instead of waiting
+  on a passphrase or host-key prompt (plink and putty commands are left
+  alone, since they do not take `-o`).
 - `install.sh run --keep-claude-permissions` saves the setting with
   `agentbrew config set claudePermissions keep` instead of editing
   `state.yaml` by hand, and the README's offline rows name

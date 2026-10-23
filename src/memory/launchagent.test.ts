@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { installFakeLaunchctl } from "../test-utils/fake-launchctl.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PYTHON_VERSION } from "./constants.js";
 import {
   buildMemoryDaemonPlist,
+  installMemoryLaunchAgents,
   isLabelDisabledInLaunchctlOutput,
+  kickstartMemoryDaemon,
   MEMORY_AGENT_LABEL,
   MEMORY_MAINTAIN_LABEL,
   memoryDaemonPath,
@@ -86,5 +89,21 @@ describe("parseLaunchctlJobIdentity", () => {
 
   it("returns nulls when the fields are missing", () => {
     expect(parseLaunchctlJobIdentity("gui/501/x = {\n}")).toEqual({ path: null, home: null });
+  });
+});
+
+describe("memory LaunchAgents under a scratch HOME", () => {
+  it.runIf(process.platform === "darwin")("never loads, enables, or restarts a job in the user's launchd", () => {
+    const fake = installFakeLaunchctl();
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/opt/homebrew/bin/uvx");
+    try {
+      expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, reason: expect.stringContaining("HOME") });
+      expect(kickstartMemoryDaemon()).toBe(false);
+      const changes = fake.calls().filter(([verb]) => verb !== "print" && verb !== "print-disabled");
+      expect(changes).toEqual([]);
+    } finally {
+      fake.restore();
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -292,18 +292,18 @@
   - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
   - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
 
-- [ ] `agentbrew init` with a scratch HOME never replaces the real LaunchAgents
-  - **ID**: init-scratch-home-launchd
-  - **Tags**: install, launchd, safety
-  - **Details**: Found while fixing dotfiles #293. A test run of `agentbrew init` and `sync` with `HOME` set to a scratch folder replaced 3 real launchd jobs (`com.agentbrew.check`, `com.agentbrew.mcp-memory`, `com.agentbrew.mcp-memory-maintain`) for the real user, pointing them at the scratch folder. The memory server was down for minutes. launchd is per user, not per HOME, so agentbrew must refuse to load a LaunchAgent whose paths are outside the real home, or skip launchd when HOME is not the user's home.
-  - **Files**: `src/sync/auto-sync.ts`, the memory service LaunchAgent code, their tests
+- [ ] `agentbrew` with a scratch HOME on Linux never changes the real user's crontab or systemd timer
+  - **ID**: scratch-home-linux-scheduler
+  - **Tags**: install, scheduler, safety
+  - **Details**: The macOS fix routes every `launchctl` change through `src/core/launchctl.ts`, which skips it when HOME is not the user's home folder. Linux has the same per-user problem: `src/sync/cron.ts` pipes a new table to `crontab -` (the real user's crontab, with scratch-HOME paths), and `src/sync/systemd.ts` runs `systemctl --user enable --now` and `disable --now agentbrew-check.timer`, which act on the real timer by name. Reuse the same HOME check (renamed for all schedulers) before each change.
+  - **Files**: `src/sync/cron.ts`, `src/sync/systemd.ts`, `src/core/launchctl.ts`, their tests
   - **Output**: code
-  - **Acceptance**: with HOME set to a scratch folder, `init` writes no LaunchAgent to the real user's launchd.
-  - **Hypothesis**: a HOME check before every launchctl call drops real jobs replaced by scratch runs from 3 to 0.
-  - **Measurement**: a vitest case with a fake `launchctl` and a scratch HOME.
-  - **Success**: no launchctl load of a scratch path.
-  - **Pivot**: if detection is unreliable, add an opt-in env var that tests set to disable launchd.
-  - **Anchor**: dotfiles PR #293 worker report (2026-10-23).
+  - **Acceptance**: with HOME set to a scratch folder, `auto-sync install` and `uninstall` on Linux make no `crontab` write and no `systemctl --user` change.
+  - **Hypothesis**: the HOME check before each scheduler change drops real crontab or timer changes from scratch-HOME runs from possible to 0.
+  - **Measurement**: a vitest case with fake `crontab` and `systemctl` first on PATH and a scratch HOME.
+  - **Success**: the fakes record no change call.
+  - **Pivot**: if HOME detection is unreliable on Linux, read the home folder from `getent passwd`.
+  - **Anchor**: review of the PR for `init-scratch-home-launchd` (2026-10-23).
 
 - [ ] `agentbrew status` names a global command that an Agentfile dir silently overrides
   - **ID**: global-command-override-unreported

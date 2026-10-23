@@ -398,7 +398,7 @@ The `Auto-repair` line in `agentbrew status` shows what the scheduler really doe
 - `failing` — the last run exited with an error. The line names the exit code and the log file.
 - `not run yet` or `unverified` — no run history exists yet, or agentbrew cannot read it (Windows Task Scheduler).
 
-Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. `agentbrew status --json` includes the same data in `autoRepair`.
+Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. launchd is per user, not per `HOME`: when `HOME` is not your home folder (a scratch `HOME` in a test or a sandbox), agentbrew never loads, unloads, enables, or restarts a launchd job, so your real jobs are untouched. `auto-sync install` still writes its plist under that `HOME`; `memory enable` skips its plists. `agentbrew status --json` includes the same data in `autoRepair`.
 
 **Which Node the job runs.** `agentbrew auto-sync install` writes a Node path that survives a Node upgrade. It uses, in order:
 

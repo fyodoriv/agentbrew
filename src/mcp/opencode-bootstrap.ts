@@ -2,6 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { arch, cpus, platform, totalmem } from "node:os";
 import chalk from "chalk";
+import { runLaunchctl } from "../core/launchctl.js";
 import { logSkipped } from "../core/logger.js";
 import { buildLaunchAgentPath, LAUNCHAGENT_LANG } from "../sync/scheduler-paths.js";
 import { expandHome } from "../utils.js";
@@ -305,7 +306,7 @@ function loadLaunchdAgent(plistPath: string): boolean {
   try {
     // Unload existing (ignore errors if not loaded)
     try {
-      execFileSync("launchctl", ["unload", plistPath], { stdio: "pipe", timeout: 5_000 });
+      runLaunchctl(["unload", plistPath], { stdio: "pipe", timeout: 5_000 });
     } catch {
       // Not loaded — fine
     }
@@ -323,7 +324,7 @@ function loadLaunchdAgent(plistPath: string): boolean {
     // Brief pause for port release
     execFileSync("sleep", ["1"], { stdio: "pipe" });
     // Load our optimized agent
-    execFileSync("launchctl", ["load", plistPath], { stdio: "pipe", timeout: 5_000 });
+    runLaunchctl(["load", plistPath], { stdio: "pipe", timeout: 5_000 });
     return true;
   } catch (e) {
     logSkipped("opencode-bootstrap/loadLaunchdAgent", e);

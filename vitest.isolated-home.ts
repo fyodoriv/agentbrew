@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir, userInfo } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { delimiter, join, resolve, sep } from "node:path";
 import { afterAll, beforeAll } from "vitest";
 
 // Every test file runs with a scratch HOME, so code under test never reads or
@@ -39,6 +39,19 @@ process.env.USERPROFILE = scratchHome;
 process.env.PLAYWRIGHT_BROWSERS_PATH ??= join(realHome, "Library", "Caches", "ms-playwright");
 // Fixture repos commit with a test identity, not the developer's ~/.gitconfig.
 fs.writeFileSync(join(scratchHome, ".gitconfig"), "[user]\n\tname = agentbrew test\n\temail = test@example.com\n");
+
+// launchd is per user, not per HOME: a test that reached the real launchctl
+// replaced the user's own jobs (2026-10-23). A recording fake goes first on
+// PATH for every test file. `print` exits 113 (not loaded); other verbs do nothing.
+const fakeBin = join(scratchHome, ".agentbrew-test-bin");
+fs.mkdirSync(fakeBin);
+fs.writeFileSync(
+  join(fakeBin, "launchctl"),
+  `#!/bin/sh\nprintf '%s\\n' "$*" >> '${join(scratchHome, ".agentbrew-test-launchctl.log")}'\ncase "$1" in print) exit 113 ;; esac\nexit 0\n`,
+  { mode: 0o755 },
+);
+const pathBeforeFake = process.env.PATH;
+process.env.PATH = `${fakeBin}${delimiter}${pathBeforeFake ?? ""}`;
 
 /** Real paths no test may write. */
 const protectedRoots = [join(realHome, ".config", "agentbrew"), join(realHome, ".claude")];
@@ -126,6 +139,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  process.env.PATH = pathBeforeFake;
   fs.rmSync(scratchHome, { recursive: true, force: true });
   const statusAfter = repoStatus();
   if (statusAfter !== statusBefore) {

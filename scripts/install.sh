@@ -212,6 +212,14 @@ do_backup() {
   say "  ✓ Backed up ${#existing[@]} item(s) to $dir"
 }
 
+# launchd is per user, not per HOME: change it only when HOME is the user's
+# own home folder, never from a scratch HOME (a test or a sandbox).
+home_is_users_home() {
+  local real
+  real="$(eval "echo ~$(id -un)" 2>/dev/null)" || return 1
+  [ -n "$real" ] && [ "$(cd "$HOME" 2>/dev/null && pwd -P)" = "$(cd "$real" 2>/dev/null && pwd -P)" ]
+}
+
 do_restore() {
   local id="${1:-$(latest_backup)}" dir rel plist
   [ -n "$id" ] || { say "No backup found in $BACKUP_ROOT"; return 1; }
@@ -223,7 +231,9 @@ do_restore() {
       [ -e "$plist" ] || continue
       rel="Library/LaunchAgents/$(basename "$plist")"
       if ! grep -qxF "$rel" "$dir/launchagents.txt" 2>/dev/null; then
-        launchctl bootout "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+        if home_is_users_home; then
+          launchctl bootout "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+        fi
         rm -f "$plist"
       fi
     done

@@ -5,7 +5,8 @@
  *
  * Repos, keys, and HOME are scratch. Git reads an empty global config file.
  */
-import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +35,8 @@ import { Command } from "commander";
 import { readLock } from "../lock.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { registerPluginCommands } from "./cli-plugin.js";
-import { pluginDir, pluginsRoot } from "./store.js";
+import { revokeSigner, trustSigner } from "./signers.js";
+import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
 const KEY = fixtureKey();
 const ID = ["-c", "user.name=t", "-c", "user.email=t@example.com"];
@@ -144,5 +146,39 @@ describe("agentbrew plugin add (interactive)", () => {
 
     expect(confirm).not.toHaveBeenCalled();
     expect(readLock().plugins?.[0]?.commit).toBe(shown);
+  });
+});
+
+describe("planAdd and applyAdd", () => {
+  const spec = () => `${f.dir}@v1.0.0`;
+
+  it("refuses at install when the same name was installed while the user answered", () => {
+    const plan = planAdd(spec(), { signer: KEY.pub });
+    addPlugin(spec(), { yes: true, signer: KEY.pub });
+
+    expect(() => applyAdd(plan, { yes: true })).toThrow(/already installed/);
+    expect(staging()).toEqual([]);
+  });
+
+  it("refuses at install when the signer was revoked while the user answered", () => {
+    trustSigner("acme", KEY.pub);
+    const plan = planAdd(spec(), {});
+    revokeSigner("acme", KEY.pub);
+
+    expect(() => applyAdd(plan, { yes: true })).toThrow(/no longer trusted/);
+    expect(existsSync(pluginDir("acme"))).toBe(false);
+    expect(readLock().plugins ?? []).toEqual([]);
+    expect(staging()).toEqual([]);
+  });
+
+  it("deletes staging dirs of runs that died, and keeps this run's own", () => {
+    const dead = spawnSync("true").pid;
+    mkdirSync(join(pluginsRoot(), `.staging-${dead}-1`), { recursive: true });
+    mkdirSync(join(pluginsRoot(), `.staging-${process.pid}-1`), { recursive: true });
+
+    addPlugin(spec(), { yes: true, signer: KEY.pub });
+
+    expect(staging()).toEqual([`.staging-${process.pid}-1`]);
+    rmSync(join(pluginsRoot(), `.staging-${process.pid}-1`), { recursive: true });
   });
 });

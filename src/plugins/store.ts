@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
@@ -56,6 +56,24 @@ export interface Staged {
 }
 
 /**
+ * Delete staging dirs left by an agentbrew run that died, for example one
+ * killed at the approval prompt. A dir is stale only when no process has the
+ * pid in its name; live runs, this one included, keep theirs.
+ */
+function removeStaleStaging(): void {
+  for (const name of readdirSync(pluginsRoot())) {
+    const pid = Number(name.match(/^\.staging-(\d+)-\d+$/)?.[1]);
+    if (!pid || pid === process.pid) continue;
+    try {
+      process.kill(pid, 0);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ESRCH")
+        rmSync(join(pluginsRoot(), name), { recursive: true, force: true });
+    }
+  }
+}
+
+/**
  * Fetch exactly `refs/tags/<ref>` from `url` to a staging dir, verify that
  * tag object's signature, then check out its commit by ID and validate the
  * manifest. A branch with the tag's name never wins, and a name that git
@@ -65,6 +83,7 @@ export interface Staged {
 export function stage(url: string, ref: string, extraSigner?: string): Staged {
   assertTagName(ref);
   mkdirSync(pluginsRoot(), { recursive: true });
+  removeStaleStaging();
   const dir = join(pluginsRoot(), `.staging-${process.pid}-${Date.now()}`);
   try {
     const tagRef = `refs/tags/${ref}`;
@@ -190,7 +209,12 @@ export function applyAdd(plan: AddPlan, options: { yes: boolean }): PluginLockEn
     const { manifest, entry } = plan.staged;
     const lock = readLock();
     assertNotInstalled(manifest.name, lock);
-    if (plan.newSigner && entry.signer === plan.newSigner) trustSigner(manifest.name, plan.newSigner);
+    // Read the signers again: one may have been revoked while the user answered.
+    const approvedNew = plan.newSigner !== undefined && entry.signer === plan.newSigner;
+    if (!approvedNew && !signersFor(manifest.name).includes(entry.signer)) {
+      throw new Error(`The signer of "${manifest.name}" is no longer trusted. Nothing was installed.`);
+    }
+    if (approvedNew) trustSigner(manifest.name, entry.signer);
     renameSync(plan.staged.dir, pluginDir(manifest.name));
     lock.plugins = [...(lock.plugins ?? []), entry];
     writeLock(lock);

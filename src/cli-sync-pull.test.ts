@@ -160,7 +160,7 @@ describe("sync --pull installs Agentfile-requested skills in the same run", () =
     await runSync("--pull");
 
     expect(order).toEqual(["install", "pull"]);
-    expect(mockCatalogInstall).toHaveBeenCalledWith("task-command-center");
+    expect(mockCatalogInstall).toHaveBeenCalledWith("task-command-center", { skillOnly: true });
   });
 
   it("re-adds a catalog skill source the Agentfile sources list omits (regression: pull removed skills)", async () => {

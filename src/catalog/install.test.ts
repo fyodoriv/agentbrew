@@ -133,6 +133,7 @@ import { loadState, saveState } from "../state.js";
 import { formatSuggestion } from "../suggest.js";
 import { delegateMcpClientEdit, delegateMcpInstall, delegateMcpNew, readMcpmServer } from "../sync/mcp-delegate.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
+import { isBuiltInSkill } from "./builtin-skill.js";
 import { getSourceCachePath, scanDirectoryForSkills } from "./index-source.js";
 import { flushInstallSummary, install, RULES_REFRESH_HINT_COMMAND } from "./install.js";
 import { resetSourceFallbackAnnounced } from "./install-skill.js";
@@ -3254,13 +3255,19 @@ describe("install — a built-in skill name with no catalog entry", () => {
       path.includes("/skill-plugins/") || path.endsWith("/package.json") ? realFs.existsSync(path) : undefined,
     );
 
-    await install("agentbrew-status");
+    try {
+      // Guard the fixture: the name must still be a built-in skill.
+      expect(isBuiltInSkill("agentbrew-status")).toBe(true);
 
-    expect(mockLockSource).not.toHaveBeenCalled();
-    expect(source.skillsInstalled).toEqual([]);
-    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
-    expect(logs).not.toContain("Installing skill: agentbrew-status");
-    expect(process.exitCode ?? 0).toBe(0);
-    existsSpy.mockRestore();
+      await install("agentbrew-status");
+
+      expect(mockLockSource).not.toHaveBeenCalled();
+      expect(source.skillsInstalled).toEqual([]);
+      const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+      expect(logs).not.toContain("Installing skill: agentbrew-status");
+      expect(process.exitCode ?? 0).toBe(0);
+    } finally {
+      existsSpy.mockRestore();
+    }
   });
 });

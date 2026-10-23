@@ -12,7 +12,7 @@ import { expandHome } from "../utils.js";
 import { softUpdateStaleOverlaySources } from "./soft-update.js";
 
 /** A local git repo that stands in for a team overlay skill source (no network). */
-function makeTeamSkillRepo(): string {
+function makeTeamSkillRepo(extraRecommended: string[] = []): string {
   const repo = mkdtempSync(join(tmpdir(), "agentbrew-team-src-"));
   const skill = (name: string, extra: string) => {
     mkdirSync(join(repo, "skills", name), { recursive: true });
@@ -23,6 +23,7 @@ function makeTeamSkillRepo(): string {
   };
   skill("team-alpha", "recommended: true\n");
   skill("team-beta", "");
+  for (const name of extraRecommended) skill(name, "recommended: true\n");
   const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
   const git = (...args: string[]) => execFileSync("git", args, { cwd: repo, env, stdio: "pipe" });
   git("init", "-q", "-b", "main");
@@ -66,5 +67,32 @@ describe("team overlay git sources (#295)", () => {
     refreshInstalledSkills(after?.sources ?? []);
     expect(existsSync(join(expandHome(INSTALLED_SKILLS_DIR), "team-alpha", "SKILL.md"))).toBe(true);
     expect(existsSync(join(expandHome(INSTALLED_SKILLS_DIR), "team-beta"))).toBe(false);
+  });
+
+  it("never claims a built-in skill name, even when the overlay marks it recommended", () => {
+    // agentbrew-status ships in skill-plugins/dev; the built-in copy must stay.
+    const repo = makeTeamSkillRepo(["agentbrew-status"]);
+    const url = `file://${repo}`;
+    saveState({
+      agents: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+      sources: [
+        {
+          url,
+          type: "url",
+          skillsInstalled: [],
+          availableItems: [],
+          addedAt: "2026-01-01T00:00:00.000Z",
+          origin: "team:acme",
+        },
+      ],
+    } as AgentBrewState);
+
+    softUpdateStaleOverlaySources();
+
+    const source = loadState()?.sources?.find((s) => s.url === url);
+    expect(source?.availableItems.map((i) => i.name)).toContain("agentbrew-status");
+    expect(source?.skillsInstalled).toEqual(["team-alpha"]);
   });
 });

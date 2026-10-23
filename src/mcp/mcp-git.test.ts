@@ -40,6 +40,16 @@ vi.mock("@inquirer/prompts", () => ({
   input: vi.fn(),
 }));
 
+// Exact-ref checkout runs real git in mcp-git-ref.test.ts. The marker env proves
+// that every cache git call gets cacheGitEnv() (no inherited GIT_DIR).
+const { CACHE_ENV } = vi.hoisted(() => ({ CACHE_ENV: { AGENTBREW_TEST_CACHE_ENV: "1" } }));
+vi.mock("./git-ref.js", () => ({
+  assertOwnRepo: vi.fn(),
+  assertPinnedRef: vi.fn(),
+  cacheGitEnv: vi.fn(() => CACHE_ENV),
+  checkoutPinnedRef: vi.fn(),
+}));
+
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -49,6 +59,7 @@ import { input } from "@inquirer/prompts";
 import { requireState, saveState } from "../state.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
 import type { AgentBrewState, McpServer } from "../types.js";
+import { checkoutPinnedRef } from "./git-ref.js";
 import {
   buildRepoIfNeeded,
   cloneOrUpdateRepo,
@@ -70,6 +81,7 @@ const mockAddMcpServer = vi.mocked(addMcpServer);
 const mockRequireState = vi.mocked(requireState);
 const mockSaveState = vi.mocked(saveState);
 const mockInput = vi.mocked(input);
+const mockCheckoutPinnedRef = vi.mocked(checkoutPinnedRef);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -117,6 +129,13 @@ describe("validateRepoName", () => {
   it("rejects empty names", () => {
     expect(() => validateRepoName("")).toThrow(/Invalid server name/);
   });
+
+  it("rejects names made only of dots, including ones derived from a URL", () => {
+    expect(() => validateRepoName(".")).toThrow(/Invalid server name/);
+    expect(() => validateRepoName("..")).toThrow(/Invalid server name/);
+    expect(() => validateRepoName(deriveRepoName("https://example.com/org/...git"))).toThrow(/Invalid server name/);
+    expect(() => validateRepoName(".config")).not.toThrow();
+  });
 });
 
 describe("GIT_CACHE_DIR", () => {
@@ -141,23 +160,29 @@ describe("cloneOrUpdateRepo", () => {
     const repoDir = cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp");
 
     expect(repoDir).toBe(join(GIT_CACHE_DIR, "my-mcp"));
-    expect(mockSpawnSync).toHaveBeenCalledWith("git", ["clone", "https://github.com/org/my-mcp.git", repoDir], {
-      stdio: "pipe",
-      timeout: 60_000,
-    });
+    expect(mockSpawnSync).toHaveBeenCalledWith(
+      "git",
+      ["clone", "-o", "origin", "--end-of-options", "https://github.com/org/my-mcp.git", repoDir],
+      {
+        env: CACHE_ENV,
+        stdio: "pipe",
+        timeout: 60_000,
+      },
+    );
   });
 
-  it("clones with --branch when a ref is provided", () => {
+  it("clones without a checkout, then checks out the exact ref, when a ref is provided", () => {
     mockExistsSync.mockReturnValue(false);
     mockSpawnSync.mockReturnValue({ status: 0, stderr: Buffer.from("") } as ReturnType<typeof spawnSync>);
 
-    cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp", "v1.2.0");
+    const repoDir = cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp", "v1.2.0");
 
     expect(mockSpawnSync).toHaveBeenCalledWith(
       "git",
-      ["clone", "--branch", "v1.2.0", "https://github.com/org/my-mcp.git", expect.any(String)],
-      { stdio: "pipe", timeout: 60_000 },
+      ["clone", "-o", "origin", "--no-checkout", "--end-of-options", "https://github.com/org/my-mcp.git", repoDir],
+      { env: CACHE_ENV, stdio: "pipe", timeout: 60_000 },
     );
+    expect(mockCheckoutPinnedRef).toHaveBeenCalledWith(repoDir, "v1.2.0", CACHE_ENV);
   });
 
   it("throws on clone failure", () => {
@@ -190,18 +215,20 @@ describe("cloneOrUpdateRepo", () => {
 
     cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp");
 
-    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["fetch", "--tags"], expect.anything());
-    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["pull"], expect.anything());
+    const inCache = expect.objectContaining({ env: CACHE_ENV });
+    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["fetch", "--tags"], inCache);
+    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["pull"], inCache);
   });
 
   it("fetches and checks out ref when repo already exists with ref", () => {
     mockExistsSync.mockReturnValue(true);
     mockExecFileSync.mockReturnValue(Buffer.from(""));
 
-    cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp", "v2.0.0");
+    const repoDir = cloneOrUpdateRepo("https://github.com/org/my-mcp.git", "my-mcp", "v2.0.0");
 
-    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["fetch", "--tags"], expect.anything());
-    expect(mockExecFileSync).toHaveBeenCalledWith("git", ["checkout", "v2.0.0"], expect.anything());
+    // checkoutPinnedRef fetches what the ref needs; no --tags fetch that a moved tag could fail.
+    expect(mockExecFileSync).not.toHaveBeenCalledWith("git", ["fetch", "--tags"], expect.anything());
+    expect(mockCheckoutPinnedRef).toHaveBeenCalledWith(repoDir, "v2.0.0", CACHE_ENV);
     // Should NOT call git pull when a ref is specified
     expect(mockExecFileSync).not.toHaveBeenCalledWith("git", ["pull"], expect.anything());
   });
@@ -222,6 +249,11 @@ describe("resolveHeadSha", () => {
   it("returns the trimmed SHA from git rev-parse", () => {
     mockExecFileSync.mockReturnValue(Buffer.from("abc1234\n"));
     expect(resolveHeadSha("/some/repo")).toBe("abc1234");
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      "git",
+      ["rev-parse", "--short", "HEAD"],
+      expect.objectContaining({ env: CACHE_ENV }),
+    );
   });
 
   it("returns 'unknown' when git fails", () => {
@@ -257,8 +289,9 @@ describe("buildRepoIfNeeded", () => {
 
     buildRepoIfNeeded("/some/repo");
 
-    expect(mockExecFileSync).toHaveBeenCalledWith("npm", ["install", "--prefer-offline"], expect.anything());
-    expect(mockExecFileSync).toHaveBeenCalledWith("npm", ["run", "build"], expect.anything());
+    const inCache = expect.objectContaining({ env: CACHE_ENV });
+    expect(mockExecFileSync).toHaveBeenCalledWith("npm", ["install", "--prefer-offline"], inCache);
+    expect(mockExecFileSync).toHaveBeenCalledWith("npm", ["run", "build"], inCache);
   });
 
   it("warns but does not throw on build failure", () => {

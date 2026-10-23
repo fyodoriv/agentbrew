@@ -343,7 +343,7 @@ export function registerInstallCommand(program: Command): void {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable example in help text
     .option("-H, --headers <pairs...>", "HTTP headers KEY=VALUE (for MCP, e.g. Authorization='Bearer ${TOKEN}')")
     .option("--git <url>", "Install MCP server from a git repo URL")
-    .option("--ref <ref>", "Git branch/tag/commit (used with --git)")
+    .option("--ref <ref>", "Git tag, branch, or full commit ID; a tag wins over a same-named branch (used with --git)")
     .option("--dry-run", "Preview what would be installed without applying")
     .option("-L, --local", "Install to current project (.agentbrew/skills/ + Agentfile)")
     .option("-G, --global", "Install globally (default)")

@@ -71,6 +71,13 @@ agentbrew skills coverage --builtins      # require in-repo skill eval coverage
 agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
+**Pin a git install.** `agentbrew install --git <url> --ref <ref>` (also `mcp add --git`) checks out one exact commit:
+
+- A short name is looked up as a tag first, then as a branch. A tag wins over a branch with the same name. To pin that branch, pass `--ref refs/heads/<name>`.
+- A full commit ID works: 40 hex, or 64 hex in a SHA-256 repo. A short commit ID, or another revision such as `HEAD~1`, is refused.
+- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit, and `mcp update` fails on it: run the install again with a new `--ref`.
+- A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
+
 **GitHub MCP.** `agentbrew install github` deploys GitHub's own hosted server (`https://api.githubcopilot.com/mcp/`) with `Authorization: Bearer ${GITHUB_TOKEN}`. The old `@modelcontextprotocol/server-github` npm package is archived. On load, agentbrew moves a saved `github` entry that still names it to the hosted server. A fresh install always writes the hosted server, even on a machine with a local `~/.local/bin/*-github-mcp` launcher: GitHub maintains the hosted server, and the catalog curates rather than hosts. The launcher is used only to repair an old entry: one that still names the archived npm package on a machine that has a launcher, or one whose launcher path no longer exists. To use a launcher for a new install, add the server by hand with the launcher as its command.
 
 **Official MCP Registry (opt-in).** With `AGENTBREW_MCP_REGISTRY=1`, `install` looks up a name the local catalog does not have in the [official MCP Registry](https://registry.modelcontextprotocol.io/) — for example `AGENTBREW_MCP_REGISTRY=1 agentbrew install io.github.upstash/context7 --dry-run`. Local catalog entries always win, and a registry outage falls back to the local catalog with a one-line warning. Details: [docs/competition/official-mcp-registry-vs-agentbrew.md](docs/competition/official-mcp-registry-vs-agentbrew.md).

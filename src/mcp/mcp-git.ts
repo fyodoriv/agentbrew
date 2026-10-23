@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
@@ -11,6 +11,7 @@ import { logSkipped } from "../core/logger.js";
 import type { McpServer } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { checkGitAvailable } from "../utils.js";
+import { assertOwnRepo, assertPinnedRef, cacheGitEnv, checkoutPinnedRef } from "./git-ref.js";
 import { extractEnvVars, isEnvVarResolved } from "./mcp-setup.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ interface DetectedEntrypoint {
 }
 
 interface GitInstallOptions {
-  /** Git ref (branch, tag, commit) to pin. Defaults to default branch HEAD. */
+  /** Git tag, branch, or full commit ID to pin (see checkoutPinnedRef). Defaults to default branch HEAD. */
   ref?: string;
   /** Override the server name derived from the repo URL. */
   name?: string;
@@ -63,12 +64,13 @@ const SAFE_NAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
 
 /**
  * Validate that a repo name is safe to use as a directory name.
- * Rejects path separators and traversal sequences (e.g. `../../etc`).
+ * Rejects path separators, traversal sequences (e.g. `../../etc`), and names made only of dots.
  */
 export function validateRepoName(name: string): void {
-  if (!name || !SAFE_NAME_PATTERN.test(name)) {
+  // `.` and `..` would make the cache dir an existing dir, where git finds another repo.
+  if (!name || !SAFE_NAME_PATTERN.test(name) || /^\.+$/.test(name)) {
     throw new Error(
-      `Invalid server name '${name}': must contain only alphanumeric characters, dots, hyphens, and underscores.`,
+      `Invalid server name '${name}': must contain only alphanumeric characters, dots, hyphens, and underscores, and not only dots.`,
     );
   }
 }
@@ -84,40 +86,63 @@ export function deriveRepoName(gitUrl: string): string {
 
 // ── Git operations ────────────────────────────────────────────────────────────
 
+/** Refresh the cached repo at `repoDir`, then check out `gitRef` exactly, or pull. */
+function updateCachedRepo(repoDir: string, gitRef?: string): void {
+  console.log(chalk.dim(`  Updating existing repo at ${repoDir}...`));
+  try {
+    // Never let git act on a repo that encloses the cache dir, or one that GIT_DIR names.
+    const env = cacheGitEnv();
+    assertOwnRepo(repoDir, env);
+    if (gitRef) {
+      // checkoutPinnedRef fetches only what the ref needs, so a moved tag never blocks it.
+      checkoutPinnedRef(repoDir, gitRef, env);
+    } else {
+      execFileSync("git", ["fetch", "--tags"], { cwd: repoDir, env, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
+      execFileSync("git", ["pull"], { cwd: repoDir, env, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
+    }
+  } catch (error) {
+    const message = errorMessage(error);
+    throw new Error(`Failed to update repo: ${message}`);
+  }
+}
+
+/** Clone `gitUrl` to `repoDir`. With `gitRef`, clone without a checkout, then check out that exact ref. */
+function cloneFresh(gitUrl: string, repoDir: string, gitRef?: string): void {
+  console.log(chalk.dim(`  Cloning ${gitUrl}...`));
+  // -o origin: checkoutPinnedRef reads `origin`, whatever clone.defaultRemoteName says.
+  const extraArgs = gitRef ? ["--no-checkout"] : [];
+  const env = cacheGitEnv();
+  const result = spawnSync("git", ["clone", "-o", "origin", ...extraArgs, "--end-of-options", gitUrl, repoDir], {
+    env,
+    stdio: "pipe",
+    timeout: GIT_CLONE_TIMEOUT_MS,
+  });
+  if (result.status !== 0) {
+    const stderr = result.stderr?.toString() ?? "";
+    throw new Error(`git clone failed: ${stderr.trim() || "unknown error"}`);
+  }
+  if (!gitRef) return;
+  try {
+    checkoutPinnedRef(repoDir, gitRef, env);
+  } catch (error) {
+    // Remove the half-made clone, so the next run starts fresh instead of updating it.
+    rmSync(repoDir, { recursive: true, force: true });
+    throw new Error(`git checkout failed: ${errorMessage(error)}`);
+  }
+}
+
 /**
  * Clone a git repo into the agentbrew MCP cache, or fetch + checkout if already present.
+ * A `gitRef` is checked out exactly by {@link checkoutPinnedRef}: a tag wins over a
+ * branch with the same name, and a ref that starts with `-` is refused before git runs.
  * Returns the path to the local repo directory.
  */
 export function cloneOrUpdateRepo(gitUrl: string, repoName: string, gitRef?: string): string {
   validateRepoName(repoName);
+  if (gitRef !== undefined) assertPinnedRef(gitRef);
   const repoDir = join(GIT_CACHE_DIR, repoName);
-
-  if (existsSync(repoDir)) {
-    console.log(chalk.dim(`  Updating existing repo at ${repoDir}...`));
-    try {
-      execFileSync("git", ["fetch", "--tags"], { cwd: repoDir, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
-      if (gitRef) {
-        execFileSync("git", ["checkout", gitRef], { cwd: repoDir, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
-      } else {
-        execFileSync("git", ["pull"], { cwd: repoDir, stdio: "pipe", timeout: GIT_FAST_TIMEOUT_MS });
-      }
-    } catch (error) {
-      const message = errorMessage(error);
-      throw new Error(`Failed to update repo: ${message}`);
-    }
-  } else {
-    console.log(chalk.dim(`  Cloning ${gitUrl}...`));
-    const extraArgs = gitRef ? ["--branch", gitRef] : [];
-    const result = spawnSync("git", ["clone", ...extraArgs, gitUrl, repoDir], {
-      stdio: "pipe",
-      timeout: GIT_CLONE_TIMEOUT_MS,
-    });
-    if (result.status !== 0) {
-      const stderr = result.stderr?.toString() ?? "";
-      throw new Error(`git clone failed: ${stderr.trim() || "unknown error"}`);
-    }
-  }
-
+  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitRef);
+  else cloneFresh(gitUrl, repoDir, gitRef);
   return repoDir;
 }
 
@@ -129,6 +154,7 @@ export function resolveHeadSha(repoDir: string): string {
   try {
     return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
       cwd: repoDir,
+      env: cacheGitEnv(),
       stdio: "pipe",
       timeout: GIT_FAST_TIMEOUT_MS,
     })
@@ -166,12 +192,15 @@ export function buildRepoIfNeeded(repoDir: string): void {
 
   console.log(chalk.dim("  Running npm install + build..."));
   try {
+    // cacheGitEnv: a build script that runs git (husky's prepare) must not act on a GIT_DIR repo.
+    const env = cacheGitEnv();
     execFileSync("npm", ["install", "--prefer-offline"], {
       cwd: repoDir,
+      env,
       stdio: "pipe",
       timeout: NPM_BUILD_TIMEOUT_MS,
     });
-    execFileSync("npm", ["run", "build"], { cwd: repoDir, stdio: "pipe", timeout: NPM_BUILD_TIMEOUT_MS });
+    execFileSync("npm", ["run", "build"], { cwd: repoDir, env, stdio: "pipe", timeout: NPM_BUILD_TIMEOUT_MS });
   } catch (error) {
     const message = errorMessage(error);
     console.log(chalk.yellow(`  ⚠ Build step failed: ${message}. Continuing with pre-built files.`));

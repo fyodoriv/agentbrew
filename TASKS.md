@@ -318,19 +318,6 @@
   - **Pivot**: if the CLI is not on PATH at that install step, call it by the absolute path the installer already uses.
   - **Anchor**: PR #397 and #402 review notes (2026-10-22).
 
-- [ ] MCP git installs pin a tag or commit, never a same-named branch
-  - **ID**: mcp-git-ref-exact
-  - **Tags**: security, mcp
-  - **Details**: Found by the PR #403 worker. `src/mcp/mcp-git.ts:100` and `:110` run `git clone --branch <ref>` and `git checkout <ref>` with no `--end-of-options`. `clone --branch` picks a branch over a tag with the same name, so `--ref v1.0.0` can install a branch's code. That path has no signature check, so no trust is bypassed, but the pinned ref is not what the user asked for. Apply the exact-ref approach from PR #403 (`refs/tags/<ref>`, checkout by commit ID, `--end-of-options`).
-  - **Files**: `src/mcp/mcp-git.ts`, its tests
-  - **Output**: code
-  - **Acceptance**: with a branch and a tag both named `v1.0.0`, `mcp add --git <repo> --ref v1.0.0` installs the tag's commit, and a ref starting with `-` is refused.
-  - **Hypothesis**: exact-ref resolution drops wrong-ref installs in the branch-shadow case from 1 to 0.
-  - **Measurement**: a vitest case with a scratch repo that has a branch and a tag of the same name.
-  - **Success**: the tag's commit is installed.
-  - **Pivot**: if a ref can be a branch by design, require `--ref refs/heads/<name>` for branches and treat bare names as tags.
-  - **Anchor**: PR #403 (2026-10-22); git-clone docs on `--branch`.
-
 - [ ] Plugin test fixtures delete their temp dirs, and interactive `plugin add` installs what it showed
   - **ID**: plugin-fixture-cleanup-and-single-fetch
   - **Tags**: tests, plugins, security
@@ -344,7 +331,46 @@
   - **Pivot**: if one fetch is not possible in the interactive flow, re-check the second fetch's tag object against the approved one and refuse a change.
   - **Anchor**: PR #403 (2026-10-22).
 
+- [ ] An MCP git install never reuses a cache dir that belongs to another repo
+  - **ID**: mcp-git-cache-identity
+  - **Tags**: security, mcp
+  - **Details**: Found by the review of the `mcp-git-ref-exact` PR (which already refuses `.` and `..` names and a cache dir that is not its own repo). (1) `cloneOrUpdateRepo` in `src/mcp/mcp-git.ts` reuses `~/.config/agentbrew/mcp-repos/<name>` when it exists and never compares its `origin` with the `--git` URL. So `install --git https://github.com/a/my-mcp`, then `install --git https://github.com/b/my-mcp --ref v1.0.0`, installs repo a's code and records repo b's URL. (2) A cache that an older agentbrew cloned under a custom `clone.defaultRemoteName` has no `origin` remote; git then reads `origin` as a path, so a bare repo committed at `./origin/` in the checkout would be fetched as the remote. (3) A cache dir that is a symlink to another repo's top passes the own-repo check, so git runs in the link target: `--ref <branch>` runs `checkout -B` there and can drop unpushed commits, a tag or commit ref detaches its HEAD, and `mcp update` pulls into it.
+  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-ref.test.ts`, `src/mcp/mcp-git.test.ts`
+  - **Output**: code
+  - **Acceptance**: a second `--git` install with another URL and the same server name is refused or re-clones, and never checks out the first repo's commit; a cache without an `origin` remote, or one that is a symlink, is refused or re-cloned.
+  - **Hypothesis**: checking the cache's `origin` URL, its remote name, and that it is a real dir drops wrong-repo or outside-cache git writes from 1 to 0 in each of the three cases.
+  - **Measurement**: vitest cases in `src/mcp/mcp-git-ref.test.ts`: two scratch source repos with one server name, a cache whose only remote is not `origin`, and a symlinked cache dir.
+  - **Success**: all three cases pass; none installs a commit from another repo or moves a branch outside the cache.
+  - **Pivot**: if URL forms (ssh or https, a trailing `.git`) make the compare unreliable, name the cache dir after a hash of the URL instead; refuse a symlinked cache dir either way.
+  - **Anchor**: review of the `mcp-git-ref-exact` PR (2026-10-22).
+
+- [ ] A failed `--git` install exits non-zero, and a re-pin never runs the old build
+  - **ID**: mcp-git-install-failure-exit-and-clean-build
+  - **Tags**: mcp, cli
+  - **Details**: Found by the round-2 and round-3 reviews of the `mcp-git-ref-exact` PR. (1) `installMcpFromGit` and `updateMcpFromGit` in `src/mcp/mcp-git.ts` print a clone, checkout, or pull error and return without `process.exitCode = 1`, so a refused `--ref --detach`, or `mcp update` on a tag or commit pin, exits 0 and a script cannot tell. The `mcp update` hint ("Check the repo URL and your network connection") is wrong for a pin; the README says to install again with a new `--ref`. (2) Re-pinning a cached repo keeps ignored build output such as `dist/`. When the new build fails, `buildRepoIfNeeded` continues "with pre-built files", and `detectEntrypoint` picks the old commit's `dist/index.js` while state records the new ref.
+  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git.test.ts`, `src/mcp/mcp-git-ref.test.ts`
+  - **Output**: code
+  - **Acceptance**: `agentbrew install --git <repo> --ref --detach` and `agentbrew mcp update <tag-pinned server>` exit 1 with the right hint, and a re-pin whose build fails never registers an entrypoint built from another commit.
+  - **Hypothesis**: setting the exit code and removing ignored build output before a re-pin drops silent failures (exit 0 on a refused ref; stale entrypoint after a failed build) from 2 to 0.
+  - **Measurement**: a vitest case for each: the exit code after a refused ref, and a cached repo with a stale `dist/index.js` whose new build fails.
+  - **Success**: both cases pass.
+  - **Pivot**: if removing ignored files deletes files users rely on, re-clone into a fresh dir and swap it in instead.
+  - **Anchor**: round-2 and round-3 reviews of the `mcp-git-ref-exact` PR (2026-10-22).
+
 ## P3
+
+- [ ] Every `git clone` of a user URL ends options before the URL
+  - **ID**: git-clone-url-end-of-options
+  - **Tags**: security, cli
+  - **Details**: Found by the review of the `mcp-git-ref-exact` PR, which added `--end-of-options` to the MCP `--git` clone. Two clones still pass a user URL without it: `src/catalog/index-source.ts:533` and `src/learn/stage-learn-sources.ts:215`. A URL that starts with `-` could be read as an option. Also, `checkoutSha`, `fetchAndCheckoutSha`, and the `targetSha` branch of `cloneNew` in `index-source.ts` take an `options.sha` that no caller passes: delete that path, or validate the SHA.
+  - **Files**: `src/catalog/index-source.ts`, `src/learn/stage-learn-sources.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: both clones pass `--end-of-options` before the URL, and the unused SHA path is deleted or validated.
+  - **Hypothesis**: clone call sites where a user URL can be read as an option go from 2 to 0.
+  - **Measurement**: `rg -n '\["clone"' src --glob '!*.test.ts' | grep -vc -- '--end-of-options'` (2 on 2026-10-22), plus a unit test per call site.
+  - **Success**: 0 clone call sites without `--end-of-options`.
+  - **Pivot**: if git older than 2.24 must stay supported, refuse a URL that starts with `-` instead.
+  - **Anchor**: git 2.24 release notes (`--end-of-options`); review of the `mcp-git-ref-exact` PR (2026-10-22).
 
 - [ ] Propose a first-run check for the built-in /loop skill
   - **ID**: propose-loop-skill-first-run-dedupe

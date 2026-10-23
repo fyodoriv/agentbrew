@@ -34,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `install --git <url> --ref <ref>` and `mcp add --git` install the tag
+  when a branch has the same name. Before, `git clone --branch` picked the
+  branch. agentbrew now looks the name up as `refs/tags/<ref>`, then
+  `refs/heads/<ref>`, fetches exactly that ref, and checks out its commit.
+  A full commit ID now works on a fresh install, `refs/heads/<name>` pins a
+  branch that a tag hides, and a ref that starts with `-` is refused. On a
+  cached repo, `--ref` now takes only a tag, a branch, or a full commit ID
+  (a short ID or `HEAD~1` is refused). Every `--git` install now needs git
+  2.24 or later. A server name made only of dots is refused, and agentbrew's
+  git and npm calls in the MCP cache never act on a repo that encloses a
+  cache dir without `.git`, or on the repo that an inherited `GIT_DIR` names
+  (git sets it inside hooks).
 - **Security:** `plugin add`, `update`, and `rollback` install only the commit
   of the signed tag they verified. Before, an unsigned tag named like the
   signed tag's object ID, or a branch with the tag's name, could install an

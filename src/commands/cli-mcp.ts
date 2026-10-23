@@ -139,7 +139,10 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable example in help text
     .option("-H, --headers <pairs...>", "HTTP headers for auth (KEY=VALUE, e.g. Authorization='Bearer ${TOKEN}')")
     .option("--git <url>", "Install from a git repo URL (clones, builds, and auto-detects entrypoint)")
-    .option("--ref <ref>", "Git branch, tag, or commit to pin (used with --git)")
+    .option(
+      "--ref <ref>",
+      "Git tag, branch, or full commit ID to pin; a tag wins over a same-named branch (used with --git)",
+    )
     .option("-n, --name <name>", "Override the server name derived from the git repo URL (used with --git)")
     .allowUnknownOption()
     .allowExcessArguments(true)

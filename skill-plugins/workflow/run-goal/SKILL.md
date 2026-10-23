@@ -81,6 +81,8 @@ So:
 ## Phase 1 — Intake (read only, a few minutes at most)
 
 1. Copy the raw goal text verbatim. You will compare against it at the end.
+   For a research or Q&A goal, print the contract (Phase 2) as soon as the
+   questions are known, before you gather evidence for any one answer.
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
@@ -383,7 +385,9 @@ When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude
 Managed Agents "outcomes" (a rubric plus a separate grader). Fix what it fails
-before you report. A deterministic gate proves the shape, not the facts. When
+before you report. When the deliverable is text other people will read (a chat
+reply, a doc, a comment), grade the draft claim by claim before you save or
+post it, not only before you claim done. A deterministic gate proves the shape, not the facts. When
 a gate passes but the grader fails, move the grader's failures into the gate
 as new tests.
 

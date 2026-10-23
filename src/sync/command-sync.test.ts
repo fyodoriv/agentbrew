@@ -246,6 +246,34 @@ describe("syncCommands", () => {
     );
   });
 
+  it("a clash between two command source dirs: the later one wins, and sync names it", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [],
+      catalogVersion: "test",
+      commandSourceDirs: [
+        { label: "team-a", path: "/tmp/a/commands", origin: "agentfile" },
+        { label: "team-b", path: "/tmp/b/commands", origin: "agentfile" },
+      ],
+    });
+    mockExistsSync.mockImplementation((path) => !String(path).includes(".config/agentbrew/commands"));
+    mockReaddirSync.mockImplementation(
+      (path) => (String(path).startsWith("/tmp/") ? ["review.md"] : []) as unknown as ReturnType<typeof readdirSync>,
+    );
+    mockReadFileSync.mockImplementation((path) => (String(path).startsWith("/tmp/b/") ? "# From B" : "# From A"));
+
+    await syncCommands();
+
+    expect(mockWriteIfChanged).toHaveBeenCalledWith(
+      expect.stringContaining("review.md"),
+      "# From B",
+      expect.anything(),
+    );
+    expect(mockWriteIfChanged).not.toHaveBeenCalledWith(expect.anything(), "# From A", expect.anything());
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Name clash: command review from /tmp/b/commands; skipped from /tmp/a/commands"),
+    );
+  });
+
   it("does not warn about duplicate command sources on default sync", async () => {
     mockExistsSync.mockReturnValue(true);
     mockLoadState.mockReturnValue({

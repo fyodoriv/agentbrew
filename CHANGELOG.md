@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A command or agent name that two sources ship now has one fixed winner,
+  the same rule as skills: the source listed later wins. Before, commands
+  took the later dir and agents the earlier one, and nothing was printed.
+  Sync warns, and `agentbrew status` (and `--json`) names each clash.
 - **Security:** a built-in skill name with no catalog entry now resolves to
   agentbrew's own copy. Before, `agentbrew install`, an Agentfile `skills:`
   list, and `sync --pull` searched every source for it, so a source (a local

@@ -15,6 +15,7 @@ import type { AgentBrewState, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { agentNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 
 interface AgentDefTarget {
@@ -54,11 +55,12 @@ export function getAgentSources(state?: AgentBrewState): Array<{ label: string; 
 
   const builtIn = { label: "agentbrew", path: expandHome(BUILT_IN_SOURCE_DIR) };
 
-  // Built-in first (higher priority), then user sources
-  return [builtIn, ...userSources];
+  // The source listed later wins a name clash (as for skills, #425). The
+  // built-in folder is listed last, so it always wins.
+  return [...userSources, builtIn];
 }
 
-/** Collect and deduplicate agent definitions from all sources (first source wins). */
+/** Collect and deduplicate agent definitions from all sources (the source listed later wins). */
 export function collectAgentDefs(sources: Array<{ label: string; path: string }>): {
   agents: Map<string, CollectedAgentDef>;
   bySource: Record<string, number>;
@@ -77,18 +79,16 @@ export function collectAgentDefs(sources: Array<{ label: string; path: string }>
     }
     for (const file of files) {
       const name = basename(file, ".md");
-      if (!agents.has(name)) {
-        agents.set(name, {
-          name,
-          fileName: file,
-          sourcePath: join(source.path, file),
-          sourceLabel: source.label,
-        });
-        bySource[source.label] = (bySource[source.label] ?? 0) + 1;
-      }
+      agents.set(name, {
+        name,
+        fileName: file,
+        sourcePath: join(source.path, file),
+        sourceLabel: source.label,
+      });
     }
   }
 
+  for (const agent of agents.values()) bySource[agent.sourceLabel] = (bySource[agent.sourceLabel] ?? 0) + 1;
   return { agents, bySource };
 }
 
@@ -307,6 +307,7 @@ export async function syncAgentDefs(options?: SyncOptions, ctx?: Partial<Context
 
   const sources = getAgentSources();
   const { agents: allAgents, bySource } = collectAgentDefs(sources);
+  warnNameClashes("agent", agentNameClashes(loadState()), quiet, log);
 
   if (allAgents.size === 0 && !prune) {
     warnNoAgents(quiet, verbose, log);

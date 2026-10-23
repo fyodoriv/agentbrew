@@ -38,6 +38,8 @@ describe("plugin fixture cleanup", () => {
         `});`,
       ].join("\n"),
     );
+    // Its own config, so vitest never picks up one from a folder above tmpdir().
+    writeFileSync(join(root, "vitest.config.mjs"), "export default {};\n");
     const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("VITEST")));
 
     const run = spawnSync(VITEST, ["run"], { cwd: root, env, encoding: "utf-8", timeout: 25_000 });

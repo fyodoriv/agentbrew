@@ -67,8 +67,11 @@ function removeStaleStaging(): void {
     try {
       process.kill(pid, 0);
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === "ESRCH")
+      if ((e as NodeJS.ErrnoException).code !== "ESRCH") continue;
+      // Best effort: a dir this user cannot delete must not block installs.
+      try {
         rmSync(join(pluginsRoot(), name), { recursive: true, force: true });
+      } catch {}
     }
   }
 }

@@ -109,23 +109,31 @@ export function listAgentbrewLaunchAgentPlists(): string[] {
 /** The auto-repair plist; `agentbrew fix` rewrites it wholesale. */
 const CHECK_PLIST = "com.agentbrew.check.plist";
 
+/** Memory jobs belong to `agentbrew memory fix`; the repair job rewrites only the check plist's Node. */
+function isMemoryPlist(plistPath: string): boolean {
+  return basename(plistPath).startsWith("com.agentbrew.mcp-memory");
+}
+
 /**
- * Node drift on the auto-repair plist (#356): its Node is gone, or it runs a
- * versioned path (such as a Homebrew Cellar folder) while a link that
- * survives upgrades points at the same Node. A Node picked with
- * AGENTBREW_NODE_BIN (kept in the job env) is never drift.
+ * Node drift on any com.agentbrew.* plist that runs Node (#356, #456): its
+ * Node is gone, or it runs a versioned path (such as a Homebrew Cellar
+ * folder) while a link that survives upgrades points at the same Node. A
+ * Node picked with AGENTBREW_NODE_BIN (kept in the job env) is never drift.
  */
 function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
-  if (basename(plistPath) !== CHECK_PLIST) return [];
+  const memory = isMemoryPlist(plistPath);
+  const fix = memory ? "agentbrew memory fix" : "agentbrew fix";
   const program = extractPlistProgramArguments(content)[0];
   if (!program || !isAbsolute(program) || basename(program) !== "node") return [];
-  const drift = (detail: string): DriftItem[] => [{ agent: "launchagent", type: "launchagent", detail }];
-  if (!existsSync(program)) return drift(`${plistPath}: runs ${program}, which no longer exists — run agentbrew fix`);
+  const drift = (detail: string): DriftItem[] => [
+    { agent: "launchagent", type: memory ? "memory-launchagent" : "launchagent", detail },
+  ];
+  if (!existsSync(program)) return drift(`${plistPath}: runs ${program}, which no longer exists — run ${fix}`);
   const override = /<key>AGENTBREW_NODE_BIN<\/key>\s*<string>([^<]*)<\/string>/u.exec(content)?.[1];
   if (override === program) return [];
   const stable = resolveSchedulerNode({ execPath: program, env: {} });
   if (stable === program) return [];
-  return drift(`${plistPath}: runs ${program}, which a Node upgrade deletes; use ${stable} — run agentbrew fix`);
+  return drift(`${plistPath}: runs ${program}, which a Node upgrade deletes; use ${stable} — run ${fix}`);
 }
 
 /**

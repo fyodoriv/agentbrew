@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The nightly memory maintenance LaunchAgent no longer pins a versioned Node
+  that `brew upgrade node` (or a new fnm version) deletes (#456). It uses the
+  same upgrade-proof Node as the check job, and the scheduler now also knows
+  fnm's `default` alias. `agentbrew status` reports a versioned Node in every
+  `com.agentbrew.*` job, with `agentbrew memory fix` as the memory job's fix.
 - `agentbrew work --json` gives each step its file `path` and `userOnly`, and
   `/work` reads and follows a user-only skill's file when the Skill tool hides
   it (#451). Before, a step such as `/tooling-checkup` could not run.
@@ -237,6 +242,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A SessionStart hook, `updates-landed`: when dotfiles' `dotfiles-updates-landed`
+  is installed, the agent gets its once-a-day "updates landed" line and can
+  suggest the checkup. It keeps no state and gives up after 3 seconds (#442).
 - A recommended catalog rule, `default-to-these-repos`: before writing a new
   skill, command, rule, or hook, extend the installed source that owns the
   closest one. The README now opens with one install-or-update prompt that

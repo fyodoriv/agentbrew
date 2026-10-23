@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { installFakeLaunchctl } from "../test-utils/fake-launchctl.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PYTHON_VERSION } from "./constants.js";
 import {
+  buildMaintainPlist,
   buildMemoryDaemonPlist,
   installMemoryLaunchAgents,
   isLabelDisabledInLaunchctlOutput,
@@ -11,6 +12,11 @@ import {
   memoryDaemonPath,
   parseLaunchctlJobIdentity,
 } from "./launchagent.js";
+
+vi.mock("../sync/scheduler-paths.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../sync/scheduler-paths.js")>()),
+  resolveSchedulerNode: () => "/stable/opt/node/bin/node",
+}));
 
 describe("memory LaunchAgent", () => {
   it("enables behavioral bootstrap and all canonical daemon invariants", () => {
@@ -103,6 +109,24 @@ describe("memory LaunchAgents under a scratch HOME", () => {
       expect(changes).toEqual([]);
     } finally {
       fake.restore();
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
+describe("memory maintenance plist Node (#456)", () => {
+  it("runs the Node link that survives upgrades, not the versioned process.execPath", () => {
+    const plist = buildMaintainPlist("/Users/test", "/usr/bin:/bin", "/Users/test/logs");
+    const program = /<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)<\/string>/u.exec(plist)?.[1];
+    expect(program).toBe("/stable/opt/node/bin/node");
+  });
+
+  it("keeps AGENTBREW_NODE_BIN in the job env when the job runs that Node, like the check job", () => {
+    vi.stubEnv("AGENTBREW_NODE_BIN", "/stable/opt/node/bin/node");
+    try {
+      const plist = buildMaintainPlist("/Users/test", "/usr/bin:/bin", "/Users/test/logs");
+      expect(plist).toMatch(/<key>AGENTBREW_NODE_BIN<\/key>\s*<string>\/stable\/opt\/node\/bin\/node<\/string>/u);
+    } finally {
       vi.unstubAllEnvs();
     }
   });

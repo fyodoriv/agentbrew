@@ -518,6 +518,16 @@ hooks:
     sourceRule: 'docs/agent-perf.md "Perf log"'
     agents: ["claude-code"]
 
+  - id: updates-landed
+    description: At session start, pass dotfiles' once-a-day "updates landed, run the checkup" line to the agent (silent without dotfiles)
+    event: SessionStart
+    script: checks/updates-landed.sh
+    tier: deterministic
+    verdict: warn
+    bypassEnvVar: HOOK_BYPASS_UPDATES_LANDED
+    sourceRule: 'issue #442 "daily update nudge"; dotfiles bin/dotfiles-updates-landed (#311)'
+    agents: ["claude-code"]
+
   - id: perf-brief
     description: At session start, give the agent the 7-day agent time brief for the project (silent without data)
     event: SessionStart

@@ -307,7 +307,10 @@ describe("checkLaunchAgentPathDrift", () => {
     it("is not drift when a PATH node dir resolves to the same node", () => {
       mockExistsSync.mockImplementation((p) => String(p).includes("dotfiles/bin"));
       const dotfilesBin = resolveDotfilesBinPath("/home/user");
-      expect(run(`/opt/homebrew/opt/node/bin:${dotfilesBin}:/usr/bin:/bin`, cellarNode)).toEqual([]);
+      const details = run(`/opt/homebrew/opt/node/bin:${dotfilesBin}:/usr/bin:/bin`, cellarNode);
+      expect(details.filter((d) => d.includes("PATH missing node"))).toEqual([]);
+      // The Cellar program itself is Node drift since #456: an upgrade deletes it.
+      expect(details).toEqual([expect.stringContaining("run agentbrew memory fix")]);
     });
 
     it("is still drift when the PATH node is another node", () => {

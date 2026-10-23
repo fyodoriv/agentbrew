@@ -1,10 +1,19 @@
 // #356: the plist `agentbrew auto-sync install` writes, and how it reloads.
 // The plist lands in the scratch HOME (vitest.isolated-home.ts). launchctl is
 // mocked: no test loads, unloads, or edits a real LaunchAgent.
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 const launchctl = vi.hoisted(() => vi.fn((..._args: unknown[]) => ""));
 const spawnMock = vi.hoisted(() => vi.fn((..._args: unknown[]) => ({ unref: () => undefined })));
@@ -35,6 +44,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 import { checkLaunchAgentPathDrift, extractPlistProgramArguments } from "../drift-checks/launchagent-path.js";
+import { AUTO_FIXABLE_TYPES, driftFix } from "../drift-fixes.js";
 import { autoSyncStatus } from "./auto-sync.js";
 import { installLaunchAgent } from "./launchagent.js";
 
@@ -167,6 +177,12 @@ describe("auto-sync LaunchAgent Node path (#356)", () => {
       writeFileSync(plistPath(), plist);
     }
 
+    function nodeDriftTypes(): string[] {
+      return checkLaunchAgentPathDrift()
+        .filter((item) => item.detail.includes("runs "))
+        .map((item) => item.type);
+    }
+
     function nodeDrift(): string[] {
       return checkLaunchAgentPathDrift()
         .map((item) => item.detail)
@@ -180,6 +196,53 @@ describe("auto-sync LaunchAgent Node path (#356)", () => {
       await installRunning(cellar);
 
       expect(nodeDrift()).toEqual([expect.stringContaining(join(root, "homebrew", "opt", "node", "bin", "node"))]);
+    });
+
+    it("flags a Cellar Node path in the memory maintenance job too, and names its own fix command (#456)", () => {
+      const cellar = fakeNode(join(root, "homebrew", "Cellar", "node", "24.0.0", "bin", "node"));
+      mkdirSync(join(root, "homebrew", "opt"), { recursive: true });
+      symlinkSync("../Cellar/node/24.0.0", join(root, "homebrew", "opt", "node"));
+      const maintain = join(homedir(), "Library", "LaunchAgents", "com.agentbrew.mcp-memory-maintain.plist");
+      mkdirSync(dirname(maintain), { recursive: true });
+      rmSync(plistPath(), { force: true });
+      onTestFinished(() => rmSync(maintain, { force: true }));
+      writeFileSync(
+        maintain,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentbrew.mcp-memory-maintain</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${cellar}</string>
+    <string>/x/dist/cli.js</string>
+    <string>memory</string>
+    <string>maintain</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${dirname(cellar)}:/usr/bin:/bin</string>
+    <key>LANG</key>
+    <string>C.UTF-8</string>
+  </dict>
+</dict>
+</plist>
+`,
+      );
+
+      // Its own type: `agentbrew memory fix` repairs it, and the repair job does not claim it.
+      expect(nodeDriftTypes()).toEqual(["memory-launchagent"]);
+      expect(driftFix({ type: "memory-launchagent" })).toBe("agentbrew memory fix");
+      expect(AUTO_FIXABLE_TYPES.has("memory-launchagent")).toBe(false);
+      expect(nodeDrift()).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `mcp-memory-maintain.*${join(root, "homebrew", "opt", "node", "bin", "node").replace(/[.]/g, "\\.")}.*agentbrew memory fix`,
+          ),
+        ),
+      ]);
     });
 
     it("flags a Node path that no longer exists", async () => {

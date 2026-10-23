@@ -1397,6 +1397,20 @@
         "Reviews the fix of a review finding again",
         "Reports at least one review per fix commit"
       ]
+    },
+    {
+      "id": 122,
+      "prompt": "/goal check this thread and get the real proven answers to the three questions in it (a stakeholder in a team chat thread asks why two items are outliers on a chart, what would make the process easier, and whether the approach applies to another platform)",
+      "expected_output": "The agent prints the goal contract as soon as it knows the three questions, before it pulls evidence for any one answer. Each answer cites a primary source (a PR, a date, a line count, a data row). It recomputes the headline metric without the outliers. A fresh-context grader checks each claim of the draft before the draft is saved, and every FAIL and overstated word (such as every or both) is fixed. A draft reply is saved and nothing is sent. The final report prints each goal check line with its evidence.",
+      "expectations": [
+        "Prints the goal contract once the three questions are known, before gathering evidence for any one answer",
+        "Each answer cites a primary source: a PR, a date, a line count, or a data row",
+        "Recomputes the headline metric without the outliers",
+        "A fresh-context grader checks each claim of the draft before it is saved, and its FAILs are fixed",
+        "Fixes overstated words the grader flags (such as every or both)",
+        "Saves a draft reply; nothing is sent",
+        "Prints each goal check line with its evidence"
+      ]
     }
   ]
 }

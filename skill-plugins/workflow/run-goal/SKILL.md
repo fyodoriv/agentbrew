@@ -57,6 +57,8 @@ Follow this order, even for a small goal:
    and say in one chat line that the contract is saved. The
    `goal-contract-before-edit` hook blocks other file edits until that file
    has the "Done when", "Metric", and "Pivot" sections.
+   For a research or Q&A goal, print it as soon as the questions are known,
+   before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
 4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
 5. Verify with fresh evidence (Phase 5), then the retro and the final
@@ -383,9 +385,11 @@ When a subagent tool exists, also ask a fresh-context subagent to grade each
 criterion against the evidence, one criterion at a time. A grader that did not
 do the work is not swayed by your choices. This is the pattern behind Claude
 Managed Agents "outcomes" (a rubric plus a separate grader). Fix what it fails
-before you report. A deterministic gate proves the shape, not the facts. When
-a gate passes but the grader fails, move the grader's failures into the gate
-as new tests.
+before you report. When the deliverable is text other people will read (a chat
+reply, a doc, a comment), ask the same grader to grade the draft claim by
+claim before you save or post it, not only before you claim done. A
+deterministic gate proves the shape, not the facts. When a gate passes but the
+grader fails, move the grader's failures into the gate as new tests.
 
 Before you merge each PR, ask a fresh-context subagent to review its diff,
 also when the full suite is green. In one goal run, reviewers found real

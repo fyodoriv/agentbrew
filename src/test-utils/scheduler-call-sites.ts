@@ -18,10 +18,6 @@ import ts from "typescript";
 export type SchedulerTool = "launchctl" | "crontab" | "systemctl";
 export const SCHEDULER_TOOLS: readonly SchedulerTool[] = ["launchctl", "crontab", "systemctl"];
 
-/** A spawn call: a bare child_process function, or one on `child_process.` / `cp.`, never `re.exec(`. */
-const SPAWN =
-  "(?:(?<![.\\w$])|(?<=\\b(?:child_process|childProcess|cp)\\.))(?:execFileSync|execFile|spawnSync|spawn|execSync|exec|execa)\\(";
-
 function patterns(tools: readonly SchedulerTool[]): { toolLiteral: string; shellLiteral: string } {
   const tool = `(?:${tools.join("|")})`;
   /** A literal that is the tool itself, optionally with a folder: "crontab", "/usr/bin/crontab". */
@@ -37,29 +33,33 @@ function withoutComments(source: string): string {
   return ts.createPrinter({ removeComments: true }).printFile(file);
 }
 
-/** Index just past the string or template literal that starts at `start`. */
-function skipLiteral(code: string, start: number): number {
-  const quote = code[start];
-  let i = start + 1;
-  while (i < code.length && code[i] !== quote) i += code[i] === "\\" ? 2 : 1;
-  return i + 1;
+const SPAWN_NAMES = new Set(["execFileSync", "execFile", "spawnSync", "spawn", "execSync", "exec", "execa"]);
+const MODULE_NAMES = new Set(["child_process", "childProcess", "cp"]);
+
+/** True for `spawn(...)` or `child_process.spawn(...)`, never `re.exec(...)`. */
+function isSpawnCall(node: ts.CallExpression): boolean {
+  const callee = node.expression;
+  if (ts.isIdentifier(callee)) return SPAWN_NAMES.has(callee.text);
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    SPAWN_NAMES.has(callee.name.text) &&
+    ts.isIdentifier(callee.expression) &&
+    MODULE_NAMES.has(callee.expression.text)
+  );
 }
 
-/** The text between a call's "(" at `open` and its matching ")", skipping string and template literals. */
-function callArguments(code: string, open: number): string {
-  let depth = 0;
-  let i = open;
-  while (i < code.length) {
-    const ch = code[i] ?? "";
-    if (ch === '"' || ch === "'" || ch === "`") {
-      i = skipLiteral(code, i);
-      continue;
+/** The argument text of every spawn call, from the syntax tree (comments already removed). */
+function spawnArgumentTexts(code: string): string[] {
+  const file = ts.createSourceFile("source.ts", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && isSpawnCall(node)) {
+      found.push(node.arguments.map((arg) => arg.getText(file)).join(", "));
     }
-    if (ch === "(") depth++;
-    if (ch === ")" && --depth === 0) return code.slice(open + 1, i);
-    i++;
-  }
-  return code.slice(open + 1);
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
 }
 
 function escapeRegExp(name: string): string {
@@ -74,9 +74,7 @@ export function schedulerCallSites(
   const code = withoutComments(source);
   const { toolLiteral, shellLiteral } = patterns(tools);
   const kinds = new Set<"direct" | "shell" | "variable">();
-  const spawnArgs = [...code.matchAll(new RegExp(SPAWN, "g"))].map((m) =>
-    callArguments(code, (m.index ?? 0) + m[0].length - 1),
-  );
+  const spawnArgs = spawnArgumentTexts(code);
   const firstArgIs = (name: string): boolean =>
     spawnArgs.some((args) => new RegExp(`^\\s*${escapeRegExp(name)}\\b`).test(args));
   const argsUse = (name: string): boolean =>

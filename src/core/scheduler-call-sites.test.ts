@@ -51,6 +51,7 @@ describe("scheduler call-site detector", () => {
       "shell",
     ],
     ["a call on child_process", `child_process.spawnSync("crontab", ["-"]);`, "direct"],
+    ["a shell string after a nested template", 'execSync(`a ${x ? `b` : "c"} d`, `launchctl load p`);', "shell"],
     [
       "a call hidden after a glob string",
       `const watch = { ignored: ["**/*.log"] };\nexecFileSync("crontab", ["-"], { input });\n/** doc */\nfunction f() {}`,
@@ -67,7 +68,9 @@ describe("scheduler call-site detector", () => {
     ["a comment", `// \`launchctl load\` exits 0 even when launchd refuses the job\nexecFileSync("git", ["status"]);`],
     ["a doc comment", `/** Parse \`systemctl show\` output. */\nfunction parse() {}`],
     ["a regex exec", `const m = /^(\\d+)/.exec(out) ?? fail("launchctl print failed");`],
-    ["a trailing comment", `execFileSync("git", ["status"]); // like \`launchctl load x\``],
+    ["a comment inside the arguments", 'execFileSync("git", [\n  // like `launchctl load x`\n  "status",\n]);'],
+    ["a regex literal with a quote", 'execFileSync("git", [s.replace(/"/g, "")]);\nconsole.log("Try: crontab -e");'],
+    ["a regex literal with a paren", 'execFileSync("git", [s.replace(/\\(/g, "")]);\nconsole.log("Try: crontab -e");'],
   ])("ignores %s", (_label, source) => {
     expect(schedulerCallSites(source)).toEqual([]);
   });

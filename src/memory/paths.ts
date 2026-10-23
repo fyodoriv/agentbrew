@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { expandHome } from "../utils.js";
+import { expandHome, resolveStateHome } from "../utils.js";
 
 export const MEMORY_PACKS_LEDGER_DIR = "~/.config/agentbrew/memory-packs";
 export const MEMORY_PROJECT_SYNC_LEDGER_FILE = "memory-project-sync.json";
@@ -30,11 +30,6 @@ export function memoryPacksLedgerDir(): string {
 
 export function memoryPackLedgerPath(packId: string): string {
   return join(memoryPacksLedgerDir(), `${packId}.json`);
-}
-
-/** The XDG spec treats a set-but-empty `XDG_STATE_HOME` as unset. */
-function resolveStateHome(home: string, stateHome: string | undefined): string {
-  return stateHome || join(home, ".local/state");
 }
 
 export function memoryMaintainMarkerPath(home = homedir()): string {

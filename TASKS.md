@@ -292,19 +292,6 @@
   - **Pivot**: if fetching is not the main cost, profile the deploy step and move that work behind a changed-files check instead.
   - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load); sync --pull breakdown, 2026-10-23.
 
-- [ ] A set-but-empty `XDG_STATE_HOME` never puts upstream report drafts in the current directory
-  - **ID**: report-drafts-xdg-empty
-  - **Tags**: config
-  - **Details**: `saveDraft` in `src/report.ts` falls back with `??` from `process.env.XDG_STATE_HOME`, so `XDG_STATE_HOME=` saves `agentbrew report` drafts under a relative `agentbrew/reports` folder wherever the command runs. The memory paths already treat an empty value as unset (`resolveStateHome` in `src/memory/paths.ts`); share that helper.
-  - **Files**: `src/report.ts`, `src/memory/paths.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: with `XDG_STATE_HOME=""`, a saved draft lands under `~/.local/state/agentbrew/reports`.
-  - **Hypothesis**: treating an empty value as unset drops relative draft paths from 1 case to 0.
-  - **Measurement**: a vitest case for the draft path with `XDG_STATE_HOME=""` and with it unset.
-  - **Success**: both cases return the same absolute folder.
-  - **Pivot**: if more modules read `XDG_STATE_HOME` with `??`, move the helper to `src/utils.ts` and use it everywhere.
-  - **Anchor**: XDG Base Directory spec ("If $XDG_STATE_HOME is either not set or empty..."); review of PR for `xdg-state-home-empty` (2026-10-23).
-
 ## P3
 
 - [ ] The run-goal skill stays well under the 500-line skill limit

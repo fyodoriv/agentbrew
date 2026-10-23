@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Runner, RunResult } from "./contribute.js";
 import { optOutFile, report, safetyChecklist, scrubReport } from "./report.js";
 
@@ -86,6 +86,30 @@ describe("scrubReport", () => {
 });
 
 describe("agentbrew report", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["set but empty", ""],
+    ["unset", undefined],
+  ])("saves the draft under ~/.local/state when XDG_STATE_HOME is %s", (_label, value) => {
+    vi.stubEnv("XDG_STATE_HOME", value);
+    const { home, body } = scratch();
+    const { run } = fakeGh();
+    const result = report({
+      title: "Sync fails",
+      bodyFile: body,
+      repo: "fyodoriv/agentbrew",
+      home,
+      user: "jdoe",
+      run,
+      log: () => {},
+    });
+
+    expect(dirname(result.draftPath as string)).toBe(join(home, ".local", "state", "agentbrew", "reports"));
+  });
+
   it("never posts without --yes: prints the checklist and exact text, saves a draft", () => {
     const { home, body } = scratch();
     const { run, calls } = fakeGh();

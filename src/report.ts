@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import { defaultRunner, githubSlug, type Runner, readRemotes, resolveUpstream } from "./contribute.js";
+import { resolveStateHome } from "./utils.js";
 
 export interface ScrubFinding {
   /** Short detector name, for example "email". */
@@ -269,7 +270,7 @@ function findDuplicates(run: Runner, cwd: string, repo: string, title: string): 
 }
 
 function saveDraft(home: string, now: Date, repo: string, title: string, body: string): string {
-  const dir = join(process.env.XDG_STATE_HOME ?? join(home, ".local", "state"), "agentbrew", "reports");
+  const dir = join(resolveStateHome(home, process.env.XDG_STATE_HOME), "agentbrew", "reports");
   mkdirSync(dir, { recursive: true });
   const stamp = now.toISOString().replace(/[:.]/g, "-");
   const path = join(dir, `${stamp}-${repo.replace("/", "-")}.md`);

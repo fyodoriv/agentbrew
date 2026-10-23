@@ -1,9 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 
 export function expandHome(path: string): string {
   return path.replace(/^~/, homedir());
+}
+
+/** The XDG state folder. The XDG spec treats a set-but-empty `XDG_STATE_HOME` as unset. */
+export function resolveStateHome(home: string, stateHome: string | undefined): string {
+  return stateHome || join(home, ".local/state");
 }
 
 /**

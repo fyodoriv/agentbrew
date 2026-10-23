@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A set-but-empty `XDG_STATE_HOME` no longer saves `agentbrew report` drafts
+  in the current directory. They go to `~/.local/state/agentbrew/reports/`.
 - Two `agentbrew memory sync-projects` runs at the same time (for example
   the daily job and a `SessionEnd` hook) no longer drop each other's stores
   from the sync ledger. The ledger write now takes a short lock and merges.

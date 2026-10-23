@@ -111,6 +111,25 @@ describe("sweepOneJsonConfigForCatalogPins", () => {
     expect(read(path)).toEqual(original);
   });
 
+  it("raises an exact pin older than the catalog's to the catalog version", () => {
+    // tasks-mcp 0.5.0's list_tasks walks the whole home folder (11 s, 1.1 MB);
+    // a stale exact pin kept it in VS Code settings forever.
+    const path = write("old-pin.json", {
+      mcpServers: { "tasks-mcp": { command: "npx", args: ["-y", "tasks-mcp@0.5.0"] } },
+    });
+    const result = sweepOneJsonConfigForCatalogPins(path, "mcpServers", false);
+    expect(result.fixedCount).toBe(1);
+    const after = read(path) as { mcpServers: { "tasks-mcp": { args: string[] } } };
+    expect(after.mcpServers["tasks-mcp"].args).toEqual(["-y", "tasks-mcp@0.10.2"]);
+  });
+
+  it("keeps an exact pin newer than the catalog's", () => {
+    const original = { mcpServers: { "tasks-mcp": { command: "npx", args: ["-y", "tasks-mcp@0.11.0"] } } };
+    const path = write("new-pin.json", original);
+    expect(sweepOneJsonConfigForCatalogPins(path, "mcpServers", false)).toEqual({ fixedCount: 0, findings: [] });
+    expect(read(path)).toEqual(original);
+  });
+
   it("leaves catalog-pinned tasks-mcp entries unchanged", () => {
     const original = {
       mcpServers: {
@@ -159,6 +178,16 @@ describe("sweepOneJsonConfigForCatalogPins", () => {
     const result = sweepOneYamlConfigForCatalogPins(path, "extensions", false);
     expect(result.fixedCount).toBe(1);
     expect(readFileSync(path, "utf-8")).toContain("tasks-mcp@0.10.2");
+  });
+
+  it("raises an old exact pin in codex toml", () => {
+    const path = writeText(
+      "old.toml",
+      ["[mcpServers.tasks-mcp]", 'command = "npx"', 'args = ["-y", "tasks-mcp@0.5.0"]', ""].join("\n"),
+    );
+    const result = sweepOneTomlConfigForCatalogPins(path, "mcpServers", false);
+    expect(result.fixedCount).toBe(1);
+    expect(readFileSync(path, "utf-8")).toContain('"tasks-mcp@0.10.2"');
   });
 
   it("pins codex toml tasks-mcp entries without rewriting other blocks", () => {

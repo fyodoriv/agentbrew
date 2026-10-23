@@ -1,14 +1,14 @@
 /** Plugin authoring tools — `plugin new`, `plugin test`, `plugin migrate` (#208 step 11). */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { migrateOverlay, scaffoldPlugin, testPlugin } from "./authoring.js";
 import { validateManifest } from "./manifest.js";
 
 function scratch(): string {
-  return mkdtempSync(join(tmpdir(), "plugin-author-"));
+  return fixtureDir("plugin-author-");
 }
 
 describe("plugin new", () => {

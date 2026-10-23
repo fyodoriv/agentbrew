@@ -318,19 +318,6 @@
   - **Pivot**: if the CLI is not on PATH at that install step, call it by the absolute path the installer already uses.
   - **Anchor**: PR #397 and #402 review notes (2026-10-22).
 
-- [ ] Plugin test fixtures delete their temp dirs, and interactive `plugin add` installs what it showed
-  - **ID**: plugin-fixture-cleanup-and-single-fetch
-  - **Tags**: tests, plugins, security
-  - **Details**: Found by the PR #403 worker. (1) `fixtureKey()` and `pluginFixture()` in `src/test-utils/plugin-fixture.ts` never delete their temp dirs: on 2026-10-22 `$TMPDIR` held 2,640 `plugin-src-*` and 348 `plugin-keys-*` folders, the latter with throwaway private keys. (2) An interactive `plugin add` fetches twice (`src/plugins/cli-plugin.ts:36` and `:42`): the user approves what the first fetch showed, but the second fetch is installed. Only the trusted signer could use the gap; still, install the object the user approved.
-  - **Files**: `src/test-utils/plugin-fixture.ts`, `src/plugins/cli-plugin.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: a full plugin test run leaves 0 new `plugin-src-*` or `plugin-keys-*` folders, and `plugin add` installs the exact commit it showed for approval.
-  - **Hypothesis**: cleanup hooks and one fetch drop leaked fixture dirs per run from hundreds to 0 and approval-to-install drift from possible to impossible.
-  - **Measurement**: count the folders in `$TMPDIR` before and after `npx vitest run src/plugins`; a vitest case that changes the remote between the two fetches.
-  - **Success**: 0 leaked folders; the install matches the approved commit.
-  - **Pivot**: if one fetch is not possible in the interactive flow, re-check the second fetch's tag object against the approved one and refuse a change.
-  - **Anchor**: PR #403 (2026-10-22).
-
 - [ ] An MCP git install never reuses a cache dir that belongs to another repo
   - **ID**: mcp-git-cache-identity
   - **Tags**: security, mcp

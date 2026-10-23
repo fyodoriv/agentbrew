@@ -1,14 +1,14 @@
 /** Capability model, step 5 of #208: deny by default. */
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { assertCapabilities, CapabilityError, checkCapabilities } from "./capabilities.js";
 import type { PluginManifest } from "./manifest.js";
 
 function plugin(files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "plugin-caps-"));
+  const dir = fixtureDir("plugin-caps-");
   for (const [rel, body] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, rel)), { recursive: true });
     writeFileSync(join(dir, rel), body);

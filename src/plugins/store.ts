@@ -138,36 +138,71 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
   }
 }
 
+function assertNotInstalled(name: string, lock: ReturnType<typeof readLock>): void {
+  if (existsSync(pluginDir(name)) || lock.plugins?.some((p) => p.name === name)) {
+    throw new Error(`Plugin "${name}" is already installed. Remove it first.`);
+  }
+}
+
+/** A staged and verified plugin that waits for approval. */
+export interface AddPlan {
+  staged: Staged;
+  /** The `--signer` key, normalized; trusted on install when it signed the tag. */
+  newSigner?: string;
+  /** Delete the staged checkout without installing. */
+  discard(): void;
+}
+
 /**
- * Install `<url>@<signed-tag>`: stage and verify, show capabilities and the
- * signer, require approval, then move into place and lock commit, tree hash,
- * capabilities hash, and signer.
+ * Stage and verify `<url>@<signed-tag>` once, then show the capabilities and
+ * the signer for approval. Nothing is installed: {@link applyAdd} installs
+ * this exact staged checkout, so a tag that moves while the user reads the
+ * prompt cannot change what gets installed.
  */
-export function addPlugin(spec: string, options: AddPluginOptions): PluginLockEntry {
+export function planAdd(spec: string, options: { signer?: string }): AddPlan {
   const { url, ref } = parsePluginSpec(spec);
   const newSigner = options.signer ? normalizeKey(options.signer) : undefined;
   const staged = stage(url, ref, newSigner);
+  const discard = () => rmSync(staged.dir, { recursive: true, force: true });
   try {
     const { manifest, entry } = staged;
-    const lock = readLock();
-    if (existsSync(pluginDir(manifest.name)) || lock.plugins?.some((p) => p.name === manifest.name)) {
-      throw new Error(`Plugin "${manifest.name}" is already installed. Remove it first.`);
-    }
+    assertNotInstalled(manifest.name, readLock());
     console.log(chalk.bold(`Plugin ${manifest.name} ${manifest.version} (${url}@${ref}) asks for:`));
     console.log(describeCapabilities(manifest));
     console.log(
       `  signed by: ${entry.signer}${signersFor(manifest.name).includes(entry.signer) ? "" : " (new signer)"}`,
     );
-    if (!options.yes) throw new Error("Plugin capabilities need approval: re-run with --yes to approve them.");
+    return { staged, newSigner, discard };
+  } catch (e) {
+    discard();
+    throw e;
+  }
+}
 
-    if (newSigner && entry.signer === newSigner) trustSigner(manifest.name, newSigner);
-    renameSync(staged.dir, pluginDir(manifest.name));
+/**
+ * Install a plan the user approved: move its staged checkout into place and
+ * lock commit, tree hash, capabilities hash, and signer. Without approval it
+ * installs nothing. The staged checkout is deleted either way.
+ */
+export function applyAdd(plan: AddPlan, options: { yes: boolean }): PluginLockEntry {
+  try {
+    if (!options.yes) throw new Error("Plugin capabilities need approval: re-run with --yes to approve them.");
+    const { manifest, entry } = plan.staged;
+    const lock = readLock();
+    assertNotInstalled(manifest.name, lock);
+    if (plan.newSigner && entry.signer === plan.newSigner) trustSigner(manifest.name, plan.newSigner);
+    renameSync(plan.staged.dir, pluginDir(manifest.name));
     lock.plugins = [...(lock.plugins ?? []), entry];
     writeLock(lock);
     return entry;
   } finally {
-    rmSync(staged.dir, { recursive: true, force: true });
+    plan.discard();
   }
+}
+
+/** Install `<url>@<signed-tag>` in one step: {@link planAdd}, then {@link applyAdd}. */
+export function addPlugin(spec: string, options: AddPluginOptions): PluginLockEntry {
+  return applyAdd(planAdd(spec, options), options);
 }
 
 /** Re-pin the previous lock entry after verifying it again. The current entry becomes the previous one. */

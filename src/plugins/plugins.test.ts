@@ -3,8 +3,7 @@
  * section, and `plugin add/list/remove` with a tree hash.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +21,7 @@ const { home, previousHome } = vi.hoisted(() => {
 });
 
 import { findLockViolations, readLock, writeLock } from "../lock.js";
+import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { validateManifest } from "./manifest.js";
 import { allowedSignersPath, revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, listPlugins, parsePluginSpec, pluginDir, removePlugin, rollbackPlugin } from "./store.js";
@@ -39,7 +39,7 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, env: GIT_ENV, encoding: "utf-8", stdio: "pipe" }).trim();
 }
 
-const KEYS = mkdtempSync(join(tmpdir(), "plugin-keys-"));
+const KEYS = fixtureDir("plugin-keys-");
 function makeKey(name: string): { file: string; pub: string } {
   const file = join(KEYS, name);
   if (!existsSync(file)) execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "", "-f", file]);
@@ -50,7 +50,7 @@ const OTHER = makeKey("other");
 
 /** A plugin repo whose `tag` is SSH-signed by `key` (or lightweight when key is null). */
 function makePluginRepo(manifest: unknown = MANIFEST, tag = "v1.0.0", key: { file: string } | null = SIGNER): string {
-  const dir = mkdtempSync(join(tmpdir(), "plugin-src-"));
+  const dir = fixtureDir("plugin-src-");
   writeFileSync(join(dir, "agentbrew-plugin.yaml"), yaml.dump(manifest));
   git(dir, "init", "-q");
   git(dir, "add", ".");

@@ -10,13 +10,15 @@ vi.mock("node:fs", () => ({
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
   execFileSync: vi.fn(),
+  execFile: vi.fn(),
+  spawnSync: vi.fn(() => ({ stdout: "" })),
 }));
 
 vi.mock("../utils.js", () => ({
   checkGitAvailable: vi.fn(() => true),
 }));
 
-import { execFileSync, execSync } from "node:child_process";
+import { execFile, execFileSync, execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import type { Source } from "../types.js";
 import {
@@ -926,6 +928,67 @@ describe("indexAllSources", () => {
     expect(sources[0].indexedAt).toBeDefined();
     expect(sources[1].availableItems).toHaveLength(0);
     expect(sources[1].indexedAt).toBeDefined();
+  });
+});
+
+describe("indexAllSources parallel fetch", () => {
+  const remote = (name: string): Source => ({
+    url: `org/${name}`,
+    type: "github",
+    skillsInstalled: [],
+    availableItems: [],
+    addedAt: "2026-01-01",
+  });
+
+  it("pulls cached sources in parallel and falls back to the normal pull when one fails", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReaddirSync.mockReturnValue([] as never);
+    mockExecFileSync.mockReturnValue("" as never);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.mocked(execFile).mockImplementation(((
+      _cmd: string,
+      _args: string[],
+      opts: { cwd: string },
+      callback: (error: Error | null) => void,
+    ) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      setTimeout(() => {
+        inFlight -= 1;
+        callback(opts.cwd.includes("broken") ? new Error("diverged") : null);
+      }, 20);
+    }) as never);
+    const names = ["a", "b", "c", "broken", ...Array.from({ length: 8 }, (_, i) => `x${i}`)];
+
+    await indexAllSources(names.map(remote));
+
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(8);
+    const syncPulls = mockExecFileSync.mock.calls.filter((c) => c[1]?.includes("pull"));
+    expect(syncPulls.map((c) => String((c[2] as { cwd?: string })?.cwd))).toEqual([expect.stringContaining("broken")]);
+  });
+
+  it("skips local, uncloned, and duplicate sources, and never lets git prompt", async () => {
+    mockExistsSync.mockImplementation((p) => !String(p).includes("org_fresh"));
+    mockReaddirSync.mockReturnValue([] as never);
+    mockExecFileSync.mockReturnValue("" as never);
+    const pulled: Array<{ cwd: string; env: NodeJS.ProcessEnv }> = [];
+    vi.mocked(execFile).mockImplementation(((
+      _cmd: string,
+      _args: string[],
+      opts: { cwd: string; env: NodeJS.ProcessEnv },
+      callback: (error: Error | null) => void,
+    ) => {
+      pulled.push(opts);
+      callback(null);
+    }) as never);
+    const local: Source = { ...remote("ignored"), url: "/local/skills", type: "local" };
+
+    await indexAllSources([local, remote("fresh"), remote("cached"), remote("cached")]);
+
+    expect(pulled.map((p) => p.cwd)).toEqual([expect.stringContaining("org_cached")]);
+    expect(pulled[0]?.env.GIT_TERMINAL_PROMPT).toBe("0");
   });
 });
 

@@ -48,6 +48,7 @@ vi.mock("./catalog/index-source.js", () => ({
 
 vi.mock("./catalog/install-skill.js", () => ({
   copySkillFromCache: vi.fn(),
+  isInstalledSkillCurrent: vi.fn(() => false),
 }));
 
 vi.mock("./catalog/install-other.js", () => ({
@@ -81,7 +82,7 @@ vi.mock("./core/errors.js", async (importOriginal) => ({
 import { execFileSync } from "node:child_process";
 import { getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
-import { copySkillFromCache } from "./catalog/install-skill.js";
+import { copySkillFromCache, isInstalledSkillCurrent } from "./catalog/install-skill.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clearSyncErrors, saveSyncErrors } from "./core/errors.js";
 import { readLock, updateLock } from "./lock.js";
@@ -451,6 +452,15 @@ describe("refreshInstalledSkills", () => {
     expect(results[1]).toEqual({ source: "user/repo", skill: "plan", status: "refreshed" });
   });
 
+  it("leaves an installed skill alone when it already matches the cache", () => {
+    const source = makeSource({ skillsInstalled: ["debug"] });
+    mockGetSourceCachePath.mockReturnValue("/cache/user-repo");
+    vi.mocked(isInstalledSkillCurrent).mockReturnValueOnce(true);
+    const results = refreshInstalledSkills([source]);
+    expect(results[0]).toEqual({ source: "user/repo", skill: "debug", status: "unchanged" });
+    expect(mockCopySkillFromCache).not.toHaveBeenCalled();
+  });
+
   it("reports failed status when copy returns undefined", () => {
     const source = makeSource({ skillsInstalled: ["missing-skill"] });
     mockGetSourceCachePath.mockReturnValue("/cache/user-repo");
@@ -467,6 +477,14 @@ describe("refreshInstalledSkills", () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toEqual({ source: "user/repo", skill: "plan", status: "refreshed" });
     expect(mockCopySkillFromCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an unchanged skill as unchanged in dry-run mode too", () => {
+    const source = makeSource({ skillsInstalled: ["debug"] });
+    mockGetSourceCachePath.mockReturnValue("/cache/user-repo");
+    vi.mocked(isInstalledSkillCurrent).mockReturnValueOnce(true);
+    const results = refreshInstalledSkills([source], { dryRun: true });
+    expect(results[0]).toEqual({ source: "user/repo", skill: "debug", status: "unchanged" });
   });
 
   it("does not copy in dry-run mode", () => {

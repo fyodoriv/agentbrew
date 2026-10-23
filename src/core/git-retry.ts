@@ -2,7 +2,7 @@
 import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
 
 /** Default timeout for git operations, overridden by AGENTBREW_GIT_TIMEOUT env var. */
-function getGitTimeout(defaultMs: number): number {
+export function getGitTimeout(defaultMs: number): number {
   const envTimeout = process.env.AGENTBREW_GIT_TIMEOUT;
   if (envTimeout) {
     const parsed = Number.parseInt(envTimeout, 10);

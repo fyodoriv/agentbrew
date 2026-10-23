@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `agentbrew sync --pull` now pulls already-cloned sources in parallel, and
+  skips re-copying installed skills that already match their source. On 16
+  sources this cut the median run from 8.4 s to 4.9 s (load 13-26).
 - `agentbrew sync --pull` looks up each source's commit once, in parallel,
   instead of twice one after another. On 16 sources this cut the median
   run from 17.0 s to 8.5 s.

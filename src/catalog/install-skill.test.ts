@@ -5,7 +5,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { INSTALLED_SKILLS_DIR } from "../paths.js";
 import { expandHome } from "../utils.js";
 import { findSkillDirInCache } from "./index-source.js";
-import { copySkillFromCache, isAlreadyInstalled, resetSourceFallbackAnnounced } from "./install-skill.js";
+import {
+  copySkillFromCache,
+  isAlreadyInstalled,
+  isInstalledSkillCurrent,
+  resetSourceFallbackAnnounced,
+} from "./install-skill.js";
 
 // install-skill.ts resolves the installed-skills dir at import time, so the
 // tmpdir home path must be set before vi.mock runs (AGENTS.md rule #15). Without it,
@@ -70,6 +75,41 @@ describe("copySkillFromCache", () => {
     const copied = copySkillFromCache(cachePath, "build-mcp-server");
     expect(copied).toBe(destination);
     rmSync(destination, { recursive: true, force: true });
+  });
+});
+
+describe("isInstalledSkillCurrent", () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `agentbrew-test-current-${process.pid}-${Date.now()}`);
+    mkdirSync(join(testDir, "cache", "current-skill", "dist"), { recursive: true });
+    writeFileSync(join(testDir, "cache", "current-skill", "SKILL.md"), "---\nname: current-skill\n---\n");
+    writeFileSync(join(testDir, "cache", "current-skill", "dist", "tool.js"), "v1");
+  });
+
+  afterEach(() => {
+    rmSync(testDir, { recursive: true, force: true });
+    rmSync(join(expandHome(INSTALLED_SKILLS_DIR), "current-skill"), { recursive: true, force: true });
+  });
+
+  it("is true only while the installed copy matches the cache file for file", () => {
+    const cachePath = join(testDir, "cache");
+    expect(isInstalledSkillCurrent(cachePath, "current-skill")).toBe(false);
+
+    copySkillFromCache(cachePath, "current-skill");
+    expect(isInstalledSkillCurrent(cachePath, "current-skill")).toBe(true);
+
+    writeFileSync(join(cachePath, "current-skill", "dist", "tool.js"), "v2");
+    expect(isInstalledSkillCurrent(cachePath, "current-skill")).toBe(false);
+
+    copySkillFromCache(cachePath, "current-skill");
+    writeFileSync(join(cachePath, "current-skill", "extra.md"), "new file");
+    expect(isInstalledSkillCurrent(cachePath, "current-skill")).toBe(false);
+  });
+
+  it("is false when the cache has no such skill", () => {
+    expect(isInstalledSkillCurrent(join(testDir, "cache"), "missing-skill")).toBe(false);
   });
 });
 

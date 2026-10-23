@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { registerSkillSourceDir } from "../add-source.js";
@@ -58,6 +58,34 @@ export function copySkillFromCache(cachePath: string, skillName: string): string
   mkdirSync(destination, { recursive: true });
   cpSync(skillDir, destination, { recursive: true });
   return destination;
+}
+
+/** True when two directory trees hold the same names, file bytes, and symlink targets. */
+function sameTree(a: string, b: string): boolean {
+  const left = lstatSync(a, { throwIfNoEntry: false });
+  const right = lstatSync(b, { throwIfNoEntry: false });
+  if (!left || !right) return false;
+  if (left.isSymbolicLink() || right.isSymbolicLink()) {
+    return left.isSymbolicLink() && right.isSymbolicLink() && readlinkSync(a) === readlinkSync(b);
+  }
+  if (left.isDirectory() !== right.isDirectory()) return false;
+  if (!left.isDirectory()) {
+    return left.size === right.size && left.mode === right.mode && readFileSync(a).equals(readFileSync(b));
+  }
+  const names = readdirSync(a).sort();
+  const other = readdirSync(b).sort();
+  if (names.length !== other.length || names.some((name, i) => name !== other[i])) return false;
+  return names.every((name) => sameTree(join(a, name), join(b, name)));
+}
+
+/**
+ * True when the installed copy of a skill already matches its source cache,
+ * so a refresh can skip the delete-and-copy.
+ */
+export function isInstalledSkillCurrent(cachePath: string, skillName: string): boolean {
+  const skillDir = findSkillDirInCache(cachePath, skillName);
+  if (!skillDir) return false;
+  return sameTree(skillDir, join(installedSkillsPath, skillName));
 }
 
 /** Installs a skill from a registered source. */

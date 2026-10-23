@@ -282,15 +282,28 @@
 - [ ] `agentbrew sync --pull` finishes in seconds, even under load
   - **ID**: sync-pull-speed
   - **Tags**: performance, sync
-  - **Details**: On 2026-10-23 (load 26-46, 16 sources), timestamped output of `sync --pull` showed: the skills update check took 1.2 s, fetching and indexing sources one after another took 5.1 s (about 0.3 s each), a second `git ls-remote` pass per source took 4.6 s (recording SHAs) and another 4.1 s (the lock update), and deploy took about 1 s. The SHA passes are fixed: one parallel lookup per source, reused by the lock update, cut the median from 17.0 s to 8.5 s over 5 interleaved runs. What is left is the sequential fetch in `indexAllSources` (`src/catalog/index-source.ts`), which runs a synchronous `git pull` per source; run those fetches in parallel (async git, bounded concurrency) or skip sources whose remote HEAD matches the recorded SHA. Each run also re-copies every installed skill (`↑` lines) even when nothing changed.
-  - **Files**: `src/catalog/index-source.ts`, `src/update.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: the median `sync --pull` on an unchanged setup drops below 5 s at load under 15.
-  - **Hypothesis**: fetching sources in parallel, or skipping sources whose remote HEAD is unchanged, cuts the 5.1 s fetch phase to under 1.5 s and the median from 8.5 s to under 5 s.
-  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus timestamped output lines for the per-phase breakdown: `agentbrew sync --pull 2>&1 | perl -MTime::HiRes=time -ne 'printf "%.2f %s", time, $_'`.
+  - **Details**: Two fixes are in: one parallel SHA lookup per source (median 17.0 s to 8.5 s, 2026-10-23), then parallel pulls of cached sources plus skipping installed skills that match their source. The second build measured a median of 4.9 s against 8.4 s for the first (5 interleaved runs, 1-min load 13-26). The final build, which only adds a no-prompt git env and a deduped pull list, measured 10.5 s against 15.2 s at load 19-89, so the target is not yet confirmed at load under 15. The biggest piece left is `npx skills check` (about 1.1 s). Next step: re-measure at load under 15; if the median is under 5 s, close this task.
+  - **Files**: `src/update.ts`, `src/catalog/index-source.ts`
+  - **Output**: measurement
+  - **Acceptance**: the median `sync --pull` on an unchanged setup is below 5 s at load under 15.
+  - **Hypothesis**: with parallel pulls and skipped re-copies in place, the median on an unchanged setup is under 5 s at load under 15.
+  - **Measurement**: `time agentbrew sync --pull` five times on an unchanged setup, with the load average recorded, plus timestamped output lines: `agentbrew sync --pull 2>&1 | perl -MTime::HiRes=time -ne 'printf "%.2f %s", time, $_'`.
   - **Success**: median under 5 s at load under 15.
-  - **Pivot**: if fetching is not the main cost, profile the deploy step and move that work behind a changed-files check instead.
-  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s; 8m36s under load); sync --pull breakdown, 2026-10-23.
+  - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
+  - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
+
+- [ ] Two sources that ship a skill with the same name never overwrite each other's installed copy on every sync
+  - **ID**: installed-skill-name-clash
+  - **Tags**: sync, skills
+  - **Details**: `obra/superpowers` and `fyodoriv/agentbrew` both ship `writing-plans`, and both list it in `skillsInstalled`. `refreshInstalledSkills` in `src/update.ts` copies each into the same `installed-skills/writing-plans` folder, so every `sync --pull` re-copies both (two `↑ writing-plans` lines) and the deployed copy is whichever source comes last. Pick one owner per installed name (for example the source that installed it first, or the Agentfile's choice) and skip or warn for the other.
+  - **Files**: `src/update.ts`, `src/catalog/install-skill.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: a second `sync --pull` on an unchanged setup re-copies no installed skill, and the deployed `writing-plans` comes from one stated source.
+  - **Hypothesis**: one owner per installed skill name drops the clashing re-copies per unchanged `sync --pull` from 2 to 0.
+  - **Measurement**: `agentbrew sync --pull | grep -c '↑ '` twice in a row on an unchanged setup.
+  - **Success**: the second run prints 0 `↑` lines.
+  - **Pivot**: if an owner cannot be chosen safely, install the second copy under a source-qualified name and warn.
+  - **Anchor**: `sync --pull` output, 2026-10-23 (`↑ writing-plans` from two sources on every run).
 
 ## P3
 

@@ -1,9 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import chalk from "chalk";
-import { gitExec } from "../core/git-retry.js";
+import { getGitTimeout, gitExec } from "../core/git-retry.js";
 import { realignDivergedCache } from "./cache-realign.js";
 
 /** Detects GitHub Enterprise URLs — any github-like host that isn't github.com. */
@@ -22,6 +22,7 @@ import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { redactUrlCredentials } from "../core/redact-url.js";
 import { resolveGitCloneUrl } from "../git-source-url.js";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 import type { Source, SourceItem } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { checkGitAvailable } from "../utils.js";
@@ -651,7 +652,56 @@ export function formatItemCounts(items: SourceItem[]): string {
   return parts.join(", ");
 }
 
+/** Most cached sources `prefetchCachedSources` pulls at once. */
+const PREFETCH_CONCURRENCY = 8;
+
+function pullAsync(cachePath: string, env: NodeJS.ProcessEnv): Promise<boolean> {
+  return new Promise((resolvePull) => {
+    execFile(
+      "git",
+      ["pull", "--ff-only", "--quiet"],
+      { cwd: cachePath, env, timeout: getGitTimeout(30_000) },
+      (error) => resolvePull(!error),
+    );
+  });
+}
+
+/**
+ * Pull every already-cloned remote source in parallel, up to
+ * PREFETCH_CONCURRENCY at once, so `indexAllSources` does not wait on one
+ * network round trip per source in turn. A source that pulls cleanly is
+ * marked fetched for this process. A failed pull is left for the normal
+ * synchronous path, which retries and realigns or warns as before. Fresh
+ * clones stay on that path too.
+ */
+async function prefetchCachedSources(sources: Source[]): Promise<void> {
+  if (!checkGitAvailable()) return;
+  const seenDirs = new Set<string>();
+  const pending = sources.filter((source) => {
+    if (source.type === "local" || sessionFailed.has(source.url)) return false;
+    if (sessionFetched.has(`${source.url}:HEAD`)) return false;
+    const dir = getSourceCacheDir(source);
+    if (seenDirs.has(dir) || !existsSync(join(dir, ".git"))) return false;
+    seenDirs.add(dir);
+    return true;
+  });
+  if (pending.length === 0) return;
+  console.log(chalk.dim(`  Fetching ${pending.length} cached source(s)...`));
+  // Never prompt: parallel prompts would interleave on the terminal. A source
+  // that needs a password fails here and prompts on the one-at-a-time path.
+  const env = cacheGitEnv({ unattended: true });
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < pending.length) {
+      const source = pending[next++] as Source;
+      if (await pullAsync(getSourceCacheDir(source), env)) sessionFetched.add(`${source.url}:HEAD`);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, pending.length) }, worker));
+}
+
 export async function indexAllSources(sources: Source[]): Promise<void> {
+  await prefetchCachedSources(sources);
   for (const source of sources) {
     console.log(chalk.dim(`  Indexing ${redactUrlCredentials(source.url)}...`));
     const items = indexSource(source);

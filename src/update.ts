@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { getStateSources, loadAgentfile } from "./agentfile.js";
 import { getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
-import { copySkillFromCache } from "./catalog/install-skill.js";
+import { copySkillFromCache, isInstalledSkillCurrent } from "./catalog/install-skill.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncErrors } from "./core/errors.js";
 import { redactUrlCredentials } from "./core/redact-url.js";
@@ -29,10 +29,13 @@ interface UpdateOptions {
   skillName?: string;
 }
 
-type RefreshStatus = "refreshed" | "skipped" | "failed";
+type RefreshStatus = "refreshed" | "unchanged" | "skipped" | "failed";
 type RefreshResult = { source: string; skill: string; status: RefreshStatus };
 
 function refreshSkillResult(source: Source, skillName: string, cachePath: string, dryRun: boolean): RefreshResult {
+  // Re-copying an unchanged skill rewrites every file for nothing.
+  if (isInstalledSkillCurrent(cachePath, skillName))
+    return { source: source.url, skill: skillName, status: "unchanged" };
   if (dryRun) {
     return { source: source.url, skill: skillName, status: "refreshed" };
   }

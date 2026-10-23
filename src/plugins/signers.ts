@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 
 export interface AllowedSigner {
   principal: string;
@@ -112,7 +113,8 @@ export function assertTagName(ref: string): void {
  */
 export function tagObject(dir: string, ref: string): string {
   assertTagName(ref);
-  const run = (args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf-8", stdio: "pipe" }).trim();
+  const env = cacheGitEnv();
+  const run = (args: string[]) => execFileSync("git", args, { cwd: dir, env, encoding: "utf-8", stdio: "pipe" }).trim();
   let oid = "";
   let type = "";
   try {
@@ -155,7 +157,12 @@ export function verifySignedTag(dir: string, ref: string, oid: string, principal
   if (keys.length === 0)
     throw new Error(`No trusted signer for plugin "${principal}". Pass --signer <ssh-public-key>.`);
   if (!OBJECT_ID.test(oid)) throw new Error(`"${oid}" is not a tag object ID.`);
-  const body = execFileSync("git", ["cat-file", "tag", oid], { cwd: dir, encoding: "utf-8", stdio: "pipe" });
+  const body = execFileSync("git", ["cat-file", "tag", oid], {
+    cwd: dir,
+    env: cacheGitEnv(),
+    encoding: "utf-8",
+    stdio: "pipe",
+  });
   const armor = body.split("\n").filter((line) => line.startsWith("-----BEGIN "));
   if (armor.length !== 1 || armor[0] !== "-----BEGIN SSH SIGNATURE-----") {
     throw new Error(`Tag "${ref}" must carry exactly one SSH signature. Plugins install only from SSH-signed tags.`);
@@ -179,7 +186,7 @@ export function verifySignedTag(dir: string, ref: string, oid: string, principal
         "verify-tag",
         oid,
       ],
-      { cwd: dir, encoding: "utf-8" },
+      { cwd: dir, env: cacheGitEnv(), encoding: "utf-8" },
     );
     const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
     if (result.status !== 0) {

@@ -292,18 +292,18 @@
   - **Pivot**: if the median stays at 5 s or more at low load, move `npx skills check` off the pull path (cache its result for a day) and measure again.
   - **Anchor**: ship-it memory step timing, 2026-10-22 (22.7 s); sync --pull timings, 2026-10-23.
 
-- [ ] A command started from a git hook never runs plugin-store or source-SHA git commands in the hook's repository
-  - **ID**: git-hook-env-plugin-store
-  - **Tags**: git, security
-  - **Details**: `src/plugins/store.ts` runs its `git()` helper (`checkout --detach`, `rev-parse` tamper checks) with the raw process env, so a `GIT_DIR` or `GIT_WORK_TREE` inherited from a git hook points it at the hook's repository: it can detach that repository's HEAD or misreport tampering. `getGitHeadSha` in `src/skills/skill-versions.ts` has the same gap for local sources (read-only, but it records the hook repository's SHA). The source caches already drop these variables with `cacheGitEnv()` from `src/mcp/git-ref.ts`.
-  - **Files**: `src/plugins/store.ts`, `src/skills/skill-versions.ts`, their tests
+- [ ] The plugin leak audit and plugin scope check always read the folder they are given, even under a git hook
+  - **ID**: git-hook-env-plugin-audit-scope
+  - **Tags**: git, plugins
+  - **Details**: `auditRepo` in `src/plugins/leak-audit.ts` (`git ls-files`) and `repoIdOf` in `src/plugins/scope.ts` (`git remote get-url origin`) run git in a given folder with the raw process env. Under a git hook's `GIT_DIR` they read the hook's repository instead, so the leak audit can scan the wrong files and the scope check can name the wrong repo. Both are read-only. Inside a hook, `GIT_DIR` often names the same repository on purpose, so first check each caller: pass `cacheGitEnv()` from `src/mcp/git-ref.ts` only where the folder argument must win.
+  - **Files**: `src/plugins/leak-audit.ts`, `src/plugins/scope.ts`, their tests
   - **Output**: code
-  - **Acceptance**: with `GIT_DIR` set to another repository, plugin-store operations and local-source SHA lookups act on their own folder and leave the other repository unchanged.
-  - **Hypothesis**: passing `cacheGitEnv()` to these git calls drops commands that act on a hook's repository from possible to 0.
-  - **Measurement**: a vitest case per module that sets `GIT_DIR` to a scratch repository and checks its HEAD and branches are unchanged.
+  - **Acceptance**: with `GIT_DIR` set to another repository, `auditRepo(dir)` lists the files of `dir` and `repoIdOf(dir)` returns the origin of `dir`.
+  - **Hypothesis**: making the folder argument authoritative drops audits and scope checks of the wrong repository under a hook from possible to 0.
+  - **Measurement**: a vitest case per function that sets `GIT_DIR` to a scratch repository and checks the result names the given folder.
   - **Success**: both cases pass.
-  - **Pivot**: if a call must honour a caller's `GIT_DIR` on purpose, scrub only the plugin-store calls and document the exception.
-  - **Anchor**: review of PR for `installed-skill-name-clash` (2026-10-23); `realignDivergedCache` fix in the same PR.
+  - **Pivot**: if a caller relies on the hook's `GIT_DIR`, make that caller pass the folder explicitly and keep the env as is.
+  - **Anchor**: PR for `git-hook-env-plugin-store` (2026-10-23).
 
 ## P3
 

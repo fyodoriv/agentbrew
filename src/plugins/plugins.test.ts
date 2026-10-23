@@ -24,7 +24,15 @@ import { findLockViolations, readLock, writeLock } from "../lock.js";
 import { fixtureDir } from "../test-utils/plugin-fixture.js";
 import { validateManifest } from "./manifest.js";
 import { allowedSignersPath, revokeSigner, trustSigner } from "./signers.js";
-import { addPlugin, listPlugins, parsePluginSpec, pluginDir, removePlugin, rollbackPlugin } from "./store.js";
+import {
+  addPlugin,
+  listPlugins,
+  parsePluginSpec,
+  pluginDir,
+  pluginDrift,
+  removePlugin,
+  rollbackPlugin,
+} from "./store.js";
 
 const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
 const MANIFEST = {
@@ -124,6 +132,28 @@ describe("parsePluginSpec", () => {
 });
 
 describe("plugin add / list / remove", () => {
+  it("acts on its own checkout, not the repo a git hook points GIT_DIR at", () => {
+    const src = makePluginRepo();
+    const victim = fixtureDir("plugin-victim-");
+    git(victim, "init", "-q", "-b", "main");
+    writeFileSync(join(victim, "keep.txt"), "keep");
+    git(victim, "add", ".");
+    git(victim, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", "keep");
+    const victimHead = git(victim, "rev-parse", "HEAD");
+    vi.stubEnv("GIT_DIR", join(victim, ".git"));
+    vi.stubEnv("GIT_INDEX_FILE", join(victim, ".git", "index"));
+    try {
+      const entry = addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });
+      expect(pluginDrift(entry)).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(git(victim, "rev-parse", "HEAD")).toBe(victimHead);
+    expect(git(victim, "symbolic-ref", "--short", "HEAD")).toBe("main");
+    expect(git(victim, "tag", "--list")).toBe("");
+  });
+
   it("add clones the ref, validates, and locks commit, tree and capabilities hash", () => {
     const src = makePluginRepo();
     const entry = addPlugin(`${src}@v1.0.0`, { yes: true, signer: SIGNER.pub });

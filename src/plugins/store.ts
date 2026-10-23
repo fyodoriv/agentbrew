@@ -5,6 +5,7 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { redactUrlCredentials } from "../core/redact-url.js";
 import { type PluginLockEntry, readLock, writeLock } from "../lock.js";
+import { cacheGitEnv } from "../mcp/git-ref.js";
 import { assertCapabilities, checkCapabilities } from "./capabilities.js";
 import { capabilitiesHash, MANIFEST_FILE, type PluginManifest, parseManifest, readManifest } from "./manifest.js";
 import { assertMcpServers } from "./mcp-launcher.js";
@@ -32,8 +33,17 @@ export function parsePluginSpec(spec: string): { url: string; ref: string } {
   return { url: spec.slice(0, at), ref: spec.slice(at + 1) };
 }
 
+// Plugin checkouts run git with repo-pointing variables (GIT_DIR,
+// GIT_WORK_TREE, ...) dropped, so a command started from a git hook acts on
+// the checkout, never on the hook's repository.
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf-8", stdio: "pipe", timeout: 120_000 }).trim();
+  return execFileSync("git", args, {
+    cwd,
+    env: cacheGitEnv(),
+    encoding: "utf-8",
+    stdio: "pipe",
+    timeout: 120_000,
+  }).trim();
 }
 
 export interface AddPluginOptions {
@@ -103,7 +113,7 @@ export function stage(url: string, ref: string, extraSigner?: string): Staged {
       cwd: pluginsRoot(),
       stdio: "pipe",
       timeout: 120_000,
-      env: { ...process.env, GIT_DEFAULT_HASH: listed.length === 64 ? "sha256" : "sha1" },
+      env: { ...cacheGitEnv(), GIT_DEFAULT_HASH: listed.length === 64 ? "sha256" : "sha1" },
     });
     // Run from pluginsRoot, like ls-remote, so a relative source resolves the same way.
     const gitDir = join(dir, ".git");

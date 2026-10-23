@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A command started from a git hook no longer runs plugin-store git commands
+  (clone, checkout, tag and signature checks, drift checks) or local-source
+  SHA lookups in the hook's repository: they drop `GIT_DIR`, `GIT_WORK_TREE`,
+  and the other repo-pointing variables. A local source's SHA now always comes
+  from its own folder, even when `GIT_DIR` is exported in the shell.
 - Two sources that ship an installed skill with the same name no longer
   overwrite each other's copy on every `sync --pull`. The source listed later
   in state wins, and `agentbrew status` (and `--json`) shows the clash.

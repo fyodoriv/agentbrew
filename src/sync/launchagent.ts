@@ -13,6 +13,7 @@ import {
   listAgentbrewLaunchAgentPlists,
   plistManagesOwnPath,
   plistNodeBinDir,
+  plistPathHasNode,
   setPlistPath,
 } from "../drift-checks/launchagent-path.js";
 import { isLabelDisabledInLaunchctlOutput } from "../memory/launchagent.js";
@@ -24,7 +25,6 @@ import {
   buildLaunchAgentPath,
   getLogDir,
   LAUNCHAGENT_LANG,
-  launchAgentPathHasRequiredPrefixes,
 } from "./scheduler-paths.js";
 
 // ── Timeout constant ─────────────────────────────────────────────
@@ -190,7 +190,7 @@ export async function repairAgentbrewLaunchAgentPaths(): Promise<number> {
     if (!pathValue) continue;
 
     const withPath =
-      plistManagesOwnPath(plistPath) || launchAgentPathHasRequiredPrefixes(pathValue, home, plistNodeBinDir(content))
+      plistManagesOwnPath(plistPath) || plistPathHasNode(pathValue, home, content)
         ? content
         : setPlistPath(content, buildLaunchAgentPath(home, plistNodeBinDir(content)));
     const updated = ensurePlistLocale(withPath);

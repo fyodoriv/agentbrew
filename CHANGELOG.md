@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew status` no longer reports "PATH missing node" for a LaunchAgent
+  whose plist runs a Homebrew Cellar node while PATH has a link to the same
+  node, such as `/opt/homebrew/opt/node/bin` (#441). `status --fix` and sync
+  use the same check, so they no longer rewrite such a plist either.
+- Drift repair now also raises an exact pin of a catalog-pinned MCP package
+  that is older than the catalog's (for example `tasks-mcp@0.5.0` left in VS
+  Code settings). That version's `list_tasks` walks the whole home folder, so
+  `mcp probe --deep` timed out under load. A newer exact pin, a range, or a
+  tag stays as you set it.
 - `agentbrew sync` and `agentbrew status` now name a command you made in
   `~/.config/agentbrew/commands` when an Agentfile or plugin dir with the
   same name replaces it for your agents. Before, it was replaced silently.
@@ -217,6 +226,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/work`, a built-in command for the work day, and `agentbrew work [--json]`,
+  which prints its plan: ordered checkup steps, the machine rule (company
+  plugin installed or not), watch mode, and end of day. Agentfiles add steps
+  with `workSteps:` (#440).
 - **Company plugins preview** (`AGENTBREW_PLUGINS_V2=1`, #208 step 3):
   `agentbrew-plugin.yaml` schema, `plugin add/list/remove`, and a `plugins:`
   lock section with commit, tree hash, and capabilities hash. `sync` refuses

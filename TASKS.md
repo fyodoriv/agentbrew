@@ -279,20 +279,33 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] The scheduler call-site tests also catch shell strings and absolute tool paths
-  - **ID**: scheduler-call-site-lint
-  - **Tags**: tests, scheduler
-  - **Details**: `src/core/launchctl.test.ts` and `src/core/user-scheduler.test.ts` fail when a `src` file spawns `launchctl`, `crontab`, or `systemctl` outside `src/core/`, but only for a spawn whose first argument is the tool name. They miss an absolute path (`"/usr/bin/crontab"`), a shell string (`execSync("sh -c 'crontab -'")`), and a tool name passed in a variable. Today no such call exists.
-  - **Files**: `src/core/launchctl.test.ts`, `src/core/user-scheduler.test.ts`
+- [ ] `context7` keeps answering library-doc lookups after the free monthly quota runs out
+  - **ID**: context7-api-key
+  - **Tags**: mcp, catalog
+  - **Details**: `agentbrew mcp probe --deep context7` on 2026-10-23 returned `smoke_call_failed`. The server started and listed its tools, but `resolve-library-id` answered "Monthly quota exceeded. Create a free API key at https://context7.com/dashboard for more requests." The anonymous Upstash quota is an upstream limit, not an agentbrew bug. The fix needs a key the owner creates; then the catalog entry can pass it as an optional env var (`CONTEXT7_API_KEY`, with setup steps like the other keyed servers) so an unset key still works on the free tier.
+  - **Files**: `src/catalog.yaml`, its tests
   - **Output**: code
-  - **Acceptance**: a fixture file with each of the three forms fails the call-site tests.
-  - **Hypothesis**: matching tool names inside string literals, with or without a path, drops undetected direct scheduler calls from 3 known forms to 0.
-  - **Measurement**: a vitest case that runs the call-site check on fixture text for each form.
-  - **Success**: all three forms are flagged, and the real tree still passes.
-  - **Pivot**: if string matching flags too many hint strings, require a spawn call within the same statement.
-  - **Anchor**: review of the PR for `scratch-home-linux-scheduler` (2026-10-23).
+  - **Acceptance**: with a key set, `agentbrew mcp probe --deep context7` is `ok`; with no key, the entry still starts and works within the free quota.
+  - **Hypothesis**: passing an optional API key drops context7 quota failures in the deep probe, which happen on every run once the free quota runs out, to 0. Each deep probe spends one free call (`resolve-library-id`); the 30-minute repair job never runs deep probes.
+  - **Measurement**: `agentbrew mcp probe --deep --json context7` after the key is set.
+  - **Success**: status `ok`.
+  - **Pivot**: if an optional env var cannot stay unset safely, document the key as a manual `agentbrew mcp setup context7` step instead.
+  - **Anchor**: checkup deep probe, 2026-10-23.
 
 ## P3
+
+- [ ] `/work` drops the steps of an Agentfile that no longer exists
+  - **ID**: work-steps-prune-gone-agentfile
+  - **Tags**: work, agentfile
+  - **Details**: Found by the #440 review. `state.workSteps` records which Agentfile dir declared each `/work` step, and a sync replaces that Agentfile's steps when it is applied again. An Agentfile that is deleted or moved is never applied again, so its steps stay in state and `agentbrew work` keeps listing them. `commands:` and `agents:` dirs have the same owner field but are pruned on apply.
+  - **Files**: `src/agentfile-apply.ts`, `src/work.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: after the Agentfile that declared a step is gone, the next `agentbrew sync` (or `agentbrew work`) no longer lists that step.
+  - **Hypothesis**: pruning entries whose Agentfile dir is gone drops stale `/work` steps from every such step to 0.
+  - **Measurement**: `npx vitest run src/work.test.ts src/agentfile-apply.test.ts` with a case whose declaring Agentfile dir is removed.
+  - **Success**: the stale step is gone after one sync; steps from present Agentfiles stay in place.
+  - **Pivot**: if a dir can be briefly missing (an unmounted volume), prune only after two syncs in a row find it gone.
+  - **Anchor**: #440 pre-merge review (2026-10-23).
 
 - [ ] The catalog name lint covers bundles, and a skill-only dry run previews
   - **ID**: catalog-name-lint-bundles-dry-run

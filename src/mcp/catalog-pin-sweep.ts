@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import semver from "semver";
 import { sync as writeFileSync } from "write-file-atomic";
 import { type CatalogMcpServer, loadCatalog } from "../catalog/types.js";
 import { logSkipped } from "../core/logger.js";
@@ -30,6 +31,8 @@ interface CatalogPin {
   command: string;
   args: string[];
   packageName: string;
+  /** The exact version the catalog pins, for example 0.10.2. */
+  version: string;
 }
 
 interface CatalogPinSlice {
@@ -74,20 +77,38 @@ function getCatalogPins(): CatalogPin[] {
 /**
  * The pin policy is catalog data: a stdio server whose catalog args name an
  * npm package at an exact version (`tasks-mcp@0.10.2`) is pinned, and the
- * sweep rewrites floating copies (`tasks-mcp`, `tasks-mcp@latest`) to it.
+ * sweep rewrites floating copies (`tasks-mcp`, `tasks-mcp@latest`) and exact
+ * pins older than the catalog's to it. Newer exact pins, ranges (`^0.5.0`),
+ * and tags (`@next`) are left alone on purpose.
  */
 export function pinsFromCatalog(servers: CatalogMcpServer[]): CatalogPin[] {
   return servers.flatMap((server) => {
     if (!server.command || !server.args) return [];
     const pinned = server.args.map((arg) => EXACT_VERSION_ARG.exec(arg)).find((match) => match !== null);
     return pinned
-      ? [{ serverName: server.name, command: server.command, args: server.args, packageName: pinned[1] }]
+      ? [
+          {
+            serverName: server.name,
+            command: server.command,
+            args: server.args,
+            packageName: pinned[1],
+            version: pinned[0].slice(pinned[1].length + 1),
+          },
+        ]
       : [];
   });
 }
 
-function isFloatingPackageArg(arg: string, packageName: string): boolean {
-  return arg === packageName || arg === `${packageName}@latest`;
+/**
+ * True when `arg` runs the pinned package at a version the sweep must raise:
+ * floating (`tasks-mcp`, `tasks-mcp@latest`) or an exact version older than
+ * the catalog's. A newer exact version is the user's choice and stays.
+ */
+function argNeedsPin(arg: string, pin: CatalogPin): boolean {
+  if (arg === pin.packageName || arg === `${pin.packageName}@latest`) return true;
+  if (!arg.startsWith(`${pin.packageName}@`)) return false;
+  const version = arg.slice(pin.packageName.length + 1);
+  return semver.valid(version) !== null && semver.lt(version, pin.version);
 }
 
 function getCommandShape(entry: Record<string, unknown>): CatalogCommandShape | undefined {
@@ -109,7 +130,7 @@ function getCommandShape(entry: Record<string, unknown>): CatalogCommandShape | 
 }
 
 function shapeNeedsPin(shape: CatalogCommandShape, pin: CatalogPin): boolean {
-  return shape.command === pin.command && shape.args.some((arg) => isFloatingPackageArg(arg, pin.packageName));
+  return shape.command === pin.command && shape.args.some((arg) => argNeedsPin(arg, pin));
 }
 
 function matchingPin(
@@ -246,8 +267,8 @@ function replaceTomlServerArg(content: string, mcpKey: string, pin: CatalogPin):
   return content.replace(blockPattern, (_match, header: string, body: string) => {
     if (!new RegExp(`^command\\s*=\\s*"${escapeRegExp(pin.command)}"\\s*$`, "m").test(body)) return `${header}${body}`;
     const nextBody = body.replace(
-      new RegExp(`"(${escapeRegExp(pin.packageName)}(?:@latest)?)"`, "g"),
-      `"${pin.args.at(-1) ?? pin.packageName}"`,
+      new RegExp(`"(${escapeRegExp(pin.packageName)}(?:@[^"]*)?)"`, "g"),
+      (quoted: string, arg: string) => (argNeedsPin(arg, pin) ? `"${pin.args.at(-1) ?? pin.packageName}"` : quoted),
     );
     return `${header}${nextBody}`;
   });

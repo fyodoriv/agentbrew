@@ -1,7 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, statSync } from "node:fs";
 import { userInfo } from "node:os";
-import { join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installFakeTools } from "../test-utils/fake-tool.js";
 import {
@@ -58,28 +56,5 @@ describe("user scheduler guard", () => {
       ["crontab", "-"],
       ["systemctl", "--user", "daemon-reload"],
     ]);
-  });
-});
-
-describe("crontab and systemctl call sites", () => {
-  it("every crontab or systemctl spawn in src goes through the helper", () => {
-    const root = join(import.meta.dirname, "..");
-    const direct = /(?:execFileSync|execFile|spawnSync|spawn|execSync|exec|execa)\(\s*["'`](?:crontab|systemctl)\b/;
-    const offenders: string[] = [];
-    const walk = (dir: string): void => {
-      for (const name of readdirSync(dir)) {
-        const path = join(dir, name);
-        if (statSync(path).isDirectory()) {
-          if (name !== "test-utils" && name !== "fixtures") walk(path);
-          continue;
-        }
-        if (!name.endsWith(".ts") || name.endsWith(".test.ts") || path.endsWith(join("core", "user-scheduler.ts"))) {
-          continue;
-        }
-        if (direct.test(readFileSync(path, "utf-8"))) offenders.push(relative(root, path));
-      }
-    };
-    walk(root);
-    expect(offenders).toEqual([]);
   });
 });

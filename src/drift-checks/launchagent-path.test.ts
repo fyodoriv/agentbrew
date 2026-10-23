@@ -4,6 +4,7 @@ vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   readdirSync: vi.fn(),
+  realpathSync: vi.fn((p: string) => p),
 }));
 
 vi.mock("../settings.js", () => ({ autoRepairOptedOut: vi.fn(() => false) }));
@@ -12,7 +13,7 @@ vi.mock("../utils.js", () => ({
   expandHome: vi.fn((p: string) => p.replace("~", "/home/user")),
 }));
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { autoRepairOptedOut } from "../settings.js";
 import {
@@ -267,6 +268,56 @@ describe("checkLaunchAgentPathDrift", () => {
       const dotfilesBin = resolveDotfilesBinPath("/home/user");
       const drift = run(`${dirname(process.execPath)}:${dotfilesBin}:/usr/bin:/bin`);
       expect(drift.map((d) => d.detail).join("\n")).toContain("PATH missing node");
+    });
+  });
+
+  describe("a Homebrew Cellar node with the stable opt link on PATH (#441)", () => {
+    const cellarNode = "/opt/homebrew/Cellar/node/26.12.1/bin/node";
+    const plist = (pathValue: string) => `<?xml version="1.0"?>
+<plist><dict>
+<key>ProgramArguments</key>
+<array>
+<string>${cellarNode}</string>
+<string>/home/user/apps/tooling/agentbrew/dist/cli.js</string>
+</array>
+<key>PATH</key><string>${pathValue}</string>
+<key>LANG</key><string>en_US.UTF-8</string>
+</dict></plist>`;
+    const run = (pathValue: string, optNodeTarget: string) => {
+      const original = process.platform;
+      Object.defineProperty(process, "platform", { value: "darwin" });
+      mockExistsSync.mockImplementation((p) => {
+        const s = String(p);
+        return s.includes("LaunchAgents") || s.includes("dotfiles/bin") || s.endsWith("/node");
+      });
+      vi.mocked(realpathSync).mockImplementation(((p: string) =>
+        String(p) === "/opt/homebrew/opt/node/bin/node" ? optNodeTarget : String(p)) as typeof realpathSync);
+      mockReaddirSync.mockReturnValue(["com.agentbrew.mcp-memory-maintain.plist"] as unknown as ReturnType<
+        typeof readdirSync
+      >);
+      mockReadFileSync.mockReturnValue(plist(pathValue));
+      try {
+        return checkLaunchAgentPathDrift().map((d) => d.detail);
+      } finally {
+        Object.defineProperty(process, "platform", { value: original });
+        vi.mocked(realpathSync).mockImplementation(((p: string) => p) as typeof realpathSync);
+      }
+    };
+
+    it("is not drift when a PATH node dir resolves to the same node", () => {
+      mockExistsSync.mockImplementation((p) => String(p).includes("dotfiles/bin"));
+      const dotfilesBin = resolveDotfilesBinPath("/home/user");
+      expect(run(`/opt/homebrew/opt/node/bin:${dotfilesBin}:/usr/bin:/bin`, cellarNode)).toEqual([]);
+    });
+
+    it("is still drift when the PATH node is another node", () => {
+      mockExistsSync.mockImplementation((p) => String(p).includes("dotfiles/bin"));
+      const dotfilesBin = resolveDotfilesBinPath("/home/user");
+      const details = run(
+        `/opt/homebrew/opt/node/bin:${dotfilesBin}:/usr/bin:/bin`,
+        "/opt/homebrew/Cellar/node/25.0.0/bin/node",
+      );
+      expect(details.join("\n")).toContain("PATH missing node");
     });
   });
 

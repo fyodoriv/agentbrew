@@ -271,6 +271,12 @@ export interface MemoryConfig {
   packPaths?: string[];
 }
 
+/** One `/work` step and the Agentfile dir that declared it. */
+export interface WorkStepEntry {
+  step: string;
+  agentfile: string;
+}
+
 export interface AgentBrewState {
   schemaVersion?: number;
   agents: AgentConfig[];
@@ -283,6 +289,8 @@ export interface AgentBrewState {
   skillSourceDirs?: SkillSourceDir[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
   agentSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
+  /** `/work` steps from Agentfile `workSteps:` lists, with the Agentfile dir that declared each (#440). */
+  workSteps?: WorkStepEntry[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
   commandSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
   hooks?: ManagedHook[];

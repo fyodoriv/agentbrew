@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { MEMORY_AGENT_LABEL } from "../memory/launchagent.js";
 import { autoRepairOptedOut } from "../settings.js";
@@ -44,6 +44,32 @@ export function plistNodeBinDir(plistContent: string): string | undefined {
   const program = array?.[1];
   if (!program || !isAbsolute(program) || basename(program) !== "node") return undefined;
   return dirname(program);
+}
+
+/** The real file behind `path`, or undefined when it cannot be resolved. */
+function realFile(path: string): string | undefined {
+  try {
+    return realpathSync(path);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * True when PATH starts with the required prefixes for the node the plist
+ * runs. The node dir on PATH may be a link to the same node, such as
+ * Homebrew's `/opt/homebrew/opt/node/bin` for a Cellar path (#441).
+ */
+export function plistPathHasNode(pathValue: string, home: string, plistContent: string): boolean {
+  const nodeDir = plistNodeBinDir(plistContent);
+  if (launchAgentPathHasRequiredPrefixes(pathValue, home, nodeDir)) return true;
+  if (!nodeDir) return false;
+  const target = realFile(join(nodeDir, "node"));
+  if (!target) return false;
+  return pathValue
+    .split(":")
+    .filter((dir) => isAbsolute(dir) && dir !== nodeDir && realFile(join(dir, "node")) === target)
+    .some((dir) => launchAgentPathHasRequiredPrefixes(pathValue, home, dir));
 }
 
 /** Read the ProgramArguments strings from a LaunchAgent plist. */
@@ -126,10 +152,7 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
     const pathValue = extractPlistPath(content);
     if (!pathValue) continue;
 
-    if (
-      !plistManagesOwnPath(plistPath) &&
-      !launchAgentPathHasRequiredPrefixes(pathValue, home, plistNodeBinDir(content))
-    ) {
+    if (!plistManagesOwnPath(plistPath) && !plistPathHasNode(pathValue, home, content)) {
       items.push({
         agent: "launchagent",
         type: "launchagent",

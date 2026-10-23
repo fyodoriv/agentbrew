@@ -75,6 +75,26 @@
     },
     {
       "id": 8,
+      "prompt": "/watch-issues in Claude Code with the Monitor tool; the last pass showed nothing new, and the owner wants new issues picked up within minutes, not every 30 minutes.",
+      "expected_output": "The agent arms a Monitor that loops watch-pass.sh --wait 540 --interval 300 with a 300 s sleep between steps, ships each new item as its lines arrive, ignores repeats of the item it is on, re-arms on expiry, and reports each pickup's latency (filed time to PR time).",
+      "expectations": [
+        "Uses a Monitor looping watch-pass.sh --wait with a sleep between steps, not back-to-back passes",
+        "Re-arms the Monitor when it expires",
+        "Reports each pickup's latency from the issue or task's filed time to the PR's open time"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/watch-issues under taskgrind (no Monitor, a 10-minute tool limit); the queue is empty.",
+      "expected_output": "The agent runs watch-pass.sh --wait 540 --interval 60 one bounded step per tool call, ships an item when one arrives, and never asks the user anything.",
+      "expectations": [
+        "Keeps each wait under the 10-minute tool limit (--wait 540 or less)",
+        "Repeats bounded waits instead of exiting just because the queue is idle",
+        "Does not ask the user a question"
+      ]
+    },
+    {
+      "id": 10,
       "prompt": "/watch-issues ~/apps/careerbrew (the pass lists three new tasks with no Blocked line: one needs the owner's browser cookies, one needs 4 weeks of the owner's real use, one needs the owner's own eval labels)",
       "expected_output": "The agent does not try to do any of the three: each needs a step only the owner can do. It adds a `**Blocked**:` line to each task naming that exact owner step, ships the task-queue edit through the repo's gate and a PR, and notes that the pass reads TASKS.md from the default branch, so the tasks drop out of the list only after the merge. The next pass prints `watch: 0 new`.",
       "expectations": [

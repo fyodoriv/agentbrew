@@ -731,7 +731,9 @@ agentbrew setup [server]               Configure API keys for MCP servers
 agentbrew setup --all [--yes] [--dry-run] [--force] [--dir <dir>]
                                        Multi-repo setup chain: sync, dotfiles,
                                        careerbrew, audit-skills; skips done steps,
-                                       keeps going after a failure, lists failures
+                                       keeps going after a failure, lists failures.
+                                       Reuses a checkout found on PATH or under
+                                       --dir (default ~/apps, depth 2) before cloning
 
 agentbrew plugin <subcommand>          Manage signed company plugins
 agentbrew hook install --shell         Install shell hook for project detection

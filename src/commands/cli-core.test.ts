@@ -120,6 +120,7 @@ beforeEach(() => {
   });
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -468,6 +469,18 @@ describe("registerCoreCommands", () => {
       await program.parseAsync(["node", "test", "setup", "--all", "--yes", "--dry-run"]);
       expect(runSetupAll).toHaveBeenCalledWith(expect.objectContaining({ yes: true, dryRun: true }));
       expect(mockRunMcpSetup).not.toHaveBeenCalled();
+    });
+
+    it("warns when --all-only flags come without --all", async () => {
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "setup", "--yes"]);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/only apply with --all/));
+    });
+
+    it("warns when a server name or --model comes with --all", async () => {
+      const program = buildProgram();
+      await program.parseAsync(["node", "test", "setup", "my-server", "--all", "--yes"]);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/--all ignores/));
     });
 
     it("rejects --dry-run when not setting up opencode (was silently ignored)", async () => {

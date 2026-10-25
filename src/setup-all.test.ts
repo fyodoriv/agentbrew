@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Runner } from "./contribute.js";
-import { runSetupAll, type SetupStep } from "./setup-all.js";
+import { buildSteps, runSetupAll, type SetupStep } from "./setup-all.js";
 
 function steps(dir: string): SetupStep[] {
   const s = (id: string, repo: SetupStep["repo"], extra: Partial<SetupStep> = {}): SetupStep => ({
@@ -101,5 +101,71 @@ describe("runSetupAll", () => {
     const r = await runSetupAll({ ...t.opts, dryRun: true }, steps(t.dir));
     expect(t.calls).toEqual([]);
     expect(r.ran).toHaveLength(6);
+  });
+
+  it("--force reruns finished steps", async () => {
+    const t = setup();
+    await runSetupAll({ ...t.opts, yes: true }, steps(t.dir));
+    t.calls.length = 0;
+    await runSetupAll({ ...t.opts, yes: true, force: true }, steps(t.dir));
+    expect(t.calls).toHaveLength(6);
+  });
+
+  it("leaves a failed step out of the state file", async () => {
+    const t = setup(["careerbrew-install"]);
+    await runSetupAll({ ...t.opts, yes: true }, steps(t.dir));
+    const done = JSON.parse(readFileSync(t.opts.stateFile, "utf-8")).done;
+    expect(done).toContain("careerbrew-clone");
+    expect(done).not.toContain("careerbrew-install");
+  });
+
+  it("dry run writes no files", async () => {
+    const t = setup();
+    const before = readdirSync(t.dir);
+    await runSetupAll({ ...t.opts, dryRun: true }, steps(t.dir));
+    expect(readdirSync(t.dir)).toEqual(before);
+    expect(existsSync(t.opts.stateFile)).toBe(false);
+  });
+
+  it("says so when the state file is unreadable", async () => {
+    const t = setup();
+    writeFileSync(t.opts.stateFile, "{not json");
+    await runSetupAll({ ...t.opts, yes: true }, steps(t.dir));
+    expect(t.lines.join("\n")).toMatch(/Cannot read setup state/);
+    expect(t.calls).toHaveLength(6);
+  });
+
+  it("uses an existing checkout instead of cloning a second copy", async () => {
+    const t = setup();
+    const existing = join(t.dir, "tooling", "dotfiles");
+    mkdirSync(existing, { recursive: true });
+    await runSetupAll({
+      ...t.opts,
+      yes: true,
+      locate: (repo) => (repo === "dotfiles" ? existing : undefined),
+    });
+    expect(t.calls.filter((c) => c === "git")).toHaveLength(1); // careerbrew only
+    expect(t.lines.join("\n")).toContain(`use existing dotfiles checkout ${existing}`);
+  });
+});
+
+describe("buildSteps", () => {
+  it("builds the commands and paths for a fresh machine", () => {
+    const s = buildSteps("/w", ["node", "/ab.js"]);
+    expect(s.map((x) => [x.id, x.cmd, ...x.args, x.cwd].join(" "))).toEqual([
+      "agentbrew-sync node /ab.js sync /w",
+      "dotfiles-clone git clone https://github.com/fyodoriv/dotfiles.git /w/dotfiles /w",
+      "dotfiles-install bash /w/dotfiles/bin/dotfiles-install run --yes --no-agentbrew /w/dotfiles",
+      "careerbrew-clone git clone https://github.com/fyodoriv/careerbrew.git /w/careerbrew /w",
+      "careerbrew-install bash /w/careerbrew/scripts/install.sh /w/careerbrew",
+      "audit-skills node /ab.js audit-skills /w",
+    ]);
+  });
+
+  it("points install steps at an existing checkout and marks the clone done", () => {
+    const s = buildSteps("/w", ["ab"], { dotfiles: "/w/tooling/dotfiles" });
+    const clone = s.find((x) => x.id === "dotfiles-clone");
+    expect(clone?.satisfied?.()).toBe(true);
+    expect(s.find((x) => x.id === "dotfiles-install")?.cwd).toBe("/w/tooling/dotfiles");
   });
 });

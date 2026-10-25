@@ -109,7 +109,10 @@ offer to open an issue with the output.
 To also set up dotfiles and careerbrew in one go, run
 `agentbrew setup --all` (add `--yes` to skip its one question round). It
 skips steps a past run finished, keeps going after a failed step, lists the
-failed steps, and runs `agentbrew audit-skills` at the end.
+failed steps, and runs `agentbrew audit-skills` at the end. It reuses an
+existing checkout (the `dotfiles` or `careerbrew` command on PATH, or a clone
+with the matching origin up to two folders deep under `--dir`, default
+`~/apps`) and clones into `--dir` only when it finds none.
 
 Audit the skills and commands already on this machine: run
 `agentbrew audit-skills`. It lists each one no tracked source owns, marked

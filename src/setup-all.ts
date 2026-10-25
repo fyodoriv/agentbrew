@@ -10,17 +10,20 @@
  * Done-step state lives in a JSON file under ~/.local/state/agentbrew
  * (file scope: survives reruns; delete it or pass --force to rerun all).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { defaultRunner, type Runner } from "./contribute.js";
+import type { Runner } from "./contribute.js";
+
+export type RepoName = "dotfiles" | "careerbrew";
 
 export interface SetupStep {
   id: string;
   title: string;
   /** Repo this step belongs to; the question round can drop a repo. */
-  repo: "agentbrew" | "dotfiles" | "careerbrew";
+  repo: "agentbrew" | RepoName;
   cmd: string;
   args: string[];
   cwd: string;
@@ -40,6 +43,8 @@ export interface SetupAllOptions {
   ask?: (question: string) => Promise<boolean>;
   log?: (line: string) => void;
   isTTY?: boolean;
+  /** Finds an existing checkout of a repo; defaults to findCheckout. */
+  locate?: (repo: RepoName, dir: string) => string | undefined;
 }
 
 export interface SetupAllResult {
@@ -48,18 +53,86 @@ export interface SetupAllResult {
   failed: string[];
 }
 
-const REPOS = {
+const REPOS: Record<RepoName, string> = {
   dotfiles: "https://github.com/fyodoriv/dotfiles.git",
   careerbrew: "https://github.com/fyodoriv/careerbrew.git",
-} as const;
+};
+
+/** Streams installer output live and lets installers prompt (stdio inherit). */
+export const inheritRunner: Runner = (cmd, args, cwd) => {
+  const result = spawnSync(cmd, args, { cwd, stdio: "inherit" });
+  return { status: result.status ?? 1, stdout: "", stderr: result.error?.message ?? "" };
+};
 
 export function defaultStateFile(): string {
   return join(homedir(), ".local", "state", "agentbrew", "setup-all.json");
 }
 
-export function buildSteps(dir: string, agentbrewBin: string[]): SetupStep[] {
-  const dotfiles = join(dir, "dotfiles");
-  const careerbrew = join(dir, "careerbrew");
+function originMatches(checkout: string, repo: RepoName): boolean {
+  if (!existsSync(join(checkout, ".git"))) return false;
+  const res = spawnSync("git", ["-C", checkout, "config", "--get", "remote.origin.url"], { encoding: "utf-8" });
+  return new RegExp(`[/:]fyodoriv/${repo}(\\.git)?/?$`).test((res.stdout ?? "").trim());
+}
+
+function checkoutFromPath(repo: RepoName): string | undefined {
+  for (const bin of (process.env.PATH ?? "").split(":")) {
+    const candidate = join(bin, repo);
+    if (!bin || !existsSync(candidate)) continue;
+    let d = dirname(realpathSync(candidate));
+    for (let i = 0; i < 3; i++, d = dirname(d)) if (originMatches(d, repo)) return d;
+  }
+  return undefined;
+}
+
+function subdirs(dir: string): string[] {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .map((e) => join(dir, e.name));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Finds an existing checkout: the repo's command on PATH, then a clone whose
+ * origin matches anywhere under `dir` up to depth 2 (for example ~/apps/tooling/dotfiles).
+ */
+export function findCheckout(repo: RepoName, dir: string): string | undefined {
+  const fromPath = checkoutFromPath(repo);
+  if (fromPath) return fromPath;
+  for (const one of subdirs(dir)) {
+    if (originMatches(one, repo)) return one;
+    for (const two of subdirs(one)) if (originMatches(two, repo)) return two;
+  }
+  return undefined;
+}
+
+function repoSteps(repo: RepoName, dir: string, existing: string | undefined): SetupStep[] {
+  const path = existing ?? join(dir, repo);
+  const install =
+    repo === "dotfiles"
+      ? { cmd: "bash", args: [join(path, "bin", "dotfiles-install"), "run", "--yes", "--no-agentbrew"] }
+      : { cmd: "bash", args: [join(path, "scripts", "install.sh")] };
+  return [
+    {
+      id: `${repo}-clone`,
+      title: existing ? `use existing ${repo} checkout ${path}` : `clone ${repo} into ${path}`,
+      repo,
+      cmd: "git",
+      args: ["clone", REPOS[repo], path],
+      cwd: dir,
+      satisfied: () => existing !== undefined || existsSync(join(path, ".git")),
+    },
+    { id: `${repo}-install`, title: `${repo} installer`, repo, ...install, cwd: path },
+  ];
+}
+
+export function buildSteps(
+  dir: string,
+  agentbrewBin: string[],
+  existing: Partial<Record<RepoName, string>> = {},
+): SetupStep[] {
   const [abCmd, ...abArgs] = agentbrewBin;
   return [
     {
@@ -70,40 +143,8 @@ export function buildSteps(dir: string, agentbrewBin: string[]): SetupStep[] {
       args: [...abArgs, "sync"],
       cwd: dir,
     },
-    {
-      id: "dotfiles-clone",
-      title: `clone dotfiles into ${dotfiles}`,
-      repo: "dotfiles",
-      cmd: "git",
-      args: ["clone", REPOS.dotfiles, dotfiles],
-      cwd: dir,
-      satisfied: () => existsSync(join(dotfiles, ".git")),
-    },
-    {
-      id: "dotfiles-install",
-      title: "dotfiles installer",
-      repo: "dotfiles",
-      cmd: "bash",
-      args: [join(dotfiles, "bin", "dotfiles-install"), "run", "--yes", "--no-agentbrew"],
-      cwd: dotfiles,
-    },
-    {
-      id: "careerbrew-clone",
-      title: `clone careerbrew into ${careerbrew}`,
-      repo: "careerbrew",
-      cmd: "git",
-      args: ["clone", REPOS.careerbrew, careerbrew],
-      cwd: dir,
-      satisfied: () => existsSync(join(careerbrew, ".git")),
-    },
-    {
-      id: "careerbrew-install",
-      title: "careerbrew installer",
-      repo: "careerbrew",
-      cmd: "bash",
-      args: [join(careerbrew, "scripts", "install.sh")],
-      cwd: careerbrew,
-    },
+    ...repoSteps("dotfiles", dir, existing.dotfiles),
+    ...repoSteps("careerbrew", dir, existing.careerbrew),
     {
       id: "audit-skills",
       title: "agentbrew audit-skills",
@@ -116,11 +157,13 @@ export function buildSteps(dir: string, agentbrewBin: string[]): SetupStep[] {
   ];
 }
 
-function readDone(file: string): Set<string> {
+function readDone(file: string, log: (line: string) => void): Set<string> {
+  if (!existsSync(file)) return new Set();
   try {
     const data = JSON.parse(readFileSync(file, "utf-8")) as { done?: string[] };
     return new Set(data.done ?? []);
-  } catch {
+  } catch (err) {
+    log(`! Cannot read setup state ${file} (${(err as Error).message}); running every step.`);
     return new Set();
   }
 }
@@ -196,14 +239,20 @@ export async function runSetupAll(options: SetupAllOptions = {}, steps?: SetupSt
   const log = options.log ?? ((line: string) => console.log(line));
   const dir = options.dir ?? join(homedir(), "apps");
   const stateFile = options.stateFile ?? defaultStateFile();
-  const all = steps ?? buildSteps(dir, [process.execPath, process.argv[1] ?? "agentbrew"]);
+  const locate = options.locate ?? findCheckout;
+  const all =
+    steps ??
+    buildSteps(dir, [process.execPath, process.argv[1] ?? "agentbrew"], {
+      dotfiles: locate("dotfiles", dir),
+      careerbrew: locate("careerbrew", dir),
+    });
   const repos = await chooseRepos(options);
   const ctx: StepContext = {
-    done: options.force ? new Set<string>() : readDone(stateFile),
+    done: options.force ? new Set<string>() : readDone(stateFile, log),
     failedRepos: new Set<string>(),
     stateFile,
     dryRun: Boolean(options.dryRun),
-    run: options.run ?? defaultRunner,
+    run: options.run ?? inheritRunner,
     log,
   };
   const result: SetupAllResult = { ran: [], skipped: [], failed: [] };

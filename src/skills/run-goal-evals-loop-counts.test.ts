@@ -14,7 +14,7 @@ const evals = JSON.parse(readFileSync(join(SKILL_DIR, "evals", "evals.json"), "u
 describe("run-goal loop counts and new measured objects", () => {
   it("tells the agent to read one run's result line before trusting a loop's pass count", () => {
     expect(skill).toMatch(/Before you trust a loop's pass count, read one run's result line/);
-    expect(skill).toMatch(/"\$T\[0\]"` is an array subscript/);
+    expect(skill).toMatch(/"\$T\[0\]"` is a subscript and expands to empty/);
   });
 
   it("tells the agent to say so when its run measures a new object", () => {
@@ -22,7 +22,9 @@ describe("run-goal loop counts and new measured objects", () => {
   });
 
   it("has an eval for a goal that implements every unblocked task of two queues", () => {
-    const cases = evals.filter((e) => /implement all unblocked tasks/.test(e.prompt) && /two task queues/.test(e.prompt));
+    const cases = evals.filter(
+      (e) => /implement all unblocked tasks/.test(e.prompt) && /two task queues/.test(e.prompt),
+    );
     expect(cases).toHaveLength(1);
     const expectations = cases[0]?.expectations.join(" ") ?? "";
     expect(expectations).toMatch(/fails on the unchanged base/);

@@ -613,7 +613,6 @@ function lintSecrets(): { errors: number } {
   return { errors: findings.length };
 }
 
-/** Run every lint check, print the results, and return the error and warning counts. */
 /**
  * The agentbrew lint counts without any output, for snapshots and status lines
  * that must match `agentbrew lint`. Console output is muted only for the
@@ -634,6 +633,7 @@ export function silentLintCounts(): { errors: number; warnings: number } {
   }
 }
 
+/** Run every lint check, print the results, and return the error and warning counts. */
 export function lintCounts(): { errors: number; warnings: number } {
   let errors = 0;
   let warnings = 0;

@@ -122,7 +122,7 @@ describe("quiet snapshot lint counts (measure-quiet-lint-counts)", () => {
     const snapshot = buildContextBudgetSnapshot({ skipCcusage: true, quiet: true });
 
     expect(snapshot.static.lintPassed).toBe(false);
-    expect(snapshot.static.lintErrors).toBeGreaterThanOrEqual(1);
+    expect(snapshot.static.lintErrors).toBe(1);
     expect(snapshot.static.lintWarnings).toBe(12);
   });
 });

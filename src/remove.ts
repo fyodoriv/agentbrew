@@ -128,8 +128,13 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       reportRuleRemoval(resolved.name);
       break;
     case "claude-plugin":
-      removeClaudePlugin(resolved.name);
-      console.log(chalk.green(`  Removed Claude Code plugin ${resolved.name}`));
+      try {
+        removeClaudePlugin(resolved.name);
+        console.log(chalk.green(`  Removed Claude Code plugin ${resolved.name}`));
+      } catch (error) {
+        console.error(chalk.red(`  ✗ ${error instanceof Error ? error.message : String(error)}`));
+        process.exitCode = 1;
+      }
       break;
   }
 }

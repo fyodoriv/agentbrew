@@ -9,9 +9,11 @@
  * and drift touch only those plugins.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { getConfigServers } from "../agentfile.js";
+import { detectItemTypes } from "../clean.js";
 import type { DriftItem } from "../drift-checks/types.js";
 import { CLAUDE_PLUGINS_DIR, CLAUDE_PLUGINS_PATH } from "../paths.js";
 import { expandHome } from "../utils.js";
@@ -134,16 +136,33 @@ function checkoutPinned(entry: CatalogClaudePlugin, dir: string): void {
   if (head !== entry.commit) throw new Error(`${entry.name}: checkout is at ${head}, not ${entry.commit}`);
 }
 
+/** True when both paths name the same folder, through symlinks too. */
+function samePath(a: string | undefined, b: string): boolean {
+  if (a === undefined) return false;
+  const real = (p: string) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return resolve(p);
+    }
+  };
+  return real(a) === real(b);
+}
+
 /** The marketplace of this name in settings, when one exists that agentbrew did not register at `dir`. */
 function foreignMarketplace(marketplace: string, dir: string): boolean {
   const markets = claudeSettings().extraKnownMarketplaces as Record<string, { source?: { path?: string } }> | undefined;
   const existing = markets?.[marketplace];
-  return existing !== undefined && existing.source?.path !== dir;
+  return existing !== undefined && !samePath(existing.source?.path, dir);
 }
 
 /** Clone at the pinned commit, register the directory marketplace, enable the plugin, and record it. */
 export function installClaudePlugin(entry: CatalogClaudePlugin): ClaudePluginRecord {
   validate(entry);
+  const clash =
+    detectItemTypes(entry.name)[0] ??
+    (getConfigServers().some((s) => s.name === entry.name) ? "MCP server" : undefined);
+  if (clash) throw new Error(`${entry.name} already names a ${clash}; \`agentbrew remove\` could not tell them apart`);
   const dir = claudePluginDir(entry.name);
   if (foreignMarketplace(entry.marketplace, dir)) {
     throw new Error(`marketplace ${entry.marketplace} already exists and is not managed by agentbrew; remove it first`);
@@ -166,6 +185,7 @@ export function removeClaudePlugin(name: string): boolean {
   const record = records.find((r) => r.name === name);
   if (!record) return false;
   const dir = claudePluginDir(record.name);
+  requireClaude();
   try {
     claude(["plugin", "uninstall", record.key, "--scope", "user"]);
   } catch (error) {
@@ -211,7 +231,7 @@ function recordProblems(record: ClaudePluginRecord, entry: CatalogClaudePlugin |
   const enabled = (settings.enabledPlugins as Record<string, unknown> | undefined)?.[record.key];
   if (enabled !== true) problems.push(`${record.key} is not enabled in ~/.claude/settings.json`);
   const markets = settings.extraKnownMarketplaces as Record<string, { source?: { path?: string } }> | undefined;
-  if (markets?.[record.marketplace]?.source?.path !== record.dir) {
+  if (!samePath(markets?.[record.marketplace]?.source?.path, record.dir)) {
     problems.push(`marketplace ${record.marketplace} does not point at ${record.dir}`);
   }
   return problems;

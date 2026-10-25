@@ -1,8 +1,17 @@
 /** Catalog item type `claude-plugin`: a third-party Claude Code plugin pinned to a commit. */
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   checkClaudePluginDrift,
@@ -77,6 +86,7 @@ describe("claude-plugin catalog items", () => {
     rmSync(claudePluginDir("demo-guard"), { recursive: true, force: true });
     rmSync(join(homedir(), ".config", "agentbrew", "claude-plugins.json"), { force: true });
     rmSync(join(homedir(), ".claude", "settings.json"), { force: true });
+    rmSync(join(homedir(), ".claude", "skills", "demo-guard"), { recursive: true, force: true });
     process.env.AGENTBREW_CLAUDE_BIN = fakeClaude();
     repo = fixtureRepo();
     entry = {
@@ -179,6 +189,28 @@ describe("claude-plugin catalog items", () => {
     chmodSync(failing, 0o755);
     process.env.AGENTBREW_CLAUDE_BIN = failing;
     expect(() => removeClaudePlugin("demo-guard")).toThrow(/could not uninstall/);
+    expect(readClaudePluginRecords()).toHaveLength(1);
+  });
+  it("treats its own marketplace as its own when settings store the path through a symlink", () => {
+    installClaudePlugin(entry);
+    const link = join(homedir(), "plugins-link");
+    symlinkSync(dirname(claudePluginDir("demo-guard")), link);
+    const s = settings();
+    s.extraKnownMarketplaces["demo-market"].source.path = join(link, "demo-guard");
+    writeFileSync(join(homedir(), ".claude", "settings.json"), JSON.stringify(s));
+    expect(checkClaudePluginDrift([entry])).toEqual([]);
+    expect(() => installClaudePlugin(entry)).not.toThrow();
+  });
+
+  it("refuses a name that an installed skill already uses", () => {
+    mkdirSync(join(homedir(), ".claude", "skills", "demo-guard"), { recursive: true });
+    expect(() => installClaudePlugin(entry)).toThrow(/already names a skill/);
+  });
+
+  it("says when the marketplace could not be removed because claude is missing", () => {
+    installClaudePlugin(entry);
+    process.env.AGENTBREW_CLAUDE_BIN = join(homedir(), "no-such-claude");
+    expect(() => removeClaudePlugin("demo-guard")).toThrow(/Claude Code CLI not found/);
     expect(readClaudePluginRecords()).toHaveLength(1);
   });
 });

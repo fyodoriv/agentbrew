@@ -2327,6 +2327,34 @@ describe("install — dryRun option for CLI tool", () => {
     expect(mockCpSync).not.toHaveBeenCalled();
     expect(mockSaveState).not.toHaveBeenCalled();
   });
+
+  it("previews a Claude Code plugin with its repo and pinned commit, and installs nothing", async () => {
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      mcp_servers: [],
+      rules: [],
+      cli_tools: [],
+      claude_plugins: [
+        {
+          name: "demo-guard",
+          description: "demo",
+          category: "guardrails",
+          recommended: false,
+          repo: "example/demo-guard",
+          commit: "0123456789abcdef0123456789abcdef01234567",
+          plugin: "demo-guard",
+          marketplace: "demo-market",
+        },
+      ],
+    });
+    mockLoadState.mockReturnValue(makeState());
+    await install("demo-guard", { dryRun: true });
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).toContain("Would install Claude Code plugin");
+    expect(logs).toContain("demo-guard@demo-market");
+    expect(logs).toContain("example/demo-guard at 0123456789ab");
+    expect(mockSaveState).not.toHaveBeenCalled();
+  });
 });
 
 // ── install — dryRun for catalog skill (lines 81-85) ─────────────────────────

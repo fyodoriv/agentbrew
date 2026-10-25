@@ -309,4 +309,5 @@ export interface CatalogData {
   mcpServers: CatalogMcpServer[];
   rules: CatalogRule[];
   cliTools: CatalogCliTool[];
+  claudePlugins?: CatalogClaudePlugin[];
 }

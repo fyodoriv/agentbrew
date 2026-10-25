@@ -279,6 +279,19 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] A background context-budget capture fails its lint check whenever `agentbrew lint` fails
+  - **ID**: measure-quiet-lint-counts
+  - **Tags**: measure, lint
+  - **Details**: Found while fixing #461. `runLintCheck(quiet)` in `src/measure/context-budget.ts` (used by `--quiet`, `--quick`, `--json`, and the post-sync capture) counts `validateConfig()` plus two shared-rules checks, not every `agentbrew lint` check. On 2026-10-25 this Mac's `agentbrew lint` reported 12 warnings while the quiet snapshot reported 0, and a command-size error (the #461 case) would leave `lintPassed: true`. `printCompactConfigLine()` in `src/status.ts` has the same gap: `agentbrew status` says "Config: valid" when only `validateConfig()` passes. The non-quiet `measure context` path now uses `lintCounts()`.
+  - **Files**: `src/lint.ts`, `src/measure/context-budget.ts`, `src/status.ts`, their tests
+  - **Output**: code
+  - **Acceptance**: `agentbrew status`'s Config line and the quiet snapshot's `lintPassed`, `lintErrors`, and `lintWarnings` match `agentbrew lint` on the same machine, without printing the lint output.
+  - **Hypothesis**: running every lint check silently in the quiet path drops count mismatches between the snapshot and `agentbrew lint` from 1 (warnings 0 vs 12) to 0.
+  - **Measurement**: `agentbrew measure context --dry-run --json` lint fields compared with `agentbrew lint`'s summary line; a vitest case with a command-size error in quiet mode.
+  - **Success**: equal counts on this Mac, and the quiet test fails lint on a command-size error.
+  - **Pivot**: if a silent full lint is too slow for post-sync capture, add only the missing error checks to the quiet path.
+  - **Anchor**: agentbrew #461 fix (2026-10-25).
+
 ## P3
 
 - [ ] `/work` drops the steps of an Agentfile that no longer exists

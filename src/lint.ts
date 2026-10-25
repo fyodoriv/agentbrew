@@ -613,8 +613,8 @@ function lintSecrets(): { errors: number } {
   return { errors: findings.length };
 }
 
-/** Validate all agentbrew configuration files. Returns true if valid. */
-export function lint(): boolean {
+/** Run every lint check, print the results, and return the error and warning counts. */
+export function lintCounts(): { errors: number; warnings: number } {
   let errors = 0;
   let warnings = 0;
 
@@ -659,7 +659,12 @@ export function lint(): boolean {
     console.error(chalk.red(`${errors} error(s), ${warnings} warning(s)`));
   }
 
-  return errors === 0;
+  return { errors, warnings };
+}
+
+/** Run every lint check and print the results; true when there are no errors. */
+export function lint(): boolean {
+  return lintCounts().errors === 0;
 }
 
 /**

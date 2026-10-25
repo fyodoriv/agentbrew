@@ -29,8 +29,23 @@ row: id, trigger, adopt regex, text. The hook reads your last prompt:
 | `long` | belongs to a transcript over 400 lines |
 | `any` | always |
 
-A matching specific trigger wins; otherwise the least-shown `any` tip shows.
-The hook never repeats the previous tip and never shows a tip you already adopted.
+**Never a repeat.** A tip already shown never comes back while any tip that
+fits is still unshown. The history is the whole log, across sessions. Once
+every fitting tip was shown, the one shown longest ago comes next
+(oldest-first rotation). Among unshown tips, a matching specific trigger wins,
+then file order. A tip you already adopted never shows again, and the same tip
+never shows twice in a row.
+
+Every tip names a real Claude Code feature or a well-known prompting practice.
+Never add a tip for a command or shortcut that does not exist.
+
+## In the status line
+
+`agent-perf.mjs statusline` (see [agent-perf.md](agent-perf.md)) prints the
+session's current tip on a second line, from the last `shown` row for the
+session in the log. Each `shown` row holds the tip text for this. Claude Code
+has one `statusLine` setting, so the tip joins the existing line; no second
+status command is needed.
 
 ## Measure and improve
 

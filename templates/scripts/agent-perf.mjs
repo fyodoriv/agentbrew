@@ -17,7 +17,7 @@
 // Commands:
 //   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
 //   brief [--project NAME]
-//   statusline            (reads Claude Code status-line JSON on stdin)
+//   statusline            (reads Claude Code status-line JSON on stdin; adds the usage tip line)
 //   turn --session ID [--json]
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool
@@ -544,7 +544,35 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
   return { toolMs: cache.toolMs, slowKey: cache.slowKey, slowMs: cache.slowMs };
 }
 
-export function formatStatusline(input, stats) {
+// ── statusline: the usage-tip hook's current tip for this session ──
+
+/** Usage-tip log written by hooks/checks/usage-tip.sh. */
+export function usageTipsLog(env = process.env) {
+  return join(env.USAGE_TIPS_DIR || join(homedir(), ".cache", "agentbrew", "usage-tips"), "log.jsonl");
+}
+
+const TIP_TAIL_BYTES = 256 * 1024;
+
+/** Text of the last tip shown in this session, or null. Reads only the log's tail. */
+export function sessionTip(sid, { file = usageTipsLog() } = {}) {
+  if (!sid || !existsSync(file)) return null;
+  const size = statSync(file).size;
+  const { text } = readFrom(file, Math.max(0, size - TIP_TAIL_BYTES));
+  const lines = text.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].includes(sid)) continue;
+    let row;
+    try {
+      row = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (row.session === sid && row.event === "shown") return row.text || row.tip || null;
+  }
+  return null;
+}
+
+export function formatStatusline(input, stats, tip = null) {
   const parts = [];
   const model = input?.model?.display_name;
   if (model) parts.push(model);
@@ -561,7 +589,9 @@ export function formatStatusline(input, stats) {
   if (stats.slowKey) parts.push(`slowest: ${stats.slowKey} ${formatMs(stats.slowMs)}`);
   const ctx = input?.context_window?.used_percentage;
   if (typeof ctx === "number") parts.push(`ctx ${Math.round(ctx)}%`);
-  return parts.join(" · ");
+  const line = parts.join(" · ");
+  if (!tip) return line;
+  return line ? `${line}\n💡 ${tip}` : `💡 ${tip}`;
 }
 
 function readStdin() {
@@ -604,7 +634,13 @@ export function main(argv = process.argv.slice(2)) {
     } catch {
       // The status line must always print something.
     }
-    process.stdout.write(`${formatStatusline(input, stats)}\n`);
+    let tip = null;
+    try {
+      tip = sessionTip(input.session_id);
+    } catch {
+      // No tip line; the stats line still prints.
+    }
+    process.stdout.write(`${formatStatusline(input, stats, tip)}\n`);
     return 0;
   }
   if (command === "turn") {

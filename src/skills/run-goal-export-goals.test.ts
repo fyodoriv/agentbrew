@@ -9,7 +9,10 @@ const exporter = join(skillRoot, "scripts", "export-goals.py");
 const scratch = mkdtempSync(join(tmpdir(), "run-goal-export-"));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
-const OUTSIDE_PATH = ["", "Users", "someone", "private", "x.txt"].join("/");
+const HOME_PREFIX = ["", "Users", "someone"].join("/");
+const OUTSIDE_PATH = `${HOME_PREFIX}/private/x.txt`;
+const TOOLING_PATH = `${HOME_PREFIX}/apps/tooling/agentbrew/src/a.ts`;
+const HEX_KEY = "0123456789abcdef".repeat(2);
 const FAKE_TOKEN = `ghp_${"A1b2C3d4".repeat(5)}`;
 
 /** A scratch HOME with a fake private pattern and fixture goal files. */
@@ -20,14 +23,14 @@ function fixture(): { home: string; state: string; out: string } {
   mkdirSync(join(home, ".config", "oss-readiness"), { recursive: true });
   writeFileSync(
     join(home, ".config", "oss-readiness", "oss-readiness.env"),
-    "OSS_READINESS_INTERNAL_PATTERN='acmecorp|secretproj'\n",
+    "OSS_READINESS_INTERNAL_PATTERN='acme[[:space:]]corp|secretproj'\n",
   );
   writeFileSync(
     join(state, "aaaaaaaa-1111.contract.md"),
     [
       "# Goal contract — demo",
       "",
-      `Raw goal: ship the AcmeCorp widget from  with key ${FAKE_TOKEN} and a very long tail of words after it`,
+      `Raw goal: ship the Acme Corp widget from ${OUTSIDE_PATH} with ${FAKE_TOKEN} and a very long tail of words after it`,
       "",
       "## Done when",
       "1. first",
@@ -45,18 +48,25 @@ function fixture(): { home: string; state: string; out: string } {
       "Goal result: partly met (2/3 met)",
       "",
       "## What went wrong",
-      "- secretproj gate timed out; mail me at owner@example.com",
+      "- secretproj gate timed out; mail me at owner@example.com; see /Volumes/Ext/x and /mnt/data/y",
+      `- edited ${TOOLING_PATH} with api_key=${HEX_KEY} and Bearer abc.def; raw ${HEX_KEY}`,
+      "- not a result: the Goal result: met line must start the line",
       "  - nested detail is not an item",
       "## Skills updated",
       "- run-goal: eval — https://github.com/fyodoriv/agentbrew/pull/12",
       "- watch-issues: fix — https://github.com/fyodoriv/agentbrew/pull/12 and https://github.com/fyodoriv/agentbrew/pull/13",
+      "- dotfiles: fyodoriv/dotfiles#9 and PR #7, again PR #7",
     ].join("\n"),
   );
   writeFileSync(
     join(state, "bbbbbbbb-2222.contract.md"),
     "# Goal contract — open one\n\nRaw goal: tidy docs\n\n## Done when\n- one\n",
   );
-  writeFileSync(join(state, "cccccccc-3333.retro.md"), "# Retro\n\n## What to improve\n- smaller steps\n");
+  writeFileSync(
+    join(state, "cccccccc-3333.retro.md"),
+    "# Retro\nWe wrote Goal result: met in prose only.\n\n## What to improve\n- smaller steps\n",
+  );
+  writeFileSync(join(state, "dddddddd-4444.pending"), "");
   return { home, state, out: join(home, "out") };
 }
 
@@ -75,11 +85,11 @@ describe("run-goal export-goals.py", () => {
 
   it("exits 0 and reads the default state folder under HOME", () => {
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).toContain("goals=3 retro_items=4");
+    expect(r.stdout).toContain("goals=3 retro_items=7");
   });
 
   it("writes one goal row with counts, status, and distinct PR URLs", () => {
-    expect(byId.aaaaaaaa).toMatchObject({ criteria: 3, met: 2, status: "partly met", prs: 2, retro_items: 3 });
+    expect(byId.aaaaaaaa).toMatchObject({ criteria: 3, met: 2, status: "partly met", prs: 4, retro_items: 6 });
     expect(byId.bbbbbbbb).toMatchObject({ criteria: 1, met: null, status: "open", prs: 0, title: "tidy docs" });
     expect(byId.cccccccc).toMatchObject({ status: "done", title: "", retro_items: 1 });
     expect(byId.aaaaaaaa.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -89,6 +99,9 @@ describe("run-goal export-goals.py", () => {
     expect(byId.aaaaaaaa.title.length).toBeLessThanOrEqual(80);
     expect(items.map((i: { category: string }) => i.category)).toEqual([
       "what went wrong",
+      "what went wrong",
+      "what went wrong",
+      "skills updated",
       "skills updated",
       "skills updated",
       "what to improve",
@@ -99,7 +112,13 @@ describe("run-goal export-goals.py", () => {
     const all = ["goals.json", "retro_items.json", "manifest.json"]
       .map((n) => readFileSync(join(f.out, n), "utf-8"))
       .join("\n");
-    expect(all).not.toMatch(/acmecorp|secretproj/i);
+    expect(all).not.toMatch(/acme\s?corp|secretproj/i);
+    expect(all).not.toContain(OUTSIDE_PATH);
+    expect(all).not.toContain(HOME_PREFIX);
+    expect(all).not.toContain(HEX_KEY);
+    expect(all).not.toMatch(/abc\.def|\/Volumes\/|\/mnt\//);
+    expect(all).toContain("~/apps/tooling/agentbrew/src/a.ts");
+    expect(all).toContain("api_key=[redacted]");
     expect(all).not.toContain(FAKE_TOKEN);
     expect(all).not.toMatch(/gh[pousr]_[A-Za-z0-9]{20,}|[\w.+-]+@[\w-]+\.\w+|\/Users\/|\/home\//);
     expect(all).toContain("[private]");
@@ -114,6 +133,25 @@ describe("run-goal export-goals.py", () => {
     for (const n of ["goals.json", "retro_items.json"]) {
       expect(pattern.test(readFileSync(join(f.out, n), "utf-8"))).toBe(false);
     }
+  });
+
+  it("anchors Goal result to the start of a line", () => {
+    expect(byId.cccccccc.status).toBe("done");
+  });
+
+  it("fails closed and writes nothing without the private pattern env file", () => {
+    const g = fixture();
+    rmSync(join(g.home, ".config", "oss-readiness"), { recursive: true });
+    const r2 = run(g);
+    expect(r2.status).toBe(2);
+    expect(r2.stderr).toContain("refusing to export");
+    expect(existsSync(g.out)).toBe(false);
+  });
+
+  it("fails closed when the env file has no pattern", () => {
+    const g = fixture();
+    writeFileSync(join(g.home, ".config", "oss-readiness", "oss-readiness.env"), "OTHER=1\n");
+    expect(run(g).status).toBe(2);
   });
 
   it("writes a manifest entry per dataset with a stale window", () => {

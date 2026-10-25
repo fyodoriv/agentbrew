@@ -18,15 +18,30 @@ publish Artifacts.
 
 - `title`: the first 80 characters of `Raw goal:` in the contract.
 - `criteria`: list items under `## Done when`.
-- `status` and `met`: from a `Goal result: <met|partly met|blocked> (N/M met)`
-  line in the retro file. Without it, `done` when a retro exists, else `open`.
-- `prs`: distinct `https://github.com/<owner>/<repo>/pull/<n>` URLs in the retro.
+- `status` and `met`: from a line that starts with
+  `Goal result: <met|partly met|blocked> (N/M met)` in the retro file.
+  Without it, `done` when a retro exists, else `open`.
+- `prs`: distinct PR references in the retro: PR URLs, `owner/repo#N`, and
+  `PR #N`.
 
-Privacy: the exporter only reads its inputs. Titles and retro lines are
-scrubbed: matches of the private pattern in
-`~/.config/oss-readiness/oss-readiness.env` become `[private]`; tokens,
-emails, and paths outside `~/apps/tooling` become placeholders. Anyone who
-can open the dashboard can read the attached files.
+Privacy: the exporter only reads its inputs, and it fails closed. It loads
+`OSS_READINESS_INTERNAL_PATTERN` by sourcing
+`~/.config/oss-readiness/oss-readiness.env`, as the leak gates do, and
+applies it with `grep -iE` (not Python `re`, which misreads POSIX classes
+such as `[[:space:]]`). A missing env file, an empty pattern, or any output
+line that still matches (`grep -icE`) makes it exit 2 and write nothing.
+Titles and retro lines are scrubbed:
+
+- `/Users/<name>` and `/home/<name>` become `~`;
+- pattern matches become `[private]`;
+- secrets become `[redacted]`: known token shapes, hex or base64 runs of 32+
+  characters, and values after `key=`, `token=`, `secret=`, `password=`,
+  `Bearer`, and the like;
+- emails become `[email]`;
+- paths outside `~/apps/tooling` (including `/Volumes`, `/mnt`, `/tmp`)
+  become `[path]`.
+
+Anyone who can open the dashboard can read the attached files.
 
 ## Refresh steps
 

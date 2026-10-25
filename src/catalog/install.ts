@@ -17,6 +17,7 @@ import { refreshInstalledSkills } from "../update.js";
 import { expandHome } from "../utils.js";
 import { isBuiltInSkill } from "./builtin-skill.js";
 import { findBundle, missingBundleMembers } from "./bundles.js";
+import { installClaudePlugin } from "./claude-plugin.js";
 import {
   addRuleToSharedRules,
   installCliTool,
@@ -333,6 +334,15 @@ async function installFromCatalog(
   if (cliTool) {
     warnIfDeprecated(name, "CLI tool", cliTool);
     await installCliTool(cliTool);
+    return;
+  }
+  const claudePlugin = (catalog.claude_plugins ?? []).find((p) => p.name === name);
+  if (claudePlugin) {
+    warnIfDeprecated(name, "Claude Code plugin", claudePlugin);
+    const record = installClaudePlugin(claudePlugin);
+    console.log(
+      chalk.green(`  ${ICON_SUCCESS} ${record.key} installed at ${record.commit.slice(0, 12)} (${record.dir})`),
+    );
     return;
   }
   await installSkillByName(state, catalog, name, { dryRun, local, checkCatalog: false });

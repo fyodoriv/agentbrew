@@ -17,6 +17,7 @@ export interface DriftItem {
   type:
     | "agents"
     | "claude-desktop-mcp"
+    | "claude-plugin"
     | "cli-build"
     | "env-hygiene"
     | "organization-overlay"

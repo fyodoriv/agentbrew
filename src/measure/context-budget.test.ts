@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lint.js", () => ({
   lint: vi.fn().mockReturnValue(true),
+  lintCounts: vi.fn().mockReturnValue({ errors: 0, warnings: 0 }),
   validateConfig: vi.fn().mockReturnValue({ errors: 0, warnings: 0, details: [] }),
 }));
 
@@ -91,5 +92,21 @@ describe("context-budget snapshot", () => {
     });
     expect(result.skipped).toBe(true);
     expect(result.snapshot).toBeUndefined();
+  });
+});
+
+describe("lint-failed alert counts (#461)", () => {
+  it("shows the counts agentbrew lint found, not validateConfig's", async () => {
+    const lintModule = await import("../lint.js");
+    // Only a check validateConfig does not run (oversized commands) fails lint.
+    vi.mocked(lintModule.lint).mockReturnValue(false);
+    vi.mocked(lintModule.lintCounts).mockReturnValue({ errors: 6, warnings: 24 });
+    vi.mocked(lintModule.validateConfig).mockReturnValue({ errors: 0, warnings: 0, details: [] });
+
+    const snapshot = buildContextBudgetSnapshot({ skipCcusage: true });
+
+    expect(snapshot.static.lintPassed).toBe(false);
+    expect(snapshot.static.lintErrors).toBe(6);
+    expect(snapshot.static.lintWarnings).toBe(24);
   });
 });

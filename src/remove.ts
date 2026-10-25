@@ -3,6 +3,7 @@ import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import { removeSource } from "./add-source.js";
 import { getConfigServers, getStateSources } from "./agentfile.js";
+import { readClaudePluginRecords, removeClaudePlugin } from "./catalog/claude-plugin.js";
 import { removeRuleFromSharedRules } from "./catalog/install-other.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clean, detectItemTypes } from "./clean.js";
@@ -12,7 +13,7 @@ import { formatSuggestion } from "./suggest.js";
 import { builtinCommandNames, userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
-type ItemType = "mcp" | "source" | "skill" | "command" | "rule";
+type ItemType = "mcp" | "source" | "skill" | "command" | "rule" | "claude-plugin";
 
 const TYPE_LABELS: Record<ItemType, string> = {
   mcp: "MCP server",
@@ -20,6 +21,7 @@ const TYPE_LABELS: Record<ItemType, string> = {
   skill: "skill",
   command: "command",
   rule: "rule",
+  "claude-plugin": "Claude Code plugin",
 };
 
 interface ResolvedItem {
@@ -52,6 +54,9 @@ function resolveItem(name: string): ResolvedItem | undefined {
   // already dispatches to MCP servers, sources, skills, and commands.
   const catalog = loadCatalog();
   if (catalog.rules.some((r) => r.name === name)) return { type: "rule", name };
+
+  // Last, so a plugin never shadows an MCP server, source, skill, or rule of the same name.
+  if (readClaudePluginRecords().some((r) => r.name === name)) return { type: "claude-plugin", name };
 
   return undefined;
 }
@@ -121,6 +126,15 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       break;
     case "rule":
       reportRuleRemoval(resolved.name);
+      break;
+    case "claude-plugin":
+      try {
+        removeClaudePlugin(resolved.name);
+        console.log(chalk.green(`  Removed Claude Code plugin ${resolved.name}`));
+      } catch (error) {
+        console.error(chalk.red(`  ✗ ${error instanceof Error ? error.message : String(error)}`));
+        process.exitCode = 1;
+      }
       break;
   }
 }

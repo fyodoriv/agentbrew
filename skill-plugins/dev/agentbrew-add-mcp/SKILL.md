@@ -6,6 +6,10 @@ description: >
   server", "connect to X", or "I want all agents to use Y tool".
 ---
 
+## Preflight: duplicates, conflicts, pins
+
+Before any install or sync, run shared-rules "Tool setup preflight": duplicates and conflicts (hooks, status line, MCP, skills, LaunchAgents, plugins), a scratch HOME test, pinned versions.
+
 ## What You Do
 
 Register one MCP server. Agentbrew syncs it to every agent's native config format.
@@ -52,7 +56,7 @@ agentbrew install --recommended     # install everything flagged recommended:tru
 Browse what's available with `agentbrew catalog --mcp`. Company MCP servers
 come from a signed plugin instead: `agentbrew plugin add <url>@<signed-tag>`
 installs them, and sync renders a launcher that resolves their secrets at
-start. (agentbrew 1.0 removed `agentbrew team set` and the overlay catalog.)
+start.
 
 ### Adding a new catalog entry
 
@@ -115,13 +119,6 @@ it exits 1. To move a tag or commit pin, run `mcp add` again with a new `--ref`:
 Repos are cached at `~/.config/agentbrew/mcp-repos/<name>`. Entrypoint detection checks
 `dist/index.js`, `build/index.js`, `index.js`, `run_server.py`, `server.py`, and
 `package.json` `bin`/`main` in that order.
-
-## Add from Catalog
-
-```bash
-agentbrew catalog --mcp
-agentbrew install playwright
-```
 
 ## Sync & Verify
 

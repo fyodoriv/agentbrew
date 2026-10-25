@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
-import { lint, validateConfig } from "../lint.js";
+import { lintCounts, validateConfig } from "../lint.js";
 import { CONTEXT_BUDGET_LATEST_PATH, CONTEXT_BUDGET_METRICS_DIR, SHARED_RULES_PATH } from "../paths.js";
 import { pruneOldMetrics } from "../plugins/leak-audit.js";
 import { DEPLOYED_RULES_FILE_CHAR_BUDGET, findSharedRulesBloat, projectedDeployedRulesSize } from "../rules-hygiene.js";
@@ -151,9 +151,10 @@ function runLintCheck(quiet: boolean): { passed: boolean; errors: number; warnin
     return { passed: errors === 0, errors, warnings: validation.warnings };
   }
 
-  const passed = lint();
-  const validation = validateConfig();
-  return { passed, errors: validation.errors, warnings: validation.warnings };
+  // The counts agentbrew lint printed: validateConfig skips checks such as
+  // command size, so its counts could read 0 while lint failed (#461).
+  const counts = lintCounts();
+  return { passed: counts.errors === 0, errors: counts.errors, warnings: counts.warnings };
 }
 
 function collectRuntimeMetrics(options?: { skipCcusage?: boolean }): ContextBudgetSnapshot["runtime"] {

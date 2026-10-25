@@ -32,8 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Catalog item type `claude_plugins`: `agentbrew install <name>` clones a
+  third-party Claude Code plugin at a pinned commit, registers it as a
+  directory marketplace, and enables it; `remove` undoes it and `status`
+  reports drift. First entry: `agent-usage-guard` at `e9bd8d6`.
+
 ### Changed
 
+- Every tool setup now starts with a preflight: check for duplicates and
+  conflicts (hooks, status line, MCP servers, skills, LaunchAgents, plugins),
+  prove it in a scratch HOME, and pin the version. It is a rule in
+  `docs/shared-rules.md` and a step in each `agentbrew-add-*` skill.
 - `agentbrew sync --pull` now pulls already-cloned sources in parallel, and
   skips re-copying installed skills that already match their source. On 16
   sources this cut the median run from 8.4 s to 4.9 s (load 13-26).
@@ -43,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `agentbrew measure context` shows the same error and warning counts as
+  `agentbrew lint` in its printed lint-failed alert (#461). Before, it counted only
+  `validateConfig()`, so a failure such as an oversized command read
+  "0 errors, 0 warnings".
 - The nightly memory maintenance LaunchAgent no longer pins a versioned Node
   that `brew upgrade node` (or a new fnm version) deletes (#456). It uses the
   same upgrade-proof Node as the check job, and the scheduler now also knows

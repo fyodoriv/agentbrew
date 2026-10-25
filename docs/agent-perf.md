@@ -139,7 +139,7 @@ Run every command with `node ~/.config/agentbrew/scripts/agent-perf.mjs`.
 | `report [--project NAME \| --all] [--days N] [--json]` | Total tool time and calls, then per-step count, total, p50, p95, and max; the 10 slowest calls; the top 5 steps by total time; the human-wait calls, apart from tool time; failures by step; and the change against the previous window of the same length. Default: the current project, 7 days. |
 | `report --session ID\|latest [--project NAME \| --all] [--json]` | The same for one session. `latest` is the session of the newest row in scope. |
 | `brief [--project NAME]` | At most 5 lines: 7-day tool time, the top 3 steps with p50, the slowest single step, the blocked calls (when there are any), and one speedup candidate (a step that ran 3 or more times and cost at least a minute). Empty when there is no data. |
-| `statusline` | Reads Claude Code status-line JSON on stdin and prints one line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. |
+| `statusline` | Reads Claude Code status-line JSON on stdin and prints one line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. When the `usage-tip` hook showed a tip in this session, a second line shows it: `💡 Run /context to see what fills the context window before it runs out.` |
 | `turn --session ID [--json]` | Tool time, call count, the 3 slowest calls, the top 3 steps, and `attempts`, `blocked`, and `blockedKeys` (top 5) since the last turn row of that session. |
 
 `--cwd DIR` picks the project for `report` and `brief` when you run them from

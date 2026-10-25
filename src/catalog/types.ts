@@ -130,6 +130,29 @@ export interface CatalogCliTool {
 }
 
 /**
+ * A third-party Claude Code plugin, pinned to one commit. agentbrew clones the
+ * repo at `commit`, registers the checkout as a directory marketplace, and
+ * enables `plugin@marketplace` through the `claude` CLI.
+ */
+export interface CatalogClaudePlugin {
+  name: string;
+  description: string;
+  category: string;
+  recommended: boolean;
+  /** GitHub `owner/repo`, or a git URL or local path. */
+  repo: string;
+  /** Full 40-character commit SHA. A tag or branch can move, so it is not accepted. */
+  commit: string;
+  /** Plugin name inside the repo's `.claude-plugin/marketplace.json`. */
+  plugin: string;
+  /** The `name` in that `marketplace.json`. */
+  marketplace: string;
+  rationale?: string;
+  note?: string;
+  deprecated?: CatalogDeprecation;
+}
+
+/**
  * A whole-repo skill source that the catalog wants auto-registered on
  * machines where the catalog applies. Unlike `CatalogSkill` (one entry per
  * skill), `CatalogRepoSource` points at an entire GitHub repo — every skill
@@ -165,6 +188,7 @@ export interface Catalog {
   mcp_servers: CatalogMcpServer[];
   rules: CatalogRule[];
   cli_tools?: CatalogCliTool[];
+  claude_plugins?: CatalogClaudePlugin[];
   bundles?: CatalogBundle[];
   /**
    * Optional list of whole-repo skill sources the catalog auto-registers

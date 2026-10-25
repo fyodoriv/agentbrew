@@ -30,6 +30,7 @@ describe("run-goal Q&A and draft grading (#459)", () => {
     expect(expectations).toMatch(/primary source/i);
     expect(expectations).toMatch(/without the outliers/i);
     expect(expectations).toMatch(/fresh-context grader/i);
+    expect(expectations).toMatch(/overstated/i);
     expect(expectations).toMatch(/nothing is sent/i);
   });
 

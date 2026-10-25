@@ -9,7 +9,7 @@
 # Ends each agent turn with one short tip on using the agent better. The tip
 # fits the last prompt when a trigger matches (a terse prompt, a correction,
 # a pasted-error-free failure report, a long session), else it rotates the
-# least-shown general tip. Tips live in `lib/usage-tips.tsv`.
+# general tip not yet shown (oldest-first once all were shown). Tips live in `lib/usage-tips.tsv`.
 #
 # **Measurement**: every shown tip appends a `shown` row to the log. On later
 # Stops in the same session, a prompt that matches a shown tip's adopt regex
@@ -45,22 +45,40 @@ TX=$(json_get "$INPUT" '.transcript_path')
 [ "$(json_get "$INPUT" '.stop_hook_active')" = "true" ] && exit 0
 
 # Real user prompts only: string content, or text blocks without tool results.
+# Claude Code stores a slash command as <command-name>/x</command-name> ...
+# <command-args>y</command-args> and a ! line as <bash-input>y</bash-input>;
+# turn them back into what the user typed ("/x y", "!y"). Command and shell
+# output rows are not prompts.
 PROMPTS=""
 TX_LINES=0
 if [ -n "$TX" ] && [ -f "$TX" ]; then
   PROMPTS=$(jq -r 'select(.type=="user") | .message.content
     | if type=="string" then . else ([.[]? | select(.type=="text") | .text] | join(" ")) end
-    | select(length>0) | gsub("\n";" ")' "$TX" 2>/dev/null || true)
+    | select(length>0)
+    | select(test("^\\s*<(local-command-stdout|local-command-stderr|local-command-caveat|bash-stdout|bash-stderr)>") | not)
+    | if test("^\\s*<command-name>") then
+        ((capture("<command-name>(?<n>[^<]*)</command-name>") // {n:""}).n) + " "
+        + ((capture("<command-args>(?<a>[^<]*)</command-args>") // {a:""}).a) | sub("\\s+$";"")
+      elif test("^\\s*<bash-input>") then
+        "!" + ((capture("<bash-input>(?<b>[^<]*)</bash-input>") // {b:""}).b)
+      else . end
+    | gsub("\n";" ")' "$TX" 2>/dev/null || true)
   TX_LINES=$(wc -l <"$TX" | tr -d ' ')
 fi
 LAST=$(printf '%s\n' "$PROMPTS" | tail -n 1)
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-log_row() { jq -cn --arg ts "$(now)" --arg s "$SESSION" --arg t "$1" --arg e "$2" '{ts:$ts,session:$s,tip:$t,event:$e}' >>"$LOG"; }
+# `text` is on shown rows only, so a status line can print the current tip.
+log_row() {
+  jq -cn --arg ts "$(now)" --arg s "$SESSION" --arg t "$1" --arg e "$2" --arg x "${3:-}" \
+    '{ts:$ts,session:$s,tip:$t,event:$e} + (if $x == "" then {} else {text:$x} end)' >>"$LOG"
+}
 
 # Adoption: a tip shown earlier in this session whose regex matches the last prompt.
 SHOWN=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="shown") | .tip' "$LOG" 2>/dev/null | sort -u)
 ADOPTED=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="adopted") | .tip' "$LOG" 2>/dev/null | sort -u)
+# Adopted in any session: the picker never shows these again.
+ADOPTED_EVER=$(jq -r 'select(.event=="adopted") | .tip' "$LOG" 2>/dev/null | sort -u)
 while IFS=$'\t' read -r id _trigger adopt _text; do
   case "$id" in '#'*|'') continue ;; esac
   [ "$adopt" = "-" ] && continue
@@ -79,22 +97,27 @@ case "$lower" in /*) ;; *)
   ;; esac
 [ "$TX_LINES" -gt 400 ] && fired="$fired long"
 
-# Pick: a matching specific trigger first, then the least-shown tip; never the
-# tip shown on the previous Stop, never an already adopted tip.
+# Pick: never a tip already shown while an eligible tip is still unshown; once
+# all were shown, the one shown longest ago (oldest-first rotation). Ties among
+# unshown tips go to a matching specific trigger, then file order. Never the
+# tip shown on the previous Stop, never an already adopted tip. History is the
+# whole log, across sessions.
 LAST_TIP=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="shown") | .tip' "$LOG" 2>/dev/null | tail -n 1)
-best="" best_text="" best_rank=999999
+# One pass over the log: "<line>\t<tip>" for every shown row.
+LAST_SHOWN=$(jq -r 'select(.event=="shown") | "\(input_line_number)\t\(.tip)"' "$LOG" 2>/dev/null || true)
+best="" best_text="" best_rank=""
 while IFS=$'\t' read -r id trigger _adopt text; do
   case "$id" in '#'*|'') continue ;; esac
   case " $fired " in *" $trigger "*) ;; *) continue ;; esac
   [ "$id" = "$LAST_TIP" ] && continue
-  grep -qxF "$id" <<<"$ADOPTED" && continue
-  count=$(grep -c "\"tip\":\"$id\",\"event\":\"shown\"" "$LOG" || true)
-  rank=$count
-  [ "$trigger" != "any" ] && rank=$((count - 100000))
-  if [ "$rank" -lt "$best_rank" ]; then best="$id" best_text="$text" best_rank=$rank; fi
+  grep -qxF "$id" <<<"$ADOPTED_EVER" && continue
+  last_line=$(awk -F'\t' -v id="$id" '$2 == id { n = $1 } END { print n }' <<<"$LAST_SHOWN")
+  rank=$(( ${last_line:-0} * 2 ))
+  [ "$trigger" = "any" ] && rank=$((rank + 1))
+  if [ -z "$best_rank" ] || [ "$rank" -lt "$best_rank" ]; then best="$id" best_text="$text" best_rank=$rank; fi
 done <"$TIPS"
 
 [ -n "$best" ] || exit 0
-log_row "$best" shown
+log_row "$best" shown "$best_text"
 jq -cn --arg m "💡 $best_text" '{systemMessage:$m}'
 exit 0

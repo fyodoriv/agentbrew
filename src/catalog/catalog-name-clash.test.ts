@@ -21,6 +21,7 @@ describe("catalog names vs built-in skills", () => {
       ...catalog.rules.map((r) => r.name),
       ...catalog.mcp_servers.map((s) => s.name),
       ...(catalog.cli_tools ?? []).map((t) => t.name),
+      ...(catalog.claude_plugins ?? []).map((p) => p.name),
     ];
     const shared = [...new Set(others.filter((n) => builtIn.has(n)))].sort();
     expect(shared).toEqual(Object.keys(ALLOWED).sort());

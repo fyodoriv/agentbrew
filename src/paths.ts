@@ -59,3 +59,9 @@ export const INSTALLED_SKILLS_LABEL = "installed-skills";
 
 /** SHA-256 of each catalog rule body agentbrew installed; lets refresh tell untouched blocks from user-edited ones. */
 export const CATALOG_RULE_HASHES_PATH = "~/.config/agentbrew/catalog-rule-hashes.json";
+
+/** Third-party Claude Code plugins agentbrew installed from the catalog, with their pinned commits. */
+export const CLAUDE_PLUGINS_PATH = "~/.config/agentbrew/claude-plugins.json";
+
+/** Pinned checkouts of catalog Claude Code plugins, each a directory marketplace. */
+export const CLAUDE_PLUGINS_DIR = "~/.local/share/agentbrew/claude-plugins";

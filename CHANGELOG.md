@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Catalog item type `claude_plugins`: `agentbrew install <name>` clones a
+  third-party Claude Code plugin at a pinned commit, registers it as a
+  directory marketplace, and enables it; `remove` undoes it and `status`
+  reports drift. First entry: `agent-usage-guard` at `e9bd8d6`.
+
 ### Changed
 
 - `agentbrew sync --pull` now pulls already-cloned sources in parallel, and

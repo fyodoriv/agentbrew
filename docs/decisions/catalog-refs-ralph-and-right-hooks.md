@@ -2,7 +2,7 @@
 
 - **Task**: `catalog-refs-ralph-and-right-hooks`
 - **Date**: 2026-10-16
-- **Status**: decided — no catalog change; review when a plugin item type exists
+- **Status**: superseded on 2026-10-25 — the catalog now has a `claude_plugins` item type (see "Update 2026-10-25" below)
 
 ## Context
 
@@ -54,3 +54,16 @@ has a Claude Code plugin item type for its own reasons; the native
 `claude plugin install` command is one step, and `/goal` with `run-goal`
 covers the loop use case. If `catalog-plugin-bundle-primitive` adds plugin
 items, add `ralph-loop@claude-plugins-official` then.
+
+## Update 2026-10-25: the plugin item type exists
+
+The catalog now has a `claude_plugins:` item type (`src/catalog/claude-plugin.ts`).
+An entry names a repo, a full 40-character commit, and `plugin@marketplace`.
+agentbrew clones the repo at that commit, registers the checkout as a directory
+marketplace, and enables the plugin through the `claude` CLI. Claude Code alone
+pins a marketplace only to a branch or tag, which can move.
+
+The first entry is `agent-usage-guard`. Ralph Loop can now be added the same
+way, from `anthropics/claude-plugins-official` at a reviewed commit, if someone
+needs it. `/goal` with `run-goal` still covers the loop use case. right-hooks
+stays out for the reasons above.

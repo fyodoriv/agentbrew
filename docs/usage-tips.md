@@ -43,7 +43,7 @@ Never add a tip for a command or shortcut that does not exist.
 
 `agent-perf.mjs statusline` (see [agent-perf.md](agent-perf.md)) prints the
 session's current tip on a second line, from the last `shown` row for the
-session in the log. Each `shown` row holds the tip text for this. Claude Code
+session in the log. Each `shown` row holds the tip text for this. The line goes away once you adopt that tip, and control characters in a tip are dropped. Claude Code
 has one `statusLine` setting, so the tip joins the existing line; no second
 status command is needed.
 

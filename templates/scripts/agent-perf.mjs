@@ -552,6 +552,7 @@ export function usageTipsLog(env = process.env) {
 }
 
 const TIP_TAIL_BYTES = 256 * 1024;
+const TIP_MAX_CHARS = 120;
 
 /** Text of the last tip shown in this session, or null. Reads only the log's tail. */
 export function sessionTip(sid, { file = usageTipsLog() } = {}) {
@@ -559,6 +560,7 @@ export function sessionTip(sid, { file = usageTipsLog() } = {}) {
   const size = statSync(file).size;
   const { text } = readFrom(file, Math.max(0, size - TIP_TAIL_BYTES));
   const lines = text.split("\n");
+  const adopted = new Set();
   for (let i = lines.length - 1; i >= 0; i--) {
     if (!lines[i].includes(sid)) continue;
     let row;
@@ -567,7 +569,14 @@ export function sessionTip(sid, { file = usageTipsLog() } = {}) {
     } catch {
       continue;
     }
-    if (row.session === sid && row.event === "shown") return row.text || row.tip || null;
+    if (row.session !== sid) continue;
+    if (row.event === "adopted") adopted.add(row.tip);
+    if (row.event !== "shown") continue;
+    // An adopted tip has done its job; older rows have no text to show.
+    if (adopted.has(row.tip) || typeof row.text !== "string") return null;
+    const clean = row.text.replace(/[\u0000-\u001f\u007f-\u009f]/g, "").trim();
+    if (!clean) return null;
+    return clean.length > TIP_MAX_CHARS ? `${clean.slice(0, TIP_MAX_CHARS - 1)}…` : clean;
   }
   return null;
 }

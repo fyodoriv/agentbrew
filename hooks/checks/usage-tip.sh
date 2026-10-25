@@ -45,12 +45,24 @@ TX=$(json_get "$INPUT" '.transcript_path')
 [ "$(json_get "$INPUT" '.stop_hook_active')" = "true" ] && exit 0
 
 # Real user prompts only: string content, or text blocks without tool results.
+# Claude Code stores a slash command as <command-name>/x</command-name> ...
+# <command-args>y</command-args> and a ! line as <bash-input>y</bash-input>;
+# turn them back into what the user typed ("/x y", "!y"). Command and shell
+# output rows are not prompts.
 PROMPTS=""
 TX_LINES=0
 if [ -n "$TX" ] && [ -f "$TX" ]; then
   PROMPTS=$(jq -r 'select(.type=="user") | .message.content
     | if type=="string" then . else ([.[]? | select(.type=="text") | .text] | join(" ")) end
-    | select(length>0) | gsub("\n";" ")' "$TX" 2>/dev/null || true)
+    | select(length>0)
+    | select(test("^\\s*<(local-command-stdout|local-command-stderr|local-command-caveat|bash-stdout|bash-stderr)>") | not)
+    | if test("^\\s*<command-name>") then
+        ((capture("<command-name>(?<n>[^<]*)</command-name>") // {n:""}).n) + " "
+        + ((capture("<command-args>(?<a>[^<]*)</command-args>") // {a:""}).a) | sub("\\s+$";"")
+      elif test("^\\s*<bash-input>") then
+        "!" + ((capture("<bash-input>(?<b>[^<]*)</bash-input>") // {b:""}).b)
+      else . end
+    | gsub("\n";" ")' "$TX" 2>/dev/null || true)
   TX_LINES=$(wc -l <"$TX" | tr -d ' ')
 fi
 LAST=$(printf '%s\n' "$PROMPTS" | tail -n 1)
@@ -65,6 +77,8 @@ log_row() {
 # Adoption: a tip shown earlier in this session whose regex matches the last prompt.
 SHOWN=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="shown") | .tip' "$LOG" 2>/dev/null | sort -u)
 ADOPTED=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="adopted") | .tip' "$LOG" 2>/dev/null | sort -u)
+# Adopted in any session: the picker never shows these again.
+ADOPTED_EVER=$(jq -r 'select(.event=="adopted") | .tip' "$LOG" 2>/dev/null | sort -u)
 while IFS=$'\t' read -r id _trigger adopt _text; do
   case "$id" in '#'*|'') continue ;; esac
   [ "$adopt" = "-" ] && continue
@@ -89,13 +103,15 @@ case "$lower" in /*) ;; *)
 # tip shown on the previous Stop, never an already adopted tip. History is the
 # whole log, across sessions.
 LAST_TIP=$(jq -r --arg s "$SESSION" 'select(.session==$s and .event=="shown") | .tip' "$LOG" 2>/dev/null | tail -n 1)
+# One pass over the log: "<line>\t<tip>" for every shown row.
+LAST_SHOWN=$(jq -r 'select(.event=="shown") | "\(input_line_number)\t\(.tip)"' "$LOG" 2>/dev/null || true)
 best="" best_text="" best_rank=""
 while IFS=$'\t' read -r id trigger _adopt text; do
   case "$id" in '#'*|'') continue ;; esac
   case " $fired " in *" $trigger "*) ;; *) continue ;; esac
   [ "$id" = "$LAST_TIP" ] && continue
-  grep -qxF "$id" <<<"$ADOPTED" && continue
-  last_line=$(grep -nF "\"tip\":\"$id\",\"event\":\"shown\"" "$LOG" | tail -n 1 | cut -d: -f1 || true)
+  grep -qxF "$id" <<<"$ADOPTED_EVER" && continue
+  last_line=$(awk -F'\t' -v id="$id" '$2 == id { n = $1 } END { print n }' <<<"$LAST_SHOWN")
   rank=$(( ${last_line:-0} * 2 ))
   [ "$trigger" = "any" ] && rank=$((rank + 1))
   if [ -z "$best_rank" ] || [ "$rank" -lt "$best_rank" ]; then best="$id" best_text="$text" best_rank=$rank; fi

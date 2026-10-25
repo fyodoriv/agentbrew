@@ -1450,7 +1450,7 @@
       ]
     },
     {
-      "id": 125,
+      "id": 126,
       "prompt": "/goal make sure all my smart-home scenes and automations are correct for the long term, record what you did as repo skills, memories and rules, rename the app to a general smart-home name, and publish it as a private GitHub repo",
       "expected_output": "The agent prints the contract, asks one round (repo name, create-and-push approval), then reads every scene and automation fresh instead of trusting earlier checks, and tests each one that sets lamps for hidden settings. It fixes what it finds, re-verifies with recorded runs, writes an inventory, a repo skill, AGENTS.md rules and a memory, renames with tests green, scans history and staged files for secrets with hidden values, and reports the private repo URL as evidence. It reads gate exit codes directly, not through a pipe.",
       "expectations": [

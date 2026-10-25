@@ -441,11 +441,8 @@ Do this every time, also after a BLOCKED stop. Details:
    the proposed change. `run-goal` itself is never exempt: add an eval case
    from this run to its `evals/evals.json` in its source, or fix the step
    that went wrong. Its source is `skill-plugins/workflow/run-goal/` in the
-   agentbrew repo (`github.com/fyodoriv/agentbrew`). agentbrew installs
-   copies, not symlinks, so find the local checkout: run
-   `git -C <dir> remote get-url origin` on candidate folders (for example
-   `find ~ -maxdepth 4 -type d -name agentbrew`). For other skills,
-   `agentbrew status --verbose` names the source repo.
+   agentbrew repo (`github.com/fyodoriv/agentbrew`); the retro reference
+   says how to find the local checkout and other skills' sources.
    These updates are in scope for every goal: the user asked for them when
    they installed this skill. "Touch only what the request requires" does
    not exclude them. In Claude Code with agentbrew, the `/goal` hook names
@@ -461,12 +458,13 @@ Do this every time, also after a BLOCKED stop. Details:
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
-   skill used has such a line (it gives up after three tries). When you can
-   write the skill's source repo, ship the change in this session: gate, PR,
-   merge, then cite the PR. When the sandbox or permissions block writes to
-   that repo (common when the goal runs in another folder), file a task in
-   the user's queue and cite its id; never bypass the sandbox for it.
+   skill used has such a line (it gives up after three tries). Ship each
+   writable change in this session (gate, PR, merge, cite the PR); when the
+   sandbox blocks the repo, cite a task instead and never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
+7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
+   in the retro file, run `scripts/export-goals.py`, and refresh the one
+   Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 

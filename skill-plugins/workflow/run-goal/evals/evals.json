@@ -1519,6 +1519,19 @@
         "Classifies tasks by who must act from their Details, not only the Blocked flag",
         "Parks owner-only tasks (sign-in, OS permission) instead of counting them as unblocked"
       ]
+    },
+    {
+      "id": 135,
+      "prompt": "/goal fix the flaky signed-tag test in agentbrew and ship it",
+      "expected_output": "After the goal ends, the retro file carries a Goal result line, the exporter refreshes the local goals datasets, and the one Goals dashboard is updated in place with scrubbed rows.",
+      "expectations": [
+        "Writes `Goal result: <met|partly met|blocked> (N/M met)` into the retro file the hook names",
+        "Runs scripts/export-goals.py and cites the goals and retro_items counts it printed",
+        "Reuses the URL in ~/.local/state/run-goal/dashboard-url instead of creating a second dashboard",
+        "Uploads each manifest file and writes datasets/<id> with updated {at, by}",
+        "Rewrites files/index.html only when the dashboard is new or the template changed",
+        "Never commits the dashboard-url file or puts raw prompts, emails, tokens, or private names in a dataset"
+      ]
     }
   ]
 }

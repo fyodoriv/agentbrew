@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every tool setup now starts with a preflight: check for duplicates and
+  conflicts (hooks, status line, MCP servers, skills, LaunchAgents, plugins),
+  prove it in a scratch HOME, and pin the version. It is a rule in
+  `docs/shared-rules.md` and a step in each `agentbrew-add-*` skill.
 - `agentbrew sync --pull` now pulls already-cloned sources in parallel, and
   skips re-copying installed skills that already match their source. On 16
   sources this cut the median run from 8.4 s to 4.9 s (load 13-26).

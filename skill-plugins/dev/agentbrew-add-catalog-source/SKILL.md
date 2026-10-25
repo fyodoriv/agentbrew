@@ -8,6 +8,17 @@ description: >
   agentbrew-add-skill) or creating a skill from scratch (use Anthropic skill-creator or Superpowers writing-skills).
 ---
 
+## Preflight: duplicates, conflicts, pins
+
+Do this before you install or sync anything. It applies to every request to set up a tool: a skill, MCP server, command, hook, plugin, or CLI.
+
+1. **Look for duplicates.** List what already does this job: `agentbrew status --verbose`, `agentbrew audit-skills`, `claude plugin list`, and the `hooks` and `statusLine` keys in `~/.claude/settings.json`. If something already covers it, extend that instead, or ask.
+2. **Look for conflicts.** Check each surface the new tool touches: hooks on the same event, the single status line, MCP server and skill names, command names, LaunchAgents (`launchctl list` through agentbrew's own helpers only), and plugins.
+3. **Prove it works with the setup.** Install it first in a scratch HOME (`HOME=$(mktemp -d)`), with a copy of the relevant settings, and run one real call. Then install it for real.
+4. **Pin versions.** Pin a tag or commit, never a moving branch. Write the pin where agentbrew reads it (`--ref`, the catalog entry, or the Agentfile).
+
+Report what you checked and what you found, even when you found nothing.
+
 ## What You Do
 
 Land a curated entry in agentbrew's catalog so every user picks it up on the

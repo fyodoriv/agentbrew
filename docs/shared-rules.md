@@ -181,6 +181,10 @@ these three axes when a task allows it:
 - **New chat:** deliverable shipped; unrelated topic/repo; long session (~30–60 min heavy work); re-explaining or re-reading same files; degraded responses; after rules/MCP/skills sync or delivery completion; `latest.json` `low-soft-headroom` alert.
 - **Continue:** same PR / mid-debug / one failure iteration on same scope.
 
+## Tool setup preflight
+
+Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) first checks for duplicates and conflicts with the current setup: hooks, the status line, MCP servers, skills, LaunchAgents, and plugins. Prove it works with the setup in a scratch HOME before the real install, and pin every version (a tag or commit, never a moving branch). Steps: the `agentbrew-add-*` skills, section "Preflight: duplicates, conflicts, pins".
+
 ## Agent rule/skill changes → sync + fix drift + commit
 
 After rule/skill/config edits: `agentbrew sync` → `agentbrew status --fix` until **0 drift** → commit `tooling/agentbrew/docs/shared-rules.md` when shared rules changed.

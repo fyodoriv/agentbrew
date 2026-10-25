@@ -109,7 +109,7 @@ describe("agentbrew-add-skill skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-add-skill");
-    expect(evals.evals).toHaveLength(4);
+    expect(evals.evals).toHaveLength(5);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

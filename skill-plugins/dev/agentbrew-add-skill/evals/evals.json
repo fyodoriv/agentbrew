@@ -44,6 +44,18 @@
         "Uses `agentbrew install <repo> --list` or equivalent inspection to review available `SKILL.md` entries before installation",
         "Only proceeds to `agentbrew install <repo>` after the user or agent has reviewed the source contents"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Set up the skill `pr-helper` from github.com/example/pr-skills for all my agents.",
+      "expected_output": "Before installing, checks for duplicates and conflicts with the current setup, tests the install in a scratch HOME, then installs it pinned to a tag or commit.",
+      "expectations": [
+        "Looks for a duplicate first (for example `agentbrew audit-skills` or `agentbrew status --verbose`) and reports whether a skill already covers the job",
+        "Checks for name clashes with existing skills and commands, and for hooks or a status line the source adds",
+        "Tests the install in a scratch HOME (`HOME=$(mktemp -d)`) before the real install",
+        "Pins the source to a tag or commit, not a moving branch",
+        "Reports what it checked, even when nothing was found"
+      ]
     }
   ]
 }

@@ -239,10 +239,12 @@ const STABLE_CLI_CANDIDATES = (): string[] => [
   join(expandHome("~"), "apps/agentbrew/dist/cli.js"),
 ];
 
-/** True when `root` is a linked git worktree: its `.git` is a `gitdir:` file, not a folder. */
+/** True when `root` is a linked git worktree: its `.git` is a `gitdir: .../worktrees/<name>` file, not a folder.
+ *  A pinned worktree path breaks the job once the worktree is removed after its PR merges (2026-10-25). */
 function isLinkedWorktree(root: string): boolean {
   try {
-    return String(readFileSync(join(root, ".git"), "utf-8")).startsWith("gitdir:");
+    // A submodule's .git is a gitdir: file too, but points into .git/modules/.
+    return /^gitdir: .*\/worktrees\//u.test(String(readFileSync(join(root, ".git"), "utf-8")));
   } catch {
     return false;
   }
@@ -254,7 +256,13 @@ export function resolveAgentBrewCliJsPath(): string {
   if (argv1?.endsWith("/dist/cli.js") && existsSync(argv1)) {
     // A linked git worktree is often deleted after its PR merges; a job
     // pinned to it then fails every run. Use the stable checkout instead.
-    if (!isLinkedWorktree(dirname(dirname(argv1)))) return argv1;
+    let real = argv1;
+    try {
+      real = realpathSync(argv1) || argv1;
+    } catch (e) {
+      logSkipped("sync/scheduler-paths/realpath-argv1", e);
+    }
+    if (!isLinkedWorktree(dirname(dirname(real)))) return argv1;
     const stable = STABLE_CLI_CANDIDATES().find((candidate) => existsSync(candidate));
     return stable ?? argv1;
   }

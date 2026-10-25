@@ -154,9 +154,33 @@ describe("resolveAgentBrewCliJsPath", () => {
     }) as unknown as typeof readFileSync);
     try {
       expect(resolveAgentBrewCliJsPath()).toBe("/mock-home/apps/tooling/agentbrew/dist/cli.js");
+      vi.mocked(existsSync).mockImplementation(
+        ((path: string) => !path.startsWith("/mock-home/apps/tooling/agentbrew")) as unknown as typeof existsSync,
+      );
+      expect(resolveAgentBrewCliJsPath()).toBe("/mock-home/apps/agentbrew/dist/cli.js");
     } finally {
       process.argv[1] = original;
       vi.mocked(readFileSync).mockReset();
+      vi.mocked(existsSync).mockReset();
+    }
+  });
+
+  it("keeps the main checkout and a submodule, whose .git is not a worktree link", () => {
+    const original = process.argv[1];
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockImplementation(((path: string) => {
+      if (path === "/repo/sub/.git") return "gitdir: ../.git/modules/sub\n";
+      throw Object.assign(new Error("EISDIR"), { code: "EISDIR" });
+    }) as unknown as typeof readFileSync);
+    try {
+      process.argv[1] = "/repo/main/dist/cli.js";
+      expect(resolveAgentBrewCliJsPath()).toBe("/repo/main/dist/cli.js");
+      process.argv[1] = "/repo/sub/dist/cli.js";
+      expect(resolveAgentBrewCliJsPath()).toBe("/repo/sub/dist/cli.js");
+    } finally {
+      process.argv[1] = original;
+      vi.mocked(readFileSync).mockReset();
+      vi.mocked(existsSync).mockReset();
     }
   });
 

@@ -183,7 +183,11 @@ these three axes when a task allows it:
 
 ## Tool setup preflight
 
-Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) first checks for duplicates and conflicts with the current setup: hooks, the status line, MCP servers, skills, LaunchAgents, and plugins. Prove it works with the setup in a scratch HOME before the real install, and pin every version (a tag or commit, never a moving branch). Steps: the `agentbrew-add-*` skills, section "Preflight: duplicates, conflicts, pins".
+Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) first checks for duplicates and conflicts with the current setup: hooks, the status line, MCP servers, skills, LaunchAgents, and plugins.
+- Duplicates: `agentbrew status --verbose`, `agentbrew audit-skills`, `claude plugin list`, the `hooks`/`statusLine` keys in `~/.claude/settings.json`. Extend what exists, or ask.
+- Conflicts: same hook event, the single status line, name clashes, LaunchAgents (read-only `ls ~/Library/LaunchAgents`; never load or unload).
+- Prove it in a scratch HOME (`HOME=$(mktemp -d)`) with one real call (or `--help` when it needs a login), then install for real.
+- Pin every version: a tag or commit (`--git <url> --ref <tag>`, catalog entry, Agentfile), never a moving branch. Report what you checked.
 
 ## Agent rule/skill changes → sync + fix drift + commit
 

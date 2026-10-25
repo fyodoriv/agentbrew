@@ -10,7 +10,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import type { DriftItem } from "../drift-checks/types.js";
 import { CLAUDE_PLUGINS_DIR, CLAUDE_PLUGINS_PATH } from "../paths.js";
@@ -45,12 +45,43 @@ function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf-8", stdio: "pipe" }).trim();
 }
 
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 export function claudePluginDir(name: string): string {
+  if (!SAFE_NAME.test(name) || name.includes("..")) throw new Error(`invalid name "${name}"`);
   return join(expandHome(CLAUDE_PLUGINS_DIR), name);
+}
+
+/** Delete `dir` only when it sits inside the plugins folder. */
+function removeOwnDir(dir: string): void {
+  const base = resolve(expandHome(CLAUDE_PLUGINS_DIR));
+  if (!resolve(dir).startsWith(base + sep)) throw new Error(`refusing to delete ${dir}: outside ${base}`);
+  rmSync(dir, { recursive: true, force: true });
 }
 
 function repoUrl(repo: string): string {
   return /^[\w.-]+\/[\w.-]+$/.test(repo) ? `https://github.com/${repo}.git` : repo;
+}
+
+/** Reject values that could act as an option, or a git transport that runs commands. */
+function validate(entry: CatalogClaudePlugin): void {
+  claudePluginDir(entry.name);
+  if (entry.repo.startsWith("-") || /^(ext|fd)::/.test(entry.repo)) throw new Error(`invalid repo "${entry.repo}"`);
+  for (const field of ["plugin", "marketplace"] as const) {
+    if (!SAFE_NAME.test(entry[field])) throw new Error(`invalid ${field} "${entry[field]}"`);
+  }
+  if (!FULL_SHA.test(entry.commit)) {
+    throw new Error(`${entry.name}: commit must be a full 40-character SHA (got "${entry.commit}")`);
+  }
+}
+
+/** Fail early, with a plain message, when the `claude` CLI cannot run. */
+function requireClaude(): void {
+  try {
+    execFileSync(claudeBin(), ["--version"], { stdio: "pipe" });
+  } catch {
+    throw new Error(`Claude Code CLI not found (${claudeBin()}); install it, or set AGENTBREW_CLAUDE_BIN`);
+  }
 }
 
 export function readClaudePluginRecords(): ClaudePluginRecord[] {
@@ -58,7 +89,13 @@ export function readClaudePluginRecords(): ClaudePluginRecord[] {
   if (!existsSync(path)) return [];
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, "utf-8"));
-    return Array.isArray(parsed) ? (parsed as ClaudePluginRecord[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (r): r is ClaudePluginRecord =>
+        typeof r === "object" &&
+        r !== null &&
+        ["name", "commit", "dir", "key", "marketplace"].every((k) => typeof r[k] === "string"),
+    );
   } catch {
     return [];
   }
@@ -81,11 +118,11 @@ function originOf(dir: string): string | undefined {
 /** Check out exactly `commit` in `dir`, cloning first when needed. */
 function checkoutPinned(entry: CatalogClaudePlugin, dir: string): void {
   const url = repoUrl(entry.repo);
-  if (existsSync(join(dir, ".git")) && originOf(dir) !== url) rmSync(dir, { recursive: true, force: true });
+  if (existsSync(join(dir, ".git")) && originOf(dir) !== url) removeOwnDir(dir);
   if (!existsSync(join(dir, ".git"))) {
-    rmSync(dir, { recursive: true, force: true });
+    removeOwnDir(dir);
     mkdirSync(dirname(dir), { recursive: true });
-    execFileSync("git", ["clone", "--quiet", url, dir], { stdio: "pipe" });
+    execFileSync("git", ["-c", "protocol.ext.allow=never", "clone", "--quiet", "--", url, dir], { stdio: "pipe" });
   }
   try {
     git(dir, ["cat-file", "-e", `${entry.commit}^{commit}`]);
@@ -97,20 +134,29 @@ function checkoutPinned(entry: CatalogClaudePlugin, dir: string): void {
   if (head !== entry.commit) throw new Error(`${entry.name}: checkout is at ${head}, not ${entry.commit}`);
 }
 
+/** The marketplace of this name in settings, when one exists that agentbrew did not register at `dir`. */
+function foreignMarketplace(marketplace: string, dir: string): boolean {
+  const markets = claudeSettings().extraKnownMarketplaces as Record<string, { source?: { path?: string } }> | undefined;
+  const existing = markets?.[marketplace];
+  return existing !== undefined && existing.source?.path !== dir;
+}
+
 /** Clone at the pinned commit, register the directory marketplace, enable the plugin, and record it. */
 export function installClaudePlugin(entry: CatalogClaudePlugin): ClaudePluginRecord {
-  if (!FULL_SHA.test(entry.commit)) {
-    throw new Error(`${entry.name}: commit must be a full 40-character SHA (got "${entry.commit}")`);
-  }
+  validate(entry);
   const dir = claudePluginDir(entry.name);
+  if (foreignMarketplace(entry.marketplace, dir)) {
+    throw new Error(`marketplace ${entry.marketplace} already exists and is not managed by agentbrew; remove it first`);
+  }
+  requireClaude();
   checkoutPinned(entry, dir);
   const key = `${entry.plugin}@${entry.marketplace}`;
-  // A marketplace of the same name may point at an older checkout; replace it.
+  const record = { name: entry.name, commit: entry.commit, dir, key, marketplace: entry.marketplace };
+  // Record first, so `agentbrew remove` can clean up after a failed step.
+  writeRecords([...readClaudePluginRecords().filter((r) => r.name !== entry.name), record]);
   claude(["plugin", "marketplace", "remove", entry.marketplace], { allowFail: true });
   claude(["plugin", "marketplace", "add", dir, "--scope", "user"]);
   claude(["plugin", "install", key, "--scope", "user"]);
-  const record = { name: entry.name, commit: entry.commit, dir, key, marketplace: entry.marketplace };
-  writeRecords([...readClaudePluginRecords().filter((r) => r.name !== entry.name), record]);
   return record;
 }
 
@@ -119,9 +165,17 @@ export function removeClaudePlugin(name: string): boolean {
   const records = readClaudePluginRecords();
   const record = records.find((r) => r.name === name);
   if (!record) return false;
-  claude(["plugin", "uninstall", record.key, "--scope", "user"], { allowFail: true });
-  claude(["plugin", "marketplace", "remove", record.marketplace], { allowFail: true });
-  rmSync(record.dir, { recursive: true, force: true });
+  const dir = claudePluginDir(record.name);
+  try {
+    claude(["plugin", "uninstall", record.key, "--scope", "user"]);
+  } catch (error) {
+    const enabled = (claudeSettings().enabledPlugins as Record<string, unknown> | undefined)?.[record.key];
+    if (enabled !== undefined) throw new Error(`could not uninstall ${record.key}: ${String(error)}`);
+  }
+  if (!foreignMarketplace(record.marketplace, dir)) {
+    claude(["plugin", "marketplace", "remove", record.marketplace], { allowFail: true });
+  }
+  removeOwnDir(dir);
   writeRecords(records.filter((r) => r.name !== name));
   return true;
 }

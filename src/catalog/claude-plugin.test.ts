@@ -76,6 +76,7 @@ describe("claude-plugin catalog items", () => {
   beforeEach(() => {
     rmSync(claudePluginDir("demo-guard"), { recursive: true, force: true });
     rmSync(join(homedir(), ".config", "agentbrew", "claude-plugins.json"), { force: true });
+    rmSync(join(homedir(), ".claude", "settings.json"), { force: true });
     process.env.AGENTBREW_CLAUDE_BIN = fakeClaude();
     repo = fixtureRepo();
     entry = {
@@ -133,6 +134,52 @@ describe("claude-plugin catalog items", () => {
     expect(existsSync(claudePluginDir("demo-guard"))).toBe(false);
     expect(readClaudePluginRecords()).toEqual([]);
     expect(removeClaudePlugin("demo-guard")).toBe(false);
+  });
+  it("refuses a name or repo that could escape the plugins folder or act as a git option", () => {
+    for (const name of ["../x", "a/b", "..", "-x"]) {
+      expect(() => installClaudePlugin({ ...entry, name }), name).toThrow(/invalid name/);
+    }
+    expect(() => installClaudePlugin({ ...entry, repo: "--upload-pack=touch pwn" })).toThrow(/invalid repo/);
+    expect(() => installClaudePlugin({ ...entry, repo: "ext::sh -c touch% pwn" })).toThrow(/invalid repo/);
+    expect(() => installClaudePlugin({ ...entry, marketplace: "-m" })).toThrow(/invalid marketplace/);
+    expect(existsSync(join(homedir(), "pwn"))).toBe(false);
+  });
+
+  it("never removes a marketplace of the same name that agentbrew does not own", () => {
+    const file = join(homedir(), ".claude", "settings.json");
+    mkdirSync(join(homedir(), ".claude"), { recursive: true });
+    const theirs = { source: { source: "github", repo: "someone/demo" } };
+    writeFileSync(file, JSON.stringify({ extraKnownMarketplaces: { "demo-market": theirs } }));
+    expect(() => installClaudePlugin(entry)).toThrow(/not managed by agentbrew/);
+    expect(settings().extraKnownMarketplaces["demo-market"]).toEqual(theirs);
+  });
+
+  it("deletes only its own checkout on remove, even when the record names another path", () => {
+    installClaudePlugin(entry);
+    const victim = mkdtempSync(join(homedir(), "victim-"));
+    const path = join(homedir(), ".config", "agentbrew", "claude-plugins.json");
+    const records = JSON.parse(readFileSync(path, "utf-8"));
+    records[0].dir = victim;
+    writeFileSync(path, JSON.stringify(records));
+    expect(removeClaudePlugin("demo-guard")).toBe(true);
+    expect(existsSync(victim)).toBe(true);
+    expect(existsSync(claudePluginDir("demo-guard"))).toBe(false);
+  });
+
+  it("says plainly when the claude CLI is missing, before cloning anything", () => {
+    process.env.AGENTBREW_CLAUDE_BIN = join(homedir(), "no-such-claude");
+    expect(() => installClaudePlugin(entry)).toThrow(/Claude Code CLI not found/);
+    expect(existsSync(claudePluginDir("demo-guard"))).toBe(false);
+  });
+
+  it("keeps the record when the plugin uninstall fails, so remove can be retried", () => {
+    installClaudePlugin(entry);
+    const failing = join(homedir(), "failing-claude");
+    writeFileSync(failing, '#!/bin/sh\n[ "$1" = --version ] && exit 0\nexit 3\n');
+    chmodSync(failing, 0o755);
+    process.env.AGENTBREW_CLAUDE_BIN = failing;
+    expect(() => removeClaudePlugin("demo-guard")).toThrow(/could not uninstall/);
+    expect(readClaudePluginRecords()).toHaveLength(1);
   });
 });
 

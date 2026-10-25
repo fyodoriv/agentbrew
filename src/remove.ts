@@ -39,8 +39,6 @@ function resolveItem(name: string): ResolvedItem | undefined {
   const state = requireState();
   if (!state) return undefined;
 
-  if (readClaudePluginRecords().some((r) => r.name === name)) return { type: "claude-plugin", name };
-
   const servers = getConfigServers();
   const mcpMatch = servers.find((s) => s.name === name);
   if (mcpMatch) return { type: "mcp", name: mcpMatch.name };
@@ -56,6 +54,9 @@ function resolveItem(name: string): ResolvedItem | undefined {
   // already dispatches to MCP servers, sources, skills, and commands.
   const catalog = loadCatalog();
   if (catalog.rules.some((r) => r.name === name)) return { type: "rule", name };
+
+  // Last, so a plugin never shadows an MCP server, source, skill, or rule of the same name.
+  if (readClaudePluginRecords().some((r) => r.name === name)) return { type: "claude-plugin", name };
 
   return undefined;
 }

@@ -113,6 +113,16 @@ function serverConfigChanged(existing: McpServer, incoming: McpServer): boolean 
   return false;
 }
 
+/** Name the MCP servers a project Agentfile skipped because the user removed them. */
+function printDeclinedMcp(declined: string[]): void {
+  if (declined.length === 0) return;
+  console.log(
+    chalk.dim(
+      `  Skipped MCP server(s) you removed: ${declined.join(", ")}. Run \`agentbrew install <name>\` to add one back.`,
+    ),
+  );
+}
+
 /** Merge MCP servers from Agentfile into state. Returns names added/updated/removed. */
 function mergeAgentfileMcp(
   agentfile: Agentfile,
@@ -719,13 +729,7 @@ export function applyAgentfile(
   }
 
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
-  if (!quiet && mcp.declined.length > 0) {
-    console.log(
-      chalk.dim(
-        `  Skipped MCP server(s) you removed: ${mcp.declined.join(", ")}. Run \`agentbrew install <name>\` to add one back.`,
-      ),
-    );
-  }
+  if (!quiet) printDeclinedMcp(mcp.declined);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
   const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);

@@ -250,21 +250,26 @@ function isLinkedWorktree(root: string): boolean {
   }
 }
 
+/**
+ * A linked git worktree is often deleted after its PR merges; a job pinned to
+ * it then fails every run. Use the stable checkout instead when it exists.
+ */
+function stableUnlessWorktree(cliJs: string): string {
+  let real = cliJs;
+  try {
+    real = realpathSync(cliJs) || cliJs;
+  } catch (e) {
+    logSkipped("sync/scheduler-paths/realpath-argv1", e);
+  }
+  if (!isLinkedWorktree(dirname(dirname(real)))) return cliJs;
+  return STABLE_CLI_CANDIDATES().find((candidate) => existsSync(candidate)) ?? cliJs;
+}
+
 /** dist/cli.js entry used by LaunchAgent/cron — never a shebang symlink or bash wrapper. */
 export function resolveAgentBrewCliJsPath(): string {
   const argv1 = process.argv[1];
   if (argv1?.endsWith("/dist/cli.js") && existsSync(argv1)) {
-    // A linked git worktree is often deleted after its PR merges; a job
-    // pinned to it then fails every run. Use the stable checkout instead.
-    let real = argv1;
-    try {
-      real = realpathSync(argv1) || argv1;
-    } catch (e) {
-      logSkipped("sync/scheduler-paths/realpath-argv1", e);
-    }
-    if (!isLinkedWorktree(dirname(dirname(real)))) return argv1;
-    const stable = STABLE_CLI_CANDIDATES().find((candidate) => existsSync(candidate));
-    return stable ?? argv1;
+    return stableUnlessWorktree(argv1);
   }
   if (argv1?.endsWith("/src/cli.ts")) {
     const distFromDev = join(dirname(dirname(argv1)), "dist/cli.js");

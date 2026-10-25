@@ -143,41 +143,45 @@ export function checkSkillsValidity(): DriftItem[] {
   return drift;
 }
 
+/** True when `entryPath` is a real skill folder a user made (not a link or a managed copy). */
+function isUserSkillDir(entryPath: string, copies: Set<string>): boolean {
+  try {
+    const stat = lstatSync(entryPath);
+    return !stat.isSymbolicLink() && stat.isDirectory() && !copies.has(resolve(entryPath));
+  } catch (e) {
+    logSkipped("drift/checkUserCreatedSkills/lstat", e);
+    return false;
+  }
+}
+
+/** Entries of one agent's skills folder, or none when it cannot be read. */
+function skillDirEntries(skillsDir: string): string[] {
+  try {
+    return readdirSync(skillsDir);
+  } catch (e) {
+    logSkipped("drift/checkUserCreatedSkills/readdir", e);
+    return [];
+  }
+}
+
 /** Detect non-symlink skill directories in agent skill dirs.
- *  These are skills users created directly instead of through agentbrew. */
-export function checkUserCreatedSkills(): DriftItem[] {
+ *  These are skills users created directly instead of through agentbrew.
+ *  `dedupe: false` reports a name once per agent (for `audit-skills`). */
+export function checkUserCreatedSkills(options: { dedupe?: boolean } = {}): DriftItem[] {
+  const dedupe = options.dedupe ?? true;
   const drift: DriftItem[] = [];
   const seen = new Set<string>();
   // A copy of a managed skill is skills drift (checkSkillCopies), not a user addition.
   const copies = new Set(skillCopies().map((copy) => resolve(copy.path)));
 
-  const targets = AGENT_DEFINITIONS.filter((a) => existsSync(expandHome(a.skillsDir))).map((a) => ({
-    agent: a.name,
-    skillsDir: expandHome(a.skillsDir),
-  }));
-
-  for (const target of targets) {
-    try {
-      for (const entry of readdirSync(target.skillsDir)) {
-        const entryPath = join(target.skillsDir, entry);
-        try {
-          const stat = lstatSync(entryPath);
-          if (stat.isSymbolicLink() || !stat.isDirectory() || copies.has(resolve(entryPath))) continue;
-          if (seen.has(entry)) continue;
-          seen.add(entry);
-          drift.push({
-            agent: target.agent,
-            type: "skills-user-added",
-            detail: `user-created skill: ${entry}`,
-          });
-        } catch (e) {
-          logSkipped("drift/checkUserCreatedSkills/lstat", e);
-          // skip unreadable entries
-        }
-      }
-    } catch (e) {
-      logSkipped("drift/checkUserCreatedSkills/readdir", e);
-      // dir not readable
+  for (const agent of AGENT_DEFINITIONS) {
+    const skillsDir = expandHome(agent.skillsDir);
+    if (!existsSync(skillsDir)) continue;
+    for (const entry of skillDirEntries(skillsDir)) {
+      if (!isUserSkillDir(join(skillsDir, entry), copies)) continue;
+      if (dedupe && seen.has(entry)) continue;
+      seen.add(entry);
+      drift.push({ agent: agent.name, type: "skills-user-added", detail: `user-created skill: ${entry}` });
     }
   }
 

@@ -242,6 +242,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `agentbrew audit-skills [--json] [--into <repo>]`: lists the skills and
+  commands in the agent folders that no tracked source owns, once each, marked
+  `merge`, `merge?` (a near-duplicate; a prefix needs two or more name
+  segments), or `adopt` (#442). It changes nothing.
 - A SessionStart hook, `updates-landed`: when dotfiles' `dotfiles-updates-landed`
   is installed, the agent gets its once-a-day "updates landed" line and can
   suggest the checkup. It keeps no state and gives up after 3 seconds (#442).

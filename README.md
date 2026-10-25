@@ -683,6 +683,8 @@ agentbrew config [--json]              Each setting with its value, source, and 
 agentbrew config set <key> <value>     Check one setting and save it to state.yaml
 agentbrew actions [--json]             Every action with its arguments and notes (for agents)
 agentbrew work [--json]                The day plan for /work: checkup steps, machine rule, watch, end of day
+agentbrew audit-skills [--json] [--into <repo>]
+                                       Local skills/commands no source owns: merge, merge?, or adopt
 agentbrew init [--force] [--skip-install] [--skip-sync]
                                        Detect agents + install recommended + sync (idempotent)
                                        --skip-install: no source fetch, no skill installs

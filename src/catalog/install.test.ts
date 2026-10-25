@@ -2327,6 +2327,61 @@ describe("install — dryRun option for CLI tool", () => {
     expect(mockCpSync).not.toHaveBeenCalled();
     expect(mockSaveState).not.toHaveBeenCalled();
   });
+
+  it("never installs a Claude Code plugin through --recommended, even one marked recommended", async () => {
+    const { execFileSync } = await import("node:child_process");
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      mcp_servers: [],
+      rules: [],
+      cli_tools: [],
+      claude_plugins: [
+        {
+          name: "demo-guard",
+          description: "demo",
+          category: "guardrails",
+          recommended: true,
+          repo: "example/demo-guard",
+          commit: "0123456789abcdef0123456789abcdef01234567",
+          plugin: "demo-guard",
+          marketplace: "demo-market",
+        },
+      ],
+    });
+    mockLoadState.mockReturnValue(makeState());
+    vi.mocked(execFileSync).mockClear();
+    await install(undefined, { recommended: true });
+    const calls = vi.mocked(execFileSync).mock.calls.map((c) => [c[0], ...((c[1] as string[]) ?? [])].join(" "));
+    expect(calls.filter((c) => c.startsWith("claude") || c.includes("clone"))).toEqual([]);
+  });
+
+  it("previews a Claude Code plugin with its repo and pinned commit, and installs nothing", async () => {
+    mockLoadCatalog.mockReturnValue({
+      skills: [],
+      mcp_servers: [],
+      rules: [],
+      cli_tools: [],
+      claude_plugins: [
+        {
+          name: "demo-guard",
+          description: "demo",
+          category: "guardrails",
+          recommended: false,
+          repo: "example/demo-guard",
+          commit: "0123456789abcdef0123456789abcdef01234567",
+          plugin: "demo-guard",
+          marketplace: "demo-market",
+        },
+      ],
+    });
+    mockLoadState.mockReturnValue(makeState());
+    await install("demo-guard", { dryRun: true });
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).toContain("Would install Claude Code plugin");
+    expect(logs).toContain("demo-guard@demo-market");
+    expect(logs).toContain("example/demo-guard at 0123456789ab");
+    expect(mockSaveState).not.toHaveBeenCalled();
+  });
 });
 
 // ── install — dryRun for catalog skill (lines 81-85) ─────────────────────────

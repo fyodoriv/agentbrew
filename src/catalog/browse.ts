@@ -5,6 +5,7 @@ import { showSources } from "../sources.js";
 import { loadState } from "../state.js";
 import type {
   Catalog,
+  CatalogClaudePlugin,
   CatalogCliTool,
   CatalogData,
   CatalogMcpServer,
@@ -88,6 +89,16 @@ function collectFilteredCliTools(
   return all;
 }
 
+/** Filters Claude Code plugins by an optional search term. */
+function collectFilteredClaudePlugins(
+  plugins: CatalogClaudePlugin[] | undefined,
+  search: string | undefined,
+  includeDeprecated: boolean,
+): CatalogClaudePlugin[] {
+  const all = (plugins ?? []).filter((p) => isVisibleByDeprecation(p, includeDeprecated));
+  return search ? all.filter((p) => matchesSearch(`${p.name} ${p.description} ${p.category}`, search)) : all;
+}
+
 /** Aggregates the full catalog — builtins, state-sourced skills, and MCP/rule/CLI entries — into a single CatalogData object filtered and searched per the provided options. */
 export function getCatalogData(options: {
   skills?: boolean;
@@ -128,7 +139,9 @@ export function getCatalogData(options: {
   const rules = showAll || options.rules ? collectFilteredRules(catalog.rules, search, includeDeprecated) : [];
   const cliTools = showAll || options.cli ? collectFilteredCliTools(catalog.cli_tools, search, includeDeprecated) : [];
 
-  return { skills, mcpServers, rules, cliTools };
+  const claudePlugins = showAll ? collectFilteredClaudePlugins(catalog.claude_plugins, search, includeDeprecated) : [];
+
+  return { skills, mcpServers, rules, cliTools, claudePlugins };
 }
 
 /** Serialises CatalogData to a JSON string for machine consumption (e.g. `--json` flag output). */
@@ -162,6 +175,14 @@ export function catalogToJson(data: CatalogData): string {
       category: t.category,
       recommended: t.recommended,
       commands: t.commands,
+    })),
+    claudePlugins: (data.claudePlugins ?? []).map((p) => ({
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      recommended: p.recommended,
+      repo: p.repo,
+      commit: p.commit,
     })),
   };
   return JSON.stringify(output, null, 2);
@@ -227,6 +248,19 @@ function renderCliToolsMarkdownTable(cliTools: CatalogCliTool[]): string[] {
   ];
 }
 
+/** Renders the Claude Code plugins section as a Markdown table. */
+function renderClaudePluginsMarkdownTable(plugins: CatalogClaudePlugin[]): string[] {
+  if (plugins.length === 0) return [];
+  return [
+    "## Claude Code Plugins",
+    "",
+    "| Name | Description | Repo | Commit |",
+    "|------|-------------|------|--------|",
+    ...plugins.map((p) => `| ${p.name} | ${p.description} | ${p.repo} | ${p.commit.slice(0, 12)} |`),
+    "",
+  ];
+}
+
 /** Renders CatalogData as a GitHub-flavoured Markdown table for human-readable terminal or file output. */
 export function catalogToMarkdown(data: CatalogData): string {
   const lines: string[] = [
@@ -234,6 +268,7 @@ export function catalogToMarkdown(data: CatalogData): string {
     ...renderMcpServersMarkdownTable(data.mcpServers),
     ...renderRulesMarkdownTable(data.rules),
     ...renderCliToolsMarkdownTable(data.cliTools),
+    ...renderClaudePluginsMarkdownTable(data.claudePlugins ?? []),
   ];
   return lines.join("\n");
 }
@@ -350,6 +385,18 @@ function printCliSection(catalog: Catalog, search?: string, includeDeprecated: b
   }
 }
 
+/** Renders the Claude Code plugins section to stdout. */
+function printClaudePluginsSection(catalog: Catalog, search?: string, includeDeprecated: boolean = false): void {
+  const plugins = collectFilteredClaudePlugins(catalog.claude_plugins, search, includeDeprecated);
+  if (plugins.length === 0) return;
+  console.log(chalk.bold("\nClaude Code Plugins\n"));
+  console.log(chalk.dim("  Pinned to one commit; agentbrew install enables them in Claude Code\n"));
+  for (const p of plugins) {
+    console.log(`  ${chalk.cyan(p.name)}${deprecatedBadge(p)}${chalk.dim(` (${p.repo} @ ${p.commit.slice(0, 12)})`)}`);
+    console.log(chalk.dim(`    ${p.description}`));
+  }
+}
+
 /** Renders all catalog sections based on the provided display options. */
 function renderCatalogSections(
   catalog: Catalog,
@@ -389,6 +436,9 @@ function renderCatalogSections(
   if (showAll || options.cli) {
     printCliSection(catalog, search, includeDeprecated);
   }
+  if (showAll) {
+    printClaudePluginsSection(catalog, search, includeDeprecated);
+  }
   if (showAll || options.sources) {
     showSources({ search, showFooter: false });
   }
@@ -401,6 +451,7 @@ function countSearchResults(catalog: Catalog, uniqueSourceSkills: DisplaySkill[]
   count += catalog.mcp_servers.filter((s) => matchesSearch(`${s.name} ${s.description}`, search)).length;
   count += catalog.rules.filter((r) => matchesSearch(`${r.name} ${r.description}`, search)).length;
   count += uniqueSourceSkills.filter((s) => matchesSearch(`${s.name} ${s.description ?? ""}`, search)).length;
+  count += collectFilteredClaudePlugins(catalog.claude_plugins, search, false).length;
   return count;
 }
 

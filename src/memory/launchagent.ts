@@ -3,7 +3,12 @@ import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
-import { buildLaunchAgentPath, LAUNCHAGENT_LANG, resolveAgentBrewCliJsPath } from "../sync/scheduler-paths.js";
+import {
+  buildLaunchAgentPath,
+  LAUNCHAGENT_LANG,
+  resolveAgentBrewCliJsPath,
+  resolveSchedulerNode,
+} from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
 import { memoryLaunchAgentLogDir } from "./paths.js";
@@ -90,8 +95,21 @@ ${daemonEnvironmentXml}
 </plist>`;
 }
 
-function buildMaintainPlist(home: string, pathValue: string, logDir: string): string {
-  const maintainArgs = [process.execPath, resolveAgentBrewCliJsPath(), "memory", "maintain"];
+/**
+ * The nightly maintenance job runs the Node link that survives upgrades, like
+ * the check job (#356). `process.execPath` is a versioned Homebrew Cellar
+ * folder that `brew upgrade node` deletes (#456).
+ */
+export function buildMaintainPlist(home: string, pathValue: string, logDir: string): string {
+  const node = resolveSchedulerNode();
+  const maintainArgs = [node, resolveAgentBrewCliJsPath(), "memory", "maintain"];
+  // Keep AGENTBREW_NODE_BIN in the job env when the job runs it, like the
+  // check job (#356), so drift accepts the chosen Node and a later run keeps it.
+  const nodeOverride = process.env.AGENTBREW_NODE_BIN?.trim();
+  const nodeOverrideXml =
+    nodeOverride && node === nodeOverride
+      ? `\n    <key>AGENTBREW_NODE_BIN</key>\n    <string>${nodeOverride}</string>`
+      : "";
   const programArgsXml = maintainArgs.map((arg) => `    <string>${arg}</string>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -117,7 +135,7 @@ ${programArgsXml}
     <key>PATH</key>
     <string>${pathValue}</string>
     <key>LANG</key>
-    <string>${LAUNCHAGENT_LANG}</string>
+    <string>${LAUNCHAGENT_LANG}</string>${nodeOverrideXml}
   </dict>
   <key>StandardOutPath</key>
   <string>${logDir}/mcp-memory-maintain.out.log</string>

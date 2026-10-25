@@ -46,6 +46,27 @@ describe("resolveSchedulerNode (#356)", () => {
     expect(node).toBe(join(prefix, "opt", "node", "bin", "node"));
   });
 
+  it("swaps an fnm version folder for fnm's default alias when it points at the same Node (#456)", () => {
+    const fnm = join(root, "fnm");
+    const versioned = fakeNode(join(fnm, "node-versions", "v24.0.0", "installation", "bin", "node"));
+    mkdirSync(join(fnm, "aliases"), { recursive: true });
+    symlinkSync(join(fnm, "node-versions", "v24.0.0", "installation"), join(fnm, "aliases", "default"));
+
+    expect(resolveSchedulerNode({ execPath: versioned, env: {}, stableLinks: [] })).toBe(
+      join(fnm, "aliases", "default", "bin", "node"),
+    );
+  });
+
+  it("keeps the fnm version folder when the default alias points at another Node", () => {
+    const fnm = join(root, "fnm");
+    const versioned = fakeNode(join(fnm, "node-versions", "v24.0.0", "installation", "bin", "node"));
+    fakeNode(join(fnm, "node-versions", "v26.0.0", "installation", "bin", "node"));
+    mkdirSync(join(fnm, "aliases"), { recursive: true });
+    symlinkSync(join(fnm, "node-versions", "v26.0.0", "installation"), join(fnm, "aliases", "default"));
+
+    expect(resolveSchedulerNode({ execPath: versioned, env: {}, stableLinks: [] })).toBe(versioned);
+  });
+
   it("uses a stable bin link that points at the running Node", () => {
     const { prefix, cellarNode } = homebrewPrefix({ optLink: false });
     const binLink = join(prefix, "bin", "node");

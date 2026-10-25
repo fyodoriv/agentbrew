@@ -404,15 +404,15 @@ The `Auto-repair` line in `agentbrew status` shows what the scheduler really doe
 
 Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. launchd, the user crontab, and the systemd user manager are per user, not per `HOME`: when `HOME` is not your home folder (a scratch `HOME` in a test or a sandbox), agentbrew never loads, unloads, enables, or restarts a launchd job, never writes your crontab, and never runs a changing `systemctl --user` command, so your real jobs are untouched. Read-only checks such as `crontab -l` and `launchctl print` still run, so `status` shows your real jobs. `auto-sync install` still writes its plist under that `HOME`; `memory enable` skips its plists. `agentbrew status --json` includes the same data in `autoRepair`.
 
-**Which Node the job runs.** `agentbrew auto-sync install` writes a Node path that survives a Node upgrade. It uses, in order:
+**Which Node the job runs.** `agentbrew auto-sync install` and `agentbrew memory fix` (for the nightly memory maintenance job) write a Node path that survives a Node upgrade. They use, in order:
 
 1. `AGENTBREW_NODE_BIN`, as written (links are not resolved), when it is a Node that runs. Use it to pick a Node on purpose, for example one your machine allows in background jobs. agentbrew also writes it into the job's environment, so a later rewrite from inside the job keeps it.
-2. A link to the running Node that package managers keep current: the Homebrew keg link `<prefix>/opt/<formula>/bin/node`, then `/opt/homebrew/bin/node` or `/usr/local/bin/node`. Node reports its own path with all links resolved, which on Homebrew is the versioned `Cellar` folder that `brew cleanup` deletes after `brew upgrade node`.
-3. The running Node's own path (for example an fnm or nvm folder).
+2. A link to the running Node that package managers keep current: the Homebrew keg link `<prefix>/opt/<formula>/bin/node`, fnm's `<fnm dir>/aliases/default/bin/node`, then `/opt/homebrew/bin/node` or `/usr/local/bin/node`. Node reports its own path with all links resolved, which on Homebrew is the versioned `Cellar` folder that `brew cleanup` deletes after `brew upgrade node`.
+3. The running Node's own path (for example an nvm folder, or an fnm folder that is not the default). A job on fnm's `default` follows that alias when you move it.
 
 The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites the plist from inside the job itself, it does not unload the running job (that would kill it before the reload). It writes the plist, and a detached shell reloads the job after the run ends. An unchanged plist is not reloaded.
 
-`agentbrew status` reports `launchagent` drift when the job's Node no longer exists, or when it runs a versioned path while a link that survives upgrades points at the same Node. `agentbrew fix` then rewrites the plist, so an existing job moves to the stable path on its next run.
+`agentbrew status` reports `launchagent` drift for each `com.agentbrew.*` job that runs Node (with `agentbrew memory fix` as the repair for the memory job) when the job's Node no longer exists, or when it runs a versioned path while a link that survives upgrades points at the same Node. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
 
 ### MCP endpoint repair
 

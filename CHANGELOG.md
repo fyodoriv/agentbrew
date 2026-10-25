@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The nightly memory maintenance LaunchAgent no longer pins a versioned Node
+  that `brew upgrade node` (or a new fnm version) deletes (#456). It uses the
+  same upgrade-proof Node as the check job, and the scheduler now also knows
+  fnm's `default` alias. `agentbrew status` reports a versioned Node in every
+  `com.agentbrew.*` job, with `agentbrew memory fix` as the memory job's fix.
 - `agentbrew work --json` gives each step its file `path` and `userOnly`, and
   `/work` reads and follows a user-only skill's file when the Skill tool hides
   it (#451). Before, a step such as `/tooling-checkup` could not run.

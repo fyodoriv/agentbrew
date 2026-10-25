@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
+### Added
+
+- `agentbrew setup --all` runs the multi-repo setup chain (#442 part 4):
+  `agentbrew sync`, the dotfiles and careerbrew installers, then
+  `agentbrew audit-skills`. One question round (`--yes` for defaults), done
+  steps skipped on rerun (`--force` reruns), failed steps listed at the end.
+  Plain `agentbrew setup` is unchanged.
+
 ### BREAKING CHANGE
 
 - **Team overlays are removed** (#208 step 12). `agentbrew team set`,

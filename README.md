@@ -728,6 +728,10 @@ agentbrew import [--from <agent>]      Discover MCP servers from agent configs
                                        mcpm-managed — excluded from unmanaged noise)
 agentbrew export [-o file]             Export portable config bundle
 agentbrew setup [server]               Configure API keys for MCP servers
+agentbrew setup --all [--yes] [--dry-run] [--force] [--dir <dir>]
+                                       Multi-repo setup chain: sync, dotfiles,
+                                       careerbrew, audit-skills; skips done steps,
+                                       keeps going after a failure, lists failures
 
 agentbrew plugin <subcommand>          Manage signed company plugins
 agentbrew hook install --shell         Install shell hook for project detection

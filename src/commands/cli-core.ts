@@ -202,26 +202,47 @@ Examples:
     .description("Configure environment variables for MCP servers (or bootstrap an agent)")
     .option("--model <model>", "Override the default model (for agent bootstrap)")
     .option("--dry-run", "Preview what would be configured without applying")
-    .action(async (server: string | undefined, options: { model?: string; dryRun?: boolean }) => {
-      // Agent bootstrap: `agentbrew setup opencode` installs Ollama + Qwen3 + configures OpenCode
-      if (server === "opencode") {
-        const { bootstrapOpencode } = await import("../mcp/opencode-bootstrap.js");
-        await bootstrapOpencode({ model: options.model, dryRun: options.dryRun });
-        return;
-      }
-      // `--dry-run` is only plumbed through the `setup opencode` path.
-      // For the interactive MCP env-var wizard (runMcpSetup) dry-run would
-      // silently be ignored. Reject the combination so the flag's advertised
-      // contract ("preview without applying") is honoured — mirrors the
-      // import --dry-run guard.
-      if (options.dryRun) {
-        console.error(
-          chalk.red("Error: --dry-run is only supported for `agentbrew setup opencode`. Run without --dry-run."),
-        );
-        process.exitCode = 1;
-        return;
-      }
-      const { runMcpSetup } = await import("../mcp/mcp-setup.js");
-      await runMcpSetup({ server });
-    });
+    .option("--all", "Run the multi-repo setup chain: agentbrew sync, dotfiles, careerbrew, audit-skills")
+    .option("--yes", "With --all: skip the question round and use the defaults")
+    .option("--force", "With --all: rerun steps a past run finished")
+    .option("--dir <dir>", "With --all: folder for the repo clones (default ~/apps)")
+    .action(
+      async (
+        server: string | undefined,
+        options: { model?: string; dryRun?: boolean; all?: boolean; yes?: boolean; force?: boolean; dir?: string },
+      ) => {
+        if (options.all) {
+          const { runSetupAll } = await import("../setup-all.js");
+          const { expandHome } = await import("../utils.js");
+          const result = await runSetupAll({
+            yes: options.yes,
+            dryRun: options.dryRun,
+            force: options.force,
+            dir: options.dir ? expandHome(options.dir) : undefined,
+          });
+          if (result.failed.length > 0) process.exitCode = 1;
+          return;
+        }
+        // Agent bootstrap: `agentbrew setup opencode` installs Ollama + Qwen3 + configures OpenCode
+        if (server === "opencode") {
+          const { bootstrapOpencode } = await import("../mcp/opencode-bootstrap.js");
+          await bootstrapOpencode({ model: options.model, dryRun: options.dryRun });
+          return;
+        }
+        // `--dry-run` is only plumbed through the `setup opencode` path.
+        // For the interactive MCP env-var wizard (runMcpSetup) dry-run would
+        // silently be ignored. Reject the combination so the flag's advertised
+        // contract ("preview without applying") is honoured — mirrors the
+        // import --dry-run guard.
+        if (options.dryRun) {
+          console.error(
+            chalk.red("Error: --dry-run is only supported for `agentbrew setup opencode`. Run without --dry-run."),
+          );
+          process.exitCode = 1;
+          return;
+        }
+        const { runMcpSetup } = await import("../mcp/mcp-setup.js");
+        await runMcpSetup({ server });
+      },
+    );
 }

@@ -139,6 +139,32 @@ describe("applyAgentfile", () => {
     });
   });
 
+  describe("MCP servers the user removed (declinedMcpServers)", () => {
+    it("a project Agentfile does not add back a server the user removed", () => {
+      const state = makeState({ declinedMcpServers: ["context7"] });
+      mockLoadAgentfile.mockReturnValue({ mcp: ["context7", "playwright"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([makeServer("context7"), makeServer("playwright")]);
+
+      const result = applyAgentfile("/project", { authoritative: false, quiet: true });
+
+      expect(result?.serversAdded).toEqual(["playwright"]);
+      expect(state.mcpServers?.map((s) => s.name)).toEqual(["playwright"]);
+      expect(state.declinedMcpServers).toEqual(["context7"]);
+    });
+
+    it("the authoritative Agentfile still adds a server the user lists there", () => {
+      const state = makeState({ declinedMcpServers: ["context7"] });
+      mockLoadAgentfile.mockReturnValue({ mcp: ["context7"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([makeServer("context7")]);
+
+      const result = applyAgentfile("/home/test/.config/agentbrew", { authoritative: true, quiet: true });
+
+      expect(result?.serversAdded).toEqual(["context7"]);
+    });
+  });
+
   describe("MCP server merging", () => {
     it("adds new MCP servers from Agentfile", () => {
       const state = makeState();

@@ -254,6 +254,12 @@ function showCatalogDryRun(catalog: ReturnType<typeof loadCatalog>, name: string
     showSimpleDryRun("CLI tool", cli.name);
     return true;
   }
+  const plugin = (catalog.claude_plugins ?? []).find((p) => p.name === name);
+  if (plugin) {
+    const at = `${plugin.plugin}@${plugin.marketplace} from ${plugin.repo} at ${plugin.commit.slice(0, 12)}`;
+    showSimpleDryRun("Claude Code plugin", plugin.name, at);
+    return true;
+  }
   return false;
 }
 

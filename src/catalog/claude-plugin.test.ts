@@ -232,3 +232,10 @@ describe("catalog claude_plugins entries", () => {
     for (const p of loadCatalog().claude_plugins ?? []) expect(p.commit, p.name).toMatch(/^[0-9a-f]{40}$/);
   });
 });
+
+describe("claude_plugins and --recommended", () => {
+  it("no catalog Claude Code plugin is recommended, so `install --recommended` never installs one", async () => {
+    const { loadCatalog } = await import("./types.js");
+    for (const p of loadCatalog().claude_plugins ?? []) expect(p.recommended, p.name).toBe(false);
+  });
+});

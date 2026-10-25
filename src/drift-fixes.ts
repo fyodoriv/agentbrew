@@ -8,6 +8,7 @@ import type { DriftItem } from "./drift-checks/types.js";
 export const DRIFT_FIXES: Readonly<Record<DriftItem["type"], string>> = {
   agents: "agentbrew sync --only agents",
   "claude-desktop-mcp": "follow the fix named in the item, then restart Claude Desktop",
+  "claude-plugin": "run `agentbrew install <name>` to restore the pinned checkout and enable the plugin",
   "cli-build": "npm run build in the agentbrew checkout",
   "env-hygiene": "eval $(agentbrew env sanitize)",
   "organization-overlay": "agentbrew team set <overlay-url>, or agentbrew team unset",

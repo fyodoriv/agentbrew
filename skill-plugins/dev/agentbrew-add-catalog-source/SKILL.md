@@ -8,6 +8,10 @@ description: >
   agentbrew-add-skill) or creating a skill from scratch (use Anthropic skill-creator or Superpowers writing-skills).
 ---
 
+## Preflight: duplicates, conflicts, pins
+
+Before any install or sync, run shared-rules "Tool setup preflight": duplicates and conflicts (hooks, status line, MCP, skills, LaunchAgents, plugins), a scratch HOME test, pinned versions.
+
 ## What You Do
 
 Land a curated entry in agentbrew's catalog so every user picks it up on the

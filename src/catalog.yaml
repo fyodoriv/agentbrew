@@ -1928,6 +1928,25 @@ cli_tools:
           - "Name it 'agentbrew-cli', click 'Generate', and copy the value."
 
 
+# ── Claude Code plugins ────────────────────────────────────────
+# Third-party Claude Code plugins, each pinned to a full commit SHA.
+# `agentbrew install <name>` clones the repo at that commit into
+# ~/.local/share/agentbrew/claude-plugins/<name>, registers it as a directory
+# marketplace, and enables plugin@marketplace through the `claude` CLI.
+# Move a pin only after you review the new commits.
+claude_plugins:
+  - name: agent-usage-guard
+    description: "Holds subagent fan-out, heavy-context prompts and retry loops before they spend your plan's usage window; /agent-guard shows status."
+    category: guardrails
+    recommended: false
+    repo: rbartoli/agent-usage-guard
+    # 2026-10-25 review: MIT; no network or process calls in core/ or hooks/;
+    # includes the #42 fix (only the user lifts limits). Newer than tag v1.1.1.
+    commit: e9bd8d6e2dc8432f3f5f5622ef282de96a71a389
+    plugin: agent-usage-guard
+    marketplace: agent-usage-guard
+    rationale: "It can deny tool and agent calls, compact the session, and resend a prompt. It coexists with the agent-perf status line (its own row) and with UserPromptSubmit hooks (a prompt it drops never reaches them)."
+
 # ── Bundles ────────────────────────────────────────────────────
 # A bundle names existing catalog items that `agentbrew install <bundle>`
 # installs together. It holds names only; each member keeps its own entry.

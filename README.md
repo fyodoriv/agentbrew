@@ -56,6 +56,7 @@ agentbrew install context7                # live library docs MCP (recommended, 
 agentbrew install sourcegraph             # enterprise code search MCP (token + instance URL)
 agentbrew install storybook-screenshot    # catalog CLI command + package binary
 agentbrew install --recommended           # recommended skills + MCP + rules, in one shot
+agentbrew install agent-usage-guard       # a Claude Code plugin from the catalog, pinned to a commit
 agentbrew install verify-everything       # a bundle: a named group of catalog items, installed together
 agentbrew catalog --bundles               # list bundles and their members
 agentbrew install review-tasks            # tasks.md /review-tasks: audit a task queue for stale or misprioritized work
@@ -73,7 +74,11 @@ agentbrew skills coverage --builtins      # require in-repo skill eval coverage
 agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
+**A removed MCP server stays removed.** `agentbrew remove <server>` records the name in `declinedMcpServers` in `state.yaml`. The recommended set and project Agentfiles (a repo's `Agentfile.yaml`, applied when you sync from that repo) skip it. Your global Agentfile, an explicit `--agentfile`, or `agentbrew install <server>` adds it back. `remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded, so remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.
+
 **Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
+
+**Claude Code plugins from the catalog.** A `claude_plugins:` catalog entry names a repo, a full 40-character commit, and its `plugin@marketplace`. `agentbrew install <name>` clones the repo at that commit into `~/.local/share/agentbrew/claude-plugins/<name>`, registers the checkout as a directory marketplace, and enables the plugin, all through the `claude` CLI. (Claude Code itself can pin a marketplace only to a branch or tag, and both can move.) `agentbrew remove <name>` uninstalls the plugin, removes the marketplace and the checkout. `agentbrew status` reports drift: a checkout that moved, a plugin that is off, a marketplace that points elsewhere, or a catalog pin that changed. agentbrew records what it installed in `~/.config/agentbrew/claude-plugins.json` and touches only those plugins.
 
 **Pin a git install.** `agentbrew install --git <url> --ref <ref>` (also `mcp add --git`) checks out one exact commit:
 

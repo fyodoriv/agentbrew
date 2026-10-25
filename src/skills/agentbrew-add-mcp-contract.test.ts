@@ -130,7 +130,7 @@ describe("agentbrew-add-mcp skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-add-mcp");
-    expect(evals.evals).toHaveLength(5);
+    expect(evals.evals).toHaveLength(6);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

@@ -4,10 +4,8 @@
 # Validate with `npm run dev -- lint`; deploy intentionally with
 # `agentbrew sync --agentfile ./Agentfile.yaml`.
 
-mcp:
-  - context7
-  - tasks-mcp
-  - github
+# No mcp: list. MCP servers are a per-person choice; add them with
+# `agentbrew install <name>` or your global Agentfile.
 
 skills:
   - agentfile-init

@@ -181,6 +181,14 @@ these three axes when a task allows it:
 - **New chat:** deliverable shipped; unrelated topic/repo; long session (~30–60 min heavy work); re-explaining or re-reading same files; degraded responses; after rules/MCP/skills sync or delivery completion; `latest.json` `low-soft-headroom` alert.
 - **Continue:** same PR / mid-debug / one failure iteration on same scope.
 
+## Tool setup preflight
+
+Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) first checks for duplicates and conflicts with the current setup: hooks, the status line, MCP servers, skills, LaunchAgents, and plugins.
+- Duplicates: `agentbrew status --verbose`, `agentbrew audit-skills`, `claude plugin list`, the `hooks`/`statusLine` keys in `~/.claude/settings.json`. Extend what exists, or ask.
+- Conflicts: same hook event, the single status line, name clashes, LaunchAgents (read-only `ls ~/Library/LaunchAgents`; never load or unload).
+- Prove it in a scratch HOME (`HOME=$(mktemp -d)`) with one real call (or `--help` when it needs a login), then install for real.
+- Pin every version: a tag or commit (`--git <url> --ref <tag>`, catalog entry, Agentfile), never a moving branch. Report what you checked.
+
 ## Agent rule/skill changes → sync + fix drift + commit
 
 After rule/skill/config edits: `agentbrew sync` → `agentbrew status --fix` until **0 drift** → commit `tooling/agentbrew/docs/shared-rules.md` when shared rules changed.

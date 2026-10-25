@@ -200,6 +200,12 @@ continue?". The user set a goal so that they can be away.
 - While you iterate, run only the related test files. Run the full suite
   once, right before each commit. Run mutation checks as one parallel batch,
   not one by one.
+- Before you trust a loop's pass count, read one run's result line. In zsh,
+  `"$T[0]"` is a subscript and expands to empty (indexes start at 1), so pytest
+  got no path: a 20-run loop of one test ran the whole suite.
+- When a task's measurement names one object (a fixture, a generated file) and
+  your run makes a new one, say so and measure the new one too. A rerun made a
+  new output that the re-applied fix did not cover.
 - Right before each commit, re-check the current branch and stage exact file
   paths, never a folder. Another session can switch a shared checkout
   mid-run, and a folder add sweeps in its untracked files.

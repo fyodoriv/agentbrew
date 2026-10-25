@@ -42,7 +42,11 @@ export interface AuditRow {
   agents: string[];
 }
 
-const normalize = (name: string) => name.toLowerCase().replace(/[\s_.-]+/g, "-").replace(/^-|-$/g, "");
+const normalize = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[\s_.-]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 /** `short` is a whole-segment prefix of `long` and specific (two or more segments). */
 function specificPrefix(short: string, long: string): boolean {

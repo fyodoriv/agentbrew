@@ -536,7 +536,8 @@ function removeShippedBuiltinCopies(quiet: boolean, log: Logger): string[] {
   return removed;
 }
 
-function getAllCommandSourceDirs(): string[] {
+/** Every command source dir, in sync order (exported for `agentbrew audit-skills`). */
+export function getAllCommandSourceDirs(): string[] {
   const sourceDirs: string[] = [];
   const seen = new Set<string>();
 

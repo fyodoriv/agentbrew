@@ -106,9 +106,13 @@ check_repo() {
     [ "$n" -gt 0 ] && say unpushed "$n commit(s) on $current"
   fi
 
-  local b ahead merged fork pid back base_pids
+  local b ahead merged fork pid back base_pids merged_heads=""
   # Patch ids of the base's recent commits: a squash merge is one of them.
   base_pids="$(git -C "$top" log -p --no-merges --format='commit %H' -n 1000 "origin/$base" 2>/dev/null | git -C "$top" patch-id --stable | cut -d' ' -f1)"
+  # Head commits of PRs merged into the base: a squash that carried a conflict fix matches no patch id.
+  if [ "$NO_GH" != 1 ] && command -v gh >/dev/null 2>&1; then
+    merged_heads="$(cd "$top" && gh pr list --state merged --base "$base" --limit 500 --json headRefOid --jq '.[].headRefOid' 2>/dev/null)"
+  fi
   while IFS= read -r b; do
     [ -n "$b" ] && [ "$b" != "$base" ] || continue
     # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
@@ -119,6 +123,9 @@ check_repo() {
     # one commit on the base that no later commit reverts (still true after the
     # base changes the same lines), or when merging it would leave the base
     # unchanged (needs git 2.38+).
+    if [ -n "$merged_heads" ] && grep -qx "$(git -C "$top" rev-parse "$b")" <<<"$merged_heads"; then
+      continue
+    fi
     fork="$(git -C "$top" merge-base "origin/$base" "$b" 2>/dev/null)" || fork=""
     pid=""
     back=""

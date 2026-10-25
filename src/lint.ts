@@ -613,7 +613,6 @@ function lintSecrets(): { errors: number } {
   return { errors: findings.length };
 }
 
-/** Validate all agentbrew configuration files. Returns true if valid. */
 /** Run every lint check, print the results, and return the error and warning counts. */
 export function lintCounts(): { errors: number; warnings: number } {
   let errors = 0;

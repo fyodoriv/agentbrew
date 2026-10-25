@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `agentbrew measure context` shows the same error and warning counts as
-  `agentbrew lint` in its lint-failed alert (#461). Before, it counted only
+  `agentbrew lint` in its printed lint-failed alert (#461). Before, it counted only
   `validateConfig()`, so a failure such as an oversized command read
   "0 errors, 0 warnings".
 - The nightly memory maintenance LaunchAgent no longer pins a versioned Node

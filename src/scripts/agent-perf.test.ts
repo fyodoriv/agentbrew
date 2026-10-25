@@ -461,14 +461,21 @@ describe("statusline", () => {
       expect(sessionTip("s3", { file: log })).toBeNull();
       expect(sessionTip("s1", { file: join(tipDir, "missing.jsonl") })).toBeNull();
       appendFileSync(log, `${row("s2", "rewind-checkpoint", "adopted")}\n${row("s4", "old", "shown")}\n`);
-      appendFileSync(log, `${row("s5", "x", "shown", "\u001b]0;pwned\u0007Bell \u001b[31mred")}\n${row("s6", "y", "shown", "a".repeat(300))}\n`);
+      appendFileSync(
+        log,
+        `${row("s5", "x", "shown", "\u001b]0;pwned\u0007Bell \u001b[31mred")}\n${row("s6", "y", "shown", "a".repeat(300))}\n`,
+      );
       expect(sessionTip("s2", { file: log })).toBeNull();
       expect(sessionTip("s4", { file: log })).toBeNull();
       expect(sessionTip("s5", { file: log })).toBe("]0;pwnedBell [31mred");
       expect(sessionTip("s6", { file: log })).toHaveLength(120);
-      expect(formatStatusline({ model: { display_name: "Opus 5.5" } }, { toolMs: 0, slowKey: null, slowMs: 0 }, "Run /context.")).toBe(
-        "Opus 5.5\n💡 Run /context.",
-      );
+      expect(
+        formatStatusline(
+          { model: { display_name: "Opus 5.5" } },
+          { toolMs: 0, slowKey: null, slowMs: 0 },
+          "Run /context.",
+        ),
+      ).toBe("Opus 5.5\n💡 Run /context.");
 
       const out = spawnSync("node", [HELPER, "statusline"], {
         input: JSON.stringify({ session_id: "s1", model: { display_name: "Opus 5.5" } }),

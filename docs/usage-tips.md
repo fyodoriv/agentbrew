@@ -52,7 +52,7 @@ status command is needed.
 Each shown tip appends a `shown` row to `~/.cache/agentbrew/usage-tips/log.jsonl`
 (`USAGE_TIPS_DIR` moves it). The row holds the time, session id, tip id, and
 event; never prompt text. When a later prompt in the same session matches a
-shown tip's adopt regex (for example `^/clear` after the clear tip), the hook
+shown tip's adopt regex (for example `^/compact` after the compact tip), the hook
 appends one `adopted` row.
 
 ```bash

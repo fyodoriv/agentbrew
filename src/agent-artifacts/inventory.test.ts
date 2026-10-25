@@ -37,6 +37,25 @@ describe("collectAgentArtifacts", () => {
     }
   });
 
+  it("lists an Agentfile mcp: entry as an mcp-reference", () => {
+    // The repo's own Agentfile lists no MCP servers (a per-person choice), so
+    // a fixture covers this surface.
+    const repoRoot = mkdtempSync(join(tmpdir(), "agentbrew-inventory-"));
+    mkdirSync(join(repoRoot, "src"), { recursive: true });
+    mkdirSync(join(repoRoot, "hooks"), { recursive: true });
+    writeFileSync(join(repoRoot, "hooks/manifest.yaml"), "hooks: []\n");
+    writeFileSync(join(repoRoot, "src/catalog.yaml"), "skills: []\n");
+    writeFileSync(join(repoRoot, "Agentfile.yaml"), "mcp:\n  - fixture-mcp\n");
+    try {
+      const inventory = collectAgentArtifacts({ repoRoot, agentDefinitions: [] });
+      expect(inventory.artifacts).toContainEqual(
+        expect.objectContaining({ kind: "mcp-reference", name: "fixture-mcp", sourcePath: "Agentfile.yaml" }),
+      );
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it("lists every repo-owned agent artifact surface", () => {
     const inventory = collectAgentArtifacts();
     const kinds = new Set(inventory.artifacts.map((artifact) => artifact.kind));
@@ -54,7 +73,6 @@ describe("collectAgentArtifacts", () => {
         "command-source",
         "hook",
         "instruction-template",
-        "mcp-reference",
         "skill-reference",
         "source-reference",
       ]),

@@ -17,7 +17,7 @@
 // Commands:
 //   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
 //   brief [--project NAME]
-//   statusline            (reads Claude Code status-line JSON on stdin)
+//   statusline            (reads Claude Code status-line JSON on stdin; adds the usage tip line)
 //   turn --session ID [--json]
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool
@@ -25,7 +25,19 @@
 // Per-step stats include every row. Human wait (a prompt, a question, a call
 // over 30 min) is kept apart from tool time. No dependencies; Node 20+.
 
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -288,7 +300,9 @@ export function summarize(rows, pairRows = rows) {
     keys,
     topKeys: keys.slice(0, 5),
     slowest,
-    failuresByKey: keys.filter((k) => k.failures > 0).map((k) => ({ key: k.key, failures: k.failures, count: k.count })),
+    failuresByKey: keys
+      .filter((k) => k.failures > 0)
+      .map((k) => ({ key: k.key, failures: k.failures, count: k.count })),
     humanWait: humanWaits(rows),
     ...pairCalls(rows, pairRows),
   };
@@ -307,7 +321,9 @@ export function projectForDir(cwd) {
     try {
       const st = statSync(git);
       if (st.isDirectory()) return sanitizeProject(basename(dir));
-      const line = readFileSync(git, "utf8").split("\n")[0].replace(/^gitdir: /, "");
+      const line = readFileSync(git, "utf8")
+        .split("\n")[0]
+        .replace(/^gitdir: /, "");
       const marker = line.indexOf("/.git/worktrees/");
       return sanitizeProject(basename(marker === -1 ? dir : line.slice(0, marker)));
     } catch {
@@ -414,7 +430,9 @@ export function formatReport(report) {
   lines.push("", "Top steps by total time:");
   for (const k of report.topKeys) {
     const change = k.sumChangePct === undefined ? "" : ` (${signed(k.sumChangePct)})`;
-    lines.push(`  ${k.key}: ${formatMs(k.sumMs)} total, ${k.count}x, p50 ${formatMs(k.p50Ms)}, p95 ${formatMs(k.p95Ms)}${change}`);
+    lines.push(
+      `  ${k.key}: ${formatMs(k.sumMs)} total, ${k.count}x, p50 ${formatMs(k.p50Ms)}, p95 ${formatMs(k.p95Ms)}${change}`,
+    );
   }
   lines.push("", "Slowest calls:");
   for (const row of report.slowest) {
@@ -423,7 +441,9 @@ export function formatReport(report) {
   if (wait.calls > 0) {
     lines.push("", "Human-wait calls (not in tool time):");
     for (const w of wait.longest) {
-      lines.push(`  ${formatMs(w.ms)}  ${w.key}  ${w.reason}  ${w.project ?? ""} ${w.ts ?? ""}${w.agent ? ` (${w.agent})` : ""}`);
+      lines.push(
+        `  ${formatMs(w.ms)}  ${w.key}  ${w.reason}  ${w.project ?? ""} ${w.ts ?? ""}${w.agent ? ` (${w.agent})` : ""}`,
+      );
     }
   }
   if (report.blockedKeys?.length > 0) {
@@ -436,7 +456,9 @@ export function formatReport(report) {
   }
   lines.push("", "All steps (count, total, p50, p95, max):");
   for (const k of report.keys) {
-    lines.push(`  ${k.key}: ${k.count}, ${formatMs(k.sumMs)}, ${formatMs(k.p50Ms)}, ${formatMs(k.p95Ms)}, ${formatMs(k.maxMs)}`);
+    lines.push(
+      `  ${k.key}: ${k.count}, ${formatMs(k.sumMs)}, ${formatMs(k.p50Ms)}, ${formatMs(k.p95Ms)}, ${formatMs(k.maxMs)}`,
+    );
   }
   return lines.join("\n");
 }
@@ -445,7 +467,9 @@ export function formatReport(report) {
 export function buildBrief(opts, ctx = {}) {
   const report = buildReport({ ...opts, days: 7, all: false }, ctx);
   if (report.keys.length === 0 && !report.attempts) return "";
-  const top = report.topKeys.slice(0, 3).map((k) => `${k.key} ${formatMs(k.sumMs)} (${k.count}x, p50 ${formatMs(k.p50Ms)})`);
+  const top = report.topKeys
+    .slice(0, 3)
+    .map((k) => `${k.key} ${formatMs(k.sumMs)} (${k.count}x, p50 ${formatMs(k.p50Ms)})`);
   const slow = report.slowest[0];
   const lines = [
     `Agent time, ${report.scope.project}, last 7 days: ${formatMs(report.toolMs)} of tool time over ${report.calls} calls.`,
@@ -544,7 +568,44 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
   return { toolMs: cache.toolMs, slowKey: cache.slowKey, slowMs: cache.slowMs };
 }
 
-export function formatStatusline(input, stats) {
+// ── statusline: the usage-tip hook's current tip for this session ──
+
+/** Usage-tip log written by hooks/checks/usage-tip.sh. */
+export function usageTipsLog(env = process.env) {
+  return join(env.USAGE_TIPS_DIR || join(homedir(), ".cache", "agentbrew", "usage-tips"), "log.jsonl");
+}
+
+const TIP_TAIL_BYTES = 256 * 1024;
+const TIP_MAX_CHARS = 120;
+
+/** Text of the last tip shown in this session, or null. Reads only the log's tail. */
+export function sessionTip(sid, { file = usageTipsLog() } = {}) {
+  if (!sid || !existsSync(file)) return null;
+  const size = statSync(file).size;
+  const { text } = readFrom(file, Math.max(0, size - TIP_TAIL_BYTES));
+  const lines = text.split("\n");
+  const adopted = new Set();
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].includes(sid)) continue;
+    let row;
+    try {
+      row = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (row.session !== sid) continue;
+    if (row.event === "adopted") adopted.add(row.tip);
+    if (row.event !== "shown") continue;
+    // An adopted tip has done its job; older rows have no text to show.
+    if (adopted.has(row.tip) || typeof row.text !== "string") return null;
+    const clean = row.text.replace(/[\u0000-\u001f\u007f-\u009f]/g, "").trim();
+    if (!clean) return null;
+    return clean.length > TIP_MAX_CHARS ? `${clean.slice(0, TIP_MAX_CHARS - 1)}…` : clean;
+  }
+  return null;
+}
+
+export function formatStatusline(input, stats, tip = null) {
   const parts = [];
   const model = input?.model?.display_name;
   if (model) parts.push(model);
@@ -561,7 +622,9 @@ export function formatStatusline(input, stats) {
   if (stats.slowKey) parts.push(`slowest: ${stats.slowKey} ${formatMs(stats.slowMs)}`);
   const ctx = input?.context_window?.used_percentage;
   if (typeof ctx === "number") parts.push(`ctx ${Math.round(ctx)}%`);
-  return parts.join(" · ");
+  const line = parts.join(" · ");
+  if (!tip) return line;
+  return line ? `${line}\n💡 ${tip}` : `💡 ${tip}`;
 }
 
 function readStdin() {
@@ -604,7 +667,13 @@ export function main(argv = process.argv.slice(2)) {
     } catch {
       // The status line must always print something.
     }
-    process.stdout.write(`${formatStatusline(input, stats)}\n`);
+    let tip = null;
+    try {
+      tip = sessionTip(input.session_id);
+    } catch {
+      // No tip line; the stats line still prints.
+    }
+    process.stdout.write(`${formatStatusline(input, stats, tip)}\n`);
     return 0;
   }
   if (command === "turn") {
@@ -617,7 +686,9 @@ export function main(argv = process.argv.slice(2)) {
       process.stdout.write(`${JSON.stringify(turn)}\n`);
     } else {
       const steps = turn.slowest.map((s) => `${s.key} ${formatMs(s.ms)}`).join(", ") || "none";
-      process.stdout.write(`This turn: ${formatMs(turn.toolMs)} of tool time over ${turn.calls} calls. Slowest: ${steps}.\n`);
+      process.stdout.write(
+        `This turn: ${formatMs(turn.toolMs)} of tool time over ${turn.calls} calls. Slowest: ${steps}.\n`,
+      );
     }
     return 0;
   }

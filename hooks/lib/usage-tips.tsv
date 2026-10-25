@@ -2,10 +2,29 @@
 # trigger: short | correction | long | error | any. adopt_regex: an ERE matched against a later prompt in
 # the same session; "-" means adoption is not detectable. Keep each text under 100 characters.
 done-looks-like	short	.{120,}	Say what done looks like: the file, the check to run, the expected result.
-clear-after-corrections	correction	^/clear	Corrected twice? /clear and restart with one sharper prompt that holds what you learned.
+clear-after-corrections	correction	-	Corrected twice? /clear and restart with one sharper prompt that holds what you learned.
 compact-with-focus	long	^/compact	Long session: /compact <what matters next> keeps answers sharp and cheaper.
 paste-error-verbatim	error	(Error|error:|Traceback|FAILED|exit code)	Paste the exact error and command; a paraphrase makes the agent guess.
 ask-for-proof	any	(run|show).{0,40}(test|output|check)	Ask for proof: "run the tests and show the output" beats "is it done?".
 name-the-file	any	@[^ ]+\.[a-z]+	Point at code with @path/to/file instead of describing where it lives.
 plan-first	any	(plan|Plan)	For multi-file changes, ask for a plan first (Shift+Tab to plan mode), then approve.
 one-goal-per-prompt	any	-	One goal per prompt; queue the next one after this one is verified.
+stop-with-esc	correction	-	Going the wrong way? Press Esc to stop it mid-turn, then redirect in one line.
+rewind-checkpoint	any	^/rewind	Press Esc twice (or /rewind) to roll code and chat back to an earlier point.
+resume-session	any	-	Pick an old chat back up with /resume, or start with claude --continue.
+check-context	long	^/context	Run /context to see what fills the context window before it runs out.
+memory-file	any	^/memory	Repeating an instruction? Put it in CLAUDE.md once; /memory opens it.
+init-claude-md	any	^/init	New repo? /init writes a starter CLAUDE.md from the codebase.
+bang-shell	any	^!	Start a line with ! to run a shell command yourself; the output lands in the chat.
+paste-screenshot	any	-	Show, don't describe: paste a screenshot of the UI or error with Ctrl+V.
+use-subagent	any	(subagent|/agents)	Big search? Ask for a subagent so the file dumps stay out of your context.
+save-command	any	\.claude/commands	Same prompt again? Save it as .claude/commands/<name>.md and run /<name>.
+allow-safe-commands	any	^/permissions	Approving the same safe command again? Allow it once in /permissions.
+pick-model	any	^/model	Use /model: a faster model for small edits, a stronger one for hard bugs.
+queue-next-message	any	-	Type your next message while Claude works; it reads it at the next step.
+headless-print	any	claude -p	For scripts and cron: claude -p "<prompt>" prints the answer and exits.
+add-second-repo	any	^/add-dir	Work spans two repos? /add-dir lets Claude read and edit the second folder.
+make-it-a-hook	any	^/hooks	Want it every time (format, lint)? Make it a hook in /hooks, not a reminder.
+show-an-example	any	(e\.g\.|for example|like this)	Show one example of the output you want; it beats a paragraph of description.
+failing-test-first	any	(failing test|test first)	For a bug, ask for a failing test first, then the fix that makes it pass.
+review-own-diff	any	review.{0,20}diff	Before you commit, ask Claude to review its own diff for bugs.

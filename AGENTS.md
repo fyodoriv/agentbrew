@@ -103,6 +103,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
+- A sync run from a worktree's `dist/cli.js` used to pin `com.agentbrew.check` to that worktree; once the worktree was removed, the job failed every 30 min (2026-10-25). The resolver now prefers `~/apps/tooling/agentbrew/dist/cli.js` over a linked worktree.
 - Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
 
 ## Delivery

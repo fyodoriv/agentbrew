@@ -143,6 +143,38 @@ describe("resolveAgentBrewCliJsPath", () => {
     }
   });
 
+  it("prefers the stable checkout over a linked git worktree, which may be deleted", () => {
+    const original = process.argv[1];
+    process.argv[1] = "/mock-home/apps/tooling/wt/ab-x/dist/cli.js";
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockImplementation(((path: string) => {
+      if (path === "/mock-home/apps/tooling/wt/ab-x/.git")
+        return "gitdir: /mock-home/apps/tooling/agentbrew/.git/worktrees/ab-x\n";
+      throw Object.assign(new Error("EISDIR"), { code: "EISDIR" });
+    }) as unknown as typeof readFileSync);
+    try {
+      expect(resolveAgentBrewCliJsPath()).toBe("/mock-home/apps/tooling/agentbrew/dist/cli.js");
+    } finally {
+      process.argv[1] = original;
+      vi.mocked(readFileSync).mockReset();
+    }
+  });
+
+  it("keeps a linked worktree entry when no stable checkout exists", () => {
+    const original = process.argv[1];
+    process.argv[1] = "/mock-home/apps/tooling/wt/ab-x/dist/cli.js";
+    vi.mocked(existsSync).mockImplementation(((path: string) =>
+      path.startsWith("/mock-home/apps/tooling/wt/")) as unknown as typeof existsSync);
+    vi.mocked(readFileSync).mockReturnValue("gitdir: /elsewhere/.git/worktrees/ab-x\n" as never);
+    try {
+      expect(resolveAgentBrewCliJsPath()).toBe("/mock-home/apps/tooling/wt/ab-x/dist/cli.js");
+    } finally {
+      process.argv[1] = original;
+      vi.mocked(readFileSync).mockReset();
+      vi.mocked(existsSync).mockReset();
+    }
+  });
+
   it("resolves npm-global symlink to dist/cli.js", () => {
     vi.mocked(execFileSync).mockReturnValue(Buffer.from("/mock-home/.local/bin/agentbrew\n"));
     vi.mocked(existsSync).mockReturnValue(true);

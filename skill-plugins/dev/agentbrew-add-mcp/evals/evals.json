@@ -55,6 +55,18 @@
         "Verifies the new ref after the install, for example from the success line `my-server installed from git (v1.3.0)`",
         "Does not edit the cache in `~/.config/agentbrew/mcp-repos/` or generated agent configs by hand"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "Add the MCP server at github.com/example/notes-mcp to every agent.",
+      "expected_output": "Before installing, checks for a duplicate or conflicting MCP server, skill or hook, proves the server starts in a scratch HOME, then installs it with a pinned `--ref`.",
+      "expectations": [
+        "Looks for a duplicate first: an MCP server, skill or plugin that already does the job",
+        "Checks for a server-name clash and for hooks, LaunchAgents or a status line the server adds",
+        "Starts the server in a scratch HOME (`HOME=$(mktemp -d)`) and runs one real tool call before the real install",
+        "Installs with `--ref <tag-or-commit>`, not a moving branch",
+        "Reports what it checked, even when nothing was found"
+      ]
     }
   ]
 }

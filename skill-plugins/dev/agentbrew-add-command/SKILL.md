@@ -6,6 +6,10 @@ description: >
   "add a command", "create a workflow", or "I want a /slash-command".
 ---
 
+## Preflight: duplicates, conflicts, pins
+
+Before any install or sync, run shared-rules "Tool setup preflight": duplicates and conflicts (hooks, status line, MCP, skills, LaunchAgents, plugins), a scratch HOME test, pinned versions.
+
 ## What You Do
 
 Create one canonical command file. Agentbrew transforms and deploys it to every

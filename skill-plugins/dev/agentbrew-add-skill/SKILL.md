@@ -12,9 +12,9 @@ description: >
 Do this before you install or sync anything. It applies to every request to set up a tool: a skill, MCP server, command, hook, plugin, or CLI.
 
 1. **Look for duplicates.** List what already does this job: `agentbrew status --verbose`, `agentbrew audit-skills`, `claude plugin list`, and the `hooks` and `statusLine` keys in `~/.claude/settings.json`. If something already covers it, extend that instead, or ask.
-2. **Look for conflicts.** Check each surface the new tool touches: hooks on the same event, the single status line, MCP server and skill names, command names, LaunchAgents (`launchctl list` through agentbrew's own helpers only), and plugins.
-3. **Prove it works with the setup.** Install it first in a scratch HOME (`HOME=$(mktemp -d)`), with a copy of the relevant settings, and run one real call. Then install it for real.
-4. **Pin versions.** Pin a tag or commit, never a moving branch. Write the pin where agentbrew reads it (`--ref`, the catalog entry, or the Agentfile).
+2. **Look for conflicts.** Check each surface the new tool touches: hooks on the same event, the single status line, MCP server and skill names, command names, LaunchAgents (read-only: `ls ~/Library/LaunchAgents` or `launchctl list | grep <name>`; never load or unload one), and plugins.
+3. **Prove it works with the setup.** Install it first in a scratch HOME (`HOME=$(mktemp -d)`), with a copy of the relevant settings, and run one real call. If that call needs a login the scratch HOME lacks, run the tool's `--help` or start check instead, and say so. Then install it for real.
+4. **Pin versions.** Pin a tag or commit, never a moving branch. Write the pin where agentbrew reads it (`agentbrew install --git <url> --ref <tag>`, `agentbrew mcp add … --ref <tag>`, the catalog entry, or the Agentfile).
 
 Report what you checked and what you found, even when you found nothing.
 

@@ -5,7 +5,12 @@ import { requireTerms, type SkillEval, scenarioText } from "./skill-contract-tes
 
 const root = process.cwd();
 const read = (...parts: string[]) => readFileSync(join(root, ...parts), "utf-8");
-const SETUP_SKILLS = ["agentbrew-add-skill", "agentbrew-add-mcp", "agentbrew-add-command", "agentbrew-add-catalog-source"];
+const SETUP_SKILLS = [
+  "agentbrew-add-skill",
+  "agentbrew-add-mcp",
+  "agentbrew-add-command",
+  "agentbrew-add-catalog-source",
+];
 const EVAL_SKILLS = ["agentbrew-add-skill", "agentbrew-add-mcp"];
 
 describe("every tool setup starts with a duplicate and conflict preflight", () => {

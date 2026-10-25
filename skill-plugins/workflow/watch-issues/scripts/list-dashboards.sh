@@ -17,10 +17,9 @@ for f in "$state"/*/dashboard-url; do
   [ -f "$f" ] || continue
   skill="$(basename "$(dirname "$f")")"
   url="$(head -n 1 "$f" | tr -d '[:space:]')"
-  case "$url" in
-    https://claude.ai/artifact/* | https://claude.ai/code/artifact/*)
-      printf '%s\t%s\n' "$skill" "$url" ;;
-    *)
-      printf 'skip\t%s: not a claude.ai artifact URL\n' "$skill" >&2 ;;
-  esac
+  if printf '%s' "$url" | grep -Eq '^https://claude\.ai/(code/)?artifact/[A-Za-z0-9_-]+$'; then
+    printf '%s\t%s\n' "$skill" "$url"
+  else
+    printf 'skip\t%s: not a claude.ai artifact URL\n' "$skill" >&2
+  fi
 done

@@ -32,6 +32,7 @@ describe("watch-issues list-dashboards.sh", () => {
         "run-goal": "https://claude.ai/artifact/abc123\n",
         "tooling-checkup": "  https://claude.ai/code/artifact/0000-1111\n",
         evil: "https://example.com/phish\n",
+        sneaky: "https://claude.ai/artifact/abc/../../x?y=1\n",
       }),
     );
     expect(r.status).toBe(0);
@@ -41,6 +42,7 @@ describe("watch-issues list-dashboards.sh", () => {
     ]);
     expect(r.stdout).not.toContain("example.com");
     expect(r.stderr).toContain("skip\tevil");
+    expect(r.stderr).toContain("skip\tsneaky");
   });
 
   it("prints nothing and exits 0 with no state folder", () => {

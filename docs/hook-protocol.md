@@ -184,6 +184,25 @@ appends one JSON line to `~/.cache/agentbrew/hook-decisions.jsonl`.
 - A hook test that runs a check script directly should export
   `HOOK_DECISIONS_LOG` to a temp file too.
 
+## Home-folder searches
+
+`no-home-crawl` (PreToolUse Bash, opt-in) blocks a recursive search whose
+root is too broad. It checks `rg`, `grep -r`/`-R`, `ag`, `fd`, and `find`.
+The root is the path argument, or the session `cwd` when there is none, and
+an earlier `cd <dir> &&` moves it. It blocks these roots: `$HOME`,
+`~/Library`, `~/Library/Application Support`, and `/`.
+
+- Why: a home-wide search runs for many minutes, and macOS Spotlight and
+  the file-provider importers re-read every file it touches.
+- Allowed: a narrower path (`~/.claude/projects/<project>`, `~/apps/<repo>`)
+  or a depth limit of 2 or less (`--max-depth 2`, `-d 2`, `-maxdepth 2`).
+- Opt-out: prefix the command with `AGENTBREW_ALLOW_HOME_SEARCH=1`, or set
+  it (or `HOOK_BYPASS_NO_HOME_CRAWL=1`) in the agent environment.
+- It parses the command with `python3` only when a search tool name appears,
+  and allows the call when `python3` is missing.
+- Turn it on with `- no-home-crawl` under `enabled:` in
+  `~/.config/agentbrew/hooks-overlay/manifest.yaml`.
+
 ## Next task: open work first
 
 `next-task` ships from tasksmd/tasks.md, so agentbrew adds its pre-task step

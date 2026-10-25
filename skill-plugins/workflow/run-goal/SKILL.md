@@ -184,6 +184,8 @@ continue?". The user set a goal so that they can be away.
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first.
+- A goal that joins two apps (one loads the other): read
+  [references/cross-app-poc.md](references/cross-app-poc.md) first.
 - A goal with more than five requirements gets a traceability test: one
   entry per requirement, mapped to the files and tests that meet it. It fails
   when a mapped path is missing, and it is the coverage metric in the contract.

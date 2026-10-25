@@ -37,6 +37,15 @@ describe("auditLocalItems", () => {
     expect(byName.pr).toMatchObject({ action: "adopt", target: "~/apps/my-skills" });
   });
 
+  it("treats repeated or edge hyphens as one separator", () => {
+    const rows = auditLocalItems(
+      [{ kind: "skill", name: "-load--project__context", agent: "claude-code" }],
+      index,
+      "~/apps/my-skills",
+    );
+    expect(rows[0]).toMatchObject({ action: "merge?", target: "agentbrew" });
+  });
+
   it("marks an item no source has adopt, naming the target repo", () => {
     const rows = auditLocalItems([{ kind: "command", name: "standup", agent: "codex" }], index, "~/apps/my-skills");
     expect(rows).toEqual([

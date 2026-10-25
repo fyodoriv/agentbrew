@@ -234,11 +234,42 @@ export function launchAgentPathHasRequiredPrefixes(
   return dotfilesBin ? pathStartsWithSegments(pathValue, [dotfilesBin, ...required.slice(0, -1)]) : false;
 }
 
+const STABLE_CLI_CANDIDATES = (): string[] => [
+  join(expandHome("~"), "apps/tooling/agentbrew/dist/cli.js"),
+  join(expandHome("~"), "apps/agentbrew/dist/cli.js"),
+];
+
+/** True when `root` is a linked git worktree: its `.git` is a `gitdir: .../worktrees/<name>` file, not a folder.
+ *  A pinned worktree path breaks the job once the worktree is removed after its PR merges (2026-10-25). */
+function isLinkedWorktree(root: string): boolean {
+  try {
+    // A submodule's .git is a gitdir: file too, but points into .git/modules/.
+    return /^gitdir: .*\/worktrees\//u.test(String(readFileSync(join(root, ".git"), "utf-8")));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A linked git worktree is often deleted after its PR merges; a job pinned to
+ * it then fails every run. Use the stable checkout instead when it exists.
+ */
+function stableUnlessWorktree(cliJs: string): string {
+  let real = cliJs;
+  try {
+    real = realpathSync(cliJs) || cliJs;
+  } catch (e) {
+    logSkipped("sync/scheduler-paths/realpath-argv1", e);
+  }
+  if (!isLinkedWorktree(dirname(dirname(real)))) return cliJs;
+  return STABLE_CLI_CANDIDATES().find((candidate) => existsSync(candidate)) ?? cliJs;
+}
+
 /** dist/cli.js entry used by LaunchAgent/cron — never a shebang symlink or bash wrapper. */
 export function resolveAgentBrewCliJsPath(): string {
   const argv1 = process.argv[1];
   if (argv1?.endsWith("/dist/cli.js") && existsSync(argv1)) {
-    return argv1;
+    return stableUnlessWorktree(argv1);
   }
   if (argv1?.endsWith("/src/cli.ts")) {
     const distFromDev = join(dirname(dirname(argv1)), "dist/cli.js");
@@ -260,8 +291,7 @@ export function resolveAgentBrewCliJsPath(): string {
   }
 
   for (const candidate of [
-    join(expandHome("~"), "apps/tooling/agentbrew/dist/cli.js"),
-    join(expandHome("~"), "apps/agentbrew/dist/cli.js"),
+    ...STABLE_CLI_CANDIDATES(),
     join(dirname(resolved), "../lib/node_modules/agentbrew/dist/cli.js"),
   ]) {
     if (existsSync(candidate)) return candidate;

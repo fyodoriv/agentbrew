@@ -153,6 +153,19 @@ describe("applyAgentfile", () => {
       expect(state.declinedMcpServers).toEqual(["context7"]);
     });
 
+    it("names the skipped server when not quiet", () => {
+      const state = makeState({ declinedMcpServers: ["context7"] });
+      mockLoadAgentfile.mockReturnValue({ mcp: ["context7"] });
+      mockLoadState.mockReturnValue(state);
+      mockResolveAgentfileMcp.mockReturnValue([makeServer("context7")]);
+
+      applyAgentfile("/project", { authoritative: false, quiet: false });
+
+      const printed = vi.mocked(console.log).mock.calls.flat().join(" ");
+      expect(printed).toMatch(/Skipped MCP server\(s\) you removed: context7/);
+      expect(printed).toMatch(/agentbrew install <name>/);
+    });
+
     it("the authoritative Agentfile still adds a server the user lists there", () => {
       const state = makeState({ declinedMcpServers: ["context7"] });
       mockLoadAgentfile.mockReturnValue({ mcp: ["context7"] });

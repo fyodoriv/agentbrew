@@ -113,13 +113,31 @@ function serverConfigChanged(existing: McpServer, incoming: McpServer): boolean 
   return false;
 }
 
+/** Name the MCP servers a project Agentfile skipped because the user removed them. */
+function printDeclinedMcp(declined: string[]): void {
+  if (declined.length === 0) return;
+  console.log(
+    chalk.dim(
+      `  Skipped MCP server(s) you removed: ${declined.join(", ")}. Run \`agentbrew install <name>\` to add one back.`,
+    ),
+  );
+}
+
 /** Merge MCP servers from Agentfile into state. Returns names added/updated/removed. */
 function mergeAgentfileMcp(
   agentfile: Agentfile,
   state: AgentBrewState,
   authoritative: boolean,
-): { added: string[]; updated: string[]; removed: string[]; adopted: string[] } {
-  const resolvedServers = resolveAgentfileMcp(agentfile);
+): { added: string[]; updated: string[]; removed: string[]; adopted: string[]; declined: string[] } {
+  // A project Agentfile is additive and not the person's own manifest: it must
+  // not add back a server they removed (`agentbrew remove` records it here).
+  const declinedNames = authoritative ? new Set<string>() : new Set(state.declinedMcpServers ?? []);
+  const declined: string[] = [];
+  const resolvedServers = resolveAgentfileMcp(agentfile).filter((server) => {
+    if (!declinedNames.has(server.name)) return true;
+    declined.push(server.name);
+    return false;
+  });
   // getStateServers returns a copy. Mutate this one working list and assign it
   // back once, so additions and prunes in the same apply both survive.
   const stateServers = getStateServers(state);
@@ -164,7 +182,7 @@ function mergeAgentfileMcp(
   }
   if (added.length > 0 || removed.length > 0) state.mcpServers = finalServers;
 
-  return { added, updated, removed, adopted };
+  return { added, updated, removed, adopted, declined };
 }
 
 /** Merge sources from Agentfile into state. Returns URLs added. */
@@ -711,6 +729,7 @@ export function applyAgentfile(
   }
 
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
+  if (!quiet) printDeclinedMcp(mcp.declined);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
   const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);

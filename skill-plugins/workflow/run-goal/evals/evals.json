@@ -1418,7 +1418,7 @@
       "expected_output": "The agent prints the goal contract first and asks one question round, about the data source (a live backend or simulated data). It proves the riskiest integration first: app A loads widget X from app B's local dev server, tested from the page itself, before any polish. Each draft PR embeds screenshots that load. Each answer to Q1-Q4 is in the design doc under its own heading, checked on the rendered page. The final message names the open browser tab and gives numbered test steps.",
       "expectations": [
         "Prints the goal contract first",
-        "Asks one question round, about the data source (live backend or simulated)",
+        "Asks at most one question round (for example: live backend or simulated data)",
         "Proves the riskiest integration first: the cross-app load, tested from the page, before any polish",
         "Each draft PR has embedded images that load",
         "Each answer to Q1-Q4 is in the doc under its own heading, checked on the rendered page",

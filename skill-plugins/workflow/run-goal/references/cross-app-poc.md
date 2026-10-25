@@ -5,9 +5,10 @@ from a second app, with both running as local dev servers.
 
 - **Prove the riskiest link first.** Load the second app inside the first before
   any polish. When a hosted page must load a local dev server, test that fetch
-  from the page itself in the first probe. Chromium's Private Network Access can
-  block it: the preflight response needs
-  `Access-Control-Allow-Private-Network: true`. Some embedded browsers block
+  from the page itself in the first probe. When a public or secure page fetches
+  a loopback address, Chromium's Private Network Access can block it: the
+  preflight response needs `Access-Control-Allow-Private-Network: true`. Newer
+  Chromium may show a permission prompt instead. Some embedded browsers block
   loopback addresses outright.
 - **Check the rendered page, not only the API.** After a doc tool reports
   success, open the rendered page. In one run, a markdown import kept

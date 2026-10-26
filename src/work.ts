@@ -9,13 +9,14 @@
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
 import type { AgentfileWorkStep } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
-import { expandHome } from "./utils.js";
+import { expandHome, resolveStateHome } from "./utils.js";
 
 /** Built-in first steps: agentbrew's own state check. */
 export const DEFAULT_WORK_STEPS = ["/agentbrew"];
@@ -56,6 +57,53 @@ export interface WorkPlan {
   questions: string;
   watch: string;
   endOfDay: string[];
+  /** The day's live dashboard (#510): one row per step, updated on every step change. */
+  dashboard: WorkDashboard;
+}
+
+/** Step status on the dashboard (#510). */
+export const WORK_STATUSES = ["done", "running", "waiting", "blocked", "failed"] as const;
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+
+export interface WorkDashboardRow {
+  step: string;
+  status: WorkStatus;
+  /** One line: what the step did or found. */
+  summary: string;
+  /** What the step needs from the user; empty when nothing. */
+  needsYou: string;
+  /** A PR, report, or page for the step; empty when none. */
+  link: string;
+}
+
+export interface WorkDashboard {
+  title: string;
+  statuses: readonly WorkStatus[];
+  /** Starting rows: every step waiting. */
+  rows: WorkDashboardRow[];
+  /** What the top of the page shows. */
+  top: string;
+  /** Where to publish and how to keep it current. */
+  publish: string;
+  /** The local HTML page, for an agent with no Artifact tool. */
+  localPath: string;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string): WorkDashboard {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return {
+    title: `Work day ${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`,
+    statuses: WORK_STATUSES,
+    rows: steps.map((s) => ({ step: s.step, status: "waiting", summary: "", needsYou: "", link: "" })),
+    top: 'Counts of done, running, and needs-you steps, then a "Needs you" list with every needsYou text and the saved questions.',
+    publish:
+      "Publish one page for the day: an Artifact with this title, or the local HTML page at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
+    localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
+  };
 }
 
 /** Replace the steps one Agentfile declares, keeping their place in the list. */
@@ -190,7 +238,11 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
 }
 
 /** The day plan for this machine. */
-export function buildWorkPlan(state: AgentBrewState | undefined, plugins: PluginLockEntry[]): WorkPlan {
+export function buildWorkPlan(
+  state: AgentBrewState | undefined,
+  plugins: PluginLockEntry[],
+  options: { date?: Date; stateHome?: string } = {},
+): WorkPlan {
   const seen = new Set<string>();
   const steps: WorkPlan["steps"] = [];
   const add = (step: string, from: string, entry?: WorkStepEntry) => {
@@ -217,7 +269,15 @@ export function buildWorkPlan(state: AgentBrewState | undefined, plugins: Plugin
       "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.",
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
-    endOfDay: [END_OF_DAY_STEP, "Stop every loop you started, then draft a Today / Tomorrow report for the user."],
+    endOfDay: [
+      END_OF_DAY_STEP,
+      "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
+    ],
+    dashboard: buildDashboard(
+      steps,
+      options.date ?? new Date(),
+      options.stateHome ?? resolveStateHome(homedir(), process.env.XDG_STATE_HOME),
+    ),
   };
 }
 
@@ -232,6 +292,7 @@ export function formatWorkPlan(plan: WorkPlan): string {
       lines.push(`  ${i + 1}. ${stage.join(", ")}`);
     });
   }
+  lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch, "", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
 }

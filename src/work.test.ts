@@ -144,6 +144,25 @@ describe("parallel stages (#509)", () => {
   });
 });
 
+describe("dashboard block (#510)", () => {
+  it("gives one waiting row per step, the statuses, and a dated place to publish", () => {
+    const plan = buildWorkPlan(state([{ step: "/tooling-checkup", agentfile: "/a" }]), [], {
+      date: new Date(2026, 9, 26, 9, 0),
+      stateHome: "/state",
+    });
+    expect(plan.dashboard.title).toBe("Work day Mon Oct 26");
+    expect(plan.dashboard.statuses).toEqual(["done", "running", "waiting", "blocked", "failed"]);
+    expect(plan.dashboard.rows).toEqual([
+      { step: "/agentbrew", status: "waiting", summary: "", needsYou: "", link: "" },
+      { step: "/tooling-checkup", status: "waiting", summary: "", needsYou: "", link: "" },
+    ]);
+    expect(plan.dashboard.localPath).toBe(join("/state", "agentbrew", "work", "2026-10-26.html"));
+    expect(plan.dashboard.publish).toMatch(/Artifact/);
+    expect(plan.dashboard.publish).toMatch(/same URL/);
+    expect(plan.dashboard.top).toMatch(/Needs you/);
+  });
+});
+
 describe("mergeWorkSteps", () => {
   it("keeps each Agentfile's steps in its own place and replaces them on re-apply", () => {
     let steps = mergeWorkSteps(undefined, "/a", ["/x", "/y"]);

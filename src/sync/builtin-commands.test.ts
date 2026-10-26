@@ -280,4 +280,14 @@ describe("the /work built-in command (#440)", () => {
     expect(text).toMatch(/scope:/);
     expect(text).toMatch(/after:/);
   });
+
+  it("keeps one dashboard for the day and links it from the end-of-day report (#510)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, resolve } = await import("node:path");
+    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
+    expect(text).toMatch(/`dashboard`/);
+    expect(text).toMatch(/same URL all day/);
+    expect(text).toMatch(/Needs you/);
+    expect(text).toMatch(/Today \/ Tomorrow report.*dashboard/s);
+  });
 });

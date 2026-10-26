@@ -15,7 +15,13 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
 - `stopOnlyFor`: the only reasons to stop and wait: a merge conflict you cannot resolve, a destructive or public action that needs approval, or a choice only the user can make.
 - `questions`: save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.
 - `watch`: after the last step, keep watching. Re-run a step when its input changes (a new issue, a red check, a new review). Print one line per update. Do not repeat a line that did not change.
-- `endOfDay`: when the user says "end of day", stop every loop you started, run the end-of-day step, then draft a Today / Tomorrow report: what was done (with PRs and numbers), what is blocked and why, and what comes next.
+- `dashboard`: one page for the whole day.
+  - Before the first step, create it or reuse today's page: an Artifact titled `dashboard.title`, or the local HTML page at `dashboard.localPath` when you have no Artifact tool.
+  - Publish one row per step from `dashboard.rows`: step, status (`done`, `running`, `waiting`, `blocked`, or `failed`), a one-line summary, needs-you text, and a link.
+  - Update a row each time its step changes. Keep the same URL all day.
+  - The top of the page shows done, running, and needs-you counts, then a "Needs you" list. Put the saved questions (see `questions`) there too.
+  - Give the user the link once, at the start.
+- `endOfDay`: when the user says "end of day", stop every loop you started, run the end-of-day step, then draft a Today / Tomorrow report: what was done (with PRs and numbers), what is blocked and why, and what comes next. Link the day's dashboard in it.
 
 Before the first step, tell the user in two lines: which kind of machine this is, and the steps you will run.
 

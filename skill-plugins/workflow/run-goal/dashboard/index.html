@@ -1,0 +1,114 @@
+<style>
+  .gd { font-family: var(--font-anthropic-sans); color: var(--color-fg); display: grid; gap: 24px; }
+  .gd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .gd-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 10px; padding: 12px 14px; }
+  .gd-tile .n { font-family: var(--font-anthropic-serif); font-size: 32px; line-height: 1.1; }
+  .gd-tile .l { color: var(--color-fg-muted); font-size: 14px; }
+  .gd h2 { font-size: 18px; margin: 0 0 8px; }
+  .gd-scroll { overflow-x: auto; }
+  .gd table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .gd th, .gd td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+  .gd th { color: var(--color-fg-muted); font-weight: 500; }
+  .gd td.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+<div class="gd">
+  <section class="gd-tiles" id="totals">
+    <div class="gd-tile"><div class="n" data-source="goal_totals" data-field="goals">—</div><div class="l">Goals run</div></div>
+    <div class="gd-tile"><div class="n" data-source="goal_totals" data-field="finished">—</div><div class="l">Finished (retro saved)</div></div>
+    <div class="gd-tile"><div class="n" data-source="goal_totals" data-field="prs">—</div><div class="l">PRs cited in retros</div></div>
+    <div class="gd-tile"><div class="n" data-source="goal_totals" data-field="retro_items">—</div><div class="l">Retro items</div></div>
+  </section>
+
+  <section id="goals-table">
+    <h2>Goals</h2>
+    <div class="gd-scroll">
+      <table data-source="goals" data-row-key="goal_id">
+        <thead><tr>
+          <th data-field="date">Date</th>
+          <th data-field="title">Goal</th>
+          <th data-field="status">Status</th>
+          <th data-field="criteria">Criteria</th>
+          <th data-field="met">Met</th>
+          <th data-field="prs">PRs</th>
+          <th data-field="retro_items">Retro items</th>
+          <th data-field="goal_id">Id</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="retro-categories">
+    <h2>Retro items by category</h2>
+    <div class="gd-scroll">
+      <table data-source="retro_by_category" data-row-key="category">
+        <thead><tr><th data-field="category">Category</th><th data-source="retro_by_category" data-field="items">Items</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="retro-items">
+    <h2>Latest retro items</h2>
+    <div class="gd-scroll">
+      <table data-source="retro_items" data-row-key="goal_id,category,text">
+        <thead><tr><th data-field="goal_id">Goal</th><th data-field="category">Category</th><th data-field="text">Item</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<script>
+  dash.calc("goal_totals", {
+    inputs: ["goals"],
+    title: "Goal totals",
+    description: "Counts goals, goals with a retro, PRs and retro items.",
+    fn: (goals) => [{
+      goals: goals.length,
+      finished: goals.filter((g) => g.status !== "open").length,
+      prs: goals.reduce((s, g) => s + Number(g.prs || 0), 0),
+      retro_items: goals.reduce((s, g) => s + Number(g.retro_items || 0), 0),
+    }],
+  });
+  dash.calc("retro_by_category", {
+    inputs: ["retro_items"],
+    title: "Retro items by category",
+    description: "Counts retro items per category heading.",
+    fn: (retro_items) => {
+      const n = {};
+      for (const r of retro_items) n[r.category] = (n[r.category] || 0) + 1;
+      return Object.entries(n).map(([category, items]) => ({ category, items })).sort((a, b) => b.items - a.items);
+    },
+  });
+
+  function fillTable(sel, rows, cols, numeric) {
+    const body = document.querySelector(sel + " tbody");
+    body.textContent = "";
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      for (const c of cols) {
+        const td = document.createElement("td");
+        td.textContent = r[c] === null || r[c] === undefined || r[c] === "" ? "—" : String(r[c]);
+        if (numeric.includes(c)) td.className = "num";
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+
+  dash.onData(() => {
+    const t = dash.data("goal_totals");
+    for (const el of document.querySelectorAll('#totals [data-source="goal_totals"]')) {
+      const row = t.status === "ok" && t.data[0];
+      el.textContent = row ? String(row[el.dataset.field]) : "—";
+    }
+    const g = dash.data("goals");
+    fillTable("#goals-table", g.status === "ok" ? g.data : [],
+      ["date", "title", "status", "criteria", "met", "prs", "retro_items", "goal_id"],
+      ["criteria", "met", "prs", "retro_items"]);
+    const c = dash.data("retro_by_category");
+    fillTable("#retro-categories", c.status === "ok" ? c.data : [], ["category", "items"], ["items"]);
+    const r = dash.data("retro_items");
+    fillTable("#retro-items", r.status === "ok" ? r.data.slice(0, 50) : [], ["goal_id", "category", "text"], []);
+  });
+</script>

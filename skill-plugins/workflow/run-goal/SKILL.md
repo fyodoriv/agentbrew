@@ -39,7 +39,7 @@ What you will see:
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
 4. It works alone and prints a `Goal check` line per criterion.
-5. It ends with an HTML report page, a retro, and updates to the skills it used.
+5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is
 approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
@@ -441,11 +441,8 @@ Do this every time, also after a BLOCKED stop. Details:
    the proposed change. `run-goal` itself is never exempt: add an eval case
    from this run to its `evals/evals.json` in its source, or fix the step
    that went wrong. Its source is `skill-plugins/workflow/run-goal/` in the
-   agentbrew repo (`github.com/fyodoriv/agentbrew`). agentbrew installs
-   copies, not symlinks, so find the local checkout: run
-   `git -C <dir> remote get-url origin` on candidate folders (for example
-   `find ~ -maxdepth 4 -type d -name agentbrew`). For other skills,
-   `agentbrew status --verbose` names the source repo.
+   agentbrew repo (`github.com/fyodoriv/agentbrew`); the retro reference
+   says how to find the local checkout and other skills' sources.
    These updates are in scope for every goal: the user asked for them when
    they installed this skill. "Touch only what the request requires" does
    not exclude them. In Claude Code with agentbrew, the `/goal` hook names
@@ -461,21 +458,22 @@ Do this every time, also after a BLOCKED stop. Details:
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
-   skill used has such a line (it gives up after three tries). When you can
-   write the skill's source repo, ship the change in this session: gate, PR,
-   merge, then cite the PR. When the sandbox or permissions block writes to
-   that repo (common when the goal runs in another folder), file a task in
-   the user's queue and cite its id; never bypass the sandbox for it.
+   skill used has such a line (it gives up after three tries). Ship each
+   writable change in this session (gate, PR, merge, cite the PR); when the
+   sandbox blocks the repo, cite a task instead and never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
+7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
+   in the retro file, run `scripts/export-goals.py`, and refresh the one
+   Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 
-Publish the final report as one self-contained HTML page when you can
-publish one (shared-rules **## Long-run reports**; in Claude Code: the
-Artifact tool). The page shows what was done, the blockers (each explained
-in full, as in Phase 4), and what to do next. When you cannot publish, write
-the HTML file and give its full path. Build the page from the shape below;
-it is also the chat fallback when you cannot write HTML. Keep it short.
+Publish the final report as an Artifact (shared-rules **## Long-run
+reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
+a recurring run refreshes), not a loose HTML file. It shows what was done, the
+blockers (each explained in full, as in Phase 4), and what to do next. Only
+without an Artifact tool or with private data, write a self-contained HTML
+file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
 In chat, give the page link, a one-line result, and the next-action
 questions, each with its full context. Do not paste the whole report.

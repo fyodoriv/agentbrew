@@ -40,6 +40,9 @@ never the installed mirror.
 - `readlink -f ~/.claude/skills/<name>` shows a symlink target, for skills
   linked by hand or by a project.
 - `git -C <source dir> remote get-url origin` shows who owns the repo.
+- agentbrew installs copies, not symlinks, so find run-goal's own local
+  checkout with `git -C <dir> remote get-url origin` on candidate folders
+  (for example `find ~ -maxdepth 4 -type d -name agentbrew`).
 
 ## 5. Route the edit by owner
 

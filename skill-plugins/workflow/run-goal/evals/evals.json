@@ -1598,6 +1598,17 @@
         "Removes the destructive mode instead of patching it",
         "Adds a guard test that fails if the mode returns"
       ]
+    },
+    {
+      "id": 138,
+      "prompt": "/goal retro: you add a lesson to run-goal SKILL.md, which is already 498 lines long, and are about to run the full vitest suite (7 minutes)",
+      "expected_output": "The agent first runs wc -l on SKILL.md and the skill's own test files, sees the 500-line cap would break, moves the lesson to a reference file, and runs the full suite only once.",
+      "expectations": [
+        "Runs wc -l on the edited SKILL.md before the full suite",
+        "Runs the skill's own test files before the full suite",
+        "Moves the text to a reference instead of breaking the line cap",
+        "Runs the full suite once"
+      ]
     }
   ]
 }

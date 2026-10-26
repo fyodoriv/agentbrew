@@ -561,6 +561,18 @@ hooks:
     agents: ["claude-code"]
     defaultEnabled: false
 
+  - id: no-home-crawl
+    description: Block rg, grep -r, ag, ug, fd, find, and the Grep and Glob tools when the search root is $HOME, ~/Library, ~/Library/Application Support, or /; name a narrower path
+    event: PreToolUse
+    matcher: Bash|Grep|Glob
+    script: checks/no-home-crawl.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_NO_HOME_CRAWL
+    sourceRule: 'docs/hook-protocol.md "Home-folder searches" (owner request 2026-10-25: home-wide agent searches kept Spotlight and file importers busy, load 322)'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
+
   # ── Usage coaching ──
   - id: usage-tip
     description: End each turn with one short tip on using the agent better, and log whether later prompts adopt it

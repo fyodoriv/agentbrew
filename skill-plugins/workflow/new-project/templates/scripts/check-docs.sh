@@ -5,6 +5,7 @@
 # 3. Each story test names its story id inside (tests/e2e/us-01-x.sh says US-01), so a renamed
 #    or moved test cannot drift silently.
 #    Helpers and fixtures in tests/e2e/ without the us- prefix are ignored.
+# 4. AGENTS.md stays under 10000 bytes, so the commit that grows it past the limit fails.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -25,6 +26,10 @@ for t in tests/e2e/us-* tests/e2e/test_us*; do
   id="$(basename "$t" | sed -nE 's/^(us-|test_us)([0-9]+).*/US-\2/p')"
   [ -z "$id" ] || grep -q "$id" "$t" || { echo "check-docs: $t does not name its story $id"; fail=1; }
 done
+
+if [ -f AGENTS.md ] && [ "$(wc -c < AGENTS.md)" -ge 10000 ]; then
+  echo "check-docs: AGENTS.md is $(wc -c < AGENTS.md | tr -d ' ') bytes; keep it under 10000 (move detail into docs/)"; fail=1
+fi
 
 [ "$fail" = 0 ] && echo "check-docs: docs match the code"
 exit "$fail"

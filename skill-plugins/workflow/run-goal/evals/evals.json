@@ -1475,6 +1475,17 @@
         "Each answer to Q1-Q4 is in the doc under its own heading, checked on the rendered page",
         "The final message names the open browser tab and gives numbered test steps"
       ]
+    },
+    {
+      "id": 128,
+      "prompt": "/goal ship my open feature branch, then continue the queue: finish open PRs, then fix the open issues",
+      "expected_output": "Before it starts on any queued issue, the agent lists unmerged local branches and worktrees of every session (not only open PRs), finds a sibling branch that already fixes those issues, and compares it with its own plan before writing code. It continues or builds on that branch, or parks the choice for the user, instead of making a second set of fixes. A pre-push gate failure is reproduced alone on the unchanged base before it is called load-only.",
+      "expectations": [
+        "Runs the open-work listing (unmerged branches and worktrees, not only gh pr list) before starting each queued issue",
+        "Names a sibling session's branch that covers the same issues and does not push a duplicate fix over it",
+        "Reruns a failing pre-push test alone and on the unchanged base before calling it a load flake",
+        "Gives each fix a fresh-context review and a second review of the fix round before merge"
+      ]
     }
   ]
 }

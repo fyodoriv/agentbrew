@@ -99,8 +99,8 @@ and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
 ## 4. Report
 
 End with a published Artifact (shared-rules **## Long-run reports**), not a
-loose HTML file. Only without the Artifact tool, send a self-contained HTML
-file or give its full path. It holds:
+loose HTML file. Only without the Artifact tool or with private data, send a
+self-contained HTML file or give its full path. It holds:
 
 - **Delivered:** each PR link, merged.
 - **Draft:** each draft PR link and its pending task ids.

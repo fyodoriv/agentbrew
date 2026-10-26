@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "/watch-issues ~/apps/tooling/agentbrew ~/apps/tooling/dotfiles (the pass lists: new issue fyodoriv/dotfiles#244 by fyodoriv 'update-tooling: refresh applies chezmoi twice', open task agentbrew/speed-up-npm-ci, nothing else)",
-      "expected_output": "The agent runs watch-pass.sh, treats the owner's issue as a task, fixes it in a dotfiles worktree with a failing test first, opens a PR whose body says Fixes #244, merges when make check is green, marks the issue done with --done, and ends with a short HTML page and the next questions.",
+      "expected_output": "The agent runs watch-pass.sh, treats the owner's issue as a task, fixes it in a dotfiles worktree with a failing test first, opens a PR whose body says Fixes #244, merges when make check is green, marks the issue done with --done, and ends with a short published Artifact and the next questions.",
       "expectations": [
         "Runs scripts/watch-pass.sh for the named repos before changing anything",
         "Ships the issue fix through the repo's delivery rules with 'Fixes #244' in the PR body",
@@ -26,7 +26,7 @@
     {
       "id": 3,
       "prompt": "/loop /watch-issues (this wake-up's pass prints only: watch: 0 new (showing 0), 7 handled)",
-      "expected_output": "Nothing new and nothing actionable, so the agent prints one line and lets the loop schedule the next pass; no HTML page, no questions.",
+      "expected_output": "Nothing new and nothing actionable, so the agent prints one line and lets the loop schedule the next pass; no report Artifact, no questions.",
       "expectations": [
         "Prints a single status line",
         "Does not publish a report page for an empty pass",

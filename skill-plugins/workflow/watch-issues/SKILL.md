@@ -79,7 +79,7 @@ or the user's words in this session).
    so it shows up again if it breaks again.
 6. **Report by exception**: when the pass shipped and blocked nothing, print
    its last line only. When something shipped or is blocked, end with
-   one HTML page (shared-rules **## Long-run reports**): what shipped with PR
+   a published Artifact (shared-rules **## Long-run reports**): what shipped with PR
    links and each pickup's latency (the issue's `createdAt`, or the commit that
    added the task, to the PR's `createdAt`), what waits for review, what is
    blocked and why, and what is next.

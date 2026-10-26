@@ -39,7 +39,7 @@ What you will see:
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
 4. It works alone and prints a `Goal check` line per criterion.
-5. It ends with an HTML report page, a retro, and updates to the skills it used.
+5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is
 approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
@@ -474,8 +474,8 @@ Publish the final report as an Artifact (shared-rules **## Long-run
 reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
 a recurring run refreshes), not a loose HTML file. It shows what was done, the
 blockers (each explained in full, as in Phase 4), and what to do next. Only
-without an Artifact tool, write a self-contained HTML file and give its full
-path. Build it from the shape below (also the chat fallback). Keep it short.
+without an Artifact tool or with private data, write a self-contained HTML
+file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
 In chat, give the page link, a one-line result, and the next-action
 questions, each with its full context. Do not paste the whole report.

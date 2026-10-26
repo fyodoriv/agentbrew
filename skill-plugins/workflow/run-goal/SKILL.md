@@ -471,12 +471,12 @@ Do this every time, also after a BLOCKED stop. Details:
 
 ## Final report
 
-Publish the final report as one self-contained HTML page when you can
-publish one (shared-rules **## Long-run reports**; in Claude Code: the
-Artifact tool). The page shows what was done, the blockers (each explained
-in full, as in Phase 4), and what to do next. When you cannot publish, write
-the HTML file and give its full path. Build the page from the shape below;
-it is also the chat fallback when you cannot write HTML. Keep it short.
+Publish the final report as an Artifact (shared-rules **## Long-run
+reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
+a recurring run refreshes), not a loose HTML file. It shows what was done, the
+blockers (each explained in full, as in Phase 4), and what to do next. Only
+without an Artifact tool, write a self-contained HTML file and give its full
+path. Build it from the shape below (also the chat fallback). Keep it short.
 
 In chat, give the page link, a one-line result, and the next-action
 questions, each with its full context. Do not paste the whole report.

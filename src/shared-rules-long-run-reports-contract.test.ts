@@ -10,13 +10,17 @@ function section(text: string, heading: string): string {
   return text.split(`## ${heading}`)[1]?.split("\n## ")[0] ?? "";
 }
 
-describe("long-run reports end as an HTML page", () => {
-  it("shared rules: long runs end with a published HTML report", () => {
+describe("long-run reports end as a published Artifact", () => {
+  it("shared rules: long runs end with a published Artifact or Dashboard", () => {
     const rule = section(sharedRules, "Long-run reports");
-    expect(rule).toMatch(/ends with an HTML report, not a long chat message/);
+    expect(rule).toMatch(/ends with a published Artifact, not a long chat message and not a loose HTML file/);
+    expect(rule).toMatch(/Dashboard Artifact/);
+    expect(rule).toMatch(/update the same dashboard each run/);
+    expect(rule).toMatch(/Only without an Artifact tool/);
+    expect(rule).not.toMatch(/ends with an HTML report/);
     expect(rule).toMatch(/goal run, a nightly or overnight run, a checkup or health pass/);
     expect(rule).toMatch(/what was done, the blockers, and what to do next/);
-    expect(rule).toMatch(/Artifact tool/);
+    expect(rule).toMatch(/Artifact tool's quickstart/);
     expect(rule).toMatch(/next-action questions in chat, each with its full context/);
   });
 
@@ -27,8 +31,10 @@ describe("long-run reports end as an HTML page", () => {
     );
   });
 
-  it("run-goal: the final report is an HTML page and blockers are explained in full", () => {
-    expect(section(runGoal, "Final report")).toMatch(/self-contained HTML page/);
+  it("run-goal: the final report is an Artifact and blockers are explained in full", () => {
+    expect(section(runGoal, "Final report")).toMatch(/as an Artifact/);
+    expect(section(runGoal, "Final report")).toMatch(/Dashboard Artifact/);
+    expect(section(runGoal, "Final report")).toMatch(/not a loose HTML file/);
     expect(section(runGoal, "Final report")).toMatch(/Do not paste the whole report/);
     expect(section(runGoal, "Phase 4")).toMatch(
       /what the thing is in\s+plain words, why it is blocked, the options, and what each option changes/,

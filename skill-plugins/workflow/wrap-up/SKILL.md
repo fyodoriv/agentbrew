@@ -98,8 +98,8 @@ and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
 
 ## 4. Report
 
-End with one self-contained HTML page (shared-rules **## Long-run reports**):
-publish it as a private Artifact when the Artifact tool exists, else send the
+End with a published Artifact (shared-rules **## Long-run reports**), not a
+loose HTML file. Only without the Artifact tool, send a self-contained HTML
 file or give its full path. It holds:
 
 - **Delivered:** each PR link, merged.

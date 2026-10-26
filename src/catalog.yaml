@@ -303,6 +303,12 @@ skills:
     recommended: true
     rationale: "Every user of agentbrew-managed tools can tell the authors what broke, safely and with consent; the always-loaded rule names this skill."
 
+  - name: readme
+    description: "Writes or fixes a README in one order (what and why, Claude-first start prompt, use cases, features, then the rest by usefulness) with no repeats, in plain English for developers with ADHD; a checker script scores it."
+    source: fyodoriv/agentbrew
+    category: development
+    rationale: "Every app's README reads the same way, and a busy reader gets the start prompt and the use cases first."
+
   - name: new-project
     description: "Starts a new repo with an agent-ready setup for a tool, a personal AI assistant, or a private side project: interview, stack pick (TS, Python, Rust), scaffold, and a deterministic setup score. Don't use for an existing repo (use the agent guide baseline) or a throwaway spike (use prototype)."
     source: fyodoriv/agentbrew

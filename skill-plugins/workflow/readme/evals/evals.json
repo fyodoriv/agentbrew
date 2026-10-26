@@ -1,0 +1,20 @@
+{
+  "skill_name": "readme",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "update the README of this repo so it is easy to scan; it starts with a long history section and repeats the install steps twice",
+      "expected_output": "A README in the order what/why, start prompt plus bash line, Use cases, Features, then the rest by usefulness, with the duplicate install steps merged and the checker at 0 problems.",
+      "expectations": [
+        "Runs scripts/check-readme.py before editing and shows its problems",
+        "Puts 1-3 sentences of what and why right under the title",
+        "Puts a text start prompt that links INSTALL.md first, then a one-line bash fallback ending with the doctor",
+        "Adds ## Use cases before ## Features",
+        "Moves the history section below the more useful sections instead of deleting it",
+        "Keeps the install steps once and links to them elsewhere",
+        "Rewrites long sentences into short active ones without dropping facts",
+        "Runs the checker again and shows 0 problems, plus the repo's own docs tests"
+      ]
+    }
+  ]
+}

@@ -4,9 +4,10 @@
 // ~/.local/share/agentbrew/logs/events.jsonl) and the gate timings
 // (AGENTBREW_METRICS_DIR/gate-timings.jsonl, default .metrics).
 // `--render` skips collecting and only rewrites the README from the file.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { arch, homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { arch, homedir, hostname } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
 import { buildAgentMatrix } from "../src/docs/agent-matrix.js";
 import { collect, type ProofFile, readJsonl, render, replaceSection, validate } from "../src/docs/proof.js";
@@ -14,6 +15,18 @@ import { collect, type ProofFile, readJsonl, render, replaceSection, validate } 
 const root = resolve(import.meta.dirname, "..");
 const out = join(root, "docs/proof/metrics.json");
 const readmePath = join(root, "README.md");
+
+// A machine label: a salted hash of the host name. The salt stays on this
+// machine (XDG state), so the label cannot be reversed to a host or user.
+function machineLabel(): string {
+  const saltFile = join(process.env.XDG_STATE_HOME ?? join(homedir(), ".local/state"), "agentbrew/proof-salt");
+  if (!existsSync(saltFile)) {
+    mkdirSync(dirname(saltFile), { recursive: true });
+    writeFileSync(saltFile, randomBytes(16).toString("hex"), { mode: 0o600 });
+  }
+  const salt = readFileSync(saltFile, "utf-8").trim();
+  return `m-${createHash("sha256").update(`${salt}:${hostname()}`).digest("hex").slice(0, 10)}`;
+}
 
 let file: ProofFile | undefined = existsSync(out) ? (JSON.parse(readFileSync(out, "utf-8")) as ProofFile) : undefined;
 if (!process.argv.includes("--render")) {
@@ -27,7 +40,7 @@ if (!process.argv.includes("--render")) {
       catalogYaml: readFileSync(join(root, "src/catalog.yaml"), "utf-8"),
       fullSyncAgents: buildAgentMatrix().filter((r) => !r.experimental && (r.mcp || r.rules || r.commands)).length,
       // A machine label without the host name.
-      machine: `${process.platform} ${arch()}`,
+      machine: `${machineLabel()} (${process.platform} ${arch()})`,
       command: process.env.AGENTBREW_METRICS_DIR
         ? "AGENTBREW_METRICS_DIR=<main checkout>/.metrics npm run docs:proof"
         : undefined,

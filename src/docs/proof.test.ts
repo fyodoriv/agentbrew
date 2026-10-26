@@ -56,4 +56,21 @@ describe("README Proof section", () => {
     );
     expect(b.metrics.sync_ms?.history).toEqual([{ date: "2026-01-02", value: 10 }]);
   });
+
+  it("keeps test and gate numbers out of the headline table", () => {
+    const ev = [{ ts: "2026-01-02T00:00:00Z", event: "sync", ok: true, ms: 10 }];
+    const timings = [{ ts: "2026-01-02T00:00:00Z", event: "gate", mode: "full", ok: true, cached_steps: 0, ms: 5 }];
+    const f = collect({
+      date: "2026-01-02",
+      events: ev,
+      timings,
+      catalogYaml: "skills: []",
+      fullSyncAgents: 1,
+      machine: "m-abc (t)",
+    });
+    const table = render(f).split("Engineering health")[0] ?? "";
+    expect(table).not.toContain("npm run verify");
+    expect(table).toContain("real use");
+    expect(Object.keys(f.machines ?? {})).toEqual(["m-abc"]);
+  });
 });

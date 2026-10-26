@@ -80,20 +80,25 @@ Something breaks silently: nobody notices until a tool stops working.
 
 <!-- proof:start -->
 Every number below comes from `docs/proof/metrics.json`. `npm run docs:proof` writes that file and this section.
-A `real use` number comes from the owner's own event log (content-free counts and times, [`docs/observability.md`](docs/observability.md)). A `local run` number comes from one machine's run of the command.
+Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). Nothing is uploaded; each machine aggregates its own log.
 
 | Claim | Theory | Metric | Result | Source |
 |---|---|---|---|---|
-| One source of truth reaches every agent | One declared config, rendered per agent, avoids hand-copied drift (DRY: Hunt and Thomas 1999) | agents with a full sync surface | 14 agents (agents with more than a skills folder in agents.yaml) | `docs/proof/metrics.json`, local run, 2026-10-26, darwin arm64 |
-| Curated 200+-item catalog | A curated index saves search time; the count is checked, not guessed | catalog entries | 253 items (skills, MCP servers, CLI tools, plugins, rules in src/catalog.yaml) | `docs/proof/metrics.json`, local run, 2026-10-26, darwin arm64 |
 | Sync is fast enough to run often | Under 2 s keeps a tool inside a user's flow (Nielsen 1993, response-time limits) | `sync` time, goal 2,000 ms or less | 997 ms (median of the last 20 of 335 syncs over 8 days) | `docs/proof/metrics.json`, real use |
 | Sync works reliably | A low failure share is what makes background sync safe | failed `sync` runs, goal 5% or less | 0% (335 syncs, 2026-10-18 to 2026-10-26) | `docs/proof/metrics.json`, real use |
-| Self-healing: the scheduled repair runs cleanly | A repair loop only helps when its own runs succeed | failed scheduled repairs, goal 5% or less | 4.3% (257 scheduled repairs, 2026-10-18 to 2026-10-26) | `docs/proof/metrics.json`, real use |
-| Self-healing: drift gets fixed | Drift found and fixed by the loop is the outcome the claim promises | drift items the repair fixed | 38.9% (14 of 36 drift items seen by 257 repairs) | `docs/proof/metrics.json`, real use |
-| Changes ship through a full gate | A gate that passes most runs and is fast gets run, not skipped (Forsgren, Humble, Kim 2018) | passing `npm run verify` runs | 66.7% (3 full npm run verify runs, 2026-10-18 to 2026-10-19) | `docs/proof/metrics.json`, local run, 2026-10-19, darwin arm64 |
-| The gate is fast enough to run before each merge | A shorter feedback loop gets used more (Forsgren, Humble, Kim 2018) | uncached gate time, goal 300,000 ms or less | 408,466 ms (median of 2 passing uncached runs) | `docs/proof/metrics.json`, local run, 2026-10-19, darwin arm64 |
+| Self-healing: the scheduled repair runs cleanly | A repair loop only helps when its own runs succeed | failed scheduled repairs, goal 5% or less | 4.3% (258 scheduled repairs, 2026-10-18 to 2026-10-26) | `docs/proof/metrics.json`, real use |
+| Self-healing: drift gets fixed | Drift found and fixed by the loop is the outcome the claim promises | drift items the repair fixed | 38.9% (14 of 36 drift items seen by 258 repairs) | `docs/proof/metrics.json`, real use |
 | Never destroys your data | Sync must leave user-made files byte for byte the same | user files changed by a sync on a seeded home | not measured yet (task `measure-sync-preserves-user-files` in TASKS.md) | not measured yet |
 | A fresh machine is set up in one command | Time to configured is the outcome a one-step install promises | seconds from a cold install to a clean `agentbrew status --ci` | not measured yet (task `measure-zero-to-configured` in TASKS.md) | not measured yet |
+
+Field data comes from 1 machine(s), each named by a salted hash: `m-c525f1fce3` (335 syncs, 258 repairs, as of 2026-10-26).
+
+Engineering health (from the code and the local gate, not field proof):
+
+- agents with a full sync surface: 14 agents (agents with more than a skills folder in agents.yaml); local run, 2026-10-26, m-c525f1fce3 (darwin arm64)
+- catalog entries: 253 items (skills, MCP servers, CLI tools, plugins, rules in src/catalog.yaml); local run, 2026-10-26, m-c525f1fce3 (darwin arm64)
+- passing `npm run verify` runs: 66.7% (3 full npm run verify runs, 2026-10-18 to 2026-10-19); local run, 2026-10-19, m-c525f1fce3 (darwin arm64)
+- uncached gate time, goal 300,000 ms or less: 408,466 ms (median of 2 passing uncached runs); local run, 2026-10-19, m-c525f1fce3 (darwin arm64)
 
 Median `agentbrew sync` time per day (real use, ms):
 

@@ -25,7 +25,22 @@ export interface Metric {
 export interface ProofFile {
   metrics: Record<string, Metric>;
   charts: { syncMsByDay: MetricPoint[]; repair: { repaired: number; remaining: number } };
+  /** Per-machine field totals. The key is a salted hash, never a host or user name. */
+  machines?: Record<string, MachineTotals>;
 }
+
+export interface MachineTotals {
+  date: string;
+  syncs: number;
+  syncFailed: number;
+  repairs: number;
+  repairFailed: number;
+  driftSeen: number;
+  driftRepaired: number;
+}
+
+/** Metrics from real use; the rest are engineering health, never headline proof. */
+export const HEADLINE = new Set(["sync_ms", "sync_fail_rate", "repair_fail_rate", "drift_repaired_share"]);
 
 interface Event {
   ts?: string;
@@ -178,7 +193,17 @@ export function collect(inp: Inputs, previous?: ProofFile): ProofFile {
     .sort()
     .slice(-14)
     .map((d) => ({ date: d, value: median(byDay.get(d) ?? []) ?? 0 }));
-  return { metrics, charts: { syncMsByDay, repair: { repaired: fixed, remaining: drift - fixed } } };
+  const here: MachineTotals = {
+    date: inp.date,
+    syncs: syncs.length,
+    syncFailed: syncs.filter((e) => !e.ok).length,
+    repairs: repairs.length,
+    repairFailed: repairs.filter((e) => !e.ok).length,
+    driftSeen: drift,
+    driftRepaired: fixed,
+  };
+  const machines = { ...(previous?.machines ?? {}), [inp.machine.split(" ")[0] ?? inp.machine]: here };
+  return { metrics, charts: { syncMsByDay, repair: { repaired: fixed, remaining: drift - fixed } }, machines };
 }
 
 /** Return the list of problems in a metrics file: each metric needs a date, a kind, and a command. */
@@ -271,20 +296,43 @@ const ROWS: Row[] = [
   },
 ];
 
+function fieldAndHealth(file: ProofFile): string[] {
+  const lines: string[] = [];
+  const machines = Object.entries(file.machines ?? {});
+  lines.push(
+    "",
+    `Field data comes from ${machines.length} machine(s), each named by a salted hash: ${
+      machines.map(([k, t]) => `\`${k}\` (${t.syncs} syncs, ${t.repairs} repairs, as of ${t.date})`).join("; ") ||
+      "none yet"
+    }.`,
+    "",
+    "Engineering health (from the code and the local gate, not field proof):",
+    "",
+  );
+  for (const r of ROWS) {
+    if (!r.key || HEADLINE.has(r.key)) continue;
+    const x = file.metrics[r.key];
+    lines.push(`- ${r.metric}: ${show(x)}; ${x ? x.kind : "not measured yet"}`);
+  }
+  return lines;
+}
+
 /** Render the Proof section body (between the markers) from a metrics file. */
 export function render(file: ProofFile): string {
   const lines = [
     "Every number below comes from `docs/proof/metrics.json`. `npm run docs:proof` writes that file and this section.",
-    "A `real use` number comes from the owner's own event log (content-free counts and times, [`docs/observability.md`](docs/observability.md)). A `local run` number comes from one machine's run of the command.",
+    "Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). Nothing is uploaded; each machine aggregates its own log.",
     "",
     "| Claim | Theory | Metric | Result | Source |",
     "|---|---|---|---|---|",
   ];
   for (const r of ROWS) {
+    if (r.key && !HEADLINE.has(r.key)) continue;
     const x = r.key ? file.metrics[r.key] : undefined;
     const result = r.task ? `not measured yet (task \`${r.task}\` in TASKS.md)` : show(x);
     lines.push(`| ${r.claim} | ${r.theory} | ${r.metric} | ${result} | ${r.task ? "not measured yet" : src(x)} |`);
   }
+  lines.push(...fieldAndHealth(file));
   const days = file.charts.syncMsByDay;
   if (days.length) {
     lines.push(

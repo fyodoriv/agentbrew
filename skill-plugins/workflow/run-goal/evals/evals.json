@@ -1738,6 +1738,17 @@
         "Writes a BLOCKED report naming who can grant access",
         "Says what the requester can already do"
       ]
+    },
+    {
+      "id": 150,
+      "prompt": "/goal figure out how to improve this generated report: <link>. It renders badly in a narrow window.",
+      "expected_output": "The contract scopes the run to a diagnosis and a recommendation, not a code change. The agent checks the live document first (screenshots at narrow and wide widths) before trusting the generator code, compares the options, and puts one decision to the user. It edits no code before the user picks.",
+      "expectations": [
+        "Scopes the contract to diagnosis plus a recommendation",
+        "Checks the live artifact at narrow and wide widths before trusting the generator code",
+        "Compares options and asks the user one decision",
+        "Makes no code edit before the user picks"
+      ]
     }
   ]
 }

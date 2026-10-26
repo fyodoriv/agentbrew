@@ -180,7 +180,7 @@ function parseWorkStep(entry: unknown): AgentfileWorkStep | undefined {
   const step = typeof raw.step === "string" ? raw.step.trim() : "";
   if (!step) return undefined;
   const scope = stringList(raw.scope);
-  const after = stringList(raw.after);
+  const after = stringList(raw.after)?.map((name) => (name.startsWith("/") ? name : `/${name}`));
   return {
     step,
     ...(scope ? { scope } : {}),
@@ -195,7 +195,7 @@ function parseWorkSteps(value: unknown): AgentfileWorkStep[] | undefined {
   return value.map(parseWorkStep).filter((x): x is AgentfileWorkStep => x !== undefined);
 }
 
-/** Merge `workSteps:` across Agentfiles: the first entry for a step name wins. */
+/** Merge `workSteps:` across Agentfiles: a repeated step keeps its place and takes the later entry. */
 function mergeWorkStepEntries(
   current: AgentfileWorkStep[] | undefined,
   incoming: AgentfileWorkStep[] | undefined,
@@ -203,17 +203,15 @@ function mergeWorkStepEntries(
   if (!incoming?.length) return current;
   const result = current ? [...current] : [];
   const name = (x: AgentfileWorkStep) => (typeof x === "string" ? x : x.step);
-  const seen = new Set(result.map(name));
   for (const item of incoming) {
-    if (seen.has(name(item))) continue;
-    seen.add(name(item));
-    result.push(item);
+    const at = result.findIndex((x) => name(x) === name(item));
+    if (at === -1) result.push(item);
+    else result[at] = item;
   }
   return result;
 }
 
 /** Parse an Agentfile YAML string into a typed structure. */
-
 export function parseAgentfile(content: string): Agentfile {
   const raw = yaml.load(content) as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") return {};

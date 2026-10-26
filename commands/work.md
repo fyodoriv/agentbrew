@@ -33,6 +33,6 @@ workSteps:
     longRunning: true           # a watcher: starts after every other step
 ```
 
-A step with no `scope:` runs alone, which is the safe default.
+A step with no `scope:` runs alone, which is the safe default. Write each scope as an absolute or `~` path, or a service name such as `github.com`.
 
 Then run `agentbrew sync`. Do not copy this command to change it. If the user does not want built-in commands, run `agentbrew config set builtinCommands off`.

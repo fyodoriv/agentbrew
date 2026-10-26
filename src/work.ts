@@ -134,14 +134,15 @@ function scopesOverlap(a: string[], b: string[]): boolean {
  * Group steps into stages (#509). A stage holds steps in list order whose
  * scopes do not overlap and whose `after:` steps are done. A step with no
  * scope runs alone, and later steps do not pass it. Long-running steps
- * start after every other step. An `after:` name that is not in the plan is
+ * start after every other step, and so does any step that waits on one. An `after:` name that is not in the plan is
  * ignored; a cycle runs its first step alone, so no step is lost.
  */
 export function buildWorkStages(steps: StageInput[]): string[][] {
   const known = new Set(steps.map((s) => s.step));
   const done = new Set<string>();
   const stages: string[][] = [];
-  for (const group of [steps.filter((s) => !s.longRunning), steps.filter((s) => s.longRunning)]) {
+  const late = lateSteps(steps);
+  for (const group of [steps.filter((s) => !late.has(s.step)), steps.filter((s) => late.has(s.step))]) {
     let remaining = [...group];
     while (remaining.length > 0) {
       const stage = nextStage(remaining, (dep) => done.has(dep) || !known.has(dep));
@@ -153,18 +154,39 @@ export function buildWorkStages(steps: StageInput[]): string[][] {
   return stages;
 }
 
-/** The next stage from the steps left, in list order; never empty. */
+/** Long-running steps, plus every step that waits on one: they all start last. */
+function lateSteps(steps: StageInput[]): Set<string> {
+  const late = new Set(steps.filter((s) => s.longRunning).map((s) => s.step));
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const s of steps) {
+      if (!late.has(s.step) && s.after.some((dep) => late.has(dep))) {
+        late.add(s.step);
+        grew = true;
+      }
+    }
+  }
+  return late;
+}
+
+/**
+ * The next stage from the steps left, in list order; never empty. When no
+ * step can start (a blocked step with no scope is first), the first ready
+ * step runs alone; only an `after:` cycle falls back to the first step.
+ */
 function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): StageInput[] {
+  const ready = (s: StageInput) => s.after.every(isDone);
   const stage: StageInput[] = [];
   for (const s of remaining) {
-    const ready = s.after.every(isDone);
     if (s.scope.length === 0) {
-      if (stage.length === 0 && ready) stage.push(s);
+      if (stage.length === 0 && ready(s)) stage.push(s);
       break;
     }
-    if (ready && !stage.some((other) => scopesOverlap(other.scope, s.scope))) stage.push(s);
+    if (ready(s) && !stage.some((other) => scopesOverlap(other.scope, s.scope))) stage.push(s);
   }
-  return stage.length > 0 ? stage : [remaining[0] as StageInput];
+  if (stage.length > 0) return stage;
+  return [remaining.find(ready) ?? (remaining[0] as StageInput)];
 }
 
 /** The day plan for this machine. */

@@ -106,6 +106,42 @@ describe("parallel stages (#509)", () => {
     ]);
     expect(stages).toEqual([["/z"], ["/x"], ["/y"]]);
   });
+
+  it("keeps an unscoped step behind the step it waits for", () => {
+    const stages = buildWorkStages([
+      { step: "/u", scope: [], after: ["/x"], longRunning: false },
+      { step: "/x", scope: ["~/x"], after: [], longRunning: false },
+    ]);
+    expect(stages).toEqual([["/x"], ["/u"]]);
+  });
+
+  it("moves a step that waits on a long-running step to the end, after it", () => {
+    const stages = buildWorkStages([
+      { step: "/report", scope: ["~/r"], after: ["/feed"], longRunning: false },
+      { step: "/feed", scope: ["~/feed"], after: [], longRunning: true },
+      { step: "/other", scope: ["~/o"], after: [], longRunning: false },
+    ]);
+    expect(stages).toEqual([["/other"], ["/feed"], ["/report"]]);
+  });
+
+  it("runs two long-running steps with overlapping scopes in separate stages", () => {
+    const stages = buildWorkStages([
+      { step: "/w1", scope: ["~/apps/"], after: [], longRunning: true },
+      { step: "/w2", scope: ["~/apps/x"], after: [], longRunning: true },
+    ]);
+    expect(stages).toEqual([["/w1"], ["/w2"]]);
+  });
+
+  it("reads state saved before #509 (no scope fields) as one step per stage", () => {
+    const plan = buildWorkPlan(state([{ step: "/old", agentfile: "/a" }]), []);
+    expect(plan.stages).toEqual([["/agentbrew"], ["/old"]]);
+    expect(formatWorkPlan(plan)).not.toContain("Stages");
+  });
+
+  it("prints the stages when some steps run in parallel", () => {
+    const plan = buildWorkPlan(state([entry("/a", { scope: ["~/a"] }), entry("/b", { scope: ["~/b"] })]), []);
+    expect(formatWorkPlan(plan)).toContain("2. /a, /b");
+  });
 });
 
 describe("mergeWorkSteps", () => {

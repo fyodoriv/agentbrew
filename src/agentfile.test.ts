@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -149,7 +150,7 @@ rules: |
       "  - /plain",
       "  - step: /feed",
       "    scope: ~/apps/feed",
-      "    after: [/plain]",
+      "    after: [plain]",
       "    longRunning: true",
       "  - step: ' '",
       "  - scope: x",
@@ -158,6 +159,18 @@ rules: |
       "/plain",
       { step: "/feed", scope: ["~/apps/feed"], after: ["/plain"], longRunning: true },
     ]);
+  });
+
+  it("lets a later Agentfile's workSteps entry replace an earlier one in place (#509)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentbrew-worksteps-"));
+    try {
+      writeFileSync(join(dir, "a.yaml"), "workSteps:\n  - /x\n  - /y\n");
+      writeFileSync(join(dir, "b.yaml"), "workSteps:\n  - step: /x\n    scope: ~/apps/x\n  - /z\n");
+      const merged = parseAgentfile(mergeAgentfiles([join(dir, "a.yaml"), join(dir, "b.yaml")]));
+      expect(merged.workSteps).toEqual([{ step: "/x", scope: ["~/apps/x"] }, "/y", "/z"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("returns empty object for empty content", () => {

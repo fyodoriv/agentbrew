@@ -1,0 +1,11 @@
+{
+  "name": "agentbrew-mods",
+  "owner": { "name": "agentbrew" },
+  "plugins": [
+    {
+      "name": "work-pane",
+      "source": "./work-pane",
+      "description": "A Claude Code pane beside the chat that shows agentbrew /work progress and what needs you"
+    }
+  ]
+}

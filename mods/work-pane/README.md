@@ -5,9 +5,19 @@ An optional Claude Code mod: a pane beside the chat that shows the day's
 
 ## Install
 
+`mods/` is a local plugin marketplace (`agentbrew-mods`). Install once, and
+every Claude Code session loads the mod straight from this checkout:
+
 ```bash
-claude --plugin-dir ~/apps/tooling/agentbrew/mods/work-pane
+claude plugin marketplace add ~/apps/tooling/agentbrew/mods
 ```
+
+```bash
+claude plugin install work-pane@agentbrew-mods
+```
+
+The owner's dotfiles do this on every apply (`claude_mods` setting). To try
+it in one session only: `claude --plugin-dir ~/apps/tooling/agentbrew/mods/work-pane`.
 
 Then type `/work` to start the day: the pane opens by itself. `/work-pane` opens
 it without starting a run.

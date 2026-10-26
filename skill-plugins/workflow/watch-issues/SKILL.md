@@ -75,7 +75,11 @@ or the user's words in this session).
 4. **Ship each one** through the repo's own delivery rules (its `AGENTS.md`):
    a worktree, the baseline measurement, a failing test first for a bug, the
    repo gate, a PR (`Fixes #N` for an issue), and a merge when green (except
-   outside issues, above). For more than one item, use subagents with one
+   outside issues, above). Read the gate's `rc=` line in its own call, then
+   merge in the next one. Never chain the merge after a log read: a run
+   merged on `rc=1` because the command printed the log and merged anyway.
+   After a rebase that touches a file the gate checks (a size budget, a
+   shared doc), re-run the gate before you merge. For more than one item, use subagents with one
    shared brief, at most three gate runs at a time, and `nice -n 15` for
    heavy runs.
 5. **Park what needs a person** (a secret, 2FA, sudo, a public write the rules

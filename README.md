@@ -507,7 +507,7 @@ agentbrew lint                     # actionable static failures (duplicate headi
 bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully if missing)
 ```
 
-**What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional openusage daily JSON with `runtime.openusage.today` rollup.
+**What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional openusage daily JSON with `runtime.openusage.today` rollup. The `lintPassed`, `lintErrors`, and `lintWarnings` fields, like the `Config:` line in `agentbrew status`, use the same checks and counts as `agentbrew lint`, in every mode.
 
 **What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude) and openusage (multi-provider). agentbrew only runs them and keeps their JSON. The rest is agentbrew-specific, so no standard tool computes it: the projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, headroom alerts, and the capture throttle.
 

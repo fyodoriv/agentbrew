@@ -63,7 +63,7 @@ function renderExperimentalList(rows: AgentMatrixRow[]): string {
     .filter((row) => row.experimental)
     .map((row) => row.name)
     .sort();
-  return `Skills-only (experimental; sync only writes to \`skillsDir\`; not tested on real user machines beyond the author's): ${experimental.join(", ")}.`;
+  return `Skills-only agents are experimental. Sync only writes to their \`skillsDir\`, and they are not tested on real user machines beyond the author's. They are: ${experimental.map((name) => `\`${name}\``).join(", ")}.`;
 }
 
 /**

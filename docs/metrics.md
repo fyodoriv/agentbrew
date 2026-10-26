@@ -27,6 +27,11 @@ history is not a real zero.
 
 ## Notes
 
+- The README `## Proof` section is generated. `npm run docs:proof` saves the
+  numbers to `docs/proof/metrics.json` (value, date, data kind, command, and a
+  history per metric) and rewrites the section. `npm run docs:proof -- --render`
+  rewrites the section only. `src/docs/proof.test.ts` fails when they drift.
+
 - Events are content-free: counts, times, and enum names only. The format and
   the privacy rules are in [`observability.md`](observability.md).
 - `source_lines` uses the same rule as the 30K-line kill trigger: every tracked

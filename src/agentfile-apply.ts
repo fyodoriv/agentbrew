@@ -29,7 +29,7 @@ import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
-import { mergeWorkSteps } from "./work.js";
+import { mergeWorkSteps, pruneMissingWorkSteps } from "./work.js";
 
 /** Result of applying an Agentfile to state. */
 export interface ApplyAgentfileResult {
@@ -459,7 +459,8 @@ function mergeAgentfileWorkSteps(
   baseDir: string,
 ): boolean {
   const before = JSON.stringify(state.workSteps ?? []);
-  const merged = mergeWorkSteps(state.workSteps, baseDir, agentfile.workSteps ?? []);
+  // Drop steps from Agentfile dirs that are gone (a deleted worktree) (#515).
+  const merged = pruneMissingWorkSteps(mergeWorkSteps(state.workSteps, baseDir, agentfile.workSteps ?? []));
   if (JSON.stringify(merged) === before) return false;
   if (merged.length > 0) state.workSteps = merged;
   else delete state.workSteps;

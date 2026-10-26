@@ -12,6 +12,7 @@ import {
   END_OF_DAY_STEP,
   formatWorkPlan,
   mergeWorkSteps,
+  pruneMissingWorkSteps,
   resolveWorkStep,
 } from "./work.js";
 
@@ -232,6 +233,39 @@ describe("resolveWorkStep (#451)", () => {
     for (const step of plan.steps) {
       expect(step).toHaveProperty("path");
       expect(step).toHaveProperty("userOnly");
+    }
+  });
+});
+
+describe("stale workSteps (#515)", () => {
+  const entries = [
+    { step: "/kept", agentfile: "/here" },
+    { step: "/kept", agentfile: "/gone" },
+    { step: "/old-only", agentfile: "/gone" },
+  ];
+
+  it("skips steps whose Agentfile dir is gone, so they cannot shadow current ones, and reports the dir", () => {
+    const plan = buildWorkPlan(state(entries), [], { dirExists: (dir) => dir !== "/gone" });
+    expect(plan.steps.map((s) => s.step)).toEqual([...DEFAULT_WORK_STEPS, "/kept"]);
+    expect(plan.steps.find((s) => s.step === "/kept")?.from).toBe("/here");
+    expect(plan.staleWorkSteps).toEqual(["/gone"]);
+    expect(formatWorkPlan(plan)).toMatch(/Skipped steps from Agentfile dirs that no longer exist: \/gone/);
+  });
+
+  it("reports nothing when every dir exists", () => {
+    expect(buildWorkPlan(state(entries), []).staleWorkSteps).toEqual([]);
+  });
+
+  it("pruneMissingWorkSteps drops entries whose dir is gone, using the real file system", () => {
+    const dir = mkdtempSync(join(tmpdir(), "work-prune-"));
+    try {
+      const kept = pruneMissingWorkSteps([
+        { step: "/a", agentfile: dir },
+        { step: "/b", agentfile: join(dir, "deleted-worktree") },
+      ]);
+      expect(kept).toEqual([{ step: "/a", agentfile: dir }]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

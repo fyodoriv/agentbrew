@@ -57,6 +57,8 @@ export interface WorkPlan {
   questions: string;
   watch: string;
   endOfDay: string[];
+  /** Agentfile dirs whose steps were skipped because the dir no longer exists (#515). */
+  staleWorkSteps: string[];
   /** The day's live dashboard (#510): one row per step, updated on every step change. */
   dashboard: WorkDashboard;
 }
@@ -237,12 +239,23 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
   return [remaining.find(ready) ?? (remaining[0] as StageInput)];
 }
 
+/** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
+export function pruneMissingWorkSteps(
+  entries: WorkStepEntry[],
+  dirExists: (dir: string) => boolean = (dir) => existsSync(expandHome(dir)),
+): WorkStepEntry[] {
+  return entries.filter((entry) => dirExists(entry.agentfile));
+}
+
 /** The day plan for this machine. */
 export function buildWorkPlan(
   state: AgentBrewState | undefined,
   plugins: PluginLockEntry[],
-  options: { date?: Date; stateHome?: string } = {},
+  options: { date?: Date; stateHome?: string; dirExists?: (dir: string) => boolean } = {},
 ): WorkPlan {
+  const all = state?.workSteps ?? [];
+  const current = pruneMissingWorkSteps(all, options.dirExists ?? (() => true));
+  const staleWorkSteps = [...new Set(all.filter((e) => !current.includes(e)).map((e) => e.agentfile))];
   const seen = new Set<string>();
   const steps: WorkPlan["steps"] = [];
   const add = (step: string, from: string, entry?: WorkStepEntry) => {
@@ -258,8 +271,9 @@ export function buildWorkPlan(
     });
   };
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
-  for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile, entry);
+  for (const entry of current) add(entry.step, entry.agentfile, entry);
   return {
+    staleWorkSteps,
     ...machineRule(plugins),
     steps,
     stages: buildWorkStages(steps),
@@ -292,6 +306,12 @@ export function formatWorkPlan(plan: WorkPlan): string {
       lines.push(`  ${i + 1}. ${stage.join(", ")}`);
     });
   }
+  if (plan.staleWorkSteps.length > 0) {
+    lines.push(
+      "",
+      `Skipped steps from Agentfile dirs that no longer exist: ${plan.staleWorkSteps.join(", ")}. The next \`agentbrew sync\` removes them.`,
+    );
+  }
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch, "", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
@@ -299,6 +319,8 @@ export function formatWorkPlan(plan: WorkPlan): string {
 
 /** `agentbrew work [--json]`. */
 export function showWorkPlan(options: { json?: boolean } = {}): void {
-  const plan = buildWorkPlan(loadState(), readLock().plugins ?? []);
+  const plan = buildWorkPlan(loadState(), readLock().plugins ?? [], {
+    dirExists: (dir) => existsSync(expandHome(dir)),
+  });
   console.log(options.json ? JSON.stringify(plan, null, 2) : formatWorkPlan(plan));
 }

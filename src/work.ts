@@ -376,7 +376,9 @@ export function formatWorkPlan(plan: WorkPlan): string {
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch);
   if (plan.pluginReview.checkouts.length > 0) {
-    lines.push(`Plugin review: check ${plan.pluginReview.checkouts.join(", ")} for changes that belong in the main tool.`);
+    lines.push(
+      `Plugin review: check ${plan.pluginReview.checkouts.join(", ")} for changes that belong in the main tool.`,
+    );
   }
   if (plan.repoWatch.checkouts.length > 0) {
     const refresh = plan.repoWatch.refresh.length > 0 ? `; then ${plan.repoWatch.refresh.join(", ")}` : "";

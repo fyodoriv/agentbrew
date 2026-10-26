@@ -7,10 +7,10 @@ import type { PluginLockEntry } from "./lock.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
 import {
   buildWorkPlan,
-  findPluginCheckouts,
   buildWorkStages,
   DEFAULT_WORK_STEPS,
   END_OF_DAY_STEP,
+  findPluginCheckouts,
   formatWorkPlan,
   mergeWorkSteps,
   pruneMissingWorkSteps,
@@ -55,7 +55,10 @@ describe("buildWorkPlan", () => {
     const plan = buildWorkPlan(state(), [plugin("acme", "git@git.example.com:acme/agentbrew-acme.git")], {
       pluginCheckouts: ["~/apps/careerbrew-acme"],
     });
-    expect(plan.pluginReview.checkouts).toEqual(["~/apps/careerbrew-acme", "git@git.example.com:acme/agentbrew-acme.git"]);
+    expect(plan.pluginReview.checkouts).toEqual([
+      "~/apps/careerbrew-acme",
+      "git@git.example.com:acme/agentbrew-acme.git",
+    ]);
     expect(plan.pluginReview.how).toMatch(/main tool/);
     expect(plan.pluginReview.how).toMatch(/says yes/);
     expect(formatWorkPlan(plan)).toMatch(/Plugin review/);
@@ -64,7 +67,11 @@ describe("buildWorkPlan", () => {
   it("finds `<tool>-<name>` checkouts only beside a tool checkout", () => {
     const dirs: Record<string, string[]> = { "/r": ["careerbrew", "careerbrew-acme", "notes-x", "dotfiles-acme"] };
     const repos = new Set(["/r/careerbrew", "/r/careerbrew-acme", "/r/notes-x", "/r/dotfiles-acme"]);
-    const found = findPluginCheckouts(["/r"], (d) => dirs[d] ?? [], (d) => repos.has(d));
+    const found = findPluginCheckouts(
+      ["/r"],
+      (d) => dirs[d] ?? [],
+      (d) => repos.has(d),
+    );
     expect(found).toEqual(["/r/careerbrew-acme"]);
   });
 

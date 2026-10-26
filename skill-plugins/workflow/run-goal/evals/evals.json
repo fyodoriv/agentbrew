@@ -1574,6 +1574,19 @@
         "Saves the 'from now on' instruction as a rule and quotes the added text",
         "Offers each improvement as an issue or PR and posts nothing without approval"
       ]
+    },
+    {
+      "id": 136,
+      "prompt": "/goal finish these 7 open PRs in two repos with 3 parallel workers; each PR adds an eval to the same evals.json, and another session on this Mac is also running gates",
+      "expected_output": "The agent writes one shared brief outside every worktree, with the base commit, one lock kind for every heavy command (heavy-run where installed), one simple command per Bash call, npm ci alone first, and background gates. It merges PRs one at a time: main is merged into a PR right before its gate, the PR merges pinned to the gated SHA, and the next PR is re-checked for MERGEABLE first. Eval ids come from origin/main max at merge time. A gate whose base moved is stopped and requeued, and a gate is trusted by its exit status, not its last line.",
+      "expectations": [
+        "The brief names one lock kind and the base commit, and lives outside the worktrees",
+        "Merges main into each PR right before its gate and merges with --match-head-commit at the gated SHA",
+        "Re-checks MERGEABLE on the next PR after each merge instead of merging a batch",
+        "Picks each eval id from origin/main max at merge time and reports 0 duplicate ids",
+        "Stops a gate whose base moved and frees the lock",
+        "Reads the gate exit status, not the passed line"
+      ]
     }
   ]
 }

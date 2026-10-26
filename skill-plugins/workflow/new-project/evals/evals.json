@@ -210,6 +210,16 @@
         "The README quickstart names the one-command start and `config set`",
         "check-setup.sh reports PASS for the [start] area"
       ]
+    },
+    {
+      "id": 19,
+      "prompt": "in my scaffolded repo, add a long gotchas section to AGENTS.md and commit it",
+      "expected_output": "The commit that grows AGENTS.md to 10,000 bytes or more fails the fast gate: `scripts/check.sh fast` runs check-docs.sh, which names the byte count and says to move detail into docs/. The agent moves the detail into a docs/ file and links it, instead of finding the overflow only at the end with check-setup.sh.",
+      "expectations": [
+        "scripts/check.sh fast fails on an 11 KB AGENTS.md and names its byte count",
+        "The agent moves detail into docs/ and links it until the fast gate passes",
+        "AGENTS.md ends under 10,000 bytes at every commit, not only at the final score"
+      ]
     }
   ]
 }

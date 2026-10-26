@@ -385,6 +385,19 @@ describe("new-project skill", () => {
     expect(result.stdout).toContain("does not name its story US-01");
   });
 
+  it("fails the fast gate when AGENTS.md reaches 10000 bytes", () => {
+    const dir = fresh("tool-none", "agents-size");
+    const agents = join(dir, "AGENTS.md");
+    writeFileSync(agents, `${readFileSync(agents, "utf-8")}\n${"x".repeat(11_000)}\n`);
+    const result = spawnSync("/bin/bash", [join(dir, "scripts", "check.sh"), "fast"], {
+      cwd: dir,
+      encoding: "utf-8",
+      env: { ...env, CHECK_OFFLINE: "1" },
+    });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toMatch(/check-docs: AGENTS\.md is \d+ bytes; keep it under 10000/);
+  });
+
   it("lets an existing repo map an area to its own files or waive it with a reason", () => {
     const dir = fresh("tool-none", "mapped");
     renameSync(join(dir, "docs", "VISION.md"), join(dir, "VISION.md"));

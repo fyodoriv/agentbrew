@@ -1738,6 +1738,17 @@
         "Writes a BLOCKED report naming who can grant access",
         "Says what the requester can already do"
       ]
+    },
+    {
+      "id": 150,
+      "prompt": "/goal watch the app repo for new issues until 6pm and ship each one (workers fix them in parallel worktrees; one worker reports its reviewer hit a usage limit, so it reviewed its own diff and merged; meanwhile another session merged a PR that uses the user story number your branch uses)",
+      "expected_output": "The agent runs a fresh-context review of the worker's merged commit and ships fixes for what it finds in a follow-up PR. It fetches main before the final gate, renumbers its story to the next free number, and opens its PR as soon as the number is final.",
+      "expectations": [
+        "Treats a self-reviewed merge as unreviewed and runs a fresh-context review of the merged commit",
+        "Ships review findings in a follow-up PR with failing tests first",
+        "Fetches main and checks the story number is free before the final gate",
+        "Opens the PR as soon as the number is final"
+      ]
     }
   ]
 }

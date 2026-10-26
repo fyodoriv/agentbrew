@@ -32,6 +32,19 @@ Each rule comes from a real failure in a goal run.
 - A guard that caps subagent depth at 1 stops a worker from starting its own
   reviewer. Check the cap first; when it blocks, review the diff yourself
   and say so in the merge evidence.
+- A worker whose reviewer hits a usage limit and merges after a self-review
+  has not been reviewed. Run a fresh-context review of the merged commit
+  yourself, and fix what it finds in a follow-up PR. In one run, both
+  self-reviewed merges hid real bugs: 3 in one and 2 in the other.
+- Unique numbers that a check enforces (user story ids, migration numbers)
+  race between sessions: another session's PR can take your number while
+  your gate runs. Before the last gate, fetch main and check the number is
+  still free. Open the PR as soon as the number is final, so other sessions
+  see it. In one run, one branch was renumbered three times (US-79 to US-84),
+  and each rename cost a gate.
+- A gate that runs far past its usual time is hung, not slow. Run each test
+  file alone with `timeout 180` to find the file that never ends. In one run,
+  a test loop with no cap hung a gate for 2 hours.
 
 ## Steering running agents
 

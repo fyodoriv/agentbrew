@@ -66,6 +66,12 @@ Keep each edit small. Every skill used gets one update:
 Follow the target repo's rules (`AGENTS.md`): tests, docs, commit style, and
 leak checks.
 
+Check fast before the full suite. A retro edit can push SKILL.md past its
+500-line cap, and only the full suite (minutes) used to catch it. Before
+the full suite, run `wc -l` on each edited SKILL.md and the skill's own test
+files (`npx vitest run src/skills/<skill>-*.test.ts`). Then run the full
+suite once.
+
 ### Evals with skill-creator in a goal run
 
 The third-party `skill-creator` skill (anthropics/skills) assumes a human in

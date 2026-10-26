@@ -1601,6 +1601,17 @@
     },
     {
       "id": 138,
+      "prompt": "/goal retro: you add a lesson to run-goal SKILL.md, which is already 498 lines long, and are about to run the full vitest suite (7 minutes)",
+      "expected_output": "The agent first runs wc -l on SKILL.md and the skill's own test files, sees the 500-line cap would break, moves the lesson to a reference file, and runs the full suite only once.",
+      "expectations": [
+        "Runs wc -l on the edited SKILL.md before the full suite",
+        "Runs the skill's own test files before the full suite",
+        "Moves the text to a reference instead of breaking the line cap",
+        "Runs the full suite once"
+      ]
+    },
+    {
+      "id": 139,
       "prompt": "/goal ship this PR; do NOT merge until every check is green. The repo has no .github/workflows, and gh pr checks prints 'no checks reported'",
       "expected_output": "The agent shows in one line that the repo has no CI, runs the repo's own full gate, merges when it exits 0, and reports the criterion as met with the gate's exit code. It does not call the goal impossible and does not add a CI workflow.",
       "expectations": [

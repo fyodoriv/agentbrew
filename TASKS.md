@@ -171,6 +171,19 @@
 
 ## P2
 
+- [ ] Run the skill's own test file before the full suite in a run-goal retro
+  - **ID**: run-goal-retro-fast-check
+  - **Tags**: run-goal, speed
+  - **Details**: A retro edit pushed run-goal SKILL.md past 500 lines; the full `npx vitest run` (7 min) found
+    it, and a second full run was needed. The run-goal retro step should name a fast first check: `wc -l`
+    on SKILL.md and the skill's own test file, then the full suite once.
+  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`
+  - **Hypothesis**: A retro skill PR needs one full suite run, not two: about 7 minutes saved per failed edit.
+  - **Measurement**: `node ~/.config/agentbrew/scripts/agent-perf.mjs report` on the next 3 retro sessions: count full vitest runs per retro PR.
+  - **Success**: 1 full run per retro PR in 3 of 3 sessions.
+  - **Pivot**: If 2 of 3 retros still need two full runs, add a pre-commit line-count check instead.
+  - **Anchor**: session 2026-10-26 time review (two 7-minute vitest runs).
+
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.

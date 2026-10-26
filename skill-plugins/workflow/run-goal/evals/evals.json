@@ -1598,6 +1598,17 @@
         "Removes the destructive mode instead of patching it",
         "Adds a guard test that fails if the mode returns"
       ]
+    },
+    {
+      "id": 138,
+      "prompt": "/goal ship this PR; do NOT merge until every check is green. The repo has no .github/workflows, and gh pr checks prints 'no checks reported'",
+      "expected_output": "The agent shows in one line that the repo has no CI, runs the repo's own full gate, merges when it exits 0, and reports the criterion as met with the gate's exit code. It does not call the goal impossible and does not add a CI workflow.",
+      "expectations": [
+        "Proves the repo has no CI checks",
+        "Uses the repo's own gate exit 0 as the green check",
+        "Merges and marks the criterion met",
+        "Does not call the goal impossible or add CI unasked"
+      ]
     }
   ]
 }

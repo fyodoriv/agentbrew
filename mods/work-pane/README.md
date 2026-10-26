@@ -9,7 +9,8 @@ An optional Claude Code mod: a pane beside the chat that shows the day's
 claude --plugin-dir ~/apps/tooling/agentbrew/mods/work-pane
 ```
 
-Then type `/work-pane` to open the pane, and `/work` to start the day.
+Then type `/work` to start the day: the pane opens by itself. `/work-pane` opens
+it without starting a run.
 
 ## How it works
 

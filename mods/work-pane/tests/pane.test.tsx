@@ -42,3 +42,25 @@ test('the pane shows what needs you, then each step', async ($, on) => {
   expect((await ui.find({ type: 'Text', text: /synced/ }))?.text).toBe('✓ /agentbrew synced')
   await ui.unmount()
 })
+
+test('/work opens the pane by itself', async ($, on) => {
+  let opened = 0
+  on('command.register', () => ({ value: { command: 'work-pane' } }))
+  on('ui.open', () => {
+    opened += 1
+    return { value: { isPlaced: true } }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => ({
+    value: { exitCode: 0, stdout: JSON.stringify({ dashboard: { statusPath: '/s/work.json' } }), stderr: '' },
+  }))
+  on('fs.read', () => ({ value: JSON.stringify(STATUS) }))
+  on('clock.every', () => ({ value: { cancel: () => {} } }))
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.prompt.submit({ text: 'hello' })
+  expect(opened).toBe(0)
+  await $.prompt.submit({ text: '/work', command: { name: 'work', args: '' } })
+  expect(opened).toBe(1)
+})

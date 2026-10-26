@@ -93,8 +93,8 @@ export function resolveWorkStep(
 
 /** The only reasons `/work` stops mid-run (#508). */
 export const WORK_STOP_ONLY_FOR = [
-  "A merge conflict the agent cannot resolve.",
-  "A destructive or public action that needs the user's approval.",
+  "A merge conflict you cannot resolve.",
+  "A destructive or public action that needs approval.",
   "A choice only the user can make.",
 ];
 
@@ -112,7 +112,7 @@ export function buildWorkPlan(state: AgentBrewState | undefined, plugins: Plugin
   return {
     ...machineRule(plugins),
     steps,
-    flow: 'Run every step and phase back to back. Do not stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
+    flow: 'Run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
     stopOnlyFor: WORK_STOP_ONLY_FOR,
     questions:
       "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.",

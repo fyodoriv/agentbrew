@@ -1559,6 +1559,21 @@
         "Updates the open PR so the shared preference matches the restored state",
         "Asks the user to test the gesture and waits for the answer"
       ]
+    },
+    {
+      "id": 134,
+      "prompt": "/goal Install or update agentbrew on this machine by following INSTALL.md (it updates an existing clone). Then run `agentbrew sync` so every agent gets the current rules. Audit the skills and commands already on this machine against these repos and propose adopt or merge for each one. From now on, extend these repos instead of building local copies. At the end, list anything that could work better and offer an issue or PR for each.",
+      "expected_output": "The agent prints the contract, then reuses the install choices already saved on the machine (agentbrew config, LaunchAgents, shell rc) instead of re-asking them. It snapshots MCP servers and hooks before the install and diffs them after. It runs install.sh and sync, reads their exit codes, and checks that the deployed rules match the repo template. It treats a sync warning as a lead and checks it in the source. When an earlier audit page exists, it re-checks each old verdict against the files and corrects the wrong ones (an app-managed folder marked for deletion, a merge target in a third-party repo). It updates that same page instead of making a new one, turns 'from now on' into a rule in the user's rules file, and posts no issue or PR without a yes.",
+      "expectations": [
+        "Reuses saved install choices and names them as defaults instead of asking again",
+        "Diffs MCP servers and hook count before vs after the install",
+        "Reads install and sync exit codes directly and quotes drift=0",
+        "Re-verifies each verdict from an earlier audit page instead of copying it",
+        "Never proposes deleting an app-managed folder such as ~/.claude/skills/synced",
+        "Updates the existing audit page at the same URL",
+        "Saves the 'from now on' instruction as a rule and quotes the added text",
+        "Offers each improvement as an issue or PR and posts nothing without approval"
+      ]
     }
   ]
 }

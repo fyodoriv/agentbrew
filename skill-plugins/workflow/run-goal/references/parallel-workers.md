@@ -4,6 +4,21 @@ Read this before a goal runs several agents at once: workflow agents in
 worktrees, a serialized merge queue, or a loop that watches for new work.
 Each rule comes from a real failure in a goal run.
 
+## Starting workers
+
+- Pin the base. The shared brief names the exact base commit
+  (`git rev-parse HEAD` at spawn) and says "do not move the base". In one
+  run, three worktree workers started from different bases (one from `main`,
+  one from an unmerged PR branch it fast-forwarded itself), and integration
+  needed cherry-picks and one conflict. Land an open PR the parts depend on
+  first, then spawn from the new head.
+- Before you start workers on one machine, write a heavy-run rule into the
+  brief: one shared lock (`mkdir` a lock dir; remove it when done) and
+  `nice -n 15` for every heavy run (full suite, test cache, timing), one run
+  at a time. Six workers without it each ran parallel suites, and a 10-core
+  Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
+  near 10 to 25. A timing taken without the lock is invalid: take it again.
+
 ## Steering running agents
 
 - Never send a message to an agent that still runs inside a Workflow. The
@@ -27,6 +42,10 @@ Each rule comes from a real failure in a goal run.
 - Merge steps rebase only before the first push. After a push, fix a
   conflict by merging `origin/main` into the branch. A merge prompt that says
   "rebase again" leads to a force-push, which the user's rules forbid.
+- Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
+  main's tree equals A's head and B contains A's head, resolve every conflict
+  with B's side, then check that the merged tree equals B's tested tree
+  (`git diff <B-tested-sha> HEAD` is empty). Then no new test run is needed.
 - To clear a conflict on an agent's PR, push only that agent's own merge
   commit, as a fast-forward. A different merge commit makes the agent's branch
   diverge, and it then needs another merge and another full gate.

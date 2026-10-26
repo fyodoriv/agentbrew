@@ -92,12 +92,18 @@ So:
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time
    goes. A failed baseline run is the first finding, not a number: fix or
-   report the cause before you compare.
+   report the cause before you compare. Read its log: an EPERM on a cache or
+   a registry is the sandbox, so build once outside it, record the step, then
+   compare. A strict score that fails on the unchanged base is pre-existing.
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
+   Classify tasks by their Details (who must act), not only the Blocked flag.
+   Before a write to a live store (migration, sync, move), list the target
+   read-only and compare it with the goal's stated state. A mismatch changes
+   the plan, not the facts: 20 "unmoved" items were already in the list.
 7. Check each tool path a criterion relies on: a Send needs its connector
    or token, a Save an endpoint that stores the edit. Read the config or
    endpoint, not the button label.
@@ -223,28 +229,21 @@ continue?". The user set a goal so that they can be away.
   fail. A "flaky" step: run it alone and check its CPU time against its limit.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
-  delivery rules and unique log names (`$TMPDIR` is shared), and keep within
-  the user's parallel cap. When a worker reports, check its claims yourself
-  (re-run its metric, look at side effects such as LaunchAgents it touched),
-  and stop any background job it left running in a removed worktree.
-  Before you start workers on one machine, write a heavy-run rule into the
-  brief: one shared lock (`mkdir` a lock dir; remove it when done) and
-  `nice -n 15` for every heavy run (full suite, test cache, timing), one run
-  at a time. Six workers without it each ran parallel suites, and a 10-core
-  Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
-  near 10 to 25. A timing taken without the lock is invalid: take it again.
+  delivery rules, unique log names (`$TMPDIR` is shared), and the exact base
+  commit (`git rev-parse HEAD` at spawn) with "do not move the base". Keep
+  within the user's parallel cap. On one machine, the brief also holds the
+  heavy-run lock rule from the reference below. When a worker reports, check
+  its claims yourself (re-run its metric, look at side effects such as
+  LaunchAgents it touched), and stop any background job it left running in
+  a removed worktree.
 - Running parallel workers or workflows (worktrees, a merge queue, a watch
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
-  first. It covers messages to running agents, session-owned files, merges
-  after a push, scripted conflict fixes, and watch pollers.
+  first. It covers the base commit, the heavy-run lock, messages to running
+  agents, session-owned files, merges, stacked PRs, and watch pollers.
 - When something pops up on the user's screen (a dialog, a window) and you
   trace which process started it, log the process and its parent chain.
   Never kill processes that you or your workers did not start. Killing them
   broke another session's test run and this run's own gate.
-- Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
-  main's tree equals A's head and B contains A's head, resolve every conflict
-  with B's side, then check that the merged tree equals B's tested tree
-  (`git diff <B-tested-sha> HEAD` is empty). Then no new test run is needed.
 - After a session restart (`/goal continue …`, or workers reported as
   stopped): re-measure from `origin` first, then list every worktree with
   its commits ahead, uncommitted files, and push state. Resume each stopped

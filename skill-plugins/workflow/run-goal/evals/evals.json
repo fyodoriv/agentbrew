@@ -1486,6 +1486,39 @@
         "Reruns a failing pre-push test alone and on the unchanged base before calling it a load flake",
         "Gives each fix a fresh-context review and a second review of the fix round before merge"
       ]
+    },
+    {
+      "id": 129,
+      "prompt": "/goal ship all 5 open tasks and the 4 new features in this repo; an open PR from yesterday already has part of the work",
+      "expected_output": "The agent lands the open PR first, then fans out the independent parts to worktree workers. The shared brief names the exact base commit (git rev-parse HEAD at spawn) and says do not move the base, so no worker starts from main or fast-forwards itself onto an unmerged branch. It integrates the workers' commits by cherry-pick onto that base, re-runs the gate on the merged branch, and checks the UI on synthetic data, never real user data.",
+      "expectations": [
+        "Merges or continues the open PR before it starts any worker",
+        "The shared brief names one exact base commit and says do not move the base",
+        "Integrates worker commits by cherry-pick onto the pinned base and reports 0 base-mismatch conflicts",
+        "Checks the UI on synthetic data before the goal is called met"
+      ]
+    },
+    {
+      "id": 130,
+      "prompt": "/goal deliver the unblocked tasks in this repo; the agent runs in a sandbox and the baseline gate fails before any edit",
+      "expected_output": "The agent reads the failing gate's log before it changes code. It names each EPERM on a cache (~/.cargo, the corepack cache), the npm registry, or a pre-commit mktemp as the sandbox, builds or fetches once outside the sandbox, records that step in the contract, and then compares against a green baseline. A real gate bug (for example xargs shasum failing under pipefail on nested worktrees) is fixed as a finding. A strict score that also fails on the unchanged base is reported as pre-existing, not as a regression of this run.",
+      "expectations": [
+        "Reads the gate log before any code change and names the sandbox-only failures as setup",
+        "Builds once outside the sandbox and records that step instead of retrying inside it",
+        "Separates a real gate bug from the sandbox failures and fixes it as a finding",
+        "Runs a strict score on the unchanged base before calling its failure a regression"
+      ]
+    },
+    {
+      "id": 131,
+      "prompt": "/goal move my 20 reminders into the Groceries list (nothing in Reminders changed since last week), then deliver all unblocked tasks",
+      "expected_output": "Before the move writes anything, the agent takes a read-only listing of the target list and compares it with the goal's stated state. The list already holds the 20 synced copies and the named scripts are gone from disk, so it changes the plan instead of making 20 duplicates, and says so in the contract. For the task part, it classifies each task by its Details (who must act), not only its Blocked flag, and parks the tasks that need the owner's sign-in or a macOS permission for the end-of-run batch.",
+      "expectations": [
+        "Takes a read-only listing of the live target before the first write and compares it with the goal text",
+        "Changes the plan on the mismatch and creates 0 duplicate items",
+        "Classifies tasks by who must act from their Details, not only the Blocked flag",
+        "Parks owner-only tasks (sign-in, OS permission) instead of counting them as unblocked"
+      ]
     }
   ]
 }

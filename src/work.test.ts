@@ -160,6 +160,7 @@ describe("dashboard block (#510)", () => {
     expect(plan.dashboard.publish).toMatch(/Artifact/);
     expect(plan.dashboard.publish).toMatch(/same URL/);
     expect(plan.dashboard.top).toMatch(/Needs you/);
+    expect(formatWorkPlan(plan)).toContain(`Dashboard: Work day Mon Oct 26 (local page: ${plan.dashboard.localPath})`);
   });
 });
 

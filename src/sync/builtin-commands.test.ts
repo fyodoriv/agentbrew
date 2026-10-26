@@ -288,6 +288,9 @@ describe("the /work built-in command (#440)", () => {
     expect(text).toMatch(/`dashboard`/);
     expect(text).toMatch(/same URL all day/);
     expect(text).toMatch(/Needs you/);
-    expect(text).toMatch(/Today \/ Tomorrow report.*dashboard/s);
+    expect(text).toMatch(/`endOfDay`:[^\n]*Link the day's dashboard/);
+    // Reuse today's page instead of publishing a second one.
+    expect(text).toMatch(/title.*update it in place/i);
+    expect(text).toMatch(/self-contained HTML/);
   });
 });

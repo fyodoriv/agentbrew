@@ -16,7 +16,8 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
 - `questions`: save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.
 - `watch`: after the last step, keep watching. Re-run a step when its input changes (a new issue, a red check, a new review). Print one line per update. Do not repeat a line that did not change.
 - `dashboard`: one page for the whole day.
-  - Before the first step, create it or reuse today's page: an Artifact titled `dashboard.title`, or the local HTML page at `dashboard.localPath` when you have no Artifact tool.
+  - Before the first step, reuse today's page or create it. With an Artifact tool, list your Artifacts; if one is titled `dashboard.title`, update it in place, otherwise publish a new one with that title. With no Artifact tool, write one self-contained HTML file at `dashboard.localPath` (create its folder first) and rewrite that same file on each update.
+  - Rows start as `waiting`. Write dates as "Mon Oct 26", never ISO.
   - Publish one row per step from `dashboard.rows`: step, status (`done`, `running`, `waiting`, `blocked`, or `failed`), a one-line summary, needs-you text, and a link.
   - Update a row each time its step changes. Keep the same URL all day.
   - The top of the page shows done, running, and needs-you counts, then a "Needs you" list. Put the saved questions (see `questions`) there too.

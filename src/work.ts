@@ -101,7 +101,7 @@ function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string)
     rows: steps.map((s) => ({ step: s.step, status: "waiting", summary: "", needsYou: "", link: "" })),
     top: 'Counts of done, running, and needs-you steps, then a "Needs you" list with every needsYou text and the saved questions.',
     publish:
-      "Publish one page for the day: an Artifact with this title, or the local HTML page at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
+      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
     localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
   };
 }

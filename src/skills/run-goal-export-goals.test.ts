@@ -23,7 +23,7 @@ function fixture(): { home: string; state: string; out: string } {
   mkdirSync(join(home, ".config", "oss-readiness"), { recursive: true });
   writeFileSync(
     join(home, ".config", "oss-readiness", "oss-readiness.env"),
-    "OSS_READINESS_INTERNAL_PATTERN='acme[[:space:]]corp|secretproj'\n",
+    "OSS_READINESS_INTERNAL_PATTERN='acme[[:space:]]corp|secret[[:alpha:]]+proj'\n",
   );
   writeFileSync(
     join(state, "aaaaaaaa-1111.contract.md"),
@@ -48,10 +48,13 @@ function fixture(): { home: string; state: string; out: string } {
       "Goal result: partly met (2/3 met)",
       "",
       "## What went wrong",
-      "- secretproj gate timed out; mail me at owner@example.com; see /Volumes/Ext/x and /mnt/data/y",
+      "- secretxproj gate timed out; mail me at owner@example.com; see /Volumes/Ext/x and /mnt/data/y",
       `- edited ${TOOLING_PATH} with api_key=${HEX_KEY}, token=tok.short.v and Bearer abc.def; raw ${HEX_KEY}`,
       "- not a result: the Goal result: met line must start the line",
       "  - nested detail is not an item",
+      `- hosts build01.corp.example.net, https://wiki.int.lan/page, 10.2.3.4 and 192.168.1.9`,
+      "- paths /srv/jdoe/z, /root/q, /usr/local/home/jdoe/w and C:\\Users\\jdoe\\x",
+      "- short sk-abc123 and ghp_shortTok1; the password is hunter2, passwd hunter3",
       "## Skills updated",
       "- run-goal: eval — https://github.com/fyodoriv/agentbrew/pull/12",
       "- watch-issues: fix — https://github.com/fyodoriv/agentbrew/pull/12 and https://github.com/fyodoriv/agentbrew/pull/13",
@@ -85,11 +88,11 @@ describe("run-goal export-goals.py", () => {
 
   it("exits 0 and reads the default state folder under HOME", () => {
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).toContain("goals=3 retro_items=7");
+    expect(r.stdout).toContain("goals=3 retro_items=10");
   });
 
   it("writes one goal row with counts, status, and distinct PR URLs", () => {
-    expect(byId.aaaaaaaa).toMatchObject({ criteria: 3, met: 2, status: "partly met", prs: 4, retro_items: 6 });
+    expect(byId.aaaaaaaa).toMatchObject({ criteria: 3, met: 2, status: "partly met", prs: 4, retro_items: 9 });
     expect(byId.bbbbbbbb).toMatchObject({ criteria: 1, met: null, status: "open", prs: 0, title: "tidy docs" });
     expect(byId.cccccccc).toMatchObject({ status: "done", title: "", retro_items: 1 });
     expect(byId.aaaaaaaa.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -98,6 +101,9 @@ describe("run-goal export-goals.py", () => {
   it("keeps titles to 80 characters and categories as headings", () => {
     expect(byId.aaaaaaaa.title.length).toBeLessThanOrEqual(80);
     expect(items.map((i: { category: string }) => i.category)).toEqual([
+      "what went wrong",
+      "what went wrong",
+      "what went wrong",
       "what went wrong",
       "what went wrong",
       "what went wrong",
@@ -113,7 +119,7 @@ describe("run-goal export-goals.py", () => {
     .join("\n");
 
   it("replaces private-pattern matches (grep -iE) with [private]", () => {
-    expect(all).not.toMatch(/acme\s?corp|secretproj/i);
+    expect(all).not.toMatch(/acme\s?corp|secretxproj/i);
     expect(all).toContain("[private]");
   });
 
@@ -140,6 +146,20 @@ describe("run-goal export-goals.py", () => {
 
   it("scrubs /Volumes and /mnt paths", () => {
     expect(all).not.toMatch(/\/Volumes\/|\/mnt\//);
+  });
+
+  it("replaces private hosts, intranet URLs, and RFC1918 IPs with [host]", () => {
+    expect(all).not.toMatch(/build01|corp\.example\.net|wiki\.int\.lan|10\.2\.3\.4|192\.168\.1\.9/);
+    expect(all).toContain("[host]");
+    expect(all).toContain("https://github.com/fyodoriv/agentbrew/pull/12");
+  });
+
+  it("scrubs /srv, /root, /usr/local/home, and Windows user paths", () => {
+    expect(all).not.toMatch(/\/srv\/|\/root\/|\/usr\/local\/home|jdoe/);
+  });
+
+  it("redacts short sk-/ghp_ tokens and spoken passwords", () => {
+    expect(all).not.toMatch(/sk-abc123|ghp_shortTok1|hunter2|hunter3/);
   });
 
   it("scrubs emails", () => {

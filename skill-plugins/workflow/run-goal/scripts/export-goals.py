@@ -10,7 +10,7 @@ output folder:
 - manifest.json: one entry per dataset, for the Goals dashboard.
 
 It only reads its inputs. Titles and retro lines are scrubbed: home folders
-become ~, private-pattern matches, secrets, emails, and paths outside
+become ~, private-pattern matches, secrets, emails, private hosts and IPs, and paths outside
 ~/apps/tooling become placeholders. It fails closed: without the
 oss-readiness pattern, or when any output line still matches it (checked
 with `grep -icE`, as the leak gates do), it writes nothing and exits 2.
@@ -40,7 +40,7 @@ RESULT = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 TOKEN = re.compile(
-    r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}"
+    r"\b(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]+"
     r"|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})\b"
     r"|[A-Fa-f0-9]{32,}|[A-Za-z0-9+/_=-]{32,}"
 )
@@ -49,9 +49,16 @@ KEY_VALUE = re.compile(
     r"|\b(Bearer|Basic)\s+[^\s,;]+",
     re.IGNORECASE,
 )
+SPOKEN_SECRET = re.compile(r"\b(password|passwd|secret)s?\s+(?:is\s+|was\s+)?(?![=:\[])[^\s,;]+", re.IGNORECASE)
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-HOME_DIR = re.compile(r"/(?:Users|home)/[^/\s]+")
-PATH = re.compile(r"(?:~|/private|/tmp|/var|/opt|/etc|/Volumes|/mnt)(?:/[^\s`'\")\]]*)?")
+HOME_DIR = re.compile(r"/(?:Users|home|usr/local/home)/[^/\s]+|[A-Za-z]:\\Users\\[^\\\s]+")
+URL = re.compile(r"\bhttps?://([^/\s`'\")\]]+)[^\s`'\")\]]*")
+PRIVATE_HOST = re.compile(
+    r"\b(?:[\w-]+\.)+(?:internal|lan|local|intranet|corp)\b|\b(?:[\w-]+\.)*corp\.[\w.-]+"
+    r"|\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b",
+    re.IGNORECASE,
+)
+PATH = re.compile(r"(?:~|/private|/tmp|/var|/opt|/etc|/Volumes|/mnt|/srv|/root)(?:/[^\s`'\")\]]*)?")
 TOOLING = re.compile(r"^~/apps/tooling(?:/|$)")
 ENV_REL = Path(".config") / "oss-readiness" / "oss-readiness.env"
 
@@ -96,7 +103,10 @@ def clean(text: str) -> str:
     """Scrub everything except the private pattern (applied after, with grep)."""
     text = " ".join(text.split())
     text = HOME_DIR.sub("~", text)
+    text = URL.sub(lambda m: m.group(0) if m.group(1).lower() in ("github.com", "www.github.com") else "[host]", text)
+    text = PRIVATE_HOST.sub("[host]", text)
     text = KEY_VALUE.sub(lambda m: (m.group(1) + m.group(2) if m.group(1) else m.group(3) + " ") + "[redacted]", text)
+    text = SPOKEN_SECRET.sub(lambda m: m.group(1) + " [redacted]", text)
     text = EMAIL.sub("[email]", text)
     text = PATH.sub(lambda m: m.group(0) if TOOLING.match(m.group(0)) else "[path]", text)
     text = TOKEN.sub("[redacted]", text)

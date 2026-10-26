@@ -32,11 +32,15 @@ such as `[[:space:]]`). A missing env file, an empty pattern, or any output
 line that still matches (`grep -icE`) makes it exit 2 and write nothing.
 Titles and retro lines are scrubbed:
 
-- `/Users/<name>` and `/home/<name>` become `~`;
+- `/Users/<name>`, `/home/<name>`, `/usr/local/home/<name>`, and
+  `C:\Users\<name>` become `~`;
 - pattern matches become `[private]`;
 - secrets become `[redacted]`: known token shapes, hex or base64 runs of 32+
   characters, and values after `key=`, `token=`, `secret=`, `password=`,
-  `Bearer`, and the like;
+  `Bearer`, and the like, plus `password is <x>`; `ghp_` and `sk-` tokens of
+  any length;
+- non-GitHub URLs, `*.internal`/`*.lan`/`*.corp.*` names, and private
+  (RFC 1918) IPs become `[host]`;
 - emails become `[email]`;
 - paths outside `~/apps/tooling` (including `/Volumes`, `/mnt`, `/tmp`)
   become `[path]`.

@@ -843,48 +843,12 @@ publish surface passes the strict no-internal-refs scrub:
 scripts/validate-public-release.sh
 ```
 
-### Learn-a-project workflow (tutor me, then quiz me)
+### Learning a project
 
-**Full user guide:** [`docs/learn-project.md`](docs/learn-project.md) — prerequisites, quick starts, six source types, StudyVault layout, pedagogy, troubleshooting.
-
-The `learn-project` skill is a single entrypoint that teaches you a project and then quizzes you. Say "tutor me on X" / "teach me this project" in Claude Code and it will: ensure the upstream teach + quiz skills are installed, detect where prep left off (resumable), ask for any missing inputs, gather sources, stage them, build a grounded StudyVault, verify + teach, then run an adaptive quiz.
-
-It pulls **six source types** into one grounded StudyVault: local folders/repos, remote enterprise repos + PRs/issues (GitHub MCP), Google Docs incl. all tabs (Drive MCP), Jira issues/epics/initiatives (Jira MCP), loose files (PDF/MD/…), and web pages.
-
-**Pedagogy built into the orchestrator** (agentbrew-owned; see `skill-plugins/dev/learn-project/SKILL.md`):
-
-- **Source freshness** — `stage-learn-sources` v3 hashes each input; re-runs skip unchanged sources (`manifest.freshness.changed` / `unchanged`).
-- **Mermaid maps** — concept map per section + architecture diagram after tutor-setup.
-- **Verification gate** — re-answer each question from vault notes only before quizzing (CoVe / RAGAS-faithfulness).
-- **Teach before test** — concise learning brief before the quiz.
-- **Mastery tracking** — per-section coverage %, weakest-first + big-picture-first selection; threshold before 🟢; retention re-test; interleave mode.
-- **Applied tasks** — locate-owner / where-to-add / trace-the-bug / blast-radius on staged repos.
-
-Install the upstream teach + quiz pair (the skill also does this automatically):
-
-```bash
-agentbrew install tutor-setup --from bevibing/tutor-skills
-agentbrew install tutor --from bevibing/tutor-skills
-```
-
-The deterministic staging step is [`scripts/stage-learn-sources.ts`](scripts/stage-learn-sources.ts) (manifest **version 3**):
-
-```bash
-npm run stage-learn-sources -- ./.learn-project \
-  --local ~/apps/tooling/agentbrew \
-  --repo https://ghe.example.com/owner/enterprise-repo.git \
-  --doc "Design Doc:./.learn-project/inputs/docs/design-doc.md" \
-  --file "Spec PDF:./.learn-project/inputs/files/spec.pdf" \
-  --web "https://example.com/guide:./.learn-project/inputs/web/guide.md" \
-  --context "PR-814:./.learn-project/inputs/context/pr-814.md" \
-  --context "PROJ-123:./.learn-project/inputs/context/proj-123.md"
-```
-
-Read `./.learn-project/manifest.json` for `tutorSetupMode`, `tutorSetupCwd`, and `freshness`, then run `/tutor-setup` and `/tutor` from that directory.
-
-learn-project adds a pedagogy layer on top of tutor-setup and tutor: question verification with misconception-tagged distractors, open recall graded by a rubric, a Bloom ladder, confidence calibration, and a Learning Path with cited prerequisites. See [`skill-plugins/dev/learn-project/references/pedagogy.md`](skill-plugins/dev/learn-project/references/pedagogy.md).
-
-Canonical upstream: [`bevibing/tutor-skills`](https://github.com/bevibing/tutor-skills) (`RoundTable02/tutor-skills` redirects there).
+Learning a project moved to careerbrew, which keeps study state across days:
+spaced reviews, retests, and mastery per section. Use its `learn-project` skill
+or the `/careerbrew-learn` command. agentbrew still lists the upstream
+`tutor-setup` and `tutor` skills in its catalog.
 
 ### Publishing to npm
 

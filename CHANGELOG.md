@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
+### Removed
+
+- The `learn-project` skill, its `stage-learn-sources` script, and its guide
+  moved to careerbrew, which keeps study state across days (spaced reviews,
+  retests, mastery). A guard test keeps them out of agentbrew.
+
 ### Added
 
 - `agentbrew setup --all` runs the multi-repo setup chain (#442 part 4):

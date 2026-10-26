@@ -34,7 +34,6 @@
     "docs:competition": "tsx scripts/sync-competition-docs.ts",
     "docs:agent-matrix": "tsx scripts/sync-agent-matrix.ts",
     "docs:verify-claims": "tsx scripts/verify-competition-claims.ts",
-    "stage-learn-sources": "tsx scripts/stage-learn-sources.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh",
     "lint:changed": "bash scripts/lint-changed.sh",

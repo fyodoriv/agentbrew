@@ -234,7 +234,7 @@ skills:
     description: >
       Generate an Obsidian StudyVault from documents or a codebase — verified source
       mapping, concept notes, practice questions, and self-review. Use before /tutor.
-      Don't use for multi-source combos without staging (use learn-project).
+      Don't use for learning a project across days (use careerbrew's learn-project skill).
     source: bevibing/tutor-skills
     category: productivity
     recommended: false
@@ -245,16 +245,6 @@ skills:
       Diagnostic, drill-weak, and hard-mode sessions with progress tracking. Don't use
       without an existing StudyVault (run tutor-setup first).
     source: bevibing/tutor-skills
-    category: productivity
-    recommended: false
-
-  - name: learn-project
-    description: >
-      One-command "tutor me on X": gather local/remote repos, PRs/issues, Google Docs,
-      loose files, and web pages into one grounded StudyVault, then chain tutor-setup
-      (teach) and tutor (quiz). Stage-aware and interactive — resumes prep and asks for
-      missing inputs. Don't use for a trivial single README (run tutor-setup directly).
-    source: built-in
     category: productivity
     recommended: false
 

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import { logSkipped } from "../core/logger.js";
-import { lintCounts, validateConfig } from "../lint.js";
+import { lintCounts, silentLintCounts } from "../lint.js";
 import { CONTEXT_BUDGET_LATEST_PATH, CONTEXT_BUDGET_METRICS_DIR, SHARED_RULES_PATH } from "../paths.js";
 import { pruneOldMetrics } from "../plugins/leak-audit.js";
 import { DEPLOYED_RULES_FILE_CHAR_BUDGET, findSharedRulesBloat, projectedDeployedRulesSize } from "../rules-hygiene.js";
@@ -137,23 +137,9 @@ function countUniqueSkills(status: ReturnType<typeof collectStatusData>): number
 }
 
 function runLintCheck(quiet: boolean): { passed: boolean; errors: number; warnings: number } {
-  if (quiet) {
-    const validation = validateConfig();
-    const shared = readSharedRulesContent();
-    let extraErrors = 0;
-    if (shared) {
-      const deployRules = compressSkillsListing(shared.content);
-      const projected = projectedDeployedRulesSize(readInstructionsContent(), deployRules);
-      if (projected > DEPLOYED_RULES_FILE_CHAR_BUDGET) extraErrors++;
-      extraErrors += findSharedRulesBloat(shared.content).filter((f) => f.kind !== "section-budget").length;
-    }
-    const errors = validation.errors + extraErrors;
-    return { passed: errors === 0, errors, warnings: validation.warnings };
-  }
-
-  // The counts agentbrew lint printed: validateConfig skips checks such as
-  // command size, so its counts could read 0 while lint failed (#461).
-  const counts = lintCounts();
+  // Both paths use every agentbrew lint check: validateConfig skips checks such
+  // as command size, so its counts could read 0 while lint failed (#461).
+  const counts = quiet ? silentLintCounts() : lintCounts();
   return { passed: counts.errors === 0, errors: counts.errors, warnings: counts.warnings };
 }
 

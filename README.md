@@ -734,6 +734,8 @@ agentbrew setup --all [--yes] [--dry-run] [--force] [--dir <dir>]
                                        keeps going after a failure, lists failures.
                                        Reuses a checkout found on PATH or under
                                        --dir (default ~/apps, depth 2) before cloning
+                                       Done steps: ~/.local/state/agentbrew/setup-all.json
+                                       (delete it or pass --force to rerun all)
 
 agentbrew plugin <subcommand>          Manage signed company plugins
 agentbrew hook install --shell         Install shell hook for project detection

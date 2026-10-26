@@ -104,9 +104,9 @@ So:
    Before a write to a live store (migration, sync, move), list the target
    read-only and compare it with the goal's stated state. A mismatch changes
    the plan, not the facts: 20 "unmoved" items were already in the list.
-7. Check each tool path a criterion relies on: a Send needs its connector
-   or token, a Save an endpoint that stores the edit. Read the config or
-   endpoint, not the button label.
+7. Check each tool path a criterion needs in its config, not its label (a Send
+   needs a connector or token, a Save an endpoint). To rate a tool, check it runs
+   here and find its usage data; with none, rate only the design.
 8. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions share the account),
    drafts included, and unmerged branches and worktrees (`wrap-up`'s

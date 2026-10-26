@@ -1682,6 +1682,28 @@
         "Re-reads the thread right before drafting the reply",
         "Saves the reply as a draft and does not send it"
       ]
+    },
+    {
+      "id": 145,
+      "prompt": "/goal rewrite the two-app preview POC from scratch: the host page passes a preview to the widget app, which caches by an id the host sends",
+      "expected_output": "The agent pushes the old PR head to a -v1 branch first, keys the widget cache on the inputs the built content came from (not the live setting), adds a regression test that switching a setting never shows the old content under the new id, and does a live check before claiming done.",
+      "expectations": [
+        "Pushes the old head to a -v1 branch and links it",
+        "Derives the cache id from the built result's inputs, not the live input",
+        "Adds a regression test for old content under a new id",
+        "Runs a live check before claiming done"
+      ]
+    },
+    {
+      "id": 146,
+      "prompt": "/goal teach me this project and check I understood before tomorrow's meeting",
+      "expected_output": "The agent asks the understanding checks in plain chat text with inline H/M/L confidence, says it is waiting on the answers, does the retro and skill updates meanwhile, and does not claim the goal is met before grading.",
+      "expectations": [
+        "Asks the quiz in plain chat text, not the question picker",
+        "Asks for inline H/M/L confidence",
+        "Does retro and skill updates while waiting",
+        "Does not claim the goal is met before the answers are graded"
+      ]
     }
   ]
 }

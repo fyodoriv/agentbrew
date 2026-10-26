@@ -176,10 +176,10 @@ docs, memory, or a quick experiment can answer.
 - When the user answers with a free-text message instead of the options,
   treat it as the answer. Add each new request in it as a done-criterion,
   and do not re-ask the questions it skipped.
-- When the goal asks you to check the user's understanding, ask in plain
-  chat text, not the question picker. When the user re-issues the goal as
-  "finish", ship the rest without waiting, and grade the answers when they
-  come.
+- To check the user's understanding, ask in plain chat text (not the picker,
+  even if a tutor skill says so), with H/M/L confidence typed inline. While
+  you wait, say so, do the retro work, and never claim "met". On "finish",
+  ship the rest and grade the answers when they come.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 

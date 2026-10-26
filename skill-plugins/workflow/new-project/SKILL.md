@@ -135,6 +135,7 @@ fallback in `scaffold.sh` reads the same names.
 - Never write the user's personal data into templates, tests, evals, or commits.
 - Never name another private project of the user's in a public repo.
 - Keep `AGENTS.md` under 10,000 bytes. Move detail into `docs/` and link it.
+  `scripts/check-docs.sh` (the fast gate and pre-commit) fails at the limit.
 - Prefer a maintained tool to new code. The stack generators own the manifests.
 
 ## Gotchas

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lint.js", () => ({
   lint: vi.fn().mockReturnValue(true),
   lintCounts: vi.fn().mockReturnValue({ errors: 0, warnings: 0 }),
+  silentLintCounts: vi.fn().mockReturnValue({ errors: 0, warnings: 0 }),
   validateConfig: vi.fn().mockReturnValue({ errors: 0, warnings: 0, details: [] }),
 }));
 
@@ -108,5 +109,20 @@ describe("lint-failed alert counts (#461)", () => {
     expect(snapshot.static.lintPassed).toBe(false);
     expect(snapshot.static.lintErrors).toBe(6);
     expect(snapshot.static.lintWarnings).toBe(24);
+  });
+});
+
+describe("quiet snapshot lint counts (measure-quiet-lint-counts)", () => {
+  it("uses every agentbrew lint check in quiet mode, not validateConfig alone", async () => {
+    const lintModule = await import("../lint.js");
+    // A command-size error and 12 warnings that validateConfig does not see.
+    vi.mocked(lintModule.silentLintCounts).mockReturnValue({ errors: 1, warnings: 12 });
+    vi.mocked(lintModule.validateConfig).mockReturnValue({ errors: 0, warnings: 0, details: [] });
+
+    const snapshot = buildContextBudgetSnapshot({ skipCcusage: true, quiet: true });
+
+    expect(snapshot.static.lintPassed).toBe(false);
+    expect(snapshot.static.lintErrors).toBe(1);
+    expect(snapshot.static.lintWarnings).toBe(12);
   });
 });

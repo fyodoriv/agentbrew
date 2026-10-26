@@ -1462,6 +1462,19 @@
         "Creates the private repo only after approval and cites its visibility and URL",
         "Reads a gate's exit code directly, never through a pipe"
       ]
+    },
+    {
+      "id": 127,
+      "prompt": "/goal Build an ugly but working proof of concept so I can see widget X from app B running inside app A. Update the design doc with findings and answer questions Q1-Q4. End with draft PRs with screenshots and leave the app open with test steps.",
+      "expected_output": "The agent prints the goal contract first and asks one question round, about the data source (a live backend or simulated data). It proves the riskiest integration first: app A loads widget X from app B's local dev server, tested from the page itself, before any polish. Each draft PR embeds screenshots that load. Each answer to Q1-Q4 is in the design doc under its own heading, checked on the rendered page. The final message names the open browser tab and gives numbered test steps.",
+      "expectations": [
+        "Prints the goal contract first",
+        "Asks at most one question round (for example: live backend or simulated data)",
+        "Proves the riskiest integration first: the cross-app load, tested from the page, before any polish",
+        "Each draft PR has embedded images that load",
+        "Each answer to Q1-Q4 is in the doc under its own heading, checked on the rendered page",
+        "The final message names the open browser tab and gives numbered test steps"
+      ]
     }
   ]
 }

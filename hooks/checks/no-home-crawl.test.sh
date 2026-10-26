@@ -123,6 +123,9 @@ tool_check "Glob ** at Library" 2 Glob "$H/Library" "**/*.plist"
 tool_check "Glob shallow at HOME" 0 Glob "$H" "*.md"
 tool_check "Glob ** in repo" 0 Glob "$REPO" "**/*.ts"
 
+# macOS /bin/bash 3.2 must parse the hook (a quote inside a $( heredoc broke it).
+if /bin/bash -n "$SCRIPT" 2>/dev/null; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("/bin/bash -n rejects the hook"); fi
+
 # Non-Bash tool
 NONBASH=$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/tmp/x","content":"rg x ~"}}' | bash "$SCRIPT" 2>/dev/null; echo $?)
 if [ "$(echo "$NONBASH" | tail -1)" = "0" ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("non-Bash tool: expected 0"); fi

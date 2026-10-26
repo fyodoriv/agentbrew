@@ -275,6 +275,12 @@ export interface MemoryConfig {
 export interface WorkStepEntry {
   step: string;
   agentfile: string;
+  /** What the step changes (repos, folders, services). No scope: the step runs alone (#509). */
+  scope?: string[];
+  /** Steps that must finish before this one starts (#509). */
+  after?: string[];
+  /** A live feed or watcher: it starts after every other step (#509). */
+  longRunning?: boolean;
 }
 
 export interface AgentBrewState {

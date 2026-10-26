@@ -543,6 +543,12 @@ skills:
     category: workflow
     recommended: false
 
+  - name: sourced-calculations
+    description: "Makes every computed number traceable: inputs from the user's data, the user, or a named benchmark; the calculation as a chain; and an assumptions table."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
   - name: review-pr
     description: "Review a GitHub PR: a fresh run folder per review, a correctness pass plus team checklists, a verify pass that drops unproven findings, re-review, CI triage, and a draft posted only on the user's yes. Don't use for your own work before merge (use requesting-code-review)."
     source: fyodoriv/agentbrew

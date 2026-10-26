@@ -96,6 +96,18 @@
         "Files one consolidated follow-up task or report with exact suggested commands for the worker or user to execute later",
         "Preserves dirty cache/source-repo content and never edits agentbrew-managed skill mirrors directly"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "audit the skill catalog for quality, not just duplicates",
+      "expected_output": "The agent inventories the skills read-only, then reviews each against references/quality-standards.md. It flags skills whose description is not third person, has no 'Use when' trigger, or summarizes the workflow; bodies over 500 lines or with @ imports; side-effect skills without disable-model-invocation; and the same instruction living in a skill and in the always-loaded rules. Each finding names the exact fix. It files one consolidated task and installs or edits nothing.",
+      "expectations": [
+        "Reviews each skill against the quality standards reference",
+        "Flags descriptions that lack a 'Use when' trigger or summarize the workflow",
+        "Flags a side-effect skill without disable-model-invocation",
+        "Flags the same instruction duplicated across a skill and the rules, naming one home",
+        "Proposes fixes in one task and edits no skill directly"
+      ]
     }
   ]
 }

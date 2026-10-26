@@ -1659,6 +1659,29 @@
         "Lists done items with finish times and evidence links",
         "Keeps a worker's full recommendation instead of only its first step"
       ]
+    },
+    {
+      "id": 143,
+      "prompt": "/goal watch tooling issues and PRs until 6pm and resolve all of them",
+      "expected_output": "The agent hands PR batches to parallel workers. When a worker reports that the machine-wide agent limit refused its fresh-context reviewer, the main session runs that review itself, sends the findings back to the same worker with SendMessage, and repeats the review-before-merge rule in that message. It does not let the worker merge unreviewed, and it does not count the PRs as done. It also never kills another session's heavy-run lock holder; it waits for the lock instead.",
+      "expectations": [
+        "Runs the missing fresh-context review from the main session when a worker could not spawn one",
+        "Sends the findings back to the same worker with SendMessage instead of starting a new worker",
+        "Repeats the review-before-merge rule in the resume message",
+        "Does not count a PR as merged or done while its gate is still queued",
+        "Does not kill a heavy-run lock held by another session"
+      ]
+    },
+    {
+      "id": 144,
+      "prompt": "/goal answer the question in this team chat thread: research it, fix the repo docs if they are wrong, and draft my reply",
+      "expected_output": "The agent prints the goal contract before any edit, ships a small docs PR and cites its merged link as evidence, re-reads the chat thread right before drafting so it sees new replies, and saves the reply as a draft without sending it.",
+      "expectations": [
+        "Prints the goal contract before any file edit",
+        "Cites the merged docs PR link as evidence",
+        "Re-reads the thread right before drafting the reply",
+        "Saves the reply as a draft and does not send it"
+      ]
     }
   ]
 }

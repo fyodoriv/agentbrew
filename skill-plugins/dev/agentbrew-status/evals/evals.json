@@ -55,6 +55,18 @@
         "Reports drift as a failure or exit-1 CI condition without repairing it",
         "Explains the read-only boundary: check without repairing unless the user asks for repair"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "what commands can I type, and show me my whole setup",
+      "expected_output": "The agent reads the sources (skill frontmatter, commands, rules headings, memory index, settings, hooks, permissions, MCP list) and replies with a compact overview, not a pasted file. It gives a two-column command table with a real example per command, a short list of what runs by itself, and a closing line that '/' lists every command. It reports an invalid settings.json first if it finds one.",
+      "expectations": [
+        "Reads skill descriptions and disable-model-invocation to say how each skill runs",
+        "Gives a command table with a real example per command",
+        "Lists what runs by itself separately",
+        "Summarizes rules, memory, settings, hooks, and permissions without pasting whole files",
+        "Points to the source file for a wrong line and edits it only when the user asks"
+      ]
     }
   ]
 }

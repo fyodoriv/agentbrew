@@ -34,7 +34,7 @@ third-party equivalent in the current source inventory:
 `companion-docs-sync`, `companion-researcher`, `companion-skill-curate`,
 `companion-task-groom`, `companion-test-gaps`, `git-diagnose-codebase`,
 `grind`, `grind-report`, `handoff`, `markdown-for-gdoc`, `perf-review`, `project-audit`,
-`report-upstream`, `rfc`, `run-goal`, `strategic-review`, `sweep`, `task-command-center`,
+`report-upstream`, `rfc`, `run-goal`, `sourced-calculations`, `strategic-review`, `sweep`, `task-command-center`,
 `to-issues`, `ubiquitous-language`, `watch-issues`, and `wrap-up`.
 
 ## Built on third-party audits

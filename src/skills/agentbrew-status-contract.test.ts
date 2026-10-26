@@ -110,7 +110,7 @@ describe("agentbrew-status skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-status");
-    expect(evals.evals).toHaveLength(5);
+    expect(evals.evals).toHaveLength(6);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {
@@ -121,6 +121,15 @@ describe("agentbrew-status skill contract", () => {
         `eval ${skillEval.id} expectations`,
       ).toBeGreaterThanOrEqual(4);
     }
+  });
+
+  it("routes setup-overview and command-list requests to the reference", () => {
+    requireTerms(skillText, ["show my setup", "what commands can I type", "references/setup-overview.md"]);
+    requireTerms(expectationText(evalMatching(/what commands can I type/i)), [
+      /real example per command/i,
+      /runs by itself/i,
+      /points to the source file/i,
+    ]);
   });
 
   it("covers health, deployed-skills, drift-diagnosis, no-green, and read-only evals", () => {

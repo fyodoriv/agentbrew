@@ -66,8 +66,8 @@ export interface Agentfile {
    *  hooks, agents, instructions) skips them. Filesystem dirs are NOT deleted;
    *  the exclusion is purely a sync-time filter. */
   excludeAgents?: string[];
-  /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). */
-  workSteps?: string[];
+  /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). An object entry adds `scope`, `after`, and `longRunning` (#509). */
+  workSteps?: AgentfileWorkStep[];
   /** Default model id to deploy to every detected agent that declares a
    *  `modelConfig` surface in agents.yaml (claude-code, codex today).
    *  Absent means model sync is off. */
@@ -163,13 +163,55 @@ function parseAgentfileMemoryFields(raw: Record<string, unknown>): Pick<Agentfil
   return { memory, memoryPacks };
 }
 
-/** Parse an Agentfile YAML string into a typed structure. */
-/** `workSteps:` entries: trimmed, non-empty strings only. */
-function parseWorkSteps(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+/** One `workSteps:` entry: a slash command, or an object with `step` and run-order fields (#509). */
+export type AgentfileWorkStep = string | { step: string; scope?: string[]; after?: string[]; longRunning?: boolean };
+
+/** A string or a list of strings, trimmed, empties dropped. */
+function stringList(value: unknown): string[] | undefined {
+  const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
+  const out = items.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+  return out.length > 0 ? out : undefined;
 }
 
+function parseWorkStep(entry: unknown): AgentfileWorkStep | undefined {
+  if (typeof entry === "string") return entry.trim() || undefined;
+  if (!entry || typeof entry !== "object") return undefined;
+  const raw = entry as Record<string, unknown>;
+  const step = typeof raw.step === "string" ? raw.step.trim() : "";
+  if (!step) return undefined;
+  const scope = stringList(raw.scope);
+  const after = stringList(raw.after)?.map((name) => (name.startsWith("/") ? name : `/${name}`));
+  return {
+    step,
+    ...(scope ? { scope } : {}),
+    ...(after ? { after } : {}),
+    ...(raw.longRunning === true ? { longRunning: true } : {}),
+  };
+}
+
+/** `workSteps:` entries: non-empty strings or `{ step, scope?, after?, longRunning? }` objects. */
+function parseWorkSteps(value: unknown): AgentfileWorkStep[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map(parseWorkStep).filter((x): x is AgentfileWorkStep => x !== undefined);
+}
+
+/** Merge `workSteps:` across Agentfiles: a repeated step keeps its place and takes the later entry. */
+function mergeWorkStepEntries(
+  current: AgentfileWorkStep[] | undefined,
+  incoming: AgentfileWorkStep[] | undefined,
+): AgentfileWorkStep[] | undefined {
+  if (!incoming?.length) return current;
+  const result = current ? [...current] : [];
+  const name = (x: AgentfileWorkStep) => (typeof x === "string" ? x : x.step);
+  for (const item of incoming) {
+    const at = result.findIndex((x) => name(x) === name(item));
+    if (at === -1) result.push(item);
+    else result[at] = item;
+  }
+  return result;
+}
+
+/** Parse an Agentfile YAML string into a typed structure. */
 export function parseAgentfile(content: string): Agentfile {
   const raw = yaml.load(content) as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") return {};
@@ -449,7 +491,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
       normalizeSourceDirEntry(value, baseDir),
     );
     merged.excludeAgents = mergeStringEntries(merged.excludeAgents, agentfile.excludeAgents);
-    merged.workSteps = mergeStringEntries(merged.workSteps, agentfile.workSteps);
+    merged.workSteps = mergeWorkStepEntries(merged.workSteps, agentfile.workSteps);
     merged.hooks = mergeHookEntries(merged.hooks, agentfile.hooks);
     merged.rules = mergeRules(merged.rules, agentfile.rules, baseDir);
     if (agentfile.recommended) merged.recommended = true;

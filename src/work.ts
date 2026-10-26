@@ -9,12 +9,14 @@
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
+import type { AgentfileWorkStep } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
-import { expandHome } from "./utils.js";
+import { expandHome, resolveStateHome } from "./utils.js";
 
 /** Built-in first steps: agentbrew's own state check. */
 export const DEFAULT_WORK_STEPS = ["/agentbrew"];
@@ -30,21 +32,92 @@ export interface WorkPlan {
    * `userOnly`: the skill sets `disable-model-invocation: true`, so the
    * agent's Skill tool hides it; `/work` reads `path` and follows it (#451).
    */
-  steps: Array<{ step: string; from: string; path: string | null; userOnly: boolean }>;
+  steps: Array<{
+    step: string;
+    from: string;
+    path: string | null;
+    userOnly: boolean;
+    /** What the step changes; empty means unknown, so the step runs alone (#509). */
+    scope: string[];
+    /** Steps that must finish first (#509). */
+    after: string[];
+    /** A live feed or watcher: it starts last (#509). */
+    longRunning: boolean;
+  }>;
+  /**
+   * Run order (#509): each inner list runs in parallel, one subagent per
+   * step; the next stage starts when the whole stage is done.
+   */
+  stages: string[][];
+  /** How to run the steps: back to back, no "continue?" stop between them (#508). */
+  flow: string;
+  /** The only reasons to stop and wait for the user mid-run (#508). */
+  stopOnlyFor: string[];
+  /** What to do with every other question: save it, ask all at the end (#508). */
+  questions: string;
   watch: string;
   endOfDay: string[];
+  /** The day's live dashboard (#510): one row per step, updated on every step change. */
+  dashboard: WorkDashboard;
+}
+
+/** Step status on the dashboard (#510). */
+export const WORK_STATUSES = ["done", "running", "waiting", "blocked", "failed"] as const;
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+
+export interface WorkDashboardRow {
+  step: string;
+  status: WorkStatus;
+  /** One line: what the step did or found. */
+  summary: string;
+  /** What the step needs from the user; empty when nothing. */
+  needsYou: string;
+  /** A PR, report, or page for the step; empty when none. */
+  link: string;
+}
+
+export interface WorkDashboard {
+  title: string;
+  statuses: readonly WorkStatus[];
+  /** Starting rows: every step waiting. */
+  rows: WorkDashboardRow[];
+  /** What the top of the page shows. */
+  top: string;
+  /** Where to publish and how to keep it current. */
+  publish: string;
+  /** The local HTML page, for an agent with no Artifact tool. */
+  localPath: string;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string): WorkDashboard {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return {
+    title: `Work day ${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`,
+    statuses: WORK_STATUSES,
+    rows: steps.map((s) => ({ step: s.step, status: "waiting", summary: "", needsYou: "", link: "" })),
+    top: 'Counts of done, running, and needs-you steps, then a "Needs you" list with every needsYou text and the saved questions.',
+    publish:
+      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
+    localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
+  };
 }
 
 /** Replace the steps one Agentfile declares, keeping their place in the list. */
 export function mergeWorkSteps(
   existing: WorkStepEntry[] | undefined,
   agentfile: string,
-  declared: string[],
+  declared: AgentfileWorkStep[],
 ): WorkStepEntry[] {
   const current = existing ?? [];
   const at = current.findIndex((entry) => entry.agentfile === agentfile);
   const others = current.filter((entry) => entry.agentfile !== agentfile);
-  const mine = declared.map((step) => ({ step, agentfile }));
+  const mine = declared.map((entry) =>
+    typeof entry === "string" ? { step: entry, agentfile } : { ...entry, agentfile, step: entry.step },
+  );
   const index = at === -1 ? others.length : current.slice(0, at).filter((e) => e.agentfile !== agentfile).length;
   return [...others.slice(0, index), ...mine, ...others.slice(index)];
 }
@@ -85,23 +158,126 @@ export function resolveWorkStep(
   return { path: null, userOnly: false };
 }
 
+/** The only reasons `/work` stops mid-run (#508). */
+export const WORK_STOP_ONLY_FOR = [
+  "A merge conflict you cannot resolve.",
+  "A destructive or public action that needs approval.",
+  "A choice only the user can make.",
+];
+
+type StageInput = Pick<WorkPlan["steps"][number], "step" | "scope" | "after" | "longRunning">;
+
+/** Two scopes overlap when they are equal or one path holds the other. */
+function scopesOverlap(a: string[], b: string[]): boolean {
+  const norm = (x: string) => expandHome(x).replace(/\/+$/, "");
+  return a.some((x) =>
+    b.some((y) => {
+      const [p, q] = [norm(x), norm(y)];
+      return p === q || p.startsWith(`${q}/`) || q.startsWith(`${p}/`);
+    }),
+  );
+}
+
+/**
+ * Group steps into stages (#509). A stage holds steps in list order whose
+ * scopes do not overlap and whose `after:` steps are done. A step with no
+ * scope runs alone, and later steps do not pass it. Long-running steps
+ * start after every other step, and so does any step that waits on one. An `after:` name that is not in the plan is
+ * ignored; a cycle runs its first step alone, so no step is lost.
+ */
+export function buildWorkStages(steps: StageInput[]): string[][] {
+  const known = new Set(steps.map((s) => s.step));
+  const done = new Set<string>();
+  const stages: string[][] = [];
+  const late = lateSteps(steps);
+  for (const group of [steps.filter((s) => !late.has(s.step)), steps.filter((s) => late.has(s.step))]) {
+    let remaining = [...group];
+    while (remaining.length > 0) {
+      const stage = nextStage(remaining, (dep) => done.has(dep) || !known.has(dep));
+      for (const s of stage) done.add(s.step);
+      remaining = remaining.filter((s) => !stage.includes(s));
+      stages.push(stage.map((s) => s.step));
+    }
+  }
+  return stages;
+}
+
+/** Long-running steps, plus every step that waits on one: they all start last. */
+function lateSteps(steps: StageInput[]): Set<string> {
+  const late = new Set(steps.filter((s) => s.longRunning).map((s) => s.step));
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const s of steps) {
+      if (!late.has(s.step) && s.after.some((dep) => late.has(dep))) {
+        late.add(s.step);
+        grew = true;
+      }
+    }
+  }
+  return late;
+}
+
+/**
+ * The next stage from the steps left, in list order; never empty. When no
+ * step can start (a blocked step with no scope is first), the first ready
+ * step runs alone; only an `after:` cycle falls back to the first step.
+ */
+function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): StageInput[] {
+  const ready = (s: StageInput) => s.after.every(isDone);
+  const stage: StageInput[] = [];
+  for (const s of remaining) {
+    if (s.scope.length === 0) {
+      if (stage.length === 0 && ready(s)) stage.push(s);
+      break;
+    }
+    if (ready(s) && !stage.some((other) => scopesOverlap(other.scope, s.scope))) stage.push(s);
+  }
+  if (stage.length > 0) return stage;
+  return [remaining.find(ready) ?? (remaining[0] as StageInput)];
+}
+
 /** The day plan for this machine. */
-export function buildWorkPlan(state: AgentBrewState | undefined, plugins: PluginLockEntry[]): WorkPlan {
+export function buildWorkPlan(
+  state: AgentBrewState | undefined,
+  plugins: PluginLockEntry[],
+  options: { date?: Date; stateHome?: string } = {},
+): WorkPlan {
   const seen = new Set<string>();
   const steps: WorkPlan["steps"] = [];
-  const add = (step: string, from: string) => {
+  const add = (step: string, from: string, entry?: WorkStepEntry) => {
     if (seen.has(step) || step === END_OF_DAY_STEP) return;
     seen.add(step);
-    steps.push({ step, from, ...resolveWorkStep(step) });
+    steps.push({
+      step,
+      from,
+      ...resolveWorkStep(step),
+      scope: entry?.scope ?? [],
+      after: entry?.after ?? [],
+      longRunning: entry?.longRunning === true,
+    });
   };
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
-  for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile);
+  for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile, entry);
   return {
     ...machineRule(plugins),
     steps,
+    stages: buildWorkStages(steps),
+    flow: 'Run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
+    stopOnlyFor: WORK_STOP_ONLY_FOR,
+    questions:
+      "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step, and again at the end of each watch pass: one batched ask of every item that waits on the user (decisions, drafts to send, sign-ins, approvals). First check that each item is still open (for example, that a draft was not already sent). For each item, say what it is, what each option does, and your pick.",
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
-    endOfDay: [END_OF_DAY_STEP, "Stop every loop you started, then draft a Today / Tomorrow report for the user."],
+    endOfDay: [
+      END_OF_DAY_STEP,
+      "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
+    ],
+    dashboard: buildDashboard(
+      steps,
+      options.date ?? new Date(),
+      options.stateHome ?? resolveStateHome(homedir(), process.env.XDG_STATE_HOME),
+    ),
   };
 }
 
@@ -110,6 +286,13 @@ export function formatWorkPlan(plan: WorkPlan): string {
   plan.steps.forEach((s, i) => {
     lines.push(`  ${i + 1}. ${s.step}${s.from === "agentbrew" ? "" : chalk.dim(` (from ${s.from})`)}`);
   });
+  if (plan.stages.some((stage) => stage.length > 1)) {
+    lines.push("", "Stages (steps in one stage run in parallel):");
+    plan.stages.forEach((stage, i) => {
+      lines.push(`  ${i + 1}. ${stage.join(", ")}`);
+    });
+  }
+  lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch, "", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
 }

@@ -28,7 +28,9 @@ attention gets the most useful facts first.
    doctor.
 3. **`## Use cases`**: a short list of jobs a person does with it.
 4. **`## Features`**: the full feature list, grouped, one line each.
-5. **Everything else**, sorted by usefulness to a reader, most useful first.
+5. **`## Proof`**: theories, measurements, and proofs that it really does what
+   the README claims. See "The Proof section" below.
+6. **Everything else**, sorted by usefulness to a reader, most useful first.
    A good default order: daily use and commands; configuration; how it works;
    privacy and security; troubleshooting; contributing; license.
 
@@ -46,6 +48,30 @@ attention gets the most useful facts first.
 - **Move, do not drop.** When you reorder, move existing sections. Detail that
   is too long goes to `docs/` with a one-line link.
 - **Docs map.** Keep a link to `docs/README.md` when the repo has one.
+
+## The Proof section
+
+Prove each claim. Be honest about how strong the proof is.
+
+- One table row per claim: **Claim**, **Theory** (why it should work, with a
+  citation when one exists), **Metric** (what is measured, and the command),
+  **Result** (the number), **Source** (the saved file and the kind of data).
+- Kind of data, always named: `real use`, or `local run, <YYYY-MM-DD>,
+  <machine>` when there is not enough real data. A claim with no measurement
+  says `not measured yet` and names the task that adds it. Never invent a
+  number.
+- Use charts: Mermaid `xychart-beta` (a trend over runs) or `pie` blocks.
+  GitHub renders them, so no image files go stale.
+- Every number comes from a metric the repo really computes and saves:
+  - a command writes it to `docs/proof/metrics.json` (or the repo's own
+    metrics file), with the date and data kind per value;
+  - a generator writes the Proof section from that file, between
+    `<!-- proof:start -->` and `<!-- proof:end -->`;
+  - a repo test fails when the README section differs from what the
+    generator writes.
+- Pick the metrics a reader cares about: the outcome the app promises
+  (for example, time saved, errors caught, tasks finished), then its
+  reliability (gate pass rate, test count), then speed.
 
 ## Steps
 
@@ -67,6 +93,9 @@ exist. It checks:
 - the first fenced block is `text` and links `INSTALL.md`,
 - a `bash` block comes next, is one line, and ends with a doctor or check,
 - `## Use cases` comes before `## Features`, both after the start blocks,
+- a `## Proof` section comes right after `## Features`, has a Mermaid chart,
+  and every table row names its data kind (`real use`, `local run`, or
+  `not measured yet`),
 - no sentence of 8+ words appears twice (repetition),
 - sentences of more than 30 words (STE: too long),
 - paragraphs of more than 4 sentences (wall of text).

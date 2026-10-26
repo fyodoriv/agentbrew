@@ -35,6 +35,21 @@ def problems(text: str) -> list[str]:
         first_h2 = re.search(r"^## ", text, re.M)
         if first_h2 and first_h2.start() < pos["Use cases"]:
             out.append("order: ## Use cases must be the first ## section")
+    h2 = re.findall(r"^## (.+)$", text, re.M)
+    if "Features" in h2:
+        i = h2.index("Features")
+        if i + 1 >= len(h2) or h2[i + 1] != "Proof":
+            out.append("proof: want a `## Proof` section right after ## Features")
+    if "Proof" in h2:
+        sec = text.split("\n## Proof\n", 1)[1].split("\n## ", 1)[0]
+        if "```mermaid" not in sec:
+            out.append("proof: the Proof section needs a Mermaid chart")
+        rows = [r for r in sec.splitlines() if r.startswith("|") and not re.match(r"\|[\s:-]+\|", r)][1:]
+        if not rows:
+            out.append("proof: the Proof section needs a claims table")
+        for r in rows:
+            if not re.search(r"real use|local run|not measured yet", r, re.I):
+                out.append(f"proof: row names no data kind: {r[:60]}")
     prose = re.sub(r"`[^`]*`|\|[^\n]*", "", body)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n", prose) if s.strip()]
     seen = set()

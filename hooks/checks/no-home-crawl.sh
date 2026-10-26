@@ -53,7 +53,7 @@ if [ -z "$COMMAND" ]; then
 fi
 
 # Cheap pre-filter keeps python3 off the hot path for most Bash calls.
-if ! grep -qE '(^|[^[:alnum:]_-])(rg|grep|ag|fd|find)([[:space:]]|$)' <<<"$COMMAND"; then
+if ! grep -qE '(^|[^[:alnum:]_-])(rg|grep|ag|fd|find)([[:space:]]|$|["'"'"'])' <<<"$COMMAND"; then
   verdict_allow "$HOOK_ID" "no search command"
 fi
 
@@ -99,23 +99,26 @@ def depth_ok(v):
     except ValueError:
         return False
 
-lex = shlex.shlex(cmd, posix=True, punctuation_chars=";&|()\n")
-lex.whitespace_split = True
-try:
-    words = list(lex)
-except ValueError:
-    raise SystemExit(0)
+def split_segments(text):
+    lex = shlex.shlex(text, posix=True, punctuation_chars=";&|()\n")
+    lex.whitespace_split = True
+    try:
+        words = list(lex)
+    except ValueError:
+        return []
+    out, cur = [], []
+    for w in words:
+        if w and set(w) <= set(";&|()\n"):
+            if cur:
+                out.append(cur)
+            cur = []
+        else:
+            cur.append(w)
+    if cur:
+        out.append(cur)
+    return out
 
-segments, cur = [], []
-for w in words:
-    if w and set(w) <= set(";&|()\n"):
-        if cur:
-            segments.append(cur)
-        cur = []
-    else:
-        cur.append(w)
-if cur:
-    segments.append(cur)
+segments = split_segments(cmd)
 
 cwd_now = cwd
 for seg in segments:
@@ -128,6 +131,12 @@ for seg in segments:
         continue
     tool = os.path.basename(seg[0])
     args = seg[1:]
+    if tool in ("bash", "sh", "zsh") and "-c" in args:
+        k = args.index("-c")
+        if k + 1 < len(args):
+            # Check the inner script too: `bash -c "rg foo ~"`.
+            segments.extend(split_segments(args[k + 1]))
+        continue
     if tool == "cd":
         cwd_now = expand(args[0]) if args else home
         continue

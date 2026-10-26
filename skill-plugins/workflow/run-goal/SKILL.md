@@ -221,8 +221,8 @@ continue?". The user set a goal so that they can be away.
 - When two subagents or docs contradict each other, settle it from the
   primary source (code at a SHA, the tracker record). List the losing docs
   as stale findings in the deliverable.
-- A gate you write yourself is unproven. Plant one violation of each rule it
-  checks, see it fail, then trust its clean count.
+- A gate you write yourself is unproven: plant one violation per rule, see it
+  fail. A "flaky" step: run it alone and check its CPU time against its limit.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules and unique log names (`$TMPDIR` is shared), and keep within
@@ -264,6 +264,10 @@ continue?". The user set a goal so that they can be away.
   any criteria added mid-goal), save it, then continue. When workers run,
   save it before any other step: until then the hook blocks their edits too. Do not start a new
   intake or question round for the same goal.
+- When you read a third-party app's logs or config for secrets (tokens,
+  keys), never print a value, even through a redaction filter. Count or
+  test the values in a script that prints only pass/fail. A filter that
+  hid strings of 20+ characters leaked 16-character lamp tokens.
 - Facts from the web (company processes, API terms, research claims): give
   a research subagent a written file to fill, a rule to open every URL it
   cites, and an "omit what you cannot verify" rule. Run it in parallel with

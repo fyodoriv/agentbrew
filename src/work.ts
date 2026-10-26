@@ -56,6 +56,11 @@ export interface WorkPlan {
   /** What to do with every other question: save it, ask all at the end (#508). */
   questions: string;
   watch: string;
+  /**
+   * The repo-update watch (#516): the applied Agentfile checkouts to poll,
+   * and the plugin refresh steps to run after an update.
+   */
+  repoWatch: { checkouts: string[]; refresh: string[]; how: string };
   endOfDay: string[];
   /** Agentfile dirs whose steps were skipped because the dir no longer exists (#515). */
   staleWorkSteps: string[];
@@ -239,6 +244,10 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
   return [remaining.find(ready) ?? (remaining[0] as StageInput)];
 }
 
+/** What `/work` does on each watch pass for repo updates (#516). */
+export const REPO_WATCH_HOW =
+  "On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.";
+
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(
   entries: WorkStepEntry[],
@@ -271,7 +280,8 @@ export function buildWorkPlan(
     });
   };
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
-  for (const entry of current) add(entry.step, entry.agentfile, entry);
+  for (const entry of current) if (!entry.refresh) add(entry.step, entry.agentfile, entry);
+  const refresh = [...new Set(current.filter((e) => e.refresh).map((e) => e.step))];
   return {
     staleWorkSteps,
     ...machineRule(plugins),
@@ -283,6 +293,11 @@ export function buildWorkPlan(
       "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step, and again at the end of each watch pass: one batched ask of every item that waits on the user (decisions, drafts to send, sign-ins, approvals). First check that each item is still open (for example, that a draft was not already sent). For each item, say what it is, what each option does, and your pick.",
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
+    repoWatch: {
+      checkouts: [...new Set(current.map((e) => e.agentfile))],
+      refresh,
+      how: REPO_WATCH_HOW,
+    },
     endOfDay: [
       END_OF_DAY_STEP,
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
@@ -313,7 +328,12 @@ export function formatWorkPlan(plan: WorkPlan): string {
     );
   }
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
-  lines.push("", plan.watch, "", `End of day: ${plan.endOfDay.join(" ")}`);
+  lines.push("", plan.watch);
+  if (plan.repoWatch.checkouts.length > 0) {
+    const refresh = plan.repoWatch.refresh.length > 0 ? `; then ${plan.repoWatch.refresh.join(", ")}` : "";
+    lines.push(`Repo updates: watch ${plan.repoWatch.checkouts.join(", ")}; fast-forward, agentbrew sync${refresh}.`);
+  }
+  lines.push("", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
 }
 

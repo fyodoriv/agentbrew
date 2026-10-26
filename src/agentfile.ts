@@ -164,7 +164,9 @@ function parseAgentfileMemoryFields(raw: Record<string, unknown>): Pick<Agentfil
 }
 
 /** One `workSteps:` entry: a slash command, or an object with `step` and run-order fields (#509). */
-export type AgentfileWorkStep = string | { step: string; scope?: string[]; after?: string[]; longRunning?: boolean };
+export type AgentfileWorkStep =
+  | string
+  | { step: string; scope?: string[]; after?: string[]; longRunning?: boolean; refresh?: boolean };
 
 /** A string or a list of strings, trimmed, empties dropped. */
 function stringList(value: unknown): string[] | undefined {
@@ -186,10 +188,11 @@ function parseWorkStep(entry: unknown): AgentfileWorkStep | undefined {
     ...(scope ? { scope } : {}),
     ...(after ? { after } : {}),
     ...(raw.longRunning === true ? { longRunning: true } : {}),
+    ...(raw.refresh === true ? { refresh: true } : {}),
   };
 }
 
-/** `workSteps:` entries: non-empty strings or `{ step, scope?, after?, longRunning? }` objects. */
+/** `workSteps:` entries: non-empty strings or `{ step, scope?, after?, longRunning?, refresh? }` objects. */
 function parseWorkSteps(value: unknown): AgentfileWorkStep[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.map(parseWorkStep).filter((x): x is AgentfileWorkStep => x !== undefined);

@@ -281,6 +281,8 @@ export interface WorkStepEntry {
   after?: string[];
   /** A live feed or watcher: it starts after every other step (#509). */
   longRunning?: boolean;
+  /** Not a day step: it runs after a repo update pulls new commits (#516). */
+  refresh?: boolean;
 }
 
 export interface AgentBrewState {

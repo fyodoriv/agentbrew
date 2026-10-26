@@ -79,6 +79,25 @@ describe("run without stops (#508)", () => {
   });
 });
 
+describe("repo-update watch (#516)", () => {
+  it("watches each applied Agentfile checkout and runs refresh steps after an update, not in the day", () => {
+    const plan = buildWorkPlan(
+      state([
+        { step: "/tooling-checkup", agentfile: "~/apps/dotfiles" },
+        { step: "/acme-refresh", agentfile: "~/apps/agentbrew-acme", refresh: true },
+      ]),
+      [],
+    );
+    expect(plan.steps.map((s) => s.step)).not.toContain("/acme-refresh");
+    expect(plan.repoWatch.checkouts).toEqual(["~/apps/dotfiles", "~/apps/agentbrew-acme"]);
+    expect(plan.repoWatch.refresh).toEqual(["/acme-refresh"]);
+    expect(plan.repoWatch.how).toMatch(/fast-forward/);
+    expect(plan.repoWatch.how).toMatch(/agentbrew sync/);
+    expect(plan.repoWatch.how).toMatch(/local changes/);
+    expect(formatWorkPlan(plan)).toContain("Repo updates: watch ~/apps/dotfiles, ~/apps/agentbrew-acme");
+  });
+});
+
 describe("parallel stages (#509)", () => {
   const entry = (step: string, extra: Partial<WorkStepEntry> = {}): WorkStepEntry => ({
     step,

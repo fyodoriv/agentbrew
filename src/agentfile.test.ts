@@ -144,6 +144,12 @@ rules: |
     ]);
   });
 
+  it("parses a workSteps refresh entry (#516)", () => {
+    expect(parseAgentfile("workSteps:\n  - step: /acme-refresh\n    refresh: true\n").workSteps).toEqual([
+      { step: "/acme-refresh", refresh: true },
+    ]);
+  });
+
   it("parses workSteps objects with scope, after, and longRunning (#509)", () => {
     const yamlText = [
       "workSteps:",

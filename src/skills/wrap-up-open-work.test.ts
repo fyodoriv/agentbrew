@@ -121,6 +121,29 @@ describe("wrap-up open-work.sh", () => {
     expect(r.out).toContain("feat/undone");
   });
 
+  it("skips a branch whose tip is a merged PR's head, even when its squash carried a conflict fix", () => {
+    const work = repo("merged-pr-head");
+    git(work, "checkout", "-q", "-b", "feat/fixed-up");
+    writeFileSync(join(work, "a.txt"), "a\nb\n");
+    git(work, "commit", "-qam", "feat: b");
+    git(work, "push", "-q", "-u", "origin", "feat/fixed-up");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "a.txt"), "a\nB (merged with a conflict fix)\n");
+    git(work, "commit", "-qam", "feat: b (#1)");
+    git(work, "push", "-q", "origin", "main");
+    const tip = git(work, "rev-parse", "feat/fixed-up").trim();
+    const bin = join(scratch, "bin-merged");
+    mkdirSync(bin);
+    writeFileSync(join(bin, "gh"), `#!/bin/sh\ncase "$*" in *"--state merged"*) echo ${tip} ;; esac\n`);
+    chmodSync(join(bin, "gh"), 0o755);
+    const ghEnv: NodeJS.ProcessEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
+    delete ghEnv.BASH_ENV;
+    delete ghEnv.ENV;
+    expect(run(work).out).toContain("feat/fixed-up"); // without gh: no patch id matches, so it is listed
+    const out = spawnSync("bash", [openWork, work], { env: ghEnv, encoding: "utf-8" }).stdout;
+    expect(out).not.toContain("feat/fixed-up");
+  });
+
   it("asks the remote for its default branch when origin/HEAD is not set", () => {
     const work = repo("trunk");
     git(work, "checkout", "-q", "-b", "trunk");

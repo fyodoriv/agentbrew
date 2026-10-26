@@ -613,6 +613,26 @@ function lintSecrets(): { errors: number } {
   return { errors: findings.length };
 }
 
+/**
+ * The agentbrew lint counts without any output, for snapshots and status lines
+ * that must match `agentbrew lint`. Console output is muted only for the
+ * duration of this call (call scope) and restored afterward.
+ */
+export function silentLintCounts(): { errors: number; warnings: number } {
+  const saved = { log: console.log, warn: console.warn, error: console.error };
+  const mute = () => {};
+  console.log = mute;
+  console.warn = mute;
+  console.error = mute;
+  try {
+    return lintCounts();
+  } finally {
+    console.log = saved.log;
+    console.warn = saved.warn;
+    console.error = saved.error;
+  }
+}
+
 /** Run every lint check, print the results, and return the error and warning counts. */
 export function lintCounts(): { errors: number; warnings: number } {
   let errors = 0;

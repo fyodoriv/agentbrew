@@ -11,7 +11,7 @@ import { loadSyncErrors } from "./core/errors.js";
 import { logSkipped } from "./core/logger.js";
 import { checkMcpEnvVarsDrift } from "./drift.js";
 import { readDesktopMcpFailures } from "./drift-checks/claude-desktop-mcp.js";
-import { validateConfig } from "./lint.js";
+import { silentLintCounts } from "./lint.js";
 import { formatUnmanagedPinLines, outdatedPinsInUnmanagedAgents } from "./mcp/catalog-pin-sweep.js";
 import {
   healDeferredMcpEntries,
@@ -197,12 +197,15 @@ function getCommandFileCount(): number | undefined {
   }
 }
 
-function printCompactConfigLine(): void {
+/** Prints the status Config line from the same counts `agentbrew lint` reports. */
+export function printCompactConfigLine(): void {
   try {
-    const validation = validateConfig();
-    if (validation.errors > 0) {
+    const counts = silentLintCounts();
+    if (counts.errors > 0) {
+      console.log(`  Config:       ${chalk.red(`${counts.errors} error(s)`)} ${chalk.dim("— run `agentbrew lint`")}`);
+    } else if (counts.warnings > 0) {
       console.log(
-        `  Config:       ${chalk.red(`${validation.errors} error(s)`)} ${chalk.dim("— run `agentbrew lint`")}`,
+        `  Config:       ${chalk.green("valid")} ${chalk.dim(`(${counts.warnings} warning(s) — run \`agentbrew lint\`)`)}`,
       );
     } else {
       console.log(`  Config:       ${chalk.green("valid")}`);

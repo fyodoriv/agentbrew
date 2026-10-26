@@ -75,6 +75,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "gdoc-surgical-edit-only",
   "usage-tip",
   "perf-task-review",
+  "no-home-crawl",
 ];
 
 describe("loadManifestFile", () => {

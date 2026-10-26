@@ -1620,6 +1620,19 @@
         "Merges and marks the criterion met",
         "Does not call the goal impossible or add CI unasked"
       ]
+    },
+    {
+      "id": 140,
+      "prompt": "/goal research my two repos in full, find the skill I use for learning a project, then evaluate its location and its design against fresh research, and tell me what would make it the most efficient learning tool",
+      "expected_output": "The agent prints the contract before gathering evidence, with a coverage metric built from a research checklist and a pivot for 'replace, not patch'. It finds the skill and its neighbours in both repos with paths, checks that the skill can actually run here (its dependencies are installed, its tool names exist), and looks for usage data before it rates anything; with none it says the rating is of the design, not of the user's results. A web-only research subagent fills a cited file, the agent checks the high-impact numbers on their source pages, a fresh-context grader checks the draft claim by claim, and the result is a published page with a scorecard and ranked changes, each with a prediction, a metric, and the effort.",
+      "expectations": [
+        "Prints the goal contract before gathering evidence for any answer",
+        "Checks that the skill's dependencies and tool names exist on this machine",
+        "Looks for usage data and says 'design-only' when there is none",
+        "Spot-checks the subagent's high-impact numbers on their source pages",
+        "A fresh-context grader checks the draft before it is published",
+        "Each ranked change has a numeric prediction, a metric, and an effort"
+      ]
     }
   ]
 }

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { detectSourceType } from "./add-source.js";
-import type { Agentfile, AgentfileHookEntry } from "./agentfile.js";
+import type { Agentfile, AgentfileHookEntry, AgentfileWorkStep } from "./agentfile.js";
 import {
   getStateServers,
   getStateSources,
@@ -453,7 +453,11 @@ function mergeAgentfileAgentDirs(
 }
 
 /** Record this Agentfile's `workSteps:` in state, in its own place (#440). Returns true if state changed. */
-function mergeAgentfileWorkSteps(agentfile: { workSteps?: string[] }, state: AgentBrewState, baseDir: string): boolean {
+function mergeAgentfileWorkSteps(
+  agentfile: { workSteps?: AgentfileWorkStep[] },
+  state: AgentBrewState,
+  baseDir: string,
+): boolean {
   const before = JSON.stringify(state.workSteps ?? []);
   const merged = mergeWorkSteps(state.workSteps, baseDir, agentfile.workSteps ?? []);
   if (JSON.stringify(merged) === before) return false;

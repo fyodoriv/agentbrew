@@ -143,6 +143,23 @@ rules: |
     ]);
   });
 
+  it("parses workSteps objects with scope, after, and longRunning (#509)", () => {
+    const yamlText = [
+      "workSteps:",
+      "  - /plain",
+      "  - step: /feed",
+      "    scope: ~/apps/feed",
+      "    after: [/plain]",
+      "    longRunning: true",
+      "  - step: ' '",
+      "  - scope: x",
+    ].join("\n");
+    expect(parseAgentfile(yamlText).workSteps).toEqual([
+      "/plain",
+      { step: "/feed", scope: ["~/apps/feed"], after: ["/plain"], longRunning: true },
+    ]);
+  });
+
   it("returns empty object for empty content", () => {
     expect(parseAgentfile("")).toEqual({});
     expect(parseAgentfile("---")).toEqual({});

@@ -9,7 +9,8 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
   - A company machine (a company plugin is installed): edit only the company plugin repos it names. On public repos, open an issue instead of editing.
   - A personal machine: edit the public repos the user works on.
   - On both: every public issue, PR, or comment stays a draft until the user says yes. Show the exact text first.
-- `steps`: run them in this order, as slash commands, back to back (see `flow`). agentbrew's own steps come first, then the steps each Agentfile adds with `workSteps:`. Each step has a `path` (the skill or command file it runs) and `userOnly`. When `userOnly` is true, or the Skill tool cannot load the step, read the file at `path` and follow it: starting `/work` is the user's request to run it. `path` is looked up under `~/.claude` (skills, then commands). If it is null, the step was not found there: if your agent keeps skills elsewhere, look there; otherwise say in one line that the step is not installed and go on.
+- `steps`: the steps, as slash commands, back to back (see `flow`). Each step also has `scope` (what it changes; empty means it runs alone), `after` (steps that must finish first), and `longRunning` (a live feed or watcher). agentbrew's own steps come first, then the steps each Agentfile adds with `workSteps:`. Each step has a `path` (the skill or command file it runs) and `userOnly`. When `userOnly` is true, or the Skill tool cannot load the step, read the file at `path` and follow it: starting `/work` is the user's request to run it. `path` is looked up under `~/.claude` (skills, then commands). If it is null, the step was not found there: if your agent keeps skills elsewhere, look there; otherwise say in one line that the step is not installed and go on.
+- `stages`: the run order. Run the steps of one stage in parallel, one subagent per step. Wait for the whole stage to finish, then start the next stage. A stage with one step runs in this session. Each subagent saves its user questions and returns them with its result; do not let a subagent ask the user.
 - `flow`: run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.
 - `stopOnlyFor`: the only reasons to stop and wait: a merge conflict you cannot resolve, a destructive or public action that needs approval, or a choice only the user can make.
 - `questions`: save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.
@@ -24,6 +25,14 @@ To add steps for a team, add them to an Agentfile, for example the company overl
 workSteps:
   - /tooling-checkup
   - /oncall-checkup
+  - step: /career-checkup
+    scope: ~/apps/career        # what it changes; steps with no overlap run in parallel
+    after: /tooling-checkup     # wait for this step first
+  - step: /live-feed
+    scope: ~/apps/feed
+    longRunning: true           # a watcher: starts after every other step
 ```
+
+A step with no `scope:` runs alone, which is the safe default.
 
 Then run `agentbrew sync`. Do not copy this command to change it. If the user does not want built-in commands, run `agentbrew config set builtinCommands off`.

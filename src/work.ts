@@ -11,6 +11,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
+import type { AgentfileWorkStep } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
@@ -30,7 +31,23 @@ export interface WorkPlan {
    * `userOnly`: the skill sets `disable-model-invocation: true`, so the
    * agent's Skill tool hides it; `/work` reads `path` and follows it (#451).
    */
-  steps: Array<{ step: string; from: string; path: string | null; userOnly: boolean }>;
+  steps: Array<{
+    step: string;
+    from: string;
+    path: string | null;
+    userOnly: boolean;
+    /** What the step changes; empty means unknown, so the step runs alone (#509). */
+    scope: string[];
+    /** Steps that must finish first (#509). */
+    after: string[];
+    /** A live feed or watcher: it starts last (#509). */
+    longRunning: boolean;
+  }>;
+  /**
+   * Run order (#509): each inner list runs in parallel, one subagent per
+   * step; the next stage starts when the whole stage is done.
+   */
+  stages: string[][];
   /** How to run the steps: back to back, no "continue?" stop between them (#508). */
   flow: string;
   /** The only reasons to stop and wait for the user mid-run (#508). */
@@ -45,12 +62,14 @@ export interface WorkPlan {
 export function mergeWorkSteps(
   existing: WorkStepEntry[] | undefined,
   agentfile: string,
-  declared: string[],
+  declared: AgentfileWorkStep[],
 ): WorkStepEntry[] {
   const current = existing ?? [];
   const at = current.findIndex((entry) => entry.agentfile === agentfile);
   const others = current.filter((entry) => entry.agentfile !== agentfile);
-  const mine = declared.map((step) => ({ step, agentfile }));
+  const mine = declared.map((entry) =>
+    typeof entry === "string" ? { step: entry, agentfile } : { ...entry, agentfile, step: entry.step },
+  );
   const index = at === -1 ? others.length : current.slice(0, at).filter((e) => e.agentfile !== agentfile).length;
   return [...others.slice(0, index), ...mine, ...others.slice(index)];
 }
@@ -98,20 +117,78 @@ export const WORK_STOP_ONLY_FOR = [
   "A choice only the user can make.",
 ];
 
+type StageInput = Pick<WorkPlan["steps"][number], "step" | "scope" | "after" | "longRunning">;
+
+/** Two scopes overlap when they are equal or one path holds the other. */
+function scopesOverlap(a: string[], b: string[]): boolean {
+  const norm = (x: string) => expandHome(x).replace(/\/+$/, "");
+  return a.some((x) =>
+    b.some((y) => {
+      const [p, q] = [norm(x), norm(y)];
+      return p === q || p.startsWith(`${q}/`) || q.startsWith(`${p}/`);
+    }),
+  );
+}
+
+/**
+ * Group steps into stages (#509). A stage holds steps in list order whose
+ * scopes do not overlap and whose `after:` steps are done. A step with no
+ * scope runs alone, and later steps do not pass it. Long-running steps
+ * start after every other step. An `after:` name that is not in the plan is
+ * ignored; a cycle runs its first step alone, so no step is lost.
+ */
+export function buildWorkStages(steps: StageInput[]): string[][] {
+  const known = new Set(steps.map((s) => s.step));
+  const done = new Set<string>();
+  const stages: string[][] = [];
+  for (const group of [steps.filter((s) => !s.longRunning), steps.filter((s) => s.longRunning)]) {
+    let remaining = [...group];
+    while (remaining.length > 0) {
+      const stage = nextStage(remaining, (dep) => done.has(dep) || !known.has(dep));
+      for (const s of stage) done.add(s.step);
+      remaining = remaining.filter((s) => !stage.includes(s));
+      stages.push(stage.map((s) => s.step));
+    }
+  }
+  return stages;
+}
+
+/** The next stage from the steps left, in list order; never empty. */
+function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): StageInput[] {
+  const stage: StageInput[] = [];
+  for (const s of remaining) {
+    const ready = s.after.every(isDone);
+    if (s.scope.length === 0) {
+      if (stage.length === 0 && ready) stage.push(s);
+      break;
+    }
+    if (ready && !stage.some((other) => scopesOverlap(other.scope, s.scope))) stage.push(s);
+  }
+  return stage.length > 0 ? stage : [remaining[0] as StageInput];
+}
+
 /** The day plan for this machine. */
 export function buildWorkPlan(state: AgentBrewState | undefined, plugins: PluginLockEntry[]): WorkPlan {
   const seen = new Set<string>();
   const steps: WorkPlan["steps"] = [];
-  const add = (step: string, from: string) => {
+  const add = (step: string, from: string, entry?: WorkStepEntry) => {
     if (seen.has(step) || step === END_OF_DAY_STEP) return;
     seen.add(step);
-    steps.push({ step, from, ...resolveWorkStep(step) });
+    steps.push({
+      step,
+      from,
+      ...resolveWorkStep(step),
+      scope: entry?.scope ?? [],
+      after: entry?.after ?? [],
+      longRunning: entry?.longRunning === true,
+    });
   };
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
-  for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile);
+  for (const entry of state?.workSteps ?? []) add(entry.step, entry.agentfile, entry);
   return {
     ...machineRule(plugins),
     steps,
+    stages: buildWorkStages(steps),
     flow: 'Run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
     stopOnlyFor: WORK_STOP_ONLY_FOR,
     questions:
@@ -127,6 +204,12 @@ export function formatWorkPlan(plan: WorkPlan): string {
   plan.steps.forEach((s, i) => {
     lines.push(`  ${i + 1}. ${s.step}${s.from === "agentbrew" ? "" : chalk.dim(` (from ${s.from})`)}`);
   });
+  if (plan.stages.some((stage) => stage.length > 1)) {
+    lines.push("", "Stages (steps in one stage run in parallel):");
+    plan.stages.forEach((stage, i) => {
+      lines.push(`  ${i + 1}. ${stage.join(", ")}`);
+    });
+  }
   lines.push("", plan.watch, "", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
 }

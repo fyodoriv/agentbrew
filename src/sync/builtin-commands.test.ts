@@ -269,4 +269,15 @@ describe("the /work built-in command (#440)", () => {
       expect(text.toLowerCase()).toContain(reason.toLowerCase().replace(/\.$/, ""));
     }
   });
+
+  it("runs each stage's steps in parallel, one subagent per step (#509)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, resolve } = await import("node:path");
+    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
+    expect(text).toMatch(/`stages`/);
+    expect(text).toMatch(/one subagent per step/);
+    expect(text).toMatch(/wait for the whole stage/i);
+    expect(text).toMatch(/scope:/);
+    expect(text).toMatch(/after:/);
+  });
 });

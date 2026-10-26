@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/work` runs steps in parallel stages (#509). A `workSteps:` entry can set
+  `scope:`, `after:`, and `longRunning:`; `agentbrew work --json` returns
+  `stages`, and `/work` runs one subagent per step in a stage.
 - `/work` runs its steps back to back (#508). `agentbrew work --json`
   adds `flow`, `stopOnlyFor` (merge conflict, destructive or public action,
   a choice only the user can make), and `questions` (asked once, at the end).

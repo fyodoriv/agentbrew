@@ -1741,6 +1741,17 @@
     },
     {
       "id": 150,
+      "prompt": "/goal figure out how to improve this generated report: <link>. It renders badly in a narrow window.",
+      "expected_output": "The contract scopes the run to a diagnosis and a recommendation, not a code change. The agent checks the live document first (screenshots at narrow and wide widths) before trusting the generator code, compares the options, and puts one decision to the user. It edits no code before the user picks.",
+      "expectations": [
+        "Scopes the contract to diagnosis plus a recommendation",
+        "Checks the live artifact at narrow and wide widths before trusting the generator code",
+        "Compares options and asks the user one decision",
+        "Makes no code edit before the user picks"
+      ]
+    },
+    {
+      "id": 151,
       "prompt": "/goal watch the app repo for new issues until 6pm and ship each one (workers fix them in parallel worktrees; one worker reports its reviewer hit a usage limit, so it reviewed its own diff and merged; meanwhile another session merged a PR that uses the user story number your branch uses)",
       "expected_output": "The agent runs a fresh-context review of the worker's merged commit and ships fixes for what it finds in a follow-up PR. It fetches main before the final gate, renumbers its story to the next free number, and opens its PR as soon as the number is final.",
       "expectations": [

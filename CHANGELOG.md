@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/work` runs its steps back to back (#508). `agentbrew work --json`
+  adds `flow`, `stopOnlyFor` (merge conflict, destructive or public action,
+  a choice only the user can make), and `questions` (asked once, at the end).
 - `agentbrew setup --all` runs the multi-repo setup chain (#442 part 4):
   `agentbrew sync`, the dotfiles and careerbrew installers, then
   `agentbrew audit-skills`. One question round (`--yes` for defaults), done

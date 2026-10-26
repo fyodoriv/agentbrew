@@ -56,6 +56,19 @@ describe("buildWorkPlan", () => {
   });
 });
 
+describe("run without stops (#508)", () => {
+  it("tells /work to run steps back to back and lists the only reasons to stop", () => {
+    const plan = buildWorkPlan(state(), []);
+    expect(plan.flow).toMatch(/back to back/);
+    expect(plan.flow).toMatch(/one line/);
+    expect(plan.stopOnlyFor).toHaveLength(3);
+    expect(plan.stopOnlyFor.join(" ")).toMatch(/merge conflict/);
+    expect(plan.stopOnlyFor.join(" ")).toMatch(/destructive or public/);
+    expect(plan.stopOnlyFor.join(" ")).toMatch(/only the user can make/);
+    expect(plan.questions).toMatch(/once, after the last step/);
+  });
+});
+
 describe("mergeWorkSteps", () => {
   it("keeps each Agentfile's steps in its own place and replaces them on re-apply", () => {
     let steps = mergeWorkSteps(undefined, "/a", ["/x", "/y"]);

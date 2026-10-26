@@ -31,6 +31,12 @@ export interface WorkPlan {
    * agent's Skill tool hides it; `/work` reads `path` and follows it (#451).
    */
   steps: Array<{ step: string; from: string; path: string | null; userOnly: boolean }>;
+  /** How to run the steps: back to back, no "continue?" stop between them (#508). */
+  flow: string;
+  /** The only reasons to stop and wait for the user mid-run (#508). */
+  stopOnlyFor: string[];
+  /** What to do with every other question: save it, ask all at the end (#508). */
+  questions: string;
   watch: string;
   endOfDay: string[];
 }
@@ -85,6 +91,13 @@ export function resolveWorkStep(
   return { path: null, userOnly: false };
 }
 
+/** The only reasons `/work` stops mid-run (#508). */
+export const WORK_STOP_ONLY_FOR = [
+  "A merge conflict the agent cannot resolve.",
+  "A destructive or public action that needs the user's approval.",
+  "A choice only the user can make.",
+];
+
 /** The day plan for this machine. */
 export function buildWorkPlan(state: AgentBrewState | undefined, plugins: PluginLockEntry[]): WorkPlan {
   const seen = new Set<string>();
@@ -99,6 +112,10 @@ export function buildWorkPlan(state: AgentBrewState | undefined, plugins: Plugin
   return {
     ...machineRule(plugins),
     steps,
+    flow: 'Run every step and phase back to back. Do not stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
+    stopOnlyFor: WORK_STOP_ONLY_FOR,
+    questions:
+      "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.",
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
     endOfDay: [END_OF_DAY_STEP, "Stop every loop you started, then draft a Today / Tomorrow report for the user."],

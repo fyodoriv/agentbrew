@@ -262,6 +262,9 @@ describe("the /work built-in command (#440)", () => {
     expect(text).not.toMatch(/one at a time/);
     expect(text).toMatch(/`stopOnlyFor`/);
     expect(text).toMatch(/`questions`/);
+    // #517: one batched ask per cycle, re-checked, with options and a pick.
+    expect(text).toMatch(/each watch pass/);
+    expect(text).toMatch(/still open/);
     expect(text).toMatch(/blocked.*one line.*next step/is);
     // The stop list in work.md matches the one `agentbrew work --json` returns.
     const { WORK_STOP_ONLY_FOR } = await import("../work.js");

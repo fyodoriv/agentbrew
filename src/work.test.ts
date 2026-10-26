@@ -68,6 +68,14 @@ describe("run without stops (#508)", () => {
     expect(plan.stopOnlyFor.join(" ")).toMatch(/only the user can make/);
     expect(plan.questions).toMatch(/once, after the last step/);
   });
+
+  it("ends every cycle with one batched ask of what waits on the user (#517)", () => {
+    const plan = buildWorkPlan(state(), []);
+    expect(plan.questions).toMatch(/each watch pass/);
+    expect(plan.questions).toMatch(/still open/);
+    expect(plan.questions).toMatch(/what each option does/);
+    expect(plan.questions).toMatch(/your pick/);
+  });
 });
 
 describe("parallel stages (#509)", () => {

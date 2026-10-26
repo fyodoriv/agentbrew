@@ -266,7 +266,7 @@ export function buildWorkPlan(
     flow: 'Run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.',
     stopOnlyFor: WORK_STOP_ONLY_FOR,
     questions:
-      "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step.",
+      "Save every other question a step raises (for example a checkup's final questions). Ask them all once, after the last step, and again at the end of each watch pass: one batched ask of every item that waits on the user (decisions, drafts to send, sign-ins, approvals). First check that each item is still open (for example, that a draft was not already sent). For each item, say what it is, what each option does, and your pick.",
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
     endOfDay: [

@@ -1671,6 +1671,17 @@
         "Does not count a PR as merged or done while its gate is still queued",
         "Does not kill a heavy-run lock held by another session"
       ]
+    },
+    {
+      "id": 144,
+      "prompt": "/goal answer the question in this team chat thread: research it, fix the repo docs if they are wrong, and draft my reply",
+      "expected_output": "The agent prints the goal contract before any edit, ships a small docs PR and cites its merged link as evidence, re-reads the chat thread right before drafting so it sees new replies, and saves the reply as a draft without sending it.",
+      "expectations": [
+        "Prints the goal contract before any file edit",
+        "Cites the merged docs PR link as evidence",
+        "Re-reads the thread right before drafting the reply",
+        "Saves the reply as a draft and does not send it"
+      ]
     }
   ]
 }

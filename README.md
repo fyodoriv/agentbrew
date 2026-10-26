@@ -48,6 +48,20 @@ Most developers use multiple AI coding tools. Each stores config in its own form
 
 **What belongs in agentbrew.** agentbrew deploys agent config for work in any repo. A feature that reads or writes a user's career data, such as a standup report or a daily status update, belongs to careerbrew. agentbrew only deploys careerbrew's commands from careerbrew's own source (see "Commands that a repo owns" under [Agentfile](#agentfile)).
 
+## Personal and corporate machines
+
+agentbrew works the same way on both. What changes is what a company plugin adds and where your data may go.
+
+| | Personal machine | Corporate machine (your work laptop) |
+|---|---|---|
+| Setup | this repo and your own Agentfile | the same, plus your company's signed plugin (`agentbrew-<org>`) |
+| Company content | none | only from the company plugin: its skills, rules, MCP servers, and hooks. This public repo never names a company |
+| Your data | stays on this machine; agentbrew has no server and sends nothing anywhere | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
+| What `/work` may change | your public repos | only the plugin repos; public repos get issues, not edits |
+| Plugin trust | none needed | signed tags only, and each capability is denied until the plugin declares it ([Company plugins](#company-plugins)) |
+
+**Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins).
+
 ## Install a skill or MCP server
 
 ```bash

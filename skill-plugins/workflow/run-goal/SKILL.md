@@ -244,6 +244,9 @@ continue?". The user set a goal so that they can be away.
   trace which process started it, log the process and its parent chain.
   Never kill processes that you or your workers did not start. Killing them
   broke another session's test run and this run's own gate.
+- A sandboxed Monitor may not see other processes: check a worker's pid
+  with the sandbox off before you restart it. A risky mode that breaks the
+  user's own limit is removed, not patched, with a test that it stays gone.
 - After a session restart (`/goal continue …`, or workers reported as
   stopped): re-measure from `origin` first, then list every worktree with
   its commits ahead, uncommitted files, and push state. Resume each stopped

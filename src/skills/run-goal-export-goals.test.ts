@@ -49,7 +49,7 @@ function fixture(): { home: string; state: string; out: string } {
       "",
       "## What went wrong",
       "- secretproj gate timed out; mail me at owner@example.com; see /Volumes/Ext/x and /mnt/data/y",
-      `- edited ${TOOLING_PATH} with api_key=${HEX_KEY} and Bearer abc.def; raw ${HEX_KEY}`,
+      `- edited ${TOOLING_PATH} with api_key=${HEX_KEY}, token=tok.short.v and Bearer abc.def; raw ${HEX_KEY}`,
       "- not a result: the Goal result: met line must start the line",
       "  - nested detail is not an item",
       "## Skills updated",
@@ -108,31 +108,65 @@ describe("run-goal export-goals.py", () => {
     ]);
   });
 
-  it("never outputs a private-pattern match, token, email, or outside path", () => {
-    const all = ["goals.json", "retro_items.json", "manifest.json"]
-      .map((n) => readFileSync(join(f.out, n), "utf-8"))
-      .join("\n");
+  const all = ["goals.json", "retro_items.json", "manifest.json"]
+    .map((n) => readFileSync(join(f.out, n), "utf-8"))
+    .join("\n");
+
+  it("replaces private-pattern matches (grep -iE) with [private]", () => {
     expect(all).not.toMatch(/acme\s?corp|secretproj/i);
-    expect(all).not.toContain(OUTSIDE_PATH);
-    expect(all).not.toContain(HOME_PREFIX);
-    expect(all).not.toContain(HEX_KEY);
-    expect(all).not.toMatch(/abc\.def|\/Volumes\/|\/mnt\//);
-    expect(all).toContain("~/apps/tooling/agentbrew/src/a.ts");
-    expect(all).toContain("api_key=[redacted]");
-    expect(all).not.toContain(FAKE_TOKEN);
-    expect(all).not.toMatch(/gh[pousr]_[A-Za-z0-9]{20,}|[\w.+-]+@[\w-]+\.\w+|\/Users\/|\/home\//);
     expect(all).toContain("[private]");
   });
 
-  it("passes the owner's real private pattern too, when present", () => {
+  it("rewrites /Users/<name> to ~ and keeps ~/apps/tooling paths", () => {
+    expect(all).not.toContain(HOME_PREFIX);
+    expect(all).not.toMatch(/\/Users\/|\/home\//);
+    expect(all).toContain("~/apps/tooling/agentbrew/src/a.ts");
+    expect(all).not.toContain(OUTSIDE_PATH);
+  });
+
+  it("redacts bare 32+ character keys and known token shapes", () => {
+    expect(all).not.toContain(HEX_KEY);
+    expect(all).not.toContain(FAKE_TOKEN);
+    expect(all).not.toMatch(/gh[pousr]_[A-Za-z0-9]{20,}/);
+  });
+
+  it("redacts key=, token=, and Bearer values", () => {
+    expect(all).toContain("api_key=[redacted]");
+    expect(all).toContain("token=[redacted]");
+    expect(all).not.toContain("tok.short.v");
+    expect(all).toContain("Bearer [redacted]");
+    expect(all).not.toContain("abc.def");
+  });
+
+  it("scrubs /Volumes and /mnt paths", () => {
+    expect(all).not.toMatch(/\/Volumes\/|\/mnt\//);
+  });
+
+  it("scrubs emails", () => {
+    expect(all).not.toMatch(/[\w.+-]+@[\w-]+\.\w+/);
+  });
+
+  it("counts PR #N and owner/repo#N references once each", () => {
+    // pull/12 twice, pull/13, fyodoriv/dotfiles#9, PR #7 twice: 4 distinct.
+    expect(byId.aaaaaaaa.prs).toBe(4);
+  });
+
+  it("passes the owner's real private pattern too, checked with grep -icE", () => {
     const env = join(homedir(), ".config", "oss-readiness", "oss-readiness.env");
     if (!existsSync(env)) return;
-    const m = readFileSync(env, "utf-8").match(/^\s*(?:export\s+)?OSS_READINESS_INTERNAL_PATTERN=(.*)$/m);
-    if (!m) return;
-    const pattern = new RegExp(m[1].trim().replace(/^['"]|['"]$/g, ""), "i");
-    for (const n of ["goals.json", "retro_items.json"]) {
-      expect(pattern.test(readFileSync(join(f.out, n), "utf-8"))).toBe(false);
-    }
+    const g = spawnSync(
+      "bash",
+      [
+        "-c",
+        'source "$1" >/dev/null 2>&1; grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN" "$2" "$3"',
+        "_",
+        env,
+        join(f.out, "goals.json"),
+        join(f.out, "retro_items.json"),
+      ],
+      { encoding: "utf-8" },
+    );
+    for (const line of g.stdout.trim().split("\n")) expect(line.endsWith(":0"), line).toBe(true);
   });
 
   it("anchors Goal result to the start of a line", () => {

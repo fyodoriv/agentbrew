@@ -1,0 +1,6 @@
+{
+  "name": "work-pane",
+  "version": "0.1.0",
+  "description": "A Claude Code pane beside the chat that shows agentbrew /work progress and what needs you",
+  "types": "./types/index.d.ts"
+}

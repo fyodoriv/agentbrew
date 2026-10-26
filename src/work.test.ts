@@ -185,6 +185,7 @@ describe("dashboard block (#510)", () => {
       { step: "/tooling-checkup", status: "waiting", summary: "", needsYou: "", link: "" },
     ]);
     expect(plan.dashboard.localPath).toBe(join("/state", "agentbrew", "work", "2026-10-26.html"));
+    expect(plan.dashboard.statusPath).toBe(join("/state", "agentbrew", "work", "2026-10-26.json"));
     expect(plan.dashboard.publish).toMatch(/Artifact/);
     expect(plan.dashboard.publish).toMatch(/same URL/);
     expect(plan.dashboard.top).toMatch(/Needs you/);

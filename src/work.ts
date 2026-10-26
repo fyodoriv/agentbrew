@@ -94,6 +94,8 @@ export interface WorkDashboard {
   publish: string;
   /** The local HTML page, for an agent with no Artifact tool. */
   localPath: string;
+  /** The rows as JSON, rewritten on every step change; the optional `/work` pane reads it (#519). */
+  statusPath: string;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -110,6 +112,7 @@ function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string)
     publish:
       "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
     localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
+    statusPath: join(stateHome, "agentbrew", "work", `${day}.json`),
   };
 }
 

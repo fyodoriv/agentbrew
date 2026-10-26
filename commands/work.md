@@ -21,6 +21,7 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
   - Rows start as `waiting`. Write dates as "Mon Oct 26", never ISO.
   - Publish one row per step from `dashboard.rows`: step, status (`done`, `running`, `waiting`, `blocked`, or `failed`), a one-line summary, needs-you text, and a link.
   - Update a row each time its step changes. Keep the same URL all day.
+  - On every row change, also rewrite `dashboard.statusPath` (create its folder first) as JSON: `{ "title": …, "rows": [ …the rows… ], "questions": [ …saved questions… ] }`. The optional `/work` pane reads it.
   - The top of the page shows done, running, and needs-you counts, then a "Needs you" list. Put the saved questions (see `questions`) there too.
   - Give the user the link once, at the start.
 - `endOfDay`: when the user says "end of day", stop every loop you started, run the end-of-day step, then draft a Today / Tomorrow report: what was done (with PRs and numbers), what is blocked and why, and what comes next. Link the day's dashboard in it.

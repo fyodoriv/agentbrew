@@ -8,7 +8,7 @@
  * order the Agentfiles were applied. state.workSteps records which
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
@@ -66,6 +66,45 @@ export interface WorkPlan {
   staleWorkSteps: string[];
   /** The day's live dashboard (#510): one row per step, updated on every step change. */
   dashboard: WorkDashboard;
+  /**
+   * Plugin review: plugin checkouts (`<tool>-<org>` beside `<tool>`, plus
+   * installed plugins) whose unshipped changes may belong in the main tool.
+   */
+  pluginReview: { checkouts: string[]; how: string };
+}
+
+/** Where plugin checkouts live beside their main tool. */
+export const PLUGIN_ROOTS = ["~/apps", "~/apps/tooling"];
+
+export const PLUGIN_REVIEW_HOW =
+  "On each cycle, in each checkout in `checkouts` that holds a plugin (a careerbrew, agentbrew, or dotfiles plugin, or any app's plugin), list uncommitted files and unpushed commits. Skip a checkout that is not a plugin, in one line. For each change, decide if it is generic: could someone outside the org use it, with no company name, internal host, or private data? A generic change belongs in the main tool: draft the move (an issue or PR on the main tool, with the org-specific parts left behind a generic setting) and add it to the batched questions. Never move or publish anything before the user says yes.";
+
+/**
+ * Plugin checkouts beside a main tool: `<root>/<tool>-<name>` when
+ * `<root>/<tool>` is a git checkout too. Reads directory names only.
+ */
+export function findPluginCheckouts(
+  roots: string[] = PLUGIN_ROOTS,
+  list: (dir: string) => string[] = (dir) => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  },
+  isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
+): string[] {
+  const out: string[] = [];
+  for (const root of roots) {
+    const dir = expandHome(root);
+    const names = list(dir);
+    const tools = new Set(names.filter((n) => isRepo(join(dir, n))));
+    for (const name of names) {
+      const tool = [...tools].find((t) => name.startsWith(`${t}-`));
+      if (tool && isRepo(join(dir, name))) out.push(`${root}/${name}`);
+    }
+  }
+  return out;
 }
 
 /** Step status on the dashboard (#510). */
@@ -263,7 +302,7 @@ export function pruneMissingWorkSteps(
 export function buildWorkPlan(
   state: AgentBrewState | undefined,
   plugins: PluginLockEntry[],
-  options: { date?: Date; stateHome?: string; dirExists?: (dir: string) => boolean } = {},
+  options: { date?: Date; stateHome?: string; dirExists?: (dir: string) => boolean; pluginCheckouts?: string[] } = {},
 ): WorkPlan {
   const all = state?.workSteps ?? [];
   const current = pruneMissingWorkSteps(all, options.dirExists ?? (() => true));
@@ -305,6 +344,10 @@ export function buildWorkPlan(
       END_OF_DAY_STEP,
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
     ],
+    pluginReview: {
+      checkouts: [...new Set([...(options.pluginCheckouts ?? findPluginCheckouts()), ...plugins.map((p) => p.source)])],
+      how: PLUGIN_REVIEW_HOW,
+    },
     dashboard: buildDashboard(
       steps,
       options.date ?? new Date(),
@@ -332,6 +375,9 @@ export function formatWorkPlan(plan: WorkPlan): string {
   }
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch);
+  if (plan.pluginReview.checkouts.length > 0) {
+    lines.push(`Plugin review: check ${plan.pluginReview.checkouts.join(", ")} for changes that belong in the main tool.`);
+  }
   if (plan.repoWatch.checkouts.length > 0) {
     const refresh = plan.repoWatch.refresh.length > 0 ? `; then ${plan.repoWatch.refresh.join(", ")}` : "";
     lines.push(`Repo updates: watch ${plan.repoWatch.checkouts.join(", ")}; fast-forward, agentbrew sync${refresh}.`);

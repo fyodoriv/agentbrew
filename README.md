@@ -60,7 +60,7 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 | What `/work` may change | your public repos | only the plugin repos; public repos get issues, not edits |
 | Plugin trust | none needed | signed tags only, and each capability is denied until the plugin declares it ([Company plugins](#company-plugins)) |
 
-**Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins).
+**Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins). Each `/work` cycle also checks every plugin checkout for unshipped changes and drafts a move to the main tool for each generic one; nothing moves before you say yes.
 
 ## Install a skill or MCP server
 

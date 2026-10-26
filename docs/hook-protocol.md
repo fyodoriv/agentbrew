@@ -186,16 +186,24 @@ appends one JSON line to `~/.cache/agentbrew/hook-decisions.jsonl`.
 
 ## Home-folder searches
 
-`no-home-crawl` (PreToolUse Bash, opt-in) blocks a recursive search whose
-root is too broad. It checks `rg`, `grep -r`/`-R`, `ag`, `fd`, and `find`.
-The root is the path argument, or the session `cwd` when there is none, and
-an earlier `cd <dir> &&` moves it. It blocks these roots: `$HOME`,
-`~/Library`, `~/Library/Application Support`, and `/`.
+`no-home-crawl` (PreToolUse on Bash, Grep, and Glob; opt-in) blocks a
+recursive search whose root is too broad. It checks `rg`, `grep -r`/`-R`,
+`ag`, `ug`/`ugrep`, `fd`, `find`, the Grep tool, and the Glob tool with a
+`**` pattern. It blocks these roots: `$HOME`, `~/Library`,
+`~/Library/Application Support`, and `/`.
 
+- Root: the path argument (or `--search-path`/`--base-directory`), else the
+  session `cwd`. An earlier `cd <dir> &&` or `pushd <dir> &&` moves it.
+- It sees through wrappers (`sudo -u`, `timeout`, `nice -n`, `stdbuf`,
+  `caffeinate`, `env`) and checks `bash -c`/`zsh -lc` and `eval` strings.
 - Why: a home-wide search runs for many minutes, and macOS Spotlight and
   the file-provider importers re-read every file it touches.
-- Allowed: a narrower path (`~/.claude/projects/<project>`, `~/apps/<repo>`)
-  or a depth limit of 2 or less (`--max-depth 2`, `-d 2`, `-maxdepth 2`).
+- Allowed: a narrower path (`~/.claude/projects/<project>`, `~/apps/<repo>`),
+  a depth limit of 2 or less (`--max-depth 2`, `-d 2`, `-maxdepth 2`),
+  `rg`/`grep` with no path after a pipe (they read stdin), a quoted `'~'`,
+  and a Glob pattern without `**`.
+- Not caught: roots built at run time, such as `"$(pwd)"` or `"$DIR"`. Only
+  `$HOME`, `~`, `~user`, and `$USER` expand.
 - Opt-out: prefix the command with `AGENTBREW_ALLOW_HOME_SEARCH=1`, or set
   it (or `HOOK_BYPASS_NO_HOME_CRAWL=1`) in the agent environment.
 - It parses the command with `python3` only when a search tool name appears,

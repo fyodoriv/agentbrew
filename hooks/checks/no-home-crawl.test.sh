@@ -82,6 +82,47 @@ check "inline opt-out" 0 "$H" "AGENTBREW_ALLOW_HOME_SEARCH=1 rg needle"
 check "env opt-out" 0 "$H" "rg needle" "AGENTBREW_ALLOW_HOME_SEARCH=1"
 check "bypass var" 0 "$H" "rg needle" "HOOK_BYPASS_NO_HOME_CRAWL=1"
 
+# Review round 1 (#490)
+check "sudo -u wrapper" 2 "$REPO" "sudo -u me rg needle ~"
+check "timeout wrapper" 2 "$REPO" "timeout 60 rg needle ~"
+check "gtimeout -s wrapper" 2 "$REPO" "gtimeout -s KILL 60 rg needle ~"
+check "stdbuf wrapper" 2 "$H" "stdbuf -oL rg needle"
+check "caffeinate wrapper" 2 "$REPO" "caffeinate -i find / -name x"
+check "zsh -lc" 2 "$REPO" "zsh -lc 'rg needle ~'"
+check "bash -lc" 2 "$REPO" "bash -lc 'rg needle ~'"
+check "fd --base-directory" 2 "$REPO" "fd needle --base-directory ~"
+check "fd --base-directory=" 2 "$REPO" "fd needle --base-directory=$H"
+check "pushd then rg" 2 "$REPO" "pushd ~ && rg needle"
+check "eval string" 2 "$REPO" "eval \"rg needle ~\""
+check "tilde user" 2 "$REPO" "rg needle ~$(basename "$H")"
+check "dollar USER" 2 "$REPO" "rg needle $(dirname "$H")/\$USER" "USER=$(basename "$H")"
+check "ug from HOME" 2 "$H" "ug needle"
+check "ugrep -r ~" 2 "$REPO" "ugrep -r needle ~"
+check "fd after pipe still uses cwd" 2 "$H" "echo x | fd jsonl"
+check "git log piped to rg from HOME" 0 "$H" "git log | rg needle"
+check "cat piped to grep -r from HOME" 0 "$H" "cat f | grep -r needle"
+check "quoted single tilde is literal" 0 "$REPO" "rg needle '~'"
+check "quoted double tilde is literal" 0 "$REPO" "rg needle \"~\""
+check "ugrep without -r" 0 "$H" "ugrep needle file.txt"
+check "timeout repo rg" 0 "$H" "timeout 60 rg needle apps/agentbrew"
+
+# Grep and Glob tools
+tool_check() {
+  local label="$1" expected="$2" tool="$3" path="$4" pattern="$5" actual
+  actual=$(jq -nc --arg t "$tool" --arg p "$path" --arg g "$pattern" --arg d "$H" \
+    '{tool_name:$t,cwd:$d,tool_input:({pattern:$g} + (if $p == "" then {} else {path:$p} end))}' \
+    | bash "$SCRIPT" 2>/dev/null; echo $?)
+  actual=$(echo "$actual" | tail -1)
+  if [ "$actual" = "$expected" ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: expected exit $expected, got $actual"); fi
+}
+tool_check "Grep path HOME" 2 Grep "$H" "needle"
+tool_check "Grep no path from HOME" 2 Grep "" "needle"
+tool_check "Grep repo path" 0 Grep "$REPO" "needle"
+tool_check "Glob ** at HOME" 2 Glob "$H" "**/*.jsonl"
+tool_check "Glob ** at Library" 2 Glob "$H/Library" "**/*.plist"
+tool_check "Glob shallow at HOME" 0 Glob "$H" "*.md"
+tool_check "Glob ** in repo" 0 Glob "$REPO" "**/*.ts"
+
 # Non-Bash tool
 NONBASH=$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/tmp/x","content":"rg x ~"}}' | bash "$SCRIPT" 2>/dev/null; echo $?)
 if [ "$(echo "$NONBASH" | tail -1)" = "0" ]; then PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("non-Bash tool: expected 0"); fi

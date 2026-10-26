@@ -75,6 +75,7 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "gdoc-surgical-edit-only",
   "usage-tip",
   "perf-task-review",
+  "no-home-crawl",
 ];
 
 describe("loadManifestFile", () => {
@@ -398,7 +399,7 @@ describe("canonical hook manifest", () => {
       .filter((hook) => hook.event === "PreToolUse" && hook.matcher === "Bash")
       .map((hook) => hook.id);
 
-    expect(bashHookIds).toHaveLength(20);
+    expect(bashHookIds).toHaveLength(19);
     expect([...resolvedManifest.offByDefault].sort()).toEqual(
       [...bashHookIds, "context-budget-measure", ...OWNER_WORKFLOW_HOOK_IDS].sort(),
     );

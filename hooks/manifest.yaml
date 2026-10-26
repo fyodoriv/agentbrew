@@ -562,9 +562,9 @@ hooks:
     defaultEnabled: false
 
   - id: no-home-crawl
-    description: Block rg, grep -r, ag, fd, and find when the search root is $HOME, ~/Library, ~/Library/Application Support, or /; name a narrower path
+    description: Block rg, grep -r, ag, ug, fd, find, and the Grep and Glob tools when the search root is $HOME, ~/Library, ~/Library/Application Support, or /; name a narrower path
     event: PreToolUse
-    matcher: Bash
+    matcher: Bash|Grep|Glob
     script: checks/no-home-crawl.sh
     tier: deterministic
     verdict: block

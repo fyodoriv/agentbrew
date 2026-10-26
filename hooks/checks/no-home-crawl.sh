@@ -2,23 +2,29 @@
 # agentbrew/hooks/checks/no-home-crawl.sh
 #
 # **Hook**: no-home-crawl
-# **Event**: PreToolUse on Bash
+# **Event**: PreToolUse on Bash, Grep, and Glob
 # **Verdict**: block
 # **Source rule**: owner request 2026-10-25 (load 322: recursive agent
 # searches over the home folder made Spotlight and file-provider importers
 # re-read files for hours)
 #
 # Blocks a recursive search whose root is too broad: `rg`, `grep -r/-R`,
-# `ag`, `fd`, and `find` when the effective search root is $HOME,
-# ~/Library, ~/Library/Application Support, or /. The root is the path
-# argument, or the session cwd when no path is given (so `rg foo` from
-# $HOME and `rg foo .` from $HOME both block). A `cd <dir> &&` earlier in
-# the same command moves the cwd.
+# `ag`, `ug`/`ugrep`, `fd`, and `find` (and the Grep and Glob tools) when the
+# effective search root is $HOME, ~/Library, ~/Library/Application Support,
+# or /. The root is the path argument, or the session cwd when no path is
+# given (so `rg foo` from $HOME and `rg foo .` from $HOME both block). A
+# `cd <dir> &&` or `pushd <dir> &&` earlier in the same command moves the
+# cwd. `bash -c`, `zsh -lc`, and `eval` strings are checked too.
 #
 # **Allowed**:
 #   - any narrower path, such as ~/.claude/projects/<project> or ~/apps/<repo>
 #   - a depth limit of 2 or less (`--max-depth`/`-d` for rg and fd,
 #     `--depth` for ag, `-maxdepth` for find)
+#   - `rg`/`grep` with no path after a pipe (they read stdin, not the cwd)
+#   - a Glob pattern without `**`
+#
+# **Not caught**: roots built at run time, such as `rg x "$(pwd)"` or
+# `rg x "$DIR"`; only $HOME, ~, ~user, and $USER are expanded.
 #
 # **Opt-out**: `AGENTBREW_ALLOW_HOME_SEARCH=1`, in the agent's environment
 # or as a prefix on the command itself. `HOOK_BYPASS_NO_HOME_CRAWL=1` works too.
@@ -43,19 +49,28 @@ fi
 
 INPUT="$(read_hook_stdin)"
 HOOK_TOOL_NAME="$(json_get "$INPUT" '.tool_name')"
-if [ "$HOOK_TOOL_NAME" != "Bash" ]; then
-  verdict_bypass "$HOOK_ID" "tool $HOOK_TOOL_NAME is not Bash"
-fi
-
-COMMAND="$(json_get "$INPUT" '.tool_input.command')"
-if [ -z "$COMMAND" ]; then
-  verdict_bypass "$HOOK_ID" "no command to check"
-fi
-
-# Cheap pre-filter keeps python3 off the hot path for most Bash calls.
-if ! grep -qE '(^|[^[:alnum:]_-])(rg|grep|ag|fd|find)([[:space:]]|$|["'"'"'])' <<<"$COMMAND"; then
-  verdict_allow "$HOOK_ID" "no search command"
-fi
+COMMAND=""
+TOOL_PATH=""
+TOOL_GLOB=""
+case "$HOOK_TOOL_NAME" in
+  Bash)
+    COMMAND="$(json_get "$INPUT" '.tool_input.command')"
+    if [ -z "$COMMAND" ]; then
+      verdict_bypass "$HOOK_ID" "no command to check"
+    fi
+    # Cheap pre-filter keeps python3 off the hot path for most Bash calls.
+    if ! grep -qE '(^|[^[:alnum:]_-])(rg|grep|ag|ug|ugrep|fd|find)([[:space:]]|$|["'"'"'])' <<<"$COMMAND"; then
+      verdict_allow "$HOOK_ID" "no search command"
+    fi
+    ;;
+  Grep | Glob)
+    TOOL_PATH="$(json_get "$INPUT" '.tool_input.path')"
+    TOOL_GLOB="$(json_get "$INPUT" '.tool_input.pattern')"
+    ;;
+  *)
+    verdict_bypass "$HOOK_ID" "tool $HOOK_TOOL_NAME is not Bash, Grep, or Glob"
+    ;;
+esac
 
 if ! command -v python3 >/dev/null 2>&1; then
   verdict_bypass "$HOOK_ID" "python3 not found"
@@ -65,33 +80,64 @@ CWD="$(json_get "$INPUT" '.cwd')"
 [ -n "$CWD" ] || CWD="$PWD"
 
 # Prints "<tool>\t<root>" for the first too-broad search, or nothing.
-FINDING="$(NHC_COMMAND="$COMMAND" NHC_CWD="$CWD" NHC_HOME="${HOME:-}" python3 - <<'PY' 2>/dev/null || true
+FINDING="$(NHC_TOOL="$HOOK_TOOL_NAME" NHC_COMMAND="$COMMAND" NHC_PATH="$TOOL_PATH" NHC_GLOB="$TOOL_GLOB" \
+  NHC_CWD="$CWD" NHC_HOME="${HOME:-}" NHC_USER="${USER:-}" python3 - <<'PY' 2>/dev/null || true
 import os, re, shlex
 
+hook_tool = os.environ["NHC_TOOL"]
 cmd = os.environ["NHC_COMMAND"]
 cwd = os.environ["NHC_CWD"]
 home = os.path.normpath(os.environ["NHC_HOME"] or "/")
+user = os.environ.get("NHC_USER", "")
 broad = {"/", home, os.path.join(home, "Library"), os.path.join(home, "Library", "Application Support")}
+LITERAL_TILDE = "\x00literal-tilde\x00"
+SEARCH_TOOLS = ("rg", "grep", "ag", "ug", "ugrep", "fd", "find")
 
 # Options that take a value as the next word, per tool.
+GREP_VALUES = {"-e", "-f", "-m", "-A", "-B", "-C", "--include", "--exclude", "--exclude-dir", "-d", "-D"}
 VALUE_OPTS = {
     "rg": {"-e", "-f", "-g", "--glob", "--iglob", "-t", "--type", "-T", "--type-not", "-m", "--max-count",
            "-A", "-B", "-C", "-j", "--threads", "-M", "--max-columns", "-d", "--max-depth", "-r", "--replace",
            "--sort", "--sortr", "-E", "--encoding", "--type-add", "--ignore-file", "--pre", "--max-filesize"},
-    "grep": {"-e", "-f", "-m", "-A", "-B", "-C", "--include", "--exclude", "--exclude-dir", "-d", "-D"},
+    "grep": GREP_VALUES,
+    "ugrep": GREP_VALUES | {"-g", "--glob", "-t", "--file-type"},
+    "ug": GREP_VALUES | {"-g", "--glob", "-t", "--file-type"},
     "ag": {"-G", "--file-search-regex", "--depth", "-m", "--max-count", "-A", "-B", "-C", "--ignore", "-p", "--path-to-ignore"},
     "fd": {"-e", "--extension", "-t", "--type", "-E", "--exclude", "-d", "--max-depth", "--min-depth", "--exact-depth",
            "-S", "--size", "--changed-within", "--changed-before", "-o", "--owner", "-j", "--threads", "--base-directory",
            "--search-path", "-c", "--color", "--ignore-file"},
 }
+ROOT_OPTS = {"--search-path", "--base-directory"}
 DEPTH_OPTS = {"rg": {"-d", "--max-depth"}, "ag": {"--depth"}, "fd": {"-d", "--max-depth", "--exact-depth"}}
-WRAPPERS = {"sudo", "nice", "time", "command", "exec", "nohup", "env", "xargs"}
+# Wrappers and the options of theirs that take a value.
+WRAPPERS = {
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t"},
+    "doas": {"-u", "-C"},
+    "nice": {"-n"},
+    "timeout": {"-s", "-k", "--signal", "--kill-after"},
+    "gtimeout": {"-s", "-k", "--signal", "--kill-after"},
+    "stdbuf": {"-i", "-o", "-e"},
+    "caffeinate": {"-t", "-w"},
+    "env": {"-u", "-C", "-S"},
+    "time": set(), "command": set(), "exec": set(), "nohup": set(), "xargs": {"-I", "-n", "-P", "-L", "-d", "-s"},
+}
+TAKES_DURATION = {"timeout", "gtimeout"}
 
-def expand(p):
+
+def expand(p, base):
+    if LITERAL_TILDE in p:
+        # A file or folder literally named "~", not the home folder.
+        return os.path.normpath(os.path.join(base, p.replace(LITERAL_TILDE, "~")))
     p = p.replace("${HOME}", home).replace("$HOME", home)
+    p = p.replace("${USER}", user).replace("$USER", user)
     if p == "~" or p.startswith("~/"):
         p = home + p[1:]
-    return os.path.normpath(os.path.join(cwd_now, p))
+    elif p.startswith("~") and not p.startswith("~+"):
+        name, _, rest = p[1:].partition("/")
+        if re.match(r"^[A-Za-z0-9._-]+$", name):
+            p = os.path.join(os.path.dirname(home), name, rest)
+    return os.path.normpath(os.path.join(base, p))
+
 
 def depth_ok(v):
     try:
@@ -99,50 +145,58 @@ def depth_ok(v):
     except ValueError:
         return False
 
+
 def split_segments(text):
+    """Return [(words, after_pipe)] for each simple command in text."""
+    # A quoted '~' or "~" is a literal tilde, not the home folder.
+    text = re.sub(r"""(?<![^\s=])(['"])~\1(?=\s|$)""", LITERAL_TILDE, text)
     lex = shlex.shlex(text, posix=True, punctuation_chars=";&|()\n")
     lex.whitespace_split = True
     try:
         words = list(lex)
     except ValueError:
         return []
-    out, cur = [], []
+    out, cur, after_pipe = [], [], False
     for w in words:
         if w and set(w) <= set(";&|()\n"):
             if cur:
-                out.append(cur)
+                out.append((cur, after_pipe))
             cur = []
+            after_pipe = w in ("|", "|&")
         else:
             cur.append(w)
     if cur:
-        out.append(cur)
+        out.append((cur, after_pipe))
     return out
 
-segments = split_segments(cmd)
 
-cwd_now = cwd
-for seg in segments:
+def strip_wrappers(seg):
     allow_env = False
-    while seg and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", seg[0]) or seg[0] in WRAPPERS or (seg[0].startswith("-") and len(seg) > 1) or seg[0].isdigit()):
-        if seg[0] == "AGENTBREW_ALLOW_HOME_SEARCH=1":
-            allow_env = True
-        seg = seg[1:]
-    if not seg:
-        continue
-    tool = os.path.basename(seg[0])
-    args = seg[1:]
-    if tool in ("bash", "sh", "zsh") and "-c" in args:
-        k = args.index("-c")
-        if k + 1 < len(args):
-            # Check the inner script too: `bash -c "rg foo ~"`.
-            segments.extend(split_segments(args[k + 1]))
-        continue
-    if tool == "cd":
-        cwd_now = expand(args[0]) if args else home
-        continue
-    if allow_env or tool not in ("rg", "grep", "ag", "fd", "find"):
-        continue
+    while seg:
+        w = seg[0]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w):
+            if w == "AGENTBREW_ALLOW_HOME_SEARCH=1":
+                allow_env = True
+            seg = seg[1:]
+            continue
+        name = os.path.basename(w)
+        if name in WRAPPERS:
+            opts = WRAPPERS[name]
+            seg = seg[1:]
+            while seg and seg[0].startswith("-") and seg[0] != "--":
+                o = seg[0]
+                seg = seg[2:] if o in opts else seg[1:]
+            if seg and seg[0] == "--":
+                seg = seg[1:]
+            if name in TAKES_DURATION and seg:
+                seg = seg[1:]
+            continue
+        break
+    return seg, allow_env
 
+
+def roots_for(tool, args, after_pipe):
+    """Return (paths, depth_limited) or None when the call is not recursive."""
     paths, deep_ok = [], False
     if tool == "find":
         i = 0
@@ -153,60 +207,107 @@ for seg in segments:
         for j, a in enumerate(args):
             if a == "-maxdepth" and j + 1 < len(args) and depth_ok(args[j + 1]):
                 deep_ok = True
-        if not paths:
-            paths = ["."]
-    else:
-        recursive = tool != "grep"
-        explicit_pattern = files_mode = False
-        positionals = []
-        i = 0
-        while i < len(args):
-            a = args[i]
-            if a == "--":
-                positionals.extend(args[i + 1:]); break
-            if tool == "fd" and a in ("-x", "--exec", "-X", "--exec-batch"):
-                break
-            if a.startswith("--") and "=" in a:
-                name, val = a.split("=", 1)
-                if name in DEPTH_OPTS.get(tool, ()) and depth_ok(val):
+        return (paths or ["."]), deep_ok
+    recursive = tool not in ("grep", "ugrep")
+    explicit_pattern = files_mode = False
+    positionals = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            positionals.extend(args[i + 1:]); break
+        if tool == "fd" and a in ("-x", "--exec", "-X", "--exec-batch"):
+            break
+        if a.startswith("--") and "=" in a:
+            name, val = a.split("=", 1)
+            if name in DEPTH_OPTS.get(tool, ()) and depth_ok(val):
+                deep_ok = True
+            if name in ("--regexp", "--file"):
+                explicit_pattern = True
+            if name in ROOT_OPTS:
+                paths.append(val)
+            i += 1; continue
+        if a.startswith("-") and a != "-":
+            if tool in ("grep", "ugrep") and not a.startswith("--") and re.search(r"[rR]", a):
+                recursive = True
+            if a in ("--recursive", "--dereference-recursive"):
+                recursive = True
+            if a in ("-e", "-f", "--regexp", "--file"):
+                explicit_pattern = True
+            if a == "--files":
+                files_mode = True
+            if a in VALUE_OPTS.get(tool, ()) or a in ("--regexp", "--file"):
+                val = args[i + 1] if i + 1 < len(args) else ""
+                if a in DEPTH_OPTS.get(tool, ()) and depth_ok(val):
                     deep_ok = True
-                if name in ("--regexp", "--file"):
-                    explicit_pattern = True
-                if name == "--search-path":
+                if a in ROOT_OPTS:
                     paths.append(val)
-                i += 1; continue
-            if a.startswith("-") and a != "-":
-                if tool == "grep" and not a.startswith("--") and re.search(r"[rR]", a):
-                    recursive = True
-                if a in ("--recursive", "--dereference-recursive"):
-                    recursive = True
-                if a in ("-e", "-f", "--regexp", "--file"):
-                    explicit_pattern = True
-                if a == "--files":
-                    files_mode = True
-                if a in VALUE_OPTS.get(tool, ()) or a in ("--regexp", "--file"):
-                    val = args[i + 1] if i + 1 < len(args) else ""
-                    if a in DEPTH_OPTS.get(tool, ()) and depth_ok(val):
-                        deep_ok = True
-                    if a == "--search-path":
-                        paths.append(val)
-                    i += 2; continue
-                i += 1; continue
-            positionals.append(a); i += 1
-        if not recursive:
+                i += 2; continue
+            i += 1; continue
+        positionals.append(a); i += 1
+    if not recursive:
+        return None
+    if not (explicit_pattern or files_mode) and positionals:
+        positionals = positionals[1:]
+    paths.extend(positionals)
+    if not paths:
+        # After a pipe, rg/grep/ag/ug read stdin instead of the cwd.
+        if after_pipe and tool != "fd":
+            return None
+        paths = ["."]
+    return paths, deep_ok
+
+
+def check_command(text, base, depth=0):
+    if depth > 3:
+        return None
+    for seg, after_pipe in split_segments(text):
+        seg, allow_env = strip_wrappers(seg)
+        if not seg:
             continue
-        if not (explicit_pattern or files_mode) and positionals:
-            positionals = positionals[1:]
-        paths.extend(positionals)
-        if not paths:
-            paths = ["."]
-    if deep_ok:
-        continue
-    for p in paths:
-        root = expand(p)
-        if root in broad:
-            print(f"{tool}\t{root}")
-            raise SystemExit(0)
+        tool = os.path.basename(seg[0])
+        args = seg[1:]
+        if tool in ("bash", "sh", "zsh", "dash", "ksh"):
+            for k, a in enumerate(args):
+                if re.match(r"^-[A-Za-z]*c[A-Za-z]*$", a) and k + 1 < len(args):
+                    hit = check_command(args[k + 1], base, depth + 1)
+                    if hit:
+                        return hit
+                    break
+            continue
+        if tool == "eval":
+            hit = check_command(" ".join(args), base, depth + 1)
+            if hit:
+                return hit
+            continue
+        if tool in ("cd", "pushd"):
+            target = next((a for a in args if not a.startswith("-")), None)
+            base = expand(target, base) if target else home
+            continue
+        if allow_env or tool not in SEARCH_TOOLS:
+            continue
+        found = roots_for(tool, args, after_pipe)
+        if not found or found[1]:
+            continue
+        for p in found[0]:
+            root = expand(p, base)
+            if root in broad:
+                return f"{tool}\t{root}"
+    return None
+
+
+if hook_tool in ("Grep", "Glob"):
+    glob = os.environ.get("NHC_GLOB", "")
+    if hook_tool == "Glob" and "**" not in glob:
+        raise SystemExit(0)
+    root = expand(os.environ.get("NHC_PATH", "") or ".", cwd)
+    if root in broad:
+        print(f"{hook_tool}\t{root}")
+    raise SystemExit(0)
+
+hit = check_command(cmd, cwd)
+if hit:
+    print(hit)
 PY
 )"
 

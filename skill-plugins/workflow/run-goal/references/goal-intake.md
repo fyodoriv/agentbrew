@@ -56,3 +56,12 @@ separate goal summary. Add two lines to it:
 - **The user is away** ("work while I sleep"): ask nothing. Pick work that
   needs no input and has a real reference to test against. List the rest as
   "needs you" in a summary that takes about five minutes to read.
+- **The goal links sources** ("parse all links in this message"): resolve each
+  one before the contract. Follow short links to the final URL, read docs and
+  slides through a connector (not a sign-in page), and diff a local clone
+  against its upstream (it may be a stale fork). List each source in the
+  contract with what it gave.
+- **The goal grants someone access**: read your own rights first (for a
+  GitHub repo, `permissions.admin`). Find the person's account, but invite
+  only after the operator confirms it. Without admin rights, write a short
+  BLOCKED report: who can grant access, and what the person can already do.

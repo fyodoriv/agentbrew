@@ -8,6 +8,10 @@
 # Environment:
 #   OPEN_WORK_NO_FETCH=1   skip `git fetch`
 #   OPEN_WORK_NO_GH=1      skip pull request lookups
+#   OPEN_WORK_IGNORE_AUTHORS  extended regex of comment authors to skip
+#                          (default: ^(github-actions|dependabot)(\[bot\])?$)
+#   OPEN_WORK_IGNORE_BODIES   extended regex of comment bodies to skip
+#                          (default: none)
 #
 # Kinds:
 #   dirty      uncommitted or untracked files
@@ -18,6 +22,8 @@
 #   unpushed   commits on the current branch that no remote has
 #   branch     a local branch with commits not on the default branch
 #   pr         an open pull request by you (draft, checks, merge state)
+#   reply      a comment or review body by someone else on your open pull
+#              request, posted after your last reply (author and link only)
 #   unknown    the script could not check; check by hand
 #
 # It prints paths, branch names and counts only, never file contents.
@@ -190,6 +196,33 @@ check_repo() {
   else
     say unknown "gh pr list failed (no GitHub remote, or not signed in)"
   fi
+  unanswered "$top"
+}
+
+# Comments and review bodies by others after the PR author's last comment or
+# review. Prints the author and link, never the comment text.
+unanswered() {
+  local top="$1" json rows
+  command -v jq >/dev/null 2>&1 || { say unknown "jq is not installed; unanswered comments not checked"; return 0; }
+  json="$(cd "$top" && gh pr list --author @me --state open --limit 50 \
+    --json number,author,comments,reviews 2>/dev/null)" || { say unknown "gh pr list failed; unanswered comments not checked"; return 0; }
+  [ -n "$json" ] || return 0
+  rows="$(printf '%s' "$json" | jq -r '.[] | .number as $n | .author.login as $me
+    | ([.comments[]? | {who: .author.login, at: .createdAt, what: "comment", url: (.url // ""), body: (.body // "")}]
+       + [.reviews[]? | select((.body // "") != "") | {who: .author.login, at: .submittedAt, what: "review", url: "", body: .body}]) as $all
+    | ([$all[] | select(.who == $me) | .at] | max // "") as $last
+    | $all[] | select(.who != $me and .at > $last)
+    | [$n, .what, .who, .url, (.body | gsub("[\t\n\r]"; " "))] | @tsv' 2>/dev/null)" \
+    || { say unknown "could not read pull request comments"; return 0; }
+  local ignore_authors="${OPEN_WORK_IGNORE_AUTHORS:-^(github-actions|dependabot)(\[bot\])?$}"
+  local ignore_bodies="${OPEN_WORK_IGNORE_BODIES:-}"
+  local number what who url body
+  while IFS=$'\t' read -r number what who url body; do
+    [ -n "$number" ] || continue
+    printf '%s' "$who" | grep -Eq -- "$ignore_authors" && continue
+    [ -n "$ignore_bodies" ] && printf '%s' "$body" | grep -Eq -- "$ignore_bodies" && continue
+    say reply "#$number $what by $who${url:+ $url}"
+  done <<<"$rows"
 }
 
 [ "$#" -gt 0 ] || set -- .

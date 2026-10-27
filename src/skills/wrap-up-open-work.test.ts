@@ -246,7 +246,7 @@ describe("wrap-up open-work.sh", () => {
     mkdirSync(bin);
     writeFileSync(
       join(bin, "gh"),
-      "#!/bin/sh\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
+      "#!/bin/sh\ncase \"$*\" in *reviews*) echo '[]'; exit 0 ;; esac\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
     );
     chmodSync(join(bin, "gh"), 0o755);
     const ghEnv: NodeJS.ProcessEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
@@ -268,6 +268,79 @@ describe("wrap-up open-work.sh", () => {
     const found = Object.values(seen).filter(Boolean).length;
     console.log(`open-work recall: ${found}/${Object.keys(seen).length}`);
     expect(seen, out).toEqual(Object.fromEntries(Object.keys(seen).map((k) => [k, true])));
+  });
+
+  it("flags comments and review bodies by others after the author's last reply (#559)", () => {
+    const work = repo("replies");
+    const bin = join(scratch, "bin-replies");
+    mkdirSync(bin);
+    const prs = [
+      {
+        number: 9,
+        author: { login: "me" },
+        comments: [
+          {
+            author: { login: "alice" },
+            createdAt: "2026-10-01T00:00:00Z",
+            url: "https://x.example.com/c1",
+            body: "old q",
+          },
+          {
+            author: { login: "me" },
+            createdAt: "2026-10-02T00:00:00Z",
+            url: "https://x.example.com/c2",
+            body: "answered",
+          },
+          {
+            author: { login: "bob" },
+            createdAt: "2026-10-03T00:00:00Z",
+            url: "https://x.example.com/c3",
+            body: "new q",
+          },
+          {
+            author: { login: "github-actions" },
+            createdAt: "2026-10-04T00:00:00Z",
+            url: "https://x.example.com/c4",
+            body: "ci",
+          },
+          {
+            author: { login: "carol" },
+            createdAt: "2026-10-04T00:00:00Z",
+            url: "https://x.example.com/c5",
+            body: "LGTM-NOISE",
+          },
+        ],
+        reviews: [
+          {
+            author: { login: "rabbit" },
+            submittedAt: "2026-10-05T00:00:00Z",
+            body: "Nitpick: outside diff range",
+            state: "COMMENTED",
+          },
+          { author: { login: "dave" }, submittedAt: "2026-10-05T00:00:00Z", body: "", state: "APPROVED" },
+        ],
+      },
+    ];
+    writeFileSync(join(bin, "prs.json"), JSON.stringify(prs));
+    writeFileSync(join(bin, "gh"), `#!/bin/sh\ncase "$*" in *reviews*) cat "${join(bin, "prs.json")}" ;; esac\n`);
+    chmodSync(join(bin, "gh"), 0o755);
+    const ghEnv: NodeJS.ProcessEnv = {
+      ...env,
+      OPEN_WORK_NO_GH: "0",
+      OPEN_WORK_IGNORE_BODIES: "NOISE",
+      PATH: `${bin}:${process.env.PATH}`,
+    };
+    delete ghEnv.BASH_ENV;
+    delete ghEnv.ENV;
+    const r = spawnSync("bash", [openWork, work], { env: ghEnv, encoding: "utf-8" });
+    expect(r.stdout).toMatch(/reply\s+#9 comment by bob https:\/\/x\.example\.com\/c3/);
+    expect(r.stdout).toMatch(/reply\s+#9 review by rabbit/);
+    expect(r.stdout).not.toContain("alice");
+    expect(r.stdout).not.toContain("github-actions");
+    expect(r.stdout).not.toContain("carol");
+    expect(r.stdout).not.toContain("dave");
+    expect(r.stdout).not.toContain("new q");
+    expect(r.status).toBe(1);
   });
 
   it("exits 2 for a path that is not a git checkout", () => {

@@ -22,11 +22,14 @@ exactly what is left.
    working directory), plus any paths the user passed.
 2. Run `scripts/open-work.sh <repo> ...` from this skill's folder. It prints
    one line per item: `dirty`, `do-not-stage`, `worktree`, `stash`,
-   `unpushed`, `branch`, `pr`, or `unknown`, with paths, branch names and
+   `unpushed`, `branch`, `pr`, `reply`, or `unknown`, with paths, branch names and
    counts only. Exit 1 means something is open. A squash-merged branch is not
    `branch` open work, even after the default branch changed the same lines,
    unless the default branch reverted it; nor is a branch whose tip is a merged PR's head (needs `gh`).
    The same holds for a `worktree` of such a branch with no uncommitted files.
+   A `reply` line is a comment or review body by someone else on your open PR,
+   posted after your last reply: answer each one. `OPEN_WORK_IGNORE_AUTHORS`
+   and `OPEN_WORK_IGNORE_BODIES` (extended regexes) skip bots and noise.
 3. Add what no script can see: promises in the transcript ("I'll add a test
    later", a step the user asked for that you skipped), failing checks you
    left, review comments you did not answer, and steps that need the owner

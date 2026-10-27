@@ -21,6 +21,7 @@ import {
 } from "../mcp/endpoint-repair.js";
 import { readMcpJson, writeMcpJson } from "../mcp/mcp.js";
 import { filterInvalidServers } from "../mcp/mcp-validation.js";
+import { computeMcpmBridgeFingerprint } from "../mcp/mcpm-bridge-fingerprint.js";
 import {
   BROKEN_MCPM_REGISTRY_SERVERS,
   reconcileIntersectionClientEntries,
@@ -711,6 +712,12 @@ function bridgeStateMcpToMcpm(
   const { clients } = buildMcpmClientList(detectedAgents);
   if (clients.length === 0) return;
 
+  // Nothing the bridge reads changed since the last sync, so another attempt
+  // would spawn the same mcpm calls for the same result (issue #580).
+  if (manifest.mcpmBridgeFingerprint === computeMcpmBridgeFingerprint(servers, AGENT_DEFINITIONS, detectedAgents)) {
+    return;
+  }
+
   // Compare exact definitions, not only names. This keeps steady-state syncs
   // subprocess-free while repairing stale mcpm entries after an Agentfile
   // changes a server's backend or transport.
@@ -899,8 +906,6 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   syncDetectedMcpPermissions(state.agents, servers, dryRun, keepsClaudePermissions(state));
   const totals = aggregateAndLogResults(agentResults, log, { quiet, verbose, dryRun });
 
-  if (!dryRun) persistManagedNames(manifest, managedNames, sharedManifest);
-
   // Post-sync sweep: rewrite bare `${VAR}` → `${VAR:-}` in every detected agent's MCP
   // config. Catches placeholders mcpm wrote for intersection clients (slice 4a hands
   // them to `mcpm install` + `mcpm client edit`, neither of which knows about
@@ -917,12 +922,27 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
     runPostSyncPlaywrightIsolatedSweep(state.agents, log, quiet);
     runPostSyncEndpointRepairSweep(servers, quarantined, log, quiet);
     runPostSyncMcpmHygieneSweep(state.agents, servers, quarantined, log, quiet);
+    recordMcpmBridgeFingerprint(manifest, viaMcpm, state.agents, mcpmAvailable);
+    persistManagedNames(manifest, managedNames, sharedManifest);
   }
 
   if (!quiet) {
     const externalNames = state.externalMcpServers?.length ? new Set(state.externalMcpServers) : undefined;
     await logSyncSummary(totals, { dryRun, discover, externalNames }, detectedAgents.length, servers, log);
   }
+}
+
+/** Taken after every sync write, so the next sync compares against the
+ *  files exactly as this sync left them (issue #580). */
+function recordMcpmBridgeFingerprint(
+  manifest: Manifest,
+  servers: McpServer[],
+  agents: AgentConfig[],
+  mcpmAvailable: boolean,
+): void {
+  if (!mcpmAvailable) return;
+  const detectedNames = agents.filter((a) => a.detected).map((a) => a.name);
+  manifest.mcpmBridgeFingerprint = computeMcpmBridgeFingerprint(servers, AGENT_DEFINITIONS, detectedNames);
 }
 
 /** Make the env that OpenCodeAdapter drops on URL servers visible. */

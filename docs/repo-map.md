@@ -44,7 +44,10 @@ state.yaml (mcpServers)          →  mcp-sync.ts                  →  Native M
                                                                       e.g. ~/.kiro/settings/mcp.json,
                                                                       ~/.config/opencode/opencode.json); intersection clients
                                                                       in `MCP_INTERSECTION_AGENTS` delegate to `mcpm install` +
-                                                                      `mcpm client edit` via mcp-delegate.ts. agents.yaml
+                                                                      `mcpm client edit` via mcp-delegate.ts. The bridge is
+                                                                      skipped while its inputs match the manifest's
+                                                                      `mcpmBridgeFingerprint` (mcpm-bridge-fingerprint.ts).
+                                                                      agents.yaml
                                                                       `mcpPermissionsConfig` also writes permissions.allow
                                                                       (no core agent uses it today).
 shared-rules.md                  →  rules-sync.ts                →  Native writes for `AGENTBREW_ONLY_RULES_AGENTS` (paths in

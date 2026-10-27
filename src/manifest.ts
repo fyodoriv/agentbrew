@@ -33,6 +33,11 @@ export interface Manifest {
    *  src/sync/mcp-sync.ts and `sync-idempotent-and-complete` (TASKS.md)
    *  criterion (b). */
   mcpmBridgeAttemptedMissing?: string[];
+  /** Hash of everything the sync-time mcpm bridge reads, taken at the end of
+   *  the last non-dry sync. The bridge skips when it matches, so a server mcpm
+   *  never makes reachable does not cost every sync its mcpm spawns (#580).
+   *  See `src/mcp/mcpm-bridge-fingerprint.ts`. */
+  mcpmBridgeFingerprint?: string;
 }
 
 export function contentHash(content: string): string {

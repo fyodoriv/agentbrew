@@ -86,6 +86,9 @@ has() { grep -qE "$1" <<<"$changed"; }
 # - A skill change also runs the tests that read every skill through code
 #   (found with a read probe of the full suite, 2026-10-22).
 # - A hook change runs src/hooks.
+# - A templates/rules/*.mdc change runs the tests that read those templates
+#   (read probe of the full suite, 2026-10-22). The integration tests add about 30 s.
+template_rule_readers=(src/agent-bloat-lint.test.ts src/sync/helper-scripts.test.ts src/sync/catalog-template-rules.test.ts src/integration.test.ts src/integration-essential-core.test.ts)
 skill_scanners=(src/agent-bloat-lint.test.ts src/agent-artifacts/inventory.test.ts src/drift-checks/drift-checks.test.ts src/sync/helper-scripts.test.ts)
 root_anchor='[A-Za-z_]*[Rr][Oo][Oo][Tt]|process\.cwd\(\)|import\.meta\.dirname|__dirname'
 changed_skills=""
@@ -127,6 +130,7 @@ if has '^skill-plugins/'; then
   done < <(command -p find src/skills -name '*.test.ts' 2>/dev/null | sort)
 fi
 has '^hooks/' && tests+=(src/hooks)
+has '^templates/rules/' && tests+=("${template_rule_readers[@]}")
 
 unique_tests=()
 while IFS= read -r t; do

@@ -347,19 +347,6 @@
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
   - **Blocked**: needs-owner-approval — 2026-10-27: filing on anthropics/claude-plugins-official is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
-- [ ] Run the template-rule readers when a `templates/rules/` diff is merge-ready
-  - **ID**: verify-changed-template-rule-readers
-  - **Tags**: perf, gate
-  - **Details**: The 2026-10-22 read probe of the full suite showed that `src/agent-bloat-lint.test.ts`, `src/sync/helper-scripts.test.ts`, `src/sync/catalog-template-rules.test.ts`, `src/integration.test.ts`, and `src/integration-essential-core.test.ts` read `templates/rules/*.mdc`. `verify:changed` calls such a diff merge-ready but runs none of them, so a broken rule template can reach `main`.
-  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`
-  - **Output**: code
-  - **Acceptance**: a diff that only changes one `templates/rules/*.mdc` file runs those tests in `verify:changed`.
-  - **Hypothesis**: rule-template breaks caught before merge go from 0 of the readers to all of them, for about 30 s more gate time on such diffs.
-  - **Measurement**: `npm run verify:changed -- --dry-run` on a branch that only edits one `templates/rules/*.mdc` file lists every reader above.
-  - **Success**: every reader above is listed, and the run takes under 60 s.
-  - **Pivot**: if the integration tests make the run take over 2 min, send `templates/rules/` diffs to the full gate instead.
-  - **Anchor**: read probe in the verify-changed-docs-only-fast PR (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
-
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security

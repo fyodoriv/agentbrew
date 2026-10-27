@@ -33,6 +33,7 @@
     "playwright:install": "playwright install chromium",
     "docs:competition": "tsx scripts/sync-competition-docs.ts",
     "docs:agent-matrix": "tsx scripts/sync-agent-matrix.ts",
+    "docs:proof": "tsx scripts/sync-proof.ts",
     "docs:verify-claims": "tsx scripts/verify-competition-claims.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src scripts real-e2e --error-on-warnings && bash scripts/lint-security.sh && bash scripts/lint-repo-artifacts.sh",

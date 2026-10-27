@@ -71,7 +71,7 @@ describe("renderAgentFeatureMatrix", () => {
     const markdown = renderAgentFeatureMatrix();
     expect(markdown).toContain("### Sync surfaces per agent");
     expect(markdown).toContain("### SKILL.md feature support");
-    expect(markdown).toContain("Skills-only (experimental;");
+    expect(markdown).toContain("Skills-only agents are experimental.");
   });
 
   it("includes claude-code with every surface as ✓", () => {

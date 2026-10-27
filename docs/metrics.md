@@ -27,6 +27,15 @@ history is not a real zero.
 
 ## Notes
 
+- The README `## Proof` section is generated. `npm run docs:proof` saves the
+  numbers to `docs/proof/metrics.json` (value, date, data kind, command, and a
+  history per metric) and rewrites the section. `npm run docs:proof -- --render`
+  rewrites the section only. `src/docs/proof.test.ts` fails when they drift.
+- Headline Proof rows are field outcomes from the local event log only. Gate
+  and code counts sit under "Engineering health". Each machine is named by a
+  salted hash (the salt stays in `~/.local/state/agentbrew/proof-salt`).
+  Nothing is uploaded; how a second machine's totals reach the repo is open.
+
 - Events are content-free: counts, times, and enum names only. The format and
   the privacy rules are in [`observability.md`](observability.md).
 - `source_lines` uses the same rule as the 30K-line kill trigger: every tracked

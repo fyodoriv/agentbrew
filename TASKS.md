@@ -298,6 +298,31 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
+- [ ] Measure that sync never changes user-made files
+  - **ID**: measure-sync-preserves-user-files
+  - **Tags**: proof, metrics, sync
+  - **Details**: The README Proof section says "Never destroys your data" with `not measured yet`. Add a metric to `npm run docs:proof`: seed a scratch HOME with user-made skills, MCP servers, rules, and commands, run `agentbrew sync` and `agentbrew fix`, and count user files whose bytes changed.
+  - **Files**: `src/docs/proof.ts`, `scripts/sync-proof.ts`, `docs/proof/metrics.json`
+  - **Output**: code
+  - **Acceptance**: the Proof row shows a measured count with its date, data kind, and command.
+  - **Hypothesis**: user-made files changed by a sync on a seeded home stay at 0, so the claim moves from not measured to proven.
+  - **Measurement**: `npm run docs:proof` (the new `user_files_changed` metric).
+  - **Success**: no user file changes in any of 3 runs.
+  - **Pivot**: any changed user file -> file a P0 bug and drop the claim from the README until it is fixed.
+  - **Anchor**: README Proof section; Kitchenham, Dyba, Jorgensen 2004 (evidence-based SE).
+- [ ] Measure time from a cold install to a clean status
+  - **ID**: measure-zero-to-configured
+  - **Tags**: proof, metrics, install
+  - **Details**: The README Proof section says "A fresh machine is set up in one command" with `not measured yet`. `scripts/metrics.sh` already reads `run.seconds` from the install receipt, but no finished receipt exists. Run `scripts/install.sh run` on a scratch HOME, then have `npm run docs:proof` read the receipt.
+  - **Files**: `src/docs/proof.ts`, `scripts/sync-proof.ts`, `scripts/install.sh`
+  - **Output**: code
+  - **Acceptance**: the Proof row shows `zero_to_configured_s` with its date, data kind, and command.
+  - **Hypothesis**: a cold one-step install reaches a clean `agentbrew status --ci` in 120 s or less.
+  - **Measurement**: `npm run docs:proof` (reads the install receipt's `run.seconds`).
+  - **Success**: 120 s or less.
+  - **Pivot**: over 300 s -> cut install steps or delegate them (docs/metrics.md).
+  - **Anchor**: docs/metrics.md `zero_to_configured_s`; Forsgren, Humble, Kim 2018.
+
 ## P3
 
 - [ ] `/work` drops the steps of an Agentfile that no longer exists

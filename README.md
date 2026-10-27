@@ -3,7 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/agentbrew.svg)](https://www.npmjs.com/package/agentbrew)
 [![license](https://img.shields.io/npm/l/agentbrew.svg)](LICENSE)
 
-**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.** Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. Companies ship private skills, rules, MCP servers, and hooks as signed plugins.
+**One CLI that syncs skills, MCP servers, rules, and commands across every AI coding agent on your machine.**
+
+Claude Code, Codex, Copilot, Goose, Kiro, Amp, and more — see the agent matrix below. Declarative `Agentfile`, drift detection, auto-repair. Companies ship private skills, rules, MCP servers, and hooks as signed plugins.
 
 **Install or update with your AI agent (one step):** open Claude Code (or Codex) and say:
 
@@ -16,7 +18,7 @@ The agent explains what will change, asks your preferences, backs up your curren
 Or set it up in one line (clone, back up, install, heal, verify; it ends with the doctor, `agentbrew status --ci`):
 
 ```bash
-git clone https://github.com/fyodoriv/agentbrew.git ~/agentbrew && bash ~/agentbrew/scripts/install.sh run
+git clone https://github.com/fyodoriv/agentbrew.git ~/agentbrew && bash ~/agentbrew/scripts/install.sh run  # ends with the doctor
 ```
 
 Or try it without a clone:
@@ -30,23 +32,92 @@ Requires Node.js 20.11+ and git.
 
 **First run:** In an interactive terminal, `agentbrew` auto-runs `init` — detects agents, installs recommended items, schedules background drift repair. In CI, pipes, and agents, it changes nothing and prints the command to run (`agentbrew init`). Opt out with `AGENTBREW_NO_AUTO_INIT=1`. `agentbrew config set autoRepair off` turns the background repair job off for good (`AGENTBREW_NO_AUTO_SYNC=1` does it for one run), and `AGENTBREW_NO_SHELL_HOOK=1` leaves your shell rc file alone (the one-step installer applies your answers).
 
-**One command after that:** `agentbrew` (no arguments) in the shell, or `/agentbrew` in an agent ([`commands/agentbrew.md`](commands/agentbrew.md); it ships in the package, and every `agentbrew sync` deploys it, to Claude Code too without `ai-rules`; your own `~/.config/agentbrew/commands/agentbrew.md` or an Agentfile dir overrides it, and `agentbrew config set builtinCommands off` or `agentbrew remove agentbrew` turns it off; with your own version present, `remove` deletes only yours). It prints the state, what needs you, and a `Next:` line with the exact command for each fix. It reads local files only and changes nothing. `agentbrew config` shows each setting with its value and source; `agentbrew config set <key> <value>` checks a value and saves it. Agents find every other command with `agentbrew actions --json`: one list generated from the CLI, with each command's arguments and whether it needs the user's own terminal or a yes first. agentbrew has no UI of its own, so every action runs through the CLI and agents; `src/action-parity.test.ts` fails when a command misses the agent path.
+**One command after that:** `agentbrew` (no arguments) in the shell, or `/agentbrew` in an agent ([`commands/agentbrew.md`](commands/agentbrew.md)). It ships in the package, and every `agentbrew sync` deploys it, to Claude Code too without `ai-rules`.
+
+Your own `~/.config/agentbrew/commands/agentbrew.md` or an Agentfile dir overrides it. `agentbrew config set builtinCommands off` or `agentbrew remove agentbrew` turns it off. With your own version present, `remove` deletes only yours.
+
+It prints the state, what needs you, and a `Next:` line with the exact command for each fix. It reads local files only and changes nothing.
+
+`agentbrew config` shows each setting with its value and source; `agentbrew config set <key> <value>` checks a value and saves it. Agents find every other command with `agentbrew actions --json`: one list generated from the CLI, with each command's arguments and whether it needs the user's own terminal or a yes first. agentbrew has no UI of its own, so every action runs through the CLI and agents; `src/action-parity.test.ts` fails when a command misses the agent path.
 
 **Who it is for:** developers who use more than one AI coding agent and want one place to manage skills, MCP servers, rules, and commands.
 **Documentation:** start at the [documentation map](docs/README.md). Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first.
 
-## Why agentbrew
+## Use cases
 
-Most developers use multiple AI coding tools. Each stores config in its own format (JSON, TOML, YAML, markdown). Add an MCP server: edit several config files. Add a skill: copy into each agent's skill directory. Something breaks silently: nobody notices until a tool stops working.
+- You use more than one AI coding agent and want the same skills, MCP servers, rules, and commands in all of them.
+- You set up a new machine and want your whole agent setup back from one `Agentfile.yaml`.
+- An agent update broke your config and you want it found and repaired without you.
+- Your company ships private skills, rules, MCP servers, and hooks to every developer as a signed plugin.
+- You want to know how big your always-loaded agent context is and where agent time goes.
+
+## Features
+
+Most developers use multiple AI coding tools. Each stores config in its own format (JSON, TOML, YAML, markdown). Add an MCP server: edit several config files. Add a skill: copy into each agent's skill directory.
+
+Something breaks silently: nobody notices until a tool stops working.
 
 - **One source of truth, every agent gets it.** Install once, deploy to every agent in its native format. Custom servers get the same treatment as catalog items.
 - **Self-healing.** Background drift checks every 30 minutes. If an agent update or manual edit breaks the deployed config, it auto-repairs.
 - **Never destroys your data.** Manual edits, user-added servers, custom rules — all survive every sync, update, and auto-repair.
 - **Declarative.** Commit an `Agentfile.yaml` to your dotfiles; a fresh machine bootstraps in one command.
-- **Curated 200+-item catalog.** Skills from [Vercel](https://github.com/vercel-labs/skills), [Anthropic](https://github.com/anthropics/skills), [obra/superpowers](https://github.com/obra/superpowers), [Every Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin), [gstack](https://github.com/garrytan/gstack), [Supabase](https://github.com/supabase/agent-skills), [Trail of Bits](https://github.com/trailofbits/skills), [slavingia/skills](https://github.com/slavingia/skills), [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — plus the team overlay when enabled.
+- **Curated 200+-item catalog.** It holds skills from [Vercel][], [Anthropic][], [obra/superpowers][], [Every Compound Engineering][], [gstack][], [Supabase][], [Trail of Bits][], [slavingia/skills][], and [awesome-design-md][]. The team overlay adds more when enabled.
 - **Rollback is always available.** Every sync snapshots pre-state; `sync --rollback` restores it.
 
+[Vercel]: https://github.com/vercel-labs/skills
+[Anthropic]: https://github.com/anthropics/skills
+[obra/superpowers]: https://github.com/obra/superpowers
+[Every Compound Engineering]: https://github.com/EveryInc/compound-engineering-plugin
+[gstack]: https://github.com/garrytan/gstack
+[Supabase]: https://github.com/supabase/agent-skills
+[Trail of Bits]: https://github.com/trailofbits/skills
+[slavingia/skills]: https://github.com/slavingia/skills
+[awesome-design-md]: https://github.com/VoltAgent/awesome-design-md
+
 **What belongs in agentbrew.** agentbrew deploys agent config for work in any repo. A feature that reads or writes a user's career data, such as a standup report or a daily status update, belongs to careerbrew. agentbrew only deploys careerbrew's commands from careerbrew's own source (see "Commands that a repo owns" under [Agentfile](#agentfile)).
+
+## Proof
+
+<!-- proof:start -->
+Every number below comes from `docs/proof/metrics.json`. `npm run docs:proof` writes that file and this section.
+Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). Nothing is uploaded; each machine aggregates its own log.
+
+| Claim | Theory | Metric | Result | Source |
+|---|---|---|---|---|
+| Sync is fast enough to run often | Under 2 s keeps a tool inside a user's flow (Nielsen 1993, response-time limits) | `sync` time, goal 2,000 ms or less | 997 ms (median of the last 20 of 335 syncs over 8 days) | `docs/proof/metrics.json`, real use |
+| Sync works reliably | A low failure share is what makes background sync safe | failed `sync` runs, goal 5% or less | 0% (335 syncs, 2026-10-18 to 2026-10-26) | `docs/proof/metrics.json`, real use |
+| Self-healing: the scheduled repair runs cleanly | A repair loop only helps when its own runs succeed | failed scheduled repairs, goal 5% or less | 4.3% (258 scheduled repairs, 2026-10-18 to 2026-10-26) | `docs/proof/metrics.json`, real use |
+| Self-healing: drift gets fixed | Drift found and fixed by the loop is the outcome the claim promises | drift items the repair fixed | 38.9% (14 of 36 drift items seen by 258 repairs) | `docs/proof/metrics.json`, real use |
+| Never destroys your data | Sync must leave user-made files byte for byte the same | user files changed by a sync on a seeded home | not measured yet (task `measure-sync-preserves-user-files` in TASKS.md) | not measured yet |
+| A fresh machine is set up in one command | Time to configured is the outcome a one-step install promises | seconds from a cold install to a clean `agentbrew status --ci` | not measured yet (task `measure-zero-to-configured` in TASKS.md) | not measured yet |
+
+Field data comes from 1 machine(s), each named by a salted hash: `m-c525f1fce3` (335 syncs, 258 repairs, as of 2026-10-26).
+
+Engineering health (from the code and the local gate, not field proof):
+
+- agents with a full sync surface: 14 agents (agents with more than a skills folder in agents.yaml); local run, 2026-10-26, m-c525f1fce3 (darwin arm64)
+- catalog entries: 253 items (skills, MCP servers, CLI tools, plugins, rules in src/catalog.yaml); local run, 2026-10-26, m-c525f1fce3 (darwin arm64)
+- passing `npm run verify` runs: 66.7% (3 full npm run verify runs, 2026-10-18 to 2026-10-19); local run, 2026-10-19, m-c525f1fce3 (darwin arm64)
+- uncached gate time, goal 300,000 ms or less: 408,466 ms (median of 2 passing uncached runs); local run, 2026-10-19, m-c525f1fce3 (darwin arm64)
+
+Median `agentbrew sync` time per day (real use, ms):
+
+```mermaid
+xychart-beta
+  title "Median sync time per day (ms)"
+  x-axis ["10-18", "10-19", "10-20", "10-21", "10-22", "10-23", "10-25", "10-26"]
+  y-axis "ms"
+  bar [1201, 951, 923, 780, 1184, 6108, 9229, 1012]
+```
+
+Drift items the scheduled repair saw (real use). One item can count in more than one run. Honest gap: most were not fixed by the repair run that saw them.
+
+```mermaid
+pie title Drift items found by scheduled repair
+  "Repaired" : 14
+  "Not fixed by that run" : 22
+```
+<!-- proof:end -->
 
 ## Personal and corporate machines
 
@@ -89,7 +160,9 @@ agentbrew skills coverage --builtins      # require in-repo skill eval coverage
 agentbrew skills validate                 # check SKILL.md frontmatter and body (exit 1 on errors)
 ```
 
-**A removed MCP server stays removed.** `agentbrew remove <server>` records the name in `declinedMcpServers` in `state.yaml`. The recommended set and project Agentfiles (a repo's `Agentfile.yaml`, applied when you sync from that repo) skip it. Your global Agentfile, an explicit `--agentfile`, or `agentbrew install <server>` adds it back. `remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded, so remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.
+**A removed MCP server stays removed.** `agentbrew remove <server>` records the name in `declinedMcpServers` in `state.yaml`. The recommended set and project Agentfiles (a repo's `Agentfile.yaml`, applied when you sync from that repo) skip it. Your global Agentfile, an explicit `--agentfile`, or `agentbrew install <server>` adds it back.
+
+`remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded. So remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.
 
 **Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
 
@@ -101,7 +174,7 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 - A full commit ID works: 40 hex, or 64 hex in a SHA-256 repo. A short commit ID, or another revision such as `HEAD~1`, is refused.
 - A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit: `mcp update` exits 1 on it and prints the install command, with `--ref <tag|branch|commit>`, that moves the pin.
 - A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew removes none of your files in the cache; after a re-pin whose build is refused, the cache stays at the new commit.
-- A build that fails at a commit the cache has no build output from counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it; a failed build at that commit may still use it.
+- Say the cache has no build output from a commit, and the build at that commit fails. That counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it. A failed build at that commit may still use it.
 - With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
 - Known limit: when a successful build writes its output to a new place (`build/` instead of `dist/`), detection can still pick the old `dist/` first. Delete the old output dir in the cache.
 - A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
@@ -117,7 +190,11 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 SSH runs with `-o BatchMode=yes` added to your own ssh command (`GIT_SSH_COMMAND`, `core.sshCommand`, or `GIT_SSH`), so it fails instead of asking for a passphrase or a host key.
 - A token in a git URL (`https://user:token@host/...` or `https://token@host/...`) never shows in anything agentbrew prints: the CLI filters all of its stdout and stderr, so the token appears as `***`. A tool agentbrew runs with your terminal attached (`npx skills add` for a skill source) prints on its own; give such a source a credential helper instead of a token in its URL. The server's saved `gitUrl` leaves it out, while the repo cache keeps it for fetching. If you delete the cache, set up a credential helper before `mcp update`.
 
-**GitHub MCP.** `agentbrew install github` deploys GitHub's own hosted server (`https://api.githubcopilot.com/mcp/`) with `Authorization: Bearer ${GITHUB_TOKEN}`. The old `@modelcontextprotocol/server-github` npm package is archived. On load, agentbrew moves a saved `github` entry that still names it to the hosted server. A fresh install always writes the hosted server, even on a machine with a local `~/.local/bin/*-github-mcp` launcher: GitHub maintains the hosted server, and the catalog curates rather than hosts. The launcher is used only to repair an old entry: one that still names the archived npm package on a machine that has a launcher, or one whose launcher path no longer exists. To use a launcher for a new install, add the server by hand with the launcher as its command.
+**GitHub MCP.** `agentbrew install github` deploys GitHub's own hosted server (`https://api.githubcopilot.com/mcp/`) with `Authorization: Bearer ${GITHUB_TOKEN}`. The old `@modelcontextprotocol/server-github` npm package is archived. On load, agentbrew moves a saved `github` entry that still names it to the hosted server.
+
+A fresh install always writes the hosted server, even on a machine with a local `~/.local/bin/*-github-mcp` launcher: GitHub maintains the hosted server, and the catalog curates rather than hosts. The launcher is used only to repair an old entry.
+
+One that still names the archived npm package on a machine that has a launcher, or one whose launcher path no longer exists. To use a launcher for a new install, add the server by hand with the launcher as its command.
 
 **Official MCP Registry (opt-in).** With `AGENTBREW_MCP_REGISTRY=1`, `install` looks up a name the local catalog does not have in the [official MCP Registry](https://registry.modelcontextprotocol.io/) — for example `AGENTBREW_MCP_REGISTRY=1 agentbrew install io.github.upstash/context7 --dry-run`. Local catalog entries always win, and a registry outage falls back to the local catalog with a one-line warning. Details: [docs/competition/official-mcp-registry-vs-agentbrew.md](docs/competition/official-mcp-registry-vs-agentbrew.md).
 
@@ -240,13 +317,45 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 **Global vs. project.** The global Agentfile (`~/.config/agentbrew/Agentfile.yaml`) is authoritative — items you remove from it are removed from state on next sync. MCP servers that `agentbrew init` found already set up in your agents stay, unless the Agentfile listed them and later dropped them. The project Agentfile (`./Agentfile.yaml`) is additive — it can add items for that repo but never removes the global config. `install` and `remove` always update the global file (like `npm install` updating `package.json`); pass `--project` for project scope.
 
-Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands` and agentbrew's built-in commands (`/agentbrew`; they rank lowest, so the global folder and any Agentfile dir override them, your own version beats everything, and sync never copies them into your folder). Sync never overwrites a command you created or edited in `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it. A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off. Dirs from other Agentfiles or added by hand are never removed. State written before ownership existed is kept as is, and a dir that is still declared is claimed on the next sync, so remove an old dropped dir by hand once.
+Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands` and agentbrew's built-in commands (`/agentbrew`). Built-in commands rank lowest: the global folder and any Agentfile dir override them, and your own version beats everything. Sync never copies them into your folder.
+
+Sync never overwrites a command you created or edited in `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it.
+
+A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off.
+
+Dirs from other Agentfiles or added by hand are never removed. State written before ownership existed is kept as is, and a dir that is still declared is claimed on the next sync. So remove an old dropped dir by hand once.
 
 **Commands that a repo owns.** Never hand-copy a repo-owned command into `~/.config/agentbrew/commands/`. Declare the repo's command folder in that repo's `Agentfile.yaml` (for example `commands: [./commands]`). Then run `agentbrew sync` in the repo, or list its parent folder in `workspaceRoots` (see [Workspaces](#workspaces)). A hand copy is a second source with no owner, and it drifts from the repo's version.
 
-**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model; `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is). `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`. Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+**Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model. `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is).
 
-**Work day.** `/work` (a built-in command, deployed by `agentbrew sync` like `/agentbrew`) runs `agentbrew work --json` and follows it: agentbrew's own steps (`/agentbrew`), then each Agentfile's `workSteps:` list in apply order, run back to back, then a watch loop with one line per update, and on "end of day" it stops its loops, runs `/wrap-up` (an opt-in workflow skill: `agentbrew install wrap-up`; without it, `/work` says so in one line), and drafts a Today / Tomorrow report. `/work` never stops to ask "continue?". It stops only for the reasons in `stopOnlyFor`: a merge conflict it cannot resolve, a destructive or public action that needs approval, or a choice only you can make. A blocked step gets one line, and the run goes on. Every other question is saved and asked once, after the last step. The machine rule comes from the installed company plugins: with one, edit only the plugin repos and open issues on public repos; without, edit public repos. Every public post stays a draft until you say yes. Each step in `agentbrew work --json` names the file it runs (`path`); a user-only skill (`disable-model-invocation: true`, so the agent's Skill tool hides it) gets `userOnly: true`, and `/work` reads that file and follows it. `/work` keeps one dashboard for the day. `agentbrew work --json` returns a `dashboard` block: a title, one row per step (step, status `done`/`running`/`waiting`/`blocked`/`failed`, summary, needs-you text, link), and the local page path (`$XDG_STATE_HOME/agentbrew/work/<date>.html`) for an agent with no Artifact tool. Rows start as `waiting`. `/work` reuses today's page (the Artifact with that title, or the local file) or publishes it before the first step, updates a row on every step change, keeps the same URL all day, and links it from the Today / Tomorrow report. It also rewrites `dashboard.statusPath` (the same rows as JSON) on every change, for the optional Claude Code pane in [`mods/work-pane`](mods/work-pane/README.md): start Claude Code with `--plugin-dir` pointing at it, and every `/work` opens the pane beside the chat (`/work-pane` opens it alone). Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (what the step changes), `after:` (steps that must finish first), and `longRunning: true` (a watcher that starts last). `agentbrew work --json` returns `stages`: groups of steps whose scopes do not overlap and whose `after:` steps are done. `/work` runs each stage's steps in parallel, one subagent per step, and waits for the whole stage. A step with no `scope:` runs alone. Write a scope as an absolute or `~` path, or a service name such as `github.com`; two scopes overlap when they are equal or one path holds the other. A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`. The watch loop also applies repo updates: `repoWatch` lists the applied Agentfile checkouts, and on each pass `/work` fast-forwards a clean checkout that is behind its remote, runs `agentbrew sync`, then each step marked `refresh: true` (a plugin's own refresh step, which never runs in the day plan). A checkout with local changes or a diverged branch is skipped with one line.
+`defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`.
+
+Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
+
+**Work day.** `/work` (a built-in command, deployed by `agentbrew sync` like `/agentbrew`) runs `agentbrew work --json` and follows it. First agentbrew's own steps (`/agentbrew`) run, then each Agentfile's `workSteps:` list in apply order, back to back. Then a watch loop prints one line per update.
+
+On "end of day" it stops its loops and runs `/wrap-up` (an opt-in workflow skill: `agentbrew install wrap-up`; without it, `/work` says so in one line). Then it drafts a Today / Tomorrow report. `/work` never stops to ask "continue?".
+
+It stops only for the reasons in `stopOnlyFor`: a merge conflict it cannot resolve, a destructive or public action that needs approval, or a choice only you can make. A blocked step gets one line, and the run goes on. Every other question is saved and asked once, after the last step.
+
+The machine rule comes from the installed company plugins: with one, edit only the plugin repos and open issues on public repos; without, edit public repos. Every public post stays a draft until you say yes. Each step in `agentbrew work --json` names the file it runs (`path`); a user-only skill (`disable-model-invocation: true`, so the agent's Skill tool hides it) gets `userOnly: true`, and `/work` reads that file and follows it.
+
+`/work` keeps one dashboard for the day. `agentbrew work --json` returns a `dashboard` block: a title, one row per step (step, status `done`/`running`/`waiting`/`blocked`/`failed`, summary, needs-you text, link), and the local page path (`$XDG_STATE_HOME/agentbrew/work/<date>.html`) for an agent with no Artifact tool. Rows start as `waiting`.
+
+`/work` reuses today's page (the Artifact with that title, or the local file) or publishes it before the first step. It updates a row on every step change and keeps the same URL all day. The Today / Tomorrow report links it.
+
+It also rewrites `dashboard.statusPath` (the same rows as JSON) on every change, for the optional Claude Code pane in [`mods/work-pane`](mods/work-pane/README.md). Start Claude Code with `--plugin-dir` pointing at it, and every `/work` opens the pane beside the chat (`/work-pane` opens it alone).
+
+Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (what the step changes), `after:` (steps that must finish first), and `longRunning: true` (a watcher that starts last). `agentbrew work --json` returns `stages`: groups of steps whose scopes do not overlap and whose `after:` steps are done.
+
+`/work` runs each stage's steps in parallel, one subagent per step, and waits for the whole stage. A step with no `scope:` runs alone. Write a scope as an absolute or `~` path, or a service name such as `github.com`; two scopes overlap when they are equal or one path holds the other.
+
+A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`.
+
+The watch loop also applies repo updates. `repoWatch` lists the applied Agentfile checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
+
+Then it runs each step marked `refresh: true` (a plugin's own refresh step, which never runs in the day plan). A checkout with local changes or a diverged branch is skipped with one line.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`, `workSteps`) merge in file order; duplicate MCP, hook, or `workSteps` entries (same step name) keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
@@ -260,7 +369,11 @@ workspaceRoots:
   - acme            # a name from `tasks workspaces` (~/.config/tasks-md/workspaces.json)
 ```
 
-Or pass them per run: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme`, or `--workspace-name acme`. Each direct child folder of a workspace that holds an Agentfile is a repo, named `<workspace>::<repo>`. Sync merges every repo Agentfile, then the global (or `--agentfile`) Agentfile last, into `~/.config/agentbrew/generated/workspace-Agentfile.yaml` and applies that. The base Agentfile wins every conflict. Between repos the later one wins, and sync warns when two repos declare an MCP server, `defaultModel`, or `defaultEffort` differently, naming both repos. A repo's `task_backend`, `repo`, and `project` stay with that repo. `agentbrew status --workspaces ...` (or with `workspaceRoots:` declared) lists each workspace's repos, their MCP servers and skills, and which ones are deployed. With no workspaces declared, sync works as before.
+Or pass them per run: `agentbrew sync --workspaces ~/apps/tooling,~/apps/acme`, or `--workspace-name acme`. Each direct child folder of a workspace that holds an Agentfile is a repo, named `<workspace>::<repo>`. Sync merges every repo Agentfile, then the global (or `--agentfile`) Agentfile last, into `~/.config/agentbrew/generated/workspace-Agentfile.yaml` and applies that.
+
+The base Agentfile wins every conflict. Between repos the later one wins, and sync warns when two repos declare an MCP server, `defaultModel`, or `defaultEffort` differently, naming both repos. A repo's `task_backend`, `repo`, and `project` stay with that repo.
+
+`agentbrew status --workspaces ...` (or with `workspaceRoots:` declared) lists each workspace's repos, their MCP servers and skills, and which ones are deployed. With no workspaces declared, sync works as before.
 
 Use `agentbrew sync --dry-run` to validate and preview Agentfile changes, including downstream per-agent sync changes for Agentfile-only MCP servers, sources, commands, agents, rules, and hooks, without updating `state.yaml` or installing anything. Add `--agentfile <path>` to preview an explicit dotfiles Agentfile before making it authoritative.
 
@@ -270,9 +383,9 @@ One command translates the source of truth into every agent's native format.
 
 - **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
 - **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)
-- **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources. When two remote sources ship an installed skill with the same name, the source listed later in `state.yaml` wins (if its cache no longer has the skill, the earlier one does): `sync --pull` refreshes only that copy, and `agentbrew status` shows a `Name clash` line naming the skill, the source it is installed from, and the skipped source. `status --json` lists the same under `skillNameClashes`. A real folder with a `SKILL.md` where a managed symlink belongs is a stale copy: agents load it instead of the source. `agentbrew status` reports it as skills drift, and sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` and links the source. A folder without `SKILL.md` stays as it is
-- **Rules** → marker-injected sections in each agent's rules file; catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules` (no current agent reads a per-file rules dir, so they are not deployed further). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install; edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
-- **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run. When two command source dirs (Agentfile `commands:` dirs and plugins) or two Agentfile `agents:` dirs ship a file with the same name, the dir listed later in `state.yaml` wins, the same rule as skills. Sync warns, and `agentbrew status` shows a `Name clash` line naming the command or agent, the winning dir, and the skipped one (`status --json`: `commandNameClashes`, `agentNameClashes`). The built-in agents folder `~/.config/agentbrew/agents` always wins, and built-in commands rank lowest (see Agentfile `commands:` above). A command you made or edited yourself in `~/.config/agentbrew/commands` loses to an Agentfile or plugin dir with the same name (your file stays on disk), so sync and `status` name that clash too, with the global folder as the skipped one; agentbrew's own merged copies there never count.
+- **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources. When two remote sources ship an installed skill with the same name, the source listed later in `state.yaml` wins (if its cache no longer has the skill, the earlier one does). `sync --pull` refreshes only that copy, and `agentbrew status` shows a `Name clash` line naming the skill, the source it is installed from, and the skipped source. `status --json` lists the same under `skillNameClashes`. A real folder with a `SKILL.md` where a managed symlink belongs is a stale copy: agents load it instead of the source. `agentbrew status` reports it as skills drift, and sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` and links the source. A folder without `SKILL.md` stays as it is
+- **Rules** → marker-injected sections in each agent's rules file. Catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules` (no current agent reads a per-file rules dir, so they are not deployed further). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install. Edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
+- **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run. Two command source dirs (Agentfile `commands:` dirs and plugins) or two Agentfile `agents:` dirs may ship a file with the same name. Then the dir listed later in `state.yaml` wins, the same rule as skills. Sync warns, and `agentbrew status` shows a `Name clash` line naming the command or agent, the winning dir, and the skipped one (`status --json`: `commandNameClashes`, `agentNameClashes`). The built-in agents folder `~/.config/agentbrew/agents` always wins, and built-in commands rank lowest (see Agentfile `commands:` above). A command you made or edited yourself in `~/.config/agentbrew/commands` loses to an Agentfile or plugin dir with the same name (your file stays on disk). So sync and `status` name that clash too, with the global folder as the skipped one; agentbrew's own merged copies there never count.
 - **Hooks** → native hook files (Claude Code settings)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
@@ -303,7 +416,11 @@ agentbrew sync --rollback       # restore from last pre-sync snapshot
 
 Every sync creates a timestamped snapshot. Pruning only touches entries agentbrew deployed — user-added items are always preserved.
 
-When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync or `sync --pull`. Skills you installed by hand stay. An authoritative sync keeps a source that backs a skill the Agentfile lists, even when `sources:` does not name it. It also keeps a source that `agentbrew install` added for a skill no Agentfile listed, so a hand install from a new source stays linked. A source cache that cannot fast-forward (for example, after upstream rewrote history) is reset to upstream; local-only commits stay on a `salvage/<date>-<sha>` branch.
+When an Agentfile is in effect (`--agentfile`, the global Agentfile, or a project Agentfile), the Agentfile decides the skill set. A plain `sync` installs the catalog recommended set only on a machine with no Agentfile; an Agentfile asks for it with `recommended: true`. A skill you remove from the Agentfile is pruned from its source on the next sync or `sync --pull`.
+
+Skills you installed by hand stay. An authoritative sync keeps a source that backs a skill the Agentfile lists, even when `sources:` does not name it.
+
+It also keeps a source that `agentbrew install` added for a skill no Agentfile listed, so a hand install from a new source stays linked. A source cache that cannot fast-forward (for example, after upstream rewrote history) is reset to upstream; local-only commits stay on a `salvage/<date>-<sha>` branch.
 
 ## Shared semantic memory
 
@@ -321,7 +438,9 @@ agentbrew memory sync-projects --force # deliberately re-ingest every discovered
 agentbrew sync                # keeps the daemon definition and every agent's MCP URL converged
 ```
 
-The managed endpoint is `http://127.0.0.1:18765/mcp`. Readiness performs the
+The managed endpoint is `http://127.0.0.1:18765/mcp`.
+
+Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,
 `notifications/initialized`, then `tools/list` — and requires a non-empty tool
 set. The probe preserves `MCP-Session-Id` and accepts JSON or SSE responses.
@@ -375,11 +494,14 @@ also carries a stable `project-source:sha256:…` tag. The readable
 default; callers can use the source tag when they intentionally need a
 project-scoped query.
 
-The command is safe for the daily Dotfiles job and delivery automation:
-daemon failures are reported as skipped stores and still exit zero. It stores
+The command is safe for the daily Dotfiles job and delivery automation.
+
+Daemon failures are reported as skipped stores and still exit zero. It stores
 only hashed file-tree fingerprints, counts, timestamps, and bounded scheduler
 outcomes in local AgentBrew state; memory text and source paths stay out of
-that evidence. Use `--check` when a caller needs a non-zero result for changed
+that evidence.
+
+Use `--check` when a caller needs a non-zero result for changed
 or unsynced stores. The managed Claude Code `SessionEnd` hook records a
 non-blocking receipt and debounces only after a successful run, so a failed
 child is retried by the next session. The daily job remains the recovery path.
@@ -398,7 +520,23 @@ configuration.
 
 ## Drift detection
 
-A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every 30 minutes. If an agent update or manual edit breaks your config, it auto-repairs. The same tick probes stdio and URL MCP servers through initialization plus `tools/list` (each distinct server spec starts once, however many agents list it), using catalog-defined read-only `smokeCall` metadata except for entries marked `probe: fast` to avoid side-effectful scheduler probes, attempts registered heal actions for common failures, suppresses catalog-documented known-broken failures from futile heal attempts while keeping them visible in `~/.cache/agentbrew/mcp-health.json`, and surfaces unresolved MCP failures in `agentbrew status`. A heal counts only when the server passes the re-probe. Only failed servers with a heal attempt are re-probed, plus, after a sync heal, other failures that were not suppressed or deferred; a suppressed or deferred server starts once per tick. Each pair keeps its last 20 heal attempts plus a total count, so the file stays small; `agentbrew status --verbose` shows the total for each pair whose history was trimmed. A server that rejects its credential or is logged out shows as `MCP login` with its login command, not as failing. A server with no ok probe for more than 24 hours becomes `mcp-stale` drift, so `agentbrew status --ci` fails on a real outage but not on a short timeout while the machine is busy. When load per core is above 1.0, the tick does not heal timeouts. The snapshot marks each one with `healDeferred` (time and reason), and `agentbrew status` shows it as `MCP heal: N deferred`. On macOS, LaunchAgent repair uses the active Dotfiles source from its managed `~/.config/dotfiles/env.sh` file, and falls back to `DOTFILES_DIR` only when that file names no existing checkout. A caller's shell (for example an agent shell pointing `DOTFILES_DIR` at a development checkout) never changes a plist. It accepts Dotfiles' secure shim-first PATH repair, so a Chezmoi worktree is not replaced with a guessed checkout. It also adds `LANG=C.UTF-8` to any `com.agentbrew.*` LaunchAgent without a locale, because launchd sets none and the Dotfiles `awk` shim (Homebrew gawk) then fails unanchored regex matches. Repair rewrites the plist and reloads it; a job you disabled stays disabled. To repair manually:
+A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every 30 minutes. If an agent update or manual edit breaks your config, it auto-repairs. The same tick does these MCP checks:
+
+- It probes stdio and URL MCP servers through initialization plus `tools/list`. Each distinct server spec starts once, however many agents list it.
+- It uses catalog-defined read-only `smokeCall` metadata, except for entries marked `probe: fast`, to avoid side-effectful scheduler probes.
+- It attempts registered heal actions for common failures.
+- It does not try futile heals on catalog-documented known-broken failures, but keeps them visible in `~/.cache/agentbrew/mcp-health.json`.
+- It shows unresolved MCP failures in `agentbrew status`.
+
+A heal counts only when the server passes the re-probe. Only failed servers with a heal attempt are re-probed, plus, after a sync heal, other failures that were not suppressed or deferred. A suppressed or deferred server starts once per tick.
+
+Each pair keeps its last 20 heal attempts plus a total count, so the file stays small; `agentbrew status --verbose` shows the total for each pair whose history was trimmed. A server that rejects its credential or is logged out shows as `MCP login` with its login command, not as failing. A server with no ok probe for more than 24 hours becomes `mcp-stale` drift, so `agentbrew status --ci` fails on a real outage but not on a short timeout while the machine is busy.
+
+When load per core is above 1.0, the tick does not heal timeouts. The snapshot marks each one with `healDeferred` (time and reason), and `agentbrew status` shows it as `MCP heal: N deferred`. On macOS, LaunchAgent repair uses the active Dotfiles source from its managed `~/.config/dotfiles/env.sh` file, and falls back to `DOTFILES_DIR` only when that file names no existing checkout.
+
+A caller's shell (for example an agent shell pointing `DOTFILES_DIR` at a development checkout) never changes a plist. It accepts Dotfiles' secure shim-first PATH repair, so a Chezmoi worktree is not replaced with a guessed checkout. It also adds `LANG=C.UTF-8` to any `com.agentbrew.*` LaunchAgent without a locale, because launchd sets none and the Dotfiles `awk` shim (Homebrew gawk) then fails unanchored regex matches.
+
+Repair rewrites the plist and reloads it; a job you disabled stays disabled. To repair manually:
 
 ```bash
 agentbrew status               # configured + drift summary
@@ -422,7 +560,13 @@ The `Auto-repair` line in `agentbrew status` shows what the scheduler really doe
 - `failing` — the last run exited with an error. The line names the exit code and the log file.
 - `not run yet` or `unverified` — no run history exists yet, or agentbrew cannot read it (Windows Task Scheduler).
 
-Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. launchd, the user crontab, and the systemd user manager are per user, not per `HOME`: when `HOME` is not your home folder (a scratch `HOME` in a test or a sandbox), agentbrew never loads, unloads, enables, or restarts a launchd job, never writes your crontab, and never runs a changing `systemctl --user` command, so your real jobs are untouched. Read-only checks such as `crontab -l` and `launchctl print` still run, so `status` shows your real jobs. `auto-sync install` still writes its plist under that `HOME`; `memory enable` skips its plists. `agentbrew status --json` includes the same data in `autoRepair`.
+Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, agentbrew reads the job state from `launchctl print` and the last-run time from the job's log files. launchd, the user crontab, and the systemd user manager are per user, not per `HOME`.
+
+Say `HOME` is not your home folder (a scratch `HOME` in a test or a sandbox). Then agentbrew never loads, unloads, enables, or restarts a launchd job. It never writes your crontab and never runs a changing `systemctl --user` command.
+
+So your real jobs are untouched. Read-only checks such as `crontab -l` and `launchctl print` still run, so `status` shows your real jobs.
+
+`auto-sync install` still writes its plist under that `HOME`; `memory enable` skips its plists. `agentbrew status --json` includes the same data in `autoRepair`.
 
 **Which Node the job runs.** `agentbrew auto-sync install` and `agentbrew memory fix` (for the nightly memory maintenance job) write a Node path that survives a Node upgrade. They use, in order:
 
@@ -432,11 +576,13 @@ Run `agentbrew auto-sync install` to reinstall and reload the job. On macOS, age
 
 The job's `PATH` starts with that Node's folder. When `agentbrew fix` rewrites the plist from inside the job itself, it does not unload the running job (that would kill it before the reload). It writes the plist, and a detached shell reloads the job after the run ends. An unchanged plist is not reloaded.
 
-`agentbrew status` reports `launchagent` drift for each `com.agentbrew.*` job that runs Node (with `agentbrew memory fix` as the repair for the memory job) when the job's Node no longer exists, or when it runs a versioned path while a link that survives upgrades points at the same Node. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
+`agentbrew status` reports `launchagent` drift for a `com.agentbrew.*` job that runs Node in two cases. The job's Node no longer exists, or the job runs a versioned path while a link that survives upgrades points at the same Node. The repair for the memory job is `agentbrew memory fix`. `agentbrew fix` (the check job) or `agentbrew memory fix` (the memory job, reported as `memory-launchagent` drift) then rewrites the plist, so an existing job moves to the stable path on its next run.
 
 ### MCP endpoint repair
 
-**Catalog version pins.** When the catalog pins an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`), every sync rewrites a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's to that version. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config. Sync changes only agents agentbrew manages (detected). For an agent it does not manage, such as VS Code Copilot without `~/.copilot`, `agentbrew status` prints an `Outdated pin` line with the exact one-line edit, and `status --json` lists it under `unmanagedOutdatedPins`; neither counts as drift.
+**Catalog version pins.** The catalog can pin an npm MCP package to an exact version (for example `tasks-mcp@0.10.2`). Then every sync rewrites to that version a floating copy in an agent's config (`tasks-mcp`, `tasks-mcp@latest`) and any exact pin older than the catalog's. An exact pin newer than the catalog's, a range, or a tag stays as you set it. To keep an older version, remove the server from agentbrew and manage it in that agent's own config.
+
+Sync changes only agents agentbrew manages (detected). For an agent it does not manage, such as VS Code Copilot without `~/.copilot`, `agentbrew status` prints an `Outdated pin` line with the exact one-line edit, and `status --json` lists it under `unmanagedOutdatedPins`; neither counts as drift.
 
 Every `agentbrew sync` sweeps each agent's JSON MCP config — the global block
 and every per-project block, including Claude Code's `projects.<path>.mcpServers`
@@ -522,9 +668,22 @@ agentbrew lint                     # actionable static failures (duplicate headi
 bunx ccusage claude daily --json   # optional Claude runtime (skipped gracefully if missing)
 ```
 
-**What gets captured:** projected deployed rules tokens, soft-token headroom, `alerts[]` (low headroom / over-threshold), top H2 sections from shared-rules, shared-rules byte count, agent/MCP/skill/command inventory from `agentbrew status`, optional ccusage daily JSON with `runtime.ccusage.today` rollup, optional openusage daily JSON with `runtime.openusage.today` rollup. The `deployed` block splits the real Claude Code rules file (`~/.claude/CLAUDE.md`) by its agentbrew markers: agentbrew instructions, personal text outside the markers, shared rules, catalog rules, and team rules. It gives each source's share and lists any long line that appears in two sources, so you can see what to move into a skill or keep in one place. The `lintPassed`, `lintErrors`, and `lintWarnings` fields, like the `Config:` line in `agentbrew status`, use the same checks and counts as `agentbrew lint`, in every mode.
+**What gets captured:**
 
-**What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude) and openusage (multi-provider). agentbrew only runs them and keeps their JSON. The rest is agentbrew-specific, so no standard tool computes it: the projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, headroom alerts, and the capture throttle.
+- projected deployed rules tokens and soft-token headroom
+- `alerts[]` (low headroom / over-threshold)
+- top H2 sections from shared-rules, and the shared-rules byte count
+- agent/MCP/skill/command inventory from `agentbrew status`
+- optional ccusage daily JSON with `runtime.ccusage.today` rollup
+- optional openusage daily JSON with `runtime.openusage.today` rollup
+
+ The `deployed` block splits the real Claude Code rules file (`~/.claude/CLAUDE.md`) by its agentbrew markers: agentbrew instructions, personal text outside the markers, shared rules, catalog rules, and team rules.
+
+It gives each source's share and lists any long line that appears in two sources, so you can see what to move into a skill or keep in one place. The `lintPassed`, `lintErrors`, and `lintWarnings` fields, like the `Config:` line in `agentbrew status`, use the same checks and counts as `agentbrew lint`, in every mode.
+
+**What stays native, and why.** Runtime usage comes from standard tools: ccusage (Claude) and openusage (multi-provider). agentbrew only runs them and keeps their JSON.
+
+The rest is agentbrew-specific, so no standard tool computes it. The projected size of the deployed rules file (`rules-hygiene.ts`), the top shared-rules sections, the agent/MCP/skill inventory from `agentbrew status`, headroom alerts, and the capture throttle.
 
 **Automatic refresh (throttled):**
 
@@ -549,15 +708,23 @@ node ~/.config/agentbrew/scripts/agent-perf.mjs report --session latest
 node ~/.config/agentbrew/scripts/agent-perf.mjs brief                  # 5-line summary for agents
 ```
 
-At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once (`AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold; turn it on by listing it under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`). The opt-in `poll-loop-hint` hook adds a hint when a Bash command polls with an `until`/`while` loop and `sleep`: run it in the background or use a blocking wait instead. `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
+At session start, the `perf-brief` hook gives the agent a short brief of the slowest steps. When dotfiles is installed, the `updates-landed` hook also passes on its once-a-day "updates landed, run the checkup" line (`dotfiles-updates-landed`; dotfiles keeps that state), so the agent can suggest the checkup. After a turn with 5 or more minutes of tool time, the opt-in `perf-task-review` Stop hook asks the agent for a short "Time review" once.
+
+`AGENTBREW_PERF_REVIEW_MIN_SECS` changes the threshold. Turn it on by listing it under `enabled:` in `~/.config/agentbrew/hooks-overlay/manifest.yaml`.
+
+The opt-in `poll-loop-hint` hook adds a hint when a Bash command polls with an `until`/`while` loop and `sleep`: run it in the background or use a blocking wait instead. `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
 
 Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
 
 ### One local metrics report
 
-`agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers. `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
+`agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers.
 
-`agentbrew metrics share` is an opt-in weekly share of aggregate numbers only. The first run is a dry run that prints the exact payload. Pick a sink with `--sink dir:<path>`, `--sink git:<path>`, or `--sink none`; the base install has no default sink (an org overlay can set `AGENTBREW_METRICS_SINK`). `--schedule weekly` sends once a week from the auto-repair scheduler. `AGENTBREW_EVENTS=0` turns it all off. Details: [`docs/observability.md`](docs/observability.md#weekly-metrics-share-opt-in).
+`agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
+
+`agentbrew metrics share` is an opt-in weekly share of aggregate numbers only. The first run is a dry run that prints the exact payload. Pick a sink with `--sink dir:<path>`, `--sink git:<path>`, or `--sink none`; the base install has no default sink (an org overlay can set `AGENTBREW_METRICS_SINK`).
+
+`--schedule weekly` sends once a week from the auto-repair scheduler. `AGENTBREW_EVENTS=0` turns it all off. Details: [`docs/observability.md`](docs/observability.md#weekly-metrics-share-opt-in).
 
 ## Share config across a team
 
@@ -589,13 +756,13 @@ agentbrew plugin remove acme
 ```
 
 - The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
-- agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID, and a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts: an OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.
+- agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID. It also refuses a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts. An OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.
 - Trusted signers live in one file shared with dotfiles: `~/.config/agent-plugins/allowed_signers` (or `$AGENT_PLUGINS_ALLOWED_SIGNERS`), in git's `gpg.ssh.allowedSignersFile` format. The principal is the plugin name, so a key trusted for one plugin is not trusted for another.
 - Capabilities are deny by default. Each rule needs its agents in `capabilities.agents` (front matter `agents:`, or any declared agent), each hook event in `capabilities.hooks` (`Event` or `Event:matcher`), each MCP server in `capabilities.mcp_servers`, and a command that runs shell (`allowed-tools: Bash` or `` !`cmd` ``) needs `commands_exec: true`. Anything else fails with exit code 3 and `capability not declared: <kind> <value> (plugin <name>)`, on `plugin add` and on `sync`.
 - Claude Code also gets native output, side by side with file rendering. Each plugin becomes a Claude Code plugin in a local marketplace (`~/.local/share/agentbrew/claude-marketplace`), enabled in `~/.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The native plugin carries the plugin's hooks and a `SessionStart` hook that runs `agentbrew plugin rules` for the session's repo. Removing a plugin removes both on the next sync. `plugin add`, `update`, `rollback`, and `remove` refresh the native plugin at once, so a hook a new version adds is on without waiting for the next sync.
 - Plugin MCP servers (`contributes.mcp_servers`, a YAML list of `{name, command, args, env}`) name every env value as a reference: `env:<NAME>`, `keychain:<item>` (macOS `security`, else `secret-tool`), or `op://...`. Literal values are refused. `npx`/`bunx`/`pnpx` packages must be `pkg@1.2.3`, and `uvx`/`pipx` packages `pkg==1.2.3`; `@latest` or no version is refused. agentbrew writes one launcher per server under `~/.local/share/agentbrew/launchers/` that resolves the references at process start, and the native Claude Code plugin's `.mcp.json` names only the launcher. Other agents do not get plugin MCP servers yet.
 - `plugin update <name> <signed-tag>` verifies the new tag and prints a diff of rules (with text diffs), skills, MCP servers, hooks, and capabilities. It applies nothing until you confirm (`--yes` skips that prompt). A capability change always asks at the terminal, even with `--yes`, and is refused without a terminal. The replaced version stays available to `plugin rollback`.
-- Authoring: `agentbrew plugin new <dir> --name <name>` scaffolds a plugin repo; `agentbrew plugin test [dir]` runs the core's static checks (schema, capabilities, MCP secrets and pins, leak patterns) and exits 1 on any problem; `agentbrew plugin migrate <overlay-dir>` prints a draft `agentbrew-plugin.yaml` from a legacy team overlay plus a list of what it could not map. None of them installs anything.
+- Authoring: `agentbrew plugin new <dir> --name <name>` scaffolds a plugin repo; `agentbrew plugin test [dir]` runs the core's static checks (schema, capabilities, MCP secrets and pins, leak patterns) and exits 1 on any problem. `agentbrew plugin migrate <overlay-dir>` prints a draft `agentbrew-plugin.yaml` from a legacy team overlay plus a list of what it could not map. None of them installs anything.
 - `agentbrew plugin leak-audit [--cwd <dir>]` checks tracked files against every installed plugin's `contributes.leak_patterns` (a YAML list of regexes, kept inside POSIX ERE). It prints file and line only, exits 1 on a match, and exits 2 (fail closed) when a plugin's patterns cannot be read. It runs in `npm run verify`. Sync also hands the patterns to the perf log hook, which records a matching project name as `redacted`.
 - `agentbrew plugin policy <name> [--strict]` prints a managed-settings fragment for admins: the marketplace in `extraKnownMarketplaces` and `strictKnownMarketplaces`, the plugin in `enabledPlugins`, and with `--strict` also `strictPluginOnlyCustomization`. agentbrew never writes system policy.
 - Revoking the signer of an installed plugin makes `agentbrew sync` fail closed until you roll back or re-add the plugin.
@@ -618,9 +785,18 @@ git -C ~/path/to/agentbrew-your-org tag -s v1.0.0 -m v1.0.0 && git -C ~/path/to/
 agentbrew plugin add git@github.example.com:your-org/agentbrew-your-org.git@v1.0.0 --signer "ssh-ed25519 AAAA..."
 ```
 
-What does not carry over on its own: remote `sources:` (add them to the catalog), overlay MCP entries (write `mcp/servers.yaml` with secret references and pinned versions), executable MCP-format adapters and overlay agent definitions (not supported; agentbrew no longer loads plugin code), detect scripts, and the overlay catalog merge. An old `team:` block in `state.yaml` is ignored.
+What does not carry over on its own:
 
-`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network). Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
+- remote `sources:` (add them to the catalog)
+- overlay MCP entries (write `mcp/servers.yaml` with secret references and pinned versions)
+- executable MCP-format adapters and overlay agent definitions (not supported; agentbrew no longer loads plugin code)
+- detect scripts, and the overlay catalog merge
+
+ An old `team:` block in `state.yaml` is ignored.
+
+`agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network).
+
+Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
 
 ## Supported agents
 
@@ -669,7 +845,7 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | opencode | ✓ | — | — |
 | roo-code | ✓ | — | — |
 
-Skills-only (experimental; sync only writes to `skillsDir`; not tested on real user machines beyond the author's): adal, aider-desk, antigravity, bob, codearts-agent, codebuddy, codemaker, codestudio, command-code, continue, cortex, crush, deepagents, dexto, droid, forgecode, iflow-cli, junie, kimi-cli, kode, mcpjam, mistral-vibe, mux, neovate, openclaw, openhands, pi, pochi, qoder, qodo, qwen-code, replit, rovodev, tabnine-cli, trae, trae-cn, universal, warp, zencoder.
+Skills-only agents are experimental. Sync only writes to their `skillsDir`, and they are not tested on real user machines beyond the author's. They are: `adal`, `aider-desk`, `antigravity`, `bob`, `codearts-agent`, `codebuddy`, `codemaker`, `codestudio`, `command-code`, `continue`, `cortex`, `crush`, `deepagents`, `dexto`, `droid`, `forgecode`, `iflow-cli`, `junie`, `kimi-cli`, `kode`, `mcpjam`, `mistral-vibe`, `mux`, `neovate`, `openclaw`, `openhands`, `pi`, `pochi`, `qoder`, `qodo`, `qwen-code`, `replit`, `rovodev`, `tabnine-cli`, `trae`, `trae-cn`, `universal`, `warp`, `zencoder`.
 <!-- agent-matrix:end -->
 
 ## How agentbrew compares
@@ -774,9 +950,18 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
                                        Override file: ~/.config/agentbrew/repo-class.yaml
 ```
 
-`agentbrew --help` shows all commands grouped by category. `agentbrew actions` lists the same commands for agents, generated from the CLI parser, so a new command appears there by itself. When you add one that needs the user's own terminal (an interactive prompt, a foreground loop) or is hard to undo, add it to `TERMINAL_ONLY` or `CONFIRM` in `src/actions.ts`; a hidden command needs a reason in `NOT_ACTIONS`. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
+`agentbrew --help` shows all commands grouped by category. `agentbrew actions` lists the same commands for agents, generated from the CLI parser, so a new command appears there by itself. When you add one that needs the user's own terminal (an interactive prompt, a foreground loop) or is hard to undo, add it to `TERMINAL_ONLY` or `CONFIRM` in `src/actions.ts`.
 
-`agentbrew lint` also guards instruction/rules bloat: duplicate `##` headings, repeated subsection markers inside one shared-rules section, sections above the shared-rules token budget, deployed rules files projected above the 40k-character budget, built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`), command size caps, and `.mdc` rule template scope/size checks. See `docs/agent-bloat-lint.md`.
+A hidden command needs a reason in `NOT_ACTIONS`. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
+
+`agentbrew lint` also guards instruction/rules bloat. See `docs/agent-bloat-lint.md`. It checks:
+
+- duplicate `##` headings
+- repeated subsection markers inside one shared-rules section
+- sections above the shared-rules token budget
+- deployed rules files projected above the 40k-character budget
+- built-in skill token/line budgets (with regression vs `docs/skill-baselines.json`)
+- command size caps, and `.mdc` rule template scope/size checks
 
 ## Status and roadmap
 
@@ -784,7 +969,7 @@ Three documents live next to each other and should be read together:
 
 - [**docs/VISION.md**](docs/VISION.md) — what agentbrew is, the delegate→contribute→absorb strategy, and the lifecycle state of every capability (shipped-and-staying / shipped-being-removed / planned / not-building).
 - [**TASKS.md**](TASKS.md) — the queue. **P0** = deletion, delegation, or absorption (shrinks toward the ~5–7K-LOC minimum-viable orchestrator). **P1** = bug fixes and clarity. **P2** = life improvements. **P3** = blocked by policy — upstream contributions waiting on maintainers and long-tail research; `/next-task` must ask before claiming.
-- [**docs/competition/vercel-skills-cli-vs-agentbrew.md**](docs/competition/vercel-skills-cli-vs-agentbrew.md) — deep comparison with the upstream tool we delegate to most, including the gaps we plan to absorb and the PRs we plan to engage with.
+- [**docs/competition/vercel-skills-cli-vs-agentbrew.md**](docs/competition/vercel-skills-cli-vs-agentbrew.md) — deep comparison with the upstream tool we delegate to most. It covers the gaps we plan to absorb and the PRs we plan to engage with.
 
 Every new-feature PR must answer *"why is this in agentbrew instead of skills CLI / mcpm.sh / block-ai-rules / caliber?"* The accepted answers live in VISION's Strategy section.
 
@@ -815,11 +1000,17 @@ npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
 npm run lint:rules                     # Minsky rule checks on this repo (part of verify)
 ```
 
-`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed. Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block, with no grandfathered tasks; `npm run verify` also runs `@tasks-md/lint --require-prereg` on `TASKS.md`. Minsky has no script for rules 8 and 16, so two local checks run in `npm run verify`: `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
+`npm run lint:rules` runs Minsky's deterministic rule checks (`scripts/check-rule-*.mjs`) against this repo through `src/adapters/rule-lint.minsky.ts`, instead of reimplementing them. It finds Minsky at `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`. Without a checkout, or with one too old for `--repo`, each rule is skipped, not failed.
+
+Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor on every `- **ID**:` task block, with no grandfathered tasks; `npm run verify` also runs `@tasks-md/lint --require-prereg` on `TASKS.md`. Minsky has no script for rules 8 and 16, so two local checks run in `npm run verify`. `scripts/check-rule-8-pattern-conformance.mjs` checks the VISION.md "Pattern conformance index" against each file's `Pattern:` comment, and `scripts/check-rule-16-defaults.mjs` fails when a CLI flag has no row in `docs/cli-flags-audit.md` saying why it is not the default.
 
 `npm run verify` also runs `scripts/check-rule-3-test-first.mjs`, the test-first half of rule 3. It fails when the branch (committed or not) changes a non-test file under `src/` but changes no test file, unless a commit message on the branch has a `Test exemption: <reason>` line. It compares against `origin/main` (`--base <ref>` or `TEST_FIRST_BASE` to change it) and skips when that ref has no merge base.
 
-`npm run verify` starts with `scripts/check-lockfile-sync.sh`. It runs `npm ci --dry-run` with npm 10 on a temp copy of `package.json` and `package-lock.json`, and fails when they disagree. Newer npm accepts some lockfiles that npm 10 rejects, so a lockfile can pass for you and still break `npm ci` for npm 10 users. The step is cached until a package file changes. npm 10 comes from the npx cache; with no network and no cache, the check fails in seconds with a clear message. `lefthook.yml` runs the same check on pre-push when a pushed commit touches a package file (only when lefthook installs the repo's hooks; a global `core.hooksPath` that does not call lefthook skips it, and then `npm run verify` is the catch).
+`npm run verify` starts with `scripts/check-lockfile-sync.sh`. It runs `npm ci --dry-run` with npm 10 on a temp copy of `package.json` and `package-lock.json`, and fails when they disagree. Newer npm accepts some lockfiles that npm 10 rejects, so a lockfile can pass for you and still break `npm ci` for npm 10 users.
+
+The step is cached until a package file changes. npm 10 comes from the npx cache; with no network and no cache, the check fails in seconds with a clear message. `lefthook.yml` runs the same check on pre-push when a pushed commit touches a package file.
+
+That works only when lefthook installs the repo's hooks. A global `core.hooksPath` that does not call lefthook skips it, and then `npm run verify` is the catch.
 
 ### How `main` health is checked
 

@@ -320,19 +320,6 @@
 
 ## P3
 
-- [ ] The run-goal skill stays well under the 500-line skill limit
-  - **ID**: run-goal-size
-  - **Tags**: skills, docs
-  - **Details**: `skill-plugins/workflow/run-goal/SKILL.md` is close to the 500-line limit (`SKILL_MAX_LINES` in `src/agent-bloat-lint.ts`). The next edits will trip that lint warning (`SKILL_LINES`). Move reference material (worked examples, long checklists) into `references/` files that SKILL.md links to, as `parallel-workers.md` already is.
-  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/`, its evals
-  - **Output**: docs
-  - **Acceptance**: SKILL.md is under 400 lines, its evals still pass, and every moved section is linked from SKILL.md.
-  - **Hypothesis**: moving reference sections out brings SKILL.md under 400 lines (it was near the limit on 2026-10-22), leaving room for future edits without a lint failure.
-  - **Measurement**: `wc -l skill-plugins/workflow/run-goal/SKILL.md` and the skill's eval and contract tests.
-  - **Success**: under 400 lines with all evals passing.
-  - **Pivot**: if a section cannot move without hurting the evals, keep it and trim duplicated wording instead.
-  - **Anchor**: agentbrew skill lint (500-line limit); `wc -l` on 2026-10-22 (483).
-
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli

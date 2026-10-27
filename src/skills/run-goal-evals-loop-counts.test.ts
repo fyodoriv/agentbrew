@@ -4,7 +4,8 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SKILL_DIR = join(resolve(import.meta.dirname, "..", ".."), "skill-plugins", "workflow", "run-goal");
-const skill = readFileSync(join(SKILL_DIR, "SKILL.md"), "utf-8");
+// Phase 4 practices live in references/execution.md, which SKILL.md links.
+const skill = ["SKILL.md", "references/execution.md"].map((f) => readFileSync(join(SKILL_DIR, f), "utf-8")).join("\n");
 const evals = JSON.parse(readFileSync(join(SKILL_DIR, "evals", "evals.json"), "utf-8")).evals as Array<{
   id: number;
   prompt: string;
@@ -41,6 +42,6 @@ describe("run-goal loop counts and new measured objects", () => {
   });
 
   it("keeps the skill under the 500-line skill limit", () => {
-    expect(skill.split("\n").length).toBeLessThan(500);
+    expect(readFileSync(join(SKILL_DIR, "SKILL.md"), "utf-8").split("\n").length).toBeLessThan(400);
   });
 });

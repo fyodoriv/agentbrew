@@ -376,19 +376,6 @@
   - **Pivot**: if a section cannot move without hurting the evals, keep it and trim duplicated wording instead.
   - **Anchor**: agentbrew skill lint (500-line limit); `wc -l` on 2026-10-22 (483).
 
-- [ ] The markdown-for-gdoc checklist names its exception for tables wider than 5 columns
-  - **ID**: gdoc-checklist-rewrite-exception
-  - **Tags**: skills, docs
-  - **Details**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md` says to keep tables at most 4–5 columns (line 58) and its final checklist says "tables ≤ 5 columns" (line 109), with no exception, although `references/markdown-tab-rewrite.md` (lines 9–13) already keeps the source's columns in a rewrite. Because SKILL.md does not mention that exception, an agent following the checklist either breaks the rewrite or fails its own check.
-  - **Files**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md`, `references/markdown-tab-rewrite.md`, its evals
-  - **Output**: docs
-  - **Acceptance**: the checklist states when a wider table is allowed (for example a rewrite that must keep the source's columns) and what to do instead otherwise; an eval covers the case.
-  - **Hypothesis**: naming the exception drops conflicting instructions in the skill from 1 to 0.
-  - **Measurement**: the skill's eval for a rewrite with a 6-column table, plus a read of lines 58 and 109.
-  - **Success**: the eval passes and both lines agree.
-  - **Pivot**: if no rewrite really needs a wide table, make the rewrite reference split wide tables and keep the strict rule.
-  - **Anchor**: `markdown-for-gdoc` SKILL.md lines 58 and 109 (2026-10-22).
-
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli

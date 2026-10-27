@@ -33,6 +33,12 @@ Each rule comes from a real failure in a goal run.
   gate behind the lock, set up the worktree's deps first: in one run a gate
   waited 40 minutes in the queue only to fail at once on a missing
   `node_modules`.
+- A queued run can die while it waits for the lock (exit 144, an empty log),
+  and its worker then never wakes. On each check-in, list the live lock
+  waiters (`ps` for the lock helper and its command), not only the worker's
+  last line. A worker with no live run and no PR is stalled: resume it with
+  `SendMessage`, name the exact steps, and tell it never to end a turn
+  without a live run or a PR URL.
 - A new issue in a watch loop that touches files a running worker edits
   waits until that worker's PR merges. Start workers only on issues whose
   files do not overlap.
@@ -83,6 +89,13 @@ Each rule comes from a real failure in a goal run.
   main's tree equals A's head and B contains A's head, resolve every conflict
   with B's side, then check that the merged tree equals B's tested tree
   (`git diff <B-tested-sha> HEAD` is empty). Then no new test run is needed.
+- Never merge a stack bottom-up with `gh pr merge --delete-branch`. Deleting
+  A's branch closes B instead of retargeting it, and a PR whose base is
+  still a branch merges into that branch, not main. In one run this closed
+  2 of 4 stacked PRs and merged a third into a dead branch. Merge main into
+  the top branch, run the gate there, and land the top branch as one PR that
+  closes every issue in the stack; or retarget each PR to main
+  (`gh pr edit <n> --base main`) before you merge the one below it.
 - To clear a conflict on an agent's PR, push only that agent's own merge
   commit, as a fast-forward. A different merge commit makes the agent's branch
   diverge, and it then needs another merge and another full gate.

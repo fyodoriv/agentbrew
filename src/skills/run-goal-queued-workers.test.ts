@@ -28,6 +28,16 @@ describe("run-goal queued workers", () => {
     expect(reference).toMatch(/waits until that worker's PR merges/);
   });
 
+  it("finds stalled workers from live lock waiters and never merges a stack bottom-up with --delete-branch", () => {
+    expect(reference).toMatch(/list the live lock\s+waiters/);
+    expect(reference).toMatch(/never to end a turn\s+without a live run or a PR URL/);
+    expect(reference).toMatch(/Never merge a stack bottom-up with `gh pr merge --delete-branch`/);
+    expect(reference).toMatch(/gh pr edit <n> --base main/);
+    const cases = evals.filter((e) => /stacked PM PRs/.test(e.prompt));
+    expect(cases).toHaveLength(1);
+    expect(cases[0]?.expectations.join(" ")).toMatch(/--delete-branch/);
+  });
+
   it("keeps eval ids unique", () => {
     expect(new Set(evals.map((e) => e.id)).size).toBe(evals.length);
   });

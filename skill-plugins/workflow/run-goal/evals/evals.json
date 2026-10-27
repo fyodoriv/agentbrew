@@ -1842,6 +1842,17 @@
         "A cap or ledger with a test prevents recurrence, not only a cheaper run",
         "Live verification after the reset is scheduled as a background job, and the goal is not called met before it"
       ]
+    },
+    {
+      "id": 159,
+      "prompt": "/goal ship the four stacked PM PRs (#242 <- #244 <- #245 <- #247) that a worker opened, then keep watching; two other workers report 'completed: waiting on the gate' but heavy-run --status shows another session's job",
+      "expected_output": "The orchestrator does not merge the stack bottom-up with --delete-branch. It merges main into the top branch, runs the full gate there, checks the resolved tree equals the tested tree, and lands the top branch as one PR that closes every issue (or retargets each PR to main before merging the one below). For the two 'waiting' workers it lists the live lock waiters, finds no run of theirs, and resumes each with SendMessage and exact steps.",
+      "expectations": [
+        "No bottom-up stack merge with --delete-branch; the top branch lands as one PR or each PR is retargeted to main first",
+        "The full gate runs on the top branch with main merged in, and the merged tree is compared with the tested tree",
+        "Live lock waiters are listed with ps, not only the workers' last lines",
+        "Each stalled worker is resumed with SendMessage and exact steps"
+      ]
     }
   ]
 }

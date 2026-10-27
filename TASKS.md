@@ -360,19 +360,6 @@
   - **Pivot**: if the integration tests make the run take over 2 min, send `templates/rules/` diffs to the full gate instead.
   - **Anchor**: read probe in the verify-changed-docs-only-fast PR (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
 
-- [ ] Keep `gate_ms` sampled now that worktrees share the gate cache
-  - **ID**: gate-ms-with-shared-cache
-  - **Tags**: perf, metrics
-  - **Details**: `scripts/metrics.sh` takes `gate_ms` from full gates with no cached step. Since 2026-10-22 (speed-up-agentbrew-test-loop) worktrees share the step cache, so the hook-fixtures step is often cached and most gates drop out of the sample. `gate_ms` could then show a stub or a stale number.
-  - **Files**: `scripts/metrics.sh`, `docs/metrics.md`
-  - **Output**: code
-  - **Acceptance**: `bash scripts/metrics.sh` prints a `gate_ms` number from the last 10 passing full gates, with cached steps counted at their last uncached time or left out by name.
-  - **Hypothesis**: counting gates with cached steps keeps `gate_ms` samples at the old rate (about one per full gate) instead of near zero.
-  - **Measurement**: `bash scripts/metrics.sh` and the count of gate rows it uses from `.metrics/gate-timings.jsonl` over 7 days.
-  - **Success**: at least 5 samples in 7 days on the owner's Mac.
-  - **Pivot**: if no fair rule fits, report `gate_ms` only from `NO_CACHE=1` runs and say so in `docs/metrics.md`.
-  - **Anchor**: docs/metrics.md `gate_ms` row; Basili, Caldiera, Rombach 1994 (GQM).
-
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
   - **Tags**: scout, dependencies, security

@@ -14,7 +14,7 @@ set -u
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 events="${AGENTBREW_EVENTS_FILE:-$HOME/.local/share/agentbrew/logs/events.jsonl}"
-timings="$root/.metrics/gate-timings.jsonl"
+timings="${AGENTBREW_GATE_TIMINGS:-$root/.metrics/gate-timings.jsonl}"
 
 row() { printf '%-22s %-14s %-14s %s\n' "$1" "$2" "$3" "$4"; }
 
@@ -44,8 +44,18 @@ if (kind === "sync") {
   const parts = Object.keys(by).sort().map((k) => k + "=" + rate(by[k]));
   console.log(parts.length ? parts.join(",") : "(stub)");
 } else if (kind === "gate") {
-  const g = ev.filter((e) => e.event === "gate" && e.mode === "full" && e.ok && e.cached_steps === 0 && Number.isFinite(e.ms));
-  console.log(median(g.slice(-10).map((e) => e.ms)));
+  // Worktrees share the step cache, so most gates have a cached step. Count a
+  // cached step at its last uncached time; drop a gate with a step never seen uncached.
+  const lastUncached = {};
+  const est = [];
+  for (const e of ev) {
+    if (e.event === "step" && !e.cached && e.ok && Number.isFinite(e.ms)) lastUncached[e.step] = e.ms;
+    if (e.event !== "gate" || e.mode !== "full" || !e.ok || !Number.isFinite(e.ms)) continue;
+    const cached = ev.filter((x) => x.event === "step" && x.ts === e.ts && x.cached);
+    if (cached.some((x) => !Number.isFinite(lastUncached[x.step]))) continue;
+    est.push(e.ms + cached.reduce((a, x) => a + lastUncached[x.step] - (Number.isFinite(x.ms) ? x.ms : 0), 0));
+  }
+  console.log(median(est.slice(-10)));
 }
 ' "$1" "$2"
 }

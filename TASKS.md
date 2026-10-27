@@ -365,19 +365,6 @@
   - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
   - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
 
-- [ ] Every `git clone` of a user URL ends options before the URL
-  - **ID**: git-clone-url-end-of-options
-  - **Tags**: security, cli
-  - **Details**: Found by the review of the `mcp-git-ref-exact` PR, which added `--end-of-options` to the MCP `--git` clone. Two clones still pass a user URL without it: `src/catalog/index-source.ts:533` and `src/learn/stage-learn-sources.ts:215`. A URL that starts with `-` could be read as an option. Also, `checkoutSha`, `fetchAndCheckoutSha`, and the `targetSha` branch of `cloneNew` in `index-source.ts` take an `options.sha` that no caller passes: delete that path, or validate the SHA.
-  - **Files**: `src/catalog/index-source.ts`, `src/learn/stage-learn-sources.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: both clones pass `--end-of-options` before the URL, and the unused SHA path is deleted or validated.
-  - **Hypothesis**: clone call sites where a user URL can be read as an option go from 2 to 0.
-  - **Measurement**: `rg -n '\["clone"' src --glob '!*.test.ts' | grep -vc -- '--end-of-options'` (2 on 2026-10-22), plus a unit test per call site.
-  - **Success**: 0 clone call sites without `--end-of-options`.
-  - **Pivot**: if git older than 2.24 must stay supported, refuse a URL that starts with `-` instead.
-  - **Anchor**: git 2.24 release notes (`--end-of-options`); review of the `mcp-git-ref-exact` PR (2026-10-22).
-
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
   - **Tags**: skills, design, third-party

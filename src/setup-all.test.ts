@@ -154,9 +154,9 @@ describe("buildSteps", () => {
     const s = buildSteps("/w", ["node", "/ab.js"]);
     expect(s.map((x) => [x.id, x.cmd, ...x.args, x.cwd].join(" "))).toEqual([
       "agentbrew-sync node /ab.js sync /w",
-      "dotfiles-clone git clone https://github.com/fyodoriv/dotfiles.git /w/dotfiles /w",
+      "dotfiles-clone git clone --end-of-options https://github.com/fyodoriv/dotfiles.git /w/dotfiles /w",
       "dotfiles-install bash /w/dotfiles/bin/dotfiles-install run --yes --no-agentbrew /w/dotfiles",
-      "careerbrew-clone git clone https://github.com/fyodoriv/careerbrew.git /w/careerbrew /w",
+      "careerbrew-clone git clone --end-of-options https://github.com/fyodoriv/careerbrew.git /w/careerbrew /w",
       "careerbrew-install bash /w/careerbrew/scripts/install.sh /w/careerbrew",
       "audit-skills node /ab.js audit-skills /w",
     ]);

@@ -120,7 +120,7 @@ function repoSteps(repo: RepoName, dir: string, existing: string | undefined): S
       title: existing ? `use existing ${repo} checkout ${path}` : `clone ${repo} into ${path}`,
       repo,
       cmd: "git",
-      args: ["clone", REPOS[repo], path],
+      args: ["clone", "--end-of-options", REPOS[repo], path],
       cwd: dir,
       satisfied: () => existing !== undefined || existsSync(join(path, ".git")),
     },

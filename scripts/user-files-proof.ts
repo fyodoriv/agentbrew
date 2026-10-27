@@ -4,8 +4,8 @@
 // Appends one content-free line to .metrics/user-files.jsonl, which
 // `npm run docs:proof` reads (user_files_changed). The scratch HOME is not
 // the user's home, so launchd calls are skipped (src/core/launchctl.ts).
-// `agentbrew fix` is left out until task fix-followups-write-repo-tasks is
-// done: its MCP follow-ups write this repo's TASKS.md even from a scratch HOME.
+// Then it runs `agentbrew fix` once; its MCP follow-ups must not write any
+// TASKS.md outside the scratch cwd (task fix-followups-write-repo-tasks).
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -58,7 +58,7 @@ export async function measure(): Promise<{ checked: number; changed: number; fai
     const mcpBefore = mcpEntry(home);
     const extraEnv = { AGENTBREW_EVENTS: "0", NO_COLOR: "1" };
     let failedRuns = 0;
-    for (const args of Array.from({ length: SYNC_RUNS }, () => ["sync"])) {
+    for (const args of [...Array.from({ length: SYNC_RUNS }, () => ["sync"]), ["fix"]]) {
       try {
         await runScenarioCli({ repoRoot, homeDir: home, args, extraEnv });
       } catch {

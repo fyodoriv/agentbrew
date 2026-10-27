@@ -527,6 +527,7 @@ A background scheduler (LaunchAgent / systemd / cron) runs `agentbrew fix` every
 - It attempts registered heal actions for common failures.
 - It does not try futile heals on catalog-documented known-broken failures, but keeps them visible in `~/.cache/agentbrew/mcp-health.json`.
 - It shows unresolved MCP failures in `agentbrew status`.
+- It adds a "Repair MCP health failure" task for each unresolved failure to the `TASKS.md` in the current folder, or to the file named in `AGENTBREW_FOLLOWUP_TASKS_FILE`. With neither, it writes no task.
 
 A heal counts only when the server passes the re-probe. Only failed servers with a heal attempt are re-probed, plus, after a sync heal, other failures that were not suppressed or deferred. A suppressed or deferred server starts once per tick.
 

@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { logSkipped } from "../core/logger.js";
 import { isProbeFailure } from "./heal-actions.js";
@@ -14,13 +13,16 @@ function slug(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
+// Follow-ups go only to a task file the user chose: the file named in
+// AGENTBREW_FOLLOWUP_TASKS_FILE, else the cwd repo's TASKS.md. Never the
+// agentbrew module's own repo, so a source checkout run stays clean.
 function candidateTasksPaths(): string[] {
-  const moduleTasks = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "TASKS.md");
+  const configured = process.env.AGENTBREW_FOLLOWUP_TASKS_FILE?.trim();
   const cwdTasks = resolve(process.cwd(), "TASKS.md");
-  return Array.from(new Set([moduleTasks, cwdTasks]));
+  return configured ? [resolve(configured), cwdTasks] : [cwdTasks];
 }
 
-function resolveTasksPath(): string | undefined {
+export function resolveTasksPath(): string | undefined {
   return candidateTasksPaths().find((path) => existsSync(path));
 }
 

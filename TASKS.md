@@ -155,19 +155,6 @@
 
 ## P1
 
-- [ ] `agentbrew fix` never writes MCP follow-up tasks into the agentbrew repo
-  - **ID**: fix-followups-write-repo-tasks
-  - **Tags**: bug, mcp, data-safety
-  - **Details**: Found 2026-10-27 while building `npm run proof:user-files`. `src/mcp/followup-tasks.ts` `candidateTasksPaths()` picks the `TASKS.md` two levels above the module first. So `agentbrew fix` from a source checkout (or `npm run dev`), even with a scratch HOME and another cwd, appended "Repair MCP health failure" blocks to agentbrew's own `TASKS.md`. Those blocks also lack the rule-9 fields, so the task lint fails. It also probed real MCP servers from the scratch HOME.
-  - **Files**: `src/mcp/followup-tasks.ts`, its tests, `scripts/user-files-proof.ts` (add `fix` back)
-  - **Output**: code
-  - **Acceptance**: `agentbrew fix` writes follow-ups only to a task file the user configured (or the cwd repo's), never the module's own repo; the proof runs `fix` again.
-  - **Hypothesis**: unwanted writes to agentbrew's `TASKS.md` from a scratch-HOME `fix` drop from 3 blocks per run to 0.
-  - **Measurement**: `git status --short TASKS.md` after `npm run proof:user-files` with `fix` added back
-  - **Success**: clean, and a unit test pins it
-  - **Pivot**: users rely on the module path -> gate it behind an explicit setting
-  - **Anchor**: AGENTS.md rule 4 (runtime state lives in state.yaml); found in this goal's proof run
-
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

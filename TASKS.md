@@ -155,18 +155,6 @@
 
 ## P1
 
-- [ ] Field telemetry sends anonymous usage counts to PostHog EU
-  - **ID**: field-telemetry-posthog
-  - **Tags**: proof, telemetry, privacy
-  - **Details**: Copy the shape of careerbrew PR #219 (`src/careerbrew/telemetry.py`). Send only allowlisted, content-free fields of this app's local usage events (event name, status, duration, counts, a random install id) to PostHog EU `/batch/`, with person profiles and GeoIP off. Send nothing without the owner-typed `posthog_key`. Off switches: `DO_NOT_TRACK=1` and `telemetry off`. A cursor stops repeats, and a failed send never fails a command. Commands: `telemetry status|on|off|send --dry-run`. Tests use fake endpoints only. The README Proof generator reads PostHog totals when a personal query key is set and falls back to the local aggregate.
-  - **Acceptance**: `telemetry send --dry-run` prints only allowlisted fields; a canary test proves no content, path, or name leaves the machine; the privacy doc lists the exit.
-  - **Hypothesis**: real-use totals from the owner's and Tope's machines replace "not measured yet" rows in the README Proof section.
-  - **Measurement**: `telemetry send --dry-run` plus the Proof generator's machine count n
-  - **Success**: n of 2 or more machines within 2 weeks of the key being set
-  - **Pivot**: PostHog's free tier or API cannot give per-event totals → a private git repo of aggregates
-  - **Anchor**: Homebrew analytics (docs.brew.sh/Analytics), opt-out anonymous usage counts
-
-
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents
@@ -182,6 +170,19 @@
   - **Blocked**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). Measure on or after 2026-10-25 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the `until <arg>` overall line), then close or pivot.
 
 ## P2
+
+- [ ] The README Proof generator reads field totals from PostHog
+  - **ID**: proof-reads-posthog-totals
+  - **Tags**: proof, telemetry
+  - **Details**: Left over from field telemetry (PR #547 and its allowlist fix). `npm run docs:proof` still reads only the local event log. When a personal PostHog query key is set (Keychain, never committed), it should read per-install totals from the PostHog EU query API and fall back to the local aggregate with one note when the key or network is missing. Tests use a fake endpoint only.
+  - **Files**: `src/docs/proof.ts`, `src/docs/proof.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: with a fake PostHog endpoint, `docs:proof` writes per-machine totals keyed by a salted hash; with no key it writes the local aggregate as today.
+  - **Hypothesis**: real-use totals from 2 or more machines replace "not measured yet" rows in the README Proof section.
+  - **Measurement**: `npm run docs:proof` machine count n
+  - **Success**: n of 2 or more within 2 weeks of the owner setting the project key
+  - **Pivot**: the PostHog free tier or API cannot give per-event totals → a private git repo of aggregates
+  - **Anchor**: Homebrew analytics (docs.brew.sh/Analytics)
 
 - [ ] `agentbrew remove` and `sync` prune a stale command source folder
   - **ID**: prune-stale-command-source

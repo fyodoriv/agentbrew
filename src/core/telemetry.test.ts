@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadState, send, setEnabled, status } from "./telemetry.js";
+import { buildBatch, loadState, send, setEnabled, status } from "./telemetry.js";
 
 const lines = [
   JSON.stringify({ ts: "2026-10-26T10:00:00.000Z", event: "sync", story: "US06", ok: true, ms: 900 }),
@@ -59,5 +59,30 @@ describe("field telemetry", () => {
     });
     expect(await send("1", { fetchImpl })).toEqual({ sent: 0, skipped: "network" });
     expect(status().pending).toBe(2);
+  });
+  it("canary: no content, path, or name leaves the machine, even from an edited log", () => {
+    const canary = "CANARY-/Users/someone/secret-project";
+    const tampered = [
+      JSON.stringify({
+        ts: "2026-10-26T12:00:00.000Z",
+        event: "sync",
+        story: canary,
+        ok: true,
+        ms: 5,
+        path: canary,
+        skill: canary,
+        code: canary,
+        module: canary,
+        types: [canary, "skills"],
+      }),
+      JSON.stringify({ ts: canary, event: canary, ok: true }),
+    ];
+    const body = buildBatch(tampered, "<posthog_key>", "id", "1.0.0");
+    expect(JSON.stringify(body)).not.toContain("CANARY");
+    const batch = body.batch as { properties: Record<string, unknown> }[];
+    expect(batch).toHaveLength(1);
+    expect(Object.keys(batch[0].properties).sort()).toEqual(
+      ["$geoip_disable", "$process_person_profile", "app_version", "ms", "ok", "story", "types"].sort(),
+    );
   });
 });

@@ -10,7 +10,9 @@ anonymous counts under a random install id (no person profile, no GeoIP). It
 sends nothing until you set a project key (`AGENTBREW_POSTHOG_KEY`, or the
 Keychain item `agentbrew` / `posthog_key`). `agentbrew telemetry status` shows
 its state, `agentbrew telemetry send --dry-run` prints the exact body, and
-`agentbrew telemetry off` or `DO_NOT_TRACK=1` stops it.
+`agentbrew telemetry off` or `DO_NOT_TRACK=1` stops it. Each line is checked
+against the event allowlist again at send time, so an edited or older log line
+cannot send a path or name; a canary test in `src/core/telemetry.test.ts` pins this.
 
 ## Logs
 

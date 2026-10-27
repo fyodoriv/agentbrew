@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getLogDir } from "../sync/scheduler-paths.js";
-import { eventsFilePath } from "./events.js";
+import { type AgentbrewEvent, eventsFilePath, sanitizeEvent } from "./events.js";
 import { logSkipped } from "./logger.js";
 
 /**
@@ -22,6 +22,8 @@ import { logSkipped } from "./logger.js";
 
 export const DEFAULT_URL = "https://eu.i.posthog.com/batch/";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const EVENT_NAME = /^[a-z][a-z_]{0,31}$/;
+const ISO_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
 interface TelemetryState {
   installId: string;
@@ -91,7 +93,11 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
     } catch {
       continue;
     }
-    const { ts, event, ...rest } = e;
+    // Re-apply the event allowlist: a line written by an older or edited log
+    // must not carry a path, name, or other content off the machine.
+    if (typeof e.event !== "string" || !EVENT_NAME.test(e.event)) continue;
+    const { ts: _now, event, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
+    const ts = typeof e.ts === "string" && ISO_TS.test(e.ts) ? e.ts : undefined;
     batch.push({
       event: `agentbrew.${String(event)}`,
       distinct_id: installId,

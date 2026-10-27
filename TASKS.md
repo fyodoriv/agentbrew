@@ -184,6 +184,62 @@
 
 ## P2
 
+- [ ] /work ships one built-in dashboard renderer (issue #573)
+  - **ID**: work-dashboard-renderer
+  - **Blocked**: needs-owner — issues #573, #574, #575 together redesign /work. Question: build them in this order (#573 renderer, then #574 start/after-step hooks, then #575 session mode), and should session mode wait until agents can start desktop sessions themselves?
+  - **Tags**: work, dashboard
+  - **Details**: Issue #573 (/work: ship one built-in dashboard renderer). Add `agentbrew work render` and `agentbrew work update`; commands/work.md republishes the Artifact after each row change.
+  - **Files**: `src/work.ts`, `src/work.test.ts`, `commands/work.md`
+  - **Output**: code
+  - **Acceptance**: as in issue #573
+  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
+  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
+  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
+  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] /work start steps and after-each-step refresh steps (issue #574)
+  - **ID**: work-start-and-after-steps
+  - **Blocked**: needs-owner — part of the /work redesign (#573-#575). Question: same order question as task work-dashboard-renderer.
+  - **Tags**: work, agentfile
+  - **Details**: Issue #574 (/work: start steps and after-each-step refresh steps). Add `workStart:` and `workAfterEachStep:` to the Agentfile and to `work --json`.
+  - **Files**: `src/work.ts`, Agentfile schema, `commands/work.md`
+  - **Output**: code
+  - **Acceptance**: as in issue #574
+  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
+  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
+  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
+  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] /work runs steps as interactive sessions (issue #575)
+  - **ID**: work-steps-as-sessions
+  - **Blocked**: needs-owner — agents in this setup cannot start desktop sessions on their own. Question: build session mode now with subagents as fallback, or wait for a session-start API?
+  - **Tags**: work, sessions
+  - **Details**: Issue #575 (/work: run steps as interactive sessions; a step can own several). Status JSON gets `sessions`; `work --json` gets `units` and `maxSessions`.
+  - **Files**: `src/work.ts`, `src/work.test.ts`, `commands/work.md`
+  - **Output**: code
+  - **Acceptance**: as in issue #575
+  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
+  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
+  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
+  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] /work pluginReview reads landed plugin commits and files issue pairs (issue #549)
+  - **ID**: work-plugin-review-landed-commits
+  - **Blocked**: needs-owner — the issue asks /work to open issues in plugin repos, which are public writes outside the watched repos. Question: may /work file those issue pairs without a per-run yes, or should it only list them?
+  - **Tags**: work, plugins
+  - **Details**: Issue #549 (pluginReview reads new landed plugin commits). Keep a last-reviewed SHA per plugin; expose `pluginReview.commits` in `work --json`.
+  - **Files**: `src/work.ts`, `commands/work.md`
+  - **Output**: code
+  - **Acceptance**: as in issue #549
+  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
+  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
+  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
+  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
 - [ ] The README Proof generator reads field totals from PostHog
   - **ID**: proof-reads-posthog-totals
   - **Tags**: proof, telemetry

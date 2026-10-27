@@ -171,6 +171,26 @@
 
 ## P2
 
+- [ ] Rebuild the UI to the Hallmark design skill
+  - **ID**: hallmark-design
+  - **Details**: The owner chose Hallmark (nutlope/hallmark, installed through agentbrew on
+    2026-10-27) as the design skill for every app with a UI. Run `/hallmark audit mods/work-pane/` first
+    and save its report. Then `/hallmark redesign mods/work-pane/`: it keeps content and wiring and
+    changes only the look. Keep the comfort budget from `ui-ux-rankings`
+    (references/comfort-patterns.md) as the floor, and keep every existing UI test green.
+  - **Files**: `mods/work-pane/`
+  - **Acceptance**: the Hallmark audit reports no Floor failures and no Reflex gate left
+    without a recorded reason; the `ui-ux-rankings` comfort gates still pass on phone and
+    desktop, light and dark; before/after screenshots in the PR.
+  - **Hypothesis**: Hallmark Floor and Reflex findings on `mods/work-pane/` drop from the audit baseline
+    to 0 open, with no comfort-budget regression.
+  - **Measurement**: `/hallmark audit mods/work-pane/` (count of Floor + Reflex findings) plus the repo's
+    `ui-ux-rankings` gate.
+  - **Success**: 0 Floor findings, every Reflex finding fixed or overruled with a reason.
+  - **Pivot**: the redesign breaks a comfort gate or an everyday job takes more taps: keep the
+    audit fixes only and drop the redesign.
+  - **Anchor**: Nielsen 1994 (heuristic evaluation).
+
 - [ ] /work ships one built-in dashboard renderer (issue #573)
   - **ID**: work-dashboard-renderer
   - **Blocked**: needs-owner — issues #573, #574, #575 together redesign /work. Question: build them in this order (#573 renderer, then #574 start/after-step hooks, then #575 session mode), and should session mode wait until agents can start desktop sessions themselves?

@@ -126,6 +126,10 @@ or the user's words in this session).
   new item, or after 9 minutes with only the summary line. Repeat until the
   run's time is nearly up; never exit only because the queue is idle (start
   taskgrind with `TG_STALL_EXIT=never` for a long watch). Never ask anything.
+- To react to a branch head move or any issue or PR update (the `/work`
+  watch phase): `bash <skill-dir>/scripts/watch-repos.sh 300 owner/repo@branch...`
+  prints the start state, then one line per change. It is read-only, and a
+  failed read counts as no change.
 - Unattended, for one repo: `taskgrind` with the `grind` skill.
 - Stop when the user says so, or when every repo is skipped for the same
   reason twice in a row (for example, signed out of `gh`). Report that reason.

@@ -142,6 +142,7 @@ these three axes when a task allows it:
 
 - Avoid human-blocked asks by looking for API/MCP/browser/self-service paths first.
 - If truly blocked, document why the action is required, why no workaround exists, and what evidence led there before asking.
+- **Support intake bots:** after a post in a support channel, keep working with its intake bot until it fixes the ask or is clearly blocked. If its answer misses the point, use its "refine" control and restate the ask in one or two lines. Give every intake field it asks for. Use its buttons in the agent browser (a background tab), never a desktop app. Blocked means: it hands off to a person, it opens a ticket, it repeats the same wrong answer twice, or it needs input only the operator has. Then stop and report, with the ticket link.
 
 ## Communication
 
@@ -163,6 +164,7 @@ these three axes when a task allows it:
 - Be concise and direct. Say what you are doing before long-running or risky
   commands.
 - Do not give concrete time estimates.
+- **One comment per place on a PR:** never post two comments in a row in the same place on a PR (the conversation, or one review thread) unless 24 hours have passed. Edit your last comment instead.
 - Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** — do not duplicate them here.
 
 ## Long-run reports

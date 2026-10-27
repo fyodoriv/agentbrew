@@ -349,7 +349,7 @@ interface WriteActionOpts {
  */
 function refreshCanonicalCommandSources(
   sourceFiles: ReadonlyArray<{ filename: string; content: string; builtinName?: boolean }>,
-  opts: { dryRun: boolean; manifest: Manifest },
+  opts: { dryRun: boolean; manifest: Manifest; quiet: boolean; log: Logger },
 ): void {
   const canonicalDir = getCommandsDir();
   mkdirSync(canonicalDir, { recursive: true });
@@ -358,9 +358,21 @@ function refreshCanonicalCommandSources(
   for (const { filename, content, builtinName } of sourceFiles) {
     if (opts.dryRun || builtinName || fromPlugins.has(filename)) continue;
     const path = join(canonicalDir, filename);
-    if (isUserModified(path, opts.manifest)) continue;
+    if (isUserModified(path, opts.manifest)) {
+      // The later source wins the deploy, so this copy only misleads lint and status (#571).
+      if (!opts.quiet && readFileSync(path, "utf-8") !== content) {
+        opts.log.warn(keptCommandWarning("agentbrew commands folder", filename, path));
+      }
+      continue;
+    }
     writeIfChanged(path, content, opts.manifest);
   }
+}
+
+/** A kept command file goes stale when its source changes, so say so even in a
+ *  compact sync, and name the command that takes the source version (#571). */
+function keptCommandWarning(agentName: string, filename: string, filePath: string): string {
+  return `  ⚠ ${agentName}: kept ${filename}: it differs from its source, and agentbrew did not write this copy (user-modified or untracked). To take the source version: rm ${filePath} && agentbrew sync`;
 }
 
 function handleWriteAction(opts: WriteActionOpts): boolean {
@@ -381,9 +393,7 @@ function handleWriteAction(opts: WriteActionOpts): boolean {
     } catch (e) {
       logSkipped("sync/command-sync/inPlacePermissionMigration", e);
     }
-    if (!quiet) {
-      log.log(`  ⚠ ${agentName}: skipping ${action.filename} (user-modified)`);
-    }
+    if (!quiet) log.warn(keptCommandWarning(agentName, action.filename, filePath));
     return true;
   }
   const content = action.content ?? "";
@@ -588,6 +598,19 @@ interface ProcessDiffOpts {
   log: Logger;
 }
 
+/** Count the writes a real sync would skip because the file is user-modified
+ *  or untracked, warning about each one when a logger is given (#571). */
+function countKeptWrites(diff: CommandTargetDiff, targetDir: string, manifest: Manifest, log?: Logger): number {
+  let kept = 0;
+  for (const action of diff.actions) {
+    const filePath = join(targetDir, action.filename);
+    if (action.type !== "write" || !isUserModified(filePath, manifest)) continue;
+    kept++;
+    log?.warn(keptCommandWarning(diff.agentName, action.filename, filePath));
+  }
+  return kept;
+}
+
 function processSingleDiff(opts: ProcessDiffOpts): {
   synced: number;
   pruned: number;
@@ -610,7 +633,9 @@ function processSingleDiff(opts: ProcessDiffOpts): {
   if (dryRun) {
     // Dry-run reports the would-prune count from the diff because
     // no files are actually deleted; the user wants the preview.
-    return { synced: diff.synced, pruned: diff.pruned, skipped: 0, missingDir: 0 };
+    // A write sync would skip (user-modified or untracked) counts as drift (#571).
+    const kept = countKeptWrites(diff, targetDir, manifest, quiet ? undefined : log);
+    return { synced: diff.synced - kept, pruned: diff.pruned, skipped: kept, missingDir: 0 };
   }
   const { skipped: agentSkipped, actualPruned } = applyDiffActions(diff, targetDir, manifest, quiet, log);
   // Use the actual number deleted, not the diff's would-prune
@@ -758,7 +783,7 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   const label = getSyncLabel(dryRun, sourceFiles.length);
   if (!quiet) log.log(log.bold(`\n${label}\n`));
 
-  refreshCanonicalCommandSources(sourceFiles, { dryRun, manifest });
+  refreshCanonicalCommandSources(sourceFiles, { dryRun, manifest, quiet, log });
   const totals = { synced: 0, pruned: 0, skipped: 0, missingDirs: [] as string[] };
 
   for (let i = 0; i < diffs.length; i++) {

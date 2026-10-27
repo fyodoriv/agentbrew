@@ -49,6 +49,9 @@ interface Event {
   ms?: number;
   mode?: string;
   cached_steps?: number;
+  changed?: number;
+  checked?: number;
+  failedRuns?: number;
   driftBefore?: number;
   repaired?: number;
   remaining?: number;
@@ -97,6 +100,8 @@ interface Inputs {
   date: string;
   events: Event[];
   timings: Event[];
+  /** Lines from .metrics/user-files.jsonl (scripts/user-files-proof.ts). */
+  userFiles?: Event[];
   catalogYaml: string;
   fullSyncAgents: number;
   machine: string;
@@ -123,6 +128,17 @@ export function collect(inp: Inputs, previous?: ProofFile): ProofFile {
   const fixed = repairs.reduce((a, e) => a + (e.repaired ?? 0), 0);
   const days = (es: Event[]) => new Set(es.map((e) => (e.ts ?? "").slice(0, 10))).size;
   const gateRun = `local run, ${(gates.at(-1)?.ts ?? inp.date).slice(0, 10)}, ${inp.machine}`;
+  // The last 3 seeded-home runs: the worst count wins, and a failed sync run voids it.
+  const userFiles = (inp.userFiles ?? []).filter((e) => e.event === "user_files").slice(-3);
+  const userFilesMetric = (): Metric =>
+    m(
+      userFiles.length && userFiles.every((e) => e.failedRuns === 0)
+        ? Math.max(...userFiles.map((e) => e.changed ?? 0))
+        : null,
+      "files",
+      `local run, ${(userFiles.at(-1)?.ts ?? inp.date).slice(0, 10)}, ${inp.machine}`,
+      `most user items changed in one of the last ${userFiles.length} seeded-home runs (3 syncs each); npm run proof:user-files`,
+    );
 
   const m = (value: number | null, unit: string, kind: string, detail?: string): Metric => ({
     value,
@@ -171,6 +187,7 @@ export function collect(inp: Inputs, previous?: ProofFile): ProofFile {
       gateRun,
       `${gates.length} full npm run verify runs, ${span(gates)}`,
     ),
+    user_files_changed: userFilesMetric(),
     gate_ms: m(
       median(cold.slice(-10).map((e) => e.ms as number)),
       "ms",
@@ -285,8 +302,8 @@ const ROWS: Row[] = [
   {
     claim: "Never destroys your data",
     theory: "Sync must leave user-made files byte for byte the same",
-    metric: "user files changed by a sync on a seeded home",
-    task: "measure-sync-preserves-user-files",
+    metric: "user files changed by a sync on a seeded home, goal 0",
+    key: "user_files_changed",
   },
   {
     claim: "A fresh machine is set up in one command",

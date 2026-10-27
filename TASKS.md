@@ -155,6 +155,19 @@
 
 ## P1
 
+- [ ] `agentbrew fix` never writes MCP follow-up tasks into the agentbrew repo
+  - **ID**: fix-followups-write-repo-tasks
+  - **Tags**: bug, mcp, data-safety
+  - **Details**: Found 2026-10-27 while building `npm run proof:user-files`. `src/mcp/followup-tasks.ts` `candidateTasksPaths()` picks the `TASKS.md` two levels above the module first. So `agentbrew fix` from a source checkout (or `npm run dev`), even with a scratch HOME and another cwd, appended "Repair MCP health failure" blocks to agentbrew's own `TASKS.md`. Those blocks also lack the rule-9 fields, so the task lint fails. It also probed real MCP servers from the scratch HOME.
+  - **Files**: `src/mcp/followup-tasks.ts`, its tests, `scripts/user-files-proof.ts` (add `fix` back)
+  - **Output**: code
+  - **Acceptance**: `agentbrew fix` writes follow-ups only to a task file the user configured (or the cwd repo's), never the module's own repo; the proof runs `fix` again.
+  - **Hypothesis**: unwanted writes to agentbrew's `TASKS.md` from a scratch-HOME `fix` drop from 3 blocks per run to 0.
+  - **Measurement**: `git status --short TASKS.md` after `npm run proof:user-files` with `fix` added back
+  - **Success**: clean, and a unit test pins it
+  - **Pivot**: users rely on the module path -> gate it behind an explicit setting
+  - **Anchor**: AGENTS.md rule 4 (runtime state lives in state.yaml); found in this goal's proof run
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents
@@ -311,18 +324,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Measure that sync never changes user-made files
-  - **ID**: measure-sync-preserves-user-files
-  - **Tags**: proof, metrics, sync
-  - **Details**: The README Proof section says "Never destroys your data" with `not measured yet`. Add a metric to `npm run docs:proof`: seed a scratch HOME with user-made skills, MCP servers, rules, and commands, run `agentbrew sync` and `agentbrew fix`, and count user files whose bytes changed.
-  - **Files**: `src/docs/proof.ts`, `scripts/sync-proof.ts`, `docs/proof/metrics.json`
-  - **Output**: code
-  - **Acceptance**: the Proof row shows a measured count with its date, data kind, and command.
-  - **Hypothesis**: user-made files changed by a sync on a seeded home stay at 0, so the claim moves from not measured to proven.
-  - **Measurement**: `npm run docs:proof` (the new `user_files_changed` metric).
-  - **Success**: no user file changes in any of 3 runs.
-  - **Pivot**: any changed user file -> file a P0 bug and drop the claim from the README until it is fixed.
-  - **Anchor**: README Proof section; Kitchenham, Dyba, Jorgensen 2004 (evidence-based SE).
 - [ ] Measure time from a cold install to a clean status
   - **ID**: measure-zero-to-configured
   - **Tags**: proof, metrics, install

@@ -40,6 +40,27 @@ describe("README Proof section", () => {
     expect(render(empty)).toContain("not measured yet");
   });
 
+  it("user_files_changed takes the worst of the last 3 runs, and a failed run voids it", () => {
+    const base = {
+      date: "2026-01-02",
+      events: [],
+      timings: [],
+      catalogYaml: "skills: []",
+      fullSyncAgents: 0,
+      machine: "t",
+    };
+    const run = (changed: number, failedRuns = 0) => ({
+      ts: "2026-01-02T00:00:00Z",
+      event: "user_files",
+      changed,
+      failedRuns,
+    });
+    expect(collect(base).metrics.user_files_changed?.value).toBeNull();
+    expect(collect({ ...base, userFiles: [run(5), run(0), run(0), run(0)] }).metrics.user_files_changed?.value).toBe(0);
+    expect(collect({ ...base, userFiles: [run(0), run(2), run(0)] }).metrics.user_files_changed?.value).toBe(2);
+    expect(collect({ ...base, userFiles: [run(0), run(0, 1)] }).metrics.user_files_changed?.value).toBeNull();
+  });
+
   it("keeps one history point per day", () => {
     const ev = [{ ts: "2026-01-02T00:00:00Z", event: "sync", ok: true, ms: 10 }];
     const a = collect({

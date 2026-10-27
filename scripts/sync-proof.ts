@@ -37,6 +37,7 @@ if (!process.argv.includes("--render")) {
       date: new Date().toISOString().slice(0, 10),
       events: readJsonl(events),
       timings: readJsonl(join(metricsDir, "gate-timings.jsonl")),
+      userFiles: readJsonl(join(metricsDir, "user-files.jsonl")),
       catalogYaml: readFileSync(join(root, "src/catalog.yaml"), "utf-8"),
       fullSyncAgents: buildAgentMatrix().filter((r) => !r.experimental && (r.mcp || r.rules || r.commands)).length,
       // A machine label without the host name.

@@ -32,6 +32,20 @@ function machineLabel(): string {
   return `m-${createHash("sha256").update(`${proofSalt()}:${hostname()}`).digest("hex").slice(0, 10)}`;
 }
 
+// The install receipt's `run` block (scripts/install.sh run), if a receipt exists.
+function readInstallRun(): { ok?: boolean; seconds?: number; finished_at?: string } | undefined {
+  const receipt =
+    process.env.AGENTBREW_INSTALL_RECEIPT ??
+    join(process.env.XDG_STATE_HOME ?? join(homedir(), ".local/state"), "agentbrew/install-receipt.json");
+  try {
+    return (
+      JSON.parse(readFileSync(receipt, "utf-8")) as { run?: { ok?: boolean; seconds?: number; finished_at?: string } }
+    ).run;
+  } catch {
+    return undefined;
+  }
+}
+
 let file: ProofFile | undefined = existsSync(out) ? (JSON.parse(readFileSync(out, "utf-8")) as ProofFile) : undefined;
 if (!process.argv.includes("--render")) {
   const events = process.env.AGENTBREW_EVENTS_FILE ?? join(homedir(), ".local/share/agentbrew/logs/events.jsonl");
@@ -46,6 +60,7 @@ if (!process.argv.includes("--render")) {
       fullSyncAgents: buildAgentMatrix().filter((r) => !r.experimental && (r.mcp || r.rules || r.commands)).length,
       // A machine label without the host name.
       machine: `${machineLabel()} (${process.platform} ${arch()})`,
+      installRun: readInstallRun(),
       command: process.env.AGENTBREW_METRICS_DIR
         ? "AGENTBREW_METRICS_DIR=<main checkout>/.metrics npm run docs:proof"
         : undefined,

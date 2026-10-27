@@ -391,19 +391,6 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Measure time from a cold install to a clean status
-  - **ID**: measure-zero-to-configured
-  - **Tags**: proof, metrics, install
-  - **Details**: The README Proof section says "A fresh machine is set up in one command" with `not measured yet`. `scripts/metrics.sh` already reads `run.seconds` from the install receipt, but no finished receipt exists. Run `scripts/install.sh run` on a scratch HOME, then have `npm run docs:proof` read the receipt.
-  - **Files**: `src/docs/proof.ts`, `scripts/sync-proof.ts`, `scripts/install.sh`
-  - **Output**: code
-  - **Acceptance**: the Proof row shows `zero_to_configured_s` with its date, data kind, and command.
-  - **Hypothesis**: a cold one-step install reaches a clean `agentbrew status --ci` in 120 s or less.
-  - **Measurement**: `npm run docs:proof` (reads the install receipt's `run.seconds`).
-  - **Success**: 120 s or less.
-  - **Pivot**: over 300 s -> cut install steps or delegate them (docs/metrics.md).
-  - **Anchor**: docs/metrics.md `zero_to_configured_s`; Forsgren, Humble, Kim 2018.
-
 ## P3
 
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back

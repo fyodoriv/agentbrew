@@ -107,6 +107,8 @@ interface Inputs {
   machine: string;
   /** The command line that made the numbers, when it differs from COMMAND. */
   command?: string;
+  /** `run` from the install receipt (scripts/install.sh run), when one exists. */
+  installRun?: { ok?: boolean; seconds?: number; finished_at?: string };
 }
 
 /** Compute every metric from the inputs. A metric with no data has value null. */
@@ -140,6 +142,25 @@ export function collect(inp: Inputs, previous?: ProofFile): ProofFile {
       `most user items changed in one of the last ${userFiles.length} seeded-home runs (3 syncs each); npm run proof:user-files`,
     );
 
+  // A finished install receipt wins; without one, keep the last measured value.
+  const zeroToConfigured = (): Metric => {
+    const r = inp.installRun;
+    if (r?.ok && Number.isFinite(r.seconds)) {
+      const day = (r.finished_at ?? inp.date).slice(0, 10);
+      return {
+        ...m(
+          r.seconds as number,
+          "s",
+          `local run, ${day}, ${inp.machine}, scratch HOME`,
+          "scripts/install.sh run to a clean agentbrew status --ci",
+        ),
+        date: day,
+        command:
+          "HOME=<scratch> scripts/install.sh run --no-auto-repair --no-shell-hook --yes, then AGENTBREW_INSTALL_RECEIPT=<scratch>/.local/state/agentbrew/install-receipt.json npm run docs:proof",
+      };
+    }
+    return previous?.metrics.zero_to_configured_s ?? m(null, "s", "no install receipt yet");
+  };
   const m = (value: number | null, unit: string, kind: string, detail?: string): Metric => ({
     value,
     unit,
@@ -188,6 +209,7 @@ export function collect(inp: Inputs, previous?: ProofFile): ProofFile {
       `${gates.length} full npm run verify runs, ${span(gates)}`,
     ),
     user_files_changed: userFilesMetric(),
+    zero_to_configured_s: zeroToConfigured(),
     gate_ms: m(
       median(cold.slice(-10).map((e) => e.ms as number)),
       "ms",
@@ -308,8 +330,8 @@ const ROWS: Row[] = [
   {
     claim: "A fresh machine is set up in one command",
     theory: "Time to configured is the outcome a one-step install promises",
-    metric: "seconds from a cold install to a clean `agentbrew status --ci`",
-    task: "measure-zero-to-configured",
+    metric: "seconds from a cold install to a clean `agentbrew status --ci`, goal 120 or less",
+    key: "zero_to_configured_s",
   },
 ];
 

@@ -37,12 +37,12 @@
       ]
     },
     "sync_ms": {
-      "value": 997,
+      "value": 933,
       "unit": "ms",
       "date": "2026-10-27",
       "kind": "real use",
       "command": "npm run docs:proof",
-      "detail": "median of the last 20 of 342 syncs over 9 days",
+      "detail": "median of the last 20 of 349 syncs over 9 days",
       "history": [
         {
           "date": "2026-10-26",
@@ -50,7 +50,7 @@
         },
         {
           "date": "2026-10-27",
-          "value": 997
+          "value": 933
         }
       ]
     },
@@ -60,7 +60,7 @@
       "date": "2026-10-27",
       "kind": "real use",
       "command": "npm run docs:proof",
-      "detail": "342 syncs, 2026-10-18 to 2026-10-27",
+      "detail": "349 syncs, 2026-10-18 to 2026-10-27",
       "history": [
         {
           "date": "2026-10-26",
@@ -73,12 +73,12 @@
       ]
     },
     "repair_fail_rate": {
-      "value": 3.8,
+      "value": 3.6,
       "unit": "%",
       "date": "2026-10-27",
       "kind": "real use",
       "command": "npm run docs:proof",
-      "detail": "290 scheduled repairs, 2026-10-18 to 2026-10-27",
+      "detail": "307 scheduled repairs, 2026-10-18 to 2026-10-27",
       "history": [
         {
           "date": "2026-10-26",
@@ -86,7 +86,7 @@
         },
         {
           "date": "2026-10-27",
-          "value": 3.8
+          "value": 3.6
         }
       ]
     },
@@ -96,7 +96,7 @@
       "date": "2026-10-27",
       "kind": "real use",
       "command": "npm run docs:proof",
-      "detail": "14 of 36 drift items seen by 290 repairs",
+      "detail": "14 of 36 drift items seen by 307 repairs",
       "history": [
         {
           "date": "2026-10-26",
@@ -109,51 +109,52 @@
       ]
     },
     "gate_pass_rate": {
-      "value": 66.7,
+      "value": null,
       "unit": "%",
       "date": "2026-10-27",
-      "kind": "local run, 2026-10-19, m-c525f1fce3 (darwin arm64)",
+      "kind": "local run, 2026-10-27, m-c525f1fce3 (darwin arm64)",
       "command": "npm run docs:proof",
-      "detail": "3 full npm run verify runs, 2026-10-18 to 2026-10-19",
+      "detail": "0 full npm run verify runs, no runs",
       "history": [
         {
           "date": "2026-10-26",
-          "value": 66.7
-        },
-        {
-          "date": "2026-10-27",
           "value": 66.7
         }
       ]
     },
     "user_files_changed": {
-      "value": 0,
+      "value": null,
       "unit": "files",
       "date": "2026-10-27",
       "kind": "local run, 2026-10-27, m-c525f1fce3 (darwin arm64)",
       "command": "npm run docs:proof",
-      "detail": "most user items changed in one of the last 3 seeded-home runs (3 syncs each); npm run proof:user-files",
+      "detail": "most user items changed in one of the last 0 seeded-home runs (3 syncs each); npm run proof:user-files",
+      "history": []
+    },
+    "zero_to_configured_s": {
+      "value": 10,
+      "unit": "s",
+      "date": "2026-10-27",
+      "kind": "local run, 2026-10-27, m-c525f1fce3 (darwin arm64), scratch HOME",
+      "command": "HOME=<scratch> scripts/install.sh run --no-auto-repair --no-shell-hook --yes, then AGENTBREW_INSTALL_RECEIPT=<scratch>/.local/state/agentbrew/install-receipt.json npm run docs:proof",
+      "detail": "scripts/install.sh run to a clean agentbrew status --ci",
       "history": [
         {
           "date": "2026-10-27",
-          "value": 0
+          "value": 10
         }
       ]
     },
     "gate_ms": {
-      "value": 408466,
+      "value": null,
       "unit": "ms",
       "date": "2026-10-27",
-      "kind": "local run, 2026-10-19, m-c525f1fce3 (darwin arm64)",
+      "kind": "local run, 2026-10-27, m-c525f1fce3 (darwin arm64)",
       "command": "npm run docs:proof",
-      "detail": "median of 2 passing uncached runs",
+      "detail": "median of 0 passing uncached runs",
       "history": [
         {
           "date": "2026-10-26",
-          "value": 408466
-        },
-        {
-          "date": "2026-10-27",
           "value": 408466
         }
       ]
@@ -206,9 +207,9 @@
   "machines": {
     "m-c525f1fce3": {
       "date": "2026-10-27",
-      "syncs": 342,
+      "syncs": 349,
       "syncFailed": 0,
-      "repairs": 290,
+      "repairs": 307,
       "repairFailed": 11,
       "driftSeen": 36,
       "driftRepaired": 14

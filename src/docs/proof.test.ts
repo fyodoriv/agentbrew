@@ -95,3 +95,27 @@ describe("README Proof section", () => {
     expect(Object.keys(f.machines ?? {})).toEqual(["m-abc"]);
   });
 });
+
+describe("zero_to_configured_s (task measure-zero-to-configured)", () => {
+  const base = {
+    date: "2026-10-27",
+    events: [],
+    timings: [],
+    catalogYaml: "skills: {}\n",
+    fullSyncAgents: 1,
+    machine: "m-test (darwin arm64)",
+  };
+
+  it("reads seconds from a finished install receipt", () => {
+    const f = collect({ ...base, installRun: { ok: true, seconds: 42, finished_at: "2026-10-26T10:00:00Z" } });
+    expect(f.metrics.zero_to_configured_s.value).toBe(42);
+    expect(f.metrics.zero_to_configured_s.date).toBe("2026-10-26");
+    expect(validate(f)).toEqual([]);
+  });
+
+  it("keeps the last value without a receipt, and never uses a failed run", () => {
+    const first = collect({ ...base, installRun: { ok: true, seconds: 42 } });
+    expect(collect({ ...base }, first).metrics.zero_to_configured_s.value).toBe(42);
+    expect(collect({ ...base, installRun: { ok: false, seconds: 5 } }).metrics.zero_to_configured_s.value).toBeNull();
+  });
+});

@@ -1,4 +1,4 @@
-/** No catalog rule, MCP server, or CLI tool may take a built-in skill's name. */
+/** No catalog rule, MCP server, CLI tool, plugin, or bundle may take a built-in skill's name. */
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,7 +13,7 @@ const ALLOWED: Record<string, string> = {
 };
 
 describe("catalog names vs built-in skills", () => {
-  it("only allowlisted rules, MCP servers, or CLI tools share a built-in skill's name", () => {
+  it("only allowlisted rules, MCP servers, CLI tools, plugins, or bundles share a built-in skill's name", () => {
     const devDir = join(REPO_ROOT, "skill-plugins", "dev");
     const builtIn = new Set(readdirSync(devDir).filter((n) => existsSync(join(devDir, n, "SKILL.md"))));
     const catalog = loadCatalog();
@@ -22,6 +22,7 @@ describe("catalog names vs built-in skills", () => {
       ...catalog.mcp_servers.map((s) => s.name),
       ...(catalog.cli_tools ?? []).map((t) => t.name),
       ...(catalog.claude_plugins ?? []).map((p) => p.name),
+      ...(catalog.bundles ?? []).map((b) => b.name),
     ];
     const shared = [...new Set(others.filter((n) => builtIn.has(n)))].sort();
     expect(shared).toEqual(Object.keys(ALLOWED).sort());

@@ -1785,6 +1785,17 @@
         "Starts workers only on issues with no file overlap",
         "Installs a fresh worktree's dependencies before queuing a gate behind the shared lock"
       ]
+    },
+    {
+      "id": 154,
+      "prompt": "/goal set up this repo so I can send photos or videos of my room and plants, get advice on position, health and care, keep plant memory across sessions, and get reminders (the repo already has plant profiles, notes, photo import and a reminders command; mid-goal the user adds: it must also tell me about pots and demand exact measurements when unsure)",
+      "expected_output": "The agent's intake finds the existing plant features and the contract's baseline counts them, so it builds only the gaps (rooms, video frames, one context dump, an entry command) instead of rebuilding. It answers the photo-vs-video question in the contract. The mid-goal request becomes two new done-criteria written to the contract file with the Write tool, the metric denominator grows, and each gets a failing test first.",
+      "expectations": [
+        "The contract baseline names features that already exist and the plan builds only the missing ones",
+        "The contract answers the user's 'you tell what's better' question (photos vs video) with a reason",
+        "The mid-goal pot and measurement requests are added to the contract file as done-criteria and the metric denominator changes",
+        "Each new criterion gets a failing test before the code change"
+      ]
     }
   ]
 }

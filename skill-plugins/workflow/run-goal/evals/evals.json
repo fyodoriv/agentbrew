@@ -1830,6 +1830,18 @@
         "The schedule is proven by a scheduler-dispatched run, not a manual run",
         "Invisible signals are named as a gap, with the pivot metric"
       ]
+    },
+    {
+      "id": 158,
+      "prompt": "/goal backend stopped working because of running out of quota. fix with long term solution + prevent it from happening. note that budget for this app is 5CA$/mo",
+      "expected_output": "Intake reads the failing job log first and quotes the exact quota error and its code, then counts writes per run and runs per day to show why the quota ran out (for example 55 keys per publish x 42 publishes against a 1,000/day free limit). The paid plan is priced against the stated budget in the same currency before it is ruled in or out. The fix cuts writes per run (bundle keys, skip unchanged) and adds a guard that caps daily use and stops retrying after the quota error, each with a unit test. Live proof waits for the quota reset with a background job, not a claim.",
+      "expectations": [
+        "The exact quota error and code are quoted from the real log before any design",
+        "The cause is quantified as writes per run times runs per day against the limit",
+        "The paid plan is priced in the budget currency and compared with the budget",
+        "A cap or ledger with a test prevents recurrence, not only a cheaper run",
+        "Live verification after the reset is scheduled as a background job, and the goal is not called met before it"
+      ]
     }
   ]
 }

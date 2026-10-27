@@ -263,6 +263,62 @@
   - **Pivot**: a failure is a real product bug on Linux → fix the product code and add a Linux case to the test
   - **Anchor**: found while shipping fyodoriv/agentbrew#287 on 2026-10-19 (AGENTS.md rule 11: scout while you work)
 
+- [ ] Checkups show their last run and record each run (issue #572)
+  - **ID**: checkup-run-record
+  - **Blocked**: needs-owner — where does the shared run record live? Options: (a) an `agentbrew checkup-run show|record <name>` CLI subcommand every checkup calls, (b) a small script in a deployed skill, (c) only in dotfiles `tooling-checkup` plus a documented file format for plugins. Each changes who must update to get it.
+  - **Tags**: checkup, state
+  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`; print it at the start, write it at the end.
+  - **Files**: `scripts/checkup.sh`, the chosen home (see Blocked)
+  - **Output**: code
+  - **Acceptance**: as in issue #572
+  - **Hypothesis**: every checkup run starts with what changed since the last run; runs with no last-run line drop to 0.
+  - **Measurement**: run each checkup twice; the second run prints the first run's time and commits
+  - **Success**: 2 of 2 runs
+  - **Pivot**: the owner prefers git log alone -> close the issue
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] Scroll and screenshot a Google Doc over CDP without focus (issue #561)
+  - **ID**: gdoc-cdp-screenshots
+  - **Blocked**: needs-owner — the issue describes a script that already exists on another machine. Absorb that script (share its path or paste it into a branch), or build a new one from the issue text?
+  - **Tags**: browser, docs
+  - **Details**: Issue #561: open the doc in its own CDP tab, scroll page by page, one screenshot per page, no keystrokes or window activation, close the tab after.
+  - **Files**: a skill script under `skill-plugins/`
+  - **Output**: code
+  - **Acceptance**: as in issue #561
+  - **Hypothesis**: visual checks of long Docs need 0 focus steals and cover every page.
+  - **Measurement**: run on a 10-page test doc
+  - **Success**: 10 screenshots, 0 focus changes
+  - **Pivot**: CDP cannot scroll the Docs canvas -> use the Docs export to PDF instead
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
+  - **ID**: page-zero-errors-skill
+  - **Blocked**: needs-owner — the issue names an existing MIT script by the same author. Absorb it (share its path or repo), or build a new one from the issue text?
+  - **Tags**: browser, skills, verification
+  - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
+  - **Files**: `skill-plugins/`, README skill list
+  - **Output**: code
+  - **Acceptance**: as in issue #563
+  - **Hypothesis**: frontend changes called done with page errors drop to 0.
+  - **Measurement**: the wrapper on a fixture page with one console error and one 404
+  - **Success**: exit 1 naming both; exit 0 on a clean page
+  - **Pivot**: CDP capture misses errors before attach -> launch the page under the capture instead
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] History-wide leak audit before a plugin goes public (issue #564)
+  - **ID**: plugin-history-leak-audit
+  - **Blocked**: needs-owner — absorb an existing implementation (the issue reads like one exists), or build new? Also confirm gitleaks as a new dependency the audit may install.
+  - **Tags**: security, plugins, oss
+  - **Details**: Issue #564: scan every commit on every ref (emails, messages, ref names, paths, added lines) with gitleaks on a bare mirror and a fixed config; `--fresh` mode; patterns from a user env file.
+  - **Files**: `src/oss/`, the plugin publishing guide, the CLI reference
+  - **Output**: code
+  - **Acceptance**: as in issue #564
+  - **Hypothesis**: leaks in history found before a plugin goes public: seeded leaks found 5 of 5.
+  - **Measurement**: a fixture repo with one leak in each of the 5 places
+  - **Success**: 5 of 5 found
+  - **Pivot**: gitleaks cannot read ref names or emails -> add a git-log pass for those
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
 - [ ] Skip `npm ci` when the lockfile is unchanged
   - **ID**: speed-up-npm-ci
   - **Tags**: perf, agents

@@ -26,6 +26,16 @@ Each rule comes from a real failure in a goal run.
 - The brief says: one simple command per Bash call, `npm ci` alone before
   the first gate, and queued gates in the background. Compound commands and
   foreground lock waits were blocked by hooks and cost a round trip each.
+- A worker that ends its turn while its run waits for the lock reports
+  "completed" with an interim line ("the visual run is still queued"). Read
+  its worktree (commits ahead, uncommitted files) before you count it done,
+  and resume it with `SendMessage` when the run finishes. Before you queue a
+  gate behind the lock, set up the worktree's deps first: in one run a gate
+  waited 40 minutes in the queue only to fail at once on a missing
+  `node_modules`.
+- A new issue in a watch loop that touches files a running worker edits
+  waits until that worker's PR merges. Start workers only on issues whose
+  files do not overlap.
 - Keep the shared brief outside every worktree a worker may remove, and
   check it still exists before each message to a worker. In one run the
   brief file was deleted mid-run, and workers kept going from memory.

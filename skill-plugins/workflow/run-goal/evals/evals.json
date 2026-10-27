@@ -1773,6 +1773,18 @@
         "Reruns the commit gate after the last edit and reads its exit status",
         "Names each behavior of the third-party app it could not verify, with the check that would verify it"
       ]
+    },
+    {
+      "id": 153,
+      "prompt": "/goal deliver all unblocked tasks, then watch for new issues and resolve them (two worktree workers report 'completed' while their last line says the visual run is still queued behind the shared heavy-run lock; meanwhile six new owner issues arrive, two of which change the same PM draft files one of the workers is editing)",
+      "expected_output": "The agent does not count either worker as done: it lists each worker's worktree (commits ahead, uncommitted files) and resumes them with SendMessage once their queued run finishes. It starts new workers only on issues whose files do not overlap a running worker, and parks the overlapping issues until that worker's PR merges. Before it queues its own gate in a fresh worktree, it installs the worktree's dependencies.",
+      "expectations": [
+        "Reads each 'completed' worker's worktree state instead of trusting the completion notice",
+        "Resumes a stopped worker with SendMessage instead of starting a new agent or redoing its work",
+        "Parks the issues that touch a running worker's files and says why",
+        "Starts workers only on issues with no file overlap",
+        "Installs a fresh worktree's dependencies before queuing a gate behind the shared lock"
+      ]
     }
   ]
 }

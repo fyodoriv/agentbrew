@@ -389,19 +389,6 @@
   - **Pivot**: if no rewrite really needs a wide table, make the rewrite reference split wide tables and keep the strict rule.
   - **Anchor**: `markdown-for-gdoc` SKILL.md lines 58 and 109 (2026-10-22).
 
-- [ ] `docs/agent-bloat-lint.md` names every skill folder the lint checks
-  - **ID**: bloat-lint-doc-scope
-  - **Tags**: docs, lint
-  - **Details**: `docs/agent-bloat-lint.md` says the CI check and the baselines (`docs/skill-baselines.json`) cover `skill-plugins/dev/*` (lines 37 and 42), but `src/agent-bloat-lint.ts` (line 351) checks both `dev` and `workflow`. A contributor reading the doc expects `workflow/` skills to be unchecked.
-  - **Files**: `docs/agent-bloat-lint.md`
-  - **Output**: docs
-  - **Acceptance**: the doc names `skill-plugins/dev/*` and `skill-plugins/workflow/*`, matching the code.
-  - **Hypothesis**: matching the doc to the code drops wrong scope claims in the doc to 0.
-  - **Measurement**: `rg -n "skill-plugins/(dev|workflow)" docs/agent-bloat-lint.md src/agent-bloat-lint.ts`.
-  - **Success**: every folder the code checks is named in the doc.
-  - **Pivot**: if the docs test cannot pin it, add a small test that reads the plugin list from the lint and checks the doc.
-  - **Anchor**: `src/agent-bloat-lint.ts:351` vs `docs/agent-bloat-lint.md:37,42` (2026-10-22).
-
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli

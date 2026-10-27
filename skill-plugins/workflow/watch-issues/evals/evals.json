@@ -126,6 +126,17 @@
         "Reads the failing step and fixes the cause or re-runs the gate",
         "Merges only after a fresh rc=0"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "You just finished a watch pass over two repos in this turn and dispatched a worker for one new issue. Now start `/loop /watch-issues` so it keeps going.",
+      "expected_output": "The agent starts the loop but skips /loop's immediate first run, because a pass already ran this turn. It says so in its confirmation and does not dispatch a second worker for the same issue.",
+      "expectations": [
+        "Starts `/loop /watch-issues`",
+        "Skips the immediate first run because a pass already ran earlier in this turn",
+        "Says in its reply that it skipped the first run and why",
+        "Does not dispatch a second worker for the issue it already handled"
+      ]
     }
   ]
 }

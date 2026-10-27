@@ -118,6 +118,9 @@ or the user's words in this session).
   report it.
 - In a session without a Monitor: `/loop /watch-issues` (self-paced; 30
   minutes is a good idle interval). Each wake-up runs one pass.
+  The built-in `/loop` runs its prompt once right away. If you already ran a
+  pass earlier in this turn, skip that first run and say so, so the same items
+  do not get duplicate workers.
 - Under `taskgrind` (no Monitor, a 10-minute tool limit): one bounded step per
   tool call, `watch-pass.sh --wait 540 --interval 60`. It returns at the first
   new item, or after 9 minutes with only the summary line. Repeat until the

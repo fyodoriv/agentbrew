@@ -12,7 +12,7 @@ import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIf
 import { COMMANDS_DIR } from "../paths.js";
 import { pluginCommandDirs } from "../plugins/contributions.js";
 import { builtinCommandsOff } from "../settings.js";
-import { loadState } from "../state.js";
+import { loadState, saveState } from "../state.js";
 import type { CommandTransform, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
@@ -697,12 +697,34 @@ function retiredBuiltinFiles(options?: SyncOptions): string[] {
   return builtinCommandNames().map((name) => `${name}.md`);
 }
 
+/**
+ * Drop `commandSourceDirs` entries whose folder no longer exists, save state,
+ * and warn once per entry. Returns the dropped paths. The commands it deployed go
+ * with the normal prune (on by default; `--no-prune` keeps them).
+ */
+function dropStaleCommandSources(log: Logger): string[] {
+  const state = loadState();
+  const dirs = state?.commandSourceDirs;
+  if (!state || !dirs?.length) return [];
+  const kept = dirs.filter((d) => existsSync(expandHome(d.path)));
+  if (kept.length === dirs.length) return [];
+  const dropped = dirs.filter((d) => !kept.includes(d)).map((d) => d.path);
+  state.commandSourceDirs = kept;
+  saveState(state);
+  for (const path of dropped) {
+    log.warn(`Command source ${path} is gone: dropped it from state; sync prunes the commands it deployed.`);
+  }
+  return dropped;
+}
+
 export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune } = resolveCmdSyncOptions(options);
   const log = resolveLogger(ctx, quiet, options?.compact);
 
   // ── Read phase ──────────────────────────────────────────────────────────
   const removedCopies = dryRun ? [] : removeShippedBuiltinCopies(quiet, log);
+  // A source folder that is gone: drop its state entry, so the prune below removes its commands.
+  if (!dryRun) dropStaleCommandSources(log);
   const sourceDirs = getAllCommandSourceDirs();
   if (sourceDirs.length === 0) {
     warnNoCommandsDir(quiet, log);

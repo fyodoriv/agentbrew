@@ -8,7 +8,7 @@ import { removeRuleFromSharedRules } from "./catalog/install-other.js";
 import { loadCatalog } from "./catalog/types.js";
 import { clean, detectItemTypes } from "./clean.js";
 import { setSetting } from "./settings.js";
-import { requireState } from "./state.js";
+import { requireState, saveState } from "./state.js";
 import { formatSuggestion } from "./suggest.js";
 import { builtinCommandNames, userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
@@ -122,6 +122,7 @@ async function executeRemoval(resolved: ResolvedItem): Promise<void> {
       break;
     case "command":
       turnOffIfBuiltin(resolved.name);
+      dropCommandSource(resolved.name);
       await clean(resolved.name, { type: "command", yes: true });
       break;
     case "rule":
@@ -156,6 +157,16 @@ function turnOffIfBuiltin(name: string): void {
       chalk.dim(`  ${name} is built in: built-in commands are now off (undo: agentbrew config set builtinCommands on)`),
     );
   }
+}
+
+/** Drop the Agentfile command source whose label matches, so sync stops deploying its commands. */
+function dropCommandSource(label: string): void {
+  const state = requireState();
+  const dirs = state?.commandSourceDirs;
+  if (!state || !dirs?.some((d) => d.label === label)) return;
+  state.commandSourceDirs = dirs.filter((d) => d.label !== label);
+  saveState(state);
+  console.log(chalk.green(`  Dropped command source ${label}`));
 }
 
 /** Print the result of a rule removal in the same shape the `rules remove` subcommand uses. */

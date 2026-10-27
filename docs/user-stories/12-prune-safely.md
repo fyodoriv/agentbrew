@@ -19,7 +19,7 @@ Prune only removes entries that agentbrew previously created. User-created conte
 |---------|-----------------|-----------------|
 | **MCP servers** | Servers in the `managedMcpServers` manifest that are no longer in state | Servers you added manually to agent configs |
 | **Skills** | Symlinks pointing to known agentbrew source directories | User-created directories, user-created symlinks |
-| **Commands** | Files tracked in the manifest (matching content hash) that are no longer in source | Files you created or edited after deployment |
+| **Commands** | Files tracked in the manifest (matching content hash) that are no longer in source. A command source folder (Agentfile `commands:`) that no longer exists is dropped from state with one warning, so its commands count as no longer in source. `agentbrew remove <label>` drops that source too. | Files you created or edited after deployment |
 
 ## Safety mechanisms
 

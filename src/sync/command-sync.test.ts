@@ -14,6 +14,7 @@ vi.mock("write-file-atomic", () => ({
 
 vi.mock("../state.js", () => ({
   loadState: vi.fn(() => ({})),
+  saveState: vi.fn(),
 }));
 
 vi.mock("../manifest.js", async () => {
@@ -62,7 +63,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { sync as writeFileSync } from "write-file-atomic";
 import { loadManifest, writeIfChanged } from "../manifest.js";
-import { loadState } from "../state.js";
+import { loadState, saveState } from "../state.js";
 import {
   addCommand,
   CANARY_DELEGATED_AGENTS,
@@ -435,6 +436,64 @@ describe("syncCommands", () => {
 
     await syncCommands({ verbose: true });
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("up to date"));
+  });
+
+  describe("stale command source", () => {
+    it("drops a command source whose folder is gone and removes the commands it deployed", async () => {
+      const trackedPath = `${homedir()}/.config/opencode/commands/gone.md`;
+      vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "h" } });
+      const live = { label: "live", path: "/tmp/live/commands", origin: "agentfile" as const };
+      mockLoadState.mockReturnValue({
+        agents: [{ name: "opencode", detected: true, skillsDir: "x" } as never],
+        catalogVersion: "test",
+        commandSourceDirs: [{ label: "gone", path: "/tmp/gone/commands", origin: "agentfile" }, live],
+      });
+      mockExistsSync.mockImplementation((p) => !String(p).startsWith("/tmp/gone"));
+      mockReaddirSync.mockImplementation((p) => {
+        const path = String(p);
+        if (path.includes("agentbrew/commands") || path === "/tmp/live/commands") {
+          return ["live.md"] as unknown as ReturnType<typeof readdirSync>;
+        }
+        return ["live.md", "gone.md", "user-a.md"] as unknown as ReturnType<typeof readdirSync>;
+      });
+      mockReadFileSync.mockReturnValue("# live");
+
+      await syncCommands({ prune: true });
+
+      expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [live] }));
+      const unlinkPaths = mockUnlinkSync.mock.calls.map((c) => String(c[0]));
+      expect(unlinkPaths).toContain(trackedPath);
+      expect(unlinkPaths.every((p) => !p.endsWith("user-a.md"))).toBe(true);
+      const warned = (console.error as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+      expect(warned).toContain("/tmp/gone/commands");
+    });
+
+    it("keeps every source and prunes nothing when all source folders exist", async () => {
+      mockLoadState.mockReturnValue({
+        agents: [],
+        catalogVersion: "test",
+        commandSourceDirs: [{ label: "live", path: "/tmp/live/commands", origin: "agentfile" }],
+      });
+      mockExistsSync.mockReturnValue(true);
+      mockReaddirSync.mockReturnValue(["live.md"] as unknown as ReturnType<typeof readdirSync>);
+      mockReadFileSync.mockReturnValue("# live");
+      await syncCommands();
+      expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+    });
+
+    it("a dry run neither drops the source nor prunes", async () => {
+      mockLoadState.mockReturnValue({
+        agents: [],
+        catalogVersion: "test",
+        commandSourceDirs: [{ label: "gone", path: "/tmp/gone/commands", origin: "agentfile" }],
+      });
+      mockExistsSync.mockImplementation((p) => !String(p).startsWith("/tmp/gone"));
+      mockReaddirSync.mockReturnValue(["live.md"] as unknown as ReturnType<typeof readdirSync>);
+      mockReadFileSync.mockReturnValue("# live");
+      await syncCommands({ dryRun: true });
+      expect(vi.mocked(saveState)).not.toHaveBeenCalled();
+      expect(mockUnlinkSync).not.toHaveBeenCalled();
+    });
   });
 
   // command-sync-prune-count-honest (TASKS.md scout, P2): the per-agent

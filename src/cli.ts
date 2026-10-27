@@ -214,6 +214,7 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   } finally {
     if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
+  if (!options.dryRun) await (await import("./core/telemetry.js")).sendDaily(version);
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -442,6 +443,26 @@ export function buildProgram(): Command {
     .action(async (options: { json?: boolean }) => {
       const { showWorkPlan } = await import("./work.js");
       showWorkPlan(options);
+    });
+  program
+    .command("telemetry")
+    .description("Anonymous usage counts to PostHog EU: status, on, off, or send (--dry-run shows what would go)")
+    .argument("<action>", "status | on | off | send")
+    .option("--dry-run", "print the batch and send nothing")
+    .action(async (action: string, options: { dryRun?: boolean }) => {
+      const t = await import("./core/telemetry.js");
+      if (action === "on" || action === "off") t.setEnabled(action === "on");
+      if (action === "send") {
+        console.log(JSON.stringify(await t.send(version, options), null, 2));
+        return;
+      }
+      if (!["status", "on", "off"].includes(action)) {
+        console.error(`unknown action ${action}: use status, on, off, or send`);
+        process.exitCode = 2;
+        return;
+      }
+      const st = t.status();
+      console.log(`telemetry: ${st.on ? "on" : "off"} (${st.reason}), ${st.pending} event(s) pending`);
     });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);

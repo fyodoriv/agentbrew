@@ -337,32 +337,6 @@
 
 ## P3
 
-- [ ] `/work` drops the steps of an Agentfile that no longer exists
-  - **ID**: work-steps-prune-gone-agentfile
-  - **Tags**: work, agentfile
-  - **Details**: Found by the #440 review. `state.workSteps` records which Agentfile dir declared each `/work` step, and a sync replaces that Agentfile's steps when it is applied again. An Agentfile that is deleted or moved is never applied again, so its steps stay in state and `agentbrew work` keeps listing them. `commands:` and `agents:` dirs have the same owner field but are pruned on apply.
-  - **Files**: `src/agentfile-apply.ts`, `src/work.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: after the Agentfile that declared a step is gone, the next `agentbrew sync` (or `agentbrew work`) no longer lists that step.
-  - **Hypothesis**: pruning entries whose Agentfile dir is gone drops stale `/work` steps from every such step to 0.
-  - **Measurement**: `npx vitest run src/work.test.ts src/agentfile-apply.test.ts` with a case whose declaring Agentfile dir is removed.
-  - **Success**: the stale step is gone after one sync; steps from present Agentfiles stay in place.
-  - **Pivot**: if a dir can be briefly missing (an unmounted volume), prune only after two syncs in a row find it gone.
-  - **Anchor**: #440 pre-merge review (2026-10-23).
-
-- [ ] The catalog name lint covers bundles, and a skill-only dry run previews
-  - **ID**: catalog-name-lint-bundles-dry-run
-  - **Tags**: catalog, skills, tests
-  - **Details**: Found by the review of the `catalog-rule-skill-name-clash` PR. (1) `src/catalog/catalog-name-clash.test.ts` checks rules, MCP servers, and CLI tools, but not bundles; a bundle named like a built-in skill would win a bare `agentbrew install` the same way. (2) The skill-only branch of `installFromCatalog` (`src/catalog/install.ts`) skips `showCatalogDryRun`, so a future caller that passes `skillOnly` with `dryRun: true` would install a catalog skill for real. No caller does that today.
-  - **Files**: `src/catalog/catalog-name-clash.test.ts`, `src/catalog/install.ts`, `src/catalog/install.test.ts`
-  - **Output**: code
-  - **Acceptance**: the lint lists bundle names too, and `install(name, { skillOnly: true, dryRun: true })` previews a catalog skill without installing it.
-  - **Hypothesis**: unchecked kinds of catalog names that can shadow a built-in skill drop from 1 (bundles) to 0, and skill-only dry runs that install for real drop from possible to 0.
-  - **Measurement**: `npx vitest run src/catalog/catalog-name-clash.test.ts src/catalog/install.test.ts` with a bundle in the checked list and a skill-only dry-run case.
-  - **Success**: both cases pass.
-  - **Pivot**: if no skill-only dry-run caller ever appears, delete the dry-run case and keep a comment instead.
-  - **Anchor**: review of the `catalog-rule-skill-name-clash` PR (2026-10-23).
-
 - [ ] The run-goal skill stays well under the 500-line skill limit
   - **ID**: run-goal-size
   - **Tags**: skills, docs

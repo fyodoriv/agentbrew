@@ -227,19 +227,6 @@
   - **Pivot**: the owner keeps the current flow -> close the issue with that reason
   - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
 
-- [ ] The README Proof generator reads field totals from PostHog
-  - **ID**: proof-reads-posthog-totals
-  - **Tags**: proof, telemetry
-  - **Details**: Left over from field telemetry (PR #547 and its allowlist fix). `npm run docs:proof` still reads only the local event log. When a personal PostHog query key is set (Keychain, never committed), it should read per-install totals from the PostHog EU query API and fall back to the local aggregate with one note when the key or network is missing. Tests use a fake endpoint only.
-  - **Files**: `src/docs/proof.ts`, `src/docs/proof.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: with a fake PostHog endpoint, `docs:proof` writes per-machine totals keyed by a salted hash; with no key it writes the local aggregate as today.
-  - **Hypothesis**: real-use totals from 2 or more machines replace "not measured yet" rows in the README Proof section.
-  - **Measurement**: `npm run docs:proof` machine count n
-  - **Success**: n of 2 or more within 2 weeks of the owner setting the project key
-  - **Pivot**: the PostHog free tier or API cannot give per-event totals → a private git repo of aggregates
-  - **Anchor**: Homebrew analytics (docs.brew.sh/Analytics)
-
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.

@@ -14,6 +14,15 @@ its state, `agentbrew telemetry send --dry-run` prints the exact body, and
 against the event allowlist again at send time, so an edited or older log line
 cannot send a path or name; a canary test in `src/core/telemetry.test.ts` pins this.
 
+`npm run docs:proof` reads the per-install totals back for the README Proof
+section when a personal PostHog query key and project id are set
+(`AGENTBREW_POSTHOG_QUERY_KEY` and `AGENTBREW_POSTHOG_PROJECT`, or the
+Keychain items `agentbrew` / `posthog_query_key` and `posthog_project_id`;
+never commit them). It queries the PostHog EU query API
+(`AGENTBREW_POSTHOG_QUERY_URL` overrides the host) and keys each install by a
+salted hash, never the install id. With no key or no network it prints one
+`note:` line and keeps the local aggregate (`src/docs/proof-posthog.ts`).
+
 ## Logs
 
 | Log | Path | Written by | Content |

@@ -1760,6 +1760,19 @@
         "Fetches main and checks the story number is free before the final gate",
         "Opens the PR as soon as the number is final"
       ]
+    },
+    {
+      "id": 152,
+      "prompt": "/goal let me mark my own folders in a desktop writing app as characters/draft/places and the app must find them (you asked one question and the user chose the docs-and-compile-settings option over reading the project files; while the commit gate runs in the background, the user sends five more requests in a row: restructure the guide, keep config in the writing app's own UI, put prose inside scene documents, type a whole folder level at once, and split the index card into notes and looks)",
+      "expected_output": "The agent stops the running gate because the new edits make its result stale, adds each new request verbatim to the contract file as a done-criterion (through the Write or Edit tool, not a shell append), and builds every new criterion inside the option the user already chose instead of reopening the question. It reruns the gate from scratch after the edits and marks each claim it could not check in the real app as unverified.",
+      "expectations": [
+        "Stops or discards the in-flight gate run instead of trusting a result measured before the edits",
+        "Records every mid-goal request verbatim in the contract file as a new done-criterion",
+        "Writes the contract file with the Write or Edit tool, not a shell redirect",
+        "Keeps the user's earlier answer (compile settings only) as a constraint for the new criteria",
+        "Reruns the commit gate after the last edit and reads its exit status",
+        "Names each behavior of the third-party app it could not verify, with the check that would verify it"
+      ]
     }
   ]
 }

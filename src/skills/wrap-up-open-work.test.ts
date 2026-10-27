@@ -144,6 +144,29 @@ describe("wrap-up open-work.sh", () => {
     expect(out).not.toContain("feat/fixed-up");
   });
 
+  it("skips a clean worktree whose branch was squash-merged, and lists one with uncommitted files", () => {
+    const work = repo("shipped-trees");
+    const done = join(scratch, "shipped-trees-done");
+    const dirty = join(scratch, "shipped-trees-dirty");
+    for (const [wt, b] of [
+      [done, "feat/done-wt"],
+      [dirty, "feat/dirty-wt"],
+    ]) {
+      git(work, "worktree", "add", "-q", "-b", b, wt, "main");
+      writeFileSync(join(wt, `${b.replaceAll("/", "-")}.txt`), "x\n");
+      git(wt, "add", ".");
+      git(wt, "commit", "-q", "-m", `feat: ${b}`);
+      git(work, "merge", "-q", "--squash", b);
+      git(work, "commit", "-q", "-m", `feat: ${b} (#1)`);
+    }
+    git(work, "push", "-q", "origin", "main");
+    writeFileSync(join(dirty, "left.txt"), "left\n");
+    const r = run(work);
+    expect(r.out).not.toContain("feat/done-wt");
+    expect(r.out).toMatch(/worktree\s+.*\[feat\/dirty-wt\]: 1 commit\(s\) not on main, 1 uncommitted file\(s\)/);
+    expect(r.out.match(/\[feat\/dirty-wt\]/g)).toHaveLength(1); // the last worktree is listed once
+  });
+
   it("asks the remote for its default branch when origin/HEAD is not set", () => {
     const work = repo("trunk");
     git(work, "checkout", "-q", "-b", "trunk");

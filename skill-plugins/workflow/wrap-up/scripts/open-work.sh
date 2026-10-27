@@ -113,18 +113,15 @@ check_repo() {
   if [ "$NO_GH" != 1 ] && command -v gh >/dev/null 2>&1; then
     merged_heads="$(cd "$top" && gh pr list --state merged --base "$base" --limit 500 --json headRefOid --jq '.[].headRefOid' 2>/dev/null)"
   fi
-  while IFS= read -r b; do
-    [ -n "$b" ] && [ "$b" != "$base" ] || continue
-    # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
-    case "$b" in tasks-claims | gh-pages | dependabot/* | renovate/*) continue ;; esac
-    ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
-    [ "$ahead" -gt 0 ] || continue
-    # A squash-merged branch keeps its commits: skip it when its whole diff is
-    # one commit on the base that no later commit reverts (still true after the
-    # base changes the same lines), or when merging it would leave the base
-    # unchanged (needs git 2.38+).
+  # shipped <branch>: true when the base already has the branch's change.
+  # A squash-merged branch keeps its commits: it is shipped when its tip is a
+  # merged PR's head, when its whole diff is one commit on the base that no
+  # later commit reverts (still true after the base changes the same lines), or
+  # when merging it would leave the base unchanged (needs git 2.38+).
+  shipped() {
+    local b="$1"
     if [ -n "$merged_heads" ] && grep -qx "$(git -C "$top" rev-parse "$b")" <<<"$merged_heads"; then
-      continue
+      return 0
     fi
     fork="$(git -C "$top" merge-base "origin/$base" "$b" 2>/dev/null)" || fork=""
     pid=""
@@ -135,12 +132,18 @@ check_repo() {
     fi
     # More copies of the change than reverts of it: a revert of a revert counts as re-applied.
     if [ -n "$pid" ] && [ "$(grep -cx "$pid" <<<"$base_pids")" -gt "$(grep -cx "$back" <<<"$base_pids")" ]; then
-      continue
+      return 0
     fi
-    if merged="$(git -C "$top" merge-tree --write-tree "origin/$base" "$b" 2>/dev/null)" &&
-      [ "$merged" = "$(git -C "$top" rev-parse "origin/$base^{tree}")" ]; then
-      continue
-    fi
+    merged="$(git -C "$top" merge-tree --write-tree "origin/$base" "$b" 2>/dev/null)" &&
+      [ "$merged" = "$(git -C "$top" rev-parse "origin/$base^{tree}")" ]
+  }
+  while IFS= read -r b; do
+    [ -n "$b" ] && [ "$b" != "$base" ] || continue
+    # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
+    case "$b" in tasks-claims | gh-pages | dependabot/* | renovate/*) continue ;; esac
+    ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
+    [ "$ahead" -gt 0 ] || continue
+    shipped "$b" && continue
     say branch "$b: $ahead commit(s) not on $base"
   done <<<"$(git -C "$top" for-each-ref --format='%(refname:short)' refs/heads)"
 
@@ -156,10 +159,13 @@ check_repo() {
         ahead=0
         [ -n "$wb" ] && ahead="$(git -C "$top" rev-list --count "origin/$base..$wb" 2>/dev/null || echo 0)"
         dirty="$(git -C "$wt" status --porcelain 2>/dev/null | grep -c .)"
+        # A clean worktree of a shipped branch is not work; one with uncommitted files still is.
+        if [ "$dirty" -eq 0 ] && [ "$ahead" -gt 0 ] && shipped "$wb"; then ahead=0; fi
         if [ "$ahead" -gt 0 ] || [ "$dirty" -gt 0 ]; then
           say worktree "$wt [${wb:-detached}]: $ahead commit(s) not on $base, $dirty uncommitted file(s)"
           risky_changes "$wt" "worktree ${wb:-detached}"
-        fi ;;
+        fi
+        wt="" ;; # the last entry ends with a blank line and the marker: report it once
     esac
   # $(...) strips the blank line that ends the last entry; the marker ends it.
   done <<<"$(git -C "$top" worktree list --porcelain; echo end-of-list)"

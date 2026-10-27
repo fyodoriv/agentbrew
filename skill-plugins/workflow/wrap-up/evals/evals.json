@@ -85,6 +85,17 @@
         "A branch whose squash commit was reverted on main is listed again",
         "The agent does not offer to finish or delete the merged branches as if they were open work"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "wrap up: this repo has 16 extra worktrees, and 15 of them hold branches whose PRs were squash-merged",
+      "expected_output": "Runs open-work.sh, which lists only the worktree with real work left; does not tell the user to continue the 15 shipped worktrees.",
+      "expectations": [
+        "Runs scripts/open-work.sh on the repo",
+        "Treats a clean worktree of a squash-merged branch as shipped, not open work",
+        "Still lists a worktree that has uncommitted files, even when its branch shipped",
+        "Lists each worktree once"
+      ]
     }
   ]
 }

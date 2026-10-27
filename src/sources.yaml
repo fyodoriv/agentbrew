@@ -129,6 +129,12 @@
   category: ml
   recommended: false
 
+- name: nutlope/hallmark
+  description: "Hallmark (MIT, by Together AI, 38k+ stars) — design skill for new pages that look designed, not generated: fifty themes, a browser lint for AI tells, a fresh-context reviewer, redesign and audit modes."
+  provides: [skills]
+  category: design
+  recommended: true
+
 - name: sebastian-software/effective-ui-design-skill
   description: "Effective UI Design — the technical layer Anthropic's frontend-design skill leaves open. WCAG 2.1 AA contrast, OKLCH palettes, light-dark(), 8pt spacing grid, fluid typography with clamp(), container queries, subgrid, :user-valid/:user-invalid form patterns, dark mode + reduced motion, SEO meta + JSON-LD, Core Web Vitals targets, favicon spec. Concrete values, not creative direction."
   provides: [skills]

@@ -329,11 +329,17 @@ skills:
     category: design
     recommended: false
 
-  - name: frontend-design
-    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
-    source: anthropics/skills
+  - name: hallmark
+    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. For the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    source: nutlope/hallmark
     category: design
     recommended: true
+
+  - name: frontend-design
+    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. Not recommended by default: hallmark covers the same job. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    source: anthropics/skills
+    category: design
+    recommended: false
 
   - name: impeccable
     description: "Chrome DevRel design vocabulary — 23 commands across brand+product modes, optional CLI scanner. Complementary to taste (rule-based) and frontend-design (aesthetic)."

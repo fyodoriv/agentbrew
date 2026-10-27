@@ -87,7 +87,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Pin that tab: `agent-browser --session <agent>-<task> --pin-tab connect <port>`, then pass the same `--session` on every command, so agents that share one Chrome never drive each other's tabs.
 - Never launch Chrome on launchd-owned profiles. If auth is required, open the target in a stable **headed** SSO browser in a background tab, never raise or focus it, and tell the user which page and browser need sign-in. Then start a background URL/title/HTML listener polling every 2–5 seconds; resume immediately when authenticated, without waiting for the user to reply “done.” Never claim a CDP tab is visible to the user.
 - Non-SSO pages use the same shared agents Chrome; isolation needs go through the temporary browser lock.
-- For frontend/UI work, load `ui-ux-rankings` before emitting UI changes and build to its comfort budget (`references/comfort-patterns.md`: touch targets at least 44 px, text at least 14 px, no serious axe problem in light or dark, taps per everyday job pinned as tests); use `frontend-design` for creative direction; run the page-zero-errors gate when the repo requires it.
+- For frontend/UI work, load `ui-ux-rankings` before emitting UI changes and build to its comfort budget (`references/comfort-patterns.md`: touch targets at least 44 px, text at least 14 px, no serious axe problem in light or dark, taps per everyday job pinned as tests); use `hallmark` for creative direction; run the page-zero-errors gate when the repo requires it.
 
 ## Security and secrets
 

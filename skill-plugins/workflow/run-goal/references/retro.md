@@ -3,6 +3,17 @@
 Run this at the end of every goal, including a BLOCKED stop. The aim is that
 the next goal goes faster, so each finding must change something.
 
+## Screenshots in the final report
+
+The final report often needs before/after screenshots. Get them right in one
+try:
+
+- Embed each one as a JPEG data URI of about 100 KB. A `file://` image does not
+  load in Playwright `setContent` or in a published Artifact.
+- Crop a phone screenshot to the device viewport (iPhone 13: 390x664). A
+  full-page capture puts a fixed tab bar in the middle of the image. Open the
+  PNG itself, set its width and `height: auto`, then clip to the viewport.
+
 ## 1. Collect the facts
 
 - **Timeline**: when you started, when you finished, and the long gaps.

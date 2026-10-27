@@ -1796,6 +1796,40 @@
         "The mid-goal pot and measurement requests are added to the contract file as done-criteria and the metric denominator changes",
         "Each new criterion gets a failing test before the code change"
       ]
+    },
+    {
+      "id": 155,
+      "prompt": "/goal update the work command so it also does X (commands/work.md lives in the parent app, and my rules allow only issues on the parent app)",
+      "expected_output": "The contract scope names two deliverables: the working code in the user's own plugin as a workSteps entry, and one duplicate-checked issue on the parent app for the generic part. The plugin PR links that issue. The agent never edits the parent checkout. Any incremental scan saves its state only after side effects succeed, and a test proves a repeat run reads zero items.",
+      "expectations": [
+        "The contract scope names both the plugin change and the parent issue",
+        "The code ships in the user's plugin as a workSteps entry, not in the parent checkout",
+        "The parent issue is checked for duplicates before it is opened, and the plugin PR links it",
+        "An incremental scan saves state only after side effects succeed, with a test that a repeat run reads zero items"
+      ]
+    },
+    {
+      "id": 156,
+      "prompt": "/goal something prevents my computer from restarting; memory says it was fixed last week by a watcher process, and the user says it still happens",
+      "expected_output": "The agent treats the earlier fix as unproven. It reproduces the failure on a throwaway copy, not on the shared live service, and makes the repro match the real event order (one target at a time, wait on each) instead of a parallel simulation. It isolates each suspect variable separately. It names the root cause with a source citation or a minimal repro table, fixes that cause instead of adding another watcher, and checks the live process arguments after reload.",
+      "expectations": [
+        "Does not accept the memory's 'fixed' claim without a fresh repro",
+        "Runs the repro on an isolated copy, never on the shared live instance",
+        "Matches the repro to the real event order instead of a parallel simulation",
+        "Isolates each suspect variable with its own test",
+        "Verifies the live process, not only the config on disk, after the fix"
+      ]
+    },
+    {
+      "id": 157,
+      "prompt": "/goal set up weekly usage telemetry for our team chat bot in its channel and announce it (there is no API token for scheduled scripts; a chat connector works in this session)",
+      "expected_output": "Intake checks which read paths a scheduled job can use (a stored token or a connector the scheduler can reach) before it designs anything; a session-only connector does not count. The metric logic lives in a deterministic script with tests, and the scheduled agent task only exports raw data and runs that script. The schedule is proven by a run the scheduler dispatched, not a manual run. Signals the data cannot show (for example, button clicks on bot replies) are named as a gap, with the pivot metric.",
+      "expectations": [
+        "Intake lists the read paths a scheduled job has before designing, and does not count a session-only connector",
+        "The metric logic is a deterministic script with tests; the scheduled task only exports data and runs it",
+        "The schedule is proven by a scheduler-dispatched run, not a manual run",
+        "Invisible signals are named as a gap, with the pivot metric"
+      ]
     }
   ]
 }

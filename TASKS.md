@@ -414,6 +414,7 @@
   - **Success**: no touch target under 44 px and no text under 14 px.
   - **Pivot**: if upstream declines, keep it in ui-ux-rankings only and close this task.
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
+  - **Blocked**: needs-owner-approval — 2026-10-27: filing on anthropics/claude-plugins-official is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
 - [ ] Run the template-rule readers when a `templates/rules/` diff is merge-ready
   - **ID**: verify-changed-template-rule-readers

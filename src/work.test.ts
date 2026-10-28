@@ -10,6 +10,7 @@ import {
   buildWorkStages,
   DEFAULT_WORK_STEPS,
   END_OF_DAY_STEP,
+  findParentCheckout,
   findPluginCheckouts,
   formatWorkPlan,
   mergeWorkSteps,
@@ -112,6 +113,7 @@ describe("repo-update watch (#516)", () => {
         { step: "/acme-refresh", agentfile: "~/apps/agentbrew-acme", refresh: true },
       ]),
       [],
+      { isRepo: () => false },
     );
     expect(plan.steps.map((s) => s.step)).not.toContain("/acme-refresh");
     expect(plan.repoWatch.checkouts).toEqual(["~/apps/dotfiles", "~/apps/agentbrew-acme"]);
@@ -120,6 +122,46 @@ describe("repo-update watch (#516)", () => {
     expect(plan.repoWatch.how).toMatch(/agentbrew sync/);
     expect(plan.repoWatch.how).toMatch(/local changes/);
     expect(formatWorkPlan(plan)).toContain("Repo updates: watch ~/apps/dotfiles, ~/apps/agentbrew-acme");
+  });
+});
+
+describe("start-of-day refresh of parent app checkouts (#600)", () => {
+  const dirs: Record<string, string[]> = { "/r": ["careerbrew", "careerbrew-acme", "notes-x"] };
+  const repos = new Set(["/r/careerbrew", "/r/careerbrew-acme", "/r/notes-x"]);
+  const list = (d: string) => dirs[d] ?? [];
+  const isRepo = (d: string) => repos.has(d);
+
+  it("finds the app a plugin checkout wraps: the `<tool>` repo beside `<tool>-<name>`", () => {
+    expect(findParentCheckout("/r/careerbrew-acme", list, isRepo)).toBe("/r/careerbrew");
+    expect(findParentCheckout("/r/careerbrew", list, isRepo)).toBeUndefined();
+    expect(findParentCheckout("/r/solo-acme", list, isRepo)).toBeUndefined();
+  });
+
+  it("lists the parent app checkout of each plugin that adds steps, and tells the agent to fast-forward before step one", () => {
+    const plan = buildWorkPlan(state([{ step: "/careerbrew-live", agentfile: "/r/careerbrew-acme" }]), [], {
+      listDir: list,
+      isRepo,
+    });
+    expect(plan.repoWatch.checkouts).toEqual(["/r/careerbrew-acme", "/r/careerbrew"]);
+    expect(plan.startOfDay.checkouts).toEqual(plan.repoWatch.checkouts);
+    expect(plan.startOfDay.how).toMatch(/before the first step/i);
+    expect(plan.startOfDay.how).toMatch(/fast-forward/);
+    expect(plan.startOfDay.how).toMatch(/updated, current, or skipped/);
+    expect(formatWorkPlan(plan)).toContain(
+      "Start of day: fast-forward /r/careerbrew-acme, /r/careerbrew before step 1",
+    );
+  });
+
+  it("lists a shared parent once", () => {
+    const plan = buildWorkPlan(
+      state([
+        { step: "/a", agentfile: "/r/careerbrew-acme" },
+        { step: "/b", agentfile: "/r/careerbrew-acme" },
+      ]),
+      [],
+      { listDir: list, isRepo },
+    );
+    expect(plan.repoWatch.checkouts).toEqual(["/r/careerbrew-acme", "/r/careerbrew"]);
   });
 });
 

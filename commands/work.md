@@ -14,6 +14,7 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
 - `flow`: run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.
 - `stopOnlyFor`: the only reasons to stop and wait: a merge conflict you cannot resolve, a destructive or public action that needs approval, or a choice only the user can make.
 - `questions`: save every other question a step raises (for example a checkup's final questions). End each cycle (after the last step, and after each watch pass) with one batched ask of every item that waits on the user: decisions, drafts to send, sign-ins, approvals. First check that each item is still open (for example, that a draft was not already sent). For each item, say what it is, what each option does, and your pick.
+- `startOfDay`: before the first step, follow `how` for the checkouts in `checkouts`. They are the same as `repoWatch.checkouts`: each Agentfile folder that adds steps, plus the app checkout it wraps (for `careerbrew-<org>`, the `careerbrew` checkout beside it). Fast-forward each clean checkout that is behind, run `agentbrew sync` once if any updated, and print one line per checkout: updated, current, or skipped (dirty or diverged).
 - `repoWatch`: on each watch pass, follow `how` for the checkouts in `checkouts`: fetch, fast-forward a clean checkout that is behind, run `agentbrew sync` once, then each `refresh` step. Skip a checkout with local changes or a diverged branch, in one line.
 - `pluginReview`: on each cycle, check every checkout in `checkouts` (plugins such as `careerbrew-<org>`, `agentbrew-<org>`, `dotfiles-<org>`, and installed plugins) for uncommitted files and unpushed commits. For each change, follow `how`: a generic change belongs in the main tool, so draft the move and add it to the batched questions. Move nothing before the user says yes.
 - `watch`: after the last step, keep watching. Re-run a step when its input changes (a new issue, a red check, a new review). To notice those changes, arm a Monitor on the `watch-issues` skill's `scripts/watch-repos.sh <interval> owner/repo@branch...`: it prints one line when a branch head moves or any issue or PR is updated. Print one line per update. Do not repeat a line that did not change.
@@ -27,7 +28,7 @@ Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew w
   - Give the user the link once, at the start.
 - `endOfDay`: when the user says "end of day", stop every loop you started, run the end-of-day step, then draft a Today / Tomorrow report: what was done (with PRs and numbers), what is blocked and why, and what comes next. Link the day's dashboard in it.
 
-Before the first step, tell the user in two lines: which kind of machine this is, and the steps you will run.
+Before the first step, run `startOfDay`, then tell the user in two lines: which kind of machine this is, and the steps you will run.
 
 To add steps for a team, add them to an Agentfile, for example the company overlay's:
 

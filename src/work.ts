@@ -10,7 +10,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import chalk from "chalk";
 import type { AgentfileWorkStep } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
@@ -61,6 +61,11 @@ export interface WorkPlan {
    * and the plugin refresh steps to run after an update.
    */
   repoWatch: { checkouts: string[]; refresh: string[]; how: string };
+  /**
+   * Before the first step (#600): fast-forward the same checkouts as
+   * `repoWatch.checkouts`, so the first step does not run on a stale app.
+   */
+  startOfDay: { checkouts: string[]; how: string };
   endOfDay: string[];
   /** Agentfile dirs whose steps were skipped because the dir no longer exists (#515). */
   staleWorkSteps: string[];
@@ -105,6 +110,32 @@ export function findPluginCheckouts(
     }
   }
   return out;
+}
+
+/**
+ * The app a plugin checkout wraps (#600): `<dir>/<tool>` when the checkout is
+ * `<dir>/<tool>-<name>` and `<tool>` is a git checkout beside it. Uses the
+ * same naming rule as `findPluginCheckouts`. The longest matching tool wins.
+ */
+export function findParentCheckout(
+  pluginDir: string,
+  list: (dir: string) => string[] = (dir) => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  },
+  isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
+): string | undefined {
+  const name = basename(pluginDir);
+  if (!name.includes("-")) return undefined;
+  const root = dirname(pluginDir);
+  const dir = expandHome(root);
+  const tool = list(dir)
+    .filter((n) => name.startsWith(`${n}-`) && isRepo(join(dir, n)))
+    .sort((a, b) => b.length - a.length)[0];
+  return tool ? join(root, tool) : undefined;
 }
 
 /** Step status on the dashboard (#510). */
@@ -290,6 +321,10 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
 export const REPO_WATCH_HOW =
   "On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.";
 
+/** What `/work` does before the first step (#600). */
+export const START_OF_DAY_HOW =
+  "Before the first step, fetch the remote of each checkout in `checkouts` and fast-forward each clean checkout that is behind (never merge, rebase, or reset). Skip a checkout with local changes or a diverged branch. Print one line per checkout: updated, current, or skipped (dirty or diverged). If any checkout updated, run `agentbrew sync` once, then go on to the first step.";
+
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(
   entries: WorkStepEntry[],
@@ -302,7 +337,14 @@ export function pruneMissingWorkSteps(
 export function buildWorkPlan(
   state: AgentBrewState | undefined,
   plugins: PluginLockEntry[],
-  options: { date?: Date; stateHome?: string; dirExists?: (dir: string) => boolean; pluginCheckouts?: string[] } = {},
+  options: {
+    date?: Date;
+    stateHome?: string;
+    dirExists?: (dir: string) => boolean;
+    pluginCheckouts?: string[];
+    listDir?: (dir: string) => string[];
+    isRepo?: (dir: string) => boolean;
+  } = {},
 ): WorkPlan {
   const all = state?.workSteps ?? [];
   const current = pruneMissingWorkSteps(all, options.dirExists ?? (() => true));
@@ -324,6 +366,14 @@ export function buildWorkPlan(
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
   for (const entry of current) if (!entry.refresh) add(entry.step, entry.agentfile, entry);
   const refresh = [...new Set(current.filter((e) => e.refresh).map((e) => e.step))];
+  const checkouts = [
+    ...new Set(
+      [...new Set(current.map((e) => e.agentfile))].flatMap((dir) => {
+        const parent = findParentCheckout(dir, options.listDir, options.isRepo);
+        return parent ? [dir, parent] : [dir];
+      }),
+    ),
+  ];
   return {
     staleWorkSteps,
     ...machineRule(plugins),
@@ -336,10 +386,11 @@ export function buildWorkPlan(
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
     repoWatch: {
-      checkouts: [...new Set(current.map((e) => e.agentfile))],
+      checkouts,
       refresh,
       how: REPO_WATCH_HOW,
     },
+    startOfDay: { checkouts, how: START_OF_DAY_HOW },
     endOfDay: [
       END_OF_DAY_STEP,
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
@@ -371,6 +422,12 @@ export function formatWorkPlan(plan: WorkPlan): string {
     lines.push(
       "",
       `Skipped steps from Agentfile dirs that no longer exist: ${plan.staleWorkSteps.join(", ")}. The next \`agentbrew sync\` removes them.`,
+    );
+  }
+  if (plan.startOfDay.checkouts.length > 0) {
+    lines.push(
+      "",
+      `Start of day: fast-forward ${plan.startOfDay.checkouts.join(", ")} before step 1; agentbrew sync if any updated.`,
     );
   }
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);

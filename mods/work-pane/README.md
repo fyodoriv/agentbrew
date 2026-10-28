@@ -27,3 +27,11 @@ it without starting a run.
 `/work-pane` runs `agentbrew work --json` once to find `dashboard.statusPath`
 (`$XDG_STATE_HOME/agentbrew/work/<date>.json`). `/work` rewrites that file on
 every step change. The pane reads it every 5 seconds.
+
+## Design check
+
+The pane is terminal UI (`Box` and `Text` from the mod runtime). It has no
+HTML, CSS, colours, fonts or touch targets. `/hallmark audit mods/work-pane/`
+(Hallmark's `sloplint`) reports 0 Floor, 0 Reflex and 0 warnings, so there is
+nothing for a redesign to change. The text layout is pinned by
+`tests/pane.test.tsx`. Re-run the audit if the pane ever renders HTML.

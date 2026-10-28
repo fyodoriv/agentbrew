@@ -68,6 +68,8 @@ export interface Agentfile {
   excludeAgents?: string[];
   /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). An object entry adds `scope`, `after`, and `longRunning` (#509). */
   workSteps?: AgentfileWorkStep[];
+  /** App checkouts `/work` fast-forwards before the first step, next to the plugin's own folder (paths; `~` allowed). */
+  workCheckouts?: string[];
   /** Default model id to deploy to every detected agent that declares a
    *  `modelConfig` surface in agents.yaml (claude-code, codex today).
    *  Absent means model sync is off. */
@@ -236,6 +238,7 @@ export function parseAgentfile(content: string): Agentfile {
       ? raw.excludeAgents.filter((x): x is string => typeof x === "string")
       : undefined,
     workSteps: parseWorkSteps(raw.workSteps),
+    workCheckouts: parseStringList(raw.workCheckouts),
     defaultModel: typeof raw.defaultModel === "string" && raw.defaultModel.trim() ? raw.defaultModel.trim() : undefined,
     modelOverrides: parseModelOverrides(raw.modelOverrides),
     defaultEffort:

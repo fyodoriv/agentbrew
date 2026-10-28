@@ -10,13 +10,16 @@ import {
   buildBrief,
   buildReport,
   buildTurn,
+  buildWorkReport,
   formatMs,
   formatReport,
   formatStatusline,
+  formatWorkReport,
   projectForDir,
   sessionStats,
   sessionTip,
   summarize,
+  workRuns,
   // @ts-expect-error — pure-ESM .mjs helper; vitest resolves it via Node ESM.
 } from "../../templates/scripts/agent-perf.mjs";
 
@@ -365,6 +368,113 @@ describe("report", () => {
 
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ calls: 1, toolMs: 5000 });
+  });
+});
+
+describe("work runs (/work)", () => {
+  // One /work run: it starts at a main-thread `agentbrew work` call, has a
+  // Skill step, and ends at the session's last row before an idle gap.
+  const run = (sid = "w1", project = "alpha"): Row[] => [
+    { project, ts: at(3 * HOUR), sid, ev: "turn" },
+    tool("git status", 100, { ts: at(3 * HOUR - 1000), sid, project }),
+    tool("agentbrew work", 900, { ts: at(3 * HOUR - 2000), sid, project, id: "c1" }),
+    tool("skill:agentbrew", 20, { ts: at(3 * HOUR - 60_000), sid, project, tool: "Skill" }),
+    tool("bash checkup.sh", 50_000, { ts: at(3 * HOUR - 200_000), sid, project }),
+    tool("Artifact", 3000, { ts: at(3 * HOUR - 210_000), sid, project, tool: "Artifact" }),
+    tool("skill:wrap-up", 30, { ts: at(3 * HOUR - 600_000), sid, project, tool: "Skill" }),
+    tool("agent:general-purpose", 120_000, { ts: at(3 * HOUR - 700_000), sid, project, tool: "Agent" }),
+    tool("Artifact", 2500, { ts: at(3 * HOUR - 800_000), sid, project, tool: "Artifact", agent: "general-purpose" }),
+    attempt("git push", "c9", { ts: at(3 * HOUR - 850_000), sid, project }),
+    { project, ts: at(3 * HOUR - 900_000), sid, ev: "turn" },
+    tool("Artifact", 2000, { ts: at(3 * HOUR - 1_000_000), sid, project, tool: "Artifact" }),
+  ];
+
+  it("measures one run from its agentbrew work call to the session's last row", () => {
+    const [r] = workRuns(run());
+    expect(r.session).toBe("w1");
+    expect(r.project).toBe("alpha");
+    expect(r.start).toBe(at(3 * HOUR - 2000));
+    expect(r.wallMs).toBe(998_000);
+    expect(r.turns).toBe(1);
+    // Main-thread rows only: work 900 + skill 20 + checkup 50s + 2 Artifacts + skill 30 + agent 120s.
+    expect(r.calls).toBe(7);
+    expect(r.toolMs).toBe(900 + 20 + 50_000 + 3000 + 30 + 120_000 + 2000);
+    expect(r.blocked).toBe(1);
+    expect(r.artifactCalls).toBe(3);
+    expect(r.subagents).toBe(1);
+    expect(r.steps).toEqual([
+      { step: "/agentbrew", ms: 540_000 },
+      { step: "/wrap-up", ms: 400_000 },
+    ]);
+  });
+
+  it("keeps rows before the plan call, subagent-only work calls, and other sessions out", () => {
+    const rows = [
+      tool("agentbrew work", 100, { ts: at(2 * HOUR), sid: "sub", agent: "general-purpose" }),
+      tool("git status", 100, { ts: at(2 * HOUR), sid: "plain" }),
+      ...run("w1"),
+      ...run("w2", "beta"),
+    ];
+    const runs = workRuns(rows);
+    expect(runs.map((r: { session: string }) => r.session)).toEqual(["w1", "w2"]);
+    expect(runs[0].calls).toBe(7);
+  });
+
+  it("counts a work call inside a loop as the start", () => {
+    const rows = [
+      tool("for agentbrew work", 100, { ts: at(HOUR), sid: "loop" }),
+      tool("skill:agentbrew", 20, { ts: at(HOUR - 1000), sid: "loop", tool: "Skill" }),
+    ];
+    expect(workRuns(rows)).toHaveLength(1);
+  });
+
+  it("does not count `agentbrew work stats` (same key) with no step after it as a run", () => {
+    const rows = [
+      tool("agentbrew work", 300, { ts: at(HOUR), sid: "stats" }),
+      tool("Artifact", 100, { ts: at(HOUR - 1000), sid: "stats", tool: "Artifact" }),
+    ];
+    expect(workRuns(rows)).toEqual([]);
+  });
+
+  it("ends a run at an idle gap of over 8 hours and starts a new one at the next work call", () => {
+    const sid = "resumed";
+    const rows = [
+      tool("agentbrew work", 100, { ts: at(30 * HOUR), sid }),
+      tool("skill:agentbrew", 20, { ts: at(30 * HOUR - 60_000), sid, tool: "Skill" }),
+      tool("git status", 100, { ts: at(30 * HOUR - 120_000), sid }),
+      // Next day, same session: rows before the next work call belong to no run.
+      tool("git status", 100, { ts: at(5 * HOUR), sid }),
+      tool("agentbrew work", 100, { ts: at(4 * HOUR), sid }),
+      tool("skill:wrap-up", 20, { ts: at(4 * HOUR - 30_000), sid, tool: "Skill" }),
+    ];
+    const runs = workRuns(rows);
+    expect(runs.map((r: { wallMs: number }) => r.wallMs)).toEqual([120_000, 30_000]);
+  });
+
+  it("takes the mean of the two middle runs for an even count", () => {
+    const fast = run("w3").slice(0, 5);
+    writeRows([...run("w1"), ...fast]);
+    const report = buildWorkReport({ days: 30 }, ctx());
+    expect(report.totals.runs).toBe(2);
+    expect(report.totals.medianWallMs).toBe((998_000 + 198_000) / 2);
+  });
+
+  it("reports medians over the window and prints them", () => {
+    writeRows([...run("w1"), ...run("w2", "beta"), ...run("old").map((r) => ({ ...r, ts: at(40 * DAY) }))]);
+    const report = buildWorkReport({ days: 30 }, ctx());
+    expect(report.runs).toHaveLength(2);
+    expect(report.totals).toMatchObject({ runs: 2, medianWallMs: 998_000, medianCalls: 7, medianArtifactCalls: 3 });
+    const text = formatWorkReport(report);
+    expect(text).toContain("/work runs, last 30d: 2");
+    expect(text).toContain("Artifact calls");
+    expect(text).toContain("/agentbrew 9m00s");
+  });
+
+  it("says when no run is recorded yet", () => {
+    writeRows([tool("git status", 100)]);
+    const report = buildWorkReport({}, ctx());
+    expect(report.runs).toEqual([]);
+    expect(formatWorkReport(report)).toContain("No /work run recorded");
   });
 });
 

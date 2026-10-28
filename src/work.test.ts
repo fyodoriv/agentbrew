@@ -1,6 +1,6 @@
 /** `agentbrew work` (#440): the ordered day plan and the machine rule. */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginLockEntry } from "./lock.js";
@@ -120,8 +120,10 @@ describe("repo-update watch (#516)", () => {
     expect(plan.repoWatch.refresh).toEqual(["/acme-refresh"]);
     expect(plan.repoWatch.how).toMatch(/fast-forward/);
     expect(plan.repoWatch.how).toMatch(/agentbrew sync/);
-    expect(plan.repoWatch.how).toMatch(/local changes/);
-    expect(formatWorkPlan(plan)).toContain("Repo updates: watch ~/apps/dotfiles, ~/apps/agentbrew-acme");
+    expect(plan.repoWatch.how).toMatch(/dirty/);
+    expect(formatWorkPlan(plan)).toContain(
+      "Repo updates: fast-forward ~/apps/dotfiles, ~/apps/agentbrew-acme before step 1",
+    );
   });
 });
 
@@ -141,14 +143,14 @@ describe("start-of-day refresh of parent app checkouts (#600)", () => {
     const sources = `sources:\n  - ${base}/app/skills\ncommands:\n  - ./commands\n`;
     writeFileSync(join(base, "wt/plugin-fix/Agentfile.yaml"), sources);
     writeFileSync(join(base, "other/plugin/Agentfile.yaml"), sources);
-    expect(findParentCheckouts(join(base, "wt/plugin-fix"))).toEqual([join(base, "app")]);
-    expect(findParentCheckouts(join(base, "other/plugin"))).toEqual([join(base, "app")]);
+    expect(findParentCheckouts(join(base, "wt/plugin-fix"), undefined, undefined, base)).toEqual(["~/app"]);
+    expect(findParentCheckouts(join(base, "other/plugin"), undefined, undefined, base)).toEqual(["~/app"]);
     rmSync(base, { recursive: true, force: true });
   });
 
   it("does not guess from a dashed name: a separate app beside another one has no parent", () => {
     const base = scratch({ app: null, "app-learn": "sources:\n  - ./skills\ncommands:\n  - ./commands\n" });
-    expect(findParentCheckouts(join(base, "app-learn"))).toEqual([]);
+    expect(findParentCheckouts(join(base, "app-learn"), undefined, undefined, base)).toEqual([]);
     rmSync(base, { recursive: true, force: true });
   });
 
@@ -158,7 +160,7 @@ describe("start-of-day refresh of parent app checkouts (#600)", () => {
       join(base, "plugin/Agentfile.yaml"),
       `sources:\n  - ${base}/app/skills/x\ncommands:\n  - ${base}/app/commands\n`,
     );
-    expect(findParentCheckouts(join(base, "plugin"))).toEqual([join(base, "app")]);
+    expect(findParentCheckouts(join(base, "plugin"), undefined, undefined, base)).toEqual(["~/app"]);
     rmSync(base, { recursive: true, force: true });
   });
 
@@ -167,14 +169,51 @@ describe("start-of-day refresh of parent app checkouts (#600)", () => {
       parentsOf: (dir) => (dir === "/r/plugin" ? ["/r/app"] : []),
     });
     expect(plan.repoWatch.checkouts).toEqual(["/r/plugin", "/r/app"]);
-    expect(plan.startOfDay.checkouts).toEqual(plan.repoWatch.checkouts);
-    expect(plan.startOfDay.how).toMatch(/before the first step/i);
-    expect(plan.startOfDay.how).toMatch(/fast-forward/);
-    expect(plan.startOfDay.how).toMatch(/updated, current, or skipped \(<reason>\)/);
+    expect(plan.repoWatch.how).toMatch(/^Before the first step and on each watch pass/);
+    expect(plan.repoWatch.how).toMatch(/fast-forward/);
+    expect(plan.repoWatch.how).toMatch(/updated, current, or skipped \(<reason>/);
     for (const reason of ["dirty", "diverged", "no upstream", "detached HEAD", "failed fetch"]) {
-      expect(plan.startOfDay.how).toContain(reason);
+      expect(plan.repoWatch.how).toContain(reason);
     }
-    expect(formatWorkPlan(plan)).toContain("Start of day: fast-forward /r/plugin, /r/app before step 1");
+    expect(formatWorkPlan(plan)).toContain("Repo updates: fast-forward /r/plugin, /r/app before step 1");
+  });
+
+  it("adds the checkouts a plugin lists in workCheckouts, for a plugin that deploys only its own files", () => {
+    const base = scratch({ app: null, plugin: null });
+    writeFileSync(
+      join(base, "plugin/Agentfile.yaml"),
+      `sources:\n  - ./skills\nworkCheckouts:\n  - ${base}/app\n  - ../app\n`,
+    );
+    expect(findParentCheckouts(join(base, "plugin"), undefined, undefined, base)).toEqual(["~/app"]);
+    rmSync(base, { recursive: true, force: true });
+  });
+
+  it("accepts an auto-detected parent only under the home folder; workCheckouts may be anywhere", () => {
+    const outside = scratch({ "opt/homebrew": null });
+    const home = scratch({ plugin: null });
+    writeFileSync(join(home, "plugin/Agentfile.yaml"), `sources:\n  - ${outside}/opt/homebrew/share/skills\n`);
+    expect(findParentCheckouts(join(home, "plugin"), undefined, undefined, home)).toEqual([]);
+    writeFileSync(
+      join(home, "plugin/Agentfile.yaml"),
+      `sources:\n  - ${outside}/opt/homebrew/share/skills\nworkCheckouts:\n  - ${outside}/opt/homebrew\n`,
+    );
+    expect(findParentCheckouts(join(home, "plugin"), undefined, undefined, home)).toEqual([
+      join(outside, "opt/homebrew"),
+    ]);
+    rmSync(home, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it("lists one checkout once when `~` and absolute spellings name the same folder", () => {
+    const plan = buildWorkPlan(
+      state([
+        { step: "/a", agentfile: "~/apps/p1" },
+        { step: "/b", agentfile: join(homedir(), "apps/p1") },
+      ]),
+      [],
+      { parentsOf: () => [join(homedir(), "apps/app"), "~/apps/app"] },
+    );
+    expect(plan.repoWatch.checkouts).toEqual(["~/apps/p1", join(homedir(), "apps/app")]);
   });
 
   it("lists a shared parent once", () => {
@@ -280,7 +319,12 @@ describe("dashboard block (#510)", () => {
     expect(plan.dashboard.statusPath).toBe(join("/state", "agentbrew", "work", "2026-10-26.json"));
     expect(plan.dashboard.publish).toMatch(/Artifact/);
     expect(plan.dashboard.publish).toMatch(/same URL/);
-    expect(plan.dashboard.top).toMatch(/Needs you/);
+    // The Artifact publish is the costly call: write the local status file on every row change, and republish the
+    // page only when a stage ends, a row starts to need the user, or the day ends (work stats counts publishes).
+    expect(plan.dashboard.publish).toMatch(/statusPath on every row change/);
+    expect(plan.dashboard.publish).toMatch(/stage ends/);
+    expect(plan.dashboard.publish).not.toMatch(/Update a row each time/);
+    expect(plan.dashboard).not.toHaveProperty("top");
     expect(formatWorkPlan(plan)).toContain(`Dashboard: Work day Mon Oct 26 (local page: ${plan.dashboard.localPath})`);
   });
 });

@@ -79,7 +79,10 @@ or the user's words in this session).
    merge in the next one. Never chain the merge after a log read: a run
    merged on `rc=1` because the command printed the log and merged anyway.
    After a rebase that touches a file the gate checks (a size budget, a
-   shared doc), re-run the gate before you merge. For more than one item, use subagents with one
+   shared doc), re-run the gate before you merge. Before the first full
+   gate, run the touched test files on the base branch: a test that already
+   fails there is a base fix for the same PR, not your regression, and you
+   save one failed full run. For more than one item, use subagents with one
    shared brief, at most three gate runs at a time, and `nice -n 15` for
    heavy runs.
 5. **Park what needs a person** (a secret, 2FA, sudo, a public write the rules

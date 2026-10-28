@@ -8,7 +8,7 @@
  * order the Agentfiles were applied. state.workSteps records which
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import chalk from "chalk";
@@ -61,11 +61,6 @@ export interface WorkPlan {
    * and the plugin refresh steps to run after an update.
    */
   repoWatch: { checkouts: string[]; refresh: string[]; how: string };
-  /**
-   * Before the first step (#600): fast-forward the same checkouts as
-   * `repoWatch.checkouts`, so the first step does not run on a stale app.
-   */
-  startOfDay: { checkouts: string[]; how: string };
   endOfDay: string[];
   /** Agentfile dirs whose steps were skipped because the dir no longer exists (#515). */
   staleWorkSteps: string[];
@@ -122,30 +117,40 @@ function enclosingRepo(path: string, isRepo: (dir: string) => boolean): string |
 }
 
 /**
- * The app checkouts a plugin deploys from (#600): its Agentfile's local
- * `sources:`, `commands:`, and `agents:` paths that sit in another git
- * checkout. Those are the data agentbrew has about what the plugin wraps; a
- * folder name is never used. Nothing is returned for an Agentfile with no
- * such path, or one whose paths all stay inside its own checkout. Paths come
- * back as `~/...` under the home folder.
+ * The app checkouts a plugin works with (#600), from its Agentfile: the
+ * `workCheckouts:` list (any path, `~` allowed), plus the git checkout of each
+ * local `sources:`, `commands:`, and `agents:` path that sits outside the
+ * plugin's own checkout. Auto-detected ones count only under `home`, so a
+ * source in a system folder never adds an unrelated repo. A folder name is
+ * never used. Paths come back as `~/...` under the home folder.
  */
 export function findParentCheckouts(
   pluginDir: string,
   load: (dir: string) => Agentfile | undefined = loadAgentfile,
   isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
+  home = homedir(),
 ): string[] {
   const own = expandHome(pluginDir);
   const ownRepo = enclosingRepo(own, isRepo);
   const file = load(own);
-  const entries = [...(file?.sources ?? []), ...(file?.commands ?? []), ...(file?.agents ?? [])];
   const found = new Set<string>();
-  for (const entry of entries) {
+  for (const entry of [...(file?.sources ?? []), ...(file?.commands ?? []), ...(file?.agents ?? [])]) {
     if (!/^[.~/]/.test(entry)) continue;
     const repo = enclosingRepo(resolve(own, expandHome(entry)), isRepo);
-    if (repo && repo !== own && repo !== ownRepo) found.add(repo);
+    if (repo?.startsWith(`${home}/`) && repo !== own && repo !== ownRepo) found.add(repo);
   }
-  const home = homedir();
+  for (const entry of file?.workCheckouts ?? []) found.add(resolve(own, expandHome(entry)));
   return [...found].map((repo) => (repo.startsWith(`${home}/`) ? `~${repo.slice(home.length)}` : repo));
+}
+
+/** One real path per folder, so `~/x` and `/Users/me/x` (or a symlink to it) match. */
+function canonicalPath(path: string): string {
+  const full = resolve(expandHome(path));
+  try {
+    return realpathSync(full);
+  } catch {
+    return full;
+  }
 }
 
 /** Step status on the dashboard (#510). */
@@ -168,8 +173,6 @@ export interface WorkDashboard {
   statuses: readonly WorkStatus[];
   /** Starting rows: every step waiting. */
   rows: WorkDashboardRow[];
-  /** What the top of the page shows. */
-  top: string;
   /** Where to publish and how to keep it current. */
   publish: string;
   /** The local HTML page, for an agent with no Artifact tool. */
@@ -188,9 +191,8 @@ function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string)
     title: `Work day ${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`,
     statuses: WORK_STATUSES,
     rows: steps.map((s) => ({ step: s.step, status: "waiting", summary: "", needsYou: "", link: "" })),
-    top: 'Counts of done, running, and needs-you steps, then a "Needs you" list with every needsYou text and the saved questions.',
     publish:
-      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
+      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Rewrite statusPath on every row change. Republish the page only when a stage ends, when a watch pass changes a row, when a row starts to need the user, and at end of day. Keep the same URL all day.",
     localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
     statusPath: join(stateHome, "agentbrew", "work", `${day}.json`),
   };
@@ -327,13 +329,10 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
   return [remaining.find(ready) ?? (remaining[0] as StageInput)];
 }
 
-/** What `/work` does on each watch pass for repo updates (#516). */
+/** What `/work` does for repo updates: before the first step and on each watch pass (#516, #600). */
 export const REPO_WATCH_HOW =
-  "On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.";
-
-/** What `/work` does before the first step (#600). */
-export const START_OF_DAY_HOW =
-  "Before the first step, fetch the remote of each checkout in `checkouts` and fast-forward each clean checkout that is behind (never merge, rebase, or reset). Skip a checkout with local changes or a diverged branch. Print one line per checkout: updated, current, or skipped (<reason>). Skip with a reason, and go on, for a checkout that has local changes (dirty), a diverged branch, no upstream branch, a detached HEAD, or a failed fetch. If any checkout updated, run `agentbrew sync` once, then go on to the first step.";
+  "Before the first step and on each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Print one line per checkout: updated, current, or skipped (<reason>: dirty, diverged, no upstream, detached HEAD, failed fetch).";
+("On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.");
 
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(
@@ -375,13 +374,16 @@ export function buildWorkPlan(
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
   for (const entry of current) if (!entry.refresh) add(entry.step, entry.agentfile, entry);
   const refresh = [...new Set(current.filter((e) => e.refresh).map((e) => e.step))];
-  const checkouts = [
-    ...new Set(
-      [...new Set(current.map((e) => e.agentfile))].flatMap((dir) => {
-        return [dir, ...(options.parentsOf ?? ((d: string) => findParentCheckouts(d)))(dir)];
-      }),
-    ),
-  ];
+  const parentsOf = options.parentsOf ?? ((d: string) => findParentCheckouts(d));
+  const seenPaths = new Set<string>();
+  const checkouts = [...new Set(current.map((e) => e.agentfile))]
+    .flatMap((dir) => [dir, ...parentsOf(dir)])
+    .filter((dir) => {
+      const key = canonicalPath(dir);
+      if (seenPaths.has(key)) return false;
+      seenPaths.add(key);
+      return true;
+    });
   return {
     staleWorkSteps,
     ...machineRule(plugins),
@@ -398,7 +400,6 @@ export function buildWorkPlan(
       refresh,
       how: REPO_WATCH_HOW,
     },
-    startOfDay: { checkouts, how: START_OF_DAY_HOW },
     endOfDay: [
       END_OF_DAY_STEP,
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
@@ -432,12 +433,6 @@ export function formatWorkPlan(plan: WorkPlan): string {
       `Skipped steps from Agentfile dirs that no longer exist: ${plan.staleWorkSteps.join(", ")}. The next \`agentbrew sync\` removes them.`,
     );
   }
-  if (plan.startOfDay.checkouts.length > 0) {
-    lines.push(
-      "",
-      `Start of day: fast-forward ${plan.startOfDay.checkouts.join(", ")} before step 1; agentbrew sync if any updated.`,
-    );
-  }
   lines.push("", `Dashboard: ${plan.dashboard.title} (local page: ${plan.dashboard.localPath})`);
   lines.push("", plan.watch);
   if (plan.pluginReview.checkouts.length > 0) {
@@ -447,10 +442,17 @@ export function formatWorkPlan(plan: WorkPlan): string {
   }
   if (plan.repoWatch.checkouts.length > 0) {
     const refresh = plan.repoWatch.refresh.length > 0 ? `; then ${plan.repoWatch.refresh.join(", ")}` : "";
-    lines.push(`Repo updates: watch ${plan.repoWatch.checkouts.join(", ")}; fast-forward, agentbrew sync${refresh}.`);
+    lines.push(
+      `Repo updates: fast-forward ${plan.repoWatch.checkouts.join(", ")} before step 1 and on each watch pass; agentbrew sync${refresh}.`,
+    );
   }
   lines.push("", `End of day: ${plan.endOfDay.join(" ")}`);
   return lines.join("\n");
+}
+
+/** The plan as `--json` prints it: compact, since an agent reads it on every /work run (work_instruction_bytes). */
+export function workPlanJson(plan: WorkPlan): string {
+  return JSON.stringify(plan);
 }
 
 /** `agentbrew work [--json]`. */
@@ -458,5 +460,5 @@ export function showWorkPlan(options: { json?: boolean } = {}): void {
   const plan = buildWorkPlan(loadState(), readLock().plugins ?? [], {
     dirExists: (dir) => existsSync(expandHome(dir)),
   });
-  console.log(options.json ? JSON.stringify(plan, null, 2) : formatWorkPlan(plan));
+  console.log(options.json ? workPlanJson(plan) : formatWorkPlan(plan));
 }

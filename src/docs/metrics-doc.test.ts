@@ -39,11 +39,20 @@ function metricRows(markdown: string): MetricRow[] {
     });
 }
 
-function runMetrics(eventsFile: string, receipt = join(scratch, "no-receipt.json")): string {
+function runMetrics(
+  eventsFile: string,
+  receipt = join(scratch, "no-receipt.json"),
+  workStats = join(scratch, "no-work-stats.json"),
+): string {
   return execFileSync("bash", [join(repoRoot, "scripts/metrics.sh")], {
     cwd: repoRoot,
     encoding: "utf-8",
-    env: { ...process.env, AGENTBREW_EVENTS_FILE: eventsFile, AGENTBREW_INSTALL_RECEIPT: receipt },
+    env: {
+      ...process.env,
+      AGENTBREW_EVENTS_FILE: eventsFile,
+      AGENTBREW_INSTALL_RECEIPT: receipt,
+      AGENTBREW_WORK_STATS: workStats,
+    },
   });
 }
 
@@ -84,6 +93,20 @@ describe("scripts/metrics.sh", () => {
     expect(runMetrics(join(scratch, "missing.jsonl"), receipt)).toMatch(/^zero_to_configured_s +97 /m);
     writeFileSync(receipt, JSON.stringify({ before: {}, run: { ok: false, seconds: 12 } }));
     expect(runMetrics(join(scratch, "missing.jsonl"), receipt)).toMatch(/^zero_to_configured_s +\(stub\)/m);
+  });
+
+  it("reads the /work cost from work stats, (stub) without runs or stats", () => {
+    expect(runMetrics(join(scratch, "missing.jsonl"))).toMatch(/^work_instruction_bytes +\(stub\)/m);
+    const stats = join(scratch, "work-stats.json");
+    writeFileSync(stats, JSON.stringify({ instructions: { totalBytes: 6100 }, totals: { runs: 0, medianWallMs: 0 } }));
+    const none = runMetrics(join(scratch, "missing.jsonl"), undefined, stats);
+    expect(none).toMatch(/^work_instruction_bytes +6100 /m);
+    expect(none).toMatch(/^work_run_wall_ms +\(stub\)/m);
+    writeFileSync(
+      stats,
+      JSON.stringify({ instructions: { totalBytes: 6100 }, totals: { runs: 3, medianWallMs: 840000 } }),
+    );
+    expect(runMetrics(join(scratch, "missing.jsonl"), undefined, stats)).toMatch(/^work_run_wall_ms +840000 /m);
   });
 
   it("reads rates and medians from the event log", () => {

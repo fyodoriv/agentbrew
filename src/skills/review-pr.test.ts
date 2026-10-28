@@ -328,7 +328,14 @@ describe("review-pr draft judge (#611)", () => {
     const skill = readFileSync(join(SKILL, "SKILL.md"), "utf-8");
     expect(skill).toMatch(/fresh judge subagent[\s\S]*references\/draft-judge\.md/);
     const judge = readFileSync(join(SKILL, "references", "draft-judge.md"), "utf-8");
-    for (const want of ["member of the target conversation", "I'll ping them directly", "is a link", "Nothing is assumed", "`APPROVED`", "`REJECTED`"]) {
+    for (const want of [
+      "member of the target conversation",
+      "I'll ping them directly",
+      "is a link",
+      "Nothing is assumed",
+      "`APPROVED`",
+      "`REJECTED`",
+    ]) {
       expect(judge).toContain(want);
     }
     const evals = JSON.parse(readFileSync(join(SKILL, "evals", "evals.json"), "utf-8")).evals as { prompt: string }[];

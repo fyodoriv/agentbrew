@@ -359,7 +359,7 @@ Before the first step, `/work` follows `repoWatch.how`: it fast-forwards each cl
 
 The watch loop also applies repo updates. `repoWatch` lists the same checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
 
-Then it runs each step marked `refresh: true` (a plugin's own refresh step, which never runs in the day plan). A checkout with local changes or a diverged branch is skipped with one line.
+Then it runs each step marked `refresh: true` (a plugin's own refresh step; it is not listed as a day-plan step). A checkout with local changes or a diverged branch is skipped with one line.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`, `workSteps`) merge in file order; duplicate MCP, hook, or `workSteps` entries (same step name) keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 

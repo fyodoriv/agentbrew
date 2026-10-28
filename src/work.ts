@@ -108,8 +108,7 @@ export function findPluginCheckouts(
 }
 
 /** The git checkout that holds `path`: the nearest folder at or above it with a `.git`. */
-function enclosingRepo(path: string, isRepo: (dir: string) => boolean): string | undefined {
-  const home = homedir();
+function enclosingRepo(path: string, isRepo: (dir: string) => boolean, home = homedir()): string | undefined {
   for (let dir = path; dir !== dirname(dir) && dir !== home; dir = dirname(dir)) {
     if (isRepo(dir)) return dir;
   }
@@ -120,7 +119,8 @@ function enclosingRepo(path: string, isRepo: (dir: string) => boolean): string |
  * The app checkouts a plugin works with (#600), from its Agentfile: the
  * `workCheckouts:` list (any path, `~` allowed), plus the git checkout of each
  * local `sources:`, `commands:`, and `agents:` path that sits outside the
- * plugin's own checkout. Auto-detected ones count only under `home`, so a
+ * plugin's own checkout. A `workCheckouts:` entry that is not a git checkout
+ * is skipped. Auto-detected ones count only under `home`, so a
  * source in a system folder never adds an unrelated repo. A folder name is
  * never used. Paths come back as `~/...` under the home folder.
  */
@@ -131,15 +131,19 @@ export function findParentCheckouts(
   home = homedir(),
 ): string[] {
   const own = expandHome(pluginDir);
-  const ownRepo = enclosingRepo(own, isRepo);
+  const ownRepo = enclosingRepo(own, isRepo, home);
   const file = load(own);
   const found = new Set<string>();
   for (const entry of [...(file?.sources ?? []), ...(file?.commands ?? []), ...(file?.agents ?? [])]) {
     if (!/^[.~/]/.test(entry)) continue;
-    const repo = enclosingRepo(resolve(own, expandHome(entry)), isRepo);
+    const repo = enclosingRepo(resolve(own, expandHome(entry)), isRepo, home);
     if (repo?.startsWith(`${home}/`) && repo !== own && repo !== ownRepo) found.add(repo);
   }
-  for (const entry of file?.workCheckouts ?? []) found.add(resolve(own, expandHome(entry)));
+  for (const entry of file?.workCheckouts ?? []) {
+    const repo = resolve(own, expandHome(entry));
+    // A missing folder or a folder that is not a checkout cannot be fetched.
+    if (isRepo(repo)) found.add(repo);
+  }
   return [...found].map((repo) => (repo.startsWith(`${home}/`) ? `~${repo.slice(home.length)}` : repo));
 }
 
@@ -331,7 +335,7 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
 
 /** What `/work` does for repo updates: before the first step and on each watch pass (#516, #600). */
 export const REPO_WATCH_HOW =
-  "Before the first step and on each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Print one line per checkout: updated, current, or skipped (<reason>: dirty, diverged, no upstream, detached HEAD, failed fetch).";
+  "Before the first step and on each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (`git merge --ff-only @{u}` only; never a merge commit, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Print one line per checkout: updated, current, or skipped (<reason>: dirty, diverged, no upstream, detached HEAD, failed fetch).";
 
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(

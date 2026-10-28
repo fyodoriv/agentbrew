@@ -188,6 +188,17 @@ describe("start-of-day refresh of parent app checkouts (#600)", () => {
     rmSync(base, { recursive: true, force: true });
   });
 
+  it("skips a workCheckouts entry that is missing or is not a git checkout", () => {
+    const base = scratch({ app: null, plugin: null });
+    mkdirSync(join(base, "plain"), { recursive: true });
+    writeFileSync(
+      join(base, "plugin/Agentfile.yaml"),
+      `sources:\n  - ./skills\nworkCheckouts:\n  - ${base}/gone\n  - ${base}/plain\n  - ${base}/app\n`,
+    );
+    expect(findParentCheckouts(join(base, "plugin"), undefined, undefined, base)).toEqual(["~/app"]);
+    rmSync(base, { recursive: true, force: true });
+  });
+
   it("accepts an auto-detected parent only under the home folder; workCheckouts may be anywhere", () => {
     const outside = scratch({ "opt/homebrew": null });
     const home = scratch({ plugin: null });

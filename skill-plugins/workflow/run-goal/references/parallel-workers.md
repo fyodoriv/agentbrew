@@ -159,6 +159,11 @@ Contents: Starting workers · Steering running agents · Files the main session 
 
 ## Fix rounds, waiting workers, and duplicate PRs
 
+Green suites still miss defects. In one goal run, reviewers found real
+defects in 6 of 8 green PRs: a crop that picked the wrong figure, a cache
+entry saved under the wrong key, a CLI crash in sandboxed shells, and a
+fixture that missed one path, so a test failed only on the owner's machine.
+
 When you resume a worker with `SendMessage` for a fix round, repeat the rule
 in that message: "fresh-context review of the diff before merge". A resumed
 worker can miss a rule that only its first brief named. In one run, workers
@@ -180,4 +185,3 @@ the same account can open a second PR for the same issue mid-run. In one run,
 two PRs for one issue (one CONFLICTING, one MERGEABLE) came from two
 sessions. Compare them, keep one, and ask the owner before you close the
 other session's PR.
-

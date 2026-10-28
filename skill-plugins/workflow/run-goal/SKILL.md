@@ -282,8 +282,8 @@ key and a CLI crash in sandboxed shells. Send each
 finding back to the agent that wrote the code (it keeps its context), then
 review the fix again.
 
-A worker resumed for a fix round still needs that review: see
-[references/parallel-workers.md](references/parallel-workers.md).
+A worker resumed for a fix round still needs that review: see "Fix rounds,
+waiting workers, and duplicate PRs" in [references/parallel-workers.md](references/parallel-workers.md).
 
 ## Phase 6 — Retro and skill upkeep
 

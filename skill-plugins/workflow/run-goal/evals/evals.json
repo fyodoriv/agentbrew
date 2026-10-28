@@ -1897,6 +1897,19 @@
         "Open PRs are listed again right before a merge, and a duplicate PR for the same issue is reported",
         "The lead does not close another session's PR without the owner's answer"
       ]
+    },
+    {
+      "id": 164,
+      "prompt": "/goal make subscribing to events in calendar work with 80%+ accuracy. All events must have time, costs, locations. Right now too many events don't show time info",
+      "expected_output": "The agent measures a baseline from the real data before any edit (share of feed events whose entry matches the event's own page on start, end, place and cost), finds the root causes (a listing with dates only, a cost the parser never reads), and fixes them with failing tests first. It builds the judge as a separate script and fixes the judge's own bugs before it trusts a number. A fresh-context grader checks a sample against the live pages. Before it claims done, it finds which branch the scheduled deploy builds from, gets the fix onto that path without losing that branch's own unshipped work, deploys, and reads the served feed itself. It then fixes any wrong entries that only the served feed shows.",
+      "expectations": [
+        "Baseline accuracy is measured on real data before any code edit and printed in the contract",
+        "Each fix starts with a failing test built from synthetic fixtures",
+        "The audit script has its own page reader, and its false failures are fixed and called judge bugs, not product wins",
+        "An independent grader that did not write the code checks sampled entries against the live event pages",
+        "The agent checks which branch the deploy job builds from before it relies on a merge to main",
+        "The final evidence is read from the deployed feed, not only from the plan output"
+      ]
     }
   ]
 }

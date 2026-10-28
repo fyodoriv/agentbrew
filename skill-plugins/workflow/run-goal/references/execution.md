@@ -122,6 +122,22 @@ Plain `git diff` skips staged and new files. Commit only what is staged: no `-a`
 A failed `git diff` leaves the count empty, so the commit does not run. An empty count means the check
 did not finish (an unset pattern, a grep error, or a diff grep skipped as binary): find the cause first.
 
+## Served output
+
+When the goal is about what users see (a feed, a page, a report), measure the
+served output after the deploy, not only the pipeline's output.
+
+- First find which branch and checkout the deploy job builds from. A merge to
+  main may never reach it, for example when a sync job deploys whatever branch
+  the main checkout is on. Put the fix on that path without dropping that
+  branch's own unshipped commits (cherry-pick, not a branch switch).
+- Then fetch the served output and read every entry for wrong content.
+  In one run, the plan audit was 100%, but the live calendar feed still had old
+  entries with wrong end times, from a path the audit never read.
+- A self-built judge needs calibration first. Fix its false failures and call them
+  judge bugs, not product wins. Then have a grader that did not write the code
+  check a sample against the source.
+
 ## Pre-existing failures
 
 Before you call a failure "pre-existing", run the same test files with the

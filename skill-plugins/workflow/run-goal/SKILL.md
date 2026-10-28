@@ -247,12 +247,12 @@ shipped it while you worked.
 When the grader finds a defect and you fix it, re-run that criterion's proof
 from scratch. A fix can break something the earlier proof covered.
 
-When the goal changes this machine, re-read the live state (installed files,
-loaded services; for a LaunchAgent, `launchctl print gui/$UID/<label>`, not
-only the plist) right before you report done. A later apply can revert a fix
-that passed earlier. When the fix is a scheduled job, prove it with a run the
-scheduler starts, not a manual load. Re-read the job's files and its loaded
-state after that run, because the job itself can rewrite or unload the fix.
+When the goal changes this machine or what users see, re-read the live state
+(installed files, loaded services, the deployed feed or page: [§ Served output](references/execution.md#served-output);
+for a LaunchAgent, `launchctl print gui/$UID/<label>`, not the plist) right
+before you report done. A later apply can revert a fix. When the fix is a
+scheduled job, prove it with a run the scheduler starts, then re-read its files
+and loaded state: the job can undo it.
 
 Before you call a failure "pre-existing", compare it with the unchanged base
 ([references/execution.md](references/execution.md) § Pre-existing failures).

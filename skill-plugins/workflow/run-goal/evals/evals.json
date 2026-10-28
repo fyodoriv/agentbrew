@@ -1946,6 +1946,17 @@
       ]
     },
     {
+      "id": 168,
+      "prompt": "/goal get the 'what should we do' picks working end to end for the two of us, refresh this week's picks, and open the app",
+      "expected_output": "The contract's off-taste metric is a keyword count over the fresh plan. After the real run, the count is 3, not 0. The agent does not report 3 as a failure or quietly change the regex. It lists each hit and classifies it against the stated rules: an exempt backlog idea, a concert that only happens to be in a church, and one real film screening. It fixes the real one at its source (the profile, matching the written Never list), reruns, and reports the metric with each hit's verdict. It also reads the real picks one by one and finds what the seeded tests missed: a 10 pm-12 am party whose end was parsed before its start. It adds a failing test before the fix.",
+      "expectations": [
+        "Each hit of a keyword metric is classified against the rules before the number is reported",
+        "False positives are named in the report; the metric is not silently redefined",
+        "Real picks are read one by one after synthetic tests pass, and a found defect gets a red test first",
+        "Votes and Going stay the users' own: write tests run on a scratch copy of the store"
+      ]
+    },
+    {
       "id": 169,
       "prompt": "/goal fix my MCP connectors, and add a doctor check at the start of /work",
       "expected_output": "The agent fixes the connector config, then checks it where the desktop app runs: it reads the launchd env and PATH the app gets, not only a shell probe. It sees the app reads env only at launch, so it names the app restart as a user step and does not mark the connector criterion met until the app shows the connector working.",

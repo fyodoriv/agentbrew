@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The wrap-up skill's `open-work.sh` tags a branch whose added lines are
+  already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as
+  "likely landed: look, then delete it". Such a branch matched no squash
+  check and read as work to continue.
 - `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
   bytes a run reads, and each recorded run's wall time, tool time, calls,
   blocked calls, Artifact calls, subagents, and time per step (from the
@@ -80,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reports drift. First entry: `agent-usage-guard` at `e9bd8d6`.
 
 ### Changed
+
+- The `watch-issues` skill says what to do when a Monitor's `gh` reads fail
+  TLS in the sandbox: run the watch loop outside it, writing to a log, and
+  tail that log.
 
 - Every tool setup now starts with a preflight: check for duplicates and
   conflicts (hooks, status line, MCP servers, skills, LaunchAgents, plugins),

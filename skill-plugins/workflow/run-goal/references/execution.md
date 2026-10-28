@@ -3,7 +3,7 @@
 Loaded from Phase 4 and Phase 5 of `SKILL.md`. Each bullet comes from a run
 that failed without it.
 
-Contents: During execution · Gate exit status · Pre-existing failures · Mid-goal changes
+Contents: During execution · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
 
 ## During execution
 
@@ -129,6 +129,17 @@ same flags on the unchanged base (a detached worktree) and compare the two
 failure lists. Only a failure on both lists is pre-existing. A wait loop on
 a background job must run outside the agent sandbox: `pgrep` and `ps` fail
 inside it, so the loop exits at once and looks finished.
+
+## Metrics and stale gates
+
+A metric is code too. Before you trust a new counter's numbers or merge
+the PR that adds it, give its diff and the metric's definition to a
+fresh-context reviewer. One review of a `/work` run counter found 4 real
+bugs: a stats call counted as a run, no split at an idle gap, a
+lower-middle median, and every Artifact call counted as a publish.
+
+A gate you started before your last edit tests old code. Stop it and
+start it again after the edits; never report its result for the new code.
 
 ## Mid-goal changes
 

@@ -335,6 +335,10 @@ describe("review-pr draft judge (#611)", () => {
       "Nothing is assumed",
       "`APPROVED`",
       "`REJECTED`",
+      "Any other first line counts as",
+      "After 3 `REJECTED` rounds, stop",
+      "needs a new judge round before it is posted",
+      "`Failure scenario:`",
     ]) {
       expect(judge).toContain(want);
     }
@@ -343,5 +347,7 @@ describe("review-pr draft judge (#611)", () => {
     expect(evals.some((e) => /#release thread/.test(e.prompt) && /not a member/.test(e.prompt))).toBe(true);
     const shared = readFileSync(join(process.cwd(), "docs", "shared-rules.md"), "utf-8");
     expect(shared).toMatch(/Judge every draft sent as the user[\s\S]*draft-judge\.md/);
+    expect(shared).toContain("judge it again after any change");
+    expect(skill).toContain("at most 3 rounds");
   });
 });

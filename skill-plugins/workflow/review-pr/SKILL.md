@@ -142,7 +142,9 @@ It writes `report.md` (the draft) and `report.json`, and prints how many
 findings it kept and dropped. Before you show it, send the whole draft to a
 fresh judge subagent with the PR facts, as
 [references/draft-judge.md](references/draft-judge.md) says. Fix each
-`REJECTED` line in `merged.json` or `verdicts.json` (never in `report.md`, which `report` rewrites), re-run `report`, and judge again. After `APPROVED`, show the user `report.md`
+`REJECTED` line in `merged.json` or `verdicts.json` (never in `report.md`,
+which `report` rewrites), re-run `report`, and judge again, at most 3 rounds.
+After `APPROVED`, show the user `report.md`
 and the dropped count, then ask. After a yes:
 
 1. Check that the head has not moved

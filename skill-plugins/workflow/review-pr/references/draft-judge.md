@@ -24,11 +24,17 @@ fresh subagent judge. The judge has not seen the reasoning behind the draft.
    and the ticket is closed" does not mean "X closed it".
 4. It says who it is for and what each person must do, or that no action is
    needed.
-5. Reviews only: each comment starts with its category and marks what was not
-   verified.
+5. Reviews only: each finding sits under its severity heading, and a finding
+   with no `Failure scenario:` line is not worded as a proven bug.
 
 ## Judge answer
 
-The first line is `APPROVED` or `REJECTED`. After `REJECTED`, one line per
-failed check: the check number, the quoted text, and the fix. Fix the draft
-and judge it again. Show or post the draft only after `APPROVED`.
+The first line is `APPROVED` or `REJECTED`. Any other first line counts as
+`REJECTED`. After `REJECTED`, one line per failed check: the check number, the
+quoted text, and the fix. Fix the draft and judge it again. Show or post the
+draft only after `APPROVED`.
+
+- After 3 `REJECTED` rounds, stop: show the user the draft with the open
+  rejection lines and ask how to go on.
+- Any change to an approved draft (the user's edit, a new run after the head
+  moved) needs a new judge round before it is posted.

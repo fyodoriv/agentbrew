@@ -127,8 +127,6 @@ export interface WorkDashboard {
   statuses: readonly WorkStatus[];
   /** Starting rows: every step waiting. */
   rows: WorkDashboardRow[];
-  /** What the top of the page shows. */
-  top: string;
   /** Where to publish and how to keep it current. */
   publish: string;
   /** The local HTML page, for an agent with no Artifact tool. */
@@ -147,9 +145,8 @@ function buildDashboard(steps: WorkPlan["steps"], date: Date, stateHome: string)
     title: `Work day ${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`,
     statuses: WORK_STATUSES,
     rows: steps.map((s) => ({ step: s.step, status: "waiting", summary: "", needsYou: "", link: "" })),
-    top: 'Counts of done, running, and needs-you steps, then a "Needs you" list with every needsYou text and the saved questions.',
     publish:
-      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Update a row each time its step changes. Keep the same URL all day.",
+      "Publish one page for the day: an Artifact with this title (reuse the one already titled so, if any), or one self-contained HTML file at localPath when you have no Artifact tool. Create it before the first step, or reuse today's page. Rewrite statusPath on every row change. Republish the page only when a stage ends, when a watch pass changes a row, when a row starts to need the user, and at end of day. Keep the same URL all day.",
     localPath: join(stateHome, "agentbrew", "work", `${day}.html`),
     statusPath: join(stateHome, "agentbrew", "work", `${day}.json`),
   };
@@ -388,10 +385,15 @@ export function formatWorkPlan(plan: WorkPlan): string {
   return lines.join("\n");
 }
 
+/** The plan as `--json` prints it: compact, since an agent reads it on every /work run (work_instruction_bytes). */
+export function workPlanJson(plan: WorkPlan): string {
+  return JSON.stringify(plan);
+}
+
 /** `agentbrew work [--json]`. */
 export function showWorkPlan(options: { json?: boolean } = {}): void {
   const plan = buildWorkPlan(loadState(), readLock().plugins ?? [], {
     dirExists: (dir) => existsSync(expandHome(dir)),
   });
-  console.log(options.json ? JSON.stringify(plan, null, 2) : formatWorkPlan(plan));
+  console.log(options.json ? workPlanJson(plan) : formatWorkPlan(plan));
 }

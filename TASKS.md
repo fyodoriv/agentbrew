@@ -435,6 +435,7 @@
   - **Success**: all three cases pass, and the existing cases in that file still pass.
   - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
   - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
+  - **Blocked**: needs-design — 2026-10-28: 4th design (build-window output record, PR #607 draft) failed review: (A) the window record captures non-build files such as a `config.json` the build writes when missing or a `token.json` the live server writes, so a user file is moved aside and lost; (B) a refused re-pin loses v1's ignored `dist/index.js` when v2 commits its own `dist/index.js`; (C) a legacy cache records no paths and later registers stale output; (D) a crash mid-build loses the aside copy. Next idea to try: register only paths under the package's declared build output (package.json main/bin/exports dir, tsconfig outDir), and keep user files out of any move set.
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget

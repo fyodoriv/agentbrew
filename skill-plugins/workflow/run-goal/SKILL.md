@@ -206,6 +206,13 @@ continue?". The user set a goal so that they can be away.
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you
   plan to run it next.
+- A metric is code too. Before you trust a new counter's numbers or merge
+  the PR that adds it, give its diff and the metric's definition to a
+  fresh-context reviewer. One review of a `/work` run counter found 4 real
+  bugs: a stats call counted as a run, no split at an idle gap, a
+  lower-middle median, and every Artifact call counted as a publish.
+- A gate you started before your last edit tests old code. Stop it and
+  start it again after the edits; never report its result for the new code.
 - When one part is blocked, park it with a note and continue with the other
   parts. Come back to it later.
 - A new request from the user mid-goal joins the goal: add it to the

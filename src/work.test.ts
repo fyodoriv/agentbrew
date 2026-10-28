@@ -75,7 +75,7 @@ describe("buildWorkPlan", () => {
     expect(found).toEqual(["/r/careerbrew-acme"]);
   });
 
-  it("skips a linked worktree and a sibling with no plugin file (#617)", () => {
+  it("skips a linked worktree, a second clone of the tool, and a sibling with no plugin file (#617)", () => {
     const base = mkdtempSync(join(tmpdir(), "work-plugins-"));
     for (const rel of ["careerbrew/.git", "careerbrew-acme/.git", "careerbrew-notes/.git", "careerbrew-pr45"]) {
       mkdirSync(join(base, rel), { recursive: true });
@@ -83,7 +83,14 @@ describe("buildWorkPlan", () => {
     writeFileSync(join(base, "careerbrew-acme/Agentfile.yaml"), "commands:\n  - ./commands\n");
     writeFileSync(join(base, "careerbrew-pr45/.git"), "gitdir: /elsewhere/.git/worktrees/pr45\n");
     writeFileSync(join(base, "careerbrew-pr45/Agentfile.yaml"), "commands:\n  - ./commands\n");
-    expect(findPluginCheckouts([base])).toEqual([`${base}/careerbrew-acme`]);
+    mkdirSync(join(base, "careerbrew-old/.git"), { recursive: true });
+    mkdirSync(join(base, "careerbrew-tope/.git"), { recursive: true });
+    const origin = (url: string) => `[core]\n\tbare = false\n[remote "origin"]\n\turl = ${url}\n`;
+    writeFileSync(join(base, "careerbrew/.git/config"), origin("git@example.com:me/careerbrew.git"));
+    writeFileSync(join(base, "careerbrew-old/.git/config"), origin("git@example.com:me/careerbrew.git"));
+    writeFileSync(join(base, "careerbrew-old/Agentfile.yaml"), "commands:\n  - ./commands\n");
+    writeFileSync(join(base, "careerbrew-tope/careerbrew-plugin.yaml"), "name: tope\n");
+    expect(findPluginCheckouts([base])).toEqual([`${base}/careerbrew-acme`, `${base}/careerbrew-tope`]);
     rmSync(base, { recursive: true, force: true });
   });
 

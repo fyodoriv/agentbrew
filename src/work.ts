@@ -81,13 +81,14 @@ export const PLUGIN_ROOTS = ["~/apps", "~/apps/tooling"];
 export const PLUGIN_REVIEW_HOW =
   "On each cycle, in each checkout in `checkouts` that holds a plugin (a careerbrew, agentbrew, or dotfiles plugin, or any app's plugin), list uncommitted files and unpushed commits. Skip a checkout that is not a plugin, in one line. For each change, decide if it is generic: could someone outside the org use it, with no company name, internal host, or private data? A generic change belongs in the main tool: draft the move (an issue or PR on the main tool, with the org-specific parts left behind a generic setting) and add it to the batched questions. Never move or publish anything before the user says yes.";
 
-/** Files that mark a folder as a plugin checkout (#617). */
+/** Files that mark a folder as a plugin checkout (#617), besides any `<tool>-plugin.yaml`. */
 export const PLUGIN_MARKERS = [MANIFEST_FILE, ".claude-plugin", "catalog-overlay.yaml", "Agentfile.yaml"];
 
 /**
  * Plugin checkouts beside a main tool: `<root>/<tool>-<name>` when
  * `<root>/<tool>` is a git checkout too, the sibling is a main checkout (a
- * linked worktree's `.git` is a file), and it holds a plugin marker (#617).
+ * linked worktree's `.git` is a file) of another repo (not a second clone of
+ * the tool), and it holds a plugin marker (#617).
  */
 export function findPluginCheckouts(
   roots: string[] = PLUGIN_ROOTS,
@@ -99,8 +100,7 @@ export function findPluginCheckouts(
     }
   },
   isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
-  isPlugin: (dir: string) => boolean = (dir) =>
-    isMainCheckout(dir) && PLUGIN_MARKERS.some((marker) => existsSync(join(dir, marker))),
+  isPlugin: (dir: string, toolDir: string) => boolean = isPluginCheckout,
 ): string[] {
   const out: string[] = [];
   for (const root of roots) {
@@ -109,10 +109,23 @@ export function findPluginCheckouts(
     const tools = new Set(names.filter((n) => isRepo(join(dir, n))));
     for (const name of names) {
       const tool = [...tools].find((t) => name.startsWith(`${t}-`));
-      if (tool && isRepo(join(dir, name)) && isPlugin(join(dir, name))) out.push(`${root}/${name}`);
+      if (tool && isRepo(join(dir, name)) && isPlugin(join(dir, name), join(dir, tool))) out.push(`${root}/${name}`);
     }
   }
   return out;
+}
+
+function isPluginCheckout(dir: string, toolDir: string): boolean {
+  if (!isMainCheckout(dir)) return false;
+  const origin = originUrl(dir);
+  if (origin && origin === originUrl(toolDir)) return false;
+  let names: string[] = [];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return false;
+  }
+  return names.some((n) => PLUGIN_MARKERS.includes(n) || n.endsWith("-plugin.yaml"));
 }
 
 /** A checkout whose `.git` is a folder, not a linked worktree. */
@@ -121,6 +134,16 @@ function isMainCheckout(dir: string): boolean {
     return statSync(join(dir, ".git")).isDirectory();
   } catch {
     return false;
+  }
+}
+
+/** The `origin` URL in a checkout's `.git/config`, without running git. */
+function originUrl(dir: string): string | undefined {
+  try {
+    const config = readFileSync(join(dir, ".git", "config"), "utf-8");
+    return /\[remote "origin"\][^[]*?\burl\s*=\s*(\S+)/.exec(config)?.[1];
+  } catch {
+    return undefined;
   }
 }
 

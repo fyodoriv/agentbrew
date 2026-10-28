@@ -191,14 +191,6 @@ continue?". The user set a goal so that they can be away.
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
-- A goal with more than five requirements gets a traceability test: one
-  entry per requirement, mapped to the files and tests that meet it. It fails
-  when a mapped path is missing, and it is the coverage metric in the contract.
-- A subagent that stops on a usage limit keeps its work. After the reset,
-  resume it with `SendMessage`; do not redo its work or start a new agent.
-- Research subagents use web fetch and search only, never browser tools: a
-  browser call can hang for hours. Give each fact two fetch attempts, then
-  keep it marked unverified with the reason, and save after each file.
 - Work in small verified steps. Run the guard after each change that matters.
 - Before you start, read [references/execution.md](references/execution.md) and follow every
   bullet: live-tool probes, test loops, commits, subagents, workers, restarts, secrets, web facts.
@@ -208,30 +200,10 @@ continue?". The user set a goal so that they can be away.
   plan to run it next.
 - When one part is blocked, park it with a note and continue with the other
   parts. Come back to it later.
-- A new request from the user mid-goal joins the goal: add it to the
-  contract file as a done-criterion, say so in one line, and deliver it in
-  this run. A request to drop something works the same way: mark the
-  criterion dropped in the contract file, shrink the metric's denominator,
-  and stop all work on it.
-  A request to remove something also gets a guard test that fails if it
-  comes back (code, config and docs). Do not start a separate session for it unless the user asks.
-  A new rule mid-goal also covers what you already did in this run: fix
-  your past output too (for example, merge your back-to-back replies into
-  one).
-- A mid-goal answer can change a default the run already used (the
-  recommended option of an unanswered question, or an **Assumptions**
-  line). Record the answer in the contract file in place of the default,
-  and fix any done-criterion or metric built on it. In the same pass,
-  update every artifact built on that default: tickets, doc sections,
-  drafts, and code. Park an edit that needs fresh approval, as the
-  fresh-approval bullet below says. Print the goal check line again for
-  each criterion the answer touches, with each updated artifact's link or
-  path as its evidence. For a criterion with a parked edit, print it as
-  `Goal check 2/4 ⏸ <criterion> — parked: <edit>`, then the links of the
-  artifacts already updated. It is not done until the edit lands. One run
-  filed tickets from its defaults, and then a mid-goal
-  answer changed one of those defaults, so the tickets built on it no
-  longer matched the answer.
+- A new request, a drop request, or an answer that changes a default
+  mid-goal: follow "Mid-goal changes" in [references/execution.md](references/execution.md)
+  (update the contract, every artifact built on the old default, and the
+  goal check lines).
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -305,21 +277,13 @@ grader fails, move the grader's failures into the gate as new tests.
 
 Before you merge each PR, ask a fresh-context subagent to review its diff,
 also when the full suite is green. In one goal run, reviewers found real
-defects in 6 of 8 green PRs: a crop that picked the wrong figure, a cache entry
-saved under the wrong key, a CLI crash in sandboxed shells, and a fixture that
-missed one path, so a test failed only on the owner's machine. Send each
+defects in 6 of 8 green PRs, such as a cache entry saved under the wrong
+key and a CLI crash in sandboxed shells. Send each
 finding back to the agent that wrote the code (it keeps its context), then
 review the fix again.
 
-When you resume a worker with `SendMessage` for a fix round, repeat the rule
-in that message: "fresh-context review of the diff before merge". A resumed
-worker can miss a rule that only its first brief named. In one run, workers
-resumed for fix rounds merged without that review. Later reviews found 9
-more defects in one fix PR, including a high-severity data loss, and 6 more
-in another. Another unreviewed PR had a high-severity trust bypass. Before
-you count a fix as done, read the review's output yourself, not only the
-worker's report. If no review ran, run one now. If the PR already merged,
-review the merged diff and send each finding back as a new fix round.
+A worker resumed for a fix round still needs that review: see "Fix rounds,
+waiting workers, and duplicate PRs" in [references/parallel-workers.md](references/parallel-workers.md).
 
 ## Phase 6 — Retro and skill upkeep
 

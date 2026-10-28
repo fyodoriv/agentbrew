@@ -3,8 +3,18 @@
 Loaded from Phase 4 and Phase 5 of `SKILL.md`. Each bullet comes from a run
 that failed without it.
 
+Contents: During execution · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
+
 ## During execution
 
+- A goal with more than five requirements gets a traceability test: one
+  entry per requirement, mapped to the files and tests that meet it. It fails
+  when a mapped path is missing, and it is the coverage metric in the contract.
+- A subagent that stops on a usage limit keeps its work. After the reset,
+  resume it with `SendMessage`; do not redo its work or start a new agent.
+- Research subagents use web fetch and search only, never browser tools: a
+  browser call can hang for hours. Give each fact two fetch attempts, then
+  keep it marked unverified with the reason, and save after each file.
 - Probe a live tool (Slack, Jira, a browser form) only on a throwaway
   target you own, such as your own self-DM, never on the deliverable. One
   probe saved a "test" draft in a team thread; another attached `t.txt` to
@@ -130,3 +140,30 @@ lower-middle median, and every Artifact call counted as a publish.
 
 A gate you started before your last edit tests old code. Stop it and
 start it again after the edits; never report its result for the new code.
+
+## Mid-goal changes
+
+- A new request from the user mid-goal joins the goal: add it to the
+  contract file as a done-criterion, say so in one line, and deliver it in
+  this run. A request to drop something works the same way: mark the
+  criterion dropped in the contract file, shrink the metric's denominator,
+  and stop all work on it.
+  A request to remove something also gets a guard test that fails if it
+  comes back (code, config and docs). Do not start a separate session for it unless the user asks.
+  A new rule mid-goal also covers what you already did in this run: fix
+  your past output too (for example, merge your back-to-back replies into
+  one).
+- A mid-goal answer can change a default the run already used (the
+  recommended option of an unanswered question, or an **Assumptions**
+  line). Record the answer in the contract file in place of the default,
+  and fix any done-criterion or metric built on it. In the same pass,
+  update every artifact built on that default: tickets, doc sections,
+  drafts, and code. Park an edit that needs fresh approval, as the
+  fresh-approval bullet in `SKILL.md` Phase 4 says. Print the goal check line again for
+  each criterion the answer touches, with each updated artifact's link or
+  path as its evidence. For a criterion with a parked edit, print it as
+  `Goal check 2/4 ⏸ <criterion> — parked: <edit>`, then the links of the
+  artifacts already updated. It is not done until the edit lands. One run
+  filed tickets from its defaults, and then a mid-goal
+  answer changed one of those defaults, so the tickets built on it no
+  longer matched the answer.

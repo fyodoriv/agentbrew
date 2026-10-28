@@ -4,6 +4,8 @@ Read this before a goal runs several agents at once: workflow agents in
 worktrees, a serialized merge queue, or a loop that watches for new work.
 Each rule comes from a real failure in a goal run.
 
+Contents: Starting workers · Steering running agents · Files the main session owns · Merges · Waiting · Watch loops · Fix rounds, waiting workers, and duplicate PRs
+
 ## Starting workers
 
 - Pin the base. The shared brief names the exact base commit
@@ -154,3 +156,32 @@ Each rule comes from a real failure in a goal run.
 - Report two latencies for each picked-up item: issue to pickup (bounded by
   the poll interval) and issue to merged PR (which includes implementation,
   review, and the full gate).
+
+## Fix rounds, waiting workers, and duplicate PRs
+
+Green suites still miss defects. In one goal run, reviewers found real
+defects in 6 of 8 green PRs: a crop that picked the wrong figure, a cache
+entry saved under the wrong key, a CLI crash in sandboxed shells, and a
+fixture that missed one path, so a test failed only on the owner's machine.
+
+When you resume a worker with `SendMessage` for a fix round, repeat the rule
+in that message: "fresh-context review of the diff before merge". A resumed
+worker can miss a rule that only its first brief named. In one run, workers
+resumed for fix rounds merged without that review. Later reviews found 9
+more defects in one fix PR, including a high-severity data loss, and 6 more
+in another. Another unreviewed PR had a high-severity trust bypass. Before
+you count a fix as done, read the review's output yourself, not only the
+worker's report. If no review ran, run one now. If the PR already merged,
+review the merged diff and send each finding back as a new fix round.
+
+A worker that ends its turn while its gate waits in the `heavy-run` queue
+shows as "completed", but its last line says it is waiting. That is not a
+report: it has no PR, SHA, or gate rc yet. Do not count it done. It resumes
+when its background run ends; send it a `SendMessage` only to add a rule
+or ask for the result.
+
+Right before each merge, list the repo's open PRs again. Another session on
+the same account can open a second PR for the same issue mid-run. In one run,
+two PRs for one issue (one CONFLICTING, one MERGEABLE) came from two
+sessions. Compare them, keep one, and ask the owner before you close the
+other session's PR.

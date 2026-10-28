@@ -1886,6 +1886,17 @@
         "The gate started before the last edit is stopped and run again",
         "The merge waits for the rerun gate's own result"
       ]
+    },
+    {
+      "id": 163,
+      "prompt": "/goal deliver the 5 unblocked tasks in agentbrew and dotfiles with 3 parallel workers, then start a watch loop",
+      "expected_output": "Three workers each end their turn with 'my gate is queued on heavy-run; I will report when it finishes' and show as completed. The lead does not count any of them as delivered: it records no PR, SHA, or gate rc for them, does other work, and waits for the real reports. Before merging the fix for an issue, the lead lists open PRs again, finds a second PR for the same issue from another session, compares the two, and asks the owner before closing the other session's PR.",
+      "expectations": [
+        "A worker whose last line says its gate is still queued is not counted as done; no Goal check line claims its PR",
+        "The lead does independent work instead of ending its turn only to wait",
+        "Open PRs are listed again right before a merge, and a duplicate PR for the same issue is reported",
+        "The lead does not close another session's PR without the owner's answer"
+      ]
     }
   ]
 }

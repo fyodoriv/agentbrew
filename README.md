@@ -353,7 +353,7 @@ Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (
 
 A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`.
 
-Before the first step, `/work` runs `startOfDay`: it fast-forwards each clean checkout in `repoWatch.checkouts`, runs `agentbrew sync` once if any updated, and prints one line per checkout (updated, current, or skipped). That list holds each Agentfile folder that adds steps and the app it wraps (for `careerbrew-<org>`, the `careerbrew` checkout beside it).
+Before the first step, `/work` runs `startOfDay`: it fast-forwards each clean checkout in `repoWatch.checkouts`, runs `agentbrew sync` once if any updated, and prints one line per checkout (updated, current, or skipped). That list holds each Agentfile folder that adds steps and each app checkout the plugin deploys from (read from the local `sources:`, `commands:`, and `agents:` paths in its Agentfile that sit in another git checkout; a folder name is never used).
 
 The watch loop also applies repo updates. `repoWatch` lists the same checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
 

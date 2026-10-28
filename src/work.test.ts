@@ -10,7 +10,7 @@ import {
   buildWorkStages,
   DEFAULT_WORK_STEPS,
   END_OF_DAY_STEP,
-  findParentCheckout,
+  findParentCheckouts,
   findPluginCheckouts,
   formatWorkPlan,
   mergeWorkSteps,
@@ -113,7 +113,7 @@ describe("repo-update watch (#516)", () => {
         { step: "/acme-refresh", agentfile: "~/apps/agentbrew-acme", refresh: true },
       ]),
       [],
-      { isRepo: () => false },
+      { parentsOf: () => [] },
     );
     expect(plan.steps.map((s) => s.step)).not.toContain("/acme-refresh");
     expect(plan.repoWatch.checkouts).toEqual(["~/apps/dotfiles", "~/apps/agentbrew-acme"]);
@@ -126,42 +126,67 @@ describe("repo-update watch (#516)", () => {
 });
 
 describe("start-of-day refresh of parent app checkouts (#600)", () => {
-  const dirs: Record<string, string[]> = { "/r": ["careerbrew", "careerbrew-acme", "notes-x"] };
-  const repos = new Set(["/r/careerbrew", "/r/careerbrew-acme", "/r/notes-x"]);
-  const list = (d: string) => dirs[d] ?? [];
-  const isRepo = (d: string) => repos.has(d);
+  /** A scratch folder with git checkouts (an empty `.git` folder is enough) and Agentfiles. */
+  function scratch(layout: Record<string, string | null>): string {
+    const base = mkdtempSync(join(tmpdir(), "work-parents-"));
+    for (const [rel, agentfile] of Object.entries(layout)) {
+      mkdirSync(join(base, rel, ".git"), { recursive: true });
+      if (agentfile !== null) writeFileSync(join(base, rel, "Agentfile.yaml"), agentfile);
+    }
+    return base;
+  }
 
-  it("finds the app a plugin checkout wraps: the `<tool>` repo beside `<tool>-<name>`", () => {
-    expect(findParentCheckout("/r/careerbrew-acme", list, isRepo)).toBe("/r/careerbrew");
-    expect(findParentCheckout("/r/careerbrew", list, isRepo)).toBeUndefined();
-    expect(findParentCheckout("/r/solo-acme", list, isRepo)).toBeUndefined();
+  it("finds the app checkout a plugin deploys from, even for a worktree or a plugin in another folder", () => {
+    const base = scratch({ app: null, "wt/plugin-fix": null, "other/plugin": null });
+    const sources = `sources:\n  - ${base}/app/skills\ncommands:\n  - ./commands\n`;
+    writeFileSync(join(base, "wt/plugin-fix/Agentfile.yaml"), sources);
+    writeFileSync(join(base, "other/plugin/Agentfile.yaml"), sources);
+    expect(findParentCheckouts(join(base, "wt/plugin-fix"))).toEqual([join(base, "app")]);
+    expect(findParentCheckouts(join(base, "other/plugin"))).toEqual([join(base, "app")]);
+    rmSync(base, { recursive: true, force: true });
+  });
+
+  it("does not guess from a dashed name: a separate app beside another one has no parent", () => {
+    const base = scratch({ app: null, "app-learn": "sources:\n  - ./skills\ncommands:\n  - ./commands\n" });
+    expect(findParentCheckouts(join(base, "app-learn"))).toEqual([]);
+    rmSync(base, { recursive: true, force: true });
+  });
+
+  it("finds the checkout that encloses a nested source path, and lists it once", () => {
+    const base = scratch({ app: null, plugin: null });
+    writeFileSync(
+      join(base, "plugin/Agentfile.yaml"),
+      `sources:\n  - ${base}/app/skills/x\ncommands:\n  - ${base}/app/commands\n`,
+    );
+    expect(findParentCheckouts(join(base, "plugin"))).toEqual([join(base, "app")]);
+    rmSync(base, { recursive: true, force: true });
   });
 
   it("lists the parent app checkout of each plugin that adds steps, and tells the agent to fast-forward before step one", () => {
-    const plan = buildWorkPlan(state([{ step: "/careerbrew-live", agentfile: "/r/careerbrew-acme" }]), [], {
-      listDir: list,
-      isRepo,
+    const plan = buildWorkPlan(state([{ step: "/app-live", agentfile: "/r/plugin" }]), [], {
+      parentsOf: (dir) => (dir === "/r/plugin" ? ["/r/app"] : []),
     });
-    expect(plan.repoWatch.checkouts).toEqual(["/r/careerbrew-acme", "/r/careerbrew"]);
+    expect(plan.repoWatch.checkouts).toEqual(["/r/plugin", "/r/app"]);
     expect(plan.startOfDay.checkouts).toEqual(plan.repoWatch.checkouts);
     expect(plan.startOfDay.how).toMatch(/before the first step/i);
     expect(plan.startOfDay.how).toMatch(/fast-forward/);
-    expect(plan.startOfDay.how).toMatch(/updated, current, or skipped/);
-    expect(formatWorkPlan(plan)).toContain(
-      "Start of day: fast-forward /r/careerbrew-acme, /r/careerbrew before step 1",
-    );
+    expect(plan.startOfDay.how).toMatch(/updated, current, or skipped \(<reason>\)/);
+    for (const reason of ["dirty", "diverged", "no upstream", "detached HEAD", "failed fetch"]) {
+      expect(plan.startOfDay.how).toContain(reason);
+    }
+    expect(formatWorkPlan(plan)).toContain("Start of day: fast-forward /r/plugin, /r/app before step 1");
   });
 
   it("lists a shared parent once", () => {
     const plan = buildWorkPlan(
       state([
-        { step: "/a", agentfile: "/r/careerbrew-acme" },
-        { step: "/b", agentfile: "/r/careerbrew-acme" },
+        { step: "/a", agentfile: "/r/p1" },
+        { step: "/b", agentfile: "/r/p2" },
       ]),
       [],
-      { listDir: list, isRepo },
+      { parentsOf: () => ["/r/app"] },
     );
-    expect(plan.repoWatch.checkouts).toEqual(["/r/careerbrew-acme", "/r/careerbrew"]);
+    expect(plan.repoWatch.checkouts).toEqual(["/r/p1", "/r/app", "/r/p2"]);
   });
 });
 

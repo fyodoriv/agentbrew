@@ -10,9 +10,9 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import chalk from "chalk";
-import type { AgentfileWorkStep } from "./agentfile.js";
+import { type Agentfile, type AgentfileWorkStep, loadAgentfile } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
@@ -112,30 +112,40 @@ export function findPluginCheckouts(
   return out;
 }
 
+/** The git checkout that holds `path`: the nearest folder at or above it with a `.git`. */
+function enclosingRepo(path: string, isRepo: (dir: string) => boolean): string | undefined {
+  const home = homedir();
+  for (let dir = path; dir !== dirname(dir) && dir !== home; dir = dirname(dir)) {
+    if (isRepo(dir)) return dir;
+  }
+  return undefined;
+}
+
 /**
- * The app a plugin checkout wraps (#600): `<dir>/<tool>` when the checkout is
- * `<dir>/<tool>-<name>` and `<tool>` is a git checkout beside it. Uses the
- * same naming rule as `findPluginCheckouts`. The longest matching tool wins.
+ * The app checkouts a plugin deploys from (#600): its Agentfile's local
+ * `sources:`, `commands:`, and `agents:` paths that sit in another git
+ * checkout. Those are the data agentbrew has about what the plugin wraps; a
+ * folder name is never used. Nothing is returned for an Agentfile with no
+ * such path, or one whose paths all stay inside its own checkout. Paths come
+ * back as `~/...` under the home folder.
  */
-export function findParentCheckout(
+export function findParentCheckouts(
   pluginDir: string,
-  list: (dir: string) => string[] = (dir) => {
-    try {
-      return readdirSync(dir);
-    } catch {
-      return [];
-    }
-  },
+  load: (dir: string) => Agentfile | undefined = loadAgentfile,
   isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
-): string | undefined {
-  const name = basename(pluginDir);
-  if (!name.includes("-")) return undefined;
-  const root = dirname(pluginDir);
-  const dir = expandHome(root);
-  const tool = list(dir)
-    .filter((n) => name.startsWith(`${n}-`) && isRepo(join(dir, n)))
-    .sort((a, b) => b.length - a.length)[0];
-  return tool ? join(root, tool) : undefined;
+): string[] {
+  const own = expandHome(pluginDir);
+  const ownRepo = enclosingRepo(own, isRepo);
+  const file = load(own);
+  const entries = [...(file?.sources ?? []), ...(file?.commands ?? []), ...(file?.agents ?? [])];
+  const found = new Set<string>();
+  for (const entry of entries) {
+    if (!/^[.~/]/.test(entry)) continue;
+    const repo = enclosingRepo(resolve(own, expandHome(entry)), isRepo);
+    if (repo && repo !== own && repo !== ownRepo) found.add(repo);
+  }
+  const home = homedir();
+  return [...found].map((repo) => (repo.startsWith(`${home}/`) ? `~${repo.slice(home.length)}` : repo));
 }
 
 /** Step status on the dashboard (#510). */
@@ -323,7 +333,7 @@ export const REPO_WATCH_HOW =
 
 /** What `/work` does before the first step (#600). */
 export const START_OF_DAY_HOW =
-  "Before the first step, fetch the remote of each checkout in `checkouts` and fast-forward each clean checkout that is behind (never merge, rebase, or reset). Skip a checkout with local changes or a diverged branch. Print one line per checkout: updated, current, or skipped (dirty or diverged). If any checkout updated, run `agentbrew sync` once, then go on to the first step.";
+  "Before the first step, fetch the remote of each checkout in `checkouts` and fast-forward each clean checkout that is behind (never merge, rebase, or reset). Skip a checkout with local changes or a diverged branch. Print one line per checkout: updated, current, or skipped (<reason>). Skip with a reason, and go on, for a checkout that has local changes (dirty), a diverged branch, no upstream branch, a detached HEAD, or a failed fetch. If any checkout updated, run `agentbrew sync` once, then go on to the first step.";
 
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(
@@ -342,8 +352,7 @@ export function buildWorkPlan(
     stateHome?: string;
     dirExists?: (dir: string) => boolean;
     pluginCheckouts?: string[];
-    listDir?: (dir: string) => string[];
-    isRepo?: (dir: string) => boolean;
+    parentsOf?: (agentfileDir: string) => string[];
   } = {},
 ): WorkPlan {
   const all = state?.workSteps ?? [];
@@ -369,8 +378,7 @@ export function buildWorkPlan(
   const checkouts = [
     ...new Set(
       [...new Set(current.map((e) => e.agentfile))].flatMap((dir) => {
-        const parent = findParentCheckout(dir, options.listDir, options.isRepo);
-        return parent ? [dir, parent] : [dir];
+        return [dir, ...(options.parentsOf ?? ((d: string) => findParentCheckouts(d)))(dir)];
       }),
     ),
   ];

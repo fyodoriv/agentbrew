@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
 - `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
   bytes a run reads, and each recorded run's wall time, tool time, calls,
   blocked calls, Artifact calls, subagents, and time per step (from the

@@ -332,7 +332,6 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
 /** What `/work` does for repo updates: before the first step and on each watch pass (#516, #600). */
 export const REPO_WATCH_HOW =
   "Before the first step and on each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Print one line per checkout: updated, current, or skipped (<reason>: dirty, diverged, no upstream, detached HEAD, failed fetch).";
-("On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.");
 
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(

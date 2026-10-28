@@ -96,6 +96,16 @@
         "Still lists a worktree that has uncommitted files, even when its branch shipped",
         "Lists each worktree once"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "wrap up: open-work.sh lists `branch fix/x: 8 commit(s) not on main, likely landed (100% of its added lines are on main): look, then delete it`",
+      "expected_output": "Reports the branch as cleanup, checks git log main..fix/x, and offers to delete it; does not tell the user to continue it or count it as work to finish.",
+      "expectations": [
+        "Treats a likely-landed branch as cleanup, not open work",
+        "Runs or names git log main..fix/x before suggesting deletion",
+        "Asks before deleting the branch"
+      ]
     }
   ]
 }

@@ -415,6 +415,7 @@
   - **Success**: all three cases pass, and the existing cases in that file still pass.
   - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
   - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
+  - **Blocked**: needs-design — 2026-10-28: the 4th design (record the files a build wrote, PR #607, left as a draft) failed review. (A) The record also caught files that are not build output: a `config.json` that the build writes only when it is missing, and a `token.json` that the running server writes during the build. The next re-pin moved such a file aside, rebuilt it as an empty template, and deleted the user's copy. (B) When a re-pin was refused, the old version's `dist/index.js` (an ignored, untracked file) was lost if the new version committed its own `dist/index.js`. (C) A cache made by an older agentbrew has no record, so it could register stale output for good. (D) A crash in the middle of a build lost the moved-aside copy, because the next run cleared that folder first. Unblock when: a design can tell build output apart from files the server or the user write, for example a build manifest, or only the paths under the package's declared build output (`package.json` main/bin/exports folder, tsconfig `outDir`), and no user file is ever in a move or delete set.
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget

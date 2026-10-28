@@ -27,6 +27,10 @@ exactly what is left.
    `branch` open work, even after the default branch changed the same lines,
    unless the default branch reverted it; nor is a branch whose tip is a merged PR's head (needs `gh`).
    The same holds for a `worktree` of such a branch with no uncommitted files.
+   A `branch` line that ends "likely landed (N% of its added lines are on
+   main): look, then delete it" reached the default branch through other PRs
+   (`OPEN_WORK_LANDED_PCT`, default 90). Check `git log main..<branch>`, then
+   offer to delete it; do not tell the user to continue it.
    A `reply` line is a comment or review body by someone else on your open PR,
    posted after your last reply: answer each one. `OPEN_WORK_IGNORE_AUTHORS`
    and `OPEN_WORK_IGNORE_BODIES` (extended regexes) skip bots and noise.

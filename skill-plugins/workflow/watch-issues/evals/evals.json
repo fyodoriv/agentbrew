@@ -162,7 +162,7 @@
     },
     {
       "id": 16,
-      "prompt": "I armed a Monitor on watch-repos.sh for two repos. Every line it prints is a skip with an x509 TLS error from gh. What do you change?",
+      "prompt": "I armed a Monitor on the watch-pass.sh loop for two repos. Every line it prints is a skip with an x509 TLS error from gh. What do you change?",
       "expected_output": "The agent sees that the Monitor runs in the Bash sandbox, where gh fails TLS. It runs the watcher as a background Bash call with the sandbox off, writing to a log file, and arms the Monitor on tail -f of that log.",
       "expectations": [
         "Names the Bash sandbox as the cause of the x509 failure, not GitHub",

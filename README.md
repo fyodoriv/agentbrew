@@ -353,6 +353,8 @@ Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (
 
 A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`.
 
+`agentbrew work stats` shows what `/work` costs. It counts the bytes a run reads to start (the command text plus the plan) and lists every recorded run from the agent perf log: wall time, tool time, calls, blocked calls, Artifact publishes, subagents, and time per step. A run starts at its `agentbrew work --json` call. The numbers feed `work_instruction_bytes` and `work_run_wall_ms` in [`docs/metrics.md`](docs/metrics.md).
+
 The watch loop also applies repo updates. `repoWatch` lists the applied Agentfile checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
 
 Then it runs each step marked `refresh: true` (a plugin's own refresh step, which never runs in the day plan). A checkout with local changes or a diverged branch is skipped with one line.
@@ -880,6 +882,7 @@ agentbrew config [--json]              Each setting with its value, source, and 
 agentbrew config set <key> <value>     Check one setting and save it to state.yaml
 agentbrew actions [--json]             Every action with its arguments and notes (for agents)
 agentbrew work [--json]                The day plan for /work: checkup steps, machine rule, watch, end of day
+agentbrew work stats [--days N] [--json]  What each /work run cost: instruction bytes, wall and tool time, calls, Artifact publishes, per-step time
 agentbrew audit-skills [--json] [--into <repo>]
                                        Local skills/commands no source owns: merge, merge?, or adopt
 agentbrew init [--force] [--skip-install] [--skip-sync]

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
+  bytes a run reads, and each recorded run's wall time, tool time, calls,
+  blocked calls, Artifact publishes, subagents, and time per step (from the
+  agent perf log, `agent-perf.mjs work`). New metrics `work_instruction_bytes`
+  and `work_run_wall_ms`.
 - `/work` keeps a live dashboard for the day (#510). `agentbrew work --json`
   returns a `dashboard` block: title, one row per step, statuses, and a
   local page path; the end-of-day report links it.

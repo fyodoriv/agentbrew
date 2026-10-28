@@ -340,6 +340,8 @@ describe("review-pr draft judge (#611)", () => {
     }
     const evals = JSON.parse(readFileSync(join(SKILL, "evals", "evals.json"), "utf-8")).evals as { prompt: string }[];
     expect(evals.some((e) => /not a member/.test(e.prompt) && /PROJ-123/.test(e.prompt))).toBe(true);
-    expect(evals.some((e) => /thread/.test(e.prompt) && /not a member/.test(e.prompt))).toBe(true);
+    expect(evals.some((e) => /#release thread/.test(e.prompt) && /not a member/.test(e.prompt))).toBe(true);
+    const shared = readFileSync(join(process.cwd(), "docs", "shared-rules.md"), "utf-8");
+    expect(shared).toMatch(/Judge every draft sent as the user[\s\S]*draft-judge\.md/);
   });
 });

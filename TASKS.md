@@ -171,19 +171,6 @@
 
 ## P2
 
-- [ ] `agentbrew sync` run inside a linked worktree must not register that worktree
-  - **ID**: sync-skip-linked-worktree-agentfile
-  - **Tags**: bug, sync, agents
-  - **Details**: On 2026-10-28 a goal run called `agentbrew sync` with its cwd in a linked worktree of agentbrew (`~/apps/tooling/wt/<name>`). Sync read that worktree's project `Agentfile.yaml` and registered its `commands/` and `skills/` as sources in `~/.config/agentbrew/state.yaml`. The next sync from the live checkout printed `Name clash: command agentbrew from ~/apps/tooling/wt.noindex/<name>/commands; skipped from ~/apps/tooling/agentbrew/commands`, so the live command was shadowed by a worktree that is about to be removed. `agentbrew remove <path>` answers "not found", so the entry cannot be removed by hand. Fix: when the project dir is a linked worktree (`.git` is a file) of a repo already registered as a source, skip it with one warning line, or offer `--project-worktree` to opt in.
-  - **Files**: `src/sync/`, `src/cli.ts`, `README.md`
-  - **Output**: code
-  - **Acceptance**: a test runs sync with cwd in a linked worktree of a registered source and asserts state.yaml gains no source for it and stdout has one warning line; a second test shows a normal project dir is still registered.
-  - **Hypothesis**: name-clash warnings caused by worktree sources drop from 2 per affected sync to 0.
-  - **Measurement**: with a scratch `HOME` (no prior state), run `agentbrew sync` once from a linked worktree and once from the live checkout, then `agentbrew sync 2>&1 | grep -c "Name clash"`; plus the new test in `npx vitest run src/sync`.
-  - **Success**: 0 clashes, and the new test passes.
-  - **Pivot**: if skipping breaks a real worktree-based project setup (any existing sync test fails), switch to a warning only.
-  - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate); git-worktree(1) on linked worktree `.git` files.
-
 - [ ] Report Hallmark's render wait that never ends on apps that poll
   - **ID**: hallmark-render-wait-upstream
   - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first

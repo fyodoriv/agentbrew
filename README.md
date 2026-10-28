@@ -317,6 +317,8 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 **Global vs. project.** The global Agentfile (`~/.config/agentbrew/Agentfile.yaml`) is authoritative — items you remove from it are removed from state on next sync. MCP servers that `agentbrew init` found already set up in your agents stay, unless the Agentfile listed them and later dropped them. The project Agentfile (`./Agentfile.yaml`) is additive — it can add items for that repo but never removes the global config. `install` and `remove` always update the global file (like `npm install` updating `package.json`); pass `--project` for project scope.
 
+A sync run from a linked worktree (a `git worktree add` copy) of a checkout that is already a source skips that worktree's project Agentfile and prints one warning. Run sync from the main checkout instead, so a short-lived worktree never shadows it.
+
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands` and agentbrew's built-in commands (`/agentbrew`). Built-in commands rank lowest: the global folder and any Agentfile dir override them, and your own version beats everything. Sync never copies them into your folder.
 
 Sync never overwrites a command you created or edited in `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it.

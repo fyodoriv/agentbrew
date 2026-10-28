@@ -78,6 +78,10 @@ vi.mock("./sync/mcp-sync.js", () => ({ syncMcpServers: vi.fn() }));
 vi.mock("./sync/rules-sync.js", () => ({ syncRules: vi.fn() }));
 vi.mock("./sync/skills-sync.js", () => ({ syncSkills: vi.fn() }));
 vi.mock("./sync/hooks-sync.js", () => ({ syncHooks: vi.fn() }));
+vi.mock("./sync/linked-worktree.js", () => ({
+  linkedWorktreeToSkip: vi.fn(() => undefined),
+  linkedWorktreeWarning: vi.fn((main: string) => `skipped worktree of ${main}`),
+}));
 vi.mock("./sync/model-sync.js", () => ({ syncModels: vi.fn() }));
 
 import { applyAgentfile } from "./agentfile.js";
@@ -90,6 +94,7 @@ import { syncAgentDefs } from "./sync/agents-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
 import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
+import { linkedWorktreeToSkip } from "./sync/linked-worktree.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
 import { syncRules } from "./sync/rules-sync.js";
@@ -791,6 +796,15 @@ describe("prepareSync and Agentfile handling", () => {
     await runSyncWithErrorCollection(modules, { authoritative: false });
     const projectCall = mockApplyAgentfile.mock.calls.find(([dir]) => dir === process.cwd());
     expect(projectCall?.[1]).toMatchObject({ pruneOwnedDirs: false });
+  });
+
+  it("skips the project Agentfile in a linked worktree of a registered checkout, with one warning", async () => {
+    vi.mocked(linkedWorktreeToSkip).mockReturnValueOnce("/main/tool");
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    await runSyncWithErrorCollection([{ name: "ok", fn: async () => undefined }]);
+    expect(mockApplyAgentfile.mock.calls.find(([dir]) => dir === process.cwd())).toBeUndefined();
+    expect(log.mock.calls.filter(([line]) => String(line).includes("skipped worktree of /main/tool"))).toHaveLength(1);
+    log.mockRestore();
   });
 
   it("tolerates applyAgentfile throwing without crashing", async () => {

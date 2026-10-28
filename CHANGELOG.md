@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `/work` reads 34% less to start: 6241 bytes, down from 9511
+- `/work` reads 34% less to start: 6298 bytes, down from 9511
   (`work_instruction_bytes`). `commands/work.md` keeps only what the plan does
   not say, `agentbrew work --json` prints compact JSON, and the plan drops
   `dashboard.top`. The day's page is republished when a stage ends, when a watch pass

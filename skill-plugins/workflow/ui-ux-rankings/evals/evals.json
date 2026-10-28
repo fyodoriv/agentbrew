@@ -101,6 +101,17 @@
         "Rereads changed pictures and repeats the whole-set review on the final set",
         "Does not claim full coverage from a sample"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "Redesign web/ with the design skill the owner chose. The current accent is indigo; nothing in the repo names a main color, and the owner's rules say to use their chosen main color.",
+      "expected_output": "Before it changes the accent, the agent searches config, design docs, and the owner's rules for a recorded main color. Finding none, it may change the hue, but the PR names the change with the old and new token values and one before/after pair, and says it is one token to change back.",
+      "expectations": [
+        "Searches for a recorded main color before changing the accent",
+        "Names the hue change in the PR with old and new token values",
+        "Shows one before/after pair for the accent change",
+        "Says the accent is one token to change back"
+      ]
     }
   ]
 }

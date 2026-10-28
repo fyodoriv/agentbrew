@@ -143,6 +143,28 @@ check_repo() {
     merged="$(git -C "$top" merge-tree --write-tree "origin/$base" "$b" 2>/dev/null)" &&
       [ "$merged" = "$(git -C "$top" rev-parse "origin/$base^{tree}")" ]
   }
+  # landed_pct <branch>: the share of the branch's added non-blank lines that
+  # the base already has in the same files. A branch whose change reached the
+  # base through other PRs matches no patch id; a high share says "look, then
+  # delete it", not "continue it".
+  landed_pct() {
+    local fork
+    fork="$(git -C "$top" merge-base "origin/$base" "$1" 2>/dev/null)" || return 1
+    git -C "$top" diff --no-color -U0 "$fork" "$1" 2>/dev/null | awk -v top="$top" -v base="origin/$base" '
+      /^\+\+\+ / { file = ($2 == "/dev/null") ? "" : substr($2, 3); next }
+      /^\+/ && file != "" { line = substr($0, 2); gsub(/^[ \t]+|[ \t]+$/, "", line); if (line != "") { n++; want[file, line]++; files[file] = 1 } }
+      END {
+        if (n == 0) { exit }
+        for (f in files) {
+          cmd = "git -C \"" top "\" show \"" base ":" f "\" 2>/dev/null"
+          while ((cmd | getline l) > 0) { gsub(/^[ \t]+|[ \t]+$/, "", l); have[f, l] = 1 }
+          close(cmd)
+        }
+        for (k in want) if (k in have) hit += want[k]
+        printf "%d\n", (100 * hit) / n
+      }'
+  }
+  local pct landed_min="${OPEN_WORK_LANDED_PCT:-90}"
   while IFS= read -r b; do
     [ -n "$b" ] && [ "$b" != "$base" ] || continue
     # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
@@ -150,7 +172,12 @@ check_repo() {
     ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
     [ "$ahead" -gt 0 ] || continue
     shipped "$b" && continue
-    say branch "$b: $ahead commit(s) not on $base"
+    pct="$(landed_pct "$b")"
+    if [ -n "$pct" ] && [ "$pct" -ge "$landed_min" ]; then
+      say branch "$b: $ahead commit(s) not on $base, likely landed ($pct% of its added lines are on $base): look, then delete it"
+    else
+      say branch "$b: $ahead commit(s) not on $base"
+    fi
   done <<<"$(git -C "$top" for-each-ref --format='%(refname:short)' refs/heads)"
 
   # Extra worktrees (the first entry is the checkout itself).

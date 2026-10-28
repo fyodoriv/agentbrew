@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The wrap-up skill's `open-work.sh` tags a branch whose added lines are
+  already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as
+  "likely landed: look, then delete it". Such a branch matched no squash
+  check and read as work to continue.
 - `/work` keeps a live dashboard for the day (#510). `agentbrew work --json`
   returns a `dashboard` block: title, one row per step, statuses, and a
   local page path; the end-of-day report links it.

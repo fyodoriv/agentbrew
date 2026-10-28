@@ -105,6 +105,42 @@ describe("wrap-up open-work.sh", () => {
     expect(r.status).toBe(1); // feat/open is open work
   });
 
+  it("tags a branch whose lines reached main through other PRs as likely landed", () => {
+    // No patch id or merge matches: main got the same lines plus its own edits.
+    const work = repo("landed-elsewhere");
+    git(work, "checkout", "-q", "-b", "feat/landed");
+    const lines = Array.from({ length: 20 }, (_, i) => `line ${i}`);
+    writeFileSync(join(work, "l.txt"), `${lines.join("\n")}\n`);
+    git(work, "add", "l.txt");
+    git(work, "commit", "-q", "-m", "feat: l");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "l.txt"), `header\n${lines.join("\n")}\nfooter\n`);
+    git(work, "add", "l.txt");
+    git(work, "commit", "-q", "-m", "feat: l with more (#2)");
+    git(work, "push", "-q", "origin", "main");
+    git(work, "checkout", "-q", "-b", "feat/open");
+    writeFileSync(join(work, "o.txt"), "o\n");
+    git(work, "add", "o.txt");
+    git(work, "commit", "-q", "-m", "feat: o");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(
+      /branch\s+feat\/landed: 1 commit\(s\) not on main, likely landed \(100% of its added lines are on main\): look, then delete it/,
+    );
+    expect(r.out).toMatch(/branch\s+feat\/open: 1 commit\(s\) not on main\n/);
+  });
+
+  it("never tags a branch that only deletes lines as likely landed", () => {
+    const work = repo("delete-only");
+    git(work, "checkout", "-q", "-b", "chore/rm");
+    git(work, "rm", "-q", "a.txt");
+    git(work, "commit", "-q", "-m", "chore: rm a");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+chore\/rm: 1 commit\(s\) not on main/);
+    expect(r.out).not.toContain("likely landed");
+  });
+
   it("lists a squash-merged branch again after main reverts it", () => {
     const work = repo("squashed-then-reverted");
     git(work, "checkout", "-q", "-b", "feat/undone");

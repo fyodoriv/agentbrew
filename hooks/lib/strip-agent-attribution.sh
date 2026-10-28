@@ -127,7 +127,7 @@ _strip_agent_attribution_in_file() {
 
   stripped_vendor_attribution=0
   if grep -iqE "$combined_re" "$msg_file"; then
-    tmp_file=$(mktemp)
+    tmp_file=$(mktemp "${TMPDIR:-/tmp}/strip-agent-attribution.XXXXXX")
     # grep -ivE may exit 1 if nothing passes through — tolerated with || true.
     grep -ivE "$combined_re" "$msg_file" > "$tmp_file" || true
     mv "$tmp_file" "$msg_file"
@@ -144,7 +144,7 @@ _strip_agent_attribution_in_file() {
   # know an agent wrote it. We do NOT touch commits that had no
   # vendor attribution (those are human commits).
   if [ "$stripped_vendor_attribution" = "1" ] && ! grep -qE "$footer_re" "$msg_file"; then
-    tmp_file=$(mktemp)
+    tmp_file=$(mktemp "${TMPDIR:-/tmp}/strip-agent-attribution.XXXXXX")
     # Trim trailing blank lines so the footer stays cleanly spaced.
     awk 'BEGIN{n=0} {a[++n]=$0} END{
       while (n>0 && a[n] ~ /^[[:space:]]*$/) n--

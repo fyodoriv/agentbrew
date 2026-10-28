@@ -106,7 +106,9 @@ So:
    the plan, not the facts: 20 "unmoved" items were already in the list.
 7. Check each tool path a criterion needs in its config, not its label (a Send
    needs a connector or token, a Save an endpoint; a scheduled job needs its own
-   credential or connector, not a session-only one). To rate a tool, check it
+   credential or connector, not a session-only one). Check it where its consumer
+   runs: a GUI app reads the launchd env and PATH, not your shell; a needed app
+   restart is a user step, not "met". To rate a tool, check it
    runs here and find its usage data; with none, rate only the design.
 8. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions share the account),

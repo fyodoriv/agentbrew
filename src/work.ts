@@ -57,8 +57,9 @@ export interface WorkPlan {
   questions: string;
   watch: string;
   /**
-   * The repo-update watch (#516): the applied Agentfile checkouts to poll,
-   * and the plugin refresh steps to run after an update.
+   * The repo-update watch (#516): the applied Agentfile checkouts and the
+   * app each plugin builds on (#600), refreshed before the first step and on
+   * each watch pass, and the plugin refresh steps to run after an update.
    */
   repoWatch: { checkouts: string[]; refresh: string[]; how: string };
   endOfDay: string[];
@@ -285,7 +286,26 @@ function nextStage(remaining: StageInput[], isDone: (step: string) => boolean): 
 
 /** What `/work` does on each watch pass for repo updates (#516). */
 export const REPO_WATCH_HOW =
-  "On each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch and say so in one line. Print one line per update.";
+  "Before the first step and on each watch pass, fetch the remote of each checkout in `checkouts`. When its branch has new commits and the checkout is clean, fast-forward it (never merge, rebase, or reset), then run `agentbrew sync` once and each `refresh` step. Skip a checkout with local changes or a diverged branch. Print one line per checkout: updated, current, or skipped and why.";
+
+/**
+ * The app a plugin checkout builds on (#600): `<root>/<tool>` beside
+ * `<root>/<tool>-<name>`, when it is a git checkout. Its skills and code run
+ * the plugin's work steps, so it is refreshed with the plugin.
+ */
+export function parentAppCheckout(
+  dir: string,
+  isRepo: (dir: string) => boolean = (d) => existsSync(join(expandHome(d), ".git")),
+): string | undefined {
+  const slash = dir.lastIndexOf("/");
+  const root = dir.slice(0, slash);
+  const name = dir.slice(slash + 1);
+  for (let i = name.indexOf("-"); i > 0; i = name.indexOf("-", i + 1)) {
+    const parent = `${root}/${name.slice(0, i)}`;
+    if (isRepo(parent)) return parent;
+  }
+  return undefined;
+}
 
 /** Drop entries whose Agentfile dir is gone (a deleted worktree), so stale steps neither run nor shadow current ones (#515). */
 export function pruneMissingWorkSteps(
@@ -299,7 +319,13 @@ export function pruneMissingWorkSteps(
 export function buildWorkPlan(
   state: AgentBrewState | undefined,
   plugins: PluginLockEntry[],
-  options: { date?: Date; stateHome?: string; dirExists?: (dir: string) => boolean; pluginCheckouts?: string[] } = {},
+  options: {
+    date?: Date;
+    stateHome?: string;
+    dirExists?: (dir: string) => boolean;
+    pluginCheckouts?: string[];
+    isRepo?: (dir: string) => boolean;
+  } = {},
 ): WorkPlan {
   const all = state?.workSteps ?? [];
   const current = pruneMissingWorkSteps(all, options.dirExists ?? (() => true));
@@ -321,6 +347,8 @@ export function buildWorkPlan(
   for (const step of DEFAULT_WORK_STEPS) add(step, "agentbrew");
   for (const entry of current) if (!entry.refresh) add(entry.step, entry.agentfile, entry);
   const refresh = [...new Set(current.filter((e) => e.refresh).map((e) => e.step))];
+  const agentfiles = [...new Set(current.map((e) => e.agentfile))];
+  const parents = agentfiles.map((dir) => parentAppCheckout(dir, options.isRepo)).filter((d): d is string => !!d);
   return {
     staleWorkSteps,
     ...machineRule(plugins),
@@ -333,7 +361,7 @@ export function buildWorkPlan(
     watch:
       "After the steps, keep watching: re-run a step when its input changes, print one line per update, and stop when the user says end of day.",
     repoWatch: {
-      checkouts: [...new Set(current.map((e) => e.agentfile))],
+      checkouts: [...new Set([...agentfiles, ...parents])],
       refresh,
       how: REPO_WATCH_HOW,
     },

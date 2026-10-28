@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `/work` refreshes checkouts before the first step, not only in watch
+  passes, and `repoWatch.checkouts` adds the app each plugin builds on
+  (`<root>/<tool>` beside `<root>/<tool>-<org>`) (#600).
 - `/work` reads 34% less to start: 6298 bytes, down from 9511
   (`work_instruction_bytes`). `commands/work.md` keeps only what the plan does
   not say, `agentbrew work --json` prints compact JSON, and the plan drops

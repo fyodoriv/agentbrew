@@ -355,7 +355,7 @@ A step that waits on a long-running step starts after it, at the end. A company 
 
 `agentbrew work --json` prints the plan as compact JSON, and `commands/work.md` holds only what the plan does not say, so each rule has one home. `agentbrew work stats` shows what `/work` costs. It counts the bytes a run reads to start (the command text plus the plan) and lists every recorded run from the agent perf log: wall time, tool time, calls, blocked calls, Artifact calls, subagents, and time per step. A run starts at its `agentbrew work --json` call, needs at least one step, and ends at an idle gap of over 8 hours. The numbers feed `work_instruction_bytes` and `work_run_wall_ms` in [`docs/metrics.md`](docs/metrics.md).
 
-The watch loop also applies repo updates. `repoWatch` lists the applied Agentfile checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
+The watch loop also applies repo updates. `repoWatch` lists the applied Agentfile checkouts, plus the app each plugin builds on (`~/apps/careerbrew` for `~/apps/careerbrew-<org>`), so a plugin's steps never start on a stale app. Before the first step and on each pass, `/work` fast-forwards a clean checkout that is behind its remote, runs `agentbrew sync`, and prints one line per checkout: updated, current, or skipped.
 
 Then it runs each step marked `refresh: true` (a plugin's own refresh step, which never runs in the day plan). A checkout with local changes or a diverged branch is skipped with one line.
 

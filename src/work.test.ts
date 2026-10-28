@@ -112,6 +112,7 @@ describe("repo-update watch (#516)", () => {
         { step: "/acme-refresh", agentfile: "~/apps/agentbrew-acme", refresh: true },
       ]),
       [],
+      { isRepo: () => false },
     );
     expect(plan.steps.map((s) => s.step)).not.toContain("/acme-refresh");
     expect(plan.repoWatch.checkouts).toEqual(["~/apps/dotfiles", "~/apps/agentbrew-acme"]);
@@ -120,6 +121,29 @@ describe("repo-update watch (#516)", () => {
     expect(plan.repoWatch.how).toMatch(/agentbrew sync/);
     expect(plan.repoWatch.how).toMatch(/local changes/);
     expect(formatWorkPlan(plan)).toContain("Repo updates: watch ~/apps/dotfiles, ~/apps/agentbrew-acme");
+  });
+
+  it("adds the app each plugin builds on and refreshes every checkout before the first step (#600)", () => {
+    const repos = new Set(["~/apps/careerbrew", "~/apps/tooling/agentbrew"]);
+    const plan = buildWorkPlan(
+      state([
+        { step: "/careerbrew-live", agentfile: "~/apps/careerbrew-acme" },
+        { step: "/work-projects", agentfile: "~/apps/careerbrew-acme" },
+        { step: "/tooling-checkup", agentfile: "~/apps/tooling/agentbrew-acme-team" },
+        { step: "/notes", agentfile: "~/apps/notes-app" },
+      ]),
+      [],
+      { isRepo: (dir) => repos.has(dir) },
+    );
+    expect(plan.repoWatch.checkouts).toEqual([
+      "~/apps/careerbrew-acme",
+      "~/apps/tooling/agentbrew-acme-team",
+      "~/apps/notes-app",
+      "~/apps/careerbrew",
+      "~/apps/tooling/agentbrew",
+    ]);
+    expect(plan.repoWatch.how).toMatch(/^Before the first step and on each watch pass/);
+    expect(plan.repoWatch.how).toMatch(/updated, current, or skipped/);
   });
 });
 

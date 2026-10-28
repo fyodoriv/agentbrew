@@ -17,7 +17,7 @@ import { perfScriptCandidates } from "./metrics/usage.js";
 import { loadState } from "./state.js";
 import { builtinCommandsDir } from "./sync/builtin-commands.js";
 import { expandHome } from "./utils.js";
-import { buildWorkPlan, type WorkPlan } from "./work.js";
+import { buildWorkPlan, type WorkPlan, workPlanJson } from "./work.js";
 
 export interface WorkInstructionBytes {
   commandBytes: number;
@@ -61,7 +61,7 @@ export interface WorkStats {
 /** Bytes the agent reads to start /work: the command text and the plan exactly as `--json` prints it. */
 export function workInstructionBytes(plan: WorkPlan, commandText: string): WorkInstructionBytes {
   const commandBytes = Buffer.byteLength(commandText);
-  const planBytes = Buffer.byteLength(`${JSON.stringify(plan, null, 2)}\n`);
+  const planBytes = Buffer.byteLength(`${workPlanJson(plan)}\n`);
   return { commandBytes, planBytes, totalBytes: commandBytes + planBytes };
 }
 

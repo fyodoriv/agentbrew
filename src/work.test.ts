@@ -213,7 +213,12 @@ describe("dashboard block (#510)", () => {
     expect(plan.dashboard.statusPath).toBe(join("/state", "agentbrew", "work", "2026-10-26.json"));
     expect(plan.dashboard.publish).toMatch(/Artifact/);
     expect(plan.dashboard.publish).toMatch(/same URL/);
-    expect(plan.dashboard.top).toMatch(/Needs you/);
+    // The Artifact publish is the costly call: write the local status file on every row change, and republish the
+    // page only when a stage ends, a row starts to need the user, or the day ends (work stats counts publishes).
+    expect(plan.dashboard.publish).toMatch(/statusPath on every row change/);
+    expect(plan.dashboard.publish).toMatch(/stage ends/);
+    expect(plan.dashboard.publish).not.toMatch(/Update a row each time/);
+    expect(plan.dashboard).not.toHaveProperty("top");
     expect(formatWorkPlan(plan)).toContain(`Dashboard: Work day Mon Oct 26 (local page: ${plan.dashboard.localPath})`);
   });
 });

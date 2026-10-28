@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moved to careerbrew, which keeps study state across days (spaced reviews,
   retests, mastery). A guard test keeps them out of agentbrew.
 
+### Changed
+
+- `/work` reads 34% less to start: 6298 bytes, down from 9511
+  (`work_instruction_bytes`). `commands/work.md` keeps only what the plan does
+  not say, `agentbrew work --json` prints compact JSON, and the plan drops
+  `dashboard.top`. The day's page is republished when a stage ends, when a watch pass
+  changes a row, when a row needs the user, and at end of day; `dashboard.statusPath` still updates on
+  every row change.
+
 ### Added
 
 - `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction

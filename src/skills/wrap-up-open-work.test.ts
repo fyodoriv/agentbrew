@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -128,6 +128,48 @@ describe("wrap-up open-work.sh", () => {
       /branch\s+feat\/landed: 1 commit\(s\) not on main, likely landed \(100% of its added lines are on main\): look, then delete it/,
     );
     expect(r.out).toMatch(/branch\s+feat\/open: 1 commit\(s\) not on main\n/);
+  });
+
+  it("never tags a refactor of lines main already had, and never runs a file name", () => {
+    const work = repo("refactor-only");
+    writeFileSync(join(work, "r.txt"), `${Array.from({ length: 10 }, (_, i) => `r ${i}`).join("\n")}\n`);
+    git(work, "add", "r.txt");
+    git(work, "commit", "-q", "-m", "feat: r");
+    git(work, "push", "-q", "origin", "main");
+    git(work, "checkout", "-q", "-b", "refactor/move");
+    writeFileSync(join(work, "r.txt"), `${Array.from({ length: 10 }, (_, i) => `  r ${9 - i}`).join("\n")}\n`);
+    git(work, "commit", "-qam", "refactor: reverse and indent");
+    git(work, "checkout", "-q", "-b", "fix/odd-name", "main");
+    writeFileSync(join(work, "q$(touch${IFS}PWNED)'.txt"), "odd\n");
+    git(work, "add", "-A");
+    git(work, "commit", "-q", "-m", "fix: odd name");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+refactor\/move: 1 commit\(s\) not on main\n/);
+    expect(r.out).toMatch(/branch\s+fix\/odd-name: 1 commit\(s\) not on main\n/);
+    expect(r.out).not.toContain("likely landed");
+    expect(existsSync(join(work, "PWNED")) || existsSync(join(scratch, "PWNED"))).toBe(false);
+  });
+
+  it("never tags a branch with unpushed commits as likely landed", () => {
+    const work = repo("pushed-then-more");
+    git(work, "checkout", "-q", "-b", "feat/pushed");
+    const z = `${Array.from({ length: 10 }, (_, i) => `z ${i}`).join("\n")}\n`;
+    writeFileSync(join(work, "z.txt"), z);
+    git(work, "add", "z.txt");
+    git(work, "commit", "-q", "-m", "feat: z");
+    git(work, "push", "-q", "-u", "origin", "feat/pushed");
+    writeFileSync(join(work, "w.txt"), "new work\n");
+    git(work, "add", "w.txt");
+    git(work, "commit", "-q", "-m", "feat: w");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "z.txt"), `${z}footer\n`);
+    git(work, "add", "z.txt");
+    git(work, "commit", "-q", "-m", "feat: z (#6)");
+    git(work, "push", "-q", "origin", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+feat\/pushed: 2 commit\(s\) not on main\n/);
+    expect(r.out).not.toContain("likely landed");
   });
 
   it("never tags a branch that only deletes lines as likely landed", () => {

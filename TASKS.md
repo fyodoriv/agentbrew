@@ -171,6 +171,32 @@
 
 ## P2
 
+- [ ] `agentbrew sync` run inside a linked worktree must not register that worktree
+  - **ID**: sync-skip-linked-worktree-agentfile
+  - **Tags**: bug, sync, agents
+  - **Details**: On 2026-10-28 a goal run called `agentbrew sync` with its cwd in a linked worktree of agentbrew (`~/apps/tooling/wt/<name>`). Sync read that worktree's project `Agentfile.yaml` and registered its `commands/` (and, at first, its skills) as sources in `~/.config/agentbrew/state.yaml`. The next sync from the live checkout printed `Name clash: command agentbrew from ~/apps/tooling/wt.noindex/<name>/commands; skipped from ~/apps/tooling/agentbrew/commands`, so the live command was shadowed by a worktree that is about to be removed. `agentbrew remove <path>` answers "not found", so the entry cannot be removed by hand. Fix: when the project dir is a linked worktree (`.git` is a file) of a repo already registered as a source, skip it with one warning line, or offer `--project-worktree` to opt in.
+  - **Files**: `src/sync/`, `src/cli.ts`, `README.md`
+  - **Output**: code
+  - **Acceptance**: a test runs sync with cwd in a linked worktree of a registered source and asserts state.yaml gains no source for it and stdout has one warning line; a second test shows a normal project dir is still registered.
+  - **Hypothesis**: name-clash warnings caused by worktree sources drop from 2 per affected sync to 0.
+  - **Measurement**: `agentbrew sync 2>&1 | grep -c "Name clash.*wt"` after a sync run from a linked worktree, then from the live checkout.
+  - **Success**: 0.
+  - **Pivot**: if skipping breaks a real worktree-based project setup, switch to a warning only and add a `agentbrew remove` path for project sources instead.
+  - **Anchor**: goal run 2026-10-28 (dotfiles tooling-checkup + watch); git-worktree(1) on linked worktree `.git` files.
+
+- [ ] Plugin review compares origin URLs in one normal form
+  - **ID**: plugin-review-normalize-origin
+  - **Tags**: bug, work
+  - **Details**: #622 (count only real plugin checkouts) skips a checkout whose `origin` URL equals agentbrew's own. The compare is a raw string match, so `git@github.com:o/r.git`, `https://github.com/o/r` and `https://github.com/o/r.git` count as different repos, and a second clone with another URL form is still listed as a plugin. Normalize to `host/owner/repo` (lowercase host, no `.git`, no user, ssh or https) before comparing.
+  - **Files**: `src/work.ts`, `src/work.test.ts`
+  - **Output**: code
+  - **Acceptance**: a test with the three URL forms above skips all three as the same repo, and a different repo is still listed.
+  - **Hypothesis**: duplicate plugin entries from mixed URL forms drop from 1 per mixed clone to 0.
+  - **Measurement**: `npx vitest run src/work.test.ts -t "origin"`.
+  - **Success**: the new test passes and no existing test changes.
+  - **Pivot**: if normal-form parsing needs a dependency, compare `owner/repo` only and say so in the code.
+  - **Anchor**: review note on agentbrew #622; git-clone(1) URL forms.
+
 - [ ] Report Hallmark's render wait that never ends on apps that poll
   - **ID**: hallmark-render-wait-upstream
   - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first

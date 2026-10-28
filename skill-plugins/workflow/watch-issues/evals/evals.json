@@ -137,6 +137,17 @@
         "Says in its reply that it skipped the first run and why",
         "Does not dispatch a second worker for the issue it already handled"
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "A watch pass finds 4 new issues (#226, #227, #238, #239) that all change the PM draft code, while a worker's PR for another PM task (pm-why) is still open on the same files.",
+      "expected_output": "The agent parks the 4 issues until the pm-why PR merges, saying why (same files). Then it gives them to one worker that does them one after another, one PR each, each from the latest main. To land them, it merges main into the top branch, runs the gate there, and lands it as one PR (or retargets each PR to main first); it never merges the stack bottom-up with --delete-branch.",
+      "expectations": [
+        "Parks overlapping issues until the open PR on the same files merges, and says why",
+        "Gives the overlapping issues to one worker, done one after another",
+        "Lands a stack by its top branch with main merged in, or retargets each PR to main first",
+        "Never merges a stack bottom-up with --delete-branch"
+      ]
     }
   ]
 }

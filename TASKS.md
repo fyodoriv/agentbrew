@@ -171,6 +171,16 @@
 
 ## P2
 
+- [ ] Report Hallmark's render wait that never ends on apps that poll
+  - **ID**: hallmark-render-wait-upstream
+  - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first
+  - **Details**: In careerbrew's Hallmark redesign (careerbrew#252, 2026-10-27), Hallmark's render check waited for the page's network to go fully quiet. The app polls every 5 s, so the check timed out on every view. A local copy with a looser wait (DOM content loaded plus a short settle) worked. Propose that wait, or a setting for it, upstream.
+  - **Hypothesis**: the Hallmark render audit finishes on a polling app with 0 timeouts, down from 8 of 8 views.
+  - **Measurement**: `/hallmark audit web/` on careerbrew, counting views that time out.
+  - **Success**: 0 timeouts with the upstream fix.
+  - **Pivot**: if upstream declines, keep a local wrapper in agentbrew with the looser wait.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
 - [ ] Rebuild the UI to the Hallmark design skill
   - **ID**: hallmark-design
   - **Details**: The owner chose Hallmark (nutlope/hallmark, installed through agentbrew on

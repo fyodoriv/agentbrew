@@ -181,6 +181,20 @@
   - **Pivot**: if upstream declines, keep a local wrapper in agentbrew with the looser wait.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
 
+- [ ] Decide whether /work moves to careerbrew (issue #610)
+  - **ID**: work-handoff-to-careerbrew-decision
+  - **Blocked**: needs-owner — issue #610 proposes handing /work to careerbrew and retiring agentbrew's /work. Issues #612 (check MCP connectors against the desktop app's launchd env first) and #615 (let a plugin point the dashboard at an app) change /work too, so they wait on this answer. Question: move /work to careerbrew (then #612 and #615 go there), or keep it in agentbrew (then build #612 and #615 here)?
+  - **Tags**: work, careerbrew
+  - **Details**: The watch loop lists #610, #612 and #615 on every pass. Building #612 or #615 now could be thrown away if /work moves. This task holds them until the owner answers #610.
+  - **Files**: `commands/work.md`, `src/work.ts`
+  - **Output**: docs
+  - **Acceptance**: #610 has the owner's answer, and #612 and #615 are filed in the repo that owns /work.
+  - **Hypothesis**: one owner answer unblocks 3 open issues (#610, #612, #615), cutting parked /work issues from 3 to 0.
+  - **Measurement**: `gh issue list -R fyodoriv/agentbrew --state open --search "work in:title"` before and after the answer.
+  - **Success**: 0 of the 3 issues still waiting on a decision a week after the answer.
+  - **Pivot**: if no answer in 14 days, ask once more in the next goal's question round, then keep /work in agentbrew by default.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
 - [ ] /work ships one built-in dashboard renderer (issue #573)
   - **ID**: work-dashboard-renderer
   - **Blocked**: needs-owner — issues #573, #574, #575 together redesign /work. Question: build them in this order (#573 renderer, then #574 start/after-step hooks, then #575 session mode), and should session mode wait until agents can start desktop sessions themselves?

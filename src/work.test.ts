@@ -56,10 +56,7 @@ describe("buildWorkPlan", () => {
     const plan = buildWorkPlan(state(), [plugin("acme", "git@git.example.com:acme/agentbrew-acme.git")], {
       pluginCheckouts: ["~/apps/careerbrew-acme"],
     });
-    expect(plan.pluginReview.checkouts).toEqual([
-      "~/apps/careerbrew-acme",
-      "~/.local/share/agentbrew/plugins/acme",
-    ]);
+    expect(plan.pluginReview.checkouts).toEqual(["~/apps/careerbrew-acme", "~/.local/share/agentbrew/plugins/acme"]);
     expect(plan.pluginReview.checkouts.join(" ")).not.toContain("git@");
     expect(plan.pluginReview.how).toMatch(/main tool/);
     expect(plan.pluginReview.how).toMatch(/says yes/);

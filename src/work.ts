@@ -431,7 +431,12 @@ export function buildWorkPlan(
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
     ],
     pluginReview: {
-      checkouts: [...new Set([...(options.pluginCheckouts ?? findPluginCheckouts()), ...plugins.map((p) => installedPluginCheckout(p))])],
+      checkouts: [
+        ...new Set([
+          ...(options.pluginCheckouts ?? findPluginCheckouts()),
+          ...plugins.map((p) => installedPluginCheckout(p)),
+        ]),
+      ],
       how: PLUGIN_REVIEW_HOW,
     },
     dashboard: buildDashboard(

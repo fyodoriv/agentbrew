@@ -8,12 +8,14 @@
  * order the Agentfiles were applied. state.workSteps records which
  * Agentfile declared each step (the same ownership rule as `commands:` dirs).
  */
-import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import chalk from "chalk";
 import { type Agentfile, type AgentfileWorkStep, loadAgentfile } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
+import { MANIFEST_FILE } from "./plugins/manifest.js";
+import { pluginDir } from "./plugins/store.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
 import { expandHome, resolveStateHome } from "./utils.js";
@@ -79,9 +81,13 @@ export const PLUGIN_ROOTS = ["~/apps", "~/apps/tooling"];
 export const PLUGIN_REVIEW_HOW =
   "On each cycle, in each checkout in `checkouts` that holds a plugin (a careerbrew, agentbrew, or dotfiles plugin, or any app's plugin), list uncommitted files and unpushed commits. Skip a checkout that is not a plugin, in one line. For each change, decide if it is generic: could someone outside the org use it, with no company name, internal host, or private data? A generic change belongs in the main tool: draft the move (an issue or PR on the main tool, with the org-specific parts left behind a generic setting) and add it to the batched questions. Never move or publish anything before the user says yes.";
 
+/** Files that mark a folder as a plugin checkout (#617). */
+export const PLUGIN_MARKERS = [MANIFEST_FILE, ".claude-plugin", "catalog-overlay.yaml", "Agentfile.yaml"];
+
 /**
  * Plugin checkouts beside a main tool: `<root>/<tool>-<name>` when
- * `<root>/<tool>` is a git checkout too. Reads directory names only.
+ * `<root>/<tool>` is a git checkout too, the sibling is a main checkout (a
+ * linked worktree's `.git` is a file), and it holds a plugin marker (#617).
  */
 export function findPluginCheckouts(
   roots: string[] = PLUGIN_ROOTS,
@@ -93,6 +99,8 @@ export function findPluginCheckouts(
     }
   },
   isRepo: (dir: string) => boolean = (dir) => existsSync(join(dir, ".git")),
+  isPlugin: (dir: string) => boolean = (dir) =>
+    isMainCheckout(dir) && PLUGIN_MARKERS.some((marker) => existsSync(join(dir, marker))),
 ): string[] {
   const out: string[] = [];
   for (const root of roots) {
@@ -101,10 +109,25 @@ export function findPluginCheckouts(
     const tools = new Set(names.filter((n) => isRepo(join(dir, n))));
     for (const name of names) {
       const tool = [...tools].find((t) => name.startsWith(`${t}-`));
-      if (tool && isRepo(join(dir, name))) out.push(`${root}/${name}`);
+      if (tool && isRepo(join(dir, name)) && isPlugin(join(dir, name))) out.push(`${root}/${name}`);
     }
   }
   return out;
+}
+
+/** A checkout whose `.git` is a folder, not a linked worktree. */
+function isMainCheckout(dir: string): boolean {
+  try {
+    return statSync(join(dir, ".git")).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** The local clone of an installed plugin, as `~/...` (never its remote URL, #617). */
+export function installedPluginCheckout(entry: PluginLockEntry, home = homedir()): string {
+  const dir = pluginDir(entry.name);
+  return dir.startsWith(`${home}/`) ? `~${dir.slice(home.length)}` : dir;
 }
 
 /** The git checkout that holds `path`: the nearest folder at or above it with a `.git`. */
@@ -408,7 +431,7 @@ export function buildWorkPlan(
       "Stop every loop you started, then draft a Today / Tomorrow report for the user. Link the day's dashboard in it.",
     ],
     pluginReview: {
-      checkouts: [...new Set([...(options.pluginCheckouts ?? findPluginCheckouts()), ...plugins.map((p) => p.source)])],
+      checkouts: [...new Set([...(options.pluginCheckouts ?? findPluginCheckouts()), ...plugins.map((p) => installedPluginCheckout(p))])],
       how: PLUGIN_REVIEW_HOW,
     },
     dashboard: buildDashboard(

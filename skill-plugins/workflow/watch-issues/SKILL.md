@@ -80,7 +80,8 @@ or the user's words in this session).
    merged on `rc=1` because the command printed the log and merged anyway.
    After a rebase that touches a file the gate checks (a size budget, a
    shared doc), re-run the gate before you merge. Before the first full
-   gate, run the touched test files on the base branch: a test that already
+   gate, run the touched test files on the base branch (except the new
+   reproduction test, which must fail there): a test that already
    fails there is a base fix for the same PR, not your regression, and you
    save one failed full run. For more than one item, use subagents with one
    shared brief, at most three gate runs at a time, and `nice -n 15` for
@@ -119,6 +120,10 @@ or the user's words in this session).
   Monitor when it expires; the seen list keeps the state. A `skip` line on
   three passes in a row is a broken read: stop the Monitor and fix it or
   report it.
+  A Monitor runs in the Bash sandbox, where `gh` can fail TLS (`x509`), so
+  every read is a `skip`. Then run the same `while` loop as a background
+  Bash call with the sandbox off, writing to a log, and arm the Monitor
+  on `tail -f` of that log.
 - In a session without a Monitor: `/loop /watch-issues` (self-paced; 30
   minutes is a good idle interval). Each wake-up runs one pass.
   The built-in `/loop` runs its prompt once right away. If you already ran a

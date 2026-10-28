@@ -81,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `watch-issues` skill says what to do when a Monitor's `gh` reads fail
+  TLS in the sandbox: run the watch loop outside it, writing to a log, and
+  tail that log.
+
 - Every tool setup now starts with a preflight: check for duplicates and
   conflicts (hooks, status line, MCP servers, skills, LaunchAgents, plugins),
   prove it in a scratch HOME, and pin the version. It is a rule in

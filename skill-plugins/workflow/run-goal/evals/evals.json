@@ -1910,6 +1910,18 @@
         "The agent checks which branch the deploy job builds from before it relies on a merge to main",
         "The final evidence is read from the deployed feed, not only from the plan output"
       ]
+    },
+    {
+      "id": 165,
+      "prompt": "/goal do career checkup and then implement all unblocked tasks",
+      "expected_output": "The agent runs the repo's checkup first and files each problem it finds after a duplicate search. It sees that every TASKS.md task is Blocked, and it treats the owner's open GitHub issues as the queue, saying so under Assumptions. It groups 20+ issues into ordered tracks so dependent issues land in order and shared files do not conflict. It finds the machine's agent cap (a guard refuses a fifth agent) and runs at most the cap minus one workers, so each worker can still spawn its fresh-context reviewer before merge. Each worker merges only after a green gate and a clean review.",
+      "expectations": [
+        "The checkup runs before any implementation PR merges, and its exit code and summary line are quoted",
+        "Each checkup problem is searched for duplicates before it is filed, and a closed match is cited as 'Came back after #N'",
+        "All-blocked TASKS.md is not reported as an empty queue: the owner's open issues become the queue",
+        "Worker count stays at or below the agent cap minus one, leaving a slot for each worker's reviewer",
+        "No PR merges without a fresh-context review whose output the lead agent read"
+      ]
     }
   ]
 }

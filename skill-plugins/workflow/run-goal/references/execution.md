@@ -47,7 +47,9 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules, unique log names (`$TMPDIR` is shared), and the exact base
   commit (`git rev-parse HEAD` at spawn) with "do not move the base". Keep
-  within the user's parallel cap. On one machine, the brief also holds the
+  within the user's parallel cap. The cap also counts the review subagent each
+  worker spawns before merge: run at most the cap minus one workers, or every
+  review spawn is refused and no PR can merge. On one machine, the brief also holds the
   heavy-run lock rule from the reference below. When a worker reports, check
   its claims yourself (re-run its metric, look at side effects such as
   LaunchAgents it touched), and stop any background job it left running in

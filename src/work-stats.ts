@@ -35,7 +35,7 @@ export interface WorkRun {
   calls: number;
   blocked: number;
   humanWaitMs: number;
-  artifactPublishes: number;
+  artifactCalls: number;
   subagents: number;
   steps: Array<{ step: string; ms: number }>;
 }
@@ -52,7 +52,7 @@ export interface WorkStats {
     medianToolMs: number;
     medianCalls: number;
     medianBlocked: number;
-    medianArtifactPublishes: number;
+    medianArtifactCalls: number;
   };
   /** The runs as agent-perf.mjs prints them; left out of `--json`. */
   runsText?: string;
@@ -119,7 +119,7 @@ export async function collectWorkStats(options: WorkStatsOptions = {}): Promise<
     available: false,
     scope: { project: options.project ?? "all", days },
     runs: [],
-    totals: { runs: 0, medianWallMs: 0, medianToolMs: 0, medianCalls: 0, medianBlocked: 0, medianArtifactPublishes: 0 },
+    totals: { runs: 0, medianWallMs: 0, medianToolMs: 0, medianCalls: 0, medianBlocked: 0, medianArtifactCalls: 0 },
   };
   const candidates = options.perfScript ? [options.perfScript] : (options.perfScripts ?? perfScriptCandidates(home));
   try {

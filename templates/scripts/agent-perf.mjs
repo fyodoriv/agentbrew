@@ -524,18 +524,48 @@ export function buildTurn(sid, { dir = perfDir(), nowMs = Date.now() } = {}) {
  */
 export const WORK_START_KEY = /(^|\s)agentbrew work$/;
 
-const median = (values) =>
-  percentile(
-    [...values].sort((a, b) => a - b),
-    50,
-  );
+/** The middle value; for an even count, the mean of the two middle values. */
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 0) return 0;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+/** An idle gap longer than this ends a /work run (the session was resumed another day). */
+export const WORK_GAP_MS = 8 * 60 * 60 * 1000;
+
+const isWorkStart = (row) =>
+  isToolRow(row) && isMainThread(row) && row.tool === "Bash" && WORK_START_KEY.test(row.key ?? "");
+const isStep = (row) => isToolRow(row) && isMainThread(row) && row.key?.startsWith("skill:");
+
+/** Split one session's rows into /work runs: start rows through the last row before an idle gap. */
+function sessionWorkRuns(sessionRows) {
+  const found = [];
+  let current = null;
+  let lastMs = Number.NaN;
+  for (const row of sessionRows) {
+    const ms = Date.parse(row.ts);
+    if (current && Number.isFinite(ms) && ms - lastMs > WORK_GAP_MS) current = null;
+    if (!current && isWorkStart(row)) {
+      current = [];
+      found.push(current);
+    }
+    current?.push(row);
+    if (Number.isFinite(ms)) lastMs = ms;
+  }
+  // `agentbrew work stats` keys as "agentbrew work" too: a run needs a step after its start.
+  return found.filter((runRows) => runRows.some(isStep));
+}
 
 /**
- * One /work run per session: from the first main-thread `agentbrew work`
- * call to the session's last row. Steps are the main-thread Skill calls in
- * order; a step lasts until the next step starts, the last one until the run
- * ends. Artifact publishes count every thread (a stage's subagents publish
- * too); subagents count main-thread Agent or Task launches.
+ * /work runs: each starts at a main-thread `agentbrew work` call and lasts
+ * through the session's last row before an idle gap of over WORK_GAP_MS. A
+ * start with no Skill step after it is not a run (`agentbrew work stats`
+ * keys the same). Steps are the main-thread Skill calls in order; a step
+ * lasts until the next step starts, the last one until the run ends.
+ * Artifact calls count every thread and every action (the log keeps only the
+ * tool name); subagents count main-thread Agent or Task launches.
  */
 export function workRuns(rows) {
   const bySession = new Map();
@@ -547,39 +577,36 @@ export function workRuns(rows) {
   }
   const runs = [];
   for (const [sid, sessionRows] of bySession) {
-    const startAt = sessionRows.findIndex(
-      (row) => isToolRow(row) && isMainThread(row) && row.tool === "Bash" && WORK_START_KEY.test(row.key ?? ""),
-    );
-    if (startAt === -1) continue;
-    const runRows = sessionRows.slice(startAt);
-    const startMs = Date.parse(runRows[0].ts);
-    const endMs = Math.max(...runRows.map((row) => Date.parse(row.ts)).filter(Number.isFinite));
-    const summary = summarize(runRows, sessionRows);
-    const stepRows = runRows.filter((row) => isToolRow(row) && isMainThread(row) && row.key?.startsWith("skill:"));
-    const steps = stepRows.map((row, i) => {
-      const next = stepRows[i + 1] ? Date.parse(stepRows[i + 1].ts) : endMs;
-      return { step: `/${row.key.slice("skill:".length)}`, ms: next - Date.parse(row.ts) };
-    });
-    const isLaunch = (row) => isMainThread(row) && /^(Agent|Task)$/.test(row.tool ?? "");
-    const launches = new Set(
-      runRows
-        .filter((row) => isLaunch(row) && (isToolRow(row) || (row.ev === "attempt" && row.bg === true)))
-        .map((row, i) => (hasId(row) ? row.id : `row${i}`)),
-    );
-    runs.push({
-      session: sid,
-      project: runRows[0].project ?? null,
-      start: runRows[0].ts,
-      wallMs: endMs - startMs,
-      turns: runRows.filter((row) => row.ev === "turn").length,
-      toolMs: summary.toolMs,
-      calls: summary.calls,
-      blocked: summary.blocked,
-      humanWaitMs: summary.humanWait.ms,
-      artifactPublishes: runRows.filter((row) => isToolRow(row) && row.tool === "Artifact").length,
-      subagents: launches.size,
-      steps,
-    });
+    for (const runRows of sessionWorkRuns(sessionRows)) {
+      const startMs = Date.parse(runRows[0].ts);
+      const endMs = Math.max(...runRows.map((row) => Date.parse(row.ts)).filter(Number.isFinite));
+      const summary = summarize(runRows, sessionRows);
+      const stepRows = runRows.filter(isStep);
+      const steps = stepRows.map((row, i) => {
+        const next = stepRows[i + 1] ? Date.parse(stepRows[i + 1].ts) : endMs;
+        return { step: `/${row.key.slice("skill:".length)}`, ms: next - Date.parse(row.ts) };
+      });
+      const isLaunch = (row) => isMainThread(row) && /^(Agent|Task)$/.test(row.tool ?? "");
+      const launches = new Set(
+        runRows
+          .filter((row) => isLaunch(row) && (isToolRow(row) || (row.ev === "attempt" && row.bg === true)))
+          .map((row, i) => (hasId(row) ? row.id : `row${i}`)),
+      );
+      runs.push({
+        session: sid,
+        project: runRows[0].project ?? null,
+        start: runRows[0].ts,
+        wallMs: endMs - startMs,
+        turns: runRows.filter((row) => row.ev === "turn").length,
+        toolMs: summary.toolMs,
+        calls: summary.calls,
+        blocked: summary.blocked,
+        humanWaitMs: summary.humanWait.ms,
+        artifactCalls: runRows.filter((row) => isToolRow(row) && row.tool === "Artifact").length,
+        subagents: launches.size,
+        steps,
+      });
+    }
   }
   return runs.sort((a, b) => a.start.localeCompare(b.start));
 }
@@ -600,7 +627,7 @@ export function buildWorkReport(opts, { dir = perfDir(), nowMs = Date.now() } = 
       medianToolMs: median(pick("toolMs")),
       medianCalls: median(pick("calls")),
       medianBlocked: median(pick("blocked")),
-      medianArtifactPublishes: median(pick("artifactPublishes")),
+      medianArtifactCalls: median(pick("artifactCalls")),
     },
   };
 }
@@ -615,12 +642,12 @@ export function formatWorkReport(report) {
     return lines.join("\n");
   }
   lines.push(
-    `Median run: ${formatMs(totals.medianWallMs)} wall, ${formatMs(totals.medianToolMs)} tool time, ${totals.medianCalls} calls, ${totals.medianBlocked} blocked, ${totals.medianArtifactPublishes} Artifact publishes.`,
+    `Median run: ${formatMs(totals.medianWallMs)} wall, ${formatMs(totals.medianToolMs)} tool time, ${totals.medianCalls} calls, ${totals.medianBlocked} blocked, ${totals.medianArtifactCalls} Artifact calls.`,
     "",
   );
   for (const run of report.runs) {
     lines.push(
-      `${run.start}  ${run.project ?? ""} ${run.session.slice(0, 8)}: ${formatMs(run.wallMs)} wall, ${formatMs(run.toolMs)} tool, ${run.calls} calls, ${run.blocked} blocked, ${run.turns} turns, ${run.artifactPublishes} Artifact publishes, ${run.subagents} subagents`,
+      `${run.start}  ${run.project ?? ""} ${run.session.slice(0, 8)}: ${formatMs(run.wallMs)} wall, ${formatMs(run.toolMs)} tool, ${run.calls} calls, ${run.blocked} blocked, ${run.turns} turns, ${run.artifactCalls} Artifact calls, ${run.subagents} subagents`,
     );
     if (run.steps.length > 0) lines.push(`  steps: ${run.steps.map((s) => `${s.step} ${formatMs(s.ms)}`).join(", ")}`);
   }

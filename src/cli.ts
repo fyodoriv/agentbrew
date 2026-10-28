@@ -439,7 +439,7 @@ export function buildProgram(): Command {
   program
     .command("work")
     .description("Print the day plan for /work: checkup steps, the machine rule, watch mode, and end of day")
-    .argument("[action]", "stats: what each /work run cost (instruction bytes, time, calls, Artifact publishes)")
+    .argument("[action]", "stats: what each /work run cost (instruction bytes, time, calls, Artifact calls)")
     .option("--json", "Output as JSON")
     .option("--days <n>", "stats: days to look back (default 30)")
     .option("--project <name>", "stats: only runs started in this repo")

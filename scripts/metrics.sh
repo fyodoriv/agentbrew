@@ -97,5 +97,5 @@ let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
   } catch { console.log("(stub) (stub)"); }
 });' 2>/dev/null)
 EOF
-row "work_instruction_bytes" "${work_bytes:-(stub)}" "<= 6500" "> 9556"
+row "work_instruction_bytes" "${work_bytes:-(stub)}" "<= 6500" "> 9511"
 row "work_run_wall_ms" "${work_wall:-(stub)}" "-20% vs first 5" "> first 5"

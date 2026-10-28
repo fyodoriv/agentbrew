@@ -39,6 +39,7 @@ describe("collectWorkStats", () => {
       join(dir, "2026-10.jsonl"),
       `${[
         row("2026-10-15T10:00:00Z", { tool: "Bash", ms: 500, ok: true, key: "agentbrew work" }),
+        row("2026-10-15T10:00:30Z", { tool: "Skill", ms: 10, ok: true, key: "skill:agentbrew" }),
         row("2026-10-15T10:01:00Z", { tool: "Artifact", ms: 2000, ok: true, key: "Artifact" }),
         row("2026-10-15T10:05:00Z", { tool: "Bash", ms: 100, ok: true, key: "git status" }),
       ].join("\n")}\n`,
@@ -46,7 +47,7 @@ describe("collectWorkStats", () => {
     const stats = await collectWorkStats({ home, env: {}, nowMs: NOW, perfScript: PERF_SCRIPT, commandText: "x" });
     expect(stats.available).toBe(true);
     expect(stats.totals.runs).toBe(1);
-    expect(stats.runs[0]).toMatchObject({ wallMs: 300_000, calls: 3, artifactPublishes: 1 });
+    expect(stats.runs[0]).toMatchObject({ wallMs: 300_000, calls: 4, artifactCalls: 1 });
     expect(stats.instructions.commandBytes).toBe(1);
     const text = formatWorkStats(stats);
     expect(text).toContain("Instructions per run:");

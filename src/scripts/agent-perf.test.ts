@@ -372,8 +372,8 @@ describe("report", () => {
 });
 
 describe("work runs (/work)", () => {
-  // One /work run: it starts at the first main-thread `agentbrew work` call
-  // and ends at the session's last row.
+  // One /work run: it starts at a main-thread `agentbrew work` call, has a
+  // Skill step, and ends at the session's last row before an idle gap.
   const run = (sid = "w1", project = "alpha"): Row[] => [
     { project, ts: at(3 * HOUR), sid, ev: "turn" },
     tool("git status", 100, { ts: at(3 * HOUR - 1000), sid, project }),
@@ -400,7 +400,7 @@ describe("work runs (/work)", () => {
     expect(r.calls).toBe(7);
     expect(r.toolMs).toBe(900 + 20 + 50_000 + 3000 + 30 + 120_000 + 2000);
     expect(r.blocked).toBe(1);
-    expect(r.artifactPublishes).toBe(3);
+    expect(r.artifactCalls).toBe(3);
     expect(r.subagents).toBe(1);
     expect(r.steps).toEqual([
       { step: "/agentbrew", ms: 540_000 },
@@ -421,18 +421,52 @@ describe("work runs (/work)", () => {
   });
 
   it("counts a work call inside a loop as the start", () => {
-    const rows = [tool("for agentbrew work", 100, { ts: at(HOUR), sid: "loop" })];
+    const rows = [
+      tool("for agentbrew work", 100, { ts: at(HOUR), sid: "loop" }),
+      tool("skill:agentbrew", 20, { ts: at(HOUR - 1000), sid: "loop", tool: "Skill" }),
+    ];
     expect(workRuns(rows)).toHaveLength(1);
+  });
+
+  it("does not count `agentbrew work stats` (same key) with no step after it as a run", () => {
+    const rows = [
+      tool("agentbrew work", 300, { ts: at(HOUR), sid: "stats" }),
+      tool("Artifact", 100, { ts: at(HOUR - 1000), sid: "stats", tool: "Artifact" }),
+    ];
+    expect(workRuns(rows)).toEqual([]);
+  });
+
+  it("ends a run at an idle gap of over 8 hours and starts a new one at the next work call", () => {
+    const sid = "resumed";
+    const rows = [
+      tool("agentbrew work", 100, { ts: at(30 * HOUR), sid }),
+      tool("skill:agentbrew", 20, { ts: at(30 * HOUR - 60_000), sid, tool: "Skill" }),
+      tool("git status", 100, { ts: at(30 * HOUR - 120_000), sid }),
+      // Next day, same session: rows before the next work call belong to no run.
+      tool("git status", 100, { ts: at(5 * HOUR), sid }),
+      tool("agentbrew work", 100, { ts: at(4 * HOUR), sid }),
+      tool("skill:wrap-up", 20, { ts: at(4 * HOUR - 30_000), sid, tool: "Skill" }),
+    ];
+    const runs = workRuns(rows);
+    expect(runs.map((r: { wallMs: number }) => r.wallMs)).toEqual([120_000, 30_000]);
+  });
+
+  it("takes the mean of the two middle runs for an even count", () => {
+    const fast = run("w3").slice(0, 5);
+    writeRows([...run("w1"), ...fast]);
+    const report = buildWorkReport({ days: 30 }, ctx());
+    expect(report.totals.runs).toBe(2);
+    expect(report.totals.medianWallMs).toBe((998_000 + 198_000) / 2);
   });
 
   it("reports medians over the window and prints them", () => {
     writeRows([...run("w1"), ...run("w2", "beta"), ...run("old").map((r) => ({ ...r, ts: at(40 * DAY) }))]);
     const report = buildWorkReport({ days: 30 }, ctx());
     expect(report.runs).toHaveLength(2);
-    expect(report.totals).toMatchObject({ runs: 2, medianWallMs: 998_000, medianCalls: 7, medianArtifactPublishes: 3 });
+    expect(report.totals).toMatchObject({ runs: 2, medianWallMs: 998_000, medianCalls: 7, medianArtifactCalls: 3 });
     const text = formatWorkReport(report);
     expect(text).toContain("/work runs, last 30d: 2");
-    expect(text).toContain("Artifact publishes");
+    expect(text).toContain("Artifact calls");
     expect(text).toContain("/agentbrew 9m00s");
   });
 

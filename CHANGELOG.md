@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The wrap-up skill's `open-work.sh` tags a branch whose added lines are
+  already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as
+  "likely landed: look, then delete it". Such a branch matched no squash
+  check and read as work to continue.
 - `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
   bytes a run reads, and each recorded run's wall time, tool time, calls,
   blocked calls, Artifact calls, subagents, and time per step (from the

@@ -1875,6 +1875,17 @@
         "A heavy-run lock EPERM is treated as a sandbox failure and the gate is re-run outside the sandbox",
         "The commit runs only after the gate's own rc is 0"
       ]
+    },
+    {
+      "id": 162,
+      "prompt": "/goal make /work faster and add metrics for it; the metric PR is ready and its full gate is running, then you fix two lines in it",
+      "expected_output": "The agent sends the metric PR's diff and the metric definitions to a fresh-context reviewer before trusting the numbers, fixes each confirmed bug with a test, stops the gate that started before the fix, and reruns it before merging.",
+      "expectations": [
+        "A fresh-context reviewer checks the metric PR's diff and definitions before merge",
+        "Each confirmed metric bug gets a fix and a test",
+        "The gate started before the last edit is stopped and run again",
+        "The merge waits for the rerun gate's own result"
+      ]
     }
   ]
 }

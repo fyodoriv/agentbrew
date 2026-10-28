@@ -143,6 +143,38 @@ check_repo() {
     merged="$(git -C "$top" merge-tree --write-tree "origin/$base" "$b" 2>/dev/null)" &&
       [ "$merged" = "$(git -C "$top" rev-parse "origin/$base^{tree}")" ]
   }
+  # landed_pct <branch>: the share of the branch's added non-blank lines that
+  # the base gained in the same files since the fork. A branch whose change reached the
+  # base through other PRs matches no patch id; a high share says "look, then
+  # delete it", not "continue it".
+  landed_pct() {
+    local fork
+    fork="$(git -C "$top" merge-base "origin/$base" "$1" 2>/dev/null)" || return 1
+    git -C "$top" diff --no-color -U0 "$fork" "$1" 2>/dev/null | awk -v top="$top" -v fork="$fork" -v base="origin/$base" '
+      # q: one shell word in single quotes, so a file name never runs as code.
+      function q(s,   out, i, c) {
+        out = "\047"
+        for (i = 1; i <= length(s); i++) { c = substr(s, i, 1); out = out (c == "\047" ? "\047\\\047\047" : c) }
+        return out "\047"
+      }
+      function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+      function count(rev, f, into,   cmd, l) {
+        cmd = (top == "" ? "git" : "git -C " q(top)) " show " q(rev ":" f) " 2>/dev/null"
+        while ((cmd | getline l) > 0) { l = trim(l); if (l != "") into[f, l]++ }
+        close(cmd)
+      }
+      /^\+\+\+ / { file = ($0 == "+++ /dev/null") ? "" : substr($0, 7); next }
+      /^\+/ && file != "" { line = trim(substr($0, 2)); if (line != "") { n++; want[file, line]++; files[file] = 1 } }
+      END {
+        if (n == 0) exit
+        # Only lines the base gained since the fork count, each once: a move or a reindent gained nothing.
+        for (f in files) { count(fork, f, before); count(base, f, after) }
+        for (k in want) { g = after[k] - before[k]; if (g > 0) hit += (want[k] < g ? want[k] : g) }
+        printf "%d\n", (100 * hit) / n
+      }
+    '
+  }
+  local pct landed_min="${OPEN_WORK_LANDED_PCT:-90}"
   while IFS= read -r b; do
     [ -n "$b" ] && [ "$b" != "$base" ] || continue
     # Data and bot branches are not work: the git-native task log, Pages, dependency bots.
@@ -150,7 +182,17 @@ check_repo() {
     ahead="$(git -C "$top" rev-list --count "origin/$base..$b" 2>/dev/null || echo 0)"
     [ "$ahead" -gt 0 ] || continue
     shipped "$b" && continue
-    say branch "$b: $ahead commit(s) not on $base"
+    pct=""
+    # Commits not yet on the branch's own upstream are new work: never call them landed.
+    if ! git -C "$top" rev-parse -q --verify "refs/remotes/origin/$b" >/dev/null ||
+      [ "$(git -C "$top" rev-list --count "origin/$b..$b")" -eq 0 ]; then
+      pct="$(landed_pct "$b")"
+    fi
+    if [ -n "$pct" ] && [ "$pct" -ge "$landed_min" ]; then
+      say branch "$b: $ahead commit(s) not on $base, likely landed ($pct% of its added lines are on $base): look, then delete it"
+    else
+      say branch "$b: $ahead commit(s) not on $base"
+    fi
   done <<<"$(git -C "$top" for-each-ref --format='%(refname:short)' refs/heads)"
 
   # Extra worktrees (the first entry is the checkout itself).

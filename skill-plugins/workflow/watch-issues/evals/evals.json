@@ -148,6 +148,17 @@
         "Lands a stack by its top branch with main merged in, or retargets each PR to main first",
         "Never merges a stack bottom-up with --delete-branch"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "The dotfiles gate for my issue fix takes 4 minutes. Two tests in files I did not touch may already be red on the base branch. What do you run first?",
+      "expected_output": "The agent runs the touched and suspect test files on the base branch before the full gate, treats tests that fail there as pre-existing base fixes, and only then runs the full gate once.",
+      "expectations": [
+        "Runs the relevant test files on the base branch before the first full gate",
+        "Treats a test that fails on base as pre-existing, not as its own regression",
+        "Fixes or reports the base failure in the same PR so the gate can pass",
+        "Runs the full gate once after that, and reads rc in its own call"
+      ]
     }
   ]
 }

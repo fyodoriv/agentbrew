@@ -13,6 +13,7 @@ import {
   findPluginCheckouts,
   formatWorkPlan,
   mergeWorkSteps,
+  parentAppCheckout,
   pruneMissingWorkSteps,
   resolveWorkStep,
 } from "./work.js";
@@ -144,6 +145,13 @@ describe("repo-update watch (#516)", () => {
     ]);
     expect(plan.repoWatch.how).toMatch(/^Before the first step and on each watch pass/);
     expect(plan.repoWatch.how).toMatch(/updated, current, or skipped/);
+  });
+
+  it("finds a parent app from a dir with a trailing slash or no slash at all", () => {
+    const isRepo = (dir: string) => dir === "~/apps/careerbrew" || dir === "careerbrew";
+    expect(parentAppCheckout("~/apps/careerbrew-acme/", isRepo)).toBe("~/apps/careerbrew");
+    expect(parentAppCheckout("careerbrew-acme", isRepo)).toBe("careerbrew");
+    expect(parentAppCheckout("~/apps/plain", isRepo)).toBeUndefined();
   });
 });
 

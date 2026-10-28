@@ -297,11 +297,12 @@ export function parentAppCheckout(
   dir: string,
   isRepo: (dir: string) => boolean = (d) => existsSync(join(expandHome(d), ".git")),
 ): string | undefined {
-  const slash = dir.lastIndexOf("/");
-  const root = dir.slice(0, slash);
-  const name = dir.slice(slash + 1);
+  const path = dir.replace(/\/+$/, "");
+  const slash = path.lastIndexOf("/");
+  const prefix = slash === -1 ? "" : path.slice(0, slash + 1);
+  const name = path.slice(slash + 1);
   for (let i = name.indexOf("-"); i > 0; i = name.indexOf("-", i + 1)) {
-    const parent = `${root}/${name.slice(0, i)}`;
+    const parent = `${prefix}${name.slice(0, i)}`;
     if (isRepo(parent)) return parent;
   }
   return undefined;

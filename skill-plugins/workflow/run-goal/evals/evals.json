@@ -1853,6 +1853,17 @@
         "Live lock waiters are listed with ps, not only the workers' last lines",
         "Each stalled worker is resumed with SendMessage and exact steps"
       ]
+    },
+    {
+      "id": 160,
+      "prompt": "/goal add a furniture feature to the home app; first: soundbar placement from a photo of my TV wall",
+      "expected_output": "The agent prints a contract whose metric is the count of placement rules with a passing test (baseline 0), keeps photo reading in the agent (a skill that scales lengths from a named reference and saves fields) and the rules in tested code. When `heavy-run scripts/check.sh` fails at once with 'cannot open .../heavy-run/lock: Operation not permitted', it reads that as the sandbox, re-runs the gate outside it, and reports the gate's own rc, not the EPERM, before committing.",
+      "expectations": [
+        "Contract metric is rules-with-passing-tests with baseline 0, printed before any edit",
+        "Measurements from the photo are saved as fields; unknown ones stay unset and become ASK lines",
+        "A heavy-run lock EPERM is treated as a sandbox failure and the gate is re-run outside the sandbox",
+        "The commit runs only after the gate's own rc is 0"
+      ]
     }
   ]
 }

@@ -13,12 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moved to careerbrew, which keeps study state across days (spaced reviews,
   retests, mastery). A guard test keeps them out of agentbrew.
 
+### Changed
+
+- `/work` reads 34% less to start: 6298 bytes, down from 9511
+  (`work_instruction_bytes`). `commands/work.md` keeps only what the plan does
+  not say, `agentbrew work --json` prints compact JSON, and the plan drops
+  `dashboard.top`. The day's page is republished when a stage ends, when a watch pass
+  changes a row, when a row needs the user, and at end of day; `dashboard.statusPath` still updates on
+  every row change.
+
 ### Added
 
 - The wrap-up skill's `open-work.sh` tags a branch whose added lines are
   already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as
   "likely landed: look, then delete it". Such a branch matched no squash
   check and read as work to continue.
+- `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
+  bytes a run reads, and each recorded run's wall time, tool time, calls,
+  blocked calls, Artifact calls, subagents, and time per step (from the
+  agent perf log, `agent-perf.mjs work`). New metrics `work_instruction_bytes`
+  and `work_run_wall_ms`.
 - `/work` keeps a live dashboard for the day (#510). `agentbrew work --json`
   returns a `dashboard` block: title, one row per step, statuses, and a
   local page path; the end-of-day report links it.

@@ -69,7 +69,8 @@ interface PerfModule {
   buildReport: (opts: Record<string, unknown>, ctx?: { dir?: string; nowMs?: number }) => Record<string, unknown>;
 }
 
-function perfScriptCandidates(home: string): string[] {
+/** Where agent-perf.mjs may live: the synced helper copy, then the package's own. */
+export function perfScriptCandidates(home: string): string[] {
   return [
     join(expandHome(HELPER_SCRIPTS_DIR).replace(homedir(), home), "agent-perf.mjs"),
     join(import.meta.dirname, "templates", "scripts", "agent-perf.mjs"),

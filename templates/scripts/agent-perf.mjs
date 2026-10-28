@@ -19,6 +19,7 @@
 //   brief [--project NAME]
 //   statusline            (reads Claude Code status-line JSON on stdin; adds the usage tip line)
 //   turn --session ID [--json]
+//   work [--project NAME] [--days N] [--json]   (one row per /work run)
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool
 // calls run inside its Agent call, so adding them would count time twice.
@@ -514,6 +515,145 @@ export function buildTurn(sid, { dir = perfDir(), nowMs = Date.now() } = {}) {
   };
 }
 
+// ── work: one row per /work run ──
+
+/**
+ * The step key of the call that loads the /work plan (`agentbrew work
+ * --json`), also inside a loop ("for agentbrew work"). `npx agentbrew work`
+ * keys as "npx agentbrew" and is not counted.
+ */
+export const WORK_START_KEY = /(^|\s)agentbrew work$/;
+
+/** The middle value; for an even count, the mean of the two middle values. */
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 0) return 0;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+/** An idle gap longer than this ends a /work run (the session was resumed another day). */
+export const WORK_GAP_MS = 8 * 60 * 60 * 1000;
+
+const isWorkStart = (row) =>
+  isToolRow(row) && isMainThread(row) && row.tool === "Bash" && WORK_START_KEY.test(row.key ?? "");
+const isStep = (row) => isToolRow(row) && isMainThread(row) && row.key?.startsWith("skill:");
+
+/** Split one session's rows into /work runs: start rows through the last row before an idle gap. */
+function sessionWorkRuns(sessionRows) {
+  const found = [];
+  let current = null;
+  let lastMs = Number.NaN;
+  for (const row of sessionRows) {
+    const ms = Date.parse(row.ts);
+    if (current && Number.isFinite(ms) && ms - lastMs > WORK_GAP_MS) current = null;
+    if (!current && isWorkStart(row)) {
+      current = [];
+      found.push(current);
+    }
+    current?.push(row);
+    if (Number.isFinite(ms)) lastMs = ms;
+  }
+  // `agentbrew work stats` keys as "agentbrew work" too: a run needs a step after its start.
+  return found.filter((runRows) => runRows.some(isStep));
+}
+
+/**
+ * /work runs: each starts at a main-thread `agentbrew work` call and lasts
+ * through the session's last row before an idle gap of over WORK_GAP_MS. A
+ * start with no Skill step after it is not a run (`agentbrew work stats`
+ * keys the same). Steps are the main-thread Skill calls in order; a step
+ * lasts until the next step starts, the last one until the run ends.
+ * Artifact calls count every thread and every action (the log keeps only the
+ * tool name); subagents count main-thread Agent or Task launches.
+ */
+export function workRuns(rows) {
+  const bySession = new Map();
+  for (const row of rows) {
+    if (!row.sid) continue;
+    const list = bySession.get(row.sid) ?? [];
+    list.push(row);
+    bySession.set(row.sid, list);
+  }
+  const runs = [];
+  for (const [sid, sessionRows] of bySession) {
+    for (const runRows of sessionWorkRuns(sessionRows)) {
+      const startMs = Date.parse(runRows[0].ts);
+      const endMs = Math.max(...runRows.map((row) => Date.parse(row.ts)).filter(Number.isFinite));
+      const summary = summarize(runRows, sessionRows);
+      const stepRows = runRows.filter(isStep);
+      const steps = stepRows.map((row, i) => {
+        const next = stepRows[i + 1] ? Date.parse(stepRows[i + 1].ts) : endMs;
+        return { step: `/${row.key.slice("skill:".length)}`, ms: next - Date.parse(row.ts) };
+      });
+      const isLaunch = (row) => isMainThread(row) && /^(Agent|Task)$/.test(row.tool ?? "");
+      const launches = new Set(
+        runRows
+          .filter((row) => isLaunch(row) && (isToolRow(row) || (row.ev === "attempt" && row.bg === true)))
+          .map((row, i) => (hasId(row) ? row.id : `row${i}`)),
+      );
+      runs.push({
+        session: sid,
+        project: runRows[0].project ?? null,
+        start: runRows[0].ts,
+        wallMs: endMs - startMs,
+        turns: runRows.filter((row) => row.ev === "turn").length,
+        toolMs: summary.toolMs,
+        calls: summary.calls,
+        blocked: summary.blocked,
+        humanWaitMs: summary.humanWait.ms,
+        artifactCalls: runRows.filter((row) => isToolRow(row) && row.tool === "Artifact").length,
+        subagents: launches.size,
+        steps,
+      });
+    }
+  }
+  return runs.sort((a, b) => a.start.localeCompare(b.start));
+}
+
+/** Build the `work` object: every /work run in the window and their medians. */
+export function buildWorkReport(opts, { dir = perfDir(), nowMs = Date.now() } = {}) {
+  const days = Number(opts.days) > 0 ? Number(opts.days) : 30;
+  const sinceMs = nowMs - days * DAY_MS;
+  const loaded = loadRows(dir, sinceMs, nowMs);
+  const runs = workRuns(loaded).filter((run) => !opts.project || run.project === opts.project);
+  const pick = (field) => runs.map((run) => run[field]);
+  return {
+    scope: { project: opts.project ?? "all", days, since: new Date(sinceMs).toISOString() },
+    runs,
+    totals: {
+      runs: runs.length,
+      medianWallMs: median(pick("wallMs")),
+      medianToolMs: median(pick("toolMs")),
+      medianCalls: median(pick("calls")),
+      medianBlocked: median(pick("blocked")),
+      medianArtifactCalls: median(pick("artifactCalls")),
+    },
+  };
+}
+
+export function formatWorkReport(report) {
+  const { scope, totals } = report;
+  const lines = [
+    `/work runs, last ${scope.days}d: ${totals.runs}${scope.project === "all" ? "" : ` (${scope.project})`}`,
+  ];
+  if (totals.runs === 0) {
+    lines.push("No /work run recorded yet. A run starts at its `agentbrew work --json` call.");
+    return lines.join("\n");
+  }
+  lines.push(
+    `Median run: ${formatMs(totals.medianWallMs)} wall, ${formatMs(totals.medianToolMs)} tool time, ${totals.medianCalls} calls, ${totals.medianBlocked} blocked, ${totals.medianArtifactCalls} Artifact calls.`,
+    "",
+  );
+  for (const run of report.runs) {
+    lines.push(
+      `${run.start}  ${run.project ?? ""} ${run.session.slice(0, 8)}: ${formatMs(run.wallMs)} wall, ${formatMs(run.toolMs)} tool, ${run.calls} calls, ${run.blocked} blocked, ${run.turns} turns, ${run.artifactCalls} Artifact calls, ${run.subagents} subagents`,
+    );
+    if (run.steps.length > 0) lines.push(`  steps: ${run.steps.map((s) => `${s.step} ${formatMs(s.ms)}`).join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
 // ── statusline: per-session cache so each refresh reads only new bytes ──
 
 function readFrom(file, offset) {
@@ -639,7 +779,8 @@ const USAGE = `Usage: agent-perf.mjs <command> [options]
   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
   brief [--project NAME]
   statusline              (reads Claude Code status-line JSON on stdin)
-  turn --session ID [--json]`;
+  turn --session ID [--json]
+  work [--project NAME] [--days N] [--json]`;
 
 export function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv);
@@ -647,6 +788,11 @@ export function main(argv = process.argv.slice(2)) {
   if (command === "report") {
     const report = buildReport(opts);
     process.stdout.write(`${opts.json ? JSON.stringify(report, null, 2) : formatReport(report)}\n`);
+    return 0;
+  }
+  if (command === "work") {
+    const report = buildWorkReport(opts);
+    process.stdout.write(`${opts.json ? JSON.stringify(report, null, 2) : formatWorkReport(report)}\n`);
     return 0;
   }
   if (command === "brief") {

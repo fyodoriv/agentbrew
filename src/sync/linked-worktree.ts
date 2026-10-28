@@ -4,7 +4,7 @@
  * worktree-agentfile). Registering it shadows the live commands with a copy
  * that disappears when the worktree is removed.
  */
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { AgentBrewState } from "../types.js";
@@ -16,21 +16,37 @@ function mainCheckoutOf(dir: string): string | undefined {
     if (!statSync(resolve(dir, ".git")).isFile()) return undefined;
     const gitdir = /^gitdir:\s*(.+)$/m.exec(readFileSync(resolve(dir, ".git"), "utf-8"))?.[1]?.trim();
     const match = gitdir && /^(.*)[/\\]\.git[/\\]worktrees[/\\][^/\\]+[/\\]?$/.exec(resolve(dir, gitdir));
-    return match ? match[1] : undefined;
+    return match ? real(match[1]) : undefined;
   } catch {
     return undefined;
   }
 }
 
+/** Real path when it exists, so /tmp and /private/tmp compare equal. */
+function real(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
 function isUnder(path: string, root: string): boolean {
-  const p = resolve(expandHome(path));
+  const p = real(resolve(expandHome(path)));
   return p === root || p.startsWith(`${root}/`);
 }
 
 /** The main checkout to name in a warning when sync should skip the project Agentfile at `dir`. */
-export function linkedWorktreeToSkip(dir: string, state: AgentBrewState | undefined): string | undefined {
+export function linkedWorktreeToSkip(dir: string, getState: () => AgentBrewState | undefined): string | undefined {
   const main = mainCheckoutOf(dir);
-  if (!main || !state) return undefined;
+  if (!main) return undefined;
+  let state: AgentBrewState | undefined;
+  try {
+    state = getState();
+  } catch {
+    return undefined;
+  }
+  if (!state) return undefined;
   const entries = [
     ...(state.skillSourceDirs ?? []),
     ...(state.commandSourceDirs ?? []),

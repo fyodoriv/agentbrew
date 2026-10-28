@@ -113,7 +113,7 @@ function applyProjectAgentfile(
   dryRun: boolean,
   virtualState: AgentBrewState | undefined,
 ): ApplyAgentfileResult | undefined {
-  const main = linkedWorktreeToSkip(process.cwd(), virtualState ?? loadState());
+  const main = linkedWorktreeToSkip(process.cwd(), () => virtualState ?? loadState());
   if (main) {
     console.log(chalk.yellow(`  ${linkedWorktreeWarning(main)}`));
     return undefined;

@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,7 +8,7 @@ import { linkedWorktreeToSkip, linkedWorktreeWarning } from "./linked-worktree.j
 
 const dirs: string[] = [];
 function repo(): { main: string; wt: string } {
-  const base = mkdtempSync(join(tmpdir(), "linked-wt-"));
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "linked-wt-")));
   dirs.push(base);
   const main = join(base, "tool");
   const wt = join(base, "wt", "feature");
@@ -16,7 +17,7 @@ function repo(): { main: string; wt: string } {
   writeFileSync(join(wt, ".git"), `gitdir: ${join(main, ".git", "worktrees", "feature")}\n`);
   return { main, wt };
 }
-const state = (paths: string[]): AgentBrewState =>
+const state = (paths: string[]) => (): AgentBrewState =>
   ({
     agents: [],
     catalogVersion: "test",
@@ -42,6 +43,44 @@ describe("linkedWorktreeToSkip (sync-skip-linked-worktree-agentfile)", () => {
     const { main } = repo();
     expect(linkedWorktreeToSkip(main, state([join(main, "commands")]))).toBeUndefined();
     expect(linkedWorktreeToSkip(tmpdir(), state([join(main, "commands")]))).toBeUndefined();
+  });
+
+  it("skips a real `git worktree add` copy reached through a symlinked path", () => {
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "linked-wt-git-")));
+    dirs.push(base);
+    const main = join(base, "tool");
+    const git = (...args: string[]) =>
+      execFileSync("git", args, {
+        cwd: main,
+        stdio: "ignore",
+        env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+      });
+    mkdirSync(join(main, "commands"), { recursive: true });
+    git("init", "-q");
+    git(
+      "-c",
+      "user.email=a@example.com",
+      "-c",
+      "user.name=a",
+      "commit",
+      "-q",
+      "--allow-empty",
+      "--no-verify",
+      "-m",
+      "init",
+    );
+    git("worktree", "add", "-q", join(base, "wt", "feature"));
+    symlinkSync(main, join(base, "tool-link"));
+    expect(linkedWorktreeToSkip(join(base, "wt", "feature"), state([join(base, "tool-link", "commands")]))).toBe(main);
+  });
+
+  it("does not skip when reading state throws", () => {
+    const { main, wt } = repo();
+    expect(
+      linkedWorktreeToSkip(wt, () => {
+        throw new Error(`bad state under ${main}`);
+      }),
+    ).toBeUndefined();
   });
 
   it("prints one warning line with the main checkout under ~", () => {

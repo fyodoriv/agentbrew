@@ -46,6 +46,28 @@
         "Writes one findings file per checklist, and each finding's dimension names its checklist",
         "Asks the user before it posts the review"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "review PR 41 in example-org/api. My draft review says: 'Blocking: PROJ-123 is fixed here, Sam closed it. @Lee can you confirm the cache change?' The PR data shows PROJ-123 is closed with Sam as assignee, and Lee is not a member of the PR's review thread.",
+      "expected_output": "Before showing the draft, the agent sends it with the PR facts to a fresh judge subagent. The judge answers REJECTED: PROJ-123 is bare text, not a link; 'Sam closed it' is not in the data (Sam is only the assignee); Lee is not a member, so the ask moves to its own message. The agent fixes the draft, judges again, and shows it only after APPROVED, then asks before it posts.",
+      "expectations": [
+        "Sends the whole draft to a fresh judge subagent before showing it to the user",
+        "The judge rejects the bare PROJ-123 id, the unsupported 'Sam closed it' claim, and the ask to non-member Lee",
+        "Fixes the draft and judges it again; shows it only after APPROVED",
+        "Asks the user before posting"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "draft a reply in the #release thread asking Priya to approve the rollout; Priya is not a member of #release.",
+      "expected_output": "The agent sends the draft and the thread's member list to a fresh judge subagent per references/draft-judge.md. The judge answers REJECTED because Priya is not a member. The fixed draft names Priya in plain text with \"I'll ping them directly\", and the ask goes to Priya in its own message. Nothing is posted before APPROVED and the user's yes.",
+      "expectations": [
+        "Runs the draft judge before showing the chat draft",
+        "Rejects an ask to a non-member of the target conversation",
+        "The fixed draft says \"I'll ping them directly\" and puts the ask in its own message to that person",
+        "Posts nothing before APPROVED and the user's yes"
+      ]
     }
   ]
 }

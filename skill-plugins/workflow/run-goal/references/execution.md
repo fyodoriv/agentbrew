@@ -22,6 +22,12 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
 - While you iterate, run only the related test files. Run the full suite
   once, right before each commit. Run mutation checks as one parallel batch,
   not one by one.
+- Before the first e2e run, read its global setup and teardown and its
+  web-server config. A delete under the real data folder, or a test server on
+  the user's dev-server ports (`reuseExistingServer`), means isolate first: own
+  ports, own data dir set by env, and the reset inside the server start
+  command (Playwright starts `webServer` before `globalSetup`). One first e2e
+  run deleted the live app's real database.
 - Before you trust a loop's pass count, read one run's result line. In zsh,
   `"$T[0]"` is a subscript and expands to empty (indexes start at 1), so pytest
   got no path: a 20-run loop of one test ran the whole suite.
@@ -95,6 +101,15 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
   run the same server code locally over the published data, and measure there.
   A test that sets a data-dir variable from `mktemp` must check that `mktemp`
   worked; an empty variable falls back to the real data folder.
+- When a goal makes data more durable or more shareable (console to file,
+  local to shared store, private to public doc), first list every existing
+  writer into that sink. Check each for user text (error messages, request
+  bodies, file names) before docs ask anyone to share it, and log errors by
+  name or code. One run piped the console to a log that a bug template asked
+  users to post, and the old handler logged `err.stack` with request text.
+- The pre-merge review prompt asks about every value a user can type or
+  import that reaches an external sink (analytics, logs, a shared store).
+  A green suite missed a slugified free-text field sent to analytics.
 - When a goal keeps source data word for word, store what a tool wrote to
   disk (a saved tool-result file, a CLI's stdout) or the tool's reply copied
   without changes. Never summarize while copying. Give the store a way to

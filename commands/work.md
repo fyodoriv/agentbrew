@@ -3,46 +3,17 @@ description: Run the work day with agentbrew: ordered checkups, the machine rule
 allowed-tools: Bash(agentbrew:*)
 ---
 
-Run `agentbrew work --json`. If `agentbrew` is not on PATH, run `npx agentbrew work --json`. It reads local files only and changes nothing. It returns:
+Run `agentbrew work --json` (`npx agentbrew work --json` when `agentbrew` is not on PATH). It reads local files only and changes nothing. Its text fields are your instructions; this file adds only what they leave out.
 
-- `rule`: what you may edit on this machine. Follow it all day.
-  - A company machine (a company plugin is installed): edit only the company plugin repos it names. On public repos, open an issue instead of editing.
-  - A personal machine: edit the public repos the user works on.
-  - On both: every public issue, PR, or comment stays a draft until the user says yes. Show the exact text first.
-- `steps`: the steps, as slash commands, back to back (see `flow`). Each step also has `scope` (what it changes; empty means it runs alone), `after` (steps that must finish first), and `longRunning` (a live feed or watcher). agentbrew's own steps come first, then the steps each Agentfile adds with `workSteps:`. Each step has a `path` (the skill or command file it runs) and `userOnly`. When `userOnly` is true, or the Skill tool cannot load the step, read the file at `path` and follow it: starting `/work` is the user's request to run it. `path` is looked up under `~/.claude` (skills, then commands). If it is null, the step was not found there: if your agent keeps skills elsewhere, look there; otherwise say in one line that the step is not installed and go on.
-- `stages`: the run order. Run the steps of one stage in parallel, one subagent per step. Wait for the whole stage to finish, then start the next stage. A stage with one step runs in this session. Each subagent saves its user questions and returns them with its result; do not let a subagent ask the user.
-- `flow`: run every step and phase back to back. Never stop to ask "continue?". When a step is blocked, report it in one line and go on to the next step.
-- `stopOnlyFor`: the only reasons to stop and wait: a merge conflict you cannot resolve, a destructive or public action that needs approval, or a choice only the user can make.
-- `questions`: save every other question a step raises (for example a checkup's final questions). End each cycle (after the last step, and after each watch pass) with one batched ask of every item that waits on the user: decisions, drafts to send, sign-ins, approvals. First check that each item is still open (for example, that a draft was not already sent). For each item, say what it is, what each option does, and your pick.
-- `repoWatch`: on each watch pass, follow `how` for the checkouts in `checkouts`: fetch, fast-forward a clean checkout that is behind, run `agentbrew sync` once, then each `refresh` step. Skip a checkout with local changes or a diverged branch, in one line.
-- `pluginReview`: on each cycle, check every checkout in `checkouts` (plugins such as `careerbrew-<org>`, `agentbrew-<org>`, `dotfiles-<org>`, and installed plugins) for uncommitted files and unpushed commits. For each change, follow `how`: a generic change belongs in the main tool, so draft the move and add it to the batched questions. Move nothing before the user says yes.
-- `watch`: after the last step, keep watching. Re-run a step when its input changes (a new issue, a red check, a new review). To notice those changes, arm a Monitor on the `watch-issues` skill's `scripts/watch-repos.sh <interval> owner/repo@branch...`: it prints one line when a branch head moves or any issue or PR is updated. Print one line per update. Do not repeat a line that did not change.
-- `dashboard`: one page for the whole day.
-  - Before the first step, reuse today's page or create it. With an Artifact tool, list your Artifacts; if one is titled `dashboard.title`, update it in place, otherwise publish a new one with that title. With no Artifact tool, write one self-contained HTML file at `dashboard.localPath` (create its folder first) and rewrite that same file on each update.
-  - Rows start as `waiting`. Write dates as "Mon Oct 26", never ISO.
-  - Publish one row per step from `dashboard.rows`: step, status (`done`, `running`, `waiting`, `blocked`, or `failed`), a one-line summary, needs-you text, and a link.
-  - Update a row each time its step changes. Keep the same URL all day.
-  - On every row change, also rewrite `dashboard.statusPath` (create its folder first) as JSON: `{ "title": …, "rows": [ …the rows… ], "questions": [ …saved questions… ] }`. The optional `/work` pane reads it.
-  - The top of the page shows done, running, and needs-you counts, then a "Needs you" list. Put the saved questions (see `questions`) there too.
-  - Give the user the link once, at the start.
-- `endOfDay`: when the user says "end of day", stop every loop you started, run the end-of-day step, then draft a Today / Tomorrow report: what was done (with PRs and numbers), what is blocked and why, and what comes next. Link the day's dashboard in it.
+Before the first step, tell the user in two lines: the kind of machine (`machine`) and the steps you will run.
 
-Before the first step, tell the user in two lines: which kind of machine this is, and the steps you will run.
+- `rule`: follow it all day. Every public issue, PR, or comment stays a draft until the user says yes; show the exact text first.
+- `stages`: run them in order. Run a stage's steps in parallel, one subagent per step; wait for the whole stage to finish, then start the next. A one-step stage runs in this session. A subagent never asks the user: it returns its questions with its result.
+- `steps`: run each one with the Skill tool. When `userOnly` is true or the Skill tool cannot load it, read the file at `path` and follow it (starting `/work` is the user's request to run it). `path` is looked up under `~/.claude` (skills, then commands); when it is null, look where your agent keeps skills, or say in one line that the step is not installed and go on.
+- `flow`: back to back. When a step is blocked, say so in one line and go on to the next step. Stop only for `stopOnlyFor`.
+- `questions`: end each cycle (after the last step, and after each watch pass) with one batched ask. Check that each item is still open first.
+- `watch`: to notice changes, arm a Monitor on the `watch-issues` skill's `scripts/watch-repos.sh <interval> owner/repo@branch...`. It prints one line when a branch head moves or an issue or PR is updated. Do not repeat a line that did not change. After the last step and on each pass, follow `repoWatch.how` and `pluginReview.how`.
+- `dashboard`: one page for the day, at the same URL all day. With an Artifact tool, list your Artifacts: if one has the `dashboard.title` title, update it in place, otherwise publish it. With none, write one self-contained HTML file at `dashboard.localPath`. Each row of `dashboard.rows`: step, status, a one-line summary, needs-you text, and a link. Write dates as "Mon Oct 26". The top: done, running, and needs-you counts, then a "Needs you" list with the saved questions. Follow `dashboard.publish` for when to write each copy; `dashboard.statusPath` takes `{ "title", "rows", "questions" }` (the `/work` pane reads it). Create the folders first. Give the user the link once, at the start.
+- `endOfDay`: when the user says "end of day", stop every loop you started and run it. The report says what was done (PRs, numbers), what is blocked and why, and what comes next. Link the day's dashboard in it.
 
-To add steps for a team, add them to an Agentfile, for example the company overlay's:
-
-```yaml
-workSteps:
-  - /tooling-checkup
-  - /oncall-checkup
-  - step: /career-checkup
-    scope: ~/apps/career        # what it changes; steps with no overlap run in parallel
-    after: /tooling-checkup     # wait for this step first
-  - step: /live-feed
-    scope: ~/apps/feed
-    longRunning: true           # a watcher: starts after every other step
-```
-
-A step with no `scope:` runs alone, which is the safe default. Write each scope as an absolute or `~` path, or a service name such as `github.com`.
-
-Then run `agentbrew sync`. Do not copy this command to change it. If the user does not want built-in commands, run `agentbrew config set builtinCommands off`.
+Team steps go in an Agentfile's `workSteps:` (`scope:`, `after:`, `longRunning:`; README, "Work day"), then `agentbrew sync`. Do not copy this command to change it; `agentbrew config set builtinCommands off` turns built-in commands off.

@@ -343,9 +343,9 @@ The machine rule comes from the installed company plugins: with one, edit only t
 
 `/work` keeps one dashboard for the day. `agentbrew work --json` returns a `dashboard` block: a title, one row per step (step, status `done`/`running`/`waiting`/`blocked`/`failed`, summary, needs-you text, link), and the local page path (`$XDG_STATE_HOME/agentbrew/work/<date>.html`) for an agent with no Artifact tool. Rows start as `waiting`.
 
-`/work` reuses today's page (the Artifact with that title, or the local file) or publishes it before the first step. It updates a row on every step change and keeps the same URL all day. The Today / Tomorrow report links it.
+`/work` reuses today's page (the Artifact with that title, or the local file) or publishes it before the first step. It republishes the page when a stage ends, when a watch pass changes a row, when a row starts to need you, and at end of day, not on every row change (an Artifact publish is the costly call), and keeps the same URL all day. The Today / Tomorrow report links it.
 
-It also rewrites `dashboard.statusPath` (the same rows as JSON) on every change, for the optional Claude Code pane in [`mods/work-pane`](mods/work-pane/README.md). Start Claude Code with `--plugin-dir` pointing at it, and every `/work` opens the pane beside the chat (`/work-pane` opens it alone).
+It rewrites `dashboard.statusPath` (the same rows as JSON) on every row change, for the optional Claude Code pane in [`mods/work-pane`](mods/work-pane/README.md). Start Claude Code with `--plugin-dir` pointing at it, and every `/work` opens the pane beside the chat (`/work-pane` opens it alone).
 
 Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (what the step changes), `after:` (steps that must finish first), and `longRunning: true` (a watcher that starts last). `agentbrew work --json` returns `stages`: groups of steps whose scopes do not overlap and whose `after:` steps are done.
 
@@ -353,7 +353,7 @@ Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (
 
 A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`.
 
-`agentbrew work stats` shows what `/work` costs. It counts the bytes a run reads to start (the command text plus the plan) and lists every recorded run from the agent perf log: wall time, tool time, calls, blocked calls, Artifact calls, subagents, and time per step. A run starts at its `agentbrew work --json` call, needs at least one step, and ends at an idle gap of over 8 hours. The numbers feed `work_instruction_bytes` and `work_run_wall_ms` in [`docs/metrics.md`](docs/metrics.md).
+`agentbrew work --json` prints the plan as compact JSON, and `commands/work.md` holds only what the plan does not say, so each rule has one home. `agentbrew work stats` shows what `/work` costs. It counts the bytes a run reads to start (the command text plus the plan) and lists every recorded run from the agent perf log: wall time, tool time, calls, blocked calls, Artifact calls, subagents, and time per step. A run starts at its `agentbrew work --json` call, needs at least one step, and ends at an idle gap of over 8 hours. The numbers feed `work_instruction_bytes` and `work_run_wall_ms` in [`docs/metrics.md`](docs/metrics.md).
 
 The watch loop also applies repo updates. `repoWatch` lists the applied Agentfile checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
 

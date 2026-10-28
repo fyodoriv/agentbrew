@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildWorkPlan } from "./work.js";
+import { buildWorkPlan, workPlanJson } from "./work.js";
 import { collectWorkStats, formatWorkStats, workInstructionBytes } from "./work-stats.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
@@ -25,7 +25,7 @@ describe("workInstructionBytes", () => {
     const plan = buildWorkPlan({ agents: [], catalogVersion: "test" } as never, []);
     const bytes = workInstructionBytes(plan, "abc");
     expect(bytes.commandBytes).toBe(3);
-    expect(bytes.planBytes).toBe(Buffer.byteLength(`${JSON.stringify(plan, null, 2)}\n`));
+    expect(bytes.planBytes).toBe(Buffer.byteLength(`${workPlanJson(plan)}\n`));
     expect(bytes.totalBytes).toBe(bytes.commandBytes + bytes.planBytes);
   });
 });

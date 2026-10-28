@@ -266,10 +266,11 @@ describe("the /work built-in command (#440)", () => {
     expect(text).toMatch(/each watch pass/);
     expect(text).toMatch(/still open/);
     expect(text).toMatch(/blocked.*one line.*next step/is);
-    // The stop list in work.md matches the one `agentbrew work --json` returns.
+    // The stop list lives in one place, the plan; work.md points at it.
     const { WORK_STOP_ONLY_FOR } = await import("../work.js");
+    expect(WORK_STOP_ONLY_FOR.length).toBeGreaterThan(0);
     for (const reason of WORK_STOP_ONLY_FOR) {
-      expect(text.toLowerCase()).toContain(reason.toLowerCase().replace(/\.$/, ""));
+      expect(text.toLowerCase()).not.toContain(reason.toLowerCase().replace(/\.$/, ""));
     }
   });
 
@@ -295,5 +296,59 @@ describe("the /work built-in command (#440)", () => {
     // Reuse today's page instead of publishing a second one.
     expect(text).toMatch(/title.*update it in place/i);
     expect(text).toMatch(/self-contained HTML/);
+  });
+});
+
+describe("the /work instructions stay small (work_instruction_bytes)", () => {
+  const read = async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join, resolve } = await import("node:path");
+    return readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
+  };
+  const plan = async () => {
+    const { buildWorkPlan } = await import("../work.js");
+    return buildWorkPlan({ agents: [], catalogVersion: "test" } as never, []);
+  };
+
+  it("loads at most 6500 bytes per run: the command text plus the --json plan (9511 before)", async () => {
+    const { workInstructionBytes } = await import("../work-stats.js");
+    const bytes = workInstructionBytes(await plan(), await read());
+    expect(bytes.commandBytes).toBeLessThanOrEqual(3000);
+    expect(bytes.totalBytes).toBeLessThanOrEqual(6500);
+  });
+
+  it("names only plan fields that exist, so no rule points at nothing", async () => {
+    const text = await read();
+    const p = (await plan()) as unknown as Record<string, unknown>;
+    const fields = [...text.matchAll(/`([a-zA-Z]+)(?:\.([a-zA-Z]+))?`/g)].filter(([, top]) =>
+      /^(rule|steps|stages|flow|stopOnlyFor|questions|watch|repoWatch|pluginReview|dashboard|endOfDay|machine)$/.test(
+        top ?? "",
+      ),
+    );
+    expect(fields.length).toBeGreaterThan(10);
+    for (const [name, top, sub] of fields) {
+      expect(p, name).toHaveProperty(top as string);
+      if (sub) expect(p[top as string], name).toHaveProperty(sub);
+    }
+  });
+
+  it("says each rule once: no plan text field is copied into work.md", async () => {
+    const text = (await read()).toLowerCase();
+    const p = await plan();
+    const prose = [
+      p.flow,
+      p.questions,
+      p.watch,
+      p.repoWatch.how,
+      p.pluginReview.how,
+      p.dashboard.publish,
+      p.endOfDay[1],
+    ];
+    for (const field of prose) {
+      // No sentence of a plan field (over 40 characters) appears in work.md word for word.
+      for (const sentence of (field ?? "").split(/(?<=\.)\s+/).filter((x) => x.length > 40)) {
+        expect(text, sentence).not.toContain(sentence.toLowerCase());
+      }
+    }
   });
 });

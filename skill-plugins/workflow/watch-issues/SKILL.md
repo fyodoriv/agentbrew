@@ -119,6 +119,10 @@ or the user's words in this session).
   Monitor when it expires; the seen list keeps the state. A `skip` line on
   three passes in a row is a broken read: stop the Monitor and fix it or
   report it.
+  A Monitor runs in the Bash sandbox, where `gh` can fail TLS (`x509`), so
+  every read is a `skip`. Then run the loop as a background Bash call with
+  the sandbox off, writing to a log, and arm the Monitor on `tail -f` of
+  that log.
 - In a session without a Monitor: `/loop /watch-issues` (self-paced; 30
   minutes is a good idle interval). Each wake-up runs one pass.
   The built-in `/loop` runs its prompt once right away. If you already ran a

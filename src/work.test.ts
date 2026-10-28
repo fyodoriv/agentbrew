@@ -94,6 +94,25 @@ describe("buildWorkPlan", () => {
     rmSync(base, { recursive: true, force: true });
   });
 
+  it("treats ssh and https origin forms of the tool repo as one repo", () => {
+    const base = mkdtempSync(join(tmpdir(), "work-origin-"));
+    const origin = (url: string) => `[core]\n\tbare = false\n[remote "origin"]\n\turl = ${url}\n`;
+    const clones: Record<string, string> = {
+      careerbrew: "git@github.com:Me/careerbrew.git",
+      "careerbrew-https": "https://github.com/Me/careerbrew",
+      "careerbrew-dotgit": "https://user@GitHub.com/Me/careerbrew.git/",
+      "careerbrew-ssh": "ssh://git@github.com/Me/careerbrew.git",
+      "careerbrew-acme": "git@github.com:Me/careerbrew-acme.git",
+    };
+    for (const [dir, url] of Object.entries(clones)) {
+      mkdirSync(join(base, dir, ".git"), { recursive: true });
+      writeFileSync(join(base, dir, ".git/config"), origin(url));
+      writeFileSync(join(base, dir, "Agentfile.yaml"), "commands:\n  - ./commands\n");
+    }
+    expect(findPluginCheckouts([base])).toEqual([`${base}/careerbrew-acme`]);
+    rmSync(base, { recursive: true, force: true });
+  });
+
   it("prints a human plan with the steps, watch mode, and end of day", () => {
     const text = formatWorkPlan(buildWorkPlan(state([{ step: "/tooling-checkup", agentfile: "/a" }]), []));
     expect(text).toContain("1. /agentbrew");

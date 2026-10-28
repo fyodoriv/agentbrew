@@ -15,6 +15,7 @@ import chalk from "chalk";
 import { type Agentfile, type AgentfileWorkStep, loadAgentfile } from "./agentfile.js";
 import { type PluginLockEntry, readLock } from "./lock.js";
 import { MANIFEST_FILE } from "./plugins/manifest.js";
+import { normalizeRemote } from "./plugins/scope.js";
 import { pluginDir } from "./plugins/store.js";
 import { loadState } from "./state.js";
 import type { AgentBrewState, WorkStepEntry } from "./types.js";
@@ -141,7 +142,8 @@ function isMainCheckout(dir: string): boolean {
 function originUrl(dir: string): string | undefined {
   try {
     const config = readFileSync(join(dir, ".git", "config"), "utf-8");
-    return /\[remote "origin"\][^[]*?\burl\s*=\s*(\S+)/.exec(config)?.[1];
+    const url = /\[remote "origin"\][^[]*?\burl\s*=\s*(\S+)/.exec(config)?.[1];
+    return url && normalizeRemote(url);
   } catch {
     return undefined;
   }

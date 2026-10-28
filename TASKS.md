@@ -184,19 +184,6 @@
   - **Pivot**: if skipping breaks a real worktree-based project setup (any existing sync test fails), switch to a warning only.
   - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate); git-worktree(1) on linked worktree `.git` files.
 
-- [ ] Plugin review compares origin URLs in one normal form
-  - **ID**: plugin-review-normalize-origin
-  - **Tags**: bug, work
-  - **Details**: #622 (count only real plugin checkouts) skips a checkout whose `origin` URL equals agentbrew's own. The compare is a raw string match, so `git@github.com:o/r.git`, `https://github.com/o/r` and `https://github.com/o/r.git` count as different repos, and a second clone with another URL form is still listed as a plugin. Normalize to `host/owner/repo` (lowercase host, no `.git`, no user, ssh or https) before comparing.
-  - **Files**: `src/work.ts`, `src/work.test.ts`
-  - **Output**: code
-  - **Acceptance**: a test with the three URL forms above skips all three as the same repo, and a different repo is still listed.
-  - **Hypothesis**: duplicate plugin entries from mixed URL forms drop from 1 per mixed clone to 0.
-  - **Measurement**: `npx vitest run src/work.test.ts -t "origin"`.
-  - **Success**: the new test passes and no existing test changes.
-  - **Pivot**: if normal-form parsing needs a dependency, compare `owner/repo` only and say so in the code.
-  - **Anchor**: review note on agentbrew #622; git-clone(1) URL forms.
-
 - [ ] Report Hallmark's render wait that never ends on apps that poll
   - **ID**: hallmark-render-wait-upstream
   - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first

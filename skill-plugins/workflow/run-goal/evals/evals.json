@@ -1988,6 +1988,17 @@
         "A fresh-context review of the diff happens before merge, even with a green gate",
         "Tests cover each path a repeating entry takes into the feed, not only the plain path"
       ]
+    },
+    {
+      "id": 172,
+      "prompt": "/goal ship this TASKS.md-only change to careerbrew (its pre-push hook runs the full gate, about 14 minutes)",
+      "expected_output": "The agent runs the push with its output saved to a log and reads git's own exit status (for example `git push ... > log 2>&1; echo exit=$?`), never `git push | tail` followed by `echo $?`, which reports the tail's 0 when the push failed. When the same test fails the gate twice but passes alone, it reads the assertion: a test that runs a script on the real checkout and grows with machine state (local refs) is fixed to use a scratch repo, with a gotcha row, instead of being rerun or called a flake.",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
     }
   ]
 }

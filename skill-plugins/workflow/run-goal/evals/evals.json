@@ -1965,6 +1965,17 @@
         "A shell probe that passes is not taken as proof the app works",
         "The needed app restart or reconnect is reported as a user step, not as met"
       ]
+    },
+    {
+      "id": 170,
+      "prompt": "/goal ship all 20 open issues with parallel workers; each worker runs the full gate before its PR",
+      "expected_output": "The lead starts its workers with a brief that makes each one wait for its gate in the foreground (a timeout, then wait again on the log's rc line), never by ending its turn on a background job. It arms a Monitor on scripts/stalled-agents.py for the whole run and re-arms it at each expiry. When a worker's gate shell is killed and its transcript goes silent, the Monitor prints STALLED and the lead resumes that worker within minutes. At a check-in it reports each worker's last transcript write, not only who holds the heavy-run lock.",
+      "expectations": [
+        "The worker brief says to wait for the gate in the foreground, not on a background completion notice",
+        "A stalled-agents Monitor runs from the first worker spawn to the last merge, re-armed at each expiry",
+        "A worker silent for 20+ minutes is resumed with a SendMessage that names the killed shell",
+        "Check-in status names each worker's last activity time, not only the gate lock holder"
+      ]
     }
   ]
 }

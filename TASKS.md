@@ -173,10 +173,11 @@
 
 - [ ] Triage leftover branches, worktrees, and a stash
   - **ID**: leftover-branches-2026-10-28
+  - **Blocked**: needs-owner — 2026-10-28: the safe part is done. Five worktrees whose head equals a merged or closed PR head were removed (wrap-up-likely-landed #605, watch-monitor-sandbox #608, work-lean #603, work-stats #602, 600-parent-checkouts #604), and their merged branches deleted. Left for the owner, each holding work no PR has: `stash@{0}` on `feat/work-refresh-parents` (it applies neither forward nor in reverse on `main`, so it may hold unshipped edits to `src/work.ts`); `feat/grind-watch-mode` (2 unpushed commits); `feat/600-parent-checkouts` (closed PR #604, replaced by #601); `skill/watch-issues-base-red` (no PR); the detached Claude Code worktree `.claude/worktrees/agitated-pasteur-0151e4` (unmerged, 3 days old). Question: keep, file, or drop each?
   - **Tags**: git, hygiene
   - **Details**: On 2026-10-28 the checkout had 5 local branches whose remote is gone (`fix/wrap-up-likely-landed`, `docs/watch-monitor-sandbox`, `feat/work-lean`, `feat/600-parent-checkouts`, `feat/work-stats`), 2 stale ones (`skill/watch-issues-base-red` behind 60, `feat/grind-watch-mode` ahead 2 and behind 193), `stash@{0}` from `feat/work-refresh-parents`, a detached worktree under `.claude/worktrees/`, and 5 worktrees under `~/apps/tooling/wt.noindex/` for gone branches. Leave the branches of open PRs #631 and #607 alone. For each other item, compare with `main`, salvage unmerged work into a task or PR (`grind-watch-mode` has 2 unpushed commits), then remove it (the `wrap-up` skill's `scripts/open-work.sh` lists them).
   - **Files**: none (git state only)
-  - **Output**: cleanup
+  - **Output**: mixed
   - **Acceptance**: only `main`, the open-PR branches, and claimed branches remain; the stash is applied or filed; no worktree points at a gone branch.
   - **Hypothesis**: clearing leftovers stops agents reading stale code: worktrees drop from 9 to at most 3, stashes from 1 to 0.
   - **Measurement**: `git worktree list | wc -l; git stash list | wc -l`

@@ -83,19 +83,3 @@ try {
 } catch { console.log("(stub)"); }' "$receipt" 2>/dev/null)"
 row "zero_to_configured_s" "${zero_s:-(stub)}" "<= 120" "> 300"
 row "gate_ms" "${gate_ms:-(stub)}" "<= 300000" "> 600000"
-# /work cost from `agentbrew work stats --json` (AGENTBREW_WORK_STATS: a saved
-# copy, for tests); (stub) without a build, and wall time (stub) with no run.
-work_json="$(if [ -n "${AGENTBREW_WORK_STATS:-}" ]; then cat "$AGENTBREW_WORK_STATS" 2>/dev/null
-elif [ -f "$root/dist/cli.js" ]; then node "$root/dist/cli.js" work stats --json 2>/dev/null; fi)"
-read -r work_bytes work_wall <<EOF
-$(printf '%s' "$work_json" | node -e '
-let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
-  try {
-    const j = JSON.parse(s);
-    const bytes = Number.isFinite(j.instructions?.totalBytes) ? j.instructions.totalBytes : "(stub)";
-    console.log(bytes, j.totals?.runs > 0 ? j.totals.medianWallMs : "(stub)");
-  } catch { console.log("(stub) (stub)"); }
-});' 2>/dev/null)
-EOF
-row "work_instruction_bytes" "${work_bytes:-(stub)}" "<= 6500" "> 9511"
-row "work_run_wall_ms" "${work_wall:-(stub)}" "-20% vs first 5" "> first 5"

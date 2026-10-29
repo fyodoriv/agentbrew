@@ -271,20 +271,6 @@ export interface MemoryConfig {
   packPaths?: string[];
 }
 
-/** One `/work` step and the Agentfile dir that declared it. */
-export interface WorkStepEntry {
-  step: string;
-  agentfile: string;
-  /** What the step changes (repos, folders, services). No scope: the step runs alone (#509). */
-  scope?: string[];
-  /** Steps that must finish before this one starts (#509). */
-  after?: string[];
-  /** A live feed or watcher: it starts after every other step (#509). */
-  longRunning?: boolean;
-  /** Not a day step: it runs after a repo update pulls new commits (#516). */
-  refresh?: boolean;
-}
-
 export interface AgentBrewState {
   schemaVersion?: number;
   agents: AgentConfig[];
@@ -297,8 +283,8 @@ export interface AgentBrewState {
   skillSourceDirs?: SkillSourceDir[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
   agentSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
-  /** `/work` steps from Agentfile `workSteps:` lists, with the Agentfile dir that declared each (#440). */
-  workSteps?: WorkStepEntry[];
+  /** Legacy: `/work` steps older syncs saved. /work moved to careerbrew (#610); the next sync deletes this key. */
+  workSteps?: unknown[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
   commandSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
   hooks?: ManagedHook[];

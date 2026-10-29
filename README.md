@@ -128,10 +128,9 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 | Setup | this repo and your own Agentfile | the same, plus your company's signed plugin (`agentbrew-<org>`) |
 | Company content | none | only from the company plugin: its skills, rules, MCP servers, and hooks. This public repo never names a company |
 | Your data | stays on this machine; agentbrew has no server and sends nothing anywhere | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
-| What `/work` may change | your public repos | only the plugin repos; public repos get issues, not edits |
 | Plugin trust | none needed | signed tags only, and each capability is denied until the plugin declares it ([Company plugins](#company-plugins)) |
 
-**Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins). Each `/work` cycle also checks every plugin checkout (a `<tool>-<name>` folder beside its tool that holds a plugin file such as `Agentfile.yaml`, never a linked worktree, plus the local clone of each installed plugin) for unshipped changes and drafts a move to the main tool for each generic one; nothing moves before you say yes.
+**Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins).
 
 ## Install a skill or MCP server
 
@@ -335,33 +334,7 @@ Dirs from other Agentfiles or added by hand are never removed. State written bef
 
 Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
-**Work day.** `/work` (a built-in command, deployed by `agentbrew sync` like `/agentbrew`) runs `agentbrew work --json` and follows it. First agentbrew's own steps (`/agentbrew`) run, then each Agentfile's `workSteps:` list in apply order, back to back. Then a watch loop prints one line per update.
-
-On "end of day" it stops its loops and runs `/wrap-up` (an opt-in workflow skill: `agentbrew install wrap-up`; without it, `/work` says so in one line). Then it drafts a Today / Tomorrow report. `/work` never stops to ask "continue?".
-
-It stops only for the reasons in `stopOnlyFor`: a merge conflict it cannot resolve, a destructive or public action that needs approval, or a choice only you can make. A blocked step gets one line, and the run goes on. Every other question is saved and asked once, after the last step.
-
-The machine rule comes from the installed company plugins: with one, edit only the plugin repos and open issues on public repos; without, edit public repos. Every public post stays a draft until you say yes. Each step in `agentbrew work --json` names the file it runs (`path`); a user-only skill (`disable-model-invocation: true`, so the agent's Skill tool hides it) gets `userOnly: true`, and `/work` reads that file and follows it.
-
-`/work` keeps one dashboard for the day. `agentbrew work --json` returns a `dashboard` block: a title, one row per step (step, status `done`/`running`/`waiting`/`blocked`/`failed`, summary, needs-you text, link), and the local page path (`$XDG_STATE_HOME/agentbrew/work/<date>.html`) for an agent with no Artifact tool. Rows start as `waiting`.
-
-`/work` reuses today's page (the Artifact with that title, or the local file) or publishes it before the first step. It republishes the page when a stage ends, when a watch pass changes a row, when a row starts to need you, and at end of day, not on every row change (an Artifact publish is the costly call), and keeps the same URL all day. The Today / Tomorrow report links it.
-
-It rewrites `dashboard.statusPath` (the same rows as JSON) on every row change, for the optional Claude Code pane in [`mods/work-pane`](mods/work-pane/README.md). Start Claude Code with `--plugin-dir` pointing at it, and every `/work` opens the pane beside the chat (`/work-pane` opens it alone).
-
-Steps can run in parallel. A `workSteps:` entry can be an object with `scope:` (what the step changes), `after:` (steps that must finish first), and `longRunning: true` (a watcher that starts last). `agentbrew work --json` returns `stages`: groups of steps whose scopes do not overlap and whose `after:` steps are done.
-
-`/work` runs each stage's steps in parallel, one subagent per step, and waits for the whole stage. A step with no `scope:` runs alone. Write a scope as an absolute or `~` path, or a service name such as `github.com`; two scopes overlap when they are equal or one path holds the other.
-
-A step that waits on a long-running step starts after it, at the end. A company overlay adds steps in its Agentfile (`workSteps: [/tooling-checkup, /oncall-checkup]`) instead of copying the command; `state.yaml` records which Agentfile declared each step, and a sync replaces that Agentfile's steps in place. When an Agentfile dir is gone (for example a deleted worktree), `agentbrew work` skips its steps and lists the dir under `staleWorkSteps`, and the next sync removes them from `state.yaml`.
-
-`agentbrew work --json` prints the plan as compact JSON, and `commands/work.md` holds only what the plan does not say, so each rule has one home. `agentbrew work stats` shows what `/work` costs. It counts the bytes a run reads to start (the command text plus the plan) and lists every recorded run from the agent perf log: wall time, tool time, calls, blocked calls, Artifact calls, subagents, and time per step. A run starts at its `agentbrew work --json` call, needs at least one step, and ends at an idle gap of over 8 hours. The numbers feed `work_instruction_bytes` and `work_run_wall_ms` in [`docs/metrics.md`](docs/metrics.md).
-
-Before the first step, `/work` follows `repoWatch.how`: it fast-forwards each clean checkout in `repoWatch.checkouts`, runs `agentbrew sync` once if any updated, and prints one line per checkout (updated, current, or skipped). That list holds each Agentfile folder that adds steps and each app checkout the plugin works with: the paths in its Agentfile `workCheckouts:` list (any folder, `~` allowed), plus the git checkout of each local `sources:`, `commands:`, or `agents:` path that sits in another checkout under your home folder; a folder name is never used.
-
-The watch loop also applies repo updates. `repoWatch` lists the same checkouts. On each pass `/work` fast-forwards a clean checkout that is behind its remote and runs `agentbrew sync`.
-
-Then it runs each step marked `refresh: true` (a plugin's own refresh step; it is not listed as a day-plan step). A checkout with local changes or a diverged branch is skipped with one line.
+**Work day.** `/work` lives in [careerbrew](https://github.com/fyodoriv/careerbrew), not in agentbrew (#610). Install careerbrew and run `agentbrew sync`: its Agentfile (`commands: [./commands]`) deploys careerbrew's `/work`. Add day steps with `careerbrew config set work_steps "/a, /b"`. An Agentfile `workSteps:` key is still accepted, but agentbrew ignores it, and the next sync removes old `workSteps` from `state.yaml`.
 
 **Merging overlays.** `agentbrew agentfile merge` builds one normalized Agentfile from multiple inputs. List-like fields (`mcp`, `skills`, `sources`, `commands`, `agents`, `hooks`, `excludeAgents`, `workSteps`) merge in file order; duplicate MCP, hook, or `workSteps` entries (same step name) keep their original position but use the later definition. A hook is a duplicate when its `event`, `matcher`, and `agents:` list all match, so same-event hooks for different agents stay separate. A later file's hooks replace every earlier hook with the same key. Inside one file, hooks with the same key but different commands all stay, because agents run every hook that matches; an exact copy is dropped. `rules` are additive and path-based rules are expanded before writing the merged file. Scalar metadata fields (including `defaultModel` and `defaultEffort`) use the later file; `modelOverrides` merges per agent with the later file winning.
 
@@ -885,8 +858,6 @@ agentbrew                              The one start command: state, what needs 
 agentbrew config [--json]              Each setting with its value, source, and allowed values
 agentbrew config set <key> <value>     Check one setting and save it to state.yaml
 agentbrew actions [--json]             Every action with its arguments and notes (for agents)
-agentbrew work [--json]                The day plan for /work: checkup steps, machine rule, watch, end of day
-agentbrew work stats [--days N] [--json]  What each /work run cost: instruction bytes, wall and tool time, calls, Artifact calls, per-step time
 agentbrew audit-skills [--json] [--into <repo>]
                                        Local skills/commands no source owns: merge, merge?, or adopt
 agentbrew init [--force] [--skip-install] [--skip-sync]

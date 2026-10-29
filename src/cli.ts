@@ -437,27 +437,6 @@ export function buildProgram(): Command {
       showSkillAudit(options);
     });
   program
-    .command("work")
-    .description("Print the day plan for /work: checkup steps, the machine rule, watch mode, and end of day")
-    .argument("[action]", "stats: what each /work run cost (instruction bytes, time, calls, Artifact calls)")
-    .option("--json", "Output as JSON")
-    .option("--days <n>", "stats: days to look back (default 30)")
-    .option("--project <name>", "stats: only runs started in this repo")
-    .action(async (action: string | undefined, options: { json?: boolean; days?: string; project?: string }) => {
-      if (action === "stats") {
-        const { showWorkStats } = await import("./work-stats.js");
-        await showWorkStats(options);
-        return;
-      }
-      if (action !== undefined) {
-        console.error(`Unknown work action: ${action}. Use \`agentbrew work\` or \`agentbrew work stats\`.`);
-        process.exitCode = 2;
-        return;
-      }
-      const { showWorkPlan } = await import("./work.js");
-      showWorkPlan(options);
-    });
-  program
     .command("telemetry")
     .description("Anonymous usage counts to PostHog EU: status, on, off, or send (--dry-run shows what would go)")
     .argument("<action>", "status | on | off | send")

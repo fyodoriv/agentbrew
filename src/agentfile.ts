@@ -66,7 +66,7 @@ export interface Agentfile {
    *  hooks, agents, instructions) skips them. Filesystem dirs are NOT deleted;
    *  the exclusion is purely a sync-time filter. */
   excludeAgents?: string[];
-  /** Extra `/work` steps (slash commands), run after agentbrew's own (#440). An object entry adds `scope`, `after`, and `longRunning` (#509). */
+  /** Legacy `/work` steps: still parsed so old Agentfiles load, but ignored. /work moved to careerbrew (#610). */
   workSteps?: AgentfileWorkStep[];
   /** App checkouts `/work` fast-forwards before the first step, next to the plugin's own folder (paths; `~` allowed). */
   workCheckouts?: string[];

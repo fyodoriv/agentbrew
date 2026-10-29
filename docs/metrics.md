@@ -24,8 +24,6 @@ history is not a real zero.
 | `story_fail_rate`: failed events per story, last 30 days | each story | ≤ 5% per story | > 20% for one story: that story's next task becomes P0 | `bash scripts/metrics.sh` (groups `sync`, `command`, `repair`, and `error` events by `story`) |
 | `zero_to_configured_s`: cold one-step install to a clean `agentbrew status --ci` | US01 | ≤ 120 s | > 300 s: cut install steps or delegate them | `bash scripts/metrics.sh` (reads `run.seconds` from the install receipt that `scripts/install.sh run` saves; `(stub)` without a finished run) |
 | `gate_ms`: median wall time of the last 10 passing `npm run verify` runs, each cached step counted at its last uncached time (a run with a step never seen uncached is left out) | contributor | ≤ 300000 ms | > 600000 ms: split the slowest step or cache it | `bash scripts/metrics.sh` (reads `.metrics/gate-timings.jsonl`) |
-| `work_instruction_bytes`: bytes one `/work` run reads to start (the `/work` command text plus the `agentbrew work --json` plan) | work day | ≤ 6500 (baseline 9511 on 2026-10-28) | > 9511: the plan grew back; move repeated prose to one home | `agentbrew work stats --json` (`instructions.totalBytes`) |
-| `work_run_wall_ms`: median wall time of the `/work` runs in the last 30 days, from the `agentbrew work` call to the session's last perf row | work day | 20% under the median of the first 5 recorded runs | above that median after a change meant to speed it up: revert the change and time each step (`steps` in the output) | `agentbrew work stats --json` (`totals.medianWallMs`; reads the perf log) |
 
 ## Notes
 

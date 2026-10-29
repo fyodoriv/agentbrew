@@ -177,8 +177,24 @@ review the merged diff and send each finding back as a new fix round.
 A worker that ends its turn while its gate waits in the `heavy-run` queue
 shows as "completed", but its last line says it is waiting. That is not a
 report: it has no PR, SHA, or gate rc yet. Do not count it done. It resumes
-when its background run ends; send it a `SendMessage` only to add a rule
-or ask for the result.
+only if its background run ends with a notice. A killed shell sends none,
+and the worker then waits forever: in one run three workers sat idle for
+about 3 hours after their gate shells were killed, while the lead checked
+only the `heavy-run` lock and reported "progressing". So:
+
+- In the brief: a worker waits for its gate in the foreground (a 10-minute
+  tool timeout, then wait again on the log's `rc=` line), never by ending
+  its turn on a background job. A live worker then writes to its
+  transcript at least every 10 minutes.
+- For the whole run, the lead keeps a Monitor on
+  `scripts/stalled-agents.py --session <id> --minutes 20 --watch 300`. It
+  prints `STALLED <agent> <N>m` for an unfinished worker whose transcript
+  has been silent that long, and next to it `KILLED <task>` for each
+  background shell whose output ends `[killed]`. Re-arm it at each expiry.
+- On a STALLED line, resume that worker at once with a `SendMessage`: say
+  its gate shell is gone and it must rerun the gate in the foreground.
+- A check-in judges worker liveness from this script, not from the gate
+  lock: a lock held by another repo says nothing about your workers.
 
 Right before each merge, list the repo's open PRs again. Another session on
 the same account can open a second PR for the same issue mid-run. In one run,

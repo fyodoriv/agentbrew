@@ -1968,6 +1968,17 @@
     },
     {
       "id": 170,
+      "prompt": "/goal ship all 20 open issues with parallel workers; each worker runs the full gate before its PR",
+      "expected_output": "The lead starts its workers with a brief that makes each one wait for its gate in the foreground (a timeout, then wait again on the log's rc line), never by ending its turn on a background job. It arms a Monitor on scripts/stalled-agents.py for the whole run and re-arms it at each expiry. When a worker's gate shell is killed and its transcript goes silent, the Monitor prints STALLED and the lead resumes that worker within minutes. At a check-in it reports each worker's last transcript write, not only who holds the heavy-run lock.",
+      "expectations": [
+        "The worker brief says to wait for the gate in the foreground, not on a background completion notice",
+        "A stalled-agents Monitor runs from the first worker spawn to the last merge, re-armed at each expiry",
+        "A worker silent for 20+ minutes is resumed with a SendMessage that names the killed shell",
+        "Check-in status names each worker's last activity time, not only the gate lock holder"
+      ]
+    },
+    {
+      "id": 171,
       "prompt": "/goal absorb my old 'maybe' calendar into the app, so I can stop subscribing to it (mid-goal addition to a feature goal)",
       "expected_output": "The agent adds the request as a done-criterion with a count metric, taken first from a quick look (11 live series). Before it builds on that number it runs a read-only dry run of the real import, which finds only 7 live: 4 series with a COUNT end had already ended. It updates the contract target and metric to the dry-run count and says why in one line, rather than chasing 11 or quietly reporting 7/11. It gets the import code reviewed before merge, and tests every feed path a repeating entry can take (plain, this week's plan copy, a saved Going copy), not only the plain one.",
       "expectations": [

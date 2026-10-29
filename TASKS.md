@@ -173,10 +173,11 @@
 
 - [ ] Triage leftover branches, worktrees, and a stash
   - **ID**: leftover-branches-2026-10-28
+  - **Blocked**: needs-owner — 2026-10-28: the safe cleanup is done: 5 old worktrees removed and 5 merged branches deleted. Four items are left. Each may hold unshipped work, so the owner decides. (1) A stash (saved, uncommitted edits) on `feat/work-refresh-parents` changes `src/work.ts`; it does not match `main`. (2) `feat/grind-watch-mode` has 2 commits that were never pushed. (3) `feat/600-parent-checkouts` was closed PR #604; merged PR #601 shipped the same feature, so it can likely go. (4) A Claude Code app worktree, `.claude/worktrees/agitated-pasteur-0151e4`, has an unmerged commit from 2026-10-25. Question: for each, keep it, turn it into a task, or delete it?
   - **Tags**: git, hygiene
   - **Details**: On 2026-10-28 the checkout had 5 local branches whose remote is gone (`fix/wrap-up-likely-landed`, `docs/watch-monitor-sandbox`, `feat/work-lean`, `feat/600-parent-checkouts`, `feat/work-stats`), 2 stale ones (`skill/watch-issues-base-red` behind 60, `feat/grind-watch-mode` ahead 2 and behind 193), `stash@{0}` from `feat/work-refresh-parents`, a detached worktree under `.claude/worktrees/`, and 5 worktrees under `~/apps/tooling/wt.noindex/` for gone branches. Leave the branches of open PRs #631 and #607 alone. For each other item, compare with `main`, salvage unmerged work into a task or PR (`grind-watch-mode` has 2 unpushed commits), then remove it (the `wrap-up` skill's `scripts/open-work.sh` lists them).
   - **Files**: none (git state only)
-  - **Output**: cleanup
+  - **Output**: mixed
   - **Acceptance**: only `main`, the open-PR branches, and claimed branches remain; the stash is applied or filed; no worktree points at a gone branch.
   - **Hypothesis**: clearing leftovers stops agents reading stale code: worktrees drop from 9 to at most 3, stashes from 1 to 0.
   - **Measurement**: `git worktree list | wc -l; git stash list | wc -l`

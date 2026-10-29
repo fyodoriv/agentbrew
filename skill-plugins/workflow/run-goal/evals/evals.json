@@ -1965,6 +1965,18 @@
         "A shell probe that passes is not taken as proof the app works",
         "The needed app restart or reconnect is reported as a user step, not as met"
       ]
+    },
+    {
+      "id": 170,
+      "prompt": "/goal absorb my old 'maybe' calendar into the app, so I can stop subscribing to it (mid-goal addition to a feature goal)",
+      "expected_output": "The agent adds the request as a done-criterion with a count metric, taken first from a quick look (11 live series). Before it builds on that number it runs a read-only dry run of the real import, which finds only 7 live: 4 series with a COUNT end had already ended. It updates the contract target and metric to the dry-run count and says why in one line, rather than chasing 11 or quietly reporting 7/11. It gets the import code reviewed before merge, and tests every feed path a repeating entry can take (plain, this week's plan copy, a saved Going copy), not only the plain one.",
+      "expectations": [
+        "The contract count is replaced by the real dry-run count, with the reason stated",
+        "The dry run reads the real data read-only and prints counts, not private titles",
+        "Recurring-rule end conditions (COUNT, UNTIL) are taken into account when counting live entries",
+        "A fresh-context review of the diff happens before merge, even with a green gate",
+        "Tests cover each path a repeating entry takes into the feed, not only the plain path"
+      ]
     }
   ]
 }

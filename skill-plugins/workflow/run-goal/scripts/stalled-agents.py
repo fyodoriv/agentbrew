@@ -10,11 +10,13 @@ It reads, for one session:
 
 - `<projects>/<project>/<session>/subagents/agent-<id>.meta.json` and
   `.jsonl`: a worker whose meta has no `"finished": true` and whose
-  transcript has not changed for `--minutes` is STALLED.
+  transcript has not changed for `--minutes` is STALLED. A worker stopped
+  on purpose (`"stoppedByUser": true`) is never STALLED.
 - `<tmp>/claude-<uid>/<project>/<session>/tasks/<id>.output` (plain files,
   not the agent symlinks): a background shell whose output ends with
-  `[killed]` is KILLED. These lines show only next to a STALLED one: an
-  expired Monitor ends `[killed]` too, and alone it is no problem.
+  `[killed]` is KILLED. These lines show only next to a STALLED one, and
+  only for shells killed after that worker last wrote: an expired Monitor
+  ends `[killed]` too, and alone it is no problem.
 
 Output: one line per finding, `STALLED <agent id> <minutes>m <description>`
 or `KILLED <task id>`. It only reads files. Exit code: 0 with no finding,
@@ -39,14 +41,15 @@ from pathlib import Path
 
 
 def find_dirs(args):
-    """Return (session dir, tasks dir or None) for the arguments."""
+    """Return (session dir or None, list of tasks dirs) for the arguments."""
     if args.session_dir:
         return Path(args.session_dir), [Path(args.tasks_dir)] if args.tasks_dir else []
     projects = os.path.expanduser(args.projects)
     hits = glob.glob(os.path.join(projects, "*", args.session))
     if not hits:
-        return None, None
-    session_dir = Path(hits[0])
+        return None, []
+    # The newest folder is the live one when the id shows up under several slugs.
+    session_dir = Path(max(hits, key=os.path.getmtime))
     # The same session id can have a tasks folder under several project
     # slugs (a spare checkout, for one); prefer the session's own project.
     found = []
@@ -62,13 +65,13 @@ def find_dirs(args):
 
 
 def stalled(session_dir, minutes, now):
-    """Yield (agent id, silent minutes, description) for each stalled worker."""
+    """Yield (agent id, silent minutes, description, last write) for each stalled worker."""
     for meta_path in sorted((session_dir / "subagents").glob("agent-*.meta.json")):
         try:
             meta = json.loads(meta_path.read_text())
         except (OSError, ValueError):
             continue
-        if meta.get("finished") is True:
+        if meta.get("finished") is True or meta.get("stoppedByUser") is True:
             continue
         agent_id = meta_path.name[len("agent-") : -len(".meta.json")]
         transcript = meta_path.with_name(f"agent-{agent_id}.jsonl")
@@ -78,17 +81,20 @@ def stalled(session_dir, minutes, now):
             last = meta_path.stat().st_mtime
         silent = int((now - last) // 60)
         if silent >= minutes:
-            yield agent_id, silent, meta.get("description", "")
+            yield agent_id, silent, meta.get("description", ""), last
 
 
-def killed(tasks_dirs):
-    """Yield the task id of each background shell whose output ends killed."""
+def killed(tasks_dirs, since=0.0):
+    """Yield the task id of each background shell whose output ends killed at or after `since`."""
     outs = sorted(o for d in tasks_dirs if d.is_dir() for o in d.glob("*.output"))
     for out in outs:
         if out.is_symlink():
             continue
         try:
-            size = out.stat().st_size
+            st = out.stat()
+            if st.st_mtime < since:
+                continue
+            size = st.st_size
             with out.open("rb") as fh:
                 fh.seek(max(0, size - 64))
                 tail = fh.read().decode("utf-8", "replace").strip()
@@ -99,14 +105,16 @@ def killed(tasks_dirs):
 
 
 def findings(session_dir, tasks_dirs, minutes, now):
-    lines = []
-    for agent_id, silent, desc in stalled(session_dir, minutes, now):
+    lines, since = [], now
+    for agent_id, silent, desc, last in stalled(session_dir, minutes, now):
         lines.append((("STALLED", agent_id, silent), f"STALLED {agent_id} {silent}m {desc}".rstrip()))
+        since = min(since, last)
     # A killed shell alone is no problem: an expired Monitor also ends
-    # "[killed]". It only explains a stalled worker, so list it only then.
+    # "[killed]". It only explains a stalled worker, so list it only then,
+    # and only when it was killed after that worker last wrote.
     if not lines:
         return lines
-    for task_id in killed(tasks_dirs):
+    for task_id in killed(tasks_dirs, since - 60):
         lines.append((("KILLED", task_id), f"KILLED {task_id}"))
     return lines
 

@@ -11,15 +11,15 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 const NOW = 1_800_000_000;
 
-/** A session folder with one agent per entry: [id, finished, minutes silent]. */
-function session(agents: [string, boolean, number][]): { dir: string; tasks: string } {
+/** A session folder with one agent per entry: [id, finished, minutes silent, extra meta]. */
+function session(agents: [string, boolean, number, Record<string, unknown>?][]): { dir: string; tasks: string } {
   const dir = mkdtempSync(join(scratch, "session-"));
   const sub = join(dir, "subagents");
   const tasks = join(dir, "tasks");
   mkdirSync(sub, { recursive: true });
   mkdirSync(tasks, { recursive: true });
-  for (const [id, finished, silent] of agents) {
-    const meta = { description: `Ship ${id}`, ...(finished ? { finished: true } : {}) };
+  for (const [id, finished, silent, extra] of agents) {
+    const meta = { description: `Ship ${id}`, ...(finished ? { finished: true } : {}), ...extra };
     writeFileSync(join(sub, `agent-${id}.meta.json`), JSON.stringify(meta));
     const transcript = join(sub, `agent-${id}.jsonl`);
     writeFileSync(transcript, "{}\n");
@@ -27,6 +27,15 @@ function session(agents: [string, boolean, number][]): { dir: string; tasks: str
     utimesSync(transcript, at, at);
   }
   return { dir, tasks };
+}
+
+/** A background shell output file, last written `minutesAgo` before NOW. */
+function output(s: { tasks: string }, name: string, text: string, minutesAgo: number) {
+  const path = join(s.tasks, `${name}.output`);
+  writeFileSync(path, text);
+  const at = NOW - minutesAgo * 60;
+  utimesSync(path, at, at);
+  return path;
 }
 
 function run(s: { dir: string; tasks: string }, ...extra: string[]) {
@@ -51,9 +60,8 @@ describe("run-goal stalled-agents.py", () => {
 
   it("next to a stalled worker, lists a killed background shell but not an agent symlink", () => {
     const s = session([["aaa", false, 45]]);
-    writeFileSync(join(s.tasks, "shell1.output"), "rc=0\n");
-    writeFileSync(join(s.tasks, "shell2.output"), "\n[killed]\n");
-    symlinkSync(join(s.tasks, "shell2.output"), join(s.tasks, "agentx.output"));
+    output(s, "shell1", "rc=0\n", 30);
+    symlinkSync(output(s, "shell2", "\n[killed]\n", 30), join(s.tasks, "agentx.output"));
     const r = run(s);
     expect(r.status).toBe(1);
     expect(r.stdout.trim().split("\n")).toEqual(["STALLED aaa 45m Ship aaa", "KILLED shell2"]);
@@ -61,7 +69,22 @@ describe("run-goal stalled-agents.py", () => {
 
   it("stays quiet about a killed shell when no worker is stalled (an expired Monitor)", () => {
     const s = session([["aaa", false, 2]]);
-    writeFileSync(join(s.tasks, "monitor1.output"), "\n[killed]\n");
+    output(s, "monitor1", "\n[killed]\n", 1);
+    const r = run(s);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
+  it("lists only shells killed after the stalled worker last wrote, not older expired Monitors", () => {
+    const s = session([["aaa", false, 45]]);
+    output(s, "monitor-old", "\n[killed]\n", 120);
+    output(s, "gate", "\n[killed]\n", 40);
+    const r = run(s);
+    expect(r.stdout.trim().split("\n")).toEqual(["STALLED aaa 45m Ship aaa", "KILLED gate"]);
+  });
+
+  it("does not flag a worker that was stopped on purpose", () => {
+    const s = session([["aaa", false, 45, { stoppedByUser: true }]]);
     const r = run(s);
     expect(r.status).toBe(0);
     expect(r.stdout).toBe("");

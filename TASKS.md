@@ -171,18 +171,43 @@
 
 ## P2
 
-- [ ] Triage leftover branches, worktrees, and a stash
-  - **ID**: leftover-branches-2026-10-28
-  - **Blocked**: needs-owner — 2026-10-28: the safe cleanup is done: 5 old worktrees removed and 5 merged branches deleted. Four items are left. Each may hold unshipped work, so the owner decides. (1) A stash (saved, uncommitted edits) on `feat/work-refresh-parents` changes `src/work.ts`; it does not match `main`. (2) `feat/grind-watch-mode` has 2 commits that were never pushed. (3) `feat/600-parent-checkouts` was closed PR #604; merged PR #601 shipped the same feature, so it can likely go. (4) A Claude Code app worktree, `.claude/worktrees/agitated-pasteur-0151e4`, has an unmerged commit from 2026-10-25. Question: for each, keep it, turn it into a task, or delete it?
-  - **Tags**: git, hygiene
-  - **Details**: On 2026-10-28 the checkout had 5 local branches whose remote is gone (`fix/wrap-up-likely-landed`, `docs/watch-monitor-sandbox`, `feat/work-lean`, `feat/600-parent-checkouts`, `feat/work-stats`), 2 stale ones (`skill/watch-issues-base-red` behind 60, `feat/grind-watch-mode` ahead 2 and behind 193), `stash@{0}` from `feat/work-refresh-parents`, a detached worktree under `.claude/worktrees/`, and 5 worktrees under `~/apps/tooling/wt.noindex/` for gone branches. Leave the branches of open PRs #631 and #607 alone. For each other item, compare with `main`, salvage unmerged work into a task or PR (`grind-watch-mode` has 2 unpushed commits), then remove it (the `wrap-up` skill's `scripts/open-work.sh` lists them).
-  - **Files**: none (git state only)
-  - **Output**: mixed
-  - **Acceptance**: only `main`, the open-PR branches, and claimed branches remain; the stash is applied or filed; no worktree points at a gone branch.
-  - **Hypothesis**: clearing leftovers stops agents reading stale code: worktrees drop from 9 to at most 3, stashes from 1 to 0.
-  - **Measurement**: `git worktree list | wc -l; git stash list | wc -l`
-  - **Success**: at most 3 worktrees and 0 stashes.
-  - **Pivot**: an item holds work no one claims: file it as a task and keep it.
+- [ ] Ship or drop the saved grind watch mode
+  - **ID**: salvage-grind-watch-mode
+  - **Tags**: git, salvage
+  - **Details**: On 2026-10-29 the owner chose save-then-clean for the leftovers. `feat/grind-watch-mode` held 1 never-pushed commit, 3ab9dd9 "feat(grind): watch mode ships new issues and tasks as they arrive" (with `src/skills/grind-watch-mode-contract.test.ts` and `grind-watch-poll.test.ts`). It is saved in `~/.local/state/tooling-cutover/leftovers-2026-10-29/grind-watch-mode.bundle` (`git fetch <bundle> feat/grind-watch-mode`). The watch-issues skill may already cover this; compare first.
+  - **Files**: `skill-plugins/workflow/grind/`, `src/skills/grind-watch-*.test.ts`
+  - **Output**: code
+  - **Acceptance**: the saved work ships as a PR, or the task closes with a reason it is not needed.
+  - **Hypothesis**: the grind skill can watch for new work without a second loop skill, or the duplicate is dropped: unreviewed saved commits go from 1 to 0.
+  - **Measurement**: `git bundle list-heads ~/.local/state/tooling-cutover/leftovers-2026-10-29/grind-watch-mode.bundle` plus the PR or close note.
+  - **Success**: a merged PR, or a close note naming the skill that already does it.
+  - **Pivot**: if it conflicts with watch-issues, keep watch-issues and drop this.
+  - **Anchor**: Forsgren, Humble & Kim 2018 (small batches, short-lived branches).
+
+- [ ] Ship or drop the saved run-goal worker-base commit
+  - **ID**: salvage-run-goal-c99b3c5
+  - **Tags**: git, salvage
+  - **Details**: A Claude Code app worktree held c99b3c5 (2026-10-25) "feat(run-goal): pin worker base, sandbox gate, live-store listing" (evals 129-131 and `references/parallel-workers.md`). Saved in `~/.local/state/tooling-cutover/leftovers-2026-10-29/agitated-pasteur.bundle` (ref `refs/leftover/agitated-pasteur`). Several of these lessons may have landed since; diff against main first.
+  - **Files**: `skill-plugins/workflow/run-goal/`, `src/skills/run-goal-evals-129-131.test.ts`
+  - **Output**: code
+  - **Acceptance**: the saved work ships as a PR, or the task closes with a reason it is not needed.
+  - **Hypothesis**: run-goal lessons not yet on main ship with their evals: unmerged saved commits go from 1 to 0.
+  - **Measurement**: `git diff origin/main FETCH_HEAD --stat` after fetching the bundle.
+  - **Success**: a merged PR, or a note that main already has each lesson.
+  - **Pivot**: if main covers all of it, close with that evidence.
+  - **Anchor**: Forsgren, Humble & Kim 2018 (small batches, short-lived branches).
+
+- [ ] Ship or drop the saved /work stash
+  - **ID**: salvage-work-refresh-parents-stash
+  - **Tags**: git, salvage
+  - **Details**: A stash from `feat/work-refresh-parents` changed `src/work.ts` and `src/work.test.ts`. It applied to main neither forward nor in reverse. Saved as `~/.local/state/tooling-cutover/leftovers-2026-10-29/stash-work-refresh-parents.patch` and `~/.local/state/tooling-cutover/leftovers-2026-10-29/stash.bundle`. /work is moving to careerbrew (see `work-handoff-to-careerbrew`), so port it there or drop it.
+  - **Files**: `src/work.ts`, `src/work.test.ts`
+  - **Output**: code
+  - **Acceptance**: the saved work ships as a PR, or the task closes with a reason it is not needed.
+  - **Hypothesis**: the stashed /work change lands in the repo that owns /work, or is dropped: saved stashes go from 1 to 0.
+  - **Measurement**: `git apply --check` of the patch in the target repo.
+  - **Success**: a merged PR, or a close note.
+  - **Pivot**: if the change is already in #601, close with that evidence.
   - **Anchor**: Forsgren, Humble & Kim 2018 (small batches, short-lived branches).
 
 - [ ] Report Hallmark's render wait that never ends on apps that poll
@@ -195,14 +220,13 @@
   - **Pivot**: if upstream declines, keep a local wrapper in agentbrew with the looser wait.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
 
-- [ ] Decide whether /work moves to careerbrew (issue #610)
-  - **ID**: work-handoff-to-careerbrew-decision
-  - **Blocked**: needs-owner — issue #610 proposes handing /work to careerbrew and retiring agentbrew's /work. Issues #612 (check MCP connectors against the desktop app's launchd env first) and #615 (let a plugin point the dashboard at an app) change /work too, so they wait on this answer. Question: move /work to careerbrew (then #612 and #615 go there), or keep it in agentbrew (then build #612 and #615 here)?
+- [ ] Move /work to careerbrew and retire agentbrew's /work (issue #610)
+  - **ID**: work-handoff-to-careerbrew
   - **Tags**: work, careerbrew
-  - **Details**: The watch loop lists #610, #612 and #615 on every pass. Building #612 or #615 now could be thrown away if /work moves. This task holds them until the owner answers #610.
+  - **Details**: Owner answer, 2026-10-29: move /work to careerbrew. Plan the move first (`docs/plans/work-handoff-to-careerbrew.md`): what moves (command, `src/work.ts`, tests, dashboard), how agentbrew keeps deploying careerbrew's command (rule 8b), and the retirement step. Build #612 (MCP check against the desktop app's launchd env) and #615 (plugin points the dashboard at an app) in careerbrew after the move.
   - **Files**: `commands/work.md`, `src/work.ts`
   - **Output**: docs
-  - **Acceptance**: #610 has the owner's answer, and #612 and #615 are filed in the repo that owns /work.
+  - **Acceptance**: careerbrew owns /work, agentbrew deploys it from careerbrew's source, agentbrew's own /work is removed with a guard test, and #612 and #615 are filed in careerbrew.
   - **Hypothesis**: one owner answer unblocks 3 open issues (#610, #612, #615), cutting parked /work issues from 3 to 0.
   - **Measurement**: `gh issue list -R fyodoriv/agentbrew --state open --search "work in:title"` before and after the answer.
   - **Success**: 0 of the 3 issues still waiting on a decision a week after the answer.

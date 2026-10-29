@@ -224,6 +224,18 @@ describe("watch-issues pass", () => {
     }
   });
 
+  it("--done fails when it cannot write the seen list, instead of saying it recorded the item", () => {
+    const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
+    const bin = fakeGh(root, []);
+    mkdirSync(join(root, "state"));
+    writeFileSync(join(root, "state", "seen"), "");
+    chmodSync(join(root, "state", "seen"), 0o444);
+    const result = run(root, bin, ["--done", "issue acme/demo#12"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("cannot write");
+    expect(result.stdout).not.toContain("recorded");
+  });
+
   it("keeps one slot for an outside issue even behind a long queue", () => {
     const root = mkdtempSync(join(tmpdir(), "watch-pass-"));
     const out = pass(root, fakeGh(root, ISSUES, [PRS[0]]), ["--limit", "3", fixtureRepo(root)]);

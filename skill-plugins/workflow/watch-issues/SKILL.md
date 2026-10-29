@@ -97,6 +97,8 @@ or the user's words in this session).
    back on its own as a `pr` item:
    `bash <skill-dir>/scripts/watch-pass.sh --done "<kind> <key>"` with the
    line's middle column, for example `--done "issue fyodoriv/dotfiles#244"`.
+   It exits 1 with `cannot write` when the seen list is read-only (the Bash
+   sandbox blocks `~/.local/state`); rerun it outside the sandbox.
    Do not mark a parked task: its `Blocked` line already hides it, and it comes
    back when the line is removed. A PR's key holds its state and head commit,
    so it shows up again if it breaks again.

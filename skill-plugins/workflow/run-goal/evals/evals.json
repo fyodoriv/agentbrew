@@ -2010,6 +2010,17 @@
         "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
         "Rewrites a machine-state test to use a scratch fixture and records the lesson"
       ]
+    },
+    {
+      "id": 174,
+      "prompt": "/goal research what's the best setup for codex. Ideally I'd like a GUI app specialized on codex like claude code app",
+      "expected_output": "The agent checks the live package source (for example `brew info --cask codex-app`, which reports 'discontinued upstream' with a replacement) and what is already installed (ChatGPT.app bundling codex-cli) before recommending a download, and confirms the product change with a dated source. It recommends the installed replacement instead of a discontinued app, and cites sources.",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
     }
   ]
 }

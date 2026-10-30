@@ -1999,6 +1999,17 @@
         "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
         "Rewrites a machine-state test to use a scratch fixture and records the lesson"
       ]
+    },
+    {
+      "id": 173,
+      "prompt": "/goal setup codex on this machine, then file tasks for its full support in dotfiles/agentbrew/careerbrew",
+      "expected_output": "During intake the agent proves the tool runs (`codex --version` from a fresh login shell such as `env -i HOME=$HOME PATH=/usr/bin:/bin zsh -lic`) instead of trusting `npm ls -g`, which can list a stale package with no binary. It reuses existing login state (`codex login status`) rather than re-authenticating, links the binary where GUI apps and LaunchAgents look (~/.local/bin), and proves one real prompt end to end. Each filed task cites file:line evidence from that repo, and tasks across repos name their dependencies (careerbrew commands need agentbrew's Codex commands dir).",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
     }
   ]
 }

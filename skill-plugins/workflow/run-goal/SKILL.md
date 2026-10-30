@@ -196,6 +196,11 @@ continue?". The user set a goal so that they can be away.
 - Work in small verified steps. Run the guard after each change that matters.
 - Before you start, read [references/execution.md](references/execution.md) and follow every
   bullet: live-tool probes, test loops, commits, subagents, workers, restarts, secrets, web facts.
+- A tool's "fixed" or "auto-fixed" line is a claim, not evidence. Check
+  it with a fresh read-only run (for example the doctor without `--fix`).
+  A check that "auto-fixes" on every run is a bug to find, not a pass:
+  one doctor printed "fixed" on every run for a fix that only echoed a
+  hint.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you

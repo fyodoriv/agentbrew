@@ -2021,6 +2021,17 @@
         "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
         "Rewrites a machine-state test to use a scratch fixture and records the lesson"
       ]
+    },
+    {
+      "id": 175,
+      "prompt": "/goal make sure every recommended dotfiles feature is installed and healthy on this Mac; open a PR or issue for any blocker",
+      "expected_output": "The agent runs the doctor with --fix, then runs it again without --fix and reports only that second result. A check that the first run reports as fixed but the second still fails is traced to its cause and gets a fix PR or an issue, not a done claim.",
+      "expectations": [
+        "Verifies with a fresh read-only doctor run after any --fix run",
+        "Does not count a check as fixed because the fix command exited 0",
+        "Traces a check that 'auto-fixes' on every run to its root cause",
+        "Runs the repo privacy or leak check before each push, not once at the end"
+      ]
     }
   ]
 }

@@ -36,6 +36,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 |---|---|---|
 | [`editing-rules.md`](editing-rules.md) | What is the full text of each numbered editing rule? | agent |
 | [`repo-map.md`](repo-map.md) | Where does each file live, and which sync engine writes which target? | agent |
+| [`support-matrix.md`](support-matrix.md) | What does Codex receive, and how do runtime and unmanaged-skill checks work? | both |
 | [`hook-protocol.md`](hook-protocol.md) | How do deterministic hooks receive input and return a verdict? | agent |
 | [`task-backend-contract.md`](task-backend-contract.md) | Where does a repo keep its tasks (TASKS.md or GitHub Issues)? | both |
 | [`agent-bloat-lint.md`](agent-bloat-lint.md) | Which size and bloat checks does `agentbrew lint` run? | agent |

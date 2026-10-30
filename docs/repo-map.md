@@ -124,3 +124,17 @@ Then run `agentbrew sync`. The source repo owns the skill files — agentbrew ju
 | `~/.config/agentbrew/` | **agentbrew** | state.yaml, shared rules, commands, backups, manifest |
 
 **Rule**: Never have both repos write to the same target path.
+
+## Codex native output
+
+Commands deploy to `~/.codex/prompts/*.md` and run as `/prompts:<name>` in
+Codex CLI. The transform keeps `description`, `argument-hint`, `$ARGUMENTS`,
+and positional placeholders. It removes Claude-only frontmatter. Codex custom
+agents deploy to `~/.codex/agents/*.toml`, with `name`, `description`, and
+`developer_instructions`. Model and tool frontmatter are not portable; the
+agent inherits Codex's model and permissions.
+
+Hook ownership stays per target in the deployment manifest. Sync merges Codex
+hooks with user entries, including endpoint hooks, and preserves top-level
+metadata. It does not grant hook trust. [Codex support](support-matrix.md)
+lists the verified limits and user review step.

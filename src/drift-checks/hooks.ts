@@ -6,6 +6,7 @@ import { defaultDeployDir } from "../hooks/deploy.js";
 import { loadManagedHooksFromManifest } from "../hooks/manifest.js";
 import { loadManifest } from "../manifest.js";
 import { loadState } from "../state.js";
+import { filterHooksForTarget } from "../sync/hooks-sync.js";
 import {
   findFileWritePermissionPatterns,
   findLegacyShellPermissionPatterns,
@@ -103,14 +104,6 @@ function hookText(hook: ManagedHook): string {
 /** Identity of one hook: its event:matcher group plus its command (or prompt). */
 function hookIdentity(hook: ManagedHook): string {
   return `${hookKey(hook.event, hook.matcher)} ${hookText(hook)}`;
-}
-
-function hookAppliesToAgent(hook: ManagedHook, agentName: string): boolean {
-  return hook.agents === undefined || hook.agents.length === 0 || hook.agents.includes(agentName);
-}
-
-function filterHooksForAgent(hooks: ManagedHook[], agentName: string): ManagedHook[] {
-  return hooks.filter((hook) => hookAppliesToAgent(hook, agentName));
 }
 
 function hasClaudeCodePermissionDefaults(settings: SettingsJson): boolean {
@@ -302,7 +295,7 @@ function missingHooksFileDrift(agent: HooksAgent, targetHooks: ManagedHook[]): D
 
 function hooksDriftForAgent(agent: HooksAgent, managedHooks: ManagedHook[], managedKeys: Set<string>): DriftItem[] {
   if (!agent.hooksFile) return [];
-  const targetHooks = filterHooksForAgent(managedHooks, agent.name);
+  const targetHooks = filterHooksForTarget(managedHooks, agent.name);
   const filePath = resolveHooksFilePath(agent);
   if (!existsSync(filePath)) return missingHooksFileDrift(agent, targetHooks);
 

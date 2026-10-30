@@ -163,6 +163,24 @@ describe("getAgentSources", () => {
 });
 
 describe("syncAgentDefs", () => {
+  it("deploys Codex subagents as TOML rather than Claude markdown", async () => {
+    mockLoadState.mockReturnValue({ agents: [{ name: "codex", detected: true }] } as never);
+    mockExistsSync.mockImplementation((path) => !String(path).endsWith(".toml"));
+    mockReaddirSync.mockReturnValue(["reviewer.md"] as unknown as ReturnType<typeof readdirSync>);
+    mockReadFileSync.mockReturnValue("---\ndescription: Review code\nmodel: sonnet\n---\nFind bugs.\n");
+    vi.mocked(loadManifest).mockReturnValue({ hashes: {} });
+    mockWriteIfChanged.mockReturnValue(true);
+    await syncAgentDefs({ quiet: true });
+    expect(mockWriteIfChanged).toHaveBeenCalledWith(
+      expect.stringMatching(/\.codex\/agents\/reviewer\.toml$/),
+      expect.stringContaining('developer_instructions = """'),
+      expect.anything(),
+    );
+    expect(mockWriteIfChanged.mock.calls.some(([path]) => String(path).includes(".codex/agents/reviewer.md"))).toBe(
+      false,
+    );
+  });
+
   it("skips silently when no sources have any definitions (default sync)", async () => {
     mockExistsSync.mockReturnValue(false);
     mockLoadState.mockReturnValue(undefined);
@@ -258,7 +276,7 @@ You are a senior developer with custom edits.
       expect.stringContaining("Bash(git *)"),
       expect.objectContaining({ hashes: manifestHashes }),
     );
-    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining("(user-modified)"));
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining("claude-code: skipping"));
   });
 
   it("skips unreadable source files during sync and continues with remaining files", async () => {
@@ -554,7 +572,7 @@ describe("getAgentDefTargets — unsupported-agent skip coverage", () => {
   it("every returned target has a non-empty dir and a format", () => {
     for (const target of getAgentDefTargets()) {
       expect(target.dir).toMatch(/\S/u);
-      expect(target.format === "flat" || target.format === "subdir").toBe(true);
+      expect(target.format === "flat" || target.format === "subdir" || target.format === "codex").toBe(true);
     }
   });
 });

@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, unlinkSync } from "node:fs";
 import { basename, join } from "node:path";
+import TOML from "@iarna/toml";
 import chalk from "chalk";
+import yaml from "js-yaml";
 import { undetectedAgentNames } from "../agents.js";
 import { filterReadsFromAgents } from "../core/agents.js";
 import type { Context } from "../core/context.js";
@@ -21,8 +23,8 @@ import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
 interface AgentDefTarget {
   agentName: string;
   dir: string;
-  /** "subdir" writes name/AGENT.md (AGENT.md per subdir); "flat" writes name.md (Claude Code format). */
-  format: "flat" | "subdir";
+  /** "subdir" writes name/AGENT.md (AGENT.md per subdir); "flat" writes name.md; "codex" writes native name.toml. */
+  format: "flat" | "subdir" | "codex";
 }
 
 /** Collected agent definition with source tracking for dedup. */
@@ -97,13 +99,14 @@ export function collectAgentDefs(sources: Array<{ label: string; path: string }>
  * accounting for the two supported storage formats:
  * - flat:   <targetDir>/reviewer.md
  * - subdir: <targetDir>/reviewer/AGENT.md
+ * - codex: <targetDir>/reviewer.toml
  */
-export function resolveTargetPath(targetDir: string, sourceFile: string, format: "flat" | "subdir"): string {
+export function resolveTargetPath(targetDir: string, sourceFile: string, format: "flat" | "subdir" | "codex"): string {
   if (format === "subdir") {
     const agentName = basename(sourceFile, ".md");
     return join(targetDir, agentName, "AGENT.md");
   }
-  return join(targetDir, sourceFile);
+  return join(targetDir, format === "codex" ? sourceFile.replace(/\.md$/, ".toml") : sourceFile);
 }
 
 /** Check if a file was modified by the user since agentbrew last deployed it.
@@ -180,10 +183,21 @@ function handleUserModifiedAgent(opts: {
   return { synced: false, skipped: true };
 }
 
+export function toCodexAgent(name: string, content: string): string {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  const metadata = match ? (yaml.load(match[1]) as Record<string, unknown> | undefined) : undefined;
+  return TOML.stringify({
+    name,
+    description: typeof metadata?.description === "string" ? metadata.description : name,
+    developer_instructions: match ? content.slice(match[0].length).trimStart() : content,
+  });
+}
+
 function deployAgentToTarget(opts: DeployAgentOpts): DeployAgentResult {
   const { agent, targetDir, target, manifest, dryRun, quiet, log } = opts;
-  const content = readAgentContent(agent, log);
-  if (content === undefined) return { synced: false, skipped: false };
+  const source = readAgentContent(agent, log);
+  if (source === undefined) return { synced: false, skipped: false };
+  const content = target.format === "codex" ? toCodexAgent(agent.name, source) : source;
   const targetPath = resolveTargetPath(targetDir, agent.fileName, target.format);
 
   if (dryRun) {
@@ -228,11 +242,17 @@ function pruneSubdirEntries(
   return pruned;
 }
 
-function pruneFlatEntries(targetDir: string, sourceNameSet: Set<string>, manifest: Manifest, dryRun: boolean): number {
-  const targetFiles = readdirSync(targetDir).filter((f) => f.endsWith(".md"));
+function pruneFlatEntries(
+  targetDir: string,
+  sourceNameSet: Set<string>,
+  manifest: Manifest,
+  dryRun: boolean,
+  extension = ".md",
+): number {
+  const targetFiles = readdirSync(targetDir).filter((f) => f.endsWith(extension));
   let pruned = 0;
   for (const file of targetFiles) {
-    if (sourceNameSet.has(basename(file, ".md"))) continue;
+    if (sourceNameSet.has(basename(file, extension))) continue;
     const filePath = join(targetDir, file);
     if (!manifest.hashes[filePath]) continue;
     if (!dryRun) {
@@ -256,7 +276,7 @@ function pruneStaleAgents(
   if (target.format === "subdir") {
     return pruneSubdirEntries(targetDir, sourceNameSet, manifest, dryRun);
   }
-  return pruneFlatEntries(targetDir, sourceNameSet, manifest, dryRun);
+  return pruneFlatEntries(targetDir, sourceNameSet, manifest, dryRun, target.format === "codex" ? ".toml" : ".md");
 }
 
 function logTargetResult(result: TargetSyncResult, dryRun: boolean, verbose: boolean, log: Logger): void {

@@ -90,7 +90,8 @@ vi.mock("./sync/command-sync.js", async (importOriginal) => {
   };
 });
 
-vi.mock("./sync/agents-sync.js", () => ({
+vi.mock("./sync/agents-sync.js", async (importOriginal) => ({
+  toCodexAgent: (await importOriginal<typeof import("./sync/agents-sync.js")>()).toCodexAgent,
   getAgentSources: vi.fn(() => []),
   collectAgentDefs: vi.fn(() => ({ agents: new Map(), bySource: {} })),
   getAgentDefTargets: vi.fn(() => []),
@@ -99,7 +100,7 @@ vi.mock("./sync/agents-sync.js", () => ({
       const name = sourceFile.replace(/\.md$/, "");
       return `${targetDir}/${name}/AGENT.md`;
     }
-    return `${targetDir}/${sourceFile}`;
+    return `${targetDir}/${format === "codex" ? sourceFile.replace(/\.md$/, ".toml") : sourceFile}`;
   }),
 }));
 
@@ -1649,6 +1650,32 @@ describe("checkUserAddedMcpServers — partial failure across agents", () => {
 // ── checkAgentDefsDrift ─────────────────────────────────────────────────────
 
 describe("checkAgentDefsDrift", () => {
+  it("compares Codex agents against their native TOML output", () => {
+    mockCollectAgentDefs.mockReturnValue({
+      agents: new Map([
+        [
+          "reviewer",
+          {
+            name: "reviewer",
+            fileName: "reviewer.md",
+            sourcePath: "/src/reviewer.md",
+            sourceLabel: "agentbrew",
+          },
+        ],
+      ]),
+      bySource: { agentbrew: 1 },
+    });
+    mockGetAgentDefTargets.mockReturnValue([{ agentName: "codex", dir: "~/.codex/agents", format: "codex" }]);
+    mockExistsSync.mockReturnValue(true);
+    mockLoadManifest.mockReturnValue({ hashes: { [`${homedir()}/.codex/agents/reviewer.toml`]: "hash" } });
+    mockReadFileSync.mockImplementation((path) =>
+      String(path) === "/src/reviewer.md"
+        ? "Find bugs."
+        : 'name = "reviewer"\ndescription = "reviewer"\ndeveloper_instructions = "Find bugs."\n',
+    );
+    expect(checkAgentDefsDrift()).toEqual([]);
+  });
+
   it("returns empty when no agent defs are collected", () => {
     mockCollectAgentDefs.mockReturnValue({ agents: new Map(), bySource: {} });
     mockGetAgentDefTargets.mockReturnValue([]);

@@ -6,6 +6,7 @@ import { catalogRuleDrift } from "./catalog/install-other.js";
 import { type InstalledSkillClash, installedSkillClashes } from "./catalog/skill-owners.js";
 import { loadCatalog } from "./catalog/types.js";
 import { checkCliBuildDrift } from "./cli-build-health.js";
+import { type AgentRuntime, inspectAgentRuntime, unmanagedAgentSkills } from "./core/agent-runtime.js";
 import { checkEnvHygiene } from "./core/env-sanitize.js";
 import { loadSyncErrors } from "./core/errors.js";
 import { logSkipped } from "./core/logger.js";
@@ -53,6 +54,8 @@ export function getSourcesFreshness(sources: Source[]): string | undefined {
 }
 
 interface StatusData {
+  agentRuntime: AgentRuntime[];
+  unmanagedSkills: Array<{ agent: string; directory: string; names: string[] }>;
   agents: Array<{ name: string; detected: boolean }>;
   mcpServers: Array<{ name: string; source: string }>;
   sources: Array<{ url: string; type: string; installed: number; available: number; origin?: string }>;
@@ -239,6 +242,47 @@ function getUnconfiguredAgents(state: AgentbrewState): Array<{ name: string; mcp
     if (!def.mcpConfig || !detectedNames.has(def.name)) return false;
     return !existsSync(expandHome(def.mcpConfig));
   }).map((def) => ({ name: def.name, mcpConfig: def.mcpConfig ?? "" }));
+}
+
+function collectAgentRuntime(state: AgentbrewState, details = false): AgentRuntime[] {
+  return state.agents
+    .filter((agent) => agent.detected)
+    .flatMap((agent) => {
+      const runtime = inspectAgentRuntime(agent.name, { details });
+      return runtime ? [runtime] : [];
+    });
+}
+
+function collectUnmanagedSkills(state: AgentbrewState): StatusData["unmanagedSkills"] {
+  return state.agents
+    .filter((agent) => agent.detected && !agent.readsFrom?.length)
+    .flatMap((agent) => {
+      const names = unmanagedAgentSkills(expandHome(agent.skillsDir));
+      return names.length ? [{ agent: agent.name, directory: agent.skillsDir, names }] : [];
+    });
+}
+
+function printAgentRuntime(state: AgentbrewState, details = false): void {
+  for (const runtime of collectAgentRuntime(state, details)) {
+    if (!runtime.available) {
+      console.log(
+        `  ${ICON_WARNING} ${runtime.agent} — binary missing from PATH (${runtime.binary}); synced config does not install the agent`,
+      );
+    } else if (details) {
+      console.log(
+        `  ${runtime.agent} runtime: ${runtime.version ?? "version unavailable"}${runtime.login ? `; ${runtime.login}` : ""}`,
+      );
+    }
+    if (runtime.desktopInstalled === false)
+      console.log(
+        `  ${ICON_WARNING} ChatGPT.app missing — install the Codex desktop host with \`brew install --cask chatgpt\``,
+      );
+  }
+  for (const item of collectUnmanagedSkills(state)) {
+    console.log(
+      `  ${ICON_WARNING} ${item.agent} has unmanaged skill folders: ${formatPreview(item.names)} — adopt these folders into a source outside agent directories to share them`,
+    );
+  }
 }
 
 function printVerboseAgentsSection(state: AgentbrewState): void {
@@ -577,6 +621,8 @@ export function collectStatusData(): StatusData | undefined {
 
   return {
     agents,
+    agentRuntime: collectAgentRuntime(state),
+    unmanagedSkills: collectUnmanagedSkills(state),
     mcpServers,
     sources,
     skills,
@@ -657,6 +703,7 @@ export async function status(options?: { json?: boolean; verbose?: boolean }): P
   console.log(chalk.bold("\nagentbrew status\n"));
   console.log(`  Agents:       ${chalk.green(String(detectedAgents.length))} detected (${agentNames}${agentExtra})`);
 
+  printAgentRuntime(state);
   const unconfigured = getUnconfiguredAgents(state);
   if (unconfigured.length > 0) {
     const names = unconfigured.map((a) => a.name).join(", ");
@@ -735,6 +782,7 @@ export async function status(options?: { json?: boolean; verbose?: boolean }): P
 
 async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>): Promise<void> {
   printVerboseAgentsSection(state);
+  printAgentRuntime(state, true);
   printVerboseModelSection(state);
   printVerboseServersSection(state);
   printMcpHealthSummary("  ");

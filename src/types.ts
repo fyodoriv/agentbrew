@@ -1,5 +1,5 @@
 export type CommandTransform = (content: string) => string;
-export type HooksFormat = "claude-settings" | "claude-direct";
+export type HooksFormat = "claude-settings" | "claude-direct" | "codex";
 export type HooksScope = "user" | "project";
 
 /**
@@ -62,8 +62,8 @@ export interface AgentConfig {
   rulesFile?: string;
   commandsDir?: string;
   agentsDir?: string;
-  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (AGENT.md per subdir). */
-  agentsDirFormat?: "flat" | "subdir";
+  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md, "codex" writes name.toml. */
+  agentsDirFormat?: "flat" | "subdir" | "codex";
   commandTransform?: CommandTransform;
   commandFileExt?: string;
   /** Agent names whose skills/commands/agents dirs this agent already reads. Skip deploying to this agent's dirs to avoid duplicates. */

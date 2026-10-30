@@ -25,7 +25,7 @@
     },
     {
       "id": 3,
-      "prompt": "agentbrew says there's drift it can't auto-repair \u2014 what do I do?",
+      "prompt": "agentbrew says there's drift it can't auto-repair — what do I do?",
       "expected_output": "A diagnosis of the drift category and the matching remedy.",
       "expectations": [
         "Identifies the likely drift category (missing source, removed agent config, permissions, or broken symlink)",
@@ -66,6 +66,17 @@
         "Lists what runs by itself separately",
         "Summarizes rules, memory, settings, hooks, and permissions without pasting whole files",
         "Points to the source file for a wrong line and edits it only when the user asks"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Check my ChatGPT Work setup. Agentbrew reports Codex as detected because ~/.codex exists, but the codex command was lost in a Node upgrade. Some travel skills are real folders in another agent directory.",
+      "expected_output": "Reports directory detection separately from executable and authentication readiness, reports unmanaged folders, and checks whether the shared skills location already exposes them before adoption.",
+      "expectations": [
+        "Runs fresh status and checks actual CLI readiness",
+        "Does not treat a detected config directory as proof that the binary runs",
+        "Identifies unmanaged skill folders without deleting or overwriting them",
+        "Checks shared skill discovery before proposing duplicate copies"
       ]
     }
   ]

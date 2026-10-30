@@ -44,6 +44,18 @@
         "Reports the model and the new skill from the init record",
         "Does not rely on the model describing its own setup"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Deploy my commands and hooks to Codex. The prompt directory is configured, but Codex requires approval of each changed hooks.json hash.",
+      "expected_output": "Previews and syncs through the source configuration, checks prompt contents and preserved hooks, and distinguishes deployed configuration from hooks trusted by Codex.",
+      "expectations": [
+        "Runs a dry run before applying changed sync surfaces",
+        "Preserves unrelated existing hook entries",
+        "Checks deployed prompt arguments and supported frontmatter",
+        "Does not use a hook-trust bypass to manufacture success",
+        "Reports pending trust separately from successful file deployment"
+      ]
     }
   ]
 }

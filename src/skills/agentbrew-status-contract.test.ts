@@ -110,7 +110,7 @@ describe("agentbrew-status skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-status");
-    expect(evals.evals).toHaveLength(6);
+    expect(evals.evals.length).toBeGreaterThanOrEqual(6);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

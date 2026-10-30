@@ -58,6 +58,10 @@ agentbrew status --fix     # confirm no remaining drift (and auto-repair if any)
 If over budget, check for cross-section duplication (Git Safety, Commit Format, Dependency
 Policy appear in both template and shared-rules.md). See `docs/instructions-analysis.md` for trimming guidance.
 
+Codex hook deployment and hook activation are separate checks. New or changed
+definitions need review in Codex `/hooks` before they run. Preserve existing
+hooks and verify the active count there; do not use a trust-bypass switch.
+
 ## Verify in a Fresh Session
 
 Model, effort, memory, and new skills load only in a new session. Check them

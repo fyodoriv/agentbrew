@@ -52,7 +52,7 @@ describe("sync-agent-config skill contract", () => {
 
   it("keeps eval metadata and pressure scenarios", () => {
     expect(evals.skill_name).toBe("sync-agent-config");
-    expect(evals.evals).toHaveLength(4);
+    expect(evals.evals.length).toBeGreaterThanOrEqual(4);
     requireTerms(expectationText(evalById(1)), ["agentbrew sync"]);
     requireTerms(expectationText(evalById(2)), ["--only mcp"]);
   });

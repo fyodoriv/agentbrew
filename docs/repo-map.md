@@ -127,8 +127,8 @@ Then run `agentbrew sync`. The source repo owns the skill files — agentbrew ju
 
 ## Codex native output
 
-Commands deploy to `~/.codex/prompts/*.md` and run as `/prompts:<name>` in
-Codex CLI. The transform keeps `description`, `argument-hint`, `$ARGUMENTS`,
+Commands deploy as explicit native `agentbrew-command-<name>` skills under
+`~/.codex/skills/`; legacy clients also get `~/.codex/prompts/*.md`. The prompt transform keeps `description`, `argument-hint`, `$ARGUMENTS`,
 and positional placeholders. It removes Claude-only frontmatter. Codex custom
 agents deploy to `~/.codex/agents/*.toml`, with `name`, `description`, and
 `developer_instructions`. Model and tool frontmatter are not portable; the

@@ -2,9 +2,8 @@
 
 ## Start here
 
-agentbrew is a Node.js CLI that syncs skills, MCP servers, rules, commands, and
-agent definitions to every supported AI coding agent, for work in any repo. The
-canonical repo is `github.com/fyodoriv/agentbrew`, branch `main`. It is public.
+agentbrew syncs skills, MCP, rules, commands, and agent definitions across agents,
+for any repo. Public: `github.com/fyodoriv/agentbrew`, branch `main`.
 
 Bug or idea? Offer a [safe report](CONTRIBUTING.md#report-problems-and-ideas).
 
@@ -82,6 +81,8 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 > Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
 
 ## Gotchas
+
+- Codex: [prove native commands live; keep owner wrappers](docs/support-matrix.md).
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).

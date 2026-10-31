@@ -366,3 +366,8 @@ or `context: fork` behavior from this runtime hook support.
 New or changed Codex hook definitions require review and trust through
 `/hooks` before Codex runs them. Sync reports that requirement and does not
 change the trust store. See [official Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
+
+Codex stores individual hook enable/disable preferences separately from the
+generated hook definitions. Sync must preserve these preferences and existing
+trust choices. Disable an incompatible legacy hook through Codex's native
+hook settings; do not trust it only to remove a review warning.

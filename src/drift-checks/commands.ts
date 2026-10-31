@@ -5,7 +5,8 @@ import { logSkipped } from "../core/logger.js";
 import { loadManifest } from "../manifest.js";
 import { COMMANDS_DIR } from "../paths.js";
 import { loadState } from "../state.js";
-import { CANARY_DELEGATED_AGENTS, collectCanaryDelegation } from "../sync/command-sync.js";
+import { codexCommandSkillDrift } from "../sync/codex-command-skills.js";
+import { CANARY_DELEGATED_AGENTS, collectCanaryDelegation, getAllSourceCommands } from "../sync/command-sync.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
 import type { DriftItem } from "./types.js";
@@ -78,17 +79,26 @@ export function checkCommandsDrift(): DriftItem[] {
   const state = loadState();
   if (!state) return [];
 
+  const codex = state.agents.some((agent) => agent.name === "codex" && agent.detected)
+    ? AGENT_DEFINITIONS.find((agent) => agent.name === "codex")
+    : undefined;
+  const leaves = codex ? codexCommandSkillDrift(getAllSourceCommands(), expandHome(codex.skillsDir)) : [];
+  const nativeDrift: DriftItem[] = leaves.map((path) => ({
+    agent: "codex",
+    type: "commands",
+    detail: `native command skill missing or out of date: ${path} — Run: agentbrew sync`,
+  }));
   const commandsDir = expandHome(COMMANDS_DIR);
-  if (!existsSync(commandsDir)) return [];
+  if (!existsSync(commandsDir)) return nativeDrift;
 
   let sourceFiles: string[];
   try {
     sourceFiles = readdirSync(commandsDir).filter((f) => f.endsWith(".md"));
   } catch (e) {
     logSkipped("drift/readdirSync", e);
-    return [];
+    return nativeDrift;
   }
-  if (sourceFiles.length === 0) return [];
+  if (sourceFiles.length === 0) return nativeDrift;
 
   const detectedNames = new Set(state.agents.filter((a) => a.detected).map((a) => a.name));
   const allTargets = AGENT_DEFINITIONS.filter((a) => a.commandsDir !== undefined && detectedNames.has(a.name));
@@ -108,14 +118,17 @@ export function checkCommandsDrift(): DriftItem[] {
     sourcePayloads,
   );
 
-  return targets.flatMap((agent) => {
-    if (CANARY_DELEGATED_AGENTS.has(agent.name) && !delegated.has(agent.name)) {
-      // Canary agent that didn't receive delegated content — sync
-      // skipped it; drift must skip it too.
-      return [];
-    }
-    return checkCommandsDriftForAgent(agent, sourceFiles);
-  });
+  return [
+    ...nativeDrift,
+    ...targets.flatMap((agent) => {
+      if (CANARY_DELEGATED_AGENTS.has(agent.name) && !delegated.has(agent.name)) {
+        // Canary agent that didn't receive delegated content — sync
+        // skipped it; drift must skip it too.
+        return [];
+      }
+      return checkCommandsDriftForAgent(agent, sourceFiles);
+    }),
+  ];
 }
 
 /** Scan a single agent's command dir for untracked (user-created) commands. */

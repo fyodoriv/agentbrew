@@ -34,8 +34,28 @@ removes these folders during this check.
 
 ## Codex boundaries
 
-- Commands deploy as custom prompts under `~/.codex/prompts` and run as
-  `/prompts:<name>` in the CLI. This does not guarantee a desktop slash menu.
+- Commands deploy as native skills named `agentbrew-command-<name>`. Invoke one
+  explicitly, for example `$agentbrew-command-ship-it`, or select it from the
+  native skill picker. Reserved, unusual, or long names get a stable hash suffix; inspect
+  the generated `SKILL.md` for the exact name. Sync also keeps the legacy
+  `~/.codex/prompts` output for clients that still accept custom prompts.
+  Current clients can reject `/prompts:<name>` even when those files exist.
+- Each native adapter contains the original command bytes in
+  `references/command.md`. Its source frontmatter is metadata, not permission
+  grants. The adapter disables implicit invocation and inherits the session's
+  approval rules. It does not change existing `source-command-*` skills.
+- Skill arguments are model-bound instructions, not native macro expansion:
+  `$ARGUMENTS` is the text after the explicit invocation; `$1` through `$9`
+  are positional arguments with quoted text kept together. Named `$NAME`
+  placeholders require explicit `NAME=value`. The adapter never renders the
+  command through shell or environment expansion.
+- Sync owns only hash-recorded adapter leaves. Untracked or edited leaves,
+  symlinks, and private wrapper skills stay intact. A source update refreshes
+  an unchanged adapter. Pruning removes only unchanged owned leaves, preserves
+  extra files, and never recursively deletes its folder. The manifest retains ownership hashes
+  while that folder exists, so a returning source can restore its leaves. Those
+  records are cleared after the folder itself is removed. Drift checks every
+  required leaf, including the explicit-invocation policy.
 - Native lifecycle hooks and skill frontmatter hooks are separate capabilities.
   Codex supports native hooks but does not execute Claude-only skill features.
 - New or changed non-managed hooks need trust review in CLI `/hooks` before
@@ -45,5 +65,6 @@ removes these folders during this check.
 - Local hook behavior does not establish support in cloud-orchestrated Work
   sessions. Check the workflow's hook limitations before relying on a policy.
 
-Sources: [OpenAI hooks reference](https://learn.chatgpt.com/docs/hooks) and
+Sources: [OpenAI skills reference](https://developers.openai.com/codex/skills),
+[OpenAI hooks reference](https://learn.chatgpt.com/docs/hooks) and
 [OpenAI custom agents reference](https://learn.chatgpt.com/docs/agent-configuration/subagents).

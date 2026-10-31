@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
+import { isUserModified, loadManifest, type Manifest } from "../manifest.js";
 
 const AGENT_BINARIES: Readonly<Record<string, string>> = {
   "claude-code": "claude",
@@ -70,10 +71,11 @@ export function inspectAgentRuntime(
 }
 
 /** Generated skill links are owned by sync; real folders need explicit adoption as sources. */
-export function unmanagedAgentSkills(skillsDir: string): string[] {
+export function unmanagedAgentSkills(skillsDir: string, manifest: Manifest = loadManifest()): string[] {
   try {
     return readdirSync(skillsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && existsSync(join(skillsDir, entry.name, "SKILL.md")))
+      .filter((entry) => isUserModified(join(skillsDir, entry.name, "SKILL.md"), manifest))
       .map((entry) => entry.name)
       .sort();
   } catch {

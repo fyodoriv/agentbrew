@@ -18,6 +18,7 @@ import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { builtinCommandNames, builtinCommandsDir, isAgentbrewCopy } from "./builtin-commands.js";
+import { syncCodexCommandSkills } from "./codex-command-skills.js";
 import { delegateCommandsGenerate } from "./commands-delegate.js";
 import { commandNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
@@ -693,6 +694,17 @@ function collectAllSourceCommands(
   }));
 }
 
+/** Read the same winning command payloads that sync deploys, without changing source files. */
+export function getAllSourceCommands(): Array<{ filename: string; content: string }> {
+  return collectAllSourceCommands(
+    getAllCommandSourceDirs(),
+    true,
+    false,
+    createContext({ quiet: true }).logger,
+    loadManifest(),
+  );
+}
+
 /**
  * Slice 2 of `delegate-commands-to-ai-rules`: invoke
  * {@link delegateCommandsGenerate} for the canary agents only. Returns
@@ -742,6 +754,33 @@ function dropStaleCommandSources(log: Logger): string[] {
   return dropped;
 }
 
+interface NativeCommandSkillOptions {
+  manifest: Manifest;
+  dryRun: boolean;
+  prune: boolean;
+  log: Logger;
+}
+
+function syncNativeCommandSkills(
+  sources: Array<{ filename: string; content: string }>,
+  options: NativeCommandSkillOptions,
+): void {
+  if (!loadState()?.agents?.some((agent) => agent.name === "codex" && agent.detected)) return;
+  const codex = AGENT_DEFINITIONS.find((agent) => agent.name === "codex");
+  if (!codex) return;
+  const changes = syncCodexCommandSkills(sources, expandHome(codex.skillsDir), options);
+  if (changes.updatedFiles > 0 || changes.prunedFiles > 0) {
+    options.log.warn(
+      `Codex native command skills: ${options.dryRun ? "would update" : "updated"} ${changes.updatedFiles} files, ${options.dryRun ? "would prune" : "pruned"} ${changes.prunedFiles} files.`,
+    );
+  }
+}
+
+function syncEmptyCommandSkills(options: NativeCommandSkillOptions, sharedManifest: boolean): void {
+  syncNativeCommandSkills([], options);
+  if (!options.dryRun && !sharedManifest) saveManifest(options.manifest);
+}
+
 export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune } = resolveCmdSyncOptions(options);
   const log = resolveLogger(ctx, quiet, options?.compact);
@@ -751,15 +790,17 @@ export async function syncCommands(options?: SyncOptions, ctx?: Partial<Context>
   // A source folder that is gone: drop its state entry, so the prune below removes its commands.
   if (!dryRun) dropStaleCommandSources(log);
   const sourceDirs = getAllCommandSourceDirs();
+  const sharedManifest = ctx?.manifest !== undefined;
+  const manifest = resolveManifest(ctx);
   if (sourceDirs.length === 0) {
+    syncEmptyCommandSkills({ manifest, dryRun, prune, log }, sharedManifest);
     warnNoCommandsDir(quiet, log);
     return;
   }
 
-  const sharedManifest = ctx?.manifest !== undefined;
-  const manifest = resolveManifest(ctx);
   for (const path of removedCopies) removeFromManifest(path, manifest);
   const sourceFiles = collectAllSourceCommands(sourceDirs, quiet, verbose, log, manifest);
+  syncNativeCommandSkills(sourceFiles, { manifest, dryRun, prune, log });
   warnNameClashes("command", commandNameClashes(loadState(), manifest), quiet, log);
   const retiredBuiltins = retiredBuiltinFiles(options);
 

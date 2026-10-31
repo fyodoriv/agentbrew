@@ -62,6 +62,12 @@ Codex hook deployment and hook activation are separate checks. New or changed
 definitions need review in Codex `/hooks` before they run. Preserve existing
 hooks and verify the active count there; do not use a trust-bypass switch.
 
+## Prove command entry points
+
+For Codex command changes or rejected `/prompts:<name>`, read
+[Native command entry points](references/native-command-entry-points.md).
+Require native discovery and a harmless live invocation before claiming parity.
+
 ## Verify in a Fresh Session
 
 Model, effort, memory, and new skills load only in a new session. Check them

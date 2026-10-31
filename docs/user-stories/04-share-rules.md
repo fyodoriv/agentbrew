@@ -1,5 +1,7 @@
 # Share Rules Across Agents
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I write one set of rules and every agent follows them — whether the agent stores rules in one big file or in a directory of per-file rules.
 
 **Metric**: `story_fail_rate` for US04 in [`metrics.md`](../metrics.md): `rules` and `instructions` sync errors and failed `rules` runs.
@@ -98,3 +100,17 @@ Rules sync is covered by the [US 10: Data safety](10-data-safety.md) guarantee:
 - Content outside the `<!-- agentbrew:start/end -->` markers in instruction files is never touched.
 - Per-file rules you authored manually in an agent's rules directory are preserved; agentbrew only manages files that match entries in `~/.config/agentbrew/rules/`.
 - Before sync writes a managed section, it snapshots the file — `agentbrew sync --rollback` restores the previous state if something goes wrong. See [US 26: Rollback](26-rollback.md).
+
+## Memory-first research
+
+The optional `memory-first-research` catalog rule makes shared recall part of
+context-dependent task, message, document, email, and meeting research. It
+requires dated reusable findings, corrections to stale recall, and a linked
+local prep note. Configured-memory failure blocks that context-dependent
+work until repair; deterministic local CLI actions remain available.
+
+Follow the [setup and privacy guide](../shared-memory-research.md). The rule
+is not recommended by default and does not change account privacy choices.
+The install-to-sync regression is
+`src/sync/shared-memory-catalog-rule.test.ts`; it deploys synthetic content
+to Claude Code and Codex while preserving their distinct local notes.

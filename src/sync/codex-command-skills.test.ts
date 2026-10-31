@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -16,7 +25,7 @@ import {
 import { syncCommands } from "./command-sync.js";
 
 vi.mock("./builtin-commands.js", () => ({ builtinCommandsDir: () => undefined, builtinCommandNames: () => [] }));
-vi.mock("./commands-delegate.js", () => ({ delegateCommandsGenerate: () => new Map() }));
+vi.mock("./commands-delegate.js", () => ({ delegateCommandsGenerate: vi.fn(() => new Map()) }));
 
 describe("native Codex command skills", () => {
   it("makes a winning source command available as an explicit native skill", async () => {
@@ -269,5 +278,44 @@ describe("command skill ownership and arguments", () => {
     expect(unmanagedAgentSkills(f.skills, f.manifest)).toEqual([]);
     writeFileSync(path, "edited");
     expect(unmanagedAgentSkills(f.skills, f.manifest)).toEqual([codexCommandSkillName(f.source.filename)]);
+  });
+});
+
+describe("primary-host commands from one source", () => {
+  it("deploys every shipped command and a future source addition to Claude and Codex", async () => {
+    const source = mkdtempSync(join(homedir(), "both-hosts-"));
+    const shipped = join(import.meta.dirname, "../../commands");
+    const names = readdirSync(shipped).filter((name) => name.endsWith(".md"));
+    for (const name of names) writeFileSync(join(source, name), readFileSync(join(shipped, name)));
+    mkdirSync(join(homedir(), ".claude/commands"), { recursive: true });
+    mkdirSync(join(homedir(), ".codex/prompts"), { recursive: true });
+    saveState({
+      agents: [
+        { name: "claude-code", detected: true, skillsDir: "~/.claude/skills", commandsDir: "~/.claude/commands" },
+        { name: "codex", detected: true, skillsDir: "~/.codex/skills", commandsDir: "~/.codex/prompts" },
+      ],
+      catalogVersion: "fixture",
+      commandSourceDirs: [{ label: "fixture", path: source }],
+    });
+    const { delegateCommandsGenerate } = await import("./commands-delegate.js");
+    vi.mocked(delegateCommandsGenerate).mockReturnValueOnce(
+      new Map([["claude-code", new Map(names.map((name) => [name, readFileSync(join(source, name), "utf-8")]))]]),
+    );
+    await syncCommands({ quiet: true });
+    const future = "future-action.md";
+    writeFileSync(join(source, future), "Report a harmless future result.\n");
+    vi.mocked(delegateCommandsGenerate).mockReturnValueOnce(
+      new Map([
+        ["claude-code", new Map([...names, future].map((name) => [name, readFileSync(join(source, name), "utf-8")]))],
+      ]),
+    );
+    await syncCommands({ quiet: true });
+    for (const name of [...names, future]) {
+      const content = readFileSync(join(source, name), "utf-8");
+      expect(readFileSync(join(homedir(), ".claude/commands", name), "utf-8")).toBe(content);
+      expect(
+        readFileSync(join(homedir(), ".codex/skills", codexCommandSkillName(name), "references/command.md"), "utf-8"),
+      ).toBe(content);
+    }
   });
 });

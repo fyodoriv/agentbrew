@@ -1,5 +1,7 @@
 # Shell Completions & Hooks
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > Tab-complete every agentbrew command, and keep configs in sync automatically whenever I open a shell or commit code.
 
 **Metric**: `story_fail_rate` for US21 in [`metrics.md`](../metrics.md): failed `completions` and `hooks` runs and `hooks` sync errors.

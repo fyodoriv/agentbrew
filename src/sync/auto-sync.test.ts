@@ -18,7 +18,7 @@ const mockChokidarClose = vi.fn().mockResolvedValue(undefined);
 const mockChokidarOn = vi.fn().mockReturnThis();
 vi.mock("chokidar", () => ({
   default: {
-    watch: vi.fn(() => ({ on: mockChokidarOn, close: mockChokidarClose })),
+    watch: vi.fn(() => ({ on: mockChokidarOn, close: mockChokidarClose, add: vi.fn(), unwatch: vi.fn() })),
   },
 }));
 
@@ -290,7 +290,7 @@ describe("watchAndSync", () => {
     // Wait a tick for the watcher setup to complete
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(chokidar.default.watch).toHaveBeenCalledWith(
-      expect.stringContaining("agentbrew"),
+      expect.arrayContaining([expect.stringContaining("agentbrew")]),
       expect.objectContaining({ ignoreInitial: true }),
     );
     expect(mockChokidarOn).toHaveBeenCalledWith("all", expect.any(Function));
@@ -703,6 +703,8 @@ describe("watchAndSync chokidar event handler", () => {
         return mockWatcher;
       }),
       close: mockClose,
+      add: vi.fn(),
+      unwatch: vi.fn(),
     };
     vi.mocked(chokidar.default.watch).mockReturnValue(
       mockWatcher as unknown as ReturnType<typeof chokidar.default.watch>,
@@ -778,6 +780,8 @@ describe("runSync calls resolved binary (lines 105-111)", () => {
         return mockWatcher;
       }),
       close: vi.fn().mockResolvedValue(undefined),
+      add: vi.fn(),
+      unwatch: vi.fn(),
     };
     vi.mocked(chokidar.default.watch).mockReturnValue(
       mockWatcher as unknown as ReturnType<typeof chokidar.default.watch>,
@@ -812,6 +816,8 @@ describe("runSync calls resolved binary (lines 105-111)", () => {
         return mockWatcher;
       }),
       close: vi.fn().mockResolvedValue(undefined),
+      add: vi.fn(),
+      unwatch: vi.fn(),
     };
     vi.mocked(chokidar.default.watch).mockReturnValue(
       mockWatcher as unknown as ReturnType<typeof chokidar.default.watch>,

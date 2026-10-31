@@ -138,3 +138,8 @@ Hook ownership stays per target in the deployment manifest. Sync merges Codex
 hooks with user entries, including endpoint hooks, and preserves top-level
 metadata. It does not grant hook trust. [Codex support](support-matrix.md)
 lists the verified limits and user review step.
+
+
+Continuous sync watches registered source folders as well as configuration;
+watch-instance roots refresh when state registration changes. Generated sync
+bookkeeping cannot schedule another sync. See the [host contracts](support-matrix.md#continuous-repair-and-workflow-acceptance).

@@ -41,3 +41,28 @@ Each story names its outcome metric (`**Metric**:`, a row in [`metrics.md`](../m
 | 27 | [Company plugins](27-team-overlay.md) | Install your company's signed skills, rules, MCP servers, and hooks | `agentbrew plugin add <url>@<tag>` |
 | 28 | [One-liner setup + uninstall](28-quickstart-uninstall.md) | Each team overlay ships its own quickstart/uninstall scripts | `~/apps/<overlay>/bin/quickstart` |
 | 29 | [Shared memory packs](29-shared-memory-packs.md) | One loopback semantic-memory runtime with explicit packs and managed project-memory ingestion | `agentbrew memory enable` |
+
+
+## Shared host acceptance
+
+This contract applies to every story and all new actions. Claude Code and
+ChatGPT Work/Codex must reach the same supported CLI action from the generated
+registry. A new command or skill needs a regression case for both hosts; use
+native capability adapters or a named supported fallback, never an unavailable
+host API. A missing dependency must fail readiness or name the blocked step.
+
+When shared memory is configured, agent workflows use its bootstrap, ranked
+recall and session learning on both hosts. Local app records and private
+provider credentials stay with their existing owner. Missing shared memory
+must be reported with its failed tool; block context-dependent work until recall
+is repaired. Do not silently disable configured memory. Deterministic
+CLI actions still work without a model; tests use synthetic memory fixtures.
+
+Source changes must converge through ordinary sync and repair without losing
+owner edits. Repeat sync must be idempotent. Account connections, native
+privacy settings and native histories are separate from file deployment.
+
+The gate checks every story's inherited acceptance, every CLI action through
+`src/action-parity.test.ts`, and all shipped commands plus a future source
+addition through the native command bridge integration. The watcher and repair
+regressions cover source edits, generated writes, failures and ownership.

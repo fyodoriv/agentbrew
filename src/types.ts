@@ -241,6 +241,8 @@ export interface SkillSourceDir {
   format?: "standard" | "tasks-md";
   /** Where this source dir was added from — e.g. "agentfile", "user", or "team:<label>". */
   origin?: string;
+  /** Declaring Agentfile directory; each owner retains its own source registration. */
+  agentfile?: string;
 }
 
 /** A managed hook entry stored in state and synced to agent config files. */
@@ -286,6 +288,7 @@ export interface AgentBrewState {
   /** Legacy: `/work` steps older syncs saved. /work moved to careerbrew (#610); the next sync deletes this key. */
   workSteps?: unknown[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
+  /** Command source folders or selected Markdown files; ownership is the declaring Agentfile directory. */
   commandSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
   hooks?: ManagedHook[];
   externalMcpServers?: string[];

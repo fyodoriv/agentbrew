@@ -170,6 +170,11 @@ function makeState(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const originalExitCode = process.exitCode;
+afterEach(() => {
+  process.exitCode = originalExitCode;
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -179,6 +184,21 @@ beforeEach(() => {
 });
 
 describe("fix", () => {
+  it("fails the scheduler exit when a repairable native command remains", async () => {
+    const previousExit = process.exitCode;
+    try {
+      process.exitCode = undefined;
+      mockLoadState.mockReturnValue(makeState() as never);
+      mockCheckCommandsDrift.mockReturnValueOnce([
+        { agent: "codex", type: "commands", detail: "native command reference missing" },
+      ]);
+      await fix();
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExit;
+    }
+  });
+
   it("records one content-free repair event with the drift counts", async () => {
     mockLoadState.mockReturnValue(makeState() as never);
     mockCollectDrift.mockReturnValue([

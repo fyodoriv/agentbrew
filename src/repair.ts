@@ -271,6 +271,7 @@ async function runFix(started: number): Promise<void> {
   }
 
   reportRemainingDrift(remainingItems, driftBefore);
+  if (remainingItems.length > 0) process.exitCode = 1;
 
   // Opt-in weekly metrics share (#346). Off unless `metrics share --schedule weekly`.
   maybeScheduledShare();

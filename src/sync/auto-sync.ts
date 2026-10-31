@@ -1,15 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import chalk from "chalk";
 import chokidar from "chokidar";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "../agentfile-skill-directories.js";
+import { getSourceCacheDir } from "../catalog/index-source.js";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { userSchedulersTargetThisHome } from "../core/user-scheduler.js";
+import { loadManifest } from "../manifest.js";
+import { activePlugins } from "../plugins/contributions.js";
 import { autoRepairOptedOut } from "../settings.js";
+import { invalidateState, loadState } from "../state.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { isUnchangedOwnedCommand } from "./command-source-files.js";
 import { hasCrontab, installCron, isCronInstalled, uninstallCron } from "./cron.js";
 import {
   getLaunchAgentPlistPath,
@@ -94,16 +100,76 @@ function notify(title: string, message: string): void {
   }
 }
 
-function runSync(): void {
+function runSync(): boolean {
   const bin = getAgentBrewBin();
   try {
     execFileSync(bin, ["sync"], { stdio: "pipe", timeout: SYNC_TIMEOUT_MS });
+    return true;
   } catch (error) {
     log(`Sync failed: ${errorMessage(error)}`);
+    return false;
   }
 }
 
-/** Start a file watcher on the config directory and run sync on every change. */
+function syncWatchRoots(configDir: string): string[] {
+  const state = loadState();
+  const directories = [
+    ...(state?.commandSourceDirs ?? []),
+    ...(state?.skillSourceDirs ?? []),
+    ...(state?.agentSourceDirs ?? []),
+  ].map((source) => source.path);
+  // Parent coverage survives a selected file's deletion and later recreation.
+  directories.push(
+    ...(state?.commandSourceDirs ?? [])
+      .filter((source) => source.path.endsWith(".md"))
+      .map((source) => dirname(source.path)),
+  );
+  directories.push(
+    ...(state?.skillSourceDirs ?? [])
+      .filter((source) => source.origin === LOCAL_SKILL_DIRECTORY_ORIGIN)
+      .map((source) => dirname(source.path)),
+  );
+  directories.push(...(state?.memory?.packPaths ?? []), ...activePlugins().map((plugin) => plugin.dir));
+  for (const source of state?.sources ?? []) {
+    directories.push(source.type === "local" ? source.url : getSourceCacheDir(source));
+  }
+  return [...new Set([configDir, ...directories].map((path) => resolve(expandHome(path))))];
+}
+
+/** Sync-owned files cannot be inputs: writing them must not start another run. */
+function ownedCanonicalPaths(configDir: string): Set<string> {
+  const manifest = loadManifest();
+  return new Set(
+    Object.keys(manifest.hashes).filter(
+      (path) => dirname(path) === join(configDir, "commands") && isUnchangedOwnedCommand(path, manifest),
+    ),
+  );
+}
+
+function generatedSyncPath(configDir: string, path: string, event: string, knownMirrors: Set<string>): boolean {
+  const absolute = resolve(path);
+  if (dirname(absolute) === join(configDir, "commands")) {
+    if (isUnchangedOwnedCommand(absolute, loadManifest())) return true;
+    if (event === "unlink" && knownMirrors.has(absolute) && !existsSync(absolute)) return true;
+  }
+  const part = relative(configDir, resolve(path)).split(/[\\/]/)[0];
+  return new Set([
+    "sync-errors.json",
+    "manifest.json",
+    "state.yaml.bak",
+    "repair-log.json",
+    "last-seen.json",
+    "backups",
+    "memory-packs",
+    "metrics",
+    "context",
+    "scripts",
+    "shell-hook.sh",
+    "shell-hook.fish",
+  ]).has(part);
+}
+
+/** Watch registered sources as well as configuration; generated writes never trigger sync. */
 export async function watchAndSync(): Promise<void> {
   const configDir = getConfigDir();
   if (!existsSync(configDir)) {
@@ -117,21 +183,40 @@ export async function watchAndSync(): Promise<void> {
   console.log(chalk.dim(`  Log file: ${getLogDir()}/auto-sync.log`));
   console.log(chalk.dim("  Press Ctrl+C to stop.\n"));
 
-  const watcher = chokidar.watch(configDir, {
+  let watchedRoots = syncWatchRoots(configDir);
+  const watcher = chokidar.watch(watchedRoots, {
     ignoreInitial: true,
-    ignored: ["**/*.log"],
+    ignored: ["**/*.log", "**/.git/**", "**/node_modules/**"],
     awaitWriteFinish: { stabilityThreshold: FILE_WRITE_STABILITY_MS },
   });
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let knownMirrors = ownedCanonicalPaths(configDir);
 
-  watcher.on("all", (_event, filePath) => {
+  // Watch-instance scope: roots, mirror deletion receipts and the timer end when this watcher closes.
+  const refreshRoots = (): void => {
+    invalidateState();
+    const next = syncWatchRoots(configDir);
+    watcher.add(next.filter((path) => !watchedRoots.includes(path)));
+    void watcher.unwatch(watchedRoots.filter((path) => !next.includes(path)));
+    watchedRoots = next;
+  };
+  watcher.on("all", (event, filePath) => {
+    if (resolve(filePath) === join(configDir, "state.yaml")) {
+      refreshRoots();
+      return;
+    }
+    if (generatedSyncPath(configDir, filePath, event, knownMirrors)) return;
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       log(`Change detected: ${filePath} — syncing...`);
-      runSync();
-      log("Sync complete.");
-      notify("agentbrew", "Config change detected and synced.");
+      knownMirrors = ownedCanonicalPaths(configDir);
+      if (runSync()) {
+        knownMirrors = new Set([...knownMirrors, ...ownedCanonicalPaths(configDir)]);
+        refreshRoots();
+        log("Sync complete.");
+        notify("agentbrew", "Config change detected and synced.");
+      }
     }, DEBOUNCE_DELAY_MS);
   });
 

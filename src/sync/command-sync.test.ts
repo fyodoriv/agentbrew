@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
+  lstatSync: vi.fn(() => ({ isFile: () => true })),
   mkdirSync: vi.fn(),
   readdirSync: vi.fn(),
   readFileSync: vi.fn(),
@@ -441,7 +442,7 @@ describe("syncCommands", () => {
   describe("stale command source", () => {
     it("drops a command source whose folder is gone and removes the commands it deployed", async () => {
       const trackedPath = `${homedir()}/.config/opencode/commands/gone.md`;
-      vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "h" } });
+      vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "mock-hash" } });
       const live = { label: "live", path: "/tmp/live/commands", origin: "agentfile" as const };
       mockLoadState.mockReturnValue({
         agents: [{ name: "opencode", detected: true, skillsDir: "x" } as never],
@@ -550,7 +551,7 @@ describe("syncCommands", () => {
       // unaffected by the slice 4 skip semantics.
       // opencode's commandsDir from agents.yaml is `~/.config/opencode/commands`.
       const trackedPath = `${homedir()}/.config/opencode/commands/old.md`;
-      vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "h" } });
+      vi.mocked(loadManifest).mockReturnValue({ hashes: { [trackedPath]: "mock-hash" } });
       mockLoadState.mockReturnValue({
         agents: [{ name: "opencode", detected: true, skillsDir: "x" } as never],
         catalogVersion: "test",
@@ -1009,20 +1010,14 @@ describe("computeCommandsDiff — delegated content", () => {
     expect(diffs[0].actions[0].content).toBe("DELEGATED CONTENT");
   });
 
-  it("skips canary agents when the delegation map has no entry for them (slice 4)", () => {
-    // Slice 4 of `delegate-commands-to-ai-rules` hardened the contract:
-    // canary agents (claude-code, amp, firebender) MUST get content from the
-    // delegation map. With the map empty, the canary skips — no
-    // source-content fallback. Mirrors the rules-sync slice 4
-    // evolution. Users without `ai-rules` installed see canary
-    // commands skip with a top-level warning at the syncCommands
-    // level (not asserted here — the diff function is pure).
+  it("skips delegated-only agents when their renderer inventory is missing", () => {
+    // AMP and Firebender require renderer output; Claude supports native Markdown.
     const delegated = new Map<string, ReadonlyMap<string, string>>();
     const diffs = computeCommandsDiff(
       [{ filename: "hello.md", content: "# Native\n" }],
       [
         {
-          agentName: "claude-code",
+          agentName: "amp",
           exists: true,
           transform: identityTransform,
           fileExt: ".md",
@@ -1035,6 +1030,29 @@ describe("computeCommandsDiff — delegated content", () => {
     expect(diffs[0].skipped).toBe(true);
     expect(diffs[0].actions).toHaveLength(0);
     expect(diffs[0].synced).toBe(0);
+  });
+
+  it.each(["amp", "firebender"])("skips %s when only part of its command inventory was rendered", (agentName) => {
+    const delegated = new Map([[agentName, new Map([["first.md", "Rendered first command."]])]]);
+    const diffs = computeCommandsDiff(
+      [
+        { filename: "first.md", content: "Native first." },
+        { filename: "missing.md", content: "Raw source must not count as rendered." },
+      ],
+      [
+        {
+          agentName,
+          exists: true,
+          transform: identityTransform,
+          fileExt: ".md",
+          existingFiles: new Map([["missing.md", "Raw source must not count as rendered."]]),
+        },
+      ],
+      { prune: true },
+      delegated,
+    );
+    expect(diffs[0].skipped).toBe(true);
+    expect(diffs[0].actions).toHaveLength(0);
   });
 
   it("non-canary agents still fall back to source content when delegation is missing", () => {
@@ -1061,12 +1079,8 @@ describe("computeCommandsDiff — delegated content", () => {
     expect(diffs[0].actions[0].content).toBe("# Source\n");
   });
 
-  it("canary agent with delegation but missing filename falls back to source for that file", () => {
-    // When a canary agent appears in the delegation map but is
-    // missing a specific source filename (rare, partial subprocess
-    // failure), the file falls back to source content. The agent
-    // does NOT skip entirely — it skips only when the map has no
-    // entry for the agent at all.
+  it("Claude delegation with a missing filename uses native Markdown for that file", () => {
+    // Claude supports native Markdown for a missing rendered file. Strict targets skip incomplete inventories.
     const delegated = new Map<string, ReadonlyMap<string, string>>([
       ["claude-code", new Map([["other.md", "DELEGATED"]])],
     ]);
@@ -1167,14 +1181,14 @@ describe("CANARY_DELEGATED_AGENTS — slice 2–5 invariants", () => {
 });
 
 describe("collectCanaryDelegation — slice 2 boundary", () => {
-  it("returns an empty Map when sourceFiles is empty (helper is not invoked)", () => {
-    // Nothing to delegate; native path also no-ops on empty input.
+  it("returns explicit empty canary payloads when sources are empty so owned artifacts can be pruned", () => {
+    // Nothing to render; an explicit payload permits normal ownership-safe cleanup.
     // Asserting the subprocess wrapper is NOT called means a missing
     // binary doesn't surface a spurious warning when there's nothing
     // to do.
     mockDelegateCommandsGenerate.mockClear();
     const result = collectCanaryDelegation([{ agentName: "claude-code" }], []);
-    expect(result.size).toBe(0);
+    expect(result.get("claude-code")?.size).toBe(0);
     expect(mockDelegateCommandsGenerate).not.toHaveBeenCalled();
   });
 

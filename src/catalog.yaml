@@ -1972,6 +1972,27 @@ bundles:
     members: [context7, playwright, github, sequential-thinking]
 
 rules:
+  - name: memory-first-research
+    description: "Use shared recall and save dated research. Don't use for context-free deterministic CLI actions."
+    category: workflow
+    recommended: false
+    content: |
+      Before context-dependent work or research for a task, message, document,
+      email, or meeting, use ranked `memory_search` in configured shared memory
+      with a non-empty semantic query. Prefer current, dated findings and source
+      links over stale recall. If memory is unconfigured, state that scope.
+
+      If configured recall fails, report "shared memory unavailable", name the
+      failed tool, and block context-dependent work until memory is repaired.
+      A deterministic CLI action can still run locally without a model.
+
+      After research, store dated, reusable findings with their source links.
+      Correct stale records with version-aware `memory_update`; do not repeat
+      known stale claims. Keep a local prep note and link it from the memory
+      entry; link the relevant memory references back from the prep note.
+      Keep raw private records and credentials local. Never copy account
+      sessions, privacy opt-ins, or schedules between hosts.
+
   - name: conventional-commits
     description: Enforce conventional commit format
     category: git

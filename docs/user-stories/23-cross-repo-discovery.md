@@ -1,5 +1,7 @@
 # Cross-Repo Discovery
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I commit an Agentfile to my project repo. My teammates clone it, run `agentbrew sync`, and get the same MCP servers, skills, rules, commands, hooks, and agent personas — zero manual config.
 
 **Metric**: `story_fail_rate` for US23 in [`metrics.md`](../metrics.md): failed `sync --agentfile` runs.

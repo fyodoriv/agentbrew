@@ -68,3 +68,28 @@ removes these folders during this check.
 Sources: [OpenAI skills reference](https://developers.openai.com/codex/skills),
 [OpenAI hooks reference](https://learn.chatgpt.com/docs/hooks) and
 [OpenAI custom agents reference](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+
+
+## Continuous repair and workflow acceptance
+
+Every story inherits the [shared host acceptance](user-stories/README.md#shared-host-acceptance).
+File deployment covers native clients. It does not grant account OAuth or
+change native memory privacy settings. Configured shared semantic memory is
+the common bootstrap, recall and session-learning path for agent workflows.
+
+The periodic repair job checks all supported sync surfaces. Its successful
+exit means no repairable drift remains; owner conflicts stay intact and need
+attention. A successful run does not prove third-party service authentication.
+
+`agentbrew auto-sync watch` watches configuration and registered skill, command
+and agent source folders. State registration refreshes its roots without a
+sync. Generated bookkeeping, backups and metrics do not trigger another run.
+It reports completion only when the sync subprocess succeeds. The watcher
+instance owns its roots and debounce timer until shutdown; periodic repair is
+still the fallback when the foreground watcher is not running.
+
+### Command renderer availability
+
+Claude Code prefers ai-rules output and falls back to the existing plain Markdown transform when ai-rules is unavailable. This covers every selected command, including Agentfile and user commands, with the same owner-edit protection and safe pruning. AMP and Firebender still require their delegated formats. Codex command skills use the native bridge independently.
+
+See [command readiness](command-readiness.md) for a content-free, source-scoped deployment check and [local skill directories](skill-directories.md) for automatic future skill selection and owner-safe removal. Test runs require a frozen repo inventory; concurrent source additions trip the isolation guard.

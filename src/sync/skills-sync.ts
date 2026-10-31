@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
+import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "../agentfile-skill-directories.js";
 import { getSourceCacheDir } from "../catalog/index-source.js";
 import { filterReadsFromAgents } from "../core/agents.js";
 import type { Context } from "../core/context.js";
@@ -23,12 +24,14 @@ import { errorMessage } from "../core/errors.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
 import { findAgentbrewRepoRoot } from "../core/repo-root.js";
+import { loadManifest, saveManifest } from "../manifest.js";
 import { BACKUPS_DIR, INSTALLED_SKILLS_DIR } from "../paths.js";
 import { pluginSkillDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
 import type { AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS, DEFAULT_SUPPORTED_SKILL_FEATURES, VENDOR_NEUTRAL_SKILLS_DIR } from "../types.js";
 import { expandHome } from "../utils.js";
+import { protectedLocalSkillPaths, reconcileLocalSkillLinks } from "./local-skill-links.js";
 
 interface SkillSource {
   label: string;
@@ -254,7 +257,24 @@ export function getSkillSources(): SkillSource[] {
   // v2 plugin skill dirs come from the lock on every sync, never from state (#208).
   const pluginSources: SkillSource[] = pluginSkillDirs().map((d) => ({ ...d, scanner: scanSkillDirs }));
   // User sources first (higher priority), then plugins, then built-in
-  return [...localSources, ...uniqueLegacy, ...pluginSources, builtIn];
+  const allFolders = new Set(
+    (state?.skillSourceDirs ?? [])
+      .filter((dir) => dir.origin === LOCAL_SKILL_DIRECTORY_ORIGIN)
+      .map((dir) => resolve(expandHome(dir.path))),
+  );
+  const seen = new Set<string>();
+  return [...localSources, ...uniqueLegacy, ...pluginSources, builtIn].flatMap((source) => {
+    const path = resolve(source.path);
+    if (seen.has(path)) return [];
+    seen.add(path);
+    return [
+      {
+        ...source,
+        scanner: allFolders.has(path) ? scanSkillDirs : source.scanner,
+        installedSkillNames: allFolders.has(path) ? undefined : source.installedSkillNames,
+      },
+    ];
+  });
 }
 
 /** Carve-out: shared (per-entry user-data preserver; isolating this keeps
@@ -282,12 +302,13 @@ function cleanEntry(entryPath: string, directory: string, knownSourcePaths: Set<
 }
 
 /** Carve-out: shared (every carve-out's skillsDir is swept by this before redeploy). */
-function cleanSymlinks(directory: string, knownSourcePaths: Set<string>): number {
+function cleanSymlinks(directory: string, knownSourcePaths: Set<string>, protectedPaths: ReadonlySet<string>): number {
   if (!existsSync(directory)) return 0;
   let removed = 0;
   try {
     for (const entry of readdirSync(directory)) {
-      if (cleanEntry(join(directory, entry), directory, knownSourcePaths)) removed++;
+      const path = join(directory, entry);
+      if (!protectedPaths.has(path) && cleanEntry(path, directory, knownSourcePaths)) removed++;
     }
   } catch (e) {
     logSkipped("sync/skills-sync/cleanSymlinks", e);
@@ -297,11 +318,12 @@ function cleanSymlinks(directory: string, knownSourcePaths: Set<string>): number
 
 /** Carve-out: shared (single-dir broken-symlink sweeper; used by both detected
  *  carve-outs at apply time and the global post-sync sweep below). */
-function removeBrokenSymlinksFromDir(skillsDir: string): number {
+function removeBrokenSymlinksFromDir(skillsDir: string, protectedPaths: ReadonlySet<string>): number {
   let removed = 0;
   try {
     for (const entry of readdirSync(skillsDir)) {
       const entryPath = join(skillsDir, entry);
+      if (protectedPaths.has(entryPath)) continue;
       try {
         if (!lstatSync(entryPath).isSymbolicLink()) continue;
         const linkTarget = readlinkSync(entryPath);
@@ -330,7 +352,9 @@ function removeBrokenSymlinksFromDir(skillsDir: string): number {
  * to `status --fix`. Calling this at the tail of `syncSkills` closes that
  * gap so `sync` converges to zero drift in one pass.
  */
-export function cleanBrokenSymlinksGlobally(): number {
+export function cleanBrokenSymlinksGlobally(
+  protectedPaths: ReadonlySet<string> = protectedLocalSkillPaths(loadManifest()),
+): number {
   const targets = AGENT_DEFINITIONS.filter((a) => existsSync(expandHome(a.skillsDir))).map((a) =>
     expandHome(a.skillsDir),
   );
@@ -339,7 +363,7 @@ export function cleanBrokenSymlinksGlobally(): number {
 
   let removed = 0;
   for (const skillsDir of targets) {
-    removed += removeBrokenSymlinksFromDir(skillsDir);
+    removed += removeBrokenSymlinksFromDir(skillsDir, protectedPaths);
   }
   return removed;
 }
@@ -611,13 +635,20 @@ function deployDiffTarget(
   diff: SkillTargetDiff,
   knownSourcePaths: Set<string>,
   backups: CopyBackups,
-  options: { quiet: boolean; verbose: boolean; dryRun: boolean; log: Logger },
+  options: {
+    quiet: boolean;
+    verbose: boolean;
+    dryRun: boolean;
+    log: Logger;
+    protectedPaths: ReadonlySet<string>;
+    onDeployed: (dest: string, source: string) => void;
+  },
 ): { label: string; deployed: number; failed: number; skipped: number } {
   const { quiet, verbose, dryRun, log } = options;
   if (!dryRun) {
     try {
       mkdirSync(diff.skillsDir, { recursive: true });
-      cleanSymlinks(diff.skillsDir, knownSourcePaths);
+      cleanSymlinks(diff.skillsDir, knownSourcePaths, options.protectedPaths);
     } catch (error) {
       if (!quiet) log.log(`  ${log.red("✗")} ${diff.label}: cannot create skills dir — ${errorMessage(error)}`);
       return { label: diff.label, deployed: 0, failed: 1, skipped: 0 };
@@ -625,15 +656,19 @@ function deployDiffTarget(
   }
   let deployed = 0;
   let failed = 0;
-  let skipped = 0;
-  for (const symlink of diff.symlinks) {
+  const available = diff.symlinks.filter((link) => !options.protectedPaths.has(join(diff.skillsDir, link.name)));
+  let skipped = diff.symlinks.length - available.length;
+  for (const symlink of available) {
+    const dest = join(diff.skillsDir, symlink.name);
     if (dryRun) {
       deployed++;
       continue;
     }
     const result = deploySymlinkEntry(symlink, diff, knownSourcePaths, backups, { verbose, log });
-    if (result === "deployed") deployed++;
-    else if (result === "failed") failed++;
+    if (result === "deployed") {
+      deployed++;
+      options.onDeployed(dest, symlink.sourcePath);
+    } else if (result === "failed") failed++;
     else skipped++;
   }
   return { label: diff.label, deployed, failed, skipped };
@@ -852,6 +887,27 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
     return { agentCount: 0, skillCount: 0, bySource: {}, vendorNeutral: false, skipped: {}, replacedCopies: [] };
   }
   const { detectedAgents, allSkills, bySource, deployTargets, vendorNeutralEnabled, diffs, knownSourcePaths } = plan;
+  const manifest = ctx?.manifest ?? loadManifest();
+  const previousLinkReceipts = JSON.stringify([manifest.localSkillLinks, manifest.localSkillConflicts]);
+  const declaredRoots = (_state?.skillSourceDirs ?? [])
+    .filter((dir) => dir.origin === LOCAL_SKILL_DIRECTORY_ORIGIN)
+    .map((dir) => resolve(expandHome(dir.path)));
+  const desiredLinks = new Map(
+    diffs.flatMap((diff) =>
+      diff.symlinks.map((link) => [join(diff.skillsDir, link.name), resolve(link.sourcePath)] as const),
+    ),
+  );
+  const declaredLinks = new Set(
+    [...desiredLinks]
+      .filter(([, source]) => declaredRoots.some((root) => isWithinPath(source, root)))
+      .map(([dest]) => dest),
+  );
+  const protectedPaths = reconcileLocalSkillLinks(manifest, desiredLinks, declaredLinks, {
+    dryRun,
+    prune: options?.prune !== false,
+    activeDirectories: new Set(diffs.map((diff) => diff.skillsDir)),
+  });
+  for (const path of protectedLocalSkillPaths(manifest)) protectedPaths.add(path);
 
   // ── Apply phase ─────────────────────────────────────────────────────────
   if (!quiet) {
@@ -861,7 +917,18 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backups: CopyBackups = { root: join(expandHome(BACKUPS_DIR), "skill-copies", stamp), replaced: [] };
   const targetResults = diffs.map((diff) => {
-    const base = deployDiffTarget(diff, knownSourcePaths, backups, { quiet, verbose, dryRun, log });
+    const base = deployDiffTarget(diff, knownSourcePaths, backups, {
+      quiet,
+      verbose,
+      dryRun,
+      log,
+      protectedPaths,
+      onDeployed: (dest, source) => {
+        if (!declaredLinks.has(dest)) return;
+        manifest.localSkillLinks ??= {};
+        manifest.localSkillLinks[dest] = resolve(source);
+      },
+    });
     return { ...base, incompatible: diff.skipped.length };
   });
 
@@ -870,7 +937,14 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
     if (diff.skipped.length > 0) skippedByTarget[diff.label] = diff.skipped;
   }
 
-  sweepBrokenSymlinksPostSync({ dryRun, verbose, log });
+  sweepBrokenSymlinksPostSync({ dryRun, verbose, log, protectedPaths });
+  if (
+    !dryRun &&
+    !ctx?.manifest &&
+    previousLinkReceipts !== JSON.stringify([manifest.localSkillLinks, manifest.localSkillConflicts])
+  ) {
+    saveManifest(manifest);
+  }
 
   if (!quiet) {
     logSkillCopies(plan, backups, dryRun, log);
@@ -928,9 +1002,14 @@ function logSyncOutput(opts: LogSyncOutputOpts): void {
 /** Carve-out: shared (post-sync global broken-symlink sweep — issue 3/4 of
  *  `sync-idempotent-and-complete`: covers former-carve-out skill dirs too,
  *  so `sync` converges to zero drift in one pass without `status --fix`). */
-function sweepBrokenSymlinksPostSync(options: { dryRun: boolean; verbose: boolean; log: Logger }): void {
+function sweepBrokenSymlinksPostSync(options: {
+  dryRun: boolean;
+  verbose: boolean;
+  log: Logger;
+  protectedPaths: ReadonlySet<string>;
+}): void {
   if (options.dryRun) return;
-  const globallyRemoved = cleanBrokenSymlinksGlobally();
+  const globallyRemoved = cleanBrokenSymlinksGlobally(options.protectedPaths);
   if (globallyRemoved > 0 && options.verbose) {
     options.log.log(options.log.dim(`  ✓ cleaned ${globallyRemoved} broken symlink(s) from non-synced agent dirs`));
   }

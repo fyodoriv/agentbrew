@@ -1,5 +1,7 @@
 # Shared Memory Packs
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I want org-neutral semantic memory with optional curated packs — one loopback daemon, explicit install, and team overlays that never delete my local memories.
 
 **Metric**: `story_fail_rate` for US29 in [`metrics.md`](../metrics.md): failed `memory` runs.

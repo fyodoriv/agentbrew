@@ -86,8 +86,9 @@ export function registerSyncSubcommands(program: Command, autoSync: () => Promis
   commands
     .command("list")
     .description("List all commands and deployment status")
-    .action(async () => {
-      await listCommands();
+    .option("--json", "Show winning sources and exact per-agent readiness as JSON")
+    .action(async (options: { json?: boolean }) => {
+      await listCommands(options);
     });
 
   commands

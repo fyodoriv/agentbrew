@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import chalk from "chalk";
 import yaml from "js-yaml";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
+import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
 import { errorMessage } from "./core/errors.js";
 import { fixDeprecatedMemoryServerArgs } from "./mcp/mcpm-hygiene.js";
@@ -54,6 +55,8 @@ interface AgentfileWarning {
 export interface Agentfile {
   mcp?: AgentfileMcpEntry[];
   skills?: string[];
+  /** Local folders whose scanned skills, including future additions, all deploy. */
+  skillDirectories?: string[];
   sources?: string[];
   commands?: string[];
   agents?: string[];
@@ -228,6 +231,7 @@ export function parseAgentfile(content: string): Agentfile {
         ) as AgentfileMcpEntry[])
       : undefined,
     skills: Array.isArray(raw.skills) ? raw.skills.map(String) : undefined,
+    skillDirectories: parseStringList(raw.skillDirectories),
     sources: Array.isArray(raw.sources) ? raw.sources.map(String) : undefined,
     commands: Array.isArray(raw.commands) ? raw.commands.map(String) : undefined,
     agents: Array.isArray(raw.agents) ? raw.agents.map(String) : undefined,
@@ -449,11 +453,16 @@ function serializeAgentfileWorkSteps(agentfile: Agentfile, output: Record<string
   if (agentfile.workSteps?.length) output.workSteps = agentfile.workSteps;
 }
 
+function serializeSkillDirectories(agentfile: Agentfile, output: Record<string, unknown>): void {
+  if (agentfile.skillDirectories?.length) output.skillDirectories = agentfile.skillDirectories;
+}
+
 function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   if (agentfile.excludeAgents?.length) output.excludeAgents = agentfile.excludeAgents;
   if (agentfile.mcp?.length) output.mcp = agentfile.mcp;
   if (agentfile.skills?.length) output.skills = agentfile.skills;
+  serializeSkillDirectories(agentfile, output);
   if (agentfile.sources?.length) output.sources = agentfile.sources;
   if (agentfile.commands?.length) output.commands = agentfile.commands;
   if (agentfile.agents?.length) output.agents = agentfile.agents;
@@ -487,6 +496,9 @@ export function mergeAgentfiles(filePaths: string[]): string {
     const { agentfile, baseDir } = readAgentfileForMerge(filePath);
     merged.mcp = mergeMcpEntries(merged.mcp, agentfile.mcp);
     merged.skills = mergeStringEntries(merged.skills, agentfile.skills);
+    merged.skillDirectories = mergeStringEntries(merged.skillDirectories, agentfile.skillDirectories, (value) =>
+      normalizeSourceDirEntry(value, baseDir),
+    );
     merged.sources = mergeStringEntries(merged.sources, agentfile.sources, (value) =>
       normalizeSourceEntry(value, baseDir),
     );
@@ -674,6 +686,12 @@ export function generateAgentfile(): string | undefined {
 
   const catalog = loadCatalog();
   const agentfile: Record<string, unknown> = {};
+  const skillDirectories = [
+    ...new Set(
+      (state.skillSourceDirs ?? []).filter((dir) => dir.origin === LOCAL_SKILL_DIRECTORY_ORIGIN).map((dir) => dir.path),
+    ),
+  ];
+  serializeSkillDirectories({ skillDirectories }, agentfile);
 
   // Check if all recommended items are installed — emit shorthand if so
   const recommendedSkills = catalog.skills.filter((s) => s.recommended).map((s) => s.name);

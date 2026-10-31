@@ -28,11 +28,9 @@
  *
  * Failure mode: if `ai-rules` is missing (ENOENT) or the subprocess
  * fails for any reason (proxy / sandbox / corrupt source), the helper
- * logs a `logSkipped` and returns an empty Map. The caller is required
- * to fall back to the native command-sync path so users without
- * `ai-rules` installed are NOT broken — slice 2 is additive, not
- * replacement (slice 4 will harden the contract once delegation is
- * wired across all canary agents).
+ * logs a `logSkipped` and returns an empty Map. Claude Code can use the
+ * existing native identity path. AMP and Firebender remain skipped because
+ * their required rendered inventory is unavailable.
  */
 
 import { execFileSync } from "node:child_process";

@@ -72,6 +72,21 @@
         "Identifies AFK tasks: implement component, write unit tests, add error handling, update documentation",
         "Writes acceptance criteria that are observable without subjective judgment (tests pass, component renders without errors, accessibility score > 90)"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Create TASKS.md entries for a measured migration of all owned tooling code to Rust except UI and necessary shell, one observable boundary per PR. Both declared task backends are TASKS.md; there is no Rust workspace or measurement harness yet. The repos contain application code, embedded interpreters, extensionless scripts, generated executables, workflow helpers, tests/evals and release tooling. One repo will own the shared measurement engine; the other will consume a pinned adapter. Add tasks only and preserve the current fixes.",
+      "expected_output": "Outcome-shaped AFK/HITL task blocks in each declared queue, with exhaustive executable-scope inventory, separate preparation before production ports, explicit local and cross-repo dependencies, per-step measurement/keep/pivot criteria, and no unsupported implementation or benchmark claims.",
+      "expectations": [
+        "Uses the declared TASKS.md backends and preserves existing tasks instead of filing duplicate GitHub issues or implementing runtime code",
+        "Orders inventory, instrumentation and sealed baselines before dependent replacement tasks; makes disjoint parallel lanes explicit",
+        "Covers embedded and extensionless programs, generated executable templates, workflow tools, non-UI tests/evals and build/release machinery with narrow UI and necessary-shell exceptions",
+        "Writes independently reviewable outcome tasks with why, AFK/HITL scope, observable acceptance, exact proposed measurement command, numeric keep/pivot thresholds and rollback evidence",
+        "Clearly labels commands supplied by future preparation tasks and requires actual baseline values to be recorded before replacement, rather than inventing timings or speedups",
+        "Preserves privacy, process cleanup, approval and source-ownership guards and never treats missing or contaminated measurements as passing",
+        "Validates task-backend dependency syntax: no fake local dependency named none and no unresolved cross-repo ID masquerading as a local task",
+        "Tracks real host or credential proof separately from synthetic tests and does not treat frozen support residue as migrated"
+      ]
     }
   ]
 }

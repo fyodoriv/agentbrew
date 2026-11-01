@@ -142,8 +142,8 @@ nuke):
 
 **Re-read after every text change:**
 
-- Re-read the structure (for example `docs_get_structured`) after **every**
-  text replace or delete. Never reuse indices across a text change, even a
+- Re-read only the edited range (for example `docs_get_structured`, or locate
+  the changed text) after **every** text replace or delete. Never reuse indices across a text change, even a
   small one: style and bullet calls then hit the wrong paragraphs.
 - Deleting a blank paragraph merges it with its neighbor, and the merged
   paragraph keeps the style of the one before it. Before you delete one,
@@ -188,8 +188,10 @@ nesting, heading levels, bold boundaries, and empty numbered items often
 look fine in export but wrong in the live doc. **Never** tell the user a
 GDoc is done from MCP text alone.
 
-After **every** edit batch, validate the complete edited tab, not only the
-changed section:
+After **every** edit batch, read only the edited range and visually validate
+the complete edited tab. Read the whole document once at the end, before the
+final every-page screenshot sweep. Do not re-read an unchanged document in
+the same session:
 
 1. **Structured read** — `docs_get_structured` on the edited range.
    Confirm: body text is `NORMAL_TEXT` (not `HEADING_*`); subsection titles

@@ -117,6 +117,18 @@
         "Records local evidence and pending delivery in a private report",
         "Checks for an existing branch PR before asking to publish"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "Wrap up: this session learned one operator correction and spotted one unfixed bug. The bug belongs to an issue-only parent app.",
+      "expected_output": "Finishes the current step, updates the closest owned skill source and memory, searches duplicates, leak-scans and files the bug when approved, then writes the handoff with both links.",
+      "expectations": [
+        "Reviews the whole session before handoff",
+        "Updates source rather than installed mirror",
+        "Searches duplicates and leak-scans before filing",
+        "Does not edit an issue-only parent repo or bypass posting approval",
+        "Handoff is last and lists the learning update and issue links"
+      ]
     }
   ]
 }

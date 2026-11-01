@@ -242,7 +242,13 @@ for the user. End it with
 Before you claim done, take fresh evidence for every done-criterion. Do not
 reuse output from earlier in the session. Run the metric command and compare
 it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal is not done yet.
-No CI is not a blocker: when `gh pr checks` says "no checks reported" and the repo has no `.github/workflows`, say so in one line, merge when the repo's own gate (the one its AGENTS.md names) exits 0, and mark "all checks green" met with that exit code; never call the goal impossible for it, and add CI only if the user asks.
+Before waiting for CI, run `gh pr checks` once for this PR and once for the
+last merged PR. If both report "no checks reported" and current host settings
+confirm checks are disabled, treat CI as absent even when workflow files
+exist. Use the repo's own gate, require exit 0, and name its environment.
+Do not poll a host that does not run checks or add CI without a request.
+With no workflows and no checks, the same local-gate rule applies. Missing
+checks on this PR alone do not prove CI is absent.
 
 Read the gate's own exit status, never a wrapper's line or a pipe's, and gate a
 count check on exactly 0: the exact command lines are in

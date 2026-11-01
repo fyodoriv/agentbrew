@@ -169,6 +169,19 @@
   - **Anchor**: tooling-checkup agent time review 2026-10-18; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
   - **Blocked**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). Measure on or after 2026-10-25 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the `until <arg>` overall line), then close or pivot.
 
+- [ ] Performance reports distinguish commands inside the heavy-run wrapper
+  - **ID**: perf-heavy-run-step-keys
+  - **Tags**: perf, instrumentation, privacy
+  - **Details**: Existing records collapse wrapped test and lint jobs into `heavy-run npm` and make jobs into `heavy-run make`. This hides the leaf command and makes several elapsed seven-day goals unprovable. This is measurement preparation, not a speed improvement. Historical ambiguous rows stay unchanged.
+  - **Files**: hooks/lib/perf-row.jq, hooks/checks/perf-record.test.sh, docs/agent-perf.md, skill-plugins/workflow/perf-review/
+  - **Output**: code
+  - **Acceptance**: the wrapped verify, changed-verify, and make-check fixtures identify all three intended commands; privacy fixtures emit no synthetic secret or raw argument path. Old logs are not rewritten; docs define a new full seven-day window after deployment.
+  - **Hypothesis**: treating heavy-run as a transparent prefix improves correct leaf keys from 0/3 baseline fixtures to 3/3, while secret and raw-argument leakage stays at 0.
+  - **Measurement**: `bash hooks/checks/perf-record.test.sh` and `npx vitest run src/scripts/agent-perf.test.ts`.
+  - **Success**: 3/3 exact intended keys, zero synthetic secret/path leaks, and required gates exit 0.
+  - **Pivot**: fewer than 3/3 correct keys or any leaked fixture payload means abandon the wrapper expansion and keep unknown classification until a safe execution adapter can provide it.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Forsgren, Humble, Kim 2018 (measure lead time separately from activity).
+
 ## P2
 
 - [ ] Report Hallmark's render wait that never ends on apps that poll

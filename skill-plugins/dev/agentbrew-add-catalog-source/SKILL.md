@@ -14,6 +14,12 @@ Before any install or sync, run shared-rules "Tool setup preflight": duplicates 
 
 ## What You Do
 
+Trace the actual CLI entrypoint, including `sync --pull`, and all upstream subprocesses
+before claiming owner preservation. Inspect installed tool source: `check` may mutate.
+Scratch fixtures must cover first-pull requests, shared and excluded hosts, and retained
+owner conflicts before delegation.
+Keep raw requests protected after a failed fetch; treat unreadable present policy as an error, not absence.
+
 Land a curated entry in agentbrew's catalog so every user picks it up on the
 next `agentbrew sync --pull` or `npm install -g agentbrew@latest`. Agentbrew
 is a **curator, not a host** (see [docs/VISION.md](../../../docs/VISION.md))
@@ -57,7 +63,7 @@ overlays and their `catalog-overlay.yaml` merge.)
        "Don't use for X" so the agent knows when NOT to invoke it.
      source: owner/repo         # GitHub shorthand, owner/repo on github.com
                                 # company content goes in the plugin repo instead
-     category: Development      # or Code Quality, Workflow, etc. — see existing
+     category: development      # or quality, workflow — reuse existing catalog IDs
      recommended: false         # only set true if there's a user-visible rationale
      # rationale: required ONLY when recommended: true
    ```

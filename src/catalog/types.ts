@@ -43,6 +43,8 @@ export interface CatalogSkill {
   source: string;
   category: string;
   recommended: boolean;
+  /** Keep pre-existing owner destinations; track only exact links this selection deploys. */
+  preserveExisting?: boolean;
   rationale?: string;
   deprecated?: CatalogDeprecation;
 }

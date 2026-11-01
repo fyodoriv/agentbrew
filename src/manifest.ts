@@ -8,9 +8,9 @@ import { logSkipped } from "./core/logger.js";
 const MANIFEST_PATH = join(homedir(), ".config", "agentbrew", "manifest.json");
 
 export interface Manifest {
-  /** Manifest-scoped exact links successfully deployed from declared local skill folders. */
+  /** Manifest-scoped exact links deployed from declared local folders or owner-preserving catalog selections. */
   localSkillLinks?: Record<string, string>;
-  /** Exact owner destinations encountered by local-skill sync. Protection ends
+  /** Exact owner destinations encountered by receipt-managed skill sync. Protection ends
    * when the destination is absent; these paths never grant write ownership. */
   localSkillConflicts?: string[];
   /** Map of absolute file path → content SHA-256 hash */

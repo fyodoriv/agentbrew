@@ -1,5 +1,7 @@
 # One-liner Setup + Symmetric Uninstall
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > My company has a private plugin and I want a single command that installs agentbrew AND configures it with our company setup. Same for uninstall — one line restores my machine to vanilla.
 
 **Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): the install pair is `plugin add` and `plugin remove`.

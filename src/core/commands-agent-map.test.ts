@@ -39,7 +39,9 @@ describe("AGENTBREW_ONLY_COMMANDS_AGENTS", () => {
     // Format/transform mismatch carve-outs (gemini-cli, opencode),
     // transitive carve-out
     // (claude-desktop, which shares ~/.claude/commands with claude-code).
-    expect(new Set(AGENTBREW_ONLY_COMMANDS_AGENTS)).toEqual(new Set(["gemini-cli", "claude-desktop", "opencode"]));
+    expect(new Set(AGENTBREW_ONLY_COMMANDS_AGENTS)).toEqual(
+      new Set(["codex", "gemini-cli", "claude-desktop", "opencode"]),
+    );
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -69,7 +71,12 @@ describe("AGENTBREW_ONLY_COMMANDS_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_COMMANDS_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_COMMANDS_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_COMMANDS_RATIONALE).sort()).toEqual(["claude-desktop", "gemini-cli", "opencode"]);
+    expect(Object.keys(AGENTBREW_ONLY_COMMANDS_RATIONALE).sort()).toEqual([
+      "claude-desktop",
+      "codex",
+      "gemini-cli",
+      "opencode",
+    ]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {
@@ -223,9 +230,9 @@ describe("buildAiRulesCommandsAgentList", () => {
       // opencode) have no separate ai-rules dispatch — caller must route
       // them to native OR (for claude-desktop) rely on the claude-code
       // intersection covering the same file via readsFrom.
-      expect(buildAiRulesCommandsAgentList(["gemini-cli", "claude-desktop", "opencode"])).toEqual({
+      expect(buildAiRulesCommandsAgentList(["codex", "gemini-cli", "claude-desktop", "opencode"])).toEqual({
         agents: [],
-        carveOuts: ["gemini-cli", "claude-desktop", "opencode"],
+        carveOuts: ["codex", "gemini-cli", "claude-desktop", "opencode"],
       });
     });
   });
@@ -237,6 +244,7 @@ describe("buildAiRulesCommandsAgentList", () => {
         buildAiRulesCommandsAgentList([
           "claude-code", // rename
           "cursor", // intersection
+          "codex", // carve-out
           "gemini-cli", // carve-out
           "claude-desktop", // carve-out
           "opencode", // carve-out
@@ -245,7 +253,7 @@ describe("buildAiRulesCommandsAgentList", () => {
         ]),
       ).toEqual({
         agents: ["claude", "cursor", "amp", "firebender"],
-        carveOuts: ["gemini-cli", "claude-desktop", "opencode"],
+        carveOuts: ["codex", "gemini-cli", "claude-desktop", "opencode"],
       });
     });
 

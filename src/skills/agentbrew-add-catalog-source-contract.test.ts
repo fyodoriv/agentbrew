@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { evalMatcher, expectationText, requireTerms, type SkillEval } from "./skill-contract-test-helpers.js";
+import { validateEvals } from "./validate.js";
 
 const skillRoot = join(process.cwd(), "skill-plugins", "dev", "agentbrew-add-catalog-source");
 const skillText = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
@@ -12,6 +13,35 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
 const evalMatching = evalMatcher(evals.evals);
 
 describe("agentbrew-add-catalog-source skill contract", () => {
+  it("covers indexed and native provider ambiguity without owner replacement", () => {
+    const scenario = evalMatching(/indexed and native providers/i);
+    requireTerms(skillText, [
+      "Trace the actual CLI entrypoint",
+      "all upstream subprocesses",
+      "`check` may mutate",
+      "first-pull",
+      "excluded hosts",
+      "retained",
+      "failed fetch",
+      "unreadable present policy",
+    ]);
+    requireTerms(expectationText(scenario), [
+      "recommended: false",
+      "anthropics/skills",
+      "Claude",
+      "Codex",
+      "scratch",
+      "owner",
+      "builtin",
+      "resolver",
+      "zero",
+      "sync --pull",
+      "first-pull",
+      "excluded",
+      "retained",
+    ]);
+    expect(validateEvals(skillRoot).filter((issue) => issue.severity === "error")).toEqual([]);
+  });
   it("pins shared catalog versus company plugin routing", () => {
     requireTerms(skillText, [
       "Decision tree — which catalog file?",
@@ -44,6 +74,7 @@ describe("agentbrew-add-catalog-source skill contract", () => {
       "One-line description",
       "Start with an action verb",
       "Don't use for X",
+      "category: development",
       "recommended: false",
       "rationale: required ONLY when recommended: true",
       "Every entry must have a `description`",
@@ -106,7 +137,7 @@ describe("agentbrew-add-catalog-source skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-add-catalog-source");
-    expect(evals.evals).toHaveLength(4);
+    expect(evals.evals).toHaveLength(5);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

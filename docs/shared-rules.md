@@ -165,6 +165,7 @@ these three axes when a task allows it:
   commands.
 - Do not give concrete time estimates.
 - **One comment per place on a PR:** never post two comments in a row in the same place on a PR (the conversation, or one review thread) unless 24 hours have passed. Edit your last comment instead.
+- **Judge every draft sent as the user:** before you show a draft PR review, chat message, DM, thread reply, or issue or PR comment, send it to a fresh judge subagent per the `review-pr` skill's `references/draft-judge.md` (members, linked ids, facts, who must act). Show it only after `APPROVED`, and judge it again after any change.
 - Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** — do not duplicate them here.
 
 ## Long-run reports

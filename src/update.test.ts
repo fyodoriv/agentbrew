@@ -59,7 +59,7 @@ vi.mock("./catalog/install-other.js", () => ({
 }));
 
 vi.mock("./catalog/types.js", () => ({
-  loadCatalog: vi.fn(() => ({ rules: [] })),
+  loadCatalog: vi.fn(() => ({ skills: [], rules: [] })),
 }));
 
 vi.mock("./lock.js", () => ({

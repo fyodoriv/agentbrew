@@ -74,6 +74,7 @@ vi.mock("./sync/command-sync.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("./sync/command-sync.js")>();
   return {
     ...real,
+    getAllSourceCommands: vi.fn(() => []),
     collectCanaryDelegation: vi.fn((targets: ReadonlyArray<{ agentName: string }>) => {
       const result = new Map<string, Map<string, string>>();
       for (const t of targets) {
@@ -90,7 +91,8 @@ vi.mock("./sync/command-sync.js", async (importOriginal) => {
   };
 });
 
-vi.mock("./sync/agents-sync.js", () => ({
+vi.mock("./sync/agents-sync.js", async (importOriginal) => ({
+  toCodexAgent: (await importOriginal<typeof import("./sync/agents-sync.js")>()).toCodexAgent,
   getAgentSources: vi.fn(() => []),
   collectAgentDefs: vi.fn(() => ({ agents: new Map(), bySource: {} })),
   getAgentDefTargets: vi.fn(() => []),
@@ -99,7 +101,7 @@ vi.mock("./sync/agents-sync.js", () => ({
       const name = sourceFile.replace(/\.md$/, "");
       return `${targetDir}/${name}/AGENT.md`;
     }
-    return `${targetDir}/${sourceFile}`;
+    return `${targetDir}/${format === "codex" ? sourceFile.replace(/\.md$/, ".toml") : sourceFile}`;
   }),
 }));
 
@@ -127,6 +129,7 @@ import { validateMcpEnvVars } from "./mcp/mcp-setup.js";
 import { validateAllSkills } from "./skills/validate.js";
 import { loadState } from "./state.js";
 import { collectAgentDefs, getAgentDefTargets } from "./sync/agents-sync.js";
+import { getAllSourceCommands } from "./sync/command-sync.js";
 import { compressSkillsListing } from "./sync/instructions-content.js";
 import { loadInstructions } from "./sync/instructions-sync.js";
 import { extractManagedSection, loadSharedRules } from "./sync/rules-sync.js";
@@ -715,6 +718,19 @@ describe("checkBrokenSymlinks", () => {
 // ── checkCommandsDrift ───────────────────────────────────────────────────────
 
 describe("checkCommandsDrift", () => {
+  it("checks native skill leaves from winning sources even without a legacy commands directory", () => {
+    mockLoadState.mockReturnValue(makeState({ agents: [{ name: "codex", detected: true }] }));
+    vi.mocked(getAllSourceCommands).mockReturnValue([{ filename: "witness.md", content: "Report safely." }]);
+    mockExistsSync.mockReturnValue(false);
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error("missing");
+    });
+    const drift = checkCommandsDrift();
+    expect(drift).toHaveLength(3);
+    expect(drift.every((item) => item.agent === "codex" && item.detail.includes("native command skill"))).toBe(true);
+    vi.mocked(getAllSourceCommands).mockReturnValue([]);
+  });
+
   it("returns empty when state is missing", () => {
     mockLoadState.mockReturnValue(undefined);
     expect(checkCommandsDrift()).toEqual([]);
@@ -1649,6 +1665,32 @@ describe("checkUserAddedMcpServers — partial failure across agents", () => {
 // ── checkAgentDefsDrift ─────────────────────────────────────────────────────
 
 describe("checkAgentDefsDrift", () => {
+  it("compares Codex agents against their native TOML output", () => {
+    mockCollectAgentDefs.mockReturnValue({
+      agents: new Map([
+        [
+          "reviewer",
+          {
+            name: "reviewer",
+            fileName: "reviewer.md",
+            sourcePath: "/src/reviewer.md",
+            sourceLabel: "agentbrew",
+          },
+        ],
+      ]),
+      bySource: { agentbrew: 1 },
+    });
+    mockGetAgentDefTargets.mockReturnValue([{ agentName: "codex", dir: "~/.codex/agents", format: "codex" }]);
+    mockExistsSync.mockReturnValue(true);
+    mockLoadManifest.mockReturnValue({ hashes: { [`${homedir()}/.codex/agents/reviewer.toml`]: "hash" } });
+    mockReadFileSync.mockImplementation((path) =>
+      String(path) === "/src/reviewer.md"
+        ? "Find bugs."
+        : 'name = "reviewer"\ndescription = "reviewer"\ndeveloper_instructions = "Find bugs."\n',
+    );
+    expect(checkAgentDefsDrift()).toEqual([]);
+  });
+
   it("returns empty when no agent defs are collected", () => {
     mockCollectAgentDefs.mockReturnValue({ agents: new Map(), bySource: {} });
     mockGetAgentDefTargets.mockReturnValue([]);

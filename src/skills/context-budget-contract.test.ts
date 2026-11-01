@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { validateEvals } from "./validate.js";
 
 interface SkillEval {
   id: number | string;
@@ -17,6 +18,24 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
 };
 
 describe("context-budget skill contract", () => {
+  it("covers source refresh with known static headroom and unavailable runtime evidence", () => {
+    const scenario = evals.evals.find((entry) => /agentbrew, dotfiles, and careerbrew/i.test(entry.prompt));
+    expect(scenario).toBeDefined();
+    const checks = scenario?.expectations?.join("\n") ?? "";
+    for (const phrase of [
+      "1840",
+      "alerts",
+      "runtime",
+      "IDE",
+      "new chat",
+      "independent judge",
+      "already reloaded",
+      "business workflows",
+    ]) {
+      expect(checks).toContain(phrase);
+    }
+    expect(validateEvals(skillRoot).filter((issue) => issue.severity === "error")).toEqual([]);
+  });
   it("pins automated metrics paths and investigation workflow", () => {
     expect(skillText).toContain("~/.config/agentbrew/metrics/latest.json");
     expect(skillText).toContain("agentbrew measure context");

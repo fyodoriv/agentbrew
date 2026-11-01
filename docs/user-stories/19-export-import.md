@@ -1,5 +1,7 @@
 # Export & Import
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I want to move my entire agent setup to a new machine — or share it with a colleague who doesn't use git.
 
 **Metric**: `story_fail_rate` for US19 in [`metrics.md`](../metrics.md): failed `export` runs.

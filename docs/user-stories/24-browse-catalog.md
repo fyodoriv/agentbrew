@@ -1,5 +1,7 @@
 # Browse the Catalog
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I want to see what skills, MCP servers, and rules are available before I install anything.
 
 **Metric**: `story_fail_rate` for US24 in [`metrics.md`](../metrics.md): failed `catalog` runs.

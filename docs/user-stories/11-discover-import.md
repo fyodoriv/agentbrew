@@ -1,5 +1,7 @@
 # Discover & Import
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I manually add an MCP server to one agent and want it everywhere — agentbrew discovers it and syncs it to all others.
 
 **Metric**: `story_fail_rate` for US11 in [`metrics.md`](../metrics.md): failed `sync --discover` and `import` runs.

@@ -1,5 +1,7 @@
 # Lint & Validate
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I changed my config and want to make sure everything is valid before syncing.
 
 **Metric**: `story_fail_rate` for US18 in [`metrics.md`](../metrics.md): failed `lint` runs.

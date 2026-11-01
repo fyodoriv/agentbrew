@@ -1,5 +1,7 @@
 # Rollback
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > Something went wrong after `agentbrew sync` — an agent stopped working, my rules got truncated, my MCP servers are missing. I undo the last sync in one command.
 
 **Metric**: `story_fail_rate` for US26 in [`metrics.md`](../metrics.md): failed `sync --rollback` runs.

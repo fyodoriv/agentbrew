@@ -16,7 +16,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 events="${AGENTBREW_EVENTS_FILE:-$HOME/.local/share/agentbrew/logs/events.jsonl}"
 timings="${AGENTBREW_GATE_TIMINGS:-$root/.metrics/gate-timings.jsonl}"
 
-row() { printf '%-22s %-14s %-14s %s\n' "$1" "$2" "$3" "$4"; }
+row() { printf '%-24s %-14s %-14s %s\n' "$1" "$2" "$3" "$4"; }
 
 source_lines="$(cd "$root" && git ls-files 'src/*.ts' 2>/dev/null | grep -v '\.test\.ts$' | xargs cat 2>/dev/null | wc -l | tr -d ' ')"
 case "$source_lines" in '' | 0 | *[!0-9]*) source_lines="(stub)" ;; esac

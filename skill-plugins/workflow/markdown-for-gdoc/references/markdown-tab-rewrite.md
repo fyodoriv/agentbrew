@@ -37,7 +37,15 @@ up to more than the text width:
    [`child-tab-inserts.md`](child-tab-inserts.md).
 4. Read the structure again. Check that the widths add up to the text width.
 
-## Rule 2: check bold in the API before you re-apply it
+## Rule 2: check bold in the API and the browser before re-applying it
+
+Whole-line bold labels (`**Label**` alone on a line) can render in regular
+weight even when the API says `bold: true` and the export says bold. Inline
+bold may still render correctly. For these labels, only the live browser
+proves the rendered weight. If re-applying bold at the exact tab range does
+not change the rendering, use a level-four heading (`#### Label`) and
+re-import the tab, then inspect it in the browser. Do not silently promote
+ordinary body text to a heading; this remedy is for subsection labels.
 
 A light body font can hide bold. Bold text with a
 `weightedFontFamily.weight` under 400 (a light font) renders at weight 400.
@@ -58,7 +66,7 @@ bold is set.
    `weightedFontFamily.fontFamily` and has bold text. Compare its
    screenshot with yours. If its bold looks the same, your bold is correct.
    Do not re-apply it, and do not change the font. With no such tab, trust
-   the API value.
+   the API value only for inline bold; inspect whole-line labels in the browser.
 4. If the other tab's bold looks heavier, compare `weightedFontFamily`
    (`fontFamily` and `weight`) on both runs, found as in step 2. Do not
    re-apply bold. Tell the user what differs.
@@ -76,5 +84,6 @@ bold is set.
 
 Both rules are the Fix step (step 3) of the visual verification loop in
 `SKILL.md`. After both, restart the loop at step 1: a structured read of
-the whole tab, then the every-page screenshot sweep. Repeat until every page
+the edited range, then the every-page screenshot sweep. Read the whole document
+once at the end before the final sweep, not after each batch. Repeat until every page
 passes. No column may be cut off at the right edge.

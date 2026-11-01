@@ -3,6 +3,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   renameSync,
@@ -398,15 +399,18 @@ function moveOutputsAside(repoDir: string, paths: string[]): Array<[string, stri
 }
 
 /** Put moved files back where they were. */
-function restoreMoved(moved: Array<[string, string]>): void {
+function restoreMoved(moved: Array<[string, string]>): boolean {
+  let restored = true;
   for (const [from, to] of moved) {
     try {
       mkdirSync(dirname(from), { recursive: true });
       renameSync(to, from);
     } catch (e) {
+      restored = false;
       logSkipped("mcp/mcp-git/restoreMoved", e);
     }
   }
+  return restored;
 }
 
 /**
@@ -434,8 +438,9 @@ export function finishBuild(repoDir: string, build: BuildOutcome, accepted: bool
       logSkipped("mcp/mcp-git/finishBuild", e);
     }
   }
-  restoreMoved(pending.moved);
-  rmSync(join(repoDir, ".git", BUILD_ASIDE_DIR), { recursive: true, force: true });
+  if (restoreMoved(pending.moved)) {
+    rmSync(join(repoDir, ".git", BUILD_ASIDE_DIR), { recursive: true, force: true });
+  }
 }
 
 /**
@@ -460,15 +465,25 @@ function pendingBuild(
   return { moved: ctx.moved, created, record: { commit: ctx.head, paths: [...new Set([...kept, ...created])] } };
 }
 
+function assertNoInterruptedBuild(repoDir: string): void {
+  const aside = join(repoDir, ".git", BUILD_ASIDE_DIR);
+  if (existsSync(aside) && readdirSync(aside).length > 0) {
+    throw new Error(
+      `Interrupted build output remains in ${aside}. Preserve it and recover the previous build before retrying.`,
+    );
+  }
+}
+
 /**
  * Run `npm install` + `npm run build` for a Node.js repo if a build script is
  * present. A failure is a warning here; the callers decide with
- * {@link assertBuildUsable} whether pre-built files may run. No build output or user file is deleted.
+ * {@link assertBuildUsable} whether pre-built files may run. Only new partial build output is removed on failure.
  * The record names the commit the cache's build output comes from: written
  * after a successful build, and after any build of a fresh clone, whose files
  * all come from HEAD.
  */
 export function buildRepoIfNeeded(repoDir: string, freshClone = false, unattended = isUnattended()): BuildOutcome {
+  assertNoInterruptedBuild(repoDir);
   const headBuiltBefore = headWasBuilt(repoDir);
   const outcome: BuildOutcome = { ran: false, ok: false, headBuiltBefore, outputs: recordedOutputs(repoDir) };
   const packageJsonPath = join(repoDir, "package.json");
@@ -517,8 +532,10 @@ export function buildRepoIfNeeded(repoDir: string, freshClone = false, unattende
     const message = errorMessage(error);
     console.log(chalk.yellow(`  ⚠ Build step failed: ${message}.`));
     if (freshClone) recordBuiltCommit(repoDir);
-    // The build failed: the old commit's files go back, so a server registered from them still runs.
-    restoreMoved(moved);
+    // Refuse partial output too; otherwise a retry can mistake it for an older build.
+    const pending = pendingBuild(repoDir, { before, prior, head, moved, unattended });
+    if (pending) finishBuild(repoDir, { ...outcome, pending }, false);
+    else restoreMoved(moved);
     return { ...outcome, ran: true, ok: false };
   }
 }
@@ -799,8 +816,9 @@ function buildAndFindEntrypoint(
   run: { freshClone: boolean; unattended: boolean; previous?: CachePin },
 ): DetectedEntrypoint | undefined {
   const { freshClone, unattended, previous } = run;
-  const build = buildRepoIfNeeded(repoDir, freshClone, unattended);
+  let build: BuildOutcome | undefined;
   try {
+    build = buildRepoIfNeeded(repoDir, freshClone, unattended);
     assertBuildUsable(repoDir, build, freshClone, gitUrl);
     const entrypoint = detectEntrypoint(repoDir, build.outputs);
     if (!entrypoint) throw new Error(missingHint);
@@ -810,8 +828,9 @@ function buildAndFindEntrypoint(
   } catch (error) {
     console.error(chalk.red(`  ✗ ${errorMessage(error)}`));
     process.exitCode = 1;
-    finishBuild(repoDir, build, false);
-    if (previous) restoreCachePin(repoDir, previous, build.ran, unattended);
+    if (build?.ok) forgetBuiltCommit(repoDir);
+    if (build) finishBuild(repoDir, build, false);
+    if (previous) restoreCachePin(repoDir, previous, build?.ran ?? false, unattended);
     return undefined;
   }
 }

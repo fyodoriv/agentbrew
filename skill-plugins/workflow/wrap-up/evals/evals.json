@@ -96,6 +96,39 @@
         "Still lists a worktree that has uncommitted files, even when its branch shipped",
         "Lists each worktree once"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "wrap up: open-work.sh lists `branch fix/x: 8 commit(s) not on main, likely landed (100% of its added lines are on main): look, then delete it`",
+      "expected_output": "Reports the branch as cleanup, checks git log main..fix/x, and offers to delete it; does not tell the user to continue it or count it as work to finish.",
+      "expectations": [
+        "Treats a likely-landed branch as cleanup, not open work",
+        "Runs or names git log main..fix/x before suggesting deletion",
+        "Asks before deleting the branch"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Finish a machine setup goal across public dotfiles and agentbrew. Source fixes and local setup pass, but public code PRs still need approval. Skill-retro PRs have standing approval.",
+      "expected_output": "Preserves the tested code and local report, separates standing skill-retro approval from core code publication, and asks for the exact public PR action after checks.",
+      "expectations": [
+        "Does not treat skill-retro approval as approval to publish core code changes",
+        "Keeps prepared source fixes in their worktrees until delivery is approved",
+        "Records local evidence and pending delivery in a private report",
+        "Checks for an existing branch PR before asking to publish"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Wrap up: this session learned one operator correction and spotted one unfixed bug. The bug belongs to an issue-only parent app.",
+      "expected_output": "Finishes the current step, updates the closest owned skill source and memory, searches duplicates, leak-scans and files the bug when approved, then writes the handoff with both links.",
+      "expectations": [
+        "Reviews the whole session before handoff",
+        "Updates source rather than installed mirror",
+        "Searches duplicates and leak-scans before filing",
+        "Does not edit an issue-only parent repo or bypass posting approval",
+        "Handoff is last and lists the learning update and issue links"
+      ]
     }
   ]
 }

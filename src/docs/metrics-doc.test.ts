@@ -43,7 +43,11 @@ function runMetrics(eventsFile: string, receipt = join(scratch, "no-receipt.json
   return execFileSync("bash", [join(repoRoot, "scripts/metrics.sh")], {
     cwd: repoRoot,
     encoding: "utf-8",
-    env: { ...process.env, AGENTBREW_EVENTS_FILE: eventsFile, AGENTBREW_INSTALL_RECEIPT: receipt },
+    env: {
+      ...process.env,
+      AGENTBREW_EVENTS_FILE: eventsFile,
+      AGENTBREW_INSTALL_RECEIPT: receipt,
+    },
   });
 }
 

@@ -148,6 +148,28 @@
         "Lands a stack by its top branch with main merged in, or retargets each PR to main first",
         "Never merges a stack bottom-up with --delete-branch"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "The dotfiles gate for my issue fix takes 4 minutes. The test files my fix touches may already have red tests on the base branch, and I added one new reproduction test. What do you run first?",
+      "expected_output": "The agent runs the touched test files on the base branch before the full gate, leaving out the new reproduction test (which must fail there), treats tests that fail there as pre-existing base fixes, and only then runs the full gate once.",
+      "expectations": [
+        "Runs the touched test files on the base branch before the first full gate, except the new reproduction test",
+        "Treats a test that fails on base as pre-existing, not as its own regression",
+        "Fixes or reports the base failure in the same PR so the gate can pass",
+        "Runs the full gate once after that, and reads rc in its own call"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "I armed a Monitor on the watch-pass.sh loop for two repos. Every line it prints is a skip with an x509 TLS error from gh. What do you change?",
+      "expected_output": "The agent sees that the Monitor runs in the Bash sandbox, where gh fails TLS. It runs the watcher as a background Bash call with the sandbox off, writing to a log file, and arms the Monitor on tail -f of that log.",
+      "expectations": [
+        "Names the Bash sandbox as the cause of the x509 failure, not GitHub",
+        "Runs the watcher outside the sandbox as a background call that writes to a log",
+        "Arms the Monitor on tail -f of that log",
+        "Does not keep a Monitor whose every read is a skip"
+      ]
     }
   ]
 }

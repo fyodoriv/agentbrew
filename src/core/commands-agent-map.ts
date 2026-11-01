@@ -78,6 +78,8 @@ export const AI_RULES_COMMANDS_TO_AGENTBREW: Readonly<Record<string, string>> = 
  *     delegated path.
  */
 export const AGENTBREW_ONLY_COMMANDS_RATIONALE: Readonly<Record<string, string>> = Object.freeze({
+  codex:
+    "ai-rules does not generate Codex custom prompts; agentbrew keeps supported metadata and argument placeholders.",
   // gemini-cli: agentbrew writes ~/.gemini/commands/<name>.toml via the
   // `gemini` transform (different file extension AND different frontmatter
   // shape). ai-rules doesn't generate Gemini-format commands. Possible

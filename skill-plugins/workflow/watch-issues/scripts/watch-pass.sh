@@ -60,7 +60,7 @@ fi
 export GIT_TERMINAL_PROMPT=0
 mkdir -p "$state_dir"
 seen="$state_dir/seen"
-touch "$seen"
+touch "$seen" 2>/dev/null || { echo "watch: cannot write $seen" >&2; exit 1; }
 
 if [ "${#done_items[@]}" -gt 0 ]; then
   for item in "${done_items[@]}"; do
@@ -75,7 +75,7 @@ if [ "${#done_items[@]}" -gt 0 ]; then
     if [ "$ok" -ne 1 ]; then
       echo "watch: not an item key: $item (use the second column of a pass line)" >&2; exit 1
     fi
-    grep -qxF "$item" "$seen" || printf '%s\n' "$item" >>"$seen"
+    grep -qxF "$item" "$seen" || printf '%s\n' "$item" 2>/dev/null >>"$seen" || { echo "watch: cannot write $seen" >&2; exit 1; }
   done
   echo "watch: recorded ${#done_items[@]} handled item(s)"
   exit 0

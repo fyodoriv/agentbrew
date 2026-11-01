@@ -66,6 +66,18 @@
         "Leaves the three app-built-in notes with the person, with the reason",
         "Does not treat an unrelated 'feedback' skill as a channel"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "While syncing, agentbrew deleted one of my MCP servers. I already said you can open PRs to my fork without asking. Fix it upstream, and I run agentbrew from my local clone.",
+      "expected_output": "The agent classes the finding as a fix PR (it deletes the person's data), branches from the default branch in a worktree, writes a regression test, and shows it fails without the fix and passes with it. It runs the repo's gate, scans the diff, PR body, and commit metadata for private details, pushes to the fork, opens the PR under the standing approval without merging, and removes the worktree. It merges the fix branch into a local integration branch, rebuilds, and re-checks the person's settings.",
+      "expectations": [
+        "Classes data loss as a fix PR, not a task",
+        "Shows the regression test failing before the fix and passing after",
+        "Runs a privacy scan on the diff, PR body, and commit metadata before the push",
+        "Opens the PR from the fork and never merges or pushes upstream",
+        "Carries the unmerged fix on a local integration branch and rebuilds"
+      ]
     }
   ]
 }

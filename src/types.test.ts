@@ -197,8 +197,8 @@ describe("AGENT_DEFINITIONS", () => {
     expect(names).toContain("claude-code");
   });
 
-  it("only gemini-cli has commandTransform after command delegation", () => {
+  it("declares native command transforms for Codex and Gemini", () => {
     const withTransform = AGENT_DEFINITIONS.filter((a) => a.commandTransform).map((a) => a.name);
-    expect(withTransform).toEqual(["gemini-cli"]);
+    expect(withTransform).toEqual(["codex", "gemini-cli"]);
   });
 });

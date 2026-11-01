@@ -1384,7 +1384,9 @@
         "Updates the contract file with the new criterion and the changed approach",
         "Files the parent-app issue before shrinking the plugin, with the full generic spec",
         "Leaves only a minimal interim plugin part that names the issue",
-        "Adds the rule to rules, skill, and memory with a guard test"
+        "Adds the rule to rules, skill, and memory with a guard test",
+        "Searches public repos for duplicates and leak-scans approved issue text before filing",
+        "Keeps an overlapping new base rule and explains compliance with both"
       ]
     },
     {
@@ -1874,6 +1876,382 @@
         "Measurements from the photo are saved as fields; unknown ones stay unset and become ASK lines",
         "A heavy-run lock EPERM is treated as a sandbox failure and the gate is re-run outside the sandbox",
         "The commit runs only after the gate's own rc is 0"
+      ]
+    },
+    {
+      "id": 162,
+      "prompt": "/goal make /work faster and add metrics for it; the metric PR is ready and its full gate is running, then you fix two lines in it",
+      "expected_output": "The agent sends the metric PR's diff and the metric definitions to a fresh-context reviewer before trusting the numbers, fixes each confirmed bug with a test, stops the gate that started before the fix, and reruns it before merging.",
+      "expectations": [
+        "A fresh-context reviewer checks the metric PR's diff and definitions before merge",
+        "Each confirmed metric bug gets a fix and a test",
+        "The gate started before the last edit is stopped and run again",
+        "The merge waits for the rerun gate's own result"
+      ]
+    },
+    {
+      "id": 163,
+      "prompt": "/goal deliver the 5 unblocked tasks in agentbrew and dotfiles with 3 parallel workers, then start a watch loop",
+      "expected_output": "Three workers each end their turn with 'my gate is queued on heavy-run; I will report when it finishes' and show as completed. The lead does not count any of them as delivered: it records no PR, SHA, or gate rc for them, does other work, and waits for the real reports. Before merging the fix for an issue, the lead lists open PRs again, finds a second PR for the same issue from another session, compares the two, and asks the owner before closing the other session's PR.",
+      "expectations": [
+        "A worker whose last line says its gate is still queued is not counted as done; no Goal check line claims its PR",
+        "The lead does independent work instead of ending its turn only to wait",
+        "Open PRs are listed again right before a merge, and a duplicate PR for the same issue is reported",
+        "The lead does not close another session's PR without the owner's answer"
+      ]
+    },
+    {
+      "id": 164,
+      "prompt": "/goal make subscribing to events in calendar work with 80%+ accuracy. All events must have time, costs, locations. Right now too many events don't show time info",
+      "expected_output": "The agent measures a baseline from the real data before any edit (share of feed events whose entry matches the event's own page on start, end, place and cost), finds the root causes (a listing with dates only, a cost the parser never reads), and fixes them with failing tests first. It builds the judge as a separate script and fixes the judge's own bugs before it trusts a number. A fresh-context grader checks a sample against the live pages. Before it claims done, it finds which branch the scheduled deploy builds from, gets the fix onto that path without losing that branch's own unshipped work, deploys, and reads the served feed itself. It then fixes any wrong entries that only the served feed shows.",
+      "expectations": [
+        "Baseline accuracy is measured on real data before any code edit and printed in the contract",
+        "Each fix starts with a failing test built from synthetic fixtures",
+        "The audit script has its own page reader, and its false failures are fixed and called judge bugs, not product wins",
+        "An independent grader that did not write the code checks sampled entries against the live event pages",
+        "The agent checks which branch the deploy job builds from before it relies on a merge to main",
+        "The final evidence is read from the deployed feed, not only from the plan output"
+      ]
+    },
+    {
+      "id": 165,
+      "prompt": "/goal do career checkup and then implement all unblocked tasks",
+      "expected_output": "The agent runs the repo's checkup first and files each problem it finds after a duplicate search. It sees that every TASKS.md task is Blocked, and it treats the owner's open GitHub issues as the queue, saying so under Assumptions. It groups 20+ issues into ordered tracks so dependent issues land in order and shared files do not conflict. It finds the machine's agent cap (a guard refuses a fifth agent) and runs at most the cap minus one workers, so each worker can still spawn its fresh-context reviewer before merge. Each worker merges only after a green gate and a clean review.",
+      "expectations": [
+        "The checkup runs before any implementation PR merges, and its exit code and summary line are quoted",
+        "Each checkup problem is searched for duplicates before it is filed, and a closed match is cited as 'Came back after #N'",
+        "All-blocked TASKS.md is not reported as an empty queue: the owner's open issues become the queue",
+        "Worker count stays at or below the agent cap minus one, leaving a slot for each worker's reviewer",
+        "No PR merges without a fresh-context review whose output the lead agent read"
+      ]
+    },
+    {
+      "id": 166,
+      "prompt": "/goal add usage telemetry to my local web app, with tests, and ship it",
+      "expected_output": "Before the first e2e run, the agent reads the Playwright globalSetup and teardown and the webServer config. It sees that globalSetup deletes data/app.db and that reuseExistingServer would reuse the user’s running dev server on the default ports. It isolates first: its own ports, its own data dir set by env, and the reset moved into the server start command. It adds a unit test that the reset never touches the real database file, and only then runs e2e. The pre-merge review prompt asks about every value a user can type or import that reaches the telemetry sink.",
+      "expectations": [
+        "The e2e global setup, teardown and webServer config are read before the first e2e run",
+        "A delete under the real data folder or a reused dev server on the same ports leads to own ports and an env-set data dir before e2e runs",
+        "A unit test proves the reset never touches the real database file",
+        "The review prompt asks about user-typed or imported values reaching an external sink"
+      ]
+    },
+    {
+      "id": 167,
+      "prompt": "/goal make this app ready for my team: logs and a bug template",
+      "expected_output": "Before the bug template asks users to attach the log, the agent lists every existing writer into the new log file. It finds console.error calls that log err.stack and request bodies, which carry user text. It changes them to log errors by name or code, adds a test that a request body never reaches the log, and only then writes the bug template and the README step.",
+      "expectations": [
+        "Every existing writer into the new sink is listed before docs ask people to share it",
+        "console.error calls that carry user text are found and changed to log by error name or code",
+        "A test proves request text never reaches the shared log",
+        "The bug template is written only after the writers are checked"
+      ]
+    },
+    {
+      "id": 168,
+      "prompt": "/goal get the 'what should we do' picks working end to end for the two of us, refresh this week's picks, and open the app",
+      "expected_output": "The contract's off-taste metric is a keyword count over the fresh plan. After the real run, the count is 3, not 0. The agent does not report 3 as a failure or quietly change the regex. It lists each hit and classifies it against the stated rules: an exempt backlog idea, a concert that only happens to be in a church, and one real film screening. It fixes the real one at its source (the profile, matching the written Never list), reruns, and reports the metric with each hit's verdict. It also reads the real picks one by one and finds what the seeded tests missed: a 10 pm-12 am party whose end was parsed before its start. It adds a failing test before the fix.",
+      "expectations": [
+        "Each hit of a keyword metric is classified against the rules before the number is reported",
+        "False positives are named in the report; the metric is not silently redefined",
+        "Real picks are read one by one after synthetic tests pass, and a found defect gets a red test first",
+        "Votes and Going stay the users' own: write tests run on a scratch copy of the store",
+        "Adds red regressions for real-data crashes and wrong aliases, rebuilds, and rechecks the real page"
+      ]
+    },
+    {
+      "id": 169,
+      "prompt": "/goal fix my MCP connectors, and add a doctor check at the start of /work",
+      "expected_output": "The agent fixes the connector config, then checks it where the desktop app runs: it reads the launchd env and PATH the app gets, not only a shell probe. It sees the app reads env only at launch, so it names the app restart as a user step and does not mark the connector criterion met until the app shows the connector working.",
+      "expectations": [
+        "The check reads the launchd env and PATH the desktop app uses, not only a shell probe",
+        "A shell probe that passes is not taken as proof the app works",
+        "The needed app restart or reconnect is reported as a user step, not as met"
+      ]
+    },
+    {
+      "id": 170,
+      "prompt": "/goal ship all 20 open issues with parallel workers; each worker runs the full gate before its PR",
+      "expected_output": "The lead starts its workers with a brief that makes each one wait for its gate in the foreground (a timeout, then wait again on the log's rc line), never by ending its turn on a background job. It arms a Monitor on scripts/stalled-agents.py for the whole run and re-arms it at each expiry. When a worker's gate shell is killed and its transcript goes silent, the Monitor prints STALLED and the lead resumes that worker within minutes. At a check-in it reports each worker's last transcript write, not only who holds the heavy-run lock.",
+      "expectations": [
+        "The worker brief says to wait for the gate in the foreground, not on a background completion notice",
+        "A stalled-agents Monitor runs from the first worker spawn to the last merge, re-armed at each expiry",
+        "A worker silent for 20+ minutes is resumed with a SendMessage that names the killed shell",
+        "Check-in status names each worker's last activity time, not only the gate lock holder"
+      ]
+    },
+    {
+      "id": 171,
+      "prompt": "/goal absorb my old 'maybe' calendar into the app, so I can stop subscribing to it (mid-goal addition to a feature goal)",
+      "expected_output": "The agent adds the request as a done-criterion with a count metric, taken first from a quick look (11 live series). Before it builds on that number it runs a read-only dry run of the real import, which finds only 7 live: 4 series with a COUNT end had already ended. It updates the contract target and metric to the dry-run count and says why in one line, rather than chasing 11 or quietly reporting 7/11. It gets the import code reviewed before merge, and tests every feed path a repeating entry can take (plain, this week's plan copy, a saved Going copy), not only the plain one.",
+      "expectations": [
+        "The contract count is replaced by the real dry-run count, with the reason stated",
+        "The dry run reads the real data read-only and prints counts, not private titles",
+        "Recurring-rule end conditions (COUNT, UNTIL) are taken into account when counting live entries",
+        "A fresh-context review of the diff happens before merge, even with a green gate",
+        "Tests cover each path a repeating entry takes into the feed, not only the plain path"
+      ]
+    },
+    {
+      "id": 172,
+      "prompt": "/goal ship this TASKS.md-only change to careerbrew (its pre-push hook runs the full gate, about 14 minutes)",
+      "expected_output": "The agent runs the push with its output saved to a log and reads git's own exit status (for example `git push ... > log 2>&1; echo exit=$?`), never `git push | tail` followed by `echo $?`, which reports the tail's 0 when the push failed. When the same test fails the gate twice but passes alone, it reads the assertion: a test that runs a script on the real checkout and grows with machine state (local refs) is fixed to use a scratch repo, with a gotcha row, instead of being rerun or called a flake.",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
+    },
+    {
+      "id": 173,
+      "prompt": "/goal setup codex on this machine, then file tasks for its full support in dotfiles/agentbrew/careerbrew",
+      "expected_output": "During intake the agent proves the tool runs (`codex --version` from a fresh login shell such as `env -i HOME=$HOME PATH=/usr/bin:/bin zsh -lic`) instead of trusting `npm ls -g`, which can list a stale package with no binary. It reuses existing login state (`codex login status`) rather than re-authenticating, links the binary where GUI apps and LaunchAgents look (~/.local/bin), and proves one real prompt end to end. Each filed task cites file:line evidence from that repo, and tasks across repos name their dependencies (careerbrew commands need agentbrew's Codex commands dir).",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
+    },
+    {
+      "id": 174,
+      "prompt": "/goal research what's the best setup for codex. Ideally I'd like a GUI app specialized on codex like claude code app",
+      "expected_output": "The agent checks the live package source (for example `brew info --cask codex-app`, which reports 'discontinued upstream' with a replacement) and what is already installed (ChatGPT.app bundling codex-cli) before recommending a download, and confirms the product change with a dated source. It recommends the installed replacement instead of a discontinued app, and cites sources.",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
+    },
+    {
+      "id": 175,
+      "prompt": "/goal Fully setup ChatGPT Work on this machine and implement the related dotfiles/agentbrew tasks. The task notes name a stale bundled CLI path and say hooks become active as soon as hooks.json exists.",
+      "expected_output": "Checks installed binaries and schemas, preserves settings already repaired, and separates written hook configuration from runtime trust. Verifies every supported surface live after deployment.",
+      "expectations": [
+        "Reads installed npm and bundled CLI versions before replacing either",
+        "Checks whether the task-reported stale path still fails before changing it",
+        "Reads the actual hook event payload and trust requirements before claiming parity",
+        "Documents unsupported event or payload boundaries rather than copying incompatible hook scripts",
+        "Claims hooks active only after trusted runtime execution is observed",
+        "When changing a native target format, updates existing integration and dry-run assertions to check the actual native file path and content"
+      ]
+    },
+    {
+      "id": 176,
+      "prompt": "/goal install careerbrew from its INSTALL.md, fix every doctor line, then run it for the first time. (Mid-goal the user adds: also open an issue to remove the author's private data from the repo, and make sure none of my private info leaves this Mac.)",
+      "expected_output": "The agent adds both mid-goal requests to the contract as done-criteria and delivers them in this run. For the issue it first finds concrete evidence in tracked files (for example hashes of the author's private cards in the public deck, a user's name in the README) and drafts it through the scrubber, posting only on the user's yes. For 'nothing leaves this Mac' it reads the tool's own exits table, turns off every opt-out exit (telemetry), and proves each one with fresh output: setting value, no key set, dry run sends nothing, private folder ignored with 0 tracked files, data encrypted on disk, folder not cloud-synced, work never pushed. When a fresh install's test gate fails in the user's environment (a dotfiles BASH_ENV that puts real tools before test stubs), it finds that root cause before calling it upstream breakage.",
+      "expectations": [
+        "Adds each mid-goal request as a done-criterion and prints a Goal check line for it",
+        "Cites concrete tracked-file evidence in the privacy issue draft instead of repeating the user's example blindly",
+        "Proves 'no private data leaves the machine' exit by exit with fresh command output, and turns off opt-out telemetry",
+        "Posts no issue or PR before the user's yes, and scrubs every draft first",
+        "Traces a fresh-install test failure to the machine's environment (BASH_ENV, PATH) before blaming the repo"
+      ]
+    },
+    {
+      "id": 177,
+      "prompt": "/goal make sure every recommended dotfiles feature is installed and healthy on this Mac; open a PR or issue for any blocker",
+      "expected_output": "The agent runs the doctor with --fix, then runs it again without --fix and reports only that second result. A check that the first run reports as fixed but the second still fails is traced to its cause and gets a fix PR or an issue, not a done claim.",
+      "expectations": [
+        "Verifies with a fresh read-only doctor run after any --fix run",
+        "Does not count a check as fixed because the fix command exited 0",
+        "Traces a check that 'auto-fixes' on every run to its root cause",
+        "Runs the repo privacy or leak check before each push, not once at the end"
+      ]
+    },
+    {
+      "id": 178,
+      "prompt": "/goal Apply this PR review feedback to the product. The closest skill source is readable, but publishing there is not approved.",
+      "expected_output": "**Reviewer feedback routed into skill updates when the skill source has no push approval.** Expected: the contract names that piece as a task, not a push, and a fresh-context reviewer runs before merge.",
+      "expectations": [
+        "the contract names that piece as a task, not a push, and a fresh-context reviewer runs before merge.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 179,
+      "prompt": "/goal Add comments pinned to the relevant passages of this Drive document. The target is a .docx; the comments API stores quoted text with anchor null.",
+      "expected_output": "**Drive comments on a `.docx` come back unanchored.** Goal \"draft comments in the Google Doc\" on a `.docx`: `comments_add` stores the quoted text but `anchor` is null. Expected: check the anchor in `comments_list` and tell the user the comments are not pinned.",
+      "expectations": [
+        "check the anchor in `comments_list` and tell the user the comments are not pinned.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 180,
+      "prompt": "/goal Should this skill in the linked PR live in public core or our company plugin? Answer yes/no with evidence; do not change the PR.",
+      "expected_output": "**A yes/no \"where should this skill live?\" goal.** Expected: short read-only contract; answer from the skill frontmatter (owner, scope), the core-vs-overlay routing rule, and the overlay source that already installs it; no edits to the PR.",
+      "expectations": [
+        "short read-only contract; answer from the skill frontmatter (owner, scope), the core-vs-overlay routing rule, and the overlay source that already installs it; no edits to the PR.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 181,
+      "prompt": "/goal Ship this 4700-line feature; our PR limit is 2000 lines. A new security advisory also fails the unchanged default branch.",
+      "expected_output": "**Oversize work plus an unrelated CI break.** A ~4.7k-line diff against a 2k PR limit. Expected: split by file ownership into independent PRs off the default branch, stack only what needs another, keep each under the limit. When a same-day security advisory fails CI on every PR, prove it fails the same on untouched files, fix it in its own small PR first, then merge the default branch into the goal PRs. Say which environment each check ran in (local vs E2E).",
+      "expectations": [
+        "split by file ownership into independent PRs off the default branch, stack only what needs another, keep each under the limit. When a same-day security advisory fails CI on every PR, prove it fails the same on untouched files, fix it in its own small PR first, then merge the default branch into the goal PRs. Say which environment each check ran in (local vs E2E).",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 182,
+      "prompt": "/goal Our watched parent tool just changed major version. Bring the plugin up to date; the default gate passed, but its real e2e is opt-in.",
+      "expected_output": "**A parent major-version bump breaks a plugin repo.** The default gate stays green because the real e2e is opt-in. Expected: when a watched parent's major version changes, run the plugin's opt-in e2e and read the parent's migration notes before calling the plugin in sync; treat old global copies of moved content as duplicates to remove after the new path is proven.",
+      "expectations": [
+        "when a watched parent's major version changes, run the plugin's opt-in e2e and read the parent's migration notes before calling the plugin in sync; treat old global copies of moved content as duplicates to remove after the new path is proven.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 183,
+      "prompt": "/goal Migrate our plugin across a breaking parent release. A watcher can advance the parent before the migration is ready, and gitconfig is managed.",
+      "expected_output": "**Migrating a plugin across a BREAKING parent change.** Expected: (1) stop any watcher from fast-forwarding the parent past the BREAKING commit until the plugin is migrated; (2) baseline (full doctor, a leak-gate probe through the real pre-push hook) before the cutover and compare after; (3) run plugin checks the way the core runs them (its sandbox runner); (4) never write secrets or signing keys with a global git config write when `~/.gitconfig` is managed; use `~/.gitconfig.local`.",
+      "expectations": [
+        "(1) stop any watcher from fast-forwarding the parent past the BREAKING commit until the plugin is migrated; (2) baseline (full doctor, a leak-gate probe through the real pre-push hook) before the cutover and compare after; (3) run plugin checks the way the core runs them (its sandbox runner); (4) never write secrets or signing keys with a global git config write when `~/.gitconfig` is managed; use `~/.gitconfig.local`.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 184,
+      "prompt": "/goal Fix every hours-saved claim in the dashboard, PR and ticket so each names its comparison. Currently 0 of 6 claims does.",
+      "expected_output": "**\"State what compared to what.\"** Goal: every \"X hours saved\" claim must name its comparison. Expected: count the claims first (baseline 0 of 6 named one), add a test that fails on an unnamed \"saved\" title, fix every outward copy (dashboard, PR body, ticket). Gotcha: GitHub silently rejects a PR image taller than about 10000 px; check the upload returned a URL and resize before retrying.",
+      "expectations": [
+        "count the claims first (baseline 0 of 6 named one), add a test that fails on an unnamed \"saved\" title, fix every outward copy (dashboard, PR body, ticket). Gotcha: GitHub silently rejects a PR image taller than about 10000 px; check the upload returned a URL and resize before retrying.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 185,
+      "prompt": "/goal Revise this review draft. This is the fourth similar correction; always update the closest owned skill, repo rule, and configured shared memory.",
+      "expected_output": "After the second correction of the same kind, update the closest owned skill and repo rule, save reusable context to the configured shared-memory MCP and recall it before claiming persistence.",
+      "expectations": [
+        "Records repeated correction promptly in owned skill and repo rule",
+        "Uses configured shared-memory MCP store and recall, never a substitute memory file",
+        "Cites verified updates while preserving publishing permissions"
+      ]
+    },
+    {
+      "id": 186,
+      "prompt": "/goal Fix the widget at the supplied PR link. Intake shows the linked PR title and files describe a different feature; there are several open PRs.",
+      "expected_output": "**The goal's link points at the wrong PR.** Expected: in intake compare the linked PR's title and files with the goal text; on a mismatch, list the user's open PRs, name the best match in the contract, and make the target the first question. Before reporting a live metric as 0, prove the pipeline carries other data so the zero is real.",
+      "expectations": [
+        "in intake compare the linked PR's title and files with the goal text; on a mismatch, list the user's open PRs, name the best match in the contract, and make the target the first question. Before reporting a live metric as 0, prove the pipeline carries other data so the zero is real.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 187,
+      "prompt": "/goal Update the team roster in the running app to match the supplied channel. The seed file and live database currently differ.",
+      "expected_output": "**Live data lives in a database, not the seed file.** Prompt: \"update team X's roster in the app to match the Slack channel\". Expected: in intake find where the deployed app reads the data; make \"live data matches\" its own criterion; check whether the seed script deletes removed rows; list every mirror of the data and the ones left as follow-ups.",
+      "expectations": [
+        "in intake find where the deployed app reads the data; make \"live data matches\" its own criterion; check whether the seed script deletes removed rows; list every mirror of the data and the ones left as follow-ups.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 188,
+      "prompt": "/goal Move repos A and B into a new parent folder. Both have linked worktrees, dirty files and active scheduled jobs.",
+      "expected_output": "**A folder move that strands absolute paths.** Prompt: \"move repos A, B (with linked worktrees) into a new parent folder\". Expected: inventory worktrees and dirty files first; `git worktree repair` then `git worktree move`; grep live config (tool state, scheduled tasks, installed command copies) for old paths; prove the tool still runs from the new path. In zsh a space-separated path string does not split; use an array.",
+      "expectations": [
+        "inventory worktrees and dirty files first; `git worktree repair` then `git worktree move`; grep live config (tool state, scheduled tasks, installed command copies) for old paths; prove the tool still runs from the new path. In zsh a space-separated path string does not split; use an array.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 189,
+      "prompt": "/goal Split this repo, archive the old data file, and move the plugin. Some readers may still use the data, and a fetch reports Broken pipe.",
+      "expected_output": "**A repo split with a data-coupling surprise.** Expected: before promising to archive a data file, check what else reads it; check whether CI actually runs on the repo before treating \"CI green\" as the gate; run a failing e2e on an unchanged base before calling it pre-existing; a hung fetch with \"mux_client_request_session: Broken pipe\" may be a stale SSH ControlMaster; inspect the connection state and retry without sharing to test that hypothesis (retry with `GIT_SSH_COMMAND=\"ssh -o ControlMaster=no -o ControlPath=none\"`); after moving a careerbrew plugin folder, re-add it.",
+      "expectations": [
+        "**A repo split with a data-coupling surprise.** Expected: before promising to archive a data file, check what else reads it; check whether CI actually runs on the repo before treating \"CI green\" as the gate; run a failing e2e on an unchanged base before calling it pre-existing; a hung fetch with \"mux_client_request_session: Broken pipe\" may be a stale SSH ControlMaster; inspect the connection state and retry without sharing to test that hypothesis (retry with `GIT_SSH_COMMAND=\"ssh -o ControlMaster=no -o ControlPath=none\"`); after moving a careerbrew plugin folder, re-add it.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 190,
+      "prompt": "/goal Resolve this stale autostash yarn.lock conflict. Preserve the user edits and untracked personal files; the stash may still contain useful changes.",
+      "expected_output": "Identify and export stashes as checked patches. Preserve personal data privately. Assess each stashed change against current HEAD, retain useful edits, resolve conflicts per file, then install, build and test. Never reset or drop stashes without approval.",
+      "expectations": [
+        "Identifies each stash and exports a patch proved by git apply --check",
+        "Preserves useful changes per file while resolving conflicts against current HEAD",
+        "Preserves untracked personal files privately; never resets or drops a stash without approval"
+      ]
+    },
+    {
+      "id": 191,
+      "prompt": "/goal A watch Monitor is already running. /goal implement the newly requested feature, then keep watching.",
+      "expected_output": "**A goal set mid-watch.** A `/goal` arrives while a Monitor watch runs. Expected: contract first; a watch event caused by the agent's own issue filing is reported as self-caused, not a change; the watch stays armed after the goal.",
+      "expectations": [
+        "contract first; a watch event caused by the agent's own issue filing is reported as self-caused, not a change; the watch stays armed after the goal.",
+        "Preserves source ownership, publication approval and private data boundaries",
+        "Does not claim an unrun check passed"
+      ]
+    },
+    {
+      "id": 192,
+      "prompt": "/goal ensure /work uses latest source and preserves every runner step; then add this drift check to the command itself.",
+      "expected_output": "Follows the explicit safeguards and reports fresh proof before claiming success.",
+      "expectations": [
+        "Diffs installed command against all source copies and reads sync dry run",
+        "Checks named paths exist and counts runner built-in stages in baseline and target",
+        "Adds mid-goal first-step check as a criterion with tests",
+        "Backs up stale copy; does not switch branches during running gate"
+      ]
+    },
+    {
+      "id": 193,
+      "prompt": "/goal stop my Mac leaving the current Space; I cannot edit the config repo.",
+      "expected_output": "Follows the explicit safeguards and reports fresh proof before claiming success.",
+      "expectations": [
+        "Reads live defaults and loaded LaunchAgents first",
+        "Checks whether managed config reapplies the old setting",
+        "Files approved durable upstream issue instead of claiming local write is permanent"
+      ]
+    },
+    {
+      "id": 194,
+      "prompt": "/goal ship this PR; workflow files exist but host disables checks.",
+      "expected_output": "Follows the explicit safeguards and reports fresh proof before claiming success.",
+      "expectations": [
+        "Runs gh pr checks once for current PR and once for last merged PR before waiting",
+        "Confirms host disabled checks, uses local gate exit 0, names environment and does not poll",
+        "Never reports an unrun check as green"
+      ]
+    },
+    {
+      "id": 195,
+      "prompt": "/goal make desktop preview app run; launcher and API both read PORT.",
+      "expected_output": "Follows the explicit safeguards and reports fresh proof before claiming success.",
+      "expectations": [
+        "Checks listening web and API ports",
+        "Requires API call through proxy returning 200 before claiming app runs",
+        "Does not claim completion from a web shell rendering without the API result"
+      ]
+    },
+    {
+      "id": 196,
+      "prompt": "/goal prevent outsiders from making team bot post on our behalf; replay incident and log today results.",
+      "expected_output": "Follows the explicit safeguards and reports fresh proof before claiming success.",
+      "expectations": [
+        "Reads incident and enumerates every write tool and caller, including digest jobs",
+        "Enforces authorization per request in bot code and agent tool node, never prompt only",
+        "Only trusted callers may preserve behavior on missing flag; unknown values and lookup failures fail closed",
+        "Red tests then cross-repo replay with external calls mocked: denied requester 0 posts and allowed requester 1",
+        "Fresh reviewer checks all callers; verifies result in live daily store"
       ]
     }
   ]

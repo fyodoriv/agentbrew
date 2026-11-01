@@ -93,7 +93,8 @@ const sharedErrors = new Map<string, unknown>();
 const sharedScores = new Map<string, Outcome<Run>>();
 // beforeAll's work. afterAll waits for it before it deletes the scratch dir.
 let sharedWork: Promise<void> | undefined;
-// The Copier scaffolds start in beforeAll and run while the tests before them run. Never rejects.
+// Selected Copier fixture work belongs to this file run and settles in beforeAll.
+// It captures errors instead of rejecting; ordinary checks get no competing fixture processes.
 let copierWork: Promise<CopierResults> | undefined;
 const COPIER_SUITE = "with Copier (skips when neither copier nor uvx copier@9.19.1 runs)";
 
@@ -293,12 +294,13 @@ beforeAll(async ({}, file) => {
   sharedWork = buildShared();
   if (copierCmd && runsSuite(file, COPIER_SUITE)) copierWork = copierResults(sharedWork);
   await sharedWork;
+  await copierWork;
   // Read-only: a test that writes to a shared scaffold fails, instead of breaking the tests after it.
   execFileSync("chmod", ["-R", "a-w", join(scratch, "shared")]);
 }, SETUP_TIMEOUT);
 
-// Vitest starts the next test without a turn of the event loop, so the Copier work would not see its
-// child processes end until the Copier tests. Two setImmediate turns always include one I/O poll.
+// Selected Copier fixtures settle in setup. Keep an I/O poll between synchronous tests;
+// two setImmediate turns always include one I/O poll.
 afterEach(() => new Promise<void>((resolve) => setImmediate(() => setImmediate(resolve))));
 
 afterAll(async () => {
@@ -312,6 +314,13 @@ afterAll(async () => {
 }, SETUP_TIMEOUT);
 
 describe("new-project skill", () => {
+  it("settles selected Copier fixtures before synchronous checks", async () => {
+    if (!copierWork) return;
+    const pending = Symbol("pending fixture preparation");
+    const result = await Promise.race([copierWork, Promise.resolve(pending)]);
+    expect(result).not.toBe(pending);
+  });
+
   it.each(profiles)("scaffolds a $profile repo that scores 100%", ({ profile }) => {
     const dir = sharedDir(profile);
     const result = sharedScore(profile);

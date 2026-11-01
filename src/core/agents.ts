@@ -30,7 +30,7 @@ interface AgentYamlEntry {
   rulesFile?: string;
   commandsDir?: string;
   agentsDir?: string;
-  agentsDirFormat?: "flat" | "subdir";
+  agentsDirFormat?: "flat" | "subdir" | "codex";
   commandTransform?: string;
   commandFileExt?: string;
   hooksFile?: string;

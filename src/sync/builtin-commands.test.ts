@@ -77,7 +77,7 @@ describe("built-in commands", () => {
     );
   });
 
-  it("deploys /agentbrew to Claude Code without ai-rules, and keeps other commands on the ai-rules path", async () => {
+  it("deploys built-in and user commands to Claude Code without ai-rules", async () => {
     mkdirSync(join(homedir(), ".claude", "commands"), { recursive: true });
     mkdirSync(userDir(), { recursive: true });
     writeFileSync(join(userDir(), "mine.md"), "# mine\n");
@@ -90,7 +90,7 @@ describe("built-in commands", () => {
     vi.restoreAllMocks();
 
     expect(existsSync(join(homedir(), ".claude", "commands", "agentbrew.md"))).toBe(true);
-    expect(existsSync(join(homedir(), ".claude", "commands", "mine.md"))).toBe(false);
+    expect(readFileSync(join(homedir(), ".claude", "commands", "mine.md"), "utf-8")).toBe("# mine\n");
     expect(lines.join("\n")).not.toContain("claude-code — skipped (dir not found)");
   });
 
@@ -176,7 +176,7 @@ describe("built-in commands", () => {
     rmSync(join(homedir(), ".firebender"), { recursive: true, force: true });
   });
 
-  it("says why Claude Code was skipped when only ai-rules can deploy its commands", async () => {
+  it("deploys user Claude commands without ai-rules when built-ins are disabled", async () => {
     expect(setSetting("builtinCommands", "off").ok).toBe(true);
     invalidateState();
     mkdirSync(join(homedir(), ".claude", "commands"), { recursive: true });
@@ -191,8 +191,8 @@ describe("built-in commands", () => {
     vi.restoreAllMocks();
 
     const out = lines.join("\n");
-    expect(out).toContain("claude-code — skipped (needs ai-rules for these commands)");
-    expect(out).not.toMatch(/claude-code — up to date/);
+    expect(readFileSync(join(homedir(), ".claude/commands/mine.md"), "utf-8")).toBe("# mine\n");
+    expect(out).not.toContain("claude-code — skipped");
   });
 
   it("turning built-ins off cleans the deployed copies even on a sync that does not prune", async () => {
@@ -240,60 +240,10 @@ describe("built-in commands", () => {
   });
 });
 
-describe("the /work built-in command (#440)", () => {
-  it("ships commands/work.md, which runs `agentbrew work --json` and keeps public posts as drafts", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { join, resolve } = await import("node:path");
-    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
-    expect(text).toMatch(/^---\ndescription: /);
-    expect(text).toContain("agentbrew work --json");
-    expect(text).toMatch(/draft/i);
-    expect(text).toMatch(/end of day/i);
-    // A user-only step (#451): read the step's file and follow it.
-    expect(text).toMatch(/`path`/);
-    expect(text).toMatch(/userOnly/);
-  });
-
-  it("runs every step back to back and asks the saved questions once, at the end (#508)", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { join, resolve } = await import("node:path");
-    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
-    expect(text).toMatch(/back to back/);
-    expect(text).not.toMatch(/one at a time/);
-    expect(text).toMatch(/`stopOnlyFor`/);
-    expect(text).toMatch(/`questions`/);
-    // #517: one batched ask per cycle, re-checked, with options and a pick.
-    expect(text).toMatch(/each watch pass/);
-    expect(text).toMatch(/still open/);
-    expect(text).toMatch(/blocked.*one line.*next step/is);
-    // The stop list in work.md matches the one `agentbrew work --json` returns.
-    const { WORK_STOP_ONLY_FOR } = await import("../work.js");
-    for (const reason of WORK_STOP_ONLY_FOR) {
-      expect(text.toLowerCase()).toContain(reason.toLowerCase().replace(/\.$/, ""));
-    }
-  });
-
-  it("runs each stage's steps in parallel, one subagent per step (#509)", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { join, resolve } = await import("node:path");
-    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
-    expect(text).toMatch(/`stages`/);
-    expect(text).toMatch(/one subagent per step/);
-    expect(text).toMatch(/wait for the whole stage/i);
-    expect(text).toMatch(/scope:/);
-    expect(text).toMatch(/after:/);
-  });
-
-  it("keeps one dashboard for the day and links it from the end-of-day report (#510)", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { join, resolve } = await import("node:path");
-    const text = readFileSync(join(resolve(import.meta.dirname, "..", ".."), "commands", "work.md"), "utf-8");
-    expect(text).toMatch(/`dashboard`/);
-    expect(text).toMatch(/same URL all day/);
-    expect(text).toMatch(/Needs you/);
-    expect(text).toMatch(/`endOfDay`:[^\n]*Link the day's dashboard/);
-    // Reuse today's page instead of publishing a second one.
-    expect(text).toMatch(/title.*update it in place/i);
-    expect(text).toMatch(/self-contained HTML/);
+describe("/work lives in careerbrew (#610)", () => {
+  it("ships no /work command and no `agentbrew work` CLI, so careerbrew's /work is the only one", () => {
+    expect(existsSync(join(repoRoot, "commands", "work.md"))).toBe(false);
+    expect(existsSync(join(repoRoot, "src", "work.ts"))).toBe(false);
+    expect(readFileSync(join(repoRoot, "src", "cli.ts"), "utf-8")).not.toContain('.command("work")');
   });
 });

@@ -181,82 +181,6 @@
   - **Pivot**: if upstream declines, keep a local wrapper in agentbrew with the looser wait.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
 
-- [ ] Rebuild the UI to the Hallmark design skill
-  - **ID**: hallmark-design
-  - **Details**: The owner chose Hallmark (nutlope/hallmark, installed through agentbrew on
-    2026-10-27) as the design skill for every app with a UI. Run `/hallmark audit mods/work-pane/` first
-    and save its report. Then `/hallmark redesign mods/work-pane/`: it keeps content and wiring and
-    changes only the look. Keep the comfort budget from `ui-ux-rankings`
-    (references/comfort-patterns.md) as the floor, and keep every existing UI test green.
-  - **Files**: `mods/work-pane/`
-  - **Acceptance**: the Hallmark audit reports no Floor failures and no Reflex gate left
-    without a recorded reason; the `ui-ux-rankings` comfort gates still pass on phone and
-    desktop, light and dark; before/after screenshots in the PR.
-  - **Hypothesis**: Hallmark Floor and Reflex findings on `mods/work-pane/` drop from the audit baseline
-    to 0 open, with no comfort-budget regression.
-  - **Measurement**: `/hallmark audit mods/work-pane/` (count of Floor + Reflex findings) plus the repo's
-    `ui-ux-rankings` gate.
-  - **Success**: 0 Floor findings, every Reflex finding fixed or overruled with a reason.
-  - **Pivot**: the redesign breaks a comfort gate or an everyday job takes more taps: keep the
-    audit fixes only and drop the redesign.
-  - **Anchor**: Nielsen 1994 (heuristic evaluation).
-
-- [ ] /work ships one built-in dashboard renderer (issue #573)
-  - **ID**: work-dashboard-renderer
-  - **Blocked**: needs-owner — issues #573, #574, #575 together redesign /work. Question: build them in this order (#573 renderer, then #574 start/after-step hooks, then #575 session mode), and should session mode wait until agents can start desktop sessions themselves?
-  - **Tags**: work, dashboard
-  - **Details**: Issue #573 (/work: ship one built-in dashboard renderer). Add `agentbrew work render` and `agentbrew work update`; commands/work.md republishes the Artifact after each row change.
-  - **Files**: `src/work.ts`, `src/work.test.ts`, `commands/work.md`
-  - **Output**: code
-  - **Acceptance**: as in issue #573
-  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
-  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
-  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
-  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
-  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
-
-- [ ] /work start steps and after-each-step refresh steps (issue #574)
-  - **ID**: work-start-and-after-steps
-  - **Blocked**: needs-owner — part of the /work redesign (#573-#575). Question: same order question as task work-dashboard-renderer.
-  - **Tags**: work, agentfile
-  - **Details**: Issue #574 (/work: start steps and after-each-step refresh steps). Add `workStart:` and `workAfterEachStep:` to the Agentfile and to `work --json`.
-  - **Files**: `src/work.ts`, Agentfile schema, `commands/work.md`
-  - **Output**: code
-  - **Acceptance**: as in issue #574
-  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
-  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
-  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
-  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
-  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
-
-- [ ] /work runs steps as interactive sessions (issue #575)
-  - **ID**: work-steps-as-sessions
-  - **Blocked**: needs-owner — agents in this setup cannot start desktop sessions on their own. Question: build session mode now with subagents as fallback, or wait for a session-start API?
-  - **Tags**: work, sessions
-  - **Details**: Issue #575 (/work: run steps as interactive sessions; a step can own several). Status JSON gets `sessions`; `work --json` gets `units` and `maxSessions`.
-  - **Files**: `src/work.ts`, `src/work.test.ts`, `commands/work.md`
-  - **Output**: code
-  - **Acceptance**: as in issue #575
-  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
-  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
-  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
-  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
-  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
-
-- [ ] /work pluginReview reads landed plugin commits and files issue pairs (issue #549)
-  - **ID**: work-plugin-review-landed-commits
-  - **Blocked**: needs-owner — the issue asks /work to open issues in plugin repos, which are public writes outside the watched repos. Question: may /work file those issue pairs without a per-run yes, or should it only list them?
-  - **Tags**: work, plugins
-  - **Details**: Issue #549 (pluginReview reads new landed plugin commits). Keep a last-reviewed SHA per plugin; expose `pluginReview.commits` in `work --json`.
-  - **Files**: `src/work.ts`, `commands/work.md`
-  - **Output**: code
-  - **Acceptance**: as in issue #549
-  - **Hypothesis**: /work runs stop rebuilding or losing state by hand; rows written by hand drop to 0 per run.
-  - **Measurement**: `npx vitest run src/work.test.ts` plus one real `/work` day
-  - **Success**: tests pin the new fields and one day runs with no hand-written status JSON
-  - **Pivot**: the owner keeps the current flow -> close the issue with that reason
-  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
-
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.
@@ -423,6 +347,20 @@
 
 ## P3
 
+- [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
+  - **ID**: mcp-git-repin-build-output
+  - **Tags**: mcp, cli
+  - **Details**: Left over from the `mcp-git-install-failure-exit-and-clean-build` PR. That PR refuses a failed build at a commit the cache never built, but two gaps remain, and both also exist on main. (1) A successful build that writes its output somewhere new (v1 builds `dist/index.js`, v2 builds `build/index.js`), or a build that writes nothing, leaves the old untracked output, and `detectEntrypoint` picks `dist/index.js` first. Three designs were tried in that PR's review. A built-commit record alone missed shims and moved output. Deleting ignored files before a build deleted users' OAuth tokens, `.pem` files, `.venv`, and files from global excludes. An mtime snapshot accepted stale files on a repeat run and refused incremental `tsc` builds whose entry file did not change. (2) A refused re-pin leaves the cache at the new commit, with that commit's `node_modules`, while the registered server still runs from the cache. (3) The PR refuses conservatively: a failed build on a non-fresh re-pin is refused even for a Python server with a side JS build or a committed `dist/`, and a cache from an older agentbrew counts as unbuilt until one build succeeds. A tracked shim whose commit drops its build script can still load old ignored output.
+  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`
+  - **Output**: code
+  - **Acceptance**: with v1 building `dist/index.js` and v2 building `build/index.js`, a v2 install registers `build/index.js` on every run; a refused re-pin leaves the cache at the commit the server was registered from; no user file in the cache (for example `token.json`) is deleted.
+  - **Hypothesis**: building a new commit in a fresh clone and swapping it in on success, carrying over only files the user lists, drops stale-output registrations and mixed-commit caches after a refused re-pin from 2 cases to 0.
+  - **Measurement**: vitest cases in `src/mcp/mcp-git-install.test.ts`: moved output dir (run twice), no-op build, and a refused re-pin followed by a check of the cache's HEAD.
+  - **Success**: all three cases pass, and the existing cases in that file still pass.
+  - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
+  - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
+  - **Blocked**: needs-design — 2026-10-28: the 4th design (record the files a build wrote, PR #607, left as a draft) failed review. (A) The record also caught files that are not build output: a `config.json` that the build writes only when it is missing, and a `token.json` that the running server writes during the build. The next re-pin moved such a file aside, rebuilt it as an empty template, and deleted the user's copy. (B) When a re-pin was refused, the old version's `dist/index.js` (an ignored, untracked file) was lost if the new version committed its own `dist/index.js`. (C) A cache made by an older agentbrew has no record, so it could register stale output for good. (D) A crash in the middle of a build lost the moved-aside copy, because the next run cleared that folder first. Unblock when: a design can tell build output apart from files the server or the user write, for example a build manifest, or only the paths under the package's declared build output (`package.json` main/bin/exports folder, tsconfig `outDir`), and no user file is ever in a move or delete set.
+
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
   - **Tags**: skills, design, third-party
@@ -569,3 +507,16 @@
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
 
+
+- [ ] Add machine-setup verification cases to third-party skills
+  - **ID**: setup-goal-third-party-skill-retro
+  - **Tags**: skills, evals
+  - **Details**: The ChatGPT Work setup goal used third-party openai-docs, agent-browser, verification-before-completion, computer-use, built-in-browser, chrome-browser, plugin-management, OpenAI system skill-creator, systematic-debugging, and test-driven-development. Keep these proposals local until publication is approved. For openai-docs, check current installed CLI/schema evidence before stale setup notes. For agent-browser, prefer an installed native CLI for configuration diagnostics. For verification-before-completion, hooks.json with zero trusted active runtime hooks must not pass activation. For computer-use, built-in-browser, and chrome-browser, respect ChatGPT desktop control restrictions and use permitted website or CLI alternatives; use a fresh CAPTCHA reference, treat approved CAPTCHA verification as separate from OAuth consent, retain already-verified sign-in without asking again, and distinguish a failed page reload from missing account state. For plugin-management, available does not mean installed or authenticated. For OpenAI system skill-creator, distinguish native and upstream-provider bodies and preserve owner folders and links. For systematic-debugging and test-driven-development, identify scratch HOME/bin collisions before changing production and require a failing reproduction before the fix.
+  - **Files**: third-party skill evals (proposal only)
+  - **Output**: docs
+  - **Acceptance**: each proposed case rejects the described false completion claim; publication remains a separate approved action.
+  - **Hypothesis**: fixture false-completion decisions fall from 1 to 0 for each proposed case.
+  - **Measurement**: run each upstream skill's eval harness with the proposed machine-setup fixture.
+  - **Success**: all proposed fixtures reject false completion.
+  - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).

@@ -44,6 +44,7 @@ vi.mock("../types.js", async (importOriginal) => {
   return {
     ...original,
     AGENT_DEFINITIONS: [
+      { name: "codex", skillsDir: "~/.codex/skills", hooksFile: "~/.codex/hooks.json", hooksFormat: "codex" },
       {
         name: "claude-code",
         detected: true,
@@ -258,6 +259,35 @@ describe("filterHooksForTarget", () => {
 });
 
 describe("mergeHooksConfig", () => {
+  it("adopts an exact desired hook on first sync without duplicating it or dropping unrelated handlers", () => {
+    const endpoint = { type: "command" as const, command: "endpoint-check" };
+    const unrelated = { type: "command" as const, command: "personal-check" };
+    const desired = { PreToolUse: [{ matcher: "Bash", hooks: [endpoint] }] };
+    const existing = { PreToolUse: [{ matcher: "Bash", hooks: [endpoint, unrelated] }] };
+    const { merged } = mergeHooksConfig(existing, desired, new Set());
+    expect(merged.PreToolUse.flatMap((group) => group.hooks)).toEqual([unrelated, endpoint]);
+    expect(mergeHooksConfig(merged, desired, new Set()).merged).toEqual(merged);
+  });
+
+  it("settles after adoption when an unrelated user group has the same matcher", () => {
+    const endpoint = { type: "command" as const, command: "endpoint-check" };
+    const desired = { PreToolUse: [{ matcher: "Bash", hooks: [endpoint] }] };
+    const existing = {
+      PreToolUse: [
+        { matcher: "Bash", hooks: [{ type: "command" as const, command: "personal-check" }] },
+        desired.PreToolUse[0],
+      ],
+    };
+    expect(computeHooksDiff(existing, desired, new Set(["PreToolUse:Bash"]))).toEqual([]);
+  });
+
+  it("reports duplicate desired hooks even when the first group already matches", () => {
+    const endpoint = { type: "command" as const, command: "endpoint-check" };
+    const desired = { PreToolUse: [{ matcher: "Bash", hooks: [endpoint] }] };
+    const existing = { PreToolUse: [desired.PreToolUse[0], desired.PreToolUse[0]] };
+    expect(computeHooksDiff(existing, desired, new Set())).toEqual([{ key: "PreToolUse:Bash", type: "update" }]);
+  });
+
   it("should return desired config when no existing config", () => {
     const desired = {
       PreToolUse: [{ hooks: [{ type: "command" as const, command: "echo a" }] }],
@@ -513,6 +543,36 @@ describe("applyClaudeCodePermissionDefaults", () => {
 // ── Sync engine ─────────────────────────────────────────────────────────────
 
 describe("syncHooks", () => {
+  it("merges Codex hooks without dropping the existing endpoint hook or metadata", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "codex", detected: true }],
+      hooks: [{ event: "PreToolUse", matcher: "Bash", type: "command", command: "managed-check", source: "agentfile" }],
+    } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {} } as never);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith(".codex/hooks.json"));
+    mockReadFileSync.mockReturnValue(
+      JSON.stringify({
+        description: "keep",
+        hooks: {
+          PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "endpoint-check" }] }],
+        },
+      }),
+    );
+    await syncHooks();
+    expect(mockWriteFileSync).toHaveBeenCalledOnce();
+    const [filePath, text] = mockWriteFileSync.mock.calls[0] as [string, string];
+    expect(filePath).toBe("/home/test/.codex/hooks.json");
+    const written = JSON.parse(text);
+    expect(written.description).toBe("keep");
+    expect(written.permissions).toBeUndefined();
+    expect(
+      written.hooks.PreToolUse.flatMap((group: { hooks: Array<{ command: string }> }) =>
+        group.hooks.map((hook) => hook.command),
+      ),
+    ).toEqual(["endpoint-check", "managed-check"]);
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining("review and trust in /hooks"));
+  });
+
   it("should return early when state is undefined", async () => {
     mockLoadState.mockReturnValue(undefined);
     await syncHooks();

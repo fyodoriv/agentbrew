@@ -1,5 +1,7 @@
 # Add a New Agent to an Existing Setup
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I installed Kiro yesterday. How do I get my skills and MCP servers deployed to it?
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init --force` is the US01 command.

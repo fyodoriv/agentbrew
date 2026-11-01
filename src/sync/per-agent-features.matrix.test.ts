@@ -213,7 +213,7 @@ describe("Feature-presence stays declared in agents.yaml (drift guard)", () => {
     { name: "kiro", surfaces: ["skills", "mcp-config"] },
     { name: "amp", surfaces: ["skills", "rules-file", "commands", "mcp-config"] },
     { name: "goose", surfaces: ["skills", "rules-file", "mcp-config"] },
-    { name: "codex", surfaces: ["skills", "rules-file", "agents", "mcp-config"] },
+    { name: "codex", surfaces: ["skills", "rules-file", "commands", "agents", "hooks", "mcp-config"] },
     { name: "augment", surfaces: ["skills", "rules-file"] },
     { name: "copilot", surfaces: ["skills", "rules-file"] }, // mcpConfigVscodeSettings tracked separately
     { name: "opencode", surfaces: ["skills", "commands", "mcp-config"] },

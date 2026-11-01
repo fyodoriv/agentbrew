@@ -79,7 +79,11 @@ or the user's words in this session).
    merge in the next one. Never chain the merge after a log read: a run
    merged on `rc=1` because the command printed the log and merged anyway.
    After a rebase that touches a file the gate checks (a size budget, a
-   shared doc), re-run the gate before you merge. For more than one item, use subagents with one
+   shared doc), re-run the gate before you merge. Before the first full
+   gate, run the touched test files on the base branch (except the new
+   reproduction test, which must fail there): a test that already
+   fails there is a base fix for the same PR, not your regression, and you
+   save one failed full run. For more than one item, use subagents with one
    shared brief, at most three gate runs at a time, and `nice -n 15` for
    heavy runs.
 5. **Park what needs a person** (a secret, 2FA, sudo, a public write the rules
@@ -93,6 +97,8 @@ or the user's words in this session).
    back on its own as a `pr` item:
    `bash <skill-dir>/scripts/watch-pass.sh --done "<kind> <key>"` with the
    line's middle column, for example `--done "issue fyodoriv/dotfiles#244"`.
+   It exits 1 with `cannot write` when the seen list is read-only (the Bash
+   sandbox blocks `~/.local/state`); rerun it outside the sandbox.
    Do not mark a parked task: its `Blocked` line already hides it, and it comes
    back when the line is removed. A PR's key holds its state and head commit,
    so it shows up again if it breaks again.
@@ -116,6 +122,10 @@ or the user's words in this session).
   Monitor when it expires; the seen list keeps the state. A `skip` line on
   three passes in a row is a broken read: stop the Monitor and fix it or
   report it.
+  A Monitor runs in the Bash sandbox, where `gh` can fail TLS (`x509`), so
+  every read is a `skip`. Then run the same `while` loop as a background
+  Bash call with the sandbox off, writing to a log, and arm the Monitor
+  on `tail -f` of that log.
 - In a session without a Monitor: `/loop /watch-issues` (self-paced; 30
   minutes is a good idle interval). Each wake-up runs one pass.
   The built-in `/loop` runs its prompt once right away. If you already ran a
@@ -126,8 +136,8 @@ or the user's words in this session).
   new item, or after 9 minutes with only the summary line. Repeat until the
   run's time is nearly up; never exit only because the queue is idle (start
   taskgrind with `TG_STALL_EXIT=never` for a long watch). Never ask anything.
-- To react to a branch head move or any issue or PR update (the `/work`
-  watch phase): `bash <skill-dir>/scripts/watch-repos.sh 300 owner/repo@branch...`
+- To react to a branch head move or any issue or PR update (for example
+  careerbrew's `/work` watch phase): `bash <skill-dir>/scripts/watch-repos.sh 300 owner/repo@branch...`
   prints the start state, then one line per change. It is read-only, and a
   failed read counts as no change.
 - Unattended, for one repo: `taskgrind` with the `grind` skill.

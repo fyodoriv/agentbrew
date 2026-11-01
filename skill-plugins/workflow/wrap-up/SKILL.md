@@ -27,6 +27,10 @@ exactly what is left.
    `branch` open work, even after the default branch changed the same lines,
    unless the default branch reverted it; nor is a branch whose tip is a merged PR's head (needs `gh`).
    The same holds for a `worktree` of such a branch with no uncommitted files.
+   A `branch` line that ends "likely landed (N% of its added lines are on
+   main): look, then delete it" reached the default branch through other PRs
+   (`OPEN_WORK_LANDED_PCT`, default 90). Check `git log main..<branch>`, then
+   offer to delete it; do not tell the user to continue it.
    A `reply` line is a comment or review body by someone else on your open PR,
    posted after your last reply: answer each one. `OPEN_WORK_IGNORE_AUTHORS`
    and `OPEN_WORK_IGNORE_BODIES` (extended regexes) skip bots and noise.
@@ -99,6 +103,22 @@ When the user's rules forbid a push (an employer's GitHub Enterprise from a
 personal machine, a pipeline branch without its token, a third-party repo with
 no fork), commit on the branch, keep it local, and say where it is in the task
 and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
+
+## Learn and file before handoff
+
+Finish the current step before wrapping up; do not leave a half-written edit.
+Review the whole session for operator corrections, gotchas and successful
+procedures. Update the closest owned rules, skill source and shared memory;
+never edit an installed mirror. Respect repository publishing permissions:
+an issue-only parent app gets an issue with the proposed correction, not code.
+Recall new memory before claiming it was saved.
+
+For each spotted issue still unfixed, search the owning repo for duplicates,
+then leak-scan the exact proposed text and use its declared task backend.
+Keep any required posting approval pending; local drafts are not filed issues.
+Ship owned source updates through the repo's gate and independent review.
+Write the handoff last, with links to every learning update and filed issue.
+If nothing new was learned and no issue was spotted, say so in one line.
 
 ## 4. Report
 

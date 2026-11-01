@@ -3,6 +3,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { getStateSources } from "../agentfile.js";
 import { filterReadsFromAgents } from "../core/agents.js";
 import { logSkipped } from "../core/logger.js";
+import { isUserModified, loadManifest, type Manifest } from "../manifest.js";
 import { validateAllSkills } from "../skills/validate.js";
 import { loadState } from "../state.js";
 import { findSkillCopies, type SkillCopy } from "../sync/skills-sync.js";
@@ -144,10 +145,16 @@ export function checkSkillsValidity(): DriftItem[] {
 }
 
 /** True when `entryPath` is a real skill folder a user made (not a link or a managed copy). */
-function isUserSkillDir(entryPath: string, copies: Set<string>): boolean {
+function isUserSkillDir(entryPath: string, copies: Set<string>, manifest: Manifest): boolean {
   try {
     const stat = lstatSync(entryPath);
-    return !stat.isSymbolicLink() && stat.isDirectory() && !copies.has(resolve(entryPath));
+    return (
+      !stat.isSymbolicLink() &&
+      stat.isDirectory() &&
+      !copies.has(resolve(entryPath)) &&
+      (manifest.hashes[join(entryPath, "SKILL.md")] === undefined ||
+        isUserModified(join(entryPath, "SKILL.md"), manifest))
+    );
   } catch (e) {
     logSkipped("drift/checkUserCreatedSkills/lstat", e);
     return false;
@@ -173,12 +180,13 @@ export function checkUserCreatedSkills(options: { dedupe?: boolean } = {}): Drif
   const seen = new Set<string>();
   // A copy of a managed skill is skills drift (checkSkillCopies), not a user addition.
   const copies = new Set(skillCopies().map((copy) => resolve(copy.path)));
+  const manifest = loadManifest();
 
   for (const agent of AGENT_DEFINITIONS) {
     const skillsDir = expandHome(agent.skillsDir);
     if (!existsSync(skillsDir)) continue;
     for (const entry of skillDirEntries(skillsDir)) {
-      if (!isUserSkillDir(join(skillsDir, entry), copies)) continue;
+      if (!isUserSkillDir(join(skillsDir, entry), copies, manifest)) continue;
       if (dedupe && seen.has(entry)) continue;
       seen.add(entry);
       drift.push({ agent: agent.name, type: "skills-user-added", detail: `user-created skill: ${entry}` });

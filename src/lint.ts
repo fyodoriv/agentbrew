@@ -51,6 +51,7 @@ const AGENTFILE_KNOWN_KEYS = new Set([
   "recommended",
   "excludeAgents",
   "workSteps",
+  "workCheckouts",
   "defaultModel",
   "defaultEffort",
   "modelOverrides",

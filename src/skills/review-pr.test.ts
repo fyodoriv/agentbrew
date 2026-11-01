@@ -322,3 +322,32 @@ describe("review-pr covers each requirement of issue #355", () => {
     expect(catalog.skills.find((s) => s.name === "review-pr")?.source).toBe("fyodoriv/agentbrew");
   });
 });
+
+describe("review-pr draft judge (#611)", () => {
+  it("judges every draft before it is shown, with the checks and the APPROVED / REJECTED answer", () => {
+    const skill = readFileSync(join(SKILL, "SKILL.md"), "utf-8");
+    expect(skill).toMatch(/fresh judge subagent[\s\S]*references\/draft-judge\.md/);
+    const judge = readFileSync(join(SKILL, "references", "draft-judge.md"), "utf-8");
+    for (const want of [
+      "member of the target conversation",
+      "I'll ping them directly",
+      "is a link",
+      "Nothing is assumed",
+      "`APPROVED`",
+      "`REJECTED`",
+      "Any other first line counts as",
+      "After 3 `REJECTED` rounds, stop",
+      "needs a new judge round before it is posted",
+      "`Failure scenario:`",
+    ]) {
+      expect(judge).toContain(want);
+    }
+    const evals = JSON.parse(readFileSync(join(SKILL, "evals", "evals.json"), "utf-8")).evals as { prompt: string }[];
+    expect(evals.some((e) => /not a member/.test(e.prompt) && /PROJ-123/.test(e.prompt))).toBe(true);
+    expect(evals.some((e) => /#release thread/.test(e.prompt) && /not a member/.test(e.prompt))).toBe(true);
+    const shared = readFileSync(join(process.cwd(), "docs", "shared-rules.md"), "utf-8");
+    expect(shared).toMatch(/Judge every draft sent as the user[\s\S]*draft-judge\.md/);
+    expect(shared).toContain("judge it again after any change");
+    expect(skill).toContain("at most 3 rounds");
+  });
+});

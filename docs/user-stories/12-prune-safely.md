@@ -1,5 +1,7 @@
 # Prune Safely
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > Pruning is **on by default** — every sync automatically removes stale managed entries. Use `--no-prune` to opt out.
 
 **Metric**: `story_fail_rate` for US12 in [`metrics.md`](../metrics.md): failed `remove` runs; pruning inside sync shows in `sync_fail_rate`.
@@ -29,3 +31,5 @@ Prune only removes entries that agentbrew previously created. User-created conte
 - **Pre-sync snapshots**: every sync (including prune) creates a backup first. `agentbrew sync --rollback` restores if needed.
 
 With `--no-prune`, sync only adds and updates — it never removes.
+
+Command cleanup treats unchanged, hash-owned copies as outputs. Removing a declared source removes those copies from both primary hosts and the canonical mirror. Edited, untracked, unreadable, or symlinked leaves remain owner content. An empty command set still runs ownership-safe cleanup without invoking the external renderer.

@@ -22,6 +22,8 @@ agentbrew status --fix     # detect drift and AUTO-REPAIR it
 `status` shows what's configured. `status --fix` detects drift and fixes it in place.
 Use plain `status` to check without repairing, or `status --ci` for CI gates (exit 1 on drift, no color).
 
+See Setup Overview below for runtime checks.
+
 ## Drill Into Subsystems
 
 ```bash

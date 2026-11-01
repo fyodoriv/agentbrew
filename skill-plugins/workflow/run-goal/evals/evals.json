@@ -2002,6 +2002,41 @@
     },
     {
       "id": 173,
+      "prompt": "/goal setup codex on this machine, then file tasks for its full support in dotfiles/agentbrew/careerbrew",
+      "expected_output": "During intake the agent proves the tool runs (`codex --version` from a fresh login shell such as `env -i HOME=$HOME PATH=/usr/bin:/bin zsh -lic`) instead of trusting `npm ls -g`, which can list a stale package with no binary. It reuses existing login state (`codex login status`) rather than re-authenticating, links the binary where GUI apps and LaunchAgents look (~/.local/bin), and proves one real prompt end to end. Each filed task cites file:line evidence from that repo, and tasks across repos name their dependencies (careerbrew commands need agentbrew's Codex commands dir).",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
+    },
+    {
+      "id": 174,
+      "prompt": "/goal research what's the best setup for codex. Ideally I'd like a GUI app specialized on codex like claude code app",
+      "expected_output": "The agent checks the live package source (for example `brew info --cask codex-app`, which reports 'discontinued upstream' with a replacement) and what is already installed (ChatGPT.app bundling codex-cli) before recommending a download, and confirms the product change with a dated source. It recommends the installed replacement instead of a discontinued app, and cites sources.",
+      "expectations": [
+        "Reads git push's own exit status from a saved log, not a pipe's",
+        "Does not report a push as done before `git ls-remote` or the PR shows the commit",
+        "Treats a test that fails the gate twice but passes alone as a defect to fix, not a flake",
+        "Rewrites a machine-state test to use a scratch fixture and records the lesson"
+      ]
+    },
+    {
+      "id": 175,
+      "prompt": "/goal Fully setup ChatGPT Work on this machine and implement the related dotfiles/agentbrew tasks. The task notes name a stale bundled CLI path and say hooks become active as soon as hooks.json exists.",
+      "expected_output": "Checks installed binaries and schemas, preserves settings already repaired, and separates written hook configuration from runtime trust. Verifies every supported surface live after deployment.",
+      "expectations": [
+        "Reads installed npm and bundled CLI versions before replacing either",
+        "Checks whether the task-reported stale path still fails before changing it",
+        "Reads the actual hook event payload and trust requirements before claiming parity",
+        "Documents unsupported event or payload boundaries rather than copying incompatible hook scripts",
+        "Claims hooks active only after trusted runtime execution is observed",
+        "When changing a native target format, updates existing integration and dry-run assertions to check the actual native file path and content"
+      ]
+    },
+    {
+      "id": 176,
       "prompt": "/goal install careerbrew from its INSTALL.md, fix every doctor line, then run it for the first time. (Mid-goal the user adds: also open an issue to remove the author's private data from the repo, and make sure none of my private info leaves this Mac.)",
       "expected_output": "The agent adds both mid-goal requests to the contract as done-criteria and delivers them in this run. For the issue it first finds concrete evidence in tracked files (for example hashes of the author's private cards in the public deck, a user's name in the README) and drafts it through the scrubber, posting only on the user's yes. For 'nothing leaves this Mac' it reads the tool's own exits table, turns off every opt-out exit (telemetry), and proves each one with fresh output: setting value, no key set, dry run sends nothing, private folder ignored with 0 tracked files, data encrypted on disk, folder not cloud-synced, work never pushed. When a fresh install's test gate fails in the user's environment (a dotfiles BASH_ENV that puts real tools before test stubs), it finds that root cause before calling it upstream breakage.",
       "expectations": [

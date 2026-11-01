@@ -1,7 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { logSkipped } from "../core/logger.js";
 import { loadManifest } from "../manifest.js";
-import { collectAgentDefs, getAgentDefTargets, getAgentSources, resolveTargetPath } from "../sync/agents-sync.js";
+import {
+  collectAgentDefs,
+  getAgentDefTargets,
+  getAgentSources,
+  resolveTargetPath,
+  toCodexAgent,
+} from "../sync/agents-sync.js";
 import { expandHome } from "../utils.js";
 import type { DriftItem } from "./types.js";
 
@@ -28,7 +34,8 @@ function checkAgentDefForTarget(
   try {
     const sourceContent = readFileSync(agent.sourcePath, "utf-8");
     const deployedContent = readFileSync(targetPath, "utf-8");
-    if (sourceContent !== deployedContent) {
+    const expected = target.format === "codex" ? toCodexAgent(agent.name, sourceContent) : sourceContent;
+    if (expected !== deployedContent) {
       return {
         agent: target.agentName,
         type: "agents",

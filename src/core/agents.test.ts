@@ -117,7 +117,8 @@ function pushFieldImplicationViolations(entry: RawAgentEntry, violations: string
   if (
     entry.hooksFormat !== undefined &&
     entry.hooksFormat !== "claude-settings" &&
-    entry.hooksFormat !== "claude-direct"
+    entry.hooksFormat !== "claude-direct" &&
+    entry.hooksFormat !== "codex"
   ) {
     violations.push(`'${name}' has invalid \`hooksFormat\` '${String(entry.hooksFormat)}'`);
   }

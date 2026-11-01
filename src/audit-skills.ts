@@ -12,13 +12,14 @@
  * in one pass.
  */
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { basename } from "node:path";
 import chalk from "chalk";
 import { loadCatalog } from "./catalog/types.js";
 import { checkUserCreatedCommands } from "./drift-checks/commands.js";
 import { checkUserCreatedSkills } from "./drift-checks/skills.js";
 import { loadState } from "./state.js";
+import { commandSourceFiles } from "./sync/command-source-files.js";
 import { getAllCommandSourceDirs } from "./sync/command-sync.js";
 import { getSkillSources } from "./sync/skills-sync.js";
 
@@ -152,9 +153,11 @@ function commandDirItems(): IndexItem[] {
   return getAllCommandSourceDirs()
     .filter((dir) => existsSync(dir))
     .flatMap((dir) =>
-      readdirSync(dir)
-        .filter((file) => file.endsWith(".md"))
-        .map((file) => ({ kind: "command" as const, name: file.slice(0, -3), source: dir })),
+      commandSourceFiles(dir).map((file) => ({
+        kind: "command" as const,
+        name: basename(file).slice(0, -3),
+        source: dir,
+      })),
     );
 }
 

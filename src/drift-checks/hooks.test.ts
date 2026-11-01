@@ -22,6 +22,7 @@ vi.mock("../types.js", async (importOriginal) => {
   return {
     ...original,
     AGENT_DEFINITIONS: [
+      { name: "codex", skillsDir: "~/.codex/skills", hooksFile: "~/.codex/hooks.json", hooksFormat: "codex" },
       {
         name: "claude-code",
         detected: true,
@@ -80,6 +81,17 @@ beforeEach(() => {
 });
 
 describe("checkHooksDrift", () => {
+  it("does not report unsupported Codex hooks as missing", async () => {
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "codex", detected: true }],
+      hooks: [{ event: "Notification", type: "command", command: "notify", source: "agentfile" }],
+    } as never);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue('{"hooks":{}}');
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeysByAgent: { codex: ["Notification:*"] } });
+    expect(await checkHooksDrift()).toEqual([]);
+  });
+
   it("should return empty when state is undefined", () => {
     mockLoadState.mockReturnValue(undefined);
     expect(checkHooksDrift()).toEqual([]);

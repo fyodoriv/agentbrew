@@ -29,3 +29,10 @@ Every other action: run `agentbrew actions --json`. It lists every command (gene
 - `agent_note`: what you must do differently, for example a `--dry-run` to show first.
 
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.
+
+
+In Claude Code and ChatGPT Work/Codex, use the shared memory lifecycle in the
+loaded global instructions before context-dependent advice and at session end.
+When configured memory is unavailable, name the failed tool, report "shared
+memory unavailable", and block context-dependent work until `agentbrew memory
+doctor` and recall succeed. Deterministic local status remains usable.

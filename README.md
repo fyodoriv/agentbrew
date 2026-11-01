@@ -165,6 +165,8 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 **Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
 
+**Upstream skill creator.** `agentbrew install skill-creator` selects the optional Anthropic `anthropics/skills` workflow. It preserves existing owner destinations and the native Codex creator. These are different skill bodies; see [creator selection and owner conflicts](docs/skill-directories.md#catalog-owner-conflicts) before replacing one.
+
 **Claude Code plugins from the catalog.** A `claude_plugins:` catalog entry names a repo, a full 40-character commit, and its `plugin@marketplace`. `agentbrew install <name>` clones the repo at that commit into `~/.local/share/agentbrew/claude-plugins/<name>`, registers the checkout as a directory marketplace, and enables the plugin, all through the `claude` CLI. (Claude Code itself can pin a marketplace only to a branch or tag, and both can move.) `agentbrew remove <name>` uninstalls the plugin, removes the marketplace and the checkout. `agentbrew status` reports drift: a checkout that moved, a plugin that is off, a marketplace that points elsewhere, or a catalog pin that changed. agentbrew records what it installed in `~/.config/agentbrew/claude-plugins.json` and touches only those plugins. `agentbrew catalog` (and `--search`, `--format json`) lists them with their repo and pinned commit, and `agentbrew install <name> --dry-run` previews one. A catalog Claude Code plugin is never recommended, so `install --recommended` never installs one.
 
 **Pin a git install.** `agentbrew install --git <url> --ref <ref>` (also `mcp add --git`) checks out one exact commit:
@@ -318,9 +320,11 @@ agentbrew agentfile merge base.yaml overlay.yaml --output ~/.config/agentbrew/Ag
 
 A sync run from a linked worktree (a `git worktree add` copy) of a checkout that is already a source skips that worktree's project Agentfile and prints one warning. Run sync from the main checkout instead, so a short-lived worktree does not shadow it. An entry an older version registered stays until you remove that worktree and sync from the main checkout.
 
+For integrations, [`agentbrew commands list --json`](docs/command-readiness.md) reports winning source paths and exact per-host readiness without command bodies.
+
 Agentfile `commands:` directories are extra source dirs for the same command sync pipeline as `~/.config/agentbrew/commands` and agentbrew's built-in commands (`/agentbrew`). Built-in commands rank lowest: the global folder and any Agentfile dir override them, and your own version beats everything. Sync never copies them into your folder.
 
-Sync never overwrites a command you created or edited in `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it.
+Sync never overwrites a command you created or edited in `~/.config/agentbrew/commands`; `agentbrew commands list` shows commands from all configured source dirs. Each `commands:` and `agents:` dir records the Agentfile that declared it. A declared command source stays registered while absent, so sync resumes when it returns. Remove its declaration and sync from the owning repo to unregister it.
 
 A sync removes dirs that the same Agentfile no longer declares. This covers the global Agentfile, `--agentfile`, and the project Agentfile in the current directory. `--no-prune` turns it off.
 
@@ -363,8 +367,9 @@ One command translates the source of truth into every agent's native format.
 - **MCP servers** → JSON (Claude, Kiro), TOML (Codex), YAML (Goose); exact definitions are reconciled into mcpm so backend changes cannot leave stale same-name servers
 - **MCP permissions** → `permissions.allow` entries for agents that declare `mcpPermissionsConfig` (none in the core list today)
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources. When two remote sources ship an installed skill with the same name, the source listed later in `state.yaml` wins (if its cache no longer has the skill, the earlier one does). `sync --pull` refreshes only that copy, and `agentbrew status` shows a `Name clash` line naming the skill, the source it is installed from, and the skipped source. `status --json` lists the same under `skillNameClashes`. A real folder with a `SKILL.md` where a managed symlink belongs is a stale copy: agents load it instead of the source. `agentbrew status` reports it as skills drift, and sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` and links the source. A folder without `SKILL.md` stays as it is
+  To include every current and future local skill, declare [`skillDirectories: [./skills]`](docs/skill-directories.md).
 - **Rules** → marker-injected sections in each agent's rules file. Catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules` (no current agent reads a per-file rules dir, so they are not deployed further). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install. Edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
-- **Commands** → Markdown auto-transformed per agent. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run. Two command source dirs (Agentfile `commands:` dirs and plugins) or two Agentfile `agents:` dirs may ship a file with the same name. Then the dir listed later in `state.yaml` wins, the same rule as skills. Sync warns, and `agentbrew status` shows a `Name clash` line naming the command or agent, the winning dir, and the skipped one (`status --json`: `commandNameClashes`, `agentNameClashes`). The built-in agents folder `~/.config/agentbrew/agents` always wins, and built-in commands rank lowest (see Agentfile `commands:` above). A command you made or edited yourself in `~/.config/agentbrew/commands` loses to an Agentfile or plugin dir with the same name (your file stays on disk). So sync and `status` name that clash too, with the global folder as the skipped one; agentbrew's own merged copies there never count. Sync also keeps a deployed command file it did not write last (you edited it, or it is not in agentbrew's manifest). When that file differs from its source, every sync and `sync --dry-run` warns and prints the `rm <file> && agentbrew sync` command that takes the source version.
+- **Commands** → Markdown auto-transformed per agent. `Agentfile.commands` accepts source folders or selected `.md` files; selecting a file never deploys its siblings. Codex receives explicit native command skills (for example `$agentbrew-command-ship-it`) plus legacy custom-prompt files; [Codex support](docs/support-matrix.md) explains metadata, hooks, and custom agent formats. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run. Two command source dirs (Agentfile `commands:` dirs and plugins) or two Agentfile `agents:` dirs may ship a file with the same name. Then the dir listed later in `state.yaml` wins, the same rule as skills. Sync warns, and `agentbrew status` shows a `Name clash` line naming the command or agent, the winning dir, and the skipped one (`status --json`: `commandNameClashes`, `agentNameClashes`). The built-in agents folder `~/.config/agentbrew/agents` always wins, and built-in commands rank lowest (see Agentfile `commands:` above). A command you made or edited yourself in `~/.config/agentbrew/commands` loses to an Agentfile or plugin dir with the same name (your file stays on disk). So sync and `status` name that clash too, with the global folder as the skipped one; agentbrew's own merged copies there never count. Sync also keeps a deployed command file it did not write last (you edited it, or it is not in agentbrew's manifest). When that file differs from its source, every sync and `sync --dry-run` warns and prints the `rm <file> && agentbrew sync` command that takes the source version.
 - **Hooks** → native hook files (Claude Code settings)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
@@ -787,22 +792,22 @@ Offline or auth failures print a one-line warning and fall back to the cached co
 
 Each column is a sync module. ✓ means `agentbrew sync` writes to that surface for that agent; — means the module is skipped because the agent has no matching config path.
 
-| Agent | Skills | MCP | Rules | Commands | Agents | Hooks |
-|---|---|---|---|---|---|---|
-| amp | ✓ | ✓ | ✓ | ✓ | — | — |
-| augment | ✓ | — | ✓ | — | — | — |
-| claude-code | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| claude-desktop | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| cline | ✓ | ✓ | ✓ | — | — | — |
-| codex | ✓ | ✓ | ✓ | — | ✓ | — |
-| copilot | ✓ | ✓ | ✓ | — | — | — |
-| firebender | ✓ | — | ✓ | ✓ | — | — |
-| gemini-cli | ✓ | ✓ | ✓ | ✓ | — | — |
-| goose | ✓ | ✓ | ✓ | — | — | — |
-| kilo | ✓ | — | ✓ | — | — | — |
-| kiro | ✓ | ✓ | — | — | — | — |
-| opencode | ✓ | ✓ | — | ✓ | — | — |
-| roo-code | ✓ | ✓ | ✓ | — | — | — |
+| Agent | Skills | MCP | Rules | Commands | Agents | Hooks | Model |
+|---|---|---|---|---|---|---|---|
+| amp | ✓ | ✓ | ✓ | ✓ | — | — | — |
+| augment | ✓ | — | ✓ | — | — | — | — |
+| claude-code | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| claude-desktop | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
+| cline | ✓ | ✓ | ✓ | — | — | — | — |
+| codex | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| copilot | ✓ | ✓ | ✓ | — | — | — | — |
+| firebender | ✓ | — | ✓ | ✓ | — | — | — |
+| gemini-cli | ✓ | ✓ | ✓ | ✓ | — | — | — |
+| goose | ✓ | ✓ | ✓ | — | — | — | — |
+| kilo | ✓ | — | ✓ | — | — | — | — |
+| kiro | ✓ | ✓ | — | — | — | — | — |
+| opencode | ✓ | ✓ | — | ✓ | — | — | — |
+| roo-code | ✓ | ✓ | ✓ | — | — | — | — |
 
 ### SKILL.md feature support
 
@@ -815,7 +820,7 @@ Sourced from [vercel-labs/skills README](https://github.com/vercel-labs/skills#c
 | claude-code | ✓ | ✓ | ✓ |
 | claude-desktop | ✓ | — | — |
 | cline | ✓ | — | ✓ |
-| codex | ✓ | — | — |
+| codex | — | — | — |
 | copilot | ✓ | — | — |
 | firebender | ✓ | — | — |
 | gemini-cli | ✓ | — | — |

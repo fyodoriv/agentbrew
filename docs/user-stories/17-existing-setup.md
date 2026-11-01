@@ -1,5 +1,7 @@
 # Existing Setup
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I already have MCP servers in Kiro and skills in Claude Code. I install agentbrew. What happens to my stuff?
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): `init` on an existing setup is the US01 command.

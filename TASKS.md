@@ -507,3 +507,16 @@
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
 
+
+- [ ] Add machine-setup verification cases to third-party skills
+  - **ID**: setup-goal-third-party-skill-retro
+  - **Tags**: skills, evals
+  - **Details**: The ChatGPT Work setup goal used third-party openai-docs, agent-browser, verification-before-completion, computer-use, built-in-browser, chrome-browser, plugin-management, OpenAI system skill-creator, systematic-debugging, and test-driven-development. Keep these proposals local until publication is approved. For openai-docs, check current installed CLI/schema evidence before stale setup notes. For agent-browser, prefer an installed native CLI for configuration diagnostics. For verification-before-completion, hooks.json with zero trusted active runtime hooks must not pass activation. For computer-use, built-in-browser, and chrome-browser, respect ChatGPT desktop control restrictions and use permitted website or CLI alternatives; use a fresh CAPTCHA reference, treat approved CAPTCHA verification as separate from OAuth consent, retain already-verified sign-in without asking again, and distinguish a failed page reload from missing account state. For plugin-management, available does not mean installed or authenticated. For OpenAI system skill-creator, distinguish native and upstream-provider bodies and preserve owner folders and links. For systematic-debugging and test-driven-development, identify scratch HOME/bin collisions before changing production and require a failing reproduction before the fix.
+  - **Files**: third-party skill evals (proposal only)
+  - **Output**: docs
+  - **Acceptance**: each proposed case rejects the described false completion claim; publication remains a separate approved action.
+  - **Hypothesis**: fixture false-completion decisions fall from 1 to 0 for each proposed case.
+  - **Measurement**: run each upstream skill's eval harness with the proposed machine-setup fixture.
+  - **Success**: all proposed fixtures reject false completion.
+  - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).

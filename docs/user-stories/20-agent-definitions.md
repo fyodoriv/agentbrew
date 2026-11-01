@@ -1,5 +1,7 @@
 # Agent Definitions
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I write a persona once and every agent tool gets it — Claude Code, Codex, all of them.
 
 **Metric**: `story_fail_rate` for US20 in [`metrics.md`](../metrics.md): failed `agents` runs and `agents` sync errors.

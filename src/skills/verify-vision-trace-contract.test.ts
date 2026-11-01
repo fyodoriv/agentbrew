@@ -8,6 +8,7 @@ import {
   type SkillEval,
   scenarioText,
 } from "./skill-contract-test-helpers.js";
+import { validateEvals } from "./validate.js";
 
 const skillRoot = join(process.cwd(), "skill-plugins", "dev", "verify-vision-trace");
 const skillText = readFileSync(join(skillRoot, "SKILL.md"), "utf-8");
@@ -23,6 +24,18 @@ function evalById(id: number) {
 }
 
 describe("verify-vision-trace skill contract", () => {
+  it("distinguishes source gate evidence from absent hosted checks and ungated repos", () => {
+    const scenario = evalMatching(/hosted checks.*none/i);
+    requireTerms(expectationText(scenario), [
+      "dotfiles",
+      "source validator",
+      "VISION.md",
+      "careerbrew",
+      "omit",
+      "invent",
+    ]);
+    expect(validateEvals(skillRoot).filter((issue) => issue.severity === "error")).toEqual([]);
+  });
   it("pins vision frontmatter schema and script invocation", () => {
     requireTerms(skillText, [
       "name: verify-vision-trace",
@@ -44,7 +57,7 @@ describe("verify-vision-trace skill contract", () => {
 
   it("keeps eval metadata and pressure scenarios", () => {
     expect(evals.skill_name).toBe("verify-vision-trace");
-    expect(evals.evals).toHaveLength(6);
+    expect(evals.evals).toHaveLength(7);
     requireTerms(expectationText(evalById(1)), ["NOT FOUND"]);
   });
 

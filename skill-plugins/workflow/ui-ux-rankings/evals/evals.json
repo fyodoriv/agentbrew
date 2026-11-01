@@ -112,6 +112,18 @@
         "Shows one before/after pair for the accent change",
         "Says the accent is one token to change back"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "Build a private one-page report for a machine setup goal. It has status, evidence, blockers and next actions, and must stay local.",
+      "expected_output": "A self-contained local report with readable text, measured contrast, phone and desktop layouts, and no published personal paths or data.",
+      "expectations": [
+        "Keeps private machine data local",
+        "Uses at least 14 px text and 44 px interactive targets",
+        "Uses a responsive layout without horizontal scrolling",
+        "Distinguishes pending actions from verified success",
+        "Does not claim an accessibility score without running the audit"
+      ]
     }
   ]
 }

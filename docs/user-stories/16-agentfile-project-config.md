@@ -1,5 +1,7 @@
 # Agentfile & Project Config
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I commit an Agentfile to my repo. My teammates clone it, run `agentbrew sync`, and get the same agent setup.
 
 **Metric**: `story_fail_rate` for US16 in [`metrics.md`](../metrics.md): failed `agentfile` runs and `models` sync errors.
@@ -7,6 +9,10 @@
 **E2E**: [`us16-agentfile-project-config.test.ts`](../../real-e2e/scenarios/us16-agentfile-project-config.test.ts)
 
 ## The Agentfile
+
+[`skillDirectories: [./skills]`](../skill-directories.md) selects all scanned
+skills in a local folder, including later additions. Each declaring Agentfile
+owns its registration; removing it preserves other owners and manual selections.
 
 An `Agentfile` is a declarative manifest — like `Brewfile` for Homebrew or `package.json` for npm. It lives at the repo root and describes what your project needs:
 

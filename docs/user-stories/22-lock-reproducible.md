@@ -1,5 +1,7 @@
 # Lock File & Reproducible Installs
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I pin my skill sources to exact commits so every teammate gets the same versions — no surprises from upstream changes.
 
 **Metric**: `story_fail_rate` for US22 in [`metrics.md`](../metrics.md): failed `lock` runs.

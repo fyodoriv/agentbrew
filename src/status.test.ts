@@ -1,3 +1,8 @@
+vi.mock("./core/agent-runtime.js", () => ({
+  inspectAgentRuntime: vi.fn(() => undefined),
+  unmanagedAgentSkills: vi.fn(() => []),
+}));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./mcp/catalog-pin-sweep.js", async (importOriginal) => ({
@@ -1207,5 +1212,50 @@ describe("status — unconfigured agents hint", () => {
 
     const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(calls).not.toContain("Needs setup");
+  });
+});
+
+describe("status agent runtime warnings", () => {
+  it("shows missing Codex binaries in compact, verbose, and JSON status", async () => {
+    const { inspectAgentRuntime } = await import("./core/agent-runtime.js");
+    vi.mocked(inspectAgentRuntime).mockImplementation((name) =>
+      name === "codex" ? { agent: "codex", binary: "codex", available: false } : undefined,
+    );
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "codex", detected: true, skillsDir: "~/.codex/skills" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    for (const options of [{}, { verbose: true }]) {
+      vi.mocked(console.log).mockClear();
+      await status(options);
+      expect(vi.mocked(console.log).mock.calls.flat().join("\n")).toContain("codex — binary missing from PATH");
+    }
+    expect(collectStatusData()?.agentRuntime).toEqual([{ agent: "codex", binary: "codex", available: false }]);
+    vi.mocked(inspectAgentRuntime).mockReturnValue(undefined);
+  });
+});
+
+describe("status unmanaged skill reporting", () => {
+  it("reports unmanaged folders with their agent and source path", async () => {
+    const { unmanagedAgentSkills } = await import("./core/agent-runtime.js");
+    vi.mocked(unmanagedAgentSkills).mockReturnValue(["travel"]);
+    mockLoadState.mockReturnValue({
+      agents: [{ name: "codex", detected: true, skillsDir: "~/.codex/skills" }],
+      sources: [],
+      mcpServers: [],
+      catalogVersion: "0.1.0",
+    });
+    await status();
+    expect(vi.mocked(console.log).mock.calls.flat().join("\n")).toContain("codex has unmanaged skill folders: travel");
+    expect(vi.mocked(console.log).mock.calls.flat().join("\n")).toContain("source outside agent directories");
+    expect(vi.mocked(console.log).mock.calls.flat().join("\n")).not.toContain(
+      "adopt ~/.codex/skills as a local source",
+    );
+    expect(collectStatusData()?.unmanagedSkills).toEqual([
+      { agent: "codex", directory: "~/.codex/skills", names: ["travel"] },
+    ]);
+    vi.mocked(unmanagedAgentSkills).mockReturnValue([]);
   });
 });

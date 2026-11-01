@@ -155,6 +155,18 @@
 
 ## P1
 
+- [ ] MCP installs select executable files instead of directories
+  - **ID**: mcp-entrypoint-reject-directories
+  - **Tags**: mcp, correctness
+  - **Details**: Entrypoint discovery currently treats any existing candidate path as a runnable file. Directory candidates must be skipped, including package main/bin targets and directory symlinks. Preserve regular files and symlinks to files.
+  - **Output**: code
+  - **Acceptance**: Directory candidates are refused and valid file candidates remain selectable.
+  - **Hypothesis**: Checking candidate file type reduces invalid selections from 4 to 0 across known-path, package-main, package-bin, and directory-symlink fixtures.
+  - **Measurement**: `npx vitest run src/mcp/mcp-git-entrypoint-files.test.ts`.
+  - **Success**: All 4 invalid-path cases are rejected and both valid-file controls pass.
+  - **Pivot**: If either valid-file control fails, abandon the file-type strategy and inspect runtime entrypoint requirements.
+  - **Anchor**: Basili, Caldiera, Rombach (1994), Goal Question Metric; reproducible entrypoint-selection failure.
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

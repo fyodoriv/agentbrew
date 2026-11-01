@@ -155,16 +155,16 @@
 
 ## P1
 
-- [ ] MCP installs select executable files instead of directories
+- [ ] MCP installs reject unusable Node entrypoints while preserving runnable directories
   - **ID**: mcp-entrypoint-reject-directories
   - **Tags**: mcp, correctness
-  - **Details**: Entrypoint discovery currently treats any existing candidate path as a runnable file. Directory candidates must be skipped, including package main/bin targets and directory symlinks. Preserve regular files and symlinks to files.
+  - **Details**: Entrypoint discovery accepts empty Node directory targets. A blanket regular-file check also rejects Node-valid directory targets. Use the Node core resolver to reject unusable Node paths while preserving runnable directory candidates, main and bin values, original arguments, and existing Python discovery.
   - **Output**: code
-  - **Acceptance**: Directory candidates are refused and valid file candidates remain selectable.
-  - **Hypothesis**: Checking candidate file type reduces invalid selections from 4 to 0 across known-path, package-main, package-bin, and directory-symlink fixtures.
+  - **Acceptance**: Empty Node directories and symlinked empty directories are refused; runnable Node directories, files, and file symlinks remain selectable.
+  - **Hypothesis**: Using Node core resolution reduces false refusals of runnable candidate/main/bin directory targets from 3 to 0 while preserving rejection of all 4 unusable-directory cases.
   - **Measurement**: `npx vitest run src/mcp/mcp-git-entrypoint-files.test.ts`.
-  - **Success**: All 4 invalid-path cases are rejected and both valid-file controls pass.
-  - **Pivot**: If either valid-file control fails, abandon the file-type strategy and inspect runtime entrypoint requirements.
+  - **Success**: All 4 invalid-path cases are rejected; all 5 valid file and runnable-directory controls pass.
+  - **Pivot**: If any valid control fails or any invalid case is selected, abandon this resolver adapter and inspect the Node CLI entrypoint path before retrying.
   - **Anchor**: Basili, Caldiera, Rombach (1994), Goal Question Metric; reproducible entrypoint-selection failure.
 
 - [ ] Agents wait on events, not polling loops

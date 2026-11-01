@@ -7,6 +7,7 @@ interface FakeRepo {
   branch?: string;
   parent?: string;
   defaultBranch?: string;
+  pushAccess?: boolean;
 }
 
 function fakeRunner(repo: FakeRepo): { run: Runner; calls: string[] } {
@@ -18,6 +19,9 @@ function fakeRunner(repo: FakeRepo): { run: Runner; calls: string[] } {
     if (line === "git rev-parse --show-toplevel") return ok("/work/repo");
     if (line === "git branch --show-current") return ok(repo.branch ?? "fix/typo");
     if (line === "gh api user --jq .login") return ok(repo.login);
+    if (line.startsWith("gh api repos/") && line.endsWith("--jq .permissions.push")) {
+      return ok(String(repo.pushAccess ?? repo.login === "fyodoriv"));
+    }
     if (line === "git remote -v") {
       return ok(
         Object.entries(repo.remotes)
@@ -50,10 +54,43 @@ describe("agentbrew contribute", () => {
     const result = contribute({ run, log: quiet });
     expect(result).toMatchObject({ ok: true, mode: "fork", upstream: "fyodoriv/agentbrew", head: "alex:fix/typo" });
     expect(result.prUrl).toBe("https://github.com/fyodoriv/agentbrew/pull/999");
-    expect(calls).toContain("gh repo fork fyodoriv/agentbrew --clone=false --remote=false");
+    expect(calls).toContain("gh repo fork fyodoriv/agentbrew --clone=false");
     expect(calls).toContain("git remote add fork https://github.com/alex/agentbrew.git");
     expect(calls).toContain("git push -u fork HEAD:fix/typo");
     expect(calls).toContain("gh pr create --repo fyodoriv/agentbrew --base main --head alex:fix/typo --fill");
+  });
+
+  it("uses upstream directly when a collaborator has push access", () => {
+    const { run, calls } = fakeRunner({
+      login: "alex",
+      remotes: { origin: "https://github.com/team/project.git" },
+      pushAccess: true,
+    });
+    expect(contribute({ run, log: quiet })).toMatchObject({ ok: true, mode: "direct", head: "fix/typo" });
+    expect(calls).toContain("git push -u origin HEAD:fix/typo");
+    expect(calls.some((c) => c.startsWith("gh repo fork"))).toBe(false);
+  });
+
+  it("pushes to the upstream remote rather than a fork when permission is granted", () => {
+    const { run, calls } = fakeRunner({
+      login: "alex",
+      remotes: { origin: "https://github.com/alex/project.git", upstream: "https://github.com/team/project.git" },
+      pushAccess: true,
+    });
+    expect(contribute({ run, log: quiet })).toMatchObject({ ok: true, mode: "direct" });
+    expect(calls).toContain("git push -u upstream HEAD:fix/typo");
+    expect(calls).not.toContain("git push -u origin HEAD:fix/typo");
+  });
+
+  it("forks with flags supported by gh when push access is absent", () => {
+    const { run } = fakeRunner({ login: "alex", remotes: { origin: "https://github.com/team/project.git" } });
+    const rejectingGh: Runner = (cmd, args, cwd) => {
+      if (cmd === "gh" && args[0] === "repo" && args[1] === "fork" && args.includes("--remote=false")) {
+        return { status: 1, stdout: "", stderr: "--remote is unsupported with a repository argument" };
+      }
+      return run(cmd, args, cwd);
+    };
+    expect(contribute({ run: rejectingGh, log: quiet })).toMatchObject({ ok: true, mode: "fork" });
   });
 
   it("uses the fork parent as upstream when origin is already the contributor's fork", () => {

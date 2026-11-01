@@ -27,6 +27,11 @@ fresh subagent judge. The judge has not seen the reasoning behind the draft.
 5. Reviews only: each finding sits under its severity heading, and a finding
    with no `Failure scenario:` line is not worded as a proven bug.
 
+6. A review ask has a functional judge PASS for every stated feature at the
+   current head. Reject a missing feature verdict, missing proof, or any FAIL.
+   If the optional human-review or audience-order rule is enabled, the user
+   has confirmed the required check or proof page before this draft is saved.
+
 ## Judge answer
 
 The first line is `APPROVED` or `REJECTED`. Any other first line counts as

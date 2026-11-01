@@ -124,6 +124,18 @@
         "Distinguishes pending actions from verified success",
         "Does not claim an accessibility score without running the audit"
       ]
+    },
+    {
+      "id": 12,
+      "prompt": "A dashboard gate clicks a chart on a phone, presses ArrowLeft without reading the result, and has only an October fixture. Its exported hourly keys are local time and its chart-line contrast is untested. Harden the gate without claiming a stub host proves the real deployed dashboard.",
+      "expected_output": "Tests UTC identity through both clock changes, real touch selection and changed keyboard tooltip text, and 3:1 chart-line contrast in both themes. Plants broken handlers and low contrast to prove the gate detects each regression; labels fixture evidence and obtains real-host visual proof separately.",
+      "expectations": [
+        "Keeps all 168 consecutive hourly fixture instants through both spring-forward and fall-back in exported and rendered points; does not impose 168 on a local calendar week",
+        "Uses touchscreen.tap on the phone and asserts the selected point changes",
+        "Asserts ArrowLeft changes tooltip text and plants a disabled handler to prove the assertion",
+        "Measures chart lines against their panels at 3:1 or more in light and dark, with a planted low-contrast failure",
+        "Keeps the host accent hue and clearly distinguishes fixture checks from real-host visual evidence"
+      ]
     }
   ]
 }

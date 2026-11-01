@@ -8,7 +8,7 @@
  *   2. fork it to the signed-in GitHub account (`gh repo fork`, idempotent),
  *   3. push the branch to that fork,
  *   4. `gh pr create --repo <upstream> --head <login>:<branch>`.
- * When the signed-in account owns the upstream repo, it pushes to `origin`
+ * When the signed-in account can push to the upstream repo, it pushes there
  * and opens a same-repo PR instead. `--dry-run` prints the steps only.
  */
 import { spawnSync } from "node:child_process";
@@ -116,7 +116,7 @@ function forkSteps(ctx: RepoContext): { steps: Step[]; pushRemote: string } {
     {
       why: `Fork ${ctx.upstream} to ${ctx.me} (no-op when the fork exists)`,
       cmd: "gh",
-      args: ["repo", "fork", ctx.upstream, "--clone=false", "--remote=false"],
+      args: ["repo", "fork", ctx.upstream, "--clone=false"],
     },
   ];
   const existing = [...ctx.remotes.entries()].find(
@@ -158,10 +158,14 @@ function resolveBase(run: Runner, ctx: RepoContext, base?: string): string | { e
   return def.stdout;
 }
 
-function planSteps(ctx: RepoContext, options: ContributeOptions, base: string) {
-  const direct = ctx.upstream.split("/")[0].toLowerCase() === ctx.me.toLowerCase();
+function planSteps(ctx: RepoContext, options: ContributeOptions, base: string, run: Runner) {
+  const permission = run("gh", ["api", `repos/${ctx.upstream}`, "--jq", ".permissions.push"], ctx.cwd);
+  const direct = permission.status === 0 && permission.stdout === "true";
+  const upstreamRemote =
+    [...ctx.remotes.entries()].find(([, url]) => githubSlug(url)?.toLowerCase() === ctx.upstream.toLowerCase())?.[0] ??
+    `https://github.com/${ctx.upstream}.git`;
   const head = direct ? ctx.branch : `${ctx.me}:${ctx.branch}`;
-  const { steps, pushRemote } = direct ? { steps: [] as Step[], pushRemote: "origin" } : forkSteps(ctx);
+  const { steps, pushRemote } = direct ? { steps: [] as Step[], pushRemote: upstreamRemote } : forkSteps(ctx);
   steps.push(
     { why: `Push ${ctx.branch} to ${pushRemote}`, cmd: "git", args: ["push", "-u", pushRemote, `HEAD:${ctx.branch}`] },
     {
@@ -200,7 +204,7 @@ export function contribute(options: ContributeOptions = {}): ContributeResult {
     return fail(`You are on ${base}. Commit your change on a branch first: git switch -c fix/<short-name>`);
   }
 
-  const { mode, head, steps } = planSteps(ctx, options, base);
+  const { mode, head, steps } = planSteps(ctx, options, base, run);
   log(`agentbrew contribute: ${mode} mode, ${ctx.upstream} <- ${head}`);
   const outcome = runSteps(run, ctx.cwd, steps, Boolean(options.dryRun), log);
   if (outcome.error) return { ok: false, mode, upstream: ctx.upstream, head, error: outcome.error };

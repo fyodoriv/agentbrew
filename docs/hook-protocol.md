@@ -339,6 +339,20 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
 5. If the hook replaces an advisory rule, file or update the follow-up task that
    removes the now-deterministic prose rule after the hook has been stable.
 
+## PR readiness lookup
+
+The Claude `a-pr-is-not-ready` transcript hook resolves a simple numbered
+`gh pr view`, `ready`, `merge`, or `edit` command with Python's standard
+shell-word parser. Quoted body text is an opaque argument; repository flags
+must be real argument words. Supported flags are bounded to the known CLI
+forms. Unknown flags, shell expansions, compound commands, missing Python,
+or an unresolved target produce a warning without a guessed status query.
+Comment-looking words and expansion-looking text are also conservative
+warning cases, including ambiguous quoted forms.
+The selected target exists only for that hook invocation. Merged or closed
+PRs pass the readiness check. This is a best-effort status guard, not proof
+that a goal's delivery criteria are met.
+
 ## Codex hooks
 
 Codex reads the wrapped `hooks` object in `~/.codex/hooks.json`. Sync preserves

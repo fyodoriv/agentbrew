@@ -31,14 +31,15 @@ def clean_word:
   else "<arg>" end;
 
 # Drop prefixes that hide the real command: "(", "cd X &&", VAR=value,
-# env/nice/time/nohup/command/exec/timeout wrappers and their flags.
+# env/nice/time/nohup/command/exec/timeout/heavy-run wrappers and their flags.
 def strip:
   if test("^[({]\\s*") then sub("^[({]\\s*"; "") | strip
   elif test("^cd\\s+[^;&|]*?\\s*(&&|;)\\s*") then sub("^cd\\s+[^;&|]*?\\s*(&&|;)\\s*"; "") | strip
   elif test("^[A-Za-z_][A-Za-z0-9_]*=(\"[^\"]*\"|'[^']*'|\\S*)\\s+") then
     sub("^[A-Za-z_][A-Za-z0-9_]*=(\"[^\"]*\"|'[^']*'|\\S*)\\s+"; "") | strip
-  elif test("^(\\S*/)?(env|nice|time|nohup|command|exec|timeout)\\s+") then
-    sub("^(\\S*/)?(env|nice|time|nohup|command|exec|timeout)\\s+"; "") | strip
+  elif test("^(\\S*/)?heavy-run(\\s+(-h|--help|--status)(\\s|$)|\\s*$)") then .
+  elif test("^(\\S*/)?(env|nice|time|nohup|command|exec|timeout|heavy-run)\\s+") then
+    sub("^(\\S*/)?(env|nice|time|nohup|command|exec|timeout|heavy-run)\\s+"; "") | strip
   elif test("^-[unCSks]\\s+\\S+\\s+") then sub("^-[unCSks]\\s+\\S+\\s+"; "") | strip
   elif test("^-\\S*\\s+") then sub("^-\\S*\\s+"; "") | strip
   elif test("^[0-9]+[smhd]?\\s+") then sub("^[0-9]+[smhd]?\\s+"; "") | strip
@@ -147,6 +148,15 @@ def background_launch:
   ((.tool_name // "") | test("^(Agent|Task)$"))
   and (([.tool_input | objects | .run_in_background] | first) == true);
 
+# Fixed enums only. Missing execution-mode evidence is never inferred as foreground.
+def sleep_loop_metadata:
+  if .tool_name == "Bash" then
+    {sleepLoop: (if (["until-while-sleep-v1", "for-sleep-v1", "not-observed-v1"] | index($ARGS.named.sleep_loop)) != null
+      then $ARGS.named.sleep_loop else "unknown-v1" end),
+     shellMode: (if .tool_input.run_in_background == true then "background"
+       elif .tool_input.run_in_background == false then "foreground" else "unknown" end)}
+  else {} end;
+
 (.cwd // "" | tostring) as $cwd
 | now as $now
 | ($now | todate) as $ts
@@ -160,12 +170,14 @@ def background_launch:
       ms: (if (.duration_ms | type) == "number" then .duration_ms else null end),
       ok: (.hook_event_name == "PostToolUse"),
       key: step_key, id: call_id, agent: agent_name}
+     + sleep_loop_metadata
      + (if background_launch then {bg: true} else {} end)
      | tojson | .[1:])
   elif .hook_event_name == "PreToolUse" or .hook_event_name == "PermissionDenied" then
     $cwd, $month,
     ({ts: $ts, sid: $sid, ev: (if .hook_event_name == "PreToolUse" then "attempt" else "denied" end),
       tool: ((.tool_name // "unknown") | safe_name), key: step_key, id: call_id, agent: agent_name}
+     + sleep_loop_metadata
      + (if .hook_event_name == "PreToolUse" and background_launch then {bg: true} else {} end)
      | tojson | .[1:])
   else empty end

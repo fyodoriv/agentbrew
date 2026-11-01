@@ -12,8 +12,8 @@ import type { Manifest } from "../manifest.js";
 import { loadManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { SHARED_RULES_PATH } from "../paths.js";
 import { type DedupeResult, dedupeSharedRulesContent } from "../rules-hygiene.js";
-import { requireState } from "../state.js";
-import type { SyncOptions } from "../types.js";
+import { loadState, requireState, saveState } from "../state.js";
+import type { AgentBrewState, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { ICON_INFO, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
@@ -21,6 +21,7 @@ import { refreshCatalogTemplateRules } from "./catalog-template-rules.js";
 import { compressSkillsListing } from "./instructions-sync.js";
 import { indexOfMarkerAtLineStart } from "./marker-utils.js";
 import { delegateRulesGenerate } from "./rules-delegate.js";
+import { cleanupStaleAgentfileArtifacts, refreshAgentfileRuleHashesAfterRewrite } from "./stale-agentfile-artifacts.js";
 
 const START_MARKER = "<!-- agentbrew:start -->";
 const END_MARKER = "<!-- agentbrew:end -->";
@@ -160,12 +161,22 @@ export function saveSharedRules(content: string): void {
   writeFileSync(path, content, "utf-8");
 }
 
-export function dedupeSharedRulesFile(options?: { dryRun?: boolean }): DedupeResult | undefined {
+export function dedupeSharedRulesFile(options?: {
+  dryRun?: boolean;
+  state?: AgentBrewState;
+  save?: (state: AgentBrewState) => void;
+}): DedupeResult | undefined {
   const content = loadSharedRules();
   if (content === undefined) return undefined;
 
   const result = dedupeSharedRulesContent(content);
-  if (result.removedCount > 0 && !options?.dryRun) saveSharedRules(result.content);
+  if (result.removedCount > 0 && !options?.dryRun) {
+    saveSharedRules(result.content);
+    const state = options?.state ?? loadState();
+    if (state && refreshAgentfileRuleHashesAfterRewrite(state, content, result.content)) {
+      (options?.save ?? saveState)(state);
+    }
+  }
   return result;
 }
 
@@ -386,17 +397,17 @@ function getAllSyncTargets(skip: ReadonlySet<string>): Array<{ agentName: string
   return fileTargets.filter((target) => !skip.has(target.agentName));
 }
 
-function maybeDedupeSharedRules(dryRun: boolean): void {
+function maybeDedupeSharedRules(dryRun: boolean, state: AgentBrewState, save: (state: AgentBrewState) => void): void {
   if (dryRun) return;
   try {
-    dedupeSharedRulesFile();
+    dedupeSharedRulesFile({ state, save });
   } catch (e) {
     logSkipped("sync/rules-sync/dedupeSharedRulesFile", e);
   }
 }
 
-function loadDeployRules(quiet: boolean, log: Logger): string | undefined {
-  const userRules = loadSharedRules();
+function loadDeployRules(quiet: boolean, log: Logger, previewContent?: string): string | undefined {
+  const userRules = previewContent ?? loadSharedRules();
   if (!userRules) {
     if (!quiet) log.warn("No shared rules file found.");
     return undefined;
@@ -431,8 +442,17 @@ export async function syncRules(options?: SyncOptions, ctx?: Partial<Context>): 
   // rather than only in `status --fix` is what makes the saving stick: without
   // it sync deploys the duplicates to every agent and the next drift check
   // reports the file dirty again, on every run.
-  maybeDedupeSharedRules(dryRun);
-  const deployRules = loadDeployRules(quiet, log);
+  const save = (next: AgentBrewState) => {
+    if (ctx?.state) ctx.state.save(next);
+    else saveState(next);
+  };
+  const cleanup = cleanupStaleAgentfileArtifacts({
+    dryRun: dryRun ?? false,
+    state,
+    save,
+  });
+  maybeDedupeSharedRules(dryRun, state, save);
+  const deployRules = loadDeployRules(quiet, log, dryRun ? cleanup.content : undefined);
   if (deployRules === undefined) return;
 
   // Never write rules for an agent the state marks not detected.

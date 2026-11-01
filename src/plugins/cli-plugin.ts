@@ -13,6 +13,7 @@ import { repoIdOf } from "./scope.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { applyAdd, listPlugins, planAdd, removePlugin, rollbackPlugin } from "./store.js";
 import { applyUpdate, planUpdate } from "./update.js";
+import { pluginSkillShadows, pluginUpdateChoices } from "./update-guidance.js";
 
 function fail(error: unknown): void {
   console.error(chalk.red(`✗ ${redactUrlCredentials(error instanceof Error ? error.message : String(error))}`));
@@ -120,13 +121,18 @@ export function registerPluginCommands(program: Command): void {
     });
 
   plugin
-    .command("update <name> <ref>")
+    .command("update [name] [ref]")
     .description(
       "Show a diff of rules, skills, MCP servers, hooks, and capabilities for a new signed ref, then apply on confirm",
     )
     .option("-y, --yes", "Apply without the diff prompt (a capability change still asks)")
-    .action(async (name: string, ref: string, options: { yes?: boolean }) => {
+    .action(async (name: string | undefined, ref: string | undefined, options: { yes?: boolean }) => {
       try {
+        if (!name || !ref) {
+          console.error(pluginUpdateChoices(listPlugins()));
+          process.exitCode = 1;
+          return;
+        }
         const plan = planUpdate(name, ref);
         console.log(plan.diff);
         const tty = process.stdin.isTTY === true;
@@ -139,6 +145,15 @@ export function registerPluginCommands(program: Command): void {
         const entry = applyUpdate(plan, { yes, capabilityApproved });
         emitClaudeNative();
         console.log(`${ICON_SUCCESS} Plugin ${name} updated to ${entry.ref} (${entry.commit.slice(0, 8)})`);
+        try {
+          const { getSkillSources } = await import("../sync/skills-sync.js");
+          for (const warning of pluginSkillShadows(name, getSkillSources())) console.warn(warning);
+        } catch {
+          console.warn(
+            "Plugin updated; optional skill-source inspection failed. Inspect sources with agentbrew status --verbose.",
+          );
+        }
+        console.log("Run agentbrew sync --only skills to refresh deployed copies from the locked plugin.");
       } catch (e) {
         fail(e);
       }

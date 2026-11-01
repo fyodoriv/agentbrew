@@ -17,6 +17,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 | Text that spills out of its box (an id over a narrow column, a number broken over two lines) | 0 |
 | Raw ISO dates in app text (code, typed values, and the owner's imported notes excepted) | 0 |
 | Views that scroll sideways | 0 |
+| Chart lines against their panel, each theme | at least 3:1 |
 | Taps per everyday job | a number per job, asserted (for example rate 1, vote 1, add 2) |
 
 ## Layout and navigation
@@ -94,6 +95,15 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
   loading screen sends it down the wrong path.
 - **Count taps in a test.** Wrap `click()` in a counter per job, and assert each job's budget.
   Run it first in the suite when it needs fresh demo state.
+- **Prove the input and result.** On phones, use a real touchscreen tap. Check
+  which point it selects. For keyboard charts, assert that ArrowLeft changes
+  the tooltip. Plant disabled touch and keyboard handlers to prove the gate
+  catches them. An event sent without a result assertion is weak evidence.
+- **Separate time identity from labels.** Key hourly chart data by UTC, then
+  format local labels in the page. Test 168 consecutive hourly fixture
+  instants spanning each clock change, including the rendered points. A
+  local calendar week can contain 167 or 169 hours. Never merge the two
+  repeated local hours on a fall-back day.
 - **Judge pairwise and blind.** Give a fresh agent before and after screenshots as A/B pairs in
   random order. Keep the key in a folder it does not read, score its verdicts against the key, and
   report "preferred on N of M screens". Then fix the real issues it names.

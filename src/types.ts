@@ -273,10 +273,16 @@ export interface MemoryConfig {
   enabled?: boolean;
   /** Resolved absolute paths to discovered pack directories. */
   packPaths?: string[];
+  /** Per-user state.yaml provenance: pack path to declaring checkout roots. Unknown legacy paths stay unowned. */
+  packOwners?: Record<string, string[]>;
 }
 
 export interface AgentBrewState {
   schemaVersion?: number;
+  /** Per-user state.yaml provenance for the current agentfile-rules block, deleted when its checkout is absent. */
+  agentfileRuleOwners?: Record<string, string>;
+  /** Content hashes preserve rule bodies edited after their owning checkout disappears. */
+  agentfileRuleHashes?: Record<string, string>;
   agents: AgentConfig[];
   sources?: Source[];
   mcpServers?: McpServer[];

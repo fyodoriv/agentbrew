@@ -7,7 +7,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,7 @@ vi.mock("@inquirer/prompts", () => ({ confirm: vi.fn() }));
 import { confirm } from "@inquirer/prompts";
 import { Command } from "commander";
 import { readLock } from "../lock.js";
+import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
@@ -221,5 +222,86 @@ describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
 
     await run("remove", "acme");
     expect(existsSync(copy())).toBe(false);
+  });
+});
+
+describe("plugin update guidance", () => {
+  it("lists installed names and the newest remote tag when arguments are missing", async () => {
+    const relativeSource = relative(pluginsRoot(), f.dir);
+    addPlugin(`${relativeSource}@v1.0.0`, { yes: true, signer: KEY.pub });
+    f.release("v2.0.0", { "README.md": "new version\n" });
+    const program = new Command().exitOverride();
+    registerPluginCommands(program);
+    await program.parseAsync(["node", "agentbrew", "plugin", "update"]);
+    expect(process.exitCode).toBe(1);
+    const output = vi.mocked(console.error).mock.calls.flat().join("\n");
+    expect(output).toContain("acme");
+    expect(output).toContain("v2.0.0");
+    expect(output).toContain("unverified");
+    expect(output).toContain("agentbrew plugin update <name> <ref>");
+  });
+
+  it("suggests the registered name for an unknown plugin", async () => {
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    const program = new Command().exitOverride();
+    registerPluginCommands(program);
+    await program.parseAsync(["node", "agentbrew", "plugin", "update", "acmee", "v2.0.0", "--yes"]);
+    expect(process.exitCode).toBe(1);
+    const output = vi.mocked(console.error).mock.calls.flat().join("\n");
+    expect(output).toContain("Did you mean acme");
+    expect(readLock().plugins?.[0]?.ref).toBe("v1.0.0");
+  });
+});
+
+describe("plugin update duplicate skill source", () => {
+  it("updates the locked skills but warns instead of modifying an independent source", async () => {
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    f = pluginFixture({ ...MANIFEST, contributes: { skills: "skills/" } }, KEY);
+    f.release("v1.0.0", { "skills/greet/SKILL.md": "---\nname: greet\ndescription: greet\n---\nold\n" });
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    const legacy = join(home, "legacy-skills");
+    mkdirSync(join(legacy, "greet"), { recursive: true });
+    const oldText = "---\nname: greet\ndescription: greet\n---\nlegacy old\n";
+    writeFileSync(join(legacy, "greet/SKILL.md"), oldText);
+    saveState({
+      ...defaultState(),
+      sources: [
+        { availableItems: [], addedAt: "2026-11-01T00:00:00Z", type: "local", url: legacy, skillsInstalled: ["greet"] },
+      ],
+    });
+    f.release("v2.0.0", { "skills/greet/SKILL.md": "---\nname: greet\ndescription: greet\n---\nnew\n" });
+    const program = new Command().exitOverride();
+    registerPluginCommands(program);
+    await program.parseAsync(["node", "agentbrew", "plugin", "update", "acme", "v2.0.0", "--yes"]);
+    expect(process.exitCode).toBeUndefined();
+    expect(readFileSync(join(pluginDir("acme"), "skills/greet/SKILL.md"), "utf-8")).toContain("new");
+    expect(readFileSync(join(legacy, "greet/SKILL.md"), "utf-8")).toBe(oldText);
+    expect(warnings.mock.calls.flat().join("\n")).toContain("higher-priority source legacy-skills");
+    warnings.mockRestore();
+  });
+});
+
+describe("plugin update optional diagnostics", () => {
+  it("keeps a successful update successful when source scanning throws", async () => {
+    addPlugin(`${f.dir}@v1.0.0`, { yes: true, signer: KEY.pub });
+    f.release("v2.0.0", { "README.md": "updated\n" });
+    const sources = await import("../sync/skills-sync.js");
+    const scan = vi.spyOn(sources, "getSkillSources").mockImplementation(() => {
+      throw new Error("PRIVATE_FIXTURE_PAYLOAD");
+    });
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const program = new Command().exitOverride();
+      registerPluginCommands(program);
+      await program.parseAsync(["node", "agentbrew", "plugin", "update", "acme", "v2.0.0", "--yes"]);
+      expect(process.exitCode).toBeUndefined();
+      expect(readLock().plugins?.[0]?.ref).toBe("v2.0.0");
+      const output = warnings.mock.calls.flat().join("\n");
+      expect(output).toContain("optional skill-source inspection failed");
+      expect(output).not.toContain("PRIVATE_FIXTURE_PAYLOAD");
+    } finally {
+      scan.mockRestore();
+      warnings.mockRestore();
+    }
   });
 });

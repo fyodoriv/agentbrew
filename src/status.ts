@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import chalk from "chalk";
 import { AGENTFILE_NAMES, getConfigServers, getStateServers, getStateSources } from "./agentfile.js";
+import { checkRetiredModsDrift } from "./catalog/claude-plugin.js";
 import { catalogRuleDrift } from "./catalog/install-other.js";
 import { type InstalledSkillClash, installedSkillClashes } from "./catalog/skill-owners.js";
 import { loadCatalog } from "./catalog/types.js";
@@ -718,6 +719,9 @@ export async function status(options?: { json?: boolean; verbose?: boolean }): P
   printMcpReadiness();
   printMcpHealthSummary("  ");
   printCliBuildSummary("  ");
+  for (const item of checkRetiredModsDrift()) {
+    console.log(`  Mods:         ${chalk.yellow(item.detail)}`);
+  }
 
   const { unique: uniqueSkills, sources: sourceCount, localCount } = countDeployedSkills();
   const localSuffix = localCount > 0 ? `, ${localCount} local` : "";
@@ -788,6 +792,9 @@ async function statusVerbose(state: NonNullable<ReturnType<typeof requireState>>
   printMcpHealthSummary("  ");
   printMcpHealChurnLines("  ");
   printCliBuildSummary("  ");
+  for (const item of checkRetiredModsDrift()) {
+    console.log(`  Mods:         ${chalk.yellow(item.detail)}`);
+  }
   printVerboseSourcesSection(state);
   printSkillNameClashes(state, "  ");
   printUnmanagedOutdatedPins(state, "  ");

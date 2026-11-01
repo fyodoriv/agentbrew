@@ -68,24 +68,24 @@ if [ "$PR_ACTIVITY" = "0" ] || [ -z "$PR_ACTIVITY" ]; then
   verdict_bypass "$HOOK_ID" "no gh pr create/ready/merge in this turn"
 fi
 
-# Find the most recent gh pr number referenced in the transcript
-PR_NUM=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
+# Find the most recent gh pr command that names a PR number. The PR number
+# and its repo come from that same command: an earlier `--repo` (say, an
+# issue filed upstream) must not point the check at another repo's PR.
+PR_CMD=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
   | .message.content[] | select(.type == "tool_use" and .name == "Bash")
   | .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null \
-  | grep -oE 'gh[[:space:]]+pr[[:space:]]+(view|ready|merge|edit)[[:space:]]+[0-9]+' \
-  | grep -oE '[0-9]+' | tail -1 || true)
+  | grep -oE 'gh[[:space:]]+pr[[:space:]]+(view|ready|merge|edit)[[:space:]]+[0-9]+[^|;&]*' \
+  | tail -1 || true)
+PR_NUM=$(printf '%s' "$PR_CMD" | grep -oE '^gh[[:space:]]+pr[[:space:]]+[a-z]+[[:space:]]+[0-9]+' | grep -oE '[0-9]+$' || true)
 
 if [ -z "$PR_NUM" ]; then
   # Couldn't extract PR number from transcript — best-effort warn
   verdict_warn "$HOOK_ID" "gh pr activity detected but couldn't extract PR number to verify status. Run \`gh pr checks <num>\` manually before claiming done."
 fi
 
-# Try to determine the repo from the transcript (gh -R <repo> usage)
-REPO=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
-  | .message.content[] | select(.type == "tool_use" and .name == "Bash")
-  | .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null \
-  | grep -oE '\-\-repo[[:space:]]+[^[:space:]]+' \
-  | head -1 | awk '{print $2}' || true)
+# The repo, when that command names one (`--repo X` or `-R X`).
+REPO=$(printf '%s' "$PR_CMD" | grep -oE -- '(--repo|-R)[[:space:]=]+[^[:space:]]+' \
+  | head -1 | sed -E 's/^(--repo|-R)[[:space:]=]+//' || true)
 
 # Check PR status. Use a 5s timeout — gh API can stall and we don't want
 # to freeze the Stop event. Default-allow on timeout (best-effort).
@@ -98,11 +98,18 @@ if ! command -v timeout >/dev/null 2>&1; then
   timeout() { gtimeout "$@" 2>/dev/null || "$@"; }
 fi
 
-PR_INFO=$(timeout 5 gh pr view "$PR_NUM" $REPO_ARG --json mergeable,mergeStateStatus,statusCheckRollup 2>/dev/null || echo "")
+PR_INFO=$(timeout 5 gh pr view "$PR_NUM" $REPO_ARG --json state,mergeable,mergeStateStatus,statusCheckRollup 2>/dev/null || echo "")
 
 if [ -z "$PR_INFO" ]; then
   verdict_warn "$HOOK_ID" "Couldn't fetch PR #$PR_NUM status (gh timed out or unauthenticated). Run \`gh pr checks $PR_NUM\` manually before claiming done."
 fi
+
+# A merged or closed PR is finished: its merge state no longer matters
+# (GitHub can report a merged PR as DIRTY).
+PR_STATE=$(echo "$PR_INFO" | jq -r '.state // ""' 2>/dev/null || echo "")
+case "$PR_STATE" in
+  MERGED|CLOSED) verdict_allow "$HOOK_ID" "PR #$PR_NUM is $PR_STATE" ;;
+esac
 
 # Check for FAILURE conclusions
 FAILED=$(echo "$PR_INFO" | jq -r '[.statusCheckRollup[]?.conclusion] | map(select(. == "FAILURE")) | length' 2>/dev/null || echo "0")

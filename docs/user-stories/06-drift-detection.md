@@ -1,5 +1,7 @@
 # Drift Detection & Repair
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > Something changed my agent's config. AgentBrew detects it and fixes it — without losing my manual edits.
 
 **Metric**: `repair_fail_rate` in [`metrics.md`](../metrics.md): scheduled repairs that leave drift or fail.

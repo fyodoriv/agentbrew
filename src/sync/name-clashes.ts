@@ -4,9 +4,9 @@
  * later wins. Built-in commands and the user's own command and agent folders
  * are not sources here; they keep their own documented precedence.
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { Logger } from "../core/logger.js";
 import { isUserModified, loadManifest, type Manifest } from "../manifest.js";
 import { AGENTS_DIR, COMMANDS_DIR } from "../paths.js";
@@ -14,6 +14,7 @@ import { pluginCommandDirs } from "../plugins/contributions.js";
 import type { AgentBrewState } from "../types.js";
 import { expandHome } from "../utils.js";
 import { builtinCommandNames, builtinCommandsDir } from "./builtin-commands.js";
+import { commandSourceFiles } from "./command-source-files.js";
 
 /** One name that more than one source ships. */
 export interface NameClash {
@@ -39,9 +40,7 @@ export function nameClashes(sources: Array<{ label: string; names: string[] }>):
 function markdownNames(dir: string): string[] {
   try {
     if (!existsSync(dir)) return [];
-    return readdirSync(dir)
-      .filter((f) => f.endsWith(".md"))
-      .map((f) => f.slice(0, -3));
+    return commandSourceFiles(dir).map((file) => basename(file).slice(0, -3));
   } catch {
     return [];
   }

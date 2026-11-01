@@ -1,5 +1,7 @@
 # Add an MCP Server
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I register one MCP server and every agent gets it — right format, env vars, and permissions.
 
 **Metric**: `story_fail_rate` for US03 in [`metrics.md`](../metrics.md): failed `mcp` and `setup` runs and `mcp` sync errors.

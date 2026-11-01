@@ -67,9 +67,10 @@ vi.mock("./sync/skills-sync.js", () => ({
   cleanBrokenSymlinksGlobally: vi.fn(() => 0),
 }));
 
-vi.mock("./sync/hooks-sync.js", () => ({
-  syncHooks: vi.fn(),
-}));
+vi.mock("./sync/hooks-sync.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./sync/hooks-sync.js")>();
+  return { syncHooks: vi.fn(), filterHooksForTarget: real.filterHooksForTarget };
+});
 
 vi.mock("./sync/instructions-sync.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("./sync/instructions-sync.js")>();

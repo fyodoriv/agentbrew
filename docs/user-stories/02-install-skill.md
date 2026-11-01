@@ -1,5 +1,7 @@
 # Install a Skill
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I find a skill and install it — every agent gets it immediately.
 
 **Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): failed `install` runs and `skills` sync errors.
@@ -37,6 +39,10 @@ Local installs are ideal for:
 `agentbrew status` shows both scopes: global installed skills and project-local skills detected in `.agentbrew/skills/`.
 
 ## How it works
+
+For every current and future skill in a repo-owned folder, declare
+[`skillDirectories`](../skill-directories.md). This uses the normal skill
+scanner and deployer, with separate declaration ownership and safe link removal.
 
 `install` clones the source repo, copies the skill to `~/.config/agentbrew/installed-skills/<name>/`, locks the source SHA, then auto-syncs to all agents via symlinks. State is only written after the copy succeeds — a failed fetch never leaves a partial entry.
 

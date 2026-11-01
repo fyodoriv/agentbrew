@@ -23,11 +23,14 @@ import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 import type { AgentBrewState, Source } from "./types.js";
 import { ICON_ERROR, ICON_SUCCESS } from "./ui/output.js";
+import { hasProtectedSkillOwner } from "./update-owner-preservation.js";
+import { readUpdateSkillRequests } from "./update-skill-policy.js";
 import { expandHome } from "./utils.js";
 
 interface UpdateOptions {
   dryRun?: boolean;
   skillName?: string;
+  requestedSkills?: readonly string[];
 }
 
 type RefreshStatus = "refreshed" | "unchanged" | "skipped" | "failed";
@@ -196,10 +199,18 @@ function printLockResults(sources: Source[], knownShas: ReadonlyMap<string, stri
   }
 }
 
-const SYNC_ENGINES: ReadonlyArray<{ name: string; label: string; run: () => Promise<unknown> }> = [
+const SYNC_ENGINES: ReadonlyArray<{
+  name: string;
+  label: string;
+  run: (requests: readonly string[]) => Promise<unknown>;
+}> = [
   { name: "mcp", label: "\nMCP Servers", run: () => syncMcpServers() },
   { name: "rules", label: "Rules", run: () => syncRules() },
-  { name: "skills", label: "Skills", run: () => syncSkills() },
+  {
+    name: "skills",
+    label: "Skills",
+    run: (requests) => (requests.length ? syncSkills({ requestedSkills: requests }) : syncSkills()),
+  },
   { name: "commands", label: "Commands", run: () => syncCommands() },
   { name: "agents", label: "Agents", run: () => syncAgentDefs() },
   // Keep in step with buildSyncModules (src/sync-runner.ts): a module left out
@@ -210,12 +221,12 @@ const SYNC_ENGINES: ReadonlyArray<{ name: string; label: string; run: () => Prom
 ];
 
 /** Runs every engine even when one fails, and records the result for `agentbrew status`. */
-async function syncAllEngines(): Promise<boolean> {
+async function syncAllEngines(requests: readonly string[]): Promise<boolean> {
   const collector = new SyncErrorCollector();
   for (const engine of SYNC_ENGINES) {
     console.log(chalk.bold(engine.label));
     try {
-      await engine.run();
+      await engine.run(requests);
     } catch (error) {
       collector.add(new SyncError(engine.name, errorMessage(error), { cause: error }));
     }
@@ -231,11 +242,28 @@ async function syncAllEngines(): Promise<boolean> {
   return true;
 }
 
-function updateBuiltinSkillsIfNeeded(options: UpdateOptions | undefined, isDryRun: boolean): void {
+function updateBuiltinSkillsIfNeeded(
+  state: AgentBrewState,
+  options: UpdateOptions | undefined,
+  isDryRun: boolean,
+): boolean {
   if (!isDryRun && !options?.skillName) {
+    let protectedOwner = true;
+    try {
+      protectedOwner = hasProtectedSkillOwner(state, options?.requestedSkills);
+    } catch (error) {
+      console.warn(chalk.yellow(`  Could not verify skill owner protection: ${errorMessage(error)}`));
+    }
+    if (protectedOwner) {
+      console.log(
+        chalk.yellow("  External skills updater withheld to preserve owner skill paths; managed sources continue."),
+      );
+      return true;
+    }
     console.log(chalk.bold("Skills"));
     updateBuiltinSkills();
   }
+  return false;
 }
 
 async function reindexSourcesIfNeeded(
@@ -293,6 +321,9 @@ function pruneDroppedGlobalAgentfileSkills(state: AgentBrewState, dryRun: boolea
 export async function update(options?: UpdateOptions): Promise<void> {
   const state = requireState();
   if (!state) return;
+  const liveRequests = options?.skillName ? [] : readUpdateSkillRequests();
+  if (!liveRequests) return;
+  const requestedSkills = [...new Set([...liveRequests, ...(options?.requestedSkills ?? [])])];
 
   const isDryRun = options?.dryRun ?? false;
   const prefix = isDryRun ? chalk.dim("[dry-run] ") : "";
@@ -300,7 +331,7 @@ export async function update(options?: UpdateOptions): Promise<void> {
   console.log(chalk.bold(`\n${prefix}Checking for updates...\n`));
 
   // 1. Update skills via npx skills update (skip in dry-run and single-skill modes)
-  updateBuiltinSkillsIfNeeded(options, isDryRun);
+  const externalUpdaterWithheld = updateBuiltinSkillsIfNeeded(state, { ...options, requestedSkills }, isDryRun);
 
   // Clear the mcpm-bridge attempted-missing cache so the next sync
   // retries every state server. mcpm's registry may have grown since
@@ -331,10 +362,14 @@ export async function update(options?: UpdateOptions): Promise<void> {
   refreshCatalogRulesIfNeeded(isDryRun);
 
   // 7. Re-sync all engines to all agents (skip in dry-run)
-  if (!isDryRun && !(await syncAllEngines())) {
+  if (!isDryRun && !(await syncAllEngines(requestedSkills))) {
     console.log(chalk.bold.yellow("\n⚠ Update finished with sync errors — run `agentbrew status` for details.\n"));
     return;
   }
 
-  console.log(chalk.bold(`\n${prefix}✓ Update complete.\n`));
+  console.log(
+    chalk.bold(
+      `\n${prefix}✓ ${externalUpdaterWithheld ? "Managed updates complete; external skills updater withheld" : "Update complete"}.\n`,
+    ),
+  );
 }

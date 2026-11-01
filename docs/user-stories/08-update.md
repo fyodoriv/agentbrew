@@ -1,5 +1,7 @@
 # Update Everything
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I pull latest skills from all sources and re-sync without losing my config.
 
 **Metric**: `sync_fail_rate` in [`metrics.md`](../metrics.md): failed plain `agentbrew sync` runs.

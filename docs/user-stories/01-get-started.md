@@ -1,5 +1,7 @@
 # Get Started
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I install agentbrew and all my agents end up with the same config.
 
 **Metric**: `story_fail_rate` for US01 in [`metrics.md`](../metrics.md): failed `init` runs; `zero_to_configured_s` times the install.

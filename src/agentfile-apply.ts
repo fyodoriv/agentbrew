@@ -13,6 +13,7 @@ import {
   resolveAgentfileMcp,
   validateAgentfileMcp,
 } from "./agentfile.js";
+import { mergeStateSkillDirectories } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
 import { MEMORY_MANAGED_SERVER_NAME } from "./memory/constants.js";
 import { ensureMemoryMcpServer, mergeMemoryPackPaths } from "./memory/enable.js";
@@ -727,6 +728,7 @@ export function applyAgentfile(
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
   if (!quiet) printDeclinedMcp(mcp.declined);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
+  const skillDirsChanged = mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, pruneOwnedDirs);
   const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const commandDirsAdded = commandDirs.added;
@@ -763,6 +765,7 @@ export function applyAgentfile(
     mcp.adopted.length > 0 ||
     sourcesAdded.length > 0 ||
     commandDirs.changed ||
+    skillDirsChanged ||
     agentDirs.changed ||
     rulesUpdated ||
     hooksUpdated ||

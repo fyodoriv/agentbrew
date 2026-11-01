@@ -1,5 +1,7 @@
 # Add a Source
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I point agentbrew at a GitHub repo or folder and it indexes skills, MCP servers, rules, and commands.
 
 **Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): `install <repo>` is the same command as US02.

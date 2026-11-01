@@ -2024,6 +2024,19 @@
     },
     {
       "id": 175,
+      "prompt": "/goal Fully setup ChatGPT Work on this machine and implement the related dotfiles/agentbrew tasks. The task notes name a stale bundled CLI path and say hooks become active as soon as hooks.json exists.",
+      "expected_output": "Checks installed binaries and schemas, preserves settings already repaired, and separates written hook configuration from runtime trust. Verifies every supported surface live after deployment.",
+      "expectations": [
+        "Reads installed npm and bundled CLI versions before replacing either",
+        "Checks whether the task-reported stale path still fails before changing it",
+        "Reads the actual hook event payload and trust requirements before claiming parity",
+        "Documents unsupported event or payload boundaries rather than copying incompatible hook scripts",
+        "Claims hooks active only after trusted runtime execution is observed",
+        "When changing a native target format, updates existing integration and dry-run assertions to check the actual native file path and content"
+      ]
+    },
+    {
+      "id": 177,
       "prompt": "/goal make sure every recommended dotfiles feature is installed and healthy on this Mac; open a PR or issue for any blocker",
       "expected_output": "The agent runs the doctor with --fix, then runs it again without --fix and reports only that second result. A check that the first run reports as fixed but the second still fails is traced to its cause and gets a fix PR or an issue, not a done claim.",
       "expectations": [

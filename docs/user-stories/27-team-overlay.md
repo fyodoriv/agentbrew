@@ -1,5 +1,7 @@
 # Company Plugins
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I work somewhere with internal skills, rules, MCP servers, or hooks that don't belong in a public catalog. I want one command to install my company's set from a signed release, see what it may do before I accept it, and one command to remove it cleanly.
 
 **Metric**: `story_fail_rate` for US27 in [`metrics.md`](../metrics.md): failed `plugin` runs.

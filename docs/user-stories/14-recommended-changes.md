@@ -1,5 +1,7 @@
 # Recommended Changes After Upgrade
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I upgraded agentbrew and there are new recommended skills. How do I get them?
 
 **Metric**: `story_fail_rate` for US02 in [`metrics.md`](../metrics.md): `install --recommended` is the US02 command.

@@ -338,3 +338,36 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
 
 5. If the hook replaces an advisory rule, file or update the follow-up task that
    removes the now-deterministic prose rule after the hook has been stable.
+
+## Codex hooks
+
+Codex reads the wrapped `hooks` object in `~/.codex/hooks.json`. Sync preserves
+user hook entries and top-level metadata. Managed hook ownership is recorded
+per agent in agentbrew's manifest; removing a managed hook does not remove a
+user hook that shares its event and matcher. An exact desired hook already
+present on first sync is adopted once; unrelated commands stay in place.
+
+The audited command-policy hooks with matcher `Bash` also target Codex. Codex
+normalizes shell calls to `tool_name: "Bash"` and `tool_input.command`, which
+these scripts already consume. `poll-loop-hint` remains Claude-only because
+it reads Claude's `run_in_background` argument. File-edit hooks remain
+Claude-only: Codex sends patches in `tool_input.command`, not `file_path` and
+`content`. Goal and transcript hooks also remain Claude-only; copying their
+config would not enforce their checks in Codex.
+
+For user-declared hooks, Codex sync accepts command handlers on supported
+Codex events. It skips prompt handlers, unsupported events such as
+`Notification` and `PostToolUseFailure`, and handlers that depend on `if`,
+`once`, or `asyncRewake`. `SessionEnd` and `Interrupt` timeout values are
+limited to the Codex maximum. A hook that targets only Claude stays there.
+Codex skills do not gain Claude skill-frontmatter `allowed-tools`, `hooks`,
+or `context: fork` behavior from this runtime hook support.
+
+New or changed Codex hook definitions require review and trust through
+`/hooks` before Codex runs them. Sync reports that requirement and does not
+change the trust store. See [official Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
+
+Codex stores individual hook enable/disable preferences separately from the
+generated hook definitions. Sync must preserve these preferences and existing
+trust choices. Disable an incompatible legacy hook through Codex's native
+hook settings; do not trust it only to remove a review warning.

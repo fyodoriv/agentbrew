@@ -520,3 +520,11 @@
   - **Success**: all proposed fixtures reject false completion.
   - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
+- [ ] Status names installed retired mods and their uninstall command (issue #656)
+  - **ID**: retired-mod-drift
+  - **Hypothesis**: Goal: actionable plugin health. Question: does the status check expose retired installed mods? Metric: missed retired-mod drift in a synthetic installed-plugin fixture falls from 1 to 0, while unrelated plugins remain untouched.
+  - **Measurement**: `npx vitest run src/catalog/claude-plugin.test.ts src/retired-mods.test.ts`
+  - **Success**: 0 missed retired-mod cases and 0 unrelated-plugin warnings or mutations.
+  - **Pivot**: Any unrelated-plugin warning or missed retired mod means abandon inference and require explicit retirement metadata.
+  - **Anchor**: Basili, Caldiera, Rombach (1994), Goal Question Metric; reconciliation loop in docs/VISION.md.

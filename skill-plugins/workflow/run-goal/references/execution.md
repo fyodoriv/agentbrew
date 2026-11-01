@@ -57,13 +57,13 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
   worker spawns before merge: run at most the cap minus one workers, or every
   review spawn is refused and no PR can merge. Watch them for stalls with
   `scripts/stalled-agents.py` (parallel-workers reference). On one machine, the brief also holds the
-  heavy-run lock rule from the reference below. When a worker reports, check
+  heavy-run queue rule from the reference below. When a worker reports, check
   its claims yourself (re-run its metric, look at side effects such as
   LaunchAgents it touched), and stop any background job it left running in
   a removed worktree.
 - Running parallel workers or workflows (worktrees, a merge queue, a watch
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
-  first. It covers the base commit, the heavy-run lock, messages to running
+  first. It covers the base commit, the heavy-run queue, messages to running
   agents, session-owned files, merges, stacked PRs, and watch pollers.
 - When something pops up on the user's screen (a dialog, a window) and you
   trace which process started it, log the process and its parent chain.

@@ -171,6 +171,17 @@
         "Keeps unrelated open drafts outside the setup changes",
         "Does not publish public code PRs without the required session approval"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "Implement all unblocked work in two tooling repos. Both use TASKS.md; each has contributor PRs, and several new issues duplicate work already in a PR.",
+      "expected_output": "Loads context for both repos, inventories PRs and branches first, preserves pending work, and maps each issue to existing or new owned work before coding.",
+      "expectations": [
+        "Detects task backend independently in both repos",
+        "Reads open draft Pending lists before claiming overlapping issues",
+        "Uses each repo gate and keeps contributor merge ownership boundaries",
+        "Does not duplicate a pending implementation just to clear an issue count"
+      ]
     }
   ]
 }

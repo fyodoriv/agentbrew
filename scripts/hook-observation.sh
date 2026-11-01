@@ -45,7 +45,14 @@ done
 [ -f "$MANIFEST" ] || { echo "manifest not found: $MANIFEST" >&2; exit 2; }
 
 # Hook IDs declared in the manifest (the set we expect to observe firing).
-HOOK_IDS="$(grep -E '^[[:space:]]+- id:' "$MANIFEST" | sed -E 's/.*id:[[:space:]]*//' | tr -d "\"'" | sort -u)"
+# A hook with `verdict: allow` only runs a side effect and never enforces,
+# so it is left out: it would read as ran-no-enforce forever.
+HOOK_IDS="$(awk '
+  function flush() { if (id != "" && verdict != "allow") print id }
+  /^[[:space:]]+- id:/ { flush(); id = $0; sub(/.*id:[[:space:]]*/, "", id); gsub(/["\047]/, "", id); verdict = ""; next }
+  /^[[:space:]]+verdict:/ { verdict = $2; gsub(/["\047]/, "", verdict) }
+  END { flush() }
+' "$MANIFEST" | sort -u)"
 
 if [ ! -f "$LOG" ]; then
   echo "hook-observation: no decision log at $LOG" >&2

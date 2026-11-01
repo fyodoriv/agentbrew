@@ -15,12 +15,13 @@ Contents: Starting workers · Steering running agents · Files the main session 
   needed cherry-picks and one conflict. Land an open PR the parts depend on
   first, then spawn from the new head.
 - Before you start workers on one machine, write a heavy-run rule into the
-  brief: one shared lock (`heavy-run <command>` where it is installed, else
-  `mkdir` a lock dir and remove it when done) and
-  `nice -n 15` for every heavy run (full suite, test cache, timing), one run
-  at a time. Six workers without it each ran parallel suites, and a 10-core
+  brief: one shared queue and `nice -n 15` for every heavy run (full suite,
+  test cache, timing). Where `heavy-run <command>` is installed, it runs a few
+  at once in slots sized from the machine and starts an extra run only when
+  memory pressure is normal; a timing run uses `heavy-run --exclusive`. Else
+  `mkdir` a lock dir, remove it when done, and run one at a time. Six workers without it each ran parallel suites, and a 10-core
   Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
-  near 10 to 25. A timing taken without the lock is invalid: take it again.
+  near 10 to 25. A timing taken outside an exclusive run is invalid: take it again.
 - Use one lock kind for every session. In one run, workers used an old
   `lockf` file while the main session used `heavy-run`; both "held" a lock
   and load reached 64. Another session's e2e gate outside any lock pushed
@@ -118,7 +119,7 @@ Contents: Starting workers · Steering running agents · Files the main session 
   and a crop one worker added contradicted the other's test. Only the final
   suite found them, an hour before the deadline. After you merge workers'
   branches, run the per-commit gate on the merged branch at a steady pace,
-  under the shared heavy-run lock (niced, one file at a time if a worker
+  under the shared heavy-run queue (niced, one file at a time if a worker
   uses the GPU). Route each red test
   to the worker whose commit made it red.
 - In zsh, `$var:` followed by a letter is a modifier (`$h:r` drops an

@@ -104,3 +104,15 @@ attribution remains unknown.
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Forsgren, Humble and
 Kim (2018), delivery measurement. The earlier local helper timings are dated
 in TASKS.md; they inform this prediction rather than count as new results.
+
+## Observed diagnostic (2026-11-01)
+
+Source `e76c9a1be454145ba619cd2d1bbbaf43b36e5e04`; Node `v24.21.0`, npm `12.2.1`; exact private harness hash `5545dbe78f5dc5c2e311f84a666713175505d82cb985b23afcc92b9ea8f03654`. All nine trials were valid. The diagnostic met both registered ratio thresholds. Field daily cost remains unknown.
+
+| Replica | npm ci (ms) | helper fresh (ms) | helper rerun (ms) |
+| --- | ---: | ---: | ---: |
+| 1 | 9350.694 | 1053.669 | 12.487 |
+| 2 | 8802.738 | 1036.943 | 12.840 |
+| 3 | 9218.810 | 1060.462 | 13.201 |
+
+Median ratios: fresh 0.11430; rerun 0.00139. No observation was replaced or dropped. The original full seven-day field thresholds and installed-source cutover remain required.

@@ -2253,6 +2253,18 @@
         "Red tests then cross-repo replay with external calls mocked: denied requester 0 posts and allowed requester 1",
         "Fresh reviewer checks all callers; verifies result in live daily store"
       ]
+    },
+    {
+      "id": 197,
+      "prompt": "/goal implement & ship all unblocked tasks in a Python repo whose tests need the agent sandbox off; first make sure the owner is ready to use the app.",
+      "expected_output": "Classifies owner-blocked tasks as out of scope, proves readiness with an unsandboxed health check, and runs the repo gate outside the sandbox before calling failures real.",
+      "expectations": [
+        "Runs the health check outside the sandbox when sandboxed FAIL lines say the shell is nested",
+        "Lists only tasks without an owner Blocked line as in scope",
+        "Runs the full gate with the sandbox off first, instead of a sandboxed run whose failures are sandbox-only",
+        "Proves the metric with a planted break per guard, restored after each",
+        "With no CI, merges on the repo's own gate exit and says so"
+      ]
     }
   ]
 }

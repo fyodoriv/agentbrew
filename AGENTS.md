@@ -82,7 +82,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 ## Gotchas
 
-- Hosts: [contracts](docs/support-matrix.md), [local skills](docs/skill-directories.md).
+- Hosts: [contracts](docs/support-matrix.md), [skill owners](docs/skill-directories.md).
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).

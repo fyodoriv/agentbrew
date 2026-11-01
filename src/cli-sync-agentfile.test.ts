@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./cli-helpers.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./cli-helpers.js")>();
@@ -33,11 +36,19 @@ vi.mock("./sync-runner.js", () => ({
   runSyncWithErrorCollection: vi.fn(),
 }));
 vi.mock("./update.js", () => ({ update: vi.fn() }));
+vi.mock("./agentfile.js", async (original) => ({
+  ...(await original<typeof import("./agentfile.js")>()),
+  applyAgentfile: vi.fn(),
+}));
+vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
+import { applyAgentfile } from "./agentfile.js";
+import { install } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
 import { shouldInstallAgentfileItems } from "./cli-helpers.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
 import { runSyncParallel } from "./sync-runner.js";
+import { update } from "./update.js";
 
 const mockApplyAgentfileAndInstall = vi.mocked(applyAgentfileAndInstall);
 const mockRunSyncParallel = vi.mocked(runSyncParallel);
@@ -55,6 +66,10 @@ function buildSilentProgram() {
 beforeEach(() => {
   vi.clearAllMocks();
   process.exitCode = undefined;
+});
+afterEach(() => {
+  process.exitCode = undefined;
+  vi.restoreAllMocks();
 });
 
 describe("sync --dry-run --agentfile", () => {
@@ -115,5 +130,41 @@ describe("sync --no-prune --agentfile", () => {
       expect.any(Array),
       expect.objectContaining({ agentfilePath: "./Agentfile.yaml", authoritative: false }),
     );
+  });
+});
+
+describe("sync --pull requested owner policy", () => {
+  it("forwards requested skills even when additive application and installation have not recorded a selection", async () => {
+    vi.mocked(applyAgentfile).mockReturnValue({
+      skillsToInstall: ["skill-creator"],
+      recommendedRequested: false,
+    } as NonNullable<ReturnType<typeof applyAgentfile>>);
+    await buildSilentProgram().parseAsync([
+      "node",
+      "test",
+      "sync",
+      "--pull",
+      "--no-prune",
+      "--agentfile",
+      "./Agentfile.yaml",
+    ]);
+    expect(install).toHaveBeenCalledWith("skill-creator", { skillOnly: true });
+    expect(update).toHaveBeenCalledWith({ dryRun: false, requestedSkills: ["skill-creator"] });
+  });
+  it.each(["throw", "empty"])("aborts when present Agentfile application fails with %s", async (failure) => {
+    const path = join(mkdtempSync(join(homedir(), "present-policy-")), "Agentfile.yaml");
+    writeFileSync(path, "skills: [skill-creator]\n");
+    if (failure === "throw") {
+      vi.mocked(applyAgentfile).mockImplementationOnce(() => {
+        throw new Error("SYNTHETIC_APPLY_PRIVATE_FIXTURE");
+      });
+    } else vi.mocked(applyAgentfile).mockReturnValueOnce(undefined);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(
+      buildSilentProgram().parseAsync(["node", "test", "sync", "--pull", "--agentfile", path]),
+    ).rejects.toThrow(/Agentfile.*aborted/);
+    expect(update).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(warning.mock.calls.flat().join("\n")).not.toContain("SYNTHETIC_APPLY_PRIVATE_FIXTURE");
   });
 });

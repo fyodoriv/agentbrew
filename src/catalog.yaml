@@ -78,6 +78,15 @@
 # shared code or vice-versa.
 
 skills:
+  - name: skill-creator
+    description: >
+      Create, evaluate, and improve skills with Anthropic's upstream workflow.
+      Don't use for agentbrew catalog registration or as a replacement for a native host's creator.
+    source: anthropics/skills
+    category: development
+    recommended: false
+    preserveExisting: true
+
   # ── Tier 1: Always Recommend ──────────────────────────────────
 
   - name: find-skills

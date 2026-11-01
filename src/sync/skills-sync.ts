@@ -17,6 +17,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "../agentfile-skill-directories.js";
 import { getSourceCacheDir } from "../catalog/index-source.js";
+import { loadCatalog } from "../catalog/types.js";
 import { filterReadsFromAgents } from "../core/agents.js";
 import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
@@ -28,8 +29,9 @@ import { loadManifest, saveManifest } from "../manifest.js";
 import { BACKUPS_DIR, INSTALLED_SKILLS_DIR } from "../paths.js";
 import { pluginSkillDirs } from "../plugins/contributions.js";
 import { loadState } from "../state.js";
-import type { AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
+import type { AgentBrewState, AgentConfig, SkillFeature, SkillSourceDir, Source, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS, DEFAULT_SUPPORTED_SKILL_FEATURES, VENDOR_NEUTRAL_SKILLS_DIR } from "../types.js";
+import { dormantCatalogOwnerPaths } from "../update-owner-preservation.js";
 import { expandHome } from "../utils.js";
 import { protectedLocalSkillPaths, reconcileLocalSkillLinks } from "./local-skill-links.js";
 
@@ -837,8 +839,10 @@ function planSkillsSync(stateAgents: Array<{ name: string; detected: boolean }>)
 /** Carve-out: shared (every skill copy in the plan's deploy targets). */
 function copiesInPlan(plan: SkillsPlan): SkillCopy[] {
   const copies: SkillCopy[] = [];
+  const preservedSources = ownerPreservingCatalogPaths(loadState());
   for (const diff of plan.diffs) {
     for (const { name, sourcePath } of diff.symlinks) {
+      if (preservedSources.has(resolve(sourcePath))) continue;
       const path = join(diff.skillsDir, name);
       if (isSkillCopy(path, sourcePath, plan.knownSourcePaths)) {
         copies.push({ label: diff.label, name, path, sourcePath });
@@ -854,6 +858,23 @@ function copiesInPlan(plan: SkillsPlan): SkillCopy[] {
 export function findSkillCopies(): SkillCopy[] {
   const plan = planSkillsSync(loadState()?.agents ?? []);
   return plan ? copiesInPlan(plan) : [];
+}
+
+/** Selected catalog provenance limits this policy to exact staging leaves.
+ * Manifest-scoped receipts own deployed links; existing destinations stay owned by the person. */
+function ownerPreservingCatalogPaths(state: AgentBrewState | undefined): Set<string> {
+  const providers = new Map(
+    loadCatalog()
+      .skills.filter((skill) => skill.preserveExisting === true)
+      .map((skill) => [skill.name, skill.source]),
+  );
+  return new Set(
+    (state?.sources ?? []).flatMap((source) =>
+      source.skillsInstalled
+        .filter((name) => providers.get(name) === source.url)
+        .map((name) => resolve(expandHome(INSTALLED_SKILLS_DIR), name)),
+    ),
+  );
 }
 
 /** Carve-out: shared (tells the user about every skill copy sync moved, or
@@ -892,16 +913,20 @@ export async function syncSkills(options?: SyncOptions, ctx?: Partial<Context>):
   const declaredRoots = (_state?.skillSourceDirs ?? [])
     .filter((dir) => dir.origin === LOCAL_SKILL_DIRECTORY_ORIGIN)
     .map((dir) => resolve(expandHome(dir.path)));
+  const preservedCatalogPaths = ownerPreservingCatalogPaths(_state);
   const desiredLinks = new Map(
     diffs.flatMap((diff) =>
       diff.symlinks.map((link) => [join(diff.skillsDir, link.name), resolve(link.sourcePath)] as const),
     ),
   );
-  const declaredLinks = new Set(
-    [...desiredLinks]
-      .filter(([, source]) => declaredRoots.some((root) => isWithinPath(source, root)))
+  const declaredLinks = new Set([
+    ...[...desiredLinks]
+      .filter(
+        ([, source]) => preservedCatalogPaths.has(source) || declaredRoots.some((root) => isWithinPath(source, root)),
+      )
       .map(([dest]) => dest),
-  );
+    ...dormantCatalogOwnerPaths(_state, desiredLinks, options?.requestedSkills),
+  ]);
   const protectedPaths = reconcileLocalSkillLinks(manifest, desiredLinks, declaredLinks, {
     dryRun,
     prune: options?.prune !== false,

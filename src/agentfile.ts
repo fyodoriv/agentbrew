@@ -6,7 +6,6 @@ import yaml from "js-yaml";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { LOCAL_SKILL_DIRECTORY_ORIGIN } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
-import { errorMessage } from "./core/errors.js";
 import { fixDeprecatedMemoryServerArgs } from "./mcp/mcpm-hygiene.js";
 import { MEMORY_MANAGED_SERVER_NAME, MEMORY_MANAGED_SOURCE } from "./memory/constants.js";
 import { SHARED_RULES_PATH } from "./paths.js";
@@ -145,9 +144,8 @@ export function loadAgentfile(directory: string): Agentfile | undefined {
       try {
         const content = readFileSync(path, "utf-8");
         return parseAgentfile(content);
-      } catch (error) {
-        const reason = errorMessage(error);
-        console.error(chalk.red(`\n✗ Failed to parse Agentfile: ${reason}`));
+      } catch {
+        console.error(chalk.red("\n✗ Failed to parse Agentfile: invalid or unreadable policy"));
         console.error(chalk.dim(`  File: ${path}`));
         console.error(chalk.dim(`  Fix the YAML syntax and try again.\n`));
         return undefined;
@@ -297,9 +295,8 @@ export function loadAgentfileFromPath(filePath: string): Agentfile | undefined {
   try {
     const content = readFileSync(filePath, "utf-8");
     return parseAgentfile(content);
-  } catch (error) {
-    const reason = errorMessage(error);
-    console.error(chalk.red(`\n✗ Failed to parse Agentfile: ${reason}`));
+  } catch {
+    console.error(chalk.red("\n✗ Failed to parse Agentfile: invalid or unreadable policy"));
     console.error(chalk.dim(`  File: ${filePath}`));
     console.error(chalk.dim(`  Fix the YAML syntax and try again.\n`));
     return undefined;

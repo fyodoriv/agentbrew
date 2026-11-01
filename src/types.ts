@@ -181,6 +181,8 @@ export interface McpJsonConfig {
 }
 
 export interface SyncOptions {
+  /** Per-invocation policy requests that must retain owner protection before installation succeeds. */
+  requestedSkills?: readonly string[];
   quiet?: boolean;
   verbose?: boolean;
   dryRun?: boolean;

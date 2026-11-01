@@ -72,6 +72,17 @@
         "Reports: 'Vision goal: N/A — <reason> (skipped)'",
         "Does NOT fail validation when N/A is used"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "The dotfiles checkout has its source validator and vision-trace workflow, but hosted checks show none on the PR. Careerbrew has no vision-trace gate. Prepare the correct PR sections without inventing goal IDs.",
+      "expected_output": "Validate dotfiles against its current root VISION.md using the actual source gate; omit an invented section for the ungated repo.",
+      "expectations": [
+        "Checks the actual dotfiles source validator and workflow; hosted checks being absent does not remove the source gate",
+        "Validates cited goals against the current root VISION.md and uses the real validator output as evidence",
+        "For careerbrew with no source gate, omit the Vision trace section rather than invent goal IDs or a gate",
+        "Does not claim hosted checks ran when none were present"
+      ]
     }
   ]
 }

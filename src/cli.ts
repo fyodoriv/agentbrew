@@ -227,6 +227,10 @@ function syncStory(options: SyncCommandOptions): string {
 }
 
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
+  if (options.pull) {
+    const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
+    if (!readUpdateSkillRequests(options)) return;
+  }
   if (!options.rollback) await handleSyncWorkspaces(options);
   if (await handleSyncEarlyExits(options)) return;
   if (await refuseSyncOnLockDrift()) return;
@@ -289,7 +293,10 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     // Install before the pull, so the pull's deploy includes skills the
     // Agentfile newly requests.
     await installAgentfileItemsBeforePull(applied, options);
-    await update({ dryRun: options.dryRun ?? false });
+    await update({
+      dryRun: options.dryRun ?? false,
+      ...(applied?.skillsToInstall.length ? { requestedSkills: applied.skillsToInstall } : {}),
+    });
     return true;
   }
   return false;
@@ -301,16 +308,22 @@ type AppliedAgentfile = ReturnType<typeof import("./agentfile.js").applyAgentfil
 async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<AppliedAgentfile> {
   const { applyAgentfile } = await import("./agentfile.js");
   const { expandHome } = await import("./utils.js");
+  const { resolveUpdatePolicyPath } = await import("./update-skill-policy.js");
+  const target = options.agentfile ?? expandHome("~/.config/agentbrew");
   try {
-    return applyAgentfile(options.agentfile ?? expandHome("~/.config/agentbrew"), {
+    const path = resolveUpdatePolicyPath(target, options.agentfile !== undefined);
+    if (!path) return undefined;
+    const applied = applyAgentfile(path, {
       quiet: true,
       authoritative: options.prune !== false,
       includeSkillInstallReport: false,
       dryRun: options.dryRun,
     });
-  } catch (error) {
-    console.warn(chalk.yellow(`  Agentfile apply before pull failed: ${errorMessage(error)}`));
-    return undefined;
+    if (!applied) throw new Error("Agentfile application returned no result");
+    return applied;
+  } catch {
+    process.exitCode = 1;
+    throw new Error(`Agentfile application failed; update aborted (${target}).`);
   }
 }
 

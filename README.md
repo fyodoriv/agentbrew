@@ -836,19 +836,19 @@ Skills-only agents are experimental. Sync only writes to their `skillsDir`, and 
 ## How agentbrew compares
 
 <!-- competition-readme-table:start -->
-<!-- Last refreshed: 2026-05-02. Source: docs/competition-snapshot.json; run `npm run docs:competition` after updating it. -->
+<!-- Last refreshed: 2026-11-01. Source: docs/competition-snapshot.json; run `npm run docs:competition` after updating it. -->
 
 | | AgentBrew | [skills CLI](https://github.com/vercel-labs/skills) | [MCPM](https://github.com/pathintegral-institute/mcpm.sh) | [ai-rules-sync](https://github.com/lbb00/ai-rules-sync) | [block/ai-rules](https://github.com/block/ai-rules) | [skillfile](https://github.com/eljulians/skillfile) |
 |---|---|---|---|---|---|---|
-| Skills sync | All agents | 50+ agents | — | 10+ agents | 10+ agents | 8 agents |
+| Skills sync | Supported targets | 79 listed targets | — | Native assets | Supported targets | 8 agents |
 | MCP sync | Yes | — | 10+ clients | — | Partial | — |
-| Rules sync | Yes | — | — | 10+ agents | 10+ agents | — |
-| Commands sync | Yes | — | — | 10+ agents | 10+ agents | — |
+| Rules sync | Yes | — | — | Native assets | 11 agents | — |
+| Commands sync | Yes | — | — | Native assets | Supported targets | — |
 | Hooks sync | Yes | — | — | — | — | — |
 | Drift detection | Auto (30 min) | — | Manual | — | Manual | — |
 | Auto-repair | Yes | — | — | — | — | — |
 | Catalog | Curated | skills.sh | mcpm.sh | — | — | 110K+ skills |
-| Declarative config | Agentfile | — | — | JSON | Markdown dir | Skillfile |
+| Declarative config | Agentfile | — | — | JSON (project/user) | Markdown dir | Skillfile |
 | Lock file | SHA tracking | Yes (v3) | — | — | — | Yes (SHA + patches) |
 | Export/import | Yes | — | — | — | — | — |
 <!-- competition-readme-table:end -->

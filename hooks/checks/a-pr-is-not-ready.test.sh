@@ -31,6 +31,7 @@ assert_exit_code() {
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/gh" <<'EOF'
 #!/bin/bash
+printf '%s\n' "$*" >> "${MOCK_GH_ARGS:-/dev/null}"
 printf '%s' "${MOCK_GH_OUTPUT:-}"
 EOF
 cat > "$TMP/bin/timeout" <<'EOF'
@@ -80,6 +81,37 @@ assert_exit_code "Test 7 (green + clean → allow)" 0 \
 # Test 8: HOOK_BYPASS env var set with a would-block (failing) PR → allow
 assert_exit_code "Test 8 (HOOK_BYPASS env → allow)" 0 \
   "$(env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" HOOK_BYPASS_A_PR_IS_NOT_READY=1 MOCK_GH_OUTPUT='{"statusCheckRollup":[{"conclusion":"FAILURE"}],"mergeStateStatus":"CLEAN"}' bash -c "printf '%s' '{\"hook_event_name\":\"Stop\",\"transcript_path\":\"$T_READY\"}' | bash '$SCRIPT' >/dev/null 2>&1; echo \$?" | tail -1)"
+
+# Test 9: the repo comes from the PR's own command, not from the first
+# `--repo` anywhere in the transcript (an earlier `gh issue create --repo
+# other/repo` made the hook check other/repo's PR of the same number).
+T_MIXED="$(mk_transcript mixed.jsonl 'gh issue create --repo other/repo --title x' 'gh pr merge 42 --squash')"
+: > "$TMP/gh.args"
+env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+  MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+  bash -c "printf '%s' '$(stop_input "$T_MIXED")' | bash '$SCRIPT' >/dev/null 2>&1"
+if grep -q "other/repo" "$TMP/gh.args"; then
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 9 (repo from the PR command): gh was asked about other/repo")
+else
+  PASS=$((PASS + 1))
+fi
+
+# Test 10: the PR command's own --repo is used.
+T_OWN="$(mk_transcript own.jsonl 'gh issue create --repo other/repo --title x' 'gh pr merge 7 --repo octo/repo --squash')"
+: > "$TMP/gh.args"
+env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+  MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+  bash -c "printf '%s' '$(stop_input "$T_OWN")' | bash '$SCRIPT' >/dev/null 2>&1"
+if grep -q -- "7 --repo octo/repo" "$TMP/gh.args"; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 10 (own --repo): gh args were: $(cat "$TMP/gh.args")"); fi
+
+# Test 11: a merged PR is done, whatever GitHub reports as its merge state.
+assert_exit_code "Test 11 (merged PR → allow)" 0 \
+  "$(run_mocked "$(stop_input "$T_READY")" '{"state":"MERGED","statusCheckRollup":[],"mergeStateStatus":"DIRTY","mergeable":"CONFLICTING"}')"
+
+# Test 12: no grep warnings on stderr.
+err="$(printf '%s' "$(stop_input "$T_OWN")" | env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_OUTPUT='{"state":"OPEN","mergeStateStatus":"CLEAN"}' bash "$SCRIPT" 2>&1 >/dev/null)"
+if grep -q "grep: warning" <<<"$err"; then FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 12 (no grep warning): $err"); else PASS=$((PASS + 1)); fi
 
 echo ""
 echo "a-pr-is-not-ready.sh: $PASS passed, $FAIL failed"

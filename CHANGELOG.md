@@ -103,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `a-pr-is-not-ready` Stop hook checks the PR named by the last `gh pr`
+  command in that command's own repo. It used the first `--repo` in the whole
+  transcript, so an issue filed upstream made it check another repo's PR of
+  the same number and block every Stop. It also passes merged and closed PRs,
+  and no longer prints a `grep: warning: stray \ before -`.
 - `agentbrew measure context` shows the same error and warning counts as
   `agentbrew lint` in its printed lint-failed alert (#461). Before, it counted only
   `validateConfig()`, so a failure such as an oversized command read

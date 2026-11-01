@@ -29,3 +29,8 @@ source (`./skill-plugins/workflow`).
   `src/docs/volatile-count-claims.test.ts` enforces this in `npm test` and
   `npm run verify`. Run it before committing a skill edit:
   `npx vitest run src/docs/volatile-count-claims.test.ts`.
+
+Queue-delivery regression prompts cover fresh timing decisions, hidden push
+hooks, issue ownership and dependent visual baselines. Their expected outcomes
+state which evidence is needed; a valid eval file alone does not prove an
+agent followed the workflow.

@@ -2297,6 +2297,17 @@
         "Moves private data out of the committed skill into the private folder",
         "Squashes or rewrites the unpushed history before the first push and checks the pushed diff for the data"
       ]
+    },
+    {
+      "id": 201,
+      "prompt": "/goal implement all unblocked tasks. The timing task requires ten fresh gate decisions, but the gate and its exercise checker both cache success. Several feature branches also passed full gates before they were combined.",
+      "expected_output": "Registers a fresh, bounded timing measurement before collecting data, distinguishes direct runner batches from whole-suite runs, and verifies the integrated result before claiming the queue delivered.",
+      "expectations": [
+        "Identifies both caches before counting ten invocations as ten timing decisions",
+        "Commits the new measurement contract before observing its result and states its scope and limits",
+        "Keeps a no-code outcome when the unchanged implementation already meets the registered target",
+        "Runs the combined integration gate after dependent branches meet, and never treats isolated branch gates as proof of their combined behavior"
+      ]
     }
   ]
 }

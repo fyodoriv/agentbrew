@@ -129,6 +129,17 @@
         "Does not edit an issue-only parent repo or bypass posting approval",
         "Handoff is last and lists the learning update and issue links"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "Wrap up a private app goal. Push runs a hidden pre-push test suite and the machine requires every heavy command under heavy-run. A reused worktree was clean and fully landed before this session; another managed tree was created by this session.",
+      "expected_output": "Preserves the reused checkout, sends pushes through the shared heavy-command queue, verifies actual push and gate outcomes, and archives only the managed tree that this session no longer needs.",
+      "expectations": [
+        "Inspects the pre-push hook or prior evidence and wraps a push that can run tests in heavy-run",
+        "Waits for the actual push and gate result rather than reporting a queued command as delivered",
+        "Does not archive or delete the reused pre-existing worktree",
+        "Archives the session-created managed tree only after all work is delivered and no running proof needs it"
+      ]
     }
   ]
 }

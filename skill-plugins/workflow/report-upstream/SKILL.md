@@ -49,6 +49,7 @@ Do not offer when:
 
 When the signed-in GitHub account owns that repo, do not open an issue: add a
 task to the repo's own task queue (`TASKS.md` or its tracker) instead.
+Small bugs, data loss, and safety gaps get a fix PR instead (see step 5).
 
 ## Steps
 
@@ -79,7 +80,9 @@ task to the repo's own task queue (`TASKS.md` or its tracker) instead.
 5. **Offer a fix PR** after posting, only if the fix looks small: "Want me to
    make a PR that fixes it?" Only on a second yes: branch, fix, run the repo's
    gate, then `agentbrew contribute` (it forks for you). Link the issue in the
-   PR body.
+   PR body. Fix or task, the regression test, the privacy check, carrying an
+   unmerged fix on the person's machine, and PR upkeep:
+   [references/fix-and-task-prs.md](references/fix-and-task-prs.md).
 
 ## Safety rules
 

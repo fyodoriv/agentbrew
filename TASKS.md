@@ -520,3 +520,11 @@
   - **Success**: all proposed fixtures reject false completion.
   - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
+- [ ] Contributors with push access open a same-repo PR (issue #647)
+  - **ID**: contribute-permission-mode
+  - **Hypothesis**: Goal: reliable contributions. Question: does permission-aware routing remove the two reported failures? Metric: regression failures fall from 2 to 0 by querying upstream push permission and removing the unsupported fork flag.
+  - **Measurement**: `npx vitest run src/contribute.test.ts`
+  - **Success**: 0 failing regression cases, with direct pushes targeting the upstream repository.
+  - **Pivot**: 1 or more failing regression cases means abandon permission routing and redesign the remote resolution before shipping.
+  - **Anchor**: Basili, Caldiera, Rombach (1994), Goal Question Metric; GitHub REST repository permissions.

@@ -2,8 +2,8 @@
 
 ## Start here
 
-agentbrew syncs skills, MCP, rules, commands, and agent definitions across agents,
-for any repo. Public: `github.com/fyodoriv/agentbrew`, branch `main`.
+agentbrew syncs skills, MCP, rules, commands, and agent definitions.
+Repo: `github.com/fyodoriv/agentbrew` (`main`).
 
 Bug or idea? Offer a [safe report](CONTRIBUTING.md#report-problems-and-ideas).
 
@@ -82,7 +82,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 ## Gotchas
 
-- Hosts: [contracts](docs/support-matrix.md), [skill owners](docs/skill-directories.md).
+- [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
 - GitHub Actions is off on this repo. `npm run verify` is the only CI.
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).

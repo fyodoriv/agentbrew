@@ -26,6 +26,13 @@ until `agentbrew memory doctor` and recall succeed. Deterministic CLI actions
 remain usable. Do not disable configured memory or copy private records.
 After research, store dated reusable findings and correct stale facts.
 Keep native memory and account privacy opt-ins unchanged.
+Recall new saved findings before claiming persistence;
+an acknowledgment or counter is not proof. Keep deduplication enabled.
+
+For headless `codex exec`, reads can work while `never` blocks a session save.
+Only with explicit user authorization and no conflicting owner policy, use the
+[invocation-only save recipe](https://github.com/fyodoriv/agentbrew/blob/main/docs/shared-memory-research.md#headless-session-save).
+Never persist that grant or treat a blocked save as recorded learning.
 
 ## Project entry
 

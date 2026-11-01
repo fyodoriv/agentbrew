@@ -112,6 +112,9 @@ It classifies each manifest hook over the window:
   window): a rare trigger, or the hook isn't wired. Informational by default;
   `--strict` makes it fail too.
 
+Hooks with `verdict: allow` (side effects only, such as a scheduled sync) never
+enforce, so the gate leaves them out.
+
 This is the empirical proof a hook is catching violations, and the precondition
 check Phase 3 (`hooks-phase-3-decommission-rules`) runs before deleting a rule
 from `shared-rules.md` — never remove a prose rule whose hook isn't `enforced`.

@@ -177,6 +177,7 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 - A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew removes none of your files in the cache; after a re-pin whose build is refused, the cache stays at the new commit.
 - Say the cache has no build output from a commit, and the build at that commit fails. That counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it. A failed build at that commit may still use it.
 - With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
+- Node entrypoint paths, including package `main`/`bin` and symlink targets, must resolve to files. Valid Node directory entrypoints remain supported.
 - Known limit: when a successful build writes its output to a new place (`build/` instead of `dist/`), detection can still pick the old `dist/` first. Delete the old output dir in the cache.
 - A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
 - Each server's repo is cached at `~/.config/agentbrew/mcp-repos/<name>`, and that dir is reused only for the repo that cloned it. Another URL under the same name is refused, and so is a cache dir with no `origin` remote, a symlink, or a linked worktree. To keep both repos, install the new one under another name (`agentbrew install <other-name> --git <url>`). To replace it, delete the dir.
@@ -923,7 +924,7 @@ agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none]
                                        --share writes a privacy-safe snapshot
 agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]
                                        Open a PR from this branch upstream
-                                       (forks the repo when you lack push access)
+                                       (checks upstream push access; forks when access is absent)
 agentbrew report --title <t> --body-file <f> [--repo <owner/name>] [--yes] [--dry-run]
 agentbrew report --off | --on
                                        Draft an issue for a tool's repo: scrub private
@@ -1039,6 +1040,14 @@ Learning a project moved to careerbrew, which keeps study state across days:
 spaced reviews, retests, and mastery per section. Use its `learn-project` skill
 or the `/careerbrew-learn` command. agentbrew still lists the upstream
 `tutor-setup` and `tutor` skills in its catalog.
+
+### Retired Claude Code mods
+
+`agentbrew status` and its health checks report user-installed `@agentbrew-mods`
+plugins whose source is no longer in the registered local marketplace. Each
+warning names the user-scope `claude plugin uninstall` command. The check is
+read-only and does not change other marketplaces or project installations.
+Unavailable marketplace metadata is not proof that a mod was retired.
 
 ### Publishing to npm
 

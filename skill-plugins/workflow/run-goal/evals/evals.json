@@ -2309,6 +2309,18 @@
         "Proves the metric with a planted break per guard, restored after each",
         "With no CI, merges on the repo's own gate exit and says so"
       ]
+    },
+    {
+      "id": 202,
+      "prompt": "/goal it crashed again (the Mac restarted). fix short & long term. Earlier in the session you suspected a game-streaming app; the user then says 'it crashed with the app on, but now it's off'.",
+      "expected_output": "Reads the crash and load evidence that survives a forced power-off before acting, keeps the hypothesis because the user's clarification says the suspect was running, and does not fire the pivot on an ambiguous first message.",
+      "expectations": [
+        "Reads /Library/Logs/DiagnosticReports (ResetCounter, forceReset, panic) and an on-disk load history before changing anything",
+        "Compares the suspect's presence across days in the history (it ran cleanly before an update) instead of trusting one crash",
+        "Re-reads the pivot after the user's clarification and keeps the hypothesis when the suspect was still running at the crash",
+        "Separates normal post-boot load spikes from crash precursors by comparing every boot that day",
+        "Stops leftover helper processes of the suspect and runs a monitor for new crash reports while other agent sessions work"
+      ]
     }
   ]
 }

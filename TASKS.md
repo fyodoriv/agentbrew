@@ -169,6 +169,19 @@
   - **Anchor**: tooling-checkup agent time review 2026-10-18; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
   - **Blocked**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). Measure on or after 2026-10-25 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the `until <arg>` overall line), then close or pivot.
 
+- [ ] Goal workers use the repo's documented dependency setup
+  - **ID**: workers-use-documented-install-helper
+  - **Tags**: perf, workflow
+  - **Details**: The goal worker brief unconditionally says npm ci before the first gate, while this repo documents scripts/worktree-deps.sh. Remove that contradiction. This is a workflow correctness change; field runtime savings remain unmeasured until a new full window after deployment.
+  - **Files**: skill-plugins/workflow/run-goal/references/parallel-workers.md, skill-plugins/workflow/run-goal/evals/evals.json
+  - **Output**: code
+  - **Acceptance**: independent decision fixtures choose an existing documented helper when present and npm ci for a Node package-lock project with no helper; neither invents a helper or bypasses hooks.
+  - **Hypothesis**: unconditional npm-ci-before-gate directives drop from 1 to 0; both independent fixture choices match the repo's actual setup, 2/2.
+  - **Measurement**: `npm run verify:changed` validates the artifact/evals; `node --input-type=commonjs -e 'const s=require("fs").readFileSync("skill-plugins/workflow/run-goal/references/parallel-workers.md","utf8");const n=(s.match(/npm ci.*alone before the first gate/g)||[]).length;console.log(n);process.exit(n===0?0:1)'` counts unconditional directives; an independent evaluator returns the exact install command for each fixture.
+  - **Success**: 0 unconditional directives, 2/2 fixture decisions correct, and the changed gate exits 0.
+  - **Pivot**: any wrong fixture choice or an invented helper means abandon this wording and make the repo setup boundary explicit before retrying. No runtime savings claim from these fixture decisions.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); repository AGENTS.md install command.
+
 ## P2
 
 - [ ] Report Hallmark's render wait that never ends on apps that poll

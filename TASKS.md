@@ -171,6 +171,33 @@
 
 ## P2
 
+- [ ] Validate the November skills-target delta in native runtimes
+  - **ID**: validate-skills-targets-2026-11
+  - **Tags**: skills, compatibility, validation, blocked-runtime
+  - **Output**: measurement
+  - **Details**: The 2026-11-01 research found allowed upstream target IDs missing from the local name intersection. The exact IDs, claimed project/user paths and availability checks are in `docs/competition/skills-compatibility-2026-11-01.md`. Same-name commands were not found; binary aliases and application IDs remain unverified. Shared directories are not client detection. Reconcile `kimi-code-cli` with existing `kimi-cli`; keep Eve and PromptScript project-only. Preserve the tested Codex feature override, frozen Augment and all four policy exclusions. Do not register a client from marketing alone.
+  - **Measurement**: First obtain a native runtime or a verified native probe for each selected target. Commit a preparation PR with the exact native-load commands and fixture harness before changing adapters. Run those commands plus `npm run verify`; record real native results separately from mocked filesystem controls.
+  - **Hypothesis**: Validated adapters load the expected skill in every selected native target while preserving existing target behavior and user-owned files.
+  - **Success**: Native-load failure rate 0%, user-file loss rate 0% and existing-target regression rate 0% for every adapter retained. Unverified candidates stay unregistered.
+  - **Pivot**: At least 1 native-load failure or ownership regression rejects that adapter approach; do not widen support until a replacement approach is measured.
+  - **Anchor**: Agent Skills specification; Basili, Caldiera and Rombach 1994 (GQM); `docs/competition/skills-compatibility-2026-11-01.md`.
+  - **Files**: src/core/agents.yaml, src/core/agent-name-map.ts, native probe tests, docs/support-matrix.md
+  - **Acceptance**: Each candidate has a native proof or an explicit unresolved runtime dependency; only proved adapters are published. The weekly recurring acceptance completes only after its allowed target delta is resolved.
+  - **Blocked**: required-native-runtime — no native probe was verified for the candidate identities. Public source research is available and already recorded; only native support validation is blocked. Commit runnable instrumentation before adapter changes.
+
+- [ ] Measure the missing Q4 dissolution capacity and story evidence
+  - **ID**: measure-dissolution-capacity-2026-q4
+  - **Tags**: strategy, measurement, blocked-input
+  - **Output**: measurement
+  - **Details**: `docs/competition/dissolution-reviews/2026-Q4.md` confirms the source-size condition, but the compound kill trigger also requires user-story gains. The separate capacity trigger requires current maintenance effort below 0.5 FTE. Neither can be inferred from commits, stars or source lines. Reuse an owner-approved effort/outcome source; do not build a time tracker or publish personal activity records.
+  - **Measurement**: Preparation only. Once the owner identifies an available effort/outcome source and denominator, commit its exact read-only query and measurement period before observing or changing the kill decision. Until then, no runnable capacity query exists and no FTE value is claimed.
+  - **Success**: Both missing trigger inputs have reproducible source-backed measurements, or remain explicitly unknown. No kill decision is changed from proxy metrics.
+  - **Pivot**: If either input is unavailable, retain the unknown result and current keep-and-shrink decision; do not replace the missing input with a vanity metric.
+  - **Anchor**: Existing VISION kill criteria; Forsgren, Humble and Kim 2018; Basili, Caldiera and Rombach 1994.
+  - **Files**: docs/competition/dissolution-reviews/2026-Q4.md, docs/VISION.md only after a measured decision
+  - **Acceptance**: A preparation artifact fixes the query and period before measurement; a later report records the actual evidence and decision. No source deletion is included.
+  - **Blocked**: needs-owner-measurement-source — current maintenance hours and comparable user-story outcomes are not recorded in the reviewed sources. This task does not authorize external account setup or data collection.
+
 - [ ] Report Hallmark's render wait that never ends on apps that poll
   - **ID**: hallmark-render-wait-upstream
   - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first

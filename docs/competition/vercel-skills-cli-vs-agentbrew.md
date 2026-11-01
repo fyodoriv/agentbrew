@@ -1,5 +1,14 @@
 # Vercel `skills` CLI vs agentbrew — Detailed Comparison
 
+> **Current review: 2026-11-01.** Use the [Q4 decision](dissolution-reviews/2026-Q4.md)
+> for the live 25-thread contribution pulse and dissolution checks, and the
+> [compatibility delta](skills-compatibility-2026-11-01.md) for the current
+> 79-target upstream list versus 53 local entries. The existing Codex native
+> override and support-policy exclusions remain deliberate. New native
+> targets are not validated; the weekly recurring task remains partially due.
+> The older dated tables below are historical snapshots, not live state.
+
+
 > **Scope**: This doc is the definitive strategic and technical analysis of `npx skills` (Vercel Labs) against agentbrew's skill installation subsystem. It's the backing evidence for the [**Contribute** verdict in COMPETITION.md](../COMPETITION.md#build-or-contribute--per-competitor-summary) and the now-retired `delegate-skill-install-to-skills-cli` parent task (PR #N retired 2026-04-28; residual sandbox / proxy / offline child closed 2026-05-02).
 >
 > **Last checked: 2026-10-16.** On that date the skills CLI was at npm `skills` v1.7.2 (released 2026-10-09). The repo had about 35.2K stars and 3.0K forks, and it was not archived. The dated sections below are history. Use this table for the current state of each upstream PR or issue that the doc names. "Closed" means closed without a merge.
@@ -889,21 +898,16 @@ The complete list of agentbrew subsystems, with the best upstream home for each 
 | **Discover / scan for agents** | ~250 | **❌ NO UPSTREAM HOME** | — | — | Each tool does its own detection narrowly |
 | **Drift repair orchestrator** | ~160 | Self-assembled per-tool | — | — | Would become "run mcpm doctor; run skills status; etc." |
 
-**Total agentbrew non-test LOC**: ~23,000. **Of that, ~5,000 (~22%) has a clean upstream home.** The remaining **~18,000 LOC (~78%) covers subsystems no upstream tool handles**.
+**Historical April estimate, not a current measurement. Total agentbrew non-test LOC**: ~23,000. **Of that, ~5,000 (~22%) has a clean upstream home.** The remaining **~18,000 LOC (~78%) covers subsystems no upstream tool handles**.
 
-### Fatal gaps: what has no upstream home today
+### Fatal gaps: remaining acceptance boundaries
 
-These are the blockers. If agentbrew dissolved today, these capabilities disappear with it:
-
-1. **Commands / hooks / instructions sync** — no tool covers `.claude/commands/*.md`, `.cursor/rules/*.mdc`, CLAUDE.md, AGENTS.md, etc. syncing across agents. Users would manually copy files.
-2. **Multi-surface drift detection** — no tool asks *"is my config coherent across skills + MCP + rules + commands?"*. Each upstream tool covers its own slice.
-3. **Auto-repair on schedule** — no tool runs a background daemon fixing drift. Users would run `skills check; mcpm doctor; ai-rules status` manually.
-4. **Multi-surface declarative state** — the upstream WIP on skills manifest covers skills only. Nothing unifies skills + MCP + rules in one config file.
-5. **Agent definitions across 44 agents** — Bridle covers 6. Skills CLI covers 45 for *skills* but not *agent definitions*. Agentbrew's `src/core/agents.yaml` is the only cross-agent registry.
-6. **team overlay auto-enable + GHE detection** — organizational-content delivery. Could be handled by publishing a skills.sh-listed repo + a separate agentbrew-slim bootstrap, but the "auto-detect + auto-enable" UX is agentbrew-specific.
-7. **Export / import bundles** — portable multi-surface dotfiles. Lock files cover skills. Nothing covers the multi-surface unified case.
-
-These are the reasons agentbrew exists today. Each has an ecosystem-level justification that survives skills CLI absorbing the skill slice.
+The old seven-item list overstated uniqueness. Several alternatives now
+cover commands, agents, declarative state, status and scheduled sync. The
+[Q4 acceptance-boundary table](dissolution-reviews/2026-Q4.md#fatal-gap-list)
+replaces the old claims with the exact preservation and native-runtime proof
+still needed. Seven boundaries remain unretired; no replacement trial was
+performed in this source review.
 
 ### The ecosystem-mismatch problem
 

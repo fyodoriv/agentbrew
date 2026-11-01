@@ -285,14 +285,14 @@ describe("buildRepoIfNeeded", () => {
   });
 
   it("does nothing when package.json has no build script", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith("package.json"));
     mockReadFileSync.mockReturnValue(JSON.stringify({ scripts: { test: "vitest" } }));
     buildRepoIfNeeded("/some/repo");
     expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 
   it("runs npm install and build when build script exists", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith("package.json"));
     mockReadFileSync.mockReturnValue(JSON.stringify({ scripts: { build: "tsc" } }));
     mockExecFileSync.mockReturnValue(Buffer.from(""));
 
@@ -304,7 +304,7 @@ describe("buildRepoIfNeeded", () => {
   });
 
   it("warns but does not throw on build failure", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith("package.json"));
     mockReadFileSync.mockReturnValue(JSON.stringify({ scripts: { build: "tsc" } }));
     mockExecFileSync
       .mockReturnValueOnce(Buffer.from("")) // npm install succeeds
@@ -317,14 +317,14 @@ describe("buildRepoIfNeeded", () => {
   });
 
   it("does nothing when package.json has no scripts field at all", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith("package.json"));
     mockReadFileSync.mockReturnValue(JSON.stringify({}));
     buildRepoIfNeeded("/some/repo");
     expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 
   it("returns early when package.json is malformed JSON (line 123)", () => {
-    mockExistsSync.mockReturnValue(true);
+    mockExistsSync.mockImplementation((path) => String(path).endsWith("package.json"));
     mockReadFileSync.mockReturnValue("{ not valid json }");
 
     // Should not throw and should not attempt to run npm

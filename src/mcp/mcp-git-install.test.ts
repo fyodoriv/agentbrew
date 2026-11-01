@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
@@ -20,7 +20,7 @@ import { registerMcpCommands } from "../commands/cli-mcp.js";
 import { requireState, saveState } from "../state.js";
 import { addMcpServer } from "../sync/mcp-sync.js";
 import type { AgentBrewState } from "../types.js";
-import { GIT_CACHE_DIR, installMcpFromGit, updateMcpFromGit } from "./mcp-git.js";
+import { buildRepoIfNeeded, finishBuild, GIT_CACHE_DIR, installMcpFromGit, updateMcpFromGit } from "./mcp-git.js";
 import { getShellConfigPath } from "./mcp-wizard.js";
 
 const mockAddMcpServer = vi.mocked(addMcpServer);
@@ -49,12 +49,14 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 /** Commit a build script that writes `<outDir>/<file>` (ignored), or fails; tag it `label`. */
-function commitBuild(repo: string, label: string, opts: { fails?: boolean; out?: string } = {}): void {
+function commitBuild(repo: string, label: string, opts: { fails?: boolean; out?: string; noop?: boolean } = {}): void {
   const out = opts.out ?? "dist/index.js";
   // FIXTURE_BUILD_FAIL makes any build fail, like an offline `npm install`.
   const script = opts.fails
     ? "process.exit(1);\n"
-    : `if (process.env.FIXTURE_BUILD_FAIL) process.exit(1);\nconst fs = require("fs");\nfs.mkdirSync(require("path").dirname("${out}"), { recursive: true });\nfs.writeFileSync("${out}", "// built from ${label}\\n");\n`;
+    : opts.noop
+      ? "// writes nothing\n"
+      : `if (process.env.FIXTURE_BUILD_FAIL) process.exit(1);\nconst fs = require("fs");\nfs.mkdirSync(require("path").dirname("${out}"), { recursive: true });\nfs.writeFileSync("${out}", "// built from ${label}\\n");\n`;
   writeFileSync(join(repo, "build.js"), script);
   git(repo, "add", "build.js");
   git(repo, "commit", "--quiet", "-m", label);
@@ -229,6 +231,152 @@ describe("a failed --git install or update exits 1 and registers nothing stale (
     expect(process.exitCode).toBe(1);
     expect(errors).toHaveBeenCalledWith(expect.stringContaining("--ref <tag|branch|commit>"));
     expect(mockAddMcpServer).not.toHaveBeenCalled();
+  });
+});
+
+describe("a re-pin registers the output its own build wrote, and a refused one puts the cache back (real git)", () => {
+  const sha = (dir: string, ref: string) => git(dir, "rev-parse", `${ref}^{commit}`);
+
+  it("removes new partial output after a failed re-pin and preserves user files", async () => {
+    const repo = nodeRepo("partial-output");
+    writeFileSync(
+      join(repo, "build.js"),
+      'const fs = require("fs"); fs.mkdirSync("build", { recursive: true }); fs.writeFileSync("build/index.js", "partial"); process.exit(1);\n',
+    );
+    git(repo, "add", "build.js");
+    git(repo, "commit", "--quiet", "-m", "v2");
+    git(repo, "tag", "v2");
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    writeFileSync(cached("partial-output", "token.json"), "{}\n");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(existsSync(cached("partial-output", "build", "index.js"))).toBe(false);
+    expect(readFileSync(cached("partial-output", "dist", "index.js"), "utf-8")).toContain("built from v1");
+    expect(existsSync(cached("partial-output", "token.json"))).toBe(true);
+  });
+
+  it("preserves interrupted output instead of deleting the only saved build", async () => {
+    const repo = nodeRepo("interrupted-output");
+    commitBuild(repo, "v2", { out: "build/index.js" });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    const aside = cached("interrupted-output", ".git", "agentbrew-build-aside");
+    mkdirSync(aside, { recursive: true });
+    renameSync(cached("interrupted-output", "dist", "index.js"), join(aside, "0"));
+    mockAddMcpServer.mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(readFileSync(join(aside, "0"), "utf-8")).toContain("built from v1");
+  });
+
+  it("keeps the recovery copy when restoring refused output fails", async () => {
+    const repo = nodeRepo("blocked-restore");
+    commitBuild(repo, "v2", { out: "build/index.js" });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    git(cached("blocked-restore"), "checkout", "v2");
+    const build = buildRepoIfNeeded(cached("blocked-restore"), false, true);
+    expect(build.ok).toBe(true);
+    mkdirSync(cached("blocked-restore", "dist", "index.js"));
+    finishBuild(cached("blocked-restore"), build, false);
+
+    expect(readFileSync(cached("blocked-restore", ".git", "agentbrew-build-aside", "0"), "utf-8")).toContain(
+      "built from v1",
+    );
+  });
+
+  it("registers build/index.js on every run when v2 builds somewhere new, and keeps token.json", async () => {
+    const repo = nodeRepo("moved-out");
+    commitBuild(repo, "v2", { out: "build/index.js" });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    writeFileSync(cached("moved-out", "token.json"), "{}\n");
+
+    for (const run of [1, 2]) {
+      mockAddMcpServer.mockClear();
+      await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+      expect(process.exitCode, `run ${run}`).toBeUndefined();
+      expect(mockAddMcpServer, `run ${run}`).toHaveBeenCalledWith(
+        "moved-out",
+        "node",
+        [cached("moved-out", "build", "index.js")],
+        {},
+        expect.objectContaining({ gitRef: "v2" }),
+      );
+    }
+    expect(existsSync(cached("moved-out", "dist", "index.js"))).toBe(false);
+    expect(existsSync(cached("moved-out", "token.json"))).toBe(true);
+  });
+
+  it("registers build/index.js from a cache an older agentbrew made, which has no output record", async () => {
+    const repo = nodeRepo("legacy-cache");
+    commitBuild(repo, "v2", { out: "build/index.js" });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    rmSync(cached("legacy-cache", ".git", "agentbrew-build-outputs"), { force: true });
+
+    mockAddMcpServer.mockClear();
+    await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+    expect(process.exitCode).toBeUndefined();
+    expect(mockAddMcpServer).toHaveBeenCalledWith(
+      "legacy-cache",
+      "node",
+      [cached("legacy-cache", "build", "index.js")],
+      {},
+      expect.anything(),
+    );
+  });
+
+  it("refuses a build that writes nothing, restores the cache to v1, and keeps v1's output and token.json", async () => {
+    const repo = nodeRepo("noop-build");
+    commitBuild(repo, "v2", { noop: true });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    writeFileSync(cached("noop-build", "token.json"), "{}\n");
+    mockAddMcpServer.mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(mockAddMcpServer).not.toHaveBeenCalled();
+    expect(git(cached("noop-build"), "rev-parse", "HEAD")).toBe(sha(repo, "v1"));
+    expect(readFileSync(cached("noop-build", "dist", "index.js"), "utf-8")).toContain("built from v1");
+    expect(existsSync(cached("noop-build", "token.json"))).toBe(true);
+  });
+
+  it("puts the cache back at the registered commit when a re-pin is refused", async () => {
+    const repo = nodeRepo("put-back");
+    commitBuild(repo, "v2", { fails: true });
+    await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
+    writeFileSync(cached("put-back", "token.json"), "{}\n");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await installMcpFromGit(repo, { ref: "v2", nonInteractive: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(git(cached("put-back"), "rev-parse", "HEAD")).toBe(sha(repo, "v1"));
+    expect(existsSync(cached("put-back", "build.js"))).toBe(true);
+    expect(readFileSync(cached("put-back", "build.js"), "utf-8")).not.toBe("process.exit(1);\n");
+    expect(readFileSync(cached("put-back", "dist", "index.js"), "utf-8")).toContain("built from v1");
+    expect(existsSync(cached("put-back", "token.json"))).toBe(true);
+  });
+
+  it("keeps a followed branch on that branch when `mcp update` is refused", async () => {
+    const repo = nodeRepo("put-back-branch");
+    await installMcpFromGit(repo, { ref: "main", nonInteractive: true });
+    const registered = git(cached("put-back-branch"), "rev-parse", "HEAD");
+    commitBuild(repo, "v2", { fails: true });
+    mockRequireState.mockReturnValue(stateWith("put-back-branch", repo, "main"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await updateMcpFromGit("put-back-branch");
+
+    expect(process.exitCode).toBe(1);
+    expect(git(cached("put-back-branch"), "rev-parse", "HEAD")).toBe(registered);
+    expect(git(cached("put-back-branch"), "symbolic-ref", "--short", "HEAD")).toBe("main");
   });
 });
 

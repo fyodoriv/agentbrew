@@ -155,6 +155,18 @@
 
 ## P1
 
+- [ ] PR readiness resolves quoted command arguments safely
+  - **ID**: pr-readiness-quoted-repo
+  - **Tags**: hooks, reliability
+  - **Details**: Review of PR #679 reproduced two remaining wrong-repository lookups: a repo flag inside a quoted body and a quoted real repo selector. Use the standard shell-word parser already used by hook helpers. Ambiguous or unsupported syntax must warn without guessing a repository.
+  - **Files**: hooks/checks/a-pr-is-not-ready.sh, hooks/checks/a-pr-is-not-ready.test.sh, hooks/lib/pr-command-target.py
+  - **Output**: code
+  - **Hypothesis**: wrong-repository lookups fall from 2 to 0 in the two review fixtures, while all 12 existing controls remain green.
+  - **Measurement**: `bash hooks/checks/a-pr-is-not-ready.test.sh`.
+  - **Success**: 0 wrong lookups, 0 existing control failures, and no status query for ambiguous input.
+  - **Pivot**: any wrong lookup abandons guessed attribution; unsupported commands emit a warning without a status query.
+  - **Anchor**: Basili, Caldiera, Rombach (1994), Goal Question Metric; Python standard-library shlex quotation rules.
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

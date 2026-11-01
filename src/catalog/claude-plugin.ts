@@ -246,19 +246,61 @@ function catalogEntries(): CatalogClaudePlugin[] {
   }
 }
 
+/** Read local plugin metadata without running the CLI or changing its registry. */
+function pluginMetadata(path: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf-8"));
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Read-only, call-scoped retirement check for user-installed mods in our local marketplace. */
+export function checkRetiredModsDrift(): DriftItem[] {
+  const pluginsDir = expandHome("~/.claude/plugins");
+  const marketplace = pluginMetadata(join(pluginsDir, "known_marketplaces.json"))["agentbrew-mods"] as
+    | { source?: { source?: unknown; path?: unknown } }
+    | undefined;
+  const source = marketplace?.source;
+  if (source?.source !== "directory" || typeof source.path !== "string") return [];
+  const sourcePath = expandHome(source.path);
+  const manifest = pluginMetadata(join(sourcePath, ".claude-plugin/marketplace.json"));
+  if (!Array.isArray(manifest.plugins)) return [];
+  const installed = pluginMetadata(join(pluginsDir, "installed_plugins.json")).plugins;
+  if (!installed || typeof installed !== "object" || Array.isArray(installed)) return [];
+  const drift: DriftItem[] = [];
+  for (const [key, scopes] of Object.entries(installed)) {
+    const name = key.match(/^([A-Za-z0-9][A-Za-z0-9._-]*)@agentbrew-mods$/)?.[1];
+    if (!name || !Array.isArray(scopes) || !scopes.some((entry) => entry?.scope === "user")) continue;
+    const entry = manifest.plugins.find((p) => p?.name === name);
+    if (entry && (typeof entry.source !== "string" || existsSync(join(sourcePath, entry.source)))) continue;
+    drift.push({
+      agent: "claude-code",
+      type: "retired-mod",
+      detail: `${key} has no marketplace source — run \`claude plugin uninstall ${key} --scope user\``,
+    });
+  }
+  return drift;
+}
+
 /** Drift for every catalog Claude Code plugin agentbrew installed. */
 export function checkClaudePluginDrift(entries?: CatalogClaudePlugin[]): DriftItem[] {
   const records = readClaudePluginRecords();
-  if (records.length === 0) return [];
   const catalog = entries ?? catalogEntries();
-  return records.flatMap((record) =>
-    recordProblems(
-      record,
-      catalog.find((e) => e.name === record.name),
-    ).map((problem) => ({
-      agent: "claude-code",
-      type: "claude-plugin" as const,
-      detail: `${record.name}: ${problem}`,
-    })),
-  );
+  return [
+    ...checkRetiredModsDrift(),
+    ...records.flatMap((record) =>
+      recordProblems(
+        record,
+        catalog.find((e) => e.name === record.name),
+      ).map((problem) => ({
+        agent: "claude-code",
+        type: "claude-plugin" as const,
+        detail: `${record.name}: ${problem}`,
+      })),
+    ),
+  ];
 }

@@ -177,7 +177,7 @@
   - **Output**: code
   - **Acceptance**: independent decision fixtures choose an existing documented helper when present and npm ci for a Node package-lock project with no helper; neither invents a helper or bypasses hooks.
   - **Hypothesis**: unconditional npm-ci-before-gate directives drop from 1 to 0; both independent fixture choices match the repo's actual setup, 2/2.
-  - **Measurement**: `npm run verify:changed` validates the artifact/evals; `node --input-type=commonjs -e 'const s=require("fs").readFileSync("skill-plugins/workflow/run-goal/references/parallel-workers.md","utf8");const n=(s.match(/npm ci.*alone before the first gate/g)||[]).length;console.log(n);process.exit(n===0?0:1)'` counts unconditional directives; an independent evaluator returns the exact install command for each fixture.
+  - **Measurement**: `npm run verify:changed` validates the artifact/evals; `node --input-type=commonjs -e 'const s=require("fs").readFileSync("skill-plugins/workflow/run-goal/references/parallel-workers.md","utf8");const n=(s.match(/npm ci.\s+alone before\s+the first gate/g)||[]).length;console.log(n);process.exit(n===0?0:1)'` counts unconditional directives; an independent evaluator returns the exact install command for each fixture.
   - **Success**: 0 unconditional directives, 2/2 fixture decisions correct, and the changed gate exits 0.
   - **Pivot**: any wrong fixture choice or an invented helper means abandon this wording and make the repo setup boundary explicit before retrying. No runtime savings claim from these fixture decisions.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); repository AGENTS.md install command.

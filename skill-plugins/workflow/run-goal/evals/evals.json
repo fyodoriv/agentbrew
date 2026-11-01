@@ -2297,6 +2297,26 @@
         "Moves private data out of the committed skill into the private folder",
         "Squashes or rewrites the unpushed history before the first push and checks the pushed diff for the data"
       ]
+    },
+    {
+      "id": 204,
+      "prompt": "/goal fix this Node repo in a worktree. Its AGENTS.md Install command is bash scripts/worktree-deps.sh, that script exists, and package-lock.json is present. Select the setup command before the gate.",
+      "expected_output": "Uses the verified documented repo helper, bash scripts/worktree-deps.sh, as its own setup step.",
+      "expectations": [
+        "Reads AGENTS.md and verifies the helper exists",
+        "Chooses bash scripts/worktree-deps.sh instead of unconditional npm ci",
+        "Runs setup separately from the heavy gate; does not claim field speed savings from this decision"
+      ]
+    },
+    {
+      "id": 205,
+      "prompt": "/goal fix this Node repo in a worktree. It has package-lock.json and no documented dependency helper; no scripts/worktree-deps.sh exists. Select setup before the gate.",
+      "expected_output": "Uses npm ci as the Node lockfile fallback and never invents an absent helper.",
+      "expectations": [
+        "Checks the documented setup and available paths before choosing",
+        "Chooses npm ci for this Node lockfile fixture without inventing scripts/worktree-deps.sh",
+        "Keeps hooks enabled and runs setup separately; does not claim measured runtime savings"
+      ]
     }
   ]
 }

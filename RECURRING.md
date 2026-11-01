@@ -35,12 +35,13 @@ reviews/`), and the `**Last-fired**:` line is bumped.
 
 ## P1
 
-- [ ] Deep re-research every competitor whose Freshness Tracker entry is older than 7 days (21 of 25 today).
+- [ ] Deep re-research every competitor whose Freshness Tracker entry is older than 7 days.
   **ID**: re-research-stale-competitors
   **Tags**: competition-research, strategic-review, docs
   **Cadence**: weekly
   **Last-fired**: 2026-05-02
   **Next**: 2026-05-09
+  **Research**: 2026-11-01 — all 55 current tracker rows were checked against primary sources. The current skills matrix was compared with the current local registry; deliberate native overrides and support-policy exclusions were preserved. The allowed new target identities still need native-runtime proof, tracked by `validate-skills-targets-2026-11`. This firing remains partial; Last-fired and Next are unchanged. See `docs/competition/skills-compatibility-2026-11-01.md` and `docs/competition/dissolution-reviews/2026-Q4.md`.
   **Output**: docs
   **Details**: As of 2026-04-19, only 4 of 25 tracked competitors (skills CLI, MCPM, Smithery CLI, anthropics/skills — all researched 2026-04-12) are within the 7-day freshness window. The other 21 are stale by 8 to 27 days: Compound Engineering, vsync, install-mcp, block/ai-rules, skillfile, ai-rules-sync, OpenViking, knowhub, Warden, Chops, GitAgent (2026-04-11, 8 days old); Skills Manager, MCP Dock, agent-config-sync, mdskills.ai, awesome-codex-subagents, claude-peers-mcp, Context Hub, React Doctor, OpenClaw / ClawHub, dotfiles pattern (2026-03-23, 27 days old).
     Stale data makes the Build-or-Contribute verdicts unreliable. A project that was "Keep separate (stagnant)" 27 days ago may have resumed activity (flipping to "Contribute" or "Complementary"); a project marked "404" (Compound Engineering) may be back; a tool that had 50 stars may now have 2K with new features (GitAgent went 1.1K → 2.6K between the last two refreshes). Every verdict in `docs/COMPETITION.md`'s Build or Contribute? Summary depends on facts no older than a week, and right now most of them are older than two.
@@ -66,7 +67,8 @@ reviews/`), and the `**Last-fired**:` line is bumped.
   **ID**: quarterly-dissolution-reeval
   **Tags**: strategy, dissolution, delegate, contribute, docs
   **Cadence**: quarterly
-  **Next**: 2026-07-01
+  **Last-fired**: 2026-11-01
+  **Next**: 2027-01-01
   **Output**: docs
   **Details**: **Operationalizes the 90-day contribution window from VISION.md § "Delegate, contribute, absorb — in that order".** Each quarter, this task runs Check 1–3 below in one pass:
 

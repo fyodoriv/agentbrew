@@ -2256,14 +2256,46 @@
     },
     {
       "id": 197,
-      "prompt": "/goal implement & ship all unblocked tasks in a Python repo whose tests need the agent sandbox off; first make sure the owner is ready to use the app.",
-      "expected_output": "Classifies owner-blocked tasks as out of scope, proves readiness with an unsandboxed health check, and runs the repo gate outside the sandbox before calling failures real.",
+      "prompt": "/goal implement & ship all unblocked tasks in this repo. You plan parallel worktree workers, but a usage-guard plugin refuses every Agent spawn ('weekly window 81% used; continue without agents').",
+      "expected_output": "Treats the refusal as a lost tool, not a blocked goal: does the tasks itself in this session, one by one, smallest first, and ships each with its gate.",
       "expectations": [
-        "Runs the health check outside the sandbox when sandboxed FAIL lines say the shell is nested",
-        "Lists only tasks without an owner Blocked line as in scope",
-        "Runs the full gate with the sandbox off first, instead of a sandboxed run whose failures are sandbox-only",
-        "Proves the metric with a planted break per guard, restored after each",
-        "With no CI, merges on the repo's own gate exit and says so"
+        "Does not retry the refused spawn",
+        "Does not end the goal as blocked or impossible only because subagents are refused",
+        "Continues the tasks in the main session, one PR per task, each with the gate's exit code",
+        "Says in one line that the fresh-context review subagent could not run and reviews the diff itself instead"
+      ]
+    },
+    {
+      "id": 198,
+      "prompt": "/goal ship five small tasks. The repo gate must run as `heavy-run <cmd>`, a Mac-wide lock that other sessions hold for minutes, and the lock file is not writable inside the sandbox.",
+      "expected_output": "Runs the gate outside the sandbox through heavy-run, in the background, and never edits a working tree while its gate reads it; prepares the next task in a separate worktree meanwhile.",
+      "expectations": [
+        "Reruns heavy-run outside the sandbox after 'Operation not permitted' on its lock",
+        "Starts a queued gate in the background instead of a foreground wait that times out",
+        "Makes no edit to a checkout while its gate is running",
+        "Works on the next task in its own git worktree while the gate waits"
+      ]
+    },
+    {
+      "id": 199,
+      "prompt": "/goal build a cooking feature from my recipes in a Notion page (or Crouton). The task notes assume each recipe is a plain page of text.",
+      "expected_output": "Probes each source's access and real shape before the contract, imports a small slice of real data early, and builds against that shape rather than the assumed fixture.",
+      "expectations": [
+        "Checks access to each named source before writing the contract",
+        "Imports real data before the parser is final",
+        "Records the real shape (for example database cards with a lookup table) when it differs from the notes",
+        "Keeps the real data private and tests with synthetic fixtures of the real shape"
+      ]
+    },
+    {
+      "id": 200,
+      "prompt": "/goal merge app A into app B. Midway the user re-issues /goal with a new end state. A worker copied household data into a committed skill file on an unpushed branch.",
+      "expected_output": "Replaces the old contract with the new one, splits the port across a worker in its own worktree under the shared heavy-run lock, moves the household data to private storage, and squashes before the first push so it never reaches remote history.",
+      "expectations": [
+        "Prints a new contract for the re-issued goal and drops criteria the new end state no longer needs",
+        "Gives the worker its own worktree and the shared heavy-run lock",
+        "Moves private data out of the committed skill into the private folder",
+        "Squashes or rewrites the unpushed history before the first push and checks the pushed diff for the data"
       ]
     }
   ]

@@ -8,6 +8,24 @@ function missingStoryContracts(stories: Array<{ name: string; content: string }>
   return stories.filter((story) => !story.content.includes(acceptance)).map((story) => story.name);
 }
 
+const headlessSaveClauses = [
+  "explicit user authorization",
+  "invocation-only",
+  "configured server ID",
+  "unsupported server ID",
+  'approval_mode="approve"',
+  "`auto`",
+  "existing owner policy",
+  "tool-scoped, not argument-scoped",
+  "Stop on failure",
+  "read-only",
+  "`never`",
+];
+
+function missingHeadlessSaveGuidance(content: string): string[] {
+  return headlessSaveClauses.filter((clause) => !content.includes(clause));
+}
+
 describe("primary-host story acceptance", () => {
   it("applies Claude, ChatGPT and shared-memory acceptance to every story, including future files", () => {
     const dir = join(root, "docs/user-stories");
@@ -36,5 +54,30 @@ describe("primary-host story acceptance", () => {
       "Deterministic CLI actions",
     ])
       expect(template).toContain(word);
+  });
+
+  it("documents authorized headless saves without changing owner permissions", () => {
+    const guide = readFileSync(join(root, "docs/shared-memory-research.md"), "utf-8");
+    expect(missingHeadlessSaveGuidance(guide)).toEqual([]);
+    for (const file of ["templates/AGENTS.md", "docs/user-stories/README.md"])
+      expect(readFileSync(join(root, file), "utf-8")).toContain("headless");
+  });
+
+  it("requires recall before persistence claims for every host, without defeating deduplication", () => {
+    for (const file of ["templates/AGENTS.md", "docs/user-stories/README.md"])
+      for (const clause of [
+        "Recall new saved findings before claiming persistence",
+        "an acknowledgment or counter is not proof",
+        "Keep deduplication enabled",
+      ])
+        expect(readFileSync(join(root, file), "utf-8"), file).toContain(clause);
+  });
+
+  it("rejects absent headless guidance and each omitted permission boundary", () => {
+    const complete = headlessSaveClauses.join("\n");
+    expect(missingHeadlessSaveGuidance(complete)).toEqual([]);
+    expect(missingHeadlessSaveGuidance("Bootstrap, recall and save memory.")).toEqual(headlessSaveClauses);
+    for (const clause of headlessSaveClauses)
+      expect(missingHeadlessSaveGuidance(complete.replace(clause, ""))).toEqual([clause]);
   });
 });

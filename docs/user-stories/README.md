@@ -57,6 +57,12 @@ provider credentials stay with their existing owner. Missing shared memory
 must be reported with its failed tool; block context-dependent work until recall
 is repaired. Do not silently disable configured memory. Deterministic
 CLI actions still work without a model; tests use synthetic memory fixtures.
+Recall new saved findings before claiming persistence;
+an acknowledgment or counter is not proof. Keep deduplication enabled.
+
+For headless Codex runs, reads do not prove permission to save. An explicitly
+authorized session save follows the [invocation-only recipe](../shared-memory-research.md#headless-session-save).
+Preserve existing owner policy and report a failed save as unrecorded.
 
 Source changes must converge through ordinary sync and repair without losing
 owner edits. Repeat sync must be idempotent. Account connections, native

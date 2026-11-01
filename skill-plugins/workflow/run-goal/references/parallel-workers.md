@@ -25,9 +25,15 @@ Contents: Starting workers · Steering running agents · Files the main session 
   `lockf` file while the main session used `heavy-run`; both "held" a lock
   and load reached 64. Another session's e2e gate outside any lock pushed
   it to 161 until the lock became a shared Agentfile rule.
-- The brief says: one simple command per Bash call, `npm ci` alone before
-  the first gate, and queued gates in the background. Compound commands and
-  foreground lock waits were blocked by hooks and cost a round trip each.
+- The brief names the repo's documented dependency setup. Read its AGENTS.md
+  and install guide, then check each named script exists before using it.
+  Prefer that existing helper (for example, `bash scripts/worktree-deps.sh`
+  when this repo declares it). Do not invent a helper from the example.
+  For a Node project with package-lock.json and no documented helper, use
+  `npm ci` as the fallback. Other projects use their own documented setup.
+  Run setup in one simple Bash call before the gate; queue heavy gates in
+  the background. Compound commands and foreground lock waits were blocked
+  by hooks and cost a round trip each.
 - A worker that ends its turn while its run waits for the lock reports
   "completed" with an interim line ("the visual run is still queued"). Read
   its worktree (commits ahead, uncommitted files) before you count it done,

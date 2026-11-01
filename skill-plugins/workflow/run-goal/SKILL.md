@@ -214,6 +214,10 @@ continue?". The user set a goal so that they can be away.
   one batch.
 - After each done-criterion, print a goal check line:
   `Goal check 2/4 ✅ <criterion> — <evidence>`.
+  When the criterion covers a list (tasks moved, events made), name every
+  item and quote the tool's own result lines (titles, saved times, version).
+  A count or "16 others" is not evidence: the goal checker sees only chat
+  text and rejects it.
 
 ### Hopelessly blocked (the exception)
 

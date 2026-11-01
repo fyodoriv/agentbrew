@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -105,6 +105,84 @@ describe("wrap-up open-work.sh", () => {
     expect(r.status).toBe(1); // feat/open is open work
   });
 
+  it("tags a branch whose lines reached main through other PRs as likely landed", () => {
+    // No patch id or merge matches: main got the same lines plus its own edits.
+    const work = repo("landed-elsewhere");
+    git(work, "checkout", "-q", "-b", "feat/landed");
+    const lines = Array.from({ length: 20 }, (_, i) => `line ${i}`);
+    writeFileSync(join(work, "l.txt"), `${lines.join("\n")}\n`);
+    git(work, "add", "l.txt");
+    git(work, "commit", "-q", "-m", "feat: l");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "l.txt"), `header\n${lines.join("\n")}\nfooter\n`);
+    git(work, "add", "l.txt");
+    git(work, "commit", "-q", "-m", "feat: l with more (#2)");
+    git(work, "push", "-q", "origin", "main");
+    git(work, "checkout", "-q", "-b", "feat/open");
+    writeFileSync(join(work, "o.txt"), "o\n");
+    git(work, "add", "o.txt");
+    git(work, "commit", "-q", "-m", "feat: o");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(
+      /branch\s+feat\/landed: 1 commit\(s\) not on main, likely landed \(100% of its added lines are on main\): look, then delete it/,
+    );
+    expect(r.out).toMatch(/branch\s+feat\/open: 1 commit\(s\) not on main\n/);
+  });
+
+  it("never tags a refactor of lines main already had, and never runs a file name", () => {
+    const work = repo("refactor-only");
+    writeFileSync(join(work, "r.txt"), `${Array.from({ length: 10 }, (_, i) => `r ${i}`).join("\n")}\n`);
+    git(work, "add", "r.txt");
+    git(work, "commit", "-q", "-m", "feat: r");
+    git(work, "push", "-q", "origin", "main");
+    git(work, "checkout", "-q", "-b", "refactor/move");
+    writeFileSync(join(work, "r.txt"), `${Array.from({ length: 10 }, (_, i) => `  r ${9 - i}`).join("\n")}\n`);
+    git(work, "commit", "-qam", "refactor: reverse and indent");
+    git(work, "checkout", "-q", "-b", "fix/odd-name", "main");
+    writeFileSync(join(work, "q$(touch${IFS}PWNED)'.txt"), "odd\n");
+    git(work, "add", "-A");
+    git(work, "commit", "-q", "-m", "fix: odd name");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+refactor\/move: 1 commit\(s\) not on main\n/);
+    expect(r.out).toMatch(/branch\s+fix\/odd-name: 1 commit\(s\) not on main\n/);
+    expect(r.out).not.toContain("likely landed");
+    expect(existsSync(join(work, "PWNED")) || existsSync(join(scratch, "PWNED"))).toBe(false);
+  });
+
+  it("never tags a branch with unpushed commits as likely landed", () => {
+    const work = repo("pushed-then-more");
+    git(work, "checkout", "-q", "-b", "feat/pushed");
+    const z = `${Array.from({ length: 10 }, (_, i) => `z ${i}`).join("\n")}\n`;
+    writeFileSync(join(work, "z.txt"), z);
+    git(work, "add", "z.txt");
+    git(work, "commit", "-q", "-m", "feat: z");
+    git(work, "push", "-q", "-u", "origin", "feat/pushed");
+    writeFileSync(join(work, "w.txt"), "new work\n");
+    git(work, "add", "w.txt");
+    git(work, "commit", "-q", "-m", "feat: w");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "z.txt"), `${z}footer\n`);
+    git(work, "add", "z.txt");
+    git(work, "commit", "-q", "-m", "feat: z (#6)");
+    git(work, "push", "-q", "origin", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+feat\/pushed: 2 commit\(s\) not on main\n/);
+    expect(r.out).not.toContain("likely landed");
+  });
+
+  it("never tags a branch that only deletes lines as likely landed", () => {
+    const work = repo("delete-only");
+    git(work, "checkout", "-q", "-b", "chore/rm");
+    git(work, "rm", "-q", "a.txt");
+    git(work, "commit", "-q", "-m", "chore: rm a");
+    git(work, "checkout", "-q", "main");
+    const r = run(work);
+    expect(r.out).toMatch(/branch\s+chore\/rm: 1 commit\(s\) not on main/);
+    expect(r.out).not.toContain("likely landed");
+  });
+
   it("lists a squash-merged branch again after main reverts it", () => {
     const work = repo("squashed-then-reverted");
     git(work, "checkout", "-q", "-b", "feat/undone");
@@ -119,6 +197,52 @@ describe("wrap-up open-work.sh", () => {
     git(work, "push", "-q", "origin", "main");
     const r = run(work);
     expect(r.out).toContain("feat/undone");
+  });
+
+  it("skips a branch whose tip is a merged PR's head, even when its squash carried a conflict fix", () => {
+    const work = repo("merged-pr-head");
+    git(work, "checkout", "-q", "-b", "feat/fixed-up");
+    writeFileSync(join(work, "a.txt"), "a\nb\n");
+    git(work, "commit", "-qam", "feat: b");
+    git(work, "push", "-q", "-u", "origin", "feat/fixed-up");
+    git(work, "checkout", "-q", "main");
+    writeFileSync(join(work, "a.txt"), "a\nB (merged with a conflict fix)\n");
+    git(work, "commit", "-qam", "feat: b (#1)");
+    git(work, "push", "-q", "origin", "main");
+    const tip = git(work, "rev-parse", "feat/fixed-up").trim();
+    const bin = join(scratch, "bin-merged");
+    mkdirSync(bin);
+    writeFileSync(join(bin, "gh"), `#!/bin/sh\ncase "$*" in *"--state merged"*) echo ${tip} ;; esac\n`);
+    chmodSync(join(bin, "gh"), 0o755);
+    const ghEnv: NodeJS.ProcessEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
+    delete ghEnv.BASH_ENV;
+    delete ghEnv.ENV;
+    expect(run(work).out).toContain("feat/fixed-up"); // without gh: no patch id matches, so it is listed
+    const out = spawnSync("bash", [openWork, work], { env: ghEnv, encoding: "utf-8" }).stdout;
+    expect(out).not.toContain("feat/fixed-up");
+  });
+
+  it("skips a clean worktree whose branch was squash-merged, and lists one with uncommitted files", () => {
+    const work = repo("shipped-trees");
+    const done = join(scratch, "shipped-trees-done");
+    const dirty = join(scratch, "shipped-trees-dirty");
+    for (const [wt, b] of [
+      [done, "feat/done-wt"],
+      [dirty, "feat/dirty-wt"],
+    ]) {
+      git(work, "worktree", "add", "-q", "-b", b, wt, "main");
+      writeFileSync(join(wt, `${b.replaceAll("/", "-")}.txt`), "x\n");
+      git(wt, "add", ".");
+      git(wt, "commit", "-q", "-m", `feat: ${b}`);
+      git(work, "merge", "-q", "--squash", b);
+      git(work, "commit", "-q", "-m", `feat: ${b} (#1)`);
+    }
+    git(work, "push", "-q", "origin", "main");
+    writeFileSync(join(dirty, "left.txt"), "left\n");
+    const r = run(work);
+    expect(r.out).not.toContain("feat/done-wt");
+    expect(r.out).toMatch(/worktree\s+.*\[feat\/dirty-wt\]: 1 commit\(s\) not on main, 1 uncommitted file\(s\)/);
+    expect(r.out.match(/\[feat\/dirty-wt\]/g)).toHaveLength(1); // the last worktree is listed once
   });
 
   it("asks the remote for its default branch when origin/HEAD is not set", () => {
@@ -200,7 +324,7 @@ describe("wrap-up open-work.sh", () => {
     mkdirSync(bin);
     writeFileSync(
       join(bin, "gh"),
-      "#!/bin/sh\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
+      "#!/bin/sh\ncase \"$*\" in *reviews*) echo '[]'; exit 0 ;; esac\nprintf '7\\tdraft\\tfeat/draft\\tMERGEABLE\\tgreen\\tParked\\n8\\tready\\tfeat/open\\tMERGEABLE\\tred\\tReady\\n'\n",
     );
     chmodSync(join(bin, "gh"), 0o755);
     const ghEnv: NodeJS.ProcessEnv = { ...env, OPEN_WORK_NO_GH: "0", PATH: `${bin}:${process.env.PATH}` };
@@ -222,6 +346,79 @@ describe("wrap-up open-work.sh", () => {
     const found = Object.values(seen).filter(Boolean).length;
     console.log(`open-work recall: ${found}/${Object.keys(seen).length}`);
     expect(seen, out).toEqual(Object.fromEntries(Object.keys(seen).map((k) => [k, true])));
+  });
+
+  it("flags comments and review bodies by others after the author's last reply (#559)", () => {
+    const work = repo("replies");
+    const bin = join(scratch, "bin-replies");
+    mkdirSync(bin);
+    const prs = [
+      {
+        number: 9,
+        author: { login: "me" },
+        comments: [
+          {
+            author: { login: "alice" },
+            createdAt: "2026-10-01T00:00:00Z",
+            url: "https://x.example.com/c1",
+            body: "old q",
+          },
+          {
+            author: { login: "me" },
+            createdAt: "2026-10-02T00:00:00Z",
+            url: "https://x.example.com/c2",
+            body: "answered",
+          },
+          {
+            author: { login: "bob" },
+            createdAt: "2026-10-03T00:00:00Z",
+            url: "https://x.example.com/c3",
+            body: "new q",
+          },
+          {
+            author: { login: "github-actions" },
+            createdAt: "2026-10-04T00:00:00Z",
+            url: "https://x.example.com/c4",
+            body: "ci",
+          },
+          {
+            author: { login: "carol" },
+            createdAt: "2026-10-04T00:00:00Z",
+            url: "https://x.example.com/c5",
+            body: "LGTM-NOISE",
+          },
+        ],
+        reviews: [
+          {
+            author: { login: "rabbit" },
+            submittedAt: "2026-10-05T00:00:00Z",
+            body: "Nitpick: outside diff range",
+            state: "COMMENTED",
+          },
+          { author: { login: "dave" }, submittedAt: "2026-10-05T00:00:00Z", body: "", state: "APPROVED" },
+        ],
+      },
+    ];
+    writeFileSync(join(bin, "prs.json"), JSON.stringify(prs));
+    writeFileSync(join(bin, "gh"), `#!/bin/sh\ncase "$*" in *reviews*) cat "${join(bin, "prs.json")}" ;; esac\n`);
+    chmodSync(join(bin, "gh"), 0o755);
+    const ghEnv: NodeJS.ProcessEnv = {
+      ...env,
+      OPEN_WORK_NO_GH: "0",
+      OPEN_WORK_IGNORE_BODIES: "NOISE",
+      PATH: `${bin}:${process.env.PATH}`,
+    };
+    delete ghEnv.BASH_ENV;
+    delete ghEnv.ENV;
+    const r = spawnSync("bash", [openWork, work], { env: ghEnv, encoding: "utf-8" });
+    expect(r.stdout).toMatch(/reply\s+#9 comment by bob https:\/\/x\.example\.com\/c3/);
+    expect(r.stdout).toMatch(/reply\s+#9 review by rabbit/);
+    expect(r.stdout).not.toContain("alice");
+    expect(r.stdout).not.toContain("github-actions");
+    expect(r.stdout).not.toContain("carol");
+    expect(r.stdout).not.toContain("dave");
+    expect(r.stdout).not.toContain("new q");
+    expect(r.status).toBe(1);
   });
 
   it("exits 2 for a path that is not a git checkout", () => {

@@ -1,5 +1,7 @@
 # Update Skills & Sources
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > A skill I installed got updated in its source repo. How do I get the new version?
 
 **Metric**: `story_fail_rate` for US13 in [`metrics.md`](../metrics.md): failed `sync --pull` and `skills` runs.

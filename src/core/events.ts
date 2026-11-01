@@ -9,7 +9,8 @@ import { logSkipped } from "./logger.js";
  *
  * Privacy: only allow-listed fields are written. String fields must match a
  * strict enum-like pattern, so no path, server name, message, or other free
- * text can reach the file. Nothing leaves the machine (no telemetry).
+ * text can reach the file. Nothing leaves the machine unless the owner sets a
+ * PostHog key (core/telemetry.ts, opt-in).
  *
  * Lifecycle: the file is append-only, owned by the user's home
  * (~/.local/share/agentbrew/logs/events.jsonl, or AGENTBREW_EVENTS_FILE).

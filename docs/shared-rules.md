@@ -87,7 +87,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Pin that tab: `agent-browser --session <agent>-<task> --pin-tab connect <port>`, then pass the same `--session` on every command, so agents that share one Chrome never drive each other's tabs.
 - Never launch Chrome on launchd-owned profiles. If auth is required, open the target in a stable **headed** SSO browser in a background tab, never raise or focus it, and tell the user which page and browser need sign-in. Then start a background URL/title/HTML listener polling every 2–5 seconds; resume immediately when authenticated, without waiting for the user to reply “done.” Never claim a CDP tab is visible to the user.
 - Non-SSO pages use the same shared agents Chrome; isolation needs go through the temporary browser lock.
-- For frontend/UI work, load `ui-ux-rankings` before emitting UI changes and build to its comfort budget (`references/comfort-patterns.md`: touch targets at least 44 px, text at least 14 px, no serious axe problem in light or dark, taps per everyday job pinned as tests); use `frontend-design` for creative direction; run the page-zero-errors gate when the repo requires it.
+- For frontend/UI work, load `ui-ux-rankings` before emitting UI changes and build to its comfort budget (`references/comfort-patterns.md`: touch targets at least 44 px, text at least 14 px, no serious axe problem in light or dark, taps per everyday job pinned as tests); use `hallmark` for creative direction; run the page-zero-errors gate when the repo requires it.
 
 ## Security and secrets
 
@@ -142,6 +142,7 @@ these three axes when a task allows it:
 
 - Avoid human-blocked asks by looking for API/MCP/browser/self-service paths first.
 - If truly blocked, document why the action is required, why no workaround exists, and what evidence led there before asking.
+- **Support intake bots:** after a post in a support channel, keep working with its intake bot until it fixes the ask or is clearly blocked. If its answer misses the point, use its "refine" control and restate the ask in one or two lines. Give every intake field it asks for. Use its buttons in the agent browser (a background tab), never a desktop app. Blocked means: it hands off to a person, it opens a ticket, it repeats the same wrong answer twice, or it needs input only the operator has. Then stop and report, with the ticket link.
 
 ## Communication
 
@@ -163,15 +164,18 @@ these three axes when a task allows it:
 - Be concise and direct. Say what you are doing before long-running or risky
   commands.
 - Do not give concrete time estimates.
+- **One comment per place on a PR:** never post two comments in a row in the same place on a PR (the conversation, or one review thread) unless 24 hours have passed. Edit your last comment instead.
+- **Judge every draft sent as the user:** before you show a draft PR review, chat message, DM, thread reply, or issue or PR comment, send it to a fresh judge subagent per the `review-pr` skill's `references/draft-judge.md` (members, linked ids, facts, who must act). Show it only after `APPROVED`, and judge it again after any change.
 - Commit, PR, TASKS.md, vision trace, and attribution rules live in **## Git and delivery** — do not duplicate them here.
 
 ## Long-run reports
 
-- A long run ends with an HTML report, not a long chat message. A long run is a goal run, a nightly or overnight run, a checkup or health pass, or any multi-hour job.
-- The report is one self-contained HTML page. It shows what was done, the blockers, and what to do next. Never put secrets in it.
-- Publish it as a private artifact page when the agent can (in Claude Code: the Artifact tool). Otherwise, write the HTML file and give its full path.
+- A long run ends with a published Artifact, not a long chat message and not a loose HTML file. A long run is a goal run, a nightly or overnight run, a checkup or health pass, or any multi-hour job.
+- The Artifact shows what was done, the blockers, and what to do next. Never put secrets or personal data in it.
+- Pick the type with the Artifact tool's quickstart. Numbers that a recurring run refreshes (a checkup, a metrics pass, a goals ledger) go to a Dashboard Artifact; update the same dashboard each run and save its URL in the tool's state folder. A one-off run gets a regular Artifact page.
+- Only without an Artifact tool (an app's own CLI, cron, CI) or for private data, write one self-contained HTML file and give its full path.
 - Screenshots: capture the viewport only (no `fullPage`) at capture time, as JPEG data URIs of about 60 KB. Do not crop afterwards.
-- Then ask the next-action questions in chat, each with its full context.
+- Then ask the next-action questions in chat, each with its full context. Chat gets the link and a one-line result.
 - Explain each blocker in full, so the user can answer without other context: what the thing is in plain words, why it is blocked, the options, and what each option changes for the user.
 
 ## Chat lifecycle (save tokens)

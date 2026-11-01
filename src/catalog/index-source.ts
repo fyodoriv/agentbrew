@@ -536,7 +536,7 @@ function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): voi
 /** Clones a new repository and optionally checks out a specific SHA. */
 function cloneNew(source: Source, cachePath: string, targetSha: string | undefined, cacheKey: string): string {
   const gitUrl = toGitUrl(source);
-  gitExec(["clone", "--depth", "1", "--quiet", gitUrl, cachePath], {
+  gitExec(["clone", "--depth", "1", "--quiet", "--end-of-options", gitUrl, cachePath], {
     env: cacheGitEnv(),
     timeout: 60_000,
     network: true,
@@ -569,7 +569,8 @@ function cloneNew(source: Source, cachePath: string, targetSha: string | undefin
 
 function cloneOrPull(source: Source, options?: { sha?: string }): string | undefined {
   const cachePath = getSourceCacheDir(source);
-  const targetSha = options?.sha;
+  // Only a hex commit id may reach `git checkout`; anything else falls back to HEAD.
+  const targetSha = options?.sha && /^[0-9a-f]{4,40}$/i.test(options.sha) ? options.sha : undefined;
   const cacheKey = `${source.url}:${targetSha ?? "HEAD"}`;
 
   if (existsSync(join(cachePath, ".git"))) {

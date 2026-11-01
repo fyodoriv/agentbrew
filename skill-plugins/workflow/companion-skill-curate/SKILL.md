@@ -144,6 +144,10 @@ output for use in Step 5's "Suggested actions" list.
 
 Full bash, cluster definitions, freshness signals, and discovery venues: read `references/process.md`.
 
+Judge each installed skill and each candidate against `references/quality-standards.md`
+(one home per fact, frontmatter, body, rules wording, testing). A skill that
+fails its review checklist is a finding with the exact fix to propose.
+
 ### Step 5: Write a curation report
 
 Always write `docs/skill-curation/<YYYY-MM-DD>.md`. Report shape and suggested-actions template: `references/report-template.md`.

@@ -18,6 +18,7 @@ describe("buildAgentMatrix", () => {
     expect(row?.commands).toBe(true);
     expect(row?.agents).toBe(true);
     expect(row?.hooks).toBe(true);
+    expect(row?.model).toBe(true);
     expect(row?.experimental).toBe(false);
   });
 
@@ -70,8 +71,9 @@ describe("renderAgentFeatureMatrix", () => {
   it("renders two tables and a paragraph", () => {
     const markdown = renderAgentFeatureMatrix();
     expect(markdown).toContain("### Sync surfaces per agent");
+    expect(markdown).toContain("| Hooks | Model |");
     expect(markdown).toContain("### SKILL.md feature support");
-    expect(markdown).toContain("Skills-only (experimental;");
+    expect(markdown).toContain("Skills-only agents are experimental.");
   });
 
   it("includes claude-code with every surface as ✓", () => {

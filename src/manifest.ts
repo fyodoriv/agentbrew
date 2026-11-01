@@ -8,6 +8,11 @@ import { logSkipped } from "./core/logger.js";
 const MANIFEST_PATH = join(homedir(), ".config", "agentbrew", "manifest.json");
 
 export interface Manifest {
+  /** Manifest-scoped exact links deployed from declared local folders or owner-preserving catalog selections. */
+  localSkillLinks?: Record<string, string>;
+  /** Exact owner destinations encountered by receipt-managed skill sync. Protection ends
+   * when the destination is absent; these paths never grant write ownership. */
+  localSkillConflicts?: string[];
   /** Map of absolute file path → content SHA-256 hash */
   hashes: Record<string, string>;
   /** Set of MCP server names that agentbrew has deployed. Used by prune to
@@ -33,6 +38,11 @@ export interface Manifest {
    *  src/sync/mcp-sync.ts and `sync-idempotent-and-complete` (TASKS.md)
    *  criterion (b). */
   mcpmBridgeAttemptedMissing?: string[];
+  /** Hash of everything the sync-time mcpm bridge reads, taken at the end of
+   *  the last non-dry sync. The bridge skips when it matches, so a server mcpm
+   *  never makes reachable does not cost every sync its mcpm spawns (#580).
+   *  See `src/mcp/mcpm-bridge-fingerprint.ts`. */
+  mcpmBridgeFingerprint?: string;
 }
 
 export function contentHash(content: string): string {

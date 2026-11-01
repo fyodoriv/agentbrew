@@ -59,6 +59,11 @@ Then verify the edit didn't break anything:
 agentbrew status --fix
 ```
 
+## Edit settings.json Safely
+
+Read first, merge small diffs, ask before `allow` rules or hooks, validate
+with `jq`: [references/safe-settings-edits.md](references/safe-settings-edits.md).
+
 ## Remove a Permission
 
 Edit `~/.claude/settings.json` to remove the entry from `allow` or `deny`, then:

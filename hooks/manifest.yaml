@@ -66,7 +66,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: dotfiles/bin/gh (formalized as hook 2026-05-27) + shared-rules.md:1283 "Agent Attribution Footer (ABSOLUTE)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-rationale
@@ -77,7 +77,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:504 "PR Format (canonical structure + brevity is IRON LAW)" + dotfiles/bin/gh
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-validation
@@ -88,7 +88,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: task-command-center skill "PR validation block (IRON LAW)" + templates/AGENTS.md
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-body-requires-docs
@@ -99,7 +99,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: docs/agent-guide-baseline.md "Docs With Every Change" + templates/AGENTS.md
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-skill-requires-evals
@@ -110,7 +110,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: templates/AGENTS.md "Skill PRs Must Ship Evals (IRON LAW)" + Anthropic skill-creator / Superpowers writing-skills
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-agent-artifacts-require-tests
@@ -122,7 +122,7 @@ hooks:
     verdict: block
     bypassEnvVar: HOOK_BYPASS_GH_PR_AGENT_ARTIFACTS_REQUIRE_TESTS
     sourceRule: templates/AGENTS.md "Agent Artifact PRs Need Evidence" + src/agent-artifacts/inventory.ts
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: git-commit-conventional
@@ -133,7 +133,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: dotfiles/git-hooks/commit-msg (formalized as hook 2026-05-27)
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: git-strip-agent-attribution
@@ -144,7 +144,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: no-git-add-all
@@ -155,7 +155,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)" + agentbrew/AGENTS.md
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: no-force-push-protected
@@ -166,7 +166,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Git Safety (Multi-Agent)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: no-cross-workspace-publish
@@ -178,7 +178,7 @@ hooks:
     verdict: block
     bypassEnvVar: HOOK_BYPASS_NO_CROSS_WORKSPACE_PUBLISH
     sourceRule: templates/AGENTS.md "Cross-workspace publishing" + dotfiles bin/gh
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: no-commit-no-verify
@@ -189,7 +189,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: agentbrew/TASKS.md policy "do NOT bypass commit hooks (--no-verify)" + dotfiles/TASKS.md
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: no-binary-screenshots
@@ -200,7 +200,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: templates/AGENTS.md:370 "Never Commit Screenshots to Repos (IRON LAW)" + templates/AGENTS.md:396 "Don't Screenshot Test Output (IRON LAW)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: selectors-pure
@@ -240,7 +240,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md:700 "Manual Test Steps Start at the App URL (IRON LAW)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: pending-internal-work-needs-ticket
@@ -283,7 +283,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "PR bodies stay artifact-focused; reply to reviewers in comments, not the description"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: gh-pr-body-related-prs-not-first
@@ -294,7 +294,7 @@ hooks:
     tier: deterministic
     verdict: block
     sourceRule: shared-rules.md "Never lead with cross-PR navigation; put Related PRs near the bottom"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: async-human-comms-blocks
@@ -325,7 +325,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:311 "Cross-Team Code Touches Batch (HIGHEST PRIORITY IRON LAW)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: env-correct-urls
@@ -336,7 +336,7 @@ hooks:
     tier: deterministic
     verdict: warn
     sourceRule: shared-rules.md:811 "Env-Correct URLs (IRON LAW)"
-    agents: ["claude-code"]
+    agents: ["claude-code", "codex"]
     defaultEnabled: false
 
   - id: comment-brevity-in-tests
@@ -560,6 +560,18 @@ hooks:
     sourceRule: 'docs/agent-perf.md "Hooks that use the log" (2026-10-18 agent time review: until loops were the top recurring step)'
     agents: ["claude-code"]
     defaultEnabled: false
+
+  - id: no-home-crawl
+    description: Block rg, grep -r, ag, ug, fd, find, and the Grep and Glob tools when the search root is $HOME, ~/Library, ~/Library/Application Support, or /; name a narrower path
+    event: PreToolUse
+    matcher: Bash|Grep|Glob
+    script: checks/no-home-crawl.sh
+    tier: deterministic
+    verdict: block
+    bypassEnvVar: HOOK_BYPASS_NO_HOME_CRAWL
+    sourceRule: 'docs/hook-protocol.md "Home-folder searches" (owner request 2026-10-25: home-wide agent searches kept Spotlight and file importers busy, load 322)'
+    agents: ["claude-code"]
+    defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
 
   # ── Usage coaching ──
   - id: usage-tip

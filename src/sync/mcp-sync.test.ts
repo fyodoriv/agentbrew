@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../core/context.js";
+import type { Manifest } from "../manifest.js";
 import { makeMcpAgentDef } from "../test-utils/mcp-fixtures.js";
 import type { AgentBrewState, McpServer } from "../types.js";
 
@@ -637,6 +638,26 @@ describe("syncMcpServers — bridgeStateMcpToMcpm", () => {
 
     expect(mockDelegateMcpNew).toHaveBeenCalledTimes(1);
     expect(mockDelegateMcpClientEdit).not.toHaveBeenCalled();
+  });
+
+  it("skips the bridge on the next sync when nothing it reads changed (#580)", async () => {
+    mockMcpServerConfigEquals.mockReturnValue(false);
+    const state = {
+      agents: [{ name: "claude-code", detected: true, skillsDir: "x", mcpConfig: "~/.claude.json" }],
+      sources: [],
+      mcpServers: [makeServer({ name: "time" })],
+      catalogVersion: "0.1.0",
+    };
+    mockLoadState.mockReturnValue(state);
+    const manifest: Manifest = { hashes: {} };
+
+    await syncMcpServers(undefined, { manifest });
+    await syncMcpServers(undefined, { manifest });
+    expect(mockDelegateMcpNew).toHaveBeenCalledTimes(1);
+
+    mockLoadState.mockReturnValue({ ...state, mcpServers: [makeServer({ name: "time", args: ["changed"] })] });
+    await syncMcpServers(undefined, { manifest });
+    expect(mockDelegateMcpNew).toHaveBeenCalledTimes(2);
   });
 
   it("does not call the bridge on dry runs", async () => {

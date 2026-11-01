@@ -44,6 +44,22 @@
         "Mentions auto-update or soft-update behavior for catalog-origin source repos",
         "Keeps internal skills out of `src/catalog.yaml`"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "An Agentfile requests skill-creator, but the name is absent from the catalog while indexed and native providers already offer creators. Add the explicit public anthropics/skills selection safely for Claude and Codex.",
+      "expected_output": "An optional upstream pointer and a scratch install/deploy proof that preserves existing owners and native creators without guessing a provider or copying upstream bodies.",
+      "expectations": [
+        "Adds only an explicit anthropics/skills pointer with recommended: false; does not vendor the upstream body or select all source skills",
+        "Distinguishes indexed/native providers from catalog name resolution; does not broaden the resolver or guess among providers",
+        "Runs the actual scratch Agentfile through the installer and Claude/Codex deployment, with static compatibility limits stated",
+        "Calibrates existing owner folder and foreign link conflicts; requires zero owner writes and no backup replacement counted as unchanged",
+        "Preserves the Codex builtin creator and treats upstream and native bodies as different workflows",
+        "Runs catalog validation, owner receipt lifecycle tests, and the required repo gate before readiness claims",
+        "Traces the actual sync --pull entrypoint and all upstream subprocesses; inspects installed tool source because check may mutate",
+        "Covers first-pull requests, shared and excluded hosts, and retained owner conflicts before delegation; requires zero owner writes while managed sources continue",
+        "Keeps raw requests protected after a failed fetch and treats unreadable present policy as an error, not absence; aborts without YAML or credential payloads in diagnostics"
+      ]
     }
   ]
 }

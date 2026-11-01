@@ -10,6 +10,7 @@ interface AgentMatrixRow {
   commands: boolean;
   agents: boolean;
   hooks: boolean;
+  model: boolean;
   experimental: boolean;
   skillFeatures: readonly SkillFeature[];
 }
@@ -27,6 +28,7 @@ export function buildAgentMatrix(): AgentMatrixRow[] {
     commands: Boolean(definition.commandsDir),
     agents: Boolean(definition.agentsDir),
     hooks: Boolean(definition.hooksFile),
+    model: Boolean(definition.modelConfig),
     experimental: definition.experimental === true,
     skillFeatures: definition.supportedSkillFeatures ?? DEFAULT_SUPPORTED_SKILL_FEATURES,
   }));
@@ -38,11 +40,11 @@ function check(value: boolean): string {
 
 function renderSyncSurfacesTable(rows: AgentMatrixRow[]): string {
   const stable = rows.filter((row) => !row.experimental).sort((a, b) => a.name.localeCompare(b.name));
-  const header = "| Agent | Skills | MCP | Rules | Commands | Agents | Hooks |";
-  const separator = "|---|---|---|---|---|---|---|";
+  const header = "| Agent | Skills | MCP | Rules | Commands | Agents | Hooks | Model |";
+  const separator = "|---|---|---|---|---|---|---|---|";
   const body = stable.map(
     (row) =>
-      `| ${row.name} | ${check(row.skills)} | ${check(row.mcp)} | ${check(row.rules)} | ${check(row.commands)} | ${check(row.agents)} | ${check(row.hooks)} |`,
+      `| ${row.name} | ${check(row.skills)} | ${check(row.mcp)} | ${check(row.rules)} | ${check(row.commands)} | ${check(row.agents)} | ${check(row.hooks)} | ${check(row.model)} |`,
   );
   return [header, separator, ...body].join("\n");
 }
@@ -63,7 +65,7 @@ function renderExperimentalList(rows: AgentMatrixRow[]): string {
     .filter((row) => row.experimental)
     .map((row) => row.name)
     .sort();
-  return `Skills-only (experimental; sync only writes to \`skillsDir\`; not tested on real user machines beyond the author's): ${experimental.join(", ")}.`;
+  return `Skills-only agents are experimental. Sync only writes to their \`skillsDir\`, and they are not tested on real user machines beyond the author's. They are: ${experimental.map((name) => `\`${name}\``).join(", ")}.`;
 }
 
 /**

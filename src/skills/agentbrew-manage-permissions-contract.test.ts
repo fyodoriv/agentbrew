@@ -12,6 +12,16 @@ const evals = JSON.parse(readFileSync(join(skillRoot, "evals", "evals.json"), "u
 const evalMatching = evalMatcher(evals.evals);
 
 describe("agentbrew-manage-permissions skill contract", () => {
+  it("edits settings.json safely: merge, ask, validate, report refusals", () => {
+    requireTerms(skillText, ["Edit settings.json Safely", "references/safe-settings-edits.md"]);
+    requireTerms(readFileSync(join(skillRoot, "references", "safe-settings-edits.md"), "utf-8"), [
+      "never\n   rewrite the whole file",
+      "Ask the user before you add an `allow` rule or a hook",
+      "jq . ~/.claude/settings.json",
+      "do not retry it or work around it",
+    ]);
+  });
+
   it("pins trigger scope and Claude Code settings ownership", () => {
     requireTerms(skillText, [
       "Manage Claude Code tool permissions.",
@@ -121,7 +131,7 @@ describe("agentbrew-manage-permissions skill contract", () => {
 
   it("keeps eval metadata spec-valid and scenario-rich", () => {
     expect(evals.skill_name).toBe("agentbrew-manage-permissions");
-    expect(evals.evals).toHaveLength(5);
+    expect(evals.evals).toHaveLength(6);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

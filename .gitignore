@@ -33,3 +33,6 @@ plugin-lock.json
 # Local gate timings and caches (scripts/metrics.sh reads them)
 .metrics/
 .playwright-mcp/
+
+# Agent worktrees inside the checkout are nested git repos (src/repo/gitignore-agent-worktrees.test.ts).
+.claude/worktrees/

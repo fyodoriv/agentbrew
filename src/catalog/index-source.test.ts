@@ -1117,6 +1117,35 @@ describe("cloneOrPull with targetSha after fresh clone (lines 284-295)", () => {
     expect(checkoutCall).toBeDefined();
   });
 
+  it("ends options before the clone URL, so a URL that starts with - is never an option", () => {
+    mockExistsSync.mockImplementation((path) => !String(path).includes(".git"));
+    mockReaddirSync.mockReturnValue([] as never);
+    const execCalls: string[][] = [];
+    mockExecFileSync.mockImplementation((_cmd, args) => {
+      execCalls.push(args as string[]);
+      return "" as never;
+    });
+    getSourceCachePath({ ...makeGithubSource(), type: "url", url: "--upload-pack=touch /tmp/x" });
+    const cloneCall = execCalls.find((args) => args.includes("clone"));
+    expect(cloneCall).toBeDefined();
+    const eoo = cloneCall?.indexOf("--end-of-options") ?? -1;
+    expect(eoo).toBeGreaterThan(-1);
+    expect(eoo).toBeLessThan(cloneCall?.findIndex((a) => a.includes("upload-pack")) ?? -1);
+  });
+
+  it("ignores a sha option that is not a hex commit id", () => {
+    mockExistsSync.mockImplementation((path) => !String(path).includes(".git"));
+    mockReaddirSync.mockReturnValue([] as never);
+    const execCalls: string[][] = [];
+    mockExecFileSync.mockImplementation((_cmd, args) => {
+      execCalls.push(args as string[]);
+      return "" as never;
+    });
+    getSourceCachePath(makeGithubSource("user/sha-bad"), { sha: "--orphan=x" });
+    expect(execCalls.some((args) => args.includes("--orphan=x"))).toBe(false);
+    expect(execCalls.some((args) => args.includes("--unshallow"))).toBe(false);
+  });
+
   it("silently continues when unshallow+checkout fails after fresh clone", () => {
     // .git dir does not exist → will clone
     mockExistsSync.mockImplementation((path) => !String(path).includes(".git"));

@@ -202,7 +202,12 @@ Examples:
     .description("Configure environment variables for MCP servers (or bootstrap an agent)")
     .option("--model <model>", "Override the default model (for agent bootstrap)")
     .option("--dry-run", "Preview what would be configured without applying")
-    .action(async (server: string | undefined, options: { model?: string; dryRun?: boolean }) => {
+    .option("--all", "Run the multi-repo setup chain: agentbrew sync, dotfiles, careerbrew, audit-skills")
+    .option("--yes", "With --all: skip the question round and use the defaults")
+    .option("--force", "With --all: rerun steps a past run finished")
+    .option("--dir <dir>", "With --all: folder for the repo clones (default ~/apps)")
+    .action(async (server: string | undefined, options: SetupFlags) => {
+      if (await handleSetupAll(server, options)) return;
       // Agent bootstrap: `agentbrew setup opencode` installs Ollama + Qwen3 + configures OpenCode
       if (server === "opencode") {
         const { bootstrapOpencode } = await import("../mcp/opencode-bootstrap.js");
@@ -224,4 +229,36 @@ Examples:
       const { runMcpSetup } = await import("../mcp/mcp-setup.js");
       await runMcpSetup({ server });
     });
+}
+
+interface SetupFlags {
+  model?: string;
+  dryRun?: boolean;
+  all?: boolean;
+  yes?: boolean;
+  force?: boolean;
+  dir?: string;
+}
+
+/** `setup --all` and its flag warnings. Returns true when it handled the command. */
+async function handleSetupAll(server: string | undefined, options: SetupFlags): Promise<boolean> {
+  if (!options.all) {
+    if (options.yes || options.force || options.dir) {
+      console.warn(chalk.yellow("Warning: --yes, --force, and --dir only apply with --all; ignoring them."));
+    }
+    return false;
+  }
+  if (server || options.model) {
+    console.warn(chalk.yellow("Warning: --all ignores the server name and --model."));
+  }
+  const { runSetupAll } = await import("../setup-all.js");
+  const { expandHome } = await import("../utils.js");
+  const result = await runSetupAll({
+    yes: options.yes,
+    dryRun: options.dryRun,
+    force: options.force,
+    dir: options.dir ? expandHome(options.dir) : undefined,
+  });
+  if (result.failed.length > 0) process.exitCode = 1;
+  return true;
 }

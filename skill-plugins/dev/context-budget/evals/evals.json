@@ -43,6 +43,17 @@
         "Checks TASKS.md for existing trim-shared-rules or token-budget tasks",
         "Does not delete shared-rules content without an explicit trim task or user approval"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "After updating agentbrew, dotfiles, and careerbrew source and syncing Claude Code and Codex, fresh latest.json reports static.softTokenHeadroom=1840 and alerts=[soft-headroom-low]. Runtime usage panes are unavailable. What can the delivery report claim?",
+      "expected_output": "A report grounded in fresh static evidence, with runtime limitations and a new-chat instruction after sync, without invented IDE occupancy or untested business readiness.",
+      "expectations": [
+        "Cites the fresh static.softTokenHeadroom value 1840 and alerts from latest.json, with the measurement source",
+        "Labels runtime usage panes unavailable instead of estimating current IDE chat occupancy or claiming runtime headroom",
+        "Before asking for a new chat, an independent judge checks live that the active chat predates the source/rules/MCP/skills update and the user has not already reloaded; explain that a new chat loads the updated instructions only when that action remains needed",
+        "Limits readiness claims to measured setup paths, not all business workflows or account authentication"
+      ]
     }
   ]
 }

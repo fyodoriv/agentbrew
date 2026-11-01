@@ -100,10 +100,39 @@ export function toClaudeHooksConfig(hooks: ManagedHook[]): ClaudeHooksConfig {
   return config;
 }
 
+const CODEX_HOOK_EVENTS = new Set([
+  "SessionStart",
+  "SessionEnd",
+  "PreToolUse",
+  "PermissionRequest",
+  "PostToolUse",
+  "PreCompact",
+  "PostCompact",
+  "UserPromptSubmit",
+  "SubagentStart",
+  "SubagentStop",
+  "Stop",
+  "Interrupt",
+]);
+
 export function filterHooksForTarget(hooks: ManagedHook[], agentName: string): ManagedHook[] {
-  return hooks.filter(
-    (hook) => hook.agents === undefined || hook.agents.length === 0 || hook.agents.includes(agentName),
-  );
+  return hooks
+    .filter((hook) => {
+      if (hook.agents?.length && !hook.agents.includes(agentName)) return false;
+      if (agentName !== "codex") return true;
+      return (
+        CODEX_HOOK_EVENTS.has(hook.event) &&
+        hook.type === "command" &&
+        hook.if === undefined &&
+        hook.once === undefined &&
+        hook.asyncRewake === undefined
+      );
+    })
+    .map((hook) =>
+      agentName === "codex" && ["SessionEnd", "Interrupt"].includes(hook.event) && hook.timeout !== undefined
+        ? { ...hook, timeout: Math.min(hook.timeout, 3) }
+        : hook,
+    );
 }
 
 /** Identity of one deployed hook item: "event:matcher command" (or prompt). */
@@ -171,8 +200,11 @@ export function mergeHooksConfig(
 
     // Keep user groups whole; from previously managed groups keep the user's own hooks.
     const userGroups = existingGroups.flatMap((g) => {
-      if (!previousManagedKeys.has(hookKey(event, g.matcher))) return [g];
-      const own = g.hooks.filter((item) => !isAgentbrewHook(event, g.matcher, item));
+      const wasManaged = previousManagedKeys.has(hookKey(event, g.matcher));
+      const own = g.hooks.filter((item) => {
+        if (desiredIds.has(hookItemId(event, g.matcher, item))) return false;
+        return !wasManaged || !isAgentbrewHook(event, g.matcher, item);
+      });
       return own.length > 0 ? [{ ...g, hooks: own }] : [];
     });
 
@@ -195,6 +227,29 @@ function managedKeysForConfig(config: ClaudeHooksConfig): string[] {
   return Object.entries(config).flatMap(([event, groups]) => groups.map((group) => hookKey(event, group.matcher)));
 }
 
+function hookGroupNeedsUpdate(
+  event: string,
+  existing: ClaudeHookGroup,
+  desired: ClaudeHookGroup,
+  currentIdCounts: Map<string, number>,
+): boolean {
+  return (
+    JSON.stringify(existing.hooks) !== JSON.stringify(desired.hooks) ||
+    desired.hooks.some((item) => (currentIdCounts.get(hookItemId(event, desired.matcher, item)) ?? 0) > 1)
+  );
+}
+
+function hookIdCounts(config: ClaudeHooksConfig): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const id of managedHookIdsForConfig(config)) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return counts;
+}
+
+function findDesiredHookGroup(groups: ClaudeHookGroup[], desired: ClaudeHookGroup): ClaudeHookGroup | undefined {
+  const matching = groups.filter((group) => (group.matcher ?? "*") === (desired.matcher ?? "*"));
+  return matching.find((group) => JSON.stringify(group.hooks) === JSON.stringify(desired.hooks)) ?? matching[0];
+}
+
 /** Compute diff between current and desired hooks for a single target. */
 export function computeHooksDiff(
   currentConfig: ClaudeHooksConfig,
@@ -202,16 +257,17 @@ export function computeHooksDiff(
   previousManagedKeys: Set<string>,
 ): HooksDiffAction[] {
   const actions: HooksDiffAction[] = [];
+  const currentIdCounts = hookIdCounts(currentConfig);
 
   // Check desired hooks — add or update
   for (const [event, groups] of Object.entries(desiredConfig)) {
     for (const group of groups) {
       const key = hookKey(event, group.matcher);
       const existingGroups = currentConfig[event] ?? [];
-      const match = existingGroups.find((g) => (g.matcher ?? undefined) === (group.matcher ?? undefined));
+      const match = findDesiredHookGroup(existingGroups, group);
       if (!match) {
         actions.push({ key, type: "add" });
-      } else if (JSON.stringify(match.hooks) !== JSON.stringify(group.hooks)) {
+      } else if (hookGroupNeedsUpdate(event, match, group, currentIdCounts)) {
         actions.push({ key, type: "update" });
       }
     }
@@ -259,7 +315,7 @@ function settingsHooks(settings: SettingsJson, hooksKey: string): ClaudeHooksCon
 
 function readHooksFile(filePath: string, target: HooksTarget): { raw: HooksJson; hooks: ClaudeHooksConfig } {
   const raw = readSettingsFile(filePath);
-  if (target.format === "claude-settings") {
+  if (target.format === "claude-settings" || target.format === "codex") {
     return { raw, hooks: settingsHooks(raw, target.hooksKey) };
   }
   return { raw, hooks: isClaudeHooksConfig(raw) ? (raw as ClaudeHooksConfig) : {} };
@@ -274,7 +330,7 @@ function applyHooksSettings(settings: SettingsJson, hooksKey: string, hooks: Cla
 }
 
 function hooksFileContent(settings: SettingsJson, hooks: ClaudeHooksConfig, target: HooksTarget): HooksJson {
-  if (target.format === "claude-settings") {
+  if (target.format === "claude-settings" || target.format === "codex") {
     applyHooksSettings(settings, target.hooksKey, hooks);
     return settings;
   }
@@ -490,6 +546,11 @@ function processHooksTargets(targets: HooksTarget[], hooks: ManagedHook[], sctx:
       setManagedIdsForTarget(sctx.manifest, target, result.managedIds);
     }
     logTargetResult(result.actions, target.agentName, sctx);
+    if (target.agentName === "codex" && result.managedIds.length > 0 && !sctx.quiet) {
+      sctx.log.log(
+        "  Codex hooks are configured; new or changed definitions need review and trust in /hooks before they run.",
+      );
+    }
     total += result.actions.length;
   }
   return total;

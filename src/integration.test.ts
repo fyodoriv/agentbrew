@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import TOML from "@iarna/toml";
 /**
  * Integration tests for agentbrew — tests real cross-module interactions
  * with a sandboxed home directory. Only external concerns are mocked
@@ -2898,14 +2899,17 @@ describe("agent definitions sync (US20)", () => {
     await syncAgentDefs({ quiet: true });
     log.reset();
 
-    // Verify deployed to Codex (flat format: reviewer.md)
-    const agentAgentFile = join(TEST_HOME, ".codex", "agents", "reviewer.md");
+    // Verify native Codex fields after deployment.
+    const agentAgentFile = join(TEST_HOME, ".codex", "agents", "reviewer.toml");
     expect(existsSync(agentAgentFile)).toBe(true);
     const content = readFileSync(agentAgentFile, "utf-8");
-    expect(content).toContain("Code Reviewer");
+    expect(TOML.parse(content)).toMatchObject({
+      name: "reviewer",
+      developer_instructions: "# Reviewer\nYou review code.\n",
+    });
   });
 
-  it("syncAgentDefs deploys to Codex in flat format", async () => {
+  it("syncAgentDefs deploys to Codex in native TOML format", async () => {
     writeFileSync(join(AGENT_DEF_SOURCE, "debugger.md"), "# Debugger\nYou find and fix bugs.\n");
 
     const log = captureLog();
@@ -2913,8 +2917,8 @@ describe("agent definitions sync (US20)", () => {
     await syncAgentDefs({ quiet: true });
     log.reset();
 
-    // Codex uses flat format
-    const codexAgentFile = join(TEST_HOME, ".codex", "agents", "debugger.md");
+    // Codex reads TOML agent files.
+    const codexAgentFile = join(TEST_HOME, ".codex", "agents", "debugger.toml");
     expect(existsSync(codexAgentFile)).toBe(true);
   });
 
@@ -2922,7 +2926,12 @@ describe("agent definitions sync (US20)", () => {
     // Create a user-owned agent definition directly in codex
     const agentAgentsDir = join(TEST_HOME, ".codex", "agents");
     mkdirSync(agentAgentsDir, { recursive: true });
-    writeFileSync(join(agentAgentsDir, "my-custom.md"), "# Custom\nMy personal agent.\n");
+    const customAgent = TOML.stringify({
+      name: "my-custom",
+      description: "Personal helper",
+      developer_instructions: "My personal agent.",
+    });
+    writeFileSync(join(agentAgentsDir, "my-custom.toml"), customAgent);
 
     // Create a source with a different definition
     writeFileSync(join(AGENT_DEF_SOURCE, "managed.md"), "# Managed\nAgentbrew-managed agent.\n");
@@ -2933,12 +2942,12 @@ describe("agent definitions sync (US20)", () => {
     log.reset();
 
     // User's custom definition should still exist
-    expect(existsSync(join(agentAgentsDir, "my-custom.md"))).toBe(true);
-    const customContent = readFileSync(join(agentAgentsDir, "my-custom.md"), "utf-8");
-    expect(customContent).toContain("My personal agent");
+    expect(existsSync(join(agentAgentsDir, "my-custom.toml"))).toBe(true);
+    const customContent = readFileSync(join(agentAgentsDir, "my-custom.toml"), "utf-8");
+    expect(customContent).toBe(customAgent);
 
     // Managed definition should also be deployed
-    expect(existsSync(join(agentAgentsDir, "managed.md"))).toBe(true);
+    expect(existsSync(join(agentAgentsDir, "managed.toml"))).toBe(true);
   });
 
   it("syncAgentDefs is idempotent — second sync produces no errors", async () => {
@@ -2955,7 +2964,7 @@ describe("agent definitions sync (US20)", () => {
     log2.reset();
 
     // File still exists after second sync
-    const agentFile = join(TEST_HOME, ".codex", "agents", "helper.md");
+    const agentFile = join(TEST_HOME, ".codex", "agents", "helper.toml");
     expect(existsSync(agentFile)).toBe(true);
   });
 
@@ -2968,7 +2977,7 @@ describe("agent definitions sync (US20)", () => {
     log.reset();
 
     // File should NOT exist in any agent dir
-    const agentFile = join(TEST_HOME, ".codex", "agents", "dryrun-agent.md");
+    const agentFile = join(TEST_HOME, ".codex", "agents", "dryrun-agent.toml");
     expect(existsSync(agentFile)).toBe(false);
   });
 });

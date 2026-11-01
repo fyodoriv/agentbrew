@@ -3,6 +3,17 @@
 Run this at the end of every goal, including a BLOCKED stop. The aim is that
 the next goal goes faster, so each finding must change something.
 
+## Screenshots in the final report
+
+The final report often needs before/after screenshots. Get them right in one
+try:
+
+- Embed each one as a JPEG data URI of about 100 KB. A `file://` image does not
+  load in Playwright `setContent` or in a published Artifact.
+- Crop a phone screenshot to the device viewport (iPhone 13: 390x664). A
+  full-page capture puts a fixed tab bar in the middle of the image. Open the
+  PNG itself, set its width and `height: auto`, then clip to the viewport.
+
 ## 1. Collect the facts
 
 - **Timeline**: when you started, when you finished, and the long gaps.
@@ -40,6 +51,9 @@ never the installed mirror.
 - `readlink -f ~/.claude/skills/<name>` shows a symlink target, for skills
   linked by hand or by a project.
 - `git -C <source dir> remote get-url origin` shows who owns the repo.
+- agentbrew installs copies, not symlinks, so find run-goal's own local
+  checkout with `git -C <dir> remote get-url origin` on candidate folders
+  (for example `find ~ -maxdepth 4 -type d -name agentbrew`).
 
 ## 5. Route the edit by owner
 
@@ -63,6 +77,12 @@ Keep each edit small. Every skill used gets one update:
 Follow the target repo's rules (`AGENTS.md`): tests, docs, commit style, and
 leak checks.
 
+Check fast before the full suite. A retro edit can push SKILL.md past its
+500-line cap, and only the full suite (minutes) used to catch it. Before
+the full suite, run `wc -l` on each edited SKILL.md and the skill's own test
+files (`npx vitest run src/skills/<skill>-*.test.ts`). Then run the full
+suite once.
+
 ### Evals with skill-creator in a goal run
 
 The third-party `skill-creator` skill (anthropics/skills) assumes a human in
@@ -83,6 +103,19 @@ the loop. In a goal run:
 If the agent has a memory tool, store the reusable lessons: decisions with
 their reasons, errors with their fixes, and user corrections. Store no
 secrets and no raw transcripts.
+
+Keep the memory clean while you store:
+
+- Update an existing entry before you create a new one, and delete entries
+  that turned out to be wrong.
+- One fact per entry. Write absolute dates, not "yesterday".
+- Skip what the repo or git history already records.
+- When the goal measured a number (a count, a balance, a timing), store the
+  final value with its date. The next run then has a baseline.
+
+When the user corrected how you work, or a standing rule turned out to be
+missing, update the source of the user's rules too: `AGENTS.md`, or the file
+that generates `CLAUDE.md`. Keep it short: each rule must change behavior.
 
 A skill that worked as written still gets an edit, such as a new eval case.
 An existing eval that already covers the run is not an update. The

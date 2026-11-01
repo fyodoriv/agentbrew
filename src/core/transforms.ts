@@ -1,4 +1,5 @@
 // Pattern: Strategy (Gamma et al. 1994, Design Patterns). See VISION.md "Pattern conformance index".
+import yaml from "js-yaml";
 import type { CommandTransform } from "../types.js";
 
 function stripFrontmatter(content: string): string {
@@ -41,8 +42,21 @@ function toGeminiFormat(content: string): string {
   return `description = "${escapedDesc}"\n\nprompt = """\n${escapedBody}\n"""\n`;
 }
 
+function toCodexFormat(content: string): string {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return content;
+  const fields = yaml.load(match[1]) as Record<string, unknown> | undefined;
+  const metadata: Record<string, string> = {};
+  for (const key of ["description", "argument-hint"]) {
+    if (typeof fields?.[key] === "string") metadata[key] = fields[key];
+  }
+  const body = content.slice(match[0].length);
+  return Object.keys(metadata).length > 0 ? `---\n${yaml.dump(metadata)}---\n${body}` : body;
+}
+
 const TRANSFORM_MAP: Record<string, CommandTransform> = {
   gemini: toGeminiFormat,
+  codex: toCodexFormat,
 };
 
 export function resolveTransform(key: string | undefined): CommandTransform | undefined {

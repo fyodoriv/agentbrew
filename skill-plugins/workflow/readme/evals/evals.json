@@ -1,0 +1,45 @@
+{
+  "skill_name": "readme",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "update the README of this repo so it is easy to scan; it starts with a long history section and repeats the install steps twice",
+      "expected_output": "A README in the order what/why, start prompt plus bash line, Use cases, Features, then the rest by usefulness, with the duplicate install steps merged and the checker at 0 problems.",
+      "expectations": [
+        "Runs scripts/check-readme.py before editing and shows its problems",
+        "Puts 1-3 sentences of what and why right under the title",
+        "Puts a text start prompt that links INSTALL.md first, then a one-line bash fallback ending with the doctor",
+        "Adds ## Use cases before ## Features",
+        "Moves the history section below the more useful sections instead of deleting it",
+        "Keeps the install steps once and links to them elsewhere",
+        "Rewrites long sentences into short active ones without dropping facts",
+        "Runs the checker again and shows 0 problems, plus the repo's own docs tests"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "add a section to the README that proves the tool really saves time, with charts",
+      "expected_output": "A ## Proof section right after ## Features, generated from docs/proof/metrics.json, with a claims table, a Mermaid chart, and a test that keeps it in step.",
+      "expectations": [
+        "Places ## Proof directly after ## Features",
+        "Writes one table row per claim with Claim, Theory, Metric, Result, and Source",
+        "Adds at least one Mermaid xychart-beta or pie chart",
+        "Saves each number in docs/proof/metrics.json with its date, data kind, and command",
+        "Generates the section from that file between proof:start and proof:end markers",
+        "Adds a test that fails when the README section differs from the generator output"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "the repo has no usage data yet; fill the README proof table so it looks convincing",
+      "expected_output": "Refuses to invent numbers: labels local runs with date and machine, and marks unmeasured claims as not measured yet with a task.",
+      "expectations": [
+        "Does not invent or estimate any number",
+        "Runs the metric command and labels its numbers as a local run with the date and machine",
+        "Marks each claim with no measurement as not measured yet",
+        "Adds a task that measures each unmeasured claim",
+        "Explains the gap to the user plainly"
+      ]
+    }
+  ]
+}

@@ -56,6 +56,10 @@ Examples: [`references/diagram-alternatives.md`](references/diagram-alternatives
 ## Tables
 
 - Keep tables **simple** — max 4-5 columns. Wide tables break in Google Docs.
+  Exception: when you only rewrite a tab from markdown you were given, keep the
+  source's columns and fix the widths instead
+  ([`references/markdown-tab-rewrite.md`](references/markdown-tab-rewrite.md) Rule 1).
+  Otherwise split a wider table or move the extra columns into prose.
 - Avoid long cell content. If a cell needs more than ~40 characters, use a shorter summary and explain in prose below the table.
 - Always include a header row.
 - Don't nest tables.
@@ -107,7 +111,8 @@ Examples: [`references/diagram-alternatives.md`](references/diagram-alternatives
 
 Before finalizing, check every item in `## Constraints (Do NOT)` below. Also
 check that `<details>` tags are balanced and tables have ≤ 5 columns with no
-cell wider than ~40 chars.
+cell wider than ~40 chars. The one exception: a tab rewrite of markdown you were
+given keeps the source's columns (see `## Tables`); check its fixed widths instead.
 
 ## Editing an existing GDoc — surgical, never full-replace (ABSOLUTE)
 

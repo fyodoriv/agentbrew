@@ -1,5 +1,5 @@
 export type CommandTransform = (content: string) => string;
-export type HooksFormat = "claude-settings" | "claude-direct";
+export type HooksFormat = "claude-settings" | "claude-direct" | "codex";
 export type HooksScope = "user" | "project";
 
 /**
@@ -62,8 +62,8 @@ export interface AgentConfig {
   rulesFile?: string;
   commandsDir?: string;
   agentsDir?: string;
-  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md (AGENT.md per subdir). */
-  agentsDirFormat?: "flat" | "subdir";
+  /** How agents are stored in agentsDir — "flat" writes name.md, "subdir" writes name/AGENT.md, "codex" writes name.toml. */
+  agentsDirFormat?: "flat" | "subdir" | "codex";
   commandTransform?: CommandTransform;
   commandFileExt?: string;
   /** Agent names whose skills/commands/agents dirs this agent already reads. Skip deploying to this agent's dirs to avoid duplicates. */
@@ -181,6 +181,8 @@ export interface McpJsonConfig {
 }
 
 export interface SyncOptions {
+  /** Per-invocation policy requests that must retain owner protection before installation succeeds. */
+  requestedSkills?: readonly string[];
   quiet?: boolean;
   verbose?: boolean;
   dryRun?: boolean;
@@ -241,6 +243,8 @@ export interface SkillSourceDir {
   format?: "standard" | "tasks-md";
   /** Where this source dir was added from — e.g. "agentfile", "user", or "team:<label>". */
   origin?: string;
+  /** Declaring Agentfile directory; each owner retains its own source registration. */
+  agentfile?: string;
 }
 
 /** A managed hook entry stored in state and synced to agent config files. */
@@ -271,12 +275,6 @@ export interface MemoryConfig {
   packPaths?: string[];
 }
 
-/** One `/work` step and the Agentfile dir that declared it. */
-export interface WorkStepEntry {
-  step: string;
-  agentfile: string;
-}
-
 export interface AgentBrewState {
   schemaVersion?: number;
   agents: AgentConfig[];
@@ -289,9 +287,10 @@ export interface AgentBrewState {
   skillSourceDirs?: SkillSourceDir[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
   agentSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
-  /** `/work` steps from Agentfile `workSteps:` lists, with the Agentfile dir that declared each (#440). */
-  workSteps?: WorkStepEntry[];
+  /** Legacy: `/work` steps older syncs saved. /work moved to careerbrew (#610); the next sync deletes this key. */
+  workSteps?: unknown[];
   /** `agentfile` is the directory of the owning Agentfile for `origin: "agentfile"` entries; absent on pre-ownership entries, which are never pruned. */
+  /** Command source folders or selected Markdown files; ownership is the declaring Agentfile directory. */
   commandSourceDirs?: Array<{ label: string; path: string; origin?: string; agentfile?: string }>;
   hooks?: ManagedHook[];
   externalMcpServers?: string[];

@@ -2417,6 +2417,29 @@ describe("install — dryRun option for catalog skill", () => {
     expect(mockCpSync).not.toHaveBeenCalled();
     expect(mockSaveState).not.toHaveBeenCalled();
   });
+
+  it("a skill-only dry run previews a catalog skill without installing it", async () => {
+    mockLoadCatalog.mockReturnValue({
+      skills: [
+        {
+          name: "test-driven-development",
+          description: "TDD skill",
+          source: "obra/superpowers",
+          category: "testing",
+          recommended: false,
+        },
+      ],
+      mcp_servers: [],
+      rules: [],
+      cli_tools: [],
+    });
+    mockLoadState.mockReturnValue(makeState());
+    await install("test-driven-development", { dryRun: true, skillOnly: true });
+    const logs = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
+    expect(logs).toContain("Would install skill");
+    expect(mockCpSync).not.toHaveBeenCalled();
+    expect(mockSaveState).not.toHaveBeenCalled();
+  });
 });
 
 // ── install — dryRun for MCP server (lines 90-97) ────────────────────────────

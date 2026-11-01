@@ -69,7 +69,7 @@ import { loadCatalog } from "./catalog/types.js";
 import { clean, detectItemTypes } from "./clean.js";
 import { remove } from "./remove.js";
 import { setSetting } from "./settings.js";
-import { loadState } from "./state.js";
+import { loadState, saveState } from "./state.js";
 import { userOverridesBuiltin } from "./sync/builtin-commands.js";
 import { removeMcpServer } from "./sync/mcp-sync.js";
 
@@ -219,6 +219,17 @@ describe("remove", () => {
     mockDetectItemTypes.mockReturnValue(["command"]);
     await remove("my-command", { yes: true });
     expect(mockClean).toHaveBeenCalledWith("my-command", { type: "command", yes: true });
+  });
+
+  it("removing a command also drops the command source with that label", async () => {
+    const keep = { label: "other", path: "/x/other/commands", origin: "agentfile" as const };
+    mockLoadState.mockReturnValue({
+      ...makeState(),
+      commandSourceDirs: [{ label: "my-app", path: "/x/my-app/commands", origin: "agentfile" }, keep],
+    });
+    mockDetectItemTypes.mockReturnValue(["command"]);
+    await remove("my-app", { yes: true });
+    expect(vi.mocked(saveState)).toHaveBeenCalledWith(expect.objectContaining({ commandSourceDirs: [keep] }));
   });
 
   it("removing a built-in command turns built-in commands off first, so the follow-up sync does not put it back", async () => {

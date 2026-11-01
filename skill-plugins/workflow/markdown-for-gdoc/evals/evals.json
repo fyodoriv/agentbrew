@@ -196,6 +196,17 @@
         "Does not re-apply bold or change the font when the API already shows bold: true",
         "Re-checks the tab in the browser with the every-page screenshot sweep after the widths change"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "Write a new Google Doc section from my notes. The notes list 8 services, and for each one: owner, region, tier, on-call, SLO, and last incident. Then run your final checklist.",
+      "expected_output": "The agent writes the markdown itself, so the strict table rule applies. It keeps every table at 5 columns or fewer: it splits the data into two tables or moves some fields into prose. Its final checklist passes the column check without citing the rewrite exception, because no given markdown is being rewritten.",
+      "expectations": [
+        "No table in the output has more than 5 columns",
+        "Keeps all six fields for each service, in a second table or in prose",
+        "Does not use the tab-rewrite exception, because it wrote the markdown itself",
+        "The final checklist reports the column check as passed"
+      ]
     }
   ]
 }

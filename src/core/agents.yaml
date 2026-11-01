@@ -150,7 +150,13 @@
   mcpFormat: toml
   mcpKey: mcp_servers
   rulesFile: ~/.codex/AGENTS.md
+  commandsDir: ~/.codex/prompts
+  commandTransform: codex
+  hooksFile: ~/.codex/hooks.json
+  hooksFormat: codex
+  supportedSkillFeatures: []
   agentsDir: ~/.codex/agents
+  agentsDirFormat: codex
   modelConfig:
     file: ~/.codex/config.toml
     path: model

@@ -156,6 +156,24 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).toContain("merge-ready");
   });
 
+  it("runs the rule-template readers when only a templates/rules file changes", () => {
+    const root = repoWithChange("templates/rules/demo.mdc");
+    const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    const list = readFileSync(SCRIPT, "utf8").match(/^template_rule_readers=\((.*)\)$/m)?.[1] ?? "";
+    const readers = list.split(" ").filter(Boolean);
+    expect(readers).toContain("src/sync/catalog-template-rules.test.ts");
+    for (const t of readers) expect(result.stdout).toContain(`  ${t}\n`);
+    expect(result.stdout).toContain("merge-ready");
+  });
+
+  it("lists only rule-template reader tests that exist", () => {
+    const list = readFileSync(SCRIPT, "utf8").match(/^template_rule_readers=\((.*)\)$/m)?.[1] ?? "";
+    for (const t of list.split(" ").filter(Boolean)) {
+      expect(existsSync(resolve(import.meta.dirname, "..", t)), t).toBe(true);
+    }
+  });
+
   it("lists only skill scanner tests that exist", () => {
     const list = readFileSync(SCRIPT, "utf8").match(/^skill_scanners=\((.*)\)$/m)?.[1] ?? "";
     const scanners = list.split(" ").filter(Boolean);

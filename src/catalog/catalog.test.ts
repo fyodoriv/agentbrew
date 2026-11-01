@@ -769,6 +769,17 @@ describe("impeccable in catalog", () => {
   });
 });
 
+describe("getCatalogData — one recommended creative-direction design skill", () => {
+  it("recommends hallmark and not frontend-design, which covers the same job", () => {
+    mockLoadState.mockReturnValue(makeState());
+    const data = getCatalogData({ skills: true });
+    const hallmark = data.skills.find((s) => s.name === "hallmark");
+    expect(hallmark?.source).toBe("nutlope/hallmark");
+    expect(hallmark?.recommended).toBe(true);
+    expect(data.skills.find((s) => s.name === "frontend-design")?.recommended).toBe(false);
+  });
+});
+
 describe("getCatalogData — installed flag for builtin catalog skills", () => {
   it("marks a builtin catalog skill as installed when its source URL has it in skillsInstalled", () => {
     // brainstorming is in catalog.yaml with source: obra/superpowers

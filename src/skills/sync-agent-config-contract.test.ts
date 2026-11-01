@@ -23,6 +23,46 @@ function evalById(id: number) {
 }
 
 describe("sync-agent-config skill contract", () => {
+  it("requires native discovery and harmless invocation when legacy prompt commands fail", () => {
+    requireTerms(skillText, ["references/native-command-entry-points.md", "harmless live invocation"]);
+    const nativeReference = readFileSync(join(skillRoot, "references", "native-command-entry-points.md"), "utf-8");
+    requireTerms(nativeReference, [
+      "Deployed files do not prove command parity",
+      "harmless live invocation",
+      "$agentbrew-command-<name>",
+      "model-bound",
+      "source-command-*",
+    ]);
+    requireTerms(scenarioText(evalById(6)), [
+      /Unrecognized command/i,
+      /native skill discovery/i,
+      /quoted positional arguments/i,
+      /Preserves owner-managed/i,
+      /Does not execute ship-it/i,
+    ]);
+  });
+
+  it("routes budget-limited command guidance into references without weakening gates", () => {
+    const reference = readFileSync(join(skillRoot, "references", "native-command-entry-points.md"), "utf-8");
+    requireTerms(reference, ["before the expensive full gate", "Do not increase budgets or baselines"]);
+    requireTerms(scenarioText(evalById(7)), [
+      /10,000-byte/i,
+      /reference/i,
+      /Does not raise/i,
+      /before the expensive full gate/i,
+    ]);
+  });
+
+  it("verifies new-session changes from a fresh headless init record", () => {
+    requireTerms(skillText, ["Verify in a Fresh Session", "references/verify-fresh-session.md"]);
+    requireTerms(readFileSync(join(skillRoot, "references", "verify-fresh-session.md"), "utf-8"), [
+      'select(.subtype=="init")',
+      "head -1",
+      "pipe-test",
+    ]);
+    requireTerms(expectationText(evalById(4)), [/new session/i, /init line by subtype/i]);
+  });
+
   it("pins sync workflow, verification, and wrong-tool boundaries", () => {
     requireTerms(skillText, [
       "name: sync-agent-config",
@@ -42,7 +82,7 @@ describe("sync-agent-config skill contract", () => {
 
   it("keeps eval metadata and pressure scenarios", () => {
     expect(evals.skill_name).toBe("sync-agent-config");
-    expect(evals.evals).toHaveLength(3);
+    expect(evals.evals.length).toBeGreaterThanOrEqual(4);
     requireTerms(expectationText(evalById(1)), ["agentbrew sync"]);
     requireTerms(expectationText(evalById(2)), ["--only mcp"]);
   });

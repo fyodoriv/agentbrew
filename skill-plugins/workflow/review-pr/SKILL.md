@@ -139,8 +139,13 @@ REVIEW_DIR=<path> node <skill-dir>/scripts/review-run.mjs report
 ```
 
 It writes `report.md` (the draft) and `report.json`, and prints how many
-findings it kept and dropped. Show the user `report.md` and the dropped count,
-then ask. After a yes:
+findings it kept and dropped. Before you show it, send the whole draft to a
+fresh judge subagent with the PR facts, as
+[references/draft-judge.md](references/draft-judge.md) says. Fix each
+`REJECTED` line in `merged.json` or `verdicts.json` (never in `report.md`,
+which `report` rewrites), re-run `report`, and judge again, at most 3 rounds.
+After `APPROVED`, show the user `report.md`
+and the dropped count, then ask. After a yes:
 
 1. Check that the head has not moved
    (`gh pr view <n> -R <owner/repo> --json headRefOid`). If it moved, start a
@@ -169,5 +174,7 @@ file.
 
 ## Related
 
+- [references/draft-judge.md](references/draft-judge.md): the same judge for
+  every message an agent drafts as the user (chat, DM, thread reply, comment).
 - `requesting-code-review`: send a reviewer over your own work before merge.
 - `receiving-code-review`: answer review feedback on your own PR.

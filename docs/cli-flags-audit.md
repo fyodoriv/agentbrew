@@ -19,7 +19,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 |---|---|---|
 | `--agent` | knob | Picks one agent; the default already covers every agent. |
 | `--agentfile` | knob | Points at an Agentfile path; the default path is used without it. |
-| `--all` | knob | Widens `mcp` output to every server; the default is the managed set. |
+| `--all` | knob | Widens `mcp` output to every server; the default is the managed set. On `setup`, runs the multi-repo chain, which clones and installs other repos; too wide for plain `setup`. |
 | `--args` | knob | Supplies server arguments; input, not behavior. |
 | `--base` | knob | Names the upstream base branch for a contribution PR; input, not behavior. |
 | `--body-file` | knob | Names the PR body file; input, not behavior. |
@@ -47,6 +47,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--if-stale` | knob | Skips a fresh snapshot after a given age; the value is the knob. |
 | `--ignore-session-env` | opt-out | Agent callers are already detected by default (CLAUDECODE set, no tty); the flag forces the same warning-not-drift handling for a caller with a tty. |
 | `--include-deprecated` | debug | Shows deprecated catalog entries that are hidden by default. |
+| `--dir` | knob | Names the folder for `setup --all` repo clones; the default `~/apps` is used without it. |
 | `--into` | knob | Names the repo `audit-skills` proposes to adopt local items into; input, not behavior. |
 | `--json` | knob | Machine-readable output for scripts; humans get the table by default. |
 | `--local` | knob | Scope choice for install (project folder). |

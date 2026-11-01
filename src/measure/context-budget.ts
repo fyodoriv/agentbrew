@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
+import { loadAgentDefinitions } from "../core/agents.js";
 import { logSkipped } from "../core/logger.js";
 import { lintCounts, silentLintCounts } from "../lint.js";
 import { CONTEXT_BUDGET_LATEST_PATH, CONTEXT_BUDGET_METRICS_DIR, SHARED_RULES_PATH } from "../paths.js";
@@ -25,6 +26,7 @@ import {
   tryOpenusageDaily,
 } from "./context-budget-runtime.js";
 import { CONTEXT_BUDGET_POST_SYNC_INTERVAL_MS, shouldMeasureContextBudget } from "./context-budget-throttle.js";
+import { breakdownDeployedRules, type DeployedBreakdown } from "./deployed-breakdown.js";
 
 export const CONTEXT_BUDGET_SCHEMA_VERSION = 1 as const;
 
@@ -59,6 +61,8 @@ export interface ContextBudgetSnapshot {
     lintErrors: number;
     lintWarnings: number;
   };
+  /** Sources of the deployed claude-code rules file and their shares (#518); absent when the file is missing. */
+  deployed?: DeployedBreakdown & { file: string };
   inventory: {
     agentCount: number;
     detectedAgentCount: number;
@@ -115,6 +119,38 @@ function readInstructionsContent(): string {
   } catch (error) {
     logSkipped("measure/context-budget/instructions", error);
     return "";
+  }
+}
+
+function collectDeployedBreakdown(): (DeployedBreakdown & { file: string }) | undefined {
+  try {
+    const file = loadAgentDefinitions().find((a) => a.name === "claude-code")?.rulesFile;
+    if (!file) return undefined;
+    const path = expandHome(file);
+    if (!existsSync(path)) return undefined;
+    return { file, ...breakdownDeployedRules(readFileSync(path, "utf8")) };
+  } catch (error) {
+    logSkipped("measure/context-budget/deployed", error);
+    return undefined;
+  }
+}
+
+function printDeployedBreakdown(deployed: ContextBudgetSnapshot["deployed"]): void {
+  if (!deployed || deployed.sources.length === 0) return;
+  console.log(
+    chalk.dim(`  ${deployed.file} by source (~${Math.ceil(deployed.totalChars / 4).toLocaleString()} tokens):`),
+  );
+  for (const s of deployed.sources) {
+    const blocks = s.blocks.length > 0 ? chalk.dim(` (${s.blocks.join(", ")})`) : "";
+    console.log(
+      `    ${s.sharePct.toFixed(1).padStart(5)}%  ~${s.tokens.toLocaleString()} tokens  ${s.source}${blocks}`,
+    );
+  }
+  if (deployed.duplicates.length > 0) {
+    console.log(`  ${ICON_WARNING} ${deployed.duplicates.length} line(s) appear in two sources; keep one home:`);
+    for (const d of deployed.duplicates.slice(0, 5)) {
+      console.log(chalk.dim(`    ${d.sources.join(" + ")}: ${d.text.slice(0, 80)}`));
+    }
   }
 }
 
@@ -195,6 +231,7 @@ export function buildContextBudgetSnapshot(options?: {
     schemaVersion: CONTEXT_BUDGET_SCHEMA_VERSION,
     measuredAt: new Date().toISOString(),
     static: staticBlock,
+    deployed: collectDeployedBreakdown(),
     inventory: {
       agentCount: status?.agents.length ?? 0,
       detectedAgentCount: detectedAgents.length,
@@ -284,6 +321,7 @@ function printHumanSummary(snapshot: ContextBudgetSnapshot, writtenPaths: string
     `  ${chalk.dim("shared-rules.md")} ${s.sharedRulesBytes.toLocaleString()} bytes / ${s.sharedRulesLines} lines`,
   );
   printTopSections(s.topSections);
+  printDeployedBreakdown(snapshot.deployed);
   console.log(`  ${chalk.dim("headroom")} ~${s.softTokenHeadroom.toLocaleString()} tokens to soft target`);
   console.log(
     `  ${chalk.dim("inventory")} ${inventory.detectedAgentCount} agents, ${inventory.mcpServerCount} MCP, ${inventory.skillCount} skills`,

@@ -15,6 +15,25 @@ rules.
 
 Before creating a new skill, search existing skill sources and extend the closest fit when possible.
 
+## Shared memory
+
+Claude Code and ChatGPT Work/Codex must use configured shared memory:
+call `get_bootstrap_profile`
+at session entry, `memory_search` before context-dependent decisions, and
+`commit_session_legacy` once before finish. If configured memory fails, name the
+failed tool, report "shared memory unavailable", and block context-dependent work
+until `agentbrew memory doctor` and recall succeed. Deterministic CLI actions
+remain usable. Do not disable configured memory or copy private records.
+After research, store dated reusable findings and correct stale facts.
+Keep native memory and account privacy opt-ins unchanged.
+Recall new saved findings before claiming persistence;
+an acknowledgment or counter is not proof. Keep deduplication enabled.
+
+For headless `codex exec`, reads can work while `never` blocks a session save.
+Only with explicit user authorization and no conflicting owner policy, use the
+[invocation-only save recipe](https://github.com/fyodoriv/agentbrew/blob/main/docs/shared-memory-research.md#headless-session-save).
+Never persist that grant or treat a blocked save as recorded learning.
+
 ## Project entry
 
 For non-trivial repo work, run `bash ~/.config/agentbrew/scripts/load-project-context.sh` from the repo root. Read its files and follow links/imports to depth 2. If no `Agentfile.yaml` exists, use `agentfile-init`. Preview with `agentbrew sync --dry-run`; deploy with `agentbrew sync`.

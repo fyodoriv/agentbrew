@@ -44,7 +44,10 @@ state.yaml (mcpServers)          →  mcp-sync.ts                  →  Native M
                                                                       e.g. ~/.kiro/settings/mcp.json,
                                                                       ~/.config/opencode/opencode.json); intersection clients
                                                                       in `MCP_INTERSECTION_AGENTS` delegate to `mcpm install` +
-                                                                      `mcpm client edit` via mcp-delegate.ts. agents.yaml
+                                                                      `mcpm client edit` via mcp-delegate.ts. The bridge is
+                                                                      skipped while its inputs match the manifest's
+                                                                      `mcpmBridgeFingerprint` (mcpm-bridge-fingerprint.ts).
+                                                                      agents.yaml
                                                                       `mcpPermissionsConfig` also writes permissions.allow
                                                                       (no core agent uses it today).
 shared-rules.md                  →  rules-sync.ts                →  Native writes for `AGENTBREW_ONLY_RULES_AGENTS` (paths in
@@ -121,3 +124,22 @@ Then run `agentbrew sync`. The source repo owns the skill files — agentbrew ju
 | `~/.config/agentbrew/` | **agentbrew** | state.yaml, shared rules, commands, backups, manifest |
 
 **Rule**: Never have both repos write to the same target path.
+
+## Codex native output
+
+Commands deploy as explicit native `agentbrew-command-<name>` skills under
+`~/.codex/skills/`; legacy clients also get `~/.codex/prompts/*.md`. The prompt transform keeps `description`, `argument-hint`, `$ARGUMENTS`,
+and positional placeholders. It removes Claude-only frontmatter. Codex custom
+agents deploy to `~/.codex/agents/*.toml`, with `name`, `description`, and
+`developer_instructions`. Model and tool frontmatter are not portable; the
+agent inherits Codex's model and permissions.
+
+Hook ownership stays per target in the deployment manifest. Sync merges Codex
+hooks with user entries, including endpoint hooks, and preserves top-level
+metadata. It does not grant hook trust. [Codex support](support-matrix.md)
+lists the verified limits and user review step.
+
+
+Continuous sync watches registered source folders as well as configuration;
+watch-instance roots refresh when state registration changes. Generated sync
+bookkeeping cannot schedule another sync. See the [host contracts](support-matrix.md#continuous-repair-and-workflow-acceptance).

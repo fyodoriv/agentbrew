@@ -3,7 +3,8 @@ name: agentbrew-status
 description: >
   Check agentbrew health: agents, MCP servers, drift. Use when the user says
   "what's deployed", "check agentbrew", "is everything in sync", "what skills
-  do I have", or "show status".
+  do I have", or "show status". Also maps the setup and the commands the user
+  can type ("show my setup", "what commands can I type").
 ---
 
 ## What You Do
@@ -21,6 +22,8 @@ agentbrew status --fix     # detect drift and AUTO-REPAIR it
 `status` shows what's configured. `status --fix` detects drift and fixes it in place.
 Use plain `status` to check without repairing, or `status --ci` for CI gates (exit 1 on drift, no color).
 
+See Setup Overview below for runtime checks.
+
 ## Drill Into Subsystems
 
 ```bash
@@ -32,6 +35,13 @@ agentbrew status --verbose # skills per agent + per-source counts (was `skills s
 agentbrew commands list    # deployed slash commands
 agentbrew status           # also shows drift inline (no separate `diff` subcommand)
 ```
+
+## Setup Overview and Commands
+
+For "show my setup", "what commands can I type", or "what does /x do", follow
+[references/setup-overview.md](references/setup-overview.md): a compact map of
+skills, rules, memory, settings, hooks, and permissions read from the sources,
+and a command table with an example per command.
 
 ## Diagnose Drift
 

@@ -22,10 +22,18 @@ exactly what is left.
    working directory), plus any paths the user passed.
 2. Run `scripts/open-work.sh <repo> ...` from this skill's folder. It prints
    one line per item: `dirty`, `do-not-stage`, `worktree`, `stash`,
-   `unpushed`, `branch`, `pr`, or `unknown`, with paths, branch names and
+   `unpushed`, `branch`, `pr`, `reply`, or `unknown`, with paths, branch names and
    counts only. Exit 1 means something is open. A squash-merged branch is not
    `branch` open work, even after the default branch changed the same lines,
-   unless the default branch reverted it.
+   unless the default branch reverted it; nor is a branch whose tip is a merged PR's head (needs `gh`).
+   The same holds for a `worktree` of such a branch with no uncommitted files.
+   A `branch` line that ends "likely landed (N% of its added lines are on
+   main): look, then delete it" reached the default branch through other PRs
+   (`OPEN_WORK_LANDED_PCT`, default 90). Check `git log main..<branch>`, then
+   offer to delete it; do not tell the user to continue it.
+   A `reply` line is a comment or review body by someone else on your open PR,
+   posted after your last reply: answer each one. `OPEN_WORK_IGNORE_AUTHORS`
+   and `OPEN_WORK_IGNORE_BODIES` (extended regexes) skip bots and noise.
 3. Add what no script can see: promises in the transcript ("I'll add a test
    later", a step the user asked for that you skipped), failing checks you
    left, review comments you did not answer, and steps that need the owner
@@ -98,9 +106,9 @@ and the report. Never post anywhere else (Slack, Jira, email) to wrap up.
 
 ## 4. Report
 
-End with one self-contained HTML page (shared-rules **## Long-run reports**):
-publish it as a private Artifact when the Artifact tool exists, else send the
-file or give its full path. It holds:
+End with a published Artifact (shared-rules **## Long-run reports**), not a
+loose HTML file. Only without the Artifact tool or with private data, send a
+self-contained HTML file or give its full path. It holds:
 
 - **Delivered:** each PR link, merged.
 - **Draft:** each draft PR link and its pending task ids.

@@ -1,5 +1,7 @@
 # Status & Health
 
+[Shared host acceptance](README.md#shared-host-acceptance) applies to this story and its regression tests.
+
 > I run `agentbrew status` and know exactly what's configured, what's drifting, and what's broken.
 
 **Metric**: `story_fail_rate` for US25 in [`metrics.md`](../metrics.md): failed `status` runs, `status --ci` on drift included.

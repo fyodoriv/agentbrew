@@ -98,6 +98,7 @@ export const CONFIRM: Readonly<Record<string, string>> = {
 /** What an agent must do differently from a person at a terminal. */
 export const AGENT_NOTES: Readonly<Record<string, string>> = {
   sync: "show `agentbrew sync --dry-run` before you ask",
+  telemetry: "`send` uploads usage counts to PostHog; show `telemetry send --dry-run` and ask first",
   status: "--fix rewrites agent configs like `agentbrew sync`; ask first",
   install:
     "show --dry-run first; pass --yes after the user says yes, and --from <source> when a name is in several sources; with --git, pass --env KEY for each env var, and --yes so a missing value fails instead of prompting",

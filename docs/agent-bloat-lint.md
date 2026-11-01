@@ -34,12 +34,12 @@ Shared-rules duplicate headings, section token budgets, and **core** growth vs `
 
 ## CI
 
-GitHub Actions job **node** in `.github/workflows/ci.yml` runs `node dist/cli.js lint` after `npm run build`. The step fails the build on any lint **error** (warnings alone do not fail). In CI, repo-owned artifacts are checked (`skill-plugins/dev/*`, `templates/rules/*.mdc`); deployed paths under `~/.config/agentbrew/` and `~/.cursor/rules/` are skipped when absent.
+GitHub Actions job **node** in `.github/workflows/ci.yml` runs `node dist/cli.js lint` after `npm run build`. The step fails the build on any lint **error** (warnings alone do not fail). In CI, repo-owned artifacts are checked (`skill-plugins/dev/*`, `skill-plugins/workflow/*`, `templates/rules/*.mdc`); deployed paths under `~/.config/agentbrew/` and `~/.cursor/rules/` are skipped when absent.
 
 ## Baselines
 
 - **Shared rules:** `docs/shared-rules.md`
-- **Built-in skills:** `docs/skill-baselines.json` (token + line counts for `skill-plugins/dev/*`)
+- **Built-in skills:** `docs/skill-baselines.json` (token + line counts, keyed by skill folder name; the lint looks up skills in both `skill-plugins/dev/*` and `skill-plugins/workflow/*`, and a skill with no entry skips the growth check)
 
 Update `docs/skill-baselines.json` in the same PR when intentionally growing a built-in skill, or link an open trim/context-budget task in `TASKS.md`.
 

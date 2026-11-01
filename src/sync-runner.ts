@@ -13,6 +13,7 @@ import { syncAgentDefs } from "./sync/agents-sync.js";
 import { syncCommands } from "./sync/command-sync.js";
 import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
+import { linkedWorktreeToSkip, linkedWorktreeWarning } from "./sync/linked-worktree.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
 import { syncRules } from "./sync/rules-sync.js";
@@ -112,6 +113,11 @@ function applyProjectAgentfile(
   dryRun: boolean,
   virtualState: AgentBrewState | undefined,
 ): ApplyAgentfileResult | undefined {
+  const main = linkedWorktreeToSkip(process.cwd(), () => virtualState ?? loadState());
+  if (main) {
+    console.log(chalk.yellow(`  ${linkedWorktreeWarning(main)}`));
+    return undefined;
+  }
   try {
     return applyAgentfile(process.cwd(), {
       quiet: false,

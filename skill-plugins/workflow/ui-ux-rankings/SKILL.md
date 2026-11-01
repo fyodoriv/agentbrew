@@ -8,7 +8,7 @@ description: >
   sites would. Use for "rate my UI", "UX audit", "make it look modern", "iterate on the UI until it
   scores N", before shipping a page, and before building or reshaping any UI (build to its comfort
   budget from the start). Don't use for one Lighthouse run alone (use web-quality-audit) or for
-  creative direction from scratch (use frontend-design).
+  creative direction from scratch (use hallmark).
 ---
 
 # UI and UX rankings

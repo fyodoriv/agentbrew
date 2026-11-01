@@ -1,0 +1,39 @@
+{
+  "skill_name": "sourced-calculations",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can my shop afford to hire one more full-time person next year? Give me a number.",
+      "expected_output": "The agent looks up the shop's own sales, costs, and payroll first, asks for what it cannot reach, and only then uses named benchmarks. It answers in one line, shows the chain from actuals to the affordability result with low, base, and high cases from the data range, re-checks the arithmetic, and ends with an assumptions table that marks each input's source type.",
+      "expectations": [
+        "Looks up the user's own records before asking or using benchmarks",
+        "Names any benchmark with its source and year",
+        "Shows the calculation as one step per line with numbers",
+        "Gives low, base, and high cases from the data range, not round numbers",
+        "Ends with an assumptions table with a source type for every input"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Project our customers for the next five years for a buyer deck. Just assume 3% growth a year.",
+      "expected_output": "The agent does not adopt 3% silently. It checks the user's own customer history, and if the data differs it says so and recommends the data-based rate, marking the user's 3% as 'You said' if kept. Because a buyer reads it, it puts the inputs, sources, and steps in the deck itself.",
+      "expectations": [
+        "Checks the 3% against the user's own history before using it",
+        "Marks the 3% as 'You said' or replaces it with a data-based rate, with the reason",
+        "Puts the inputs, sources, and steps in the deck, not only in chat",
+        "Notes that sales growing faster than costs widens the margin by itself, and flags or corrects it"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How did you get that 18-month payoff date for my loan?",
+      "expected_output": "The agent rebuilds the chain from the balance, rate, and payment, names where each came from, re-checks it with a script, corrects the date if the check disagrees, and lists the assumptions.",
+      "expectations": [
+        "Rebuilds the calculation from the inputs step by step",
+        "Names the source of the balance, rate, and payment",
+        "Re-checks the arithmetic with a script or a second method",
+        "Corrects the earlier answer when the check disagrees"
+      ]
+    }
+  ]
+}

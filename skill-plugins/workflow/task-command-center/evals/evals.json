@@ -159,6 +159,18 @@
         "Keeps end-to-end tests, optional import or dependency cleanup, context-alias work, and unrelated event work out of scope",
         "Preserves the already-working iframe embed path and focuses the task on making the current shell behavior more platform-agnostic"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "Set up ChatGPT Work across dotfiles and agentbrew. Both repos have TASKS.md queues and unrelated open drafts; the matching Codex tasks already contain measurement commands.",
+      "expected_output": "Uses declared task backends, inventories drafts, and applies only matching setup tasks without creating a duplicate docs publishing workflow for routine machine setup.",
+      "expectations": [
+        "Loads current repo context and detects each declared task backend",
+        "Checks open work for matching branches before coding",
+        "Reuses task measurement commands and verifies stale observations live",
+        "Keeps unrelated open drafts outside the setup changes",
+        "Does not publish public code PRs without the required session approval"
+      ]
     }
   ]
 }

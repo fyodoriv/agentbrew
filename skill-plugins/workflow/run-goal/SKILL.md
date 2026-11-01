@@ -28,10 +28,9 @@ Install once: `agentbrew install run-goal`. Then type a goal in Claude Code:
 /goal let users export their orders as CSV from the web app's orders page, with tests and docs, and ship it
 ```
 
-The second example is a bug fix, the most common kind of goal. It names the
+The second example is a bug fix, the most common kind of goal: it names the
 end state, asks for a failing test first, and approves the PR. The third is a
-feature in a web app: it names what users can do, what must come with it
-(tests, docs), and approves the PR.
+web app feature: what users can do, what comes with it (tests, docs), a PR.
 
 What you will see:
 
@@ -39,7 +38,7 @@ What you will see:
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
 4. It works alone and prints a `Goal check` line per criterion.
-5. It ends with an HTML report page, a retro, and updates to the skills it used.
+5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is
 approved. A filled-in example: [references/goal-contract.md](references/goal-contract.md).
@@ -75,14 +74,15 @@ or "impossible". The checker has no tools. It sees only what you wrote.
 
 So:
 
-- Print evidence (command, exit code, key output line, PR URL) when you finish
-  each done-criterion. A claim with no evidence reads as "not yet met".
+- Print evidence (command, exit code, key output quoted word for word, PR URL)
+  per done-criterion. No evidence, or only a summary, reads as "not yet met".
 - When you are hopelessly blocked, say so in plain words. The checker can then
   return "impossible" and release the session.
 
 ## Phase 1 — Intake (read only, a few minutes at most)
 
 1. Copy the raw goal text verbatim. You will compare against it at the end.
+   Shape a long, dictated, or vague goal first: [references/goal-intake.md](references/goal-intake.md).
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
@@ -92,15 +92,24 @@ So:
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time
    goes. A failed baseline run is the first finding, not a number: fix or
-   report the cause before you compare.
+   report the cause before you compare. Read its log: an EPERM on a cache or
+   a registry is the sandbox, so build once outside it, record the step, then
+   compare. A strict score that fails on the unchanged base is pre-existing.
 6. Spot human-only steps now: secrets, 2FA codes, payments, production
    deploys, and public or destructive actions that no rule approves. Each one
    goes into the contract. If someone is at the keyboard, ask about it in the
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
-7. Check each tool path a criterion relies on: a Send needs its connector
-   or token, a Save an endpoint that stores the edit. Read the config or
-   endpoint, not the button label.
+   Classify tasks by their Details (who must act), not only the Blocked flag.
+   Before a write to a live store (migration, sync, move), list the target
+   read-only and compare it with the goal's stated state. A mismatch changes
+   the plan, not the facts: 20 "unmoved" items were already in the list.
+7. Check each tool path a criterion needs in its config, not its label (a Send
+   needs a connector or token, a Save an endpoint; a scheduled job needs its own
+   credential or connector, not a session-only one). Check it where its consumer
+   runs: a GUI app reads the launchd env and PATH, not your shell; a needed app
+   restart is a user step, not "met". To rate a tool, check it
+   runs here and find its usage data; with none, rate only the design.
 8. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions share the account),
    drafts included, and unmerged branches and worktrees (`wrap-up`'s
@@ -170,10 +179,10 @@ docs, memory, or a quick experiment can answer.
 - When the user answers with a free-text message instead of the options,
   treat it as the answer. Add each new request in it as a done-criterion,
   and do not re-ask the questions it skipped.
-- When the goal asks you to check the user's understanding, ask in plain
-  chat text, not the question picker. When the user re-issues the goal as
-  "finish", ship the rest without waiting, and grade the answers when they
-  come.
+- To check the user's understanding, ask in plain chat text (not the picker,
+  even if a tutor skill says so), with H/M/L confidence typed inline. While
+  you wait, say so, do the retro work, and never claim "met". On "finish",
+  ship the rest and grade the answers when they come.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 
@@ -183,132 +192,20 @@ From here, do not stop for check-ins, progress approvals, or "should I
 continue?". The user set a goal so that they can be away.
 
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
-  risk: unknowns first.
-- A goal with more than five requirements gets a traceability test: one
-  entry per requirement, mapped to the files and tests that meet it. It fails
-  when a mapped path is missing, and it is the coverage metric in the contract.
-- A subagent that stops on a usage limit keeps its work. After the reset,
-  resume it with `SendMessage`; do not redo its work or start a new agent.
-- Research subagents use web fetch and search only, never browser tools: a
-  browser call can hang for hours. Give each fact two fetch attempts, then
-  keep it marked unverified with the reason, and save after each file.
+  risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
 - Work in small verified steps. Run the guard after each change that matters.
-- Probe a live tool (Slack, Jira, a browser form) only on a throwaway
-  target you own, such as your own self-DM, never on the deliverable. One
-  probe saved a "test" draft in a team thread; another attached `t.txt` to
-  the real draft.
-- While you iterate, run only the related test files. Run the full suite
-  once, right before each commit. Run mutation checks as one parallel batch,
-  not one by one.
-- Before you trust a loop's pass count, read one run's result line. In zsh,
-  `"$T[0]"` is a subscript and expands to empty (indexes start at 1), so pytest
-  got no path: a 20-run loop of one test ran the whole suite.
-- When a task's measurement names one object (a fixture, a generated file) and
-  your run makes a new one, say so and measure the new one too. A rerun made a
-  new output that the re-applied fix did not cover.
-- Right before each commit, re-check the current branch and stage exact file
-  paths, never a folder. Another session can switch a shared checkout
-  mid-run, and a folder add sweeps in its untracked files.
-- After a scripted edit, check that `git diff --stat` shows only the lines
-  you meant to change. A script that wrote a different indent turned a
-  one-panel change into a diff of thousands of lines.
-- Never end a turn only to wait for a background agent. Do independent work,
-  or read the code yourself, while it runs.
-- Verify every subagent claim you put in a deliverable. Check high-severity
-  claims in the code, and drop any claim that fails the check.
-- When two subagents or docs contradict each other, settle it from the
-  primary source (code at a SHA, the tracker record). List the losing docs
-  as stale findings in the deliverable.
-- A gate you write yourself is unproven: plant one violation per rule, see it
-  fail. A "flaky" step: run it alone and check its CPU time against its limit.
-- Log each non-obvious decision in one line: what you chose, and why.
-- Parallel workers (subagents): give them one shared brief file with the
-  delivery rules and unique log names (`$TMPDIR` is shared), and keep within
-  the user's parallel cap. When a worker reports, check its claims yourself
-  (re-run its metric, look at side effects such as LaunchAgents it touched),
-  and stop any background job it left running in a removed worktree.
-  Before you start workers on one machine, write a heavy-run rule into the
-  brief: one shared lock (`mkdir` a lock dir; remove it when done) and
-  `nice -n 15` for every heavy run (full suite, test cache, timing), one run
-  at a time. Six workers without it each ran parallel suites, and a 10-core
-  Mac reached load 245 with swap 93% full in 15 minutes; with it, load stayed
-  near 10 to 25. A timing taken without the lock is invalid: take it again.
-- Running parallel workers or workflows (worktrees, a merge queue, a watch
-  loop): read [references/parallel-workers.md](references/parallel-workers.md)
-  first. It covers messages to running agents, session-owned files, merges
-  after a push, scripted conflict fixes, and watch pollers.
-- When something pops up on the user's screen (a dialog, a window) and you
-  trace which process started it, log the process and its parent chain.
-  Never kill processes that you or your workers did not start. Killing them
-  broke another session's test run and this run's own gate.
-- Stacked PRs: a squash merge of PR A makes PR B (built on A) conflict. When
-  main's tree equals A's head and B contains A's head, resolve every conflict
-  with B's side, then check that the merged tree equals B's tested tree
-  (`git diff <B-tested-sha> HEAD` is empty). Then no new test run is needed.
-- After a session restart (`/goal continue …`, or workers reported as
-  stopped): re-measure from `origin` first, then list every worktree with
-  its commits ahead, uncommitted files, and push state. Resume each stopped
-  worker with its saved context (`SendMessage` to its id) and give it that
-  state; never assume a stopped worker's PR landed.
-- After a usage-limit gap, check that each step produced its output, not
-  only that it exited 0. A judge step that scored 0 items failed; rerun
-  only that step.
-- Before you build a task from a queue, search git history for its ID and
-  files. A task that already shipped gets its stale block closed with fresh
-  evidence, not a second implementation.
-- A re-issued `/goal` (for example "continue previous goal") resets the
-  contract file, and the edit hook blocks every write until it is saved again.
-  Re-print the prior contract in chat (same scope, plus a progress line and
-  any criteria added mid-goal), save it, then continue. When workers run,
-  save it before any other step: until then the hook blocks their edits too. Do not start a new
-  intake or question round for the same goal.
-- When you read a third-party app's logs or config for secrets (tokens,
-  keys), never print a value, even through a redaction filter. Count or
-  test the values in a script that prints only pass/fail. A filter that
-  hid strings of 20+ characters leaked 16-character lamp tokens.
-- Facts from the web (company processes, API terms, research claims): give
-  a research subagent a written file to fill, a rule to open every URL it
-  cites, and an "omit what you cannot verify" rule. Run it in parallel with
-  the code. Then add a gate step that fails when a claim has no source, so
-  later edits cannot drop them.
-- A deployed site behind a sign-in (Cloudflare Access, SSO) is still checkable:
-  run the same server code locally over the published data, and measure there.
-  A test that sets a data-dir variable from `mktemp` must check that `mktemp`
-  worked; an empty variable falls back to the real data folder.
-- When a goal keeps source data word for word, store what a tool wrote to
-  disk (a saved tool-result file, a CLI's stdout) or the tool's reply copied
-  without changes. Never summarize while copying. Give the store a way to
-  replace a bad copy, and name the rows copied by hand in the report.
+- Before you start, read [references/execution.md](references/execution.md) and follow every
+  bullet: live-tool probes, test loops, commits, subagents, workers, restarts, secrets, web facts.
 - Never write a result before it exists. A reviewer verdict, a check
   status, or a CI result is `pending` until the reviewer or check has run and
   you have read its output. Filling it in early is a false claim, even if you
   plan to run it next.
 - When one part is blocked, park it with a note and continue with the other
   parts. Come back to it later.
-- A new request from the user mid-goal joins the goal: add it to the
-  contract file as a done-criterion, say so in one line, and deliver it in
-  this run. A request to drop something works the same way: mark the
-  criterion dropped in the contract file, shrink the metric's denominator,
-  and stop all work on it.
-  A request to remove something also gets a guard test that fails if it
-  comes back (code, config and docs). Do not start a separate session for it unless the user asks.
-  A new rule mid-goal also covers what you already did in this run: fix
-  your past output too (for example, merge your back-to-back replies into
-  one).
-- A mid-goal answer can change a default the run already used (the
-  recommended option of an unanswered question, or an **Assumptions**
-  line). Record the answer in the contract file in place of the default,
-  and fix any done-criterion or metric built on it. In the same pass,
-  update every artifact built on that default: tickets, doc sections,
-  drafts, and code. Park an edit that needs fresh approval, as the
-  fresh-approval bullet below says. Print the goal check line again for
-  each criterion the answer touches, with each updated artifact's link or
-  path as its evidence. For a criterion with a parked edit, print it as
-  `Goal check 2/4 ⏸ <criterion> — parked: <edit>`, then the links of the
-  artifacts already updated. It is not done until the edit lands. One run
-  filed tickets from its defaults, and then a mid-goal
-  answer changed one of those defaults, so the tickets built on it no
-  longer matched the answer.
+- A new request, a drop request, or an answer that changes a default
+  mid-goal: follow "Mid-goal changes" in [references/execution.md](references/execution.md)
+  (update the contract, every artifact built on the old default, and the
+  goal check lines).
 - Approvals the user already gave in this session, in standing rules, or in
   the contract cover their whole class of action. Do not ask again.
 - An action that the rules say needs fresh approval (destructive, public,
@@ -339,30 +236,12 @@ for the user. End it with
 
 Before you claim done, take fresh evidence for every done-criterion. Do not
 reuse output from earlier in the session. Run the metric command and compare
-it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal
-is not done yet.
+it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal is not done yet.
+No CI is not a blocker: when `gh pr checks` says "no checks reported" and the repo has no `.github/workflows`, say so in one line, merge when the repo's own gate (the one its AGENTS.md names) exits 0, and mark "all checks green" met with that exit code; never call the goal impossible for it, and add CI only if the user asks.
 
-Read the gate's own exit status, not a line that a wrapper printed. In
-`gate; echo "exit $?"` run in the background, the background task reports
-the `echo`, which always succeeds. Use `gate; rc=$?` and print `$rc`
-(`status` is read-only in zsh), or read the failure lines in the log, before you trust "passed".
-A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
-`tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
-its status decides the commit. Run the gate into a log, read `$rc`, and
-commit and push only when it is 0:
-`log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
-When the gate fails, the whole line also exits 1, so a background task reports the failure.
-One run piped a failing suite into `tail`, and its commit and push still ran.
-A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
-the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
-never put it in the gate slot above, and never chain the next step on it
-with `&&`: a clean check then skips the commit, and a check that finds a
-leak lets the commit run. Stage first. Then count matches in the staged
-diff, and commit only when the count is exactly 0:
-`git add …; n=; d="${TMPDIR:-/tmp}/staged.diff"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
-Plain `git diff` skips staged and new files. Commit only what is staged: no `-a`, no paths after `git commit`.
-A failed `git diff` leaves the count empty, so the commit does not run. An empty count means the check
-did not finish (an unset pattern, a grep error, or a diff grep skipped as binary): find the cause first.
+Read the gate's own exit status, never a wrapper's line or a pipe's, and gate a
+count check on exactly 0: the exact command lines are in
+[references/execution.md](references/execution.md) § Gate exit status.
 
 Re-read every issue or PR this goal opened upstream. Another session may have
 shipped it while you worked.
@@ -370,18 +249,15 @@ shipped it while you worked.
 When the grader finds a defect and you fix it, re-run that criterion's proof
 from scratch. A fix can break something the earlier proof covered.
 
-When the goal changes this machine, re-read the live state (installed files,
-loaded services; for a LaunchAgent, `launchctl print gui/$UID/<label>`, not
-only the plist) right before you report done. A later apply can revert a fix
-that passed earlier. When the fix is a scheduled job, prove it with a run the
-scheduler starts, not a manual load. Re-read the job's files and its loaded
-state after that run, because the job itself can rewrite or unload the fix.
+When the goal changes this machine or what users see, re-read the live state
+(installed files, loaded services, the deployed feed or page: [§ Served output](references/execution.md#served-output);
+for a LaunchAgent, `launchctl print gui/$UID/<label>`, not the plist) right
+before you report done. A later apply can revert a fix. When the fix is a
+scheduled job, prove it with a run the scheduler starts, then re-read its files
+and loaded state: the job can undo it.
 
-Before you call a failure "pre-existing", run the same test files with the
-same flags on the unchanged base (a detached worktree) and compare the two
-failure lists. Only a failure on both lists is pre-existing. A wait loop on
-a background job must run outside the agent sandbox: `pgrep` and `ps` fail
-inside it, so the loop exits at once and looks finished.
+Before you call a failure "pre-existing", compare it with the unchanged base
+([references/execution.md](references/execution.md) § Pre-existing failures).
 
 For UI work, open the screenshots of every view yourself and read them for
 wrong content, not only for presence. Tests that assert "the view shows
@@ -403,21 +279,13 @@ grader fails, move the grader's failures into the gate as new tests.
 
 Before you merge each PR, ask a fresh-context subagent to review its diff,
 also when the full suite is green. In one goal run, reviewers found real
-defects in 6 of 8 green PRs: a crop that picked the wrong figure, a cache entry
-saved under the wrong key, a CLI crash in sandboxed shells, and a fixture that
-missed one path, so a test failed only on the owner's machine. Send each
+defects in 6 of 8 green PRs, such as a cache entry saved under the wrong
+key and a CLI crash in sandboxed shells. Send each
 finding back to the agent that wrote the code (it keeps its context), then
 review the fix again.
 
-When you resume a worker with `SendMessage` for a fix round, repeat the rule
-in that message: "fresh-context review of the diff before merge". A resumed
-worker can miss a rule that only its first brief named. In one run, workers
-resumed for fix rounds merged without that review. Later reviews found 9
-more defects in one fix PR, including a high-severity data loss, and 6 more
-in another. Another unreviewed PR had a high-severity trust bypass. Before
-you count a fix as done, read the review's output yourself, not only the
-worker's report. If no review ran, run one now. If the PR already merged,
-review the merged diff and send each finding back as a new fix round.
+A worker resumed for a fix round still needs that review: see "Fix rounds,
+waiting workers, and duplicate PRs" in [references/parallel-workers.md](references/parallel-workers.md).
 
 ## Phase 6 — Retro and skill upkeep
 
@@ -442,11 +310,8 @@ Do this every time, also after a BLOCKED stop. Details:
    the proposed change. `run-goal` itself is never exempt: add an eval case
    from this run to its `evals/evals.json` in its source, or fix the step
    that went wrong. Its source is `skill-plugins/workflow/run-goal/` in the
-   agentbrew repo (`github.com/fyodoriv/agentbrew`). agentbrew installs
-   copies, not symlinks, so find the local checkout: run
-   `git -C <dir> remote get-url origin` on candidate folders (for example
-   `find ~ -maxdepth 4 -type d -name agentbrew`). For other skills,
-   `agentbrew status --verbose` names the source repo.
+   agentbrew repo (`github.com/fyodoriv/agentbrew`); the retro reference
+   says how to find the local checkout and other skills' sources.
    These updates are in scope for every goal: the user asked for them when
    they installed this skill. "Touch only what the request requires" does
    not exclude them. In Claude Code with agentbrew, the `/goal` hook names
@@ -462,24 +327,25 @@ Do this every time, also after a BLOCKED stop. Details:
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
-   skill used has such a line (it gives up after three tries). When you can
-   write the skill's source repo, ship the change in this session: gate, PR,
-   merge, then cite the PR. When the sandbox or permissions block writes to
-   that repo (common when the goal runs in another folder), file a task in
-   the user's queue and cite its id; never bypass the sandbox for it.
+   skill used has such a line (it gives up after three tries). Ship each
+   writable change in this session (gate, PR, merge, cite the PR); when the
+   sandbox blocks the repo, cite a task instead and never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
+7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
+   in the retro file, run `scripts/export-goals.py`, and refresh the one
+   Goals dashboard: [references/dashboard.md](references/dashboard.md).
 
 ## Final report
 
-Publish the final report as one self-contained HTML page when you can
-publish one (shared-rules **## Long-run reports**; in Claude Code: the
-Artifact tool). The page shows what was done, the blockers (each explained
-in full, as in Phase 4), and what to do next. When you cannot publish, write
-the HTML file and give its full path. Build the page from the shape below;
-it is also the chat fallback when you cannot write HTML. Keep it short.
+Publish the final report as an Artifact (shared-rules **## Long-run
+reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
+a recurring run refreshes), not a loose HTML file. It shows what was done, the
+blockers (each explained in full, as in Phase 4), and what to do next. Only
+without an Artifact tool or with private data, write a self-contained HTML
+file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
-In chat, give the page link, a one-line result, and the next-action
-questions, each with its full context. Do not paste the whole report.
+In chat, give the link, a one-line result, and the next-action questions, each
+in full. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
 
 ```markdown
 ## Goal result: met | partly met | blocked
@@ -491,8 +357,8 @@ questions, each with its full context. Do not paste the whole report.
 
 **Metric**: <baseline> → <now> (target <target>) via `<command>`
 **Changes**: <PRs, commits, files>
-**What went wrong**: <bullets>
-**What to improve**: <bullets>
+**What went wrong**: <bullets> · **What to improve**: <bullets>
+**Assumptions**: <each marked "my choice" (why, what data would replace it), "from <source>", or "you said">
 **Skills updated**: <every skill used, run-goal included → its edit or new eval + PR, or the task for a third-party skill>
 **Needed from you**: <the review or the one action, or "nothing">
 ```

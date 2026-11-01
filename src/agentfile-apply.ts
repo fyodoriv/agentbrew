@@ -13,6 +13,7 @@ import {
   resolveAgentfileMcp,
   validateAgentfileMcp,
 } from "./agentfile.js";
+import { mergeStateSkillDirectories } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
 import { MEMORY_MANAGED_SERVER_NAME } from "./memory/constants.js";
 import { ensureMemoryMcpServer, mergeMemoryPackPaths } from "./memory/enable.js";
@@ -29,7 +30,6 @@ import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
-import { mergeWorkSteps } from "./work.js";
 
 /** Result of applying an Agentfile to state. */
 export interface ApplyAgentfileResult {
@@ -452,13 +452,10 @@ function mergeAgentfileAgentDirs(
   return merged;
 }
 
-/** Record this Agentfile's `workSteps:` in state, in its own place (#440). Returns true if state changed. */
-function mergeAgentfileWorkSteps(agentfile: { workSteps?: string[] }, state: AgentBrewState, baseDir: string): boolean {
-  const before = JSON.stringify(state.workSteps ?? []);
-  const merged = mergeWorkSteps(state.workSteps, baseDir, agentfile.workSteps ?? []);
-  if (JSON.stringify(merged) === before) return false;
-  if (merged.length > 0) state.workSteps = merged;
-  else delete state.workSteps;
+/** /work moved to careerbrew (#610): drop the `workSteps` that older syncs saved in state. Returns true if state changed. */
+function dropLegacyWorkSteps(state: AgentBrewState): boolean {
+  if (state.workSteps === undefined) return false;
+  delete state.workSteps;
   return true;
 }
 
@@ -731,6 +728,7 @@ export function applyAgentfile(
   const mcp = mergeAgentfileMcp(agentfile, state, authoritative);
   if (!quiet) printDeclinedMcp(mcp.declined);
   const sourcesAdded = mergeAgentfileSources(agentfile, state, authoritative, baseDir);
+  const skillDirsChanged = mergeStateSkillDirectories(agentfile.skillDirectories, state, baseDir, pruneOwnedDirs);
   const commandDirs = mergeAgentfileCommandDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const agentDirs = mergeAgentfileAgentDirs(agentfile, state, baseDir, pruneOwnedDirs);
   const commandDirsAdded = commandDirs.added;
@@ -739,7 +737,7 @@ export function applyAgentfile(
   const rulesUpdated = mergeAgentfileRules(agentfile, baseDir, dryRun);
   const hooksUpdated = mergeAgentfileHooks(agentfile, state);
   const excludedAgents = mergeAgentfileExcludeAgents(agentfile, state);
-  const workStepsChanged = mergeAgentfileWorkSteps(agentfile, state, baseDir);
+  const workStepsChanged = dropLegacyWorkSteps(state);
   const defaultModelUpdated = mergeAgentfileDefaultModel(agentfile, state);
   const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir);
   const agentfileSkillsChanged = authoritative && pruneAgentfileSkills(agentfile, state, dryRun, quiet);
@@ -767,6 +765,7 @@ export function applyAgentfile(
     mcp.adopted.length > 0 ||
     sourcesAdded.length > 0 ||
     commandDirs.changed ||
+    skillDirsChanged ||
     agentDirs.changed ||
     rulesUpdated ||
     hooksUpdated ||

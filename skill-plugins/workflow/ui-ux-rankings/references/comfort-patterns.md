@@ -64,6 +64,11 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
   background, both at least 4.5:1, in each theme. Bright orange and yellow fail; use a burnt or
   deep shade in light mode and a light shade in dark mode. Keep semantic colors (good, warning,
   bad) apart from the accent hue, each with its own soft background.
+- **Keep the user's main color:** before a redesign changes the accent hue, look for a recorded
+  main color (a config key, a design doc, a brand file, the user's rules). Use it when one
+  exists. When none does, name the hue change in the PR (old and new token values, one
+  before/after pair) and say it is one token to change back. In one run a design skill moved a
+  whole app from indigo to orange, and only the orchestrator's picture check caught it.
 - **Line icons inline** (one small SVG map, 24 px grid, 2 px stroke), not emoji, in navigation.
 
 ## Motion

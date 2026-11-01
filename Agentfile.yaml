@@ -11,6 +11,7 @@ skills:
   - agentfile-init
   - next-task
   - project-audit
+  - readme
   - report-upstream
   - sync-agent-config
   - task-command-center

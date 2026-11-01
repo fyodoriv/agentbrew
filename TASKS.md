@@ -171,6 +171,16 @@
 
 ## P2
 
+- [ ] Report Hallmark's render wait that never ends on apps that poll
+  - **ID**: hallmark-render-wait-upstream
+  - **Blocked**: owner step: say yes to a public issue on nutlope/hallmark (a third-party repo); the `report-upstream` skill drafts and scrubs it first
+  - **Details**: In careerbrew's Hallmark redesign (careerbrew#252, 2026-10-27), Hallmark's render check waited for the page's network to go fully quiet. The app polls every 5 s, so the check timed out on every view. A local copy with a looser wait (DOM content loaded plus a short settle) worked. Propose that wait, or a setting for it, upstream.
+  - **Hypothesis**: the Hallmark render audit finishes on a polling app with 0 timeouts, down from 8 of 8 views.
+  - **Measurement**: `/hallmark audit web/` on careerbrew, counting views that time out.
+  - **Success**: 0 timeouts with the upstream fix.
+  - **Pivot**: if upstream declines, keep a local wrapper in agentbrew with the looser wait.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
 - [ ] The fast gate passes in a Linux cloud session, so cloud agents can trust it
   - **ID**: gate-green-in-linux-cloud
   - **Blocked**: needs-owner — the owner chose a Claude cloud session for the Linux run (2026-10-22) instead of Docker Desktop on the Mac. Agents cannot start one from a Remote Control session; the app starts new sessions only from a message typed in the desktop app. Unblock: in the desktop app, ask to "start the Linux gate cloud session for agentbrew" (repo fyodoriv/agentbrew, branch main), then run `npm run verify` there and fix each failing step listed in Details.
@@ -193,6 +203,62 @@
   - **Success**: 0 failing steps in the cloud and on the Mac
   - **Pivot**: a failure is a real product bug on Linux → fix the product code and add a Linux case to the test
   - **Anchor**: found while shipping fyodoriv/agentbrew#287 on 2026-10-19 (AGENTS.md rule 11: scout while you work)
+
+- [ ] Checkups show their last run and record each run (issue #572)
+  - **ID**: checkup-run-record
+  - **Blocked**: needs-owner — where does the shared run record live? Options: (a) an `agentbrew checkup-run show|record <name>` CLI subcommand every checkup calls, (b) a small script in a deployed skill, (c) only in dotfiles `tooling-checkup` plus a documented file format for plugins. Each changes who must update to get it.
+  - **Tags**: checkup, state
+  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`; print it at the start, write it at the end.
+  - **Files**: `scripts/checkup.sh`, the chosen home (see Blocked)
+  - **Output**: code
+  - **Acceptance**: as in issue #572
+  - **Hypothesis**: every checkup run starts with what changed since the last run; runs with no last-run line drop to 0.
+  - **Measurement**: run each checkup twice; the second run prints the first run's time and commits
+  - **Success**: 2 of 2 runs
+  - **Pivot**: the owner prefers git log alone -> close the issue
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] Scroll and screenshot a Google Doc over CDP without focus (issue #561)
+  - **ID**: gdoc-cdp-screenshots
+  - **Blocked**: needs-owner — the issue describes a script that already exists on another machine. Absorb that script (share its path or paste it into a branch), or build a new one from the issue text?
+  - **Tags**: browser, docs
+  - **Details**: Issue #561: open the doc in its own CDP tab, scroll page by page, one screenshot per page, no keystrokes or window activation, close the tab after.
+  - **Files**: a skill script under `skill-plugins/`
+  - **Output**: code
+  - **Acceptance**: as in issue #561
+  - **Hypothesis**: visual checks of long Docs need 0 focus steals and cover every page.
+  - **Measurement**: run on a 10-page test doc
+  - **Success**: 10 screenshots, 0 focus changes
+  - **Pivot**: CDP cannot scroll the Docs canvas -> use the Docs export to PDF instead
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
+  - **ID**: page-zero-errors-skill
+  - **Blocked**: needs-owner — the issue names an existing MIT script by the same author. Absorb it (share its path or repo), or build a new one from the issue text?
+  - **Tags**: browser, skills, verification
+  - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
+  - **Files**: `skill-plugins/`, README skill list
+  - **Output**: code
+  - **Acceptance**: as in issue #563
+  - **Hypothesis**: frontend changes called done with page errors drop to 0.
+  - **Measurement**: the wrapper on a fixture page with one console error and one 404
+  - **Success**: exit 1 naming both; exit 0 on a clean page
+  - **Pivot**: CDP capture misses errors before attach -> launch the page under the capture instead
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+
+- [ ] History-wide leak audit before a plugin goes public (issue #564)
+  - **ID**: plugin-history-leak-audit
+  - **Blocked**: needs-owner — absorb an existing implementation (the issue reads like one exists), or build new? Also confirm gitleaks as a new dependency the audit may install.
+  - **Tags**: security, plugins, oss
+  - **Details**: Issue #564: scan every commit on every ref (emails, messages, ref names, paths, added lines) with gitleaks on a bare mirror and a fixed config; `--fresh` mode; patterns from a user env file.
+  - **Files**: `src/oss/`, the plugin publishing guide, the CLI reference
+  - **Output**: code
+  - **Acceptance**: as in issue #564
+  - **Hypothesis**: leaks in history found before a plugin goes public: seeded leaks found 5 of 5.
+  - **Measurement**: a fixture repo with one leak in each of the 5 places
+  - **Success**: 5 of 5 found
+  - **Pivot**: gitleaks cannot read ref names or emails -> add a git-log pass for those
+  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
 
 - [ ] Skip `npm ci` when the lockfile is unchanged
   - **ID**: speed-up-npm-ci
@@ -281,71 +347,6 @@
 
 ## P3
 
-- [ ] `/work` drops the steps of an Agentfile that no longer exists
-  - **ID**: work-steps-prune-gone-agentfile
-  - **Tags**: work, agentfile
-  - **Details**: Found by the #440 review. `state.workSteps` records which Agentfile dir declared each `/work` step, and a sync replaces that Agentfile's steps when it is applied again. An Agentfile that is deleted or moved is never applied again, so its steps stay in state and `agentbrew work` keeps listing them. `commands:` and `agents:` dirs have the same owner field but are pruned on apply.
-  - **Files**: `src/agentfile-apply.ts`, `src/work.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: after the Agentfile that declared a step is gone, the next `agentbrew sync` (or `agentbrew work`) no longer lists that step.
-  - **Hypothesis**: pruning entries whose Agentfile dir is gone drops stale `/work` steps from every such step to 0.
-  - **Measurement**: `npx vitest run src/work.test.ts src/agentfile-apply.test.ts` with a case whose declaring Agentfile dir is removed.
-  - **Success**: the stale step is gone after one sync; steps from present Agentfiles stay in place.
-  - **Pivot**: if a dir can be briefly missing (an unmounted volume), prune only after two syncs in a row find it gone.
-  - **Anchor**: #440 pre-merge review (2026-10-23).
-
-- [ ] The catalog name lint covers bundles, and a skill-only dry run previews
-  - **ID**: catalog-name-lint-bundles-dry-run
-  - **Tags**: catalog, skills, tests
-  - **Details**: Found by the review of the `catalog-rule-skill-name-clash` PR. (1) `src/catalog/catalog-name-clash.test.ts` checks rules, MCP servers, and CLI tools, but not bundles; a bundle named like a built-in skill would win a bare `agentbrew install` the same way. (2) The skill-only branch of `installFromCatalog` (`src/catalog/install.ts`) skips `showCatalogDryRun`, so a future caller that passes `skillOnly` with `dryRun: true` would install a catalog skill for real. No caller does that today.
-  - **Files**: `src/catalog/catalog-name-clash.test.ts`, `src/catalog/install.ts`, `src/catalog/install.test.ts`
-  - **Output**: code
-  - **Acceptance**: the lint lists bundle names too, and `install(name, { skillOnly: true, dryRun: true })` previews a catalog skill without installing it.
-  - **Hypothesis**: unchecked kinds of catalog names that can shadow a built-in skill drop from 1 (bundles) to 0, and skill-only dry runs that install for real drop from possible to 0.
-  - **Measurement**: `npx vitest run src/catalog/catalog-name-clash.test.ts src/catalog/install.test.ts` with a bundle in the checked list and a skill-only dry-run case.
-  - **Success**: both cases pass.
-  - **Pivot**: if no skill-only dry-run caller ever appears, delete the dry-run case and keep a comment instead.
-  - **Anchor**: review of the `catalog-rule-skill-name-clash` PR (2026-10-23).
-
-- [ ] The run-goal skill stays well under the 500-line skill limit
-  - **ID**: run-goal-size
-  - **Tags**: skills, docs
-  - **Details**: `skill-plugins/workflow/run-goal/SKILL.md` is close to the 500-line limit (`SKILL_MAX_LINES` in `src/agent-bloat-lint.ts`). The next edits will trip that lint warning (`SKILL_LINES`). Move reference material (worked examples, long checklists) into `references/` files that SKILL.md links to, as `parallel-workers.md` already is.
-  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/`, its evals
-  - **Output**: docs
-  - **Acceptance**: SKILL.md is under 400 lines, its evals still pass, and every moved section is linked from SKILL.md.
-  - **Hypothesis**: moving reference sections out brings SKILL.md under 400 lines (it was near the limit on 2026-10-22), leaving room for future edits without a lint failure.
-  - **Measurement**: `wc -l skill-plugins/workflow/run-goal/SKILL.md` and the skill's eval and contract tests.
-  - **Success**: under 400 lines with all evals passing.
-  - **Pivot**: if a section cannot move without hurting the evals, keep it and trim duplicated wording instead.
-  - **Anchor**: agentbrew skill lint (500-line limit); `wc -l` on 2026-10-22 (483).
-
-- [ ] The markdown-for-gdoc checklist names its exception for tables wider than 5 columns
-  - **ID**: gdoc-checklist-rewrite-exception
-  - **Tags**: skills, docs
-  - **Details**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md` says to keep tables at most 4–5 columns (line 58) and its final checklist says "tables ≤ 5 columns" (line 109), with no exception, although `references/markdown-tab-rewrite.md` (lines 9–13) already keeps the source's columns in a rewrite. Because SKILL.md does not mention that exception, an agent following the checklist either breaks the rewrite or fails its own check.
-  - **Files**: `skill-plugins/workflow/markdown-for-gdoc/SKILL.md`, `references/markdown-tab-rewrite.md`, its evals
-  - **Output**: docs
-  - **Acceptance**: the checklist states when a wider table is allowed (for example a rewrite that must keep the source's columns) and what to do instead otherwise; an eval covers the case.
-  - **Hypothesis**: naming the exception drops conflicting instructions in the skill from 1 to 0.
-  - **Measurement**: the skill's eval for a rewrite with a 6-column table, plus a read of lines 58 and 109.
-  - **Success**: the eval passes and both lines agree.
-  - **Pivot**: if no rewrite really needs a wide table, make the rewrite reference split wide tables and keep the strict rule.
-  - **Anchor**: `markdown-for-gdoc` SKILL.md lines 58 and 109 (2026-10-22).
-
-- [ ] `docs/agent-bloat-lint.md` names every skill folder the lint checks
-  - **ID**: bloat-lint-doc-scope
-  - **Tags**: docs, lint
-  - **Details**: `docs/agent-bloat-lint.md` says the CI check and the baselines (`docs/skill-baselines.json`) cover `skill-plugins/dev/*` (lines 37 and 42), but `src/agent-bloat-lint.ts` (line 351) checks both `dev` and `workflow`. A contributor reading the doc expects `workflow/` skills to be unchecked.
-  - **Files**: `docs/agent-bloat-lint.md`
-  - **Output**: docs
-  - **Acceptance**: the doc names `skill-plugins/dev/*` and `skill-plugins/workflow/*`, matching the code.
-  - **Hypothesis**: matching the doc to the code drops wrong scope claims in the doc to 0.
-  - **Measurement**: `rg -n "skill-plugins/(dev|workflow)" docs/agent-bloat-lint.md src/agent-bloat-lint.ts`.
-  - **Success**: every folder the code checks is named in the doc.
-  - **Pivot**: if the docs test cannot pin it, add a small test that reads the plugin list from the lint and checks the doc.
-  - **Anchor**: `src/agent-bloat-lint.ts:351` vs `docs/agent-bloat-lint.md:37,42` (2026-10-22).
-
 - [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
   - **ID**: mcp-git-repin-build-output
   - **Tags**: mcp, cli
@@ -358,32 +359,7 @@
   - **Success**: all three cases pass, and the existing cases in that file still pass.
   - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
   - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
-
-- [ ] Every `git clone` of a user URL ends options before the URL
-  - **ID**: git-clone-url-end-of-options
-  - **Tags**: security, cli
-  - **Details**: Found by the review of the `mcp-git-ref-exact` PR, which added `--end-of-options` to the MCP `--git` clone. Two clones still pass a user URL without it: `src/catalog/index-source.ts:533` and `src/learn/stage-learn-sources.ts:215`. A URL that starts with `-` could be read as an option. Also, `checkoutSha`, `fetchAndCheckoutSha`, and the `targetSha` branch of `cloneNew` in `index-source.ts` take an `options.sha` that no caller passes: delete that path, or validate the SHA.
-  - **Files**: `src/catalog/index-source.ts`, `src/learn/stage-learn-sources.ts`, their tests
-  - **Output**: code
-  - **Acceptance**: both clones pass `--end-of-options` before the URL, and the unused SHA path is deleted or validated.
-  - **Hypothesis**: clone call sites where a user URL can be read as an option go from 2 to 0.
-  - **Measurement**: `rg -n '\["clone"' src --glob '!*.test.ts' | grep -vc -- '--end-of-options'` (2 on 2026-10-22), plus a unit test per call site.
-  - **Success**: 0 clone call sites without `--end-of-options`.
-  - **Pivot**: if git older than 2.24 must stay supported, refuse a URL that starts with `-` instead.
-  - **Anchor**: git 2.24 release notes (`--end-of-options`); review of the `mcp-git-ref-exact` PR (2026-10-22).
-
-- [ ] Propose a first-run check for the built-in /loop skill
-  - **ID**: propose-loop-skill-first-run-dedupe
-  - **Tags**: retro, third-party-skill, loop, watch-issues
-  - **Details**: Retro of the 2026-10-22 tooling goal. The built-in Claude Code `/loop` skill (third party, not editable here) says "run the parsed prompt now" in dynamic mode. When `/loop /watch-issues` starts right after the agent already ran a watch pass this turn, that re-runs the same pass and can dispatch duplicate workers. The run skipped the re-run by judgment. Proposed upstream change (feedback to Anthropic): in dynamic mode, skip the immediate run when the same prompt already ran earlier in this turn, and say so in the confirmation. Until then, `watch-issues` SKILL.md can note it.
-  - **Files**: none in this repo (upstream feedback); optional one line in `skill-plugins/workflow/watch-issues/SKILL.md`
-  - **Output**: docs
-  - **Acceptance**: the feedback is sent through the Claude Code feedback channel by the owner, or watch-issues documents the workaround.
-  - **Hypothesis**: a first-run check removes duplicate passes when /loop starts right after a manual pass: duplicates 1 per loop start to 0.
-  - **Measurement**: watch pass log (pass start times) on the next 3 loop starts.
-  - **Success**: 0 duplicate passes in 3 starts.
-  - **Pivot**: duplicates never happen in practice -> close as not needed.
-  - **Anchor**: tooling goal retro 2026-10-22; run-goal Phase 6 (third-party skills get a task with the proposed change).
+  - **Blocked**: needs-design — 2026-10-28: the 4th design (record the files a build wrote, PR #607, left as a draft) failed review. (A) The record also caught files that are not build output: a `config.json` that the build writes only when it is missing, and a `token.json` that the running server writes during the build. The next re-pin moved such a file aside, rebuilt it as an empty template, and deleted the user's copy. (B) When a re-pin was refused, the old version's `dist/index.js` (an ignored, untracked file) was lost if the new version committed its own `dist/index.js`. (C) A cache made by an older agentbrew has no record, so it could register stale output for good. (D) A crash in the middle of a build lost the moved-aside copy, because the next run cleared that folder first. Unblock when: a design can tell build output apart from files the server or the user write, for example a build manifest, or only the paths under the package's declared build output (`package.json` main/bin/exports folder, tsconfig `outDir`), and no user file is ever in a move or delete set.
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
@@ -397,45 +373,7 @@
   - **Success**: no touch target under 44 px and no text under 14 px.
   - **Pivot**: if upstream declines, keep it in ui-ux-rankings only and close this task.
   - **Anchor**: WCAG 2.2 SC 2.5.8 (target size); sidequest PR #9 measurements.
-
-- [ ] Run the template-rule readers when a `templates/rules/` diff is merge-ready
-  - **ID**: verify-changed-template-rule-readers
-  - **Tags**: perf, gate
-  - **Details**: The 2026-10-22 read probe of the full suite showed that `src/agent-bloat-lint.test.ts`, `src/sync/helper-scripts.test.ts`, `src/sync/catalog-template-rules.test.ts`, `src/integration.test.ts`, and `src/integration-essential-core.test.ts` read `templates/rules/*.mdc`. `verify:changed` calls such a diff merge-ready but runs none of them, so a broken rule template can reach `main`.
-  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`
-  - **Output**: code
-  - **Acceptance**: a diff that only changes one `templates/rules/*.mdc` file runs those tests in `verify:changed`.
-  - **Hypothesis**: rule-template breaks caught before merge go from 0 of the readers to all of them, for about 30 s more gate time on such diffs.
-  - **Measurement**: `npm run verify:changed -- --dry-run` on a branch that only edits one `templates/rules/*.mdc` file lists every reader above.
-  - **Success**: every reader above is listed, and the run takes under 60 s.
-  - **Pivot**: if the integration tests make the run take over 2 min, send `templates/rules/` diffs to the full gate instead.
-  - **Anchor**: read probe in the verify-changed-docs-only-fast PR (2026-10-22); Forsgren, Humble, Kim 2018 (fast feedback).
-
-- [ ] Keep `gate_ms` sampled now that worktrees share the gate cache
-  - **ID**: gate-ms-with-shared-cache
-  - **Tags**: perf, metrics
-  - **Details**: `scripts/metrics.sh` takes `gate_ms` from full gates with no cached step. Since 2026-10-22 (speed-up-agentbrew-test-loop) worktrees share the step cache, so the hook-fixtures step is often cached and most gates drop out of the sample. `gate_ms` could then show a stub or a stale number.
-  - **Files**: `scripts/metrics.sh`, `docs/metrics.md`
-  - **Output**: code
-  - **Acceptance**: `bash scripts/metrics.sh` prints a `gate_ms` number from the last 10 passing full gates, with cached steps counted at their last uncached time or left out by name.
-  - **Hypothesis**: counting gates with cached steps keeps `gate_ms` samples at the old rate (about one per full gate) instead of near zero.
-  - **Measurement**: `bash scripts/metrics.sh` and the count of gate rows it uses from `.metrics/gate-timings.jsonl` over 7 days.
-  - **Success**: at least 5 samples in 7 days on the owner's Mac.
-  - **Pivot**: if no fair rule fits, report `gate_ms` only from `NO_CACHE=1` runs and say so in `docs/metrics.md`.
-  - **Anchor**: docs/metrics.md `gate_ms` row; Basili, Caldiera, Rombach 1994 (GQM).
-
-- [ ] Propose an artifact-design note for goal reports with before/after screenshots
-  - **ID**: artifact-design-goal-report-shots
-  - **Tags**: skills, retro, third-party
-  - **Details**: Retro of the 2026-10-22 sidequest UI goal. `artifact-design` is a third-party (Anthropic) skill, so the change goes upstream as a proposal, not an edit. A goal report with before/after screenshots cost three tries. Two things went wrong: Playwright `setContent` cannot load `file://` images, and full-page phone screenshots must be cropped to the device viewport (iPhone 13 = 390x664), or the fixed tab bar lands mid-image. Proposed note for the skill: "For a goal report, embed before/after screenshots as JPEG data URIs cropped to the device viewport (open the PNG itself, set width and height:auto, then clip), about 100 KB each."
-  - **Files**: none in this repo (upstream proposal); `skill-plugins/workflow/run-goal/evals/evals.json` eval 99 covers the run-goal side
-  - **Output**: docs
-  - **Acceptance**: the proposal is sent upstream, or the note lives in a user-owned skill that wraps artifact-design.
-  - **Hypothesis**: with the note, a screenshot report takes 1 try instead of 3.
-  - **Measurement**: tries to a correct crop in the next goal report with screenshots (session transcript).
-  - **Success**: 1 try.
-  - **Pivot**: if no upstream channel takes it, add the note to run-goal's references/retro.md instead and close this task.
-  - **Anchor**: run-goal retro 2026-10-22; Basili, Caldiera, Rombach 1994 (GQM).
+  - **Blocked**: needs-owner-approval — 2026-10-27: filing on anthropics/claude-plugins-official is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
 - [ ] Drop the basic-ftp override once get-uri accepts a patched range
   - **ID**: scout-basic-ftp-override-removal
@@ -569,3 +507,16 @@
   - **Research**: 2026-10-16 — #268, #455, #606, #609, and #611 are still open; #869 merged but only preserves dotfiles in copied skills; #944 closed. No classifier has landed. Both comment texts are staged in [`docs/audits/skills-cli-268-455-rfc-comment-draft.md`](docs/audits/skills-cli-268-455-rfc-comment-draft.md) with the posting steps; the only remaining step is the approved `gh issue comment`.
   - **Human-approval-required**: external-issue
 
+
+- [ ] Add machine-setup verification cases to third-party skills
+  - **ID**: setup-goal-third-party-skill-retro
+  - **Tags**: skills, evals
+  - **Details**: The ChatGPT Work setup goal used third-party openai-docs, agent-browser, verification-before-completion, computer-use, built-in-browser, chrome-browser, plugin-management, OpenAI system skill-creator, systematic-debugging, and test-driven-development. Keep these proposals local until publication is approved. For openai-docs, check current installed CLI/schema evidence before stale setup notes. For agent-browser, prefer an installed native CLI for configuration diagnostics. For verification-before-completion, hooks.json with zero trusted active runtime hooks must not pass activation. For computer-use, built-in-browser, and chrome-browser, respect ChatGPT desktop control restrictions and use permitted website or CLI alternatives; use a fresh CAPTCHA reference, treat approved CAPTCHA verification as separate from OAuth consent, retain already-verified sign-in without asking again, and distinguish a failed page reload from missing account state. For plugin-management, available does not mean installed or authenticated. For OpenAI system skill-creator, distinguish native and upstream-provider bodies and preserve owner folders and links. For systematic-debugging and test-driven-development, identify scratch HOME/bin collisions before changing production and require a failing reproduction before the fix.
+  - **Files**: third-party skill evals (proposal only)
+  - **Output**: docs
+  - **Acceptance**: each proposed case rejects the described false completion claim; publication remains a separate approved action.
+  - **Hypothesis**: fixture false-completion decisions fall from 1 to 0 for each proposed case.
+  - **Measurement**: run each upstream skill's eval harness with the proposed machine-setup fixture.
+  - **Success**: all proposed fixtures reject false completion.
+  - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
+  - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).

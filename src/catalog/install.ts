@@ -364,6 +364,10 @@ async function installSkillByName(
   const { dryRun, local, checkCatalog = true } = opts;
   const skill = checkCatalog ? catalog.skills.find((s) => s.name === name) : undefined;
   if (skill) {
+    if (dryRun) {
+      showSimpleDryRun("skill", skill.name, `from ${skill.source}${local ? " (local)" : ""}`);
+      return;
+    }
     warnIfDeprecated(name, "skill", skill);
     await installSkill(skill, installSummary, local);
     return;

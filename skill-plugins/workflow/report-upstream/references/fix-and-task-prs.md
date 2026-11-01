@@ -24,8 +24,8 @@ machine running on fixes that are not merged yet, and look after open PRs.
    passes after it. Prove it: revert the fix (or commit it aside), run the
    test, see it fail, restore.
 3. Run the repo's own gate (its `AGENTS.md` `## Delivery`). A failure that
-   also fails on the default branch is pre-existing: note it in the PR, do not
-   fix it in the same PR.
+   also fails on the default branch is pre-existing: note it in the PR and
+   keep the PR draft until its required gate passes. Do not bypass the gate.
 4. Update the docs the change touches. The PR body needs a `## Docs` section.
 5. Commit with a conventional header. The body says what a user hits and why
    the fix is right.
@@ -61,11 +61,11 @@ it is built there. Keep one local integration branch (for example
 git switch local/this-machine && git merge --no-edit fix/<name>   # then build or apply
 ```
 
-After upstream merges, rebuild it from scratch:
-`git fetch origin && git switch local/this-machine && git reset --hard origin/<default>`,
-then merge each still-open fix branch again. When no fix is open, switch back
-to the default branch. Ask before the `reset --hard` if the branch holds
-anything that is not on a fix branch.
+After upstream merges, preserve the old integration branch. Create a new
+local integration branch from `origin/<default>`, then merge each still-open
+fix branch into it and rebuild. This keeps old work recoverable without a
+destructive reset. When no fix is open, switch back to the default branch.
+Deleting an old integration branch still needs the person's explicit approval.
 
 Then re-check the person's own settings (a verify script, or the tool's
 doctor). A tool update that undoes one of their choices is a new fix PR.

@@ -214,6 +214,7 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   } finally {
     if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
+  if (!options.dryRun) await (await import("./core/telemetry.js")).sendDaily(version);
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -226,6 +227,10 @@ function syncStory(options: SyncCommandOptions): string {
 }
 
 async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
+  if (options.pull) {
+    const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
+    if (!readUpdateSkillRequests(options)) return;
+  }
   if (!options.rollback) await handleSyncWorkspaces(options);
   if (await handleSyncEarlyExits(options)) return;
   if (await refuseSyncOnLockDrift()) return;
@@ -288,7 +293,10 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     // Install before the pull, so the pull's deploy includes skills the
     // Agentfile newly requests.
     await installAgentfileItemsBeforePull(applied, options);
-    await update({ dryRun: options.dryRun ?? false });
+    await update({
+      dryRun: options.dryRun ?? false,
+      ...(applied?.skillsToInstall.length ? { requestedSkills: applied.skillsToInstall } : {}),
+    });
     return true;
   }
   return false;
@@ -300,16 +308,22 @@ type AppliedAgentfile = ReturnType<typeof import("./agentfile.js").applyAgentfil
 async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<AppliedAgentfile> {
   const { applyAgentfile } = await import("./agentfile.js");
   const { expandHome } = await import("./utils.js");
+  const { resolveUpdatePolicyPath } = await import("./update-skill-policy.js");
+  const target = options.agentfile ?? expandHome("~/.config/agentbrew");
   try {
-    return applyAgentfile(options.agentfile ?? expandHome("~/.config/agentbrew"), {
+    const path = resolveUpdatePolicyPath(target, options.agentfile !== undefined);
+    if (!path) return undefined;
+    const applied = applyAgentfile(path, {
       quiet: true,
       authoritative: options.prune !== false,
       includeSkillInstallReport: false,
       dryRun: options.dryRun,
     });
-  } catch (error) {
-    console.warn(chalk.yellow(`  Agentfile apply before pull failed: ${errorMessage(error)}`));
-    return undefined;
+    if (!applied) throw new Error("Agentfile application returned no result");
+    return applied;
+  } catch {
+    process.exitCode = 1;
+    throw new Error(`Agentfile application failed; update aborted (${target}).`);
   }
 }
 
@@ -436,12 +450,24 @@ export function buildProgram(): Command {
       showSkillAudit(options);
     });
   program
-    .command("work")
-    .description("Print the day plan for /work: checkup steps, the machine rule, watch mode, and end of day")
-    .option("--json", "Output as JSON")
-    .action(async (options: { json?: boolean }) => {
-      const { showWorkPlan } = await import("./work.js");
-      showWorkPlan(options);
+    .command("telemetry")
+    .description("Anonymous usage counts to PostHog EU: status, on, off, or send (--dry-run shows what would go)")
+    .argument("<action>", "status | on | off | send")
+    .option("--dry-run", "print the batch and send nothing")
+    .action(async (action: string, options: { dryRun?: boolean }) => {
+      const t = await import("./core/telemetry.js");
+      if (action === "on" || action === "off") t.setEnabled(action === "on");
+      if (action === "send") {
+        console.log(JSON.stringify(await t.send(version, options), null, 2));
+        return;
+      }
+      if (!["status", "on", "off"].includes(action)) {
+        console.error(`unknown action ${action}: use status, on, off, or send`);
+        process.exitCode = 2;
+        return;
+      }
+      const st = t.status();
+      console.log(`telemetry: ${st.on ? "on" : "off"} (${st.reason}), ${st.pending} event(s) pending`);
     });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);

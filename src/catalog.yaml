@@ -78,6 +78,15 @@
 # shared code or vice-versa.
 
 skills:
+  - name: skill-creator
+    description: >
+      Create, evaluate, and improve skills with Anthropic's upstream workflow.
+      Don't use for agentbrew catalog registration or as a replacement for a native host's creator.
+    source: anthropics/skills
+    category: development
+    recommended: false
+    preserveExisting: true
+
   # ── Tier 1: Always Recommend ──────────────────────────────────
 
   - name: find-skills
@@ -234,7 +243,7 @@ skills:
     description: >
       Generate an Obsidian StudyVault from documents or a codebase — verified source
       mapping, concept notes, practice questions, and self-review. Use before /tutor.
-      Don't use for multi-source combos without staging (use learn-project).
+      Don't use for learning a project across days (use careerbrew's learn-project skill).
     source: bevibing/tutor-skills
     category: productivity
     recommended: false
@@ -245,16 +254,6 @@ skills:
       Diagnostic, drill-weak, and hard-mode sessions with progress tracking. Don't use
       without an existing StudyVault (run tutor-setup first).
     source: bevibing/tutor-skills
-    category: productivity
-    recommended: false
-
-  - name: learn-project
-    description: >
-      One-command "tutor me on X": gather local/remote repos, PRs/issues, Google Docs,
-      loose files, and web pages into one grounded StudyVault, then chain tutor-setup
-      (teach) and tutor (quiz). Stage-aware and interactive — resumes prep and asks for
-      missing inputs. Don't use for a trivial single README (run tutor-setup directly).
-    source: built-in
     category: productivity
     recommended: false
 
@@ -313,6 +312,12 @@ skills:
     recommended: true
     rationale: "Every user of agentbrew-managed tools can tell the authors what broke, safely and with consent; the always-loaded rule names this skill."
 
+  - name: readme
+    description: "Writes or fixes a README in one order (what and why, Claude-first start prompt, use cases, features, then the rest by usefulness) with no repeats, in plain English for developers with ADHD; a checker script scores it."
+    source: fyodoriv/agentbrew
+    category: development
+    rationale: "Every app's README reads the same way, and a busy reader gets the start prompt and the use cases first."
+
   - name: new-project
     description: "Starts a new repo with an agent-ready setup for a tool, a personal AI assistant, or a private side project: interview, stack pick (TS, Python, Rust), scaffold, and a deterministic setup score. Don't use for an existing repo (use the agent guide baseline) or a throwaway spike (use prototype)."
     source: fyodoriv/agentbrew
@@ -333,11 +338,17 @@ skills:
     category: design
     recommended: false
 
-  - name: frontend-design
-    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
-    source: anthropics/skills
+  - name: hallmark
+    description: "Design skill for new pages that look designed, not generated (MIT, by Together AI): fifty themes, a browser lint for AI tells at eight widths, a fresh-context review, and `/hallmark redesign|audit <path>` for existing pages. The recommended creative-direction skill; replaces frontend-design. For the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    source: nutlope/hallmark
     category: design
     recommended: true
+
+  - name: frontend-design
+    description: "Anthropic's official creative design guidance (the Frontend Design plugin, 760k+ installs on the official marketplace) — bold aesthetics for landing pages, artifacts, posters. Not recommended by default: hallmark covers the same job. For dashboard/app UI, use taste instead; for the technical WCAG/OKLCH/8pt layer, use effective-ui-design."
+    source: anthropics/skills
+    category: design
+    recommended: false
 
   - name: impeccable
     description: "Chrome DevRel design vocabulary — 23 commands across brand+product modes, optional CLI scanner. Complementary to taste (rule-based) and frontend-design (aesthetic)."
@@ -549,6 +560,12 @@ skills:
 
   - name: watch-issues
     description: "Keeps watching repos: each pass lists new issues, unblocked tasks, and red PRs, ships each fix, and repeats on a schedule (/loop)."
+    source: fyodoriv/agentbrew
+    category: workflow
+    recommended: false
+
+  - name: sourced-calculations
+    description: "Makes every computed number traceable: inputs from the user's data, the user, or a named benchmark; the calculation as a chain; and an assumptions table."
     source: fyodoriv/agentbrew
     category: workflow
     recommended: false
@@ -1964,6 +1981,27 @@ bundles:
     members: [context7, playwright, github, sequential-thinking]
 
 rules:
+  - name: memory-first-research
+    description: "Use shared recall and save dated research. Don't use for context-free deterministic CLI actions."
+    category: workflow
+    recommended: false
+    content: |
+      Before context-dependent work or research for a task, message, document,
+      email, or meeting, use ranked `memory_search` in configured shared memory
+      with a non-empty semantic query. Prefer current, dated findings and source
+      links over stale recall. If memory is unconfigured, state that scope.
+
+      If configured recall fails, report "shared memory unavailable", name the
+      failed tool, and block context-dependent work until memory is repaired.
+      A deterministic CLI action can still run locally without a model.
+
+      After research, store dated, reusable findings with their source links.
+      Correct stale records with version-aware `memory_update`; do not repeat
+      known stale claims. Keep a local prep note and link it from the memory
+      entry; link the relevant memory references back from the prep note.
+      Keep raw private records and credentials local. Never copy account
+      sessions, privacy opt-ins, or schedules between hosts.
+
   - name: conventional-commits
     description: Enforce conventional commit format
     category: git

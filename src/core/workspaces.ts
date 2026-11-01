@@ -6,7 +6,7 @@
 // (`$XDG_CONFIG_HOME/tasks-md/workspaces.json`), so a workspace added with
 // `tasks workspaces add` works here too. No roots declared → no workspace
 // mode, and sync behaves exactly as before.
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import chalk from "chalk";
@@ -110,24 +110,25 @@ export function resolveWorkspaceRoots(
   return declared.map((entry) => resolveRootEntry(entry, named));
 }
 
-function findAgentfileIn(directory: string): string | undefined {
+function findAgentfileIn(directory: string, strict = false): string | undefined {
   for (const name of AGENTFILE_NAMES) {
     const path = join(directory, name);
-    if (existsSync(path)) return path;
+    if (strict ? lstatSync(path, { throwIfNoEntry: false }) : existsSync(path)) return path;
   }
   return undefined;
 }
 
 /** Each direct child folder of a workspace root that holds an Agentfile is a repo, sorted by name. */
-export function discoverWorkspaces(roots: WorkspaceRoot[]): Workspace[] {
+export function discoverWorkspaces(roots: WorkspaceRoot[], strictReader?: (path: string) => Agentfile): Workspace[] {
+  const readPolicy = strictReader ?? loadAgentfileFromPath;
   return roots.map(({ name, root }) => {
     const repos: WorkspaceRepo[] = [];
     const children = existsSync(root) ? readdirSync(root, { withFileTypes: true }) : [];
     for (const child of children.sort((a, b) => a.name.localeCompare(b.name))) {
       if (!child.isDirectory() || child.name.startsWith(".") || SKIPPED_DIRS.has(child.name)) continue;
-      const agentfilePath = findAgentfileIn(join(root, child.name));
+      const agentfilePath = findAgentfileIn(join(root, child.name), strictReader !== undefined);
       if (!agentfilePath) continue;
-      const agentfile = loadAgentfileFromPath(agentfilePath);
+      const agentfile = readPolicy(agentfilePath);
       if (!agentfile) continue;
       repos.push({ id: `${name}::${child.name}`, agentfilePath, agentfile });
     }

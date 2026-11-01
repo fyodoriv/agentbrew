@@ -1,10 +1,27 @@
 # Observability
 
 How to see what agentbrew did on this machine, what failed, and how to fix it.
-Everything stays on the machine by default. agentbrew has no default
-telemetry and no external error reporter ([`VISION.md`](VISION.md) §
-Non-goals). The one exit is the opt-in
-[weekly metrics share](#weekly-metrics-share-opt-in).
+Everything stays on the machine by default. agentbrew has no external error
+reporter ([`VISION.md`](VISION.md) § Non-goals). It has two opt-in exits: the
+[weekly metrics share](#weekly-metrics-share-opt-in), and field telemetry.
+
+Field telemetry sends the content-free event log to PostHog EU once a day, as
+anonymous counts under a random install id (no person profile, no GeoIP). It
+sends nothing until you set a project key (`AGENTBREW_POSTHOG_KEY`, or the
+Keychain item `agentbrew` / `posthog_key`). `agentbrew telemetry status` shows
+its state, `agentbrew telemetry send --dry-run` prints the exact body, and
+`agentbrew telemetry off` or `DO_NOT_TRACK=1` stops it. Each line is checked
+against the event allowlist again at send time, so an edited or older log line
+cannot send a path or name; a canary test in `src/core/telemetry.test.ts` pins this.
+
+`npm run docs:proof` reads the per-install totals back for the README Proof
+section when a personal PostHog query key and project id are set
+(`AGENTBREW_POSTHOG_QUERY_KEY` and `AGENTBREW_POSTHOG_PROJECT`, or the
+Keychain items `agentbrew` / `posthog_query_key` and `posthog_project_id`;
+never commit them). It queries the PostHog EU query API
+(`AGENTBREW_POSTHOG_QUERY_URL` overrides the host) and keys each install by a
+salted hash, never the install id. With no key or no network it prints one
+`note:` line and keeps the local aggregate (`src/docs/proof-posthog.ts`).
 
 ## Logs
 

@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
+### Removed
+
+- The `learn-project` skill, its `stage-learn-sources` script, and its guide
+  moved to careerbrew, which keeps study state across days (spaced reviews,
+  retests, mastery). A guard test keeps them out of agentbrew.
+
+### Changed
+
+- `/work` reads 34% less to start: 6298 bytes, down from 9511
+  (`work_instruction_bytes`). `commands/work.md` keeps only what the plan does
+  not say, `agentbrew work --json` prints compact JSON, and the plan drops
+  `dashboard.top`. The day's page is republished when a stage ends, when a watch pass
+  changes a row, when a row needs the user, and at end of day; `dashboard.statusPath` still updates on
+  every row change.
+
+### Added
+
+- `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
+- The wrap-up skill's `open-work.sh` tags a branch whose added lines are
+  already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as
+  "likely landed: look, then delete it". Such a branch matched no squash
+  check and read as work to continue.
+- `agentbrew work stats [--days N] [--json]` measures `/work`: the instruction
+  bytes a run reads, and each recorded run's wall time, tool time, calls,
+  blocked calls, Artifact calls, subagents, and time per step (from the
+  agent perf log, `agent-perf.mjs work`). New metrics `work_instruction_bytes`
+  and `work_run_wall_ms`.
+- `/work` keeps a live dashboard for the day (#510). `agentbrew work --json`
+  returns a `dashboard` block: title, one row per step, statuses, and a
+  local page path; the end-of-day report links it.
+- `/work` runs steps in parallel stages (#509). A `workSteps:` entry can set
+  `scope:`, `after:`, and `longRunning:`; `agentbrew work --json` returns
+  `stages`, and `/work` runs one subagent per step in a stage.
+- `/work` runs its steps back to back (#508). `agentbrew work --json`
+  adds `flow`, `stopOnlyFor` (merge conflict, destructive or public action,
+  a choice only the user can make), and `questions` (asked once, at the end).
+- `agentbrew setup --all` runs the multi-repo setup chain (#442 part 4):
+  `agentbrew sync`, the dotfiles and careerbrew installers, then
+  `agentbrew audit-skills`. One question round (`--yes` for defaults), done
+  steps skipped on rerun (`--force` reruns), failed steps listed at the end.
+  Plain `agentbrew setup` is unchanged.
+
 ### BREAKING CHANGE
 
 - **Team overlays are removed** (#208 step 12). `agentbrew team set`,
@@ -43,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reports drift. First entry: `agent-usage-guard` at `e9bd8d6`.
 
 ### Changed
+
+- The `watch-issues` skill says what to do when a Monitor's `gh` reads fail
+  TLS in the sandbox: run the watch loop outside it, writing to a log, and
+  tail that log.
 
 - Every tool setup now starts with a preflight: check for duplicates and
   conflicts (hooks, status line, MCP servers, skills, LaunchAgents, plugins),

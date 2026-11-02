@@ -309,10 +309,11 @@
 
 - [ ] Checkups show their last run and record each run (issue #572)
   - **ID**: checkup-run-record
-  - **Blocked**: needs-owner — where does the shared run record live? Options: (a) an `agentbrew checkup-run show|record <name>` CLI subcommand every checkup calls, (b) a small script in a deployed skill, (c) only in dotfiles `tooling-checkup` plus a documented file format for plugins. Each changes who must update to get it.
+  - **Mode**: AFK
+  - **Implementation decision**: Agentbrew owns one generic `checkup-run show|record` boundary. The issue already specifies the record path and schema. Dotfiles adapts its richer checkup history without replacing it. Register runnable synthetic measurements before changing production; [preparation routing](docs/plans/owned-issue-preparation.md) defines the boundary.
   - **Tags**: checkup, state
   - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`; print it at the start, write it at the end.
-  - **Files**: `scripts/checkup.sh`, the chosen home (see Blocked)
+  - **Files**: `scripts/checkup.sh`, generic checkup CLI and record owner
   - **Output**: code
   - **Acceptance**: as in issue #572
   - **Hypothesis**: every checkup run starts with what changed since the last run; runs with no last-run line drop to 0.
@@ -323,7 +324,8 @@
 
 - [ ] Scroll and screenshot a Google Doc over CDP without focus (issue #561)
   - **ID**: gdoc-cdp-screenshots
-  - **Blocked**: needs-owner — the issue describes a script that already exists on another machine. Absorb that script (share its path or paste it into a branch), or build a new one from the issue text?
+  - **Mode**: AFK
+  - **Implementation decision**: Extend the existing Google Docs workflow through an adapter over maintained browser transport. The bounded source search did not recover the named old script. Its location does not block preparation. Keep real Google Docs rendering and focus proof separate from synthetic transport controls; [preparation routing](docs/plans/owned-issue-preparation.md) records the limits.
   - **Tags**: browser, docs
   - **Details**: Issue #561: open the doc in its own CDP tab, scroll page by page, one screenshot per page, no keystrokes or window activation, close the tab after.
   - **Files**: a skill script under `skill-plugins/`
@@ -337,7 +339,8 @@
 
 - [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
   - **ID**: page-zero-errors-skill
-  - **Blocked**: needs-owner — the issue names an existing MIT script by the same author. Absorb it (share its path or repo), or build a new one from the issue text?
+  - **Mode**: AFK
+  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. A bounded public-source search found no recoverable implementation. Prepare an adapter over maintained browser transport; do not restore a deleted recommendation or assume an unrecovered license. See [preparation routing](docs/plans/owned-issue-preparation.md).
   - **Tags**: browser, skills, verification
   - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
   - **Files**: `skill-plugins/`, README skill list
@@ -351,7 +354,8 @@
 
 - [ ] History-wide leak audit before a plugin goes public (issue #564)
   - **ID**: plugin-history-leak-audit
-  - **Blocked**: needs-owner — absorb an existing implementation (the issue reads like one exists), or build new? Also confirm gitleaks as a new dependency the audit may install.
+  - **Mode**: AFK
+  - **Implementation decision**: Extend the existing plugin audit boundary and wrap gitleaks. The scanner is already installed on the verified development machine; do not install it implicitly on other machines. Register a fixed-config bare-mirror fixture before production changes. See [preparation routing](docs/plans/owned-issue-preparation.md).
   - **Tags**: security, plugins, oss
   - **Details**: Issue #564: scan every commit on every ref (emails, messages, ref names, paths, added lines) with gitleaks on a bare mirror and a fixed config; `--fresh` mode; patterns from a user env file.
   - **Files**: `src/oss/`, the plugin publishing guide, the CLI reference

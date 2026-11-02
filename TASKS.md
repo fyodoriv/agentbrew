@@ -155,6 +155,19 @@
 
 ## P1
 
+- [ ] Explain the installed dependency graph before resuming remediation
+  - **ID**: dependency-install-counterfactual
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Run the registered unchanged-lock installation control to explain the extra installed-tree problems without pruning or filtering them. Preserve the failed candidate comparison, the original nine-alert goal and the full-graph requirement. Plan: [installation counterfactual](docs/plans/dependency-install-counterfactual.md).
+  - **Output**: docs
+  - **Acceptance**: A source-bound control receipt distinguishes equal complete problems from a valid mismatch or an inconclusive setup. No full graph or all-nine completion is inferred.
+  - **Hypothesis**: The same Node 24.21.0 and npm 10.9.9 installation on the original locked graph reproduces exactly 6 complete installed-tree problems, with 0 differences after only owned-root prefix replacement.
+  - **Measurement**: The plan's exact `npm_config_include=optional heavy-run bash -c 'cd "$1" && "$2" ci --prefer-offline --no-audit --no-fund' _ "$FIXTURE" "$NPM10"`, full `npm ls --all --include=optional --json` and strict JSON comparator; capture each actual exit.
+  - **Success**: One install exits 0; full tree exits 1 with ELSPROBLEMS; all 6 complete problems and the complete error object match with 0 differences. This is diagnosis only.
+  - **Pivot**: Any valid problem difference rejects installer equivalence. Missing inputs, registry/setup errors or failed installation are inconclusive; never retry until a match or weaken the failed comparison.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); npm 10 documentation for npm ci and npm ls, linked in the plan.
+
 - [ ] Scheduled repair work enters the configured machine queue
   - **ID**: scheduled-repair-queue-admission
   - **Tags**: stability, deployment-infra, agents

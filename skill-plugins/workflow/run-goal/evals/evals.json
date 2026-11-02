@@ -2441,6 +2441,18 @@
         "Rewrites the task with the measured cause, a new hypothesis and measurement, and does not remove it as done",
         "Reports the original success threshold as not met in the PR and the final report"
       ]
+    },
+    {
+      "id": 214,
+      "prompt": "/goal move my cleaning schedule out of Apple Reminders into the app, and have Reminders show only what is due each day",
+      "expected_output": "The agent migrates the schedule into the app private data and checks that each migrated block keeps its minutes. Its first live write to Reminders times out and loses the new ids. It does not re-run the same write blindly (that would duplicate reminders). It first reads the live list to see what landed, then makes the sync idempotent: it adopts existing items by a stable key (due date), writes one item per call and saves after each, and moves the work to a small dedicated list. Only then does it re-run, and it reads the result back before claiming the criterion met.",
+      "expectations": [
+        "After a timed-out live write, reads the target store to find partial writes before any retry",
+        "Makes the retry idempotent (adopt existing items by a stable key) instead of repeating the same write",
+        "Saves progress per item, so a second timeout keeps what landed",
+        "Moves or archives old items instead of deleting the user data",
+        "Proves the live criterion with a fresh read-back, not the command exit code"
+      ]
     }
   ]
 }

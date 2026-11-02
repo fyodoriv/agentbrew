@@ -580,6 +580,7 @@ describe("initForce", () => {
       memory: { enabled: true, packPaths: ["/path/to/pack"] },
       organization: true,
       skillInstallMode: "native" as const,
+      scheduledRepairQueue: "heavy-run" as const,
       defaultModel: "some-model",
       defaultEffort: "high",
       modelOverrides: { cursor: null },

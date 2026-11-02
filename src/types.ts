@@ -351,6 +351,8 @@ export interface AgentBrewState {
    *     `--no-auto-repair` does this).
    */
   autoRepair?: "on" | "off";
+  /** Per-user macOS repair admission; selecting a queue does not rewrite an installed job. */
+  scheduledRepairQueue?: "direct" | "heavy-run";
   /**
    * Machine-local choice for agentbrew's own commands (/agentbrew).
    *   - `"on"` (default): sync deploys them to every agent.

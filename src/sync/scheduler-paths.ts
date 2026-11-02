@@ -2,8 +2,11 @@ import { execFileSync } from "node:child_process";
 import { accessSync, constants, existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import chalk from "chalk";
+import { AgentBrewError } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
+import { readStateForScheduler } from "../state.js";
 import { expandHome } from "../utils.js";
+import { SCHEDULED_REPAIR_GUARD } from "./scheduled-repair-command.js";
 
 /** Auto-sync runs every 30 minutes. Single source of truth for all scheduler backends. */
 export const AUTO_SYNC_INTERVAL_MINUTES = 30;
@@ -300,12 +303,32 @@ export function resolveAgentBrewCliJsPath(): string {
   return join(expandHome("~"), "apps/tooling/agentbrew/dist/cli.js");
 }
 
-/**
- * ProgramArguments for com.agentbrew.check — invoke node + cli.js explicitly so
- * launchd never relies on `#!/usr/bin/env node` shebang resolution.
- */
+/** Explicit Node/CLI arguments, optionally behind the selected machine queue. */
 export function buildLaunchAgentFixArgs(): string[] {
-  return [resolveSchedulerNode(), resolveAgentBrewCliJsPath(), "fix"];
+  const policy = scheduledRepairQueuePolicy();
+  const args = [resolveSchedulerNode(), resolveAgentBrewCliJsPath(), "fix"];
+  if (policy === "direct") return args;
+  const queue = join(resolveDotfilesBinPath(expandHome("~")), "heavy-run");
+  return ["/bin/sh", "-c", SCHEDULED_REPAIR_GUARD, "agentbrew-scheduled-repair", queue, ...args];
+}
+
+function scheduledRepairQueuePolicy(): "direct" | "heavy-run" {
+  const outcome = readStateForScheduler();
+  if (outcome.kind === "missing") return "direct";
+  if (
+    outcome.kind === "loaded" &&
+    outcome.value !== null &&
+    typeof outcome.value === "object" &&
+    !Array.isArray(outcome.value)
+  ) {
+    const mode = (outcome.value as { scheduledRepairQueue?: unknown }).scheduledRepairQueue;
+    if (mode === undefined || mode === "direct") return "direct";
+    if (mode === "heavy-run") return "heavy-run";
+  }
+  throw new AgentBrewError(
+    "SCHEDULED_REPAIR_POLICY_UNAVAILABLE",
+    "Scheduled repair queue policy is unavailable. Review the saved configuration before installing the job.",
+  );
 }
 
 /** Resolve the agentbrew binary path — tries `which`, then process.argv, then default. */

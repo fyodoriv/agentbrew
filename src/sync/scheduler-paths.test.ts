@@ -14,6 +14,8 @@ vi.mock("../utils.js", () => ({
   expandHome: vi.fn((p: string) => p.replace("~", "/mock-home")),
 }));
 
+vi.mock("../state.js", () => ({ readStateForScheduler: () => ({ kind: "missing" }) }));
+
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import {

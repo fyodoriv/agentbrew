@@ -30,6 +30,7 @@ describe("settings table", () => {
   it("shows defaults with source 'default' when state.yaml is missing", () => {
     const rows = listSettings();
     expect(rows.map((r) => [r.key, r.value, r.source])).toEqual([
+      ["scheduledRepairQueue", "direct", "default"],
       ["claudePermissions", "manage", "default"],
       ["skillInstallMode", "auto", "default"],
       ["autoRepair", "on", "default"],

@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import { MEMORY_AGENT_LABEL } from "../memory/launchagent.js";
 import { autoRepairOptedOut } from "../settings.js";
+import { loadState } from "../state.js";
+import { queuedRepairCommand } from "../sync/scheduled-repair-command.js";
 import {
   LAUNCHAGENT_LANG,
   launchAgentPathHasRequiredPrefixes,
@@ -35,13 +37,13 @@ export function setPlistPath(plistContent: string, pathValue: string): string {
 
 /**
  * Node bin dir the plist itself runs: the directory of an absolute
- * ProgramArguments[0] that is named `node`. Undefined for other plists.
+ * direct or recognized queued Node argument. Undefined for other plists.
  * The running process can be a development checkout on another Node, so the
  * deployed plist is the contract, not `process.execPath`.
  */
 export function plistNodeBinDir(plistContent: string): string | undefined {
-  const array = /<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)<\/string>/u.exec(plistContent);
-  const program = array?.[1];
+  const args = extractPlistProgramArguments(plistContent);
+  const program = queuedRepairCommand(args)?.node ?? args[0];
   if (!program || !isAbsolute(program) || basename(program) !== "node") return undefined;
   return dirname(program);
 }
@@ -123,7 +125,8 @@ function isMemoryPlist(plistPath: string): boolean {
 function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
   const memory = isMemoryPlist(plistPath);
   const fix = memory ? "agentbrew memory fix" : "agentbrew fix";
-  const program = extractPlistProgramArguments(content)[0];
+  const args = extractPlistProgramArguments(content);
+  const program = queuedRepairCommand(args)?.node ?? args[0];
   if (!program || !isAbsolute(program) || basename(program) !== "node") return [];
   const drift = (detail: string): DriftItem[] => [
     { agent: "launchagent", type: memory ? "memory-launchagent" : "launchagent", detail },
@@ -134,6 +137,32 @@ function checkPlistNodeDrift(plistPath: string, content: string): DriftItem[] {
   const stable = resolveSchedulerNode({ execPath: program, env: {} });
   if (stable === program) return [];
   return drift(`${plistPath}: runs ${program}, which a Node upgrade deletes; use ${stable} — run ${fix}`);
+}
+
+function checkRepairQueueDrift(plistPath: string, content: string, home: string): DriftItem[] {
+  if (basename(plistPath) !== CHECK_PLIST) return [];
+  const queued = queuedRepairCommand(extractPlistProgramArguments(content));
+  const selected = loadState()?.scheduledRepairQueue === "heavy-run";
+  const runner = join(resolveDotfilesBinPath(home), "heavy-run");
+  if (selected ? queued?.queue !== runner : queued !== undefined) {
+    return [
+      {
+        agent: "launchagent",
+        type: "launchagent",
+        detail: `${plistPath}: scheduled repair queue differs from its selected setting — run agentbrew auto-sync install`,
+      },
+    ];
+  }
+  if (queued && !existsSync(queued.queue)) {
+    return [
+      {
+        agent: "launchagent",
+        type: "launchagent",
+        detail: `${plistPath}: selected repair queue is unavailable — restore its runner or change scheduledRepairQueue`,
+      },
+    ];
+  }
+  return [];
 }
 
 /**
@@ -159,6 +188,8 @@ export function checkLaunchAgentPathDrift(): DriftItem[] {
     }
     const pathValue = extractPlistPath(content);
     if (!pathValue) continue;
+
+    items.push(...checkRepairQueueDrift(plistPath, content, home));
 
     if (!plistManagesOwnPath(plistPath) && !plistPathHasNode(pathValue, home, content)) {
       items.push({

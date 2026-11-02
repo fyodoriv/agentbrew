@@ -269,10 +269,6 @@ background work: a launch in the transcript ("Async agent launched" or
 notification yet. The retro belongs at the end of the goal, not at each
 turn that only waits on workers.
 
-The opt-in `usage-tip` (Stop) hook shows the user one short tip per turn as
-a `systemMessage`, which is not sent to the model, and logs shown and adopted
-tips. [`usage-tips.md`](usage-tips.md) covers the catalog and the report.
-
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait

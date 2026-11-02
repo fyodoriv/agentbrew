@@ -310,7 +310,8 @@ describe("registerMcpCommands", () => {
     it("calls updateMcpFromGit with server name", async () => {
       const program = buildProgram();
       await program.parseAsync(["node", "test", "mcp", "update", "my-server"]);
-      expect(mockUpdateMcpFromGit).toHaveBeenCalledWith("my-server");
+      expect(mockUpdateMcpFromGit).toHaveBeenCalledWith("my-server", { freshRuntime: undefined });
+      expect(mockUpdateMcpFromGit).toHaveBeenCalledTimes(1);
     });
   });
 

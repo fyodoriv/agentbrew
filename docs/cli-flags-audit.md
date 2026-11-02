@@ -39,6 +39,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--env` | knob | Supplies server env vars; input, not behavior. |
 | `--fix` | disruptive | Lets `status` rewrite agent configs; `status` stays read-only by default. |
 | `--force` | disruptive | Re-runs work that is already done or overwrites; unsafe as a default. |
+| `--fresh-runtime` | disruptive | Starts with new cache-local runtime state and copies no application data; explicit consent is required, even with `--yes`. |
 | `--from` | knob | Names the source agent or repo; input, not behavior. |
 | `--from-state` | knob | Generates an Agentfile instead of running init; a different job. |
 | `--git` | knob | Names a git URL or picks the git hook; input, not behavior. |

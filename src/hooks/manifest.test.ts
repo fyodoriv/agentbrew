@@ -1,7 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { filterHooksForTarget, toClaudeHooksConfig } from "../sync/hooks-sync.js";
 
 import {
   loadManagedHooksFromManifest,
@@ -73,10 +75,77 @@ const OWNER_WORKFLOW_HOOK_IDS = [
   "jira-no-grandchildren",
   "gdoc-comment-preservation",
   "gdoc-surgical-edit-only",
-  "usage-tip",
   "perf-task-review",
   "no-home-crawl",
 ];
+
+describe("usage-tip retirement", () => {
+  const repoRoot = resolve(import.meta.dirname, "../..");
+  function enabledRetirementFixture() {
+    const root = tempRoot();
+    const overlayPath = join(root, "overlay.yaml");
+    writeManifest(overlayPath, "version: 1\nenabled: [usage-tip, gh-pr-body-attribution]\nhooks: []\n");
+    return { root, ...loadManagedHooksFromManifest(repoRoot, join(root, "deployed"), { overlayPath }) };
+  }
+
+  it("does not register the retired Claude Stop hook even when previously enabled", () => {
+    const { managed } = enabledRetirementFixture();
+    const config = toClaudeHooksConfig(filterHooksForTarget(managed, "claude-code"));
+    const retired =
+      config.Stop?.flatMap((group) => group.hooks).filter((hook) => hook.command?.endsWith("/usage-tip.sh")) ?? [];
+    expect(retired).toHaveLength(0);
+    expect(managed.some((hook) => hook.command?.endsWith("/usage-tip.sh"))).toBe(false);
+    expect(managed.some((hook) => hook.command?.endsWith("/gh-pr-body-attribution.sh"))).toBe(true);
+  });
+
+  it("keeps Codex free of the retired registration", () => {
+    const { managed } = enabledRetirementFixture();
+    expect(
+      filterHooksForTarget(managed, "codex").filter((hook) => hook.command?.endsWith("/usage-tip.sh")),
+    ).toHaveLength(0);
+  });
+
+  it("does not offer the retired built-in hook", () => {
+    const manifest = loadManifestFile(join(repoRoot, "hooks", "manifest.yaml"));
+    expect(manifest?.hooks.filter((hook) => hook.id === "usage-tip")).toEqual([]);
+  });
+
+  it("emits no long-session notice from resolved hooks on synthetic transcript data", () => {
+    const { root, resolved } = enabledRetirementFixture();
+    const transcript = join(root, "synthetic-transcript.jsonl");
+    const catalog = join(root, "synthetic-catalog.tsv");
+    const sentinel = "SYNTHETIC_RETIRED_USAGE_NOTICE";
+    writeFileSync(
+      transcript,
+      `${Array.from({ length: 401 }, (_, i) => JSON.stringify({ type: "user", message: { content: `Synthetic fixture activity without any private data ${i}` } })).join("\n")}\n`,
+    );
+    writeFileSync(catalog, `fixture-retired-long\tlong\t-\t${sentinel}\n`);
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      HOME: root,
+      USAGE_TIPS_DIR: join(root, "tip-log"),
+      USAGE_TIPS_FILE: catalog,
+      HOOK_DECISIONS_LOG: join(root, "decisions.jsonl"),
+    };
+    delete env.BASH_ENV;
+    delete env.ENV;
+    const emitted: string[] = [];
+    let dispatches = 0;
+    for (const hook of resolved.hooks.filter((entry) => entry.id === "usage-tip")) {
+      dispatches++;
+      const output = spawnSync("/bin/bash", [join(repoRoot, "hooks", hook.script)], {
+        env,
+        input: JSON.stringify({ session_id: "fixture-retired-session", transcript_path: transcript }),
+        encoding: "utf8",
+      });
+      expect(output.error).toBeUndefined();
+      expect(output.status).toBe(0);
+      if (output.stdout.trim()) emitted.push(JSON.parse(output.stdout).systemMessage);
+    }
+    expect(emitted.filter((message) => message.includes(sentinel))).toHaveLength(0);
+    expect(dispatches).toBe(0);
+  });
+});
 
 describe("loadManifestFile", () => {
   it("parses a valid v1 manifest with target agents", () => {

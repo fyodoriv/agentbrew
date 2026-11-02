@@ -187,15 +187,17 @@ text with `agentbrew catalog show <name>`.
 
 - A short name is looked up as a tag first, then as a branch. A tag wins over a branch with the same name. To pin that branch, pass `--ref refs/heads/<name>`.
 - A full commit ID works: 40 hex, or 64 hex in a SHA-256 repo. A short commit ID, or another revision such as `HEAD~1`, is refused.
-- A branch pin tracks the branch, so `agentbrew mcp update` pulls it. A tag or commit pin stays on that commit: `mcp update` exits 1 on it and prints the install command, with `--ref <tag|branch|commit>`, that moves the pin.
-- A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew preserves existing non-build files in the cache. After a re-pin that is refused, the cache is checked out again at the commit it was at before the run (on the same branch, if it followed one), so a registered server keeps running the same files.
-- Say the cache has no build output from a commit, and the build at that commit fails. That counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it. A failed build at that commit may still use it.
-- With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
-- agentbrew records the files each successful build writes (in `.git/agentbrew-build-outputs`, from a before and after list of untracked files). At a new commit it moves only those recorded files aside, builds, and picks the entrypoint from the files that build wrote. A build that moves its output (`dist/` to `build/`) registers the new place on every run. A build that writes nothing is refused, and the old output returns. Files you add, such as `token.json`, are never in the record, so they are never moved or deleted. A cache made by an older agentbrew has no record until one build succeeds. Failed builds remove only newly created partial output. A saved output folder from an interrupted build blocks another build, so its recovery copy stays intact.
-- Node entrypoint paths, including package `main`/`bin` and symlink targets, must resolve to files. Valid Node directory entrypoints remain supported.
-- A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
-- Each server's repo is cached at `~/.config/agentbrew/mcp-repos/<name>`, and that dir is reused only for the repo that cloned it. Another URL under the same name is refused, and so is a cache dir with no `origin` remote, a symlink, or a linked worktree. To keep both repos, install the new one under another name (`agentbrew install <other-name> --git <url>`). To replace it, delete the dir.
+- A branch pin tracks that branch. `agentbrew mcp update <name> --fresh-runtime` builds its latest commit in a separate directory. A tag or commit pin stays fixed; use `install --git <url> --ref <ref>` to choose another pin.
+- Every new runtime is built in an independent `~/.config/agentbrew/mcp-builds/<name>/attempt-<id>` clone. Agentbrew never checks out, rebuilds, moves or deletes files in the active runtime or a legacy `mcp-repos/<name>` cache. Repository build scripts remain trusted code; this is not a build sandbox.
+- A different runtime requires `--fresh-runtime` on `install --git`, `mcp add --git`, or `mcp update`. It starts with new cache-local runtime state. The old directory stays intact, and no data is copied automatically. Review any server-specific state migration first. `--yes` only stops prompts; it does not give this consent.
+- A valid accepted same-commit runtime can be reused at its original path without rebuilding it. A legacy build-output list is not reuse evidence. Source identity, full commit and the resolved entrypoint must match the private runtime receipt.
+- A failed or skipped build cannot supply uncommitted output. A fresh first install can use a committed entrypoint after its side build fails. A failed different-commit update is refused. Node directory entrypoints and Python files remain supported; external symlink targets are refused.
+- Candidate builds run independently. Participating Git installers use a short publication lease and reload state before registration. This does not lock out old CLI processes or external editors. Success requires exact state and effective agent-config readback. A partial or unknown publication exits 1 and retains both complete runtime directories; some configs may already name the candidate. Check state and configs before retrying. No automatic whole-state rollback is attempted.
+- Failed, interrupted and replaced candidates stay on disk for recovery. This consumes disk space; there is no automatic cleanup or runtime-data migration. Never delete an old runtime until you have confirmed that it is unused and its data is safe.
+- A ref that starts with `-`, or is not a valid Git ref name, is refused before acquisition. Another source URL under an existing name, a missing origin, a symlinked runtime root or a linked worktree is refused. Use a different name to keep a different source.
 - A trailing `.git` or `/` on a URL does not make it another repo, but the ssh and https forms of one repo do. A local path is recorded as an absolute one.
+
+Git refusal messages identify the rejected step and its next explicit action. A missing runtime is not recreated: review its saved configuration, then install under a new name if needed. Credential-helper guidance for that refusal does not mean a connection or authentication was attempted.
 
 **Env vars for a git install.** `agentbrew install <name> --git <url> --env KEY` (also `mcp add --git`) gives the server env var `KEY` as a `${KEY}` reference, which agents read from their own environment. `--env KEY=VALUE` stores the value as given, so keep secrets out of it. A bare `KEY` must be upper case (letters, digits, and `_`), and `KEY=VALUE` needs a value. A re-install keeps the server's env vars and adds or replaces the ones you pass; to drop one, `agentbrew remove <name>` and install again. agentbrew checks each key in the environment of the shell that runs the install, before it clones:
 
@@ -400,6 +402,10 @@ One command translates the source of truth into every agent's native format.
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies, and `agentbrew status --verbose` names each kept, missing, or outdated script with its path
+
+Usage tips are retired. Managed hook sync no longer registers their Stop hook,
+and the performance status line no longer replays tip caches. Old tip history
+stays in place, unused. See [retirement details](docs/usage-tips.md).
 
 ### Attention-friendly language
 
@@ -1064,6 +1070,24 @@ Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor o
 The step is cached until a package file changes. npm 10 comes from the npx cache; with no network and no cache, the check fails in seconds with a clear message. `lefthook.yml` runs the same check on pre-push when a pushed commit touches a package file.
 
 That works only when lefthook installs the repo's hooks. A global `core.hooksPath` that does not call lefthook skips it, and then `npm run verify` is the catch.
+
+### Dependency security
+
+The [original dependency cohort](docs/plans/dependency-alert-controls.md) records
+the completed runtime patch stage. [Stage S](docs/plans/development-patch-alerts.md#recorded-partial-result)
+records the later development patches and the remaining alerts. The full
+development graph retains the Nunjucks/Chokidar peer conflict. These partial
+stages do not make that graph valid or complete the original remediation.
+
+A fresh npm 10.9.9 install of the unchanged lockfile reproduced the same
+optional extra-package reports and Chokidar peer conflict. The specific installer cause
+is unproved. The [installation diagnosis](docs/plans/dependency-install-counterfactual.md#recorded-diagnostic-result)
+preserves the first failed installed-graph comparison; it does not make the
+full graph valid.
+
+The local jks stub, dependency overrides and Node floor remain unchanged.
+The plan tracks the remaining peer work and requires full validation plus
+GitHub fixed-status confirmation before final completion.
 
 ### How `main` health is checked
 

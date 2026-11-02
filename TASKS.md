@@ -155,6 +155,20 @@
 
 ## P1
 
+- [ ] Stop usage tips on every active agent and archive the retired tool
+  - **ID**: retire-usage-tips
+  - **Tags**: stability, privacy, agents
+  - **Mode**: AFK
+  - **Details**: The user explicitly requested retirement of claude-usage-tips, including the repeated notice, cached status-line replay and actual tool repository archival. Remove agentbrew built-in support and coordinate dotfiles child `retire-usage-tip-overlay`; root owns qualified live reconciliation and archive readback. Preserve unrelated settings and unused historical data. Register [the retirement experiment](docs/plans/retire-usage-tips.md) before new fixtures or feature edits.
+  - **Files**: hook manifest/check/catalog/report, agent-perf helper, their existing tests and docs; dotfiles overlay child owns its separate source paths.
+  - **Output**: code
+  - **Acceptance**: No active retired Claude/Codex hook or cached tip output remains, built-in and machine defaults cannot re-enable it, the verified tool repository reports archived=true, unrelated behavior/settings remain unchanged, and required gates pass.
+  - **Hypothesis**: Claude registration, seeded 401-row notice, cached-tip rendering and built-in availability each move 1 to 0; Codex remains 0; machine default and pre-existing enabled entries move 1 to 0; repository archived false becomes true; unrelated setting changes remain 0.
+  - **Measurement**: The plan's exact queued manifest/sync/agent-perf Vitest command, hook fixtures, dotfiles overlay Bats, full repository gate and root-owned targeted readback plus env-unset repository archive query. Count resolved registrations and actual synthetic outputs, not source strings.
+  - **Success**: Every retired registration/output/default is 0, archive readback is true, protected setting changes are 0, and all required commands pass.
+  - **Pivot**: Any retired output/registration above 0, archive false, unknown ownership, unrelated change or failed gate blocks completion. Preserve evidence; never count missing-script failure, historical deletion or source-only success as live retirement.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration); hook ownership protocol and explicit user retirement request.
+
 - [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies

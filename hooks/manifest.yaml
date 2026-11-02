@@ -572,15 +572,3 @@ hooks:
     sourceRule: 'docs/hook-protocol.md "Home-folder searches" (owner request 2026-10-25: home-wide agent searches kept Spotlight and file importers busy, load 322)'
     agents: ["claude-code"]
     defaultEnabled: false  # owner workflow; opt in via the overlay `enabled:`
-
-  # ── Usage coaching ──
-  - id: usage-tip
-    description: End each turn with one short tip on using the agent better, and log whether later prompts adopt it
-    event: Stop
-    script: checks/usage-tip.sh
-    tier: deterministic
-    verdict: allow
-    bypassEnvVar: HOOK_BYPASS_USAGE_TIP
-    sourceRule: 'docs/usage-tips.md'
-    agents: ["claude-code"]
-    defaultEnabled: false

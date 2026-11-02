@@ -27,7 +27,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`measure-context-budget.md`](measure-context-budget.md) | How do I measure how much context agentbrew adds to each session? | both |
 | [`observability.md`](observability.md) | Where are the logs, which events and errors are recorded, and how does the health check show each fix? | both |
 | [`metrics.md`](metrics.md) | How do we know agentbrew works? Each metric with its goal, pivot, and command. | both |
-| [`usage-tips.md`](usage-tips.md) | How do I get one short tip per agent turn, and see which tips people actually adopt? | human |
+| [`usage-tips.md`](usage-tips.md) | Why were usage tips retired, and what happens to old tip history? | human |
 | [`agent-perf.md`](agent-perf.md) | Which agent steps take the longest? The perf log, its privacy rules, and `agent-perf.mjs`. | both |
 | [`testing-agent-artifacts.md`](testing-agent-artifacts.md) | How do I test skills, commands, hooks, and rules? | agent |
 | [`agent-guide-baseline.md`](agent-guide-baseline.md) | How do I write an `AGENTS.md` for any repo? The cross-repo contract. | both |

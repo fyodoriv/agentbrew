@@ -175,6 +175,12 @@ lower-middle median, and every Artifact call counted as a publish.
 A gate you started before your last edit tests old code. Stop it and
 start it again after the edits; never report its result for the new code.
 
+- A gate that fetches a package manager (corepack) fails on DNS in the
+  sandbox. Rerun the repo's own gate outside the sandbox, and expect
+  `heavy-run` queues of 15 or more jobs.
+- `git symbolic-ref HEAD refs/heads/NEW` leaves an unborn branch, so every
+  file shows as staged. Follow it with `git reset --soft <base>`.
+
 ## Mid-goal changes
 
 - A new request from the user mid-goal joins the goal: add it to the

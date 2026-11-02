@@ -218,3 +218,40 @@ registered unsupported forms without partial output. Both source owners, live
 readback and archive readback now meet the registered closure criteria. The
 completed primary task is removed from TASKS.md; its prediction and evidence
 remain in this plan and Git history.
+
+## Cached-reader recurrence
+
+A later readback on 2026-11-02 found that hook registrations, enabled source
+entries, the producer, and the catalog were still absent. The standalone
+repository was still archived. However, the installed status-line helper had
+returned to the exact helper from preserved commit `77c8257`. Its managed hash
+matched that old content. Registration absence alone did not establish that the
+cached reader was still retired.
+
+The canonical source had removed the reader. The ignored
+`dist/templates/scripts/agent-perf.mjs` still held the same old content.
+`resolveProjectRoot()` in `src/sync/instructions-sync.ts` selects the bundled
+templates for the built CLI. This is a concrete path that could restore the
+reader. It does not establish which process made the previous write.
+
+Reuse the committed A4 prediction and its frozen synthetic input. Before the
+repair, the installed and bundled helpers each emitted the seeded notice once.
+The normal status line matched the canonical formatter exactly after removing
+that notice line. The synthetic cache stayed unchanged. Each child used only
+a scratch home, scratch state, synthetic tip directory, fixed PATH and locale,
+with a bounded timeout and output buffer. No native history was read.
+
+The narrow repair held the existing dotfiles setup lock. It checked regular-file
+ownership, links, exact source and old-content hashes, and the ignored bundle
+path before writing. It copied only the reviewed helper to that bundled output,
+used `syncHelperScripts` for the installed helper, and persisted only its managed
+hash through the existing JSON text owner. It changed no CLI JavaScript bundle, services,
+MCP settings, privacy settings, hook registrations, or conversation data.
+
+Both targets then emitted zero seeded notices. Their normal output and synthetic
+cache remained unchanged. Both file hashes equal the reviewed source hash
+`7d54d7cbfc8e938fcf963f16a839cc592a9ebcbd22e5218025b8fbbc969e64f7`.
+The manifest hash agrees. Protected Claude/Codex settings, hook receipt and
+overlay stayed byte-identical. This is a bounded repair/readback, not a complete
+runtime cutover or a guarantee against unrelated future writers. Preserve the
+old source ref; do not delete historical worktrees to repair active deployment.

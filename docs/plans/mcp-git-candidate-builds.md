@@ -333,3 +333,66 @@ typed partial outcomes, candidate root validation and
 entrypoint resolution. These are implementation proof obligations, not a
 permission to omit matrix rows. No live timing baseline or new speed claim is
 needed for this correctness experiment; later Rust measurements stay separate.
+
+
+## N15 supplement: real registration success before final readback
+
+This supplement preserves N01-N14 and P01-P05 unchanged. Their candidate
+boundary receipt is separate from this new registration-message control.
+The original compatibility cases remain a separate acceptance obligation.
+
+Goal: prevent a Git candidate publication failure from reporting success.
+Question: does real `addMcpServer` print a success message after its save or
+fan-out port reports failure? Metric: false-success outcomes in two fixed
+synthetic cases. Source inspection predicts two outcomes before the fix and
+zero after a candidate-only success-reporting guard.
+
+N15 uses the real `addMcpServer` implementation, reached through the existing
+scratch publication port. Each case starts with an accepted scratch runtime,
+prepares a valid different candidate with explicit fresh-runtime consent,
+then forces exactly one failure: state save or agent fan-out. Inject the
+failure at that real implementation's existing port, not at an all-mocked
+replacement that cannot print its registration message. No live agent,
+MCP server, native config, credential, or owner cache participates.
+
+Each case must reach its selected fault exactly once, exit with status one,
+leave the complete prior runtime tree byte-, inode-, mode- and HEAD-identical,
+retain candidate ready evidence without an accepted candidate receipt, and
+emit no success claim containing `registered`, `installed from git`, or
+`updated to`. Inspect the full captured log calls, including multi-argument
+calls, in RAM. Do not weaken the existing N12 success oracle or fold these
+new cases into its earlier result.
+
+Measurement, from the owned checkout with one worker:
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts -t 'N15 real registration failure'
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts -t 'isolated candidate boundary'
+```
+
+Freeze both variants and their assertions before the first baseline result.
+A setup/compiler failure, missing selected case, or unreached fault is
+inconclusive. Preserve that result separately; do not call it semantic red.
+The pre-fix baseline must fail on the false-success assertion after the other
+failure and preservation observations are collected. Keep the two-case
+supplement denominator separate from the original boundary cohort.
+
+Success: false-success outcomes fall from the predicted two to zero; both
+faults are reached exactly once, both exits are one, both prior runtimes have
+zero changes, no failed candidate is accepted, and all original boundary and
+retained compatibility oracles pass before delivery. Pivot: any remaining
+false success, accepted failed candidate, preservation change or weakened
+oracle rejects the reporting fix. Revisit the publication boundary; do not
+hide all output or infer success from registration alone.
+
+The proposed production change is only an optional success-reporting argument
+on the existing add-server options, disabled by candidate publication. Other
+callers retain their existing messages. The Git handler reports success only
+after exact saved-definition/fan-out readback and candidate acceptance. This
+prediction authorizes no production edit before the baseline is reviewed.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the registration/failure/recovery contract above.
+The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate source
+preserved outside the index. It is not a runtime or compatibility gate.

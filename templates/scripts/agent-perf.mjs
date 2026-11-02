@@ -17,7 +17,7 @@
 // Commands:
 //   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
 //   brief [--project NAME]
-//   statusline            (reads Claude Code status-line JSON on stdin; adds the usage tip line)
+//   statusline            (reads Claude Code status-line JSON on stdin)
 //   turn --session ID [--json]
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool

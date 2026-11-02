@@ -423,3 +423,22 @@ latest checked published metadata does not supply a supported placement under
 the protected root declarations. Do not downgrade root Chokidar, force a peer
 override, delete optional graph evidence or treat that blocker as solved by
 runtime-only validation.
+
+### Recorded partial validation and installation diagnosis
+
+The frozen lock query reports exactly five unsafe development rows after the
+fast-uri-only update, retaining IDs 149/150/160/161/162. The runtime tree and
+runtime audit pass with all four frozen runtime rows absent. The lock-only full
+tree still reports the original invalid Chokidar peer; it remains non-green.
+
+The first installed-tree comparison stopped before the required full repository
+gate because it added five extra-package reports to that peer error. The
+separately registered [unchanged-lock installation control](dependency-install-counterfactual.md#recorded-diagnostic-result)
+reproduced the same complete six problems and error object. Its installation
+exited zero, full installed-tree query exited one, and strict comparison exited
+zero. The proposed optional-WASM installer mechanism remains unproved.
+
+Keep the first failed comparison and inconclusive setup evidence. This
+diagnostic permits review of the registered runtime stage; it does not waive
+the original full-graph requirement, remaining development alerts or post-merge
+fixed-status confirmation. No passing full-repository result is claimed here.

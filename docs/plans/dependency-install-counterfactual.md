@@ -253,3 +253,32 @@ open. The partial runtime result does not waive the strict full-graph requiremen
 or post-merge fixed-status confirmation. This plan authorizes no peer forcing,
 root dependency downgrade, app update, source change or global config change.
 
+## Recorded diagnostic result
+
+The registered control ran on 2026-11-02 under Node 24.21.0 and npm 10.9.9,
+with optional dependencies and normal scripts. Its one package installation
+exited zero. The full installed-tree query exited one with ELSPROBLEMS. The
+strict comparator exited zero: all six complete problem strings and the
+complete error object matched the candidate after only owned-root prefix
+replacement. The three fixed config queries returned false as required.
+
+The unchanged original lock reproduced these extra-package reports:
+`@emnapi/core@1.9.2`, `@emnapi/runtime@1.9.2`, `@emnapi/wasi-threads@1.2.1`,
+`@napi-rs/wasm-runtime@1.1.4` and `@tybys/wasm-util@0.10.1`, plus invalid
+Chokidar 5.0.0. This reproduces the reports without the fast-uri patch; it does
+not establish the proposed optional-WASM installer mechanism.
+
+An earlier setup attempt stopped before installation: its guard expected
+filesystem mode 0644, while private extraction correctly produced 0600.
+Both source blobs matched. The corrected setup retained exact source Git100644
+and blob binding, then required owner-owned regular private files with no
+symlink or execute bits. It did not widen permissions. No package install ran
+in that inconclusive attempt. Both setup receipts remain preserved privately.
+
+The original failed candidate comparison remains failed and retained. The
+diagnostic task meets only its registered equality criterion. The full graph
+remains non-green, and development alerts 149/150/160/161/162 remain unresolved.
+The original all-nine task, strict full-graph requirement, repository gate and
+post-merge fixed-status confirmation remain. No further install, pruning,
+forced peers or automatic full-gate retry follows this diagnosis.
+

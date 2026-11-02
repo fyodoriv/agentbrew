@@ -155,6 +155,21 @@
 
 ## P1
 
+- [ ] Scheduled repair work enters the configured machine queue
+  - **ID**: scheduled-repair-queue-admission
+  - **Tags**: stability, deployment-infra, agents
+  - **Mode**: AFK
+  - **Details**: The LaunchAgent currently starts Node and `fix` directly. Repair runs sync and starts configured MCP probes before the later load-based healing deferral. A caller's heavy-run reservation, nice level and dotfiles lock do not transfer through launchd. Restoring RunAtLoad therefore starts unadmitted work and blocks the real operation in [the preview guard plan](docs/plans/deployment-preview-only-guard.md). Wrap the existing scheduled route in the configured shared queue; do not build another scheduler or treat copied lease variables as ownership. Keep the queue command, Node identity, argv, cwd and environment policy explicit at the per-user scheduler configuration boundary.
+  - **Files**: `src/sync/launchagent.ts`, `src/sync/scheduler-paths.ts`, their tests, `src/core/user-scheduler.ts`, configuration/doctor docs; proposed queue-route controls in `src/sync/launchagent-queue.test.ts`
+  - **Output**: code
+  - **Acceptance**: a configured background repair cannot start sync or MCP probes before its own verified queue admission and priority; missing or rejected configured queue commands fail closed without direct-Node fallback. Preserve approved Node selection, working folder, interval, logs, enabled state and native/privacy choices. An independent job gets its own admission; no caller lease is copied or cleared to force nested admission. A controller holding an exclusive lease releases it before waiting for the newly queued job, so restoration cannot deadlock. Prove the handoff with owned synthetic work before changing the real job.
+  - **Hypothesis**: the queued scheduler adapter reduces unadmitted repair starts in the fixed direct-Node control from the predicted one to zero; queue rejection also produces zero repair/probe starts, with no changed owner capacity or scheduler policy.
+  - **Measurement**: first register the finite launcher/admission/handoff controls and record actual unchanged-source red, then run `heavy-run npx vitest run src/sync/launchagent-queue.test.ts src/sync/scheduler-paths.test.ts --maxWorkers=1` and the normal delivery gate. The queue test file is proposed, not present at registration. Separate actual queue wait from job execution; a live launchd proof uses only an owned throwaway job and may not rely on a fabricated outer reservation.
+  - **Success**: zero unadmitted repair/probe starts, zero direct fallbacks after configured queue failure, zero lost or changed scheduler/private settings, and all positive/negative ownership and post-release handoff controls pass.
+  - **Pivot**: any bypass, forged lease acceptance, pre-admission work, deadlock, private-output disclosure or policy change rejects the adapter. Reuse the existing queue boundary rather than weakening its ownership or capacity checks.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), stability; current launchagent, scheduler-paths, repair and MCP heal call paths.
+
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents

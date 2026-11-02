@@ -396,3 +396,88 @@ Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al
 The docs-only pre-commit gate is
 `JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate source
 preserved outside the index. It is not a runtime or compatibility gate.
+
+## Synchronous metadata environment counter
+
+Choose this smaller experiment before adding instrumentation or measuring it.
+The proposed whole-handler and fresh-worker observers are retired without
+implementation or measurement. Their proposed cost-dominance thresholds were
+never evaluated. This experiment makes no whole-handler cost-dominance claim.
+
+The corrected compatibility fixtures remain frozen. Their full-file run has
+eight diagnostic assertion failures plus two five-second timeouts. An unchanged
+exclusive retry of those two cases also times out. P01 is a different control:
+it creates a tag-pinned runtime and then tests accepted reuse, under the normal
+longer test limit. It does not prove the env cases meet their five seconds.
+Preserve all those receipts; do not classify the timeouts as an external fault.
+
+Goal: remove repeated environment-policy work inside one synchronous metadata
+inspection without weakening runtime validation. Question: how often does a
+single completed branch inspection calculate its Git environment? Metric:
+call-through invocations of the existing imported `git-ref.cacheGitEnv` port.
+Source predicts six: one direct computation in `inspectRuntime` and one for
+each of its five `candidateGit` calls. Predict six to one within that phase.
+Whether this removes the original timeouts remains a separate measurement.
+
+Add one new target, `src/mcp/git-candidate-env.test.ts`, after this prediction
+is committed. Use the already exported synchronous `inspectRuntime`; add no
+production export, command, observer flag or worker. Before the measured body,
+prepare a synthetic scratch source with a tracked Node file, a `main` branch
+and a clone from the existing `allocateCandidate` constructor. No package
+installation, MCP registration, agent fan-out or live source participates.
+Capture the expected commit and source identity independently during setup.
+
+Use the existing cross-module Vitest call-through spy on `git-ref.cacheGitEnv`,
+not the same module's lexical `candidateGitEnv` function. Preserve actual
+arguments, results and errors. Measure only one completed `inspectRuntime`
+call with branch tracking enabled. Assert expected commit, `main` branch and
+origin using boolean comparisons, then assert a numeric environment-call
+count of one. Clear and restore the spy in `finally`; verify the original
+binding is restored. Never print or serialize the spy, returned environments,
+arguments, subprocess output, config or payloads. Record only fixed labels,
+the numeric counter, elapsed milliseconds and metadata-match booleans.
+
+The phase must fully return inside 5000 ms, with its independent metadata
+checks correct and the call-through spy proven to intercept the imported port.
+Zero interception, incomplete setup, an unexpected metadata result, or a
+phase exceeding that bound is inconclusive, not the predicted semantic red.
+The frozen baseline expectation is one; only an observed six-versus-one count
+after all qualification guards pass is the predicted counter failure.
+Synchronous settlement precedes restoration; there is no asynchronous handler
+or late worker to reattribute. Setup is outside this measured phase.
+
+Exact commands, from the owned checkout with one worker:
+
+```sh
+JOBS=1 heavy-run --exclusive npx vitest run --maxWorkers=1 src/mcp/git-candidate-env.test.ts
+JOBS=1 heavy-run --exclusive npx vitest run --maxWorkers=1 --reporter=verbose src/mcp/mcp-git-install.test.ts -t 'stores a reference for a key set in the environment|keeps the env vars of an installed server'
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts
+```
+
+Preserve the counter's actual qualified baseline before production changes.
+The first command alone proves neither timeout removal nor full compatibility.
+Do not repeat the full file until a specific reviewed change justifies it.
+The original fixtures, exact argv checks, five-second limits, candidate safety
+controls and N15 success guards remain unchanged.
+
+The proposed production scope is reuse of the already computed environment
+within one `inspectRuntime` call, using a private shared execution helper.
+Do not introduce a public environment bypass, skip any ownership/origin/ref
+check, or cache policy across network/build operations, invocations or later
+policy changes. Every later inspection still resolves fresh policy. Root must
+review the qualified red before authorizing this production change.
+
+Success has separate keep gates: phase computations fall from six to one;
+original five-second timeouts fall from two to zero with unchanged fixtures;
+and all 51 compatibility/boundary cases are correct before delivery, including
+the separately outstanding diagnostic obligations. Preservation, secret safety
+and verified-publication rules must have zero regressions. Pivot: a qualified
+phase count other than one after the change, either remaining timeout, any
+remaining compatibility failure or any safety regression rejects the approach.
+Do not hide guidance failures, relax a deadline or drop revalidation to keep it.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the source/ref/env and runtime preservation contracts
+above. The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with candidate source safely
+preserved outside the index. It is not a counter or runtime acceptance result.

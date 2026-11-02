@@ -155,6 +155,20 @@
 
 ## P1
 
+- [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
+  - **ID**: dependency-alert-remediation
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline.
+  - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
+  - **Output**: code
+  - **Acceptance**: every frozen advisory/range is absent from all resolved locked copies; optional Azure paths remain resolved, no forge dependency or unrelated root update appears, normal installation and full gate pass, and all frozen alerts later report fixed on the default branch. Dismissal, omitted dependencies and unavailable service data do not satisfy acceptance.
+  - **Hypothesis**: the minimal upstream resolution reduces predicted unsafe advisory/range rows from nine to zero, with zero dependency/gate regressions and unchanged protected overrides, optional declarations and Node floor. Count a row unsafe if any matching locked copy remains affected, not npm audit's aggregate or the number of vulnerable package nodes.
+  - **Measurement**: after registration, run the exact lock/semver query and `heavy-run npx --yes --prefer-offline --package=npm@10 -- npm audit --include=optional --json`, npm tree and existing lockfile validation from the plan before and after its named package actions; require `heavy-run npm run verify` and the plan's exact env-unset GitHub fixed-status query after merge. No npm audit/install result is claimed at task creation.
+  - **Success**: zero unsafe frozen rows, no new unresolved security finding, zero protected-contract changes, passing installation/tree/full-gate evidence, and every frozen GitHub alert fixed with a timestamp.
+  - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
+
 - [ ] Scheduled repair work enters the configured machine queue
   - **ID**: scheduled-repair-queue-admission
   - **Tags**: stability, deployment-infra, agents

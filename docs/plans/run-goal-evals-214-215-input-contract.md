@@ -83,3 +83,35 @@ Metric anchor: Basili, Caldiera and Rombach (1994), *Goal Question Metric*.
 Registration anchor: Munafò et al. (2017), *A manifesto for reproducible
 science*, Nature Human Behaviour. The repository's preregistration rule governs
 the prediction, baseline, success and pivot decision.
+
+## Observed preparation result
+
+The registered focused command ran against both inputs with the same frozen
+test file, SHA-256
+`d7d7f7101959c5cb286bc4318d575ad860e2f328b9daf55ea09a3e9f412db5d7`.
+The original-input tree `ba03e25fdf75908a4ee7be69b777aac38bf465b1`
+returned exit 1: input completeness was 0/6 for eval 214 and 0/6 for eval 215.
+All missing-input failures reached assertions; setup failures were zero.
+Separately, two expected-answer checks failed and the unique-ID check passed.
+The cleanup-answer check first failed a terminology assertion, so that red
+does not prove its later deletion guard executed.
+
+The repaired-input tree `e203963222a55d1f6b052204ed4b5faf9b5cfceb`
+returned exit 0: input completeness was 6/6 for each eval, or 12/12 overall.
+All three separate consistency and unique-ID checks passed. The terminal
+summary was:
+
+```text
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+```
+
+Only the prompt, expected output and expectations of evals 214 and 215 changed.
+Their original goal strings and IDs remain; every byte outside those two
+objects is unchanged from the registered baseline. The synthetic archive keeps
+its protected member, so the answer forbids whole-list deletion.
+
+This result accepts the fixture-completeness preparation only. It does not
+prove model behavior, real tool writes, persistence recovery or live cleanup.
+Current-main integration, required final gates and independent source review
+remain required before delivery.

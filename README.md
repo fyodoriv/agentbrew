@@ -401,6 +401,10 @@ One command translates the source of truth into every agent's native format.
 - **Instructions** → one canonical `~/.config/agentbrew/AGENTS.md` (agents.md standard); agents whose `rulesFile` is `AGENTS.md` get a symlink, proprietary filenames (`CLAUDE.md`, `guidelines.md`, `global_rules.md`, `GEMINI.md`) still receive copy+merge with deduplication against managed rules
 - **Helper scripts** → the scripts the instructions tell agents to run (`load-project-context.sh`, `verify-vision-trace.sh`, and `competitor-spot-check.sh` from `templates/scripts/`, plus the `scripts/check-pr-vision-trace.mjs` CI gate) install into `~/.config/agentbrew/scripts/`. Sync writes a script only when it is missing or agentbrew wrote it and nobody changed it since. It keeps any other file at that path; `agentbrew sync --verbose` lists the kept copies, and `agentbrew status --verbose` names each kept, missing, or outdated script with its path
 
+Usage tips are retired. Managed hook sync no longer registers their Stop hook,
+and the performance status line no longer replays tip caches. Old tip history
+stays in place, unused. See [retirement details](docs/usage-tips.md).
+
 ### Attention-friendly language
 
 By default, managed agents write agent-authored natural-language text so a
@@ -1064,6 +1068,24 @@ Rule 9 requires Hypothesis, Success/Acceptance, Pivot, Measurement, and Anchor o
 The step is cached until a package file changes. npm 10 comes from the npx cache; with no network and no cache, the check fails in seconds with a clear message. `lefthook.yml` runs the same check on pre-push when a pushed commit touches a package file.
 
 That works only when lefthook installs the repo's hooks. A global `core.hooksPath` that does not call lefthook skips it, and then `npm run verify` is the catch.
+
+### Dependency security
+
+The [frozen dependency cohort](docs/plans/dependency-alert-controls.md) records
+a partial result: fast-uri 3.1.9 removes four affected runtime advisory ranges
+from the lockfile. Five development advisory ranges remain affected. The full
+development graph also retains the Nunjucks/Chokidar peer conflict; runtime-only
+validation does not make that graph valid or complete the nine-alert task.
+
+A fresh npm 10.9.9 install of the unchanged lockfile reproduced the same five
+extra-package reports and Chokidar peer conflict. The specific installer cause
+is unproved. The [installation diagnosis](docs/plans/dependency-install-counterfactual.md#recorded-diagnostic-result)
+preserves the first failed installed-graph comparison; it does not make the
+full graph valid.
+
+The local jks stub, dependency overrides and Node floor remain unchanged.
+The plan tracks the remaining peer work and requires full validation plus
+GitHub fixed-status confirmation before final completion.
 
 ### How `main` health is checked
 

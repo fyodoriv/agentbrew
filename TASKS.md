@@ -155,6 +155,49 @@
 
 ## P1
 
+- [ ] Build and install evidence rejects stale locked dependencies
+  - **ID**: locked-install-evidence
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: The build preflight can report a lockfile match with a stale transitive package. The worktree helper can clone an unqualified donor and issue a fresh lock stamp, while the full-gate cache excludes installed dependencies from its identity. Follow [the registered preparation](docs/plans/locked-install-evidence.md). Reuse supported dependency tooling before adding an adapter. Land instrumentation first; keep existing optional-peer failures explicit and preserve canonical dependencies during qualification.
+  - **Files**: `scripts/build-pipeline-guard.sh`, `scripts/worktree-deps.sh`, `scripts/verify.sh`, their existing tests, dependency setup guidance
+  - **Output**: code
+  - **Acceptance**: stale transitive packages, unqualified donors and installation changes cannot produce a false lock-exact receipt or reuse an unrelated successful gate. Supported optional and local-file dependencies remain supported; errors and unavailable evidence fail closed without changing the declared dependency contract.
+  - **Hypothesis**: the five registered negative controls produce zero unsafe permits after repair, while all four supported controls remain valid. Baseline values must come from the new instrumentation, not the current shallow check or source inspection.
+  - **Measurement**: register and land the plan's instrumentation, then run `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts` before and after repair, followed by a qualified task-owned installation and `JOBS=1 NO_CACHE=1 heavy-run npm run verify`.
+  - **Success**: zero unsafe permits across all five fixed negative controls, all four positive controls pass, no dependency-policy change or canonical installation mutation, and normal repository gates pass on the qualified installation.
+  - **Pivot**: any unsafe permit, unsupported omission, manufactured stamp, cached result from a different installation or hidden optional-peer failure rejects the approach; preserve the evidence and revise the adapter rather than weaken the contract.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; npm's documented dependency-tree scope and lockfile contract linked in the plan.
+
+- [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
+  - **ID**: dependency-alert-remediation
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline. Partial task `dependency-runtime-fast-uri` does not complete this task. Final strict full-graph acceptance still needs `dependency-peer-compatibility`; all original metrics and receipts remain authoritative.
+  - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
+  - **Output**: code
+  - **Acceptance**: every frozen advisory/range is absent from all resolved locked copies; optional Azure paths remain resolved, no forge dependency or unrelated root update appears, normal installation and full gate pass, and all frozen alerts later report fixed on the default branch. Dismissal, omitted dependencies and unavailable service data do not satisfy acceptance.
+  - **Hypothesis**: the minimal upstream resolution reduces predicted unsafe advisory/range rows from nine to zero, with zero dependency/gate regressions and unchanged protected overrides, optional declarations and Node floor. Count a row unsafe if any matching locked copy remains affected, not npm audit's aggregate or the number of vulnerable package nodes.
+  - **Measurement**: after registration, run the exact lock/semver query and `heavy-run npx --yes --prefer-offline --package=npm@10 -- npm audit --include=optional --json`, npm tree and existing lockfile validation from the plan before and after its named package actions; require `heavy-run npm run verify` and the plan's exact env-unset GitHub fixed-status query after merge. No npm audit/install result is claimed at task creation.
+  - **Success**: zero unsafe frozen rows, no new unresolved security finding, zero protected-contract changes, passing installation/tree/full-gate evidence, and every frozen GitHub alert fixed with a timestamp.
+  - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
+
+- [ ] Restore a supported full dependency graph without forcing the watcher peer
+  - **ID**: dependency-peer-compatibility
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Blocked**: needs-compatible-upstream-contract — checked published Nunjucks latest 3.2.4 requires optional Chokidar `^3.3.0`; current and latest Promptfoo require `5.0.0`, as does the app root. No supported current placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
+  - **Details**: The unchanged-source dependency tree check reports invalid Chokidar 5 at Promptfoo → Nunjucks. Optional means the peer may be absent; it does not accept an incompatible present version. npm rejects placing a peer inside its consumer. Record supported parent/peer metadata before attempting a resolution. [Stage R's constraint record](docs/plans/dependency-alert-controls.md#exact-constraint-and-source-limit) preserves the source evidence and all original nine-alert final requirements.
+  - **Files**: future supported parent resolution in `package-lock.json`; dependency documentation; no root declaration or override change is pre-approved.
+  - **Output**: code
+  - **Acceptance**: existing full-graph validation exits zero without invalid/missing edges, unsupported peer placement, root downgrade, forced peer override, optional omission, stub change or reduced final alert requirement.
+  - **Hypothesis**: an upstream-supported compatible peer contract reduces the observed invalid Chokidar edge from one to zero while all protected root declarations and optional paths remain unchanged. No presently checked latest release establishes that contract.
+  - **Measurement**: first record the new compatible primary metadata and commit its exact resolution prediction; then repeat `heavy-run npx --yes --prefer-offline --package=npm@10 -- npm ls --package-lock-only --all --include=optional --json`, original audit/lock checks and `heavy-run npm run verify`. Preserve baseline ELSPROBLEMS and do not treat the runtime-only view as this result.
+  - **Success**: zero invalid/missing full-tree edges, supported peer resolution, unchanged protected contracts and all normal gates passing; only actual zero satisfies the original full-graph requirement.
+  - **Pivot**: any remaining conflict or unsupported placement rejects the parent choice. Keep this task blocked on compatible evidence rather than masking the error or accepting an incompatible major.
+  - **Anchor**: npm 10.9.9 Arborist peer placement and edge validity source; published Nunjucks/Promptfoo manifests linked in Stage R; Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
 - [ ] Scheduled repair work enters the configured machine queue
   - **ID**: scheduled-repair-queue-admission
   - **Tags**: stability, deployment-infra, agents
@@ -196,7 +239,7 @@
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is unpublished and inventory acceptance remains pending.
   - **Output**: code
   - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.

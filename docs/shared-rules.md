@@ -66,7 +66,7 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - **Scope:** no bypass outside approved repo families; never bypass someone else's PR.
 - **Pushes:** agents push approved feature branches; on git-push guard retry with explicit repo path + `/bin/bash -lc`.
 - **PRs, stacks, Jira:** use `gh` for PRs and the Jira MCP server (or a team overlay's Jira skill) for tickets. No `Status:` lines or file inventories in PR bodies. Vision trace: **## Session entry**. E2E/automation non-blocking. Report **`Merged N/M PRs`**.
-- **PR opener (IRON LAW):** `## Summary` (2–3 sentences) then `## Details`; rewrite from verified facts before merge.
+- **PR opener (IRON LAW):** `## Summary` (2–3 sentences): what the change does, then why it is useful. Follow with `## Details`; rewrite from verified facts before merge. Add a `## Real vs mocked` table when tests, fixtures, mocks, stubs, a simulator, harness, or POC change. Inventory every changed test group and name what each mock replaces. Date one-off observations and label screenshot captions as real or simulated.
 - Commit format: `type: subject TICKET`, header ≤72 chars.
 - **Rebase:** see `rebase-verification.mdc`.
 - **PR conflicts (IRON LAW):** Green checks do not prove a PR is mergeable. CI tests the PR head, not its merge with the base. On every PR touch, run `git merge-tree --write-tree --name-only <base> HEAD` and `gh pr view <n> --json mergeable,mergeStateStatus`. Treat `CONFLICTING` as not green. Bring in the base per `rebase-verification.mdc`.

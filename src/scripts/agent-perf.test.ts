@@ -299,6 +299,16 @@ describe("human wait", () => {
 });
 
 describe("report", () => {
+  it("keeps historical ambiguous wrapper keys separate instead of inventing leaf attribution", () => {
+    writeRows([tool("heavy-run npm", 400), tool("npm run verify", 100)]);
+    const path = join(dir, "2026-10.jsonl");
+    const before = readFileSync(path, "utf8");
+    const report = buildReport({ all: true, days: "7" }, ctx());
+    expect(report.keys.find((row: { key: string }) => row.key === "heavy-run npm")?.sumMs).toBe(400);
+    expect(report.keys.find((row: { key: string }) => row.key === "npm run verify")?.sumMs).toBe(100);
+    expect(readFileSync(path, "utf8")).toBe(before);
+  });
+
   it("filters by project and window and compares with the previous window", () => {
     writeRows([
       tool("npm run verify", 120_000, { ts: at(9 * DAY) }),
@@ -579,6 +589,13 @@ describe.skipIf(!hasJq)("perf-record step keys (privacy)", () => {
 
   it.each([
     ["npm run verify", "npm run verify"],
+    ["heavy-run npm run verify", "npm run verify"],
+    ["heavy-run npm run verify:changed", "npm run verify:changed"],
+    ["heavy-run make check", "make check"],
+    ["heavy-run --status", "heavy-run --status"],
+    ["heavy-run --help", "heavy-run --help"],
+    ["nice -n 15 /fixture/private/heavy-run bash scripts/run-hook-fixtures.sh", "bash run-hook-fixtures.sh"],
+    ["not-heavy-run npm run verify", "not-heavy-run npm"],
     ["cd /a/b && FOO=1 env -u X nice -n 5 npm run test:all -- --x", "npm run test:all"],
     ["timeout 60 bats tests/a.bats", "bats <path>"],
     ["git push origin feat/x", "git push"],
@@ -599,6 +616,20 @@ describe.skipIf(!hasJq)("perf-record step keys (privacy)", () => {
     ["$(git rev-parse --show-toplevel)", "git rev-parse"],
   ])("keys %j as %j", (command, key) => {
     expect(record(bash(command)).key).toBe(key);
+  });
+
+  it("does not store a wrapped command's arguments or private prefix path", () => {
+    const token = "gho_FAKEexampleTOKEN1234567890abcd";
+    const row = record(
+      bash(
+        `SECRET=${token} env -u UNUSED /fixture/private/heavy-run npm run verify --token=${token} /fixture/private/payload.txt`,
+      ),
+    );
+    expect(row.key).toBe("npm run verify");
+    const serialized = JSON.stringify(row);
+    expect(serialized).not.toContain(token);
+    expect(serialized).not.toContain("/fixture/private");
+    expect(serialized).not.toContain("payload.txt");
   });
 
   it("never writes a token-like argument, a path, or the prompt", () => {
@@ -628,6 +659,8 @@ describe.skipIf(!hasJq)("perf-record step keys (privacy)", () => {
     expect(edit.key).toBe("Write:md");
     expect(turn).toEqual({ project: "x", ts: expect.any(String), sid: "s1", ev: "turn" });
     expect(tried).toEqual({
+      sleepLoop: "not-observed-v1",
+      shellMode: "unknown",
       project: "alpha",
       ts: expect.any(String),
       sid: "s1",

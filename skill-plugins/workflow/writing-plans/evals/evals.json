@@ -35,6 +35,21 @@
         "Keeps assumptions distinct from sourced facts",
         "Includes a dedicated verification task before dependent implementation work"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a stepwise plan and tasks to convert all owned code in two tooling repositories to Rust, except UI and necessary shell scripts. Use one observable boundary per PR and measurements on every step. Both repos use TASKS.md and neither has Rust code or a differential benchmark harness yet. The source includes embedded Perl/Python/JavaScript, extensionless programs, generated executable templates, workflow tools, tests and build/release scripts. Keep the active queue safety fixes and frozen integration policy intact. Only planning is requested.",
+      "expected_output": "A source-backed migration plan and dependency-ordered task additions, without implementing the migration. Instrumentation and unchanged-source baselines precede runtime replacement, each port has registered behavior/resource/rollback gates, and the source manifest covers all owned executable forms with narrow UI/shell exceptions.",
+      "expectations": [
+        "Keeps task creation and planning separate from production Rust implementation and preserves existing queue work",
+        "Inventories embedded and extensionless code, generated executables, workflow tools, non-UI tests/evals and build/release code rather than only application source extensions",
+        "Limits UI exceptions to presentation and necessary shell to a justified host or bootstrap boundary; does not exempt all browser, exporter, shell or test code",
+        "Marks the proposed Rust workspace and measurement commands as future preparation deliverables rather than live evidence",
+        "Requires sealed unchanged-source baselines and actual numeric preregistration before replacement code, without fabricating baseline values or Rust speed gains",
+        "Defines compatibility, side effects, child cleanup, secrets, native-runtime independence and resource guards with exact future commands, failure pivots and an inconclusive policy",
+        "Names one shared measurement-engine owner and explicit pinned consumer contracts instead of duplicate engines or uncommitted sibling dependencies",
+        "Gives numbered independently reviewable tasks with source evidence, dependencies, parallel lanes, ownership, acceptance and rollback; frozen residue cannot become false completion"
+      ]
     }
   ]
 }

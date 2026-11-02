@@ -108,6 +108,17 @@
         "Evaluates whether the technology change addresses real pain or is solving a problem that doesn't exist",
         "Provides effort estimates and risk assessment (risk if done, risk if ignored)"
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "Run the quarterly review using these supplied facts: VISION says one user and keep-and-shrink; source size exceeds 30K; story outcomes and owner maintenance hours are missing; all tracked upstream PR states can be read. Decide whether to dissolve.",
+      "expected_output": "A source-grounded assessment with explicit limits and no unsupported support or completion claim.",
+      "expectations": [
+        "Uses the supplied strategic context and current source evidence without inventing business answers",
+        "Separates a met source-size condition from an unknown compound user-story condition; does not infer FTE from commits",
+        "Records missing measurements and contribution states honestly, distinguishes community dependencies from owner submissions, and preserves tested native exceptions",
+        "Maps recommendations to bounded tasks and does not absorb a capability merely because a PR closed unmerged"
+      ]
     }
   ]
 }

@@ -134,6 +134,11 @@ gh pr view <n> -R <owner/repo> --json mergeable,mergeStateStatus,statusCheckRoll
 
 ## 6. Draft, then post on a yes
 
+For a review ask or a claim that a PR is ready, first apply
+[feature-readiness.md](references/feature-readiness.md). Each feature needs
+an independent functional PASS with live proof; fix every failure before
+writing the ask. Honor enabled manual-check and proof-page approval rules.
+
 ```bash
 REVIEW_DIR=<path> node <skill-dir>/scripts/review-run.mjs report
 ```

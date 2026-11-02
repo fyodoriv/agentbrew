@@ -93,6 +93,24 @@ bg_done toolu_c
 expect "all workers done: retro demanded again" 2 "$(run s4)"
 TX="$TX_SAVE"
 
+# Clock goals have a numeric deadline in the session contract. The draft
+# marker alone must never waive the final retro after that deadline.
+clock_now="$(date +%s)"
+printf 'Clock wrap-up epoch: %s\n' "$((clock_now + 3600))" >"$RUN_GOAL_STATE_DIR/clock.contract.md"
+printf 'Goal result: in progress (clock goal, wrap-up at 17:00)\n' >"$RUN_GOAL_STATE_DIR/clock.retro.md"
+expect "future clock goal draft allows" 0 "$(run clock)"
+expect "future clock wait does not count as block" 0 "$(has clock.stopblocks)"
+printf 'Clock wrap-up epoch: %s\n' "$((clock_now - 1))" >"$RUN_GOAL_STATE_DIR/clock.contract.md"
+expect "expired clock goal requires final retro" 2 "$(run clock)"
+printf 'Clock wrap-up epoch: malformed\n' >"$RUN_GOAL_STATE_DIR/badclock.contract.md"
+cp "$RUN_GOAL_STATE_DIR/clock.retro.md" "$RUN_GOAL_STATE_DIR/badclock.retro.md"
+expect "malformed clock deadline requires final retro" 2 "$(run badclock)"
+touch "$RUN_GOAL_STATE_DIR/noclock.contract.md"
+cp "$RUN_GOAL_STATE_DIR/clock.retro.md" "$RUN_GOAL_STATE_DIR/noclock.retro.md"
+expect "draft marker without deadline requires final retro" 2 "$(run noclock)"
+printf 'Clock wrap-up epoch: %s\n' "$((clock_now + 3600))" >"$RUN_GOAL_STATE_DIR/nodraft.contract.md"
+expect "deadline without draft still requires retro" 2 "$(run nodraft)"
+
 touch "$RUN_GOAL_STATE_DIR/s3.contract.md"
 expect "bypass allows" 0 "$(run s3 HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1)"
 expect "unsafe session id allows" 0 "$(run '../x')"

@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import chalk from "chalk";
@@ -30,20 +30,39 @@ export function defaultState(): AgentBrewState {
   };
 }
 
-const diskIO: StateIO = {
-  read(): AgentBrewState | undefined {
-    if (!existsSync(STATE_FILE)) return undefined;
-    try {
-      const content = readFileSync(STATE_FILE, "utf-8");
-      return yaml.load(content) as AgentBrewState;
-    } catch (error) {
+export type StateReadOutcome = { kind: "missing" } | { kind: "loaded"; value: unknown } | { kind: "unavailable" };
+
+function readStateContents(reportErrors: boolean): StateReadOutcome {
+  try {
+    const content = readFileSync(STATE_FILE, "utf-8");
+    return { kind: "loaded", value: yaml.load(content) };
+  } catch (error) {
+    if (reportErrors) {
       const reason = errorMessage(error);
       console.error(chalk.red(`\n✗ state.yaml is corrupted: ${reason}`));
       console.error(chalk.dim(`  File: ${STATE_FILE}`));
       console.error(chalk.dim(`  Run ${chalk.white("agentbrew init --force")} to reset.\n`));
       process.exitCode = 1;
-      return undefined;
     }
+    return { kind: "unavailable" };
+  }
+}
+
+/** Read persisted per-user scheduler policy without leaking raw parse/read diagnostics. */
+export function readStateForScheduler(): StateReadOutcome {
+  try {
+    if (!lstatSync(STATE_FILE).isFile()) return { kind: "unavailable" };
+  } catch (error) {
+    return { kind: (error as NodeJS.ErrnoException).code === "ENOENT" ? "missing" : "unavailable" };
+  }
+  return readStateContents(false);
+}
+
+const diskIO: StateIO = {
+  read(): AgentBrewState | undefined {
+    if (!existsSync(STATE_FILE)) return undefined;
+    const outcome = readStateContents(true);
+    return outcome.kind === "loaded" ? (outcome.value as AgentBrewState) : undefined;
   },
 
   write(state: AgentBrewState): void {

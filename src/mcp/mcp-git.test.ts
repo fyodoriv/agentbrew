@@ -15,6 +15,7 @@ vi.mock("node:fs", async (importOriginal) => {
     ...actual,
     existsSync: vi.fn(actual.existsSync),
     readFileSync: vi.fn(actual.readFileSync),
+    statSync: vi.fn(() => ({ isFile: () => true })),
   };
 });
 

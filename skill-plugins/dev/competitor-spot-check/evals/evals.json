@@ -95,7 +95,9 @@
         "Routes new or refreshed competitor documentation to `companion-competitor-watch`",
         "Routes broad strategic or pivot analysis to `strategic-review`",
         "Does not edit competitor docs, add new competitor entries, or rewrite VISION.md",
-        "If still filling a PR line, runs or describes the narrow spot-check and returns only citation-ready prior-art evidence"
+        "If still filling a PR line, runs or describes the narrow spot-check and returns only citation-ready prior-art evidence",
+        "Treats local citations as discovery, checks dated primary evidence before a current capability verdict, and labels unavailable evidence honestly",
+        "Does not infer native support from marketing or lack of prior art from a stale local snapshot"
       ]
     }
   ]

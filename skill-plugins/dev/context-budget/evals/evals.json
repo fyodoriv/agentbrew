@@ -54,6 +54,18 @@
         "Before asking for a new chat, an independent judge checks live that the active chat predates the source/rules/MCP/skills update and the user has not already reloaded; explain that a new chat loads the updated instructions only when that action remains needed",
         "Limits readiness claims to measured setup paths, not all business workflows or account authentication"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "The recurring context audit date is overdue. Today's static snapshot has 6200 projected tokens, 1800 headroom, 0 lint errors and 14 soft warnings; last week's has 5300 tokens and fewer skills. Run the weekly audit without claiming runtime savings or starting unrelated command rewrites.",
+      "expected_output": "Refreshes through the supported measurement command, verifies the resulting measuredAt, compares the prior week's same fields, and records a private session note. Separates zero actionable lint errors from soft warnings, keeps runtime claims bounded to actual optional evidence, and advances the recurring date only after the audit succeeds.",
+      "expectations": [
+        "Reads the prior snapshot before refresh and checks the final measuredAt instead of assuming command exit proves a fresh file",
+        "Compares projected tokens, the top three sections, and skill/MCP counts over the same window",
+        "Does not relabel 14 soft warnings as 14 errors or begin unrelated source rewrites",
+        "Keeps private machine snapshots local and makes no unmeasured IDE-context or runtime claim",
+        "Records Last-fired and the next weekly date after evidence is available"
+      ]
     }
   ]
 }

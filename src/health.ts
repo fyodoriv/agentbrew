@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { getConfigServers, getStateSources } from "./agentfile.js";
+import { checkRetiredModsDrift } from "./catalog/claude-plugin.js";
 import { installedSkillClashes } from "./catalog/skill-owners.js";
 import { builtCliRoot, checkCliBuildDrift, rebuildCli } from "./cli-build-health.js";
 import type { DriftItem } from "./drift.js";
@@ -170,6 +171,7 @@ interface DriftSections {
   desktopMcpDrift: DriftItem[];
   skillValidity: DriftItem[];
   cliBuildDrift: DriftItem[];
+  retiredModsDrift: DriftItem[];
   userAddedDrift: DriftItem[];
   allDrift: DriftItem[];
 }
@@ -232,6 +234,7 @@ async function displayInteractiveDrift(sections: DriftSections, autoFix: boolean
     desktopMcpDrift,
     skillValidity,
     cliBuildDrift,
+    retiredModsDrift,
     userAddedDrift,
     allDrift,
   } = sections;
@@ -264,6 +267,7 @@ async function displayInteractiveDrift(sections: DriftSections, autoFix: boolean
 
   printSkillValiditySection(skillValidity);
   printCliBuildDriftSection(cliBuildDrift);
+  printWarningSection("Retired Claude Code mods", retiredModsDrift, false);
 
   // Show user-added items (informational — never auto-repaired, never counted as drift)
   printUserAdditionsSection(userAddedDrift, verbose);
@@ -328,6 +332,7 @@ export async function healthCheck(options?: {
   const userCreatedCommands = checkUserCreatedCommands();
   const agentDefsDrift = checkAgentDefsDrift();
   const modelsDrift = checkModelsDrift();
+  const retiredModsDrift = checkRetiredModsDrift();
   let cliBuildDrift = checkCliBuildDrift();
   const cliRoot = builtCliRoot();
   if (autoFix && cliBuildDrift.length > 0 && cliRoot && rebuildCli(cliRoot)) {
@@ -358,6 +363,7 @@ export async function healthCheck(options?: {
     ...envHygieneDrift,
     ...desktopMcpDrift,
     ...cliBuildDrift,
+    ...retiredModsDrift,
   ];
 
   if (options?.json) {
@@ -384,6 +390,7 @@ export async function healthCheck(options?: {
       desktopMcpDrift,
       skillValidity,
       cliBuildDrift,
+      retiredModsDrift,
       userAddedDrift,
       allDrift,
     },

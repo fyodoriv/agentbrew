@@ -15,6 +15,7 @@ import { hookEvents } from "./capabilities.js";
 import { type PluginManifest, readManifest } from "./manifest.js";
 import { readPluginMcpServers } from "./mcp-launcher.js";
 import { pluginDir, type Staged, stage } from "./store.js";
+import { unknownPluginMessage } from "./update-guidance.js";
 
 export interface UpdatePlan {
   name: string;
@@ -81,8 +82,9 @@ function capabilityLines(oldM: PluginManifest, newM: PluginManifest): string[] {
 
 /** Stage `ref` for an installed plugin and describe what would change. */
 export function planUpdate(name: string, ref: string): UpdatePlan {
-  const current = readLock().plugins?.find((p) => p.name === name);
-  if (!current) throw new Error(`Plugin "${name}" is not installed.`);
+  const plugins = readLock().plugins ?? [];
+  const current = plugins.find((p) => p.name === name);
+  if (!current) throw new Error(unknownPluginMessage(name, plugins));
   const staged = stage(current.source, ref);
   const discard = () => rmSync(staged.dir, { recursive: true, force: true });
   try {

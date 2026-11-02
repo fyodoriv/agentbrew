@@ -155,6 +155,21 @@
 
 ## P1
 
+- [ ] Scheduled repair work enters the configured machine queue
+  - **ID**: scheduled-repair-queue-admission
+  - **Tags**: stability, deployment-infra, agents
+  - **Mode**: AFK
+  - **Details**: The LaunchAgent currently starts Node and `fix` directly. Repair runs sync and starts configured MCP probes before the later load-based healing deferral. A caller's heavy-run reservation, nice level and dotfiles lock do not transfer through launchd. Restoring RunAtLoad therefore starts unadmitted work and blocks the real operation in [the preview guard plan](docs/plans/deployment-preview-only-guard.md). Wrap the existing scheduled route in the configured shared queue; do not build another scheduler or treat copied lease variables as ownership. Keep the queue command, Node identity, argv, cwd and environment policy explicit at the per-user scheduler configuration boundary.
+  - **Files**: `src/sync/launchagent.ts`, `src/sync/scheduler-paths.ts`, their tests, `src/core/user-scheduler.ts`, configuration/doctor docs; proposed queue-route controls in `src/sync/launchagent-queue.test.ts`
+  - **Output**: code
+  - **Acceptance**: a configured background repair cannot start sync or MCP probes before its own verified queue admission and priority; missing or rejected configured queue commands fail closed without direct-Node fallback. Preserve approved Node selection, working folder, interval, logs, enabled state and native/privacy choices. An independent job gets its own admission; no caller lease is copied or cleared to force nested admission. A controller holding an exclusive lease releases it before waiting for the newly queued job, so restoration cannot deadlock. Prove the handoff with owned synthetic work before changing the real job.
+  - **Hypothesis**: the queued scheduler adapter reduces unadmitted repair starts in the fixed direct-Node control from the predicted one to zero; queue rejection also produces zero repair/probe starts, with no changed owner capacity or scheduler policy.
+  - **Measurement**: first register the finite launcher/admission/handoff controls and record actual unchanged-source red, then run `heavy-run npx vitest run src/sync/launchagent-queue.test.ts src/sync/scheduler-paths.test.ts --maxWorkers=1` and the normal delivery gate. The queue test file is proposed, not present at registration. Separate actual queue wait from job execution; a live launchd proof uses only an owned throwaway job and may not rely on a fabricated outer reservation.
+  - **Success**: zero unadmitted repair/probe starts, zero direct fallbacks after configured queue failure, zero lost or changed scheduler/private settings, and all positive/negative ownership and post-release handoff controls pass.
+  - **Pivot**: any bypass, forged lease acceptance, pre-admission work, deadlock, private-output disclosure or policy change rejects the adapter. Reuse the existing queue boundary rather than weakening its ownership or capacity checks.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), stability; current launchagent, scheduler-paths, repair and MCP heal call paths.
+
+
 - [ ] Agents wait on events, not polling loops
   - **ID**: nudge-polling-loops-to-blocking-waits
   - **Tags**: hooks, perf, agents
@@ -167,9 +182,112 @@
   - **Success**: under 10 min/day, with no rise in `until` calls that time out.
   - **Pivot**: still over 30 min/day after 7 days -> make the hook block loops with `sleep` under 30 s, or drop the hint and file a skill change instead.
   - **Anchor**: tooling-checkup agent time review 2026-10-18; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). Measure on or after 2026-10-25 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the `until <arg>` overall line), then close or pivot.
+  - **Prior implementation evidence**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). The original follow-up was due on or after 2026-10-25.
+  - **Research**: 2026-11-01: the original `until <arg>` key is absent; absence is not zero. The agentbrew `for heavy-run --status` category alone is 680.07 s/day across 10 calls, but that is whole-loop wall time outside the hint's until/while scope. No comparable timeout-rate result exists. The old alias cannot decide Success or Pivot.
+  - **Preparation**: source now records fixed syntactic sleep-loop enums and explicit-or-unknown execution mode, then reports tagging and timed-correlation coverage separately. It retains legacy unknown rows and never infers polling causality or timeout cause. Prediction commits 88a830b and f4661d6 precede the new fixtures/source; see `docs/plans/sleep-loop-measurement-preparation.md`. Deployment must verify this source before a new observation window; these preparation checks are not field-outcome proof.
+  - **Next experiment**: on normal deployment, verify installed recorder, jq, Perl helper and report against source; run a safe synthetic control and privately record UTC cutover. Then collect a new full seven-day cohort with `node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 7 --json`, preserving the original thresholds. Report unknown timing/mode/correlation explicitly; unavailable timeout-cause evidence cannot satisfy the no-rise guard. Do not close from fixture accuracy, metadata coverage, an absent alias or a partial cohort.
+  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 ## P2
+
+<!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
+
+- [ ] Account for every executable before migrating it
+  - **ID**: rust-source-inventory
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
+  - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
+  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- inventory --check` — proposed command delivered by this task, not currently available.
+  - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected.
+  - **Pivot**: Any missed embedded or extensionless component -> abandon suffix-only discovery and use content/caller analysis. Missing evidence is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
+
+- [ ] Measure compatibility and resource use before replacing runtime code
+  - **ID**: rust-measurement-harness
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Land the shared Rust measurement engine and versioned workload/receipt protocol as a preparation PR. Dotfiles consumes a pinned adapter to this owner implementation. Seal unchanged-source baselines; each later port commits actual numeric predictions before replacement code. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-source-inventory
+  - **Acceptance**: Capture exits, output, file bytes/permissions/side effects, child lifetime, cold/warm execution, CPU, peak RSS and install footprint in private sanitized receipts. Pin source, fixtures, toolchain, platform and cache. Reject planted semantic, privacy, cleanup, missing-sample and resource failures.
+  - **Hypothesis**: Registered differential workloads and sealed baselines make 100% of planted invalid receipts and behavior/resource violations fail before any production port can pass.
+  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- harness-selftest` — proposed command delivered by this task; no baseline result is claimed.
+  - **Success**: 100% of registered planted violations rejected; 0 missing/contaminated measurements reported as passing; baseline replay meets its preregistered noise bound.
+  - **Pivot**: Any false pass or non-repeatable baseline -> stop ports and change instrumentation or workload design, not thresholds after results.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Run a native candidate beside the current CLI with proven rollback
+  - **ID**: rust-native-delivery
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Add locked Rust builds, asset resolution and per-slice candidate dispatch for scratch installs. Keep the live entrypoint until the slice passes G; prove atomic replacement and recovery first. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-measurement-harness
+  - **Acceptance**: Scratch install, missing assets, wrong architecture, interrupted update and rollback preserve approved configuration and executable ownership. Keep per-slice before/after and rollback receipts.
+  - **Hypothesis**: Native dispatch succeeds in 100% of supported scratch cases and recovery in 100% of interruption cases, with 0 behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-native-delivery --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G in the linked plan; 100% supported scratch dispatch and rollback; 0 ownership errors.
+  - **Pivot**: Any rollback, asset or compatibility failure -> change dispatch before moving callers. An upper resource ratio above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Preserve exact text and file safety through native parsing
+  - **ID**: rust-text-and-file-primitives
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Move parsing, redaction, environment and filesystem leaves behind Rust interfaces. Preserve untouched bytes, encodings, symlink rules, modes and atomic writes. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-native-delivery
+  - **Acceptance**: Escaped JSON, CRLF, unknown keys, traversal, symlink swaps, malformed input and planted credentials preserve approved output and rejection behavior. Keep per-slice before/after and rollback receipts.
+  - **Hypothesis**: 100% of converted leaf workloads run without an owned legacy interpreter, with 0 approved-behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-text-and-file-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 unintended byte changes, unexpected writes or missed planted secrets.
+  - **Pivot**: Any corruption, unexpected write or secret false negative -> change parser/I/O boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Keep child lifetimes and resource limits correct in native adapters
+  - **ID**: rust-process-primitives
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port safe argv, environment scrubbing, retries, scheduler calls, timeouts, signals and owned process-group cleanup. Consume machine-wide admission and worker budgets; separate queue wait from execution. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-native-delivery
+  - **Acceptance**: TERM/INT, timeout, wrapper death, failed probes, hostile environment and child escape controls leave no owned work alive or reservation released early. Keep per-slice before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted execution preserves approved behavior with 0 orphaned children, budget bypasses or secret disclosures, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-process-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 orphaned owned children, admission bypasses or unintended environment disclosures.
+  - **Pivot**: Any lifecycle/admission violation -> replace the process-ownership design before moving consumers. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Validate the November skills-target delta in native runtimes
+  - **ID**: validate-skills-targets-2026-11
+  - **Tags**: skills, compatibility, validation, blocked-runtime
+  - **Output**: measurement
+  - **Details**: The 2026-11-01 research found allowed upstream target IDs missing from the local name intersection. The exact IDs, claimed project/user paths and availability checks are in `docs/competition/skills-compatibility-2026-11-01.md`. Same-name commands were not found; binary aliases and application IDs remain unverified. Shared directories are not client detection. Reconcile `kimi-code-cli` with existing `kimi-cli`; keep Eve and PromptScript project-only. Preserve the tested Codex feature override, frozen Augment and all four policy exclusions. Do not register a client from marketing alone.
+  - **Measurement**: First obtain a native runtime or a verified native probe for each selected target. Commit a preparation PR with the exact native-load commands and fixture harness before changing adapters. Run those commands plus `npm run verify`; record real native results separately from mocked filesystem controls.
+  - **Hypothesis**: Validated adapters load the expected skill in every selected native target while preserving existing target behavior and user-owned files.
+  - **Success**: Native-load failure rate 0%, user-file loss rate 0% and existing-target regression rate 0% for every adapter retained. Unverified candidates stay unregistered.
+  - **Pivot**: At least 1 native-load failure or ownership regression rejects that adapter approach; do not widen support until a replacement approach is measured.
+  - **Anchor**: Agent Skills specification; Basili, Caldiera and Rombach 1994 (GQM); `docs/competition/skills-compatibility-2026-11-01.md`.
+  - **Files**: src/core/agents.yaml, src/core/agent-name-map.ts, native probe tests, docs/support-matrix.md
+  - **Acceptance**: Each candidate has a native proof or an explicit unresolved runtime dependency; only proved adapters are published. The weekly recurring acceptance completes only after its allowed target delta is resolved.
+  - **Blocked**: required-native-runtime — no native probe was verified for the candidate identities. Public source research is available and already recorded; only native support validation is blocked. Commit runnable instrumentation before adapter changes.
+
+- [ ] Measure the missing Q4 dissolution capacity and story evidence
+  - **ID**: measure-dissolution-capacity-2026-q4
+  - **Tags**: strategy, measurement, blocked-input
+  - **Output**: measurement
+  - **Details**: `docs/competition/dissolution-reviews/2026-Q4.md` confirms the source-size condition, but the compound kill trigger also requires user-story gains. The separate capacity trigger requires current maintenance effort below 0.5 FTE. Neither can be inferred from commits, stars or source lines. Reuse an owner-approved effort/outcome source; do not build a time tracker or publish personal activity records.
+  - **Hypothesis**: Goal: ground the existing dissolution decision in effort and outcomes. Question: can an owner-approved source reproducibly supply both missing inputs? Prediction: pre-registering its query, denominator and period will yield source-backed inputs or explicit unknowns, preserving the existing 0.5 FTE threshold and compound size/story-gain criterion.
+  - **Measurement**: Preparation only. Once the owner identifies an available effort/outcome source and denominator, commit its exact read-only query and measurement period before observing or changing the kill decision. Until then, no runnable capacity query exists and no FTE value is claimed.
+  - **Success**: Both missing trigger inputs have reproducible source-backed measurements, or remain explicitly unknown. No kill decision is changed from proxy metrics.
+  - **Pivot**: If either input is unavailable, retain the unknown result and current keep-and-shrink decision; do not replace the missing input with a vanity metric.
+  - **Anchor**: Existing VISION kill criteria; Forsgren, Humble and Kim 2018; Basili, Caldiera and Rombach 1994.
+  - **Files**: docs/competition/dissolution-reviews/2026-Q4.md, docs/VISION.md only after a measured decision
+  - **Acceptance**: A preparation artifact fixes the query and period before measurement; a later report records the actual evidence and decision. No source deletion is included.
+  - **Blocked**: needs-owner-measurement-source — current maintenance hours and comparable user-story outcomes are not recorded in the reviewed sources. This task does not authorize external account setup or data collection.
 
 - [ ] Report Hallmark's render wait that never ends on apps that poll
   - **ID**: hallmark-render-wait-upstream
@@ -206,10 +324,11 @@
 
 - [ ] Checkups show their last run and record each run (issue #572)
   - **ID**: checkup-run-record
-  - **Blocked**: needs-owner — where does the shared run record live? Options: (a) an `agentbrew checkup-run show|record <name>` CLI subcommand every checkup calls, (b) a small script in a deployed skill, (c) only in dotfiles `tooling-checkup` plus a documented file format for plugins. Each changes who must update to get it.
+  - **Mode**: AFK
+  - **Implementation decision**: Agentbrew owns one generic `checkup-run show|record` boundary. The issue already specifies the record path and schema. Dotfiles adapts its richer checkup history without replacing it. Register runnable synthetic measurements before changing production; [preparation routing](docs/plans/owned-issue-preparation.md) defines the boundary.
   - **Tags**: checkup, state
   - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`; print it at the start, write it at the end.
-  - **Files**: `scripts/checkup.sh`, the chosen home (see Blocked)
+  - **Files**: `scripts/checkup.sh`, generic checkup CLI and record owner
   - **Output**: code
   - **Acceptance**: as in issue #572
   - **Hypothesis**: every checkup run starts with what changed since the last run; runs with no last-run line drop to 0.
@@ -220,7 +339,8 @@
 
 - [ ] Scroll and screenshot a Google Doc over CDP without focus (issue #561)
   - **ID**: gdoc-cdp-screenshots
-  - **Blocked**: needs-owner — the issue describes a script that already exists on another machine. Absorb that script (share its path or paste it into a branch), or build a new one from the issue text?
+  - **Mode**: AFK
+  - **Implementation decision**: Extend the existing Google Docs workflow through an adapter over maintained browser transport. The bounded source search did not recover the named old script. Its location does not block preparation. Keep real Google Docs rendering and focus proof separate from synthetic transport controls; [preparation routing](docs/plans/owned-issue-preparation.md) records the limits.
   - **Tags**: browser, docs
   - **Details**: Issue #561: open the doc in its own CDP tab, scroll page by page, one screenshot per page, no keystrokes or window activation, close the tab after.
   - **Files**: a skill script under `skill-plugins/`
@@ -234,7 +354,8 @@
 
 - [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
   - **ID**: page-zero-errors-skill
-  - **Blocked**: needs-owner — the issue names an existing MIT script by the same author. Absorb it (share its path or repo), or build a new one from the issue text?
+  - **Mode**: AFK
+  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. A bounded public-source search found no recoverable implementation. Prepare an adapter over maintained browser transport; do not restore a deleted recommendation or assume an unrecovered license. See [preparation routing](docs/plans/owned-issue-preparation.md).
   - **Tags**: browser, skills, verification
   - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
   - **Files**: `skill-plugins/`, README skill list
@@ -248,7 +369,8 @@
 
 - [ ] History-wide leak audit before a plugin goes public (issue #564)
   - **ID**: plugin-history-leak-audit
-  - **Blocked**: needs-owner — absorb an existing implementation (the issue reads like one exists), or build new? Also confirm gitleaks as a new dependency the audit may install.
+  - **Mode**: AFK
+  - **Implementation decision**: Extend the existing plugin audit boundary and wrap gitleaks. The scanner is already installed on the verified development machine; do not install it implicitly on other machines. Register a fixed-config bare-mirror fixture before production changes. See [preparation routing](docs/plans/owned-issue-preparation.md).
   - **Tags**: security, plugins, oss
   - **Details**: Issue #564: scan every commit on every ref (emails, messages, ref names, paths, added lines) with gitleaks on a bare mirror and a fixed config; `--fresh` mode; patterns from a user env file.
   - **Files**: `src/oss/`, the plugin publishing guide, the CLI reference
@@ -272,7 +394,11 @@
   - **Success**: under 1 min/day.
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-time — 2026-10-22: `scripts/worktree-deps.sh` skips `npm ci` when `package-lock.json` is unchanged since its last install, runs `npm ci --prefer-offline --no-audit --no-fund` otherwise, and AGENTS.md now names it as the install command (PR feat/speed-up-npm-ci). Local run on the `npm ci` path: re-run 14.4–16.6 s → 0.02 s; a fresh install stays 9–11 s with a warm cache. 7-day baseline before the change: 4m59s/day (38x in 11 sessions, p95 5m02s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npm ci` line; add the `bash worktree-deps.sh` line, where installs move), then close or pivot.
+  - **Prior implementation evidence**: needs-time — 2026-10-22: `scripts/worktree-deps.sh` skips `npm ci` when `package-lock.json` is unchanged since its last install, runs `npm ci --prefer-offline --no-audit --no-fund` otherwise, and AGENTS.md now names it as the install command (PR feat/speed-up-npm-ci). Local run on the `npm ci` path: re-run 14.4–16.6 s → 0.02 s; a fresh install stays 9–11 s with a warm cache. 7-day baseline before the change: 4m59s/day (38x in 11 sessions, p95 5m02s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npm ci` line; add the `bash worktree-deps.sh` line, where installs move), then close or pivot.
+  - **Research**: 2026-11-01: exact repo key groups total 235.70 s/day (npm ci 188.02 plus worktree-deps 47.68). This exceeds the old category threshold, but these are whole-tool-call durations assigned to one dominant command; chained work and queue wait cannot be separated by the aggregate. It is not isolated npm runtime or proof that the cache remedy failed. Keep every historical observation and report tooling-started attribution as unknown.
+  - **Diagnostic**: 2026-11-01: nine of nine warm-cache leaf trials were valid on committed source `e76c9a1be454`. Medians were npm ci 9.2188 s, helper fresh 1.0537 s and helper rerun 0.0128 s; ratios 0.11430 and 0.00139 met both registered ratio thresholds. The private harness and prior plan hash match. This does not measure daily cost, chained work or queue time.
+  - **Next experiment**: verify installed recorder/helper/report source and record a private UTC cutover. Collect a new full seven-day cohort with the original Success/Pivot thresholds. Neither diagnostic fixture ratios nor metadata coverage can close the daily-cost task.
+  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 - [ ] Make `npx biome` fast in the inner loop
   - **ID**: speed-up-npx-biome
@@ -286,7 +412,9 @@
   - **Success**: under 1 min/day.
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-time — 2026-10-22: `npm run lint:changed` (`scripts/lint-changed.sh`) runs the local `node_modules/.bin/biome` on changed files only, and AGENTS.md names it as the lint command (PR feat/speed-up-npx-biome). Local run: `npx biome check src scripts` 1.3–1.5 s → `npm run lint:changed` 0.6–0.8 s (one changed file). So Biome itself is not the slow part: the review keys a compound command on its first heavy command, so `npx biome … && npx vitest …` lines carry the test time. 7-day baseline before the change: 4m19s/day (29x in 6 sessions, p95 6m14s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npx biome` line plus the `npm run lint:changed` line); if their sum stays over 3 min/day, the chained test runs belong to `speed-up-agentbrew-test-loop`, then close or pivot.
+  - **Prior implementation evidence**: needs-time — 2026-10-22: `npm run lint:changed` (`scripts/lint-changed.sh`) runs the local `node_modules/.bin/biome` on changed files only, and AGENTS.md names it as the lint command (PR feat/speed-up-npx-biome). Local run: `npx biome check src scripts` 1.3–1.5 s → `npm run lint:changed` 0.6–0.8 s (one changed file). So Biome itself is not the slow part: the review keys a compound command on its first heavy command, so `npx biome … && npx vitest …` lines carry the test time. 7-day baseline before the change: 4m19s/day (29x in 6 sessions, p95 6m14s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `npx biome` line plus the `npm run lint:changed` line); if their sum stays over 3 min/day, the chained test runs belong to `speed-up-agentbrew-test-loop`, then close or pivot.
+  - **Prior measurement limit**: measurement-preparation — 2026-11-01: the direct repo row is 175.34 s/day, above the 60 s Success threshold; a for-wrapped row adds 85.86 s/day of whole-loop wall time, not proven Biome runtime. Keep the task open. Verify the new wrapper-key deployment and collect a fresh full seven-day cohort; do not turn an absent lint:changed row into zero.
+  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 - [ ] Speed up `worktree-deps.sh`
   - **ID**: speed-up-bash-worktree-deps-sh
@@ -300,7 +428,9 @@
   - **Success**: under 1 min/day.
   - **Pivot**: still over 3 min/day after 7 days -> drop this approach and profile the step with the perf-review skill.
   - **Anchor**: tooling-checkup agent time review 2026-10-20; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-time — 2026-10-22: one clonefile(2) call replaces `cp -cR`, and a re-run with an unchanged lockfile keeps `node_modules` (PR feat/speed-up-bash-worktree-deps-sh). Local run: fresh worktree 11.7–13.3 s → 1.2 s, re-run 16.3–18.9 s → 0.07 s. 7-day baseline before the change: 6m52s/day (35x in 6 sessions, p95 6m31s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `bash worktree-deps.sh` line), then close or pivot.
+  - **Prior implementation evidence**: needs-time — 2026-10-22: one clonefile(2) call replaces `cp -cR`, and a re-run with an unchanged lockfile keeps `node_modules` (PR feat/speed-up-bash-worktree-deps-sh). Local run: fresh worktree 11.7–13.3 s → 1.2 s, re-run 16.3–18.9 s → 0.07 s. 7-day baseline before the change: 6m52s/day (35x in 6 sessions, p95 6m31s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (the agentbrew `bash worktree-deps.sh` line), then close or pivot.
+  - **Prior measurement limit**: measurement-preparation — 2026-11-01: the direct repo row is 47.68 s/day, but tooling-started sessions add 148.79 s/day of the same key and a repo loop adds 1.89 s/day. A narrow row alone does not prove the covered outcome. Keep the task open; verify wrapper-key deployment and collect the same project scopes in a fresh full seven-day cohort.
+  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 - [ ] Make the agentbrew test loop fast: `verify:changed`, `npx vitest`, `verify`
   - **ID**: speed-up-agentbrew-test-loop
@@ -314,7 +444,9 @@
   - **Success**: under 15 min/day combined.
   - **Pivot**: still over 25 min/day after 7 days -> profile per step with the perf-review skill and drop this approach.
   - **Anchor**: tooling-checkup agent time review 2026-10-21; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
-  - **Blocked**: needs-time — 2026-10-22: `verify:changed` now runs `tsc`, `lint:changed`, and `vitest related` on a code diff instead of the whole `npm run verify`; the full gate keys the hook fixtures on the files they run and shares its step cache across worktrees; AGENTS.md points the inner loop at `npm test` (PR feat/speed-up-agentbrew-test-loop). Measured split of the 7 days before (perf log joined to the commands): about half of the `verify:changed` time was code diffs that ran the full gate, and most `npx vitest` time was whole folders and `new-project-contract.test.ts`. Local runs: a one-file `src/` diff 9m52s (old path, the full gate, load ~90) → 30 s (load 77); hook fixtures 128 s → 0.7 s cached in a second worktree. 7-day baseline before the change: 39m32s/day (`npx vitest` 15m36s, `verify:changed` 15m07s, `verify` 8m49s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (sum of the agentbrew `npm run verify:changed`, `npx vitest`, and `npm run verify` lines), then close or pivot.
+  - **Prior implementation evidence**: needs-time — 2026-10-22: `verify:changed` now runs `tsc`, `lint:changed`, and `vitest related` on a code diff instead of the whole `npm run verify`; the full gate keys the hook fixtures on the files they run and shares its step cache across worktrees; AGENTS.md points the inner loop at `npm test` (PR feat/speed-up-agentbrew-test-loop). Measured split of the 7 days before (perf log joined to the commands): about half of the `verify:changed` time was code diffs that ran the full gate, and most `npx vitest` time was whole folders and `new-project-contract.test.ts`. Local runs: a one-file `src/` diff 9m52s (old path, the full gate, load ~90) → 30 s (load 77); hook fixtures 128 s → 0.7 s cached in a second worktree. 7-day baseline before the change: 39m32s/day (`npx vitest` 15m36s, `verify:changed` 15m07s, `verify` 8m49s). Measure on or after 2026-10-29 with `python3 ~/.claude/skills/tooling-checkup/scripts/agent_time_review.py --days 7` (sum of the agentbrew `npm run verify:changed`, `npx vitest`, and `npm run verify` lines), then close or pivot.
+  - **Prior measurement limit**: measurement-preparation — 2026-11-01: direct repo rows total 720.10 s/day, but heavy-run npm adds 171.75 s/day with unknown leaf commands and loop-prefixed vitest adds 8.80 s/day. Tooling-started sessions add more unallocated test time. Keep the task open; do not assign ambiguous history to tests or ignore it. Verify wrapper-key deployment and start a fresh full seven-day cohort.
+  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 - [ ] Make the official MCP Registry the default catalog lookup when it reaches 1.0
   - **ID**: flip-catalog-to-registry-first-at-ga
@@ -344,6 +476,216 @@
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
+
+- [ ] Change configuration natively without losing ownership
+  - **ID**: rust-state-and-agentfile
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Migrate state/settings, Agentfile merge/mutation, manifests, paths and locks. Preserve schemas, layers, user text, transaction recovery and no-op behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives
+  - **Acceptance**: Concurrent updates, failed writes, stale locks, relative paths, unknown fields and repeated no-ops preserve approved state and recovery. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% of converted configuration workloads run natively with 0 lost updates, foreign-owner writes or approved-behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-state-and-agentfile --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G in the linked plan; 0 lost updates, unowned changes or persistent no-op mutations.
+  - **Pivot**: Any data loss/ownership mismatch -> change transaction and merge boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Install and update source content through native ownership-aware adapters
+  - **ID**: rust-catalog-and-sources
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port catalog/source registration, fetch/cache, skill tools, import/install/update/remove and pruning. Keep upstream delegation, provenance and user-kept targets. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile
+  - **Acceptance**: Offline, changed-ref, deleted-source, duplicate-name, interrupted fetch and user-modified-target controls preserve approved outcomes and ownership. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% of converted local source operations run natively with 0 unowned removals, provenance collisions or behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-catalog-and-sources --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 unowned removals or provenance collisions; delegated upstream tools stay delegated.
+  - **Pivot**: Any provenance/removal defect -> change source/cache adapter, not a silent fallback. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Deploy skills and content natively with the same ownership rules
+  - **ID**: rust-sync-content
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
+  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
+  - **Pivot**: Any primary-host gap or ownership loss -> change engine contract before the next engine. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Reconcile native agent settings without changing trust or opt-ins
+  - **ID**: rust-sync-configuration
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile
+  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.
+  - **Pivot**: Any trust, opt-in or source-refresh regression -> revise configuration ownership. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Manage MCP lifecycle through bounded native adapters
+  - **ID**: rust-mcp-lifecycle
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port registry, entrypoint resolution, pin/build registration, setup, validation, probing and healing in measured slices. Baseline delivered re-pin fixes; preserve delegated and optional-model boundaries. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives, rust-catalog-and-sources
+  - **Acceptance**: Runnable directory/symlink entrypoints, refused pins, failed builds, bad schemas, offline registry and bounded probes preserve approved register-or-rollback behavior. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted lifecycle cases preserve behavior with 0 unverified build registrations or surviving probe children, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-mcp-lifecycle --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 invalid registrations or surviving probe children; unsupported/unknown outcomes remain honest.
+  - **Pivot**: Any invalid registration or cleanup failure -> change lifecycle boundary and retain the previous path. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Keep shared semantic memory private through native integration
+  - **ID**: rust-memory-integration
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port owned memory transport/readiness, pack/provenance ledgers, backup and lifecycle bridges. Delegate the service itself; preserve enablement, deduplication, retention and privacy choices. Keep native chat histories separate. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-sync-configuration, rust-process-primitives
+  - **Acceptance**: Synthetic enabled/disabled, stale-owner, changed-pack, corrupt-backup and unavailable-service cases preserve records and honest errors. No conversation history is imported or synchronized. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted integration cases preserve approved behavior with 0 private payload leaks, unauthorized record deletions or chat-history imports, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-memory-integration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G in the linked plan; 0 privacy/retention/opt-in regressions, private payloads in receipts or native history imports.
+  - **Pivot**: Any privacy/retention/opt-in regression -> stop and change integration boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Keep signed plugins and public-write approvals intact in native flows
+  - **ID**: rust-plugin-trust-and-feedback
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port plugin signatures/scopes, overlay composition, contribution drafts, report sanitization and publication adapters. Preserve approvals and human-only allowances; use fake external writers. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources, rust-process-primitives
+  - **Acceptance**: Wrong/revoked signer, capability escalation, malformed overlay, private references and denied publication fail closed. Approved local drafts work; tests never post publicly. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted trust/draft cases preserve behavior with 0 new false permits, disclosures or real test publications, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-plugin-trust-and-feedback --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 trust bypasses, private-reference disclosures or real public writes from tests.
+  - **Pivot**: Any trust/publication bypass -> abandon the affected adapter design before rollout. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Detect and repair drift through native diagnostics
+  - **ID**: rust-diagnostics-and-repair
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port health snapshots, drift decisions/fixes, repair provenance, status/ops and next steps. Require post-fix verification; retain unknown/unsupported states, dry-run and changed-source detection. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle
+  - **Acceptance**: Planted drift, ineffective repairs, unavailable tools, concurrent source changes and empty evidence preserve severity, exits and repair ownership. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted diagnostics preserve behavior with 0 false healthy/fixed results or unowned repairs, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-diagnostics-and-repair --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 false healthy/fixed results and 0 repairs outside recorded ownership.
+  - **Pivot**: Any false success -> change evidence or repair boundary rather than weaken checks. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Measure the same operational outcomes through native collectors
+  - **ID**: rust-metrics-and-perf
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port event processing, context measurement, perf recording, usage/weekly metrics and report-data processing. Preserve histories, attribution limits, safe labels and time windows. Separate queue, external-tool and workload time. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives
+  - **Acceptance**: Malformed events, missing data, clock skew, daylight-saving changes, unknown timeout causes and planted secrets preserve honest metric meaning and redaction. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted collectors preserve semantics with 0 payload disclosures or unknown-to-causal relabeling, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-metrics-and-perf --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 0 changed metric meanings, private payload disclosures or fabricated zeroes/causal claims.
+  - **Pivot**: Any semantic/privacy mismatch -> redesign receipt/aggregation boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Run every supported user action through the native CLI
+  - **ID**: rust-cli-and-actions
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port command orchestration by action family through one parser/action registry. Include bootstrap, completion, portable bundles, lint/audit and browser screenshot orchestration. Preserve argv, exits, prompts, confirmations and terminal-only reasons. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf
+  - **Acceptance**: Every discovered converted action has a native route; help, invalid input, noninteractive refusal and safe scratch actions preserve CLI/agent discovery and approval behavior. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% of converted actions run natively with 0 missing discovery paths or consent regressions, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-cli-and-actions --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 100% native routes for converted actions; 0 missing CLI/agent discovery paths or consent regressions.
+  - **Pivot**: Any missing action or consent regression -> change dispatch before another action family. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Enforce the same hook decisions with native executable helpers
+  - **ID**: rust-hooks-and-generated-helpers
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port hook checks, Python/Perl/jq helpers and generated executable logic by hook family. Preserve protocol, opt-ins, parsing, safe unknown handling, endpoint setup and ownership-aware deployment. Retain only necessary shell shims. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile
+  - **Acceptance**: Permitted/denied controls plus hostile heredocs, substitutions, bad JSON, absent tools and timeouts preserve verdicts and bounded execution. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% native converted hook cases preserve behavior with 0 new false permits, injection paths or hidden legacy business logic, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-hooks-and-generated-helpers --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G in the linked plan; 0 new false permits, injection paths or unexplained owned interpreted hook logic.
+  - **Pivot**: Any deny/unknown or injection regression -> change parser/protocol boundary, not an allow rule. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Run owned workflow utilities and generated projects natively
+  - **ID**: rust-workflow-tools-and-scaffolds
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port README/review/goal/watch/open-work/rankings utilities and executable project scaffolds in separate workflow slices. Retain prompts and declarative assets; UI presentation is narrow, while report-data and browser orchestration remain in scope. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-metrics-and-perf
+  - **Acceptance**: Scratch repositories/projects, cancelled watches, absent dashboards, denied public actions and interrupted scaffolds preserve outputs, approvals and cleanup. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% of converted workflow/generated non-UI logic runs natively with 0 behavior, approval or cleanup regressions, and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-workflow-tools-and-scaffolds --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 100% native converted workflows and generated non-UI logic; 0 real test publications or surviving owned children.
+  - **Pivot**: Any workflow/generated-project mismatch -> change wrapper/template boundary before deletion. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Retain independent defect detection while moving non-UI tests to Rust
+  - **ID**: rust-tests-and-evals
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port owned non-UI tests, fake services, eval providers, affected selection, fixtures and executable test configuration alongside completed production slices. Retain each old oracle until its Rust replacement detects the same planted defects. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-measurement-harness
+  - **Acceptance**: Old and Rust runners reject the same planted production, cleanup, redaction and approval defects. Test each production slice before retiring its oracle; fixture rewrites retain negative behavior. Keep only necessary shell-boundary fixtures and actual UI adapters.
+  - **Hypothesis**: Rust test/eval replacements retain 100% registered planted-defect detection with 0 omitted contracts and no resource regression beyond 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-tests-and-evals --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code; retain existing full gate.
+  - **Success**: 100% registered planted defects detected; 0 omitted behavior contracts; G for test-runner lifecycle/resources.
+  - **Pivot**: Any lost defect detection -> retain the old oracle and redesign the Rust fixture/test boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Build and install the native tool without redundant project runtimes
+  - **ID**: rust-build-release-and-install
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Port owned verification, docs generators, lints, checkup, build/install/update/uninstall/release and CI executable steps. Produce locked native artifacts; preserve integrity and approval gates. No registry publication is needed to prove local behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: code
+  - **Blocked by**: rust-cli-and-actions, rust-workflow-tools-and-scaffolds, rust-tests-and-evals
+  - **Acceptance**: Supported scratch clean install, no-op update, offline failure, wrong architecture, missing asset, interrupted replacement, uninstall and rollback meet registered contracts. Keep before/after and rollback receipts.
+  - **Hypothesis**: 100% supported converted install/update/recovery cases run without a project Node/Python/Perl runtime for owned non-UI logic, with 0 safety/behavior regressions and p95 time/peak RSS at most 1.10 times sealed B.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-build-release-and-install --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
+  - **Success**: G; 100% supported install/update/rollback cases; 0 unverified artifact replacements or approval bypasses.
+  - **Pivot**: Any installation/recovery defect -> change packaging before native defaults. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Prove all eligible code and deployed paths have migration evidence
+  - **ID**: rust-final-audit
+  - **Tags**: migration, rust
+  - **Mode**: AFK
+  - **Details**: Reconcile source inventory, every step's before/after receipts, generated targets, installed source, docs and remaining dependencies. Delete only proven unused implementations. Frozen residue remains an unresolved policy boundary, never false completion. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Output**: measurement
+  - **Blocked by**: rust-source-inventory, rust-measurement-harness, rust-native-delivery, rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile, rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf, rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-workflow-tools-and-scaffolds, rust-tests-and-evals, rust-build-release-and-install
+  - **Acceptance**: Every eligible owned component maps to tested Rust delivery; each exception has a narrow reason and test. No unsupported all-code or speed claim is made. Current whole-tool behavior and installed artifacts agree with receipts.
+  - **Hypothesis**: Complete source/caller and deployment reconciliation exposes all remaining gaps: 0 unclassified or unexplained eligible legacy components, complete valid per-step receipts, and 0 safety/behavior regressions.
+  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- final-audit` — proposed harness command; run existing full gate and re-read installed-source evidence.
+  - **Success**: 0 unexplained eligible legacy components; 100% valid per-step receipts; G on declared whole-tool workflows; no unresolved policy conflict hidden as an exception.
+  - **Pivot**: Any unexplained residue, invalid receipt or unresolved frozen-support conflict -> keep migration incomplete and resolve the specific boundary; do not change the goal to converted lines.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 ## P3
 
@@ -510,6 +852,10 @@
 
 - [ ] Add machine-setup verification cases to third-party skills
   - **ID**: setup-goal-third-party-skill-retro
+  - **Research**: 2026-11-01: read agent-browser's current command-usage, skill-loading, and skill-selection eval prompts; none covers shared CDP attachment beside another agent's live tab. Proposed command-usage case: "Read a dashboard in the existing shared CDP browser; another agent owns its active tab." Require a named session, a new owned tab, --pin-tab, no navigation of another agent's tab, and no credentials in output. Keep the installed mirror unchanged. Publication remains blocked until the owner approves the exact upstream text.
+  - **Review-retro**: 2026-11-01: Anthropic engineering:code-review and obra/superpowers receiving-code-review have no eval prompts in their installed packages. Propose a composition case where apply records ownership hashes, automatic dedupe rewrites the body, and a later owner removal must prune generated content while retaining edits made before or after dedupe. Require a live composition probe before approval. For receiving-code-review, also propose a staged-code prediction case that rejects hook overrides, isolates a normal docs-only commit, and discloses already observed results without claiming fresh preregistration. These are proposals only; do not edit installed mirrors or publish upstream without exact approval.
+  - **Desktop-retro**: 2026-11-01: extend the existing computer-use proposal with a session-import cleanup case. Require explicit import provenance before archiving copies, preserve original and active chats, use the supported native configuration API when UI control is unavailable, and verify the single requested preference changed without changing other settings. A UI safety refusal never permits an alternate UI-control backdoor. Keep this as a proposal; do not edit the installed third-party mirror.
+  - **Verification-retro**: 2026-11-01: the installed verification-before-completion package has no eval prompts. Propose a case with a passing full gate on source A, a later docs-only delta covered by the repo-declared merge-ready gate, and a subsequent untracked test not covered by either result. Require exact source/delta attribution and actual exit codes; never call a queued run, stale source, or third-party success report proof of the current tree. Keep the proposal local pending exact upstream approval.
   - **Tags**: skills, evals
   - **Details**: The ChatGPT Work setup goal used third-party openai-docs, agent-browser, verification-before-completion, computer-use, built-in-browser, chrome-browser, plugin-management, OpenAI system skill-creator, systematic-debugging, and test-driven-development. Keep these proposals local until publication is approved. For openai-docs, check current installed CLI/schema evidence before stale setup notes. For agent-browser, prefer an installed native CLI for configuration diagnostics. For verification-before-completion, hooks.json with zero trusted active runtime hooks must not pass activation. For computer-use, built-in-browser, and chrome-browser, respect ChatGPT desktop control restrictions and use permitted website or CLI alternatives; use a fresh CAPTCHA reference, treat approved CAPTCHA verification as separate from OAuth consent, retain already-verified sign-in without asking again, and distinguish a failed page reload from missing account state. For plugin-management, available does not mean installed or authenticated. For OpenAI system skill-creator, distinguish native and upstream-provider bodies and preserve owner folders and links. For systematic-debugging and test-driven-development, identify scratch HOME/bin collisions before changing production and require a failing reproduction before the fix.
   - **Files**: third-party skill evals (proposal only)

@@ -19,6 +19,7 @@ import {
 import { isLabelDisabledInLaunchctlOutput } from "../memory/launchagent.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
+import { queuedRepairCommand } from "./scheduled-repair-command.js";
 import {
   AUTO_SYNC_INTERVAL_SECONDS,
   buildLaunchAgentFixArgs,
@@ -54,7 +55,7 @@ function buildPlistContent(): string {
   // picks the same Node (#356).
   const nodeOverride = process.env.AGENTBREW_NODE_BIN?.trim();
   const nodeOverrideXml =
-    nodeOverride && fixArgs[0] === nodeOverride
+    nodeOverride && (queuedRepairCommand(fixArgs)?.node ?? fixArgs[0]) === nodeOverride
       ? `\n        <key>AGENTBREW_NODE_BIN</key>\n        <string>${nodeOverride}</string>`
       : "";
   // WorkingDirectory must not be `/` (launchd default). MCP smoke probes inherit

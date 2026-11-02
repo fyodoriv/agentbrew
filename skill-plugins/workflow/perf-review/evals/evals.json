@@ -65,6 +65,28 @@
         "Files no speedup task for the human-wait call; at most points at the prompt or permission that needed a person",
         "Gives one concrete fix for until <arg>, such as a background run or a blocking wait instead of a sleep loop"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "The seven-day report has no direct make-check row, 400s/day heavy-run make, and 40s/day dependency setup in the named repo plus 140s/day of that key in tooling-started sessions. The new wrapper parser is not deployed. Can we close the performance tasks?",
+      "expected_output": "Keeps the tasks open, treats old wrapper categories and absent rows as unknown, verifies deployment before starting a fresh comparable measurement window, and makes no speed claim from renamed keys.",
+      "expectations": [
+        "Never treats absent direct rows as zero or maps every heavy-run make call to make check",
+        "Checks tooling-started attribution and distinguishes whole-call loop durations from component runtime",
+        "Keeps old ambiguous rows unchanged and starts a new full window only after installed-source verification",
+        "Does not claim queue/runtime separation when no recorded fields provide it"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "The new seven-day agent-perf JSON reports sleepLoops: completionRows100, taggedRows100, unknownRows0, notObservedRows70, observedSyntaxRows30, pairedTimedRows12, unresolvedObservedRows18, behaviorCoverage:null. Groups include for-sleep-v1 foreground with sumMs420000, and until-while-sleep-v1 unknown mode with sumMs90000 and failures2. Historical until <arg> is absent, and a fresh cohort began only yesterday. Can I close the event-wait task as fixed and say two loops timed out?",
+      "expected_output": "Keep the task open. Explain that 100% tagging is not behavioral coverage, only12 of30 syntax-positive rows have correlation/time, and18 remain unresolved. Treat for/sleep as observed syntax and whole-call duration, preserve unknown execution mode, and do not equate failures with timeouts. Require a full seven-day cohort after verified installed-source cutover and a trustworthy timeout guard before outcome closure.",
+      "expectations": [
+        "Separates tagging, correlation, and unknown behavior coverage",
+        "Never calls observed syntax proven polling or whole-call duration sleep/runtime/queue component time",
+        "Retains unknown mode and unresolved18 observations; no absent-alias zero claim",
+        "Does not infer timeout cause from2 failures or close after one day"
+      ]
     }
   ]
 }

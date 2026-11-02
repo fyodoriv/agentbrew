@@ -18,7 +18,7 @@
 # call that never ran (permission prompt, hook block) shows as blocked.
 # lib/perf-row.jq builds the row and the step key (see its privacy notes).
 #
-# Speed: one jq call plus shell builtins that work on macOS bash 3.2.
+# jq builds rows; the existing Perl helper classifies Bash syntax when available.
 # Read the log with ~/.config/agentbrew/scripts/agent-perf.mjs.
 
 [ "${HOOK_BYPASS_PERF_RECORD:-0}" = "1" ] && exit 0
@@ -35,7 +35,16 @@ JQ="${DOTFILES_JQ:-}"
 [ -n "$JQ" ] || { [ -x /usr/bin/jq ] && JQ=/usr/bin/jq; }
 [ -n "$JQ" ] || exit 0
 
-OUT="$("$JQ" -r -f "$ROW_JQ" 2>/dev/null)" || exit 0
+# Raw input lives only in this hook process; persisted syntax metadata is an enum.
+INPUT="$(cat)"
+SLEEP_LOOP="unknown-v1"
+CODE_ONLY="${ROW_JQ%/*}/shell-code-only.pl"
+if [ -f "$CODE_ONLY" ] && command -v perl >/dev/null 2>&1; then
+  if COMMAND="$(printf '%s' "$INPUT" | "$JQ" -er 'select(.tool_name == "Bash") | .tool_input.command | select(type == "string")' 2>/dev/null)"; then
+    SLEEP_LOOP="$(printf '%s' "$COMMAND" | perl "$CODE_ONLY" --sleep-loop-signal 2>/dev/null)" || SLEEP_LOOP="unknown-v1"
+  fi
+fi
+OUT="$(printf '%s' "$INPUT" | "$JQ" --arg sleep_loop "$SLEEP_LOOP" -r -f "$ROW_JQ" 2>/dev/null)" || exit 0
 [ -n "$OUT" ] || exit 0
 
 CWD="${OUT%%$'\n'*}"

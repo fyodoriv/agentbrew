@@ -22,6 +22,13 @@ interface Setting {
  */
 export const SETTINGS: readonly Setting[] = [
   {
+    key: "scheduledRepairQueue",
+    default: "direct",
+    allowed: ["direct", "heavy-run"],
+    help: "macOS repair: direct runs immediately; heavy-run waits for the active Dotfiles machine queue.",
+    appliesOn: "the next auto-sync install or repair of the macOS job",
+  },
+  {
     key: "claudePermissions",
     default: "manage",
     allowed: ["manage", "keep"],

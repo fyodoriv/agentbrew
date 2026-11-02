@@ -442,3 +442,22 @@ Keep the first failed comparison and inconclusive setup evidence. This
 diagnostic permits review of the registered runtime stage; it does not waive
 the original full-graph requirement, remaining development alerts or post-merge
 fixed-status confirmation. No passing full-repository result is claimed here.
+
+### Completed runtime-stage evidence
+
+PR #695 merged the scoped runtime patch as
+`f899d634d18141e5cf7b9595b48d5d39e6a9d161`. Its final required repository gate
+passed on exact tree `167aad4b04538fa8e24e3b9a992090e84a5c8269`: 6,119 tests
+passed with five existing skips; the cold installation check passed. This
+later result completes the repository gate left pending in the earlier record.
+
+On November 2, 2026, separate live GitHub API reads confirmed alerts 153, 154,
+155 and 156 each have state `fixed` and a non-null `fixed_at` timestamp. All
+four timestamps are `2026-11-02T17:42:20Z`. The protected package manifest,
+lockfile and registry configuration remain byte-identical to the merged patch.
+
+The completed `dependency-runtime-fast-uri` task is removed from the queue.
+The original nine-alert task and peer-compatibility task remain open. Five
+frozen development rows and the unsupported full dependency graph are not
+resolved by this confirmation. This records source and task-owned installation
+validation; it does not claim a runtime cutover of the main checkout.

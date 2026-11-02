@@ -119,3 +119,56 @@ using the CLI setter and review the generated job before any service change.
 Preserve the previous generated job for a reviewed rollback; do not restore
 unknown owner files or disable memory/privacy choices. Do not describe fixture
 dispatch as field ownership, deployment success or complete queue safety.
+
+# Supplemental scheduled-repair policy validity controls
+
+This amendment extends scheduled-repair-queue-admission before any result
+from the supplemental cases. Original Q01-Q12 and their receipts remain
+separate. It does not change the queue-capacity policy or production runner.
+
+## Prediction
+
+Goal: prevent unavailable persisted policy from selecting direct repair.
+Question: can invalid or unreadable existing state authorize a payload?
+Metric: payload starts before a known valid policy decision.
+
+Predicted pre-fix result: one payload start in each invalid-state case below.
+Target: zero payload starts in each invalid-state case, zero raw diagnostic
+disclosures, and both explicit legacy/default controls still execute directly.
+Any bypass, disclosure, altered default or weakened original assertion rejects
+the approach. Anchor: Basili, Caldiera and Rombach (1994), GQM.
+
+## Fixed controls
+
+| ID | Input | Required outcome |
+| --- | --- | --- |
+| S01 | Existing state contains an invalid queue enum | fixed policy refusal; no payload |
+| S02 | Existing state contains a nonstring queue value | fixed policy refusal; no payload |
+| S03 | Existing state is malformed YAML | fixed policy refusal; no payload or raw parser snippet |
+| S04 | Existing state read deterministically fails EACCES | fixed policy refusal; no payload or raw error |
+| S05 | Valid legacy state lacks the queue field | unchanged direct default |
+| S06 | State file genuinely does not exist | unchanged direct default |
+| S07 | Existing state metadata lookup deterministically fails EACCES | fixed policy refusal; no payload |
+
+Each failure control also captures diagnostics only in RAM and checks a
+boolean for a static fixture marker. Failure output must not print the marker,
+parser snippet, raw state or raw error text.
+
+## Owner and implementation boundary
+
+Use one parser in the existing state owner. Expose missing, loaded and
+unavailable read outcomes for scheduler policy. A metadata error is not
+missing. Preserve unrelated state-manager and normal loadState behavior.
+The scheduler validates the optional queue field before selecting arguments.
+Use a fixed SCHEDULED_REPAIR_POLICY_UNAVAILABLE error code with no raw value.
+Do not add another YAML parser, supervisor, setting file or fallback.
+
+Proposed measurement before the test file exists:
+
+    heavy-run npx vitest run src/sync/scheduled-repair-policy.test.ts --maxWorkers=1
+
+Run that exact command against the pinned pre-fix policy, then the candidate.
+Original admission controls, settings/re-init guards and normal required
+repository gate must remain green afterward. Fixture read faults are injected
+only at the scratch state-file read/metadata boundary; no owner file or
+scheduler is touched.

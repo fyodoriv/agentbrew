@@ -481,3 +481,60 @@ Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al
 above. The docs-only pre-commit gate is
 `JOBS=1 heavy-run npm run verify:changed -- HEAD`, with candidate source safely
 preserved outside the index. It is not a counter or runtime acceptance result.
+
+
+## Diagnostic compatibility supplement
+
+This supplement retains the corrected compatibility fixtures and every original
+candidate-boundary/N15 assertion. It does not authorize runtime mutation,
+credential attempts, automatic repair or weaker preservation decisions.
+The first compatibility run is preserved separately: its path-alias and helper
+setup failures are not production diagnostic failures.
+
+Goal: preserve actionable, credential-safe Git installation refusal guidance.
+Question: can a user identify the rejected input and the next explicit action
+without raw subprocess output or deletion advice? Metric: failing diagnostic
+compatibility cases in the fixed full-file cohort. The qualified full-file baseline has exactly eight failing diagnostic cases
+and 43 passes, with zero setup or timeout failures. The separately registered
+phase-local optimization has a qualified one-call counter and both original
+five-second cases pass unchanged. Predict eight diagnostic failures to zero
+while all other corrected cases and every preservation oracle continue to pass.
+
+The fixed cases cover build location and re-pin instructions, old output that
+cannot satisfy a new candidate, tag/commit explicit-ref guidance, safe env-entry
+position validation, both unattended login controls, missing-runtime guidance,
+and origin/source context. Retain their exact diagnostic literals and secret
+non-disclosure assertions. The missing-runtime case observes refusal and
+credential-helper guidance; it does not prove an authentication attempt or an
+authentication failure. Do not recreate or contact that source automatically.
+
+Proposed change: propagate only safe typed refusal reasons from the existing
+candidate boundary. Give each refusal its own guidance. Keep unexpected errors
+fixed and generic. Unattended clone guidance reports the configured disabled
+prompt policy without claiming a credential cause or forwarding Git stderr.
+Origin guidance uses only required credential-safe source context, without
+raw URL query/fragment data, and preserves the old directory;
+never forward the legacy suggestion to delete it. Print no raw env entry,
+secret, headers, subprocess stderr or dynamic payload. Candidate builds and
+publication decisions, success gating, explicit consent and receipt rules stay
+unchanged.
+
+Measurement, with the frozen fixture source and one worker:
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts
+```
+
+Success: eight diagnostic failures become zero; all 51 fixed cases pass,
+including zero false success, zero old-runtime byte/inode/mode/HEAD changes,
+zero secret disclosures and zero unsupported acceptance. Pivot: any remaining
+diagnostic failure or any regression in the fixed cohort rejects the approach.
+Do not relax expected errors, normalize exact argv away, add blanket hints or
+restore in-place builds to make it pass. Revisit the typed refusal boundary.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the source/ref/env compatibility and runtime-preservation
+contracts above. The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate safely
+preserved outside the index. Commit this prediction before production changes.
+The docs gate does not establish runtime, authentication or compatibility proof.

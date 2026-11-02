@@ -83,6 +83,8 @@ So:
 
 1. Copy the raw goal text verbatim. You will compare against it at the end.
    Shape a long, dictated, or vague goal first: [references/goal-intake.md](references/goal-intake.md).
+   A word that can name two deliverables is a question in the one round:
+   "command" can mean a CLI command or an agent slash command.
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.

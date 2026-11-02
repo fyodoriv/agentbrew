@@ -2385,6 +2385,50 @@
         "Separates normal post-boot load spikes from crash precursors by comparing every boot that day",
         "Stops leftover helper processes of the suspect and runs a monitor for new crash reports while other agent sessions work"
       ]
+    },
+    {
+      "id": 209,
+      "prompt": "/goal make my reminders less aggressive",
+      "expected_output": "Traces each reminder to its source, finds check tasks due before the event they check can have happened, and fixes the owner's task data without any code change; the contract scope says it is a data-only change.",
+      "expectations": [
+        "Traces each reminder back to the task or rule that creates it before changing anything",
+        "Compares each check task's due date with the date of the event it checks (a charge on the 27th posts 1-2 business days later)",
+        "Moves the due dates in the owner's task data and changes no code",
+        "States in the contract scope that the fix is a data edit with no code change"
+      ]
+    },
+    {
+      "id": 210,
+      "prompt": "/goal tell me which tasks I asked for yesterday are still open. (gh returns 401 for every call.)",
+      "expected_output": "Says the GitHub CLI login is down, then answers from other sources: session metadata with PR states, each session's final report, and local git log --all; it never reports the goal as impossible.",
+      "expectations": [
+        "Says plainly that gh fails with 401 and names it as a degraded source",
+        "Uses session metadata (list_sessions PR states) and each session's final report as evidence",
+        "Uses local git log --all to confirm what landed",
+        "Gives a per-task open or done list with its source, and does not report the goal as impossible"
+      ]
+    },
+    {
+      "id": 211,
+      "prompt": "/goal implement a forecast command. Mid-goal the user says: 'I mean a command for the agent, like /forecast'.",
+      "expected_output": "Treats the answer as reshaping the deliverable: keeps the CLI as the one source of truth, adds the agent slash command that runs it, and updates the contract's Done when.",
+      "expectations": [
+        "Keeps the CLI command as the single source of truth instead of rewriting the logic in the slash command",
+        "Adds the agent slash command file that runs the CLI and declares it for deploy",
+        "Updates the contract's Done when with the slash command criterion and prints its goal check line",
+        "Does not ship only a CLI when a slash command was meant"
+      ]
+    },
+    {
+      "id": 212,
+      "prompt": "/goal implement & ship all unblocked tasks. Some tasks edit a skill repo the sandbox cannot write; one task needs the owner to log in; the reviewer subagent is refused by a usage guard.",
+      "expected_output": "Classifies each task by its Details and a live write probe, ships the code half of owner-gated tasks and narrows them to the owner's half, and says the review was refused and self-reviews instead of claiming one ran.",
+      "expectations": [
+        "Classifies each task by its Details and a live write probe (touch in the skill repo), not only by a Blocked line",
+        "Ships the code half of a task whose outcome needs the owner and narrows the task to the owner's half",
+        "Never calls an owner-gated task done or blocked as a whole",
+        "When the reviewer subagent is refused, says so and self-reviews the diff; never claims a review ran"
+      ]
     }
   ]
 }

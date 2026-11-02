@@ -538,3 +538,75 @@ contracts above. The docs-only pre-commit gate is
 `JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate safely
 preserved outside the index. Commit this prediction before production changes.
 The docs gate does not establish runtime, authentication or compatibility proof.
+
+
+## Recorded final code validation — 2026-11-02
+
+This section records results. It does not replace or revise the predictions
+above. The validated code tree is
+`bba779f7a8e043539d0cfd76af180b74a9ed159d`. Source commit
+`7c8d873` and the later normal ancestry merges retain that exact tree;
+`171186c526ea67f6f2794f926a1baf3e4db2e501` is the clean source checkpoint
+before this docs-only task closure. Full-code evidence applies to the code
+tree, not to the later documentation-only tree.
+
+The original candidate registration is `3273c4c`; the real partial-publication
+supplement is `6715267`. Phase-local environment measurement was registered in
+`cd5f3d0`, diagnostic compatibility in `cd7a0ff`, eligibility guidance in
+`3e1db93`, and invalid-package compatibility in `19d670d`. The first candidate
+cohort had 16 failing decisions and three passing controls against the old
+implementation. That is a decision count, not a count of unsafe mutations.
+Setup/compiler failures and corrected fixture ports remain separate historical
+evidence; they are not semantic product failures.
+
+The related four-file check passed all 118 cases: 54 retained units, two
+separate ownership guards, 51 retained real-Git compatibility/boundary cases,
+one additional invalid-package safety control, nine entrypoint cases and one
+environment counter. The CLI unit file then passed all 22 cases after its exact
+mock expectation was adapted to the registered option interface, retaining the
+server name and adding a one-call assertion. Formatting-only corrections
+preserve the test control/assertion AST, case-name order and string values.
+
+The qualified invalid-package helper failure moved from one to zero. The
+additional first-install control uses malformed package metadata plus a tracked
+`index.js`; unsafe activations remained zero before and after. Its actual parser
+refusal was reached once, with no npm call, registration, save or receipt and
+unchanged selected state. The helper returns a typed refusal; the candidate
+caller rejects it before entrypoint detection or publication. The separate
+metadata-inspection counter moved from six environment computations to one,
+and both original five-second cases passed without raising their deadlines.
+This does not establish whole-command speed or field performance.
+
+The final required command was:
+
+```sh
+JOBS=1 heavy-run env NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.9 npm run verify
+```
+
+It exited zero on the exact code tree above. All 20 steps ran uncached. The
+complete suite passed 6,172 tests with five skips across 408 passed files and
+one skipped file. Cold installation passed one test with two skips; package
+installation passed all three tests. The earlier full attempts stopped at
+fixture formatting/import cleanup, the missing CLI flag-audit row and an exact
+CLI mock call-shape mismatch. Their receipts remain failures; the later result
+does not relabel them. No behavior assertion or five-second deadline was
+relaxed to pass the final gate.
+
+The task-owned installation matches current main's source lock and protected
+package records. Its three selected physical package versions and nine
+installed-lock fields match that lock, and its stamp is lock-identical.
+Canonical and qualified donor samples were unchanged during alignment. Known
+full dependency-graph/peer limitations remain recorded in their separate tasks;
+this MCP result is not complete dependency-graph security proof.
+
+Git operations, candidate ownership, parsing, receipts and recovery bytes/inodes
+were exercised in scratch fixtures. State and sync ports are controlled; real
+registration-owner fault cases remain scratch operations. Empty-target readback
+and dispatch checks do not prove live agent fan-out. This work performed no
+native deployment or cutover, changed no owner's MCP runtime or conversation
+store, and does not qualify general process-group ownership or a malicious-build
+sandbox. The later native MCP lifecycle task retains those distinct boundaries.
+
+The completed `mcp-git-repin-build-output` block is removed from `TASKS.md` by
+this docs-only closure. Every other task block, including the dependency stages
+and native lifecycle work, is preserved.

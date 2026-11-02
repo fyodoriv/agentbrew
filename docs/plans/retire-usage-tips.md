@@ -159,3 +159,22 @@ service, sync or public writes. A passing source gate, archived flag and actual
 active-installation readback are distinct required outcomes. Close the primary
 task only after all are proved. Historical worktrees, backups and Git history
 are not active-installation metrics and remain preserved.
+
+## Recorded source evidence
+
+The unchanged source failed the registered retirement checks: a previously
+enabled Claude Stop hook resolved once; the built-in remained available; the
+401-row synthetic transcript emitted the seeded notice once; and a synthetic
+shown-tip cache appeared in the real status line. Codex already had no matching
+registration, and exact prior-managed identity reconciliation preserved an
+unrelated user Stop hook.
+
+After removal, the source retirement controls pass. The first preservation
+fixture also expected an unrelated opt-in hook without enabling it. That
+fixture-context failure is retained; the corrected scratch overlay explicitly
+enables the unrelated hook and proves that it survives. The zero-retirement
+criteria did not change. Obsolete positive tip-rendering coverage was replaced
+with the cache-retirement regression; old user history stays untouched.
+
+These are source-fixture results only. Required repository validation, qualified
+live reconciliation and archive metadata remain separate completion evidence.

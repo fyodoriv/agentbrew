@@ -15,7 +15,6 @@ import {
   formatStatusline,
   projectForDir,
   sessionStats,
-  sessionTip,
   summarize,
   // @ts-expect-error — pure-ESM .mjs helper; vitest resolves it via Node ESM.
 } from "../../templates/scripts/agent-perf.mjs";
@@ -436,6 +435,29 @@ describe("turn", () => {
 });
 
 describe("statusline", () => {
+  it("does not replay a retired usage-tip cache while preserving the normal status line", () => {
+    const tipDir = join(base, "retired-tip-cache");
+    mkdirSync(tipDir);
+    const log = join(tipDir, "log.jsonl");
+    const seeded = `${JSON.stringify({ ts: "2026-10-25T10:00:00Z", session: "retirement-session", tip: "synthetic-retired-tip", event: "shown", text: "SYNTHETIC_RETIRED_CACHED_NOTICE" })}\n`;
+    writeFileSync(log, seeded);
+    const input = {
+      session_id: "retirement-session",
+      model: { display_name: "Fixture Model" },
+      cost: { total_duration_ms: 60_000, total_api_duration_ms: 20_000 },
+    };
+    const output = spawnSync("node", [HELPER, "statusline"], {
+      input: JSON.stringify(input),
+      env: { ...process.env, USAGE_TIPS_DIR: tipDir, XDG_STATE_HOME: join(base, "state") },
+      encoding: "utf8",
+    });
+    expect(output.error).toBeUndefined();
+    expect(output.status).toBe(0);
+    expect(output.stdout).toBe(`${formatStatusline(input, { toolMs: 0, slowKey: null, slowMs: 0 })}\n`);
+    expect(output.stdout).not.toContain("SYNTHETIC_RETIRED_CACHED_NOTICE");
+    expect(readFileSync(log, "utf8")).toBe(seeded);
+  });
+
   it("formats model, wall time, api and tool time, slowest step, and context", () => {
     const line = formatStatusline(
       {
@@ -448,54 +470,6 @@ describe("statusline", () => {
 
     expect(line).toBe("Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%");
     expect(formatStatusline({}, { toolMs: 0, slowKey: null, slowMs: 0 })).toBe("");
-  });
-
-  it("adds the session's current usage tip as a second line", () => {
-    const tipDir = mkdtempSync(join(tmpdir(), "usage-tips-"));
-    const log = join(tipDir, "log.jsonl");
-    const row = (session: string, tip: string, event: string, text?: string) =>
-      JSON.stringify({ ts: "2026-10-25T10:00:00Z", session, tip, event, ...(text ? { text } : {}) });
-    writeFileSync(
-      log,
-      `${[
-        row("s1", "plan-first", "shown", "Ask for a plan first."),
-        row("s2", "rewind-checkpoint", "shown", "Press Esc twice."),
-        row("s1", "name-the-file", "shown"),
-        row("s1", "init-claude-md", "shown", "New repo? /init writes a starter CLAUDE.md."),
-        row("s1", "plan-first", "adopted"),
-      ].join("\n")}\n`,
-    );
-    try {
-      expect(sessionTip("s1", { file: log })).toBe("New repo? /init writes a starter CLAUDE.md.");
-      expect(sessionTip("s2", { file: log })).toBe("Press Esc twice.");
-      expect(sessionTip("s3", { file: log })).toBeNull();
-      expect(sessionTip("s1", { file: join(tipDir, "missing.jsonl") })).toBeNull();
-      appendFileSync(log, `${row("s2", "rewind-checkpoint", "adopted")}\n${row("s4", "old", "shown")}\n`);
-      appendFileSync(
-        log,
-        `${row("s5", "x", "shown", "\u001b]0;pwned\u0007Bell \u001b[31mred")}\n${row("s6", "y", "shown", "a".repeat(300))}\n`,
-      );
-      expect(sessionTip("s2", { file: log })).toBeNull();
-      expect(sessionTip("s4", { file: log })).toBeNull();
-      expect(sessionTip("s5", { file: log })).toBe("]0;pwnedBell [31mred");
-      expect(sessionTip("s6", { file: log })).toHaveLength(120);
-      expect(
-        formatStatusline(
-          { model: { display_name: "Opus 5.5" } },
-          { toolMs: 0, slowKey: null, slowMs: 0 },
-          "Run /context.",
-        ),
-      ).toBe("Opus 5.5\n💡 Run /context.");
-
-      const out = spawnSync("node", [HELPER, "statusline"], {
-        input: JSON.stringify({ session_id: "s1", model: { display_name: "Opus 5.5" } }),
-        env: { ...process.env, USAGE_TIPS_DIR: tipDir, XDG_STATE_HOME: tipDir },
-        encoding: "utf8",
-      });
-      expect(out.stdout).toBe("Opus 5.5\n💡 New repo? /init writes a starter CLAUDE.md.\n");
-    } finally {
-      rmSync(tipDir, { recursive: true, force: true });
-    }
   });
 
   it("reads new rows incrementally and waits for a half-written row", () => {

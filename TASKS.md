@@ -183,6 +183,20 @@
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
 
+- [ ] Remove the selected development advisory ranges with exact leaf patches
+  - **ID**: dependency-development-patches
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Follow [Stage S](docs/plans/development-patch-alerts.md), registered before new measurements or package changes. Patch only the two locked Undici copies and qs through nine verified public metadata scalars within existing parent ranges. This stage explicitly revises the old hand-edit restriction only for its bounded declarative method. Keep the original nine-alert task, completed runtime stage, optional graph, protected stub/overrides/Node floor and full peer-conflict evidence intact. No audit aggregate or omitted blocked row changes a denominator.
+  - **Files**: `package-lock.json`, README dependency/security guidance, `docs/plans/development-patch-alerts.md`
+  - **Output**: code
+  - **Acceptance**: every selected advisory/range is absent from every locked copy; only the registered nine scalar fields change, normal task-owned npm 10 installation and uncached full gate pass, complete known peer-error evidence is retained without new errors, and all selected GitHub rows later show fixed timestamps. This does not complete the original remediation or peer task.
+  - **Hypothesis**: selected unsafe rows fall from predicted ten to zero. Separately, the unchanged original nine-row denominator moves from unsafe five to three and the new ten-row denominator from unsafe ten to two. Aggregate open alerts are informational; no stage baseline has run yet.
+  - **Measurement**: after committing the prediction, run the plan's exact Node/semver query, optional-inclusive audit/tree and existing lock validation before and after the guarded edit. Qualify task-owned dependencies with the normal npm 10 helper, run `JOBS=1 NO_CACHE=1 heavy-run npm run verify`, then the plan's exact env-unset fixed-status query after merge.
+  - **Success**: selected unsafe zero, original unsafe exactly 149/150/162, new unsafe exactly 172/174, no unregistered lock or protected-contract change, passing installation and required gates, unchanged known peer-error set and all ten selected GitHub rows fixed.
+  - **Pivot**: any selected affected copy, invalid or missing evidence, extra scalar/edge/package movement, new peer error, hidden optional path, canonical dependency mutation or gate regression rejects this method. Preserve failures; no forced override, root downgrade, manufactured integrity or full-graph waiver.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; fixed upstream advisories, npm metadata and installation contracts linked in Stage S.
+
 - [ ] Restore a supported full dependency graph without forcing the watcher peer
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies

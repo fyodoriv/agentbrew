@@ -1071,14 +1071,14 @@ That works only when lefthook installs the repo's hooks. A global `core.hooksPat
 
 ### Dependency security
 
-The [frozen dependency cohort](docs/plans/dependency-alert-controls.md) records
-a partial result: fast-uri 3.1.9 removes four affected runtime advisory ranges
-from the lockfile. Five development advisory ranges remain affected. The full
-development graph also retains the Nunjucks/Chokidar peer conflict; runtime-only
-validation does not make that graph valid or complete the nine-alert task.
+The [original dependency cohort](docs/plans/dependency-alert-controls.md) records
+the completed runtime patch stage. [Stage S](docs/plans/development-patch-alerts.md#recorded-partial-result)
+records the later development patches and the remaining alerts. The full
+development graph retains the Nunjucks/Chokidar peer conflict. These partial
+stages do not make that graph valid or complete the original remediation.
 
-A fresh npm 10.9.9 install of the unchanged lockfile reproduced the same five
-extra-package reports and Chokidar peer conflict. The specific installer cause
+A fresh npm 10.9.9 install of the unchanged lockfile reproduced the same
+optional extra-package reports and Chokidar peer conflict. The specific installer cause
 is unproved. The [installation diagnosis](docs/plans/dependency-install-counterfactual.md#recorded-diagnostic-result)
 preserves the first failed installed-graph comparison; it does not make the
 full graph valid.

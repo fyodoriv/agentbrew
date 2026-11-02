@@ -4,9 +4,10 @@
 
 Registered 2026-11-02 from `44c085d1324485dccd087721e66da324d346b987`.
 Task: `dependency-development-patches`. Reduce vulnerable development dependency
-rows with supported leaf patches. No package action or numerical experiment
-has run for this stage. Read-only advisory and registry inspection is not its
-baseline. This advances G5: verifiable configuration and runtime health.
+rows with supported leaf patches. This prediction was committed before the
+baseline and package actions. Read-only advisory and registry inspection was
+not its baseline. The dated result below is separate from the prediction.
+This advances G5: verifiable configuration and runtime health.
 
 Select three exact published leaf versions within every existing parent range.
 This stage explicitly revises the method in
@@ -245,3 +246,55 @@ jq -e '[.[][] | select(.number as $n | [160,161,163,165,166,167,168,169,170,171]
 
 Unknown API state, dismissal and a missing row are not fixed status. The new
 cohort's Hono and Minimatch rows and original MSAL/mocker rows stay tracked.
+
+## Recorded partial result
+
+2026-11-02: prediction commit `8f376b430b8f5b37dac5fcabab1a7062c465fc26`
+preceded the baseline and patch. The same frozen query returned these actual
+results, counting every locked copy and retaining all denominators:
+
+| Cohort | Baseline unsafe | Candidate unsafe | Remaining IDs |
+| --- | --- | --- | --- |
+| Original nine | 5 | 3 | 149/150/162 |
+| New ten | 10 | 2 | 172/174 |
+| Selected ten | 10 | 0 | none |
+
+The baseline query exited 1; the candidate and post-install queries exited 0.
+Only the nine registered scalars changed. Restoring their original values
+recovered the complete original parsed JSON and bytes. All other package
+records, dependency edges, protected source hashes and canonical dependency
+samples remained unchanged.
+
+The first normal self-donor installation completed with exit 0, Node 24.21.0
+and npm 10.9.9. The installed physical manifests for both Undici copies and qs
+matched the published version, dependency, optional, peer, engine, license and
+funding fields. Their nine hidden-lock version/URL/integrity fields matched
+the selected source lock. The helper stamp matched the candidate lock.
+Pinned npm 10.9.9 lock validation passed.
+
+The optional-inclusive audit remained a valid nonzero response because other
+findings remain. The selected advisory identifiers were absent; no new advisory
+identifier appeared against this baseline. Its aggregate package count did
+not replace the frozen advisory/range metrics.
+
+Full-graph validation is still **non-green**. The lock-only tree retained the
+same Chokidar peer problem and complete error object. The installed tree had
+the same six problems as the prebound unchanged-lock control. Its unchanged
+comparator returned exit 0 with both the complete problem set and error object
+equal, after replacing only the exact owned physical prefix. This is error
+equivalence, not proof that the graph is valid or that the installer cause is
+known. No peer override, optional omission or package pruning was used.
+
+Pre-measurement cache-path and concurrent Git-index preflight errors were
+preserved as inconclusive setup attempts; they ran no package workload. A
+transient process-inventory result was also preserved before the first install;
+a fresh check from the private metadata working folder found no active user.
+These setup receipts are not semantic reds or repeated installations.
+
+Current main `22ed1ffaf7a1877d7b3167a71053ecd3c9e702b2` adds only the
+separate locked-install-evidence task and plan to this stage's base. Both task
+blocks are preserved. Full uncached verification and post-merge GitHub
+fixed-status confirmation remain separate delivery requirements. The original
+remediation and peer compatibility tasks stay open; keep this stage's task open
+until its delivery criteria pass. No claim of all alerts fixed, full-graph
+validity or live application deployment follows.

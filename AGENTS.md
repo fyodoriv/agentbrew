@@ -82,9 +82,10 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
 ## Gotchas
 
+- Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
-- GitHub Actions is off on this repo. `npm run verify` is the only CI.
+- CI `npm run verify` (Actions off) [Perf limits](docs/agent-perf.md).
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under load; re-run it first.
@@ -99,7 +100,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Schedulers are per user: run `launchctl`, `crontab`, `systemctl` only via `src/core/`; tests get fakes.
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
-- The install e2e (`real-e2e/scenarios/us01-one-step-install.test.ts`) runs under `sandbox-exec`: writes outside its scratch folder fail it. Add new install paths to `scripts/install-e2e-if-needed.sh`.
+- Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.

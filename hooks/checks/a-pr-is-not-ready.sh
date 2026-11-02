@@ -58,51 +58,48 @@ if [ -z "$TRANSCRIPT_PATH" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   verdict_bypass "$HOOK_ID" "no transcript path (best-effort)"
 fi
 
-# Did this turn include a gh pr create / ready / merge call?
-PR_ACTIVITY=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
-  | .message.content[] | select(.type == "tool_use" and .name == "Bash")
-  | .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null \
-  | grep -cE '\bgh[[:space:]]+pr[[:space:]]+(create|ready|merge)\b' || true)
-
-if [ "$PR_ACTIVITY" = "0" ] || [ -z "$PR_ACTIVITY" ]; then
+# Parse argument words without executing them. Quoted metadata is opaque;
+# unsupported shell syntax clears the target instead of guessing its repo.
+PR_TARGET=$(python3 "$__HOOK_LIB_DIR/pr-command-target.py" "$TRANSCRIPT_PATH" 2>/dev/null || true)
+if ! printf '%s' "$PR_TARGET" | jq -e 'type == "object" and .unavailable == false' >/dev/null 2>&1; then
+  verdict_warn "$HOOK_ID" "Couldn't resolve PR command arguments; verify the target and status before claiming done."
+fi
+PR_ACTIVITY=$(printf '%s' "$PR_TARGET" | jq -r '.activity')
+if [ "$PR_ACTIVITY" != "true" ]; then
   verdict_bypass "$HOOK_ID" "no gh pr create/ready/merge in this turn"
 fi
-
-# Find the most recent gh pr number referenced in the transcript
-PR_NUM=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
-  | .message.content[] | select(.type == "tool_use" and .name == "Bash")
-  | .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null \
-  | grep -oE 'gh[[:space:]]+pr[[:space:]]+(view|ready|merge|edit)[[:space:]]+[0-9]+' \
-  | grep -oE '[0-9]+' | tail -1 || true)
+PR_NUM=$(printf '%s' "$PR_TARGET" | jq -r '.number // empty' 2>/dev/null || true)
 
 if [ -z "$PR_NUM" ]; then
   # Couldn't extract PR number from transcript — best-effort warn
   verdict_warn "$HOOK_ID" "gh pr activity detected but couldn't extract PR number to verify status. Run \`gh pr checks <num>\` manually before claiming done."
 fi
 
-# Try to determine the repo from the transcript (gh -R <repo> usage)
-REPO=$(jq -r 'select(.message.content[]?.type == "tool_use" and .message.content[].name == "Bash")
-  | .message.content[] | select(.type == "tool_use" and .name == "Bash")
-  | .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null \
-  | grep -oE '\-\-repo[[:space:]]+[^[:space:]]+' \
-  | head -1 | awk '{print $2}' || true)
+REPO=$(printf '%s' "$PR_TARGET" | jq -r '.repo // empty' 2>/dev/null || true)
 
 # Check PR status. Use a 5s timeout — gh API can stall and we don't want
 # to freeze the Stop event. Default-allow on timeout (best-effort).
-REPO_ARG=""
+REPO_ARGS=()
 if [ -n "$REPO" ]; then
-  REPO_ARG="--repo $REPO"
+  REPO_ARGS=(--repo "$REPO")
 fi
 
 if ! command -v timeout >/dev/null 2>&1; then
   timeout() { gtimeout "$@" 2>/dev/null || "$@"; }
 fi
 
-PR_INFO=$(timeout 5 gh pr view "$PR_NUM" $REPO_ARG --json mergeable,mergeStateStatus,statusCheckRollup 2>/dev/null || echo "")
+PR_INFO=$(timeout 5 gh pr view "$PR_NUM" "${REPO_ARGS[@]}" --json state,mergeable,mergeStateStatus,statusCheckRollup 2>/dev/null || echo "")
 
 if [ -z "$PR_INFO" ]; then
   verdict_warn "$HOOK_ID" "Couldn't fetch PR #$PR_NUM status (gh timed out or unauthenticated). Run \`gh pr checks $PR_NUM\` manually before claiming done."
 fi
+
+# A merged or closed PR is finished: its merge state no longer matters
+# (GitHub can report a merged PR as DIRTY).
+PR_STATE=$(echo "$PR_INFO" | jq -r '.state // ""' 2>/dev/null || echo "")
+case "$PR_STATE" in
+  MERGED|CLOSED) verdict_allow "$HOOK_ID" "PR #$PR_NUM is $PR_STATE" ;;
+esac
 
 # Check for FAILURE conclusions
 FAILED=$(echo "$PR_INFO" | jq -r '[.statusCheckRollup[]?.conclusion] | map(select(. == "FAILURE")) | length' 2>/dev/null || echo "0")

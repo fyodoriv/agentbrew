@@ -31,6 +31,7 @@ assert_exit_code() {
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/gh" <<'EOF'
 #!/bin/bash
+printf '%s\n' "$*" >> "${MOCK_GH_ARGS:-/dev/null}"
 printf '%s' "${MOCK_GH_OUTPUT:-}"
 EOF
 cat > "$TMP/bin/timeout" <<'EOF'
@@ -42,7 +43,7 @@ cp "$TMP/bin/timeout" "$TMP/bin/gtimeout"
 chmod +x "$TMP/bin/gh" "$TMP/bin/timeout" "$TMP/bin/gtimeout"
 
 # Transcript fixtures (JSONL)
-mk_transcript() { local f="$TMP/$1"; shift; : > "$f"; for c in "$@"; do printf '{"message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"%s"}}]}}\n' "$c" >> "$f"; done; printf '%s' "$f"; }
+mk_transcript() { local f="$TMP/$1"; shift; : > "$f"; for c in "$@"; do jq -nc --arg command "$c" '{message:{content:[{type:"tool_use",name:"Bash",input:{command:$command}}]}}' >> "$f"; done; printf '%s' "$f"; }
 stop_input() { printf '{"hook_event_name":"Stop","transcript_path":"%s"}' "$1"; }
 T_NOACT="$(mk_transcript noact.jsonl 'git status')"
 T_CREATE="$(mk_transcript create.jsonl 'gh pr create --title x --body y')"
@@ -80,6 +81,99 @@ assert_exit_code "Test 7 (green + clean → allow)" 0 \
 # Test 8: HOOK_BYPASS env var set with a would-block (failing) PR → allow
 assert_exit_code "Test 8 (HOOK_BYPASS env → allow)" 0 \
   "$(env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" HOOK_BYPASS_A_PR_IS_NOT_READY=1 MOCK_GH_OUTPUT='{"statusCheckRollup":[{"conclusion":"FAILURE"}],"mergeStateStatus":"CLEAN"}' bash -c "printf '%s' '{\"hook_event_name\":\"Stop\",\"transcript_path\":\"$T_READY\"}' | bash '$SCRIPT' >/dev/null 2>&1; echo \$?" | tail -1)"
+
+# Test 9: the repo comes from the PR's own command, not from the first
+# `--repo` anywhere in the transcript (an earlier `gh issue create --repo
+# other/repo` made the hook check other/repo's PR of the same number).
+T_MIXED="$(mk_transcript mixed.jsonl 'gh issue create --repo other/repo --title x' 'gh pr merge 42 --squash')"
+: > "$TMP/gh.args"
+env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+  MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+  bash -c "printf '%s' '$(stop_input "$T_MIXED")' | bash '$SCRIPT' >/dev/null 2>&1"
+if grep -q "other/repo" "$TMP/gh.args"; then
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 9 (repo from the PR command): gh was asked about other/repo")
+else
+  PASS=$((PASS + 1))
+fi
+
+# Test 10: the PR command's own --repo is used.
+T_OWN="$(mk_transcript own.jsonl 'gh issue create --repo other/repo --title x' 'gh pr merge 7 --repo octo/repo --squash')"
+: > "$TMP/gh.args"
+env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+  MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+  bash -c "printf '%s' '$(stop_input "$T_OWN")' | bash '$SCRIPT' >/dev/null 2>&1"
+if grep -q -- "7 --repo octo/repo" "$TMP/gh.args"; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 10 (own --repo): gh args were: $(cat "$TMP/gh.args")"); fi
+
+# Test 11: a merged PR is done, whatever GitHub reports as its merge state.
+assert_exit_code "Test 11 (merged PR → allow)" 0 \
+  "$(run_mocked "$(stop_input "$T_READY")" '{"state":"MERGED","statusCheckRollup":[],"mergeStateStatus":"DIRTY","mergeable":"CONFLICTING"}')"
+
+# Test 12: no grep warnings on stderr.
+err="$(printf '%s' "$(stop_input "$T_OWN")" | env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_OUTPUT='{"state":"OPEN","mergeStateStatus":"CLEAN"}' bash "$SCRIPT" 2>&1 >/dev/null)"
+if grep -q "grep: warning" <<<"$err"; then FAIL=$((FAIL + 1)); FAIL_DETAILS+=("Test 12 (no grep warning): $err"); else PASS=$((PASS + 1)); fi
+
+check_repo_words() {
+  local label="$1" command="$2" expected="$3" transcript
+  transcript="$(mk_transcript "words-$PASS.jsonl" "$command")"
+  : > "$TMP/gh.args"
+  env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+    MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+    bash -c "printf '%s' '$(stop_input "$transcript")' | bash '$SCRIPT' >/dev/null 2>&1"
+  if grep -q -- "42 --repo $expected --json" "$TMP/gh.args"; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("$label: wrong repository arguments: $(cat "$TMP/gh.args")"); fi
+}
+
+check_repo_words "quoted merge body is opaque" \
+  "gh pr merge 42 --body 'Example --repo wrong/repo for this command' --repo right/repo --squash" right/repo
+check_repo_words "quoted repo selector loses only its shell quotes" \
+  "gh pr merge 42 --repo 'right/repo' --squash" right/repo
+check_repo_words "a flag-shaped body value is still a body" \
+  "gh pr merge 42 --body '--repo' --repo right/repo --squash" right/repo
+check_repo_words "attached short repo selector" \
+  "gh pr merge 42 -Rright/repo --squash" right/repo
+check_repo_words "hash within an argument is literal" \
+  'gh pr merge 42 --body fix#123 --repo right/repo --squash' right/repo
+
+for tail in '--body fix;true --repo right/repo --squash' \
+            '--body x&&echo --repo right/repo --squash' \
+            '--body fix>out --repo right/repo --squash' \
+            '--repo right/repo --body *' \
+            '--repo right/repo --body {x,--repo=wrong/repo}' \
+            '--repo right/repo --body # --repo wrong/repo --squash' \
+            $'--body fix\n--repo right/repo --squash'; do
+  transcript="$(mk_transcript compound.jsonl "gh pr merge 42 $tail")"
+  : > "$TMP/gh.args"
+  env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+    bash -c "printf '%s' '$(stop_input "$transcript")' | bash '$SCRIPT' >/dev/null 2>&1"
+  if [ ! -s "$TMP/gh.args" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("compound source made a guessed status query"); fi
+done
+
+T_LATEST="$(mk_transcript latest.jsonl 'gh pr merge 42 --repo earlier/repo --squash' '"gh" pr merge 99 --repo newer/repo --squash')"
+: > "$TMP/gh.args"
+env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+  MOCK_GH_OUTPUT='{"state":"OPEN","statusCheckRollup":[],"mergeStateStatus":"CLEAN"}' \
+  bash -c "printf '%s' '$(stop_input "$T_LATEST")' | bash '$SCRIPT' >/dev/null 2>&1"
+if grep -q -- '99 --repo newer/repo --json' "$TMP/gh.args"; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("quoted latest executable retained an earlier target"); fi
+
+for latest in "\$'gh' pr merge 99 --repo newer/repo --squash" \
+              '"$GH" "pr" merge 99 --repo newer/repo --squash'; do
+  transcript="$(mk_transcript unsupported-executable.jsonl 'gh pr merge 42 --repo earlier/repo --squash' "$latest")"
+  : > "$TMP/gh.args"
+  env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" \
+    bash -c "printf '%s' '$(stop_input "$transcript")' | bash '$SCRIPT' >/dev/null 2>&1"
+  if [ ! -s "$TMP/gh.args" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); FAIL_DETAILS+=("unsupported latest executable retained an earlier target"); fi
+done
+
+T_UNKNOWN="$(mk_transcript unsupported.jsonl 'gh pr merge 42 --unknown right/repo --squash')"
+: > "$TMP/gh.args"
+assert_exit_code "unsupported arguments warn without blocking" 0 \
+  "$(env -u BASH_ENV -u ENV DOTFILES_DIR="$TMP" PATH="$TMP/bin:$PATH" MOCK_GH_ARGS="$TMP/gh.args" bash -c "printf '%s' '$(stop_input "$T_UNKNOWN")' | bash '$SCRIPT' >/dev/null 2>&1; echo \$?" | tail -1)"
+if [ ! -s "$TMP/gh.args" ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); FAIL_DETAILS+=("unsupported arguments made a guessed status query"); fi
 
 echo ""
 echo "a-pr-is-not-ready.sh: $PASS passed, $FAIL failed"

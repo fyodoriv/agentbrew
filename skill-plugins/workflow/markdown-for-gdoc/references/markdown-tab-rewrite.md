@@ -55,8 +55,9 @@ bold is set.
 1. Read every text run in the label with `documents.get` and
    `includeTabsContent: true` (or `docs_get_structured` with the `tab_id`).
    Without `includeTabsContent`, `documents.get` returns the first tab, not
-   yours. Check `textRun.textStyle.bold`. The markdown export and the
-   screenshot are not proof.
+   yours. Check `textRun.textStyle.bold`. Export or a screenshot alone cannot
+   prove the stored API value. Whole-line rendering still needs the browser
+   check above.
 2. Find the font. A run often has no `weightedFontFamily` of its own. Then
    read it from that tab's `namedStyles` entry for the paragraph's
    `namedStyleType`. If that entry does not set it, use the `NORMAL_TEXT`

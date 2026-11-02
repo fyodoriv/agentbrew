@@ -116,7 +116,8 @@ reviews/`), and the `**Last-fired**:` line is bumped.
   **ID**: context-budget-weekly-audit
   **Tags**: token-budget, metrics, context, ops
   **Cadence**: weekly
-  **Next**: 2026-06-22
+  **Last-fired**: 2026-11-01
+  **Next**: 2026-11-08
   **Output**: measurement
   **Details**: Run `agentbrew measure context` (or `bash ~/apps/tooling/agentbrew/scripts/measure-context-budget.sh` from dotfiles launchd if wired). Read `~/.config/agentbrew/metrics/latest.json`. Compare `projectedDeployedTokens` and `topSections` to prior `context-budget-*.json` files. Run `agentbrew lint` — every error is a P1/P2 fix or a new TASKS.md entry with quoted metrics. For Claude-heavy weeks, optionally run `bunx ccusage weekly` or invoke the `session-report` skill.
   **Files**: `~/.config/agentbrew/metrics/latest.json`, `~/.config/agentbrew/metrics/context-budget-*.json`, TASKS.md (token/trim tasks)

@@ -63,6 +63,13 @@ Something breaks silently: nobody notices until a tool stops working.
 - **Declarative.** Commit an `Agentfile.yaml` to your dotfiles; a fresh machine bootstraps in one command.
 - **Curated 200+-item catalog.** It holds skills from [Vercel][], [Anthropic][], [obra/superpowers][], [Every Compound Engineering][], [gstack][], [Supabase][], [Trail of Bits][], [slavingia/skills][], and [awesome-design-md][]. The team overlay adds more when enabled.
 - **Rollback is always available.** Every sync snapshots pre-state; `sync --rollback` restores it.
+- **Repo verification.** [`/verify`](commands/verify.md) detects the repo type,
+  runs its gate, and reports the actual result for each changed repo.
+- **Offline handoff.** [`/offline`](commands/offline.md) preserves active work
+  in draft handoffs and stops only proved setup-owned resources. Use
+  `/offline --dry-run` to inventory first. Missing controls or incomplete
+  evidence produce `NOT SAFE`, never a shutdown guarantee.
+
 
 [Vercel]: https://github.com/vercel-labs/skills
 [Anthropic]: https://github.com/anthropics/skills
@@ -163,6 +170,13 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 
 `remove` records the name only when the server is in agentbrew's registry; a server that is only in an agent config is not recorded. So remove it from that config, or `agentbrew install` it and then `agentbrew remove` it.
 
+**Optional delivery safeguards:** install `judged-drafts`, `functional-judge`,
+`pr-evidence-labels`, `explain-before-showing`, `human-review-blockers`, or
+`judge-operator-audience` with `agentbrew install <name>`, then sync. These rules
+cover draft checks, feature proof, clear evidence labels, manual UI review,
+and approval before sharing results. They are off until selected; read their
+text with `agentbrew catalog show <name>`.
+
 **Built-in skills stay built-in.** A name that ships in agentbrew's own `skill-plugins/dev/` and has no catalog entry (in `agentbrew install` or an Agentfile `skills:` list) always resolves to agentbrew's copy. agentbrew never searches the registry or your sources for it, and `sync --pull` never installs a team source's `recommended` skill with that name. To replace a built-in on purpose, name the source: `agentbrew install <name> --from <source>`. An Agentfile `skills:` entry always resolves as a skill, never as a catalog rule, MCP server, or CLI tool with the same name. `agentbrew install load-project-context` installs the catalog rule and says that a built-in skill shares the name (agentbrew always deploys that skill).
 
 **Upstream skill creator.** `agentbrew install skill-creator` selects the optional Anthropic `anthropics/skills` workflow. It preserves existing owner destinations and the native Codex creator. These are different skill bodies; see [creator selection and owner conflicts](docs/skill-directories.md#catalog-owner-conflicts) before replacing one.
@@ -177,6 +191,7 @@ agentbrew skills validate                 # check SKILL.md frontmatter and body 
 - A failed `install --git` or `mcp update` exits 1 and registers nothing. agentbrew removes none of your files in the cache; after a re-pin whose build is refused, the cache stays at the new commit.
 - Say the cache has no build output from a commit, and the build at that commit fails. That counts as a failed install or update, because the cache's build output (such as `dist/`) may come from another commit. The output comes from a commit after a successful build of it, or after any build of a fresh clone of it. A failed build at that commit may still use it.
 - With no build script, an entrypoint that the checked-out commit does not contain is refused as left over from an earlier build.
+- Node entrypoint paths, including package `main`/`bin` and symlink targets, must resolve to files. Valid Node directory entrypoints remain supported.
 - Known limit: when a successful build writes its output to a new place (`build/` instead of `dist/`), detection can still pick the old `dist/` first. Delete the old output dir in the cache.
 - A ref that starts with `-`, or is not a valid git ref name, is refused before anything is cloned or fetched.
 - Each server's repo is cached at `~/.config/agentbrew/mcp-repos/<name>`, and that dir is reused only for the repo that cloned it. Another URL under the same name is refused, and so is a cache dir with no `origin` remote, a symlink, or a linked worktree. To keep both repos, install the new one under another name (`agentbrew install <other-name> --git <url>`). To replace it, delete the dir.
@@ -369,6 +384,17 @@ One command translates the source of truth into every agent's native format.
 - **Skills** → symlinks for explicitly installed skills and opt-in source dirs outside tracked sources. When two remote sources ship an installed skill with the same name, the source listed later in `state.yaml` wins (if its cache no longer has the skill, the earlier one does). `sync --pull` refreshes only that copy, and `agentbrew status` shows a `Name clash` line naming the skill, the source it is installed from, and the skipped source. `status --json` lists the same under `skillNameClashes`. A real folder with a `SKILL.md` where a managed symlink belongs is a stale copy: agents load it instead of the source. `agentbrew status` reports it as skills drift, and sync moves it to `~/.config/agentbrew/backups/skill-copies/<time>/<agent>/<name>` and links the source. A folder without `SKILL.md` stays as it is
   To include every current and future local skill, declare [`skillDirectories: [./skills]`](docs/skill-directories.md).
 - **Rules** → marker-injected sections in each agent's rules file. Catalog-owned per-file rules in `templates/rules/` refresh into `~/.config/agentbrew/rules/` on every `agentbrew sync --only rules` (no current agent reads a per-file rules dir, so they are not deployed further). Catalog rule blocks in `shared-rules.md` (`<!-- rule: <name> -->`) refresh on `sync --pull` only while the body still matches the hash agentbrew recorded at install. Edited or unrecorded blocks are kept with a warning, and `install --refresh-rules` replaces them and installs nothing else (add `--dry-run` for a diff); `agentbrew status --verbose` lists each kept or refreshable block
+  Sync also removes unchanged managed rules whose recorded Agentfile checkout is gone,
+  plus legacy blocks containing only an empty `## Team Rules` heading. Unknown
+  blocks with substantive text, and bodies edited after the last apply, stay.
+  Automatic deduplication updates ownership hashes only for bodies that still
+  matched their saved hash before that rewrite. It does not adopt manual edits.
+  New memory-pack registrations record
+  declaring checkout roots in per-user `state.yaml`; their paths are pruned
+  only when every recorded owner is absent. A missing pack inside a live
+  checkout, and an old path with no provenance, stay registered. No pack data,
+  memory privacy opt-in or memory service setting is deleted.
+
 - **Commands** → Markdown auto-transformed per agent. `Agentfile.commands` accepts source folders or selected `.md` files; selecting a file never deploys its siblings. Codex receives explicit native command skills (for example `$agentbrew-command-ship-it`) plus legacy custom-prompt files; [Codex support](docs/support-matrix.md) explains metadata, hooks, and custom agent formats. When an agent's config folder exists but its commands folder does not, sync creates the commands folder. When the config folder is missing too, sync prints the exact `mkdir -p` command to run. Two command source dirs (Agentfile `commands:` dirs and plugins) or two Agentfile `agents:` dirs may ship a file with the same name. Then the dir listed later in `state.yaml` wins, the same rule as skills. Sync warns, and `agentbrew status` shows a `Name clash` line naming the command or agent, the winning dir, and the skipped one (`status --json`: `commandNameClashes`, `agentNameClashes`). The built-in agents folder `~/.config/agentbrew/agents` always wins, and built-in commands rank lowest (see Agentfile `commands:` above). A command you made or edited yourself in `~/.config/agentbrew/commands` loses to an Agentfile or plugin dir with the same name (your file stays on disk). So sync and `status` name that clash too, with the global folder as the skipped one; agentbrew's own merged copies there never count. Sync also keeps a deployed command file it did not write last (you edited it, or it is not in agentbrew's manifest). When that file differs from its source, every sync and `sync --dry-run` warns and prints the `rm <file> && agentbrew sync` command that takes the source version.
 - **Hooks** → native hook files (Claude Code settings)
 - **Models** → the Agentfile's `defaultModel` written to each agent's model setting (Claude Code settings.json, Codex config.toml)
@@ -700,6 +726,9 @@ At session start, the `perf-brief` hook gives the agent a short brief of the slo
 The opt-in `poll-loop-hint` hook adds a hint when a Bash command polls with an `until`/`while` loop and `sleep`: run it in the background or use a blocking wait instead. `agentbrew sync` also sets the Claude Code status line to `agent-perf.mjs statusline`, unless you set your own. The `perf-review` skill explains how to read the report; the `session-report` skill covers tokens and cost.
 
 Row schema, privacy rules, hooks, and the full command reference: [`docs/agent-perf.md`](docs/agent-perf.md).
+The report separates sleep-loop syntax observations from unknown historical
+rows and missing timing or correlation. These observations measure recorded
+whole calls; they do not prove polling or identify timeout causes.
 
 ### One local metrics report
 
@@ -739,6 +768,19 @@ agentbrew plugin update acme v1.1.0                                    # diff, t
 agentbrew plugin rollback acme                                         # re-pin the previous lock entry
 agentbrew plugin remove acme
 ```
+
+`agentbrew plugin update` without a name or tag lists installed names and
+installed refs, then makes a bounded, non-interactive lookup for each highest
+version-sorted remote tag. Those tags are unverified hints; install still
+checks signatures and capabilities. Offline lookups keep the installed list
+and mark tag information unavailable. An unknown name suggests a close
+registered name, including a matching source repo name.
+
+An update replaces only its locked plugin checkout. If a selected user-owned
+skill source has higher priority and the same skill name, the command warns
+that this source still wins. It leaves that checkout unchanged. Review its
+owner with `agentbrew status --verbose`, then run `agentbrew sync --only skills`
+to refresh deployed copies from the intended source.
 
 - The ref must be an annotated tag with an SSH signature (`git tag -s` with `gpg.format=ssh`). Lightweight or unsigned tags are refused.
 - agentbrew fetches exactly `refs/tags/<ref>`, so a branch with the same name never wins. It verifies that one tag object and installs its commit. It refuses a name that looks like a 40- or 64-hex object ID. It also refuses a signed tag object whose own name differs from `<ref>` (an old release published under a new name). Only an SSH signature counts. An OpenPGP or X.509 signature is refused, even from a key in your gpg keyring, and so is a tag message with any other line that starts with `-----BEGIN `. Nothing is checked out until the signature passes. This holds for `add`, `update`, and `rollback`.
@@ -923,7 +965,7 @@ agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none]
                                        --share writes a privacy-safe snapshot
 agentbrew contribute [--dry-run] [--title <t> --body-file <f>] [--draft]
                                        Open a PR from this branch upstream
-                                       (forks the repo when you lack push access)
+                                       (checks upstream push access; forks when access is absent)
 agentbrew report --title <t> --body-file <f> [--repo <owner/name>] [--yes] [--dry-run]
 agentbrew report --off | --on
                                        Draft an issue for a tool's repo: scrub private
@@ -1039,6 +1081,14 @@ Learning a project moved to careerbrew, which keeps study state across days:
 spaced reviews, retests, and mastery per section. Use its `learn-project` skill
 or the `/careerbrew-learn` command. agentbrew still lists the upstream
 `tutor-setup` and `tutor` skills in its catalog.
+
+### Retired Claude Code mods
+
+`agentbrew status` and its health checks report user-installed `@agentbrew-mods`
+plugins whose source is no longer in the registered local marketplace. Each
+warning names the user-scope `claude plugin uninstall` command. The check is
+read-only and does not change other marketplaces or project installations.
+Unavailable marketplace metadata is not proof that a mod was retired.
 
 ### Publishing to npm
 

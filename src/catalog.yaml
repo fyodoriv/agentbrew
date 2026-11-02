@@ -1981,6 +1981,94 @@ bundles:
     members: [context7, playwright, github, sequential-thinking]
 
 rules:
+  - name: judged-drafts
+    description: "Check audience, facts and links before saving a draft as the user."
+    category: workflow
+    recommended: false
+    content: |
+      Ask only people in the target conversation; send anyone else a separate message.
+      Write every ticket, PR, and issue id as a labeled link.
+      Before saving any draft or submitting a pending PR review, an independent judge
+      subagent checks the exact text, live facts, conversation members and who must act.
+      Save or show only after APPROVED; judge edits again. A review ask needs a
+      functional judge PASS for every feature, with no FAIL.
+      Use review-pr/references/draft-judge.md for the judge procedure.
+
+  - name: functional-judge
+    description: "Run every feature with an independent judge before asking for review."
+    category: workflow
+    recommended: false
+    content: |
+      Before saying a PR is ready or drafting a review ask, a fresh independent judge
+      runs every feature against the running app or preview at the current PR head.
+      For UI work, open every panel and component under every value of each input,
+      filter, and dropdown; capture and inspect screenshots. A control that changes
+      nothing visible is a FAIL unless its stated behavior explains that result.
+      Give PASS or FAIL per feature with a screenshot or transcript. Fix every FAIL
+      and judge again. Green build checks alone do not prove functionality.
+      Follow review-pr/references/feature-readiness.md.
+
+  - name: pr-evidence-labels
+    description: "Explain what a PR changes and label each real or mocked proof."
+    category: workflow
+    recommended: false
+    content: |
+      Open the Summary with what the change does, then why it is useful.
+      Put reviewer concerns and safety notes in Details.
+      When tests, mocks, stubs, fixtures, a simulator, harness, or proof of concept
+      change, add a Real vs mocked table: part, real or mocked, and what it replaces.
+      Inventory every jest.mock, vi.mock, stub and fake in changed tests; use one row
+      per test group and leave none out. Date one-off observations. Screenshot
+      captions and status replies also say which parts are real and simulated.
+
+  - name: explain-before-showing
+    description: "Explain an update and its decision before showing a draft or action."
+    category: workflow
+    recommended: false
+    content: |
+      Show one explanation block per thread, message, or action:
+      1. Link the place (thread or channel) and name the newest message author.
+      2. What it means: 2 to 6 plain bullets covering asks, decisions, owners,
+         changes since the last update, and what remains open for the user.
+      3. Draft or Proposed action: quote the exact text, or name the exact action
+         and target. Say no post needed and why when that is the recommendation.
+      4. Say what the draft judge changed, if anything.
+      Make no commitments for the user about dates, delivery, or estimates without
+      approval. Put the one decision needed at the end. The draft itself still
+      uses the user's voice rules.
+
+  - name: human-review-blockers
+    description: "Keep manual UI checks and human review blocked until user confirmation."
+    category: workflow
+    recommended: false
+    content: |
+      For UI behavior or design changes, prepare the running app URL, version
+      override if needed, steps, and screenshots for the user's manual check.
+      The agent never marks that check done, marks the PR ready for review, or posts
+      a review ask until the user confirms in chat.
+      For mixed AI and human review, write an unticked Human check list covering
+      fit with the full picture and agreement with the description. Never present
+      an AI review as human approval. Record each manual step as an open question
+      with the PR link and exact steps; keep working on independent items.
+      A functional judge does not replace the human check.
+
+  - name: judge-operator-audience
+    description: "Show judged proof to the user before involving another audience."
+    category: workflow
+    recommended: false
+    content: |
+      For every feature, fix, POC, spike, or research result, follow this order:
+      Gate 1: an independent functional judge checks live evidence for every feature.
+      Gate 2: show the user a proof page with actual screenshots, raw responses,
+      console or log lines, PR and check links, a plain explanation, what is real or
+      mocked, and what remains unproven. Verify subagent claims against raw proof;
+      drop or mark unproven claims that the proof does not support.
+      Scrub secrets, credentials, and private payloads before sharing proof.
+      Gate 3: only after the user approves in chat, involve other people. Save no draft
+      message, review ask, demo, status report, ticket comment or post about results
+      for other people before Gate 2 passes. Then follow the agreed audience order;
+      each audience step needs the user's OK. A judged draft does not waive Gate 2.
+
   - name: memory-first-research
     description: "Use shared recall and save dated research. Don't use for context-free deterministic CLI actions."
     category: workflow

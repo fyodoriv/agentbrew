@@ -108,7 +108,7 @@ check "Test 9 (unwritable state dir → exit 0)" "$([ "$RC" = 0 ] && echo 0 || e
 # Test 10: PreToolUse → an attempt row with the call id, no duration, no ok.
 run_hook "$PRE_TOOL_USE" >/dev/null
 ROW="$(last_row)"
-check "Test 10a (attempt row: $ROW)" "$(printf '%s' "$ROW" | jq -e '(keys_unsorted == ["project","ts","sid","ev","tool","key","id","agent"]) and .ev=="attempt" and .project=="myrepo" and .tool=="Bash" and .key=="git push" and .id=="toolu_01AttemptExample" and .agent==null' >/dev/null && echo 0 || echo 1)"
+check "Test 10a (attempt row: $ROW)" "$(printf '%s' "$ROW" | jq -e '(keys_unsorted == ["project","ts","sid","ev","tool","key","id","agent","sleepLoop","shellMode"]) and .ev=="attempt" and .project=="myrepo" and .tool=="Bash" and .key=="git push" and .id=="toolu_01AttemptExample" and .agent==null and .sleepLoop=="not-observed-v1" and .shellMode=="unknown"' >/dev/null && echo 0 || echo 1)"
 
 # Test 10b-c: a background Agent launch marks its attempt row "bg"; a foreground one does not.
 run_hook "$(jq -nc --arg cwd "$REPO" '{hook_event_name:"PreToolUse",session_id:"s1",cwd:$cwd,tool_name:"Agent",tool_input:{subagent_type:"general-purpose",run_in_background:true,prompt:"secret prompt text"},tool_use_id:"toolu_bg"}')" >/dev/null
@@ -142,6 +142,19 @@ check "Test 13b (heredoc body skipped → npm run verify: $(last_row))" "$(last_
 LINES=$'git fetch -q origin\ngit status'
 run_hook "$(bash_payload "$LINES")" >/dev/null
 check "Test 13c (newline is a separator → git status: $(last_row))" "$(last_row | jq -e '.key=="git status"' >/dev/null && echo 0 || echo 1)"
+
+# Transparent wrappers must retain the intended command and the existing privacy boundary.
+run_hook "$(bash_payload "heavy-run npm run verify")" >/dev/null
+check "heavy-run verify key" "$(last_row | jq -e '.key=="npm run verify"' >/dev/null && echo 0 || echo 1)"
+run_hook "$(bash_payload "heavy-run npm run verify:changed")" >/dev/null
+check "heavy-run changed gate key" "$(last_row | jq -e '.key=="npm run verify:changed"' >/dev/null && echo 0 || echo 1)"
+run_hook "$(bash_payload "heavy-run make check")" >/dev/null
+check "heavy-run make check key" "$(last_row | jq -e '.key=="make check"' >/dev/null && echo 0 || echo 1)"
+run_hook "$(bash_payload "GH_TOKEN=$TOKEN env -u UNUSED time /fixture/private/bin/heavy-run npm run verify --token=$TOKEN /fixture/private/payload.txt")" >/dev/null
+check "nested heavy-run preserves safe key" "$(last_row | jq -e '.key=="npm run verify"' >/dev/null && echo 0 || echo 1)"
+check "wrapped secret and raw path absent" "$(last_row | grep -Eq "$TOKEN|/fixture/private|payload.txt" && echo 1 || echo 0)"
+run_hook "$(bash_payload "not-heavy-run npm run verify")" >/dev/null
+check "lookalike wrapper is not stripped" "$(last_row | jq -e '.key=="not-heavy-run npm"' >/dev/null && echo 0 || echo 1)"
 
 echo ""
 echo "perf-record.sh: $PASS passed, $FAIL failed"

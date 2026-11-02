@@ -59,13 +59,8 @@ case "$COMMAND" in
   *) verdict_bypass "$HOOK_ID" "no sleep" ;;
 esac
 
-CODE="$(printf '%s' "$COMMAND" | perl "$__HOOK_LIB_DIR/shell-code-only.pl")"
-
-# Command position: line start, after ; & | ( {, or after do/then/else.
-CMD_POS='(^|[;&|({]|[[:space:]](do|then|else))[[:space:]]*'
-LOOP_THEN_SLEEP="$(printf '%s' "$CODE" | tr '\n' ';' |
-  grep -E "${CMD_POS}(until|while)[[:space:]].*${CMD_POS}sleep([[:space:]]|;|$)" || true)"
-if [ -z "$LOOP_THEN_SLEEP" ]; then
+SIGNAL="$(printf '%s' "$COMMAND" | perl "$__HOOK_LIB_DIR/shell-code-only.pl" --sleep-loop-signal)"
+if [ "$SIGNAL" != "until-while-sleep-v1" ]; then
   verdict_allow "$HOOK_ID" "no sleep-based poll loop"
 fi
 

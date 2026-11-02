@@ -120,6 +120,43 @@ const isBackground = (row) => row.bg === true;
 const isMainThread = (row) => row.agent === null || row.agent === undefined;
 const hasId = (row) => typeof row.id === "string" && row.id !== "";
 
+/** Per-report syntax evidence; whole-call ms is neither polling time nor worker runtime. */
+export function sleepLoopCoverage(rows, pairRows = rows) {
+  const tagged = new Set(["until-while-sleep-v1", "for-sleep-v1", "not-observed-v1"]);
+  const identified = (row) => hasId(row) && typeof row.sid === "string" && row.sid !== "";
+  const attempts = new Map();
+  for (const row of pairRows) {
+    if (row.tool === "Bash" && row.ev === "attempt" && identified(row)) attempts.set(`${row.sid}\0${row.id}`, row);
+  }
+  const result = { completionRows: 0, taggedRows: 0, unknownRows: 0, notObservedRows: 0, observedSyntaxRows: 0,
+    pairedTimedRows: 0, unresolvedObservedRows: 0, behaviorCoverage: null, groups: [] };
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.tool !== "Bash" || row.ev || !isMainThread(row)) continue;
+    result.completionRows += 1;
+    if (!tagged.has(row.sleepLoop)) { result.unknownRows += 1; continue; }
+    result.taggedRows += 1;
+    if (row.sleepLoop === "not-observed-v1") { result.notObservedRows += 1; continue; }
+    result.observedSyntaxRows += 1;
+    const attempt = identified(row) ? attempts.get(`${row.sid}\0${row.id}`) : undefined;
+    const mode = ["foreground", "background"].includes(row.shellMode) ? row.shellMode : "unknown";
+    if (!attempt || attempt.sleepLoop !== row.sleepLoop || attempt.shellMode !== row.shellMode
+      || !Number.isFinite(row.ms) || row.ms < 0 || typeof row.ok !== "boolean") {
+      result.unresolvedObservedRows += 1;
+      continue;
+    }
+    result.pairedTimedRows += 1;
+    const key = `${row.sleepLoop}:${mode}`;
+    const group = groups.get(key) ?? { signal: row.sleepLoop, mode, rows: 0, sumMs: 0, failures: 0 };
+    group.rows += 1;
+    group.sumMs += row.ms;
+    if (!row.ok) group.failures += 1;
+    groups.set(key, group);
+  }
+  result.groups = [...groups.values()];
+  return result;
+}
+
 /**
  * A call that ran this long waited on a person: a prompt inside the tool
  * (such as a browser site approval), a sleep, or a hang. No real step in the
@@ -293,6 +330,7 @@ export function summarize(rows, pairRows = rows) {
     .slice(0, 10)
     .map((row) => ({ ts: row.ts, key: row.key, ms: row.ms, project: row.project, sid: row.sid, ok: row.ok !== false }));
   return {
+    sleepLoops: sleepLoopCoverage(rows, pairRows),
     toolMs: main.reduce((total, row) => total + row.ms, 0),
     calls: main.length,
     subagentCalls: tools.length - main.length,
@@ -404,6 +442,15 @@ export function formatReport(report) {
   const where = scope.days === null ? `session ${scope.session ?? "latest (none found)"}` : `last ${scope.days}d`;
   const lines = [`Agent time — ${scope.project}, ${where}`];
   const wait = report.humanWait ?? { calls: 0 };
+  const loops = report.sleepLoops;
+  if (loops?.completionRows) {
+    lines.push(
+      `Sleep-loop syntax: ${loops.taggedRows}/${loops.completionRows} rows tagged; ${loops.unknownRows} unknown; ${loops.notObservedRows} not observed; ${loops.observedSyntaxRows} observed; ${loops.pairedTimedRows} paired and timed; ${loops.unresolvedObservedRows} observed without correlation/time; behavior coverage unknown (syntax only).`,
+    );
+    for (const group of loops.groups) {
+      lines.push(`  ${group.signal}, ${group.mode}: ${group.rows} whole-call rows, ${formatMs(group.sumMs)}, ${group.failures} recorded failures (cause unknown).`);
+    }
+  }
   if (report.calls === 0 && report.keys.length === 0 && !report.attempts && !wait.calls) {
     lines.push("No tool rows yet.");
     return lines.join("\n");

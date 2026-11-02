@@ -191,6 +191,18 @@ docs, memory, or a quick experiment can answer.
 From here, do not stop for check-ins, progress approvals, or "should I
 continue?". The user set a goal so that they can be away.
 
+- **Clock-bound goals:** resolve the requested end time and timezone once,
+  then schedule a one-shot trigger using the platform's supported scheduler.
+  The trigger runs wrap-up, Phase 5 and Phase 6. Verify the saved trigger and
+  record its id, local time, timezone and numeric `Clock wrap-up epoch: <unix>`
+  on its own line in the contract. If no scheduler exists, report that limit;
+  do not pretend a wakeup is armed. Until the deadline, print one goal-check
+  line per turn naming the trigger and time. The draft retro may say
+  `Goal result: in progress (clock goal, wrap-up at HH:MM)`; this defers the
+  retro hook only before the numeric deadline. After the trigger fires or
+  the deadline passes, finish verification and the final retro; never claim
+  met early or spin on Stop retries. Keep working until the requested end.
+
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
 - Work in small verified steps. Run the guard after each change that matters.
@@ -245,7 +257,8 @@ it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal is
 Before waiting for CI, run `gh pr checks` once for this PR and once for the
 last merged PR. If both report "no checks reported" and current host settings
 confirm checks are disabled, treat CI as absent even when workflow files
-exist. Use the repo's own gate, require exit 0, and name its environment.
+exist. Run the repo's own gate and required PR-body validators locally;
+require exit 0 and name the environment.
 Do not poll a host that does not run checks or add CI without a request.
 With no workflows and no checks, the same local-gate rule applies. Missing
 checks on this PR alone do not prove CI is absent.

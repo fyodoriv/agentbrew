@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ExitPromptError } from "@inquirer/core";
@@ -375,6 +376,17 @@ export function assertEntrypointUsable(
 
 // ── Entrypoint detection ──────────────────────────────────────────────────────
 
+function isNodeEntrypoint(repoDir: string, path: string): boolean {
+  try {
+    if (!existsSync(path)) return false;
+    if (statSync(path).isFile()) return true;
+    const entry = createRequire(resolve(repoDir, "package.json")).resolve(resolve(path));
+    return statSync(entry).isFile();
+  } catch {
+    return false;
+  }
+}
+
 /** Try to resolve an entrypoint from package.json main/bin fields. */
 function detectEntrypointFromPackageJson(repoDir: string): DetectedEntrypoint | undefined {
   const packageJsonPath = join(repoDir, "package.json");
@@ -391,13 +403,13 @@ function detectEntrypointFromPackageJson(repoDir: string): DetectedEntrypoint | 
       const binRelPath = typeof binField === "string" ? binField : Object.values(binField)[0];
       if (binRelPath) {
         const resolved = join(repoDir, binRelPath);
-        if (existsSync(resolved)) return { command: "node", args: [resolved] };
+        if (isNodeEntrypoint(repoDir, resolved)) return { command: "node", args: [resolved] };
       }
     }
 
     if (packageJson.main) {
       const resolved = join(repoDir, packageJson.main);
-      if (existsSync(resolved)) return { command: "node", args: [resolved] };
+      if (isNodeEntrypoint(repoDir, resolved)) return { command: "node", args: [resolved] };
     }
   } catch (e) {
     logSkipped("mcp/mcp-git/join", e);
@@ -420,7 +432,7 @@ export function detectEntrypoint(repoDir: string): DetectedEntrypoint | undefine
     if (candidate.endsWith(".py")) {
       return { command: "python3", args: [fullPath] };
     }
-    return { command: "node", args: [fullPath] };
+    if (isNodeEntrypoint(repoDir, fullPath)) return { command: "node", args: [fullPath] };
   }
 
   return detectEntrypointFromPackageJson(repoDir);

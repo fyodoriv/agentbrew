@@ -573,6 +573,8 @@ describe("initForce", () => {
     const userSet = {
       declinedMcpServers: ["removed-server"],
       agentfileSkills: ["listed-skill"],
+      agentfileRuleOwners: { overlay: "/path/to/overlay" },
+      agentfileRuleHashes: { overlay: "fixture-content-hash" },
       hooks: [{ event: "PreToolUse", type: "command" as const, command: "echo mine", source: "user" }],
       externalMcpServers: ["external-server"],
       memory: { enabled: true, packPaths: ["/path/to/pack"] },

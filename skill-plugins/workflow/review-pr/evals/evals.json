@@ -68,6 +68,38 @@
         "The fixed draft says \"I'll ping them directly\" and puts the ask in its own message to that person",
         "Posts nothing before APPROVED and the user's yes"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "The dashboard PR is green. Draft a review ask. The independent functional judge found that one filter value leaves a panel unchanged. The human-review-blockers and judge-operator-audience rules are enabled.",
+      "expected_output": "Holds the ready claim and review draft, fixes and re-judges the failed filter, then prepares the proof page and manual check for the user.",
+      "expectations": [
+        "Checks every feature under every input value against the running app",
+        "Treats the unchanged filter result as FAIL unless its specification explains it",
+        "Draft judge rejects a review ask with any FAIL or missing PASS evidence",
+        "Does not tick Human check or save a results draft for other people until user confirmation"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Save a chat draft asking a teammate who is absent from the target thread to review PR 123. The judged-drafts and explain-before-showing rules are enabled.",
+      "expected_output": "Prepares separate asks for different audiences, uses a labeled PR link, judges the exact drafts before saving, and explains the update before showing it.",
+      "expectations": [
+        "Checks live target conversation membership",
+        "Uses a labeled link for the PR",
+        "Independent judge approves before saving and judges later edits again",
+        "Explains what changed and the one decision needed; makes no unapproved date commitment"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Report the POC results to the wide team channel. The judge-operator-audience rule is enabled. The user has not seen proof; a sub-session claims success, but its screenshots do not show the claimed behavior.",
+      "expected_output": "Holds every results draft for other people until a functional judge checks actual proof and the user approves the proof page, then follows the agreed audience order.",
+      "expectations": [
+        "Checks each sub-session claim against raw proof and drops or marks unsupported claims unproven",
+        "Shows a plain proof page distinguishing real from mocked and naming what remains unproven",
+        "Saves no team-channel draft before user proof approval; each audience step requires its own approval"
+      ]
     }
   ]
 }

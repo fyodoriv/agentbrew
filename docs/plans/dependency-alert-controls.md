@@ -277,3 +277,149 @@ an exploit against a real service to validate this dependency update.
 Rollback is a normal owned source revert with its gate, not removal of the
 audit, optional graph, override or stub safeguards. Any broader dependency or
 Node support work needs a new task and prediction.
+
+## Stage R: separately registered runtime-only amendment
+
+Commit this amendment before runtime-scoped tree/audit commands. Package
+changes still require the source owner to accept the scoped baseline. This
+partial stage does not complete the original task or waive its full-graph
+requirement. Original registration and baseline receipts remain unchanged.
+
+### Exact constraint and source limit
+
+- Published Nunjucks latest is 3.2.4, with optional peer Chokidar `^3.3.0`.
+- Both current Promptfoo 0.124.1 and latest 0.125.1 declare Chokidar `5.0.0`
+  and Nunjucks `^3.2.4`. The app root also declares Chokidar `5.0.0`.
+- npm 10 optional-peer semantics allow absence, not an installed incompatible
+  peer. Arborist marks that present edge `INVALID`.
+- npm's peer placement rejects a peer inside its dependent. Placing Chokidar 3
+  under Nunjucks is not a supported peer fix. Placing 3 at the root or Promptfoo
+  level contradicts the required version 5 at that level.
+- No supported published latest-version resolution was found under the
+  protected root declarations. This is a bounded current metadata conclusion,
+  not proof that no future release or separately reviewed upstream change can
+  fix the contract.
+
+Primary sources checked:
+
+- https://registry.npmjs.org/nunjucks/latest
+- https://registry.npmjs.org/nunjucks/3.2.4
+- https://registry.npmjs.org/promptfoo/0.124.1
+- https://registry.npmjs.org/promptfoo/latest
+- https://docs.npmjs.com/cli/v10/configuring-npm/package-json/#peerdependenciesmeta
+- https://raw.githubusercontent.com/npm/cli/v10.9.9/workspaces/arborist/lib/edge.js
+  (`error`, lines 217-230: absent optional versus present invalid/peer-local)
+- https://raw.githubusercontent.com/npm/cli/v10.9.9/workspaces/arborist/lib/can-place-dep.js
+  (lines 134-136: no peer placement inside the dependent)
+
+### Separate stage, not completion
+
+Keep `dependency-alert-remediation` open and preserve its final nine-to-zero
+metric and strict full-graph requirement. Introduce a separately registered
+runtime stage for fast-uri only. Its result may support partial delivery of
+runtime risk reduction; it cannot complete the original task or make the
+development tree green.
+
+**Hypothesis:** a supported fast-uri patch reduces the same frozen cohort
+from nine unsafe rows to five. The runtime subset 156/155/154/153 moves from
+four unsafe rows to zero. Remaining development rows 162/161/160/150/149 stay
+explicitly unresolved. No other dependency, override, optional declaration or
+Node floor changes.
+
+**Measurement:** preserve the original exact lock-semver query unchanged.
+Capture its nonzero exit and output; do not convert it to a passing full-cohort
+query. Add the runtime-scoped npm validation commands below only after this
+amendment is committed. Record supported Node and npm 10 versions and exact
+manifest/lock hashes before and after.
+
+**Success for this stage only:** full cohort reports unsafe five with exactly
+149/150/160/161/162 remaining; runtime advisory rows are zero; runtime tree,
+runtime audit, lock validation and required repository gate pass. All protected
+data remains unchanged. GitHub later confirms fixed status for the four runtime
+IDs. The original full-graph command and final nine-alert acceptance remain
+non-green/open until actually resolved.
+
+**Pivot:** any remaining runtime row, hidden optional graph, missing registry
+evidence, unsupported resolution, extra package movement or regression rejects
+the runtime stage. Do not force peers, downgrade root Chokidar, remove the dev
+graph, change full-tree exit codes or reduce the final task denominator.
+
+**Anchor:** original primary fast-uri advisories; Basili, Caldiera and Rombach
+(1994), Goal Question Metric; original committed dependency plan.
+
+### Exact runtime stage commands
+
+Use an invocation-owned `DEPENDENCY_EVIDENCE_DIR`, one canonical heavy-run
+reservation and the existing worker limit. These commands inspect a runtime
+view; `--omit=dev` here does not delete development records from the lock or
+grant permission to omit optional dependencies.
+
+Before package changes, run the unchanged original nine-row lock query and:
+
+```sh
+heavy-run npx --yes --prefer-offline --package=npm@10 -- npm ls --package-lock-only --all --omit=dev --include=optional --json > "${DEPENDENCY_EVIDENCE_DIR:?}/runtime-tree-before.json"
+heavy-run npx --yes --prefer-offline --package=npm@10 -- npm audit --omit=dev --include=optional --json > "${DEPENDENCY_EVIDENCE_DIR:?}/runtime-audit-before.json"
+```
+
+Expected baseline remains four affected runtime rows and nine total unsafe
+rows. Runtime-tree validity is an unobserved acceptance prerequisite, not a
+passing result at proposal time. Registry, parse or unresolved runtime-tree
+failure is inconclusive. If another unrelated runtime finding exists, stop
+and review it without changing the frozen cohort.
+
+Only after the source owner reads the scoped baseline, the proposed mutation
+is the existing npm updater targeting fast-uri alone:
+
+```sh
+heavy-run npx --yes --prefer-offline --package=npm@10 -- npm update --package-lock-only --ignore-scripts --include=optional fast-uri
+git diff -- package.json package-lock.json
+```
+
+The admitted candidate is fast-uri 3.1.9. Require byte-identical package.json,
+Node pin and stub files. Every other lock package record and root declaration
+must remain identical to the frozen pre-stage lock. Only the fast-uri record's
+published version, integrity, resolved URL and any directly required upstream
+metadata can change. If the updater needs unrelated peer movement or returns
+an unresolved tree, stop; do not hand-edit the lock or force resolution.
+
+Repeat the unchanged lock query and capture its expected exit 1, then assert
+the scoped expected remaining set against its saved JSON:
+
+```sh
+jq -e '.cohort == 9 and .unsafe == 5 and ((.ids | sort) == [149,150,160,161,162])' "${DEPENDENCY_EVIDENCE_DIR:?}/lock-query-after.json"
+heavy-run npx --yes --prefer-offline --package=npm@10 -- npm ls --package-lock-only --all --omit=dev --include=optional --json > "${DEPENDENCY_EVIDENCE_DIR:?}/runtime-tree-after.json"
+heavy-run npx --yes --prefer-offline --package=npm@10 -- npm audit --omit=dev --include=optional --json > "${DEPENDENCY_EVIDENCE_DIR:?}/runtime-audit-after.json"
+heavy-run bash scripts/check-lockfile-sync.sh
+heavy-run npm run verify
+```
+
+Runtime tree must exit zero with its complete resolved runtime optional graph;
+runtime audit must be a valid response with no remaining security finding.
+Absence of an omitted dev path is not evidence that the dev alert is fixed.
+Keep normal installation validation separate; do not delete or replace an
+existing development node_modules just to obtain an empty runtime report.
+
+Repeat the original full-tree command and keep its raw exit/error evidence.
+It remains non-green if the same Nunjucks peer conflict persists. No allowlist
+or modified npm flag turns that result into full-graph acceptance. Report the
+runtime stage and unresolved full-graph status separately in any PR/report.
+
+After partial delivery, use the original env-unset GitHub API capture for all
+frozen IDs. Assert fixed status only for runtime IDs 153/154/155/156; retain
+the other IDs and their actual states. Keep the original all-nine fixed-status
+check and task open. Do not dismiss or hide the remaining alerts.
+
+No runtime-scoped command or package action ran before this amendment.
+
+After the original env-unset API capture, the exact partial fixed-status
+check is:
+
+```sh
+jq -e '[.[][] | select(.number as $n | [153,154,155,156] | index($n))] | sort_by(.number) | map(.number) == [153,154,155,156] and all(.[]; .state == "fixed" and .fixed_at != null)' "${DEPENDENCY_EVIDENCE_DIR:?}/alerts.json"
+```
+
+Track the unresolved peer contract as `dependency-peer-compatibility`. The
+latest checked published metadata does not supply a supported placement under
+the protected root declarations. Do not downgrade root Chokidar, force a peer
+override, delete optional graph evidence or treat that blocker as solved by
+runtime-only validation.

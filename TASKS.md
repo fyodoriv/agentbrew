@@ -159,7 +159,7 @@
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies
   - **Mode**: AFK
-  - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline.
+  - **Details**: Repair Dependabot alerts 162/161/160/156/155/154/153/150/149 through supported upstream parents. Update the Vitest/coverage pair and the named lock targets; upgrade the Azure identity parent so its nested MSAL copy is fixed too. Preserve optional graph resolution, the jks stub, all unrelated overrides and the current Node floor. Commit [the frozen experiment](docs/plans/dependency-alert-controls.md) before any audit, installation or package change; read-only advisory triage is not a passing baseline. Partial task `dependency-runtime-fast-uri` does not complete this task. Final strict full-graph acceptance still needs `dependency-peer-compatibility`; all original metrics and receipts remain authoritative.
   - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
   - **Output**: code
   - **Acceptance**: every frozen advisory/range is absent from all resolved locked copies; optional Azure paths remain resolved, no forge dependency or unrelated root update appears, normal installation and full gate pass, and all frozen alerts later report fixed on the default branch. Dismissal, omitted dependencies and unavailable service data do not satisfy acceptance.
@@ -168,6 +168,35 @@
   - **Success**: zero unsafe frozen rows, no new unresolved security finding, zero protected-contract changes, passing installation/tree/full-gate evidence, and every frozen GitHub alert fixed with a timestamp.
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
+
+- [ ] Remove the frozen runtime URI findings while keeping development blockers visible
+  - **ID**: dependency-runtime-fast-uri
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Register [Stage R](docs/plans/dependency-alert-controls.md#stage-r-separately-registered-runtime-only-amendment) before any runtime-scoped result. Update only the accepted fast-uri record to 3.1.9 after the source owner accepts its scoped baseline. Preserve the original full cohort, development graph, overrides, stub, Node floor and every other lock record. The original nine-alert task stays open; its full-tree check remains explicitly non-green on the unsupported Nunjucks peer contract.
+  - **Files**: `package-lock.json`, README dependency/security guidance, `docs/plans/dependency-alert-controls.md`
+  - **Output**: code
+  - **Acceptance**: the same frozen cohort has exactly five unsafe development rows remaining; all four runtime rows are fixed, runtime graph/audit and required repository gate pass, and no other package or protected declaration changes. Confirm the runtime alert IDs fixed after merge. Keep the original strict full-graph and all-nine fixed-status requirements open.
+  - **Hypothesis**: the supported fast-uri patch reduces total unsafe cohort rows from nine to five and runtime rows 156/155/154/153 from four to zero; unresolved development IDs remain 162/161/160/150/149. This is partial risk reduction, not redefinition of final success.
+  - **Measurement**: after amendment commit, run the unchanged original lock query and Stage R's exact `heavy-run npx --yes --prefer-offline --package=npm@10 -- npm ls --package-lock-only --all --omit=dev --include=optional --json` and runtime audit before package actions; repeat after the named fast-uri-only update, then lock validation, `heavy-run npm run verify` and the partial fixed-status query. Preserve the full-tree error and original query's nonzero exit while development rows remain.
+  - **Success**: exactly five original development rows remain unsafe, zero frozen runtime rows remain, no other lock or protected declaration changes, complete runtime validation/full gate pass, and runtime IDs later report fixed. The original task remains open.
+  - **Pivot**: any remaining runtime row, hidden optional evidence, failed runtime validation, extra package movement, forced peer or root downgrade rejects the stage. Keep unsupported full-graph evidence non-green rather than allowlisting or weakening it.
+  - **Anchor**: original primary fast-uri advisories; Basili, Caldiera and Rombach (1994), Goal Question Metric; original committed nine-row experiment and Stage R amendment.
+
+- [ ] Restore a supported full dependency graph without forcing the watcher peer
+  - **ID**: dependency-peer-compatibility
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Blocked**: needs-compatible-upstream-contract — checked published Nunjucks latest 3.2.4 requires optional Chokidar `^3.3.0`; current and latest Promptfoo require `5.0.0`, as does the app root. No supported current placement was found under these protected declarations. A future compatible parent release or separately approved upstream change must supply the missing contract; do not force an override or downgrade the root.
+  - **Details**: The unchanged-source dependency tree check reports invalid Chokidar 5 at Promptfoo → Nunjucks. Optional means the peer may be absent; it does not accept an incompatible present version. npm rejects placing a peer inside its consumer. Record supported parent/peer metadata before attempting a resolution. [Stage R's constraint record](docs/plans/dependency-alert-controls.md#exact-constraint-and-source-limit) preserves the source evidence and all original nine-alert final requirements.
+  - **Files**: future supported parent resolution in `package-lock.json`; dependency documentation; no root declaration or override change is pre-approved.
+  - **Output**: code
+  - **Acceptance**: existing full-graph validation exits zero without invalid/missing edges, unsupported peer placement, root downgrade, forced peer override, optional omission, stub change or reduced final alert requirement.
+  - **Hypothesis**: an upstream-supported compatible peer contract reduces the observed invalid Chokidar edge from one to zero while all protected root declarations and optional paths remain unchanged. No presently checked latest release establishes that contract.
+  - **Measurement**: first record the new compatible primary metadata and commit its exact resolution prediction; then repeat `heavy-run npx --yes --prefer-offline --package=npm@10 -- npm ls --package-lock-only --all --include=optional --json`, original audit/lock checks and `heavy-run npm run verify`. Preserve baseline ELSPROBLEMS and do not treat the runtime-only view as this result.
+  - **Success**: zero invalid/missing full-tree edges, supported peer resolution, unchanged protected contracts and all normal gates passing; only actual zero satisfies the original full-graph requirement.
+  - **Pivot**: any remaining conflict or unsupported placement rejects the parent choice. Keep this task blocked on compatible evidence rather than masking the error or accepting an incompatible major.
+  - **Anchor**: npm 10.9.9 Arborist peer placement and edge validity source; published Nunjucks/Promptfoo manifests linked in Stage R; Basili, Caldiera and Rombach (1994), Goal Question Metric.
 
 - [ ] Scheduled repair work enters the configured machine queue
   - **ID**: scheduled-repair-queue-admission

@@ -155,6 +155,20 @@
 
 ## P1
 
+- [ ] Build and install evidence rejects stale locked dependencies
+  - **ID**: locked-install-evidence
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: The build preflight can report a lockfile match with a stale transitive package. The worktree helper can clone an unqualified donor and issue a fresh lock stamp, while the full-gate cache excludes installed dependencies from its identity. Follow [the registered preparation](docs/plans/locked-install-evidence.md). Reuse supported dependency tooling before adding an adapter. Land instrumentation first; keep existing optional-peer failures explicit and preserve canonical dependencies during qualification.
+  - **Files**: `scripts/build-pipeline-guard.sh`, `scripts/worktree-deps.sh`, `scripts/verify.sh`, their existing tests, dependency setup guidance
+  - **Output**: code
+  - **Acceptance**: stale transitive packages, unqualified donors and installation changes cannot produce a false lock-exact receipt or reuse an unrelated successful gate. Supported optional and local-file dependencies remain supported; errors and unavailable evidence fail closed without changing the declared dependency contract.
+  - **Hypothesis**: the five registered negative controls produce zero unsafe permits after repair, while all four supported controls remain valid. Baseline values must come from the new instrumentation, not the current shallow check or source inspection.
+  - **Measurement**: register and land the plan's instrumentation, then run `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts` before and after repair, followed by a qualified task-owned installation and `JOBS=1 NO_CACHE=1 heavy-run npm run verify`.
+  - **Success**: zero unsafe permits across all five fixed negative controls, all four positive controls pass, no dependency-policy change or canonical installation mutation, and normal repository gates pass on the qualified installation.
+  - **Pivot**: any unsafe permit, unsupported omission, manufactured stamp, cached result from a different installation or hidden optional-peer failure rejects the approach; preserve the evidence and revise the adapter rather than weaken the contract.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; npm's documented dependency-tree scope and lockfile contract linked in the plan.
+
 - [ ] Remove the frozen vulnerable dependency ranges without hiding optional paths
   - **ID**: dependency-alert-remediation
   - **Tags**: security, stability, dependencies

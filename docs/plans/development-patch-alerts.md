@@ -291,10 +291,39 @@ transient process-inventory result was also preserved before the first install;
 a fresh check from the private metadata working folder found no active user.
 These setup receipts are not semantic reds or repeated installations.
 
-Current main `22ed1ffaf7a1877d7b3167a71053ecd3c9e702b2` adds only the
-separate locked-install-evidence task and plan to this stage's base. Both task
-blocks are preserved. Full uncached verification and post-merge GitHub
-fixed-status confirmation remain separate delivery requirements. The original
-remediation and peer compatibility tasks stay open; keep this stage's task open
-until its delivery criteria pass. No claim of all alerts fixed, full-graph
-validity or live application deployment follows.
+The integration of `22ed1ffaf7a1877d7b3167a71053ecd3c9e702b2` added only
+the separate locked-install-evidence task and plan to this stage's base. Both
+task blocks were preserved while delivery was pending. The required uncached
+repository gate subsequently passed on tree
+`2a10b0a1e6c46ae905ab5411259cc8839f2fcc06`: 6,124 tests passed with five
+existing skips; the cold installation check passed. All gate steps ran without
+cache. This does not turn either nonzero full-tree query into a passing graph.
+
+## Post-merge fixed-status confirmation
+
+On November 2, 2026, [PR #702](https://github.com/fyodoriv/agentbrew/pull/702)
+merged normally as `303532e6d154fba8df03a005f2aff46bad029059`. Separate
+post-merge GitHub API reads confirmed every selected row had state `fixed`
+and the following non-null `fixed_at` timestamps:
+
+| Alert | Fixed at (UTC) |
+| --- | --- |
+| 160 | 2026-11-02T22:05:27Z |
+| 161 | 2026-11-02T22:05:28Z |
+| 163 | 2026-11-02T22:05:28Z |
+| 165 | 2026-11-02T22:05:28Z |
+| 166 | 2026-11-02T22:05:28Z |
+| 167 | 2026-11-02T22:05:29Z |
+| 168 | 2026-11-02T22:05:29Z |
+| 169 | 2026-11-02T22:05:29Z |
+| 170 | 2026-11-02T22:05:29Z |
+| 171 | 2026-11-02T22:05:29Z |
+
+The independent read also confirmed original-cohort alerts 149, 150 and 162
+remain open, as do new-cohort alerts 172 and 174. These are the same remaining
+three original rows and two new rows recorded above; no denominator changed.
+The original remediation, peer-compatibility and locked-install-evidence tasks
+remain open. Only the completed `dependency-development-patches` task is
+removed. This closes Stage S's source and qualified task-owned installation
+requirements. It does not establish full-graph validity, fix all alerts or
+claim a canonical runtime cutover or live application deployment.

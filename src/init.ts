@@ -48,6 +48,7 @@ const STATE_KEYS_ON_INIT: Record<keyof AgentBrewState, "rebuild" | "keep"> = {
   skillInstallMode: "keep",
   claudePermissions: "keep",
   autoRepair: "keep",
+  scheduledRepairQueue: "keep",
   builtinCommands: "keep",
   defaultModel: "keep",
   defaultEffort: "keep",

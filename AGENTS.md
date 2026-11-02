@@ -97,7 +97,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
 - The CLI bundles `src/catalog.yaml`: a new catalog skill installs only after `npm run build` in the live checkout.
-- Schedulers are per user: run `launchctl`, `crontab`, `systemctl` only via `src/core/`; tests get fakes.
+- Per-user schedulers: `src/core/`, fakes; [queue handoff](docs/plans/scheduled-repair-queue-admission.md).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.

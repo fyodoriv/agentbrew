@@ -547,7 +547,34 @@ When load per core is above 1.0, the tick does not heal timeouts. The snapshot m
 
 A caller's shell (for example an agent shell pointing `DOTFILES_DIR` at a development checkout) never changes a plist. It accepts Dotfiles' secure shim-first PATH repair, so a Chezmoi worktree is not replaced with a guessed checkout. It also adds `LANG=C.UTF-8` to any `com.agentbrew.*` LaunchAgent without a locale, because launchd sets none and the Dotfiles `awk` shim (Homebrew gawk) then fails unanchored regex matches.
 
-Repair rewrites the plist and reloads it; a job you disabled stays disabled. To repair manually:
+Repair rewrites the plist and reloads it; a job you disabled stays disabled.
+
+On macOS, scheduled repair can enter Dotfiles' shared machine queue before it
+runs sync or MCP probes:
+
+```bash
+agentbrew config set scheduledRepairQueue heavy-run
+agentbrew auto-sync install
+```
+
+The setting defaults to `direct` for standalone installations. Selecting it
+does not rewrite the installed job; `agentbrew status` reports queue-route drift
+until installation or repair applies the selected route. The queue runner comes
+from the active Dotfiles source described above. If that runner is missing,
+cannot execute or refuses work, repair fails before its payload starts, with
+no direct fallback. Slot limits and queue priority remain Dotfiles policy.
+Invalid queue values and unavailable existing state refuse job generation with
+a fixed policy error. A genuinely missing state file or a valid legacy state
+without this field retains the direct default.
+
+The queued job keeps the selected Node, working folder, interval, logs and
+enabled state. It refuses a nonempty incoming `HEAVY_RUN_HELD` with exit 78;
+it never copies or clears a lease to force admission. A queued RunAtLoad job
+can finish only after a caller's exclusive reservation is released. Observe
+its fresh completion after that release. To return to immediate scheduling,
+set `scheduledRepairQueue direct` and reinstall the job.
+
+To repair manually:
 
 ```bash
 agentbrew status               # configured + drift summary

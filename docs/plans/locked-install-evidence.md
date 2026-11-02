@@ -99,3 +99,77 @@ Anchors: Basili, Caldiera and Rombach (1994), *Goal Question Metric*;
 Munafò et al. (2017), *A manifesto for reproducible science*; the primary npm
 contracts above. Preserve the original dependency-remediation task's full
 acceptance requirements.
+
+## Frozen observation preparation
+
+Register this preparation before implementing its fixtures or running their
+baseline. Production guard, clone, stamp and cache behavior stays unchanged.
+This preparation measures those boundaries; it does not repair them.
+
+Use only invocation-owned synthetic package trees. Root selects
+`fixture-parent@1.0.0`; the parent accepts `fixture-leaf:^1.0.0`; the lock selects
+leaf `1.0.1`. The stale physical leaf is `1.0.0`. Freeze complete source locks,
+hidden locks, manifests, bytes and expected path identities before execution.
+N1 and N3 keep matching hidden locks and stamps while physical files differ.
+Do not delete hidden locks or change directory timestamps to expose drift.
+
+| ID | Frozen preparation and observable boundary |
+| --- | --- |
+| N1 | Run the real guard with pinned npm on the stale physical leaf. Record its exit and exact readiness marker. Independently read the known fixture leaf metadata. |
+| N2 | Give the real helper equal source locks and a stale donor tree. Record clone/install selection, resulting physical content, npm calls and target stamp. A stamped stale clone is unsafe. |
+| N3 | Give the real helper a matching target stamp and stale physical leaf. Record whether its unchanged-install shortcut accepts the tree. |
+| N4 | Run a dependency-sensitive counting step successfully, then change only ignored installed payload bytes so the step would fail if executed. Record second-run cache reuse and the execution count. Keep tracked source unchanged. |
+| N5 | Supply failed, missing and malformed npm evidence through the existing finite tool port. Record each variant; any readiness or trusted stamp without complete evidence makes this one scenario family unsafe. |
+| P1 | Run the real guard on the complete matching synthetic tree. Preserve the actual npm response. |
+| P2 | Clone a qualified matching synthetic donor. Compare physical content and stamp with the independently frozen fixture. |
+| P3 | Keep required packages present; omit an optional package under a frozen incompatible platform declaration. Preserve that declaration and actual npm response. |
+| P4 | Copy the existing public local-file stub verbatim into scratch storage under its unchanged declaration. Verify link/target identity and source bytes. |
+
+For N4, ignore `node_modules/` in the scratch repository. Otherwise tracked-input
+invalidation would conceal the installation-identity boundary. Do not widen the
+five-negative denominator when N5 has more than one variant.
+
+The test-local observation record has fixed scenario and boundary labels,
+actual exit, readiness marker, clone/shortcut selection, stamp equality,
+fixture-content equality, cache reuse and evidence completeness. Missing or
+malformed observations are inconclusive. They cannot produce a zero-unsafe
+claim. Derive required decisions from the matrix above, never from current
+production output. Keep unsafe baseline permits visibly distinct from passing
+recorder calibration. Do not assert that every negative currently permits.
+
+GQM preparation question: does the recorder preserve the observed decision and
+distinguish an unsafe permit, a supported decision and incomplete evidence?
+Predict zero classification errors against sealed sample observations, and
+complete observation records for each registered scenario. Pivot on any
+misclassification, manufactured completeness, changed fixture, hidden-lock
+removal, canonical installation access or suppressed error. Baseline unsafe
+permits remain unmeasured until this registration is committed. The repair
+target remains zero unsafe permits and all supported decisions correct.
+
+Use the registered focused and full commands above. Keep instrumentation in
+the existing test files; do not add a production resolver or comparator yet.
+Freeze the sample observations and expected classifications before their first
+execution, then retain their hashes and the actual baseline records privately.
+
+Also capture the maintained-tool capability on the same scratch fixtures with
+the already qualified npm 10.9.9 executable, without installation or network:
+
+```sh
+"$NPM10" query '*' --json
+"$NPM10" query '*' --package-lock-only --json
+"$NPM10" ls --all --long --include=optional --json
+```
+
+Preserve each exit, stdout and stderr separately. Compare reported metadata
+with the known physical fixture paths before proposing a production projection.
+The [npm ls contract](https://docs.npmjs.com/cli/v10/commands/npm-ls/) describes
+a logical tree. The [npm query contract](https://docs.npmjs.com/cli/v10/commands/npm-query/)
+offers actual and lock-only queries, but array equality is not yet lock-exact
+proof. npm's [hidden-lock contract](https://docs.npmjs.com/cli/v10/configuring-npm/package-lock-json/#hidden-lockfiles)
+warns that edits can escape its directory-mtime check. Retain that condition.
+The GQM and preregistration anchors above also apply to this preparation.
+
+Synthetic success cannot waive existing optional-peer errors or establish
+general package-content integrity. New production runtime logic still follows
+the phased Rust plan. A complete observation preparation must land before its
+production repair is implemented.

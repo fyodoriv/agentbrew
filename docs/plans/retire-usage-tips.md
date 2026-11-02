@@ -178,3 +178,43 @@ with the cache-retirement regression; old user history stays untouched.
 
 These are source-fixture results only. Required repository validation, qualified
 live reconciliation and archive metadata remain separate completion evidence.
+
+## Recorded installation and archive evidence
+
+Agentbrew retirement merged as PR #696 at
+`e1f8a067d229949e300aa412b75d3f469acd8c27`, with the exact passing source tree
+`21b48087b5e6c9e27ae76deb176280ec22a7df7c`. Both recorded full checks passed.
+The verified standalone repository reports `archived=true`.
+
+A first narrow preview stopped before any write because the deployed producer
+was already absent. Fresh readback found zero native registrations and zero
+retired deployment IDs. A separate writer had reconciled those entries after
+canonical source selection; its cause was not established. The qualified
+current-zero invocation kept native settings and the deployment receipt byte
+identical. It held the existing machine setup lock and reused the helper owner
+to update only agent-perf, persisted its ownership hash, removed the exact
+enabled source entry, and removed the byte-matched obsolete catalog.
+
+Independent live readback confirmed zero retired Claude and Codex registrations,
+no installed producer or catalog, and no enabled source entry. The installed
+helper hash is `830dc9dc497340fa2603130a66ce088efa30035bcac08bcad0305117b3ff19cf`,
+equal to the reviewed source and deployment manifest. The installed status line
+returned zero with its normal fixture model line and no seeded cached notice;
+its synthetic history was unchanged. Plugin and marketplace inventories have
+zero matching fields. No native histories or historical tip logs were read.
+
+These are bounded invocation results, not an atomic write guarantee against
+uncoordinated writers. The root invocation changed no native settings, services,
+MCP configuration or privacy settings. Old source and build evidence remain
+preserved. This was a source selection and targeted helper cleanup, not a full
+runtime or scheduler cutover.
+
+Dotfiles PR #441 merged as `92690d044f8e6fe8bd415fc4fdbc90444afe10bb`,
+with exact passing tree `77383acf86904260681b5da0bcce6c308265a59a`. All 30
+focused controls and its required gate passed, including fresh installation
+checks. The configured chezmoi source now selects that clean merged source.
+It removes owner defaults and existing enabled entries, and rejects the
+registered unsupported forms without partial output. Both source owners, live
+readback and archive readback now meet the registered closure criteria. The
+completed primary task is removed from TASKS.md; its prediction and evidence
+remain in this plan and Git history.

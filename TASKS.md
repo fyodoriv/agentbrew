@@ -732,20 +732,6 @@
 
 ## P3
 
-- [ ] An MCP git re-pin registers the entrypoint its build just wrote, and a refused re-pin puts the cache back
-  - **ID**: mcp-git-repin-build-output
-  - **Tags**: mcp, cli
-  - **Details**: Left over from the `mcp-git-install-failure-exit-and-clean-build` PR. That PR refuses a failed build at a commit the cache never built, but two gaps remain, and both also exist on main. (1) A successful build that writes its output somewhere new (v1 builds `dist/index.js`, v2 builds `build/index.js`), or a build that writes nothing, leaves the old untracked output, and `detectEntrypoint` picks `dist/index.js` first. Three designs were tried in that PR's review. A built-commit record alone missed shims and moved output. Deleting ignored files before a build deleted users' OAuth tokens, `.pem` files, `.venv`, and files from global excludes. An mtime snapshot accepted stale files on a repeat run and refused incremental `tsc` builds whose entry file did not change. (2) A refused re-pin leaves the cache at the new commit, with that commit's `node_modules`, while the registered server still runs from the cache. (3) The PR refuses conservatively: a failed build on a non-fresh re-pin is refused even for a Python server with a side JS build or a committed `dist/`, and a cache from an older agentbrew counts as unbuilt until one build succeeds. A tracked shim whose commit drops its build script can still load old ignored output.
-  - **Files**: `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`
-  - **Output**: code
-  - **Acceptance**: with v1 building `dist/index.js` and v2 building `build/index.js`, a v2 install registers `build/index.js` on every run; a refused re-pin leaves the cache at the commit the server was registered from; no user file in the cache (for example `token.json`) is deleted.
-  - **Hypothesis**: building a new commit in a fresh clone and swapping it in on success, carrying over only files the user lists, drops stale-output registrations and mixed-commit caches after a refused re-pin from 2 cases to 0.
-  - **Measurement**: vitest cases in `src/mcp/mcp-git-install.test.ts`: moved output dir (run twice), no-op build, and a refused re-pin followed by a check of the cache's HEAD.
-  - **Success**: all three cases pass, and the existing cases in that file still pass.
-  - **Pivot**: if a fresh clone per re-pin is too slow (`npm install` from scratch), keep one cache, but record the files each successful build wrote and accept only those.
-  - **Anchor**: review rounds of the `mcp-git-install-failure-exit-and-clean-build` PR (2026-10-22).
-  - **Blocked**: needs-design — 2026-10-28: the 4th design (record the files a build wrote, PR #607, left as a draft) failed review. (A) The record also caught files that are not build output: a `config.json` that the build writes only when it is missing, and a `token.json` that the running server writes during the build. The next re-pin moved such a file aside, rebuilt it as an empty template, and deleted the user's copy. (B) When a re-pin was refused, the old version's `dist/index.js` (an ignored, untracked file) was lost if the new version committed its own `dist/index.js`. (C) A cache made by an older agentbrew has no record, so it could register stale output for good. (D) A crash in the middle of a build lost the moved-aside copy, because the next run cleared that folder first. Unblock when: a design can tell build output apart from files the server or the user write, for example a build manifest, or only the paths under the package's declared build output (`package.json` main/bin/exports folder, tsconfig `outDir`), and no user file is ever in a move or delete set.
-
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
   - **Tags**: skills, design, third-party

@@ -260,7 +260,7 @@ export function isLocalRepoPath(url: string): boolean {
  * `url` in one form for comparing: a local path resolved against `base` to its
  * real path, without `/.git`; a URL without a trailing `.git` or `/`.
  */
-function comparableRepoUrl(url: string, base: string): string {
+export function comparableRepoUrl(url: string, base: string): string {
   const text = url.trim();
   // Credentials do not name another repo: state keeps the URL without them.
   if (!isLocalRepoPath(text))

@@ -20,6 +20,7 @@ interface McpAddOptions {
   ref?: string;
   name?: string;
   yes?: boolean;
+  freshRuntime?: boolean;
 }
 
 interface CustomAddBridgeInput {
@@ -143,6 +144,7 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable example in help text
     .option("-H, --headers <pairs...>", "HTTP headers for auth (KEY=VALUE, e.g. Authorization='Bearer ${TOKEN}')")
     .option("--git <url>", "Install from a git repo URL (clones, builds, and auto-detects entrypoint)")
+    .option("--fresh-runtime", "With --git, start with new cache-local state; retain the old runtime and copy no data")
     .option(
       "--ref <ref>",
       "Git tag, branch, or full commit ID to pin; a tag wins over a same-named branch (used with --git)",
@@ -156,6 +158,10 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
     .allowUnknownOption()
     .allowExcessArguments(true)
     .action(async (name: string | undefined, options: McpAddOptions, cmd: { args: string[] }) => {
+      if (options.freshRuntime && !options.git) {
+        cliError("--fresh-runtime requires --git; it starts with new cache-local runtime state.");
+        return;
+      }
       if (!name && !options.git) {
         cliMissingArg(
           "Server name",
@@ -172,6 +178,7 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
           name: options.name ?? name,
           envPairs: options.env,
           nonInteractive: options.yes,
+          freshRuntime: options.freshRuntime,
         });
         return;
       }
@@ -181,8 +188,9 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
 
   mcp
     .command("update [name]")
-    .description("Pull latest changes for a git-installed MCP server and re-sync")
-    .action(async (name: string | undefined) => {
+    .description("Build the saved branch in a fresh runtime directory and re-sync")
+    .option("--fresh-runtime", "Start with new cache-local state; retain the old runtime and copy no data")
+    .action(async (name: string | undefined, options: { freshRuntime?: boolean }) => {
       if (!name) {
         cliMissingArg(
           "Server name",
@@ -191,7 +199,7 @@ export function registerMcpCommands(program: Command, autoSync: () => Promise<vo
         );
         return;
       }
-      await updateMcpFromGit(name);
+      await updateMcpFromGit(name, { freshRuntime: options.freshRuntime });
     });
 
   // `mcp sync` was deleted in the 2026-05-03 hidden-CLI audit

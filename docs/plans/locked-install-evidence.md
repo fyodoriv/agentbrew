@@ -173,3 +173,80 @@ Synthetic success cannot waive existing optional-peer errors or establish
 general package-content integrity. New production runtime logic still follows
 the phased Rust plan. A complete observation preparation must land before its
 production repair is implemented.
+
+### Test-only tool port and cohort selection
+
+Ordinary tests always run the sealed observation-recorder calibration. The real
+measurement cohort runs only when `LOCKED_INSTALL_OBSERVATION=1`. Without that
+selection its cases are visibly unrun; ordinary npm versions are not a measured
+baseline or a new unsupported-version policy.
+
+The selected cohort uses `LOCKED_INSTALL_OBSERVATION_NPM_CLI`, an absolute path
+to the already qualified npm CLI JavaScript file. Its portable default is the
+caller's `npm_execpath`. Tests require npm package metadata and actual version
+output to identify npm 10.9.9. A missing, unreadable or wrong-version tool emits
+an inconclusive observation and fails the selected cohort. Tests never install,
+download or search a private npm cache for a substitute.
+
+Use the same registered commands with these test-only environment additions:
+
+```sh
+LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 heavy-run npx vitest run --reporter=default --silent=false --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts
+LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 NO_CACHE=1 heavy-run npm run verify
+```
+
+`NPM10_CLI` is selected locally before admission; its private path is never
+committed. Each scenario/variant emits one `LOCKED_INSTALL_OBSERVATION` JSON
+line with actual decisions and completeness. Bounded raw synthetic command
+responses use a separate `LOCKED_INSTALL_CAPABILITY` JSON line. Retain the
+complete log privately. Public evidence uses aggregate fields only.
+
+Use the explicit default reporter for the focused receipt capture. The pinned
+Vitest agent reporter selects passing-console suppression; changing only the
+silent option does not override its reporter option. The first selected attempt
+passed its tests but retained zero observation lines where eleven were required.
+Its classification result is inconclusive, not zero unsafe permits. Preserve
+that attempt. Correct only the reporter selection and repeat the same sealed
+inputs; do not change fixture bytes, classifications or required decisions.
+The full gate remains a compatibility check; the focused log supplies the
+complete durable measurement receipts.
+
+Recorder completeness and comparison-evidence completeness are distinct. A
+complete observation of a malformed or missing npm response can establish an
+unsafe readiness claim; missing observations cannot establish zero unsafe
+permits. N5 remains one family with its three frozen variants. Calibration
+passes only when sealed unsafe, supported, refused and inconclusive samples
+retain their registered labels. It does not assert that unsafe baseline
+behavior is acceptable or repaired.
+
+## Recorded observation baseline
+
+The committed prediction `93b88b9`, tool-port registration `088250a` and
+reporter correction `a8a7273` preceded the qualified capture. Keep the first
+receipt-free run inconclusive. The corrected run at tree
+`19fb9b9d2d78c2852d83d38d6431d865f25b595e` passed the focused tests and
+retained every required scenario/variant receipt. Independent review matched
+the saved records to the raw log and the original sealed non-doc inputs.
+
+All five negative families exposed an unsafe permit. N1 accepted stale
+transitive metadata; N2 stamped a stale independent clone; N3 accepted a stale
+target through its matching stamp. N4 reused a cached pass after only ignored
+installed payload changed: its execution count stayed unchanged, while the
+separate dependency predicate failed. N5's failed comparison was refused, but
+its missing and malformed responses still produced readiness. Count N5 once.
+
+All four positive fixture decisions remained supported. P2 performed a real
+independent clone with no npm call and preserved donor bytes/identities. P3
+retained the incompatible optional platform declaration and legitimate absence.
+P4 retained the copied public stub, its link identity and source hashes.
+
+The real npm capability capture for N1 reported physical leaf version `1.0.0`
+and lock-only version `1.0.1`. This supports further investigation of the
+maintained query boundary. It is not proof of a production comparison for
+arbitrary graphs or the content integrity of every installed file.
+
+The preparation outcome is accurate calibration and complete observations:
+the baseline has five unsafe negative families and four supported positives.
+The production repair target remains zero unsafe negative families. The guard,
+clone, stamp and cache scripts are unchanged, and their task stays open. Full
+repository qualification and delivery of this preparation are still required.

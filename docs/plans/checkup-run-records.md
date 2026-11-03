@@ -389,3 +389,21 @@ heavy-run env E2E_COLD=1 E2E_CHECKUP_IN_PLACE=1 \
 The producer checks that its scratch write succeeds and an outside sentinel
 stays unchanged. It then runs four provenance checks and six installer
 and publication tests. Keep logs and generated artifacts out of commits.
+
+## Recorder read guard
+
+The Rust recorder can hold its existing writer lock while an in-process
+caller acts on one checked record. The caller supplies the digest returned by
+`show`. The guard checks that digest after it takes the lock. A missing or
+replaced record refuses before the operation. A concurrent writer returns
+`busy` until the guard releases. The operation must not call the recorder's
+writer. The guard creates no state.
+
+```bash
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --manifest-path rust/checkup-run/Cargo.toml --target aarch64-apple-darwin --test native_read_guard -- --test-threads=1
+```
+
+This API has no CLI route. Dotfiles still needs a qualified build dependency,
+a shared lease for its rich-state writers, and a final publisher that holds
+both locks. Keep its writer and dashboard changes together. The four model
+cases and installed acceptance remain open.

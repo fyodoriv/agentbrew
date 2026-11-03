@@ -384,6 +384,7 @@
   - **ID**: gdoc-cdp-screenshots
   - **Mode**: AFK
   - **Implementation decision**: Extend the existing Google Docs workflow through an adapter over maintained browser transport. The bounded source search did not recover the named old script. Its location does not block preparation. Keep real Google Docs rendering and focus proof separate from synthetic transport controls; [preparation routing](docs/plans/owned-issue-preparation.md) records the limits.
+  - **Progress**: The [synthetic Rust reducer](docs/plans/gdoc-capture-reducer.md) passed 14/14 cases. Native ownership, cleanup, rendering and focus proof remain open.
   - **Tags**: browser, docs
   - **Details**: Issue #561: open the doc in its own CDP tab, scroll page by page, one screenshot per page, no keystrokes or window activation, close the tab after.
   - **Files**: a skill script under `skill-plugins/`

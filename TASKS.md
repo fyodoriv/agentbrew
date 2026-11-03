@@ -440,16 +440,16 @@
 - [ ] History-wide leak audit before a plugin goes public (issue #564)
   - **ID**: plugin-history-leak-audit
   - **Mode**: AFK
-  - **Implementation decision**: Extend the existing plugin audit boundary and wrap gitleaks. The scanner is already installed on the verified development machine; do not install it implicitly on other machines. Register a fixed-config bare-mirror fixture before production changes. See [preparation routing](docs/plans/owned-issue-preparation.md).
+  - **Implementation decision**: Extend the existing plugin audit boundary and wrap gitleaks. The scanner is already installed on the verified development machine; do not install it implicitly on other machines. Use the [synthetic registration](docs/plans/plugin-history-leak-audit.md) before production work.
   - **Tags**: security, plugins, oss
   - **Details**: Issue #564: scan every commit on every ref (emails, messages, ref names, paths, added lines) with gitleaks on a bare mirror and a fixed config; `--fresh` mode; patterns from a user env file.
-  - **Files**: `src/oss/`, the plugin publishing guide, the CLI reference
+  - **Files**: `src/plugins/`, the plugin publishing guide, the CLI reference
   - **Output**: code
   - **Acceptance**: as in issue #564
   - **Hypothesis**: leaks in history found before a plugin goes public: seeded leaks found 5 of 5.
-  - **Measurement**: a fixture repo with one leak in each of the 5 places
-  - **Success**: 5 of 5 found
-  - **Pivot**: gitleaks cannot read ref names or emails -> add a git-log pass for those
+  - **Measurement**: `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/plugins/leak-audit-history.test.ts src/plugins/leak-audit.test.ts`
+  - **Success**: every case from S01 through S05, 8/8 calibration cases, 8/8 control groups, zero disclosure or false-clean results.
+  - **Pivot**: Any missed surface, failed control or incomplete input accepted as clean stops the candidate.
   - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
 
 - [ ] Skip `npm ci` when the lockfile is unchanged

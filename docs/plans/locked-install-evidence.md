@@ -218,3 +218,35 @@ permits. N5 remains one family with its three frozen variants. Calibration
 passes only when sealed unsafe, supported, refused and inconclusive samples
 retain their registered labels. It does not assert that unsafe baseline
 behavior is acceptable or repaired.
+
+## Recorded observation baseline
+
+The committed prediction `93b88b9`, tool-port registration `088250a` and
+reporter correction `a8a7273` preceded the qualified capture. Keep the first
+receipt-free run inconclusive. The corrected run at tree
+`19fb9b9d2d78c2852d83d38d6431d865f25b595e` passed the focused tests and
+retained every required scenario/variant receipt. Independent review matched
+the saved records to the raw log and the original sealed non-doc inputs.
+
+All five negative families exposed an unsafe permit. N1 accepted stale
+transitive metadata; N2 stamped a stale independent clone; N3 accepted a stale
+target through its matching stamp. N4 reused a cached pass after only ignored
+installed payload changed: its execution count stayed unchanged, while the
+separate dependency predicate failed. N5's failed comparison was refused, but
+its missing and malformed responses still produced readiness. Count N5 once.
+
+All four positive fixture decisions remained supported. P2 performed a real
+independent clone with no npm call and preserved donor bytes/identities. P3
+retained the incompatible optional platform declaration and legitimate absence.
+P4 retained the copied public stub, its link identity and source hashes.
+
+The real npm capability capture for N1 reported physical leaf version `1.0.0`
+and lock-only version `1.0.1`. This supports further investigation of the
+maintained query boundary. It is not proof of a production comparison for
+arbitrary graphs or the content integrity of every installed file.
+
+The preparation outcome is accurate calibration and complete observations:
+the baseline has five unsafe negative families and four supported positives.
+The production repair target remains zero unsafe negative families. The guard,
+clone, stamp and cache scripts are unchanged, and their task stays open. Full
+repository qualification and delivery of this preparation are still required.

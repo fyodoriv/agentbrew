@@ -183,6 +183,20 @@
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
 
+- [ ] Patch the coupled Vitest family without unrelated dependency movement
+  - **ID**: dependency-vitest-security-stage
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Details**: Follow [Stage V](docs/plans/vitest-security-stage.md), registered before its baseline or package action. Use normal npm 10.9.9 to update only the exact Vitest/coverage pair to 4.1.12 and its nine official coupled records. Stage S's hand-edit exception does not apply. Preserve Azure, Hono, Minimatch, the jks stub, Node floor, overrides, optional graph and existing non-green peer/installed evidence. No package result is claimed at registration.
+  - **Files**: `package.json`, `package-lock.json`, README dependency/security guidance, `docs/plans/vitest-security-stage.md`
+  - **Output**: code
+  - **Acceptance**: selected alerts 149/150 are absent from every locked/installed copy; only two root dev pins and required official metadata in the nine Vitest-family records change; normal task-owned installation, physical/hidden-lock evidence, pinned lock sync and uncached full gate pass; both GitHub rows later show fixed timestamps. Only exact unchanged known problem/error objects may support this partial delivery, never a full-graph-green claim.
+  - **Hypothesis**: selected unsafe rows fall from recorded two to zero; the unchanged original nine move from three to one, leaving 162, and the new ten remain two, IDs 172/174. Count advisory/range rows rather than copies or aggregate audit totals. The Stage V baseline remains unmeasured.
+  - **Measurement**: after committing the prediction, run Stage V's frozen original/new-row Node/semver query with the selected-ID predicate, optional-inclusive audit/lock/installed tree queries and exact error comparator before and after its single named npm 10.9.9 lock-only pair action; require normal install/readback, `JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.9 heavy-run npm run verify`, and the exact env-unset 149/150 fixed-status query after merge. Exit two is unknown, never zero unsafe.
+  - **Success**: selected unsafe 0/2, original unsafe 1/9, new unsafe 2/10, no protected/unregistered movement or unexpected finding, qualified installation and all normal gates pass, exact known error evidence unchanged, and selected GitHub rows fixed. Original remediation and peer tasks stay open.
+  - **Pivot**: resolver failure, any remaining selected unsafe copy, invalid/missing evidence, extra graph movement, changed complete problem/error object, protected delta or gate regression rejects this approach. No hand edit, force, legacy-peer option, broad update or automatic retry; another method requires a new committed registration first.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; pinned upstream package manifests, advisories and npm contracts linked in Stage V.
+
 - [ ] Restore a supported full dependency graph without forcing the watcher peer
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies

@@ -3,9 +3,10 @@
 ## Goal and prior evidence
 
 Registered 2026-11-02 from `fdb9b9c224e025aad69c9f872b0e17496248bc45`.
-Task: `dependency-vitest-security-stage`. This is prediction only: no Stage V
-baseline, updater, installation or tests have run. Read-only primary registry
-and advisory metadata establish candidate compatibility, not remediation.
+Task: `dependency-vitest-security-stage`. The initial registration preceded its
+baseline and first package action. The amendments below record both generator
+results and register the guarded metadata method before execution. No Stage V patch,
+installation or remediation is claimed.
 
 Goal: remove the two remaining Vitest advisory ranges through the supported
 exact Vitest/coverage pair. Question: can the coupled patch remove both rows
@@ -13,9 +14,10 @@ without unrelated dependency movement or weaker installation evidence?
 Metric: selected unsafe advisory/range rows 149/150, counted once per row if
 any locked copy is affected. Predict 2 to 0; the original nine move from 3 to 1,
 leaving only 162. The separate new ten remain unsafe 2, IDs 172/174. These
-starting values are [Stage S's recorded result](development-patch-alerts.md#post-merge-fixed-status-confirmation),
-not a newly executed Stage V baseline. Aggregate npm/GitHub alert counts are
-informational. Original all-nine-to-zero and strict peer acceptance stay open.
+starting values first came from [Stage S's recorded result](development-patch-alerts.md#post-merge-fixed-status-confirmation).
+The accepted Stage V baseline below confirms them. Aggregate npm/GitHub alert
+counts are informational. Original all-nine-to-zero and strict peer acceptance
+stay open.
 
 ## Exact candidate and protected boundary
 
@@ -45,12 +47,12 @@ omit optional packages or mutate canonical/shared/sibling installations.
 Vitest's published Node contract stays unchanged; the pre-existing Node 22+
 development-stack requirement does not prove Node 20 development support.
 
-Use the original plan's named lock-only npm action, pinned to qualified npm
-10.9.9. Stage S's nine-scalar hand-edit permission does not apply here. Resolver
-failure, unavailable metadata or movement outside this boundary stops this
-approach. No hand edit, broad updater, audit fix, forced/legacy peer option,
-new override, root downgrade or automatic retry is authorized. Another method
-needs a separately committed registration before new outcomes.
+The two npm generator attempts are retained below. The guarded metadata
+amendment authorizes one Stage V-specific literal transform after registration
+and fresh baseline review. Normal npm 10.9.9 installation and qualification
+remain mandatory. Stage S's nine-scalar exception applies only to Stage S.
+Any failure, missing evidence, or movement outside the registered boundary
+stops this method.
 
 Primary evidence: [Vitest 4.1.12](https://registry.npmjs.org/vitest/4.1.12),
 [coverage-v8](https://registry.npmjs.org/@vitest%2Fcoverage-v8/4.1.12),
@@ -136,10 +138,10 @@ NODE
    comparison. Capture published 4.1.12 metadata for all nine fixed names,
    the query above, optional-inclusive audit and lock/installed tree outputs.
    The baseline must preserve the recorded selected 2/original 3/recent 2.
-3. **Generate once.** Only after baseline review, run the original named pair
-   action below in an owned isolated candidate. Review the complete diff and
-   every required linked manifest field; do not assume a named install touches
-   only those records. Reject extra keys, packages, edges or protected changes.
+3. **Generate once per registered method.** After the guarded metadata
+   amendment is committed and its worktree baseline is accepted, apply the
+   sealed replacements in the private candidate. Review the complete diff
+   and every required linked manifest field before promotion or installation.
 4. **Qualify.** Ensure task-owned real `node_modules` has no active user. Use
    the helper with this checkout as its own donor, forcing normal npm ci on the
    changed lock rather than cloning stale canonical modules. Use normal scripts
@@ -165,11 +167,189 @@ JOBS=1 heavy-run "${STAGE_NPM10:?}" ls --all --include=optional --json > "${STAG
 JOBS=1 LOCKFILE_SYNC_NPM=npm@10.9.9 heavy-run bash scripts/check-lockfile-sync.sh
 ```
 
-The first and only proposed updater is:
+The original npx generator attempt used this command. It failed; preserve its
+receipts and do not rerun it:
 
 ```sh
 JOBS=1 heavy-run npx --yes --prefer-offline --package=npm@10.9.9 -- npm install --package-lock-only --ignore-scripts --include=optional --save-dev --save-exact vitest@4.1.12 @vitest/coverage-v8@4.1.12
 ```
+
+## Direct maintained-generator amendment
+
+Registered before this new method's first attempt. Reuse the accepted baseline
+and sealed source/manifest inputs. Do not reinterpret the first failure as a
+successful updater or change any cohort, query byte or success threshold.
+
+The accepted baseline used Node 24.21.0 and npm 10.9.9. Selected rows were 2/2,
+original rows 3/9, and recent rows 2/10; query exit 1. Audit exited 1 with valid
+evidence. The lock-only one-problem and installed six-problem results exited 1;
+their complete problem lists and error objects matched prior evidence exactly.
+Pinned npm10 lock sync exited 0. All nine physical family members were 4.1.11;
+27 hidden-lock fields and the copied lock stamp matched source. The nine full
+published 4.1.12 manifests were bound before measurement. Source, module metadata
+and canonical samples stayed unchanged. The full graph remains non-green.
+
+The first generator exited 1 without changing package or lock. Its Chokidar
+optional-peer ERESOLVE text is a warning. The terminal error is
+`Cannot read properties of null (reading 'edgesOut')`. The referenced debug log
+was absent, so no stack is available. The cached npm10 version was observed,
+but the mutation child's version was not. Preserve this evidence boundary.
+
+Primary [npm10 peer-set source](https://github.com/npm/cli/blob/v10.9.9/workspaces/arborist/lib/arborist/build-ideal-tree.js)
+accesses `node.parent.edgesOut` without a detached-parent guard. The
+[npm12 source](https://github.com/npm/cli/blob/v12.2.1/workspaces/arborist/lib/arborist/build-ideal-tree.js)
+checks for a missing parent before that access and after recursive replacement.
+This supports a maintained-generator experiment; it does not prove the failed
+attempt's stack or guarantee success. Installed npm 12.2.1 contains Arborist
+10.0.4, compared with cached npm 10.9.9's Arborist 8.0.5.
+
+The [npx entry point](https://github.com/npm/cli/blob/v12.2.1/bin/npx-cli.js)
+delegates to npm exec. Its
+[package resolver](https://github.com/npm/cli/blob/v12.2.1/workspaces/libnpmexec/lib/index.js)
+and [run-script PATH builder](https://github.com/npm/run-script/blob/v11.0.0/lib/set-path.js)
+select executable paths. A requested npm package is not a recorded child-version
+receipt. Both inspected versions have identical npm-cli.js and npx-cli.js entry
+hashes; an entry hash alone cannot bind implementation version.
+
+Use the already installed npm 12.2.1 only as this stage's generator. Its
+[published metadata](https://registry.npmjs.org/npm/12.2.1) declares Node
+`^22.22.2 || ^24.15.0 || >=26.0.0`; pinned Node 24.21.0 fits. Do not change the
+app's Node floor, normal installer, peer policy or qualification tool.
+Freeze the absolute real paths `STAGE_NODE24` and `STAGE_NPM12_CLI`, binary and
+entry hashes, npm package metadata and Arborist version/source before action.
+Reviewed npm12 package.json SHA256 is
+`d3533d91d22b444112314fc43285357c7b8b8e31efbdbea306ca95f295cada3b`;
+its Arborist build-ideal-tree.js SHA256 is
+`d94ec6e38ba5ab6e5fa63e4c7d46ad8145bcce27a41e759ff7509a259196ae56`.
+Recheck these identities and observe version with the same direct executable
+pair after this amendment is committed. Refuse a different or unavailable tool;
+do not download, auto-select another version or invoke through npx.
+
+Remove inherited npm configuration and authentication overrides for this
+invocation only. Bind two distinct empty regular private 0600 npm config files
+to their paths/inodes and SHA256
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+Keep the owner HOME, project public-registry `.npmrc`, normal peer enforcement,
+optional inclusion and JOBS=1. No credentials enter logs or receipts.
+
+The direct method used this version preflight and one generator attempt:
+
+```sh
+JOBS=1 heavy-run "${STAGE_NODE24:?}" "${STAGE_NPM12_CLI:?}" --version
+JOBS=1 heavy-run "${STAGE_NODE24:?}" "${STAGE_NPM12_CLI:?}" install --package-lock-only --ignore-scripts --include=optional --save-dev --save-exact --lockfile-version=3 vitest@4.1.12 @vitest/coverage-v8@4.1.12
+```
+
+The direct method required generator exit 0, lockfile v3 and the
+two-root-pin/nine-family-record
+allowlist with exact official required metadata. Preserve the real optional
+browser-webdriverio `^4.1.11` peer. Require zero protected/unregistered changes
+and repeat the frozen query once before stopping for source review. No install
+is authorized by generator success. Any action failure, missing qualification,
+unregistered movement or query mismatch rejects this method. Preserve the
+candidate without retry, hand edit, force, fallback or weaker peer handling.
+
+## Stage V3 guarded metadata amendment
+
+The direct attempt observed Node 24.21.0 and npm 12.2.1 and exited 0. It
+produced both requested pins and all nine official records in lockfile v3.
+It also modified 23 unrelated package records and removed two. The hidden
+lock changed to match all 27 candidate family version, URL and integrity
+fields. All nine physical family manifests stayed at 4.1.11, byte for byte.
+The candidate and affected worktree were rejected. Its patch, metadata and
+physical readback remain separate evidence.
+
+Register this one-time transform before producing any candidate. Derive the
+old values from the exact original source preimages above and the new values
+from the exact target pins and nine sealed official manifests. The matching
+family metadata from the rejected direct attempt corroborates the field
+inventory. The transformation input is the original source. The rejected
+worktree and graph are excluded as dependency donors and candidate inputs.
+
+The frozen private `pointer-patch.json` has 54 unique replacement rows,
+each with `file`, `path`, `old` and `new`. Paths are jq arrays of exact
+object keys, including the empty root key in the lock. Its SHA256 is
+`665c348f4d26998736ad8304374c5eb3a5a26784d3417e34f1f068b497df8cb3`.
+The full path allowlist is:
+
+- `package.json` → `devDependencies` → `vitest`, `@vitest/coverage-v8` (2).
+- `package-lock.json` → `packages` → `""` → the same two dev pins (2).
+- `package-lock.json` → `packages` → the nine exact `node_modules/` records
+  named above → `version`, `resolved`, `integrity` (27).
+- Under those exact family records, the following 23 additional leaves.
+
+| Record name after `node_modules/` | `dependencies` leaves | `peerDependencies` leaves |
+| --- | --- | --- |
+| `@vitest/coverage-v8` | `@vitest/utils` | `@vitest/browser`, `vitest` |
+| `@vitest/expect` | `@vitest/spy`, `@vitest/utils` | |
+| `@vitest/mocker` | `@vitest/spy` | |
+| `@vitest/runner` | `@vitest/utils` | |
+| `@vitest/snapshot` | `@vitest/pretty-format`, `@vitest/utils` | |
+| `@vitest/utils` | `@vitest/pretty-format` | |
+| `vitest` | `@vitest/expect`, `@vitest/mocker`, `@vitest/pretty-format`, `@vitest/runner`, `@vitest/snapshot`, `@vitest/spy`, `@vitest/utils` | `@vitest/browser-playwright`, `@vitest/browser-preview`, `@vitest/browser-webdriverio`, `@vitest/coverage-istanbul`, `@vitest/coverage-v8`, `@vitest/ui` |
+
+Every version and linked range above changes from `4.1.11` to `4.1.12`,
+except the webdriverio peer, whose target is `^4.1.11`. Read each resolved
+URL and integrity from that record's official `dist.tarball` and
+`dist.integrity`. The allowlist contains existing string values only.
+All other fields, keys, package paths, peer metadata and optional edges
+must compare equal. Any additional field required by the published manifests
+stops this method.
+
+Before applying the patch, bind the clean worktree's source preimages,
+actual Node 24.21.0 and npm 10.9.9, two distinct empty private npm config
+files, official manifests, frozen query, protected and canonical samples.
+Because this is a different dependency directory, repeat the registered
+baseline query, optional-inclusive audit, lock-only and installed tree
+checks, and pinned lock sync. Require the exact known one- and six-problem
+lists and complete error objects under the existing comparator. Confirm
+ownership of the real worktree modules directory, physical 4.1.11 for
+all nine, 27 matching hidden-lock fields, and a byte-identical copied lock
+stamp. Bind their hashes before generation. Stop on any baseline mismatch.
+
+After registration and baseline acceptance, bind the real jq executable and
+its version and hash. In a fresh private 0700 candidate directory, place only
+the sealed patch and exact source preimages named `package.json.before` and
+`package-lock.json.before`. Run this once there. The inverse check requires
+byte equality with each preimage and rejects formatter normalization.
+
+```sh
+(
+  set -eu
+  set -C
+  printf '%s\n' \
+    '4351eb54ceffa7599b4d1e2bf77501f60c8e40a14b67901e866cdcdc75c58822  package.json.before' \
+    'adf8c01a27471bec66f466642fad471fd02d1f8ed25bca245559b9c353c0ccc4  package-lock.json.before' \
+    '665c348f4d26998736ad8304374c5eb3a5a26784d3417e34f1f068b497df8cb3  pointer-patch.json' |
+    shasum -a 256 -c -
+  filter='reduce ($patch[0][] | select(.file == $file)) as $edit (.;
+    if getpath($edit.path) == $edit[$from]
+    then setpath($edit.path; $edit[$to])
+    else error("Stage V3 preimage mismatch")
+    end)'
+  for file in package.json package-lock.json
+  do
+    "${STAGE_JQ:?}" -eM --indent 2 --slurpfile patch pointer-patch.json \
+      --arg file "$file" --arg from old --arg to new "$filter" "$file.before" > "$file.after"
+    "${STAGE_JQ:?}" -eM --indent 2 --slurpfile patch pointer-patch.json \
+      --arg file "$file" --arg from new --arg to old "$filter" "$file.after" > "$file.reverse"
+    cmp "$file.before" "$file.reverse"
+  done
+)
+```
+
+Require exit 0, exactly the 54 registered semantic replacements, the nine
+official family records, and zero other changes including modules and
+canonical samples. This command uses no resolver. Compare the entire output
+to the original graph before promoting the two reviewed files into the
+owned worktree. Run the frozen query once on the promoted candidate.
+Success requires selected 0/2, original 1/9, and recent 2/10. Stop before
+installation for source review. Any command failure, incomplete evidence,
+scope violation or metric mismatch rejects the method. Preserve its outputs.
+
+Normal npm 10.9.9 installation, exact known-error comparisons, audit,
+physical and hidden-lock readback, pinned lock sync, uncached full gate and
+the GitHub fixed-status check remain delivery requirements. The transform
+does not establish a successful installation or a green full graph.
 
 After source-diff review, the qualification and delivery commands are:
 

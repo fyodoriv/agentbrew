@@ -2527,6 +2527,18 @@
         "Reproduces the resolved thread with no suggestion on first sync in a failing test before fixing it. Reruns that test after the fix.",
         "Uses one question round for interface or naming choices that change the deliverable, or records an assumed choice as my choice with the reason."
       ]
+    },
+    {
+      "id": 221,
+      "prompt": "/goal confirm that only 2 users can use the hosted web app. The app is on a static host with per-deployment preview URLs behind an auth proxy; the fix is merged and the production deploy is done.",
+      "expected_output": "The agent re-probes every deployment URL, not just production, and finds that old immutable preview deployments still run the old code. It asks before it deletes them, pages through the whole deployment list (not only the first page), waits for the deletes to reach the edge, and claims met only after a fresh probe shows 0 leaking URLs.",
+      "expectations": [
+        "Probes every preview or deployment URL after the deploy, not only the main domain",
+        "Says that old immutable deployments keep the old code after a fix ships",
+        "Asks before deleting deployments",
+        "Repeats the listing until no leaking deployment remains, because the list is paged",
+        "Re-probes after a delay before it claims 0 leaks"
+      ]
     }
   ]
 }

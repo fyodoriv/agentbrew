@@ -92,3 +92,14 @@ Keep the issue open through required native proof and qualified integration.
 Anchors are Basili, Caldiera and Rombach (1994), Goal Question Metric, and
 Munafò et al. (2017), preregistration.
 [Git fetch ref mapping and pruning](https://git-scm.com/docs/git-fetch).
+
+## Agentbrew caller baseline result
+
+The scoped wrap-up suite passed all 27 tests. W01–W04 recorded five
+intercepted fetches across the four runs, no fetch in no-fetch mode, and
+one stale warning attributed to the first checkout. The next checkout
+was still inventoried. The plain directory was rejected. No call left
+the fixture, and all four recorder controls passed.
+
+The baseline binds caller routing. Native timeout and cleanup require
+their own process tests before activation.

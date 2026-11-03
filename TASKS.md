@@ -382,17 +382,17 @@
 - [ ] Checkups show their last run and record each run (issue #572)
   - **ID**: checkup-run-record
   - **Mode**: AFK
-  - **Implementation decision**: Agentbrew owns one generic `checkup-run show|record` boundary. The issue already specifies the record path and schema. Dotfiles adapts its richer checkup history without replacing it. Register runnable synthetic measurements before changing production; [preparation routing](docs/plans/owned-issue-preparation.md) defines the boundary.
+  - **Implementation decision**: One Rust record owner serves the existing Agentbrew and dotfiles callers. Follow the [registered controls](docs/plans/checkup-run-records.md).
   - **Tags**: checkup, state
-  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`; print it at the start, write it at the end.
-  - **Files**: `scripts/checkup.sh`, generic checkup CLI and record owner
+  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end.
+  - **Files**: `scripts/checkup.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
   - **Output**: code
-  - **Acceptance**: as in issue #572
-  - **Hypothesis**: every checkup run starts with what changed since the last run; runs with no last-run line drop to 0.
-  - **Measurement**: run each checkup twice; the second run prints the first run's time and commits
-  - **Success**: 2 of 2 runs
-  - **Pivot**: the owner prefers git log alone -> close the issue
-  - **Anchor**: issue text; Forsgren, Humble, Kim 2018 (lead time)
+  - **Acceptance**: Preserve prior completed records and rich history. Qualify all three producers, stale recovery, skill decisions and required installed targets.
+  - **Hypothesis**: Complete FIRST/TWO cases rise from a predicted 0/6 to 6/6, with zero unsafe writes, stale replays or extra export probes.
+  - **Measurement**: Run the [registered commands](docs/plans/checkup-run-records.md) for observer calibration, six selected caller cases, safety, skill and installed artifact controls.
+  - **Success**: 6/6 caller cases and 2/2 completed runs in each TWO. Pass every safety variant, 4/4 scoped model decisions and 4/4 initial native families. Keep required later target qualifications open until measured.
+  - **Pivot**: Reject any semantic miss, unsafe write, extra probe or history regression. Missing setup, provider or target proof is inconclusive.
+  - **Anchor**: Issue #572; Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration)
 
 - [ ] Scroll and screenshot a Google Doc over CDP without focus (issue #561)
   - **ID**: gdoc-cdp-screenshots

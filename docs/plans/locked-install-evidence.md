@@ -173,3 +173,38 @@ Synthetic success cannot waive existing optional-peer errors or establish
 general package-content integrity. New production runtime logic still follows
 the phased Rust plan. A complete observation preparation must land before its
 production repair is implemented.
+
+### Test-only tool port and cohort selection
+
+Ordinary tests always run the sealed observation-recorder calibration. The real
+measurement cohort runs only when `LOCKED_INSTALL_OBSERVATION=1`. Without that
+selection its cases are visibly unrun; ordinary npm versions are not a measured
+baseline or a new unsupported-version policy.
+
+The selected cohort uses `LOCKED_INSTALL_OBSERVATION_NPM_CLI`, an absolute path
+to the already qualified npm CLI JavaScript file. Its portable default is the
+caller's `npm_execpath`. Tests require npm package metadata and actual version
+output to identify npm 10.9.9. A missing, unreadable or wrong-version tool emits
+an inconclusive observation and fails the selected cohort. Tests never install,
+download or search a private npm cache for a substitute.
+
+Use the same registered commands with these test-only environment additions:
+
+```sh
+LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts
+LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 NO_CACHE=1 heavy-run npm run verify
+```
+
+`NPM10_CLI` is selected locally before admission; its private path is never
+committed. Each scenario/variant emits one `LOCKED_INSTALL_OBSERVATION` JSON
+line with actual decisions and completeness. Bounded raw synthetic command
+responses use a separate `LOCKED_INSTALL_CAPABILITY` JSON line. Retain the
+complete log privately. Public evidence uses aggregate fields only.
+
+Recorder completeness and comparison-evidence completeness are distinct. A
+complete observation of a malformed or missing npm response can establish an
+unsafe readiness claim; missing observations cannot establish zero unsafe
+permits. N5 remains one family with its three frozen variants. Calibration
+passes only when sealed unsafe, supported, refused and inconclusive samples
+retain their registered labels. It does not assert that unsafe baseline
+behavior is acceptable or repaired.

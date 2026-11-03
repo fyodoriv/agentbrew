@@ -30,6 +30,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--check` | debug | Read-only preview of an update or sync; the default does the work. |
 | `--ci` | knob | CI exit-code mode; a human run should not exit 1 on drift. |
 | `--command` | knob | Supplies the server command; input, not behavior. |
+| `--commit` | knob | Supplies the repository and commit checked by the assessment. The recorder cannot infer them. |
 | `--confirm` | disruptive | Deletes memory; deletion must never be the default. |
 | `--days` | knob | Time window for a report; the value is the knob. |
 | `--deep` | disruptive | Installs and calls each MCP server; too slow and side-effecting for every probe. |
@@ -37,6 +38,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--draft` | knob | Opens the contribution PR as a draft; a per-PR choice. |
 | `--dry-run` | debug | Preview without writes; the default applies the change. |
 | `--env` | knob | Supplies server env vars; input, not behavior. |
+| `--finished-at` | knob | Supplies the assessment completion time. The recorder cannot infer it from its own start time. |
 | `--fix` | disruptive | Lets `status` rewrite agent configs; `status` stays read-only by default. |
 | `--force` | disruptive | Re-runs work that is already done or overwrites; unsafe as a default. |
 | `--fresh-runtime` | disruptive | Starts with new cache-local runtime state and copies no application data; explicit consent is required, even with `--yes`. |
@@ -73,6 +75,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--refresh-rules` | disruptive | Replaces edited catalog rule blocks; must stay explicit. |
 | `--replace` | disruptive | Overwrites existing items on import; unsafe as a default. |
 | `--repo` | knob | Names the repo to report to; the default is the upstream of the current checkout. |
+| `--result` | knob | Supplies the assessment outcome. The recorder cannot infer it. |
 | `--rollback` | disruptive | Restores the last snapshot over current configs; must stay explicit. |
 | `--rules` | knob | Filters browse output to rules. |
 | `--schedule` | knob | Opts in to (or out of) the weekly metrics send; sending data must never be a default. |

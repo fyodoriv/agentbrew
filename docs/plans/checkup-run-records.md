@@ -362,3 +362,30 @@ the required producer, recovery, skill and supported native delivery proof.
 
 Anchors: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration; [POSIX rename](https://pubs.opengroup.org/onlinepubs/9799919799/functions/rename.html).
+
+## Reproduce in-place publication on Apple Silicon
+
+Use a local Apple Silicon Mac with Xcode, Node, npm and Rust. The fixture
+builds the public predecessor at commit
+`6710ea9b633e27f34314029a92835fa84be5f68d`. It checks both lockfiles,
+the build stamp, the native executable and the complete output manifest.
+Keep the source clone and evidence in scratch storage.
+
+```bash
+scratch="$(mktemp -d)"
+mkdir "$scratch/evidence" "$scratch/empty-template"
+git init --template="$scratch/empty-template" "$scratch/source"
+git -C "$scratch/source" fetch --depth=2 \
+  https://github.com/fyodoriv/agentbrew.git \
+  6710ea9b633e27f34314029a92835fa84be5f68d
+git -C "$scratch/source" checkout --detach FETCH_HEAD
+heavy-run env E2E_COLD=1 E2E_CHECKUP_IN_PLACE=1 \
+  CHECKUP_N04_PUBLIC_SOURCE="$scratch/source" \
+  CHECKUP_N04_DEVELOPER_DIR="$(xcode-select -p)" \
+  CHECKUP_N04_EVIDENCE="$scratch/evidence" \
+  npm run test:real-e2e -- real-e2e/scenarios/us01-one-step-install.test.ts -t N04
+```
+
+The producer checks that its scratch write succeeds and an outside sentinel
+stays unchanged. It then runs four provenance checks and six installer
+and publication tests. Keep logs and generated artifacts out of commits.

@@ -31,7 +31,7 @@ check_deps() {
 }
 
 check_dist() {
-  local cli_path="$repo_root/dist/cli.js"
+  local cli_path="${2:-$repo_root/dist}/cli.js"
 
   if [[ ! -f "$cli_path" ]]; then
     fail "dist/cli.js missing — run npm run build"
@@ -55,7 +55,7 @@ case "$mode" in
     check_deps
     ;;
   --dist-only)
-    check_dist
+    check_dist "$@"
     ;;
   --full)
     check_deps

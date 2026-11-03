@@ -371,7 +371,7 @@
   - **Implementation decision**: One Rust record owner serves the existing Agentbrew and dotfiles callers. Follow the [registered controls](docs/plans/checkup-run-records.md).
   - **Tags**: checkup, state
   - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end.
-  - **Files**: `scripts/checkup.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
+  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
   - **Output**: code
   - **Acceptance**: Preserve prior completed records and rich history. Qualify all three producers, stale recovery, skill decisions and required installed targets.
   - **Hypothesis**: Complete FIRST/TWO cases rise from a predicted 0/6 to 6/6, with zero unsafe writes, stale replays or extra export probes.

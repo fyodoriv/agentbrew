@@ -3,13 +3,30 @@
 # Fast on a quiet day (the gate is cached by input hash), full when anything changed.
 # Run it before a work session and in the weekly checkup (RECURRING.md).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 rc=0
 section() { printf '\n== %s\n' "$1"; }
 # Keep a copy of everything printed: the end of the run turns it into an HTML page.
 log="$(mktemp)"
 exec > >(tee "$log") 2>&1
+
+checkup_id="${CHECKUP_RUN_ID-{{NAME}}}"
+checkup_record_available=0
+checkup_record_incomplete=0
+if ! command -v agentbrew >/dev/null 2>&1; then
+  printf 'checkup record: unavailable (agentbrew is missing)\n'
+elif ! (LC_ALL=C; [[ "$checkup_id" =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]]); then
+  printf 'checkup record: incomplete (set CHECKUP_RUN_ID to a valid project ID)\n'
+  checkup_record_incomplete=1
+else
+  checkup_record_available=1
+  if ! agentbrew checkup-run show "$checkup_id"; then
+    printf 'checkup record: previous run unavailable\n'
+    checkup_record_incomplete=1
+  fi
+  checked_commit="$(git rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || checked_commit=""
+fi
 
 section "Open work (your PRs, unmerged branches, uncommitted files)"
 open_work="${WRAP_UP_SKILL:-$HOME/.claude/skills/wrap-up}/scripts/open-work.sh"
@@ -59,6 +76,21 @@ else
   echo "new-project skill not installed; skipped"
 fi
 
+if [ "$checkup_record_available" = 1 ]; then
+  result=green
+  [ "$rc" = 0 ] || result=degraded
+  if [ -z "$checked_commit" ] ||
+    ! finished_at="$(node -p 'new Date().toISOString()' 2>/dev/null)" ||
+    ! agentbrew checkup-run record "$checkup_id" --finished-at "$finished_at" \
+      --result "$result" --commit "$checkup_id=$checked_commit"; then
+    printf 'checkup record: incomplete\n'
+    checkup_record_incomplete=1
+  fi
+fi
+
+if [ "$rc" = 0 ] && [ "$checkup_record_incomplete" = 1 ]; then
+  rc=2
+fi
 printf '\ncheckup: %s\n' "$([ "$rc" = 0 ] && echo healthy || echo "needs work (see above)")"
 # The HTML page (verdict, blockers, next steps, every section) stays local in .metrics/.
 scripts/report-html.sh "{{NAME}} checkup" "$log" .metrics/checkup.html &&

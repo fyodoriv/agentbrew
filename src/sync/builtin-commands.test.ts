@@ -233,7 +233,7 @@ describe("built-in commands", () => {
 
   it("ships in the npm package: the build copies commands/ into dist/, which package.json publishes", () => {
     expect(readFileSync(join(repoRoot, "tsup.config.ts"), "utf-8")).toContain(
-      'cpSync("commands", "dist/commands", { recursive: true })',
+      'cpSync("commands", join(outDir, "commands"), { recursive: true })',
     );
     const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf-8")) as { files: string[] };
     expect(pkg.files).toContain("dist");

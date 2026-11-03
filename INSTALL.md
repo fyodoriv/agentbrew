@@ -104,6 +104,10 @@ names the fix for any drift left. On a critical error it restores the backup by 
 exits 1. Then tell the person what failed, that their settings are back, and
 offer to open an issue with the output.
 
+On Apple silicon Macs, source builds validate a staged CLI and native helper
+before replacing the checkout’s `dist/` directory in one operation. If the
+build fails before that replacement, the prior build remains available.
+
 ## 5. Finish
 
 To also set up dotfiles and careerbrew in one go, run

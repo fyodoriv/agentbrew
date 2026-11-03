@@ -206,7 +206,7 @@ describe("shipped helper scripts", () => {
     const outside = Object.values(HELPER_SCRIPT_SOURCES).filter((source) => !source.startsWith("templates/"));
 
     for (const source of outside) {
-      expect(tsupConfig).toContain(`copyFileSync("${source}", "dist/${source}")`);
+      expect(tsupConfig).toContain(`copyFileSync("${source}", join(outDir, "${source}"))`);
     }
   });
 });

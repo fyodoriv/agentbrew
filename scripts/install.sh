@@ -227,6 +227,7 @@ home_is_users_home() {
 
 do_restore() {
   local id="${1:-$(latest_backup)}" dir rel plist
+  local preserve_launcher="${2:-0}" exclude=()
   [ -n "$id" ] || { say "No backup found in $BACKUP_ROOT"; return 1; }
   dir="$BACKUP_ROOT/$id"
   [ -f "$dir/files.tar.gz" ] || { say "Backup $id not found in $BACKUP_ROOT"; return 1; }
@@ -247,10 +248,14 @@ do_restore() {
   while IFS= read -r rel; do
     [ -n "$rel" ] && rm -rf "${HOME:?}/$rel"
   done < "$dir/absent.txt"
+  if [ "$preserve_launcher" = 1 ]; then
+    exclude=(--exclude .local/bin/agentbrew)
+  fi
   while IFS= read -r rel; do
+    if [ "$preserve_launcher" = 1 ] && [ "$rel" = .local/bin/agentbrew ]; then continue; fi
     [ -n "$rel" ] && rm -rf "${HOME:?}/$rel"
   done < "$dir/present.txt"
-  (cd "$HOME" && tar -xzf "$dir/files.tar.gz") || return 1
+  (cd "$HOME" && tar ${exclude[@]+"${exclude[@]}"} -xzf "$dir/files.tar.gz") || return 1
   say "  ✓ Restored your settings from backup $id"
 }
 
@@ -347,11 +352,19 @@ if (Number.isFinite(s)) {
 '
 }
 
+launcher_identity() {
+  local path="$HOME/.local/bin/agentbrew" inode target
+  [ -L "$path" ] || return 1
+  inode="$(stat -f '%d:%i:%u:%p' "$path")" || return 1
+  target="$(readlink "$path")" || return 1
+  printf '%s:%s\n' "$inode" "$target"
+}
+
 critical() {
   receipt_finish false "$1"
   say ""
   say "✗ Critical error during $1. Restoring your previous settings..."
-  if do_restore "$BACKUP_ID"; then
+  if do_restore "$BACKUP_ID" "${2:-0}"; then
     say "Your machine is back to how it was before the install."
   else
     say "Automatic restore failed. Restore by hand: bash $REPO_DIR/scripts/install.sh restore $BACKUP_ID"
@@ -386,7 +399,17 @@ cmd_run() {
 
   step "3/7 Build agentbrew"
   if [ -z "${AGENTBREW_INSTALL_CLI:-}" ]; then
-    (cd "$REPO_DIR" && npm ci --no-audit --no-fund && npm run build) || critical "the build"
+    local launcher_before="" preserve_launcher=0
+    if [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] &&
+      grep -qxF .local/bin/agentbrew "$BACKUP_ROOT/$BACKUP_ID/present.txt"; then
+      launcher_before="$(launcher_identity || true)"
+    fi
+    if ! (cd "$REPO_DIR" && npm ci --no-audit --no-fund && npm run build); then
+      if [ -n "$launcher_before" ] && [ "$launcher_before" = "$(launcher_identity || true)" ]; then
+        preserve_launcher=1
+      fi
+      critical "the build" "$preserve_launcher"
+    fi
   else
     say "  (using $AGENTBREW_CMD)"
   fi

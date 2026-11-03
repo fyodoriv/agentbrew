@@ -15,6 +15,7 @@ const BUILD_INPUTS = [
   "tsup.config.ts",
   "rust/checkup-run",
   "scripts/build-checkup-run.sh",
+  "scripts/build-source.sh",
 ];
 
 export const BUILD_INFO_FILE = "build-info.json";

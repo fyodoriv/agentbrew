@@ -2478,6 +2478,52 @@
         "Does not publish the surprise (person, note) to a site the honoree can open",
         "Gets a fresh-context review of the diff and closes each finding before merge"
       ]
+    },
+    {
+      "id": 217,
+      "prompt": "/goal deliver all unblocked UI/UX tasks of my planner app and make its features more connected with data and UX\n\nSynthetic fixture context. TASKS.md lists these ten unblocked UI tasks:\n- Improve sidebar contrast.\n- Align disclosure chevrons.\n- Close the menu on Escape.\n- Fix the event-count plural.\n- Restore focus after closing the dialog.\n- Add a visible keyboard focus ring.\n- Label the icon-only add button.\n- Wrap long event titles.\n- Keep the empty-state button visible on phones.\n- Respect reduced motion in the day switcher.\nA separate task needs the owner's phone and is blocked. Gifts and saved birthday dinners are private from the partner. The agent plans a new home panel that joins gift dates, dinners and cleaning days through one new API route, copying the existing gifts route guard (it checks only that the peer address is 127.0.0.1). The owner exposes the app with a proxy on the Mac, which connects from 127.0.0.1. The full suite is green.",
+      "expected_output": "The agent prints a contract that names the 10 tasks and leaves out the owner-blocked ones, batches them into one PR, and adds the joined panel with a unit and a UI test. Before merging the green PR it asks a fresh-context reviewer, which finds that a proxy on the Mac passes the copied guard; the agent switches the route to the strict local-browser helper (loopback socket, local Host, no forwarding header), adds a test for no socket, a tailnet peer and a forwarded call, requests a fresh review after the fix, re-runs the gate, and files the weaker sibling route as a task instead of claiming it is safe.",
+      "expectations": [
+        "Contract names all ten unblocked tasks and excludes the owner-blocked task",
+        "Joined panel ships with unit and UI tests",
+        "Fresh-context review runs on the green PR before merge",
+        "A copied guard is re-checked against the strict helper, not trusted",
+        "A test covers no-socket, off-Mac and forwarded calls",
+        "Fresh review and gate run after the fix"
+      ]
+    },
+    {
+      "id": 218,
+      "prompt": "/goal make the export command faster\n\nA background checkup is running. A previous measurement took 57 s during a checkup and 11 s in a quiet session. No fresh baseline or follow-up exists.",
+      "expected_output": "A timing plan that waits for exclusive admission or a quiet machine before measuring, compares the same command and inputs in quiet conditions, and reports two fresh timings after execution.",
+      "expectations": [
+        "Waits for the background checkup or queues with heavy-run --exclusive before taking a baseline.",
+        "Measures the same command and inputs before and after under the same quiet conditions and discards samples that overlap heavy work.",
+        "Reports two fresh timings and treats 57 s and 11 s as context. Uses neither historical value as a fresh sample.",
+        "If profiling is useful, runs it separately from the timed samples."
+      ]
+    },
+    {
+      "id": 219,
+      "prompt": "/goal absorb all skills from <team skills repo>, avoid duplication, and add it as an overlay source. The sync reports that the source was applied, but no expected skill link exists.",
+      "expected_output": "An overlap review, an authorized overlay source, and direct readback showing where every expected installed skill points.",
+      "expectations": [
+        "Checks each skill for overlap before edits and records that no skill text copied into the parent repository.",
+        "Adds the source to the overlay with a red test for the owner allowlist and a green test after the configuration change.",
+        "Runs agentbrew install <source> explicitly, then uses readlink ~/.claude/skills/<name> for every skill to prove its installed target. The sync log alone fails as evidence.",
+        "Routes reusable guidance from overlaps to the owning parent app in one deduplicated issue, under the repository's publishing rules."
+      ]
+    },
+    {
+      "id": 220,
+      "prompt": "/goal build a POC slash command that scans chat threads, keeps a private priority list, and updates a dashboard artifact. The user is available. The first representative sync shows a resolved thread with no status suggestion.",
+      "expected_output": "A private-data-safe representative run, a compatible artifact fragment, a red then green regression test, and a clear interface decision before delivery.",
+      "expectations": [
+        "Performs the real-data run before the PR and records item titles, group counts, and the artifact URL in private evidence. Uses only approved or synthetic details in public proof.",
+        "Generates a page fragment without a doctype or html, head, or body wrappers. Includes safe-area side gutters and color-scheme in dark blocks.",
+        "Reproduces the resolved thread with no suggestion on first sync in a failing test before fixing it. Reruns that test after the fix.",
+        "Uses one question round for interface or naming choices that change the deliverable, or records an assumed choice as my choice with the reason."
+      ]
     }
   ]
 }

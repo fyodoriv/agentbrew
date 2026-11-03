@@ -2,6 +2,7 @@ local/
 .idea/
 node_modules/
 dist/
+/.agentbrew-build.*
 coverage/
 tsconfig.tsbuildinfo
 ~

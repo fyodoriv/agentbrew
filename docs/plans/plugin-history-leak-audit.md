@@ -98,9 +98,10 @@ must expose only fixed outer exit 2, with no clean summary.
 Run only after a docs prediction commit and fixture review. Fixture test
 name filters refer to proposed tests in the new history test file. Fixture
 runner pins the already installed 8.30.1 binary and runs inside scratch.
+The calibration is opt-in. The ordinary suite does not require Gitleaks.
 
 ```sh
-JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
+HISTORY_SCANNER_CALIBRATION=1 JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
   src/plugins/leak-audit-history.test.ts -t '564 scanner calibration'
 JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
   src/plugins/leak-audit-history.test.ts src/plugins/leak-audit.test.ts
@@ -132,3 +133,61 @@ https://github.com/gitleaks/gitleaks/tree/v8.30.1/sources.
 ## Production admission
 
 The synthetic caps apply only to calibration. Before real-repository admission, separately register and prove source enumeration, Git subprocess and object expansion, mirror creation, scanner work and cleanup bounds. A size check after cloning is insufficient. Qualify env regex compatibility, complete parent and path enumeration, source drift and binary handling. Refusal cannot satisfy the positive all-history criterion for a supported repository. No real-repository audit or release approval follows from the fixture result.
+
+## Byte-admission fixture transfer
+
+This preparation transfers the standalone private Rust fixture to
+`rust/history-audit-prep`. It adds no production dependency, command,
+installer step or default-suite requirement. The npm package does not
+ship the fixture. The issue remains open.
+
+Goal: retain repeatable evidence for bounded byte admission. Question:
+does the same standalone package produce the same results in the source
+tree? The private, offline, network-denied run on Darwin arm64 passed
+9/9. Predict 9/9 with zero ignored or filtered cases after transfer.
+Require byte-identical manifest, lock, Rust test and all seed files.
+The expected test source SHA-256 is
+`53e313991b675e17a5f16cf07341e9f2630a2eb08d149a03c848b12995add503`.
+The lock SHA-256 is
+`364bf66ab29f1be278fada19113685d09914c2c0737604c2226c55dc742ec55c`.
+Pivot on byte drift, fewer than 9 passes, or an unexpected dependency,
+fixture path, write, disclosure or real-repository access.
+
+| Case | Required result |
+|---|---|
+| A01 | Decode all eight sealed packed-ref names, including an annotated tag and a custom ref. |
+| A02 | Refuse the ninth ref before dispatching an object. |
+| A03 | Refuse a 4 KiB plus one byte ref file before parsing it. |
+| A04 | Verify the size, type, complete zlib stream and digest of the known loose blob. |
+| A05 | Refuse the declared 64 KiB payload before continuing past the 32-byte header probe. |
+| A06 | Refuse the false small header without retaining a decoded record. |
+| A07 | Read the held source after rename without accepting the replacement. |
+| A08 | Refuse a leaf changed between the deterministic capture barriers. |
+| A09 | Refuse the small packed delta before starting the loose-object decoder. |
+
+Run only with an already qualified Darwin arm64 Rust toolchain and a
+private Cargo cache. Check the package lock and the target feature graph
+before compiling. The exact miniz_oxide 0.8.9 graph must omit
+`with-alloc`. Run a separate compile-only pass with `--no-run` in place
+of the test-thread options. Use existing private temporary and target
+directories outside the checkout.
+
+```sh
+CARGO_HOME="$HISTORY_PREP_CARGO_HOME" CARGO_TARGET_DIR="$HISTORY_PREP_TARGET" \
+  TMPDIR="$HISTORY_PREP_TMP" JOBS=1 CARGO_BUILD_JOBS=1 heavy-run \
+  /usr/bin/sandbox-exec -p '(version 1) (allow default) (deny network*)' \
+  cargo test --offline --locked --manifest-path rust/history-audit-prep/Cargo.toml \
+  --target aarch64-apple-darwin --test admission -- --test-threads=1
+JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.9 heavy-run npm run verify
+```
+
+Keep the original scanner calibration as separate evidence. The Rust
+fixture checks sealed inputs only. It leaves loose and packed ref
+precedence, effective all-ref coverage, packed object expansion and an
+atomic or writer-coordinated production snapshot unresolved. A refusal
+on packed input proves the boundary of the fixture. It cannot satisfy
+the packed-history requirement. Never use this fixture to admit a real
+repository.
+
+Anchors are the issue 564 fixture registration and Basili, Caldiera and
+Rombach (1994), Goal Question Metric.

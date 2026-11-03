@@ -202,12 +202,12 @@
   - **ID**: scheduled-repair-queue-admission
   - **Tags**: stability, deployment-infra, agents
   - **Mode**: AFK
-  - **Details**: The LaunchAgent currently starts Node and `fix` directly. Repair runs sync and starts configured MCP probes before the later load-based healing deferral. A caller's heavy-run reservation, nice level and dotfiles lock do not transfer through launchd. Restoring RunAtLoad therefore starts unadmitted work and blocks the real operation in [the preview guard plan](docs/plans/deployment-preview-only-guard.md). Wrap the existing scheduled route in the configured shared queue; do not build another scheduler or treat copied lease variables as ownership. Keep the queue command, Node identity, argv, cwd and environment policy explicit at the per-user scheduler configuration boundary.
+  - **Details**: [PR #690](https://github.com/fyodoriv/agentbrew/pull/690) delivered the configurable scheduled queue route and its refusal controls. The remaining work is the operator handoff. Register and verify a scratch test that releases the outer reservation before it waits for the new queued job. Keep the installed launchd proof separate. Preserve Node identity, argv, cwd, interval, logs and privacy settings. See the [handoff and rollout boundaries](docs/plans/scheduled-repair-queue-admission.md#rollout-and-security).
   - **Files**: `src/sync/launchagent.ts`, `src/sync/scheduler-paths.ts`, their tests, `src/core/user-scheduler.ts`, configuration/doctor docs; proposed queue-route controls in `src/sync/launchagent-queue.test.ts`
   - **Output**: code
   - **Acceptance**: a configured background repair cannot start sync or MCP probes before its own verified queue admission and priority; missing or rejected configured queue commands fail closed without direct-Node fallback. Preserve approved Node selection, working folder, interval, logs, enabled state and native/privacy choices. An independent job gets its own admission; no caller lease is copied or cleared to force nested admission. A controller holding an exclusive lease releases it before waiting for the newly queued job, so restoration cannot deadlock. Prove the handoff with owned synthetic work before changing the real job.
   - **Hypothesis**: the queued scheduler adapter reduces unadmitted repair starts in the fixed direct-Node control from the predicted one to zero; queue rejection also produces zero repair/probe starts, with no changed owner capacity or scheduler policy.
-  - **Measurement**: first register the finite launcher/admission/handoff controls and record actual unchanged-source red, then run `heavy-run npx vitest run src/sync/launchagent-queue.test.ts src/sync/scheduler-paths.test.ts --maxWorkers=1` and the normal delivery gate. The queue test file is proposed, not present at registration. Separate actual queue wait from job execution; a live launchd proof uses only an owned throwaway job and may not rely on a fabricated outer reservation.
+  - **Measurement**: the source controls are `heavy-run npx vitest run src/sync/launchagent-queue.test.ts src/sync/scheduler-paths.test.ts src/sync/scheduled-repair-policy.test.ts --maxWorkers=1`. Register exact synthetic handoff inputs and command before implementation. Run the owned scratch handoff before any live launchd proof. Measure actual release and admission separately from repair completion.
   - **Success**: zero unadmitted repair/probe starts, zero direct fallbacks after configured queue failure, zero lost or changed scheduler/private settings, and all positive/negative ownership and post-release handoff controls pass.
   - **Pivot**: any bypass, forged lease acceptance, pre-admission work, deadlock, private-output disclosure or policy change rejects the adapter. Reuse the existing queue boundary rather than weakening its ownership or capacity checks.
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Forsgren, Humble and Kim (2018), stability; current launchagent, scheduler-paths, repair and MCP heal call paths.
@@ -232,19 +232,6 @@
   - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
 
 ## P2
-
-- [ ] Measure fetch routing in both checkup callers before adding the native helper
-  - **ID**: fetch-repos-caller-contract
-  - **Tags**: checkup, git, verification
-  - **Mode**: AFK
-  - **Details**: Issue #692. Register current wrap-up and dotfiles inventory routing with finite local fixtures. See [the caller contract](docs/plans/fetch-repos-caller-contract.md).
-  - **Output**: code
-  - **Acceptance**: Preserve both no-fetch flags, checkout eligibility, stale warnings and caller exits. Retain native issue acceptance separately.
-  - **Hypothesis**: The fixed matrix yields 8/8 complete receipts, ten fetch attempts, two stale warnings and zero off-fixture operations.
-  - **Measurement**: Run the two scoped commands in the [caller contract](docs/plans/fetch-repos-caller-contract.md) and inspect the receipt matrix.
-  - **Success**: 8/8 exact decisions, 4/4 recorder calibration decisions, zero setup errors and zero off-fixture operations. Required repository gates pass.
-  - **Pivot**: Reject missing or duplicate receipts, incorrect routes, hidden warnings or unexpected actions. Preserve inconclusive setup failures.
-  - **Anchor**: Issue #692 and Basili, Caldiera and Rombach 1994 (GQM)
 
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
 
@@ -384,7 +371,7 @@
   - **Implementation decision**: One Rust record owner serves the existing Agentbrew and dotfiles callers. Follow the [registered controls](docs/plans/checkup-run-records.md).
   - **Tags**: checkup, state
   - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end.
-  - **Files**: `scripts/checkup.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
+  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
   - **Output**: code
   - **Acceptance**: Preserve prior completed records and rich history. Qualify all three producers, stale recovery, skill decisions and required installed targets.
   - **Hypothesis**: Complete FIRST/TWO cases rise from a predicted 0/6 to 6/6, with zero unsafe writes, stale replays or extra export probes.
@@ -411,9 +398,9 @@
 - [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
   - **ID**: page-zero-errors-skill
   - **Mode**: AFK
-  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. A bounded public-source search found no recoverable implementation. Prepare an adapter over maintained browser transport; do not restore a deleted recommendation or assume an unrecovered license. See [preparation routing](docs/plans/owned-issue-preparation.md).
+  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. The [Rust reducer and loopback preparation](docs/plans/page-error-loopback.md) tests bounded synthetic capture. Real Chrome admission, session coverage, and capture cutoff still need proof before an adapter can report success.
   - **Tags**: browser, skills, verification
-  - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
+  - **Details**: Issue #563 requires a skill and a capture command that exits non-zero on console errors, exceptions, or 4xx/5xx requests. Implement the capture in Rust. Sign-in and gateway hosts are settings.
   - **Files**: `skill-plugins/`, README skill list
   - **Output**: code
   - **Acceptance**: as in issue #563

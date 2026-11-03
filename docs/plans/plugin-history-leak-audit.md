@@ -98,9 +98,10 @@ must expose only fixed outer exit 2, with no clean summary.
 Run only after a docs prediction commit and fixture review. Fixture test
 name filters refer to proposed tests in the new history test file. Fixture
 runner pins the already installed 8.30.1 binary and runs inside scratch.
+The calibration is opt-in. The ordinary suite does not require Gitleaks.
 
 ```sh
-JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
+HISTORY_SCANNER_CALIBRATION=1 JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
   src/plugins/leak-audit-history.test.ts -t '564 scanner calibration'
 JOBS=1 heavy-run npx vitest run --maxWorkers=1 \
   src/plugins/leak-audit-history.test.ts src/plugins/leak-audit.test.ts

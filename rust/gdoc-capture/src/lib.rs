@@ -246,3 +246,6 @@ pub fn capture(owner: &mut impl Owner, output: &mut impl Output, run: &str) -> R
     captured?;
     output.publish(PAGES)
 }
+
+pub mod output;
+pub mod wire;

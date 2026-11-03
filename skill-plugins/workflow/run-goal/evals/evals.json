@@ -2491,6 +2491,28 @@
         "A test covers no-socket, off-Mac and forwarded calls",
         "Fresh review and gate run after the fix"
       ]
+    },
+    {
+      "id": 219,
+      "prompt": "/goal absorb all skills from <team skills repo>, avoid duplication, and add it as an overlay source. The sync reports that the source was applied, but no expected skill link exists.",
+      "expected_output": "An overlap review, an authorized overlay source, and direct readback showing where every expected installed skill points.",
+      "expectations": [
+        "Checks each skill for overlap before edits and records that no skill text copied into the parent repository.",
+        "Adds the source to the overlay with a red test for the owner allowlist and a green test after the configuration change.",
+        "Runs agentbrew install <source> explicitly, then uses readlink ~/.claude/skills/<name> for every skill to prove its installed target. The sync log alone fails as evidence.",
+        "Routes reusable guidance from overlaps to the owning parent app in one deduplicated issue, under the repository's publishing rules."
+      ]
+    },
+    {
+      "id": 220,
+      "prompt": "/goal build a POC slash command that scans chat threads, keeps a private priority list, and updates a dashboard artifact. The user is available. The first representative sync shows a resolved thread with no status suggestion.",
+      "expected_output": "A private-data-safe representative run, a compatible artifact fragment, a red then green regression test, and a clear interface decision before delivery.",
+      "expectations": [
+        "Performs the real-data run before the PR and records item titles, group counts, and the artifact URL in private evidence. Uses only approved or synthetic details in public proof.",
+        "Generates a page fragment without a doctype or html, head, or body wrappers. Includes safe-area side gutters and color-scheme in dark blocks.",
+        "Reproduces the resolved thread with no suggestion on first sync in a failing test before fixing it. Reruns that test after the fix.",
+        "Uses one question round for interface or naming choices that change the deliverable, or records an assumed choice as my choice with the reason."
+      ]
     }
   ]
 }

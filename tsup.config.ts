@@ -23,6 +23,11 @@ export default defineConfig({
     ].join("\n"),
   },
   onSuccess: async () => {
+    if (process.platform === "darwin" && process.arch === "arm64") {
+      const nativeDir = "dist/native/darwin-arm64";
+      mkdirSync(nativeDir, { recursive: true });
+      copyFileSync("rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run", `${nativeDir}/checkup-run`);
+    }
     copyFileSync("src/catalog.yaml", "dist/catalog.yaml");
     // catalog-overlay.yaml was extracted to the agentbrew-acme team overlay
     // repo (PR #987). Operators load it via `agentbrew team set <overlay-url>`;

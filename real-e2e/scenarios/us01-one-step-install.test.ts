@@ -25,6 +25,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { expectInstalledCheckupRun } from "./checkup-run-installed.js";
 
 const REPO = resolve(import.meta.dirname, "..", "..");
 const COLD = process.env.E2E_COLD === "1";
@@ -133,6 +134,7 @@ describe.concurrent(`us01 one-step install (${COLD ? "cold: npm ci + build" : "f
       expect(readFileSync(join(home, ".zshrc"), "utf-8")).toBe("# my zshrc\n");
       expect(existsSync(join(home, "Library", "LaunchAgents", "com.agentbrew.check.plist"))).toBe(false);
       expect(existsSync(join(home, ".local", "bin", "agentbrew"))).toBe(true);
+      if (COLD) expectInstalledCheckupRun(join(home, ".local", "bin", "agentbrew"), root);
       expect(out).toContain("agentbrew contribute");
       // "No" to the recommended set means no downloads and no skill installs.
       expect(out).not.toMatch(/Fetching /);

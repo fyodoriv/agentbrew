@@ -18,7 +18,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "prebuild": "bash scripts/build-pipeline-guard.sh --deps-only",
+    "prebuild": "bash scripts/build-pipeline-guard.sh --deps-only && bash scripts/build-checkup-run.sh",
     "build": "tsup",
     "postbuild": "bash scripts/build-pipeline-guard.sh --dist-only",
     "dev": "tsx src/cli.ts",

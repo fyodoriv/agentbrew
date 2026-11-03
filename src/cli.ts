@@ -15,6 +15,7 @@ if (nodeMajor < 20) {
 
 import chalk from "chalk";
 import { Command } from "commander";
+import { registerCheckupRunCommand } from "./checkup-run-command.js";
 import {
   filterSyncModules,
   formatGroupedCommandSections,
@@ -439,6 +440,7 @@ export function buildProgram(): Command {
   configureProgramRoot(program);
   registerSyncCommand(program);
   registerCoreCommands(program);
+  registerCheckupRunCommand(program);
   registerConfigCommand(program);
   program
     .command("audit-skills")

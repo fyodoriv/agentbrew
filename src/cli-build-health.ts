@@ -13,6 +13,8 @@ const BUILD_INPUTS = [
   "package.json",
   "package-lock.json",
   "tsup.config.ts",
+  "rust/checkup-run",
+  "scripts/build-checkup-run.sh",
 ];
 
 export const BUILD_INFO_FILE = "build-info.json";

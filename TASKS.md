@@ -398,9 +398,9 @@
 - [ ] page-zero-errors skill: a CDP gate for console and network errors (issue #563)
   - **ID**: page-zero-errors-skill
   - **Mode**: AFK
-  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. A bounded public-source search found no recoverable implementation. Prepare an adapter over maintained browser transport; do not restore a deleted recommendation or assume an unrecovered license. See [preparation routing](docs/plans/owned-issue-preparation.md).
+  - **Implementation decision**: The former upstream was removed from the catalog in `43465de` and remains unavailable. The [Rust reducer and loopback preparation](docs/plans/page-error-loopback.md) tests bounded synthetic capture. Real Chrome admission, session coverage, and capture cutoff still need proof before an adapter can report success.
   - **Tags**: browser, skills, verification
-  - **Details**: Issue #563: a skill plus a Node CDP capture script and a shell wrapper that exits non-zero on console errors, exceptions, or 4xx/5xx requests; sign-in and gateway hosts are settings.
+  - **Details**: Issue #563 requires a skill and a capture command that exits non-zero on console errors, exceptions, or 4xx/5xx requests. Implement the capture in Rust. Sign-in and gateway hosts are settings.
   - **Files**: `skill-plugins/`, README skill list
   - **Output**: code
   - **Acceptance**: as in issue #563

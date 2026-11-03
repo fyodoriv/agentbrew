@@ -103,3 +103,13 @@ the fixture, and all four recorder controls passed.
 
 The baseline binds caller routing. Native timeout and cleanup require
 their own process tests before activation.
+
+## Caller baseline closeout
+
+[Agentbrew PR #718](https://github.com/fyodoriv/agentbrew/pull/718) and
+[Dotfiles PR #445](https://github.com/fyodoriv/dotfiles/pull/445) delivered
+the two baselines. The eight routing cases matched. Each caller intercepted
+five fetches, attributed one stale warning, and made zero off-fixture calls.
+All four recorder controls passed in each repository. Agentbrew passed all
+20 verification steps. Dotfiles passed `make check`. The native worker
+and its integration remain open in [issue #692](https://github.com/fyodoriv/agentbrew/issues/692).

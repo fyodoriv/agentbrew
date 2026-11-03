@@ -247,6 +247,19 @@
 
 ## P2
 
+- [ ] Measure fetch routing in both checkup callers before adding the native helper
+  - **ID**: fetch-repos-caller-contract
+  - **Tags**: checkup, git, verification
+  - **Mode**: AFK
+  - **Details**: Issue #692. Register current wrap-up and dotfiles inventory routing with finite local fixtures. See [the caller contract](docs/plans/fetch-repos-caller-contract.md).
+  - **Output**: code
+  - **Acceptance**: Preserve both no-fetch flags, checkout eligibility, stale warnings and caller exits. Retain native issue acceptance separately.
+  - **Hypothesis**: The fixed matrix yields 8/8 complete receipts, ten fetch attempts, two stale warnings and zero off-fixture operations.
+  - **Measurement**: Run the two scoped commands in the [caller contract](docs/plans/fetch-repos-caller-contract.md) and inspect the receipt matrix.
+  - **Success**: 8/8 exact decisions, 4/4 recorder calibration decisions, zero setup errors and zero off-fixture operations. Required repository gates pass.
+  - **Pivot**: Reject missing or duplicate receipts, incorrect routes, hidden warnings or unexpected actions. Preserve inconclusive setup failures.
+  - **Anchor**: Issue #692 and Basili, Caldiera and Rombach 1994 (GQM)
+
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
 
 - [ ] Account for every executable before migrating it

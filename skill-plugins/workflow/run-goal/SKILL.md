@@ -125,6 +125,7 @@ So:
 
 ## Phase 2 — Goal contract
 
+Estimate the full goal before execution using [goal estimation](references/goal-estimation.md).
 Write the contract in the chat before you change anything. Fill in the template in
 [references/goal-contract.md](references/goal-contract.md). Short version:
 
@@ -323,7 +324,9 @@ waiting workers, and duplicate PRs" in [references/parallel-workers.md](referenc
 
 ## Phase 6 — Retro and skill upkeep
 
-Do this every time, also after a BLOCKED stop. Details:
+Do this every time, also after a BLOCKED stop. Compare the original estimate
+with actuals and update the estimation method as described in
+[goal estimation](references/goal-estimation.md). Details:
 [references/retro.md](references/retro.md).
 
 1. **What went wrong**: errors, wrong assumptions, wasted loops, and blocked
@@ -378,21 +381,7 @@ blockers (each explained in full, as in Phase 4), and what to do next. Only
 without an Artifact tool or with private data, write a self-contained HTML
 file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
-In chat, give the link, a one-line result, and the next-action questions, each
-in full. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
+In chat, share the report link, verified result, key lessons, and tooling updates.
+Offer the interactive next actions in the goal report format. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
 
-```markdown
-## Goal result: met | partly met | blocked
-**Goal**: <raw goal text, shortened if long>
-**Outcome**: <one sentence>
-
-| Done when | Status | Evidence |
-|---|---|---|
-
-**Metric**: <baseline> → <now> (target <target>) via `<command>`
-**Changes**: <PRs, commits, files>
-**What went wrong**: <bullets> · **What to improve**: <bullets>
-**Assumptions**: <each marked "my choice" (why, what data would replace it), "from <source>", or "you said">
-**Skills updated**: <every skill used, run-goal included → its edit or new eval + PR, or the task for a third-party skill>
-**Needed from you**: <the review or the one action, or "nothing">
-```
+Use the [goal report format](references/goal-report.md) for the report and chat updates.

@@ -191,7 +191,7 @@ download or search a private npm cache for a substitute.
 Use the same registered commands with these test-only environment additions:
 
 ```sh
-LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts
+LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 heavy-run npx vitest run --reporter=default --silent=false --maxWorkers=1 src/build-pipeline-guard.test.ts src/worktree-deps.test.ts src/scripts/verify-cache.test.ts
 LOCKED_INSTALL_OBSERVATION=1 LOCKED_INSTALL_OBSERVATION_NPM_CLI="$NPM10_CLI" JOBS=1 NO_CACHE=1 heavy-run npm run verify
 ```
 
@@ -200,6 +200,16 @@ committed. Each scenario/variant emits one `LOCKED_INSTALL_OBSERVATION` JSON
 line with actual decisions and completeness. Bounded raw synthetic command
 responses use a separate `LOCKED_INSTALL_CAPABILITY` JSON line. Retain the
 complete log privately. Public evidence uses aggregate fields only.
+
+Use the explicit default reporter for the focused receipt capture. The pinned
+Vitest agent reporter selects passing-console suppression; changing only the
+silent option does not override its reporter option. The first selected attempt
+passed its tests but retained zero observation lines where eleven were required.
+Its classification result is inconclusive, not zero unsafe permits. Preserve
+that attempt. Correct only the reporter selection and repeat the same sealed
+inputs; do not change fixture bytes, classifications or required decisions.
+The full gate remains a compatibility check; the focused log supplies the
+complete durable measurement receipts.
 
 Recorder completeness and comparison-evidence completeness are distinct. A
 complete observation of a malformed or missing npm response can establish an

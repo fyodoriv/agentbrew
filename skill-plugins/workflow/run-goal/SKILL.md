@@ -93,7 +93,10 @@ So:
 5. Find the measurement: an existing test, lint, script, counter, or query
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time
-   goes. A failed baseline run is the first finding, not a number: fix or
+   goes. Use `heavy-run --exclusive` before the first sample where available.
+   Or wait for other heavy jobs. Use the same quiet conditions for both runs.
+   If jobs overlap, discard an overlapping sample and repeat it. Then report both observed timings.
+   A failed baseline run is the first finding, not a number: fix or
    report the cause before you compare. Read its log: an EPERM on a cache or
    a registry is the sandbox, so build once outside it, record the step, then
    compare. A strict score that fails on the unchanged base is pre-existing.
@@ -151,7 +154,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   finish the Suggestions, check three axes and name the one you apply.
   **Altitude**: the goal beyond the goal ("keep the suite green", not "fix
   this test"). **Depth**: the rawest data, the expert's instruments, and a
-  judge other than you. **Range**: one method from another field. Offer a
+  judge other than you. Use `python -X importtime` or `python -m cProfile`
+  outside the timed samples. **Range**: one method from another field. Offer a
   bigger goal as a suggestion; never widen scope without the user's yes.
 
 Take the baseline measurement now, while nothing has changed yet.

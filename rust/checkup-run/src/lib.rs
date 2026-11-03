@@ -464,6 +464,55 @@ impl Store {
         self.publish(checkup, record, |_| Ok(()))
     }
 
+    /// Run an in-process operation while a matching record's native writer
+    /// lock is held. The operation must not call this store's writer.
+    pub fn with_current<T>(
+        &self,
+        checkup: &str,
+        expected_hash: &str,
+        operation: impl FnOnce(&Record) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        if !valid_label(checkup)
+            || expected_hash.len() != 64
+            || !expected_hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err(Error::InvalidInput);
+        }
+        let dir = self.directory(false)?.ok_or(Error::StaleRun)?;
+        let lock_name = format!(".{checkup}.lock");
+        let identity = leaf_identity(&dir, &lock_name)?.ok_or(Error::StaleRun)?;
+        let lock = fs::openat(&dir, lock_name.as_str(), PRIVATE_READ, Mode::empty())
+            .map_err(target_error)?;
+        if file_identity(fs::fstat(&lock).map_err(target_error)?)? != identity {
+            return Err(Error::UnsafeTarget);
+        }
+        fs::flock(&lock, FlockOperation::NonBlockingLockShared).map_err(|error| {
+            if error == Errno::WOULDBLOCK {
+                Error::Busy
+            } else {
+                target_error(error)
+            }
+        })?;
+        if leaf_identity(&dir, &lock_name)? != Some(identity) {
+            return Err(Error::UnsafeTarget);
+        }
+        let held = self.directory(false)?.ok_or(Error::UnsafeTarget)?;
+        if Identity::from(fs::fstat(&dir).map_err(target_error)?)
+            != Identity::from(fs::fstat(&held).map_err(target_error)?)
+        {
+            return Err(Error::UnsafeTarget);
+        }
+        let saved = read_record(&dir, &format!("{checkup}.json"))?.ok_or(Error::StaleRun)?;
+        if saved.hash != expected_hash {
+            return Err(Error::StaleRun);
+        }
+        let result = operation(&saved.record);
+        drop(lock);
+        result
+    }
+
     fn publish(
         &self,
         checkup: &str,

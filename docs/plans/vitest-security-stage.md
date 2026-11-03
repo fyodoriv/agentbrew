@@ -404,3 +404,15 @@ Anchors: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et a
 [install](https://docs.npmjs.com/cli/v10/commands/npm-install/),
 [lockfile](https://docs.npmjs.com/cli/v10/configuring-npm/package-lock-json/) and
 [clean-install](https://docs.npmjs.com/cli/v10/commands/npm-ci/) contracts.
+
+## Stage V3 result
+
+PR #712 merged as `719eabba6d1df476c499b0bf434493db4fe44b1b`.
+The pinned installation and lock comparisons passed. The uncached full gate
+passed all 20 steps, with 6,209 tests passed and five skipped in the main
+suite. The cold source and npm package install scenarios passed.
+
+The selected unsafe rows fell from two to zero. The original cohort fell
+from three to one, and the recent cohort stayed at two. GitHub confirmed
+both selected alerts 149 and 150 as fixed at 2026-11-03 13:56:30 UTC.
+The remaining dependency remediation and peer compatibility tasks stay open.

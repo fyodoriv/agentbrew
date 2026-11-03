@@ -3,9 +3,10 @@
 ## Goal and prior evidence
 
 Registered 2026-11-02 from `fdb9b9c224e025aad69c9f872b0e17496248bc45`.
-Task: `dependency-vitest-security-stage`. This is prediction only: no Stage V
-baseline, updater, installation or tests have run. Read-only primary registry
-and advisory metadata establish candidate compatibility, not remediation.
+Task: `dependency-vitest-security-stage`. The initial registration preceded its
+baseline and first package action. The direct-generator amendment below records
+those outcomes and registers a new method before execution. No Stage V patch,
+installation or remediation is claimed.
 
 Goal: remove the two remaining Vitest advisory ranges through the supported
 exact Vitest/coverage pair. Question: can the coupled patch remove both rows
@@ -13,9 +14,10 @@ without unrelated dependency movement or weaker installation evidence?
 Metric: selected unsafe advisory/range rows 149/150, counted once per row if
 any locked copy is affected. Predict 2 to 0; the original nine move from 3 to 1,
 leaving only 162. The separate new ten remain unsafe 2, IDs 172/174. These
-starting values are [Stage S's recorded result](development-patch-alerts.md#post-merge-fixed-status-confirmation),
-not a newly executed Stage V baseline. Aggregate npm/GitHub alert counts are
-informational. Original all-nine-to-zero and strict peer acceptance stay open.
+starting values first came from [Stage S's recorded result](development-patch-alerts.md#post-merge-fixed-status-confirmation).
+The accepted Stage V baseline below confirms them. Aggregate npm/GitHub alert
+counts are informational. Original all-nine-to-zero and strict peer acceptance
+stay open.
 
 ## Exact candidate and protected boundary
 
@@ -45,12 +47,14 @@ omit optional packages or mutate canonical/shared/sibling installations.
 Vitest's published Node contract stays unchanged; the pre-existing Node 22+
 development-stack requirement does not prove Node 20 development support.
 
-Use the original plan's named lock-only npm action, pinned to qualified npm
-10.9.9. Stage S's nine-scalar hand-edit permission does not apply here. Resolver
-failure, unavailable metadata or movement outside this boundary stops this
-approach. No hand edit, broad updater, audit fix, forced/legacy peer option,
-new override, root downgrade or automatic retry is authorized. Another method
-needs a separately committed registration before new outcomes.
+The original generator requested npm 10.9.9 through npx. The direct-generator
+amendment below supersedes only that generator requirement for its one new
+attempt. Normal npm 10.9.9 installation and qualification stay unchanged.
+Stage S's nine-scalar hand-edit permission does not apply here. Failure,
+unavailable metadata or movement outside this boundary stops the method.
+No hand edit, broad updater, audit fix, forced/legacy peer option, new override,
+root downgrade, fallback or automatic retry is authorized. Another method needs
+a separately committed registration before new outcomes.
 
 Primary evidence: [Vitest 4.1.12](https://registry.npmjs.org/vitest/4.1.12),
 [coverage-v8](https://registry.npmjs.org/@vitest%2Fcoverage-v8/4.1.12),
@@ -136,8 +140,9 @@ NODE
    comparison. Capture published 4.1.12 metadata for all nine fixed names,
    the query above, optional-inclusive audit and lock/installed tree outputs.
    The baseline must preserve the recorded selected 2/original 3/recent 2.
-3. **Generate once.** Only after baseline review, run the original named pair
-   action below in an owned isolated candidate. Review the complete diff and
+3. **Generate once per registered method.** Only after baseline review and the
+   direct-generator amendment's commit, run its named pair action below in an
+   owned isolated candidate. Review the complete diff and
    every required linked manifest field; do not assume a named install touches
    only those records. Reject extra keys, packages, edges or protected changes.
 4. **Qualify.** Ensure task-owned real `node_modules` has no active user. Use
@@ -165,11 +170,87 @@ JOBS=1 heavy-run "${STAGE_NPM10:?}" ls --all --include=optional --json > "${STAG
 JOBS=1 LOCKFILE_SYNC_NPM=npm@10.9.9 heavy-run bash scripts/check-lockfile-sync.sh
 ```
 
-The first and only proposed updater is:
+The original npx generator attempt used this command. It failed; preserve its
+receipts and do not rerun it:
 
 ```sh
 JOBS=1 heavy-run npx --yes --prefer-offline --package=npm@10.9.9 -- npm install --package-lock-only --ignore-scripts --include=optional --save-dev --save-exact vitest@4.1.12 @vitest/coverage-v8@4.1.12
 ```
+
+## Direct maintained-generator amendment
+
+Registered before this new method's first attempt. Reuse the accepted baseline
+and sealed source/manifest inputs. Do not reinterpret the first failure as a
+successful updater or change any cohort, query byte or success threshold.
+
+The accepted baseline used Node 24.21.0 and npm 10.9.9. Selected rows were 2/2,
+original rows 3/9, and recent rows 2/10; query exit 1. Audit exited 1 with valid
+evidence. The lock-only one-problem and installed six-problem results exited 1;
+their complete problem lists and error objects matched prior evidence exactly.
+Pinned npm10 lock sync exited 0. All nine physical family members were 4.1.11;
+27 hidden-lock fields and the copied lock stamp matched source. The nine full
+published 4.1.12 manifests were bound before measurement. Source, module metadata
+and canonical samples stayed unchanged. The full graph remains non-green.
+
+The first generator exited 1 without changing package or lock. Its Chokidar
+optional-peer ERESOLVE text is a warning. The terminal error is
+`Cannot read properties of null (reading 'edgesOut')`. The referenced debug log
+was absent, so no stack is available. The cached npm10 version was observed,
+but the mutation child's version was not. Preserve this evidence boundary.
+
+Primary [npm10 peer-set source](https://github.com/npm/cli/blob/v10.9.9/workspaces/arborist/lib/arborist/build-ideal-tree.js)
+accesses `node.parent.edgesOut` without a detached-parent guard. The
+[npm12 source](https://github.com/npm/cli/blob/v12.2.1/workspaces/arborist/lib/arborist/build-ideal-tree.js)
+checks for a missing parent before that access and after recursive replacement.
+This supports a maintained-generator experiment; it does not prove the failed
+attempt's stack or guarantee success. Installed npm 12.2.1 contains Arborist
+10.0.4, compared with cached npm 10.9.9's Arborist 8.0.5.
+
+The [npx entry point](https://github.com/npm/cli/blob/v12.2.1/bin/npx-cli.js)
+delegates to npm exec. Its
+[package resolver](https://github.com/npm/cli/blob/v12.2.1/workspaces/libnpmexec/lib/index.js)
+and [run-script PATH builder](https://github.com/npm/run-script/blob/v11.0.0/lib/set-path.js)
+select executable paths. A requested npm package is not a recorded child-version
+receipt. Both inspected versions have identical npm-cli.js and npx-cli.js entry
+hashes; an entry hash alone cannot bind implementation version.
+
+Use the already installed npm 12.2.1 only as this stage's generator. Its
+[published metadata](https://registry.npmjs.org/npm/12.2.1) declares Node
+`^22.22.2 || ^24.15.0 || >=26.0.0`; pinned Node 24.21.0 fits. Do not change the
+app's Node floor, normal installer, peer policy or qualification tool.
+Freeze the absolute real paths `STAGE_NODE24` and `STAGE_NPM12_CLI`, binary and
+entry hashes, npm package metadata and Arborist version/source before action.
+Reviewed npm12 package.json SHA256 is
+`d3533d91d22b444112314fc43285357c7b8b8e31efbdbea306ca95f295cada3b`;
+its Arborist build-ideal-tree.js SHA256 is
+`d94ec6e38ba5ab6e5fa63e4c7d46ad8145bcce27a41e759ff7509a259196ae56`.
+Recheck these identities and observe version with the same direct executable
+pair after this amendment is committed. Refuse a different or unavailable tool;
+do not download, auto-select another version or invoke through npx.
+
+Remove inherited npm configuration and authentication overrides for this
+invocation only. Bind two distinct empty regular private 0600 npm config files
+to their paths/inodes and SHA256
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+Keep the owner HOME, project public-registry `.npmrc`, normal peer enforcement,
+optional inclusion and JOBS=1. No credentials enter logs or receipts.
+
+Proposed exact version preflight, then one generator attempt, after registration
+commit and accepted baseline review:
+
+```sh
+JOBS=1 heavy-run "${STAGE_NODE24:?}" "${STAGE_NPM12_CLI:?}" --version
+JOBS=1 heavy-run "${STAGE_NODE24:?}" "${STAGE_NPM12_CLI:?}" install --package-lock-only --ignore-scripts --include=optional --save-dev --save-exact --lockfile-version=3 vitest@4.1.12 @vitest/coverage-v8@4.1.12
+```
+
+Keep the selected 2 to 0, original 3 to 1 and recent 2 to 2 predictions. Require
+generator exit 0, lockfile v3 and the unchanged two-root-pin/nine-family-record
+allowlist with exact official required metadata. Preserve the real optional
+browser-webdriverio `^4.1.11` peer. Require zero protected/unregistered changes
+and repeat the frozen query once before stopping for source review. No install
+is authorized by generator success. Any action failure, missing qualification,
+unregistered movement or query mismatch rejects this method. Preserve the
+candidate without retry, hand edit, force, fallback or weaker peer handling.
 
 After source-diff review, the qualification and delivery commands are:
 

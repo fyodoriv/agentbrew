@@ -1,5 +1,14 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -428,4 +437,301 @@ describe("wrap-up open-work.sh", () => {
   it("stays bash 3.2 safe (no lowercase or uppercase expansions)", () => {
     expect(readFileSync(openWork, "utf-8")).not.toMatch(/\$\{\w+(,,|\^\^)\}/);
   });
+});
+
+type FetchCase = "W01" | "W02" | "W03" | "W04";
+type Checkout = "first" | "second";
+interface FetchReceipt {
+  id: FetchCase;
+  exit: number;
+  fetches: [Checkout, "fetch", "-q", "--prune", "origin"][];
+  visited: Checkout[];
+  stale: Checkout[];
+  localFallback: Checkout[];
+  lsRemote: number;
+  rejectedPlain: boolean;
+  offFixture: number;
+}
+
+function receiptDecision(samples: readonly unknown[], id: FetchCase): string {
+  if (samples.length === 0) return "missing";
+  if (samples.length !== 1) return "duplicate";
+  const item = samples[0] as Partial<FetchReceipt> | null;
+  const checkouts = (value: unknown): boolean =>
+    Array.isArray(value) && value.every((entry: unknown) => entry === "first" || entry === "second");
+  const counter = (value: unknown): boolean => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+  if (
+    !item ||
+    item.id !== id ||
+    ![0, 1, 2].includes(item.exit ?? -1) ||
+    !Array.isArray(item.fetches) ||
+    !item.fetches.every(
+      (fetch: unknown) =>
+        Array.isArray(fetch) &&
+        fetch.length === 5 &&
+        checkouts(fetch.slice(0, 1)) &&
+        fetch.slice(1).join(" ") === "fetch -q --prune origin",
+    ) ||
+    !checkouts(item.visited) ||
+    !checkouts(item.stale) ||
+    !checkouts(item.localFallback) ||
+    !counter(item.lsRemote) ||
+    !counter(item.offFixture) ||
+    typeof item.rejectedPlain !== "boolean"
+  )
+    return "malformed";
+  return item.offFixture === 0 ? "accepted" : "off-fixture";
+}
+
+function observeFetchCaller(id: FetchCase): FetchReceipt {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), "wrap-fetch-"));
+  try {
+    const first = join(root, "first");
+    const second = join(root, "second");
+    const plain = join(root, "plain");
+    const bin = join(root, "bin");
+    const home = join(root, "home");
+    const template = join(root, "empty-template");
+    const trace = join(root, "trace");
+    for (const dir of [plain, bin, home, template]) mkdirSync(dir);
+    const fixtureEnv = {
+      PATH: process.env.PATH ?? "/usr/bin:/bin",
+      HOME: home,
+      XDG_CONFIG_HOME: home,
+      TMPDIR: root,
+      LC_ALL: "C",
+      OPEN_WORK_NO_GH: "1",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_SYSTEM: "/dev/null",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_TEMPLATE_DIR: template,
+      GIT_CEILING_DIRECTORIES: root,
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_AUTHOR_NAME: "Fixture",
+      GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+      GIT_COMMITTER_NAME: "Fixture",
+      GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+      GIT_CONFIG_COUNT: "3",
+      GIT_CONFIG_KEY_0: "protocol.allow",
+      GIT_CONFIG_VALUE_0: "never",
+      GIT_CONFIG_KEY_1: "protocol.file.allow",
+      GIT_CONFIG_VALUE_1: "always",
+      GIT_CONFIG_KEY_2: "core.hooksPath",
+      GIT_CONFIG_VALUE_2: "/dev/null",
+    };
+    const realGit = execFileSync("/bin/bash", ["-c", "command -v git"], {
+      cwd: root,
+      env: fixtureEnv,
+      encoding: "utf8",
+      timeout: 5000,
+    }).trim();
+    if (!realGit.startsWith("/")) throw new Error("fixture Git unavailable");
+    const git = (cwd: string, ...args: string[]) =>
+      execFileSync(realGit, args, {
+        cwd,
+        env: fixtureEnv,
+        encoding: "utf8",
+        timeout: 5000,
+        maxBuffer: 64 * 1024,
+      }).trim();
+    for (const checkout of [first, second]) {
+      const origin = checkout + ".git";
+      git(root, "init", "-q", "--bare", "-b", "main", origin);
+      git(root, "clone", "-q", origin, checkout);
+      git(checkout, "symbolic-ref", "HEAD", "refs/heads/main");
+      git(checkout, "commit", "-q", "--allow-empty", "-m", "fixture");
+      git(checkout, "push", "-q", "-u", "origin", "main");
+      git(checkout, "remote", "set-head", "origin", "main");
+      if (id === "W02") git(checkout, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
+      if (
+        git(checkout, "status", "--porcelain") !== "" ||
+        git(checkout, "rev-parse", "HEAD") !== git(checkout, "rev-parse", "refs/remotes/origin/main")
+      ) {
+        throw new Error("fixture checkout not clean and pushed");
+      }
+    }
+    if (
+      spawnSync(realGit, ["-C", plain, "rev-parse", "--show-toplevel"], {
+        cwd: root,
+        env: fixtureEnv,
+        stdio: "ignore",
+        timeout: 5000,
+      }).status !== 128
+    )
+      throw new Error("fixture noncheckout not isolated");
+
+    writeFileSync(trace, "");
+    const deny = '#!/bin/bash\nprintf "off-fixture\\n" >> "$FETCH_TRACE"\nexit 97\n';
+    for (const command of ["gh", "ssh", "curl", "git-remote-http", "git-remote-https"]) {
+      writeFileSync(join(bin, command), deny, { mode: 0o700 });
+    }
+    writeFileSync(
+      join(bin, "git"),
+      `#!/bin/bash
+reject() { printf 'off-fixture\\n' >> "$FETCH_TRACE"; exit 97; }
+event() { printf '%s:%s\\n' "$1" "$label" >> "$FETCH_TRACE"; }
+[ "$#" -ge 3 ] && [ "$1" = -C ] || reject
+case "$2" in
+  "$FETCH_FIRST") label=first ;;
+  "$FETCH_SECOND") label=second ;;
+  "$FETCH_PLAIN")
+    [ "$#" = 4 ] && [ "$3" = rev-parse ] && [ "$4" = --show-toplevel ] || reject
+    exec "$FETCH_REAL_GIT" "$@" ;;
+  *) reject ;;
+esac
+case "$3" in
+  fetch)
+    [ "$#" = 6 ] && [ "$4" = -q ] && [ "$5" = --prune ] && [ "$6" = origin ] || reject
+    event fetch
+    if [ "$FETCH_CASE" = W03 ] && [ "$label" = first ]; then exit 1; fi
+    exit 0 ;;
+  ls-remote)
+    event ls-remote
+    reject ;;
+  rev-parse)
+    case "\${*:4}" in
+      --show-toplevel) ;;
+      '-q --verify refs/remotes/origin/main') event origin-main ;;
+      *) reject ;;
+    esac ;;
+  branch) [ "$#" = 4 ] && [ "$4" = --show-current ] || reject; event branch ;;
+  symbolic-ref) [ "\${*:4}" = '-q --short refs/remotes/origin/HEAD' ] || reject ;;
+  status) case "\${*:4}" in --porcelain|'--porcelain --untracked-files=all') ;; *) reject ;; esac ;;
+  stash) [ "\${*:4}" = list ] || reject ;;
+  rev-list) [ "\${*:4}" = '--count origin/main..main' ] || reject ;;
+  log) [ "\${*:4}" = '-p --no-merges --format=commit %H -n 1000 origin/main' ] || reject ;;
+  patch-id) [ "\${*:4}" = --stable ] || reject ;;
+  for-each-ref) [ "\${*:4}" = '--format=%(refname:short) refs/heads' ] || reject ;;
+  worktree) [ "\${*:4}" = 'list --porcelain' ] || reject ;;
+  *) reject ;;
+esac
+exec "$FETCH_REAL_GIT" "$@"
+`,
+      { mode: 0o700 },
+    );
+
+    const runEnv = {
+      ...fixtureEnv,
+      PATH: `${bin}:${fixtureEnv.PATH}`,
+      OPEN_WORK_NO_FETCH: id === "W02" ? "1" : "0",
+      FETCH_FIRST: first,
+      FETCH_SECOND: second,
+      FETCH_PLAIN: plain,
+      FETCH_TRACE: trace,
+      FETCH_CASE: id,
+      FETCH_REAL_GIT: realGit,
+    };
+    const commands = ["git", "gh", "ssh", "curl"];
+    const resolved = execFileSync(
+      "/bin/bash",
+      ["-c", 'for cmd do command -v "$cmd" || exit; done', "fixture", ...commands],
+      {
+        cwd: root,
+        env: runEnv,
+        encoding: "utf8",
+        timeout: 5000,
+        maxBuffer: 4096,
+      },
+    )
+      .trim()
+      .split("\n");
+    if (resolved.some((path, index) => path !== join(bin, commands[index])) || resolved.length !== commands.length) {
+      throw new Error("fixture command routing mismatch");
+    }
+    const run = spawnSync("/bin/bash", [openWork, ...(id === "W04" ? [plain, second] : [first, second])], {
+      cwd: root,
+      env: runEnv,
+      encoding: "utf8",
+      timeout: 20_000,
+      maxBuffer: 64 * 1024,
+    });
+    if (run.error || run.signal || run.status === null) throw new Error("fixture caller incomplete");
+    const events = readFileSync(trace, "utf8").trim().split("\n");
+    const visited: Checkout[] = [];
+    const stale: Checkout[] = [];
+    let checkout: Checkout | undefined;
+    for (const line of run.stdout.split("\n")) {
+      if (line === first || line === second) {
+        checkout = line === first ? "first" : "second";
+        visited.push(checkout);
+      }
+      if (checkout && /^ {2}unknown\s+git fetch failed; results may be stale$/.test(line)) stale.push(checkout);
+    }
+    const localFallback = (["first", "second"] as const).filter(
+      (name) =>
+        events.includes(`origin-main:${name}`) &&
+        events.indexOf(`branch:${name}`) > events.indexOf(`origin-main:${name}`),
+    );
+    const fetches: FetchReceipt["fetches"] = [];
+    for (const event of events) {
+      if (event === "fetch:first" || event === "fetch:second") {
+        fetches.push([event === "fetch:first" ? "first" : "second", "fetch", "-q", "--prune", "origin"]);
+      }
+    }
+    return {
+      id,
+      exit: run.status,
+      fetches,
+      visited,
+      stale,
+      localFallback,
+      lsRemote: events.filter((event) => event.startsWith("ls-remote:")).length,
+      rejectedPlain: run.stderr.split("\n").includes(`open-work: not a git checkout: ${plain}`),
+      offFixture: events.filter((event) => event === "off-fixture").length,
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+describe("fetch caller receipt calibration", () => {
+  const sample: FetchReceipt = {
+    id: "W01",
+    exit: 0,
+    fetches: [],
+    visited: [],
+    stale: [],
+    localFallback: [],
+    lsRemote: 0,
+    rejectedPlain: false,
+    offFixture: 0,
+  };
+  it.each([
+    ["missing", []],
+    ["duplicate", [sample, sample]],
+    ["malformed", [{ ...sample, fetches: [["first", "unexpected"]] }]],
+    ["off-fixture", [{ ...sample, offFixture: 1 }]],
+  ] as const)("rejects %s evidence", (decision, samples) => {
+    expect(receiptDecision(samples, "W01")).toBe(decision);
+  });
+});
+
+describe("registered fetch caller observations", () => {
+  it.each([
+    { id: "W01", exit: 0, attempted: ["first", "second"], visited: ["first", "second"], stale: [] },
+    { id: "W02", exit: 0, attempted: [], visited: ["first", "second"], stale: [] },
+    { id: "W03", exit: 1, attempted: ["first", "second"], visited: ["first", "second"], stale: ["first"] },
+    { id: "W04", exit: 2, attempted: ["second"], visited: ["second"], stale: [] },
+  ] as const)("$id observes the real wrap-up caller", ({ id, exit, attempted, visited, stale }) => {
+    let receipt: FetchReceipt;
+    try {
+      receipt = observeFetchCaller(id);
+    } catch {
+      console.info(`FETCH_CALLER_OBSERVATION ${JSON.stringify({ id, status: "inconclusive" })}`);
+      throw new Error(`${id} fixture did not complete`);
+    }
+    console.info(`FETCH_CALLER_OBSERVATION ${JSON.stringify(receipt)}`);
+    expect(receiptDecision([receipt], id)).toBe("accepted");
+    expect(receipt).toEqual({
+      id,
+      exit,
+      visited,
+      stale,
+      fetches: attempted.map((name) => [name, "fetch", "-q", "--prune", "origin"]),
+      localFallback: id === "W02" ? ["first", "second"] : [],
+      lsRemote: 0,
+      rejectedPlain: id === "W04",
+      offFixture: 0,
+    });
+  }, 45_000);
 });

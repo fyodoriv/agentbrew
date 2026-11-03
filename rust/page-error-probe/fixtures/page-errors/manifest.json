@@ -1,0 +1,4284 @@
+{
+  "schema_version": 1,
+  "registration_commit": "3907c7b00c51f83ab4089780be21044dc2fc30ed",
+  "base_source_tree": "187687c9aa6c674fc47fc71b5cfc02b456e8a6f3",
+  "evidence_limit": "Pure synthetic contract replay only; no browser/agent-host/transport ownership proof",
+  "caps": {
+    "wire_frame_bytes": 65536,
+    "wire_message_bytes": 65536,
+    "staging_bytes": 4096,
+    "write_max_bytes": 73728,
+    "events": 1024,
+    "sessions": 32,
+    "rpcs": 8,
+    "pending_http": 512,
+    "joint_case_bytes": 1048576
+  },
+  "remaining_proofs": [
+    "P24 actual shared registry and both host workflow evals",
+    "native browser topology and safe closure",
+    "real WebSocket framing and owned cleanup"
+  ],
+  "cases": [
+    {
+      "case_id": "P01",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"log\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"warning\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P02",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P03",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 1,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P04",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"Uncaught (in promise) fixture-rejection\"}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 1,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P05",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P06",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":500}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P07",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFailed\",\"params\":{\"requestId\":\"fixture-request\",\"errorText\":\"net::ERR_FAILED\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 1
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P08",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P09",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "owned_descendants": [
+              [
+                "fixture-iframe",
+                "iframe"
+              ],
+              [
+                "fixture-worker",
+                "worker"
+              ]
+            ]
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-iframe\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-worker\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 2,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P10",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Page.domContentEventFired\",\"params\":{\"timestamp\":2},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P11",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.bindingCalled\",\"params\":{\"name\":\"fixture-ready\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 1,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P12",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "signin_origin": "https://signin.example.com"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"https://signin.example.com/login\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "blocked",
+        "decision": "blocked",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_AUTH_BLOCKED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P13",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "gateway_origin": "https://gateway.example.com"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"https://gateway.example.com/api\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":502}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P14",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "reset_generation": true,
+            "storage_canary": "unchanged"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P15",
+      "variant": "disconnect",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_DISCONNECTED"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_DISCONNECTED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P15",
+      "variant": "deadline",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_DEADLINE"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_DEADLINE"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P15",
+      "variant": "stream-cap",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_OVERFLOW"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_OVERFLOW"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P16",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-foreign\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P17",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "before_groups": [
+              "fixture-console-error",
+              "http404"
+            ]
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "introduced": 0,
+        "resolved": 0,
+        "inherited": 2,
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P18",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "before_groups": []
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 1,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "introduced": 1,
+        "resolved": 0,
+        "inherited": 0,
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P19",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "before_groups": [
+              "fixture-resolved"
+            ]
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "introduced": 0,
+        "resolved": 1,
+        "inherited": 0,
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P20",
+      "variant": "console-marker",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"FIXTURE_PRIVATE_SENTINEL_563\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P20",
+      "variant": "url-marker",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/FIXTURE_PRIVATE_SENTINEL_563?credential=FIXTURE_PRIVATE_SENTINEL_563\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P20",
+      "variant": "malformed-marker",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"broken\":\"FIXTURE_PRIVATE_SENTINEL_563\""
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P21",
+      "variant": "timeout",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_DEADLINE"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_DEADLINE"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P21",
+      "variant": "int",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_CANCELLED_INT"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 130,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_CANCELLED_INT"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P21",
+      "variant": "term",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_CANCELLED_TERM"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 143,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_CANCELLED_TERM"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P22",
+      "variant": "missing-executable",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_MISSING_CAPABILITY"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MISSING_CAPABILITY"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P22",
+      "variant": "missing-response-capability",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_MISSING_CAPABILITY"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MISSING_CAPABILITY"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P22",
+      "variant": "missing-readiness",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_ACK_MISSING"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P22",
+      "variant": "invalid-origin",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "fault": "CAPTURE_SCOPE_UNVERIFIED"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_SCOPE_UNVERIFIED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P23",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/$(touch%20SHOULD_NOT_EXIST)\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P24",
+      "variant": "claude",
+      "evidence_layer": "workflow-preparation-only",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "workflow_preparation": "claude"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MISSING_CAPABILITY"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "P24",
+      "variant": "codex",
+      "evidence_layer": "workflow-preparation-only",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "workflow_preparation": "codex"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MISSING_CAPABILITY"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T01",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "repeat",
+          "count": 1000,
+          "frame": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"log\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T02",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 3,
+            "method": "Runtime.evaluate"
+          }
+        },
+        {
+          "op": "repeat",
+          "count": 1025,
+          "frame": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"log\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_OVERFLOW"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T03",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "reset_generation": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 1,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T04",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "owned_descendants": [
+              [
+                "fixture-a",
+                "iframe"
+              ],
+              [
+                "fixture-b",
+                "iframe"
+              ]
+            ]
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-a\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404}},\"sessionId\":\"fixture-a\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-a\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-b\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-b\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-b\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 1,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T05",
+      "variant": "single-frame",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "oversize",
+          "bytes": 65537,
+          "fragmented": false
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_OVERFLOW"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T05",
+      "variant": "fragmented-message",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "oversize",
+          "bytes": 65537,
+          "fragmented": true
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_OVERFLOW"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "runtime-delayed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "runtime-failed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"error\":{\"code\":-1,\"message\":\"fixture-enable-failed\"}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "network-delayed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "network-failed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"error\":{\"code\":-1,\"message\":\"fixture-enable-failed\"}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "descendants-delayed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "required_descendant_session": "fixture-child"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 3,
+            "method": "Runtime.enable",
+            "session": "fixture-child"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T06",
+      "variant": "descendants-failed",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "required_descendant_session": "fixture-child"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 3,
+            "method": "Runtime.enable",
+            "session": "fixture-child"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":3,\"error\":{\"code\":-1,\"message\":\"fixture-enable-failed\"}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_ACK_MISSING"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T07",
+      "variant": "default",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "unknown_child": "fixture-unverified"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.exceptionThrown\",\"params\":{\"timestamp\":1,\"exceptionDetails\":{\"text\":\"fixture-exception\",\"lineNumber\":1}},\"sessionId\":\"fixture-unverified\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_SCOPE_UNVERIFIED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T08",
+      "variant": "malformed-json",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"broken\":"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T08",
+      "variant": "duplicate-id",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T08",
+      "variant": "duplicate-method",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"method\":\"Runtime.exceptionThrown\",\"params\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T08",
+      "variant": "duplicate-session",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"sessionId\":\"fixture-page\",\"sessionId\":\"fixture-page\",\"params\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T08",
+      "variant": "duplicate-status",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"sessionId\":\"fixture-page\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":404,\"status\":200}}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "incomplete",
+        "decision": "incomplete",
+        "exit": 2,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [
+          "CAPTURE_MALFORMED"
+        ],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T09",
+      "variant": "header",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/safe\",\"method\":\"GET\",\"headers\":{\"Authorization\":\"FIXTURE_PRIVATE_SENTINEL_563\"}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T09",
+      "variant": "post-data",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/safe\",\"method\":\"GET\",\"headers\":{},\"postData\":\"FIXTURE_PRIVATE_SENTINEL_563\"},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T09",
+      "variant": "url-message",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/FIXTURE_PRIVATE_SENTINEL_563\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.loadingFinished\",\"params\":{\"requestId\":\"fixture-request\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 0,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T10",
+      "variant": "continuous-poll",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 1,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T10",
+      "variant": "sse",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "clean",
+        "exit": 0,
+        "counts": {
+          "console_error": 0,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 1,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    },
+    {
+      "case_id": "T10",
+      "variant": "error-before-close",
+      "evidence_layer": "contract-replay",
+      "fixture_origin": "synthetic",
+      "steps": [
+        {
+          "op": "control",
+          "control": {
+            "synthetic_owned_page": "fixture-owned",
+            "session": "fixture-page"
+          }
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 1,
+            "method": "Runtime.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":1,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "rpc_sent": 2,
+            "method": "Network.enable"
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"id\":2,\"result\":{}}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "begin_window": true
+          }
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.requestWillBeSent\",\"params\":{\"requestId\":\"fixture-request\",\"request\":{\"url\":\"http://fixture.example.com/resource\",\"method\":\"GET\",\"headers\":{}},\"type\":\"Fetch\"},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Network.responseReceived\",\"params\":{\"requestId\":\"fixture-request\",\"response\":{\"status\":200}},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "frame",
+          "text": "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"type\":\"error\",\"args\":[{\"type\":\"string\",\"value\":\"fixture-console-error\"}]},\"sessionId\":\"fixture-page\"}"
+        },
+        {
+          "op": "control",
+          "control": {
+            "close_window": "ordered-fixture-boundary"
+          }
+        }
+      ],
+      "expected": {
+        "coverage": "complete",
+        "decision": "errors",
+        "exit": 1,
+        "counts": {
+          "console_error": 1,
+          "runtime_exception": 0,
+          "http_error": 0,
+          "transport_error": 0
+        },
+        "pending_at_cutoff": 1,
+        "diagnostics": [],
+        "preparation_only": true
+      }
+    }
+  ]
+}

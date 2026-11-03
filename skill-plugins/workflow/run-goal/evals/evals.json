@@ -2493,6 +2493,17 @@
       ]
     },
     {
+      "id": 218,
+      "prompt": "/goal make the export command faster\n\nA background checkup is running. A previous measurement took 57 s during a checkup and 11 s in a quiet session. No fresh baseline or follow-up exists.",
+      "expected_output": "A timing plan that waits for exclusive admission or a quiet machine before measuring, compares the same command and inputs in quiet conditions, and reports two fresh timings after execution.",
+      "expectations": [
+        "Waits for the background checkup or queues with heavy-run --exclusive before taking a baseline.",
+        "Measures the same command and inputs before and after under the same quiet conditions and discards samples that overlap heavy work.",
+        "Reports two fresh timings and treats 57 s and 11 s as context. Uses neither historical value as a fresh sample.",
+        "If profiling is useful, runs it separately from the timed samples."
+      ]
+    },
+    {
       "id": 219,
       "prompt": "/goal absorb all skills from <team skills repo>, avoid duplication, and add it as an overlay source. The sync reports that the source was applied, but no expected skill link exists.",
       "expected_output": "An overlap review, an authorized overlay source, and direct readback showing where every expected installed skill points.",

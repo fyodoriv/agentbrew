@@ -1,0 +1,16 @@
+[package]
+name = "history-audit-prep"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+gix-ref = { version = "=0.63.0", default-features = false, features = ["sha1"] }
+gix-object = { version = "=0.62.0", default-features = false, features = ["sha1"] }
+gix-hash = { version = "=0.25.1", default-features = false, features = ["sha1"] }
+miniz_oxide = { version = "=0.8.9", default-features = false }
+rustix = { version = "=1.1.4", default-features = false, features = ["std", "fs"] }
+
+[[test]]
+name = "admission"
+path = "tests/admission.rs"

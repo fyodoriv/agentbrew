@@ -46,3 +46,36 @@ ten-page live rendering and zero-focus-change acceptance open.
 
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò
 et al. (2017), preregistration; the [issue preparation](owned-issue-preparation.md#google-docs-capture--issue-561).
+
+## Owner arguments and private output
+
+This slice converts typed operations to exact owner arguments and fixed
+synthetic eval input. It checks reviewed owner bytes and exact replies.
+The held output port keeps images and recovery in a private run directory.
+It publishes a complete manifest with a no-replace rename. There is no
+child launch, production URL, browser, or skill wiring.
+
+The Dotfiles owner passed nine disposable cases with network denied.
+The Rust wrapper stub passed one case and failed nine. The preparation
+passed those ten and the new canonical screenshot symlink control. The
+new control caught a mutant that removed only the screenshot file's
+no-follow flag. The original 14 reducer cases also passed.
+
+Set `DOTFILES_SOURCE` to a clone with the pinned commit. The wrapper test
+reads the owner file without executing it.
+
+```sh
+owner_commit=24d7f41f65eb3c542553f41acacc07bf93619b45
+scratch="$(mktemp -d)"
+git -C "$DOTFILES_SOURCE" archive "$owner_commit" bin/agent-tab |
+  tar -xf - -C "$scratch"
+GDOC_QUALIFIED_OWNER="$scratch/bin/agent-tab" JOBS=1 CARGO_BUILD_JOBS=1 \
+  heavy-run cargo test --locked --manifest-path rust/gdoc-capture/Cargo.toml \
+  --test wrapper_contract -- --test-threads=1
+```
+
+Keep all 11 wrapper and 14 reducer cases. Pivot on any unsafe read, foreign
+write, partial completion, or missed case. Native work still needs owner
+provenance through launch, bounded stream reads, child-group proof and a
+private child file mode. These tests provide no crash durability, real
+process deadline, browser rendering, or focus evidence.

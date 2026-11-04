@@ -37,6 +37,7 @@ export function evaluateWithPromptfoo(
 
   const entry = engineEntry(packageDirectory);
   const scratch = mkdtempSync(join(tmpdir(), "agentbrew-judge-"));
+  let failure = "Promptfoo did not produce a readable judge report.";
   try {
     const input = join(scratch, "config.json");
     const output = join(scratch, "report.json");
@@ -60,12 +61,16 @@ export function evaluateWithPromptfoo(
       },
     );
     // Promptfoo uses 100 when a completed rubric assertion fails.
-    if (result.error || (result.status !== 0 && result.status !== 100)) throw new Error();
+    if (result.error || (result.status !== 0 && result.status !== 100)) {
+      const timedOut = (result.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT";
+      failure = timedOut ? "Promptfoo timed out." : "Promptfoo could not complete the judge evaluation.";
+      throw new Error();
+    }
     const stat = lstatSync(output);
     if (!stat.isFile() || stat.size > MAX_REPORT_BYTES) throw new Error();
     return JSON.parse(readFileSync(output, "utf8"));
   } catch {
-    throw new Error("Promptfoo did not produce a readable judge report.");
+    throw new Error(failure);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }

@@ -99,9 +99,20 @@ describe("judge engine dispatch", () => {
     expect(evaluateWithPromptfoo(config(), root)).toEqual({ results: { results: [{ success: false }] } });
   });
 
-  it("refuses process failures and missing or malformed reports", () => {
+  it("distinguishes a timeout from a failed engine process without exposing engine errors", () => {
+    spawn.mockReturnValueOnce({
+      status: null,
+      error: Object.assign(new Error("private fixture engine detail"), { code: "ETIMEDOUT" }),
+    } as ReturnType<typeof spawnSync>);
+    expect(() => evaluateWithPromptfoo(config(), root)).toThrow(/^Promptfoo timed out\.$/);
+    report(2, "{}");
+    expect(() => evaluateWithPromptfoo(config(), root)).toThrow(
+      /^Promptfoo could not complete the judge evaluation\.$/,
+    );
+  });
+
+  it("refuses missing or malformed reports", () => {
     for (const [status, body] of [
-      [2, "{}"],
       [0, undefined],
       [100, "broken"],
     ] as const) {

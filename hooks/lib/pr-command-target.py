@@ -70,15 +70,60 @@ def target(command, words=None):
     return {"number": number, "repo": repo}
 
 
-def judge_events(words):
-    if words is None:
-        return []
-    events = []
-    for i in range(len(words) - 2):
-        if i and not (words[i - 1] and set(words[i - 1]) <= set(PUNCTUATION)):
+def command_segments(command):
+    """Split at unquoted shell separators without interpreting expansions."""
+    start = 0
+    quote = None
+    escaped = False
+    comment = False
+    word_start = True
+    for i, char in enumerate(command):
+        if comment:
+            if char == "\n":
+                start = i + 1
+                comment = False
+                word_start = True
             continue
-        if words[i:i + 3] in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
-            events.append("pr-" + words[i + 2])
+        if escaped:
+            escaped = False
+            if char != "\n":
+                word_start = False
+            continue
+        if char == "\\" and quote != "'":
+            escaped = True
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+            continue
+        if char in "'\"":
+            quote = char
+            word_start = False
+        elif char in ";&|()\n":
+            yield command[start:i]
+            start = i + 1
+            word_start = True
+        elif char == "#" and word_start:
+            yield command[start:i]
+            comment = True
+        else:
+            word_start = char in " \t"
+    if not comment:
+        yield command[start:]
+
+
+def judge_events(command):
+    events = []
+    for segment in command_segments(command):
+        words = command_words(segment)
+        if not words:
+            continue
+        start = 0
+        while start < len(words) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[start]):
+            start += 1
+        target_words = words[start:start + 3]
+        if target_words in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
+            events.append("pr-" + target_words[2])
     return events
 
 
@@ -137,6 +182,6 @@ if __name__ == "__main__":
         if len(command) > limit:
             sys.exit(2)
         words = command_words(command)
-        print(json.dumps({"events": judge_events(words), "argv": judge_argv(command, words)}))
+        print(json.dumps({"events": judge_events(command), "argv": judge_argv(command, words)}))
     else:
         main()

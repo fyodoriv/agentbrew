@@ -62,4 +62,15 @@ padding="$(printf '%262144s' '')"
 status=0
 invoke "gh pr ready 42${padding}; gh pr ready 43" >"$scratch/out" 2>"$scratch/err" || status=$?
 [ "$status" -eq 2 ]
-printf '%s\n' 'judge-pr-delivery: 9 passed'
+status=0
+DENY_EVENT=pr-ready invoke "gh pr create --fill; GH_PROMPT_DISABLED=1 gh 'pr' ready 42" >"$scratch/out" 2>"$scratch/err" || status=$?
+[ "$status" -eq 2 ]
+
+for command in "echo ';' gh 'pr' ready 42" 'echo "text; gh pr ready 42"'; do
+  CAPTURE="$CAPTURE.bypass" invoke "$command"
+  [ ! -e "$CAPTURE.bypass" ]
+done
+status=0
+DENY_EVENT=pr-ready invoke "printf '%s\n' x\ #literal; gh 'pr' ready 42" >"$scratch/out" 2>"$scratch/err" || status=$?
+[ "$status" -eq 2 ]
+printf '%s\n' 'judge-pr-delivery: 13 passed'

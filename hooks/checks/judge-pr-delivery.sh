@@ -7,8 +7,6 @@ if [ -d "$hook_dir/lib" ]; then lib="$hook_dir/lib"; else lib="$hook_dir/../lib"
 source "$lib/stdin-json.sh"
 # shellcheck source=../lib/verdict.sh
 source "$lib/verdict.sh"
-# shellcheck source=../lib/gh-pr-body-from-command.sh
-source "$lib/gh-pr-body-from-command.sh"
 
 readonly HOOK_ID=judge-pr-delivery
 input="$(read_hook_stdin)"
@@ -17,8 +15,8 @@ command_text="$(json_get "$input" '.tool_input.command')"
 parsed="$(printf '%s' "$command_text" | python3 -B "$lib/pr-command-target.py" --judge-command)" ||
   verdict_block "$HOOK_ID" "Could not verify literal PR arguments."
 events=()
-if [ "$(json_get "$parsed" '.events | index("pr-create") != null')" = true ] || gh_in_command_position "$command_text" 'pr[[:space:]]+create'; then events+=(pr-create); fi
-if [ "$(json_get "$parsed" '.events | index("pr-ready") != null')" = true ] || gh_in_command_position "$command_text" 'pr[[:space:]]+ready'; then events+=(pr-ready); fi
+if [ "$(json_get "$parsed" '.events | index("pr-create") != null')" = true ]; then events+=(pr-create); fi
+if [ "$(json_get "$parsed" '.events | index("pr-ready") != null')" = true ]; then events+=(pr-ready); fi
 [ "${#events[@]}" -gt 0 ] || exit 0
 
 cwd="$(json_get "$input" '.tool_input.workdir // .cwd')"

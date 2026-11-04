@@ -98,7 +98,7 @@ describe("toSkillsCliAgent", () => {
 
   it("passes through intersection agents unchanged", () => {
     expect(toSkillsCliAgent("claude-code")).toBe("claude-code");
-    expect(toSkillsCliAgent("cursor")).toBe("cursor");
+    expect(toSkillsCliAgent("codex")).toBe("codex");
     expect(toSkillsCliAgent("trae")).toBe("trae");
     expect(toSkillsCliAgent("amp")).toBe("amp");
     expect(toSkillsCliAgent("goose")).toBe("goose");
@@ -132,10 +132,10 @@ describe("buildSkillsCliAgentArgs", () => {
 
   describe("rename-not-required path (intersection agents)", () => {
     it("emits one --agent <name> pair per intersection agent, names unchanged", () => {
-      // `claude-code` and `cursor` are in the name-overlap; no
+      // `claude-code` and `codex` are in the name-overlap; no
       // translation needed.
-      expect(buildSkillsCliAgentArgs(["claude-code", "cursor"])).toEqual({
-        args: ["--agent", "claude-code", "--agent", "cursor"],
+      expect(buildSkillsCliAgentArgs(["claude-code", "codex"])).toEqual({
+        args: ["--agent", "claude-code", "--agent", "codex"],
         carveOuts: [],
       });
     });
@@ -219,7 +219,6 @@ describe("coverage invariant — every agent in agents.yaml is classified", () =
       "continue",
       "cortex",
       "crush",
-      "cursor",
       "deepagents",
       "devin",
       "dexto",

@@ -50,7 +50,7 @@ resolve_base_ref() {
 skill_dir_for_path() {
   local path="$1"
   case "$path" in
-    .agents/skills/*/SKILL.md | .claude/skills/*/SKILL.md | .cursor/skills/*/SKILL.md | skill-plugins/dev/*/SKILL.md | skills/*/SKILL.md)
+    .agents/skills/*/SKILL.md | .claude/skills/*/SKILL.md | skill-plugins/dev/*/SKILL.md | skills/*/SKILL.md)
       printf '%s\n' "${path%/SKILL.md}"
       ;;
   esac

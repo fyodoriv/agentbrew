@@ -11,7 +11,6 @@ The skill teaches agents how to create slash commands that agentbrew deploys acr
 - the single canonical command source path;
 - per-agent generated-copy boundaries;
 - YAML frontmatter and `description` requirements;
-- Cursor `<!-- turbo -->` to `// turbo` transform guidance;
 - deploy/verify commands after creation or edits;
 - edit/remove workflows;
 - kebab-case and focused-command rules;
@@ -24,16 +23,14 @@ The skill teaches agents how to create slash commands that agentbrew deploys acr
 - Read the real `SKILL.md` and `evals/evals.json` from disk.
 - Assert required SKILL.md contract content:
   - canonical commands live under `~/.config/agentbrew/commands/<name>.md`;
-  - per-agent copies under `~/.claude/commands/`, `~/.cursor/commands/`, and similar are generated outputs;
+  - per-agent copies under `~/.claude/commands/`, and similar are generated outputs;
   - YAML frontmatter includes `description`;
-  - Cursor turbo annotations use `<!-- turbo -->` in the canonical file and transform to `// turbo`;
   - `agentbrew sync`, `agentbrew sync --only commands`, and `agentbrew commands list` verify deployment;
   - existing commands are edited at the canonical source and removed through `agentbrew remove <name>`;
   - command filenames use kebab-case and commands stay focused;
   - command files must not contain secrets or tokens.
 - Assert eval metadata coverage:
   - reusable command positive path;
-  - Cursor turbo transform path;
   - per-agent-copy correction/ambiguity path;
   - secret/token refusal path; add a fourth eval if the current set lacks it.
 - Keep `npm run skills:coverage` and `npm run verify` green.

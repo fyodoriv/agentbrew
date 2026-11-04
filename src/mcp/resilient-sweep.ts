@@ -8,9 +8,9 @@ import { readGooseYaml, readMcpJson, writeGooseYaml, writeMcpJson } from "./mcp.
 /**
  * Why this exists
  * ---------------
- * The Devin CLI binary imports MCP configs from `~/.claude.json`, `~/.cursor/mcp.json`,
- * project-local `.mcp.json`, etc., and runs strict env-var interpolation on every string.
- * When it hits a bare `${VAR}` placeholder whose env var is unset and has no `:-default`,
+ * Some strict clients import other agents’ MCP configs, including `~/.claude.json`,
+ * and project-local `.mcp.json`, and run strict env-var interpolation on every string.
+ * When an importer hits a bare `${VAR}` placeholder whose env var is unset and has no `:-default`,
  * it aborts the ENTIRE MCP load — killing all MCP tools (playwright, context7, tasks-mcp,
  * etc.), not just the one with the missing var.
  *

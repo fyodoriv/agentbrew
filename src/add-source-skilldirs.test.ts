@@ -32,11 +32,11 @@ describe("findSkillParentDirs", () => {
   });
 
   it("finds skills in deep non-standard paths", () => {
-    mkdirSync(join(tmp, "src", "scaffold", "cursor", "skills", "alert"), { recursive: true });
-    writeFileSync(join(tmp, "src", "scaffold", "cursor", "skills", "alert", "SKILL.md"), "# Skill");
+    mkdirSync(join(tmp, "src", "scaffold", "client", "skills", "alert"), { recursive: true });
+    writeFileSync(join(tmp, "src", "scaffold", "client", "skills", "alert", "SKILL.md"), "# Skill");
 
     const dirs = findSkillParentDirs(tmp);
-    expect(dirs).toContain(join(tmp, "src", "scaffold", "cursor", "skills"));
+    expect(dirs).toContain(join(tmp, "src", "scaffold", "client", "skills"));
   });
 
   it("finds multiple skill parent directories (e.g. minsky orchestrator + enterprise)", () => {

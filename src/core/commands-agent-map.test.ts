@@ -115,8 +115,8 @@ describe("toAiRulesCommandsAgent", () => {
     expect(toAiRulesCommandsAgent("opencode")).toBeNull();
   });
 
-  it("passes through cursor (the only intersection agent without rename)", () => {
-    expect(toAiRulesCommandsAgent("cursor")).toBe("cursor");
+  it("passes through amp without a rename", () => {
+    expect(toAiRulesCommandsAgent("amp")).toBe("amp");
   });
 
   it("passes through ai-rules-only commands agents that aren't in agentbrew today (amp, firebender)", () => {
@@ -147,7 +147,7 @@ describe("fromAiRulesCommandsAgent", () => {
   });
 
   it("passes through unchanged for intersection agents", () => {
-    expect(fromAiRulesCommandsAgent("cursor")).toBe("cursor");
+    expect(fromAiRulesCommandsAgent("amp")).toBe("amp");
     expect(fromAiRulesCommandsAgent("amp")).toBe("amp");
     expect(fromAiRulesCommandsAgent("firebender")).toBe("firebender");
   });
@@ -167,7 +167,7 @@ describe("roundtrip invariants", () => {
   });
 
   it("roundtrip for intersection agents is identity", () => {
-    const intersection = ["cursor", "amp", "firebender"];
+    const intersection = ["amp", "firebender"];
     for (const name of intersection) {
       const forward = toAiRulesCommandsAgent(name);
       expect(forward).toBe(name);
@@ -187,9 +187,9 @@ describe("buildAiRulesCommandsAgentList", () => {
   });
 
   describe("rename-not-required path (intersection agents)", () => {
-    it("emits cursor unchanged (the only commands-intersection agent without rename)", () => {
-      expect(buildAiRulesCommandsAgentList(["cursor"])).toEqual({
-        agents: ["cursor"],
+    it("emits amp unchanged", () => {
+      expect(buildAiRulesCommandsAgentList(["amp"])).toEqual({
+        agents: ["amp"],
         carveOuts: [],
       });
     });
@@ -217,8 +217,8 @@ describe("buildAiRulesCommandsAgentList", () => {
     });
 
     it("translates a single rename pair plus an intersection agent in one call", () => {
-      expect(buildAiRulesCommandsAgentList(["claude-code", "cursor"])).toEqual({
-        agents: ["claude", "cursor"],
+      expect(buildAiRulesCommandsAgentList(["claude-code", "amp"])).toEqual({
+        agents: ["claude", "amp"],
         carveOuts: [],
       });
     });
@@ -243,7 +243,6 @@ describe("buildAiRulesCommandsAgentList", () => {
       expect(
         buildAiRulesCommandsAgentList([
           "claude-code", // rename
-          "cursor", // intersection
           "codex", // carve-out
           "gemini-cli", // carve-out
           "claude-desktop", // carve-out
@@ -252,7 +251,7 @@ describe("buildAiRulesCommandsAgentList", () => {
           "firebender", // free gain
         ]),
       ).toEqual({
-        agents: ["claude", "cursor", "amp", "firebender"],
+        agents: ["claude", "amp", "firebender"],
         carveOuts: ["codex", "gemini-cli", "claude-desktop", "opencode"],
       });
     });
@@ -265,8 +264,8 @@ describe("buildAiRulesCommandsAgentList", () => {
     });
 
     it("preserves agent order in the agents array (renames don't reorder)", () => {
-      expect(buildAiRulesCommandsAgentList(["cursor", "claude-code"])).toEqual({
-        agents: ["cursor", "claude"],
+      expect(buildAiRulesCommandsAgentList(["amp", "claude-code"])).toEqual({
+        agents: ["amp", "claude"],
         carveOuts: [],
       });
     });
@@ -279,7 +278,7 @@ describe("coverage invariant — every commands-capable agent in agents.yaml is 
     // [docs/commands-and-skills.md](https://raw.githubusercontent.com/block/ai-rules/main/docs/commands-and-skills.md)
     // (CANARY_DELEGATED_AGENTS at ai-rules v1.6.0). Mirror in test; source-of-truth
     // is the live ai-rules docs.
-    const aiRulesCommandsAgents = new Set(["amp", "claude", "cursor", "firebender"]);
+    const aiRulesCommandsAgents = new Set(["amp", "claude", "firebender"]);
 
     const defs = loadAgentDefinitions();
     // Filter to commands-capable agents only — agents with a commandsDir
@@ -296,7 +295,7 @@ describe("coverage invariant — every commands-capable agent in agents.yaml is 
       }
     }
     // The current commands-capable agents in agentbrew (claude-code,
-    // cursor, gemini-cli, claude-desktop, opencode) split
+    // gemini-cli, claude-desktop, opencode) split
     // intersection + carve-outs. If a new commands-capable agent lands
     // in agents.yaml without an entry in this map (intersection / rename /
     // carve-out), this test fails — preventing silent drift.

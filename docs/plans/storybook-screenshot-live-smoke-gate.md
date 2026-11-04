@@ -21,7 +21,7 @@ The restored tool currently has helper coverage and a `--help` check, but its hi
 
 - No visual diffing or golden screenshots.
 - No public npm publish, release creation, or external PR/comment action.
-- No changes to generated user agent config under `~/.claude`, `~/.cursor`, `~/.codeium`, or `.devin`.
+- No changes to generated user agent config under `~/.claude`, `~/.codeium`, or `.devin`.
 - No broadened Storybook feature support beyond what the existing binary already exposes.
 
 ## Implementation steps

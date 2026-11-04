@@ -31,7 +31,7 @@ Bundled adapters: Ollama, OpenClaw, n8n. Requires Python 3.11+ and a hybro.ai ac
 
 **Bullish signals**: Google-backed, Linux Foundation-governed, 5 official SDKs, DeepLearning.AI course, LangGraph/ADK support, active development.
 
-**Bearish for agentbrew**: Zero agentbrew-supported agents (Claude Code, Cursor, Windsurf, Devin) have native A2A config. No A2A config file path exists to sync to.
+**Bearish for agentbrew**: The evaluated agents had no native A2A config. No A2A config file path exists to sync to.
 
 ## 3. Why Not to Integrate
 
@@ -66,7 +66,7 @@ MCP addresses **vertical** integration (agent getting capabilities from tools). 
 ## 6. Revisit Triggers
 
 Upgrade to `catalog-add` when **any one** of:
-- A major agent (Claude Code, Cursor, Devin) ships a native A2A config file path
+- A major agent (Claude Code or Devin) ships a native A2A config file path
 - Hybro Hub reaches v1.0 with 500+ stars and open relay spec
 - A lightweight A2A adapter emerges requiring only a URL entry
 

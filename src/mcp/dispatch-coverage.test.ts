@@ -138,10 +138,10 @@ describe("mcpFormat dispatch coverage", () => {
     it("discovers json servers (default branch)", () => {
       setup();
       try {
-        const configPath = join(tmp, "cursor.json");
+        const configPath = join(tmp, "kiro.json");
         writeFileSync(configPath, JSON.stringify({ mcpServers: { gh: { command: "npx", args: ["gh-mcp"] } } }));
 
-        const agents: AgentConfig[] = [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: configPath }];
+        const agents: AgentConfig[] = [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: configPath }];
 
         const servers = discoverMcpServers(agents);
         expect(servers).toHaveLength(1);

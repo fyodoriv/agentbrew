@@ -11,7 +11,7 @@
 #
 # Behavior:
 #   1. Removes vendor-specific attribution lines that any AI agent
-#      (Devin, Claude, Cursor, Windsurf, Copilot, Aider, Augment, …)
+#      (Devin, Claude, Windsurf, Copilot, Aider, Augment, …)
 #      auto-inserts: `Generated with [<Agent>](<url>)` footers and
 #      `Co-Authored-By: <Agent> <bot@…>` trailers (case-insensitive
 #      header — catches both `Co-Authored-By:` and `Co-authored-by:`).

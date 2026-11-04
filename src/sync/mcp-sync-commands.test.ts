@@ -12,7 +12,7 @@ vi.mock("./mcp-sync.js", () => ({
 
 // Slice 1 of `bridge-mcp-sync-to-mcpm-for-intersection`: `removeMcpServer`
 // now calls `delegateMcpUninstall` from this module to clean intersection
-// clients (cursor, claude-code, codex, etc.). Without the mock, every
+// clients (goose, claude-code, codex, etc.). Without the mock, every
 // `removeMcpServer` test would spawn real `mcpm` subprocesses.
 vi.mock("./mcp-delegate.js", () => ({
   isMcpmAvailable: vi.fn(() => true),
@@ -219,7 +219,7 @@ describe("removeMcpServer", () => {
 // ── removeMcpServer — bridge to mcpm (slice 1) ────────────────────────────────
 //
 // `bridge-mcp-sync-to-mcpm-for-intersection` slice 1: `removeMcpServer` now
-// calls `delegateMcpUninstall` so the MCP_INTERSECTION_AGENTS mcpm intersection (cursor,
+// calls `delegateMcpUninstall` so the MCP_INTERSECTION_AGENTS mcpm intersection (goose,
 // claude-code, codex, etc.) gets the server removed from each client's
 // actual config file. Native `pruneServerFromAgents` only handles
 // carve-outs after slice 4a of `delegate-mcp-to-mcpm`.
@@ -264,7 +264,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
       ok: true,
       carveOuts: [],
       perClient: [
-        { client: "cursor", ok: true },
+        { client: "goose", ok: true },
         { client: "claude-code", ok: true },
       ],
       globalUninstall: { ok: true },
@@ -272,14 +272,14 @@ describe("removeMcpServer — bridge to mcpm", () => {
 
     const initial = makeState({
       mcpServers: [{ name: "to-remove", command: "cmd", args: [], env: {}, source: "user" }],
-      agents: [{ name: "cursor", detected: true } as never, { name: "claude-code", detected: true } as never],
+      agents: [{ name: "goose", detected: true } as never, { name: "claude-code", detected: true } as never],
     });
     const ctx = createTestContext(initial);
     await removeMcpServer("to-remove", ctx);
 
     expect(mockDelegate).toHaveBeenCalledWith({
       serverName: "to-remove",
-      agents: ["cursor", "claude-code"],
+      agents: ["goose", "claude-code"],
     });
   });
 
@@ -290,14 +290,14 @@ describe("removeMcpServer — bridge to mcpm", () => {
     mockDelegate.mockReturnValueOnce({
       ok: true,
       carveOuts: [],
-      perClient: [{ client: "cursor", ok: true }],
+      perClient: [{ client: "goose", ok: true }],
       globalUninstall: { ok: true },
     });
 
     const initial = makeState({
       mcpServers: [{ name: "to-remove", command: "cmd", args: [], env: {}, source: "user" }],
       agents: [
-        { name: "cursor", detected: true } as never,
+        { name: "goose", detected: true } as never,
         { name: "claude-code", detected: false } as never,
         { name: "codex", detected: true } as never,
       ],
@@ -307,7 +307,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
 
     expect(mockDelegate).toHaveBeenCalledWith({
       serverName: "to-remove",
-      agents: ["cursor", "codex"],
+      agents: ["goose", "codex"],
     });
   });
 
@@ -319,7 +319,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
       ok: true,
       carveOuts: [],
       perClient: [
-        { client: "cursor", ok: true },
+        { client: "goose", ok: true },
         { client: "claude-code", ok: true },
       ],
       globalUninstall: { ok: true },
@@ -327,7 +327,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
 
     const initial = makeState({
       mcpServers: [{ name: "to-remove", command: "cmd", args: [], env: {}, source: "user" }],
-      agents: [{ name: "cursor", detected: true } as never, { name: "claude-code", detected: true } as never],
+      agents: [{ name: "goose", detected: true } as never, { name: "claude-code", detected: true } as never],
     });
     const ctx = createTestContext(initial);
     const logSpy = vi.spyOn(ctx.logger, "log");
@@ -335,7 +335,7 @@ describe("removeMcpServer — bridge to mcpm", () => {
 
     const allLogs = logSpy.mock.calls.flat().join(" ");
     expect(allLogs).toContain("Removed mcpm client configs from");
-    expect(allLogs).toContain("cursor");
+    expect(allLogs).toContain("goose");
     expect(allLogs).toContain("claude-code");
   });
 
@@ -346,13 +346,13 @@ describe("removeMcpServer — bridge to mcpm", () => {
     mockDelegate.mockReturnValueOnce({
       ok: false,
       carveOuts: [],
-      perClient: [{ client: "cursor", ok: false, stderr: "mcpm: server not found" }],
+      perClient: [{ client: "goose", ok: false, stderr: "mcpm: server not found" }],
       globalUninstall: { ok: false, stderr: "mcpm: not found in registry" },
     });
 
     const initial = makeState({
       mcpServers: [{ name: "to-remove", command: "cmd", args: [], env: {}, source: "user" }],
-      agents: [{ name: "cursor", detected: true } as never],
+      agents: [{ name: "goose", detected: true } as never],
     });
     const ctx = createTestContext(initial);
     const logSpy = vi.spyOn(ctx.logger, "log");

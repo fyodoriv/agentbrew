@@ -15,7 +15,7 @@ the native path, close the task.
 
 ## Retest (2026-10-16)
 
-Setup: a new temporary `HOME` with only `~/.claude` and `~/.cursor`, an empty
+Setup: a new temporary `HOME` with only the agent home directories under test, an empty
 npm cache (`npm_config_cache`), `npm_config_offline=true`, and HTTP(S) proxy
 variables that point at a closed local port, so git and npm have no network.
 Command: `tsx src/cli.ts init` from this repo.

@@ -203,16 +203,6 @@ function isSkillShaped(items: SourceItem[], cachePath: string | undefined): bool
  *
  * Slice 4 (PR #804, 2026-04-26) introduced this gate as a `claude-code`-only
  * canary; slice 5 broadened it to the full skills-CLI-supported intersection.
- * The `agentAllowlist`
- * parameter on {@link delegateRemoteSkill} that slice 4 added is now
- * unused at this call site — slice 5 passes `undefined` and lets
- * {@link delegateRemoteSkill} read the full detected-agent list from
- * state. Slice 7 (2026-04-26) closed the original "may collapse it" hook
- * by confirming {@link cloneAndIndexRemoteSource} is permanent
- * post-delegation (the remaining carve-outs are still native); the parameter
- * stays on the signature as cheap forward-compat for any future scope
- * narrowing (e.g. a per-source override flag), but no follow-up slice
- * is queued.
  *
  * Skipped when:
  *   - `skillInstallMode === "native"` — user opt-out for offline / proxy
@@ -274,7 +264,7 @@ function registerSkillSourceDir(state: AgentBrewState, sourceUrl: string, items:
 
   // Find directories that contain skill subdirectories (dirs with SKILL.md).
   // Standard repos put skills at root or skills/ — but many repos use non-standard
-  // paths (e.g. .agents/skills/, skill-plugins/orchestrator/, src/scaffold/cursor/skills/).
+  // paths (e.g. .agents/skills/, skill-plugins/orchestrator/, src/scaffold/client/skills/).
   // Register each distinct skill parent directory so skills-sync can deploy them.
   const skillDirs = findSkillParentDirs(cachePath);
   let registered = 0;
@@ -360,49 +350,25 @@ function shouldSkipDir(name: string, depth: number): boolean {
  * see why their `claude-desktop`/`overlay-desktop` skills must
  * still come from the native installer.
  *
- * Slice 4 (PR #804, 2026-04-26): introduced the optional `agentAllowlist`
- * parameter so the canary path in {@link addSource} could pass
- * `["claude-code"]` and delegate ONLY to claude-code while other agents
- * stayed on the native installer.
- *
- * Slice 5 (2026-04-26): {@link maybeRunSkillsCliDelegation} now passes
- * `undefined` for the allowlist so all detected intersection agents flow
- * through the same delegation path. The parameter remains on the
- * signature as a forward-compat hook.
- *
- * Slice 7 (2026-04-26) confirmed {@link cloneAndIndexRemoteSource} stays
- * (remaining carve-outs `claude-desktop`/`overlay-desktop` stay native, so
- * the cache-clone + index step that feeds the native deploy is permanent).
- * The `agentAllowlist` hook is no longer
- * pending a "collapse with cloneAndIndexRemoteSource deletion" — it stays
- * as cheap forward-compat for any future per-source override flag.
- *
- * Pre-init fallback: when state.agents is empty (first-run before
- * `agentbrew init`), the dispatcher falls back to `"all"` mode so the
- * subprocess still does something useful instead of refusing.
+ * The empty default agent list uses the primary targets. A populated list
+ * uses only its detected agents, including when every target is disabled.
  */
 function delegateRemoteSkill(
   source: string,
   options: AddSourceOptions,
   wantsNonSkill: boolean,
-  state?: AgentBrewState,
-  agentAllowlist?: readonly string[],
+  state: AgentBrewState,
 ): boolean {
-  const detectedNames = agentAllowlist ?? state?.agents.filter((a) => a.detected).map((a) => a.name) ?? [];
-  const { args: agentArgs, carveOuts } =
-    detectedNames.length > 0 ? buildSkillsCliAgentArgs(detectedNames) : buildSkillsCliAgentArgs("all");
+  const targets =
+    state.agents.length === 0
+      ? ["claude-code", "codex"]
+      : state.agents.filter((agent) => agent.detected).map((agent) => agent.name);
+  const { args: agentArgs, carveOuts } = buildSkillsCliAgentArgs(targets);
 
-  // All detected agents are carve-outs — skills CLI has nothing to install.
-  // Surface this as a soft skip so the caller can still process non-skill
-  // work (mcp/rule/command) without the subprocess running with no `--agent`
-  // flags (which would default to skills CLI's own auto-detection and
-  // contradict agentbrew's detection).
-  if (detectedNames.length > 0 && agentArgs.length === 0) {
-    console.error(
-      chalk.yellow(
-        `\nSkipping skills CLI delegation — no detected agent is supported (carve-outs: ${carveOuts.join(", ")}).`,
-      ),
-    );
+  // Without explicit targets, skills CLI would select agents itself.
+  if (agentArgs.length === 0) {
+    const details = carveOuts.length > 0 ? ` (carve-outs: ${carveOuts.join(", ")})` : "";
+    console.error(chalk.yellow(`\nSkipping skills CLI delegation — no detected agent is supported${details}.`));
     return wantsNonSkill;
   }
 
@@ -582,7 +548,7 @@ export async function addSource(source: string, options: AddSourceOptions): Prom
   // skills CLI doesn't target them. Slice 4 (PR #804) shipped this as a
   // `claude-code`-only canary; slice 5 generalized it to the full supported
   // intersection in one shot.
-  // Fall back to npx skills add for the full agent set only when clone
+  // Fall back to npx skills add for selected targets only when clone
   // returns nothing (no items to register natively).
   if (isRemote && (wantsSkill || !wantsNonSkill)) {
     const clonedItems = cloneAndIndexRemoteSource(source, sourceType);

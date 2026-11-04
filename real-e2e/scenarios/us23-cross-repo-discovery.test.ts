@@ -34,9 +34,9 @@ describe("us23 cross-repo discovery", () => {
       // with `Syncing: mcp` plus a single `✓ Synced` summary.
       expect(result.stdout).toContain("Syncing: mcp");
 
-      // Post-slice-4a (PR #845) of `delegate-mcp-to-mcpm`: cursor is in
+      // Post-slice-4a (PR #845) of `delegate-mcp-to-mcpm`: claude-code is in
       // the 9-agent mcpm intersection, so native sync no longer writes
-      // `.cursor/mcp.json` — `mcpm client edit` is the path now. Assert
+      // `.claude.json` — `mcpm client edit` is the path now. Assert
       // against the carve-out client `kiro` (`~/.kiro/settings/mcp.json`)
       // which still flows through the native sync path. The test's
       // intent (Agentfile-driven MCP servers reach a real client config)

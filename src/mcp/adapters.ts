@@ -45,7 +45,7 @@ function desiredKeysMatch(existingValue: unknown, desiredValue: unknown): boolea
 function toJsonRemoteEntry(server: McpServer, url: string, agentName: string): JsonEntry {
   const entry: JsonEntry = { url };
   // Claude Code requires an explicit transport type for remote MCP servers.
-  // Cursor and other JSON clients infer it from the URL.
+  // Other JSON clients infer it from the URL.
   if (agentName === "claude-code" || agentName === "claude-desktop") {
     entry.type = "http";
   }
@@ -62,7 +62,7 @@ function toJsonRemoteEntry(server: McpServer, url: string, agentName: string): J
 // ── JSON adapter ────────────────────────────────────────────────────────────
 
 /**
- * Handles the standard JSON MCP config format used by Claude Code, Cursor,
+ * Handles the standard JSON MCP config format used by Claude Code,
  * and most other agents — servers stored as a name-keyed map under a configurable
  * `mcpKey` (e.g. `mcpServers`).
  */

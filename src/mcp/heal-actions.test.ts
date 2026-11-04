@@ -28,7 +28,7 @@ const STATUSES: ProbeStatus[] = [
 function result(overrides: Partial<ProbeResult>): ProbeResult {
   return {
     name: "github",
-    agent: "cursor",
+    agent: "kiro",
     status: "smoke_call_failed",
     latencyMs: 10,
     ...overrides,

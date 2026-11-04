@@ -212,7 +212,7 @@ describe("init", () => {
 
   it("warns when no agents detected", async () => {
     mockLoadState.mockReturnValue(undefined);
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: false, skillsDir: "x" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: false, skillsDir: "x" }]);
     await init();
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("No AI coding agents"));
   });
@@ -371,7 +371,7 @@ describe("init — PATH conflict detection", () => {
   });
 
   it("checks for PATH conflicts on initForce as well", async () => {
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: true, skillsDir: "x" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
     mockCheckPathConflicts.mockReturnValue(["/usr/local/bin/agentbrew"]);
@@ -385,7 +385,7 @@ describe("init — PATH conflict detection", () => {
 
 describe("initForce", () => {
   it("re-initializes even when state exists", async () => {
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: true, skillsDir: "x" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
 
@@ -397,7 +397,7 @@ describe("initForce", () => {
     const transform = (s: string) => s;
     mockDetectAgents.mockReturnValue([
       {
-        name: "cursor",
+        name: "amp",
         detected: true,
         skillsDir: "x",
         commandTransform: transform,
@@ -416,7 +416,7 @@ describe("initForce", () => {
 
   it("strips commandTransform from ALL agents including mixed detected/undetected", async () => {
     mockDetectAgents.mockReturnValue([
-      { name: "cursor", detected: true, skillsDir: "x", commandTransform: (s: string) => s },
+      { name: "amp", detected: true, skillsDir: "x", commandTransform: (s: string) => s },
       { name: "kiro", detected: true, skillsDir: "y", commandTransform: (s: string) => s },
       { name: "gemini-cli", detected: false, skillsDir: "z", commandTransform: (s: string) => s },
       { name: "claude-code", detected: true, skillsDir: "w" },
@@ -437,12 +437,12 @@ describe("initForce", () => {
   it("preserves all other agent fields when stripping commandTransform", async () => {
     mockDetectAgents.mockReturnValue([
       {
-        name: "cursor",
+        name: "amp",
         detected: true,
-        skillsDir: "~/.cursor/skills",
-        mcpConfig: "~/.cursor/mcp.json",
-        commandsDir: "~/.cursor/commands",
-        agentsDir: "~/.cursor/agents",
+        skillsDir: "~/.config/amp/skills",
+        mcpConfig: "~/.config/amp/mcp.json",
+        commandsDir: "~/.config/amp/commands",
+        agentsDir: "~/.config/amp/agents",
         commandTransform: (s: string) => s,
         commandFileExt: ".md",
         readsFrom: ["claude-code"],
@@ -455,20 +455,18 @@ describe("initForce", () => {
     const saved = mockSaveState.mock.calls[0][0];
     const agent = saved.agents[0];
     expect(agent.commandTransform).toBeUndefined();
-    expect(agent.name).toBe("cursor");
-    expect(agent.skillsDir).toBe("~/.cursor/skills");
-    expect(agent.mcpConfig).toBe("~/.cursor/mcp.json");
-    expect(agent.commandsDir).toBe("~/.cursor/commands");
-    expect(agent.agentsDir).toBe("~/.cursor/agents");
+    expect(agent.name).toBe("amp");
+    expect(agent.skillsDir).toBe("~/.config/amp/skills");
+    expect(agent.mcpConfig).toBe("~/.config/amp/mcp.json");
+    expect(agent.commandsDir).toBe("~/.config/amp/commands");
+    expect(agent.agentsDir).toBe("~/.config/amp/agents");
     expect(agent.commandFileExt).toBe(".md");
     expect(agent.readsFrom).toEqual(["claude-code"]);
   });
 
   it("init (not force) also strips commandTransform", async () => {
     mockLoadState.mockReturnValue(undefined);
-    mockDetectAgents.mockReturnValue([
-      { name: "cursor", detected: true, skillsDir: "x", commandTransform: () => "fn" },
-    ]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x", commandTransform: () => "fn" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
 
@@ -491,7 +489,7 @@ describe("initForce", () => {
   });
 
   it("shows summary after force re-init", async () => {
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: true, skillsDir: "x" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
 
@@ -526,7 +524,7 @@ describe("initForce", () => {
     mockLoadState.mockReturnValue(existingState);
 
     // detectAndSave will discover new agents and MCP servers
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: "y" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x", mcpConfig: "y" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([
       { name: "discovered-server", command: "npx", args: ["-y", "disc-mcp"], env: {}, source: "discovered" as const },
@@ -539,7 +537,7 @@ describe("initForce", () => {
 
     // Should have newly detected agents (not old agents)
     expect(saved.agents).toHaveLength(1);
-    expect(saved.agents[0].name).toBe("cursor");
+    expect(saved.agents[0].name).toBe("amp");
 
     // Should preserve existing sources
     expect(saved.sources).toHaveLength(1);
@@ -583,7 +581,7 @@ describe("initForce", () => {
       scheduledRepairQueue: "heavy-run" as const,
       defaultModel: "some-model",
       defaultEffort: "high",
-      modelOverrides: { cursor: null },
+      modelOverrides: { amp: null },
     };
     const legacyTeam = { label: "my-team", url: "https://example.com/overlay.git" };
     mockLoadState.mockReturnValue({ agents: [], catalogVersion: "0.1.0", ...userSet, team: legacyTeam } as never);
@@ -647,7 +645,7 @@ describe("init — git missing", () => {
 
   it("does not persist state on initForce when git is unavailable", async () => {
     process.exitCode = undefined;
-    mockDetectAgents.mockReturnValue([{ name: "cursor", detected: true, skillsDir: "x" }]);
+    mockDetectAgents.mockReturnValue([{ name: "amp", detected: true, skillsDir: "x" }]);
     mockDiscoverAllSkills.mockReturnValue(new Map());
     mockDiscoverMcpServers.mockReturnValue([]);
     mockCheckGitAvailable.mockReturnValue(false);

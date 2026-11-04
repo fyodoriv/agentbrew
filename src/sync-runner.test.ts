@@ -51,7 +51,7 @@ const stateMock = vi.hoisted(() => ({
     schemaVersion: 1,
     agents: [
       { name: "claude-code", detected: true },
-      { name: "cursor", detected: true },
+      { name: "amp", detected: true },
       { name: "kiro", detected: false },
     ],
     catalogVersion: "0.1.0",
@@ -376,7 +376,7 @@ describe("autoSync", () => {
 
 describe("reportPostSyncDrift", () => {
   it("reports drift issues when they exist after a successful sync", async () => {
-    mockCollectDrift.mockReturnValueOnce([{ type: "missing-skill", agent: "cursor", detail: "foo" }] as never);
+    mockCollectDrift.mockReturnValueOnce([{ type: "missing-skill", agent: "amp", detail: "foo" }] as never);
     mockFormatDriftSummary.mockReturnValueOnce("(1 skill)" as never);
     const modules: SyncModule[] = [{ name: "ok", fn: async () => undefined }];
     await runSyncWithErrorCollection(modules);

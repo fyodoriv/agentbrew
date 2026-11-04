@@ -374,7 +374,7 @@ describe("fix", () => {
 
   it("reports remaining issue count when re-check still finds drift", async () => {
     mockLoadState.mockReturnValue(makeState());
-    mockCheckMcpDrift.mockReturnValue([{ agent: "cursor", type: "mcp", detail: "missing server: foo" }]);
+    mockCheckMcpDrift.mockReturnValue([{ agent: "amp", type: "mcp", detail: "missing server: foo" }]);
     mockCheckRulesDrift.mockReturnValue([{ agent: "claude-code", type: "rules", detail: "missing managed section" }]);
 
     await fix();
@@ -390,7 +390,7 @@ describe("fix", () => {
 
   it("lists each remaining drift item in output", async () => {
     mockLoadState.mockReturnValue(makeState());
-    mockCheckSkillsDrift.mockReturnValue([{ agent: "cursor", type: "skills", detail: "missing skill: my-skill" }]);
+    mockCheckSkillsDrift.mockReturnValue([{ agent: "amp", type: "skills", detail: "missing skill: my-skill" }]);
 
     await fix();
 
@@ -400,7 +400,7 @@ describe("fix", () => {
     ]
       .flat()
       .join(" ");
-    expect(logOutput).toContain("cursor");
+    expect(logOutput).toContain("amp");
     expect(logOutput).toContain("skills");
     expect(logOutput).toContain("missing skill: my-skill");
   });
@@ -429,14 +429,14 @@ describe("fix", () => {
     mockLoadState.mockReturnValue(makeState());
     // Before: 2 issues. After: 1 remains. So 1 was repaired.
     mockCollectDrift.mockReturnValue([
-      { agent: "cursor", type: "mcp", detail: "missing server: foo" },
+      { agent: "amp", type: "mcp", detail: "missing server: foo" },
       { agent: "claude-code", type: "rules", detail: "stale section" },
     ]);
     mockCheckRulesDrift.mockReturnValue([{ agent: "claude-code", type: "rules", detail: "stale section" }]);
 
     await fix();
 
-    expect(mockSaveRepairLog).toHaveBeenCalledWith([{ type: "mcp", agent: "cursor", detail: "missing server: foo" }]);
+    expect(mockSaveRepairLog).toHaveBeenCalledWith([{ type: "mcp", agent: "amp", detail: "missing server: foo" }]);
     const logOutput = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(logOutput).toContain("Fixed 1 issue(s)");
   });
@@ -449,9 +449,9 @@ describe("fix", () => {
     mockLoadState.mockReturnValue(makeState());
     mockCollectDrift.mockReturnValue([
       { agent: "claude-code", type: "skills-user-added", detail: "user-created skill: my-custom" },
-      { agent: "cursor", type: "commands-user-added", detail: "user-created command: my-cmd.md" },
+      { agent: "amp", type: "commands-user-added", detail: "user-created command: my-cmd.md" },
       { agent: "warp", type: "mcp-user-added", detail: "user-added server: my-proxy" },
-      { agent: "cursor", type: "skill-validity", detail: "bad frontmatter" },
+      { agent: "amp", type: "skill-validity", detail: "bad frontmatter" },
       { agent: "organization-overlay", type: "organization-overlay", detail: "signals mismatch" },
     ]);
     // No auto-fixable drift — nothing for fix() to legitimately address.
@@ -475,16 +475,16 @@ describe("fix", () => {
     mockLoadState.mockReturnValue(makeState());
     // Before: 1 real drift + 2 user-added items = 3 total collected
     mockCollectDrift.mockReturnValue([
-      { agent: "cursor", type: "mcp", detail: "missing server: foo" },
+      { agent: "amp", type: "mcp", detail: "missing server: foo" },
       { agent: "claude-code", type: "skills-user-added", detail: "user-created skill: my-skill" },
-      { agent: "cursor", type: "commands-user-added", detail: "user-created command: my.md" },
+      { agent: "amp", type: "commands-user-added", detail: "user-created command: my.md" },
     ]);
     // After: nothing remains. But the only thing fix() actually fixed was the mcp drift.
 
     await fix();
 
     // Only the mcp drift should show up in the repair log — not the user-added items.
-    expect(mockSaveRepairLog).toHaveBeenCalledWith([{ type: "mcp", agent: "cursor", detail: "missing server: foo" }]);
+    expect(mockSaveRepairLog).toHaveBeenCalledWith([{ type: "mcp", agent: "amp", detail: "missing server: foo" }]);
     const logOutput = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(logOutput).toContain("Fixed 1 issue(s)");
     expect(logOutput).not.toContain("Fixed 3 issue(s)");

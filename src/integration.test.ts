@@ -360,7 +360,6 @@ describe("agent detection", () => {
 
     // We created .config/opencode, .augment, .codex dirs
     const names = detected.map((a) => a.name);
-    expect(names).not.toContain("cursor");
     expect(names).toContain("opencode");
     expect(names).toContain("augment");
     expect(names).toContain("codex");

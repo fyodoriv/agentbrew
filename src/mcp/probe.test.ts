@@ -597,7 +597,7 @@ describe("probeMcpServer", () => {
       try {
         const r = await probeMcpServer(
           "github",
-          "cursor",
+          "kiro",
           {
             command: process.execPath,
             args: ["-e", script],
@@ -651,13 +651,13 @@ describe("probeAllServers", () => {
     const spec = { command: process.execPath, args: ["-e", makeFakeServer({ recordMethodsPath: logPath })] };
     try {
       const results = await probeAllServers([
-        { agent: "cursor", servers: { fake: spec } },
+        { agent: "kiro", servers: { fake: spec } },
         { agent: "claude-code", servers: { fake: { ...spec, args: [...spec.args] } } },
         { agent: "kiro", servers: { fake: { ...spec, env: { EXTRA: "1" } } } },
       ]);
 
       expect(results.map((r) => [r.agent, r.status])).toEqual([
-        ["cursor", "ok"],
+        ["kiro", "ok"],
         ["claude-code", "ok"],
         ["kiro", "ok"],
       ]);

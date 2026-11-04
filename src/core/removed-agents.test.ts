@@ -1,7 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import type { AgentBrewState } from "../types.js";
+import { CURRENT_SCHEMA_VERSION, migrateState } from "./state-manager.js";
 
 // Guard for #286: Cursor and Grok support was removed on purpose.
 // These checks fail if any of it comes back.
@@ -47,6 +50,29 @@ function codeLines(text: string): string[] {
 }
 
 describe("removed agents stay removed (#286)", () => {
+  it("has no tracked .cursor/ output reference outside this guard", () => {
+    const result = spawnSync("git", ["grep", "-liF", ".cursor/", "--", ":!src/core/removed-agents.test.ts"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stdout).toBe(1);
+  });
+
+  it.each([undefined, CURRENT_SCHEMA_VERSION])("drops retired state at schema %s", (schemaVersion) => {
+    const live: AgentBrewState["agents"] = ["claude-code", "codex", "opencode"].map((name) => ({
+      name,
+      detected: true,
+      skillsDir: `/fixture/${name}/skills`,
+    }));
+    const state: AgentBrewState = {
+      schemaVersion,
+      catalogVersion: "fixture",
+      agents: [...live, { name: "cursor", detected: true, skillsDir: "~/.cursor/skills" }],
+    };
+    expect(migrateState(state).agents).toEqual(live);
+  });
+
   it("has no Cursor, Grok, or xAI agent entry in agents.yaml", () => {
     const names = coreAgents().map((agent) => String(agent.name));
     expect(names.filter((name) => REMOVED_NAME.test(name))).toEqual([]);

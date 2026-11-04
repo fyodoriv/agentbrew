@@ -111,7 +111,7 @@ describe("reconcileIntersectionClientEntries", () => {
     const original = JSON.stringify({ mcpServers: { "tasks-mcp": { command: "npx", args: ["old"] } } });
     writeFileSync(claudeJson, original);
 
-    expect(reconcileIntersectionClientEntries([claudeCodeDefinition(home)], ["cursor"], [tasksMcp]).size).toBe(0);
+    expect(reconcileIntersectionClientEntries([claudeCodeDefinition(home)], ["opencode"], [tasksMcp]).size).toBe(0);
     expect(readFileSync(claudeJson, "utf-8")).toBe(original);
   });
 });

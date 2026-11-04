@@ -9,7 +9,7 @@ import type { ProbeResult } from "./probe.js";
 function result(overrides: Partial<ProbeResult>): ProbeResult {
   return {
     name: "github",
-    agent: "cursor",
+    agent: "kiro",
     status: "ok",
     latencyMs: 5,
     ...overrides,
@@ -51,7 +51,7 @@ function readMethods(path: string): string[] {
 
 describe("runMcpHealCycle", () => {
   it("deep-probes MCPs, runs a heal action for failures, re-probes, and snapshots final results", async () => {
-    const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
+    const surfaces = [{ agent: "kiro", servers: { github: { command: "github-mcp", args: [] } } }];
     const probeAll = vi
       .fn()
       .mockResolvedValueOnce([result({ status: "smoke_call_failed", error: "401 Unauthorized" })])
@@ -83,7 +83,7 @@ describe("runMcpHealCycle", () => {
   it("re-probes only the failed servers and keeps the healthy result", async () => {
     const surfaces: ProbeSurface[] = [
       {
-        agent: "cursor",
+        agent: "kiro",
         servers: { good: { command: "good-mcp", args: [] }, bad: { command: "bad-mcp", args: [] } },
       },
       { agent: "claude-code", servers: { good: { command: "good-mcp", args: [] } } },
@@ -119,11 +119,11 @@ describe("runMcpHealCycle", () => {
       now: () => new Date("2026-06-04T12:00:00.000Z"),
     });
 
-    expect(started.filter((s) => s.endsWith(":good"))).toEqual(["cursor:good", "claude-code:good"]);
-    expect(started.filter((s) => s.endsWith(":bad"))).toEqual(["cursor:bad", "cursor:bad"]);
+    expect(started.filter((s) => s.endsWith(":good"))).toEqual(["kiro:good", "claude-code:good"]);
+    expect(started.filter((s) => s.endsWith(":bad"))).toEqual(["kiro:bad", "kiro:bad"]);
     expect(cycle.final.map((r) => `${r.agent}:${r.name}:${r.status}`)).toEqual([
-      "cursor:good:ok",
-      "cursor:bad:init_timeout",
+      "kiro:good:ok",
+      "kiro:bad:init_timeout",
       "claude-code:good:ok",
     ]);
     expect(cycle.attempts[0].healed).toBe(false);
@@ -132,7 +132,7 @@ describe("runMcpHealCycle", () => {
   it("starts a suppressed failing server once per tick while another pair heals", async () => {
     const surfaces: ProbeSurface[] = [
       {
-        agent: "cursor",
+        agent: "kiro",
         servers: { known: { command: "known-mcp", args: [] }, broken: { command: "broken-mcp", args: [] } },
       },
       { agent: "claude-code", servers: { authy: { command: "authy-mcp", args: [] } } },
@@ -176,20 +176,20 @@ describe("runMcpHealCycle", () => {
 
     // A sync heal rewrites every server config, so every unsuppressed failure is re-probed.
     await run(new Map([["sync", async () => ({ healed: true, action: "agentbrew-sync-mcp" })]]));
-    expect(started.filter((s) => s === "cursor:known")).toHaveLength(1);
-    expect(started.filter((s) => s === "cursor:broken")).toHaveLength(2);
+    expect(started.filter((s) => s === "kiro:known")).toHaveLength(1);
+    expect(started.filter((s) => s === "kiro:broken")).toHaveLength(2);
     expect(started.filter((s) => s === "claude-code:authy")).toHaveLength(2);
 
     // Without a sync heal, only the attempted pair is re-probed.
     started.length = 0;
     await run(new Map([["auth", async () => ({ healed: true, action: "gh-auth-token" })]]));
-    expect(started.filter((s) => s === "cursor:known")).toHaveLength(1);
-    expect(started.filter((s) => s === "cursor:broken")).toHaveLength(1);
+    expect(started.filter((s) => s === "kiro:known")).toHaveLength(1);
+    expect(started.filter((s) => s === "kiro:broken")).toHaveLength(1);
     expect(started.filter((s) => s === "claude-code:authy")).toHaveLength(2);
   });
 
   it("records healed: false when the pair still fails the re-probe", async () => {
-    const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
+    const surfaces = [{ agent: "kiro", servers: { github: { command: "github-mcp", args: [] } } }];
     const failed = result({ status: "launch_failed", error: "spawn github-mcp ENOENT" });
     const probeAll = vi.fn().mockResolvedValue([failed]);
     const healAction = vi.fn(async () => ({ healed: true, action: "agentbrew-sync-mcp" }));
@@ -214,7 +214,7 @@ describe("runMcpHealCycle", () => {
   });
 
   it("snapshots URL failures and attempts the registered sync heal action", async () => {
-    const surfaces = [{ agent: "cursor", servers: { remote: { url: "https://example.invalid/mcp" } } }];
+    const surfaces = [{ agent: "kiro", servers: { remote: { url: "https://example.invalid/mcp" } } }];
     const failed = result({ name: "remote", status: "tools_list_failed", error: "remote tools unavailable" });
     const probeAll = vi.fn().mockResolvedValue([failed]);
     const healAction = vi.fn(async () => ({ healed: false, action: "agentbrew-sync-mcp" }));
@@ -240,7 +240,7 @@ describe("runMcpHealCycle", () => {
   });
 
   describe("load-aware heal deferral", () => {
-    const surfaces = [{ agent: "cursor", servers: { remote: { url: "https://example.invalid/mcp" } } }];
+    const surfaces = [{ agent: "kiro", servers: { remote: { url: "https://example.invalid/mcp" } } }];
     const run = async (failed: ProbeResult, loadPerCore: number) => {
       const probeAll = vi.fn().mockResolvedValue([failed]);
       const healAction = vi.fn(async () => ({ healed: false, action: "agentbrew-sync-mcp" }));
@@ -296,7 +296,7 @@ describe("runMcpHealCycle", () => {
   });
 
   it("writes follow-up tasks for failures that remain after healing", async () => {
-    const surfaces = [{ agent: "cursor", servers: { github: { command: "github-mcp", args: [] } } }];
+    const surfaces = [{ agent: "kiro", servers: { github: { command: "github-mcp", args: [] } } }];
     const failed = result({ status: "smoke_call_failed", error: "401 Unauthorized" });
     const probeAll = vi.fn().mockResolvedValue([failed]);
     const writeSnapshot = vi.fn();
@@ -320,9 +320,7 @@ describe("runMcpHealCycle", () => {
   });
 
   it("suppresses known catalog failures without growing heal history across ticks", async () => {
-    const surfaces = [
-      { agent: "cursor", servers: { "ask-human": { command: "pipx", args: ["run", "ask-human-mcp"] } } },
-    ];
+    const surfaces = [{ agent: "kiro", servers: { "ask-human": { command: "pipx", args: ["run", "ask-human-mcp"] } } }];
     const failed = result({ name: "ask-human", status: "init_timeout", error: "no response within 12000ms" });
     const probeAll = vi.fn().mockResolvedValue([failed]);
     const healAction = vi.fn(async () => ({ healed: true, action: "agentbrew-sync-mcp" }));
@@ -434,7 +432,7 @@ describe("runMcpHealCycle", () => {
   it("runs the sync heal at most once per cycle, however many pairs need it (#279)", async () => {
     const names = ["a", "b", "c", "d"];
     const surfaces: ProbeSurface[] = [
-      { agent: "cursor", servers: Object.fromEntries(names.map((n) => [n, { command: `${n}-mcp`, args: [] }])) },
+      { agent: "kiro", servers: Object.fromEntries(names.map((n) => [n, { command: `${n}-mcp`, args: [] }])) },
     ];
     const probeAll = vi.fn(async (input: ProbeSurface[]) =>
       input.flatMap((surface) =>

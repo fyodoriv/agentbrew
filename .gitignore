@@ -13,7 +13,6 @@ plugin-lock.json
 .devin/
 .agents/*
 !.agents/requirements.yaml
-.cursor/
 .minsky/
 .worktrees/
 

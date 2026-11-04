@@ -46,7 +46,7 @@ describe("toCanonical", () => {
 describe("fromCanonical", () => {
   it("standard format rewrites bare ${VAR} to resilient ${VAR:-} form", () => {
     // Why not identity anymore: strict env-var interpolators (Devin CLI binary importing
-    // ~/.claude.json and ~/.cursor/mcp.json) abort the whole MCP load on bare ${VAR} when
+    // ~/.claude.json) abort the whole MCP load on bare ${VAR} when
     // the env var is unset. Emitting ${VAR:-} keeps the value bash-compatible while
     // preventing the import-time crash. See `makeResilient` docstring in env-vars.ts.
     expect(fromCanonical("${MY_KEY}", "standard")).toBe("${MY_KEY:-}");
@@ -72,7 +72,7 @@ describe("fromCanonical", () => {
 
   it("literal format falls back to resilient placeholder when var is unset", () => {
     // Why ${VAR:-} not bare ${VAR}: Devin reads its OWN mcpServers block back through the
-    // same interpolator that handles imported Claude/Cursor configs. A bare placeholder
+    // same interpolator that handles imported configs. A bare placeholder
     // here would crash Devin's loader on a subsequent launch. The resilient form lets the
     // user set the env var later (a `agentbrew setup` step) and pick up the value via
     // bash-style substitution at MCP server launch time.
@@ -365,8 +365,8 @@ describe("mergeEnvPreservingResolved", () => {
 //
 // These tests cover the helpers introduced to defuse the Devin CLI binary's
 // import-time crash on bare `${VAR}` placeholders. The full rationale lives in
-// `makeResilient`'s docstring; in short: Devin reads `~/.claude.json` and
-// `~/.cursor/mcp.json` at startup, runs strict env-var interpolation, and
+// `makeResilient`'s docstring; in short: Devin reads `~/.claude.json` at startup,
+// runs strict env-var interpolation, and
 // aborts the entire MCP load (every server, including working ones like
 // playwright and context7) when it hits a bare `${VAR}` whose env var is
 // unset. The resilient `${VAR:-}` form makes Devin's regex see an empty

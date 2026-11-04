@@ -26,11 +26,11 @@ This PR adds a `--json` flag to `ai-rules status` that emits a structured JSON o
   "body_files_out_of_sync": false,
   "agent_statuses": {
     "claude": true,
-    "cursor": false,
+    "fixture-agent": false,
     "codex": true
   },
   "summary": "out_of_sync",
-  "out_of_sync_agents": ["cursor"]
+  "out_of_sync_agents": ["fixture-agent"]
 }
 ```
 
@@ -220,7 +220,7 @@ fn test_status_json_output_shape_in_sync() {
         body_files_out_of_sync: false,
         agent_statuses: HashMap::from([
             ("claude".to_string(), true),
-            ("cursor".to_string(), true),
+            ("fixture-agent".to_string(), true),
         ]),
     };
     let output = StatusJsonOutput::from_status(&status);
@@ -238,7 +238,7 @@ fn test_status_json_output_shape_out_of_sync() {
         body_files_out_of_sync: false,
         agent_statuses: HashMap::from([
             ("claude".to_string(), true),
-            ("cursor".to_string(), false),
+            ("fixture-agent".to_string(), false),
             ("codex".to_string(), false),
         ]),
     };
@@ -249,7 +249,7 @@ fn test_status_json_output_shape_out_of_sync() {
     assert_eq!(out_of_sync.len(), 2);
     // Sorted for determinism
     assert_eq!(out_of_sync[0], "codex");
-    assert_eq!(out_of_sync[1], "cursor");
+    assert_eq!(out_of_sync[1], "fixture-agent");
 }
 
 #[test]

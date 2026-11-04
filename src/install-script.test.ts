@@ -63,6 +63,39 @@ afterEach(() => {
 });
 
 describe("scripts/install.sh", () => {
+  it.each([
+    ["Darwin", "arm64"],
+    ["Linux", "x86_64"],
+    ["Linux", "aarch64"],
+  ])("stops before backup without Cargo on %s %s", (kernel, arch) => {
+    const { home, env, runEnv } = sandbox();
+    const stubs = join(home, "..", "stubs");
+    const commands = {
+      uname: `case "$1" in -s) echo ${kernel};; -m) echo ${arch};; esac`,
+      node: "echo v24.0.0",
+      npm: "exit 99",
+      git: "exit 0",
+    };
+    for (const [name, body] of Object.entries(commands)) {
+      writeFileSync(join(stubs, name), `#!/bin/bash\n${body}\n`, { mode: 0o755 });
+    }
+
+    const result = runEnv(
+      {
+        ...env,
+        AGENTBREW_INSTALL_CLI: "",
+        BASH_ENV: "",
+        PATH: `${stubs}:/usr/bin:/bin`,
+      },
+      "run",
+      "--yes",
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("Cargo is missing");
+    expect(result.stdout).not.toContain("2/7 Back up");
+  });
+
   it("plan explains the steps, the prerequisites, the backup, and the choices, and changes nothing", () => {
     const { home, run } = sandbox();
     const result = run("plan");

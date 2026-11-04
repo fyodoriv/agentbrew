@@ -202,3 +202,13 @@ Run `./node_modules/.bin/vitest run src/sync/codex-support.test.ts`. Expect
 one policy-test failure before the explicit exceptions and zero after.
 Reject any additional exception, an enabled-by-default judge hook, or a
 policy regression. This check does not qualify a live draft connector.
+
+### Engine failure diagnostics
+
+Run `./node_modules/.bin/vitest run src/judges/promptfoo-dispatch.test.ts`.
+The dispatch boundary currently reports one generic error for a timeout, a
+failed engine process, and an unreadable report. Keep three distinct fixed
+messages with zero disclosures of engine error text. Keep successful and
+completed failing assertions on their existing paths. Any lost case or
+diagnostic disclosure rejects the change. This check uses synthetic engine
+results and does not attribute a previous calibration failure.

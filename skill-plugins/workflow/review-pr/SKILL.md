@@ -144,21 +144,29 @@ REVIEW_DIR=<path> node <skill-dir>/scripts/review-run.mjs report
 ```
 
 It writes `report.md` (the draft) and `report.json`, and prints how many
-findings it kept and dropped. Before you show it, send the whole draft to a
-fresh judge subagent with the PR facts, as
+findings it kept and dropped. Before either text review, prepare the exact
+review body or inline comments, including the required attribution footer.
+For inline comments, include the target lines in the proposed review. Send
+the whole draft to a fresh judge subagent with the PR facts, as
 [references/draft-judge.md](references/draft-judge.md) says. Fix each
 `REJECTED` line in `merged.json` or `verdicts.json` (never in `report.md`,
 which `report` rewrites), re-run `report`, and judge again, at most 3 rounds.
-After `APPROVED`, show the user `report.md`
-and the dropped count, then ask. After a yes:
+After `APPROVED`, run the separate
+[fresh-reader review](../../../docs/shared-rules.md#fresh-reader-review) in the
+shared rules. Give the fresh reader the exact artifact the user will see,
+including the proposed text, inline target lines if any, and dropped count.
+Give it only the readability checklist as instructions.
+After the fresh reader gives PASS, show that proposal, then ask for approval.
+If the text or form changes, repeat both text reviews and get approval for the
+revised draft. After a yes:
 
 1. Check that the head has not moved
    (`gh pr view <n> -R <owner/repo> --json headRefOid`). If it moved, start a
    new run instead of posting.
-2. Post as the user chose: one review
-   (`gh pr review <n> -R <owner/repo> --comment --body-file <REVIEW_DIR>/report.md`)
-   or inline comments on the lines. Add the footer your rules require for
-   agent-written text.
+2. Post only the text and delivery form the user approved. For one review,
+   save the approved body as `<REVIEW_DIR>/approved-review.md` and run
+   `gh pr review <n> -R <owner/repo> --comment --body-file <REVIEW_DIR>/approved-review.md`.
+   For inline comments, use the approved wording and target lines.
 
 ## Add checklists
 

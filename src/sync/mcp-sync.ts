@@ -418,11 +418,16 @@ export function syncWithAdapter(
     return { added: 0, updated: 0, pruned: 0, error: `read failed: ${errorMessage(err)}` };
   }
 
-  const diff = computeDiffWithAdapter(agentName, servers, entries, adapter, {
-    prune: options?.prune,
-    forcePruneNames: options?.forcePruneNames,
-    managedNames: options?.managedNames,
-  });
+  let diff: McpAgentDiff;
+  try {
+    diff = computeDiffWithAdapter(agentName, servers, entries, adapter, {
+      prune: options?.prune,
+      forcePruneNames: options?.forcePruneNames,
+      managedNames: options?.managedNames,
+    });
+  } catch (err) {
+    return { added: 0, updated: 0, pruned: 0, error: errorMessage(err) };
+  }
 
   if (!dryRun && diff.actions.length > 0) {
     applyDiffToEntries(entries, diff.actions, adapter);

@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { syncWithAdapter } from "../sync/mcp-sync.js";
 import type { McpServer } from "../types.js";
 import { getAdapter, JsonAdapter, OpenCodeAdapter } from "./adapters.js";
 
@@ -584,6 +585,102 @@ describe("TomlAdapter (codex)", () => {
   function remote(headers?: Record<string, string>): McpServer {
     return makeServer({ name: "remote", command: "", args: [], env: {}, url: "https://example.com/mcp", headers });
   }
+
+  describe("Codex native helper preservation", () => {
+    const url = "https://example.com/mcp";
+    const helper = "/fixture-only/headers-helper";
+    const refusal = "Codex MCP update refused to preserve native HTTP headers helper configuration.";
+    const base = `model = "fixture-model"\n[mcp_servers.remote]\nurl = "${url}"\n`;
+    const withHelper = `${base}http_headers_helper = "${helper}"\nstartup_timeout_sec = 20\n`;
+    const sync = (desired: McpServer, dryRun = false) =>
+      syncWithAdapter(codex, configPath, [desired], "codex", { mcpKey: "mcp_servers", dryRun });
+    const deployed = () => codex.readEntries(configPath, "mcp_servers").remote;
+
+    it.each([
+      {
+        id: "H01 origin",
+        before: withHelper,
+        desired: { ...remote(), url: "https://other.example/mcp" },
+        unsafe: (entry: Record<string, unknown>) => entry.url === "https://other.example/mcp",
+      },
+      {
+        id: "H02 same-origin path",
+        before: withHelper,
+        desired: { ...remote(), url: "https://example.com/other" },
+        unsafe: (entry: Record<string, unknown>) => entry.url === "https://example.com/other",
+      },
+      {
+        id: "H03 bearer",
+        before: withHelper,
+        desired: remote({ Authorization: "Bearer ${FIXTURE_ENV}" }),
+        unsafe: (entry: Record<string, unknown>) => entry.bearer_token_env_var === "FIXTURE_ENV",
+      },
+      {
+        id: "H04 literal auth",
+        before: withHelper,
+        desired: remote({ authorization: "fixture-only" }),
+        unsafe: (entry: Record<string, unknown>) =>
+          (entry.http_headers as Record<string, unknown> | undefined)?.authorization === "fixture-only",
+      },
+      {
+        id: "H05 env auth",
+        before: withHelper,
+        desired: remote({ AUTHORIZATION: "${FIXTURE_ENV}" }),
+        unsafe: (entry: Record<string, unknown>) =>
+          (entry.env_http_headers as Record<string, unknown> | undefined)?.AUTHORIZATION === "FIXTURE_ENV",
+      },
+      {
+        id: "H06 bearer removal",
+        before: `${withHelper}bearer_token_env_var = "OWNER_FIXTURE"\n`,
+        desired: remote(),
+        unsafe: (entry: Record<string, unknown>) => !Object.hasOwn(entry, "bearer_token_env_var"),
+      },
+    ])("refuses $id without touching the file", ({ before, desired, unsafe }) => {
+      writeFileSync(configPath, before);
+      const preview = sync(desired, true);
+      expect(readFileSync(configPath, "utf8") === before).toBe(true);
+      const actual = sync(desired);
+      const bytesPreserved = readFileSync(configPath, "utf8") === before;
+      const entry = deployed();
+      if (actual.error === undefined) {
+        expect(!bytesPreserved && entry.http_headers_helper === helper && unsafe(entry)).toBe(true);
+      }
+      expect({
+        previewRefused: preview.error === refusal,
+        writeRefused: actual.error === refusal,
+        previewUpdates: preview.added + preview.updated + preview.pruned,
+        actualUpdates: actual.added + actual.updated + actual.pruned,
+        bytesPreserved,
+      }).toEqual({
+        previewRefused: true,
+        writeRefused: true,
+        previewUpdates: 0,
+        actualUpdates: 0,
+        bytesPreserved: true,
+      });
+    });
+
+    it("keeps H07 exact native-helper no-op", () => {
+      writeFileSync(configPath, withHelper);
+      expect(sync(remote())).toEqual({ added: 0, updated: 0, pruned: 0 });
+      expect(readFileSync(configPath, "utf8") === withHelper).toBe(true);
+    });
+
+    it("keeps H08 same-endpoint non-auth header update", () => {
+      writeFileSync(configPath, withHelper);
+      expect(sync(remote({ "X-Client": "fixture" }))).toEqual({ added: 0, updated: 1, pruned: 0 });
+      const entry = deployed();
+      expect(entry.http_headers_helper === helper && entry.url === url && entry.startup_timeout_sec === 20).toBe(true);
+      expect(entry.http_headers).toEqual({ "X-Client": "fixture" });
+    });
+
+    it("keeps H09 helper-free update", () => {
+      writeFileSync(configPath, base);
+      const changed = "https://other.example/mcp";
+      expect(sync({ ...remote(), url: changed })).toEqual({ added: 0, updated: 1, pruned: 0 });
+      expect(deployed().url === changed && !Object.hasOwn(deployed(), "http_headers_helper")).toBe(true);
+    });
+  });
 
   it("writes servers under mcp_servers and keeps other top-level keys", () => {
     writeFileSync(configPath, 'model = "gpt-5.5"\n\n[projects."/tmp/x"]\ntrust_level = "trusted"\n');

@@ -666,6 +666,11 @@ and `Authorization: Bearer ${VAR}` to `bearer_token_env_var`. Run
 `codex mcp login <name>` once for an OAuth server. Goose (YAML) is still
 read-only, so `agentbrew sync` reports a write error for goose on this path.
 
+If a Codex entry already has a native `http_headers_helper`, the native MCP
+update refuses changes to that entry's URL or Authorization settings and
+leaves the entry untouched. Preview applies the same check. Manage the helper
+and its endpoint in the Codex configuration that owns them.
+
 ### Servers the probe cannot authenticate
 
 `agentbrew`'s probe is unauthenticated by design, so a server that requires

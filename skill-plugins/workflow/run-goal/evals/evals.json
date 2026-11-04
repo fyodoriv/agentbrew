@@ -2253,6 +2253,16 @@
         "Red tests then cross-repo replay with external calls mocked: denied requester 0 posts and allowed requester 1",
         "Fresh reviewer checks all callers; verifies result in live daily store"
       ]
+    },
+    {
+      "id": 197,
+      "prompt": "/goal make the weekly plan suggest rarer, more unique events, English only, with tests",
+      "expected_output": "Before the full gate, the agent runs every story test that reads the changed ranking (for example the novelty and plan e2e stories), not only its new unit tests. It treats a score change that touches every item (a flat bonus for one-date events) as a reorder of all rankings and drops it when a guard story fails, keeping only the targeted lever (a penalty for frequent events). A language filter drops an event only on evidence of another language, and the agent checks the filter keeps every English fixture before it ships.",
+      "expectations": [
+        "runs the ranking guard stories before the full gate",
+        "drops a flat bonus that reorders all items when a guard fails",
+        "language filter needs evidence of another language"
+      ]
     }
   ]
 }

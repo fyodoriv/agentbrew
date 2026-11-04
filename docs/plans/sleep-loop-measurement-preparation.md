@@ -71,4 +71,16 @@ Task lint still reports a pre-existing missing Hypothesis on
 `measure-dissolution-capacity-2026-q4`, introduced by the base revision.
 That unrelated task is owned by the research work and was reported to the
 coordinator. This preparation does not claim the task queue or combined full
-gate passed. Installation, UTC cutover and outcome measurement remain pending.
+gate passed.
+
+## Verified observation window
+
+On 2026-11-04 at 21:44:10 UTC, the installed reporter and the Claude recorder
+and parser files matched the source at `aebed677`. The Claude hook settings
+registered the recorder. Use that time as the start of the new observation
+window. Earlier records stay outside this comparison.
+
+The first seven-day review is due on or after 2026-11-11 at 21:44:10 UTC.
+Report the recorded syntax, timed correlations and unknowns before applying
+the original outcome thresholds. A missing observation gives an unknown
+result.

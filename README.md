@@ -930,6 +930,14 @@ Skills-only agents are experimental. Sync only writes to their `skillsDir`, and 
 
 See [docs/COMPETITION.md](docs/COMPETITION.md) for the full analysis. Run `npm run docs:competition` after editing `docs/competition-snapshot.json`.
 
+## Judge an artifact before delivery
+
+Ask Claude to review a draft with `/agentbrew`, or run
+`agentbrew judge run --event <event> --artifact <file>`. Declare the rubric
+in your Agentfile. Use `agentbrew judge eval <name>` to check the rubric
+against labeled examples. See the [judge setup guide](docs/plans/judges.md)
+for the local model and opt-in hooks.
+
 ## CLI reference
 
 ```

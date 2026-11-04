@@ -91,6 +91,38 @@ hooks:
     agents: ["claude-code", "codex"]
     defaultEnabled: false
 
+  - id: judge-draft-save
+    description: Require a fresh verdict before saving a draft with the configured chat tool
+    event: PreToolUse
+    matcher: '^mcp__.*$'
+    script: checks/judge-draft-save.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: docs/plans/judges.md
+    agents: ["claude-code", "codex"]
+    defaultEnabled: false
+
+  - id: judge-report-final
+    description: Warn when the final message has no fresh judge verdict
+    event: Stop
+    script: checks/judge-report-final.sh
+    tier: deterministic
+    verdict: warn
+    sourceRule: docs/plans/judges.md
+    agents: ["claude-code", "codex"]
+    defaultEnabled: false
+
+  - id: judge-pr-delivery
+    description: Require a fresh judge verdict before creating or marking a PR ready
+    event: PreToolUse
+    matcher: Bash
+    script: checks/judge-pr-delivery.sh
+    tier: deterministic
+    verdict: block
+    sourceRule: docs/plans/judges.md
+    agents: ["claude-code", "codex"]
+    defaultEnabled: false
+
   - id: gh-pr-body-requires-docs
     description: 'Block gh pr create/edit when the PR body has no "## Docs" section or "Docs: none — <reason>" line'
     event: PreToolUse

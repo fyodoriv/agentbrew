@@ -48,6 +48,7 @@ export default defineConfig({
       const nativeDir = join(outDir, "native/darwin-arm64");
       mkdirSync(nativeDir, { recursive: true });
       copyFileSync("rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run", `${nativeDir}/checkup-run`);
+      copyFileSync("rust/judge-source/target/aarch64-apple-darwin/release/judge-source", `${nativeDir}/judge-source`);
     }
     copyFileSync("src/catalog.yaml", join(outDir, "catalog.yaml"));
     // catalog-overlay.yaml was extracted to the agentbrew-acme team overlay

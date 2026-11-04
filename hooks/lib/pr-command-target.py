@@ -70,6 +70,17 @@ def target(command, words=None):
     return {"number": number, "repo": repo}
 
 
+def judge_argv(command):
+    if any(character in command for character in "$`*?[]{}~!\x00") or "\\\n" in command:
+        return []
+    words = command_words(command)
+    if words is None or any(word.startswith("#") or (word and set(word) <= set(PUNCTUATION)) for word in words):
+        return []
+    if words[:3] not in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
+        return []
+    return words
+
+
 def main():
     latest = None
     activity = False
@@ -109,4 +120,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--judge-argv"]:
+        print(json.dumps(judge_argv(sys.stdin.read(256 * 1024 + 1))))
+    else:
+        main()

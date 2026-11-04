@@ -15,6 +15,7 @@ import {
 } from "./agentfile.js";
 import { mergeStateSkillDirectories } from "./agentfile-skill-directories.js";
 import { loadCatalog } from "./catalog/types.js";
+import { loadJudgeDefinitions } from "./judges/load.js";
 import { MEMORY_MANAGED_SERVER_NAME } from "./memory/constants.js";
 import { ensureMemoryMcpServer, mergeMemoryPackPaths } from "./memory/enable.js";
 import { resolveMemoryPackPaths } from "./memory/pack-paths.js";
@@ -716,6 +717,26 @@ function pruneAgentfileSkills(agentfile: Agentfile, state: AgentBrewState, dryRu
   return JSON.stringify(state.agentfileSkills ?? null) !== before;
 }
 
+function prepareJudgeSets(agentfile: Agentfile, baseDir: string, state: AgentBrewState, pruneOwnedDirs: boolean) {
+  const judges = loadJudgeDefinitions(agentfile, baseDir);
+  const judgeOwner = resolve(baseDir);
+  const judgeSets = state.agentfileJudges ?? {};
+  const judgesChanged =
+    (judges.length > 0 || (pruneOwnedDirs && judgeSets[judgeOwner] !== undefined)) &&
+    JSON.stringify(judgeSets[judgeOwner]) !== JSON.stringify(judges);
+  if (!judgesChanged) return undefined;
+  const names = new Set(judges.map(({ definition }) => definition.name));
+  for (const [owner, entries] of Object.entries(judgeSets)) {
+    if (owner === judgeOwner) continue;
+    const conflict = entries.find(({ definition }) => names.has(definition.name));
+    if (conflict) throw new Error(`Duplicate judge name: ${JSON.stringify(conflict.definition.name)}`);
+  }
+  const next = { ...judgeSets };
+  if (judges.length) next[judgeOwner] = judges;
+  else delete next[judgeOwner];
+  return { agentfileJudges: next };
+}
+
 export function applyAgentfile(
   directoryOrPath: string,
   options?: ApplyAgentfileOptions,
@@ -733,6 +754,7 @@ export function applyAgentfile(
 
   const { agentfile, baseDir } = loaded;
   const state = options?.stateOverride ?? (dryRun ? cloneStateForDryRun(loaded.state) : loaded.state);
+  const nextJudgeSets = prepareJudgeSets(agentfile, baseDir, state, pruneOwnedDirs);
 
   // Validate before applying — warn about misconfigurations early
   if (!quiet) {
@@ -777,7 +799,10 @@ export function applyAgentfile(
     defaultModelUpdated,
   };
 
+  Object.assign(state, nextJudgeSets);
+
   const stateChanged =
+    nextJudgeSets !== undefined ||
     mcp.added.length > 0 ||
     workStepsChanged ||
     mcp.updated.length > 0 ||

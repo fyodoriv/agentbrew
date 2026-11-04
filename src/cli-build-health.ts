@@ -14,6 +14,7 @@ const BUILD_INPUTS = [
   "package-lock.json",
   "tsup.config.ts",
   "rust/checkup-run",
+  "rust/judge-source",
   "scripts/build-checkup-run.sh",
   "scripts/build-source.sh",
 ];

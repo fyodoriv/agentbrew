@@ -9,6 +9,8 @@ if [[ "$(uname -s)-$(uname -m)" != Darwin-arm64 ]]; then
 fi
 
 repo="$(pwd -P)"
+cargo build --locked --release --manifest-path rust/judge-source/Cargo.toml \
+  --target aarch64-apple-darwin --target-dir rust/judge-source/target
 publisher="$repo/rust/checkup-run/target/aarch64-apple-darwin/release/publish-dist"
 repo_identity="$(stat -f '%d:%i' "$repo")"
 head="$(git rev-parse --verify HEAD 2>/dev/null || true)"

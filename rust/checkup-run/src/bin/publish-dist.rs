@@ -60,6 +60,7 @@ fn publish() -> Result<(), Box<dyn std::error::Error>> {
         "cli.js",
         "build-info.json",
         "native/darwin-arm64/checkup-run",
+        "native/darwin-arm64/judge-source",
     ] {
         let st = fs::statat(&candidate, name, AtFlags::SYMLINK_NOFOLLOW)?;
         if FileType::from_raw_mode(st.st_mode) != FileType::RegularFile

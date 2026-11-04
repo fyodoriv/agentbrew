@@ -344,3 +344,43 @@ fixture. The next object edge is bounded nonempty tree traversal, including
 raw paths and tree, blob and gitlink rules. Repository snapshot ownership,
 full packed-object traversal, added-line evidence, the fixed scanner and
 release policy require separate proof.
+
+## Bounded nonempty trees and raw paths
+
+Goal: close required tree and file-object edges from each commit. Predict
+A29–A36 move from the old nonempty-tree refusal to the registered decisions.
+A27 keeps its incomplete-graph refusal and now expects Missing for the
+absent tree child. Preserve all other prior controls. Success requires exact
+path rows and object identities with zero report on any refusal. Pivot on
+a missed edge, extra object lookup, byte loss, cap breach or regression.
+
+Use the locked gix tree iterator and bounded loose-object verifier. Admit
+regular, executable, symlink, directory and gitlink modes. Keep exact raw
+component bytes. Check Git order, duplicate components and canonical mode
+encoding. Hash each local object before following its edges. A gitlink keeps
+its external commit ID without a local read. A symlink is a verified blob.
+Expand paths after the graph closes, including separate aliases and commits.
+Cap path components at 64 bytes, full paths at 96 bytes and path occurrences
+at 16. Keep the existing eight-local-object and sixteen-edge caps.
+
+| Case | Required result |
+| --- | --- |
+| A29 | Exact paths and modes across shared aliases and two commits. |
+| A30 | Accept exact component and full-path limits. |
+| A31 | Refuse oversized components, paths and tree objects. |
+| A32 | Refuse missing required tree or blob objects. |
+| A33 | Refuse invalid modes, duplicate or invalid names, order errors and null gitlinks. |
+| A34 | Refuse a wrong object kind or identity and a malformed tree record. |
+| A35 | Refuse path-occurrence overflow after closing the local graph. |
+| A36 | Refuse structural edge overflow with shared blob targets. |
+
+Use the locked, offline, network-denied Darwin arm64 command above.
+Anchors: [Git tree paths](https://git-scm.com/docs/git-ls-tree), [Git
+submodules](https://git-scm.com/docs/gitsubmodules) and Basili, Caldiera
+and Rombach (1994), Goal Question Metric.
+
+Observed in isolated preparation after registration. The old walk refused
+every new case as a nonempty tree. The candidate passed A01–A36 with the
+same registered tree inputs. The next fixture requires bounded
+parent-relative added-line evidence. This fixture uses only sealed objects
+and leaves real snapshot, pack and scanner qualification open.

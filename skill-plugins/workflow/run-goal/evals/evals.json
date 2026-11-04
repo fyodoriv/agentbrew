@@ -1422,7 +1422,7 @@
         "Prints the goal contract with one done-criterion per unblocked task, blocked tasks out of scope",
         "Combines verified work done and left, running or queued background jobs, agent waits, and the next check in Goal progress before Needed from you. Gives no percentage from overlapping counts",
         "Estimates all five tasks and their gates before execution, separates active effort from elapsed time, and compares the original forecast with actuals at closeout to improve the estimation method",
-        "Shares verified results, learnings, and tooling updates at closeout and offers interactive choices in order: file missing issues, open a follow-up session, or finish here",
+        "Shares verified results, learnings, and tooling updates at closeout and offers the combined issue-first handoff as the first interactive choice when both actions apply, and the session alone first when all work is tracked",
         "Each fix has a test that fails on the unchanged base before the fix",
         "Runs the flaky test 20 times before and after, and reads one run's result line to confirm it ran the one test",
         "Says so when the run measures a new object (a rerun's new output), and handles it",
@@ -2549,6 +2549,18 @@
         "Checks that the fast path, not the fallback, answered in the benchmark setup",
         "Re-measures after a review fix that changes what the fast path trusts or checks",
         "Corrects a number already written in a PR body or doc, and says the old one was wrong"
+      ]
+    },
+    {
+      "id": 223,
+      "prompt": "Close out a completed goal. The fix and its skill update merged. You found one untracked improvement and one already tracked. Show me what to do next. Then simulate my choosing the recommended option in two separate cases: the issue tracker accepts the new issue, or it rejects it.",
+      "expected_output": "The closeout shares verified results, learnings, and tooling changes. Its first interactive option combines filing with opening a scoped follow-up session. The agent reuses the existing issue, reports the failed filing and asks what to do next. It opens the session after successful filing. On rejection, it waits for a new choice and opens a session only if the user explicitly requests one.",
+      "expectations": [
+        "Shows results, learnings, and tooling changes with delivery status before the choice",
+        "Offers file issues and open a follow-up session as the first selectable option",
+        "Names the new issue destination and reuses the existing issue",
+        "On successful filing, passes verified issue links and scope to the new session",
+        "On failed filing, reports partial results and waits before opening a session"
       ]
     }
   ]

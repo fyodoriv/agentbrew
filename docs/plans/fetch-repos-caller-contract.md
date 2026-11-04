@@ -89,6 +89,28 @@ contract. Require a qualified worker, held checkout identity, strict ref
 mutation proof and actual installed helper before wiring either caller.
 Keep the issue open through required native proof and qualified integration.
 
+### Darwin group observation
+
+One disposable test on Darwin 27.0.0 passed all four checks. The bounded
+two-slot census returned both fixture PIDs before and after the descendant
+ran its own executable again under the same PID. It still returned both
+PIDs after the leader exited and its output pipe reached EOF. After the
+descendant disappeared, it returned a complete list containing only the
+held leader. The test checked the leader's terminal state again, reaped it
+once, and confirmed zero fixture PIDs remained. It sent no termination
+signals.
+
+EOF can coexist with a live group member. The worker must prove that no
+other member remains before it accepts a result. Keep the leader unreaped
+through the census and the second terminal check. Treat an incomplete or
+failed census as unresolved cleanup, even when a group signal succeeds.
+
+This observation does not qualify the shared worker or either caller.
+The exact Apple kernel source tag for the tested build was unavailable.
+The frozen worker baseline remains two of four lifecycle tests passing.
+Native acceptance still needs the held-leader, denial, cancellation and
+deadline controls. [Apple XNU source](https://github.com/apple-oss-distributions/xnu).
+
 Anchors are Basili, Caldiera and Rombach (1994), Goal Question Metric, and
 Munafò et al. (2017), preregistration.
 [Git fetch ref mapping and pruning](https://git-scm.com/docs/git-fetch).

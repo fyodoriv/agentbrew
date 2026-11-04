@@ -190,3 +190,15 @@ three unexplained hidden commands on the baseline and zero with explicit
 hook-only reasons. Keep the change only if all parity tests pass. Reject it
 if a gate becomes an advertised action or any existing parity case fails.
 Measurement framing: Basili, Caldiera, and Rombach (1994), Goal Question Metric.
+
+### Codex hook policy coverage
+
+Codex supports MCP tool names in PreToolUse and provides the last assistant
+message to Stop. The [Codex hook contract](https://developers.openai.com/codex/hooks)
+documents those inputs. Keep the default Codex catalog restricted to Bash.
+Require exact opt-in manifest entries for the draft tool and report events.
+
+Run `./node_modules/.bin/vitest run src/sync/codex-support.test.ts`. Expect
+one policy-test failure before the explicit exceptions and zero after.
+Reject any additional exception, an enabled-by-default judge hook, or a
+policy regression. This check does not qualify a live draft connector.

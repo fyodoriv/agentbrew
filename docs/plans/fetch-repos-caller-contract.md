@@ -174,3 +174,44 @@ Keep 37/37 and 2/2 pure cases, 2/2 local cases, three tracking effects
 per local case, and zero protected or unknown changes. Pivot on any
 unsafe result. This evidence does not cover installed submodules, SSH,
 arbitrary hooks, process cleanup, deadlines, parallelism, or activation.
+
+## Supervised local transport and publication evidence
+
+A disposable test connected the existing fetch queue and request policy to
+the shared Darwin worker candidate. Two local fetches reached their start
+barriers together. A duplicate checkout waited for the first fetch, then
+entered while the second was still held. All three results kept input order
+and the expected tracking refs.
+
+With a three-second work budget and two seconds for cleanup, a shell and
+child that ignored TERM were gone before the duplicate entered. The test
+returned one timeout and two successes in 3.264 seconds. A separate
+upload-pack fixture left the process group and closed its streams. The
+worker returned success while that descendant was still alive. The fixture
+released it and verified its exit. A process group alone cannot qualify
+a fetch path that can launch a repository-selected program.
+
+Fixed upload-pack and hook overrides suppressed two planted programs.
+Git still followed planted repository and environment URL rewrites to a
+decoy. Fetching the selected local origin into a clean owned Git directory
+under an allowlisted environment avoided those inputs.
+
+Malformed packs left temporary files during direct validation. Moving
+validation into a disposable directory left the checkout unchanged. In the
+positive fixture, the pack alone left its new object unavailable. Repeating promotion
+accepted an identical pack and added its index. A conflicting file refused
+without replacement. A stale ref transaction refused without a partial
+update, then the correct transaction updated and pruned tracking refs
+without running the planted hook.
+
+A held directory kept Git away from a replacement checkout at the selected
+path. A swap before the identity check refused the guarded ref update. A
+swap after the check still let Git update the original checkout at its moved
+location. Require a policy for path changes during publication. One identity
+check cannot prove the selected path stayed bound to the held checkout.
+
+These are scratch results with a fixed local Git executable on one Darwin host. Keep
+production disabled until the shared worker and transport are qualified.
+Require bounded incoming bytes and object expansion, verified checkout and
+staging identities, explicit remote transport policy, and recoverable pack
+publication. Retain the escaped-child and stale-transaction controls.

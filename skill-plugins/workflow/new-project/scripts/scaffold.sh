@@ -151,9 +151,13 @@ COPIER_VERSION="${NEW_PROJECT_COPIER_VERSION:-9.19.1}"
 scaffold_with_copier() {
   # Template source: the git repo root when it carries copier.yml (versioned,
   # so `copier update` works), else this skill dir (copy only, no updates).
+  local mode=local
   src="$here"
   root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null || true)"
-  [ -n "$root" ] && [ -f "$root/copier.yml" ] && src="$root"
+  if [ -n "$root" ] && [ -f "$root/copier.yml" ]; then
+    src="$root"
+    mode=versioned
+  fi
   set -- copy --defaults --quiet --vcs-ref HEAD
   for v in $VARS; do set -- "$@" --data "$v=$(printenv "$v")"; done
   # shellcheck disable=SC2086
@@ -162,8 +166,8 @@ scaffold_with_copier() {
     [ -L "$dir/$rel" ] || [ "$rel" = .copier-answers.yml ] || collapse "$dir/$rel"
     echo "created $rel"
   done
-  [ "$src" = "$here" ] && echo "note: template is not in git; 'copier update' will not work for this repo"
-  portable_outputs "$([ "$src" = "$here" ] && echo local)"
+  [ "$mode" = local ] && echo "note: template is not in git; 'copier update' will not work for this repo"
+  portable_outputs "$mode"
   return 0
 }
 

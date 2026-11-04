@@ -547,6 +547,23 @@ describe("new-project skill", () => {
       expect(diff.stdout + diff.stderr).toBe(`Only in ${viaCopier}: .copier-answers.yml\n`);
     });
 
+    it("omits the absolute source path from a local Copier copy", async () => {
+      const tpl = join(scratch, "local-template");
+      for (const part of ["copier.yml", "templates", "scripts"]) {
+        cpSync(join(skillRoot, part), join(tpl, part), { recursive: true, verbatimSymlinks: true });
+      }
+      expect(spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: tpl, env: gitEnv }).status).toBe(128);
+      const repo = join(scratch, "local-copy");
+      await execAsync(
+        "/bin/bash",
+        [join(tpl, "scripts", "scaffold.sh"), repo, "--profile", "tool", "--name", "local", "--stack", "ts"],
+        { env: copierEnv },
+      );
+      const answers = readFileSync(join(repo, ".copier-answers.yml"), "utf-8");
+      expect(yaml.load(answers)).toMatchObject({ _src_path: "new-project skill (local copy; not updatable)" });
+      expect(answers).not.toContain(tpl);
+    });
+
     it("brings a template fix into an older repo and keeps the repo's own edits", () => {
       const { repo, out, answers, update } = unwrap(copier.upgrade);
       expect(out).toContain("created .copier-answers.yml");

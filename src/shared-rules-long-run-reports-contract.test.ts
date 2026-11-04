@@ -12,6 +12,18 @@ function section(text: string, heading: string): string {
   return text.split(`## ${heading}`)[1]?.split("\n## ")[0] ?? "";
 }
 
+describe("live evidence before presentation", () => {
+  it("requires live evidence for features, source updates, and controls", () => {
+    const rule = section(sharedRules, "Verification");
+    expect(rule).toMatch(/Drive each claimed feature in the running browser UI/);
+    expect(rule).toMatch(/Trigger a new record at the authorized source/);
+    expect(rule).toMatch(/without a manual refresh or import step/);
+    expect(rule).toMatch(/Open each link and exercise each button/);
+    expect(rule).toMatch(/Do not activate an unapproved write/);
+    expect(rule).toMatch(/Fix or remove any unsupported claim before presenting/);
+  });
+});
+
 describe("long-run reports end as a published Artifact", () => {
   it("shared rules: long runs end with a published Artifact or Dashboard", () => {
     const rule = section(sharedRules, "Long-run reports");

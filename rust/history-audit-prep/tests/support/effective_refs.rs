@@ -100,11 +100,10 @@ fn read_object(target: &ObjectId, reads: &mut Reads) -> Result<Kind, Refusal> {
     Ok(kind)
 }
 
-fn compose<'a>(
+fn resolve<'a>(
     packed: &'a [u8],
     loose: &[LooseRef<'a>],
-    reads: &mut Reads,
-) -> Result<[Option<Verified<'a>>; REF_COUNT], Refusal> {
+) -> Result<[Option<Resolved<'a>>; REF_COUNT], Refusal> {
     if loose.len() > REF_COUNT {
         return Err(Refusal::RefCount);
     }
@@ -151,6 +150,15 @@ fn compose<'a>(
         )?;
     }
 
+    Ok(effective)
+}
+
+fn compose<'a>(
+    packed: &'a [u8],
+    loose: &[LooseRef<'a>],
+    reads: &mut Reads,
+) -> Result<[Option<Verified<'a>>; REF_COUNT], Refusal> {
+    let effective = resolve(packed, loose)?;
     let mut verified = std::array::from_fn(|_| None);
     for (slot, record) in verified.iter_mut().zip(effective.into_iter().flatten()) {
         let kind = read_object(&record.target, reads)?;
@@ -325,3 +333,6 @@ fn a20_missing_object_does_not_publish_partial_set() {
         }
     );
 }
+
+#[path = "effective_refs/closed_graph.rs"]
+mod closed_graph;

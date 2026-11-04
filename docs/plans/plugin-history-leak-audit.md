@@ -302,3 +302,45 @@ returned only the fixed missing-object refusal. The locked manifest and
 sealed object seeds stayed byte-identical. This qualifies the fixture's
 direct tag object. Tag targets, peeled records, symbolic-ref chains and
 real inventory completeness still require separate proof.
+
+## Closed synthetic commit and tag graph
+
+Goal: check every required parent, tag and empty-tree edge from the effective
+refs before returning a graph. Predict that the unsupported adapter fails
+A21–A28 and the bounded walk passes all eight groups. Preserve A01–A20.
+Success requires the exact expected objects and edges, with no graph
+returned on refusal. Pivot on a missed edge, exceeded cap, unexpected
+output or existing fixture drift.
+
+Reuse the effective-ref resolver, the bounded loose-object reader and the
+locked Git object parsers. Admit at most eight distinct reachable objects and
+sixteen structural edges. Count edges before object read deduplication.
+Verify the expected kind even if another edge already reached the object.
+The graph accepts commit and annotated-tag roots and empty terminal trees.
+Commit extra headers and nonempty trees refuse in this fixture. The fixed
+test object inventory has no connection to a real repository.
+
+| Case | Required result |
+| --- | --- |
+| A21 | Verify both merge parents, two nested tags and the shared empty tree. Verify seven distinct objects and ten exact edges. |
+| A22 | Refuse a missing second merge parent, inner tag or required tree. |
+| A23 | Refuse the ninth reachable object before reading it. |
+| A24 | Refuse the seventeenth structural edge, including edges to known objects. |
+| A25 | Refuse an incorrect tag target kind even if the target was already verified. |
+| A26 | Refuse a wrong object identity, truncated commit, invalid parent or malformed tag. |
+| A27 | Refuse a required nonempty tree. |
+| A28 | Verify the complete graph at eight objects and sixteen edges. |
+
+Use the locked, offline, network-denied Darwin arm64 command above with
+the same bounded inputs and one test thread. Anchor: [Git object
+format](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects) and
+Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+Observed in isolated preparation after registration. The unsupported
+adapter failed all eight new groups and retained A01–A20. The candidate
+passed the same entire cohort. The test oracles and object records stayed
+byte-identical between runs. This establishes reachability in the closed
+fixture. The next object edge is bounded nonempty tree traversal, including
+raw paths and tree, blob and gitlink rules. Repository snapshot ownership,
+full packed-object traversal, added-line evidence, the fixed scanner and
+release policy require separate proof.

@@ -191,3 +191,59 @@ repository.
 
 Anchors are the issue 564 fixture registration and Basili, Caldiera and
 Rombach (1994), Goal Question Metric.
+
+## Bounded packed delta fixture
+
+Goal: qualify one positive packed delta replay under fixed scratch bounds.
+Question: can the sealed two-entry pack yield its expected blob while unsafe
+inputs refuse before any result is retained? The existing A09 path refuses
+packed inputs. Predict one verified replay in the separate fixture slice and
+four refusals with zero retained bytes. Keep all existing controls.
+
+The sealed 80-byte `delta.pack` SHA-256 is
+`621d7175265b6351167b00cc88512db7552b0b61f604aa33ad959c2a10aa6f01`.
+An independent fixture-only probe identifies zlib slices 14..25 and 46..60,
+base object `f2d4cbf581ce33f85796fcf43626bec38582155f` (32 bytes), and result
+`011042944ca889d57c4afc2c2aa2eafa1b8f6a56` (33 bytes). Reuse the existing
+bounded inflater and Git object hashing. Use fixed 64-byte base, program
+and result buffers. Only support the sealed fixture's one-byte lengths,
+zero-offset copy opcode and literal insert. This is a fixture slice, with
+no pack traversal or repository admission API.
+
+| Case | Required result |
+|---|---|
+| A10 | Decode both sealed zlib streams completely. Verify the referenced base and exact 33-byte result identity. |
+| A11 | Refuse a missing base and clear result scratch. |
+| A12 | Refuse a declared 65-byte result before replay and clear result scratch. |
+| A13 | Refuse a truncated literal and clear result scratch. |
+| A14 | Refuse a same-length base with the wrong object identity and clear result scratch. |
+
+Measurement, using the already qualified private cache and scratch paths:
+
+```sh
+CARGO_HOME="$HISTORY_PREP_CARGO_HOME" CARGO_TARGET_DIR="$HISTORY_PREP_TARGET" \
+  TMPDIR="$HISTORY_PREP_TMP" JOBS=1 CARGO_BUILD_JOBS=1 heavy-run \
+  /usr/bin/sandbox-exec -p '(version 1) (allow default) (deny network*)' \
+  cargo test --offline --locked --manifest-path rust/history-audit-prep/Cargo.toml \
+  --target aarch64-apple-darwin --test admission -- --test-threads=1
+```
+
+Success is one exact positive replay, four exact refusals, zero retained
+bytes on refusal, and every old fixture passing. Pivot on any missed
+control, data-dependent allocation, source mutation or payload disclosure.
+The existing docs gate measures this prediction commit before fixture edits.
+
+The host rejected a native 96 MiB hard address-space limit. Git's compressed
+input limit and dry run were qualified separately on this sealed input. A dry
+run does not replay the delta. Production still requires cumulative bounds,
+all-ref enumeration and a trusted snapshot or writer-coordinated source.
+
+Anchors: [Git pack format](https://git-scm.com/docs/gitformat-pack) and
+Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+Observed on 2026-11-04 after prediction `71d9cca`: the offline,
+network-denied Darwin arm64 run exited zero. A10 verified the 33-byte
+blob and its expected identity. A11–A14 returned their registered refusal
+and left the entire result buffer clear. A01–A09 also passed. The locked
+feature graph showed `miniz_oxide` 0.8.9 without `with-alloc`. The fixture
+inputs and manifest stayed byte-identical. Production admission remains open.

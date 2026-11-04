@@ -72,3 +72,13 @@ listener cannot be independently observed or the refused connection looks
 like a missing listener. This is a transport admission probe. It does not
 qualify Chrome, target ownership, cleanup, or any live page result.
 Measurement framing: Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+For the browser follow-up, run the private Playwright admission harness
+with `heavy-run node "$PAGE_ERROR_ADMISSION_PROBE"`. Both Chrome launches
+deny outbound network by default and use fresh profiles and the test keychain
+flags. The positive control allows both listener ports. The candidate allows
+only the first. Keep the candidate only if the page receives both markers in
+the control, then only the first marker in the candidate. The second listener
+must receive zero marker requests and CDP must report access denied for that
+request. Any failed positive control, timeout in place of refusal, or unexpected
+connection rejects the candidate.

@@ -62,11 +62,18 @@ describe("Codex native formats", () => {
 describe("Codex hook policy scope", () => {
   it("deploys audited Bash policies while keeping incompatible file and goal hooks Claude-only", () => {
     const manifest = yaml.load(readFileSync(new URL("../../hooks/manifest.yaml", import.meta.url), "utf-8")) as {
-      hooks: Array<{ id: string; matcher?: string; agents: string[] }>;
+      hooks: Array<{ id: string; event: string; matcher?: string; agents: string[]; defaultEnabled?: boolean }>;
     };
     const codex = manifest.hooks.filter((hook) => hook.agents.includes("codex"));
     expect(codex.map((hook) => hook.id)).toContain("no-git-add-all");
-    expect(codex.every((hook) => hook.matcher === "Bash")).toBe(true);
+    expect(
+      codex
+        .filter((hook) => hook.matcher !== "Bash")
+        .map(({ id, event, matcher, defaultEnabled }) => ({ id, event, matcher, defaultEnabled })),
+    ).toEqual([
+      { id: "judge-draft-save", event: "PreToolUse", matcher: "^mcp__.*$", defaultEnabled: false },
+      { id: "judge-report-final", event: "Stop", matcher: undefined, defaultEnabled: false },
+    ]);
     for (const id of ["goal-contract-before-edit", "goal-retro-before-stop", "poll-loop-hint"]) {
       expect(manifest.hooks.find((hook) => hook.id === id)?.agents).not.toContain("codex");
     }

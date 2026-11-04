@@ -74,6 +74,19 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 ## Verification
 
 - Before claiming work is complete/fixed/passing, run the relevant verification and quote the result.
+- **Live proof before presentation:** For a dashboard or tool, verify each claim
+  in the version the reader will see. This applies to demos, proof pages, message
+  drafts, and PR descriptions that present the dashboard or tool.
+  - Drive each claimed feature in the running browser UI and check the result.
+  - Trigger a new record at the authorized source for each claimed live feed.
+    Confirm the running dashboard shows it without a manual refresh or import step.
+    Use a designated test deployment and synthetic data when needed. Label that
+    evidence as test coverage and keep production-data claims separate.
+  - Open each link and exercise each button. Check the destination or outcome.
+    Do not activate an unapproved write. Use a safe test target for actions that
+    send, publish, or delete.
+  - Fix or remove any unsupported claim before presenting the draft. State which
+    checks are blocked when the limitation matters to the reader.
 - **Google Docs (IRON LAW):** After every GDoc edit batch (any project, any doc), run the **visual verification loop** in the **`markdown-for-gdoc`** skill: `docs_get_structured` on the edited range, then **open the live doc in browser** and inspect the section (list numbering, headings, spacing, bold). Fix list bleed, wrong heading styles, and empty numbered items; repeat until structured read and visual check agree. MCP `read_document` export alone is **not** completion. Read the skill before the first edit; invoke it whenever authoring or surgically editing a GDoc.
 - Stacked skill PRs: manually runnable on each branch + doc path audit — see **`pr`** skill. Skill PRs with evals run the full suite to the documented pass bar.
 - For bug fixes, prefer Prove-It: failing regression first, then fix, then green.

@@ -28,7 +28,7 @@ import {
 } from "./source-skill-prune.js";
 import { loadState, saveState } from "./state.js";
 import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
-import { hashAgentfileRuleBody, recordMemoryPackOwners } from "./sync/stale-agentfile-artifacts.js";
+import { activeJudgeSets, hashAgentfileRuleBody, recordMemoryPackOwners } from "./sync/stale-agentfile-artifacts.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
@@ -726,12 +726,12 @@ function prepareJudgeSets(agentfile: Agentfile, baseDir: string, state: AgentBre
     JSON.stringify(judgeSets[judgeOwner]) !== JSON.stringify(judges);
   if (!judgesChanged) return undefined;
   const names = new Set(judges.map(({ definition }) => definition.name));
-  for (const [owner, entries] of Object.entries(judgeSets)) {
+  const next = activeJudgeSets(judgeSets);
+  for (const [owner, entries] of Object.entries(next)) {
     if (owner === judgeOwner) continue;
     const conflict = entries.find(({ definition }) => names.has(definition.name));
     if (conflict) throw new Error(`Duplicate judge name: ${JSON.stringify(conflict.definition.name)}`);
   }
-  const next = { ...judgeSets };
   if (judges.length) next[judgeOwner] = judges;
   else delete next[judgeOwner];
   return { agentfileJudges: next };

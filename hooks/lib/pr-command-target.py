@@ -70,6 +70,18 @@ def target(command, words=None):
     return {"number": number, "repo": repo}
 
 
+def judge_events(words):
+    if words is None:
+        return []
+    events = []
+    for i in range(len(words) - 2):
+        if i and not (words[i - 1] and set(words[i - 1]) <= set(PUNCTUATION)):
+            continue
+        if words[i:i + 3] in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
+            events.append("pr-" + words[i + 2])
+    return events
+
+
 def judge_argv(command, words):
     if any(character in command for character in "$`*?[]{}~!\x00") or "\\\n" in command:
         return []
@@ -120,11 +132,11 @@ def main():
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--judge-command"]:
-        command = sys.stdin.read(256 * 1024 + 1)
+        limit = 256 * 1024
+        command = sys.stdin.read(limit + 1)
+        if len(command) > limit:
+            sys.exit(2)
         words = command_words(command)
-        event = None
-        if words and words[:3] in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
-            event = "pr-" + words[2]
-        print(json.dumps({"event": event, "argv": judge_argv(command, words)}))
+        print(json.dumps({"events": judge_events(words), "argv": judge_argv(command, words)}))
     else:
         main()

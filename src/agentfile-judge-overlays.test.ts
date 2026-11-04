@@ -1,8 +1,27 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mergeAgentfiles, parseAgentfile } from "./agentfile.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { applyAgentfile, mergeAgentfiles, parseAgentfile } from "./agentfile.js";
+
+import { defaultState } from "./state.js";
+
+vi.mock("./judges/source.js", () => ({
+  readJudgeSource: () => `---
+on: [pr-create]
+sees: artifact
+rubric: [{id: clear, check: Is the draft clear?}]
+pass_bar: 1
+model: fixture:model
+max_rounds: 1
+calibration:
+  cases: [golden.md]
+  min_true_positive_rate: 1
+  min_true_negative_rate: 1
+---
+Review the draft.
+`,
+}));
 
 describe("judge overlay provenance", () => {
   let root: string;
@@ -38,5 +57,14 @@ describe("judge overlay provenance", () => {
     writeFileSync(generated, merged());
     const content = mergeAgentfiles([generated, join(base, "Agentfile.yaml")]);
     expect(parseAgentfile(content)).toHaveProperty("judgeSources", expectedSources());
+  });
+  it("allows a replacement judge after its old checkout is removed", () => {
+    const state = defaultState();
+    const options = { quiet: true, dryRun: true, stateOverride: state };
+    expect(applyAgentfile(base, options)).toBeDefined();
+    expect(() => applyAgentfile(overlay, options)).toThrow(/Duplicate judge name/);
+    rmSync(base, { recursive: true });
+    expect(applyAgentfile(overlay, options)).toBeDefined();
+    expect(Object.keys(state.agentfileJudges ?? {})).toEqual([overlay]);
   });
 });

@@ -23,8 +23,8 @@ chmod +x "$scratch/agentbrew"
 
 invoke() {
   local command="$1"
-  jq -nc --arg cmd "$command" --arg cwd "$scratch" \
-    '{tool_name:"Bash",tool_input:{command:$cmd},cwd:$cwd}' | bash "$hook"
+  printf '%s' "$command" | jq -Rsc --arg cwd "$scratch" \
+    '{tool_name:"Bash",tool_input:{command:.},cwd:$cwd}' | bash "$hook"
 }
 
 invoke "gh pr create --title 'A title' --body 'Exact body.'"
@@ -54,4 +54,12 @@ for command in "gh 'pr' create --title T --body Draft" "gh pr 'create' --title T
   GATE_STATUS=2 invoke "$command" >"$scratch/out" 2>"$scratch/err" || status=$?
   [ "$status" -eq 2 ]
 done
-printf '%s\n' 'judge-pr-delivery: 7 passed'
+status=0
+DENY_EVENT=pr-ready invoke "gh pr create --fill; gh 'pr' ready 42" >"$scratch/out" 2>"$scratch/err" || status=$?
+[ "$status" -eq 2 ]
+
+padding="$(printf '%262144s' '')"
+status=0
+invoke "gh pr ready 42${padding}; gh pr ready 43" >"$scratch/out" 2>"$scratch/err" || status=$?
+[ "$status" -eq 2 ]
+printf '%s\n' 'judge-pr-delivery: 9 passed'

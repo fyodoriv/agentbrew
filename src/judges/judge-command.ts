@@ -46,7 +46,7 @@ function readContext(request: string, sources: string[]) {
 }
 
 function selectRunJudges(name: string | undefined, eventOption?: string) {
-  if (Boolean(name) === Boolean(eventOption)) throw new Error("Choose either a judge name or --event.");
+  if (!name && !eventOption) throw new Error("Choose a judge name or --event.");
   const judges = currentJudges(name);
   const [first] = judges;
   const event = eventOption ?? (first.definition.on.length === 1 ? first.definition.on[0] : undefined);
@@ -136,7 +136,7 @@ export function registerJudgeCommand(program: Command): void {
     .command("run")
     .description("Grade an artifact and save verdicts for its exact input")
     .argument("[name]", "Judge name. Omit when selecting by event.")
-    .option("--event <event>", "Select every judge for this delivery event")
+    .option("--event <event>", "Select a delivery event for the named judge or all declared judges")
     .requiredOption("--artifact <file>", "Exact artifact to judge")
     .option("--review-id <id>", "Keep one round limit across revisions stored at different paths")
     .option("--request <file>", "Original request for source-aware judges")
@@ -162,7 +162,10 @@ export function registerJudgeCommand(program: Command): void {
         });
         results.push({ judge: judge.definition.name, pass: receipt.pass, checks: receipt.checks });
       }
-      console.log(JSON.stringify(results));
+      const checks = results.flatMap((result) =>
+        result.checks.map((check) => (results.length === 1 ? check : { judge: result.judge, ...check })),
+      );
+      console.log(JSON.stringify(checks));
       if (results.some((result) => !result.pass)) process.exitCode = 1;
     });
   command

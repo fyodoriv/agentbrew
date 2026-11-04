@@ -179,6 +179,23 @@ describe("judge run command", () => {
     );
   });
 
+  it("selects one explicit event for a named judge and emits a flat check list", async () => {
+    const multi: LoadedJudge = { ...judge, definition: { ...judge.definition, on: ["pr-create", "pr-ready"] } };
+    const checks = [{ check: "clear", critique: "Fixture verdict.", verdict: "PASS" as const, evidence: [] }];
+    vi.mocked(loadJudgeDefinitions).mockReturnValue([multi]);
+    vi.mocked(runJudge).mockResolvedValue({
+      version: 1,
+      key: "a".repeat(64),
+      issuedAt: 100,
+      passBar: 1,
+      pass: true,
+      checks,
+    });
+    await run("clarity", "--event", "pr-ready");
+    expect(runJudge).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ judge: multi, event: "pr-ready" }));
+    expect(console.log).toHaveBeenCalledWith(JSON.stringify(checks));
+  });
+
   it("gives sources only to the source-aware judge selected by event", async () => {
     const reality: LoadedJudge = {
       ...judge,
@@ -197,7 +214,7 @@ describe("judge run command", () => {
   });
 
   it("refuses ambiguous selection and missing sources before grading", async () => {
-    await expect(run("clarity", "--event", "pr-create")).rejects.toThrow(/Choose either/);
+    await expect(run()).rejects.toThrow(/Choose a judge name/);
     vi.mocked(loadJudgeDefinitions).mockReturnValue([
       {
         ...judge,

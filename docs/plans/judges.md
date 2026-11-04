@@ -63,8 +63,12 @@ to try it. The example is opt-in.
 
 Add a plain-language entry in the `/agentbrew` command and its start skill.
 When someone asks Claude to review an artifact before delivery, route the
-request to `agentbrew judge run <name> --artifact <file>`. Route requests to
-check a rubric against its labeled examples to `agentbrew judge eval`.
+request to `agentbrew judge run <name> --event <event> --artifact <file>`.
+Omit the name to run every judge for the event. A judge that declares just
+one event can run by name alone. The command prints a flat JSON list of
+checks and adds the judge name to each check when multiple judges ran.
+Route requests to check a rubric against labeled examples to
+`agentbrew judge eval`.
 
 Use the existing Claude Code and Codex subagent renderers. Run labeled pass
 and fail examples in both orders. Store the verdict locally and tie it to
@@ -81,6 +85,11 @@ The runner uses Ollama on loopback port 11434. Set
 `promptfoo@0.124.1` package directory. The normal Agentbrew install does
 not install Promptfoo. The runner uses a private scratch directory and
 passes no credentials from the agent environment.
+
+Build from source with Rust 1.97 or later on Apple Silicon or Linux
+x64/ARM64 to include the reader for that host. A package built on one
+host includes that host's reader. Verify the reader in the package
+before installing it on a different platform.
 
 Each run reserves one attempt for its judge, event, and artifact path before
 grading. Use `--review-id <id>` to share the same cap across revisions saved
@@ -140,4 +149,5 @@ To check the shipped clarity rubric in CI, build Agentbrew and run
 `bash scripts/check-judge-calibration.sh` with its declared model
 available on local Ollama. The script uses an isolated Agentbrew home.
 It exits nonzero if either order falls below the declared agreement
-threshold.
+threshold across all fixture pairs. The hosted calibration job verifies
+the model digest before it runs the script.

@@ -58,7 +58,8 @@ export function buildJudgeEvaluation(
         assert: judge.rubric.map(({ id, check }) => ({
           type: "llm-rubric" as const,
           metric: id,
-          value: [check, judge.instructions].filter(Boolean).join("\n"),
+          // A string value can load files or run templates in Promptfoo.
+          value: { check, instructions: judge.instructions },
           provider: judge.model,
           rubricPrompt,
         })),

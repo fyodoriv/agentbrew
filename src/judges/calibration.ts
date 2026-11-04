@@ -36,10 +36,25 @@ export function planCalibration(cases: readonly LabeledCase[]): CalibrationCase[
   );
 }
 
+interface CalibrationRates {
+  truePositiveRate: number;
+  trueNegativeRate: number;
+}
+
+type CalibrationThresholds = Pick<JudgeDefinition["calibration"], "minTruePositiveRate" | "minTrueNegativeRate">;
+
+function passesCalibration(rates: readonly CalibrationRates[], thresholds: CalibrationThresholds): boolean {
+  return rates.every(
+    (rate) =>
+      rate.truePositiveRate >= thresholds.minTruePositiveRate &&
+      rate.trueNegativeRate >= thresholds.minTrueNegativeRate,
+  );
+}
+
 export function scoreCalibration(
   cases: readonly LabeledCase[],
   results: readonly CalibrationResult[],
-  thresholds: { minTruePositiveRate: number; minTrueNegativeRate: number },
+  thresholds: CalibrationThresholds,
 ) {
   const plan = planCalibration(cases);
   const key = ({ id, order }: { id: string; order: CalibrationOrder }) => JSON.stringify([id, order]);
@@ -67,11 +82,7 @@ export function scoreCalibration(
     orderDisagreements: cases.filter(
       ({ id }) => verdicts.get(key({ id, order: "forward" })) !== verdicts.get(key({ id, order: "reverse" })),
     ).length,
-    pass: [forward, reverse].every(
-      (result) =>
-        result.truePositiveRate >= thresholds.minTruePositiveRate &&
-        result.trueNegativeRate >= thresholds.minTrueNegativeRate,
-    ),
+    pass: passesCalibration([forward, reverse], thresholds),
   };
 }
 
@@ -101,4 +112,24 @@ export async function runCalibrationPair(
     results.push({ id, order, verdict: result.pass ? "PASS" : "FAIL" });
   }
   return scoreCalibration(pair, results, judge.calibration);
+}
+
+export function summarizeCalibrationPairs(
+  pairs: readonly ReturnType<typeof scoreCalibration>[],
+  thresholds: CalibrationThresholds,
+) {
+  if (!pairs.length) throw new Error("Judge calibration requires at least one labeled pair.");
+  // Each pair contributes one PASS and one FAIL example in each order.
+  const rates = (order: CalibrationOrder) => ({
+    truePositiveRate: pairs.reduce((sum, pair) => sum + pair[order].truePositiveRate, 0) / pairs.length,
+    trueNegativeRate: pairs.reduce((sum, pair) => sum + pair[order].trueNegativeRate, 0) / pairs.length,
+  });
+  const forward = rates("forward");
+  const reverse = rates("reverse");
+  return {
+    forward,
+    reverse,
+    orderDisagreements: pairs.reduce((sum, pair) => sum + pair.orderDisagreements, 0),
+    pass: passesCalibration([forward, reverse], thresholds),
+  };
 }

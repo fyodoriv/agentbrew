@@ -3,7 +3,12 @@ set -euo pipefail
 
 # The install, repair and source refresh all use this npm build entry.
 unset AGENTBREW_BUILD_OUT_DIR
-if [[ "$(uname -s)-$(uname -m)" != Darwin-arm64 ]]; then
+host="$(uname -s)-$(uname -m)"
+if [[ "$host" == Linux-x86_64 || "$host" == Linux-aarch64 ]]; then
+  cargo build --locked --release --manifest-path rust/judge-source/Cargo.toml \
+    --target-dir rust/judge-source/target
+fi
+if [[ "$host" != Darwin-arm64 ]]; then
   tsup
   exec bash scripts/build-pipeline-guard.sh --dist-only
 fi

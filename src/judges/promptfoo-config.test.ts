@@ -33,6 +33,15 @@ describe("judge Promptfoo configuration", () => {
     expect(test.assert[0].rubricPrompt).not.toContain(artifact);
   });
 
+  it("keeps file references and template syntax in data values", () => {
+    const checks = ["file:///fixture/missing.js", "{% endraw %}{{ 7 * 6 }}"];
+    const definition = { ...judge, rubric: checks.map((check, index) => ({ id: `check-${index}`, check })) };
+    const config = buildJudgeEvaluation(definition, "Synthetic artifact");
+    expect(config.tests[0].assert.map(({ value }) => value)).toEqual(
+      checks.map((check) => ({ check, instructions: judge.instructions })),
+    );
+  });
+
   it("includes the request and named sources only for source-aware review", () => {
     const context = { request: "Check the claim", sources: [{ id: "S1", text: "Synthetic evidence" }] };
     const [test] = buildJudgeEvaluation({ ...judge, sees: "artifact+sources" }, "draft", context).tests;

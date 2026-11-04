@@ -52,8 +52,16 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Set up Rust for the native judge reader
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          rustup default 1.97.0
+
       - name: Build
         run: npm run build
+
+      - name: Verify installed judge reader and PR gate
+        run: npm run test:real-e2e -- real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts
 
       - name: Agent config bloat lint
         run: node dist/cli.js lint
@@ -75,3 +83,39 @@ jobs:
           test -f dist/cli.js || { echo "ERROR: dist/cli.js missing"; exit 1; }
           test -f dist/catalog.yaml || { echo "ERROR: dist/catalog.yaml missing"; exit 1; }
           node dist/cli.js --version
+
+  judge-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Set up Rust
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          rustup default 1.97.0
+      - name: Build the judge CLI
+        run: |
+          npm ci
+          npm run build
+      - name: Start pinned local model
+        run: |
+          docker run --detach --name agentbrew-judge-ollama \
+            --publish 127.0.0.1:11434:11434 \
+            --env OLLAMA_NO_CLOUD=1 \
+            ollama/ollama@sha256:ebaef4f4c5d93660e1f25f8ad085a112f51ccfb0e8458073e71793959dba91c9
+          curl --fail --silent --show-error --retry 20 --retry-delay 1 \
+            --retry-connrefused --max-time 3 http://127.0.0.1:11434/api/version >/dev/null
+          timeout 5m docker exec agentbrew-judge-ollama ollama pull llama3.2:3b
+          curl --fail --silent --show-error --max-time 3 http://127.0.0.1:11434/api/tags |
+            jq -e 'any(.models[]; .name == "llama3.2:3b" and .digest == "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72")' >/dev/null
+      - name: Require judge calibration agreement
+        run: bash scripts/check-judge-calibration.sh
+      - name: Stop local model
+        if: always()
+        run: docker container stop agentbrew-judge-ollama || true

@@ -16,11 +16,14 @@ vi.mock("./review-rounds.js", () => ({ reserveJudgeRound: vi.fn() }));
 vi.mock("./runner.js", () => ({ runJudge: vi.fn() }));
 vi.mock("../state.js", () => ({ loadState: vi.fn() }));
 vi.mock("./calibration-cases.js", () => ({ loadCalibrationCases: vi.fn() }));
-vi.mock("./calibration.js", () => ({ runCalibrationPair: vi.fn() }));
+vi.mock("./calibration.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./calibration.js")>()),
+  runCalibrationPair: vi.fn(),
+}));
 vi.mock("./load.js", () => ({ loadJudgeDefinitions: vi.fn() }));
 
 const judge: LoadedJudge = {
-  owner: "/fixture",
+  owner: process.cwd(),
   path: "judges/clarity.md",
   sha256: "a".repeat(64),
   definition: {
@@ -62,7 +65,7 @@ describe("judge eval command", () => {
     vi.mocked(loadState).mockReturnValue({
       agents: [],
       catalogVersion: "fixture",
-      agentfileJudges: { "/fixture": [judge] },
+      agentfileJudges: { [judge.owner]: [judge] },
     });
     vi.mocked(loadJudgeDefinitions).mockReturnValue([judge]);
     vi.mocked(loadCalibrationCases).mockReturnValue([pair, pair]);
@@ -100,7 +103,21 @@ describe("judge eval command", () => {
     });
     await invoke();
     expect(process.exitCode).toBe(1);
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"trueNegativeRate":0'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"trueNegativeRate":0.5'));
+  });
+
+  it("applies the threshold to all pairs instead of failing a single weak pair", async () => {
+    const calibration = { ...judge.definition.calibration, minTrueNegativeRate: 0.5 };
+    vi.mocked(loadJudgeDefinitions).mockReturnValue([{ ...judge, definition: { ...judge.definition, calibration } }]);
+    vi.mocked(runCalibrationPair).mockResolvedValueOnce({
+      forward: rates,
+      reverse: { ...rates, trueNegativeRate: 0 },
+      orderDisagreements: 1,
+      pass: false,
+    });
+    await invoke();
+    expect(process.exitCode).toBeUndefined();
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"trueNegativeRate":0.5'));
   });
 
   it("refuses a bad fixture before dispatch", async () => {
@@ -126,7 +143,7 @@ describe("judge run command", () => {
     vi.mocked(loadState).mockReturnValue({
       agents: [],
       catalogVersion: "fixture",
-      agentfileJudges: { "/fixture": [judge] },
+      agentfileJudges: { [judge.owner]: [judge] },
     });
     vi.mocked(loadJudgeDefinitions).mockReturnValue([judge]);
     vi.mocked(runJudge).mockResolvedValue({

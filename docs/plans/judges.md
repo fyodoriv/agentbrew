@@ -135,3 +135,9 @@ the whole draft. Set both in the hook environment before starting the agent.
 Grade that exact text with `agentbrew judge run --event draft-save --artifact <file>`.
 The hook checks only the configured tool and field. A tool with rich blocks
 or additional message-bearing fields needs its own adapter.
+
+To check the shipped clarity rubric in CI, build Agentbrew and run
+`bash scripts/check-judge-calibration.sh` with its declared model
+available on local Ollama. The script uses an isolated Agentbrew home.
+It exits nonzero if either order falls below the declared agreement
+threshold.

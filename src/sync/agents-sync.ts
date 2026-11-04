@@ -20,6 +20,7 @@ import { ICON_ERROR, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { agentNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
+import { activeJudgeSets } from "./stale-agentfile-artifacts.js";
 
 interface AgentDefTarget {
   agentName: string;
@@ -328,7 +329,7 @@ function addJudgeDefinitions(
   allAgents: ReturnType<typeof collectAgentDefs>["agents"],
   bySource: ReturnType<typeof collectAgentDefs>["bySource"],
 ): void {
-  const judges = Object.values(state?.agentfileJudges ?? {}).flat();
+  const judges = Object.values(activeJudgeSets(state?.agentfileJudges ?? {})).flat();
   for (const { owner, path, definition } of judges) {
     const name = `judge-${definition.name}`;
     if (allAgents.has(name)) throw new Error(`Agent definition conflicts with judge: ${JSON.stringify(name)}`);

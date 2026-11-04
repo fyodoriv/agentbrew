@@ -48,4 +48,10 @@ status=0
 DENY_EVENT=pr-ready invoke "gh pr create --fill; gh pr ready 42" >"$scratch/out" 2>"$scratch/err" || status=$?
 [ "$status" -eq 2 ]
 [ "$(cat "$CAPTURE.calls")" = "$(printf 'pr-create\npr-ready')" ]
-printf '%s\n' 'judge-pr-delivery: 5 passed'
+
+for command in "gh 'pr' create --title T --body Draft" "gh pr 'create' --title T --body Draft"; do
+  status=0
+  GATE_STATUS=2 invoke "$command" >"$scratch/out" 2>"$scratch/err" || status=$?
+  [ "$status" -eq 2 ]
+done
+printf '%s\n' 'judge-pr-delivery: 7 passed'

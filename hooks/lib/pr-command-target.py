@@ -70,10 +70,9 @@ def target(command, words=None):
     return {"number": number, "repo": repo}
 
 
-def judge_argv(command):
+def judge_argv(command, words):
     if any(character in command for character in "$`*?[]{}~!\x00") or "\\\n" in command:
         return []
-    words = command_words(command)
     if words is None or any(word.startswith("#") or (word and set(word) <= set(PUNCTUATION)) for word in words):
         return []
     if words[:3] not in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
@@ -120,7 +119,12 @@ def main():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--judge-argv"]:
-        print(json.dumps(judge_argv(sys.stdin.read(256 * 1024 + 1))))
+    if sys.argv[1:] == ["--judge-command"]:
+        command = sys.stdin.read(256 * 1024 + 1)
+        words = command_words(command)
+        event = None
+        if words and words[:3] in (["gh", "pr", "create"], ["gh", "pr", "ready"]):
+            event = "pr-" + words[2]
+        print(json.dumps({"event": event, "argv": judge_argv(command, words)}))
     else:
         main()

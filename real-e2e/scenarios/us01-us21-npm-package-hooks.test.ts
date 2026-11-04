@@ -32,6 +32,10 @@ import { judgeReceiptKey } from "../../src/judges/receipt-key.js";
 import { writeJudgeReceipt } from "../../src/judges/receipt-store.js";
 import { expectInstalledCheckupRun } from "./checkup-run-installed.js";
 
+const supportsJudgeReader =
+  (process.platform === "darwin" && process.arch === "arm64") ||
+  (process.platform === "linux" && (process.arch === "x64" || process.arch === "arm64"));
+
 const REPO = resolve(import.meta.dirname, "..", "..");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-npm-pkg-")));
 
@@ -148,7 +152,7 @@ afterAll(() => {
 });
 
 describe("npm package ships hooks and template rules", () => {
-  it.skipIf(process.platform !== "darwin" || process.arch !== "arm64")(
+  it.skipIf(!supportsJudgeReader)(
     "syncs only the declared judge and gates the exact PR body",
     () => {
       const owner = join(root, "judge-sync-owner");
@@ -217,26 +221,23 @@ Review the artifact.
     300_000,
   );
 
-  it.skipIf(process.platform !== "darwin" || process.arch !== "arm64")(
-    "ships a working judge reader in the installed package",
-    () => {
-      const cli = realpathSync(join(root, "prefix", "bin", "agentbrew"));
-      const reader = join(dirname(cli), "native", "darwin-arm64", "judge-source");
-      const owner = join(root, "judge-owner");
-      mkdirSync(owner);
-      writeFileSync(join(owner, "clarity.md"), "qualified fixture\n");
-      writeFileSync(join(root, "outside.md"), "outside fixture\n");
-      symlinkSync(join(root, "outside.md"), join(owner, "linked.md"));
+  it.skipIf(!supportsJudgeReader)("ships a working judge reader in the installed package", () => {
+    const cli = realpathSync(join(root, "prefix", "bin", "agentbrew"));
+    const reader = join(dirname(cli), "native", `${process.platform}-${process.arch}`, "judge-source");
+    const owner = join(root, "judge-owner");
+    mkdirSync(owner);
+    writeFileSync(join(owner, "clarity.md"), "qualified fixture\n");
+    writeFileSync(join(root, "outside.md"), "outside fixture\n");
+    symlinkSync(join(root, "outside.md"), join(owner, "linked.md"));
 
-      const accepted = spawnSync(reader, [owner, "clarity.md"], { encoding: "utf8", timeout: 5000 });
-      expect(accepted.status, accepted.error?.message).toBe(0);
-      expect(accepted.stdout).toBe("qualified fixture\n");
+    const accepted = spawnSync(reader, [owner, "clarity.md"], { encoding: "utf8", timeout: 5000 });
+    expect(accepted.status, accepted.error?.message).toBe(0);
+    expect(accepted.stdout).toBe("qualified fixture\n");
 
-      const refused = spawnSync(reader, [owner, "linked.md"], { encoding: "utf8", timeout: 5000 });
-      expect(refused.status, refused.error?.message).toBe(2);
-      expect(refused.stdout).toBe("");
-    },
-  );
+    const refused = spawnSync(reader, [owner, "linked.md"], { encoding: "utf8", timeout: 5000 });
+    expect(refused.status, refused.error?.message).toBe(2);
+    expect(refused.stdout).toBe("");
+  });
 
   it("deploys default-on hooks into ~/.claude/settings.json", () => {
     expect(npmUser.hooks.length, npmUser.out).toBeGreaterThan(0);

@@ -16,7 +16,15 @@ function config(provider = "ollama:chat:llama3.2:3b") {
     tests: [
       {
         providerOutput: "Synthetic artifact",
-        assert: [{ type: "llm-rubric" as const, metric: "clear", value: "Is it clear?", provider, rubricPrompt: "" }],
+        assert: [
+          {
+            type: "llm-rubric" as const,
+            metric: "clear",
+            value: { check: "Is it clear?", instructions: "" },
+            provider,
+            rubricPrompt: "",
+          },
+        ],
       },
     ],
   };

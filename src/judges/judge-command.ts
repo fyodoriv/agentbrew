@@ -3,8 +3,9 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Command } from "commander";
 import { loadState } from "../state.js";
+import { activeJudgeSets } from "../sync/stale-agentfile-artifacts.js";
 import { readJudgeArtifact } from "./artifact.js";
-import { runCalibrationPair } from "./calibration.js";
+import { runCalibrationPair, summarizeCalibrationPairs } from "./calibration.js";
 import { loadCalibrationCases } from "./calibration-cases.js";
 import { readDeliveryContexts } from "./delivery-context.js";
 import { JUDGE_RECEIPT_MAX_AGE, missingJudgePasses } from "./gate.js";
@@ -16,7 +17,7 @@ import { reserveJudgeRound } from "./review-rounds.js";
 import { runJudge } from "./runner.js";
 
 function currentJudges(name?: string, allowEmpty = false) {
-  const entries = Object.values(loadState()?.agentfileJudges ?? {}).flat();
+  const entries = Object.values(activeJudgeSets(loadState()?.agentfileJudges ?? {})).flat();
   const selected = name === undefined ? entries : entries.filter((entry) => entry.definition.name === name);
   if (!selected.length && !allowEmpty) throw new Error("No matching judges. Apply the declaring Agentfile first.");
   const judgeSources = selected.map(({ owner, path }) => ({ owner, paths: [path] }));
@@ -172,10 +173,13 @@ export function registerJudgeCommand(program: Command): void {
       const jobs = currentJudges(name).map((judge) => ({ judge, pairs: loadCalibrationCases(judge) }));
       const results = [];
       for (const { judge, pairs } of jobs) {
+        const fixtures = [];
         for (const [index, pair] of pairs.entries()) {
           const score = await runCalibrationPair(judge.definition, pair);
-          results.push({ judge: judge.definition.name, fixture: judge.definition.calibration.cases[index], ...score });
+          fixtures.push({ fixture: judge.definition.calibration.cases[index], ...score });
         }
+        const summary = summarizeCalibrationPairs(fixtures, judge.definition.calibration);
+        results.push({ judge: judge.definition.name, ...summary, fixtures });
       }
       console.log(JSON.stringify(results));
       if (results.some((result) => !result.pass)) process.exitCode = 1;

@@ -163,3 +163,18 @@ Keep the fix only if all three report the missing tool before backup and all
 existing installer checks pass. Any missed diagnosis or existing-case regression
 rejects this approach. Measurement framing: Basili, Caldiera, and Rombach (1994),
 Goal Question Metric.
+
+### Portable npm package experiment
+
+Goal: give every supported npm install the native reader from the same release.
+Question: can one publishable archive carry the reader for Apple Silicon,
+Linux x64, and Linux ARM64 without an install-time build?
+Metric: run the locked Rust build for `aarch64-apple-darwin`,
+`x86_64-unknown-linux-musl`, and `aarch64-unknown-linux-musl`, inspect the
+actual archive with `tar -tvzf`, and run the installed reader's accept/refuse
+fixture on each target. The current host build supplies one of three readers.
+Keep a release path only when all three executable entries match their target
+and pass the fixture, and when any missing entry prevents publication. Reject
+the path if any target needs a compiler at npm install time or a partial archive
+can reach the registry. Static Linux binaries are the first build candidate.
+See [Rust platform support](https://doc.rust-lang.org/rustc/platform-support.html).

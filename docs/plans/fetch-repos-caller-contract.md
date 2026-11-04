@@ -113,3 +113,42 @@ five fetches, attributed one stale warning, and made zero off-fixture calls.
 All four recorder controls passed in each repository. Agentbrew passed all
 20 verification steps. Dotfiles passed `make check`. The native worker
 and its integration remain open in [issue #692](https://github.com/fyodoriv/agentbrew/issues/692).
+
+## Fetch policy and local Git preparation
+
+The standalone Rust crate keeps request preparation, admission decisions,
+and result classification separate from process launch. The original 37
+pure cases and two supplemental SSH grammar cases passed. Neither caller
+uses this crate.
+
+Two network-denied cases ran real Git 2.56.0 against disposable local
+origins. The unchanged inventory arguments completed the widened-config
+fetch and changed eight protected Git files. The prepared arguments passed
+both cases. Each updated, created, and pruned the intended origin-tracking
+refs and made the new object available. The protected refs, index, HEAD,
+worktree, config, FETCH_HEAD, and symbolic origin HEAD stayed unchanged.
+Only objects and origin-tracking metadata changed.
+
+Run the pure cases from the repository root:
+
+```sh
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked \
+  --manifest-path rust/fetch-mutation/Cargo.toml \
+  --test fetch_repos_contracts --test fetch_repos_literal_contracts -- --test-threads=1
+```
+
+Run the local cases on macOS with Homebrew Git 2.56.0:
+
+```sh
+scratch="$(mktemp -d)"
+TMPDIR="$scratch" JOBS=1 CARGO_BUILD_JOBS=1 heavy-run \
+  /usr/bin/env -u FETCH_MUTATION_LEGACY /usr/bin/sandbox-exec \
+  -p '(version 1) (allow default) (deny network*)' \
+  cargo test --offline --locked --manifest-path rust/fetch-mutation/Cargo.toml \
+  --test local_fetch_contract -- --test-threads=1 --nocapture
+```
+
+Keep 37/37 and 2/2 pure cases, 2/2 local cases, three tracking effects
+per local case, and zero protected or unknown changes. Pivot on any
+unsafe result. This evidence does not cover installed submodules, SSH,
+arbitrary hooks, process cleanup, deadlines, parallelism, or activation.

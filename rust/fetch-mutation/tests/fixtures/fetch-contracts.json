@@ -1,0 +1,1266 @@
+{
+  "schema_version": 1,
+  "source_prediction": "ea0105b",
+  "shared_source_tree": "187687c9aa6c674fc47fc71b5cfc02b456e8a6f3",
+  "kernel_qualification": "pending-not-run",
+  "scope": "pure argv/policy/queue/receipt only; no OS cleanup or real Git claims",
+  "unrun_kernel_groups": [
+    "F01",
+    "F02",
+    "F04",
+    "F07",
+    "F08",
+    "F09",
+    "F10",
+    "F11",
+    "F12",
+    "F13",
+    "F14",
+    "F15",
+    "F16",
+    "F17",
+    "F18",
+    "F19",
+    "F20",
+    "F21"
+  ],
+  "cases": [
+    {
+      "id": "f01_eight_admissions",
+      "group": "F01",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 8,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-2",
+            "common_dir_identity": "store-2",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-3",
+            "common_dir_identity": "store-3",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-4",
+            "common_dir_identity": "store-4",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-5",
+            "common_dir_identity": "store-5",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-6",
+            "common_dir_identity": "store-6",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-7",
+            "common_dir_identity": "store-7",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-8",
+            "common_dir_identity": "store-8",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "admit",
+            "now": 1
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "admit",
+            "now": 2
+          }
+        ]
+      },
+      "expected": [
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        [],
+        [
+          8
+        ]
+      ]
+    },
+    {
+      "id": "f02_two_admissions",
+      "group": "F02",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 2,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-2",
+            "common_dir_identity": "store-2",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "admit",
+            "now": 1
+          },
+          {
+            "op": "finish",
+            "ordinal": 1,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "admit",
+            "now": 2
+          }
+        ]
+      },
+      "expected": [
+        [
+          0,
+          1
+        ],
+        [],
+        [
+          2
+        ]
+      ]
+    },
+    {
+      "id": "f03_mixed_results",
+      "group": "F03",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 8,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-2",
+            "common_dir_identity": "store-2",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "finish",
+            "ordinal": 2,
+            "completion": {
+              "outcome": "timeout",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "finish",
+            "ordinal": 1,
+            "completion": {
+              "outcome": "fail",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "results"
+          }
+        ]
+      },
+      "expected": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          {
+            "ordinal": 0,
+            "status": "ok",
+            "diagnostic": null
+          },
+          {
+            "ordinal": 1,
+            "status": "fail",
+            "diagnostic": "git-failure"
+          },
+          {
+            "ordinal": 2,
+            "status": "timeout",
+            "diagnostic": "work-timeout"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "f04_shared_head_does_not_block_independent_job",
+      "group": "F04",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 2,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "a",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "a",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-2",
+            "common_dir_identity": "b",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          }
+        ]
+      },
+      "expected": [
+        [
+          0,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "f05_defaults",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "repo-a"
+      ],
+      "expected": {
+        "ok": {
+          "jobs": 8,
+          "timeout_seconds": 60,
+          "repos": [
+            "repo-a"
+          ]
+        }
+      }
+    },
+    {
+      "id": "f05_explicit",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--jobs",
+        "2",
+        "--timeout",
+        "7",
+        "repo-a",
+        "repo-b"
+      ],
+      "expected": {
+        "ok": {
+          "jobs": 2,
+          "timeout_seconds": 7,
+          "repos": [
+            "repo-a",
+            "repo-b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "f05_no_repositories",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_zero_jobs",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--jobs",
+        "0",
+        "repo"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_negative_timeout",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--timeout",
+        "-1",
+        "repo"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_fractional_timeout",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--timeout",
+        "1.5",
+        "repo"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_overflow_timeout",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--timeout",
+        "18446744073709551615",
+        "repo"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_unknown_option",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--later",
+        "repo"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_missing_value",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--jobs"
+      ],
+      "expected": {
+        "error": "usage"
+      }
+    },
+    {
+      "id": "f05_delimiter",
+      "group": "F05",
+      "layer": "pure-executor",
+      "operation": "parse",
+      "input": [
+        "--",
+        "--repo"
+      ],
+      "expected": {
+        "ok": {
+          "jobs": 8,
+          "timeout_seconds": 60,
+          "repos": [
+            "--repo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "f06_deadline_at_admission",
+      "group": "F06",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 1,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "deadline",
+            "ordinal": 0
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "admit",
+            "now": 50000
+          },
+          {
+            "op": "deadline",
+            "ordinal": 1
+          }
+        ]
+      },
+      "expected": [
+        [
+          0
+        ],
+        60000,
+        [
+          1
+        ],
+        110000
+      ]
+    },
+    {
+      "id": "f06_expiration_does_not_release_without_cleanup",
+      "group": "F06",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 1,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "expired",
+            "now": 60000
+          },
+          {
+            "op": "admit",
+            "now": 60001
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "timeout",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "admit",
+            "now": 60002
+          }
+        ]
+      },
+      "expected": [
+        [
+          0
+        ],
+        [
+          0
+        ],
+        [],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "id": "f07_default_ssh",
+      "group": "F07",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f07_owner_ssh_key",
+      "group": "F07",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": "ssh -i fixture_key -o BatchMode=yes"
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -i fixture_key -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f07_batchmode_no",
+      "group": "F07",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": "ssh -o BatchMode=no"
+        }
+      },
+      "expected": {
+        "error": "unsupported-ssh"
+      }
+    },
+    {
+      "id": "f07_unsupported_ssh",
+      "group": "F07",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": "plink -batch"
+        }
+      },
+      "expected": {
+        "error": "unsupported-ssh"
+      }
+    },
+    {
+      "id": "f08_literal_path",
+      "group": "F08",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "--fixture repo;$(fixture_not_executed)",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "--fixture repo;$(fixture_not_executed)",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f10_common_identity_serialization",
+      "group": "F10",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 2,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "same",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "same",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-2",
+            "common_dir_identity": "other",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "admit",
+            "now": 1
+          }
+        ]
+      },
+      "expected": [
+        [
+          0,
+          2
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "id": "f11_bad_input_does_not_block_good",
+      "group": "F11",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 8,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": false
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "finish",
+            "ordinal": 1,
+            "completion": {
+              "outcome": "ok",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "results"
+          }
+        ]
+      },
+      "expected": [
+        [
+          1
+        ],
+        [
+          {
+            "ordinal": 0,
+            "status": "fail",
+            "diagnostic": "invalid-repository"
+          },
+          {
+            "ordinal": 1,
+            "status": "ok",
+            "diagnostic": null
+          }
+        ]
+      ]
+    },
+    {
+      "id": "f14_cancel_stops_queued_starts",
+      "group": "F14",
+      "layer": "pure-executor",
+      "operation": "queue",
+      "input": {
+        "jobs": 1,
+        "timeout_seconds": 60,
+        "repos": [
+          {
+            "path": "fixture-repo-0",
+            "common_dir_identity": "store-0",
+            "valid": true
+          },
+          {
+            "path": "fixture-repo-1",
+            "common_dir_identity": "store-1",
+            "valid": true
+          }
+        ],
+        "steps": [
+          {
+            "op": "admit",
+            "now": 0
+          },
+          {
+            "op": "cancel"
+          },
+          {
+            "op": "admit",
+            "now": 1
+          },
+          {
+            "op": "finish",
+            "ordinal": 0,
+            "completion": {
+              "outcome": "cancelled",
+              "cleanup": "verified"
+            }
+          },
+          {
+            "op": "results"
+          }
+        ]
+      },
+      "expected": [
+        [
+          0
+        ],
+        [],
+        [
+          {
+            "ordinal": 0,
+            "status": "fail",
+            "diagnostic": "cancelled"
+          },
+          {
+            "ordinal": 1,
+            "status": "fail",
+            "diagnostic": "cancelled"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "f15_unknown_cleanup",
+      "group": "F15",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 0,
+        "completion": {
+          "outcome": "ok",
+          "cleanup": "unknown"
+        }
+      },
+      "expected": {
+        "ordinal": 0,
+        "status": "fail",
+        "diagnostic": "cleanup-unverified"
+      }
+    },
+    {
+      "id": "f15_eperm_cleanup",
+      "group": "F15",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 0,
+        "completion": {
+          "outcome": "ok",
+          "cleanup": "permission-denied"
+        }
+      },
+      "expected": {
+        "ordinal": 0,
+        "status": "fail",
+        "diagnostic": "cleanup-unverified"
+      }
+    },
+    {
+      "id": "f15_lease_lost",
+      "group": "F15",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 0,
+        "completion": {
+          "outcome": "ok",
+          "cleanup": "lease-lost"
+        }
+      },
+      "expected": {
+        "ordinal": 0,
+        "status": "fail",
+        "diagnostic": "cleanup-unverified"
+      }
+    },
+    {
+      "id": "f15_incomplete_group",
+      "group": "F15",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 0,
+        "completion": {
+          "outcome": "ok",
+          "cleanup": "incomplete"
+        }
+      },
+      "expected": {
+        "ordinal": 0,
+        "status": "fail",
+        "diagnostic": "cleanup-unverified"
+      }
+    },
+    {
+      "id": "f15_timeout_cause_retained",
+      "group": "F15",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 0,
+        "completion": {
+          "outcome": "timeout",
+          "cleanup": "unknown"
+        }
+      },
+      "expected": {
+        "ordinal": 0,
+        "status": "fail",
+        "diagnostic": "timeout-cleanup-unverified"
+      }
+    },
+    {
+      "id": "f17_owner_context_and_redirects",
+      "group": "F17",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {
+            "HOME": "/fixture/home",
+            "PATH": "/fixture/bin:/usr/bin",
+            "XDG_CONFIG_HOME": "/fixture/config",
+            "DOTFILES_DIR": "/fixture/dotfiles",
+            "GIT_DIR": "/fixture/wrong",
+            "GIT_WORK_TREE": "/fixture/wrong-tree",
+            "GIT_INDEX_FILE": "/fixture/wrong-index",
+            "GIT_COMMON_DIR": "/fixture/wrong-common",
+            "GIT_OBJECT_DIRECTORY": "/fixture/wrong-objects",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/fixture/wrong-alt",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "credential.helper",
+            "GIT_CONFIG_VALUE_0": "fixture-helper"
+          },
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "HOME": "/fixture/home",
+            "PATH": "/fixture/bin:/usr/bin",
+            "XDG_CONFIG_HOME": "/fixture/config",
+            "DOTFILES_DIR": "/fixture/dotfiles",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "credential.helper",
+            "GIT_CONFIG_VALUE_0": "fixture-helper",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f18_fixed_receipt_fields",
+      "group": "F18",
+      "layer": "pure-executor",
+      "operation": "receipt",
+      "input": {
+        "ordinal": 2,
+        "completion": {
+          "outcome": "fail",
+          "cleanup": "verified",
+          "stderr": "FETCH_SYNTHETIC_PRIVATE_MARKER",
+          "argv": "fixture-sensitive"
+        }
+      },
+      "expected": {
+        "ordinal": 2,
+        "status": "fail",
+        "diagnostic": "git-failure"
+      }
+    },
+    {
+      "id": "f19_exact_namespace",
+      "group": "F19",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {},
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f20_native_unavailable",
+      "group": "F20",
+      "layer": "pure-executor",
+      "operation": "native-availability",
+      "input": {},
+      "expected": {
+        "available": false
+      }
+    },
+    {
+      "id": "f21_no_tag_prune",
+      "group": "F21",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "fetch.pruneTags",
+            "GIT_CONFIG_VALUE_0": "true"
+          },
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "fetch.pruneTags",
+            "GIT_CONFIG_VALUE_0": "true",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f21_no_recursion",
+      "group": "F21",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "fetch.recurseSubmodules",
+            "GIT_CONFIG_VALUE_0": "true"
+          },
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "fetch.recurseSubmodules",
+            "GIT_CONFIG_VALUE_0": "true",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    },
+    {
+      "id": "f21_no_maintenance",
+      "group": "F21",
+      "layer": "pure-executor",
+      "operation": "request",
+      "input": {
+        "cwd": "fixture-repo",
+        "timeout_seconds": 60,
+        "policy": {
+          "owner_env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "maintenance.auto",
+            "GIT_CONFIG_VALUE_0": "true"
+          },
+          "ssh_command": null
+        }
+      },
+      "expected": {
+        "ok": {
+          "cwd": "fixture-repo",
+          "args": [
+            "fetch",
+            "--quiet",
+            "--prune",
+            "--no-tags",
+            "--no-prune-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--recurse-submodules=no",
+            "--no-auto-maintenance",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*"
+          ],
+          "env": {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "maintenance.auto",
+            "GIT_CONFIG_VALUE_0": "true",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_ASKPASS": "",
+            "GCM_INTERACTIVE": "never",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"
+          },
+          "work_ms": 60000,
+          "cleanup_ms": 2000
+        }
+      }
+    }
+  ]
+}

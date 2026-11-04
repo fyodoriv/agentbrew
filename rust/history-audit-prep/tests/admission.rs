@@ -29,6 +29,9 @@ const TAG: &[u8] = include_bytes!("data/tag.z");
 const TAG_OID: &[u8] = include_bytes!("data/tag.oid");
 const PACK: &[u8] = include_bytes!("data/delta.pack");
 
+#[path = "support/packed_delta_slice.rs"]
+mod packed_delta_slice;
+
 #[derive(Debug, Eq, PartialEq)]
 enum Refusal {
     Io,

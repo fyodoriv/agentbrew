@@ -240,3 +240,10 @@ all-ref enumeration and a trusted snapshot or writer-coordinated source.
 
 Anchors: [Git pack format](https://git-scm.com/docs/gitformat-pack) and
 Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+Observed on 2026-11-04 after prediction `71d9cca`: the offline,
+network-denied Darwin arm64 run exited zero. A10 verified the 33-byte
+blob and its expected identity. A11–A14 returned their registered refusal
+and left the entire result buffer clear. A01–A09 also passed. The locked
+feature graph showed `miniz_oxide` 0.8.9 without `with-alloc`. The fixture
+inputs and manifest stayed byte-identical. Production admission remains open.

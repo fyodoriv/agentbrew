@@ -178,3 +178,15 @@ and pass the fixture, and when any missing entry prevents publication. Reject
 the path if any target needs a compiler at npm install time or a partial archive
 can reach the registry. Static Linux binaries are the first build candidate.
 See [Rust platform support](https://doc.rust-lang.org/rustc/platform-support.html).
+
+### Hook command parity
+
+The action catalog must account for all CLI commands. Judge run and eval
+are public actions. The three gate commands consume hook-specific payloads
+on stdin and enforce delivery inside the hook lifecycle.
+
+Run `./node_modules/.bin/vitest run src/action-parity.test.ts`. Predict
+three unexplained hidden commands on the baseline and zero with explicit
+hook-only reasons. Keep the change only if all parity tests pass. Reject it
+if a gate becomes an advertised action or any existing parity case fails.
+Measurement framing: Basili, Caldiera, and Rombach (1994), Goal Question Metric.

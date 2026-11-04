@@ -4,6 +4,18 @@ set -euo pipefail
 # The install, repair and source refresh all use this npm build entry.
 unset AGENTBREW_BUILD_OUT_DIR
 host="$(uname -s)-$(uname -m)"
+if [[ "${AGENTBREW_BUILD_PORTABLE_JUDGES:-}" == 1 ]]; then
+  if [[ "$host" != Darwin-arm64 ]]; then
+    printf '%s\n' 'Build the portable npm release on Apple Silicon.' >&2
+    exit 1
+  fi
+  export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=rust-lld
+  for target in x86_64-unknown-linux-musl aarch64-unknown-linux-musl; do
+    cargo build --locked --release --manifest-path rust/judge-source/Cargo.toml \
+      --target "$target" --target-dir rust/judge-source/target
+  done
+fi
 if [[ "$host" == Linux-x86_64 || "$host" == Linux-aarch64 ]]; then
   cargo build --locked --release --manifest-path rust/judge-source/Cargo.toml \
     --target-dir rust/judge-source/target

@@ -54,7 +54,7 @@
     "release": "bash scripts/release.sh",
     "publish-latest": "bash scripts/publish-latest.sh",
     "publish:latest": "bash scripts/publish-latest.sh",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "AGENTBREW_BUILD_PORTABLE_JUDGES=1 npm run build"
   },
   "keywords": [
     "ai",

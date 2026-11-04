@@ -49,6 +49,16 @@ export default defineConfig({
       mkdirSync(nativeDir, { recursive: true });
       copyFileSync("rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run", `${nativeDir}/checkup-run`);
       copyFileSync("rust/judge-source/target/aarch64-apple-darwin/release/judge-source", `${nativeDir}/judge-source`);
+      if (process.env.AGENTBREW_BUILD_PORTABLE_JUDGES === "1") {
+        for (const [arch, target] of [
+          ["x64", "x86_64-unknown-linux-musl"],
+          ["arm64", "aarch64-unknown-linux-musl"],
+        ]) {
+          const linuxDir = join(outDir, "native", `linux-${arch}`);
+          mkdirSync(linuxDir, { recursive: true });
+          copyFileSync(`rust/judge-source/target/${target}/release/judge-source`, join(linuxDir, "judge-source"));
+        }
+      }
     } else if (process.platform === "linux" && (process.arch === "x64" || process.arch === "arm64")) {
       const nativeDir = join(outDir, `native/linux-${process.arch}`);
       mkdirSync(nativeDir, { recursive: true });

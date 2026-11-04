@@ -181,7 +181,7 @@ publish_to_npm() {
 
   set +e
   local publish_output
-  publish_output="$(npm publish --access public "${npm_publish_args[@]}" 2>&1)"
+  publish_output="$(npm publish --access public "${npm_publish_args[@]}" --ignore-scripts=false 2>&1)"
   local publish_status=$?
   set -e
 

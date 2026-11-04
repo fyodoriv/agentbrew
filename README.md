@@ -1161,6 +1161,10 @@ npm run publish:latest -- --dry-run    # preflight + npm publish --dry-run
 npm run publish:latest -- --otp=123456 # required when npm prompts for 2FA
 ```
 
+Publish from Apple Silicon with Rust 1.97 or later. Add the two Linux
+targets with `rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl`.
+The publish build includes all three judge readers, even with `--quick`.
+
 The script is worktree-safe: it `git fetch origin main --tags` and syncs `package.json` / lockfile / `src/cli.ts` from `origin/main` without checking out `main`. While publishing, `"private": true` is stripped temporarily and restored on exit (even on failure).
 
 Human-only steps: `npm login`, OTP at publish time, and explicit approval before running the command (see TASKS.md publishing policy).

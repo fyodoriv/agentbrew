@@ -2572,6 +2572,17 @@
         "drops a flat bonus that reorders all items when a guard fails",
         "language filter needs evidence of another language"
       ]
+    },
+    {
+      "id": 225,
+      "prompt": "/goal implement booking an activity, a Thai massage for a named person on a date, first half of the day. (Mid-goal the user adds: it must find available slots, and check Google Maps and other reviews.)",
+      "expected_output": "The agent treats the mid-goal message as new done-criteria: it reads live slots for the exact date from the booking page (not opening hours), rejects places whose live times miss the window and says so, records review ratings with counts from Google Maps and the booking site, and cites each slot and rating word for word in its goal check lines.",
+      "expectations": [
+        "Adds 'live slots' and 'reviews' as done-criteria after the mid-goal message",
+        "Uses times read from the booking page for the asked date, not opening hours",
+        "Names rejected places and why (no morning slots, phone-only booking, wrong city)",
+        "Quotes the ratings with source and review count"
+      ]
     }
   ]
 }

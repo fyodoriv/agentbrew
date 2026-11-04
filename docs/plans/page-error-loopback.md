@@ -55,3 +55,20 @@ events. It cannot prove a general drain for every Chrome session. The
 production adapter must remain incomplete until it can prove its capture
 window and scope. The skill, CLI registration, and real browser evidence
 are outside this preparation.
+
+## Native network admission experiment
+
+Question: can a disposable Darwin process reach only its assigned local
+fixture endpoint? Measure two synthetic loopback TCP listeners on different
+ports. The isolated client must connect to the allowlisted endpoint and
+receive its exact marker. The denied listener must receive no connection,
+and the client must report a permission refusal for it. Run the same client
+without a profile as a positive control for both listeners. That control
+must reach both and receive their distinct markers.
+
+Keep the sandbox candidate only at one allowed connection, zero denied
+connections, and two positive-control connections. Reject it if either
+listener cannot be independently observed or the refused connection looks
+like a missing listener. This is a transport admission probe. It does not
+qualify Chrome, target ownership, cleanup, or any live page result.
+Measurement framing: Basili, Caldiera and Rombach (1994), Goal Question Metric.

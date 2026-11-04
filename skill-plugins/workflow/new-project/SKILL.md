@@ -75,7 +75,9 @@ ADRs, `docs/plans/`, `Agentfile.yaml`, `.gitignore`, `.env.example`,
    ```
 
    With Copier installed (or `uvx` on PATH), it renders the Copier template
-   and writes `.copier-answers.yml`. Without Copier, or into a non-empty dir,
+   and writes `.copier-answers.yml`. A versioned template keeps its source for
+   `copier update`. A local copy removes its absolute source path.
+   Without Copier, or into a non-empty dir,
    it copies the same files and the repo cannot pull updates.
 
 5. **Run the stack generator** inside `<dir>` (table in `stacks.md`), add the

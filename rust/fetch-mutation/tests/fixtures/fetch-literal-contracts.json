@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "prediction_commit": "8761cac",
+  "source_module_sha256": "7fdee697979e91abc4f4d50e8e2e03381a7e256488c113ce2f6494c0e713c999",
+  "layer": "pure-policy-no-shell-or-SSH-execution",
+  "cases": [
+    {
+      "id": "f22_identity_glob",
+      "ssh_command": "ssh -i *",
+      "expected": "unsupported-ssh"
+    },
+    {
+      "id": "f22_executable_glob",
+      "ssh_command": "*/ssh",
+      "expected": "unsupported-ssh"
+    }
+  ]
+}

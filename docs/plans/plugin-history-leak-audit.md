@@ -247,3 +247,58 @@ blob and its expected identity. A11–A14 returned their registered refusal
 and left the entire result buffer clear. A01–A09 also passed. The locked
 feature graph showed `miniz_oxide` 0.8.9 without `with-alloc`. The fixture
 inputs and manifest stayed byte-identical. Production admission remains open.
+
+## Sealed effective ref and object composition
+
+Goal: check that the fixture's ref sources reach the right object readers.
+Question: can one mixed, complete synthetic inventory resolve to the exact
+effective object set and fail closed when any record or target is unsafe?
+No composed fixture exists on the base. Predict one exact positive result
+and five exact refusal controls. Reuse the packed-ref parser, loose object
+reader and sealed packed delta slice. A loose ref shadows the same packed
+name. A malformed loose record cannot fall back to the packed target.
+
+Use immutable, synthetic ref records and the existing object seeds. Cap
+packed ref bytes at 4 KiB, loose name bytes at 128 per record, and loose
+value bytes at 41 per record. Admit at most eight physical records across
+both sources, counting shadowed rows before any object read. The fixed
+number of reads bounds the total work by the existing per-reader caps.
+Validate loose names with the existing ref library and support only a
+direct SHA-1 value with its terminating newline. An unsupported symbolic
+record fails closed. No allocation, new dependency or command is needed
+to open an object beyond the existing fixture readers. A refused composition
+returns only a fixed reason and publishes no partial set.
+
+| Case | Required result |
+|---|---|
+| A15 | Four effective refs and exact verified objects: one loose override reaching the packed delta, a packed-only custom ref reaching the loose blob, a packed-only annotated tag, and a loose-only custom ref. The stale shadowed target is never read. |
+| A16 | The ninth physical row refuses before any object read, even when a loose row would shadow a packed row. |
+| A17 | Bad or over-cap loose name/value and malformed overriding object ID refuse before any object read. |
+| A18 | Duplicate packed names and duplicate loose names each refuse before any object read. |
+| A19 | A loose symbolic record refuses before any object read, including one with an available packed fallback. |
+| A20 | A missing effective object after an earlier verified object refuses with no published set. |
+
+Use the locked, offline, network-denied Darwin arm64 command above, with
+the same isolated Cargo and temporary paths and one test thread. Success
+is A15–A20 and all existing A01–A14 passing, no rejected inventory reaching
+the object reader, and no partial published set or payload disclosure.
+Pivot on any missed case, unbounded input, new data-dependent allocation
+beyond the existing ref parser, raw output or source mutation. Anchor:
+[Git pack-refs](https://git-scm.com/docs/git-pack-refs) and
+Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+The complete inventory is defined by this fixture only. This measurement
+does not discover filesystem refs, walk commit or tag targets, verify a
+production pack index or give an atomic snapshot. Production still needs
+bounded source enumeration and object expansion, a trusted snapshot, and
+the original scanner and release controls.
+
+Observed on 2026-11-04 after prediction `9aba4f6`. The missing
+composition failed A15, A16 and A18–A20. The malformed control A17
+already refused. The candidate passed A01–A20 with no ignored or
+filtered cases. A15 verified the exact mixed set without reading the
+shadowed target. A20 recorded two attempts and one verification and
+returned only the fixed missing-object refusal. The locked manifest and
+sealed object seeds stayed byte-identical. This qualifies the fixture's
+direct tag object. Tag targets, peeled records, symbolic-ref chains and
+real inventory completeness still require separate proof.

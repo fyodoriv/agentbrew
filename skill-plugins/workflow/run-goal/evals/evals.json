@@ -2539,6 +2539,17 @@
         "Repeats the listing until no leaking deployment remains, because the list is paged",
         "Re-probes after a delay before it claims 0 leaks"
       ]
+    },
+    {
+      "id": 222,
+      "prompt": "/goal finish porting the CLI commands to the fast native front, each with a parity test and a benchmark that shows it is no slower. One PR per command; the full suite is the merge gate.",
+      "expected_output": "The agent measures each command's benchmark only after the last review fix, because a fix can change what the fast path checks and make it hand over to the slow path. Before it reports a number, it proves the fast path really answered in the benchmark's own setup (a hand-over guard, or a probe run). When a fix lands after the benchmark, it re-measures and corrects the PR body and the learnings row, and says so.",
+      "expectations": [
+        "Runs the benchmark after the last code change from review, not before",
+        "Checks that the fast path, not the fallback, answered in the benchmark setup",
+        "Re-measures after a review fix that changes what the fast path trusts or checks",
+        "Corrects a number already written in a PR body or doc, and says the old one was wrong"
+      ]
     }
   ]
 }

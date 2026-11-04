@@ -384,3 +384,47 @@ every new case as a nonempty tree. The candidate passed A01–A36 with the
 same registered tree inputs. The next fixture requires bounded
 parent-relative added-line evidence. This fixture uses only sealed objects
 and leaves real snapshot, pack and scanner qualification open.
+
+## Bounded parent-relative added lines
+
+Goal: obtain exact added-line evidence from verified synthetic commits.
+Predict A37–A44 move from unsupported to their eight registered decisions.
+Retain A01–A36. Success requires the exact line evidence with no report on
+refusal. Pivot on a missed addition, lost byte, unsafe input or cap breach.
+
+A root compares against empty. A merge compares separately against each
+parent and retains the parent ID on each result. Use exact raw paths with
+no rename pairing. A regular or executable mode-only change with the same
+blob adds no lines. A file and symlink type change treats the child as a
+new path. Symlink bytes stay in memory. Gitlinks and directories have no
+line input. Preserve LF, CRLF and missing final LF. Refuse changed NUL-bearing
+blobs and withhold all evidence for a refusal.
+
+Reuse the verified graph and hash-validated reader. The fixture locks
+imara-diff 0.2.0 with default features off and uses its byte line source and
+MyersMinimal algorithm. Limit bodies to 2048 bytes, lines to 128 bytes, and
+each side to 16 lines before diff allocation. Limit comparisons to 16 and
+returned evidence rows to 32.
+
+| Case | Required result |
+| --- | --- |
+| A37 | Exact raw bytes, path and line positions in a root commit. |
+| A38 | A unique addition and one additional duplicate occurrence. |
+| A39 | Unchanged blobs, mode-only changes and deletions add no lines. |
+| A40 | Evidence from the differing merge parent in both parent orders. |
+| A41 | Refuse the entire graph on changed NUL-bearing input, even after valid text. |
+| A42 | Refuse body, line, line-count, comparison and result cap breaches. |
+| A43 | Treat a new raw path and a file-type replacement as additions. |
+| A44 | Refuse a missing or identity-mismatched source object. |
+
+Use the same locked, offline, network-denied Darwin arm64 command above.
+Anchors: [Git diff-tree](https://git-scm.com/docs/git-diff-tree),
+[imara-diff 0.2.0](https://docs.rs/imara-diff/0.2.0/imara_diff/) and
+Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+Observed in isolated preparation after registration. The unsupported
+adapter failed A37–A44 and retained the prior checks. The candidate passed
+A01–A44 on the same sealed inputs. This proves a bounded line fixture.
+The remaining work includes metadata and scanner binding, real source
+coherence, general pack support, Git patch parity, binary coverage and
+release policy.

@@ -604,3 +604,6 @@ fn a28_exact_graph_caps_accept_complete_input() {
 
 #[path = "tree_cases.rs"]
 mod tree_cases;
+
+#[path = "added_lines.rs"]
+mod added_lines;

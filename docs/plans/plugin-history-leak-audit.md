@@ -428,3 +428,50 @@ A01–A44 on the same sealed inputs. This proves a bounded line fixture.
 The remaining work includes metadata and scanner binding, real source
 coherence, general pack support, Git patch parity, binary coverage and
 release policy.
+
+## Verified metadata and scanner input
+
+Goal: project required metadata, paths and added lines from the verified
+synthetic history. Predict A45–A52 move from unsupported to their eight
+registered decisions with no regression in A01–A44. Success requires
+each named surface and no returned frame on refusal. Pivot on a missing
+surface, payload drift, cap breach, or incomplete scan accepted as clean.
+
+Reuse the validated graph, exact parent-relative additions and locked Git
+parsers. Re-verify commit and tag bytes before projection. Distinguish
+author and committer email, commit and annotated-tag messages, branch,
+tag and custom ref names, historical paths and added lines. Retain commit
+and parent identity for the applicable in-memory rows. Metadata and path
+bytes enter a strict UTF-8 scanner frame. Refuse NUL, invalid UTF-8 and an
+input containing the reserved completion marker. Include framing in the
+1024-byte limit. Cap output at 64 frames and 64 KiB.
+
+| Case | Required result |
+| --- | --- |
+| A45 | Nine exact positive surfaces from twelve framed records. |
+| A46 | Historical paths and root/second-parent line origin stay bound. |
+| A47 | Six clean records with one tail per frame. |
+| A48 | An incomplete source graph or changed binary withholds all frames. |
+| A49 | Invalid text and a reserved completion marker refuse. |
+| A50 | Exact frame length accepted and one byte over refused. |
+| A51 | Exact record count and total bytes accepted and one more record refused. |
+| A52 | Export the same typed synthetic frames through the opt-in test port. |
+
+Use the locked, offline, network-denied Darwin arm64 command above.
+Anchor: [Gitleaks stdin](https://github.com/gitleaks/gitleaks/blob/v8.30.1/cmd/stdin.go)
+and Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+Observed in isolated preparation after registration. The unsupported
+adapter failed A45–A52 and retained A01–A44. The candidate passed A01–A52
+with unchanged test inputs. The result does not qualify a real repository
+snapshot, gitleaks Git/mirror mode, binary/raw non-UTF-8 scanner behavior,
+policy regex equivalence, or fresh release.
+
+The separate private scanner binding check ran the existing fixed
+Gitleaks 8.30.1 stdin command on the exact exported frames. All 18
+records reported a completion tail. Each of the nine named positive
+surfaces had one hit and the clean cohort had none. Truncated export,
+missing tail, unknown rule and wrong scanner exit controls all refused.
+Neither calibration marker appeared in scanner stdout, stderr, or report files.
+This uses the calibration scanner with synthetic stdin. It does not
+qualify gitleaks Git/mirror mode.

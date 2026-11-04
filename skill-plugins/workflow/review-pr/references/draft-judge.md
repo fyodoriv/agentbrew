@@ -27,6 +27,11 @@ fresh subagent judge. The judge has not seen the reasoning behind the draft.
 5. Reviews only: each finding sits under its severity heading, and a finding
    with no `Failure scenario:` line is not worded as a proven bug.
 
+6. A review ask has a functional judge PASS for every stated feature at the
+   current head. Reject a missing feature verdict, missing proof, or any FAIL.
+   If the optional human-review or audience-order rule is enabled, the user
+   has confirmed the required check or proof page before this draft is saved.
+
 ## Judge answer
 
 The first line is `APPROVED` or `REJECTED`. Any other first line counts as
@@ -34,7 +39,7 @@ The first line is `APPROVED` or `REJECTED`. Any other first line counts as
 quoted text, and the fix. Fix the draft and judge it again. Show or post the
 draft only after `APPROVED`.
 
-- After 3 `REJECTED` rounds, stop: show the user the draft with the open
-  rejection lines and ask how to go on.
+- After 3 `REJECTED` rounds, stop. Tell the user which checks still failed
+  and hold the draft.
 - Any change to an approved draft (the user's edit, a new run after the head
   moved) needs a new judge round before it is posted.

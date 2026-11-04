@@ -1,0 +1,217 @@
+# Register the fetch caller contract
+
+[Issue #692](https://github.com/fyodoriv/agentbrew/issues/692) asks for a
+bounded parallel fetch helper. This preparation records what two current
+callers need from it. Register the controls before writing fixtures. The
+caller baseline is unmeasured.
+
+The first caller is wrap-up's open-work script. The Agentbrew repo checkup
+already invokes it. The second is dotfiles tooling-checkup inventory.
+Agentbrew sync --pull has a different contract. It runs eight cached-source
+pull workers and indexes the resulting checked-out files. Replacing those
+pulls with fetch alone could index stale content. Status, MCP ref updates,
+dotfiles tooling-sync and other network calls retain their own contracts.
+
+## Frozen caller matrix
+
+Use the existing Vitest wrap-up and Bats tooling-checkup suites. Run the
+actual shell entry points against task-owned scratch repos. Use finite
+ports for fetch and external discovery. Preserve the existing test
+assertions and caller behavior. Hold normal repo inputs constant across
+the applicable cases and put the failure first in scan order.
+
+| ID | Input | Fetch attempts | Required observation |
+| --- | --- | ---: | --- |
+| W01 | Two eligible clean pushed checkouts, fetch enabled | 2 | One current origin fetch per checkout, both inventoried, exit 0 |
+| W02 | Same two checkouts with OPEN_WORK_NO_FETCH=1 and origin/HEAD absent | 0 | Zero fetch or ls-remote calls, local branch fallback and both checkouts inventoried, exit 0 |
+| W03 | First eligible origin fetch returns nonzero, second succeeds | 2 | One stale-result warning for the first checkout, second still inventoried, exit 1 |
+| W04 | A noncheckout outside any Git worktree, then a clean checkout | 1 | Noncheckout is rejected and never fetched, second still inventoried, exit 2 |
+| D01 | Two eligible primary checkouts, fetch enabled | 2 | One current origin fetch per primary checkout, both inventoried, exit 0 |
+| D02 | Same two primaries with TOOLING_CHECKUP_NO_FETCH=1 | 0 | Both inventoried, zero fetches, exit 0 |
+| D03 | First primary origin fetch returns nonzero, second succeeds | 2 | One stale-result warning for the first checkout, second still inventoried, exit 0 |
+| D04 | One primary, one linked worktree and one plain directory | 1 | Fetch and primary inventory only for the primary. The linked worktree may still be reported as a worktree. Exit 0 |
+
+Pin clean inputs and origin HEAD in all cases except W02. Seed local bare
+origins and set no-GitHub flags. Use a finite fixture port that accepts
+only the expected synthetic roots and exact argv. For the unchanged
+wrap-up caller the fetch argv is `git -C <checkout> fetch -q --prune origin`.
+For the unchanged inventory caller it is
+`git -C <checkout> fetch --prune --quiet origin`. Record fixed fixture ID,
+fetch count, normalized argument vector, inventory visit, warning attribution
+and caller exit. Check the warning under its own checkout heading. Use no
+real remote fetch, SSH, credential prompt or hung process. Limit each
+fixture invocation to 20 seconds for safety. A safety timeout is incomplete
+setup evidence and supplies no passing receipt.
+
+Retain one receipt per case. Treat a missing, duplicate or malformed
+receipt and an off-fixture attempt as four separate rejected recorder
+samples. Require 4/4 calibration decisions. Capture command exits and
+counts even when a product expectation differs from its prediction. This
+measures routing and dispositions without timing or concurrency assertions.
+
+## Commands and decision
+
+After the registered fixtures exist, run from each repository root.
+
+```sh
+# Agentbrew
+JOBS=1 heavy-run npx vitest run --reporter=default --silent=false --maxWorkers=1 src/skills/wrap-up-open-work.test.ts
+JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.9 heavy-run npm run verify
+# Dotfiles
+JOBS=1 heavy-run bats tests/tooling-checkup-skill.bats
+JOBS=1 heavy-run make check BATS_JOBS= TEST_FILE_JOBS=
+```
+
+Keep logs private and report only synthetic aggregate fields. The GQM
+question is whether each caller requests the right fetch and preserves its
+inventory decision. Predict 8/8 complete exact receipts, ten fetch
+attempts, two correctly attributed stale warnings, zero off-fixture
+attempts and zero setup errors. Require every case and both repository
+gates. A zero runner exit with absent receipts is inconclusive. Pivot on
+any incorrect decision or unsupported side effect.
+
+## Retained native acceptance
+
+The later native slice keeps default jobs 8, a 60-second work deadline
+starting after admission, noninteractive Git and SSH, verified whole-group
+cleanup, one ok/timeout/fail outcome per input, all-ok exit 0 and bad usage
+exit 2. Queue wait does not spend the work budget. An unknown cleanup is a
+nonzero result and must stop unsafe new admissions. Preserve the worktree,
+index, HEAD, local branches and tags. The exact remote-tracking refspec
+and permitted Git metadata writes need separate scratch proof. Preserve
+the previously proposed F01–F20 native controls and separate original and
+supplemental pure cohorts. Use independent start barriers for concurrency.
+
+The shared Rust process owner still lacks qualified Darwin group cleanup.
+The permission error during group termination leaves that outcome unknown.
+Retain the process-primitives task and the existing transport diagnostic
+contract. Require a qualified worker, held checkout identity, strict ref
+mutation proof and actual installed helper before wiring either caller.
+Keep the issue open through required native proof and qualified integration.
+
+### Darwin group observation
+
+One disposable test on Darwin 27.0.0 passed all four checks. The bounded
+two-slot census returned both fixture PIDs before and after the descendant
+ran its own executable again under the same PID. It still returned both
+PIDs after the leader exited and its output pipe reached EOF. After the
+descendant disappeared, it returned a complete list containing only the
+held leader. The test checked the leader's terminal state again, reaped it
+once, and confirmed zero fixture PIDs remained. It sent no termination
+signals.
+
+EOF can coexist with a live group member. The worker must prove that no
+other member remains before it accepts a result. Keep the leader unreaped
+through the census and the second terminal check. Treat an incomplete or
+failed census as unresolved cleanup, even when a group signal succeeds.
+
+This observation does not qualify the shared worker or either caller.
+The exact Apple kernel source tag for the tested build was unavailable.
+The frozen worker baseline remains two of four lifecycle tests passing.
+Native acceptance still needs the held-leader, denial, cancellation and
+deadline controls. [Apple XNU source](https://github.com/apple-oss-distributions/xnu).
+
+Anchors are Basili, Caldiera and Rombach (1994), Goal Question Metric, and
+Munafò et al. (2017), preregistration.
+[Git fetch ref mapping and pruning](https://git-scm.com/docs/git-fetch).
+
+## Agentbrew caller baseline result
+
+The scoped wrap-up suite passed all 27 tests. W01–W04 recorded five
+intercepted fetches across the four runs, no fetch in no-fetch mode, and
+one stale warning attributed to the first checkout. The next checkout
+was still inventoried. The plain directory was rejected. No call left
+the fixture, and all four recorder controls passed.
+
+The baseline binds caller routing. Native timeout and cleanup require
+their own process tests before activation.
+
+## Caller baseline closeout
+
+[Agentbrew PR #718](https://github.com/fyodoriv/agentbrew/pull/718) and
+[Dotfiles PR #445](https://github.com/fyodoriv/dotfiles/pull/445) delivered
+the two baselines. The eight routing cases matched. Each caller intercepted
+five fetches, attributed one stale warning, and made zero off-fixture calls.
+All four recorder controls passed in each repository. Agentbrew passed all
+20 verification steps. Dotfiles passed `make check`. The native worker
+and its integration remain open in [issue #692](https://github.com/fyodoriv/agentbrew/issues/692).
+
+## Fetch policy and local Git preparation
+
+The standalone Rust crate keeps request preparation, admission decisions,
+and result classification separate from process launch. The original 37
+pure cases and two supplemental SSH grammar cases passed. Neither caller
+uses this crate.
+
+Two network-denied cases ran real Git 2.56.0 against disposable local
+origins. The unchanged inventory arguments completed the widened-config
+fetch and changed eight protected Git files. The prepared arguments passed
+both cases. Each updated, created, and pruned the intended origin-tracking
+refs and made the new object available. The protected refs, index, HEAD,
+worktree, config, FETCH_HEAD, and symbolic origin HEAD stayed unchanged.
+Only objects and origin-tracking metadata changed.
+
+Run the pure cases from the repository root:
+
+```sh
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked \
+  --manifest-path rust/fetch-mutation/Cargo.toml \
+  --test fetch_repos_contracts --test fetch_repos_literal_contracts -- --test-threads=1
+```
+
+Run the local cases on macOS with Homebrew Git 2.56.0:
+
+```sh
+scratch="$(mktemp -d)"
+TMPDIR="$scratch" JOBS=1 CARGO_BUILD_JOBS=1 heavy-run \
+  /usr/bin/env -u FETCH_MUTATION_LEGACY /usr/bin/sandbox-exec \
+  -p '(version 1) (allow default) (deny network*)' \
+  cargo test --offline --locked --manifest-path rust/fetch-mutation/Cargo.toml \
+  --test local_fetch_contract -- --test-threads=1 --nocapture
+```
+
+Keep 37/37 and 2/2 pure cases, 2/2 local cases, three tracking effects
+per local case, and zero protected or unknown changes. Pivot on any
+unsafe result. This evidence does not cover installed submodules, SSH,
+arbitrary hooks, process cleanup, deadlines, parallelism, or activation.
+
+## Supervised local transport and publication evidence
+
+A disposable test connected the existing fetch queue and request policy to
+the shared Darwin worker candidate. Two local fetches reached their start
+barriers together. A duplicate checkout waited for the first fetch, then
+entered while the second was still held. All three results kept input order
+and the expected tracking refs.
+
+With a three-second work budget and two seconds for cleanup, a shell and
+child that ignored TERM were gone before the duplicate entered. The test
+returned one timeout and two successes in 3.264 seconds. A separate
+upload-pack fixture left the process group and closed its streams. The
+worker returned success while that descendant was still alive. The fixture
+released it and verified its exit. A process group alone cannot qualify
+a fetch path that can launch a repository-selected program.
+
+Fixed upload-pack and hook overrides suppressed two planted programs.
+Git still followed planted repository and environment URL rewrites to a
+decoy. Fetching the selected local origin into a clean owned Git directory
+under an allowlisted environment avoided those inputs.
+
+Malformed packs left temporary files during direct validation. Moving
+validation into a disposable directory left the checkout unchanged. In the
+positive fixture, the pack alone left its new object unavailable. Repeating promotion
+accepted an identical pack and added its index. A conflicting file refused
+without replacement. A stale ref transaction refused without a partial
+update, then the correct transaction updated and pruned tracking refs
+without running the planted hook.
+
+A held directory kept Git away from a replacement checkout at the selected
+path. A swap before the identity check refused the guarded ref update. A
+swap after the check still let Git update the original checkout at its moved
+location. Require a policy for path changes during publication. One identity
+check cannot prove the selected path stayed bound to the held checkout.
+
+These are scratch results with a fixed local Git executable on one Darwin host. Keep
+production disabled until the shared worker and transport are qualified.
+Require bounded incoming bytes and object expansion, verified checkout and
+staging identities, explicit remote transport policy, and recoverable pack
+publication. Retain the escaped-child and stale-transaction controls.

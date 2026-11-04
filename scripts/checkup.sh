@@ -5,8 +5,8 @@
 # then at most three questions for the owner.
 #
 # Run it monthly (RECURRING.md `monthly-checkup`) or after a burst of work.
-# It writes only .metrics/ (gate timings and cache). Exit 1 when the doctor or
-# the gate fails. Runs under macOS /bin/bash 3.2.
+# Writes .metrics/ and saves the completed assessment through agentbrew.
+# Runs under macOS /bin/bash 3.2.
 # <!-- scope: human-approved task meet-new-project-requirements (TASKS.md); this file closes step 6 -->
 set -uo pipefail
 
@@ -22,6 +22,20 @@ log="$(mktemp)"
 exec > >(tee "$log") 2>&1
 ask() { questions="$questions
 $1"; }
+
+checkup_id="agentbrew"
+checkup_record_available=0
+checkup_record_incomplete=0
+if ! command -v agentbrew >/dev/null 2>&1; then
+  printf 'checkup record: unavailable (agentbrew is missing)\n'
+else
+  checkup_record_available=1
+  if ! agentbrew checkup-run show "$checkup_id"; then
+    printf 'checkup record: previous run unavailable\n'
+    checkup_record_incomplete=1
+  fi
+  checked_commit="$(git rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || checked_commit=""
+fi
 
 section "0. Open work (your PRs, unmerged branches, uncommitted files)"
 if ! bash skill-plugins/workflow/wrap-up/scripts/open-work.sh .; then
@@ -102,6 +116,21 @@ else
   echo "none"
 fi
 
+if [ "$checkup_record_available" = 1 ]; then
+  result=green
+  [ "$status" = 0 ] || result=degraded
+  if [ -z "$checked_commit" ] ||
+    ! finished_at="$(node -p 'new Date().toISOString()' 2>/dev/null)" ||
+    ! agentbrew checkup-run record "$checkup_id" --finished-at "$finished_at" \
+      --result "$result" --commit "$checkup_id=$checked_commit"; then
+    printf 'checkup record: incomplete\n'
+    checkup_record_incomplete=1
+  fi
+fi
+
+if [ "$status" = 0 ] && [ "$checkup_record_incomplete" = 1 ]; then
+  status=2
+fi
 printf '\ncheckup: %s\n' "$([ "$status" = 0 ] && echo healthy || echo "needs work (see above)")"
 # The HTML page (verdict, blockers, next steps, every section) stays local in .metrics/.
 bash scripts/report-html.sh "agentbrew checkup" "$log" .metrics/checkup.html &&

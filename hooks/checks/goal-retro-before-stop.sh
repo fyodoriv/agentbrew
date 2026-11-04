@@ -74,6 +74,20 @@ if [ ! -f "$CONTRACT" ]; then
   verdict_allow "$HOOK_ID" "no active goal contract"
 fi
 
+# A clock deadline belongs to this session's contract. Only a future numeric
+# epoch plus an explicit draft retro defers enforcement; malformed or expired
+# deadlines retain the normal final-retro checks below.
+CLOCK_EPOCH="$(sed -nE 's/^Clock wrap-up epoch: ([1-9][0-9]{9})$/\1/p' "$CONTRACT")"
+case "$CLOCK_EPOCH" in
+  "" | *[!0-9]*) ;;
+  *)
+    if [ "${#CLOCK_EPOCH}" -eq 10 ] && [ "$CLOCK_EPOCH" -gt "$(date +%s)" ] &&
+      [ -f "$RETRO" ] && grep -qE '^Goal result: in progress \(clock goal, wrap-up at .+\)$' "$RETRO"; then
+      verdict_allow "$HOOK_ID" "clock goal still running; final retro required at deadline $CLOCK_EPOCH"
+    fi
+    ;;
+esac
+
 # Never delete the contract here: a retro often passes mid-goal, and the
 # contract is the goal's record for the rest of the run (it is replaced by the
 # next /goal and aged out after seven days by goal-set-loads-run-goal).

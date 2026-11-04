@@ -37,7 +37,7 @@ bash <DIR>/scripts/install.sh plan
 
 Show the person the output in your own short words:
 
-- what they need (Node.js 20.11+, git, about 5 minutes, network),
+- what they need (Node.js 20.11+, git, about 5 minutes, network. On Apple Silicon, a source install also needs Rust 1.97 or later),
 - what will change (agent settings, skills, rules, a background job, a shell
   hook),
 - what changes in Claude Code: the hook count, the `/goal` behaviour (edits
@@ -103,6 +103,10 @@ The script backs up, builds, links the `agentbrew` command, runs
 names the fix for any drift left. On a critical error it restores the backup by itself and
 exits 1. Then tell the person what failed, that their settings are back, and
 offer to open an issue with the output.
+
+On Apple silicon Macs, source builds validate a staged CLI and native helper
+before replacing the checkout’s `dist/` directory in one operation. If the
+build fails before that replacement, the prior build remains available.
 
 ## 5. Finish
 

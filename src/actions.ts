@@ -72,7 +72,8 @@ export const CONFIRM: Readonly<Record<string, string>> = {
   import: "adds servers to every agent; with --replace it overwrites existing items (preview: --dry-run)",
   upgrade: "replaces the installed agentbrew CLI with a download from npm (check first: --check)",
   "mcp.add": "adds a server every agent will start; with --git it clones and builds code",
-  "mcp.update": "pulls and rebuilds a git-installed MCP server",
+  "mcp.update":
+    "builds a new git-installed runtime; --fresh-runtime starts new cache-local state and retains the old directory",
   bootstrap: "runs a source's bootstrap script on this machine (preview: --dry-run)",
   "plugin.add": "installs a plugin and grants its declared capabilities",
   "plugin.update": "applies a new plugin version",
@@ -101,8 +102,11 @@ export const AGENT_NOTES: Readonly<Record<string, string>> = {
   telemetry: "`send` uploads usage counts to PostHog; show `telemetry send --dry-run` and ask first",
   status: "--fix rewrites agent configs like `agentbrew sync`; ask first",
   install:
-    "show --dry-run first; pass --yes after the user says yes, and --from <source> when a name is in several sources; with --git, pass --env KEY for each env var, and --yes so a missing value fails instead of prompting",
-  "mcp.add": "with --git, pass --env KEY for each env var, and --yes so a missing value fails instead of prompting",
+    "show --dry-run first; pass --yes after the user says yes, and --from <source> when a name is in several sources; with --git, pass --env KEY and --yes; --fresh-runtime separately chooses new cache-local state, retains the old runtime and copies no data",
+  "mcp.add":
+    "with --git, pass --env KEY and --yes; --fresh-runtime separately chooses new cache-local state, retains the old runtime and copies no data",
+  "mcp.update":
+    "--fresh-runtime chooses new cache-local state; the old runtime is retained and no data is copied; --yes is not this consent",
   "mcp.probe": "--deep installs and calls each server; ask first",
   "measure.context": "it runs `npx -y ccusage` (a download); pass --quick or --skip-ccusage unless the user agrees",
   "memory.sync-projects": "it adds Claude project memories to the shared store; show --dry-run first",

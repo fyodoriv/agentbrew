@@ -26,6 +26,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { expectInstalledCheckupRun } from "./checkup-run-installed.js";
 
 const REPO = resolve(import.meta.dirname, "..", "..");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-npm-pkg-")));
@@ -131,7 +132,9 @@ beforeAll(() => {
   );
   expect(install.status, install.stderr).toBe(0);
 
-  npmUser = syncWith("npm", [join(prefix, "bin", "agentbrew")]);
+  const installed = join(prefix, "bin", "agentbrew");
+  expectInstalledCheckupRun(installed, root);
+  npmUser = syncWith("npm", [installed]);
   cloneUser = syncWith("clone", [process.execPath, join(REPO, "dist", "cli.js")]);
 }, 600_000);
 

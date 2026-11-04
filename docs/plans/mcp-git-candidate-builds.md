@@ -1,0 +1,612 @@
+# MCP git candidate build preparation
+
+## Overall goal and vision
+
+Move a git-installed MCP server to the requested source without changing the
+files used by its current runtime. A refused re-pin must keep that runtime,
+its dependencies and user files intact. This supports VISION G5 and stories
+US-10 data safety and US-26 rollback. G5 is "Drift detection + auto-repair" in
+the current VISION frontmatter; docs/user-stories/10-data-safety.md and
+26-rollback.md hold the preservation contracts. PR #607 remains draft until the new
+boundary and the original compatibility cases pass.
+
+## Decision and alternatives
+
+Build each different source commit in a fresh candidate clone. Register the
+candidate's absolute runtime path after validation. Keep the old runtime at
+its original path. Do not swap directories, mutate the old checkout, or carry
+its ignored/untracked files into the candidate. Retain refused/interrupted
+candidates for recovery; this change adds no automatic garbage collection.
+
+Reject output ownership inferred from before/after filenames, timestamps,
+extensions or declared output folders. Builds and running servers can both
+create config or token files in those folders. A fresh candidate removes the
+need to classify old files for moving or deletion. Reject an in-place clone
+swap: an already running process can load more files through its old pathname.
+
+Reuse Git's independent clone and exact-ref helpers, current Node entrypoint
+resolution, state registration, and the real-git fixture harness. Use no linked
+worktree, shared object directory, alternates, or borrowed node_modules from
+the active cache. Prefer no new dependency or top-level CLI action. The narrow
+fresh-runtime argument below addresses the state portability consequence.
+
+## Evidence and current state
+
+| Claim | Current source of truth | Delivery path | Status |
+| --- | --- | --- | --- |
+| Current re-pin updates the cache before building | mcp-git.ts cloneOrUpdateRepo and install/update flows | checkout then npm | fact |
+| Draft output records include any newly seen non-node_modules file | listUntracked, pendingBuild | file inventory to move set | fact |
+| Draft rollback checks out the old commit and may reinstall dependencies | restoreCachePin | active runtime directory | fact |
+| Main validates Node paths as files or resolvable directory entries | isNodeEntrypoint; mcp-git-entrypoint-files.test.ts | detectEntrypoint | fact |
+| Build/registration fixtures use scratch repositories and mock agent sync | mcp-git-install.test.ts | actual Git/npm, fake state sink | fact |
+| Install syncs before saving state; update saves before sync | mcp-sync-commands.ts addMcpServer; mcp-git.ts updateMcpFromGit | existing registration owners | fact |
+| Candidate builds preserve every prior runtime inode and file | proposed boundary below | independent clone to state args | proposed |
+| Candidate receipts exclude stale legacy artifacts | proposed receipt and controls | exact source/runtime validation | verify |
+
+The preserved starting PR head is 4574eb7b60aa5262cf5fcae902c692678dee2761.
+Its normal main merge includes b8ce653dc5b83b14ff221f1755538196227c3ba7.
+This registration precedes new fixtures, their results, and production changes.
+
+## Scope
+
+In: install/re-pin/update candidate ownership, source/ref identity, entrypoint
+selection, explicit fresh-runtime consent, truthful publication outcomes,
+failure preservation and recovery, the task and README guidance.
+Keep URL credential scrubbing, env prompting, exact ref rules, Node directory
+entrypoints and current Python support. No MCP process, real cache, service,
+agent config, setting or native conversation store changes during development.
+
+Out: a sandbox for arbitrary build scripts, runtime-state migration, automatic
+cache deletion, a generic supervisor, live service restart, and the later Rust
+MCP lifecycle port. Repository builds remain trusted executable code. The data
+preservation guarantee governs agentbrew's own mutation sets; it is not a claim
+that a malicious build cannot deliberately write outside its directory.
+
+## Boundary contracts
+
+### Candidate ownership and lifecycle
+
+Use a separate `~/.config/agentbrew/mcp-builds/<name>/<attempt>` namespace.
+The validated server name identifies one installation. An unpredictable
+exclusive-created attempt directory belongs to one install/update invocation.
+Reject symlinked parents, foreign ownership and existing attempt collisions.
+Clone from the verified source into it with independent Git object storage.
+Use `--no-local` for local-path sources; no `--shared` or reference repository.
+The official [clone contract](https://git-scm.com/docs/git-clone) distinguishes
+these forms and warns that shared objects depend on the source's retention.
+Never initialize it by copying a runtime cache or by checking out a new commit
+over an old one. All npm/build writes target the new candidate.
+
+Keep the legacy `mcp-repos/<name>` cache and every previously accepted candidate
+untouched. Do not rename, unlink, truncate, checkout or install dependencies in
+them. Do not traverse their arbitrary file payloads to discover carry-over data.
+Read only source/ref and registered-runtime identity needed to validate an
+update. Source URL mismatch or unsafe legacy Git metadata still refuses.
+Disable optional Git index writes for those legacy metadata reads. Do not
+run status, refresh, fetch or an old-cache payload inventory. Preserve the
+owner Git wrapper, credentials context and repository-redirect environment scrub.
+
+No automatic cleanup after failure, interruption or success may remove a
+candidate: it can contain files a build or runtime created. Retention consumes
+disk space. State this tradeoff; do not switch back to destructive output lists
+if fresh cloning is slow. No latency improvement is claimed by this experiment.
+
+### Source and receipt authority
+
+A versioned receipt binds an attempt ID, validated server name, credential-free
+source identity, full target commit, original ref kind/name, resolved entrypoint
+path and hash, and build verdict. Store no command output, secret value or
+runtime file content. A successful build alone is not activation authority.
+Write candidate-ready evidence after validation; mark acceptance only after
+confirming registration names that exact candidate. Ready evidence alone does
+not authorize same-commit fallback.
+Receipts must be atomically written and read as untrusted data with strict
+schema/path/size validation. Missing or malformed receipt cannot authorize old
+artifact reuse. A legacy output-list or built-commit marker is not this receipt.
+
+No source branch in the active runtime is advanced during update. A fresh
+candidate resolves the saved branch again. Preserve tag/commit update refusal,
+tag-before-branch precedence, full OID validation and source-origin checks.
+For a legacy installation, read its validated Git ref identity without writing
+the cache; acquire a fresh candidate. Never bless legacy ignored output.
+
+### Entrypoint identity and compatibility
+
+Only detect within the new clone or an already accepted same-commit candidate
+with valid source/runtime identity. The final resolved entrypoint must be a
+regular file inside that exact candidate; external symlink targets refuse.
+Preserve supported Node directory resolution. Store the actual resolved file
+identity while preserving Node invocation behavior when it needs a directory.
+
+An ignored v1 output cannot exist in the clean v2 clone. A v2 build moving
+dist/index.js to build/index.js therefore selects build/index.js on every run.
+A no-op build with no usable target entrypoint refuses. A tracked entrypoint
+already shipped by the target remains eligible under the existing fresh-clone
+policy; no failed build may authorize old-commit output from another directory.
+
+Do not use an arbitrary token/config filename as an entrypoint merely because
+it appeared during a build. Keep the existing supported candidate filenames
+and package bin/main inputs. A package-declared candidate and a discovered
+candidate must meet the same source/root/file checks.
+
+Same-commit reuse is allowed only for a valid accepted candidate whose sealed
+runtime identity still matches. Do not rebuild it in place. When the requested
+build fails, retain the already accepted runtime only if the source commit and
+runtime evidence still match; otherwise refuse without editing it. An absent
+or changed receipt/entrypoint never falls back to the legacy cache.
+
+### Runtime-state portability and caller parity
+
+Preserving old files is not proof that a new directory preserves application
+state. Relative database/config paths can resolve differently. Do not infer
+portability from a clean tree, filenames, env equality or a successful build.
+
+First installation has no previous runtime to migrate. Reusing a verified
+accepted same-commit runtime keeps its original path and needs no new choice.
+For a different runtime directory, require explicit `--fresh-runtime` consent:
+start with new cache-local runtime state, preserve the old directory, and copy
+nothing automatically. Without it, refuse activation with the fixed portability
+reason. `--yes` means non-interactive mode in both current parser paths; it does
+not provide this different consent. Preserve that meaning.
+
+Add the same narrow argument to `install --git`, `mcp add --git`, and `mcp update`.
+Validate use with a git operation. Keep ordinary env/ref handling unchanged.
+Commander remains the source for `actions --json`; test option propagation and
+the agent note describing the fresh-state consequence. There is no agentbrew
+UI to duplicate: src/actions.ts and docs/repo-map.md explicitly say so. Any
+future UI must consume that same generated action. No hidden alternate action.
+
+This is a deliberate registered policy change. Existing success fixtures for
+a different runtime must opt into it when adapted to the new namespace; their
+original data/ref/env assertions remain. Add a separate refusal fixture without
+consent. Do not present this adaptation as an unchanged-policy result. No live
+runtime choice is made in this source task.
+
+### Registration, failure and recovery
+
+Before candidate acceptance, clone/build/detection/portability failures call no
+registration or sync and leave old state/config and old runtime bytes unchanged.
+Use one short cooperative publication lease for participating git installers,
+including different server names. Do not hold it while cloning or building.
+After acquiring it, reload state and compare the expected server/source/ref;
+refuse an observed change. Merge only this server into the fresh state. Bound
+contention; a missing/foreign/crashed lease refuses rather than running unlocked.
+No stale numeric PID or age proves permission to clear a lease. This boundary
+does not claim to serialize old CLI processes or arbitrary external editors.
+
+The current owners differ: addMcpServer syncs then saves; updateMcpFromGit saves
+then syncs. Add a narrow git-candidate publication result without claiming a
+broad state transaction: refused-before-publication, verified, or partial/unknown.
+Its state write must read back the exact source/ref/command/args/env in memory.
+Collect native and bridge/client fan-out errors as typed outcomes, with exact
+effective-definition readback for a verified verdict. Compare env values only
+in process memory; never log, snapshot or copy them into receipts. Missing outcomes remain
+unknown. Do not infer completion from a void promise, counts or server presence.
+
+If publication/save/sync fails after any possible write, retain both complete
+runtimes, ready evidence and original runtime identity. Return nonzero and name
+only safe failure categories; do not print success or mark the receipt accepted.
+Some configs or state may name the complete candidate. Retry from the actual
+read-back desired state; do not silently roll back across partial fan-out or
+claim atomic cross-agent deployment. Existing unrelated state writers retain
+their own behavior; no universal compare-and-swap claim is made here.
+
+The existing config snapshot/rollback path can recover deployed configs after
+review. Do not automatically restore an old whole-state snapshot over another
+writer. This task does not redesign all state writers or make sync--rollback
+restore runtime data. A re-pin to the preserved old source/runtime remains
+possible after its identity is revalidated.
+
+An attempt interrupted before publication remains unregistered and retained.
+After any possible publication, keep both runtimes and require readback before
+classifying the outcome. Later attempts use a different directory. Recovery
+receipts must not contain stale numeric-PID
+authority or silently resume a partially built candidate. A malformed or
+interrupted activation receipt is non-green and requires preservation.
+
+## Registered hypothesis and measurement
+
+Goal/question/metric: does the isolated-candidate boundary eliminate stale
+registration and mutations of the old runtime, while retaining supported
+source/ref and build behavior? Measure unsafe outcomes and wrong decisions
+against the frozen matrix below and the existing real-git cases.
+
+Hypothesis: source predicts old-runtime mutation in N01-N04 and N07 on the
+current in-place implementation. Candidate ownership reduces those unsafe
+outcomes from five to zero. All matrix decisions must be correct; no original
+retained assertion may be weakened or removed.
+This predicts five mutation defects, not failure of the entire new cohort.
+Valid expected positive controls must remain accepted. The explicit portability
+consent change above is separate from that safety prediction.
+
+Success: 100% expected matrix decisions; zero agentbrew-caused old-runtime
+byte/inode/HEAD or dependency mutation, zero lost user files, zero stale-commit registrations,
+zero changed state on pre-publication refusal, and every retained MCP regression
+and required gate passes. No speed or complete-process-sandbox claim.
+
+Pivot: any unsafe mutation, stale registration, accepted missing identity or
+changed retained policy rejects this boundary implementation. Do not fall back
+to in-place build/output classification. If the candidate/registration boundary
+cannot satisfy a case, change its ownership design before production work.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; US-10 and US-26 preservation contracts. Git clone is the
+maintained isolation mechanism; its independent-storage and ref behavior must
+be checked against the official clone documentation before implementation.
+
+Proposed fixture cohort in the existing real-git test file:
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts -t 'isolated candidate boundary'
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts src/mcp/mcp-git-entrypoint-files.test.ts src/mcp/mcp-git.test.ts
+JOBS=1 heavy-run npm run verify:changed -- origin/main
+JOBS=1 heavy-run npm run verify
+```
+
+The new named cohort is not present at registration. A zero-selected run or a
+fixture/setup/compiler failure is inconclusive, never semantic red. Root owns
+heavy job admission and exact source receipts. The docs-only prediction gate
+is `JOBS=1 heavy-run npm run verify:changed -- HEAD`, run after the normal main
+integration commit and before committing this plan. That explicit baseline
+compares only new docs with the already gated integration, rather than
+mislabeling the existing draft runtime delta as new docs. It must pass before
+this prediction is committed and before fixture source is added. After runtime
+changes, use the explicit origin/main gate and full verify above; the prediction
+gate is not a runtime acceptance receipt.
+
+## Frozen matrix
+
+| ID | Condition | Required decision and preservation oracle |
+| --- | --- | --- |
+| N01 | Successful v1-to-v2 moved-output re-pin, repeated | register exact v2 build path; old tree/HEAD/dependencies unchanged |
+| N02 | Candidate fails after creating partial output | refuse before registration; old tree and state unchanged |
+| N03 | v2 tracks v1's previously ignored output pathname | candidate isolated; old ignored bytes/inode unchanged |
+| N04 | Build creates config; old runtime writes token during candidate build | never move/delete/replace either old file |
+| N05 | Legacy cache has stale output and no accepted receipt | never reuse legacy output; fresh target or refusal |
+| N06 | No-op build has no target entrypoint | refuse; old output cannot satisfy detection |
+| N07 | Branch update's build is refused | old branch/HEAD/dependencies/state remain unchanged |
+| N08 | Candidate interrupted before acceptance | retain it; next attempt never clears or resumes it implicitly |
+| N09 | Entrypoint or candidate ancestry escapes via symlink | refuse; no outside mutation or registration |
+| N10 | Receipt/source/root/entrypoint identity is missing or mismatched | refuse reuse; no legacy fallback |
+| N11 | Same-name and different-name participating git installers overlap | parallel builds; serialized publication reloads state and preserves both definitions or refuses safely |
+| N12 | Registration/save/sync fails after candidate validation | retain complete runtimes/ready evidence; no false accepted receipt or success |
+| N13 | Existing runtime changes directory without fresh-runtime consent | refuse before publication; old state/runtime stay selected |
+| N14 | Ordinary --yes without fresh-runtime consent | same refusal; no expanded meaning for --yes |
+| P01 | Same target has a valid accepted build; a fresh candidate build fails | reuse the accepted runtime without rebuilding it in place |
+| P02 | Fresh target contains committed entrypoint and its build fails | retain current fresh-clone committed-artifact policy |
+| P03 | Tracked no-build Node file/directory or Python entrypoint | preserve supported detection with candidate-local resolved file |
+| P04 | Exact ref/source/env behavior | retain branch/tag/commit rules, origin mismatch refusal and credential-safe env behavior |
+| P05 | Explicit fresh-runtime request through all supported parser/action paths | same handler/policy, new directory selected only after verified publication |
+
+Use owned readiness barriers for N04/N08/N11, real scratch repositories and
+synthetic marker bytes. Snapshot the old tree before each attempted re-pin;
+include tracked/ignored/untracked files and dependencies. Assert exact bytes,
+inode identity and HEAD afterwards. For N04, allow only the exact synthetic
+runtime writer's declared token delta; compare every other path unchanged.
+Keep expected state and registration-path
+oracles separate from the implementation's receipt. Do not print payloads.
+
+## Numbered work breakdown
+
+### 1. Register and reproduce
+
+- Why: preserve the original design defects as observable counterexamples.
+- Parallelism: after normal main integration; before production changes.
+- Owner/boundary: PR #607 docs and scratch real-git fixtures.
+- Change: commit this prediction after its gate; then add only the named cohort.
+- Acceptance: every fixture reaches an actual behavior assertion; preserve the
+  five predicted mutation results even if other decisions already pass.
+- Verification: first focused command; root captures exact red tree and log.
+
+### 2. Replace mutation ownership
+
+- Why: remove old runtime files from every checkout/build/move/delete set.
+- Parallelism: after valid semantic red and independent root review.
+- Owner/boundary: mcp-git install/update adapter; candidate invocation and receipt.
+- Change: fresh clones, candidate-local detection, identity and registration;
+  delete superseded output-list/aside/restore logic rather than layer both.
+- Acceptance: all matrix and retained cases pass; original data remains.
+  - Verification: the focused and retained commands, then required gate.
+
+### 3. Document and deliver
+
+- Why: explain retained disk state, runtime-local data and recovery truthfully.
+- Parallelism: after boundary acceptance; root owns publication.
+- Owner/boundary: README pinning guidance, task, PR Pending and install coverage.
+- Change: replace the draft's incorrect output-list safety claim; document that
+  ignored files are not migrated and old directories are kept. Update install
+  path coverage for the candidate namespace where required.
+- Acceptance: source/current-base gate and leak checks pass; no live cache or
+  process action. Task closes only after final implementation evidence.
+- Verification: required verify gate and outside review; full gate if needed.
+
+## Rollout, security and unresolved checks
+
+Keep the existing draft PR and contributor history. No force push, bypass or
+live install. Root alone commits and publishes. The first new commit is this
+prediction, then fixture-only red, then reviewed runtime changes. Preserve old
+refused/interrupted recovery copies throughout integration.
+
+Before production, root review must accept the exact same-commit receipt
+strength, cooperative publication exclusion, explicit consent parity,
+typed partial outcomes, candidate root validation and
+entrypoint resolution. These are implementation proof obligations, not a
+permission to omit matrix rows. No live timing baseline or new speed claim is
+needed for this correctness experiment; later Rust measurements stay separate.
+
+
+## N15 supplement: real registration success before final readback
+
+This supplement preserves N01-N14 and P01-P05 unchanged. Their candidate
+boundary receipt is separate from this new registration-message control.
+The original compatibility cases remain a separate acceptance obligation.
+
+Goal: prevent a Git candidate publication failure from reporting success.
+Question: does real `addMcpServer` print a success message after its save or
+fan-out port reports failure? Metric: false-success outcomes in two fixed
+synthetic cases. Source inspection predicts two outcomes before the fix and
+zero after a candidate-only success-reporting guard.
+
+N15 uses the real `addMcpServer` implementation, reached through the existing
+scratch publication port. Each case starts with an accepted scratch runtime,
+prepares a valid different candidate with explicit fresh-runtime consent,
+then forces exactly one failure: state save or agent fan-out. Inject the
+failure at that real implementation's existing port, not at an all-mocked
+replacement that cannot print its registration message. No live agent,
+MCP server, native config, credential, or owner cache participates.
+
+Each case must reach its selected fault exactly once, exit with status one,
+leave the complete prior runtime tree byte-, inode-, mode- and HEAD-identical,
+retain candidate ready evidence without an accepted candidate receipt, and
+emit no success claim containing `registered`, `installed from git`, or
+`updated to`. Inspect the full captured log calls, including multi-argument
+calls, in RAM. Do not weaken the existing N12 success oracle or fold these
+new cases into its earlier result.
+
+Measurement, from the owned checkout with one worker:
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts -t 'N15 real registration failure'
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts -t 'isolated candidate boundary'
+```
+
+Freeze both variants and their assertions before the first baseline result.
+A setup/compiler failure, missing selected case, or unreached fault is
+inconclusive. Preserve that result separately; do not call it semantic red.
+The pre-fix baseline must fail on the false-success assertion after the other
+failure and preservation observations are collected. Keep the two-case
+supplement denominator separate from the original boundary cohort.
+
+Success: false-success outcomes fall from the predicted two to zero; both
+faults are reached exactly once, both exits are one, both prior runtimes have
+zero changes, no failed candidate is accepted, and all original boundary and
+retained compatibility oracles pass before delivery. Pivot: any remaining
+false success, accepted failed candidate, preservation change or weakened
+oracle rejects the reporting fix. Revisit the publication boundary; do not
+hide all output or infer success from registration alone.
+
+The proposed production change is only an optional success-reporting argument
+on the existing add-server options, disabled by candidate publication. Other
+callers retain their existing messages. The Git handler reports success only
+after exact saved-definition/fan-out readback and candidate acceptance. This
+prediction authorizes no production edit before the baseline is reviewed.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the registration/failure/recovery contract above.
+The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate source
+preserved outside the index. It is not a runtime or compatibility gate.
+
+## Synchronous metadata environment counter
+
+Choose this smaller experiment before adding instrumentation or measuring it.
+The proposed whole-handler and fresh-worker observers are retired without
+implementation or measurement. Their proposed cost-dominance thresholds were
+never evaluated. This experiment makes no whole-handler cost-dominance claim.
+
+The corrected compatibility fixtures remain frozen. Their full-file run has
+eight diagnostic assertion failures plus two five-second timeouts. An unchanged
+exclusive retry of those two cases also times out. P01 is a different control:
+it creates a tag-pinned runtime and then tests accepted reuse, under the normal
+longer test limit. It does not prove the env cases meet their five seconds.
+Preserve all those receipts; do not classify the timeouts as an external fault.
+
+Goal: remove repeated environment-policy work inside one synchronous metadata
+inspection without weakening runtime validation. Question: how often does a
+single completed branch inspection calculate its Git environment? Metric:
+call-through invocations of the existing imported `git-ref.cacheGitEnv` port.
+Source predicts six: one direct computation in `inspectRuntime` and one for
+each of its five `candidateGit` calls. Predict six to one within that phase.
+Whether this removes the original timeouts remains a separate measurement.
+
+Add one new target, `src/mcp/git-candidate-env.test.ts`, after this prediction
+is committed. Use the already exported synchronous `inspectRuntime`; add no
+production export, command, observer flag or worker. Before the measured body,
+prepare a synthetic scratch source with a tracked Node file, a `main` branch
+and a clone from the existing `allocateCandidate` constructor. No package
+installation, MCP registration, agent fan-out or live source participates.
+Capture the expected commit and source identity independently during setup.
+
+Use the existing cross-module Vitest call-through spy on `git-ref.cacheGitEnv`,
+not the same module's lexical `candidateGitEnv` function. Preserve actual
+arguments, results and errors. Measure only one completed `inspectRuntime`
+call with branch tracking enabled. Assert expected commit, `main` branch and
+origin using boolean comparisons, then assert a numeric environment-call
+count of one. Clear and restore the spy in `finally`; verify the original
+binding is restored. Never print or serialize the spy, returned environments,
+arguments, subprocess output, config or payloads. Record only fixed labels,
+the numeric counter, elapsed milliseconds and metadata-match booleans.
+
+The phase must fully return inside 5000 ms, with its independent metadata
+checks correct and the call-through spy proven to intercept the imported port.
+Zero interception, incomplete setup, an unexpected metadata result, or a
+phase exceeding that bound is inconclusive, not the predicted semantic red.
+The frozen baseline expectation is one; only an observed six-versus-one count
+after all qualification guards pass is the predicted counter failure.
+Synchronous settlement precedes restoration; there is no asynchronous handler
+or late worker to reattribute. Setup is outside this measured phase.
+
+Exact commands, from the owned checkout with one worker:
+
+```sh
+JOBS=1 heavy-run --exclusive npx vitest run --maxWorkers=1 src/mcp/git-candidate-env.test.ts
+JOBS=1 heavy-run --exclusive npx vitest run --maxWorkers=1 --reporter=verbose src/mcp/mcp-git-install.test.ts -t 'stores a reference for a key set in the environment|keeps the env vars of an installed server'
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts
+```
+
+Preserve the counter's actual qualified baseline before production changes.
+The first command alone proves neither timeout removal nor full compatibility.
+Do not repeat the full file until a specific reviewed change justifies it.
+The original fixtures, exact argv checks, five-second limits, candidate safety
+controls and N15 success guards remain unchanged.
+
+The proposed production scope is reuse of the already computed environment
+within one `inspectRuntime` call, using a private shared execution helper.
+Do not introduce a public environment bypass, skip any ownership/origin/ref
+check, or cache policy across network/build operations, invocations or later
+policy changes. Every later inspection still resolves fresh policy. Root must
+review the qualified red before authorizing this production change.
+
+Success has separate keep gates: phase computations fall from six to one;
+original five-second timeouts fall from two to zero with unchanged fixtures;
+and all 51 compatibility/boundary cases are correct before delivery, including
+the separately outstanding diagnostic obligations. Preservation, secret safety
+and verified-publication rules must have zero regressions. Pivot: a qualified
+phase count other than one after the change, either remaining timeout, any
+remaining compatibility failure or any safety regression rejects the approach.
+Do not hide guidance failures, relax a deadline or drop revalidation to keep it.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the source/ref/env and runtime preservation contracts
+above. The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with candidate source safely
+preserved outside the index. It is not a counter or runtime acceptance result.
+
+
+## Diagnostic compatibility supplement
+
+This supplement retains the corrected compatibility fixtures and every original
+candidate-boundary/N15 assertion. It does not authorize runtime mutation,
+credential attempts, automatic repair or weaker preservation decisions.
+The first compatibility run is preserved separately: its path-alias and helper
+setup failures are not production diagnostic failures.
+
+Goal: preserve actionable, credential-safe Git installation refusal guidance.
+Question: can a user identify the rejected input and the next explicit action
+without raw subprocess output or deletion advice? Metric: failing diagnostic
+compatibility cases in the fixed full-file cohort. The qualified full-file baseline has exactly eight failing diagnostic cases
+and 43 passes, with zero setup or timeout failures. The separately registered
+phase-local optimization has a qualified one-call counter and both original
+five-second cases pass unchanged. Predict eight diagnostic failures to zero
+while all other corrected cases and every preservation oracle continue to pass.
+
+The fixed cases cover build location and re-pin instructions, old output that
+cannot satisfy a new candidate, tag/commit explicit-ref guidance, safe env-entry
+position validation, both unattended login controls, missing-runtime guidance,
+and origin/source context. Retain their exact diagnostic literals and secret
+non-disclosure assertions. The missing-runtime case observes refusal and
+credential-helper guidance; it does not prove an authentication attempt or an
+authentication failure. Do not recreate or contact that source automatically.
+
+Proposed change: propagate only safe typed refusal reasons from the existing
+candidate boundary. Give each refusal its own guidance. Keep unexpected errors
+fixed and generic. Unattended clone guidance reports the configured disabled
+prompt policy without claiming a credential cause or forwarding Git stderr.
+Origin guidance uses only required credential-safe source context, without
+raw URL query/fragment data, and preserves the old directory;
+never forward the legacy suggestion to delete it. Print no raw env entry,
+secret, headers, subprocess stderr or dynamic payload. Candidate builds and
+publication decisions, success gating, explicit consent and receipt rules stay
+unchanged.
+
+Measurement, with the frozen fixture source and one worker:
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts
+```
+
+Success: eight diagnostic failures become zero; all 51 fixed cases pass,
+including zero false success, zero old-runtime byte/inode/mode/HEAD changes,
+zero secret disclosures and zero unsupported acceptance. Pivot: any remaining
+diagnostic failure or any regression in the fixed cohort rejects the approach.
+Do not relax expected errors, normalize exact argv away, add blanket hints or
+restore in-place builds to make it pass. Revisit the typed refusal boundary.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration; the source/ref/env compatibility and runtime-preservation
+contracts above. The docs-only pre-commit gate is
+`JOBS=1 heavy-run npm run verify:changed -- HEAD`, with the candidate safely
+preserved outside the index. Commit this prediction before production changes.
+The docs gate does not establish runtime, authentication or compatibility proof.
+
+
+## Recorded final code validation — 2026-11-02
+
+This section records results. It does not replace or revise the predictions
+above. The validated code tree is
+`bba779f7a8e043539d0cfd76af180b74a9ed159d`. Source commit
+`7c8d873` and the later normal ancestry merges retain that exact tree;
+`171186c526ea67f6f2794f926a1baf3e4db2e501` is the clean source checkpoint
+before this docs-only task closure. Full-code evidence applies to the code
+tree, not to the later documentation-only tree.
+
+The original candidate registration is `3273c4c`; the real partial-publication
+supplement is `6715267`. Phase-local environment measurement was registered in
+`cd5f3d0`, diagnostic compatibility in `cd7a0ff`, eligibility guidance in
+`3e1db93`, and invalid-package compatibility in `19d670d`. The first candidate
+cohort had 16 failing decisions and three passing controls against the old
+implementation. That is a decision count, not a count of unsafe mutations.
+Setup/compiler failures and corrected fixture ports remain separate historical
+evidence; they are not semantic product failures.
+
+The related four-file check passed all 118 cases: 54 retained units, two
+separate ownership guards, 51 retained real-Git compatibility/boundary cases,
+one additional invalid-package safety control, nine entrypoint cases and one
+environment counter. The CLI unit file then passed all 22 cases after its exact
+mock expectation was adapted to the registered option interface, retaining the
+server name and adding a one-call assertion. Formatting-only corrections
+preserve the test control/assertion AST, case-name order and string values.
+
+The qualified invalid-package helper failure moved from one to zero. The
+additional first-install control uses malformed package metadata plus a tracked
+`index.js`; unsafe activations remained zero before and after. Its actual parser
+refusal was reached once, with no npm call, registration, save or receipt and
+unchanged selected state. The helper returns a typed refusal; the candidate
+caller rejects it before entrypoint detection or publication. The separate
+metadata-inspection counter moved from six environment computations to one,
+and both original five-second cases passed without raising their deadlines.
+This does not establish whole-command speed or field performance.
+
+The final required command was:
+
+```sh
+JOBS=1 heavy-run env NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.9 npm run verify
+```
+
+It exited zero on the exact code tree above. All 20 steps ran uncached. The
+complete suite passed 6,172 tests with five skips across 408 passed files and
+one skipped file. Cold installation passed one test with two skips; package
+installation passed all three tests. The earlier full attempts stopped at
+fixture formatting/import cleanup, the missing CLI flag-audit row and an exact
+CLI mock call-shape mismatch. Their receipts remain failures; the later result
+does not relabel them. No behavior assertion or five-second deadline was
+relaxed to pass the final gate.
+
+The task-owned installation matches current main's source lock and protected
+package records. Its three selected physical package versions and nine
+installed-lock fields match that lock, and its stamp is lock-identical.
+Canonical and qualified donor samples were unchanged during alignment. Known
+full dependency-graph/peer limitations remain recorded in their separate tasks;
+this MCP result is not complete dependency-graph security proof.
+
+Git operations, candidate ownership, parsing, receipts and recovery bytes/inodes
+were exercised in scratch fixtures. State and sync ports are controlled; real
+registration-owner fault cases remain scratch operations. Empty-target readback
+and dispatch checks do not prove live agent fan-out. This work performed no
+native deployment or cutover, changed no owner's MCP runtime or conversation
+store, and does not qualify general process-group ownership or a malicious-build
+sandbox. The later native MCP lifecycle task retains those distinct boundaries.
+
+The completed `mcp-git-repin-build-output` block is removed from `TASKS.md` by
+this docs-only closure. Every other task block, including the dependency stages
+and native lifecycle work, is preserved.

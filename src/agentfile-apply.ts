@@ -27,6 +27,7 @@ import {
 } from "./source-skill-prune.js";
 import { loadState, saveState } from "./state.js";
 import { indexOfMarkerAtLineStart } from "./sync/marker-utils.js";
+import { hashAgentfileRuleBody, recordMemoryPackOwners } from "./sync/stale-agentfile-artifacts.js";
 import type { AgentBrewState, ManagedHook, McpServer } from "./types.js";
 import { ICON_SUCCESS } from "./ui/output.js";
 import { expandHome } from "./utils.js";
@@ -347,7 +348,12 @@ export function mergeRulesIntoSharedContent(
 }
 
 /** Merge rules from Agentfile into shared-rules.md. Returns true if updated. */
-function mergeAgentfileRules(agentfile: { rules?: string }, baseDir: string, dryRun: boolean): boolean {
+function mergeAgentfileRules(
+  agentfile: { rules?: string },
+  baseDir: string,
+  dryRun: boolean,
+  state: AgentBrewState,
+): boolean {
   // No `rules:` key still runs the merge, so a block this Agentfile wrote before is removed.
   let rulesContent = (agentfile.rules ?? "").trim();
 
@@ -370,6 +376,16 @@ function mergeAgentfileRules(agentfile: { rules?: string }, baseDir: string, dry
   const rulesPath = expandHome(SHARED_RULES_PATH);
   const existing = existsSync(rulesPath) ? readFileSync(rulesPath, "utf-8") : "";
   const { content, changed } = mergeRulesIntoSharedContent(existing, rulesContent, agentfileRulesSourceId(baseDir));
+  const id = agentfileRulesSourceId(baseDir);
+  if (content.includes(`<!-- agentfile-rules: ${id} -->`)) {
+    state.agentfileRuleOwners = { ...state.agentfileRuleOwners, [id]: resolve(baseDir) };
+    const bodyStart = content.indexOf(`<!-- agentfile-rules: ${id} -->`) + `<!-- agentfile-rules: ${id} -->`.length;
+    const bodyEnd = content.indexOf(`<!-- /agentfile-rules: ${id} -->`, bodyStart);
+    state.agentfileRuleHashes = {
+      ...state.agentfileRuleHashes,
+      [id]: hashAgentfileRuleBody(content.slice(bodyStart, bodyEnd)),
+    };
+  }
   if (!changed) return false;
   if (dryRun) return true;
 
@@ -541,8 +557,9 @@ function mergeAgentfileMemory(
     if (paths.length) {
       const before = new Set(state.memory?.packPaths ?? []);
       mergeMemoryPackPaths(state, paths);
+      const ownersChanged = recordMemoryPackOwners(state, paths, baseDir, before);
       const after = new Set(state.memory?.packPaths ?? []);
-      if (before.size !== after.size || paths.some((path) => !before.has(path))) {
+      if (ownersChanged || before.size !== after.size || paths.some((path) => !before.has(path))) {
         changed = true;
       }
     }
@@ -734,7 +751,10 @@ export function applyAgentfile(
   const commandDirsAdded = commandDirs.added;
   const agentDirsAdded = agentDirs.added;
   const skillsToInstall = collectAgentfileSkills(agentfile, quiet);
-  const rulesUpdated = mergeAgentfileRules(agentfile, baseDir, dryRun);
+  const previousRuleOwners = JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
+  const rulesUpdated = mergeAgentfileRules(agentfile, baseDir, dryRun, state);
+  const ruleOwnersChanged =
+    previousRuleOwners !== JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
   const hooksUpdated = mergeAgentfileHooks(agentfile, state);
   const excludedAgents = mergeAgentfileExcludeAgents(agentfile, state);
   const workStepsChanged = dropLegacyWorkSteps(state);
@@ -768,6 +788,7 @@ export function applyAgentfile(
     skillDirsChanged ||
     agentDirs.changed ||
     rulesUpdated ||
+    ruleOwnersChanged ||
     hooksUpdated ||
     excludedAgents.length > 0 ||
     defaultModelUpdated ||

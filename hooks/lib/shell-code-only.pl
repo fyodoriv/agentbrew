@@ -84,4 +84,17 @@ while ($i < $n) {
   $i++;
 }
 
-print $out;
+if (@ARGV && $ARGV[0] eq '--sleep-loop-signal') {
+  # Same command-position heuristic as poll-loop-hint, not a shell grammar.
+  $out =~ s/\n/;/g;
+  my $position = qr/(?:^|[;&|({]|\s(?:do|then|else))\s*/;
+  if ($out =~ /${position}(?:until|while)\s.*${position}sleep(?:\s|;|$)/) {
+    print 'until-while-sleep-v1';
+  } elsif ($out =~ /${position}for\s.*${position}sleep(?:\s|;|$)/) {
+    print 'for-sleep-v1';
+  } else {
+    print 'not-observed-v1';
+  }
+} else {
+  print $out;
+}

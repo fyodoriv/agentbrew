@@ -273,10 +273,16 @@ export interface MemoryConfig {
   enabled?: boolean;
   /** Resolved absolute paths to discovered pack directories. */
   packPaths?: string[];
+  /** Per-user state.yaml provenance: pack path to declaring checkout roots. Unknown legacy paths stay unowned. */
+  packOwners?: Record<string, string[]>;
 }
 
 export interface AgentBrewState {
   schemaVersion?: number;
+  /** Per-user state.yaml provenance for the current agentfile-rules block, deleted when its checkout is absent. */
+  agentfileRuleOwners?: Record<string, string>;
+  /** Content hashes preserve rule bodies edited after their owning checkout disappears. */
+  agentfileRuleHashes?: Record<string, string>;
   agents: AgentConfig[];
   sources?: Source[];
   mcpServers?: McpServer[];
@@ -345,6 +351,8 @@ export interface AgentBrewState {
    *     `--no-auto-repair` does this).
    */
   autoRepair?: "on" | "off";
+  /** Per-user macOS repair admission; selecting a queue does not rewrite an installed job. */
+  scheduledRepairQueue?: "direct" | "heavy-run";
   /**
    * Machine-local choice for agentbrew's own commands (/agentbrew).
    *   - `"on"` (default): sync deploys them to every agent.

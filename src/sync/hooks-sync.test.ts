@@ -259,6 +259,25 @@ describe("filterHooksForTarget", () => {
 });
 
 describe("mergeHooksConfig", () => {
+  it("retires only the previously managed usage-tip command beside a user Stop hook", () => {
+    const command = "bash /deploy/usage-tip.sh";
+    const existing = {
+      Stop: [
+        {
+          hooks: [
+            { type: "command" as const, command },
+            { type: "command" as const, command: "echo synthetic-user-stop" },
+          ],
+        },
+      ],
+    };
+    const result = mergeHooksConfig(existing, {}, new Set(["Stop:*"]), {
+      previousManagedIds: new Set([`Stop:* ${command}`]),
+      deployDir: "/deploy",
+    });
+    expect(result.merged.Stop).toEqual([{ hooks: [{ type: "command", command: "echo synthetic-user-stop" }] }]);
+  });
+
   it("adopts an exact desired hook on first sync without duplicating it or dropping unrelated handlers", () => {
     const endpoint = { type: "command" as const, command: "endpoint-check" };
     const unrelated = { type: "command" as const, command: "personal-check" };

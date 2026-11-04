@@ -83,6 +83,8 @@ So:
 
 1. Copy the raw goal text verbatim. You will compare against it at the end.
    Shape a long, dictated, or vague goal first: [references/goal-intake.md](references/goal-intake.md).
+   A word that can name two deliverables is a question in the one round:
+   "command" can mean a CLI command or an agent slash command.
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
@@ -91,7 +93,10 @@ So:
 5. Find the measurement: an existing test, lint, script, counter, or query
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time
-   goes. A failed baseline run is the first finding, not a number: fix or
+   goes. Use `heavy-run --exclusive` before the first sample where available.
+   Or wait for other heavy jobs. Use the same quiet conditions for both runs.
+   If jobs overlap, discard an overlapping sample and repeat it. Then report both observed timings.
+   A failed baseline run is the first finding, not a number: fix or
    report the cause before you compare. Read its log: an EPERM on a cache or
    a registry is the sandbox, so build once outside it, record the step, then
    compare. A strict score that fails on the unchanged base is pre-existing.
@@ -120,6 +125,7 @@ So:
 
 ## Phase 2 — Goal contract
 
+Estimate the full goal before execution using [goal estimation](references/goal-estimation.md).
 Write the contract in the chat before you change anything. Fill in the template in
 [references/goal-contract.md](references/goal-contract.md). Short version:
 
@@ -149,7 +155,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   finish the Suggestions, check three axes and name the one you apply.
   **Altitude**: the goal beyond the goal ("keep the suite green", not "fix
   this test"). **Depth**: the rawest data, the expert's instruments, and a
-  judge other than you. **Range**: one method from another field. Offer a
+  judge other than you. Use `python -X importtime` or `python -m cProfile`
+  outside the timed samples. **Range**: one method from another field. Offer a
   bigger goal as a suggestion; never widen scope without the user's yes.
 
 Take the baseline measurement now, while nothing has changed yet.
@@ -191,6 +198,18 @@ docs, memory, or a quick experiment can answer.
 From here, do not stop for check-ins, progress approvals, or "should I
 continue?". The user set a goal so that they can be away.
 
+- **Clock-bound goals:** resolve the requested end time and timezone once,
+  then schedule a one-shot trigger using the platform's supported scheduler.
+  The trigger runs wrap-up, Phase 5 and Phase 6. Verify the saved trigger and
+  record its id, local time, timezone and numeric `Clock wrap-up epoch: <unix>`
+  on its own line in the contract. If no scheduler exists, report that limit;
+  do not pretend a wakeup is armed. Until the deadline, print one goal-check
+  line per turn naming the trigger and time. The draft retro may say
+  `Goal result: in progress (clock goal, wrap-up at HH:MM)`; this defers the
+  retro hook only before the numeric deadline. After the trigger fires or
+  the deadline passes, finish verification and the final retro; never claim
+  met early or spin on Stop retries. Keep working until the requested end.
+
 - Keep a task list (`update_plan`, TodoWrite, or a list in chat), ordered by
   risk: unknowns first. Two apps joined: read [references/cross-app-poc.md](references/cross-app-poc.md).
 - Work in small verified steps. Run the guard after each change that matters.
@@ -219,6 +238,10 @@ continue?". The user set a goal so that they can be away.
   one batch.
 - After each done-criterion, print a goal check line:
   `Goal check 2/4 ✅ <criterion> — <evidence>`.
+  When the criterion covers a list (tasks moved, events made), name every
+  item and quote the tool's own result lines (titles, saved times, version).
+  A count or "16 others" is not evidence: the goal checker sees only chat
+  text and rejects it.
 
 ### Hopelessly blocked (the exception)
 
@@ -245,7 +268,8 @@ it with Success and Pivot. If a criterion fails, go back to Phase 4. The goal is
 Before waiting for CI, run `gh pr checks` once for this PR and once for the
 last merged PR. If both report "no checks reported" and current host settings
 confirm checks are disabled, treat CI as absent even when workflow files
-exist. Use the repo's own gate, require exit 0, and name its environment.
+exist. Run the repo's own gate and required PR-body validators locally;
+require exit 0 and name the environment.
 Do not poll a host that does not run checks or add CI without a request.
 With no workflows and no checks, the same local-gate rule applies. Missing
 checks on this PR alone do not prove CI is absent.
@@ -300,7 +324,9 @@ waiting workers, and duplicate PRs" in [references/parallel-workers.md](referenc
 
 ## Phase 6 — Retro and skill upkeep
 
-Do this every time, also after a BLOCKED stop. Details:
+Do this every time, also after a BLOCKED stop. Compare the original estimate
+with actuals and update the estimation method as described in
+[goal estimation](references/goal-estimation.md). Details:
 [references/retro.md](references/retro.md).
 
 1. **What went wrong**: errors, wrong assumptions, wasted loops, and blocked
@@ -355,21 +381,7 @@ blockers (each explained in full, as in Phase 4), and what to do next. Only
 without an Artifact tool or with private data, write a self-contained HTML
 file and give its full path. Build it from the shape below (also the chat fallback). Keep it short.
 
-In chat, give the link, a one-line result, and the next-action questions, each
-in full. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
+In chat, share the report link, verified result, key lessons, and tooling updates.
+Offer the interactive next actions in the goal report format. Do not paste the whole report. Results across sessions: [references/multi-session-brief.md](references/multi-session-brief.md).
 
-```markdown
-## Goal result: met | partly met | blocked
-**Goal**: <raw goal text, shortened if long>
-**Outcome**: <one sentence>
-
-| Done when | Status | Evidence |
-|---|---|---|
-
-**Metric**: <baseline> → <now> (target <target>) via `<command>`
-**Changes**: <PRs, commits, files>
-**What went wrong**: <bullets> · **What to improve**: <bullets>
-**Assumptions**: <each marked "my choice" (why, what data would replace it), "from <source>", or "you said">
-**Skills updated**: <every skill used, run-goal included → its edit or new eval + PR, or the task for a third-party skill>
-**Needed from you**: <the review or the one action, or "nothing">
-```
+Use the [goal report format](references/goal-report.md) for the report and chat updates.

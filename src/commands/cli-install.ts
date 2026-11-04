@@ -57,6 +57,7 @@ interface InstallOptions {
   headers?: string[];
   git?: string;
   ref?: string;
+  freshRuntime?: boolean;
   dryRun?: boolean;
   project?: boolean;
   local?: boolean;
@@ -239,6 +240,7 @@ async function handleLegacyFlagInstall(
       name: name,
       envPairs: options.env,
       nonInteractive: options.yes,
+      freshRuntime: options.freshRuntime,
     });
     return true;
   }
@@ -297,6 +299,11 @@ async function executeInstall(
   cmdArgs: string[],
   knownFlags: ReadonlySet<string>,
 ): Promise<void> {
+  if (options.freshRuntime && !options.git) {
+    console.error("--fresh-runtime requires --git; it starts with new cache-local runtime state.");
+    process.exitCode = 1;
+    return;
+  }
   if (await handleDashDashInstall(name, options)) return;
   if (name && (await handleNpxShorthand(name, options))) return;
   if (await handleLegacyFlagInstall(name, options, cmdArgs, knownFlags)) return;
@@ -352,6 +359,7 @@ export function registerInstallCommand(program: Command): void {
     .option("-H, --headers <pairs...>", "HTTP headers KEY=VALUE (for MCP, e.g. Authorization='Bearer ${TOKEN}')")
     .option("--git <url>", "Install MCP server from a git repo URL")
     .option("--ref <ref>", "Git tag, branch, or full commit ID; a tag wins over a same-named branch (used with --git)")
+    .option("--fresh-runtime", "With --git, start with new cache-local state; retain the old runtime and copy no data")
     .option("--dry-run", "Preview what would be installed without applying")
     .option("-L, --local", "Install to current project (.agentbrew/skills/ + Agentfile)")
     .option("-G, --global", "Install globally (default)")

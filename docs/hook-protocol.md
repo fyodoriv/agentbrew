@@ -269,10 +269,6 @@ background work: a launch in the transcript ("Async agent launched" or
 notification yet. The retro belongs at the end of the goal, not at each
 turn that only waits on workers.
 
-The opt-in `usage-tip` (Stop) hook shows the user one short tip per turn as
-a `systemMessage`, which is not sent to the model, and logs shown and adopted
-tips. [`usage-tips.md`](usage-tips.md) covers the catalog and the report.
-
 An earlier version read the transcript instead. Claude Code writes the
 transcript in batches, so a contract printed 6 to 8 seconds earlier was
 often not on disk yet, and real contracts were blocked. A hook cannot wait
@@ -338,6 +334,20 @@ listed in `~/.config/agent-gh-allowlist.txt` pass `gh pr create` and
 
 5. If the hook replaces an advisory rule, file or update the follow-up task that
    removes the now-deterministic prose rule after the hook has been stable.
+
+## PR readiness lookup
+
+The Claude `a-pr-is-not-ready` transcript hook resolves a simple numbered
+`gh pr view`, `ready`, `merge`, or `edit` command with Python's standard
+shell-word parser. Quoted body text is an opaque argument; repository flags
+must be real argument words. Supported flags are bounded to the known CLI
+forms. Unknown flags, shell expansions, compound commands, missing Python,
+or an unresolved target produce a warning without a guessed status query.
+Comment-looking words and expansion-looking text are also conservative
+warning cases, including ambiguous quoted forms.
+The selected target exists only for that hook invocation. Merged or closed
+PRs pass the readiness check. This is a best-effort status guard, not proof
+that a goal's delivery criteria are met.
 
 ## Codex hooks
 

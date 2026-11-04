@@ -24,6 +24,7 @@ import { filterInvalidServers } from "../mcp/mcp-validation.js";
 import { computeMcpmBridgeFingerprint } from "../mcp/mcpm-bridge-fingerprint.js";
 import {
   BROKEN_MCPM_REGISTRY_SERVERS,
+  MCPM_PREFIX,
   reconcileIntersectionClientEntries,
   sweepMcpmHygiene,
   uninstallBrokenMcpmRegistryServers,
@@ -128,6 +129,54 @@ export function getMcpmIntersectionAgents(stateAgents: AgentConfig[]): AgentConf
   return AGENT_DEFINITIONS.filter(
     (def) => def.mcpConfig && detectedNames.has(def.name) && MCP_INTERSECTION_AGENTS.has(def.name),
   ).map((def) => ({ ...def, detected: true }));
+}
+
+export type McpPublicationReadback =
+  | { kind: "verified"; checkedTargets: number }
+  | { kind: "partial-or-unknown"; checkedTargets: number; failedTargets: number };
+
+function publicationTargetMatches(server: McpServer, agent: AgentConfig): boolean {
+  if (!agent.mcpConfig) return false;
+  const adapter = getAdapter(agent);
+  const path = expandHome(agent.mcpConfig);
+  if (!existsSync(path)) return false;
+  const key = agent.mcpKey ?? "mcpServers";
+  if (agent.mcpFormat === "yaml") {
+    return adapter
+      .discoverServers(path, key)
+      .some(
+        (entry) =>
+          (entry.name === server.name || entry.name === `${MCPM_PREFIX}${server.name}`) &&
+          mcpServerConfigEquals(server, entry),
+      );
+  }
+  const entries = adapter.readEntries(path, key);
+  const deployed = entries[server.name] ?? entries[`${MCPM_PREFIX}${server.name}`];
+  return !!deployed && adapter.entriesMatch(deployed, adapter.toEntry(server, agent.name));
+}
+
+/** Read-only, invocation-scoped evidence for Git candidate publication. No env values leave this comparison. */
+export function verifyMcpServerPublication(server: McpServer, stateAgents: AgentConfig[]): McpPublicationReadback {
+  const mcpmAvailable = isMcpmAvailable();
+  const native = getMcpTargetAgents(stateAgents, { mcpmAvailable });
+  const delegated = mcpmAvailable ? getMcpmIntersectionAgents(stateAgents) : [];
+  let checkedTargets = 0;
+  let failedTargets = 0;
+  if (delegated.length > 0) {
+    checkedTargets++;
+    if (!mcpServerConfigEquals(server, readMcpmServer(server.name))) failedTargets++;
+  }
+  for (const agent of [...native, ...delegated]) {
+    checkedTargets++;
+    try {
+      if (!publicationTargetMatches(server, agent)) failedTargets++;
+    } catch {
+      failedTargets++;
+    }
+  }
+  return failedTargets === 0
+    ? { kind: "verified", checkedTargets }
+    : { kind: "partial-or-unknown", checkedTargets, failedTargets };
 }
 
 /**

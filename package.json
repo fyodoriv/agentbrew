@@ -18,9 +18,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "prebuild": "bash scripts/build-pipeline-guard.sh --deps-only",
-    "build": "tsup",
-    "postbuild": "bash scripts/build-pipeline-guard.sh --dist-only",
+    "prebuild": "bash scripts/build-pipeline-guard.sh --deps-only && bash scripts/build-checkup-run.sh",
+    "build": "bash scripts/build-source.sh",
     "dev": "tsx src/cli.ts",
     "test": "tsx src/affected-tests.ts",
     "test:affected": "tsx src/affected-tests.ts",
@@ -97,7 +96,7 @@
     "@types/js-yaml": "4.0.9",
     "@types/node": "25.6.0",
     "@types/semver": "7.7.1",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "jks-js": "file:scripts/stubs/jks-js",
     "knip": "6.7.0",
     "playwright": "1.58.2",
@@ -105,7 +104,7 @@
     "tsup": "8.5.1",
     "tsx": "4.21.0",
     "typescript": "6.0.3",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "overrides": {
     "simple-git": "4.0.2",

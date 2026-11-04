@@ -118,7 +118,7 @@ before 2026-10-18 read only the first line, so a heredoc or multi-line
 the build or test commands after it. Treat those old keys with care.
 
 For each simple command, the hook first drops `cd X &&`, `VAR=value`, `(`, and the `env`,
-`nice`, `time`, `nohup`, `command`, `exec`, and `timeout` wrappers with their
+`nice`, `time`, `nohup`, `command`, `exec`, `timeout`, and `heavy-run` wrappers with their
 flags. Then it checks each kept word:
 
 - A path keeps only a script file name (`bash scripts/run-hook-fixtures.sh` → `bash run-hook-fixtures.sh`). Other paths become `<path>`.
@@ -130,6 +130,28 @@ The rules live in `hooks/lib/perf-row.jq`. `hooks/checks/perf-record.test.sh`
 and `src/scripts/agent-perf.test.ts` prove that a token-like argument and a
 path never reach the log.
 
+## Measurement windows after wrapper changes
+
+New rows unwrap `heavy-run`: `heavy-run npm run verify` keeps the key
+`npm run verify`, and `heavy-run make check` keeps `make check`. Management
+actions such as `heavy-run --status` keep their own keys. The privacy
+filter still keeps only the short key; it does not save raw commands or
+arguments. This corrects attribution, not execution speed.
+
+Old rows named `heavy-run npm` or `heavy-run make` remain unchanged. Their
+leaf command is unknown; do not relabel them as tests, lint, or installation.
+An absent direct key is not a zero. Loop-prefixed rows contain the whole loop's
+wall time, and a compound command's duration belongs to the whole call. These
+rows cannot prove a component's runtime. Queue wait and runtime are not
+separate telemetry fields; do not invent that split.
+
+After deployment, verify the installed `perf-row.jq` contains the new wrapper
+rule and record that UTC cutover time in the private run report. Start a fresh
+full seven-day window there before judging the open performance tasks. Keep
+the earlier window as ambiguous evidence; never rewrite its rows. Compare the
+same covered project scopes, including tooling-started sessions. A session's
+payload cwd does not prove the execution directory of commands inside it.
+
 ## Read the log
 
 Run every command with `node ~/.config/agentbrew/scripts/agent-perf.mjs`.
@@ -139,7 +161,7 @@ Run every command with `node ~/.config/agentbrew/scripts/agent-perf.mjs`.
 | `report [--project NAME \| --all] [--days N] [--json]` | Total tool time and calls, then per-step count, total, p50, p95, and max; the 10 slowest calls; the top 5 steps by total time; the human-wait calls, apart from tool time; failures by step; and the change against the previous window of the same length. Default: the current project, 7 days. |
 | `report --session ID\|latest [--project NAME \| --all] [--json]` | The same for one session. `latest` is the session of the newest row in scope. |
 | `brief [--project NAME]` | At most 5 lines: 7-day tool time, the top 3 steps with p50, the slowest single step, the blocked calls (when there are any), and one speedup candidate (a step that ran 3 or more times and cost at least a minute). Empty when there is no data. |
-| `statusline` | Reads Claude Code status-line JSON on stdin and prints one line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. When the `usage-tip` hook showed a tip in this session, a second line shows it: `💡 Run /context to see what fills the context window before it runs out.` |
+| `statusline` | Reads Claude Code status-line JSON on stdin and prints one performance line, for example `Opus 5.5 · 42m (api 18m · tools 15m) · slowest: npm run verify 6m12s · ctx 38%`. It does not read or replay retired usage tips. |
 | `turn --session ID [--json]` | Tool time, call count, the 3 slowest calls, the top 3 steps, and `attempts`, `blocked`, and `blockedKeys` (top 5) since the last turn row of that session. |
 
 `--cwd DIR` picks the project for `report` and `brief` when you run them from
@@ -245,6 +267,37 @@ Both hooks are on by default for Claude Code and need `node` on the hook
   `MINSKY_PIPELINE=1` also skips it.
 
 ## Poll-loop hint
+
+The recorder adds fixed `sleepLoop` and `shellMode` enums to new Bash rows.
+`sleepLoop` is `until-while-sleep-v1`, `for-sleep-v1`, `not-observed-v1`, or
+`unknown-v1`. It reuses the hint's code-only helper and command-position
+heuristic: a loop keyword is followed later by a sleep command. Quotes,
+comments and heredoc bodies are removed. This is not a shell grammar; it
+does not prove execution, causal polling, or that sleep belongs to that loop.
+Until/while takes precedence when both signals occur. The hint still warns
+only on until/while; observing for/sleep does not add a warning.
+
+`shellMode` is foreground or background only when the payload explicitly
+sets the Boolean `run_in_background`; otherwise it is unknown. Raw commands
+remain only in the recorder process during the hook invocation. The log gets
+only enums and its existing sanitized keys, ids, durations and outcomes.
+No privacy setting, dashboard or extra command log is added.
+
+The existing `report --json` adds `sleepLoops`. It counts main-thread Bash
+completion rows, tagged and unknown rows, syntax not observed, and positive
+syntax observations separately. Duration groups require a matching session
+and call id on an attempt with matching enums, a nonnegative finite duration,
+and an explicit outcome. Missing evidence increases unresolved observations;
+it is never zero observed time. Groups contain whole recorded tool-call
+duration and failures by syntax and mode. Background durations describe the
+tool return, never background worker runtime. Failure does not mean timeout.
+Behavior coverage stays unknown even with complete tagging and correlation.
+
+Historical rows have unknown syntax and stay unchanged on disk. Before a
+new full seven-day measurement, verify the installed recorder, jq, Perl
+helper and report match this source, run a safe synthetic loop, and record
+the UTC cutover locally. Do not close the event-wait task from fixtures,
+absent aliases, partial cohorts, or an unavailable timeout-rate guard.
 
 The time review on 2026-10-18 found that foreground `until` loops were the
 most expensive recurring step: an agent that polls with `sleep` waits until

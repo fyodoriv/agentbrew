@@ -17,7 +17,7 @@
 // Commands:
 //   report [--project NAME | --all] [--days N] [--session ID|latest] [--json]
 //   brief [--project NAME]
-//   statusline            (reads Claude Code status-line JSON on stdin; adds the usage tip line)
+//   statusline            (reads Claude Code status-line JSON on stdin)
 //   turn --session ID [--json]
 //
 // Totals count main-thread rows only (agent is null). A subagent's own tool
@@ -119,6 +119,43 @@ const isToolRow = (row) => typeof row.ms === "number" && row.ev !== "turn";
 const isBackground = (row) => row.bg === true;
 const isMainThread = (row) => row.agent === null || row.agent === undefined;
 const hasId = (row) => typeof row.id === "string" && row.id !== "";
+
+/** Per-report syntax evidence; whole-call ms is neither polling time nor worker runtime. */
+export function sleepLoopCoverage(rows, pairRows = rows) {
+  const tagged = new Set(["until-while-sleep-v1", "for-sleep-v1", "not-observed-v1"]);
+  const identified = (row) => hasId(row) && typeof row.sid === "string" && row.sid !== "";
+  const attempts = new Map();
+  for (const row of pairRows) {
+    if (row.tool === "Bash" && row.ev === "attempt" && identified(row)) attempts.set(`${row.sid}\0${row.id}`, row);
+  }
+  const result = { completionRows: 0, taggedRows: 0, unknownRows: 0, notObservedRows: 0, observedSyntaxRows: 0,
+    pairedTimedRows: 0, unresolvedObservedRows: 0, behaviorCoverage: null, groups: [] };
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.tool !== "Bash" || row.ev || !isMainThread(row)) continue;
+    result.completionRows += 1;
+    if (!tagged.has(row.sleepLoop)) { result.unknownRows += 1; continue; }
+    result.taggedRows += 1;
+    if (row.sleepLoop === "not-observed-v1") { result.notObservedRows += 1; continue; }
+    result.observedSyntaxRows += 1;
+    const attempt = identified(row) ? attempts.get(`${row.sid}\0${row.id}`) : undefined;
+    const mode = ["foreground", "background"].includes(row.shellMode) ? row.shellMode : "unknown";
+    if (!attempt || attempt.sleepLoop !== row.sleepLoop || attempt.shellMode !== row.shellMode
+      || !Number.isFinite(row.ms) || row.ms < 0 || typeof row.ok !== "boolean") {
+      result.unresolvedObservedRows += 1;
+      continue;
+    }
+    result.pairedTimedRows += 1;
+    const key = `${row.sleepLoop}:${mode}`;
+    const group = groups.get(key) ?? { signal: row.sleepLoop, mode, rows: 0, sumMs: 0, failures: 0 };
+    group.rows += 1;
+    group.sumMs += row.ms;
+    if (!row.ok) group.failures += 1;
+    groups.set(key, group);
+  }
+  result.groups = [...groups.values()];
+  return result;
+}
 
 /**
  * A call that ran this long waited on a person: a prompt inside the tool
@@ -293,6 +330,7 @@ export function summarize(rows, pairRows = rows) {
     .slice(0, 10)
     .map((row) => ({ ts: row.ts, key: row.key, ms: row.ms, project: row.project, sid: row.sid, ok: row.ok !== false }));
   return {
+    sleepLoops: sleepLoopCoverage(rows, pairRows),
     toolMs: main.reduce((total, row) => total + row.ms, 0),
     calls: main.length,
     subagentCalls: tools.length - main.length,
@@ -404,6 +442,15 @@ export function formatReport(report) {
   const where = scope.days === null ? `session ${scope.session ?? "latest (none found)"}` : `last ${scope.days}d`;
   const lines = [`Agent time — ${scope.project}, ${where}`];
   const wait = report.humanWait ?? { calls: 0 };
+  const loops = report.sleepLoops;
+  if (loops?.completionRows) {
+    lines.push(
+      `Sleep-loop syntax: ${loops.taggedRows}/${loops.completionRows} rows tagged; ${loops.unknownRows} unknown; ${loops.notObservedRows} not observed; ${loops.observedSyntaxRows} observed; ${loops.pairedTimedRows} paired and timed; ${loops.unresolvedObservedRows} observed without correlation/time; behavior coverage unknown (syntax only).`,
+    );
+    for (const group of loops.groups) {
+      lines.push(`  ${group.signal}, ${group.mode}: ${group.rows} whole-call rows, ${formatMs(group.sumMs)}, ${group.failures} recorded failures (cause unknown).`);
+    }
+  }
   if (report.calls === 0 && report.keys.length === 0 && !report.attempts && !wait.calls) {
     lines.push("No tool rows yet.");
     return lines.join("\n");
@@ -568,44 +615,7 @@ export function sessionStats(sid, { dir = perfDir(), nowMs = Date.now() } = {}) 
   return { toolMs: cache.toolMs, slowKey: cache.slowKey, slowMs: cache.slowMs };
 }
 
-// ── statusline: the usage-tip hook's current tip for this session ──
-
-/** Usage-tip log written by hooks/checks/usage-tip.sh. */
-export function usageTipsLog(env = process.env) {
-  return join(env.USAGE_TIPS_DIR || join(homedir(), ".cache", "agentbrew", "usage-tips"), "log.jsonl");
-}
-
-const TIP_TAIL_BYTES = 256 * 1024;
-const TIP_MAX_CHARS = 120;
-
-/** Text of the last tip shown in this session, or null. Reads only the log's tail. */
-export function sessionTip(sid, { file = usageTipsLog() } = {}) {
-  if (!sid || !existsSync(file)) return null;
-  const size = statSync(file).size;
-  const { text } = readFrom(file, Math.max(0, size - TIP_TAIL_BYTES));
-  const lines = text.split("\n");
-  const adopted = new Set();
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (!lines[i].includes(sid)) continue;
-    let row;
-    try {
-      row = JSON.parse(lines[i]);
-    } catch {
-      continue;
-    }
-    if (row.session !== sid) continue;
-    if (row.event === "adopted") adopted.add(row.tip);
-    if (row.event !== "shown") continue;
-    // An adopted tip has done its job; older rows have no text to show.
-    if (adopted.has(row.tip) || typeof row.text !== "string") return null;
-    const clean = row.text.replace(/[\u0000-\u001f\u007f-\u009f]/g, "").trim();
-    if (!clean) return null;
-    return clean.length > TIP_MAX_CHARS ? `${clean.slice(0, TIP_MAX_CHARS - 1)}…` : clean;
-  }
-  return null;
-}
-
-export function formatStatusline(input, stats, tip = null) {
+export function formatStatusline(input, stats) {
   const parts = [];
   const model = input?.model?.display_name;
   if (model) parts.push(model);
@@ -622,9 +632,7 @@ export function formatStatusline(input, stats, tip = null) {
   if (stats.slowKey) parts.push(`slowest: ${stats.slowKey} ${formatMs(stats.slowMs)}`);
   const ctx = input?.context_window?.used_percentage;
   if (typeof ctx === "number") parts.push(`ctx ${Math.round(ctx)}%`);
-  const line = parts.join(" · ");
-  if (!tip) return line;
-  return line ? `${line}\n💡 ${tip}` : `💡 ${tip}`;
+  return parts.join(" · ");
 }
 
 function readStdin() {
@@ -667,13 +675,7 @@ export function main(argv = process.argv.slice(2)) {
     } catch {
       // The status line must always print something.
     }
-    let tip = null;
-    try {
-      tip = sessionTip(input.session_id);
-    } catch {
-      // No tip line; the stats line still prints.
-    }
-    process.stdout.write(`${formatStatusline(input, stats, tip)}\n`);
+    process.stdout.write(`${formatStatusline(input, stats)}\n`);
     return 0;
   }
   if (command === "turn") {

@@ -12,6 +12,8 @@ import { delegateMcpUninstall, isMcpmAvailable } from "./mcp-delegate.js";
 import { getMcpTargetAgents, syncMcpServers } from "./mcp-sync.js";
 
 interface AddMcpServerOptions {
+  /** Candidate publication reports success only after its final readback. */
+  reportSuccess?: boolean;
   ctx?: Context;
   url?: string;
   headers?: Record<string, string>;
@@ -109,7 +111,7 @@ export async function addMcpServer(
 
   if (ctx) ctx.state.save(state);
   else saveState(state);
-  log.success("✓", `MCP server '${name}' registered.`);
+  if (options?.reportSuccess !== false) log.success("✓", `MCP server '${name}' registered.`);
 }
 
 function pruneServerFromAgents(name: string, agents: AgentConfig[], log: Logger): void {

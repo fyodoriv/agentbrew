@@ -59,6 +59,15 @@ Field meanings and counting rules: agentbrew `docs/agent-perf.md`.
    speedup task for the step. A long prompt wait points at a permission rule
    or at unattended work that needed a person.
 7. Ignore steps under a minute in total. They are noise.
+8. Check attribution before comparing a task's target. Old `heavy-run npm`
+   and `heavy-run make` rows have unknown leaf commands; an absent direct key
+   is not zero. A loop or compound row is whole-call wall time, not component
+   runtime. Check tooling-started sessions as well as the named repo; payload
+   cwd is not proof of a later command's execution directory. Do not infer
+   queue/runtime fields that the source does not record. After a key-parser
+   change, verify the installed source, record the UTC cutover privately, and
+   collect a new full measurement window. Preserve historical rows and keep
+   performance tasks open until comparable evidence meets their thresholds.
 
 ## 3. Find a concrete speedup
 

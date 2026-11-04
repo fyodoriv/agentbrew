@@ -111,6 +111,15 @@ remain real. Fixtures use scratch HOME and contain no owner config or secrets.
 - **Verification:** register the exact handoff controls before that private
   operator change; an installed launchd proof remains pending until then.
 
+## Rollout result
+
+The disposable queue handoff produced zero repair starts before lock release
+and one afterward in both controls. One installed macOS repair then obtained
+its own queue reservation and exited zero after the operator reservation
+ended. The Node command, service schedule, log paths and enabled state
+matched the previous job. Only the queue setting changed in saved state.
+No lease marker was stored in the job.
+
 ## Rollout and security
 
 Keep all work local while publication is unavailable. First deliver the source

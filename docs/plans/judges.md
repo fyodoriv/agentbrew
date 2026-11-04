@@ -151,3 +151,15 @@ available on local Ollama. The script uses an isolated Agentbrew home.
 It exits nonzero if either order falls below the declared agreement
 threshold across all fixture pairs. The hosted calibration job verifies
 the model digest before it runs the script.
+
+### Source installer prerequisite experiment
+
+Goal: stop source setup before backup when its native build needs Cargo.
+Question: does preflight catch missing Cargo on both supported Linux architectures?
+Metric: run `./node_modules/.bin/vitest run src/install-script.test.ts` against
+stubbed Linux x64, Linux arm64, and Apple Silicon hosts with no Cargo on PATH.
+Expect two missed diagnoses on the draft baseline and zero after the change.
+Keep the fix only if all three report the missing tool before backup and all
+existing installer checks pass. Any missed diagnosis or existing-case regression
+rejects this approach. Measurement framing: Basili, Caldiera, and Rombach (1994),
+Goal Question Metric.

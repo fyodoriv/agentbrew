@@ -1,11 +1,28 @@
 use super::{LooseRef, UNAVAILABLE, loose_value, oid, packed_rows, resolve};
 use crate::{Audit, HASH, OUTPUT_BYTES, loose_record};
 use gix_hash::ObjectId;
-use gix_object::{CommitRefIter, Kind, TagRef, commit::ref_iter::Token};
+use gix_object::{
+    CommitRefIter, Kind, TagRef, TreeRefIter,
+    commit::ref_iter::Token,
+    tree::{EntryKind, EntryRef},
+};
+use std::cmp::Ordering;
 
 const MAX_OBJECTS: usize = 8;
 const MAX_RECORDS: usize = MAX_OBJECTS + 1;
 const MAX_EDGES: usize = 16;
+const MAX_COMPONENT: usize = 64;
+const MAX_PATH: usize = 96;
+const MAX_PATH_ROWS: usize = 16;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PathRow {
+    commit: ObjectId,
+    mode: gix_object::tree::EntryKind,
+    target: ObjectId,
+    bytes: [u8; MAX_PATH],
+    len: usize,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Node {
@@ -23,6 +40,7 @@ struct Edge {
 struct Report {
     nodes: [Option<Node>; MAX_OBJECTS],
     edges: [Option<Edge>; MAX_EDGES],
+    paths: [Option<PathRow>; MAX_PATH_ROWS],
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -42,7 +60,9 @@ enum Refusal {
     Kind,
     Integrity,
     Encoding,
-    NonemptyTree,
+    PathBytes,
+    PathRows,
+    TreeEntry,
 }
 
 #[derive(Clone, Copy)]
@@ -57,8 +77,22 @@ struct Pending {
     expected: Option<Kind>,
 }
 
+#[derive(Clone, Copy)]
+struct TreeEntry {
+    mode: EntryKind,
+    bytes: [u8; MAX_COMPONENT],
+    len: usize,
+}
+
+impl TreeEntry {
+    fn name(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
 struct Walker {
     pending: [Option<Pending>; MAX_OBJECTS],
+    tree_entries: [Option<TreeEntry>; MAX_EDGES],
     report: Report,
 }
 
@@ -69,8 +103,10 @@ impl Walker {
                 Some(existing) if existing.id == id => {
                     if let Some(kind) = expected {
                         let prior_kind = verified.map(|node| node.kind).or(existing.expected);
-                        // A root may also be reached through an edge, but cannot become a tree.
-                        if prior_kind.map_or(kind == Kind::Tree, |prior| prior != kind) {
+                        // An unresolved ref root still requires a commit or tag.
+                        if prior_kind.map_or(!matches!(kind, Kind::Commit | Kind::Tag), |prior| {
+                            prior != kind
+                        }) {
                             return Err(Refusal::Kind);
                         }
                         existing.expected = expected;
@@ -87,12 +123,21 @@ impl Walker {
         Err(Refusal::ObjectCap)
     }
 
-    fn edge(&mut self, from: ObjectId, to: Node, counts: &mut Counts) -> Result<(), Refusal> {
+    fn edge(
+        &mut self,
+        from: ObjectId,
+        to: Node,
+        entry: Option<TreeEntry>,
+        counts: &mut Counts,
+    ) -> Result<(), Refusal> {
         if counts.edges == MAX_EDGES {
             return Err(Refusal::EdgeCap);
         }
-        self.enqueue(to.id, Some(to.kind))?;
+        if !entry.is_some_and(|entry| entry.mode == EntryKind::Commit) {
+            self.enqueue(to.id, Some(to.kind))?;
+        }
         self.report.edges[counts.edges] = Some(Edge { from, to });
+        self.tree_entries[counts.edges] = entry;
         counts.edges += 1;
         Ok(())
     }
@@ -111,10 +156,136 @@ impl Walker {
                 Token::Message(_) => return Ok(()),
                 Token::ExtraHeader(_) => return Err(Refusal::Encoding),
             };
-            self.edge(from, Node { id, kind }, counts)?;
+            self.edge(from, Node { id, kind }, None, counts)?;
         }
         // The iterator can stop at EOF before yielding the required message separator.
         Err(Refusal::Encoding)
+    }
+
+    fn tree_edges(
+        &mut self,
+        from: ObjectId,
+        body: &[u8],
+        counts: &mut Counts,
+    ) -> Result<(), Refusal> {
+        let mut remaining = body;
+        let mut previous: Option<EntryRef<'_>> = None;
+        for entry in TreeRefIter::from_bytes(body, HASH) {
+            let entry = entry.map_err(|_| Refusal::Encoding)?;
+            let mode_end = remaining
+                .iter()
+                .take(7)
+                .position(|byte| *byte == b' ')
+                .ok_or(Refusal::TreeEntry)?;
+            // The typed parser normalizes some octal spellings. Admit exact modes only.
+            let (mode, kind) = match &remaining[..mode_end] {
+                b"100644" => (EntryKind::Blob, Kind::Blob),
+                b"100755" => (EntryKind::BlobExecutable, Kind::Blob),
+                b"120000" => (EntryKind::Link, Kind::Blob),
+                b"40000" => (EntryKind::Tree, Kind::Tree),
+                b"160000" if !entry.oid.is_null() => (EntryKind::Commit, Kind::Commit),
+                _ => return Err(Refusal::TreeEntry),
+            };
+            let name: &[u8] = entry.filename.as_ref();
+            if name.len() > MAX_COMPONENT {
+                return Err(Refusal::PathBytes);
+            }
+            if name.is_empty()
+                || name.contains(&b'/')
+                || matches!(name, b"." | b"..")
+                || name.eq_ignore_ascii_case(b".git")
+                || entry.mode.kind() != mode
+                || previous.is_some_and(|prior| prior.cmp(&entry) != Ordering::Less)
+                || self
+                    .report
+                    .edges
+                    .iter()
+                    .zip(&self.tree_entries)
+                    .any(|(edge, item)| {
+                        edge.is_some_and(|edge| edge.from == from)
+                            && item.is_some_and(|item| item.name() == name)
+                    })
+            {
+                return Err(Refusal::TreeEntry);
+            }
+            let mut bytes = [0; MAX_COMPONENT];
+            bytes[..name.len()].copy_from_slice(name);
+            self.edge(
+                from,
+                Node {
+                    id: entry.oid.to_owned(),
+                    kind,
+                },
+                Some(TreeEntry {
+                    mode,
+                    bytes,
+                    len: name.len(),
+                }),
+                counts,
+            )?;
+            let consumed = mode_end + 1 + name.len() + 1 + HASH.len_in_bytes();
+            remaining = remaining.get(consumed..).ok_or(Refusal::Encoding)?;
+            previous = Some(entry);
+        }
+        if remaining.is_empty() {
+            Ok(())
+        } else {
+            Err(Refusal::Encoding)
+        }
+    }
+
+    fn collect_paths(&self) -> Result<[Option<PathRow>; MAX_PATH_ROWS], Refusal> {
+        let mut rows = [None; MAX_PATH_ROWS];
+        for (edge, entry) in self.report.edges.iter().zip(&self.tree_entries) {
+            if let Some(edge) = edge.filter(|edge| edge.to.kind == Kind::Tree && entry.is_none()) {
+                self.expand_paths(edge.from, edge.to.id, b"", &mut rows)?;
+            }
+        }
+        Ok(rows)
+    }
+
+    fn expand_paths(
+        &self,
+        commit: ObjectId,
+        tree: ObjectId,
+        prefix: &[u8],
+        rows: &mut [Option<PathRow>; MAX_PATH_ROWS],
+    ) -> Result<(), Refusal> {
+        for (edge, entry) in self.report.edges.iter().zip(&self.tree_entries) {
+            let (Some(edge), Some(entry)) = (edge, entry) else {
+                continue;
+            };
+            if edge.from != tree {
+                continue;
+            }
+            let separator = usize::from(!prefix.is_empty());
+            let offset = prefix.len() + separator;
+            let len = offset + entry.len;
+            if len > MAX_PATH {
+                return Err(Refusal::PathBytes);
+            }
+            let slot = rows
+                .iter_mut()
+                .find(|slot| slot.is_none())
+                .ok_or(Refusal::PathRows)?;
+            let mut bytes = [0; MAX_PATH];
+            bytes[..prefix.len()].copy_from_slice(prefix);
+            if separator != 0 {
+                bytes[prefix.len()] = b'/';
+            }
+            bytes[offset..len].copy_from_slice(entry.name());
+            *slot = Some(PathRow {
+                commit,
+                mode: entry.mode,
+                target: edge.to.id,
+                bytes,
+                len,
+            });
+            if entry.mode == EntryKind::Tree {
+                self.expand_paths(commit, edge.to.id, &bytes[..len], rows)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -131,9 +302,11 @@ fn walk(
     let roots = resolve(packed, loose).map_err(|_| Refusal::Refs)?;
     let mut walker = Walker {
         pending: [None; MAX_OBJECTS],
+        tree_entries: [None; MAX_EDGES],
         report: Report {
             nodes: [None; MAX_OBJECTS],
             edges: [None; MAX_EDGES],
+            paths: [None; MAX_PATH_ROWS],
         },
     };
     for root in roots.into_iter().flatten() {
@@ -173,14 +346,15 @@ fn walk(
                         id: tag.target(),
                         kind: tag.target_kind,
                     },
+                    None,
                     counts,
                 )?;
             }
-            Kind::Tree if body.is_empty() => {}
-            Kind::Tree => return Err(Refusal::NonemptyTree),
-            Kind::Blob => return Err(Refusal::Kind),
+            Kind::Tree => walker.tree_edges(id, body, counts)?,
+            Kind::Blob => {}
         }
     }
+    walker.report.paths = walker.collect_paths()?;
     Ok(walker.report)
 }
 
@@ -191,7 +365,11 @@ struct Seed<'a> {
 }
 
 fn seeds() -> Vec<Seed<'static>> {
-    include_str!("../../data/closed-graph.zframes")
+    parse_frames(include_str!("../../data/closed-graph.zframes"))
+}
+
+fn parse_frames(frames: &'static str) -> Vec<Seed<'static>> {
+    frames
         .lines()
         .map(|line| {
             let mut fields = line.split(' ');
@@ -393,15 +571,15 @@ fn a26_bad_identity_and_malformed_objects_refuse() {
 }
 
 #[test]
-fn a27_nonempty_tree_refuses_instead_of_dropping_entries() {
+fn a27_missing_local_tree_entry_refuses_instead_of_dropping_it() {
     let seeds = seeds();
     let (result, counts) = inspect(
         &seeds,
         "nonempty-commit",
         &["nonempty-commit", "nonempty-tree"],
     );
-    assert_eq!(result, Err(Refusal::NonemptyTree));
-    assert_eq!(counts.attempted, 2);
+    assert_eq!(result, Err(Refusal::Missing));
+    assert_eq!(counts.attempted, 3);
 }
 
 #[test]
@@ -423,3 +601,6 @@ fn a28_exact_graph_caps_accept_complete_input() {
         }
     );
 }
+
+#[path = "tree_cases.rs"]
+mod tree_cases;

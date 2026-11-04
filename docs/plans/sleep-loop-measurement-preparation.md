@@ -75,12 +75,16 @@ gate passed.
 
 ## Verified observation window
 
-On 2026-11-04 at 21:44:10 UTC, the installed reporter and the Claude recorder
-and parser files matched the source at `aebed677`. The Claude hook settings
-registered the recorder. Use that time as the start of the new observation
-window. Earlier records stay outside this comparison.
+The installed reporter and Claude recorder and parser files matched the
+reviewed source. The Claude settings registered the recorder. A synthetic
+attempt and completion sent to the installed hook with isolated state
+produced one paired timing record without the marker. Record the verified
+UTC start privately after these checks. Earlier rows stay outside the
+comparison.
 
-The first seven-day review is due on or after 2026-11-11 at 21:44:10 UTC.
-Report the recorded syntax, timed correlations and unknowns before applying
-the original outcome thresholds. A missing observation gives an unknown
-result.
+To replay the exact first window, import the installed reporter's
+`buildReport` and call `buildReport({ all: true, days: 7 }, { nowMs: end })`.
+Set `end` to the recorded UTC start plus seven days in milliseconds.
+Run the review once that end has passed. Report the observed syntax, timed
+correlations, and unknowns before applying the original outcome thresholds.
+A missing observation gives an unknown result.

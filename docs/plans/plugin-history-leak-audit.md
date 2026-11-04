@@ -292,3 +292,13 @@ does not discover filesystem refs, walk commit or tag targets, verify a
 production pack index or give an atomic snapshot. Production still needs
 bounded source enumeration and object expansion, a trusted snapshot, and
 the original scanner and release controls.
+
+Observed on 2026-11-04 after prediction `9aba4f6`. The missing
+composition failed A15, A16 and A18–A20. The malformed control A17
+already refused. The candidate passed A01–A20 with no ignored or
+filtered cases. A15 verified the exact mixed set without reading the
+shadowed target. A20 recorded two attempts and one verification and
+returned only the fixed missing-object refusal. The locked manifest and
+sealed object seeds stayed byte-identical. This qualifies the fixture's
+direct tag object. Tag targets, peeled records, symbolic-ref chains and
+real inventory completeness still require separate proof.

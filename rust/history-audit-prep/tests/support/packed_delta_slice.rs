@@ -5,7 +5,7 @@ use super::{
 
 const CAP: usize = 64;
 const BASE_OID: &[u8] = b"f2d4cbf581ce33f85796fcf43626bec38582155f";
-const RESULT_OID: &[u8] = b"011042944ca889d57c4afc2c2aa2eafa1b8f6a56";
+pub(super) const RESULT_OID: &[u8] = b"011042944ca889d57c4afc2c2aa2eafa1b8f6a56";
 const BASE_LEN: usize = 32;
 const PROGRAM_LEN: usize = 6;
 
@@ -117,8 +117,7 @@ fn replay_into(
     Ok(written)
 }
 
-#[test]
-fn a10_sealed_delta_replays_to_exact_blob() {
+pub(super) fn verified_fixture_blob(target: &ObjectId) -> Option<usize> {
     let (base, program, expected_base) = fixture();
     let mut output = [0; CAP];
     let len = replay(
@@ -127,13 +126,15 @@ fn a10_sealed_delta_replays_to_exact_blob() {
         &program[..PROGRAM_LEN],
         &mut output,
     )
-    .expect("sealed delta replay");
-    assert_eq!(len, 33);
-    assert_eq!(
-        gix_object::compute_hash(HASH, gix_object::Kind::Blob, &output[..len])
-            .expect("fixture result identity"),
-        ObjectId::from_hex(RESULT_OID).expect("sealed result identity"),
-    );
+    .ok()?;
+    let actual = gix_object::compute_hash(HASH, gix_object::Kind::Blob, &output[..len]).ok()?;
+    (actual == *target).then_some(len)
+}
+
+#[test]
+fn a10_sealed_delta_replays_to_exact_blob() {
+    let target = ObjectId::from_hex(RESULT_OID).expect("sealed result identity");
+    assert_eq!(verified_fixture_blob(&target), Some(33));
 }
 
 fn assert_refused(

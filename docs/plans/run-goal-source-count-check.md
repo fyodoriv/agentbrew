@@ -41,3 +41,11 @@ Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration. Product evidence: issue774 describes
 an independent source comparison finding a missed request after all queries
 ran clean. The existing Served output reference owns this verification step.
+
+## Focused evidence
+
+The unchanged skill/evals failed the three new requirements while the
+existing served-output control passed. The corrected candidate passed the
+same assertions. Test formatting changed only trivia; an AST/token-value
+comparison preserved the assertions. This is a deterministic contract and
+fixture check, not an observed agent or live-dashboard result.

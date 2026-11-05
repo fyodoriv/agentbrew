@@ -54,6 +54,14 @@ Gitleaks sources/git.go lines 299–304 logs the Git child Wait error at debug
 level and discards it. Lines 327–332 skip non-archive binary patches.
 Neither a zero scanner exit nor one merge positive proves completeness.
 
+A network-denied two-commit fixture confirmed the child-exit failure.
+Gitleaks 8.30.1 returned 0 on clean input and 19 on a planted added line.
+After the fixture moved its own loose parent object aside, the same Git
+log options returned 128 from Git while Gitleaks returned 0. The test used
+an isolated Git config, fixed scanner rules and an empty ignore file. This
+proves that Git mode alone can report a false clean on incomplete history.
+Require independent producer completion before accepting any clean result.
+
 Stdin also has a skip hazard. sources/file.go returns success for
 application MIME and fragments input using reads and whitespace. Therefore
 do not feed unframed Git output directly into stdin or infer completeness

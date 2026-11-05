@@ -2589,7 +2589,8 @@
       "expected_output": "During intake the agent maps each part of the pasted spec to code that already exists (sources, scoring, store writes, a scheduled job) and builds only the missing lever with the biggest effect on the stated outcome, here learning from votes across similar items. It measures it offline on the owner's real data read-only (leave-one-out AUC vs the current score), holds out near-duplicates (same title, series parts) so the score is not leaked, files the remaining spec parts as tasks, and runs the full gate in the background.",
       "expectations": [
         "During intake the agent maps each part of the pasted spec to code that already exists (sources, scoring, store writes, a scheduled job) and builds only the missing lever with the biggest effect on the stated outcome, here learning from votes across similar items.",
-        "It measures it offline on the owner's real data read-only (leave-one-out AUC vs the current score), holds out near-duplicates (same title, series parts) so the score is not leaked, files the remaining spec parts as tasks, and runs the full gate in the background."
+        "It measures it offline on the owner's real data read-only (leave-one-out AUC vs the current score), holds out near-duplicates (same title, series parts) so the score is not leaked.",
+        "It files the remaining spec parts as tasks and runs the full gate in the background."
       ]
     },
     {
@@ -2597,8 +2598,20 @@
       "prompt": "/goal ship the review fixes and merge the PR",
       "expected_output": "The agent commits, checks that the commit exists (git log shows the new SHA and git status is clean) and only then merges. It never chains gh pr merge after a git commit in one command, since a commit-msg hook (such as a header length limit) can refuse the commit while the merge still runs and ships the PR without the fixes.",
       "expectations": [
-        "The agent commits, checks that the commit exists (git log shows the new SHA and git status is clean) and only then merges.",
+        "The agent commits and checks that the commit exists (git log shows the new SHA and git status is clean).",
+        "The agent merges only after those commit checks pass.",
         "It never chains gh pr merge after a git commit in one command, since a commit-msg hook (such as a header length limit) can refuse the commit while the merge still runs and ships the PR without the fixes."
+      ]
+    },
+    {
+      "id": 228,
+      "prompt": "/goal implement booking an activity, a Thai massage for a named person on a date, first half of the day. (Mid-goal the user adds: it must find available slots, and check Google Maps and other reviews.)",
+      "expected_output": "The agent treats the mid-goal message as new done-criteria: it reads live slots for the exact date from the booking page (not opening hours), rejects places whose live times miss the window and says so, records review ratings with counts from Google Maps and the booking site, and cites each slot and rating word for word in its goal check lines.",
+      "expectations": [
+        "Adds 'live slots' and 'reviews' as done-criteria after the mid-goal message",
+        "Uses times read from the booking page for the asked date, not opening hours",
+        "Names rejected places and why (no morning slots, phone-only booking, wrong city)",
+        "Quotes the ratings with source and review count"
       ]
     }
   ]

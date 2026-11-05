@@ -1,5 +1,14 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,8 +18,20 @@ import { afterEach, describe, expect, it } from "vitest";
 // failed step is never cached; each run lands in .metrics/gate-timings.jsonl.
 
 const SCRIPT = resolve(import.meta.dirname, "..", "..", "scripts", "verify.sh");
+const INSTALLED_PAYLOAD_CHECK = 'test "$(cat node_modules/fixture-leaf/payload)" = baseline';
+const INSTALLED_COUNT_SCRIPT = `echo run >> "$COUNT_FILE"\n${INSTALLED_PAYLOAD_CHECK}\n`;
 const roots: string[] = [];
-const gitEnv: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+const gitEnv: NodeJS.ProcessEnv = {
+  ...process.env,
+  BASH_ENV: "",
+  ENV: "",
+  NODE_OPTIONS: "",
+  NODE_PATH: "",
+  HOOK_FIXTURES_HOST_ENV: "",
+  HOOK_FIXTURE_BASH: "",
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+};
 // The gate's own NO_CACHE=1 run must not leak into these cache tests.
 delete gitEnv.NO_CACHE;
 
@@ -206,7 +227,6 @@ describe("locked-install cache observation calibration", () => {
 
   describe.runIf(process.env.LOCKED_INSTALL_OBSERVATION === "1")("qualified cache boundary", () => {
     it("N4 records ignored installed-payload drift without blessing stale cache reuse", () => {
-      const command = 'bash count.sh && test "$(cat node_modules/fixture-leaf/payload)" = baseline';
       const template = mkdtempSync(join(tmpdir(), "agentbrew-observation-template-"));
       roots.push(template);
       const childEnv: NodeJS.ProcessEnv = { ...process.env };
@@ -226,7 +246,8 @@ describe("locked-install cache observation calibration", () => {
         GIT_CONFIG_VALUE_0: "/dev/null",
         PATH: [dirname(process.execPath), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(":"),
       });
-      const { repo, run, runs } = scratchRepo(command, childEnv);
+      const { repo, run, runs } = scratchRepo("bash count.sh", childEnv);
+      writeFileSync(join(repo, "count.sh"), INSTALLED_COUNT_SCRIPT);
       writeFileSync(join(repo, ".gitignore"), ".metrics/\nnode_modules/\n");
       const leaf = join(repo, "node_modules", "fixture-leaf");
       mkdirSync(leaf, { recursive: true });
@@ -238,7 +259,7 @@ describe("locked-install cache observation calibration", () => {
       const first = run({ BASH_ENV: "", ENV: "" });
       const firstExecutions = runs();
       writeFileSync(payload, "changed\n");
-      const counterfactual = spawnSync("bash", ["-c", 'test "$(cat node_modules/fixture-leaf/payload)" = baseline'], {
+      const counterfactual = spawnSync("bash", ["-c", INSTALLED_PAYLOAD_CHECK], {
         cwd: repo,
         env: childEnv,
         encoding: "utf8",
@@ -277,5 +298,150 @@ describe("locked-install cache observation calibration", () => {
       console.info(`LOCKED_INSTALL_OBSERVATION ${JSON.stringify(observation)}`);
       expect(decisionComplete, "N4 observation is incomplete; it is not zero unsafe permits").toBe(true);
     });
+  });
+});
+
+describe("installed dependency cache admission", () => {
+  const independent = [
+    "lint-security bash scripts/lint-security.sh",
+    "lint-artifacts bash scripts/lint-repo-artifacts.sh",
+    "hook-fixtures bash scripts/run-hook-fixtures.sh",
+    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md",
+  ];
+
+  function installFixture(repo: string) {
+    writeFileSync(join(repo, ".gitignore"), ".metrics/\nnode_modules/\n");
+    mkdirSync(join(repo, "node_modules", "fixture-leaf"), { recursive: true });
+    const payload = join(repo, "node_modules", "fixture-leaf", "payload");
+    writeFileSync(payload, "baseline\n");
+    return payload;
+  }
+
+  function independentScripts(repo: string) {
+    for (const step of independent) {
+      const [, , script] = step.split(" ");
+      copyFileSync(resolve(dirname(SCRIPT), "..", script), join(repo, script));
+    }
+    mkdirSync(join(repo, "src"));
+    writeFileSync(join(repo, "src", "fixture.ts"), "export {};\n");
+    mkdirSync(join(repo, "hooks", "checks"), { recursive: true });
+    mkdirSync(join(repo, "hooks", "lib"));
+    writeFileSync(join(repo, "hooks", "checks", "fixture.sh"), "true\n");
+    writeFileSync(join(repo, "hooks", "checks", "fixture.test.sh"), "true\n");
+    writeFileSync(join(repo, "TASKS.md"), "# Tasks\n\n## P1\n");
+  }
+
+  function installShim(repo: string, tool: string, external: string): string {
+    const bin = join(repo, "node_modules", ".bin");
+    mkdirSync(bin);
+    writeFileSync(join(bin, tool), `#!/bin/sh\nexec ${external} "$@"\n`, { mode: 0o755 });
+    return `${bin}:${gitEnv.PATH}`;
+  }
+
+  it("retains four actual independent warm hits and executes the changed installed input", () => {
+    const { repo, run, runs } = scratchRepo();
+    const payload = installFixture(repo);
+    independentScripts(repo);
+    writeFileSync(join(repo, "count.sh"), INSTALLED_COUNT_SCRIPT);
+    writeFileSync(join(repo, "plan.txt"), `${independent.join("\n")}\ncount bash count.sh\n`);
+
+    const cold = run();
+    expect(cold.status, cold.stderr).toBe(0);
+    expect(cold.stdout).toContain("Hook fixture tests: all passed");
+    expect(cold.stdout).toContain("tasks-stability: OK");
+    const warm = run();
+    writeFileSync(payload, "changed\n");
+    const drift = run();
+
+    expect(warm.status).toBe(0);
+    for (const step of independent) {
+      const name = step.split(" ")[0];
+      expect(warm.stdout).toContain(`${name}: cached`);
+      expect(drift.stdout).toContain(`${name}: cached`);
+    }
+    expect(warm.stdout).toContain("4 of 5 steps from cache");
+    expect(drift.stdout).not.toContain("count: cached");
+    expect(drift.status).toBe(1);
+    expect(runs()).toBe(3);
+    console.info("LOCKED_INSTALL_N4_WARM independent=4/4 dependency_sensitive=0/1 drift=refused");
+  });
+
+  it("does not trust the name of an independent step with a different command", () => {
+    const { repo, run, runs } = scratchRepo();
+    installFixture(repo);
+    writeFileSync(join(repo, "plan.txt"), "lint-artifacts bash count.sh\n");
+    expect(run().status).toBe(0);
+    const warm = run();
+    expect(warm.status).toBe(0);
+    expect(warm.stdout).not.toContain("lint-artifacts: cached");
+    expect(runs()).toBe(2);
+  });
+
+  it("does not reuse a pass with a dangling installation link", () => {
+    const { repo, run, runs } = scratchRepo();
+    writeFileSync(join(repo, ".gitignore"), ".metrics/\nnode_modules\n");
+    symlinkSync(join(repo, "absent-install"), join(repo, "node_modules"), "dir");
+    expect(run().status).toBe(0);
+    const warm = run();
+    expect(warm.status).toBe(0);
+    expect(warm.stdout).not.toContain("count: cached");
+    expect(runs()).toBe(2);
+  });
+
+  it("does not cache an independent step when an installed shim can launch it", () => {
+    const { repo, run } = scratchRepo();
+    installFixture(repo);
+    independentScripts(repo);
+    writeFileSync(join(repo, "plan.txt"), "lint-security bash scripts/lint-security.sh\n");
+    const path = installShim(repo, "bash", "/bin/bash");
+    expect(run({ PATH: path }).status).toBe(0);
+    const warm = run({ PATH: path });
+    expect(warm.status).toBe(0);
+    expect(warm.stdout).not.toContain("lint-security: cached");
+  });
+
+  it.each([
+    ["hook-fixtures bash scripts/run-hook-fixtures.sh", "env", "Hook fixture tests: all passed"],
+    ["lint-artifacts bash scripts/lint-repo-artifacts.sh", "sort", "Repo artifact lint: no root =... files"],
+  ])("does not cache %s when the installed %s helper is selected", (step, tool, output) => {
+    const { repo, run } = scratchRepo();
+    installFixture(repo);
+    independentScripts(repo);
+    writeFileSync(join(repo, "plan.txt"), `${step}\n`);
+    const path = installShim(repo, tool, `/usr/bin/${tool}`);
+    expect(run({ PATH: path }).stdout).toContain(output);
+    const warm = run({ PATH: path });
+    expect(warm.status, warm.stderr).toBe(0);
+    expect(warm.stdout).toContain(output);
+    expect(warm.stdout).not.toContain(`${step.split(" ")[0]}: cached`);
+  });
+
+  it("does not fall through to the no-install fixture cache with an ambient loader", () => {
+    const { repo, run, runs } = scratchRepo();
+    const loader = join(repo, "loader.sh");
+    writeFileSync(loader, "true\n");
+    expect(run({ BASH_ENV: loader }).status).toBe(0);
+    const warm = run({ BASH_ENV: loader });
+    expect(warm.status).toBe(0);
+    expect(warm.stdout).not.toContain("count: cached");
+    expect(runs()).toBe(2);
+  });
+
+  it.each([true, false])("runs artifact lint after an ignored root file appears (install %s)", (withInstall) => {
+    const { repo, run } = scratchRepo();
+    if (withInstall) installFixture(repo);
+    independentScripts(repo);
+    const ignore = join(repo, ".gitignore");
+    writeFileSync(ignore, `${readFileSync(ignore, "utf8")}=fixture.log\n`);
+    writeFileSync(join(repo, "plan.txt"), "lint-artifacts bash scripts/lint-repo-artifacts.sh\n");
+    expect(run().status).toBe(0);
+    expect(run().stdout).toContain("lint-artifacts: cached");
+
+    writeFileSync(join(repo, "=fixture.log"), "fixture only\n");
+    execFileSync("git", ["check-ignore", "--quiet", "--", "=fixture.log"], { cwd: repo, env: gitEnv });
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stdout).not.toContain("lint-artifacts: cached");
+    expect(result.stderr).toContain("=fixture.log");
   });
 });

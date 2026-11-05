@@ -5,9 +5,9 @@
 #
 # Cache key: a hash of every tracked and untracked (not ignored) file's path
 # and content, the node version, the step command, and origin/main's commit.
-# So any edit to any file the repo holds re-runs every step. Files outside the
-# repo (a Minsky checkout for lint:rules, ~/.config) are not in the key; run
-# NO_CACHE=1 npm run verify after changing them. NO_CACHE=1 always runs all.
+# With a local installation, only steps independent of its contents use this
+# cache. Other steps run fresh because this key has no installation receipt.
+# Files outside the repo are not in the key. NO_CACHE=1 always runs all steps.
 # A step named in step_inputs is keyed on its listed paths only (plus the node
 # version and its command), so it stays cached while other files change.
 #
@@ -61,6 +61,61 @@ step_inputs() {
   esac
 }
 
+# Only these exact commands use source without the checkout's installed packages.
+source_only_step() {
+  local tools resolver tool path actual
+  case "$*" in
+    "hook-fixtures bash scripts/run-hook-fixtures.sh")
+      [ "${HOOK_FIXTURES_HOST_ENV:-0}" != 1 ] && [ -z "${HOOK_FIXTURE_BASH:-}" ] || return 1
+      tools="mktemp ln jq env rm"
+      ;;
+    "lint-security bash scripts/lint-security.sh") tools="grep sed" ;;
+    "lint-artifacts bash scripts/lint-repo-artifacts.sh")
+      local artifact
+      artifact="$(/usr/bin/find . -maxdepth 1 -type f -name '=*' -print -quit)" || return 1
+      [ -z "$artifact" ] || return 1
+      tools="basename sed"
+      ;;
+    "lint-tasks node scripts/lint-tasks-stability.mjs TASKS.md") tools="" ;;
+    *) return 2 ;;
+  esac
+
+  resolver=/bin/realpath
+  [ -x "$resolver" ] || resolver=/usr/bin/realpath
+  [ -x "$resolver" ] || return 1
+  actual="$(cd -P node_modules 2>/dev/null && pwd -P)" || actual="$PWD/node_modules"
+  path="$("$resolver" "$3")" || return 1
+  case "$path" in
+    "$actual/"* | "$PWD/node_modules/"*) return 1 ;;
+    "$PWD/"*) ;;
+    *) return 1 ;;
+  esac
+  # shellcheck disable=SC2086 # This list contains fixed tool names.
+  for tool in bash git node sort paste mkdir find $tools; do
+    [ "$(type -t "$tool")" = file ] || return 1
+    path="$(command -v "$tool")" || return 1
+    case "$path" in
+      "$PWD/node_modules/"* | node_modules/* | ./node_modules/*) return 1 ;;
+    esac
+    path="$("$resolver" "$path")" || return 1
+    case "$path" in
+      "$actual/"* | "$PWD/node_modules/"*) return 1 ;;
+    esac
+  done
+}
+
+cache_scope() {
+  local qualification=0
+  [ -z "${BASH_ENV:-}${ENV:-}${NODE_OPTIONS:-}${NODE_PATH:-}" ] || return 0
+  source_only_step "$@" || qualification=$?
+  if [ "$qualification" = 0 ]; then
+    printf '%s\n' source-only
+  elif [ "$qualification" = 2 ] && [ -n "${VERIFY_PLAN:-}" ] && [ ! -e node_modules ] && [ ! -L node_modules ]; then
+    # Keep the no-install cache for the explicit synthetic plan port only.
+    printf '%s\n' fixture-no-local-install
+  fi
+}
+
 inputs="$(input_hash)"
 gate_start="$(now_ms)"
 steps=0
@@ -80,12 +135,15 @@ step() {
   local name="$1"
   shift
   steps=$((steps + 1))
-  local key base="$inputs" paths
-  paths="$(step_inputs "$name")"
-  # shellcheck disable=SC2086 # the path list splits on spaces by design
-  [ -z "$paths" ] || base="$(input_hash $paths)"
-  key="$(printf '%s\n%s\n' "$base" "$*" | git hash-object --stdin)"
-  if [ "${NO_CACHE:-0}" != 1 ] && [ -f "$cache_dir/$name/$key" ]; then
+  local scope key="" base="$inputs" paths
+  scope="$(cache_scope "$name" "$@")"
+  if [ -n "$scope" ]; then
+    paths="$(step_inputs "$name")"
+    # shellcheck disable=SC2086 # the path list splits on spaces by design
+    [ -z "$paths" ] || base="$(input_hash $paths)"
+    key="$(printf 'cache-v2\n%s\n%s\n%s\n' "$scope" "$base" "$*" | git hash-object --stdin)"
+  fi
+  if [ -n "$key" ] && [ "${NO_CACHE:-0}" != 1 ] && [ -f "$cache_dir/$name/$key" ]; then
     cached_steps=$((cached_steps + 1))
     touch "$cache_dir/$name/$key"
     echo "--- $name: cached (inputs unchanged since it passed)"
@@ -103,12 +161,14 @@ step() {
   [ "$rc" = 0 ] || ok=false
   printf '{"ts":"%s","event":"step","step":"%s","ms":%s,"ok":%s,"cached":false}\n' "$(ts)" "$name" "$ms" "$ok" >>"$timings"
   if [ "$rc" != 0 ]; then
-    rm -f "$cache_dir/$name/$key"
+    [ -z "$key" ] || rm -f "$cache_dir/$name/$key"
     echo "--- $name: FAILED in ${ms} ms (rc=$rc)"
     finish false
     exit "$rc"
   fi
-  mkdir -p "$cache_dir/$name" && : >"$cache_dir/$name/$key"
+  if [ -n "$key" ] && [ "$(cache_scope "$name" "$@")" = "$scope" ]; then
+    mkdir -p "$cache_dir/$name" && : >"$cache_dir/$name/$key"
+  fi
   echo "--- $name: ok in ${ms} ms"
 }
 

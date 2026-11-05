@@ -47,7 +47,8 @@ export default defineConfig({
     if (process.platform === "darwin" && process.arch === "arm64") {
       const nativeDir = join(outDir, "native/darwin-arm64");
       mkdirSync(nativeDir, { recursive: true });
-      copyFileSync("rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run", `${nativeDir}/checkup-run`);
+      if (!stageOutput) throw new Error("Native source builds require the verified staging entry: npm run build");
+      copyFileSync(join(dirname(stageOutput), ".native", "checkup-run"), `${nativeDir}/checkup-run`);
     }
     copyFileSync("src/catalog.yaml", join(outDir, "catalog.yaml"));
     // catalog-overlay.yaml was extracted to the agentbrew-acme team overlay

@@ -29,7 +29,7 @@ Run every command from the repo root.
 | Full gate (shared source-only cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
-| Build | `npm run build` |
+| Build | `npm run build` ([native receipts](docs/plans/source-build-prebuilt-764.md)) |
 | Metrics with goal and pivot | `bash scripts/metrics.sh` |
 
 ## Where to change what

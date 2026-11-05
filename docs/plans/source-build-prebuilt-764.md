@@ -167,15 +167,30 @@ prediction, not success or permission to weaken a control.
 
 ## Mutable source-build receipt lifecycle
 
-The successful source-build receipt is Cargo-target-directory scoped, under
-`rust/checkup-run/target/aarch64-apple-darwin/release/manifest.json`. A source
-compilation snapshots the fixed inputs before invoking Cargo and refuses to
-record a different source afterward. A successful compilation replaces the
-receipt atomically without following a previous receipt symlink. Input or
-artifact mismatch invalidates it; cleaning the target directory deletes it.
-A failed compile never selects the prebuilt route or replaces the installed
-CLI. Verified executable byte buffers and their private stage belong to one
-build invocation and use the existing stage cleanup owner.
+The source-artifact store and successful receipt are Cargo-target-directory
+scoped, under `rust/checkup-run/target/aarch64-apple-darwin/release`. Every
+source compilation uses a verified copy of the fixed Rust inputs and a new
+private Cargo target. It never seeds that target from mutable cached outputs.
+The real source root must still match the frozen inputs before publication.
+
+Read the produced fixed pair once into bounded buffers. Validate the pair,
+stage it with the source receipt privately, then rename the two cache files
+and receipt last. Source-store parents and artifact outputs reject ambiguous
+links/types before compilation and again before publication. A previous
+receipt symlink can be replaced by rename without following its target.
+
+This store is a nontransactional cache, not the installed CLI transaction.
+Compiler or staging failure preserves an existing valid cache before any
+publication. A partial cache publication can make it unusable; mixed bytes
+fail receipt hashes before preparation or execution. Input or artifact
+mismatch also invalidates it. Cleaning the target directory deletes it.
+The installed CLI still uses the existing Rust atomic publisher.
+
+Private source copies, compiler targets, pending files and verified stage
+buffers belong to one build invocation. Normal success/failure removes only
+its owned private directories. A changed directory identity is retained with
+a warning. A failed compiler never selects the prebuilt route or replaces
+the installed CLI.
 
 A source archive with no root `.git` entry records `sourceRevision: null`
 for the local source-build recipe only. It still binds every source input
@@ -274,3 +289,10 @@ oracle while the final-copy recovery case passes. Any admitted publisher,
 incorrect stored payload or mismatched receipt rejects the fix. Also pin
 source-store parent/artifact link preservation and mixed-cache refusal; these
 are fail-closed store controls, not installed-output transaction claims.
+
+The candidate's separately reported byte identity matched the original recorder
+in both variants. Keep the original digest-equality assertion in addition to
+all functional producer and receipt checks. Its expected bytes were fixed by
+the first actual compilation before cache substitution; no replacement hash
+or compiler flag is introduced. Preserve the earlier failing byte-oracle
+baseline and passing final-copy recovery evidence.

@@ -16,6 +16,9 @@ const BUILD_INPUTS = [
   "rust/checkup-run",
   "scripts/build-checkup-run.sh",
   "scripts/build-source.sh",
+  "scripts/native-build-tools.mjs",
+  "scripts/build-native-prebuilt.mjs",
+  "native/checkup-run",
 ];
 
 export const BUILD_INFO_FILE = "build-info.json";

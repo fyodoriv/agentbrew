@@ -37,7 +37,7 @@ bash <DIR>/scripts/install.sh plan
 
 Show the person the output in your own short words:
 
-- what they need (Node.js 20.11+, git, about 5 minutes, network. On Apple Silicon, a source install also needs Rust 1.97 or later),
+- what they need (Node.js 20.11+, git, about 5 minutes, network. On Apple Silicon, source installs need the matching checked-in native pair or an existing Rust toolchain),
 - what will change (agent settings, skills, rules, a background job, a shell
   hook),
 - what changes in Claude Code: the hook count, the `/goal` behaviour (edits
@@ -107,6 +107,16 @@ offer to open an issue with the output.
 On Apple silicon Macs, source builds validate a staged CLI and native helper
 before replacing the checkout’s `dist/` directory in one operation. If the
 build fails before that replacement, the prior build remains available.
+With Cargo, each source build compiles a verified private snapshot in a fresh
+temporary target. It does not trust existing compiled outputs as source proof.
+When Cargo is unavailable, the build verifies the checked-in Darwin arm64
+pair against its source, lock, builder recipe and artifact digests. It uses
+the same native publisher and recorder without downloading or installing a
+toolchain. Missing, modified or stale helpers refuse before publication.
+An installed compiler failure still fails the build; it does not select the
+prebuilt route. Cargo installed through Rustup or Homebrew can be found even
+when its directory is absent from PATH. See the
+[registered source-build boundary](docs/plans/source-build-prebuilt-764.md).
 
 ## 5. Finish
 

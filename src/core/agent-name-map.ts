@@ -107,9 +107,8 @@ export function toSkillsCliAgent(agentbrewName: string): string | null {
  *
  * Two modes:
  *   - `"all"` — emits the wildcard form `["--agent", "*"]`. This preserves
- *     the historical {@link delegateRemoteSkill} behaviour where every
- *     detected agent gets the skill. No carve-outs are reported because the
- *     wildcard is opaque to the dispatcher.
+ *     the delegate’s own target selection. No carve-outs are reported because
+ *     the wildcard is opaque to the dispatcher.
  *   - `string[]` — emits one `--agent <name>` pair per supported agent in
  *     the input. The rename pairs (`copilot` → `github-copilot`,
  *     `kiro` → `kiro-cli`, `roo-code` → `roo`) translate on the boundary so

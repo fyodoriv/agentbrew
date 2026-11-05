@@ -110,7 +110,7 @@ describe("toAiRulesAgent", () => {
   });
 
   it("passes through intersection agents unchanged", () => {
-    expect(toAiRulesAgent("cursor")).toBe("cursor");
+    expect(toAiRulesAgent("amp")).toBe("amp");
     expect(toAiRulesAgent("codex")).toBe("codex");
   });
 
@@ -146,7 +146,7 @@ describe("fromAiRulesAgent", () => {
   });
 
   it("passes through unchanged for intersection agents", () => {
-    expect(fromAiRulesAgent("cursor")).toBe("cursor");
+    expect(fromAiRulesAgent("amp")).toBe("amp");
     expect(fromAiRulesAgent("codex")).toBe("codex");
     expect(fromAiRulesAgent("amp")).toBe("amp");
   });
@@ -166,7 +166,7 @@ describe("roundtrip invariants", () => {
   });
 
   it("roundtrip for intersection agents is identity", () => {
-    const intersection = ["cursor", "codex", "amp", "cline", "copilot", "firebender", "goose"];
+    const intersection = ["codex", "amp", "cline", "copilot", "firebender", "goose"];
     for (const name of intersection) {
       const forward = toAiRulesAgent(name);
       expect(forward).toBe(name);
@@ -187,8 +187,8 @@ describe("buildAiRulesAgentList", () => {
 
   describe("rename-not-required path (intersection agents)", () => {
     it("emits one agent name per intersection agent, names unchanged", () => {
-      expect(buildAiRulesAgentList(["cursor", "codex"])).toEqual({
-        agents: ["cursor", "codex"],
+      expect(buildAiRulesAgentList(["amp", "codex"])).toEqual({
+        agents: ["amp", "codex"],
         carveOuts: [],
       });
     });
@@ -242,7 +242,6 @@ describe("buildAiRulesAgentList", () => {
       expect(
         buildAiRulesAgentList([
           "claude-code", // rename
-          "cursor", // intersection
           "augment", // carve-out
           "codex", // intersection
           "gemini-cli", // rename
@@ -255,19 +254,7 @@ describe("buildAiRulesAgentList", () => {
           "roo-code", // rename + free gain
         ]),
       ).toEqual({
-        agents: [
-          "claude",
-          "cursor",
-          "codex",
-          "gemini",
-          "amp",
-          "cline",
-          "copilot",
-          "firebender",
-          "goose",
-          "kilocode",
-          "roo",
-        ],
+        agents: ["claude", "codex", "gemini", "amp", "cline", "copilot", "firebender", "goose", "kilocode", "roo"],
         carveOuts: ["augment"],
       });
     });
@@ -291,7 +278,6 @@ describe("coverage invariant — every rules-capable agent in agents.yaml is cla
       "cline",
       "codex",
       "copilot",
-      "cursor",
       "firebender",
       "gemini",
       "goose",

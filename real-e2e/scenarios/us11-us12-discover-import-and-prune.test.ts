@@ -16,7 +16,7 @@ describe("us11/us12 discover, import, and prune", () => {
       const homeDir = join(rootDir, "home");
       const agentsModule = pathToFileURL(join(repoRoot, "src", "agents.ts")).href;
       const stateModule = pathToFileURL(join(repoRoot, "src", "state.ts")).href;
-      // Post-slice-4a (PR #845): cursor is intersection-delegated and
+      // Post-slice-4a (PR #845): claude-code is intersection-delegated and
       // its config file isn't read by native discover/import/prune.
       // The discover/import/prune feature is exercised via a carve-out
       // client (`kiro`) — the fixture's user-manual entry was moved to

@@ -27,7 +27,7 @@ describe("us10 data safety — authoritative agentfile sync preserves personal c
       const homeDir = join(rootDir, "home");
       const sharedAgentfilePath = join(rootDir, "shared-agentfile", "Agentfile.yaml");
       const augmentRulesPath = join(homeDir, ".augment", "guidelines.md");
-      // Post-slice-4a (PR #845): cursor is intersection-delegated, so
+      // Post-slice-4a (PR #845): claude-code is intersection-delegated, so
       // the data-safety invariant (Agentfile-driven MCP add doesn't
       // clobber personal config) is exercised against the carve-out
       // client `kiro` whose `~/.kiro/settings/mcp.json` still flows

@@ -92,12 +92,9 @@ describe("us02/us03 install mcp and skill", () => {
       expect(stateYaml).toContain("context7");
       expect(stateYaml).toContain("label: installed-skills");
 
-      // Post-slice-4a (PR #845) of `delegate-mcp-to-mcpm`: cursor and
-      // claude-code are in the 9-agent mcpm intersection, so native
-      // sync NO LONGER writes their MCP config files —
-      // `mcpm client edit <client>` (slice 3b) is the path now. This
+      // Claude Code delegates MCP config writes to `mcpm client edit`. This
       // test points AGENTBREW_MCPM_BIN at a missing binary, so the subprocess
-      // call soft-skips and `.cursor/mcp.json` / `.claude.json` stay
+      // call soft-skips and `.claude.json` stays
       // unwritten. Carve-out clients (kiro, amp, etc.) would
       // still get native writes — those are exercised by the unit
       // tests in `src/sync/mcp-sync.test.ts § slice 4a`.

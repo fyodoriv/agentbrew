@@ -278,29 +278,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **ChatGPT and Claude Desktop context files are no longer empty.**
-  `context/chatgpt.md` and `context/claude-desktop.md` took their body from the
-  "Auto-Synced Cursor Rules" section, which the Cursor removal (#286) deleted.
+  `context/chatgpt.md` and `context/claude-desktop.md` previously read a section that was removed in #286.
   They now carry the whole deployed instructions template.
 
 ### Removed
 
-- **Cursor and Grok support** (#286). Cursor and Grok support was removed on
-  purpose on 2026-10-19. This first step removes the Cursor token tooling: the
-  `cursor-token-playbook` skill, the Cursor `.mdc` inventory in
-  `measure context`, the tokscale Cursor usage probe, the Cursor context-ring
-  field, and the "Auto-Synced Cursor Rules" strip step.
-  The second step removes the `cursor` agent: its `agents.yaml` entry, the
-  Cursor hooks format, the `cursor` command transform, the Cursor MCP GUI
-  wrapping, and Cursor in the delegation maps, primary agent lists, project
-  detection, the shell hook, hook-manifest targets, and installer backups.
-  agentbrew no longer writes under `~/.cursor`. Files it wrote there before
-  stay; delete them by hand if you no longer want them.
-  The last step updates the docs and skills, regenerates the README agent
-  matrix, adds the author's note to `AGENTS.md` and the README "Supported
-  agents" section, and adds `src/core/removed-agents.test.ts`, which fails if
-  a Cursor, Grok, or xAI agent, a `~/.cursor` write path, or a Cursor-only
-  script or LaunchAgent comes back. The `agentbrew-add-command` skill no
-  longer documents the Cursor-only `<!-- turbo -->` annotation.
+- **Retired agent support** (#286). See the [retirement note](README.md#supported-agents).
 
 ### Security
 
@@ -361,7 +344,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (shared with dotfiles). New `plugin trust` / `--revoke` and
   `plugin rollback`. The lock records the signer; a revoked signer fails sync.
 
-- **One-step install with your agent** — tell Claude Code (or Cursor, Codex)
+- **One-step install with your agent** — tell Claude Code (or Codex)
   "Install agentbrew by following …/INSTALL.md". `scripts/install.sh` explains
   the plan, takes the answers as flags, backs up your agent settings, builds,
   runs `init`, heals with `status --fix`, verifies with `lint`, and restores
@@ -445,7 +428,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   validation hook now reads multi-line heredoc bodies too; before, it let
   them through unchecked.
 - **Tests no longer file fake MCP tasks** — one heal-cycle test let the
-  real follow-up writer add a `bad` on `cursor` P0 task to `TASKS.md`. The
+  real follow-up writer add a fake MCP P0 task to `TASKS.md`. The
   test now stubs the writer, and a vitest setup file fails any test file that
   changes `TASKS.md`.
 - **A plain `sync` no longer overrides the Agentfile** — it installed the
@@ -606,8 +589,7 @@ earlier are deprecated; upgrade with `npm install -g agentbrew@latest`.
   daemon LaunchAgent PATH now holds only the uvx directory and system
   directories. Before, it copied the caller's Node directory and
   `DOTFILES_DIR`, so running agentbrew from another shell rewrote the plist
-  and restarted the daemon. Cursor then marked `memory` as failed and did not
-  reconnect.
+  and restarted the daemon, which interrupted memory connections.
 - **Chezmoi worktree LaunchAgent repair** — resolve Dotfiles from
   `DOTFILES_DIR` or its managed environment file before guessing a checkout,
   and accept Dotfiles' secure shim-first prefix so `agentbrew fix` does not
@@ -725,8 +707,7 @@ earlier are deprecated; upgrade with `npm install -g agentbrew@latest`.
 - **BREAKING:** Legacy `.agentbrew.yaml` per-project format and `agentbrew mcp
   project` subcommand family (`init`, `sync`, `status`) removed. Per-project
   MCP servers now flow through the standard `Agentfile.yaml` `mcp:` block at
-  the repo root — same target paths (`.cursor/mcp.json`, `.mcp.json`,
-  `.windsurf/mcp.json`) via `applyAgentfile()`, one declarative format.
+  the repo root via `applyAgentfile()`, with one declarative format.
   Existing `.agentbrew.yaml` files in cwd print a one-time deprecation hint
   and are otherwise ignored. Migration: rename to `Agentfile.yaml` (or merge
   the `mcpServers:` block into your existing Agentfile's `mcp:` block) — same
@@ -846,7 +827,7 @@ earlier are deprecated; upgrade with `npm install -g agentbrew@latest`.
 - Internal docs, skill plugins, and references (open-source readiness)
 
 ### Added
-- Catalog → mcpm bridge for the MCPM intersection clients (cursor, claude-code,
+- Catalog → mcpm bridge for the MCPM intersection clients (claude-code,
   codex, claude-desktop, cline, windsurf, gemini-cli, goose, roo-code).
   `agentbrew install <name>` from the catalog now runs `mcpm install` +
   `mcpm client edit --add-server` per intersection client, so users see
@@ -862,7 +843,7 @@ earlier are deprecated; upgrade with `npm install -g agentbrew@latest`.
 - Sync → mcpm bridge for state-driven additions in the same MCPM intersection
   client set. `agentbrew sync` now bridges every server in
   `state.mcpServers` to mcpm via `mcpm install` + `mcpm client edit`
-  whenever the intersection clients (cursor, claude-code, codex, etc.)
+  whenever the intersection clients (claude-code, codex, etc.)
   are detected. Closes the regression where a hand-edit to
   `state.yaml` or an `Agentfile.yaml mcp:` import landed in agentbrew
   state but never reached the actual client config files. The bridge

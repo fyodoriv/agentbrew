@@ -42,7 +42,7 @@ describe("agent count claims guard", () => {
 
   it("flags agentbrew possessive inventory without scanning competitor-only agent counts", () => {
     const competitionRow = [
-      "| syncode | donnes | CLI | 17 agents (Cursor, Codex). Tier 1 — overlaps agentbrew's 50+. | Done | Keep separate |",
+      "| syncode | donnes | CLI | 17 agents (OpenCode, Codex). Tier 1 — overlaps agentbrew's 50+. | Done | Keep separate |",
     ].join("\n");
     expect(findAgentCountClaims(competitionRow, "docs/COMPETITION.md").some((v) => v.includes("50+"))).toBe(true);
     expect(findAgentCountClaims(competitionRow, "docs/COMPETITION.md").some((v) => v.includes("17 agents"))).toBe(

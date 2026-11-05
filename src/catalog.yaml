@@ -1490,7 +1490,7 @@ mcp_servers:
   # ── Recommended ─────────────────────────────────────────────────
 
   - name: context7
-    description: "Live library/framework docs via @upstash/context7-mcp — works without an API key up to the free monthly quota; a free key from context7.com/dashboard raises it. Deploys to every MCP-capable agent through agentbrew sync, not only Cursor marketplace."
+    description: "Live library/framework docs via @upstash/context7-mcp — works without an API key up to the free monthly quota; a free key from context7.com/dashboard raises it. Deploys to every MCP-capable agent through agentbrew sync."
     command: npx
     args: ["-y", "@upstash/context7-mcp@latest"]
     category: docs
@@ -1599,7 +1599,7 @@ mcp_servers:
     command: npx
     # `--isolated` gives each MCP session an in-memory profile. Without it,
     # Playwright MCP keys its profile dir by workspace hash, so two agents
-    # (Claude Code, Cursor, Codex) opening Playwright in the same
+    # (Claude Code and Codex) opening Playwright in the same
     # repo collide on the persistent profile lock — the second client errors
     # with `Browser is already in use for mcp-chrome-<hash>` (GH playwright
     # #40419, playwright-mcp #1594). Isolated mode is the upstream-recommended
@@ -2175,7 +2175,7 @@ rules:
     description: "Require a tool-neutral attribution footer on every agent-authored prose posted under the user's account"
     category: collaboration
     recommended: true
-    rationale: "Readers shouldn't have to guess whether a human or an agent wrote a Slack message, PR comment, commit, or Jira ticket posted under the user's name. A small tool-neutral footer disambiguates up-front without binding the user's identity to whichever specific agent happened to run the command (Devin, Windsurf, Claude, Cursor, etc.)."
+    rationale: "Readers shouldn't have to guess whether a human or an agent wrote a Slack message, PR comment, commit, or Jira ticket posted under the user's name. A small tool-neutral footer disambiguates up-front without binding the user's identity to whichever specific agent happened to run the command (Devin, Windsurf, Claude, etc.)."
     content: |
       Agent-authored public prose under the user's account ends with:
           ---

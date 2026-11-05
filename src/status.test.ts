@@ -122,7 +122,7 @@ describe("status", () => {
     mockLoadState.mockReturnValue({
       agents: [
         { name: "claude-code", detected: true, skillsDir: "x" },
-        { name: "cursor", detected: false, skillsDir: "y" },
+        { name: "amp", detected: false, skillsDir: "y" },
       ],
       sources: [
         { url: "user/repo", type: "github", skillsInstalled: ["a"], availableItems: [], addedAt: "2026-01-01" },
@@ -169,7 +169,7 @@ describe("status", () => {
 
   it("shows unresolved MCP health failures from the auto-heal snapshot", async () => {
     mockLoadState.mockReturnValue({
-      agents: [{ name: "cursor", detected: true, skillsDir: "x" }],
+      agents: [{ name: "amp", detected: true, skillsDir: "x" }],
       sources: [],
       mcpServers: [{ name: "github", command: "npx", args: [], env: {}, source: "catalog" }],
       catalogVersion: "0.1.0",
@@ -179,7 +179,7 @@ describe("status", () => {
       servers: [
         {
           name: "github",
-          agent: "cursor",
+          agent: "amp",
           status: "smoke_call_failed",
           lastCheckedAt: new Date().toISOString(),
           lastError: "401 Unauthorized",
@@ -193,7 +193,7 @@ describe("status", () => {
     const calls = (console.log as ReturnType<typeof vi.fn>).mock.calls.flat().join(" ");
     expect(calls).toContain("MCP Health");
     expect(calls).toContain("1 failing");
-    expect(calls).toContain("github/cursor");
+    expect(calls).toContain("github/amp");
     expect(calls).toContain("unhealthy for");
   });
 
@@ -644,7 +644,7 @@ describe("status --json", () => {
     mockLoadState.mockReturnValue({
       agents: [
         { name: "claude-code", detected: true, skillsDir: "x" },
-        { name: "cursor", detected: false, skillsDir: "y" },
+        { name: "amp", detected: false, skillsDir: "y" },
       ],
       sources: [
         {

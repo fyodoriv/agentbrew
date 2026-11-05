@@ -41,8 +41,8 @@ describe("SyncError", () => {
   });
 
   it("includes agent when provided", () => {
-    const error = new SyncError("mcp-sync", "write failed", { agent: "cursor" });
-    expect(error.agent).toBe("cursor");
+    const error = new SyncError("mcp-sync", "write failed", { agent: "amp" });
+    expect(error.agent).toBe("amp");
   });
 
   it("preserves cause", () => {
@@ -64,11 +64,11 @@ describe("ConfigError", () => {
 
 describe("AdapterError", () => {
   it("includes agent and format in message", () => {
-    const error = new AdapterError("cursor", "json", "invalid JSON");
+    const error = new AdapterError("amp", "json", "invalid JSON");
     expect(error.code).toBe("ADAPTER_ERROR");
-    expect(error.agent).toBe("cursor");
+    expect(error.agent).toBe("amp");
     expect(error.format).toBe("json");
-    expect(error.message).toContain("[cursor/json]");
+    expect(error.message).toContain("[amp/json]");
   });
 });
 
@@ -138,7 +138,7 @@ describe("sync error persistence", () => {
 
   it("saveSyncErrors persists errors and loadSyncErrors reads them back", () => {
     const collector = new SyncErrorCollector();
-    collector.add(new SyncError("mcp", "write failed", { agent: "cursor" }));
+    collector.add(new SyncError("mcp", "write failed", { agent: "amp" }));
     collector.add(new ConfigError("/path/state.yaml", "parse error"));
 
     saveSyncErrors(collector);
@@ -150,7 +150,7 @@ describe("sync error persistence", () => {
     expect(log!.errors[0].code).toBe("SYNC_ERROR");
     expect(log!.errors[0].message).toContain("mcp");
     expect(log!.errors[0].module).toBe("mcp");
-    expect(log!.errors[0].agent).toBe("cursor");
+    expect(log!.errors[0].agent).toBe("amp");
     expect(log!.errors[1].code).toBe("CONFIG_ERROR");
   });
 

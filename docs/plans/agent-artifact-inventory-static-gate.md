@@ -45,7 +45,7 @@ This belongs in agentbrew because it is multi-surface glue across commands, hook
 - Does not implement Promptfoo evals; that is `agent-command-behavioral-evals-promptfoo`.
 - Does not add real-e2e sync/render scenarios; that is `agent-artifact-sync-render-e2e`.
 - Does not add the PR guard hook; that is `agent-artifact-pr-test-guard`.
-- Does not inspect generated files under `~/.claude`, `~/.cursor`, `~/.config/devin`, or other agent output directories.
+- Does not inspect generated files under `~/.claude`, `~/.config/devin`, or other agent output directories.
 - Does not add new runtime CLI commands unless implementation shows an existing test runner cannot consume the inventory directly.
 
 ## Implementation steps

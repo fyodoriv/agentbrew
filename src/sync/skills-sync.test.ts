@@ -30,7 +30,7 @@ const MOCKED_VENDOR_NEUTRAL_SKILLS_DIR = vi.hoisted(() => {
 vi.mock("../types.js", () => ({
   AGENT_DEFINITIONS: [
     { name: "claude-code", skillsDir: "PLACEHOLDER_CLAUDE" },
-    { name: "cursor", skillsDir: "PLACEHOLDER_CURSOR" },
+    { name: "amp", skillsDir: "PLACEHOLDER_AMP" },
   ],
   VENDOR_NEUTRAL_SKILLS_DIR: MOCKED_VENDOR_NEUTRAL_SKILLS_DIR,
   DEFAULT_SUPPORTED_SKILL_FEATURES: ["allowed-tools"] as const,
@@ -65,7 +65,7 @@ afterAll(() => {
 
 let testDir: string;
 let claudeSkillsDir: string;
-let cursorSkillsDir: string;
+let ampSkillsDir: string;
 let tasksmdDir: string;
 let _agentBrewSkillsDir: string;
 let minskySkillsDir: string;
@@ -79,7 +79,7 @@ beforeEach(() => {
   // Create a unique temp directory for each test
   testDir = join(tmpdir(), `skills-sync-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   claudeSkillsDir = join(testDir, "claude", "skills");
-  cursorSkillsDir = join(testDir, "cursor", "skills");
+  ampSkillsDir = join(testDir, "amp", "skills");
   _vendorNeutralDir = join(testDir, ".agents", "skills");
   tasksmdDir = join(testDir, "tasks-md");
   _agentBrewSkillsDir = join(testDir, "agentbrew-skills");
@@ -87,12 +87,12 @@ beforeEach(() => {
 
   // Create agent parent dirs (so agents are "detected")
   mkdirSync(join(testDir, "claude"), { recursive: true });
-  mkdirSync(join(testDir, "cursor"), { recursive: true });
+  mkdirSync(join(testDir, "amp"), { recursive: true });
 
   // Update AGENT_DEFINITIONS to point to test dirs
   const defs = AGENT_DEFINITIONS as Array<{ name: string; skillsDir: string }>;
   defs[0].skillsDir = claudeSkillsDir;
-  defs[1].skillsDir = cursorSkillsDir;
+  defs[1].skillsDir = ampSkillsDir;
 
   // Set agentbrew dir for built-in source
   process.env.AGENTBREW_DIR = join(testDir, "agentbrew-repo");
@@ -144,8 +144,8 @@ describe("syncSkills", () => {
     // Verify symlinks exist in agent dirs
     expect(existsSync(join(claudeSkillsDir, "debug"))).toBe(true);
     expect(existsSync(join(claudeSkillsDir, "commit"))).toBe(true);
-    expect(existsSync(join(cursorSkillsDir, "debug"))).toBe(true);
-    expect(existsSync(join(cursorSkillsDir, "commit"))).toBe(true);
+    expect(existsSync(join(ampSkillsDir, "debug"))).toBe(true);
+    expect(existsSync(join(ampSkillsDir, "commit"))).toBe(true);
 
     // Verify they are symlinks
     expect(lstatSync(join(claudeSkillsDir, "debug")).isSymbolicLink()).toBe(true);
@@ -244,7 +244,7 @@ describe("syncSkills", () => {
     // Make agent dirs non-existent
     const defs = AGENT_DEFINITIONS as Array<{ name: string; skillsDir: string }>;
     defs[0].skillsDir = join(testDir, "nonexistent", "claude", "skills");
-    defs[1].skillsDir = join(testDir, "nonexistent", "cursor", "skills");
+    defs[1].skillsDir = join(testDir, "nonexistent", "amp", "skills");
 
     const result = await syncSkills({ quiet: true });
 
@@ -603,14 +603,14 @@ describe("syncSkills", () => {
   });
 
   it("skips hooks-using skills on agents that don't support hooks (integration)", async () => {
-    // AGENT_DEFINITIONS mock has claude-code (supports hooks) and cursor (no hooks).
+    // AGENT_DEFINITIONS mock has claude-code (supports hooks) and amp (no hooks).
     const defs = AGENT_DEFINITIONS as Array<{ name: string; skillsDir: string; supportedSkillFeatures?: string[] }>;
     defs[0].supportedSkillFeatures = ["allowed-tools", "context-fork", "hooks"];
     defs[1].supportedSkillFeatures = ["allowed-tools"];
 
     // Basic skill (no features)
     createSkill(minskySkillsDir, "debug");
-    // Hooks-using skill — should skip cursor
+    // Hooks-using skill — should skip amp
     createSkillWithFrontmatter(
       minskySkillsDir,
       "stop-guard",
@@ -623,13 +623,13 @@ describe("syncSkills", () => {
     // claude-code gets both
     expect(existsSync(join(claudeSkillsDir, "debug"))).toBe(true);
     expect(existsSync(join(claudeSkillsDir, "stop-guard"))).toBe(true);
-    // cursor gets only the basic skill
-    expect(existsSync(join(cursorSkillsDir, "debug"))).toBe(true);
-    expect(existsSync(join(cursorSkillsDir, "stop-guard"))).toBe(false);
-    // Skipped report names cursor with the stop-guard entry
-    expect(result.skipped.cursor).toBeDefined();
-    expect(result.skipped.cursor?.[0].name).toBe("stop-guard");
-    expect(result.skipped.cursor?.[0].missingFeatures).toEqual(["hooks"]);
+    // amp gets only the basic skill
+    expect(existsSync(join(ampSkillsDir, "debug"))).toBe(true);
+    expect(existsSync(join(ampSkillsDir, "stop-guard"))).toBe(false);
+    // Skipped report names amp with the stop-guard entry
+    expect(result.skipped.amp).toBeDefined();
+    expect(result.skipped.amp?.[0].name).toBe("stop-guard");
+    expect(result.skipped.amp?.[0].missingFeatures).toEqual(["hooks"]);
     // claude-code has no skipped entries
     expect(result.skipped["claude-code"]).toBeUndefined();
 
@@ -748,7 +748,7 @@ describe("computeSkillsDiff", () => {
     ]);
     const diffs = computeSkillsDiff(skills, [
       { label: "claude-code", skillsDir: "/claude/skills" },
-      { label: "cursor", skillsDir: "/cursor/skills" },
+      { label: "amp", skillsDir: "/amp/skills" },
     ]);
     expect(diffs).toHaveLength(2);
     expect(diffs[0].symlinks).toHaveLength(2);
@@ -783,17 +783,17 @@ describe("computeSkillsDiff", () => {
         skillsDir: "/claude/skills",
         supportedSkillFeatures: ["allowed-tools", "context-fork", "hooks"],
       },
-      { label: "cursor", skillsDir: "/cursor/skills", supportedSkillFeatures: ["allowed-tools"] },
+      { label: "amp", skillsDir: "/amp/skills", supportedSkillFeatures: ["allowed-tools"] },
     ]);
     const claude = diffs.find((d) => d.label === "claude-code");
-    const cursor = diffs.find((d) => d.label === "cursor");
+    const amp = diffs.find((d) => d.label === "amp");
     expect(claude?.symlinks.map((s) => s.name).sort()).toEqual(["basic", "hooked"]);
     expect(claude?.skipped).toHaveLength(0);
-    expect(cursor?.symlinks.map((s) => s.name)).toEqual(["basic"]);
-    expect(cursor?.skipped).toHaveLength(1);
-    expect(cursor?.skipped[0].name).toBe("hooked");
-    expect(cursor?.skipped[0].missingFeatures).toEqual(["hooks"]);
-    expect(cursor?.skipped[0].reason).toContain("unsupported feature: hooks");
+    expect(amp?.symlinks.map((s) => s.name)).toEqual(["basic"]);
+    expect(amp?.skipped).toHaveLength(1);
+    expect(amp?.skipped[0].name).toBe("hooked");
+    expect(amp?.skipped[0].missingFeatures).toEqual(["hooks"]);
+    expect(amp?.skipped[0].reason).toContain("unsupported feature: hooks");
   });
 
   it("skips allowed-tools skill on agents with empty supportedSkillFeatures (Zencoder)", () => {
@@ -829,7 +829,7 @@ describe("computeSkillsDiff", () => {
       ],
     ]);
     const diffs = computeSkillsDiff(skills, [
-      { label: "cursor", skillsDir: "/cursor/skills", supportedSkillFeatures: ["allowed-tools"] },
+      { label: "amp", skillsDir: "/amp/skills", supportedSkillFeatures: ["allowed-tools"] },
     ]);
     expect(diffs[0].skipped[0].reason).toContain("unsupported features:");
     expect(diffs[0].skipped[0].missingFeatures).toEqual(["hooks", "context-fork"]);
@@ -1001,9 +1001,9 @@ describe("catalog-installed skills (no tasks-md skillSourceDir)", () => {
 
     const result = await syncSkills({ quiet: false });
 
-    // Claude should fail, but cursor should still succeed
+    // Claude should fail, but amp should still succeed
     expect(result.skillCount).toBe(1);
-    expect(existsSync(join(cursorSkillsDir, "test-skill"))).toBe(true);
+    expect(existsSync(join(ampSkillsDir, "test-skill"))).toBe(true);
 
     // Restore
     defs[0].skillsDir = originalClaudeDir;
@@ -1013,13 +1013,13 @@ describe("catalog-installed skills (no tasks-md skillSourceDir)", () => {
 describe("cleanBrokenSymlinksGlobally — issue 3/4 of sync-idempotent-and-complete", () => {
   it("removes broken symlinks from non-detected agent skill dirs", async () => {
     // Simulate a prior agentbrew install that left stale symlinks in
-    // claude + cursor skills dirs. No live skill source — every symlink's
+    // claude + amp skills dirs. No live skill source — every symlink's
     // target is gone, so every symlink is broken.
     mkdirSync(claudeSkillsDir, { recursive: true });
-    mkdirSync(cursorSkillsDir, { recursive: true });
+    mkdirSync(ampSkillsDir, { recursive: true });
     const deletedTarget = join(testDir, "deleted-source");
     symlinkSync(join(deletedTarget, "skill-a"), join(claudeSkillsDir, "skill-a"));
-    symlinkSync(join(deletedTarget, "skill-b"), join(cursorSkillsDir, "skill-b"));
+    symlinkSync(join(deletedTarget, "skill-b"), join(ampSkillsDir, "skill-b"));
 
     // Sanity: broken symlinks exist pre-cleanup (lstat sees the link, existsSync
     // returns false because the target resolves to a non-existent path).
@@ -1031,7 +1031,7 @@ describe("cleanBrokenSymlinksGlobally — issue 3/4 of sync-idempotent-and-compl
 
     expect(removed).toBe(2);
     expect(existsSync(join(claudeSkillsDir, "skill-a"))).toBe(false);
-    expect(existsSync(join(cursorSkillsDir, "skill-b"))).toBe(false);
+    expect(existsSync(join(ampSkillsDir, "skill-b"))).toBe(false);
     // lstat must now throw because the symlink is fully gone (not just broken).
     expect(() => lstatSync(join(claudeSkillsDir, "skill-a"))).toThrow();
   });
@@ -1057,7 +1057,7 @@ describe("cleanBrokenSymlinksGlobally — issue 3/4 of sync-idempotent-and-compl
   });
 
   it("silently no-ops when no agent skill dirs exist on disk", async () => {
-    // Nothing under testDir besides the just-created claude/cursor parent
+    // Nothing under testDir besides the just-created claude/amp parent
     // dirs from beforeEach — neither has a skills/ subdir. The helper must
     // return 0 without throwing.
     const { cleanBrokenSymlinksGlobally } = await import("./skills-sync.js");
@@ -1089,7 +1089,7 @@ describe("syncSkills — claude-desktop carve-out", () => {
 
     // Push claude-desktop into the mocked AGENT_DEFINITIONS so resolveDetectedAgents
     // returns it. The shared global beforeEach already mutated indices 0 and 1 for
-    // claude-code + cursor; we append at index 2 and pop in afterEach.
+    // claude-code + amp; we append at index 2 and pop in afterEach.
     const defs = AGENT_DEFINITIONS as Array<{ name: string; skillsDir: string }>;
     defs.push({ name: "claude-desktop", skillsDir: claudeDesktopSkillsDir });
 
@@ -1166,6 +1166,6 @@ describe("syncSkills — overlay-desktop carve-out", () => {
 
     // No fan-out into the delegated agents' paths.
     expect(existsSync(join(claudeSkillsDir, "team-runbook"))).toBe(false);
-    expect(existsSync(join(cursorSkillsDir, "team-runbook"))).toBe(false);
+    expect(existsSync(join(ampSkillsDir, "team-runbook"))).toBe(false);
   });
 });

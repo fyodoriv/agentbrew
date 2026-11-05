@@ -4,7 +4,7 @@ An honest assessment of agentbrew's instruction files — what they buy you, wha
 
 > **Numbers in this doc are approximations.** Per AGENTS.md "Counter Precision",
 > the line counts, byte sizes, and token estimates here use `N+` floors instead
-> of point measurements. The template, the user's shared rules, and the cursor
+> of point measurements. The template, the user's shared rules, and the
 > rules dump all change over time; precise counts go stale within weeks. The
 > percentages and threshold recommendations stay correct as the file grows.
 > If you need an exact byte count, run `wc -c` against the live file — but the
@@ -64,7 +64,7 @@ On agents that also load a **project-level** AGENTS.md (like this repo's ~10 KB+
 
 ## Do They Add Extra Tokens for No Good Reason?
 
-**Partially yes — but agentbrew already removes most of it on deploy.** Three sources of unnecessary tokens are catalogued below; recommendations 1, 2, and 4 in the [Recommendations](#recommendations) section are already implemented in the sync pipeline (`deduplicateByHeading`, `warnIfOverTokenBudget`, `stripCursorRulesSection`). The numbers below describe the **pre-transform** waste; the **deployed** file is smaller because agentbrew strips overlapping headings, hides the cursor-rules dump, and warns when the result still exceeds the threshold.
+The sync pipeline already removes some duplication. The numbers below describe the inputs before deployment.
 
 ### 1. Duplication Between Instructions and Rules (~250+ tokens wasted)
 
@@ -99,49 +99,14 @@ This catalog consumes ~800+ tokens and is **marginally useful.** Agents already 
 
 **Wasted:** Debatable. Useful for discoverability, but ~800+ tokens for a static list that changes infrequently.
 
-### 3. Auto-Synced Cursor Rules in Non-Cursor Agents (~2,500+ tokens)
-
-The managed rules section includes a full dump of Cursor-format rules:
-
-```markdown
-## Auto-Synced Cursor Rules
-
-### code-style
-# Code Style
-## TypeScript
-- Strict typing — no `any`, no type casting...
-
-### commits-and-ci
-# Commits & CI
-## Git Safety (Multi-Agent) — CRITICAL...
-
-### react-patterns
-# React Patterns...
-
-### restricted-imports
-# Restricted Imports...
-
-### testing
-# Testing...
-```
-
-These are **Cursor-specific rule files** (`.mdc` format) that have been serialized into the shared rules. They consume ~2,500+ tokens and contain **further duplication** — the `commits-and-ci` rule repeats Git Safety and Commit Format a third time.
-
-For Cursor, this content is redundant because the same rules already exist as per-file rules in `~/.cursor/rules/`. For other agents, the content is useful but verbose.
-
-**Wasted:** ~500-1,000+ tokens of duplication within the Cursor rules section alone.
-
 ### Total Waste Estimate
 
 | Source | Approximate Tokens | Avoidable? |
 |--------|--------------------|------------|
 | Template/rules duplication | ~250+ | Yes — deduplicate shared-rules.md |
 | Skills listing | ~800+ | Partially — could be shorter |
-| Cursor rules in non-Cursor agents | ~2,500+ | Partially — useful content, but duplicated internally |
-| Duplication within Cursor rules | ~500+ | Yes — Git Safety appears multiple times total |
-| **Total potentially wasted** | **~1,500-2,500+** | Out of ~6,000+ total |
 
-**Bottom line:** ~25-40% of the deployed content is duplicated or low-signal. The template itself is lean and high-value. The bloat comes from the user's shared rules repeating template topics and from Cursor rules being serialized wholesale.
+Some shared rules repeat topics already covered in the template.
 
 ## Benefits That Justify the Cost
 
@@ -188,8 +153,6 @@ The template teaches agents about the task queue format (`TASKS.md`), the Agentf
 2. **Warn on bloated shared-rules.md.** ✅ **Implemented.** `warnIfOverTokenBudget()` in `src/sync/instructions-sync.ts` runs after every `agentbrew sync` and emits a warning naming the largest H2 sections when the deployed file crosses `DEFAULT_TOKEN_WARNING_THRESHOLD` (~8K tokens, configurable via the constant in `instructions-content.ts`). `instructionsSyncStatus()` colors the deployed token count yellow when the file is over budget. `agentbrew lint` now also fails duplicate `##` headings, repeated subsection markers inside one section, and any single shared-rules section above 5k tokens. Future-improvement: surface the threshold via `state.yaml` so users can raise it without a code change.
 
 3. **Consider tiered loading.** ⏳ **Open.** The COMPETITION.md doc notes that competitors use L0/L1/L2 tiers — a small abstract for relevance, a moderate planning chunk, full content on demand. Agentbrew could adopt a similar approach: deploy a compact version by default, with a pointer to the full rules file for agents that support on-demand loading. No agentbrew skill picks this up today; it's a future contribution candidate.
-
-4. **Split Cursor rules from shared rules.** **Removed 2026-10-19** with Cursor support; the notes below are history. `stripCursorRulesSection()` in `src/sync/instructions-content.ts` removes the `## Auto-Synced Cursor Rules` block before each deploy. `src/sync/rules-sync.ts:323-326` chains `compressSkillsListing()` then `stripCursorRulesSection()` so the deployed `shared-rules.md` never carries the Cursor-specific rule dump. Cursor itself still gets the rules — they're emitted as per-file `.mdc` files under `~/.cursor/rules/` by the rules-sync engine, not via the global shared-rules path. The drift checker in `src/drift-checks/rules.ts:73-79` applies the same transforms before comparing on-disk content, so the dedup is invisible to status.
 
 ### For users
 

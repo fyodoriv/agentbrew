@@ -33,8 +33,7 @@ invariant.
   signals durable maintenance and CLA-free contribution path.
 - **Strict subset of agentbrew's agent surface today, BUT 7 free-capability
   gains.** ai-rules supports 11 agents; agentbrew has 8 rules-capable
-  agents. 4 strict intersection (claude/claude-code, cursor, codex,
-  gemini/gemini-cli). 4 agentbrew-only carve-outs (windsurf, augment,
+  agents. 4 were in the strict intersection, including one target since retired. 4 agentbrew-only carve-outs (windsurf, augment,
   devin, claude-desktop). 7 mcpm-only that gain rules support on
   delegation at zero agentbrew code cost (amp, cline, copilot,
   firebender, goose, kilocode, roo). Net: more rules coverage for
@@ -70,7 +69,7 @@ rules-format preservation analysis) — track in
 zero-dependency tool to manage AI rules across different AI coding agents."
 A single Rust binary that takes markdown rule files in an `ai-rules/`
 directory and generates per-agent rule files (`CLAUDE.md`, `AGENTS.md`,
-`.cursor/rules/*`, etc.) for the supported coding agents. It's the
+etc.) for the supported coding agents. It's the
 upstream tool VISION.md identifies as the candidate for delegating
 agentbrew's rules sync subsystem.
 
@@ -95,7 +94,7 @@ the multi-surface orchestrator that this doc lives in. Its rules sync is
 
 The rules subsystem reads markdown from `~/.config/agentbrew/rules/` (or
 the per-source `rules/` directories) and writes per-agent rule files
-(`~/.claude/CLAUDE.md`, `~/.cursor/rules/`, etc.) for 8 rules-capable
+(`~/.claude/CLAUDE.md`, etc.) for 8 rules-capable
 agents in `src/core/agents.yaml` (filtered to entries with `rulesFile` or
 `rulesDir` fields).
 
@@ -190,7 +189,6 @@ path we'd swap out can be replaced cleanly without batching concerns.
 | agentbrew (8) | ai-rules (11) | Status | Notes |
 |---|---|---|---|
 | `claude-code` | `claude` | **Intersection (rename)** | agentbrew writes `~/.claude/CLAUDE.md`; ai-rules writes `CLAUDE.md` (project-local symlink). Different *scope* (global vs project) — see § "Rules-format preservation analysis (slice 2)". |
-| `cursor` | `cursor` | **Intersection** | agentbrew writes `~/.cursor/rules/*.md` per-file; ai-rules writes `AGENTS.md` (project-local symlink). Format mismatch — agentbrew uses cursor's per-file rules dir while ai-rules uses the AGENTS.md fallback. |
 | `windsurf` | — | **agentbrew-only carve-out** | windsurf isn't in ai-rules' supported list. agentbrew writes `~/.codeium/windsurf/memories/global_rules.md` (rulesFile) AND `~/.windsurf/rules/*.md` (rulesDir). Carve-out: stays native. |
 | `augment` | — | **agentbrew-only carve-out** | augment isn't in ai-rules' supported list. agentbrew writes `~/.augment/guidelines.md`. Carve-out: stays native. |
 | `devin` | — | **agentbrew-only carve-out** | Cognition product, parallel to the mcpm carve-out. agentbrew writes `~/.config/devin/AGENTS.md`. Permanent carve-out. |
@@ -207,8 +205,8 @@ path we'd swap out can be replaced cleanly without batching concerns.
 
 **Counts (slice 2, verified):**
 
-- **4 strict intersection** (with 2 renames): claude/claude-code, cursor,
-  codex, gemini/gemini-cli.
+- **4 strict intersection** (with 2 renames): claude/claude-code,
+  codex, gemini/gemini-cli, and one target since retired.
 - **4 agentbrew-only carve-outs at the delegation boundary**: windsurf,
   augment, devin, claude-desktop.
   (Earlier slice 2 said 3 carve-outs because `claude-desktop` reads from
@@ -233,8 +231,8 @@ contribute candidates).
 ### Rename / contribution / carve-out summary
 
 ```
-Intersection (4):  [claude↔claude-code], cursor, codex,
-                   [gemini↔gemini-cli]
+Intersection (4):  [claude↔claude-code], codex,
+                   [gemini↔gemini-cli], one retired target
 
 Carve-out (3):     windsurf, augment, devin
 
@@ -264,7 +262,7 @@ agent rule files, but they differ on three meaningful dimensions:
 
 **Implication:** ai-rules' frontmatter (`description`, `alwaysApply`,
 `fileMatching`) is **richer** than agentbrew's plain-markdown rules — it
-maps to Cursor's `globs` field, Claude's "always vs on-demand" pattern,
+maps to Claude's "always vs on-demand" pattern,
 and the activation modes other rules tools use (skillkit, conforme,
 rulix per the COMPETITION.md scout). Delegating could PROMOTE agentbrew's
 plain-markdown rules to a richer format, but that requires migrating
@@ -280,7 +278,6 @@ This is the biggest gap and the one that tilts the verdict toward
 |---|---|---|
 | `~/.claude/CLAUDE.md` | **Managed-section markers** — agentbrew writes only between `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->` markers. User content elsewhere in CLAUDE.md is preserved verbatim. | **Symlink to single generated file** — `CLAUDE.md` is a symlink to `ai-rules/.generated-ai-rules/ai-rules-generated-AGENTS.md`. The entire file is owned by ai-rules. |
 | User content preservation | **Yes** — agentbrew never destroys user content outside its managed section ([VISION.md "Never destroy user data"](../VISION.md#never-destroy-user-data)) | **No** — symlink replaces the file entirely; user content in CLAUDE.md is lost on first `ai-rules generate` |
-| Per-file rules dirs (`~/.cursor/rules/`, `~/.windsurf/rules/`) | Per-file mirrors of source rule files | Generated per-file under `.cursor/rules/*.mdc` (single AGENTS.md fallback symlink for `cursor` agent) |
 
 **The blocker:** ai-rules' "symlink owns the file" pattern conflicts with
 agentbrew's "never destroy user data" invariant from
@@ -366,7 +363,7 @@ on author Apple Silicon laptop, ai-rules v1.6.0, 2026-04-27.
 | `ai-rules status` exit code on sync | 0 | Maps directly to agentbrew's `status --ci` exit code 0 |
 | `ai-rules status` exit code on drift | 1 | Maps directly to agentbrew's `status --ci` exit code 1 |
 | `ai-rules status` output format | Human-readable (emoji + per-agent sync/out-of-sync lines) | Parsing is doable but brittle — contribute candidate: `--json` flag |
-| `ai-rules status` per-agent flag | `--agents claude,cursor` | Agentbrew can call per-agent during drift check; matches the per-agent shape |
+| `ai-rules status` per-agent flag | `--agents claude` | Agentbrew can call per-agent during drift check; matches the per-agent shape |
 | `--source-dir` / `--target-dir` flags | **NOT PRESENT** on `generate` or `status` | Workaround: agentbrew `cd` to a temp dir before invoking. Contribute candidate: file upstream PR for `--source-dir` / `--target-dir` |
 | `--nested-depth` flag | Present on both `generate` and `status` (default 0 = cwd only) | Useful for monorepo support |
 
@@ -464,7 +461,6 @@ The decision tree from slices 1–3 resolved as follows:
 | 1 | Build the `rules-agent-map.ts` boundary helper (rename pairs `claude`↔`claude-code`, `gemini`↔`gemini-cli`, `kilocode`↔`kilo`, `roo`↔`roo-code`; carve-out rationale for windsurf, augment, devin, claude-desktop) + tests. | **DONE 2026-04-27** (PR #830) | +190 src + 33 tests |
 | 2 | Wire `delegateRulesGenerate()` into `src/sync/rules-sync.ts` for the canary `claude-code`. Wrap output in agentbrew's managed-section markers. | **DONE 2026-04-27** (PR #832) | +150 LOC (helper + tests) |
 | 3a | Expand canary set to all 3 rulesFile intersection agents (claude-code, codex, gemini-cli). | **DONE 2026-04-27** (PR #833) | +15 LOC |
-| 3b | Add cursor (rulesDir, single-file `~/.cursor/rules/agentbrew.md` write). Total canary set: 4 agents (3 rulesFile + 1 rulesDir). | **DONE 2026-04-27** (PR #837) | +120 LOC + 140 LOC tests |
 | 3c | Add 7 free-capability gain agents (amp, cline, copilot, firebender, goose, kilo, roo-code) by adding `rulesFile` paths to `agents.yaml`. firebender + kilo graduated from experimental. Total delegated: 11 agents. | **DONE 2026-04-27** (PR #838) | +1 LOC delegation expansion |
 | 4 | Delete the native rules-translation fallback for delegated agents. `computeRulesDiff` returns `skipped` when delegated content is missing instead of falling back to `mergedRules`. Drift detector mirrors the skip semantics. | **DONE 2026-04-27** (PR #844) | ~+150 LOC behavior change (skip semantics + warning helper) |
 | 5 | Verify no imperative rules commands need removal. `agentbrew rules sync` stays native (multi-surface orchestrator). | **DONE 2026-04-27** (PR #840) | 0 LOC |
@@ -541,13 +537,13 @@ files). Slices landed:
 |---|---|---|---|
 | 1 — Build `commands-agent-map.ts` boundary helper + tests | DONE 2026-04-27 | parent task plan checklist | +190 LOC source + 280 LOC tests |
 | 2 — Wire `delegateCommandsGenerate` for canary `claude-code` | DONE 2026-04-27 | [PR #889](https://github.com/fyodoriv/agentbrew/pull/889) | +245 LOC source + ~315 LOC tests |
-| 3 — Promote to all 2 intersection agents (claude-code + cursor) | DONE 2026-04-27 | [PR #890](https://github.com/fyodoriv/agentbrew/pull/890) | +30 LOC source + 50 LOC tests |
-| 4 — Harden contract; delete `toCursorFormat` | DONE 2026-04-27 | [PR #891](https://github.com/fyodoriv/agentbrew/pull/891) | −24 LOC source, ~−210 LOC tests |
+| 3 — Promote to the full intersection at the time | DONE 2026-04-27 | [PR #890](https://github.com/fyodoriv/agentbrew/pull/890) | +30 LOC source + 50 LOC tests |
+| 4 — Harden contract and remove the old formatter | DONE 2026-04-27 | [PR #891](https://github.com/fyodoriv/agentbrew/pull/891) | −24 LOC source, ~−210 LOC tests |
 | 5 — Free-capability gain: amp + firebender (this PR) | DONE 2026-04-27 | this PR | +12 LOC agents.yaml, 0 native code |
 | 6 — Verify dust settles, doc update | DONE 2026-04-27 (this commit) | this PR | doc-only |
 
-**Final canary set**: 4 agents (claude-code, cursor, amp, firebender). The
-2 agentbrew-original commands-capable agents (claude-code, cursor) plus 2
+**Final canary set at the time**: 4 agents. The
+2 original command-capable agents plus 2
 free-capability gains (amp, firebender) — neither had agentbrew commands
 support before; ai-rules covered them upstream so adding the user-level
 paths to agents.yaml + the `CANARY_DELEGATED_AGENTS` Set unlocked
@@ -563,7 +559,7 @@ and opencode isn't in ai-rules' supported commands list.
 
 **Real-e2e**: the existing `us05-share-commands` real-e2e scenario
 exercises the carve-out path (windsurf, devin) post-slice-4. The canary
-path (claude-code, cursor, amp, firebender) is verified at the unit
+path was verified at the unit
 level via the slice-2/3/4 tests in `command-sync.test.ts` and the
 fake-binary smoke in `commands-delegate.test.ts`.
 

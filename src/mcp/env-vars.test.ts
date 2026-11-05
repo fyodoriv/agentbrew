@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   applyResilientToValue,
@@ -46,7 +49,7 @@ describe("toCanonical", () => {
 describe("fromCanonical", () => {
   it("standard format rewrites bare ${VAR} to resilient ${VAR:-} form", () => {
     // Why not identity anymore: strict env-var interpolators (Devin CLI binary importing
-    // ~/.claude.json and ~/.cursor/mcp.json) abort the whole MCP load on bare ${VAR} when
+    // ~/.claude.json) abort the whole MCP load on bare ${VAR} when
     // the env var is unset. Emitting ${VAR:-} keeps the value bash-compatible while
     // preventing the import-time crash. See `makeResilient` docstring in env-vars.ts.
     expect(fromCanonical("${MY_KEY}", "standard")).toBe("${MY_KEY:-}");
@@ -72,7 +75,7 @@ describe("fromCanonical", () => {
 
   it("literal format falls back to resilient placeholder when var is unset", () => {
     // Why ${VAR:-} not bare ${VAR}: Devin reads its OWN mcpServers block back through the
-    // same interpolator that handles imported Claude/Cursor configs. A bare placeholder
+    // same interpolator that handles imported configs. A bare placeholder
     // here would crash Devin's loader on a subsequent launch. The resilient form lets the
     // user set the env var later (a `agentbrew setup` step) and pick up the value via
     // bash-style substitution at MCP server launch time.
@@ -178,10 +181,54 @@ describe("resolveEnvVar", () => {
     expect(resolveEnvVar("TOTALLY_UNKNOWN_VAR")).toBeUndefined();
   });
 
-  it("skips fallback when env var is set", () => {
-    process.env.GITHUB_TOKEN = "from-env";
-    expect(resolveEnvVar("GITHUB_TOKEN")).toBe("from-env");
-    delete process.env.GITHUB_TOKEN;
+  // A fake `gh` that acts like the real one: an env token wins over the keyring.
+  function withFakeGh(keyring: boolean, run: () => void): void {
+    const dir = mkdtempSync(join(tmpdir(), "fake-gh-"));
+    const body = keyring
+      ? '#!/bin/sh\nif [ -n "$GH_TOKEN$GITHUB_TOKEN" ]; then echo "${GH_TOKEN:-$GITHUB_TOKEN}"; else echo keyring-good; fi\n'
+      : '#!/bin/sh\nif [ -n "$GH_TOKEN$GITHUB_TOKEN" ]; then echo "${GH_TOKEN:-$GITHUB_TOKEN}"; else exit 1; fi\n';
+    writeFileSync(join(dir, "gh"), body, { mode: 0o755 });
+    const oldPath = process.env.PATH;
+    const oldTokens = { GITHUB_TOKEN: process.env.GITHUB_TOKEN, GH_TOKEN: process.env.GH_TOKEN };
+    process.env.PATH = `${dir}:${oldPath}`;
+    try {
+      run();
+    } finally {
+      process.env.PATH = oldPath;
+      for (const [k, v] of Object.entries(oldTokens)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("a stale GITHUB_TOKEN in the env loses to the gh keyring token (#693)", () => {
+    withFakeGh(true, () => {
+      process.env.GITHUB_TOKEN = "dead-env-token";
+      process.env.GH_TOKEN = "dead-gh-token";
+      expect(resolveEnvVar("GITHUB_TOKEN")).toBe("keyring-good");
+    });
+  });
+
+  it("an exported GITHUB_PERSONAL_ACCESS_TOKEN keeps winning over the keyring", () => {
+    withFakeGh(true, () => {
+      const oldPat = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+      process.env.GITHUB_PERSONAL_ACCESS_TOKEN = "chosen-pat";
+      try {
+        expect(resolveEnvVar("GITHUB_PERSONAL_ACCESS_TOKEN")).toBe("chosen-pat");
+      } finally {
+        if (oldPat === undefined) delete process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+        else process.env.GITHUB_PERSONAL_ACCESS_TOKEN = oldPat;
+      }
+    });
+  });
+
+  it("uses the env GITHUB_TOKEN when gh has no keyring login (CI)", () => {
+    withFakeGh(false, () => {
+      process.env.GITHUB_TOKEN = "from-env";
+      expect(resolveEnvVar("GITHUB_TOKEN")).toBe("from-env");
+    });
   });
 
   it("tries gh auth token fallback for GITHUB_TOKEN when env is empty", () => {
@@ -365,8 +412,8 @@ describe("mergeEnvPreservingResolved", () => {
 //
 // These tests cover the helpers introduced to defuse the Devin CLI binary's
 // import-time crash on bare `${VAR}` placeholders. The full rationale lives in
-// `makeResilient`'s docstring; in short: Devin reads `~/.claude.json` and
-// `~/.cursor/mcp.json` at startup, runs strict env-var interpolation, and
+// `makeResilient`'s docstring; in short: Devin reads `~/.claude.json` at startup,
+// runs strict env-var interpolation, and
 // aborts the entire MCP load (every server, including working ones like
 // playwright and context7) when it hits a bare `${VAR}` whose env var is
 // unset. The resilient `${VAR:-}` form makes Devin's regex see an empty

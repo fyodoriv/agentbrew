@@ -1,3 +1,3 @@
-# Cursor Local Command
+# OpenCode Local Command
 
 Keep my local workflow.

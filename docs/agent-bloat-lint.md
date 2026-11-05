@@ -34,7 +34,7 @@ Shared-rules duplicate headings, section token budgets, and **core** growth vs `
 
 ## CI
 
-GitHub Actions job **node** in `.github/workflows/ci.yml` runs `node dist/cli.js lint` after `npm run build`. The step fails the build on any lint **error** (warnings alone do not fail). In CI, repo-owned artifacts are checked (`skill-plugins/dev/*`, `skill-plugins/workflow/*`, `templates/rules/*.mdc`); deployed paths under `~/.config/agentbrew/` and `~/.cursor/rules/` are skipped when absent.
+GitHub Actions job **node** in `.github/workflows/ci.yml` runs `node dist/cli.js lint` after `npm run build`. The step fails the build on any lint **error** (warnings alone do not fail). In CI, repo-owned artifacts are checked (`skill-plugins/dev/*`, `skill-plugins/workflow/*`, `templates/rules/*.mdc`); deployed paths under `~/.config/agentbrew/` are skipped when absent.
 
 ## Baselines
 

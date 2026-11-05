@@ -313,8 +313,8 @@ describe("registerCoreCommands", () => {
 
     it("calls importFromAgent when --from is passed", async () => {
       const program = buildProgram();
-      await program.parseAsync(["node", "test", "import", "--from", "cursor"]);
-      expect(mockImportFromAgent).toHaveBeenCalledWith("cursor");
+      await program.parseAsync(["node", "test", "import", "--from", "codex"]);
+      expect(mockImportFromAgent).toHaveBeenCalledWith("codex");
       expect(mockImportAll).not.toHaveBeenCalled();
     });
 

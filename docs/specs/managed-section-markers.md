@@ -2,7 +2,7 @@
 
 - **Status**: proposal, version 0.1 (2026-10-16). Not adopted by any other tool yet.
 - **Task**: `ecosystem-contrib-managed-section-convention`
-- **Goal**: several tools can write to one agent config file (`CLAUDE.md`, `AGENTS.md`, `.cursor/rules/*.mdc`, `GEMINI.md`) without overwriting each other.
+- **Goal**: several tools can write to one agent config file (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) without overwriting each other.
 
 ## Problem
 

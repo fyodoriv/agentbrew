@@ -36,7 +36,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
   const json = new JsonAdapter();
 
   it("detects new servers to add", () => {
-    const diff = computeDiffWithAdapter("cursor", [makeServer({ name: "new-server" })], {}, json);
+    const diff = computeDiffWithAdapter("kiro", [makeServer({ name: "new-server" })], {}, json);
     expect(diff.added).toBe(1);
     expect(diff.updated).toBe(0);
     expect(diff.pruned).toBe(0);
@@ -47,7 +47,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 
   it("detects updated servers", () => {
     const diff = computeDiffWithAdapter(
-      "cursor",
+      "kiro",
       [makeServer({ name: "existing", command: "new-cmd" })],
       { existing: { command: "old-cmd" } },
       json,
@@ -62,7 +62,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
     // (command: "npx", args: ["-y", "@test/mcp"], no env). Same shape as the
     // canonical JSON adapter's writeEntries output for a stdio server.
     const entry = { command: "npx", args: ["-y", "@test/mcp"] };
-    const diff = computeDiffWithAdapter("cursor", [makeServer({ name: "same" })], { same: entry }, json);
+    const diff = computeDiffWithAdapter("kiro", [makeServer({ name: "same" })], { same: entry }, json);
     expect(diff.actions).toHaveLength(0);
     expect(diff.added).toBe(0);
     expect(diff.updated).toBe(0);
@@ -70,7 +70,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 
   it("prunes extra servers when prune enabled", () => {
     const diff = computeDiffWithAdapter(
-      "cursor",
+      "kiro",
       [makeServer({ name: "keep" })],
       { keep: { command: "npx" }, stale: { command: "old" } },
       json,
@@ -82,7 +82,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
 
   it("prune preserves user-added servers not in managedNames", () => {
     const diff = computeDiffWithAdapter(
-      "cursor",
+      "kiro",
       [makeServer({ name: "keep" })],
       { keep: { command: "npx" }, "user-server": { command: "custom" }, stale: { command: "old" } },
       json,
@@ -102,7 +102,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
   });
 
   it("does not prune when prune disabled", () => {
-    const diff = computeDiffWithAdapter("cursor", [], { stale: { command: "old" } }, json);
+    const diff = computeDiffWithAdapter("kiro", [], { stale: { command: "old" } }, json);
     expect(diff.pruned).toBe(0);
   });
 
@@ -141,7 +141,7 @@ describe("computeDiffWithAdapter + JsonAdapter (pure, zero mocks)", () => {
     // Inlined entry equivalent to what makeServer({ name: "unchanged" }) produces.
     const existingEntry = { command: "npx", args: ["-y", "@test/mcp"] };
     const diff = computeDiffWithAdapter(
-      "cursor",
+      "kiro",
       [
         makeServer({ name: "new-one" }),
         makeServer({ name: "changed", command: "new-cmd" }),

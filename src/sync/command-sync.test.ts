@@ -97,12 +97,11 @@ beforeEach(() => {
 });
 
 // Slice 4 of delegate-commands-to-ai-rules: deleted the
-// `describe("stripFrontmatter", ...)` and `describe("toCursorFormat", ...)`
+// `describe("stripFrontmatter", ...)`
 // blocks here, plus the SAMPLE_COMMAND / NO_FRONTMATTER fixtures they
 // consumed. They were duplicates of the canonical tests in
 // `src/core/transforms.test.ts` which assert the same functions. The
-// duplication was a slice-2-era convenience; with `toCursorFormat`
-// gone (cursor commands now delegate to ai-rules) these tests added
+// duplication was a slice-2-era convenience. These tests added
 // no signal beyond what transforms.test.ts already covers for
 // `stripFrontmatter`.
 
@@ -1164,7 +1163,6 @@ describe("computeCommandsDiff — delegated content", () => {
 describe("CANARY_DELEGATED_AGENTS — slice 2–5 invariants", () => {
   it("includes claude-code (slice 2) and the slice 5 free-capability gains (amp, firebender)", () => {
     expect(CANARY_DELEGATED_AGENTS.has("claude-code")).toBe(true);
-    expect(CANARY_DELEGATED_AGENTS.has("cursor")).toBe(false);
     expect(CANARY_DELEGATED_AGENTS.has("amp")).toBe(true);
     expect(CANARY_DELEGATED_AGENTS.has("firebender")).toBe(true);
   });

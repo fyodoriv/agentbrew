@@ -21,8 +21,8 @@ Deploy one canonical `~/.config/agentbrew/AGENTS.md` and symlink every agent who
 ## Scope (out)
 
 - rules-sync managed-section logic (unchanged)
-- `compressSkillsListing` / `stripCursorRulesSection` (rules-sync + measure; stay)
-- Context file generation (`extractCursorRules` carve-out for paste formats)
+- `compressSkillsListing` (rules-sync + measure; stay)
+- Context file generation for paste formats
 
 ## Carve-outs (one-line reasons)
 

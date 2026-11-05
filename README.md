@@ -258,7 +258,7 @@ On a new install, `bash scripts/install.sh run --yes --keep-claude-permissions` 
 
 **Scopes.** `install` is global by default (applies to every agent). Use `--local` / `--project` to install into the current repo's `.agentbrew/skills/` — ideal for project-specific conventions or team-shared skills.
 
-**Delegated skill install networking.** Remote skill sources are installed through Vercel's `skills` CLI for agents it supports. That subprocess may need egress to `registry.npmjs.org` (to resolve the `skills` package), GitHub or the source Git host (to fetch the skill repo), and `skills.sh` (for risk-assessment metadata). If a proxy blocks any of those hosts, configure npm/git proxy settings first; agentbrew will still fall back to its native scanner when the subprocess fails.
+**Delegated skill install networking.** Remote skill sources are installed through Vercel's `skills` CLI for agents it supports. Agentbrew passes detected targets explicitly. An empty saved agent list defaults to Claude Code and Codex. A populated list with every target disabled skips delegation. That subprocess may need egress to `registry.npmjs.org` (to resolve the `skills` package), GitHub or the source Git host (to fetch the skill repo), and `skills.sh` (for risk-assessment metadata). If a proxy blocks any of those hosts, configure npm/git proxy settings first; agentbrew will still fall back to its native scanner when the subprocess fails.
 
 A cold offline `agentbrew init` still finishes: it detects agents, writes MCP config, and skips each skill source it cannot clone with a `source unreachable` warning (retested 2026-10-16, see [`docs/decisions/first-run-offline-warmup.md`](docs/decisions/first-run-offline-warmup.md)). Run `agentbrew init` or `agentbrew sync --pull` again when online to fetch the skipped skills. If a source is cloned but the skills CLI is not in the npm cache, the install fails with `ENOTCACHED` and falls back to the native path. To skip the skills CLI fully on an offline machine, set the machine-local override, and switch it back to `auto` when online again:
 
@@ -666,6 +666,11 @@ and `Authorization: Bearer ${VAR}` to `bearer_token_env_var`. Run
 `codex mcp login <name>` once for an OAuth server. Goose (YAML) is still
 read-only, so `agentbrew sync` reports a write error for goose on this path.
 
+If a Codex entry already has a native `http_headers_helper`, the native MCP
+update refuses changes to that entry's URL or Authorization settings and
+leaves the entry untouched. Preview applies the same check. Manage the helper
+and its endpoint in the Codex configuration that owns them.
+
 ### Servers the probe cannot authenticate
 
 `agentbrew`'s probe is unauthenticated by design, so a server that requires
@@ -859,6 +864,8 @@ What does not carry over on its own:
 Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
 
 ## Supported agents
+
+Claude Code and Codex are first-class. The matrix also lists existing best-effort and experimental integrations.
 
 > Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
 

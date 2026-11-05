@@ -418,11 +418,16 @@ export function syncWithAdapter(
     return { added: 0, updated: 0, pruned: 0, error: `read failed: ${errorMessage(err)}` };
   }
 
-  const diff = computeDiffWithAdapter(agentName, servers, entries, adapter, {
-    prune: options?.prune,
-    forcePruneNames: options?.forcePruneNames,
-    managedNames: options?.managedNames,
-  });
+  let diff: McpAgentDiff;
+  try {
+    diff = computeDiffWithAdapter(agentName, servers, entries, adapter, {
+      prune: options?.prune,
+      forcePruneNames: options?.forcePruneNames,
+      managedNames: options?.managedNames,
+    });
+  } catch (err) {
+    return { added: 0, updated: 0, pruned: 0, error: errorMessage(err) };
+  }
 
   if (!dryRun && diff.actions.length > 0) {
     applyDiffToEntries(entries, diff.actions, adapter);
@@ -958,8 +963,7 @@ export async function syncMcpServers(options?: SyncOptions, ctx?: Partial<Contex
   // Post-sync sweep: rewrite bare `${VAR}` → `${VAR:-}` in every detected agent's MCP
   // config. Catches placeholders mcpm wrote for intersection clients (slice 4a hands
   // them to `mcpm install` + `mcpm client edit`, neither of which knows about
-  // resilient placeholders) so strict env-var interpolators downstream — chiefly
-  // Devin importing `~/.claude.json` and `~/.cursor/mcp.json` — don't abort the
+  // resilient placeholders) so strict clients importing configs such as `~/.claude.json` do not abort the
   // entire MCP load when a token isn't set in this shell.
   //
   // Skipped on dry-run so `agentbrew sync --dry-run` stays read-only. Failures

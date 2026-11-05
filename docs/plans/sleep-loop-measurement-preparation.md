@@ -71,4 +71,20 @@ Task lint still reports a pre-existing missing Hypothesis on
 `measure-dissolution-capacity-2026-q4`, introduced by the base revision.
 That unrelated task is owned by the research work and was reported to the
 coordinator. This preparation does not claim the task queue or combined full
-gate passed. Installation, UTC cutover and outcome measurement remain pending.
+gate passed.
+
+## Verified observation window
+
+The installed reporter and Claude recorder and parser files matched the
+reviewed source. The Claude settings registered the recorder. A synthetic
+attempt and completion sent to the installed hook with isolated state
+produced one paired timing record without the marker. Record the verified
+UTC start privately after these checks. Earlier rows stay outside the
+comparison.
+
+To replay the exact first window, import the installed reporter's
+`buildReport` and call `buildReport({ all: true, days: 7 }, { nowMs: end })`.
+Set `end` to the recorded UTC start plus seven days in milliseconds.
+Run the review once that end has passed. Report the observed syntax, timed
+correlations, and unknowns before applying the original outcome thresholds.
+A missing observation gives an unknown result.

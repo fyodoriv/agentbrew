@@ -1,4 +1,4 @@
-/** Shared Cursor .mdc frontmatter parsing for measure + bloat lint. */
+/** Shared .mdc frontmatter parsing for measure + bloat lint. */
 
 export interface MdcFrontmatter {
   alwaysApply?: boolean;

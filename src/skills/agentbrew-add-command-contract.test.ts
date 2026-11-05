@@ -31,7 +31,7 @@ describe("agentbrew-add-command skill contract", () => {
       "Claude Code | Kept as-is",
       "Gemini CLI  | Converted to TOML",
     ]);
-    expect(skillText).not.toMatch(/cursor|turbo/i);
+    expect(skillText).not.toMatch(/turbo/i);
   });
 
   it("requires deploy and verification steps after command changes", () => {

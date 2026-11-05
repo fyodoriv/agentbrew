@@ -19,7 +19,7 @@ describe("volatile count scan helpers", () => {
   it("extracts full-line and inline comments without scanning code literals", () => {
     const source = [
       'const url = "https://example.com"; // not a volatile-count-allowlist: marker',
-      "// 7 carve-outs only: ~/.cursor/mcp.json",
+      "// 7 carve-outs only: ~/.config/amp/mcp.json",
       "const n = 48; // inline comment without volatile inventory",
     ].join("\n");
     const segments = extractCommentSegments(source);

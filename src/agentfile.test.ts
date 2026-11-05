@@ -700,7 +700,7 @@ modelOverrides:
     const result = parseAgentfile(`
 defaultModel: "  "
 modelOverrides:
-  cursor: 42
+  claude-code: 42
   codex: ""
 `);
     expect(result.defaultModel).toBeUndefined();

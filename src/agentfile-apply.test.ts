@@ -1202,7 +1202,7 @@ describe("applyAgentfile", () => {
           { name: "claude-code", detected: true, skillsDir: "~/.claude/skills" },
           { name: "augment", detected: true, skillsDir: "~/.augment/skills" },
           { name: "kiro", detected: true, skillsDir: "~/.kiro/skills" },
-          { name: "cursor", detected: true, skillsDir: "~/.cursor/skills" },
+          { name: "codex", detected: true, skillsDir: "~/.codex/skills" },
         ] as AgentBrewState["agents"],
       });
       mockLoadAgentfile.mockReturnValue({ excludeAgents: ["augment", "kiro"] });
@@ -1215,7 +1215,7 @@ describe("applyAgentfile", () => {
       expect(state.agents.find((a) => a.name === "claude-code")?.detected).toBe(true);
       expect(state.agents.find((a) => a.name === "augment")?.detected).toBe(false);
       expect(state.agents.find((a) => a.name === "kiro")?.detected).toBe(false);
-      expect(state.agents.find((a) => a.name === "cursor")?.detected).toBe(true);
+      expect(state.agents.find((a) => a.name === "codex")?.detected).toBe(true);
     });
 
     it("returns empty excludedAgents when none of the excludes were previously detected", () => {

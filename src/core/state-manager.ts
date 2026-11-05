@@ -114,7 +114,7 @@ function validateCachedSkillSourceDirs(
  * before the removal still lists them, and status then reports drift for agents agentbrew no
  * longer syncs. Delete an entry here only when no older state.yaml can still name it.
  */
-const REMOVED_AGENTS = new Set(["windsurf", "devin"]);
+const REMOVED_AGENTS = new Set(["windsurf", "devin", "cursor"]);
 
 export function migrateState(state: AgentBrewState): AgentBrewState {
   const version = state.schemaVersion ?? 0;

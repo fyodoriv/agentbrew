@@ -101,7 +101,7 @@ describe("rollbackAgentConfigs", () => {
     mockReaddirSync.mockImplementation((p) => {
       const path = String(p);
       if (path.includes("config-snapshot")) {
-        return [".cursor__mcp.json", ".claude__CLAUDE.md"] as unknown as ReturnType<typeof readdirSync>;
+        return [".fixture__mcp.json", ".claude__CLAUDE.md"] as unknown as ReturnType<typeof readdirSync>;
       }
       return ["config-snapshot-2026-01-01", "config-snapshot-2026-01-02"] as unknown as ReturnType<typeof readdirSync>;
     });
@@ -118,7 +118,7 @@ describe("rollbackAgentConfigs", () => {
     mockReaddirSync.mockImplementation((p) => {
       const path = String(p);
       if (path.includes("config-snapshot")) {
-        return [".cursor__mcp.json"] as unknown as ReturnType<typeof readdirSync>;
+        return [".fixture__mcp.json"] as unknown as ReturnType<typeof readdirSync>;
       }
       return ["config-snapshot-2026-01-01"] as unknown as ReturnType<typeof readdirSync>;
     });

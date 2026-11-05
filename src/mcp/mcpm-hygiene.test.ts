@@ -110,7 +110,7 @@ describe("registry blocklist vs agentbrew state", () => {
   });
 
   it("does nothing when no intersection client is detected", () => {
-    expect(uninstallBrokenMcpmRegistryServers(["cursor"], true, new Set())).toEqual([]);
+    expect(uninstallBrokenMcpmRegistryServers(["opencode"], true, new Set())).toEqual([]);
   });
 });
 
@@ -158,7 +158,7 @@ describe("uninstallQuarantinedMcpmServers", () => {
   });
 
   it("does nothing when no intersection client is detected", () => {
-    expect(uninstallQuarantinedMcpmServers(["cursor"], ["blocked"], true)).toEqual([]);
+    expect(uninstallQuarantinedMcpmServers(["opencode"], ["blocked"], true)).toEqual([]);
   });
 });
 

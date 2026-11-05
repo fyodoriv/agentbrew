@@ -50,10 +50,10 @@ describe("catalogServerName", () => {
 
 describe("resolveProbeSuppressions", () => {
   it("rekeys a name-keyed catalog map to agent:name", () => {
-    const resolved = resolveProbeSuppressions([failure("figma", "cursor")], byServer);
+    const resolved = resolveProbeSuppressions([failure("figma", "kiro")], byServer);
 
-    expect([...resolved.keys()]).toEqual(["cursor:figma"]);
-    expect(resolved.get("cursor:figma")?.reason).toBe(FIGMA_SUPPRESSION.reason);
+    expect([...resolved.keys()]).toEqual(["kiro:figma"]);
+    expect(resolved.get("kiro:figma")?.reason).toBe(FIGMA_SUPPRESSION.reason);
   });
 
   it("matches the mcpm-wrapped deployment of the same server", () => {
@@ -63,19 +63,19 @@ describe("resolveProbeSuppressions", () => {
   });
 
   it("ignores a failure whose status the catalog did not declare", () => {
-    const resolved = resolveProbeSuppressions([failure("figma", "cursor", "launch_failed")], byServer);
+    const resolved = resolveProbeSuppressions([failure("figma", "kiro", "launch_failed")], byServer);
 
     expect(resolved.size).toBe(0);
   });
 
   it("never suppresses a passing probe", () => {
-    const ok: ProbeResult = { name: "figma", agent: "cursor", status: "ok", latencyMs: 5 };
+    const ok: ProbeResult = { name: "figma", agent: "kiro", status: "ok", latencyMs: 5 };
 
     expect(resolveProbeSuppressions([ok], byServer).size).toBe(0);
   });
 
   it("leaves servers with no catalog suppression alone", () => {
-    const resolved = resolveProbeSuppressions([failure("github", "cursor")], byServer);
+    const resolved = resolveProbeSuppressions([failure("github", "kiro")], byServer);
 
     expect(resolved.size).toBe(0);
   });
@@ -93,22 +93,19 @@ describe("unhealthyMcpEntries", () => {
   }
 
   it("does not count a suppressed failure as an error", () => {
-    const snapshot = snapshotFor([failure("figma", "cursor")]);
+    const snapshot = snapshotFor([failure("figma", "kiro")]);
 
     expect(unhealthyMcpEntries(snapshot)).toEqual([]);
   });
 
   it("still counts a genuine failure", () => {
-    const snapshot = snapshotFor([failure("github", "cursor", "init_error", "spawn ENOENT")]);
+    const snapshot = snapshotFor([failure("github", "kiro", "init_error", "spawn ENOENT")]);
 
     expect(unhealthyMcpEntries(snapshot).map((e) => e.name)).toEqual(["github"]);
   });
 
   it("separates the suppressed entry from the actionable one", () => {
-    const snapshot = snapshotFor([
-      failure("figma", "cursor"),
-      failure("github", "cursor", "init_error", "spawn ENOENT"),
-    ]);
+    const snapshot = snapshotFor([failure("figma", "kiro"), failure("github", "kiro", "init_error", "spawn ENOENT")]);
 
     expect(unhealthyMcpEntries(snapshot).map((e) => e.name)).toEqual(["github"]);
     expect(suppressedMcpEntries(snapshot).map((e) => e.name)).toEqual(["figma"]);
@@ -123,7 +120,7 @@ describe("unhealthyMcpEntries", () => {
 
 describe("isSuppressedFailure", () => {
   it("tells the heal loop to skip a declared failure", () => {
-    expect(isSuppressedFailure(failure("figma", "cursor"), byServer)).toBe(true);
+    expect(isSuppressedFailure(failure("figma", "kiro"), byServer)).toBe(true);
   });
 
   it("covers the mcpm-wrapped name too, so heal does not retry it every tick", () => {
@@ -131,7 +128,7 @@ describe("isSuppressedFailure", () => {
   });
 
   it("lets a real failure through to the heal loop", () => {
-    expect(isSuppressedFailure(failure("github", "cursor"), byServer)).toBe(false);
+    expect(isSuppressedFailure(failure("github", "kiro"), byServer)).toBe(false);
   });
 });
 

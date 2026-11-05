@@ -1,5 +1,5 @@
 /**
- * Static bloat lint for agent-owned artifacts (skills, commands, Cursor rules).
+ * Static bloat lint for agent-owned artifacts (skills, commands, rules).
  *
  * Prior art (see docs/agent-bloat-lint.md):
  * - agentskills.io spec (description ≤1024, progressive disclosure)
@@ -17,7 +17,7 @@ import { COMMANDS_DIR } from "./paths.js";
 import { estimateTokens } from "./sync/instructions-content.js";
 import { expandHome } from "./utils.js";
 
-export type AgentBloatSurface = "skill" | "command" | "cursor-rule";
+export type AgentBloatSurface = "skill" | "command" | "rule";
 
 export type AgentBloatSeverity = "error" | "warning";
 
@@ -296,7 +296,7 @@ export function lintMdcBloat(content: string, path: string): AgentBloatFinding[]
   if (bytes > MDC_FILE_CHAR_SOFT) {
     findings.push({
       ruleId: BLOAT_RULE.MDC_FILE_SOFT,
-      surface: "cursor-rule",
+      surface: "rule",
       severity: "warning",
       path,
       message: `${basename(path)} is ${bytes.toLocaleString()} bytes > soft target ${MDC_FILE_CHAR_SOFT.toLocaleString()}`,
@@ -308,7 +308,7 @@ export function lintMdcBloat(content: string, path: string): AgentBloatFinding[]
   if (alwaysApplied && bytes > MDC_FILE_CHAR_HARD) {
     findings.push({
       ruleId: BLOAT_RULE.MDC_FILE_HARD,
-      surface: "cursor-rule",
+      surface: "rule",
       severity: "error",
       path,
       message: `always-applied rule ${basename(path)} is ${bytes.toLocaleString()} bytes > ${MDC_FILE_CHAR_HARD.toLocaleString()}`,
@@ -321,7 +321,7 @@ export function lintMdcBloat(content: string, path: string): AgentBloatFinding[]
     if (isBroadGlob(glob)) {
       findings.push({
         ruleId: BLOAT_RULE.MDC_BROAD_GLOB,
-        surface: "cursor-rule",
+        surface: "rule",
         severity: "warning",
         path,
         message: `broad glob "${glob}" — scope creep; prefer a narrow path prefix`,
@@ -332,7 +332,7 @@ export function lintMdcBloat(content: string, path: string): AgentBloatFinding[]
   if (alwaysApplied && (meta.globs ?? []).some(isBroadGlob)) {
     findings.push({
       ruleId: BLOAT_RULE.MDC_ALWAYS_APPLY_BROAD,
-      surface: "cursor-rule",
+      surface: "rule",
       severity: "error",
       path,
       message: "always-applied rule uses broad glob(s) — loads on nearly every file",

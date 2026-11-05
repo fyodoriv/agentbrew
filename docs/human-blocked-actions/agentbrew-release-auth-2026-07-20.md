@@ -2,7 +2,6 @@
 
 **Status**: pending
 **Filed**: 2026-07-20
-**Agent**: Cursor
 **TASKS.md entry**: restore-agentbrew-release-automation
 
 ## Why the action is required

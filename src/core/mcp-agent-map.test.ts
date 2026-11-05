@@ -215,7 +215,6 @@ describe("coverage invariant — every MCP-capable agent in agents.yaml is class
       "claude-desktop",
       "cline",
       "continue",
-      "cursor",
       "codex-cli",
       "goose-cli",
       "gemini-cli",

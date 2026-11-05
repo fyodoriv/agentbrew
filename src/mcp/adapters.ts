@@ -45,7 +45,7 @@ function desiredKeysMatch(existingValue: unknown, desiredValue: unknown): boolea
 function toJsonRemoteEntry(server: McpServer, url: string, agentName: string): JsonEntry {
   const entry: JsonEntry = { url };
   // Claude Code requires an explicit transport type for remote MCP servers.
-  // Cursor and other JSON clients infer it from the URL.
+  // Other JSON clients infer it from the URL.
   if (agentName === "claude-code" || agentName === "claude-desktop") {
     entry.type = "http";
   }
@@ -62,7 +62,7 @@ function toJsonRemoteEntry(server: McpServer, url: string, agentName: string): J
 // ── JSON adapter ────────────────────────────────────────────────────────────
 
 /**
- * Handles the standard JSON MCP config format used by Claude Code, Cursor,
+ * Handles the standard JSON MCP config format used by Claude Code,
  * and most other agents — servers stored as a name-keyed map under a configurable
  * `mcpKey` (e.g. `mcpServers`).
  */
@@ -293,6 +293,26 @@ const PLACEHOLDER = /\$\{[A-Z_][A-Z0-9_]*(?::-[^}]*)?\}/;
 const ENV_ONLY_VALUE = /^\$\{([A-Z_][A-Z0-9_]*)(?::-[^}]*)?\}$/;
 const BEARER_ENV_VALUE = /^Bearer \$\{([A-Z_][A-Z0-9_]*)(?::-[^}]*)?\}$/;
 
+function codexAuthorizationChanged(existing: JsonEntry, desired: JsonEntry): boolean {
+  if (existing.bearer_token_env_var !== desired.bearer_token_env_var) return true;
+  return (["http_headers", "env_http_headers"] as const).some((field) => {
+    const before = asRecord(existing[field]);
+    const after = asRecord(desired[field]);
+    return [...Object.keys(before), ...Object.keys(after)].some(
+      (name) => name.toLowerCase() === "authorization" && before[name] !== after[name],
+    );
+  });
+}
+
+function assertCodexHelperUpdateAllowed(existing: JsonEntry, desired: JsonEntry): void {
+  if (
+    Object.hasOwn(existing, "http_headers_helper") &&
+    (existing.url !== desired.url || codexAuthorizationChanged(existing, desired))
+  ) {
+    throw new Error("Codex MCP update refused to preserve native HTTP headers helper configuration.");
+  }
+}
+
 /** Codex rejects `env`, `args`, and `bearer_token` next to `url`, and never
  *  expands `${VAR}` inside a header value, so each header maps to the one
  *  Codex field that can carry it. */
@@ -341,14 +361,16 @@ class TomlAdapter extends JsonAdapter {
   }
 
   override entriesMatch(existing: Record<string, unknown>, desired: Record<string, unknown>): boolean {
-    if (!("url" in desired)) return super.entriesMatch(existing, desired);
-    return (
-      existing.url === desired.url &&
-      existing.command === undefined &&
-      existing.bearer_token_env_var === desired.bearer_token_env_var &&
-      desiredKeysMatch(existing.http_headers, desired.http_headers) &&
-      desiredKeysMatch(existing.env_http_headers, desired.env_http_headers)
-    );
+    const matches =
+      "url" in desired
+        ? existing.url === desired.url &&
+          existing.command === undefined &&
+          existing.bearer_token_env_var === desired.bearer_token_env_var &&
+          desiredKeysMatch(existing.http_headers, desired.http_headers) &&
+          desiredKeysMatch(existing.env_http_headers, desired.env_http_headers)
+        : super.entriesMatch(existing, desired);
+    if (!matches) assertCodexHelperUpdateAllowed(existing, desired);
+    return matches;
   }
 
   override applyUpdate(
@@ -356,6 +378,8 @@ class TomlAdapter extends JsonAdapter {
     serverName: string,
     entry: Record<string, unknown>,
   ): void {
+    const existing = entries[serverName];
+    if (existing) assertCodexHelperUpdateAllowed(existing, entry);
     super.applyUpdate(entries, serverName, entry);
     const updated = entries[serverName];
     for (const key of CODEX_REMOTE_FIELDS) {

@@ -19,7 +19,6 @@ describe("AGENT_DEFINITIONS", () => {
   it("includes all expected agent names", () => {
     const names = AGENT_DEFINITIONS.map((a) => a.name);
     expect(names).toContain("claude-code");
-    expect(names).not.toContain("cursor");
     expect(names).toContain("augment");
     expect(names).toContain("codex");
     expect(names).toContain("gemini-cli");

@@ -31,13 +31,6 @@ vi.mock("../types.js", async (importOriginal) => {
         hooksKey: "hooks",
       },
       {
-        name: "cursor",
-        detected: true,
-        skillsDir: "~/.cursor/skills",
-        hooksFile: "~/.cursor/hooks.json",
-        hooksFormat: "cursor",
-      },
-      {
         name: "project-hooks-agent",
         detected: true,
         skillsDir: "~/.config/project-hooks-agent/skills",
@@ -250,41 +243,40 @@ describe("checkHooksDrift", () => {
     expect(drift).toEqual([]);
   });
 
-  it("accepts Cursor native hooks.json entries when managed hooks are deployed", () => {
+  it("accepts Codex native hooks.json entries when managed hooks are deployed", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
+      agents: [{ name: "codex", detected: true }],
       hooks: [
         {
           event: "PreToolUse",
           matcher: "Write",
           type: "command",
-          command: "echo cursor",
+          command: "echo codex",
           source: "agentfile",
-          agents: ["cursor"],
+          agents: ["codex"],
         },
       ],
     } as never);
     mockLoadManifest.mockReturnValue({
       hashes: {},
       managedHookKeys: ["PreToolUse:Write"],
-      managedHookKeysByAgent: { cursor: ["preToolUse:Write"] },
+      managedHookKeysByAgent: { codex: ["PreToolUse:Write"] },
     } as never);
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(
       JSON.stringify({
-        version: 1,
-        hooks: { preToolUse: [{ matcher: "Write", command: "echo cursor" }] },
+        hooks: { PreToolUse: [{ matcher: "Write", hooks: [{ type: "command", command: "echo codex" }] }] },
       }),
     );
 
     expect(checkHooksDrift()).toEqual([]);
   });
 
-  it("does not use Claude legacy managed keys to report Cursor-only drift", () => {
+  it("does not use Claude legacy managed keys to report Codex-only drift", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
+      agents: [{ name: "codex", detected: true }],
       hooks: [
         {
           event: "PreToolUse",
@@ -301,7 +293,7 @@ describe("checkHooksDrift", () => {
       managedHookKeys: ["PreToolUse:Write"],
     } as never);
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(JSON.stringify({ version: 1, hooks: {} }));
+    mockReadFileSync.mockReturnValue(JSON.stringify({ hooks: {} }));
 
     expect(checkHooksDrift()).toEqual([]);
   });
@@ -509,7 +501,7 @@ describe("checkHooksDrift", () => {
   it("accepts a deployed command that a post-sync step put behind a wrapper prefix", () => {
     mockLoadState.mockReturnValue({
       mcpServers: [],
-      agents: [{ name: "cursor", detected: true }],
+      agents: [{ name: "codex", detected: true }],
       hooks: [],
     } as never);
     mockLoadManagedHooks.mockReturnValueOnce({
@@ -519,17 +511,16 @@ describe("checkHooksDrift", () => {
           type: "command",
           command: "bash /deploy/a.sh",
           source: "agentbrew-hooks-manifest",
-          agents: ["cursor"],
+          agents: ["codex"],
         },
       ],
       resolved: { hooks: [] },
     } as never);
-    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeysByAgent: { cursor: ["stop:*"] } } as never);
+    mockLoadManifest.mockReturnValue({ hashes: {}, managedHookKeysByAgent: { codex: ["Stop:*"] } } as never);
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(
       JSON.stringify({
-        version: 1,
-        hooks: { stop: [{ matcher: "*", command: "/opt/wrap/with-path.sh bash /deploy/a.sh" }] },
+        hooks: { Stop: [{ hooks: [{ type: "command", command: "/opt/wrap/with-path.sh bash /deploy/a.sh" }] }] },
       }),
     );
 

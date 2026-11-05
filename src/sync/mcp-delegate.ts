@@ -489,7 +489,7 @@ function runGlobalUninstall(bin: string, serverName: string): DelegateMcpUninsta
  * for global cleanup. The mirror image of
  * {@link delegateMcpClientEdit} on the remove side, used by
  * `removeMcpServer` so `agentbrew remove <name>` cleans up
- * intersection clients (cursor, claude-code, codex, etc.) in addition
+ * intersection clients (claude-code, codex, etc.) in addition
  * to the carve-outs handled by `pruneServerFromAgents`.
  *
  * Per-client failures do NOT abort the loop — one client's missing

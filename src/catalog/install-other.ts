@@ -52,14 +52,14 @@ function showMcpMissingEnvVars(server: CatalogMcpServer): void {
  * Bridge catalog MCP server installs to mcpm for the MCP_INTERSECTION_AGENTS mcpm intersection.
  *
  * Slice 4a of `delegate-mcp-to-mcpm` skipped the intersection clients
- * (cursor, claude-code, codex, etc.) during native sync — they get
+ * (claude-code, codex, etc.) during native sync — they get
  * their MCP config writes through `mcpm client edit`. Slice 4c wired
  * the same dispatch into `installFromRegistry` (deleted in slice 5a).
  *
  * Catalog installs go through `installMcpServer` instead — and after
  * slices 4a + 5a there was no path that wrote intersection-client
  * configs from a catalog install. The user saw "Installing MCP server:
- * <name>" and "registered" succeed, but cursor / claude-code / codex
+ * <name>" and "registered" succeed, but claude-code / codex
  * etc. never saw the server in their config files. This bridge closes
  * that regression.
  *
@@ -105,7 +105,7 @@ function bridgeCatalogMcpToMcpm(server: CatalogMcpServer): void {
   // registry — it prints "Error: Server '<name>' not found in registry."
   // to stdout and walks away. Verify via readMcpmServer; if the entry
   // didn't land, fall back to `mcpm new` with the catalog's transport
-  // shape so intersection clients (Claude Code, Cursor,
+  // shape so intersection clients (Claude Code,
   // claude-desktop, codex, gemini-cli, goose, cline, roo-code) still
   // get the server wired. This is what made team-overlay MCPs
   // (registry.npmjs.example.com) invisible to mcpm-delegated clients

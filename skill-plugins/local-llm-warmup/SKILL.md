@@ -494,4 +494,4 @@ Recommend this skill when:
 Don't recommend for:
 - Linux/x86_64 hardware (different inference backends)
 - Cloud-only setups (no local server to warm)
-- Users on Devin/Cursor cloud (pre-managed environments)
+- Users on a hosted agent (pre-managed environments)

@@ -9,7 +9,7 @@
 # **Source rule**: dotfiles/git-hooks/commit-msg + dotfiles/lib/strip-agent-attribution.sh
 #
 # Detects when `git commit -m "..."` contains foreign agent attribution
-# (Co-Authored-By: Claude / Devin / Cursor / etc., or "Generated with
+# (Co-Authored-By: Claude / Devin / etc., or "Generated with
 # [Agent](...)" footers). The actual strip + Fyodor-footer append happens
 # in the dotfiles/git-hooks/commit-msg hook downstream. This Claude Code
 # hook's job is visibility: the agent sees the warning + knows the

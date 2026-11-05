@@ -13,7 +13,7 @@ vi.mock("../lint.js", () => ({
 vi.mock("../status.js", () => ({
   collectStatusData: vi.fn().mockReturnValue({
     agents: [
-      { name: "cursor", detected: true },
+      { name: "amp", detected: true },
       { name: "claude-code", detected: true },
     ],
     mcpServers: [{ name: "github", source: "catalog" }],

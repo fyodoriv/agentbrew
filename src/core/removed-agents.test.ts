@@ -1,7 +1,11 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import type { AgentBrewState } from "../types.js";
+import { CURRENT_SCHEMA_VERSION, migrateState } from "./state-manager.js";
 
 // Guard for #286: Cursor and Grok support was removed on purpose.
 // These checks fail if any of it comes back.
@@ -47,6 +51,57 @@ function codeLines(text: string): string[] {
 }
 
 describe("removed agents stay removed (#286)", () => {
+  it("has no tracked .cursor/ output reference outside this guard", () => {
+    const result = spawnSync("git", ["grep", "-liF", ".cursor/", "--", ":!src/core/removed-agents.test.ts"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stdout).toBe(1);
+  });
+
+  it("ignores surviving owner files only at the repository root", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "agentbrew-retired-ignore-"));
+    try {
+      const template = join(scratch, "empty-template");
+      mkdirSync(template);
+      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+      env.GIT_CONFIG_NOSYSTEM = "1";
+      env.GIT_CONFIG_GLOBAL = "/dev/null";
+      const git = (...args: string[]) => spawnSync("git", args, { cwd: scratch, env, encoding: "utf8" });
+      expect(git("init", "--quiet", `--template=${template}`).status).toBe(0);
+      writeFileSync(join(scratch, ".gitignore"), readText(".gitignore"));
+
+      const root = ".cursor/owner-config.json";
+      const nested = "nested/.cursor/owner-config.json";
+      for (const path of [root, nested]) {
+        const file = join(scratch, path);
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, "{}\n");
+      }
+      const ignored = (path: string) =>
+        git("-c", "core.excludesFile=/dev/null", "check-ignore", "--no-index", "--", path).status;
+      expect(ignored(root)).toBe(0);
+      expect(ignored(nested)).toBe(1);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it.each([undefined, CURRENT_SCHEMA_VERSION])("drops retired state at schema %s", (schemaVersion) => {
+    const live: AgentBrewState["agents"] = ["claude-code", "codex", "opencode"].map((name) => ({
+      name,
+      detected: true,
+      skillsDir: `/fixture/${name}/skills`,
+    }));
+    const state: AgentBrewState = {
+      schemaVersion,
+      catalogVersion: "fixture",
+      agents: [...live, { name: "cursor", detected: true, skillsDir: "~/.cursor/skills" }],
+    };
+    expect(migrateState(state).agents).toEqual(live);
+  });
+
   it("has no Cursor, Grok, or xAI agent entry in agents.yaml", () => {
     const names = coreAgents().map((agent) => String(agent.name));
     expect(names.filter((name) => REMOVED_NAME.test(name))).toEqual([]);

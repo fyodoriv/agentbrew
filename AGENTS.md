@@ -26,7 +26,7 @@ Run every command from the repo root.
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
-| Full gate (step cache shared by worktrees; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — minutes; run once, in the background |
+| Full gate (shared source-only cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` |
@@ -78,7 +78,7 @@ maps each rule to its check. Other files cite these numbers.
 Also: no counts of agents, skills, tests, or files in docs or comments.
 Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
-> Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
+Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 ## Gotchas
 
@@ -102,6 +102,7 @@ Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
+- `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins (#693). Tests stub `gh` on `PATH`.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.

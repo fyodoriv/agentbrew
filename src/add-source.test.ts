@@ -204,28 +204,33 @@ describe("addSource", () => {
       mockIndexSource.mockReturnValue([]); // force fallback to delegate path
     });
 
-    it("falls back to --agent * when state.agents is empty (pre-init)", async () => {
-      // First-run before `agentbrew init` populates state.agents — the
-      // dispatcher must still produce a working subprocess invocation,
-      // so we keep the historical wildcard fallback. Without this carve-
-      // out a fresh user would see a confusing "no agents detected" skip
-      // before they've had a chance to run init.
+    it("uses only primary targets when state.agents is empty before init", async () => {
       mockLoadState.mockReturnValue(makeState([]));
       await addSource("user/repo", {});
       const args = mockExecFileSync.mock.calls[0]?.[1] as string[];
-      expect(args).toContain("*");
-      // Wildcard form: exactly one --agent flag pointing at "*".
-      const agentFlags = args.filter((a) => a === "--agent");
-      expect(agentFlags).toHaveLength(1);
+      const targets = args.flatMap((arg, index) => (arg === "--agent" ? [args[index + 1]] : []));
+      expect(targets).toEqual(["claude-code", "codex"]);
+    });
+
+    it("does not delegate when the saved agent list disables every target", async () => {
+      const state = makeState(["claude-code", "codex"]);
+      for (const agent of state.agents) agent.detected = false;
+      mockLoadState.mockReturnValue(state);
+
+      await addSource("user/repo", {});
+
+      expect(mockExecFileSync).not.toHaveBeenCalled();
+      expect(mockIndexSource).toHaveBeenCalled();
+      expect(mockSaveState).not.toHaveBeenCalled();
     });
 
     it("emits one --agent <name> pair per detected intersection agent", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "trae"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex", "trae"]));
       await addSource("user/repo", {});
       const args = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // No wildcard — explicit per-agent dispatch.
       expect(args).not.toContain("*");
-      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "trae"]));
+      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "codex", "--agent", "trae"]));
     });
 
     it("translates rename pairs at the subprocess boundary (copilot → github-copilot, kiro → kiro-cli, roo-code → roo)", async () => {
@@ -243,7 +248,7 @@ describe("addSource", () => {
 
     it("filters carve-outs (claude-desktop, qodo) and warns", async () => {
       const consoleSpy = vi.spyOn(console, "log");
-      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "cursor", "qodo"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "codex", "qodo"]));
       await addSource("user/repo", {});
       const args = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // Carve-outs must NOT appear in the subprocess args — they have no
@@ -251,7 +256,7 @@ describe("addSource", () => {
       expect(args).not.toContain("claude-desktop");
       expect(args).not.toContain("qodo");
       // Intersection agents survive.
-      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "cursor"]));
+      expect(args).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "codex"]));
       // User-visible carve-out warning so they understand which agents are
       // not covered by the delegated install.
       const warningCall = consoleSpy.mock.calls.find((call) => {
@@ -287,7 +292,7 @@ describe("addSource", () => {
       // reason. This test pins the bullet format so a future test-rewrite
       // can't silently drop them.
       const consoleSpy = vi.spyOn(console, "log");
-      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "qodo", "cursor"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "qodo", "codex"]));
       await addSource("user/repo", {});
       const allCalls = consoleSpy.mock.calls.map((call) => String(call[0] ?? ""));
       // The one-line summary still fires (existing behavior — pinned by
@@ -318,7 +323,7 @@ describe("addSource", () => {
     });
 
     it("delegates to all detected intersection agents when source is skill-shaped", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor", "trae"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex", "trae"]));
       // Skill-shaped: indexSource finds at least one SKILL.md.
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
@@ -327,7 +332,7 @@ describe("addSource", () => {
       // appears as a `--agent <name>` pair in the subprocess args.
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
       expect(delegationArgs).toEqual(
-        expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor", "--agent", "trae"]),
+        expect.arrayContaining(["--agent", "claude-code", "--agent", "codex", "--agent", "trae"]),
       );
       // Multiple `--agent` flags emitted (one per detected intersection agent).
       const agentFlags = delegationArgs.filter((a) => a === "--agent");
@@ -336,18 +341,18 @@ describe("addSource", () => {
 
     it("filters carve-outs from the delegation but still triggers when intersection agents exist", async () => {
       // claude-desktop and qodo are carve-outs; claude-code,
-      // warp, and cursor are intersection agents. Delegation triggers (because
+      // warp, and codex are intersection agents. Delegation triggers (because
       // the intersection set is non-empty) but the carve-outs are filtered
       // by buildSkillsCliAgentArgs at the subprocess boundary. Carve-outs
       // are then deployed natively by agentbrew's sync engine.
-      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "cursor", "qodo"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "claude-desktop", "warp", "codex", "qodo"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
 
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
       // Intersection agents survive.
       expect(delegationArgs).toEqual(
-        expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "cursor"]),
+        expect.arrayContaining(["--agent", "claude-code", "--agent", "warp", "--agent", "codex"]),
       );
       // Carve-outs do NOT appear in the subprocess args.
       expect(delegationArgs).not.toContain("claude-desktop");
@@ -355,7 +360,7 @@ describe("addSource", () => {
     });
 
     it("does NOT delegate when source has no skills (non-skill source)", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex"]));
       // Non-skill source: only rules / commands / mcp, no SKILL.md.
       mockIndexSource.mockReturnValue([{ name: "my-rule", description: "desc", type: "rule" }]);
       await addSource("user/repo", {});
@@ -389,7 +394,7 @@ describe("addSource", () => {
       // User opt-out for offline / proxy environments where `npx skills add`
       // is unreliable. The mode field on state.yaml must defeat the
       // delegation regardless of how many intersection agents are detected.
-      const state = makeState(["claude-code", "cursor"]);
+      const state = makeState(["claude-code", "codex"]);
       (state as { skillInstallMode?: "native" | "auto" | "delegate" }).skillInstallMode = "native";
       mockLoadState.mockReturnValue(state);
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
@@ -399,20 +404,20 @@ describe("addSource", () => {
     });
 
     it("delegates when skillInstallMode is 'delegate' (explicit opt-in)", async () => {
-      const state = makeState(["claude-code", "cursor"]);
+      const state = makeState(["claude-code", "codex"]);
       (state as { skillInstallMode?: "native" | "auto" | "delegate" }).skillInstallMode = "delegate";
       mockLoadState.mockReturnValue(state);
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
 
       const delegationArgs = mockExecFileSync.mock.calls[0]?.[1] as string[];
-      expect(delegationArgs).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "cursor"]));
+      expect(delegationArgs).toEqual(expect.arrayContaining(["--agent", "claude-code", "--agent", "codex"]));
     });
 
     it("falls back to native when delegation subprocess fails", async () => {
       // Delegation failure must not abort the native registration — the
       // intersection agents will be deployed via agentbrew's own scan.
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       mockExecFileSync.mockImplementation(() => {
         throw new Error("network error");
@@ -424,7 +429,7 @@ describe("addSource", () => {
     });
 
     it("points delegated install failures at networking and offline-cache troubleshooting", async () => {
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       mockExecFileSync.mockImplementation(() => {
         throw new Error("ENOTCACHED");
@@ -467,7 +472,7 @@ describe("addSource", () => {
       },
     ])("fallback failure-mode: $scenario", ({ error }) => {
       it("falls back to native AND emits the README-anchored troubleshooting hint", async () => {
-        mockLoadState.mockReturnValue(makeState(["claude-code", "cursor"]));
+        mockLoadState.mockReturnValue(makeState(["claude-code", "codex"]));
         mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
         mockExecFileSync.mockImplementation(() => {
           throw error;
@@ -487,7 +492,7 @@ describe("addSource", () => {
 
     it("emits a one-line user-visible note when delegation triggers", async () => {
       const consoleSpy = vi.spyOn(console, "log");
-      mockLoadState.mockReturnValue(makeState(["claude-code", "cursor"]));
+      mockLoadState.mockReturnValue(makeState(["claude-code", "codex"]));
       mockIndexSource.mockReturnValue([{ name: "my-skill", description: "desc", type: "skill" }]);
       await addSource("user/repo", {});
 

@@ -37,7 +37,7 @@ Repo roots: README is the human front door; agent instructions live in skills, r
 
 These apply to skills, chains, and wizards that perform work (real edits), not read-only analysis.
 
-- Work-performing flows may edit multiple repos, and must assume they can conflict with the user's own rules/skills. Before acting, detect what the user has forbidden in each affected repo — scan its `AGENTS.md` / `CLAUDE.md` / `.cursor/rules` for prohibitions like "ask first", "never edit", "no sibling-repo edits" — and get explicit confirmation. Batch ALL confirmations into one upfront question set.
+- Work-performing flows may edit multiple repos, and must assume they can conflict with the user's own rules/skills. Before acting, detect what the user has forbidden in each affected repo — scan its `AGENTS.md` / `CLAUDE.md` for prohibitions like "ask first", "never edit", "no sibling-repo edits" — and get explicit confirmation. Batch ALL confirmations into one upfront question set.
 - Before editing any affected repo, fetch its latest default branch. Rebase an owned feature branch onto `origin/<default>` before implementation. If uncommitted work prevents a rebase, preserve it and state the exact blocker before editing.
 - On a blocker (e.g. a dependency ticket or missing prerequisite), do not silently stop — ask the user what to do (proceed partially / stage scaffolding / skip / abort), in the same batch.
 - Label every step executed / dry-run (no side effects) / skipped (already done) in output and closeout.

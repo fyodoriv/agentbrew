@@ -53,7 +53,7 @@ describe("printMotd", () => {
   it("prints status line for normal commands", () => {
     mockLoadState.mockReturnValue(
       makeState({
-        agents: [makeAgent("claude-code"), makeAgent("cursor")],
+        agents: [makeAgent("claude-code"), makeAgent("codex")],
         mcpServers: [makeMcpServer("srv1"), makeMcpServer("srv2"), makeMcpServer("srv3")],
       }),
     );

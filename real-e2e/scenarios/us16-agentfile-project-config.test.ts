@@ -33,7 +33,7 @@ describe("us16 agentfile project config", () => {
       expect(result.stdout).toContain("2 MCP server(s) added");
       expect(result.stdout).toContain("rules updated");
 
-      // Post-slice-4a (PR #845): cursor is intersection-delegated, so
+      // Post-slice-4a (PR #845): claude-code is intersection-delegated, so
       // assert the Agentfile-driven MCP servers landed in a carve-out
       // client's config (kiro). See us02-us03 / us23 for the precedent.
       const kiroMcp = JSON.parse(readFileSync(join(homeDir, ".kiro", "settings", "mcp.json"), "utf-8")) as {

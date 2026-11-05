@@ -30,10 +30,13 @@ const ENV_FALLBACKS: Record<string, () => string | undefined> = {
   JIRA_PERSONAL_TOKEN: () => resolveFromKeychain("jira-personal-token") ?? resolveFromKeychain("JIRA_PERSONAL_TOKEN"),
 };
 
-/** Resolve GITHUB_TOKEN via `gh auth token` when the env var isn't set. */
+/** Resolve the GitHub token from the gh keyring login. `gh` returns an env
+ *  GITHUB_TOKEN or GH_TOKEN before its keyring, so both are removed for this
+ *  call: a stale env token must never shadow a rotated keyring token (#693). */
 function resolveGitHubToken(): string | undefined {
+  const { GITHUB_TOKEN: _github, GH_TOKEN: _gh, ...env } = process.env;
   try {
-    return execFileSync("gh", ["auth", "token"], { stdio: "pipe", timeout: 5_000 }).toString().trim() || undefined;
+    return execFileSync("gh", ["auth", "token"], { stdio: "pipe", timeout: 5_000, env }).toString().trim() || undefined;
   } catch (e) {
     logSkipped("mcp/env-vars/execFileSync", e);
     return undefined;
@@ -63,11 +66,22 @@ function resolveFromKeychain(service: string): string | undefined {
   }
 }
 
-/** Try process.env first, then well-known fallbacks. */
+// Only GITHUB_TOKEN: gh itself leaks it from the env. An exported
+// GITHUB_PERSONAL_ACCESS_TOKEN is a deliberate choice and keeps winning.
+const KEYRING_FIRST = new Set(["GITHUB_TOKEN"]);
+
+/** Try process.env first, then well-known fallbacks. GITHUB_TOKEN tries the gh keyring first. */
 export function resolveEnvVar(varName: string): string | undefined {
+  // GITHUB_TOKEN: the keyring login wins; the env value is the fallback (CI).
+  const keyringFirst = KEYRING_FIRST.has(varName);
+  if (keyringFirst) {
+    const fromKeyring = resolveGitHubToken();
+    if (fromKeyring) return fromKeyring;
+  }
   const fromEnv = process.env[varName];
   if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-  return ENV_FALLBACKS[varName]?.();
+  // gh was already asked above; do not spawn it twice.
+  return keyringFirst ? undefined : ENV_FALLBACKS[varName]?.();
 }
 
 /**
@@ -101,12 +115,9 @@ export function toCanonical(value: string): string {
  * Functionally equivalent to `${VAR}` for clients that handle the unset case gracefully,
  * but critically the resilient form prevents strict env-var interpolators from hard-failing.
  *
- * Real failure mode this prevents: Devin CLI's binary imports MCP configs from `~/.claude.json`
- * and `~/.cursor/mcp.json` and tries to interpolate `${VAR}`. When the env var is unset and
- * there's no `:-default` group, Devin aborts the entire MCP load — killing all MCP tools, not
- * just the one with the missing var. Emitting `${VAR:-}` makes Devin's regex see an empty
- * default and continue. Other MCP clients (Claude Code, Cursor) accept the same syntax via
- * standard bash-style substitution.
+ * Strict clients that import MCP configs such as `~/.claude.json` can abort the entire
+ * MCP load if an unset variable has no default. The resilient form gives them an empty
+ * default and uses standard shell substitution syntax.
  *
  * Already-resilient placeholders (`${VAR:-default}`, `${VAR:-}`) pass through unchanged.
  */
@@ -119,7 +130,7 @@ export function makeResilient(value: string): string {
 export function fromCanonical(value: string, format: EnvVarFormat): string {
   switch (format) {
     case "standard":
-      // Emit resilient placeholders so downstream importers (Devin reading Claude/Cursor
+      // Emit resilient placeholders so downstream importers (reading other agents’
       // configs) don't crash when an env var is unset. See makeResilient docstring.
       return makeResilient(value);
     case "opencode":
@@ -156,8 +167,7 @@ export interface BarePlaceholderFinding {
  * Recursively walk any JSON-shaped value and return all bare `${VAR}` placeholders.
  *
  * Bare placeholders (`${VAR}` without `:-default`) are what cause strict env-var
- * interpolators (notably the Devin CLI binary, which imports MCP configs from Claude
- * and Cursor) to abort the entire MCP load when the env var is unset. This helper
+ * interpolators to abort the entire MCP load when the env var is unset. This helper
  * powers both the post-sync sanitizer and the drift check that surfaces leftovers
  * — including bare placeholders written by tools agentbrew doesn't directly control
  * (e.g. `mcpm install` for clients in `MCP_INTERSECTION_AGENTS`).

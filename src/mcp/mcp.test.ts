@@ -191,7 +191,7 @@ describe("writeMcpJson", () => {
 
 describe("discoverMcpServers", () => {
   it("returns empty array when no agents detected", () => {
-    const agents: AgentConfig[] = [{ name: "cursor", detected: false, skillsDir: "x", mcpConfig: "y" }];
+    const agents: AgentConfig[] = [{ name: "kiro", detected: false, skillsDir: "x", mcpConfig: "y" }];
     expect(discoverMcpServers(agents)).toEqual([]);
   });
 
@@ -202,14 +202,14 @@ describe("discoverMcpServers", () => {
 
   it("skips when config file does not exist", () => {
     mockExistsSync.mockReturnValue(false);
-    const agents: AgentConfig[] = [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: "/no/file.json" }];
+    const agents: AgentConfig[] = [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: "/no/file.json" }];
     expect(discoverMcpServers(agents)).toEqual([]);
   });
 
-  it("discovers servers from cursor config", () => {
+  it("discovers servers from kiro config", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue('{"mcpServers":{"pg":{"command":"npx","args":[]}}}');
-    const agents: AgentConfig[] = [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: "/tmp/mcp.json" }];
+    const agents: AgentConfig[] = [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: "/tmp/mcp.json" }];
     const servers = discoverMcpServers(agents);
     expect(servers).toHaveLength(1);
     expect(servers[0].name).toBe("pg");
@@ -230,7 +230,7 @@ describe("discoverMcpServers", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue('{"mcpServers":{"shared":{"command":"npx"}}}');
     const agents: AgentConfig[] = [
-      { name: "cursor", detected: true, skillsDir: "x", mcpConfig: "/a.json" },
+      { name: "kiro", detected: true, skillsDir: "x", mcpConfig: "/a.json" },
       { name: "kiro", detected: true, skillsDir: "y", mcpConfig: "/b.json" },
     ];
     const servers = discoverMcpServers(agents);
@@ -240,7 +240,7 @@ describe("discoverMcpServers", () => {
   it("handles invalid JSON gracefully", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue("not json");
-    const agents: AgentConfig[] = [{ name: "cursor", detected: true, skillsDir: "x", mcpConfig: "/bad.json" }];
+    const agents: AgentConfig[] = [{ name: "kiro", detected: true, skillsDir: "x", mcpConfig: "/bad.json" }];
     const servers = discoverMcpServers(agents);
     expect(servers).toEqual([]);
   });

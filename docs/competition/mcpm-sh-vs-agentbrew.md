@@ -19,7 +19,7 @@ skills CLI)**. Confirmed 2026-04-27 in slice 4.
 **Slice 1–3 evidence summary:**
 
 - **Client coverage** is net-additive. 9 strict intersection clients (claude-code,
-  claude-desktop, cline, cursor, windsurf, gemini-cli, codex↔codex-cli,
+  claude-desktop, cline, windsurf, gemini-cli, codex↔codex-cli,
   goose↔goose-cli, roo-code) delegate cleanly. 3 small adapter contributions
   (opencode, kiro, amp) at ~30 LOC each. 2 hard carve-outs (devin, overlay-desktop)
   parallel the skills CLI delegation's 3-carve-out structure. Bonus: 5 mcpm-only
@@ -38,7 +38,7 @@ skills CLI)**. Confirmed 2026-04-27 in slice 4.
   on per-call commands (install, search, info, ls, run) plus a native `sync`
   that batches reads is the realistic shape. See § "Subprocess latency baseline".
 - **Per-project sync gap claim is BUSTED.** The TASKS.md claim that "agentbrew
-  has `project-mcp-sync.ts` writing `.cursor/mcp.json` etc." is a documentation
+  has a project-specific MCP writer" is a documentation
   drift bug — the file does NOT exist; agentbrew writes to global per-agent
   config paths just like mcpm does. The actual per-project layer is
   `Agentfile.yaml` `mcp:`, which is agentbrew's permanent scope per VISION.md.
@@ -93,7 +93,7 @@ think `npm` for Model Context Protocol servers. It manages MCP servers globally
 on a developer's machine: discovery (search the [mcpm.sh registry](https://mcpm.sh)),
 installation, configuration, lifecycle (`run`, `share`, `inspect`), profile
 grouping (`work` / `personal` / `project`), and per-client wiring (Claude
-Desktop, Cursor, Windsurf, Cline, Continue, Goose CLI, Roo Code, VSCode, 5ire,
+Desktop, Windsurf, Cline, Continue, Goose CLI, Roo Code, VSCode, 5ire,
 Codex CLI, Gemini CLI, Qwen CLI, Trae). Distributed as a Python package on PyPI;
 self-installs cleanly via `pipx install mcpm` (with one Python-version pinning
 caveat — see § "Pending: Python ecosystem viability").
@@ -269,7 +269,6 @@ both repos.
 | `claude-code` | `claude-code` | **Intersection** | Same `~/.claude.json` |
 | `claude-desktop` | `claude-desktop` | **Intersection** | Same `~/Library/Application Support/Claude/claude_desktop_config.json` |
 | `cline` | `cline` | **Intersection** | Both via VS Code extension globalStorage path |
-| `cursor` | `cursor` | **Intersection** | Same `~/.cursor/mcp.json` |
 | `windsurf` | `windsurf` | **Native carve-out** | agentbrew writes the modern `~/.codeium/windsurf/mcp_config.json` path directly; this avoids the endpoint-blocked mcpm Python launcher. |
 | `gemini-cli` | `gemini-cli` | **Intersection** | Same `~/.gemini/settings.json` |
 | `codex` | `codex-cli` | **Intersection (rename)** | Both write `~/.codex/config.toml` |
@@ -305,8 +304,8 @@ capability expansion.
 ### Rename / contribution / carve-out summary
 
 ```
-Intersection (9):  claude-code, claude-desktop, cline, cursor, windsurf,
-                   gemini-cli, roo-code, [codex↔codex-cli], [goose↔goose-cli]
+Intersection (9):  claude-code, claude-desktop, cline, windsurf,
+                   gemini-cli, roo-code, [codex↔codex-cli], [goose↔goose-cli], one retired target
 
 Contribute (3):    opencode, kiro, amp
                    + 1 settings.json variant: copilot/vscode-settings
@@ -465,8 +464,7 @@ specific contexts where native MCP stays alongside the delegation.
 
 The parent task (`evaluate-delegate-mcp-to-mcpm`) claims:
 
-> agentbrew has `project-mcp-sync.ts` that writes `.cursor/mcp.json`,
-> `.mcp.json`, `.windsurf/mcp.json`. mcpm is global-only today — this is a
+> agentbrew has `project-mcp-sync.ts` that writes project-specific MCP files. mcpm is global-only today — this is a
 > feature gap that blocks delegation unless agentbrew keeps a thin per-project
 > wrapper on top.
 
@@ -477,12 +475,11 @@ laptop 2026-04-26 by reading `src/sync/mcp-sync.ts`, `src/agentfile.ts`,
 - **No `project-mcp-sync.ts` file exists in `src/`.** The file named in the task
   description is not present in the codebase. (`fd project-mcp-sync` returns
   nothing.)
-- **No `.mcp.json` writer exists.** The only references to `.cursor/mcp.json`
-  / `.mcp.json` in the codebase are in `src/shell-hook.ts:42,75` — which
+- **No `.mcp.json` writer exists.** The references to `.mcp.json` are in `src/shell-hook.ts:42,75` — which
   *DETECTS* those files for shell-prompt badging, not *WRITES* them.
   `src/sync/mcp-sync.ts:323` writes via `writeMcpJson(expanded, config)` to a
   GLOBAL per-agent config path expanded from `expandHome(def.mcpConfig)` (e.g.
-  `~/.claude.json`, `~/.cursor/mcp.json` — globals, not per-project).
+  `~/.claude.json` — globals, not per-project).
 - **The actual project-scoped layer is `Agentfile.yaml`'s `mcp:` block.**
   `src/agentfile.ts:37` defines the `AgentfileMcpEntry[]` type. `resolveAgentfileMcp()`
   at line 164 turns Agentfile entries into `McpServer[]`. Those servers feed into
@@ -496,7 +493,7 @@ laptop 2026-04-26 by reading `src/sync/mcp-sync.ts`, `src/agentfile.ts`,
 |---|---|---|---|
 | Per-project declarative input (says "this project uses servers X, Y, Z") | Not present (mcpm has imperative profiles, not declarative project files) | `Agentfile.yaml` `mcp:` block | **agentbrew's permanent scope** — multi-surface declarative config is in VISION.md as "permanent agentbrew scope (no upstream home)" |
 | Per-project session activation ("activate this server set for this terminal") | `mcpm profile activate <name>` | (deleted 2026-04-24 — was `mcp profile activate`) | **mcpm's territory** — agentbrew shed this slice expecting mcpm to fill it |
-| Global per-agent config-file writer (writes `~/.claude.json` / `~/.cursor/mcp.json` etc.) | `mcpm install` + `mcpm client edit` | `src/sync/mcp-sync.ts:323` `writeMcpJson()` | **Direct overlap** — this is what delegation replaces. Both tools target the same global per-agent config files. |
+| Global per-agent config-file writer (writes `~/.claude.json` etc.) | `mcpm install` + `mcpm client edit` | `src/sync/mcp-sync.ts:323` `writeMcpJson()` | **Direct overlap** — this is what delegation replaces. Both tools target the same global per-agent config files. |
 
 The "per-project MCP sync" feature agentbrew supposedly has and mcpm supposedly
 lacks is **a documentation drift bug** — neither tool writes per-project

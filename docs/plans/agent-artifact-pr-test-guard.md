@@ -58,7 +58,7 @@ This belongs in agentbrew because the artifact surfaces are multi-agent/multi-su
    - docs-only unrelated PR bypasses
    - explicit exemption warns/allows with reason
    - bypass env var allows with follow-up wording
-7. Register the hook in `hooks/manifest.yaml` with explicit `agents: ["claude-code", "cursor"]`.
+7. Register the hook in `hooks/manifest.yaml` for Claude Code.
 8. Update docs:
    - `docs/hook-protocol.md`: note the broader agent-artifact PR evidence gate
    - `README.md`: add the test command / expectation under the existing testing or hooks section

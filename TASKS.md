@@ -141,7 +141,7 @@
      agentbrew further into pure orchestration: two delegations that shrink the
      connector catalog, two content registrations that pull best-in-class MCP /
      skills in through the curator model (zero source LOC). Recurring "scan the
-     landscape" + "watch Cursor Marketplace / Runlayer" folded into the existing
+     landscape" + "watch Runlayer" folded into the existing
      RECURRING.md watch-lists (re-research-stale-competitors, quarterly-
      dissolution-reeval) instead of a duplicate task. -->
 
@@ -183,6 +183,21 @@
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
 
+- [ ] Repair the two new dependency alerts through compatible upstream parents
+  - **ID**: dependency-alerts-172-175
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — published parents still require vulnerable minimatch 10.x. The newer Promptfoo that fixes its pinned Hono copy adds a peer incompatible with the protected jks stub and retains the watcher peer conflict. Require compatible primary metadata before implementation.
+  - **Details**: Repair only alerts 172 (`@hono/node-server`, GHSA-rmxm-3fg6-px4f) and 175 (`minimatch`, GHSA-g3hv-75wg-m249). [The evidence and preparation plan](docs/plans/dependency-alerts-172-175.md) records exact ranges and parent constraints. Keep the original nine-row `dependency-alert-remediation` cohort, including MSAL alert 162, unchanged. Preserve optional paths, the local jks stub, existing overrides and the Node floor. This records read-only triage, not a passing baseline or an authorized package update.
+  - **Files**: future supported parent resolution in `package.json` and `package-lock.json`; dependency/security documentation; no unrelated root update is pre-approved.
+  - **Output**: code
+  - **Acceptance**: neither new advisory range matches any resolved locked copy; the complete optional graph has no invalid/missing edges, normal installation and full gate pass, protected contracts remain unchanged, and both alerts report fixed with timestamps. No dismissal, omitted path, forced major override or reduced original-nine requirement counts as success.
+  - **Hypothesis**: after compatible metadata and a committed exact candidate prediction, the two unsafe advisory rows fall from a predicted two to zero, with zero new unresolved findings, invalid/missing edges or protected-contract changes. Count rows, not vulnerable package nodes; measure the baseline before implementation.
+  - **Measurement**: first commit the exact supported parent selection and runnable experiment; then run the plan's proposed two-row semver query, strict full-graph/audit checks through npm 10, qualified task-owned normal install, existing lockfile/full gates and live GitHub fixed-status query. Commands are future steps, not passing harness evidence.
+  - **Success**: zero unsafe rows among these two, zero new unresolved findings, zero invalid/missing full-tree edges, zero protected-contract changes, green normal installation/full gate and two fixed-alert timestamps. The original nine-row experiment remains separate.
+  - **Pivot**: any affected copy, unsupported parent resolution, concealed peer error, omitted optional path, new unresolved finding, protected-contract change or missing acceptance evidence rejects the candidate. Keep the task blocked rather than force a major override or change the denominator.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary GitHub advisory APIs and published parent manifests linked in the plan.
+
 - [ ] Restore a supported full dependency graph without forcing the watcher peer
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies
@@ -212,9 +227,9 @@
   - **Anchor**: tooling-checkup agent time review 2026-10-18; Forsgren, Humble, Kim 2018 (lead time); perf-review skill known fixes.
   - **Prior implementation evidence**: needs-time — 2026-10-18: the hook is on for the owner's Mac (dotfiles #160 owner overlay, `agentbrew sync` done; it fired live on a test loop). The original follow-up was due on or after 2026-10-25.
   - **Research**: 2026-11-01: the original `until <arg>` key is absent; absence is not zero. The agentbrew `for heavy-run --status` category alone is 680.07 s/day across 10 calls, but that is whole-loop wall time outside the hint's until/while scope. No comparable timeout-rate result exists. The old alias cannot decide Success or Pivot.
-  - **Preparation**: source now records fixed syntactic sleep-loop enums and explicit-or-unknown execution mode, then reports tagging and timed-correlation coverage separately. It retains legacy unknown rows and never infers polling causality or timeout cause. Prediction commits 88a830b and f4661d6 precede the new fixtures/source; see `docs/plans/sleep-loop-measurement-preparation.md`. Deployment must verify this source before a new observation window; these preparation checks are not field-outcome proof.
-  - **Next experiment**: on normal deployment, verify installed recorder, jq, Perl helper and report against source; run a safe synthetic control and privately record UTC cutover. Then collect a new full seven-day cohort with `node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 7 --json`, preserving the original thresholds. Report unknown timing/mode/correlation explicitly; unavailable timeout-cause evidence cannot satisfy the no-rise guard. Do not close from fixture accuracy, metadata coverage, an absent alias or a partial cohort.
-  - **Blocked**: needs-field-window — judge the field outcome only after a new full seven-day cohort from verified installed-source cutover. Normal delivery must verify deployment and record that cutover privately. Fixtures, complete tagging and unavailable attribution do not satisfy the outcome or timeout guard.
+  - **Preparation**: the installed recorder, parser, and reporter match the reviewed source. An isolated synthetic attempt and completion produced one paired timing record without copying the marker. Prediction commits 88a830b and f4661d6 precede the new fixtures and source. The [observation procedure](docs/plans/sleep-loop-measurement-preparation.md#verified-observation-window) uses the verified start recorded privately.
+  - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
+  - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
 ## P2
 
@@ -786,7 +801,7 @@
   - **Pivot**: no response within 90 days: keep the spec local and close the task.
   - **Anchor**: `docs/specs/managed-section-markers.md`.
   - **Details**: **Publishing hold**: the final publish step (filing the PR, posting the comment, sending any external message) is a SEPARATE approval from approval to claim or research — it requires explicit per-action user approval in the session that performs it, per the file-level publishing policy. Drafting PR text and comment bodies locally is fine; the `gh pr create` / `gh issue comment` / `gh pr review` action itself is blocked until approved.
-    Multiple tools now write to the same agent config files (CLAUDE.md, AGENTS.md, `.cursor/rules/`). Without a shared convention, they collide. agentbrew uses `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->`. Caliber uses `<!-- caliber:managed:<name> -->` / `<!-- /caliber:managed:<name> -->`. React Doctor writes directly without markers. No standard exists.
+    Multiple tools now write to the same agent config files (CLAUDE.md, AGENTS.md). Without a shared convention, they collide. agentbrew uses `<!-- agentbrew:start -->` / `<!-- agentbrew:end -->`. Caliber uses `<!-- caliber:managed:<name> -->` / `<!-- /caliber:managed:<name> -->`. React Doctor writes directly without markers. No standard exists.
     File a lightweight spec proposal — a gist or small repo — documenting: (a) marker format (`<!-- <tool-name>:managed:<section-name> -->`), (b) ownership semantics (only the owning tool may modify content inside its markers; other tools must preserve the block verbatim), (c) marker placement (top-level sections in markdown, can contain valid markdown), (d) nesting (disallowed — markers must be section-siblings, not nested), (e) test patterns (regex + examples). Link from agentbrew's VISION.md and file a drive-by PR on Caliber / Warden / React Doctor repos linking to the spec with a one-sentence "we'd like to align on this marker convention."
     This is low-priority, low-investment, ecosystem-hygiene work. Skip if Caliber or another tool beats us to it — the goal is alignment, not authorship.
   - **Files**: `docs/specs/managed-section-markers.md` (new) or a gist / standalone repo, upstream PRs to Caliber / other tools.
@@ -835,7 +850,7 @@
     | [#1010](https://github.com/vercel-labs/skills/issues/1010) (allowlist half) | Blob fast path is org-allowlisted | Policy change, not mechanical. Ask upstream in the issue which they'd accept. Error-UX half already covered by fork#11. |
     | [#997](https://github.com/vercel-labs/skills/issues/997) | `npx skills update` fails for self-hosted GitLab | Needs a real self-hosted GitLab instance to reproduce. |
     | [#923](https://github.com/vercel-labs/skills/issues/923) | `skills update` reports success without updating contents | Triage-needed: bug shape unclear; need a reliable repro before drafting. |
-    | [#537](https://github.com/vercel-labs/skills/issues/537) | Global install leaves agent skill dir missing for non-universal agents (`~/.cursor/skills/`) | `isUniversalAgent` is decided by project skillsDir but applied to global installs; needs a `isGlobalUniversal` distinction with broader testing. Not drive-by. |
+    | [#537](https://github.com/vercel-labs/skills/issues/537) | Global install leaves agent skill dir missing for non-universal agents | `isUniversalAgent` is decided by project skillsDir but applied to global installs; needs a `isGlobalUniversal` distinction with broader testing. Not drive-by. |
     | [#225](https://github.com/vercel-labs/skills/issues/225) | Incorrect agents detected during `list`/`remove` (OpenClaw attributed to skills in `.agents/skills/`) | Detection logic conflates project and global skillsDirs. PR #965 partially addresses one symlink subcase. Whole class needs deeper refactor. |
     | [#870](https://github.com/vercel-labs/skills/issues/870) | Can't Interrupt Git Clone (Ctrl+C ignored) | SIGINT handling through @clack/prompts and simple-git is non-trivial; not a drive-by. |
 

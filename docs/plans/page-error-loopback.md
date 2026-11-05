@@ -55,3 +55,84 @@ events. It cannot prove a general drain for every Chrome session. The
 production adapter must remain incomplete until it can prove its capture
 window and scope. The skill, CLI registration, and real browser evidence
 are outside this preparation.
+
+## Native network admission experiment
+
+Question: can a disposable Darwin process reach only its assigned local
+fixture endpoint? Measure two synthetic loopback TCP listeners on different
+ports. The isolated client must connect to the allowlisted endpoint and
+receive its exact marker. The denied listener must receive no connection,
+and the client must report a permission refusal for it. Run the same client
+without a profile as a positive control for both listeners. That control
+must reach both and receive their distinct markers.
+
+Keep the sandbox candidate only at one allowed connection, zero denied
+connections, and two positive-control connections. Reject it if either
+listener cannot be independently observed or the refused connection looks
+like a missing listener. This is a transport admission probe. It does not
+qualify Chrome, target ownership, cleanup, or any live page result.
+Measurement framing: Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+For the browser follow-up, run the private Playwright admission harness
+with `heavy-run node "$PAGE_ERROR_ADMISSION_PROBE"`. Both Chrome launches
+deny outbound network by default and use fresh profiles and the test keychain
+flags. The positive control allows both listener ports. The candidate allows
+only the first. Keep the candidate only if the page receives both markers in
+the control, then only the first marker in the candidate. The second listener
+must receive zero marker requests and CDP must report access denied for that
+request. Any failed positive control, timeout in place of refusal, or unexpected
+connection rejects the candidate.
+
+The disposable Chrome control reached both loopback markers once. The
+restricted profile reached the allowed marker once and the denied marker
+zero times. CDP reported `net::ERR_ACCESS_DENIED` for the denied request.
+
+The first two launches stopped before navigation because Chromium could
+not bind its profile singleton socket. A standalone Unix socket probe
+reproduced the refusal with the unresolved temporary path and succeeded
+with the resolved path. The final profile allowed only a local bind at
+Chromium's singleton socket under that resolved directory. The TCP allow
+list stayed the same.
+
+This qualifies loopback admission for the disposable browser. The
+owned-target capture window, event completeness, and cleanup still need
+browser evidence.
+
+## Owned-target capture experiment
+
+Can the capture observe each seeded error and close only its leased tab?
+Run the disposable Chrome fixture with
+`heavy-run node "$PAGE_ERROR_CAPTURE_PROBE"`. Use the Chrome debugging
+pipe and the same deny-by-default network profile. Give the fixture one
+allowed loopback HTTP port and keep the browser profile disposable.
+
+Create two tabs in one disposable browser context. Lease one by its target
+ID and keep the other as a sentinel. Enable Runtime and Network on the
+leased session before navigation. Attach to related targets with a startup
+pause. Enable their domains before resuming them. Seed console errors and
+runtime exceptions in the main page, frame, and worker, plus one HTTP
+failure from the main page. The fixture must confirm all seven events were
+emitted before it checks capture. Use a distinct sentinel marker to prove
+its traffic stays outside the report.
+
+Keep the approach only with seven of seven captured events, zero sentinel
+events, and a target list that confirms the exact leased ID disappeared
+while the sentinel remained. Reject it on any missed event, unexpected
+target, unconfirmed close, or missed fixture deadline. The fixture cutoff
+comes from these independently seeded events. It cannot qualify a general
+browser drain. Measurement framing: Basili, Caldiera and Rombach (1994),
+Goal Question Metric. [Chrome DevTools Protocol Target domain](https://chromedevtools.github.io/devtools-protocol/tot/Target/).
+
+The disposable fixture received all four independent emission receipts.
+Capture observed the six named console and exception events across the
+page, frame, and worker, plus the expected HTTP 503 response. The sentinel
+console event was observed on its separate session and absent from the
+leased-session report. After close, target discovery confirmed the leased
+ID was absent and the sentinel ID remained.
+
+The direct Chrome launch first failed to initialize its nested sandbox.
+The successful run used the same Chromium sandbox setting as Playwright's
+default launch under the outer Darwin profile. Both runs used disposable
+profiles, test keychain flags, the debugging pipe, and synthetic local
+pages. This fixture result leaves production capture integration and
+general event-drain coverage open.

@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { syncWithAdapter } from "../sync/mcp-sync.js";
 import type { McpServer } from "../types.js";
 import { getAdapter, JsonAdapter, OpenCodeAdapter } from "./adapters.js";
 
@@ -96,43 +97,30 @@ describe("JsonAdapter", () => {
   describe("toEntry", () => {
     it("creates entry with command, args, env", () => {
       const server = makeServer();
-      const entry = adapter.toEntry(server, "cursor");
-      const launcher = entry.command as string;
-      if (launcher.endsWith("mcp-cursor-launch.sh")) {
-        expect(entry.args).toEqual(["npx", "-y", "@test/server"]);
-      } else {
-        expect(entry).toEqual({
-          command: "npx",
-          args: ["-y", "@test/server"],
-          env: { API_KEY: "secret123" },
-        });
-      }
-      if (entry.env) {
-        expect(entry.env).toEqual({ API_KEY: "secret123" });
-      }
+      const entry = adapter.toEntry(server, "kiro");
+      expect(entry).toEqual({
+        command: "npx",
+        args: ["-y", "@test/server"],
+        env: { API_KEY: "secret123" },
+      });
     });
 
     it("omits args when empty", () => {
       const server = makeServer({ args: [] });
-      const entry = adapter.toEntry(server, "cursor");
-      const command = entry.command as string;
-      if (command.endsWith("mcp-cursor-launch.sh")) {
-        expect(entry.args).toEqual(["npx"]);
-      } else {
-        expect(entry).not.toHaveProperty("args");
-      }
+      const entry = adapter.toEntry(server, "kiro");
+      expect(entry).not.toHaveProperty("args");
     });
 
     it("omits env when empty", () => {
       const server = makeServer({ env: {} });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).not.toHaveProperty("env");
     });
 
     it("creates URL-based entry with headers (rewrites bare ${VAR} to ${VAR:-})", () => {
       // Headers go through `convertEnvVars` which now applies `makeResilient` for
       // standard-format agents (see env-vars.ts). Bare ${API_TOKEN} becomes
-      // ${API_TOKEN:-} so that strict importers (Devin reading ~/.cursor/mcp.json)
+      // ${API_TOKEN:-} so that strict importers (reading another agent’s config)
       // don't crash when the env var is unset. Functionally identical for clients
       // that handle bash-style ${VAR:-default} substitution.
       const server = makeServer({
@@ -142,7 +130,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: {},
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({
         url: "https://api.example.com/mcp",
         headers: { Authorization: "Bearer ${API_TOKEN:-}" },
@@ -157,7 +145,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: {},
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({ url: "https://example.com/mcp" });
       expect(entry).not.toHaveProperty("headers");
       expect(entry).not.toHaveProperty("command");
@@ -179,7 +167,7 @@ describe("JsonAdapter", () => {
         type: "http",
         url: "https://mcp.figma.com/mcp",
       });
-      expect(adapter.toEntry(server, "cursor")).toEqual({
+      expect(adapter.toEntry(server, "kiro")).toEqual({
         url: "https://mcp.figma.com/mcp",
       });
     });
@@ -195,7 +183,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: { TOKEN: "my-secret" },
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({
         url: "https://example.com/mcp",
         headers: { Authorization: "Bearer ${TOKEN:-}" },
@@ -585,6 +573,102 @@ describe("TomlAdapter (codex)", () => {
     return makeServer({ name: "remote", command: "", args: [], env: {}, url: "https://example.com/mcp", headers });
   }
 
+  describe("Codex native helper preservation", () => {
+    const url = "https://example.com/mcp";
+    const helper = "/fixture-only/headers-helper";
+    const refusal = "Codex MCP update refused to preserve native HTTP headers helper configuration.";
+    const base = `model = "fixture-model"\n[mcp_servers.remote]\nurl = "${url}"\n`;
+    const withHelper = `${base}http_headers_helper = "${helper}"\nstartup_timeout_sec = 20\n`;
+    const sync = (desired: McpServer, dryRun = false) =>
+      syncWithAdapter(codex, configPath, [desired], "codex", { mcpKey: "mcp_servers", dryRun });
+    const deployed = () => codex.readEntries(configPath, "mcp_servers").remote;
+
+    it.each([
+      {
+        id: "H01 origin",
+        before: withHelper,
+        desired: { ...remote(), url: "https://other.example/mcp" },
+        unsafe: (entry: Record<string, unknown>) => entry.url === "https://other.example/mcp",
+      },
+      {
+        id: "H02 same-origin path",
+        before: withHelper,
+        desired: { ...remote(), url: "https://example.com/other" },
+        unsafe: (entry: Record<string, unknown>) => entry.url === "https://example.com/other",
+      },
+      {
+        id: "H03 bearer",
+        before: withHelper,
+        desired: remote({ Authorization: "Bearer ${FIXTURE_ENV}" }),
+        unsafe: (entry: Record<string, unknown>) => entry.bearer_token_env_var === "FIXTURE_ENV",
+      },
+      {
+        id: "H04 literal auth",
+        before: withHelper,
+        desired: remote({ authorization: "fixture-only" }),
+        unsafe: (entry: Record<string, unknown>) =>
+          (entry.http_headers as Record<string, unknown> | undefined)?.authorization === "fixture-only",
+      },
+      {
+        id: "H05 env auth",
+        before: withHelper,
+        desired: remote({ AUTHORIZATION: "${FIXTURE_ENV}" }),
+        unsafe: (entry: Record<string, unknown>) =>
+          (entry.env_http_headers as Record<string, unknown> | undefined)?.AUTHORIZATION === "FIXTURE_ENV",
+      },
+      {
+        id: "H06 bearer removal",
+        before: `${withHelper}bearer_token_env_var = "OWNER_FIXTURE"\n`,
+        desired: remote(),
+        unsafe: (entry: Record<string, unknown>) => !Object.hasOwn(entry, "bearer_token_env_var"),
+      },
+    ])("refuses $id without touching the file", ({ before, desired, unsafe }) => {
+      writeFileSync(configPath, before);
+      const preview = sync(desired, true);
+      expect(readFileSync(configPath, "utf8") === before).toBe(true);
+      const actual = sync(desired);
+      const bytesPreserved = readFileSync(configPath, "utf8") === before;
+      const entry = deployed();
+      if (actual.error === undefined) {
+        expect(!bytesPreserved && entry.http_headers_helper === helper && unsafe(entry)).toBe(true);
+      }
+      expect({
+        previewRefused: preview.error === refusal,
+        writeRefused: actual.error === refusal,
+        previewUpdates: preview.added + preview.updated + preview.pruned,
+        actualUpdates: actual.added + actual.updated + actual.pruned,
+        bytesPreserved,
+      }).toEqual({
+        previewRefused: true,
+        writeRefused: true,
+        previewUpdates: 0,
+        actualUpdates: 0,
+        bytesPreserved: true,
+      });
+    });
+
+    it("keeps H07 exact native-helper no-op", () => {
+      writeFileSync(configPath, withHelper);
+      expect(sync(remote())).toEqual({ added: 0, updated: 0, pruned: 0 });
+      expect(readFileSync(configPath, "utf8") === withHelper).toBe(true);
+    });
+
+    it("keeps H08 same-endpoint non-auth header update", () => {
+      writeFileSync(configPath, withHelper);
+      expect(sync(remote({ "X-Client": "fixture" }))).toEqual({ added: 0, updated: 1, pruned: 0 });
+      const entry = deployed();
+      expect(entry.http_headers_helper === helper && entry.url === url && entry.startup_timeout_sec === 20).toBe(true);
+      expect(entry.http_headers).toEqual({ "X-Client": "fixture" });
+    });
+
+    it("keeps H09 helper-free update", () => {
+      writeFileSync(configPath, base);
+      const changed = "https://other.example/mcp";
+      expect(sync({ ...remote(), url: changed })).toEqual({ added: 0, updated: 1, pruned: 0 });
+      expect(deployed().url === changed && !Object.hasOwn(deployed(), "http_headers_helper")).toBe(true);
+    });
+  });
+
   it("writes servers under mcp_servers and keeps other top-level keys", () => {
     writeFileSync(configPath, 'model = "gpt-5.5"\n\n[projects."/tmp/x"]\ntrust_level = "trusted"\n');
     codex.writeEntries(configPath, { remote: { url: "https://example.com/mcp" } }, "mcp_servers");
@@ -684,7 +768,7 @@ describe("getAdapter", () => {
   });
 
   it("returns JsonAdapter for json format", () => {
-    const adapter = getAdapter({ name: "cursor", mcpFormat: "json" });
+    const adapter = getAdapter({ name: "kiro", mcpFormat: "json" });
     expect(adapter).toBeInstanceOf(JsonAdapter);
   });
 

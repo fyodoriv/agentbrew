@@ -10,7 +10,7 @@
 #                  + dotfiles/bin/gh wrapper logic
 #
 # Detects when `gh pr create/edit --body "..."` contains foreign agent
-# attribution (Co-Authored-By: Claude / Devin / Cursor / etc., or
+# attribution (Co-Authored-By: Claude / Devin / etc., or
 # "Generated with [Agent](...)" footers). The actual STRIP happens in
 # the dotfiles/bin/gh wrapper which runs after this hook. This hook's
 # job is to surface a warning to the agent that its attribution is

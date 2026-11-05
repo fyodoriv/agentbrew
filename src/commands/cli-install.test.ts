@@ -910,7 +910,7 @@ describe("registerDefaultAction", () => {
     >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([
-      { agent: "cursor", type: "mcp", detail: "missing server: foo" },
+      { agent: "amp", type: "mcp", detail: "missing server: foo" },
     ] as unknown as ReturnType<typeof collectDrift>);
     mockGetStateSources.mockReturnValue([]);
     mockGetConfigServers.mockReturnValue([]);
@@ -952,9 +952,9 @@ describe("registerDefaultAction", () => {
     >);
     mockDetectProjectAssets.mockReturnValue(undefined as unknown as ReturnType<typeof detectProjectAssets>);
     mockCollectDrift.mockReturnValue([
-      { agent: "cursor", type: "mcp", detail: "missing server: foo" },
-      { agent: "cursor", type: "skills-user-added", detail: "user-created skill: my-skill" },
-      { agent: "cursor", type: "skills-user-added", detail: "user-created skill: another" },
+      { agent: "amp", type: "mcp", detail: "missing server: foo" },
+      { agent: "amp", type: "skills-user-added", detail: "user-created skill: my-skill" },
+      { agent: "amp", type: "skills-user-added", detail: "user-created skill: another" },
       { agent: "claude-code", type: "mcp-user-added", detail: "untracked server: my-tool" },
       { agent: "claude-code", type: "commands-user-added", detail: "user-created command: cmd.md" },
     ] as unknown as ReturnType<typeof collectDrift>);

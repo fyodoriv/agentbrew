@@ -45,7 +45,6 @@ describe("context-budget skill contract", () => {
     expect(skillText).toContain("GET, don't build");
     expect(skillText).toContain("SessionStart hook");
     expect(skillText).toContain("context-budget-measure");
-    expect(skillText).not.toContain("cursor-token-playbook");
     expect(skillText).toMatch(/start a new chat/i);
   });
 

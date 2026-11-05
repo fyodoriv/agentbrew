@@ -16,7 +16,7 @@ import type { ProbeResult } from "./probe.js";
 function result(overrides: Partial<ProbeResult>): ProbeResult {
   return {
     name: "github",
-    agent: "cursor",
+    agent: "kiro",
     status: "ok",
     latencyMs: 5,
     ...overrides,
@@ -30,7 +30,7 @@ describe("buildMcpHealthSnapshot", () => {
     expect(snapshot.servers).toEqual([
       expect.objectContaining({
         name: "github",
-        agent: "cursor",
+        agent: "kiro",
         status: "ok",
         lastOkAt: "2026-06-04T10:00:00.000Z",
       }),
@@ -45,7 +45,7 @@ describe("buildMcpHealthSnapshot", () => {
       [
         {
           name: "github",
-          agent: "cursor",
+          agent: "kiro",
           status: "smoke_call_failed",
           category: "auth",
           action: "gh-auth-token",
@@ -69,7 +69,7 @@ describe("buildMcpHealthSnapshot", () => {
   it("keeps only the last attempts per pair and counts every attempt", () => {
     const attemptAt = (i: number) => ({
       name: "github",
-      agent: "cursor",
+      agent: "kiro",
       status: "smoke_call_failed" as const,
       category: "auth" as const,
       action: `try-${i}`,
@@ -95,7 +95,7 @@ describe("buildMcpHealthSnapshot", () => {
   it("counts a legacy uncapped history as its length", () => {
     const old = Array.from({ length: 50 }, (_, i) => ({
       name: "github",
-      agent: "cursor",
+      agent: "kiro",
       status: "smoke_call_failed" as const,
       category: "auth" as const,
       action: `old-${i}`,
@@ -104,7 +104,7 @@ describe("buildMcpHealthSnapshot", () => {
     }));
     const previous: McpHealthSnapshot = {
       generatedAt: "2026-06-04T11:00:00.000Z",
-      servers: [entry({ name: "github", agent: "cursor", status: "smoke_call_failed", healHistory: old })],
+      servers: [entry({ name: "github", agent: "kiro", status: "smoke_call_failed", healHistory: old })],
     };
     const snapshot = buildMcpHealthSnapshot(previous, [result({ status: "ok" })], [], "2026-06-04T12:00:00.000Z");
     expect(snapshot.servers[0].healHistory).toHaveLength(MAX_HEAL_HISTORY);
@@ -119,7 +119,7 @@ describe("buildMcpHealthSnapshot", () => {
       "2026-06-10T12:00:00.000Z",
       new Map([
         [
-          "cursor:ask-human",
+          "kiro:ask-human",
           {
             reason: "upstream stdio launcher currently fails before initialize",
             retryPolicy: "probe-every-tick-no-heal-until-catalog-change",
@@ -149,7 +149,7 @@ describe("buildMcpHealthSnapshot", () => {
       "2026-06-10T12:00:00.000Z",
       new Map([
         [
-          "cursor:ask-human",
+          "kiro:ask-human",
           {
             reason: "upstream stdio launcher currently fails before initialize",
             retryPolicy: "probe-every-tick-no-heal-until-catalog-change",

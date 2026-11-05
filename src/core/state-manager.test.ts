@@ -426,7 +426,7 @@ describe("function serialization safety", () => {
     const manager = createStateManager(io);
     const fn = (s: string) => s;
     const state = makeState({
-      agents: [{ name: "cursor", detected: true, skillsDir: "x", commandTransform: fn } as never],
+      agents: [{ name: "amp", detected: true, skillsDir: "x", commandTransform: fn } as never],
     });
     manager.save(state);
     // The cache retains the original object reference
@@ -440,7 +440,7 @@ describe("function serialization safety", () => {
     const manager = createStateManager(io);
     const fn = (s: string) => s;
     const state = makeState({
-      agents: [{ name: "cursor", detected: true, skillsDir: "x", commandTransform: fn } as never],
+      agents: [{ name: "amp", detected: true, skillsDir: "x", commandTransform: fn } as never],
     });
     manager.save(state);
     // The state manager passes the object as-is to io.write — it's the IO layer's job to sanitize
@@ -460,14 +460,14 @@ describe("function serialization safety", () => {
     const manager = createStateManager(sanitizingIO);
     const fn = (s: string) => s;
     const state = makeState({
-      agents: [{ name: "cursor", detected: true, skillsDir: "x", commandTransform: fn } as never],
+      agents: [{ name: "amp", detected: true, skillsDir: "x", commandTransform: fn } as never],
     });
     manager.save(state);
     manager.invalidate();
     const loaded = manager.load();
     // After re-read through sanitizing IO, functions are gone
     expect((loaded?.agents[0] as unknown as Record<string, unknown>).commandTransform).toBeUndefined();
-    expect(loaded?.agents[0].name).toBe("cursor");
+    expect(loaded?.agents[0].name).toBe("amp");
   });
 
   it("update path also writes via io.write — functions pass through to IO", () => {
@@ -485,7 +485,7 @@ describe("function serialization safety", () => {
   it("in-memory state manager retains functions in cache (no disk IO)", () => {
     const fn = (s: string) => s;
     const state = makeState({
-      agents: [{ name: "cursor", detected: true, skillsDir: "x", commandTransform: fn } as never],
+      agents: [{ name: "amp", detected: true, skillsDir: "x", commandTransform: fn } as never],
     });
     const manager = createInMemoryStateManager(state);
     const loaded = manager.load();

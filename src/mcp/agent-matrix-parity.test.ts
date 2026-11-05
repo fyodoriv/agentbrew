@@ -4,7 +4,7 @@
  * For any agentbrew server input, agents whose sync flows through the
  * native carve-out path (kiro, amp, opencode, overlay-desktop,
  * copilot) and agents whose sync flows through `mcpm install`+`mcpm
- * client edit` (claude-code, cursor, codex, goose, gemini-cli,
+ * client edit` (claude-code, codex, goose, gemini-cli,
  * claude-desktop, cline, roo-code) should produce **structurally
  * equivalent** entries inside their respective config files.
  *
@@ -91,7 +91,7 @@ describe("Per-agent toEntry() — same input → comparable shape across formats
 
     // Every adapter MUST emit an env-block key for GITHUB_PERSONAL_ACCESS_TOKEN.
     // The exact placeholder syntax depends on agent's env-var format:
-    //   - standard (claude-code, cursor, etc.): ${GITHUB_TOKEN:-}
+    //   - standard (claude-code, etc.): ${GITHUB_TOKEN:-}
     //   - codex: {env:GITHUB_TOKEN}
     //   - opencode: ${env:GITHUB_TOKEN}
     const serialised = JSON.stringify(entry);
@@ -110,7 +110,7 @@ describe("Per-agent toEntry() — same input → comparable shape across formats
     expect(serialised).toContain("LOG_LEVEL");
   });
 
-  it("JSON-format agents (claude-code, cursor, gemini-cli, claude-desktop, kiro, amp) emit IDENTICAL JSON entries", () => {
+  it("JSON-format agents (claude-code, gemini-cli, claude-desktop, kiro, amp) emit IDENTICAL JSON entries", () => {
     // Parity assertion: all agents that share the same env-var format ("standard") should produce
     // byte-identical toEntry output for the same input. If a future refactor drifts one of these
     // agents into a different shape, this test fires immediately.
@@ -135,7 +135,7 @@ describe("Cross-format env-var conversion contract", () => {
   //   opencode  → ${env:VAR}
   //   literal   → resolved value at sync time (or empty default for unset bare)
   const CONVERSION_CASES = [
-    { format: "standard" as const, sampleAgent: "cursor", expectedPattern: /\$\{GITHUB_TOKEN:-/ },
+    { format: "standard" as const, sampleAgent: "kiro", expectedPattern: /\$\{GITHUB_TOKEN:-/ },
     { format: "standard" as const, sampleAgent: "claude-code", expectedPattern: /\$\{GITHUB_TOKEN:-/ },
   ];
 

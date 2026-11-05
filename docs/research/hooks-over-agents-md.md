@@ -32,7 +32,6 @@ Concrete numbers from your live system at the time of this writing:
 | `~/.claude/CLAUDE.md` (post-sync) | ~43,443 tokens | ≤8,000 tokens | **5.4x** |
 | `~/.codeium/windsurf/memories/global_rules.md` | ~43K tokens | ≤8,000 tokens | **5.4x** |
 | `~/.config/devin/AGENTS.md` | ~43K tokens | ≤8,000 tokens | **5.4x** |
-| `~/.cursor/CLAUDE.md` (the small one) | ~3,183 tokens | ≤8,000 tokens | **0.4x — fine** |
 | Number of "IRON LAW" sections in shared-rules | 41 | n/a | n/a |
 | Total `##` headings in shared-rules | 90 | n/a | n/a |
 | Longest single section | "Jira Audit Hygiene" — 328 lines | n/a | n/a |
@@ -42,7 +41,6 @@ Existing hooks already deployed (you're partway there):
 | Agent | Hooks already configured | Notes |
 |---|---|---|
 | Claude Code | `PostToolUse(Write\|Edit)` → biome, `PostToolUse(mcp__.*)` → audit logger, `Stop` → session log + cleanup, `SessionStart` → load-project-context.sh | The biome PostToolUse hook is **exactly the pattern Evil Martians describes**. You've already proven the pattern works. |
-| Cursor | `beforeSubmitPrompt`, `afterFileEdit`, `afterMCPExecution` → audit logger | Audit-only. Not enforcing rules. Missing the biome equivalent. |
 | Devin | `{}` (empty) | Despite Devin supporting hooks via `.devin/hooks.v1.json`, you have zero. Pure regression vs Claude. |
 | Windsurf | (no hook system natively, only via Cascade-specific config) | The cross-agent story breaks here. |
 
@@ -99,7 +97,6 @@ The 4 events that matter most for your use case:
 **Critical nuance the article skips:** there are 24 hook events total. You're going to want `FileChanged` (auto-reload `.envrc` when it changes — direnv equivalent for the agent's Bash tool), `CwdChanged` (env switching on `cd`), `InstructionsLoaded` (fires when a `CLAUDE.md` or `.claude/rules/*.md` loads — your audit/governance hook for the corpus), `PreCompact`/`PostCompact` (you can detect compaction *happening* and re-inject the critical state). These are unique to Claude Code; treat them as Claude-Code-specific automation, not portable.
 
 **The cross-agent reality:**
-- Cursor: `~/.cursor/hooks.json` — supports `preToolUse`, `postToolUse`, `beforeShellExecution`, `afterFileEdit`, `stop`, `beforeSubmitPrompt`. Auto-maps Claude Code's PascalCase to Cursor's camelCase. Production-ready for the patterns from this document.
 - Devin: `.devin/hooks.v1.json` or `.devin/config.json` — `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`, etc. Almost identical schema to Claude.
 - Codex: `config.toml` hooks — `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`. Same shape.
 - GitHub Copilot: `.github/hooks/*.json` — `preToolUse`, `postToolUse`. Cloud-agent-only sandbox.
@@ -127,7 +124,7 @@ This means **your hooks story can cover ~85% of agentbrew's detected agent surfa
 |---|---|---|
 | **Move every machine-checkable rule from AGENTS.md → hook or linter** | Token cost is permanent; rule-adherence cliff is real; hook enforcement is the only path to "every time without exception" for non-judgment rules. | Medium |
 | **Adopt `lefthook` as the universal pre-commit + agent-Stop runner** | Already in minsky. Multi-language. Parallel. ~10x husky. Single binary. Same config drives `pre-commit` and `Stop` hook. | Low (you already have a working `lefthook.yml` to copy from) |
-| **Promote `agentbrew` from rules-distributor to hooks-distributor** | This is `agentbrew`'s real moat: cross-agent hook translation (Claude PascalCase → Cursor camelCase → Devin → Codex toml). Markdown sync is commodity. | Medium (work for the agentbrew repo itself) |
+| **Promote `agentbrew` from rules-distributor to hooks-distributor** | This is `agentbrew`'s real moat: cross-agent hook translation (canonical events to each native format). Markdown sync is commodity. | Medium (work for the agentbrew repo itself) |
 | **Cut `shared-rules.md` to ≤8K tokens** | Move 80% of content to: lint rules (deterministic), hooks (deterministic), or skills (lazy-loaded). The 20% that remains is the genuinely advisory part. | High (lots of triage) |
 | **Use `SessionStart` for context, not for rules** | Your `load-project-context.sh` is already the right shape. Run it at `SessionStart`; don't restate its output in CLAUDE.md. | Already done — keep doing it. |
 | **Wrap every `Stop` hook in `stop_hook_active` check** | Hard requirement to prevent the 8-retry-then-override failure. | Low |
@@ -141,7 +138,7 @@ This means **your hooks story can cover ~85% of agentbrew's detected agent surfa
 | **Convert every IRON LAW to an `agent`-type hook (LLM verifier)** | `agent` hooks are *experimental*. 60s timeout each. 50 tool turns each. Cost compounds fast. Use them sparingly — for the few rules where you genuinely need judgment + tool access (e.g. "verify the PR body matches the template format"). For binary lint-shaped rules, use a deterministic `command` hook. |
 | **Move judgment rules to hooks** | "Be concise in PR bodies", "Default to commit→push", "Verify Before Completion" — these can't be expressed at the tool-call boundary. They stay in markdown. *Stop labelling them IRON LAW.* Just write them once. |
 | **Try to make Windsurf enforce hooks** | No first-class hook system. Accept Windsurf as the lowest-common-denominator agent: it gets the lightweight markdown rules and nothing more. |
-| **Push hook content through `agentbrew sync` to non-Claude/non-Cursor agents** | The schema differences are large enough that `agentbrew` has to be the per-agent translator. Don't try to write one hook config that "just works" everywhere — write canonical hook *intentions* and let `agentbrew` emit each agent's flavor. |
+| **Push hook content through `agentbrew sync` to other agents** | The schema differences are large enough that `agentbrew` has to be the per-agent translator. Don't try to write one hook config that "just works" everywhere — write canonical hook *intentions* and let `agentbrew` emit each agent's flavor. |
 
 ### 3.3 Genuinely-disputed (use with care)
 
@@ -161,7 +158,7 @@ This is the synthesis. Adapt Praetorian's "Thin Agent / Fat Platform" to your sp
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       AGENT INVOCATION                       │
-│  (Claude Code, Cursor, Devin, Codex, GitHub Copilot, ...)    │
+│  (Claude Code, Devin, Codex, GitHub Copilot, ...)    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -230,7 +227,6 @@ The mantra: **Library is cheap. Lab is where work happens. Loop is the wall the 
 - **Today:** Markdown distributor. Syncs `shared-rules.md` to every agent's instruction file.
 - **Tomorrow:** Hooks distributor. Reads a canonical `hooks.yaml` (your write, your shape) and emits per-agent translations:
   - `~/.claude/settings.json` (PascalCase, `hooks` key, matcher/hooks shape)
-  - `~/.cursor/hooks.json` (camelCase, `version: 1`, flatter shape)
   - `~/.config/devin/hooks.v1.json` (Claude-Code-shape)
   - `~/.codex/config.toml` `[hooks]` section
   - `.github/hooks/*.json` for Copilot Cloud
@@ -298,7 +294,6 @@ Sample (not exhaustive — full triage is a follow-up task):
 - Add `~/.config/lefthook/lefthook.yml` (machine-wide canonical) and `~/.config/lefthook/hooks/*.sh` (the scripts that get wrapped). Lift the patterns directly from `minsky/lefthook.yml`.
 - Convert `~/apps/tooling/dotfiles/git-hooks/pre-commit` and `commit-msg` to `lefthook` commands. Keep the existing bash scripts as the *implementations* lefthook calls — don't rewrite logic.
 - Add a `Stop` hook to `~/.claude/settings.json` that runs `lefthook run agent-stop` with the `stop_hook_active` wrap.
-- Add the same to `~/.cursor/hooks.json` (in `stop:`).
 - Add the same to `~/.config/devin/hooks.v1.json`.
 
 ### Phase 2 — `agentbrew` becomes a hooks distributor (3-5 days)
@@ -311,7 +306,7 @@ Sample (not exhaustive — full triage is a follow-up task):
 ### Phase 3 — Cut `shared-rules.md` (5-10 days, the big surgery)
 
 - Section by section, move content to the targets identified in Phase 0.
-- After each commit, run a full session in Claude Code / Cursor / Devin and observe whether the rule still holds. The metric: rule violations per 100 sessions before vs after.
+- After each commit, run a full session in Claude Code / Devin and observe whether the rule still holds. The metric: rule violations per 100 sessions before vs after.
 - Target: end of phase 3, `shared-rules.md` ≤8K tokens. ≤8 IRON LAWs.
 
 ### Phase 4 — Cross-agent validation (2-3 days)
@@ -341,7 +336,6 @@ Sample (not exhaustive — full triage is a follow-up task):
 
 ### 7.2 Drift between agents
 
-- Cursor wraps Claude's format and auto-translates names, but the *semantics* differ subtly (Cursor's `updated_input` is silently ignored for `Task` tool — Cursor forum 2026-04). Don't assume identical behavior from identical schema.
 - Devin's `.devin/hooks.v1.json` schema is the closest match to Claude's; treat it as primary.
 - Codex's TOML hooks are different enough that you need a real translator.
 - GitHub Copilot Cloud only runs hooks from the **repo**, not the user dir. That breaks the "machine-wide hooks" model for that one agent.
@@ -354,11 +348,11 @@ If you over-correct and stuff TOO much into hooks/skills, you end up with a diff
 
 Hooks are code. They break. They need tests. Right now your shared-rules.md is markdown — it can't break at runtime. Moving rules to hooks shifts the bug surface from "model didn't follow rule" to "hook had a bug." You need:
 
-- A way to dry-run hooks (Claude has this via `/hooks` menu; Cursor has the `hooks.json` viewer).
+- A way to dry-run hooks (Claude Code has this via its `/hooks` menu).
 - A way to disable a misbehaving hook quickly without editing JSON in production (e.g. `agentbrew hook disable <name>`).
 - Tests for the hook scripts (each `.sh` gets a fixture-driven test).
 
-### 7.5 What if Anthropic / Cursor change the hook schema
+### 7.5 What if an agent changes its hook schema
 
 It happens. The hooks API is still maturing — Claude Code's `agent`-type hooks are explicitly "experimental, may change." Mitigation: keep your canonical YAML in `agentbrew` separate from the per-agent emitted configs. Re-emit on every change. This is exactly what `agentbrew` already does for MCP and rules.
 
@@ -369,7 +363,6 @@ It happens. The hooks API is still maturing — Claude Code's `agent`-type hooks
 `agentbrew`'s VISION.md mantra is "curator, not host" — the tool's value is *distributing* skills/rules/MCPs to many agents, not authoring them. Hooks dilute this story:
 
 - Claude Code's hooks are richer than any other agent's (24 events, 5 hook types, prompt/agent verifiers).
-- Cursor covers the basics (~10 events) but lacks the long tail.
 - Windsurf has nothing comparable.
 - Codex/Devin/Copilot have command-only hooks with slightly different schemas.
 
@@ -377,7 +370,7 @@ If you push every rule into hooks, you're effectively betting on Claude Code (th
 
 **Counter-argument:** That's already where you are. Your `~/.claude/CLAUDE.md` is 43K tokens; your `~/.codeium/windsurf/memories/global_rules.md` is the same content. The Windsurf agent already isn't following 80% of those rules — it just fails *silently* by ignoring text. With hooks, it fails *visibly* by not having the enforcement at all. The "everyone gets the same rules" story was always a lie; hooks expose that lie.
 
-**Recommendation:** Lean into per-agent tiering. Make hooks the canonical enforcement for Claude/Cursor/Devin/Codex. Accept that Windsurf and the experimental agents get only the lightweight markdown. Document that. Stop pretending otherwise.
+**Recommendation:** Lean into per-agent tiering. Make hooks the canonical enforcement for Claude Code, Devin, and Codex. Accept that Windsurf and the experimental agents get only the lightweight markdown. Document that. Stop pretending otherwise.
 
 ---
 
@@ -404,9 +397,8 @@ If you want to dip your toe in before committing to the full migration:
      }
    }
    ```
-3. Add the same to `~/.cursor/hooks.json` as a `stop` entry.
 4. Add an `agent-stop:` section to `~/.config/lefthook/lefthook.yml` that runs `lefthook run --files-from-stdin` style file lints on `git status --porcelain` output (the agent's unstaged changes).
-5. Run one work session in Claude Code, one in Cursor, one in Devin. Observe the loops, the speed, the rule violations.
+5. Run one work session in Claude Code and one in Devin. Observe the loops, the speed, the rule violations.
 6. Then decide whether to commit to the rest of this plan.
 
 That's the minimum-viable validation. Two hours of work. Gives you ground truth on whether the article's premise holds for your specific workload before you commit to the 2-3 week migration.
@@ -418,8 +410,6 @@ That's the minimum-viable validation. Two hours of work. Gives you ground truth 
 - Sitnik & Turner, "Stop writing rules in AGENTS.md: use agent hooks and nano-staged instead", Evil Martians (2026-05-26). <https://evilmartians.com/chronicles/stop-writing-rules-in-agents-md-use-agent-hooks-and-nano-staged-instead>
 - Anthropic, "Automate workflows with hooks", Claude Code docs (2026). <https://code.claude.com/docs/en/hooks-guide>
 - Anthropic, "Hooks reference", Claude Code docs (2026). <https://code.claude.com/docs/en/hooks>
-- Cursor, "Hooks", Cursor docs. <https://cursor.com/docs/hooks>
-- Cursor, "Third Party Hooks", Cursor docs. <https://cursor.com/docs/reference/third-party-hooks>
 - Devin CLI, "Lifecycle Hooks". <https://cli.devin.ai/docs/extensibility/hooks/lifecycle-hooks>
 - OpenAI Codex, "Hooks". <https://developers.openai.com/codex/hooks>
 - GitHub Copilot, "CLI hooks reference". <https://docs.github.com/en/enterprise-cloud@latest/copilot/reference/copilot-cli-reference/cli-hooks-reference>
@@ -433,7 +423,6 @@ That's the minimum-viable validation. Two hours of work. Gives you ground truth 
 - es-tooling/module-replacements#214 — community thread on nano-staged maintenance status.
 - openai/codex#13386 — AGENTS.md silent 32KB truncation.
 - anomalyco/opencode#18037 — large AGENTS.md triggers compaction loop.
-- Cursor forum #151985 — `preToolUse` `updated_input` silently ignored for `Task` tool.
 - AGENTIF benchmark (NeurIPS 2025) — instruction adherence cliff at ~6,000 words.
 - Adversa AI, April 2026 — `permissions.deny` bypass via >50 chained subcommands.
 
@@ -442,7 +431,7 @@ That's the minimum-viable validation. Two hours of work. Gives you ground truth 
 ## 11. Open questions
 
 1. **Does `agentbrew` want this responsibility?** The repo's VISION.md says "curator, not host." Hooks-distribution is curation of a different shape — distributing executable code, not pointers. Might want a sibling repo (`agentbrew-hooks`?) instead of bundling.
-2. **What about repo-local hooks?** This document focuses on machine-wide. Most teams ALSO want per-repo hooks (`.claude/settings.json` checked into each repo). Need to decide the layering. Cursor's docs show 7-layer hook resolution. agentbrew should make this transparent.
+2. **What about repo-local hooks?** This document focuses on machine-wide. Most teams ALSO want per-repo hooks (`.claude/settings.json` checked into each repo). Need to decide the layering. agentbrew should make this transparent.
 3. **Schema versioning.** Claude Code hook events have changed before (e.g. `Stop` semantics evolved between 2.0 and 2.1). agentbrew's canonical YAML needs versioning to handle agent-side schema drift.
 4. **Performance baseline.** Before/after numbers on rule-adherence and per-session token cost would be invaluable. Worth instrumenting one session per agent before starting the cut.
 5. **The Minsky-shaped extension.** Minsky is your orchestrator and has its own discipline (rule #10 deterministic enforcement). It's already partway down this path with its `runtime-invariants.ts`. Should it become the *implementation* of the "Loop" tier and `agentbrew` just be the distributor of references to it? Plausible. Worth a follow-up think.

@@ -187,7 +187,7 @@ Search venues, in priority order:
 
 1. **GitHub topic search** — the highest-signal venue. Query for
    each of `claude-code-skills`, `agent-skills`, `agentskills`,
-   `cursor-rules`, and `claude-skills` with star + recency filters:
+   and `claude-skills` with star + recency filters:
    ```bash
    gh api 'search/repositories?q=topic:claude-code-skills+stars:>10&sort=updated&per_page=20' \
      --jq '.items[] | {name, full_name, html_url, stargazers_count, updated_at, description}'

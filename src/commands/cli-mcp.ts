@@ -38,7 +38,7 @@ interface CustomAddBridgeInput {
  * Slice 3 of `bridge-mcp-sync-to-mcpm-for-intersection`. After slice 4a
  * skipped intersection clients during native sync, custom servers
  * registered via `mcp add` (which call `addMcpServer`) never reached
- * cursor / claude-code / codex etc. The catalog path (PR #857) bridges
+ * claude-code / codex etc. The catalog path (PR #857) bridges
  * via `mcpm install` (registry resolution); this slice complements it
  * for user-defined servers that aren't in mcpm's registry by running
  * `mcpm new` (manual config) followed by `mcpm client edit --add-server`

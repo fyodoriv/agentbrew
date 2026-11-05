@@ -118,7 +118,6 @@ class AmpManager(JSONClientManager):
 +    "AmpManager",
      "ClaudeCodeManager",
      "ClaudeDesktopManager",
-     "CursorManager",
 ```
 
 #### `src/mcpm/clients/client_registry.py` (diff)

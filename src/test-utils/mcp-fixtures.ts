@@ -2,7 +2,7 @@
  * Test-only fixture helpers for MCP-related tests.
  *
  * Surfaced during slices 4a/4b/4c of `delegate-mcp-to-mcpm` (TASKS.md):
- * re-targeting tests from cursor/claude-code (intersection-skip) to
+ * re-targeting tests from claude-code (intersection-skip) to
  * kiro/amp/copilot (carve-outs) required hand-editing many inline agent
  * definitions of the shape `{ name: "kiro", detected: true,
  * skillsDir: "x", mcpConfig: "~/.kiro/settings/mcp.json" }`. This

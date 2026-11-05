@@ -65,7 +65,7 @@ describe("saveRepairLog", () => {
 
   it("writes actions to the log file", () => {
     mockExistsSync.mockReturnValue(false);
-    const actions: RepairAction[] = [{ type: "symlink", agent: "cursor", detail: "recreated" }];
+    const actions: RepairAction[] = [{ type: "symlink", agent: "amp", detail: "recreated" }];
     saveRepairLog(actions);
     expect(mockMkdirSync).toHaveBeenCalled();
     expect(mockWriteFileAtomicSync).toHaveBeenCalledOnce();
@@ -83,7 +83,7 @@ describe("saveRepairLog", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(JSON.stringify(existing));
 
-    const newActions: RepairAction[] = [{ type: "symlink", agent: "cursor", detail: "fixed" }];
+    const newActions: RepairAction[] = [{ type: "symlink", agent: "amp", detail: "fixed" }];
     saveRepairLog(newActions);
 
     const written = JSON.parse(mockWriteFileAtomicSync.mock.calls[0][1]);
@@ -150,7 +150,7 @@ describe("getRepairSummary", () => {
       repairedAt: "2026-01-01T00:00:00.000Z",
       actions: [
         { type: "symlink", agent: "claude", detail: "a" },
-        { type: "symlink", agent: "cursor", detail: "b" },
+        { type: "symlink", agent: "amp", detail: "b" },
         { type: "mcp", agent: "kiro", detail: "c" },
       ],
     };
@@ -166,7 +166,7 @@ describe("getRepairSummary", () => {
   it("handles single action type", () => {
     const log: RepairLog = {
       repairedAt: "2026-01-01T00:00:00.000Z",
-      actions: [{ type: "permissions", agent: "cursor", detail: "fixed" }],
+      actions: [{ type: "permissions", agent: "amp", detail: "fixed" }],
     };
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(JSON.stringify(log));

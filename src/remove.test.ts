@@ -263,7 +263,7 @@ describe("remove", () => {
       makeState({
         agents: [
           { name: "claude-code", detected: true, mcpConfig: "/tmp/mcp.json" },
-          { name: "cursor", detected: true, mcpConfig: "/tmp/cursor.json" },
+          { name: "amp", detected: true, mcpConfig: "/tmp/amp.json" },
         ] as AgentBrewState["agents"],
       }),
     );

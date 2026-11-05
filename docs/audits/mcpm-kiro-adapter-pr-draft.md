@@ -14,7 +14,7 @@ When approved, the files below land on a feature branch in `fyodoriv/mcpm.sh` an
 
 ## Body
 
-[Kiro](https://kiro.dev) is a coding agent IDE. Its MCP configuration lives at `~/.kiro/settings/mcp.json` and uses the standard `mcpServers` top-level key — same JSON shape as Cursor, Cline, Claude Code, and Windsurf.
+[Kiro](https://kiro.dev) is a coding agent IDE. Its MCP configuration lives at `~/.kiro/settings/mcp.json` and uses the standard `mcpServers` top-level key — same JSON shape as Cline, Claude Code, and Windsurf.
 
 This PR adds a `KiroManager` extending `JSONClientManager` so `mcpm install <name>` and `mcpm client edit kiro --add-server <name>` work end-to-end against Kiro's config file. Net change: ~70 LOC of source + ~80 LOC of tests across 3 files.
 
@@ -110,7 +110,6 @@ class KiroManager(JSONClientManager):
  __all__ = [
      "ClaudeCodeManager",
      "ClaudeDesktopManager",
-     "CursorManager",
      "WindsurfManager",
      "ClineManager",
      "ContinueManager",

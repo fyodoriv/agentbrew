@@ -96,43 +96,30 @@ describe("JsonAdapter", () => {
   describe("toEntry", () => {
     it("creates entry with command, args, env", () => {
       const server = makeServer();
-      const entry = adapter.toEntry(server, "cursor");
-      const launcher = entry.command as string;
-      if (launcher.endsWith("mcp-cursor-launch.sh")) {
-        expect(entry.args).toEqual(["npx", "-y", "@test/server"]);
-      } else {
-        expect(entry).toEqual({
-          command: "npx",
-          args: ["-y", "@test/server"],
-          env: { API_KEY: "secret123" },
-        });
-      }
-      if (entry.env) {
-        expect(entry.env).toEqual({ API_KEY: "secret123" });
-      }
+      const entry = adapter.toEntry(server, "kiro");
+      expect(entry).toEqual({
+        command: "npx",
+        args: ["-y", "@test/server"],
+        env: { API_KEY: "secret123" },
+      });
     });
 
     it("omits args when empty", () => {
       const server = makeServer({ args: [] });
-      const entry = adapter.toEntry(server, "cursor");
-      const command = entry.command as string;
-      if (command.endsWith("mcp-cursor-launch.sh")) {
-        expect(entry.args).toEqual(["npx"]);
-      } else {
-        expect(entry).not.toHaveProperty("args");
-      }
+      const entry = adapter.toEntry(server, "kiro");
+      expect(entry).not.toHaveProperty("args");
     });
 
     it("omits env when empty", () => {
       const server = makeServer({ env: {} });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).not.toHaveProperty("env");
     });
 
     it("creates URL-based entry with headers (rewrites bare ${VAR} to ${VAR:-})", () => {
       // Headers go through `convertEnvVars` which now applies `makeResilient` for
       // standard-format agents (see env-vars.ts). Bare ${API_TOKEN} becomes
-      // ${API_TOKEN:-} so that strict importers (Devin reading ~/.cursor/mcp.json)
+      // ${API_TOKEN:-} so that strict importers (reading another agent’s config)
       // don't crash when the env var is unset. Functionally identical for clients
       // that handle bash-style ${VAR:-default} substitution.
       const server = makeServer({
@@ -142,7 +129,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: {},
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({
         url: "https://api.example.com/mcp",
         headers: { Authorization: "Bearer ${API_TOKEN:-}" },
@@ -157,7 +144,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: {},
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({ url: "https://example.com/mcp" });
       expect(entry).not.toHaveProperty("headers");
       expect(entry).not.toHaveProperty("command");
@@ -179,7 +166,7 @@ describe("JsonAdapter", () => {
         type: "http",
         url: "https://mcp.figma.com/mcp",
       });
-      expect(adapter.toEntry(server, "cursor")).toEqual({
+      expect(adapter.toEntry(server, "kiro")).toEqual({
         url: "https://mcp.figma.com/mcp",
       });
     });
@@ -195,7 +182,7 @@ describe("JsonAdapter", () => {
         args: [],
         env: { TOKEN: "my-secret" },
       });
-      const entry = adapter.toEntry(server, "cursor");
+      const entry = adapter.toEntry(server, "kiro");
       expect(entry).toEqual({
         url: "https://example.com/mcp",
         headers: { Authorization: "Bearer ${TOKEN:-}" },
@@ -684,7 +671,7 @@ describe("getAdapter", () => {
   });
 
   it("returns JsonAdapter for json format", () => {
-    const adapter = getAdapter({ name: "cursor", mcpFormat: "json" });
+    const adapter = getAdapter({ name: "kiro", mcpFormat: "json" });
     expect(adapter).toBeInstanceOf(JsonAdapter);
   });
 

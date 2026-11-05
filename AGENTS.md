@@ -78,7 +78,7 @@ maps each rule to its check. Other files cite these numbers.
 Also: no counts of agents, skills, tests, or files in docs or comments.
 Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
 
-> Cursor and Grok support was removed on purpose on 2026-10-19, because the author is certain that the companies behind these tools support war crimes in Ukraine. This is the author’s position. Please do not add support for these tools back. Slava Ukraini!
+Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 ## Gotchas
 

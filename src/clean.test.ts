@@ -15,9 +15,9 @@ vi.mock("./types.js", () => ({
       commandsDir: "PLACEHOLDER_COMMANDS_CLAUDE",
     },
     {
-      name: "cursor",
-      skillsDir: "PLACEHOLDER_SKILLS_CURSOR",
-      commandsDir: "PLACEHOLDER_COMMANDS_CURSOR",
+      name: "amp",
+      skillsDir: "PLACEHOLDER_SKILLS_AMP",
+      commandsDir: "PLACEHOLDER_COMMANDS_AMP",
     },
     {
       name: "augment",
@@ -63,10 +63,10 @@ const mockConfirm = vi.mocked(confirm);
 
 let testDir: string;
 let skillsDirClaude: string;
-let skillsDirCursor: string;
+let skillsDirAmp: string;
 let skillsDirAugment: string;
 let commandsDirClaude: string;
-let commandsDirCursor: string;
+let commandsDirAmp: string;
 let commandsSourceDir: string;
 let skillPluginsDir: string;
 
@@ -82,20 +82,20 @@ beforeEach(() => {
   testDir = mkdtempSync(join(tmpdir(), "clean-test-"));
 
   skillsDirClaude = join(testDir, "claude", "skills");
-  skillsDirCursor = join(testDir, "cursor", "skills");
+  skillsDirAmp = join(testDir, "amp", "skills");
   skillsDirAugment = join(testDir, "augment", "skills");
   commandsDirClaude = join(testDir, "claude", "commands");
-  commandsDirCursor = join(testDir, "cursor", "commands");
+  commandsDirAmp = join(testDir, "amp", "commands");
   commandsSourceDir = join(testDir, "config", "agentbrew", "commands");
   skillPluginsDir = join(testDir, "agentbrew-repo", "skill-plugins", "dev");
 
   // Create all directories
   for (const dir of [
     skillsDirClaude,
-    skillsDirCursor,
+    skillsDirAmp,
     skillsDirAugment,
     commandsDirClaude,
-    commandsDirCursor,
+    commandsDirAmp,
     commandsSourceDir,
     skillPluginsDir,
   ]) {
@@ -110,8 +110,8 @@ beforeEach(() => {
   }>;
   defs[0].skillsDir = skillsDirClaude;
   defs[0].commandsDir = commandsDirClaude;
-  defs[1].skillsDir = skillsDirCursor;
-  defs[1].commandsDir = commandsDirCursor;
+  defs[1].skillsDir = skillsDirAmp;
+  defs[1].commandsDir = commandsDirAmp;
   defs[2].skillsDir = skillsDirAugment;
 
   // Point env to test directories
@@ -133,14 +133,14 @@ function createCommand(agentCommandsDir: string, name: string): void {
 describe("clean — skills", () => {
   it("removes a skill symlink from all agents", async () => {
     createSkillSymlink(skillsDirClaude, "debug");
-    createSkillSymlink(skillsDirCursor, "debug");
+    createSkillSymlink(skillsDirAmp, "debug");
     createSkillSymlink(skillsDirAugment, "debug");
 
     const result = await clean("debug", { type: "skill" });
 
     expect(result.skillsRemoved).toBe(3);
     expect(existsSync(join(skillsDirClaude, "debug"))).toBe(false);
-    expect(existsSync(join(skillsDirCursor, "debug"))).toBe(false);
+    expect(existsSync(join(skillsDirAmp, "debug"))).toBe(false);
     expect(existsSync(join(skillsDirAugment, "debug"))).toBe(false);
   });
 
@@ -174,13 +174,13 @@ describe("clean — skills", () => {
 describe("clean — commands", () => {
   it("removes a command from all agents with commandsDir", async () => {
     createCommand(commandsDirClaude, "hello");
-    createCommand(commandsDirCursor, "hello");
+    createCommand(commandsDirAmp, "hello");
 
     const result = await clean("hello", { type: "command" });
 
     expect(result.commandsRemoved).toBe(2);
     expect(existsSync(join(commandsDirClaude, "hello.md"))).toBe(false);
-    expect(existsSync(join(commandsDirCursor, "hello.md"))).toBe(false);
+    expect(existsSync(join(commandsDirAmp, "hello.md"))).toBe(false);
   });
 
   it("removes command source file", async () => {

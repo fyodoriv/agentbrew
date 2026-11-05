@@ -91,9 +91,7 @@ Source: ~/my-tools
 
 Some skills here.
 
-## Auto-Synced Cursor Rules
-
-> Auto-generated from cursor/rules/*.mdc by sync-formats. Do not edit below this line.
+## Rules
 
 ### code-style
 
@@ -237,7 +235,7 @@ describe("syncInstructions", () => {
     }
   });
 
-  it("fills context files from the whole template, not a removed Cursor section", async () => {
+  it("fills context files from the whole template", async () => {
     writeAgentsMd("# Agent rules\n\n## Rules\n\nAlways run the gate before merge.\n");
 
     await syncInstructions({ quiet: true });
@@ -245,7 +243,7 @@ describe("syncInstructions", () => {
     for (const ctx of getContextFiles()) {
       const content = readFileSync(ctx.path, "utf-8");
       expect(content).toContain("Always run the gate before merge.");
-      expect(content).not.toMatch(/Cursor/);
+      expect(content).toContain("## Rules");
     }
   });
 

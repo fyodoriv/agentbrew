@@ -139,7 +139,7 @@ function resolveDefinitionFile(dirPath: string, entryName: string): string | und
 /**
  * Scans one directory level for skill folders containing SKILL.md or DESIGN.md.
  * SKILL.md takes priority; DESIGN.md is used as fallback (e.g. awesome-design-md repos).
- * Skips hidden directories (dot-prefixed) so .cursor/, .system/, etc. are ignored.
+ * Skips hidden directories (dot-prefixed) such as .system/.
  */
 function scanSkillsInDir(dirPath: string): SourceItem[] {
   const items: SourceItem[] = [];
@@ -207,7 +207,7 @@ function parseSkillFromFile(filePath: string, fallbackName: string): SourceItem 
  * Recursively find all directories containing SKILL.md or DESIGN.md anywhere in the tree.
  * Skips node_modules, .git, and hidden directories. Used as a fallback when standard
  * skill locations (root, skills/) find nothing — handles repos like obs-as-code where
- * skills live at non-standard paths (e.g. src/scaffold/cursor/skills/).
+ * skills live at non-standard paths (e.g. src/scaffold/client/skills/).
  */
 function deepScanForSkills(dirPath: string, maxDepth = 6): SourceItem[] {
   const seen = new Set<string>();
@@ -332,7 +332,7 @@ function scanDirectoryForSkills(dirPath: string): SourceItem[] {
   }
 
   // Deep scan fallback: recursively search the entire tree for SKILL.md files
-  // (e.g. obs-as-code with skills at src/scaffold/cursor/skills/)
+  // (e.g. obs-as-code with skills at src/scaffold/client/skills/)
   if (combined.length === 0) {
     const deepItems = deepScanForSkills(dirPath);
     if (deepItems.length > 0) return deepItems;

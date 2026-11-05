@@ -42,13 +42,13 @@
   recommended: true
 
 - name: obra/superpowers
-  description: "Complete dev methodology — debugging, TDD, planning, code review, verification, parallel agents. Install paths for Claude Code, Cursor, Codex, Gemini CLI, OpenCode, and more."
+  description: "Complete dev methodology — debugging, TDD, planning, code review, verification, parallel agents. Install paths for Claude Code, Codex, Gemini CLI, OpenCode, and more."
   provides: [skills]
   category: methodology
   recommended: true
 
 - name: EveryInc/compound-engineering-plugin
-  description: "Every Inc Compound Engineering — knowledge accumulation (/ce:compound), brainstorm→plan→work→review pipeline, multi-agent review, worktrees. Official plugin for Claude Code, Codex, Cursor, and more."
+  description: "Every Inc Compound Engineering — knowledge accumulation (/ce:compound), brainstorm→plan→work→review pipeline, multi-agent review, worktrees. Official plugin for Claude Code, Codex, and more."
   provides: [skills]
   category: methodology
   recommended: true

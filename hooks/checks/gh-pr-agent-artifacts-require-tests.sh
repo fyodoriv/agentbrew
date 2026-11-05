@@ -93,7 +93,7 @@ is_agent_artifact_path() {
     Agentfile.yaml|catalog.yaml|catalog-overlay.yaml|src/catalog.yaml|src/core/agents.yaml|shared-rules.md|templates/AGENTS.md)
       return 0
       ;;
-    commands/*.md|src/cli-commands/*.md|.cursor/rules/*.mdc)
+    commands/*.md|src/cli-commands/*.md)
       return 0
       ;;
     hooks/manifest.yaml)

@@ -219,9 +219,9 @@ describe("diskIO.write", () => {
       schemaVersion: 1,
       agents: [
         {
-          name: "cursor",
+          name: "amp",
           detected: true,
-          skillsDir: "~/.cursor/skills",
+          skillsDir: "~/.config/amp/skills",
           commandTransform: (s: string) => s,
         },
       ],
@@ -230,7 +230,7 @@ describe("diskIO.write", () => {
     // Should not throw — previously threw "unacceptable kind of an object to dump [object Function]"
     expect(() => diskIO.write(state)).not.toThrow();
     const written = mockWriteFileSync.mock.calls[0][1] as string;
-    expect(written).toContain("cursor");
+    expect(written).toContain("amp");
     expect(written).not.toContain("commandTransform");
   });
 
@@ -240,7 +240,7 @@ describe("diskIO.write", () => {
     const state = {
       schemaVersion: 1,
       agents: [
-        { name: "cursor", detected: true, skillsDir: "~/.cursor/skills", commandTransform: () => "x" },
+        { name: "amp", detected: true, skillsDir: "~/.config/amp/skills", commandTransform: () => "x" },
         { name: "kiro", detected: true, skillsDir: "~/.kiro/skills", commandTransform: () => "y" },
         { name: "gemini-cli", detected: true, skillsDir: "~/.gemini/skills", commandTransform: () => "z" },
       ],
@@ -248,7 +248,7 @@ describe("diskIO.write", () => {
     } as never;
     expect(() => diskIO.write(state)).not.toThrow();
     const written = mockWriteFileSync.mock.calls[0][1] as string;
-    expect(written).toContain("cursor");
+    expect(written).toContain("amp");
     expect(written).toContain("kiro");
     expect(written).toContain("gemini-cli");
     expect(written).not.toContain("commandTransform");
@@ -404,7 +404,7 @@ describe("diskIO.write", () => {
     mockExistsSync.mockReturnValue(false);
     const state = {
       schemaVersion: 1,
-      agents: [{ name: "cursor", detected: true, skillsDir: "~/.cursor/skills", commandTransform: () => "x" }],
+      agents: [{ name: "amp", detected: true, skillsDir: "~/.config/amp/skills", commandTransform: () => "x" }],
       mcpServers: [{ name: "srv", command: "echo", args: ["hi"], env: {}, source: "user" }],
       catalogVersion: "0.1.0",
     } as never;
@@ -416,7 +416,7 @@ describe("diskIO.write", () => {
     expect(parsed.catalogVersion).toBe("0.1.0");
     const agents = parsed.agents as Array<Record<string, unknown>>;
     expect(agents).toHaveLength(1);
-    expect(agents[0].name).toBe("cursor");
+    expect(agents[0].name).toBe("amp");
     expect(agents[0].commandTransform).toBeUndefined();
     const servers = parsed.mcpServers as Array<Record<string, unknown>>;
     expect(servers).toHaveLength(1);

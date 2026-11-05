@@ -101,12 +101,9 @@ export function toCanonical(value: string): string {
  * Functionally equivalent to `${VAR}` for clients that handle the unset case gracefully,
  * but critically the resilient form prevents strict env-var interpolators from hard-failing.
  *
- * Real failure mode this prevents: Devin CLI's binary imports MCP configs from `~/.claude.json`
- * and `~/.cursor/mcp.json` and tries to interpolate `${VAR}`. When the env var is unset and
- * there's no `:-default` group, Devin aborts the entire MCP load — killing all MCP tools, not
- * just the one with the missing var. Emitting `${VAR:-}` makes Devin's regex see an empty
- * default and continue. Other MCP clients (Claude Code, Cursor) accept the same syntax via
- * standard bash-style substitution.
+ * Strict clients that import MCP configs such as `~/.claude.json` can abort the entire
+ * MCP load if an unset variable has no default. The resilient form gives them an empty
+ * default and uses standard shell substitution syntax.
  *
  * Already-resilient placeholders (`${VAR:-default}`, `${VAR:-}`) pass through unchanged.
  */
@@ -119,7 +116,7 @@ export function makeResilient(value: string): string {
 export function fromCanonical(value: string, format: EnvVarFormat): string {
   switch (format) {
     case "standard":
-      // Emit resilient placeholders so downstream importers (Devin reading Claude/Cursor
+      // Emit resilient placeholders so downstream importers (reading other agents’
       // configs) don't crash when an env var is unset. See makeResilient docstring.
       return makeResilient(value);
     case "opencode":
@@ -156,8 +153,7 @@ export interface BarePlaceholderFinding {
  * Recursively walk any JSON-shaped value and return all bare `${VAR}` placeholders.
  *
  * Bare placeholders (`${VAR}` without `:-default`) are what cause strict env-var
- * interpolators (notably the Devin CLI binary, which imports MCP configs from Claude
- * and Cursor) to abort the entire MCP load when the env var is unset. This helper
+ * interpolators to abort the entire MCP load when the env var is unset. This helper
  * powers both the post-sync sanitizer and the drift check that surfaces leftovers
  * — including bare placeholders written by tools agentbrew doesn't directly control
  * (e.g. `mcpm install` for clients in `MCP_INTERSECTION_AGENTS`).

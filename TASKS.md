@@ -183,6 +183,21 @@
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
 
+- [ ] Repair the two new dependency alerts through compatible upstream parents
+  - **ID**: dependency-alerts-172-175
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — published parents still require vulnerable minimatch 10.x. The newer Promptfoo that fixes its pinned Hono copy adds a peer incompatible with the protected jks stub and retains the watcher peer conflict. Require compatible primary metadata before implementation.
+  - **Details**: Repair only alerts 172 (`@hono/node-server`, GHSA-rmxm-3fg6-px4f) and 175 (`minimatch`, GHSA-g3hv-75wg-m249). [The evidence and preparation plan](docs/plans/dependency-alerts-172-175.md) records exact ranges and parent constraints. Keep the original nine-row `dependency-alert-remediation` cohort, including MSAL alert 162, unchanged. Preserve optional paths, the local jks stub, existing overrides and the Node floor. This records read-only triage, not a passing baseline or an authorized package update.
+  - **Files**: future supported parent resolution in `package.json` and `package-lock.json`; dependency/security documentation; no unrelated root update is pre-approved.
+  - **Output**: code
+  - **Acceptance**: neither new advisory range matches any resolved locked copy; the complete optional graph has no invalid/missing edges, normal installation and full gate pass, protected contracts remain unchanged, and both alerts report fixed with timestamps. No dismissal, omitted path, forced major override or reduced original-nine requirement counts as success.
+  - **Hypothesis**: after compatible metadata and a committed exact candidate prediction, the two unsafe advisory rows fall from a predicted two to zero, with zero new unresolved findings, invalid/missing edges or protected-contract changes. Count rows, not vulnerable package nodes; measure the baseline before implementation.
+  - **Measurement**: first commit the exact supported parent selection and runnable experiment; then run the plan's proposed two-row semver query, strict full-graph/audit checks through npm 10, qualified task-owned normal install, existing lockfile/full gates and live GitHub fixed-status query. Commands are future steps, not passing harness evidence.
+  - **Success**: zero unsafe rows among these two, zero new unresolved findings, zero invalid/missing full-tree edges, zero protected-contract changes, green normal installation/full gate and two fixed-alert timestamps. The original nine-row experiment remains separate.
+  - **Pivot**: any affected copy, unsupported parent resolution, concealed peer error, omitted optional path, new unresolved finding, protected-contract change or missing acceptance evidence rejects the candidate. Keep the task blocked rather than force a major override or change the denominator.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary GitHub advisory APIs and published parent manifests linked in the plan.
+
 - [ ] Restore a supported full dependency graph without forcing the watcher peer
   - **ID**: dependency-peer-compatibility
   - **Tags**: security, stability, dependencies

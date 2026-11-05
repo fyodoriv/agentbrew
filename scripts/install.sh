@@ -105,8 +105,8 @@ preflight() {
   check_node || ok=1
   if ! command -v npm >/dev/null 2>&1; then say "  ✗ npm is missing (it ships with Node.js)"; ok=1; fi
   if [ -z "${AGENTBREW_INSTALL_CLI:-}" ] && [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] &&
-    ! command -v cargo >/dev/null 2>&1; then
-    say "  ✗ Cargo is missing (install Rust 1.97 or later to build on Apple Silicon)"
+    ! node "$REPO_DIR/scripts/native-build-tools.mjs" available; then
+    say "  ✗ Native build capability unavailable; restore the matching prebuilt pair or make installed Rust available"
     ok=1
   fi
   if command -v gh >/dev/null 2>&1; then say "  ✓ GitHub CLI found (needed later for 'agentbrew contribute')"

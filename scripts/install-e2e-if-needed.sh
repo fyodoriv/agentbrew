@@ -14,9 +14,9 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-FAST_TRIGGERS='^(rust/checkup-run/.*|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|scripts/install\.sh|INSTALL\.md|src/init[^/]*\.ts|src/shell-hook\.ts|src/sync/(auto-sync|launchagent)\.ts|src/lint\.ts|src/health\.ts|src/cli\.ts|real-e2e/scenarios/us01-one-step-install\.test\.ts|scripts/install-e2e-if-needed\.sh)$'
-COLD_TRIGGERS='^(rust/checkup-run/.*|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|scripts/install\.sh|package\.json|package-lock\.json|tsup\.config\.ts|real-e2e/scenarios/us01-one-step-install\.test\.ts)$'
-PACK_TRIGGERS='^(rust/checkup-run/.*|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|package\.json|tsup\.config\.ts|hooks/manifest\.yaml|templates/rules/.*|src/core/repo-root\.ts|src/sync/(hooks-sync|catalog-template-rules)\.ts|real-e2e/scenarios/us01-us21-npm-package-hooks\.test\.ts)$'
+FAST_TRIGGERS='^(rust/checkup-run/.*|native/checkup-run/.*|scripts/(native-build-tools|build-native-prebuilt)\.mjs|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|scripts/install\.sh|INSTALL\.md|src/init[^/]*\.ts|src/shell-hook\.ts|src/sync/(auto-sync|launchagent)\.ts|src/lint\.ts|src/health\.ts|src/cli\.ts|real-e2e/scenarios/us01-one-step-install\.test\.ts|scripts/install-e2e-if-needed\.sh)$'
+COLD_TRIGGERS='^(rust/checkup-run/.*|native/checkup-run/.*|scripts/(native-build-tools|build-native-prebuilt)\.mjs|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|scripts/install\.sh|package\.json|package-lock\.json|tsup\.config\.ts|real-e2e/scenarios/us01-one-step-install\.test\.ts)$'
+PACK_TRIGGERS='^(rust/checkup-run/.*|native/checkup-run/.*|scripts/(native-build-tools|build-native-prebuilt)\.mjs|scripts/build-(checkup-run|source)\.sh|src/checkup-run-command\.ts|package\.json|tsup\.config\.ts|hooks/manifest\.yaml|templates/rules/.*|src/core/repo-root\.ts|src/sync/(hooks-sync|catalog-template-rules)\.ts|real-e2e/scenarios/us01-us21-npm-package-hooks\.test\.ts)$'
 
 dry_run=0
 from_stdin=0

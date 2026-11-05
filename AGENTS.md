@@ -102,6 +102,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
+- `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins (#693). Tests stub `gh` on `PATH`.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.

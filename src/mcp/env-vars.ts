@@ -30,10 +30,13 @@ const ENV_FALLBACKS: Record<string, () => string | undefined> = {
   JIRA_PERSONAL_TOKEN: () => resolveFromKeychain("jira-personal-token") ?? resolveFromKeychain("JIRA_PERSONAL_TOKEN"),
 };
 
-/** Resolve GITHUB_TOKEN via `gh auth token` when the env var isn't set. */
+/** Resolve the GitHub token from the gh keyring login. `gh` returns an env
+ *  GITHUB_TOKEN or GH_TOKEN before its keyring, so both are removed for this
+ *  call: a stale env token must never shadow a rotated keyring token (#693). */
 function resolveGitHubToken(): string | undefined {
+  const { GITHUB_TOKEN: _github, GH_TOKEN: _gh, ...env } = process.env;
   try {
-    return execFileSync("gh", ["auth", "token"], { stdio: "pipe", timeout: 5_000 }).toString().trim() || undefined;
+    return execFileSync("gh", ["auth", "token"], { stdio: "pipe", timeout: 5_000, env }).toString().trim() || undefined;
   } catch (e) {
     logSkipped("mcp/env-vars/execFileSync", e);
     return undefined;
@@ -63,11 +66,22 @@ function resolveFromKeychain(service: string): string | undefined {
   }
 }
 
-/** Try process.env first, then well-known fallbacks. */
+// Only GITHUB_TOKEN: gh itself leaks it from the env. An exported
+// GITHUB_PERSONAL_ACCESS_TOKEN is a deliberate choice and keeps winning.
+const KEYRING_FIRST = new Set(["GITHUB_TOKEN"]);
+
+/** Try process.env first, then well-known fallbacks. GITHUB_TOKEN tries the gh keyring first. */
 export function resolveEnvVar(varName: string): string | undefined {
+  // GITHUB_TOKEN: the keyring login wins; the env value is the fallback (CI).
+  const keyringFirst = KEYRING_FIRST.has(varName);
+  if (keyringFirst) {
+    const fromKeyring = resolveGitHubToken();
+    if (fromKeyring) return fromKeyring;
+  }
   const fromEnv = process.env[varName];
   if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-  return ENV_FALLBACKS[varName]?.();
+  // gh was already asked above; do not spawn it twice.
+  return keyringFirst ? undefined : ENV_FALLBACKS[varName]?.();
 }
 
 /**

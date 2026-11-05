@@ -94,7 +94,7 @@ describe("publish-latest npm script", () => {
   it("forwards npm publish flags such as --dry-run and --otp", () => {
     const content = scriptSource();
 
-    expect(content).toContain('npm publish --access public "${npm_publish_args[@]}"');
+    expect(content).toContain('npm publish --access public "${npm_publish_args[@]}" --ignore-scripts=false');
     expect(content).toContain("npm_publish_args+=(");
   });
 

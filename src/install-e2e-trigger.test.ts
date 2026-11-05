@@ -29,6 +29,11 @@ describe("install e2e trigger", () => {
       "hooks/manifest.yaml",
       "templates/rules/testing.mdc",
       "src/sync/hooks-sync.ts",
+      "src/judges/judge-command.ts",
+      "src/judges/gate.ts",
+      "hooks/checks/judge-pr-delivery.sh",
+      "hooks/checks/judge-report-final.sh",
+      "hooks/lib/pr-command-target.py",
     ]) {
       expect(decide(path), path).toContain("install e2e: pack");
     }

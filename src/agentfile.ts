@@ -51,6 +51,11 @@ interface AgentfileWarning {
 }
 
 /** Raw parsed Agentfile structure. */
+interface JudgeSource {
+  owner: string;
+  paths: string[];
+}
+
 export interface Agentfile {
   mcp?: AgentfileMcpEntry[];
   skills?: string[];
@@ -59,6 +64,8 @@ export interface Agentfile {
   sources?: string[];
   commands?: string[];
   agents?: string[];
+  judges?: string[];
+  judgeSources?: JudgeSource[];
   rules?: string;
   hooks?: AgentfileHookEntry[];
   recommended?: boolean;
@@ -233,6 +240,8 @@ export function parseAgentfile(content: string): Agentfile {
     sources: Array.isArray(raw.sources) ? raw.sources.map(String) : undefined,
     commands: Array.isArray(raw.commands) ? raw.commands.map(String) : undefined,
     agents: Array.isArray(raw.agents) ? raw.agents.map(String) : undefined,
+    judges: parseJudgeDeclarations(raw.judges),
+    judgeSources: parseJudgeSources(raw.judgeSources),
     rules: typeof raw.rules === "string" ? raw.rules : undefined,
     hooks: Array.isArray(raw.hooks) ? parseAgentfileHooks(raw.hooks) : undefined,
     recommended: raw.recommended === true ? true : undefined,
@@ -255,6 +264,43 @@ export function parseAgentfile(content: string): Agentfile {
 
 function parseStringList(value: unknown): string[] | undefined {
   return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string") : undefined;
+}
+
+function parseJudgeDeclarations(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new Error("Invalid judges declaration: expected a list");
+
+  const paths = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      throw new Error("Invalid judges declaration: expected a relative Markdown path");
+    }
+    const path = entry.replace(/^\.\//, "");
+    const segments = path.split("/");
+    if (
+      !path.endsWith(".md") ||
+      /[\\:]/.test(path) ||
+      [...path].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) ||
+      segments.some((segment) => !segment || segment === "." || segment === "..")
+    ) {
+      throw new Error("Invalid judges declaration: expected a relative Markdown path");
+    }
+    if (paths.has(path)) throw new Error("Invalid judges declaration: duplicate path");
+    paths.add(path);
+  }
+  return [...paths];
+}
+
+function parseJudgeSources(value: unknown): JudgeSource[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new Error("Invalid judge sources: expected a list");
+  return value.map((entry: unknown) => {
+    const { owner, paths } = (entry ?? {}) as Partial<JudgeSource>;
+    if (typeof owner !== "string" || !isAbsolute(owner) || !Array.isArray(paths)) {
+      throw new Error("Invalid judge sources: expected an absolute owner and relative paths");
+    }
+    return { owner: resolve(owner), paths: parseJudgeDeclarations(paths) ?? [] };
+  });
 }
 
 /** Keep string values (trimmed) and explicit nulls; drop everything else. */
@@ -454,6 +500,11 @@ function serializeSkillDirectories(agentfile: Agentfile, output: Record<string, 
   if (agentfile.skillDirectories?.length) output.skillDirectories = agentfile.skillDirectories;
 }
 
+function serializeAgentDefinitions(agentfile: Agentfile, output: Record<string, unknown>): void {
+  if (agentfile.agents?.length) output.agents = agentfile.agents;
+  if (agentfile.judgeSources?.length) output.judgeSources = agentfile.judgeSources;
+}
+
 function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   if (agentfile.excludeAgents?.length) output.excludeAgents = agentfile.excludeAgents;
@@ -462,7 +513,7 @@ function serializableAgentfile(agentfile: Agentfile): Record<string, unknown> {
   serializeSkillDirectories(agentfile, output);
   if (agentfile.sources?.length) output.sources = agentfile.sources;
   if (agentfile.commands?.length) output.commands = agentfile.commands;
-  if (agentfile.agents?.length) output.agents = agentfile.agents;
+  serializeAgentDefinitions(agentfile, output);
   if (agentfile.hooks?.length) output.hooks = agentfile.hooks;
   if (agentfile.rules) output.rules = agentfile.rules;
   if (agentfile.recommended) output.recommended = true;
@@ -486,8 +537,19 @@ function mergeModelFields(merged: Agentfile, agentfile: Agentfile): void {
   }
 }
 
+function mergeJudgeSources(judgesByOwner: Map<string, Set<string>>, agentfile: Agentfile, baseDir: string): void {
+  const judgeSources = [...(agentfile.judgeSources ?? []), { owner: baseDir, paths: agentfile.judges ?? [] }];
+  for (const { owner, paths } of judgeSources) {
+    if (!paths.length) continue;
+    const declarations = judgesByOwner.get(owner) ?? new Set<string>();
+    for (const path of paths) declarations.add(path);
+    judgesByOwner.set(owner, declarations);
+  }
+}
+
 export function mergeAgentfiles(filePaths: string[]): string {
   const merged: Agentfile = {};
+  const judgesByOwner = new Map<string, Set<string>>();
 
   for (const filePath of filePaths) {
     const { agentfile, baseDir } = readAgentfileForMerge(filePath);
@@ -505,6 +567,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
     merged.agents = mergeStringEntries(merged.agents, agentfile.agents, (value) =>
       normalizeSourceDirEntry(value, baseDir),
     );
+    mergeJudgeSources(judgesByOwner, agentfile, baseDir);
     merged.excludeAgents = mergeStringEntries(merged.excludeAgents, agentfile.excludeAgents);
     merged.workSteps = mergeWorkStepEntries(merged.workSteps, agentfile.workSteps);
     merged.hooks = mergeHookEntries(merged.hooks, agentfile.hooks);
@@ -520,6 +583,7 @@ export function mergeAgentfiles(filePaths: string[]): string {
     );
   }
 
+  merged.judgeSources = Array.from(judgesByOwner, ([owner, paths]) => ({ owner, paths: [...paths] }));
   return yaml.dump(serializableAgentfile(merged), {
     lineWidth: 120,
     quotingType: '"',

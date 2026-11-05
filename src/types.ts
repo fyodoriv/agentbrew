@@ -1,3 +1,5 @@
+import type { LoadedJudge } from "./judges/load.js";
+
 export type CommandTransform = (content: string) => string;
 export type HooksFormat = "claude-settings" | "claude-direct" | "codex";
 export type HooksScope = "user" | "project";
@@ -283,6 +285,8 @@ export interface AgentBrewState {
   agentfileRuleOwners?: Record<string, string>;
   /** Content hashes preserve rule bodies edited after their owning checkout disappears. */
   agentfileRuleHashes?: Record<string, string>;
+  /** Validated judge definitions in per-user state.yaml, keyed by the applying Agentfile directory. */
+  agentfileJudges?: Record<string, LoadedJudge[]>;
   agents: AgentConfig[];
   sources?: Source[];
   mcpServers?: McpServer[];

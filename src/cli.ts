@@ -44,6 +44,7 @@ import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
 import { installOutputRedaction } from "./core/redact-output.js";
+import { registerJudgeCommand } from "./judges/judge-command.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
 import { autoSync, buildSyncModules, runSyncParallel, runSyncWithErrorCollection } from "./sync-runner.js";
@@ -441,6 +442,7 @@ export function buildProgram(): Command {
   registerSyncCommand(program);
   registerCoreCommands(program);
   registerCheckupRunCommand(program);
+  registerJudgeCommand(program);
   registerConfigCommand(program);
   program
     .command("audit-skills")

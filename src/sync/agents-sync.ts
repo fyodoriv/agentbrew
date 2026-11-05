@@ -9,6 +9,7 @@ import type { Context } from "../core/context.js";
 import { createContext } from "../core/context.js";
 import type { Logger } from "../core/logger.js";
 import { logSkipped } from "../core/logger.js";
+import { renderJudgeAgent } from "../judges/render.js";
 import type { Manifest } from "../manifest.js";
 import { isUserModified, loadManifest, removeFromManifest, saveManifest, writeIfChanged } from "../manifest.js";
 import { AGENTS_DIR } from "../paths.js";
@@ -19,6 +20,7 @@ import { ICON_ERROR, ICON_SUCCESS } from "../ui/output.js";
 import { expandHome } from "../utils.js";
 import { agentNameClashes, warnNameClashes } from "./name-clashes.js";
 import { migrateLegacyShellPermissionMarkdown } from "./permission-patterns.js";
+import { activeJudgeSets } from "./stale-agentfile-artifacts.js";
 
 interface AgentDefTarget {
   agentName: string;
@@ -33,6 +35,7 @@ interface CollectedAgentDef {
   fileName: string;
   sourcePath: string;
   sourceLabel: string;
+  renderedJudge?: string;
 }
 
 export function getAgentDefTargets(skip: ReadonlySet<string> = new Set()): AgentDefTarget[] {
@@ -147,6 +150,7 @@ interface DeployAgentOpts {
 type DeployAgentResult = { synced: boolean; skipped: boolean };
 
 function readAgentContent(agent: CollectedAgentDef, log: Logger): string | undefined {
+  if (agent.renderedJudge !== undefined) return agent.renderedJudge;
   try {
     return migrateLegacyShellPermissionMarkdown(readFileSync(agent.sourcePath, "utf-8"));
   } catch (e) {
@@ -320,14 +324,36 @@ function resolveSyncOptions(options?: SyncOptions): {
   };
 }
 
+function addJudgeDefinitions(
+  state: ReturnType<typeof loadState>,
+  allAgents: ReturnType<typeof collectAgentDefs>["agents"],
+  bySource: ReturnType<typeof collectAgentDefs>["bySource"],
+): void {
+  const judges = Object.values(activeJudgeSets(state?.agentfileJudges ?? {})).flat();
+  for (const { owner, path, definition } of judges) {
+    const name = `judge-${definition.name}`;
+    if (allAgents.has(name)) throw new Error(`Agent definition conflicts with judge: ${JSON.stringify(name)}`);
+    allAgents.set(name, {
+      name,
+      fileName: `${name}.md`,
+      sourcePath: join(owner, path),
+      sourceLabel: "judges",
+      renderedJudge: renderJudgeAgent(definition),
+    });
+  }
+  if (judges.length) bySource.judges = (bySource.judges ?? 0) + judges.length;
+}
+
 /** Deploy agent definitions from all sources to all detected agent directories. */
 export async function syncAgentDefs(options?: SyncOptions, ctx?: Partial<Context>): Promise<void> {
   const { quiet, verbose, dryRun, prune } = resolveSyncOptions(options);
   const log = ctx?.logger ?? createContext({ quiet, compact: options?.compact }).logger;
 
-  const sources = getAgentSources();
+  const state = loadState();
+  const sources = getAgentSources(state);
   const { agents: allAgents, bySource } = collectAgentDefs(sources);
-  warnNameClashes("agent", agentNameClashes(loadState()), quiet, log);
+  warnNameClashes("agent", agentNameClashes(state), quiet, log);
+  addJudgeDefinitions(state, allAgents, bySource);
 
   if (allAgents.size === 0 && !prune) {
     warnNoAgents(quiet, verbose, log);
@@ -340,26 +366,31 @@ export async function syncAgentDefs(options?: SyncOptions, ctx?: Partial<Context
   }
 
   // Never create an agents dir for an agent the state marks not detected.
-  const targets = getAgentDefTargets(undetectedAgentNames(loadState()));
-  const sourceNameSet = new Set(allAgents.keys());
+  const targets = getAgentDefTargets(undetectedAgentNames(state));
   const sharedManifest = ctx?.manifest !== undefined;
   const manifest = ctx?.manifest ?? loadManifest();
 
   const targetResults = await Promise.all(
     targets.map(async (target) => {
       const targetDir = expandHome(target.dir);
+      const supportsJudges = target.agentName === "claude-code" || target.agentName === "codex";
+      const targetAgents = [...allAgents.values()].filter(
+        (agent) => supportsJudges || agent.renderedJudge === undefined,
+      );
       // Create the folder only when there is an agent to deploy into it.
-      if (!dryRun && allAgents.size > 0) mkdirSync(targetDir, { recursive: true });
+      if (!dryRun && targetAgents.length > 0) mkdirSync(targetDir, { recursive: true });
 
       let synced = 0;
       let skipped = 0;
-      for (const [, agent] of allAgents) {
+      for (const agent of targetAgents) {
         const result = deployAgentToTarget({ agent, targetDir, target, manifest, dryRun, quiet, log });
         if (result.synced) synced++;
         if (result.skipped) skipped++;
       }
 
-      const pruned = prune ? pruneStaleAgents(target, targetDir, sourceNameSet, manifest, dryRun) : 0;
+      const pruned = prune
+        ? pruneStaleAgents(target, targetDir, new Set(targetAgents.map(({ name }) => name)), manifest, dryRun)
+        : 0;
       return { agentName: target.agentName, synced, pruned, skipped };
     }),
   );

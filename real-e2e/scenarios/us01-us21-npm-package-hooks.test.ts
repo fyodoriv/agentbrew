@@ -12,6 +12,7 @@
  * with the real job label into the real GUI domain.
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -21,12 +22,19 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { judgeReceiptKey } from "../../src/judges/receipt-key.js";
+import { writeJudgeReceipt } from "../../src/judges/receipt-store.js";
 import { expectInstalledCheckupRun } from "./checkup-run-installed.js";
+
+const supportsJudgeReader =
+  (process.platform === "darwin" && process.arch === "arm64") ||
+  (process.platform === "linux" && (process.arch === "x64" || process.arch === "arm64"));
 
 const REPO = resolve(import.meta.dirname, "..", "..");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "agentbrew-npm-pkg-")));
@@ -55,11 +63,12 @@ function hookEntries(home: string): string[] {
 }
 
 /** Run `init` then `sync --only hooks,rules` with `cli` in a fresh scratch HOME. */
-function syncWith(name: string, cli: string[]): SyncResult {
+function syncWith(name: string, cli: string[], agentfile?: string): SyncResult {
   const home = join(root, name, "home");
   const cwd = join(root, name, "outside");
   const shims = join(root, "shims");
   mkdirSync(join(home, ".claude"), { recursive: true });
+  if (agentfile) mkdirSync(join(home, ".codex"), { recursive: true });
   mkdirSync(join(home, ".config", "agentbrew"), { recursive: true });
   mkdirSync(cwd, { recursive: true });
   // Rules sync refreshes the catalog `.mdc` rules only when shared rules exist.
@@ -79,7 +88,7 @@ function syncWith(name: string, cli: string[]): SyncResult {
   let out = "";
   for (const args of [
     ["init", "--skip-install", "--skip-sync"],
-    ["sync", "--only", "hooks,rules"],
+    agentfile ? ["sync", "--agentfile", agentfile, "--only", "agents"] : ["sync", "--only", "hooks,rules"],
   ]) {
     const argv = [...cli, ...args];
     const [cmd, cmdArgs] = useSandbox ? ["/usr/bin/sandbox-exec", ["-f", profile, ...argv]] : [argv[0], argv.slice(1)];
@@ -93,7 +102,7 @@ function syncWith(name: string, cli: string[]): SyncResult {
         .filter((f) => f.endsWith(".mdc"))
         .sort()
     : [];
-  return { home, hooks: hookEntries(home), mdcRules, out };
+  return { home, hooks: agentfile ? [] : hookEntries(home), mdcRules, out };
 }
 
 let npmUser: SyncResult;
@@ -143,6 +152,93 @@ afterAll(() => {
 });
 
 describe("npm package ships hooks and template rules", () => {
+  it.skipIf(!supportsJudgeReader)(
+    "syncs only the declared judge and gates the exact PR body",
+    () => {
+      const owner = join(root, "judge-sync-owner");
+      const agentfile = join(owner, "Agentfile.yaml");
+      const rubric = "Does the artifact make a verifiable claim?";
+      const markdown = `---
+on: [pr-create]
+sees: artifact
+rubric: [{id: claim, check: "${rubric}"}]
+pass_bar: 1
+model: fixture:model
+max_rounds: 1
+calibration:
+  cases: [golden/claims.md]
+  min_true_positive_rate: 1
+  min_true_negative_rate: 1
+---
+Review the artifact.
+`;
+      mkdirSync(join(owner, "judges"), { recursive: true });
+      writeFileSync(agentfile, "judges: [judges/claims.md]\n");
+      writeFileSync(join(owner, "judges", "claims.md"), markdown);
+      writeFileSync(join(owner, "judges", "undeclared.md"), markdown);
+      const installed = join(root, "prefix", "bin", "agentbrew");
+      const { home } = syncWith("judge-sync", [installed], agentfile);
+      const claude = join(home, ".claude", "agents");
+      const codex = join(home, ".codex", "agents");
+      expect(readFileSync(join(claude, "judge-claims.md"), "utf8")).toContain(rubric);
+      expect(readFileSync(join(codex, "judge-claims.toml"), "utf8")).toContain(rubric);
+      expect(existsSync(join(claude, "judge-undeclared.md"))).toBe(false);
+      expect(existsSync(join(codex, "judge-undeclared.toml"))).toBe(false);
+
+      const body = "A verifiable claim.\n";
+      function gate(draft: string) {
+        return spawnSync(installed, ["judge", "gate-pr", "pr-create"], {
+          cwd: owner,
+          env: { ...process.env, HOME: home, AGENTBREW_NO_AUTO_SYNC: "1", AGENTBREW_NO_SHELL_HOOK: "1" },
+          input: JSON.stringify(["gh", "pr", "create", "--title", "Fixture", "--body", draft]),
+          encoding: "utf8",
+          timeout: 10_000,
+        });
+      }
+      const missing = gate(body);
+      expect(missing.status, missing.stderr).toBe(2);
+      expect(missing.stderr).toContain("A fresh verdict is required for: claims.");
+      const key = judgeReceiptKey({
+        artifact: Buffer.from(body),
+        judge: "claims",
+        rubricSha256: createHash("sha256").update(markdown).digest("hex"),
+        model: "fixture:model",
+        event: "pr-create",
+      });
+      writeJudgeReceipt(join(home, ".config", "agentbrew", "judge-receipts"), {
+        version: 1,
+        key,
+        issuedAt: Date.now(),
+        pass: true,
+        passBar: 1,
+        checks: [{ check: "claim", critique: "Fixture verdict.", verdict: "PASS", evidence: [] }],
+      });
+      const fresh = gate(body);
+      expect(fresh.status, fresh.stderr).toBe(0);
+      const changed = gate(body + ".");
+      expect(changed.status, changed.stderr).toBe(2);
+    },
+    300_000,
+  );
+
+  it.skipIf(!supportsJudgeReader)("ships a working judge reader in the installed package", () => {
+    const cli = realpathSync(join(root, "prefix", "bin", "agentbrew"));
+    const reader = join(dirname(cli), "native", `${process.platform}-${process.arch}`, "judge-source");
+    const owner = join(root, "judge-owner");
+    mkdirSync(owner);
+    writeFileSync(join(owner, "clarity.md"), "qualified fixture\n");
+    writeFileSync(join(root, "outside.md"), "outside fixture\n");
+    symlinkSync(join(root, "outside.md"), join(owner, "linked.md"));
+
+    const accepted = spawnSync(reader, [owner, "clarity.md"], { encoding: "utf8", timeout: 5000 });
+    expect(accepted.status, accepted.error?.message).toBe(0);
+    expect(accepted.stdout).toBe("qualified fixture\n");
+
+    const refused = spawnSync(reader, [owner, "linked.md"], { encoding: "utf8", timeout: 5000 });
+    expect(refused.status, refused.error?.message).toBe(2);
+    expect(refused.stdout).toBe("");
+  });
+
   it("deploys default-on hooks into ~/.claude/settings.json", () => {
     expect(npmUser.hooks.length, npmUser.out).toBeGreaterThan(0);
     expect(npmUser.out).not.toContain("source lib/ not found");

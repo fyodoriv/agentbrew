@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { applyAgentfile } from "../agentfile.js";
 import { defaultState, loadState, saveState } from "../state.js";
+import type { AgentBrewState } from "../types.js";
 import {
   cleanupStaleAgentfileArtifacts,
   hashAgentfileRuleBody,
@@ -15,6 +16,36 @@ const block = (id: string, body: string) =>
   `<!-- agentfile-rules: ${id} -->\n${body}\n<!-- /agentfile-rules: ${id} -->\n`;
 
 describe("stale Agentfile ownership", () => {
+  it("prunes missing judge owners even when a generated Agentfile still exists", () => {
+    const generated = join(homedir(), "generated-judge-owner");
+    const live = join(homedir(), "live-judge-owner");
+    const gone = join(homedir(), "gone-judge-owner");
+    mkdirSync(generated);
+    mkdirSync(live);
+    const entry = {
+      owner: live,
+      path: "judges/clarity.md",
+      sha256: "a".repeat(64),
+      definition: {
+        name: "clarity",
+        on: ["pr-create"],
+        sees: "artifact",
+        rubric: [{ id: "clear", check: "Is it clear?" }],
+        passBar: 1,
+        model: "fixture:model",
+        maxRounds: 1,
+        calibration: { cases: ["golden.md"], minTruePositiveRate: 1, minTrueNegativeRate: 1 },
+        instructions: "",
+      },
+    } satisfies NonNullable<AgentBrewState["agentfileJudges"]>[string][number];
+    const state: AgentBrewState = {
+      ...defaultState(),
+      agentfileJudges: { [generated]: [entry, { ...entry, owner: gone }], [gone]: [entry] },
+    };
+    expect(pruneStaleAgentfileArtifacts(state, "")).toEqual({ content: "", changed: true });
+    expect(state.agentfileJudges).toEqual({ [generated]: [entry] });
+  });
+
   it("prunes artifacts whose recorded checkout is gone, retaining unknown and live owners", () => {
     const live = join(homedir(), "live");
     const gone = join(homedir(), "gone");

@@ -37,7 +37,7 @@ bash <DIR>/scripts/install.sh plan
 
 Show the person the output in your own short words:
 
-- what they need (Node.js 20.11+, git, about 5 minutes, network. On Apple Silicon, a source install also needs Rust 1.97 or later),
+- what they need (Node.js 20.11+, git, about 5 minutes, network. Source installs on Apple Silicon and Linux x64 or ARM64 also need Rust 1.97 or later),
 - what will change (agent settings, skills, rules, a background job, a shell
   hook),
 - what changes in Claude Code: the hook count, the `/goal` behaviour (edits

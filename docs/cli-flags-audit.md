@@ -21,6 +21,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--agentfile` | knob | Points at an Agentfile path; the default path is used without it. |
 | `--all` | knob | Widens `mcp` output to every server; the default is the managed set. On `setup`, runs the multi-repo chain, which clones and installs other repos; too wide for plain `setup`. |
 | `--args` | knob | Supplies server arguments; input, not behavior. |
+| `--artifact` | knob | Names the exact file to review. The judge cannot infer which artifact the user selected. |
 | `--base` | knob | Names the upstream base branch for a contribution PR; input, not behavior. |
 | `--body-file` | knob | Names the PR body file; input, not behavior. |
 | `--built-in-skill-root` | knob | Overrides the skill folder for `--builtins`. |
@@ -38,6 +39,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--draft` | knob | Opens the contribution PR as a draft; a per-PR choice. |
 | `--dry-run` | debug | Preview without writes; the default applies the change. |
 | `--env` | knob | Supplies server env vars; input, not behavior. |
+| `--event` | knob | Selects a delivery event. A named judge can infer the event only when it declares one. |
 | `--finished-at` | knob | Supplies the assessment completion time. The recorder cannot infer it from its own start time. |
 | `--fix` | disruptive | Lets `status` rewrite agent configs; `status` stays read-only by default. |
 | `--force` | disruptive | Re-runs work that is already done or overwrites; unsafe as a default. |
@@ -75,7 +77,9 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--refresh-rules` | disruptive | Replaces edited catalog rule blocks; must stay explicit. |
 | `--replace` | disruptive | Overwrites existing items on import; unsafe as a default. |
 | `--repo` | knob | Names the repo to report to; the default is the upstream of the current checkout. |
+| `--request` | knob | Supplies the original request for a source-aware judge. Other judges receive only the artifact. |
 | `--result` | knob | Supplies the assessment outcome. The recorder cannot infer it. |
+| `--review-id` | knob | Shares a round limit across revisions at different paths. The default uses the artifact path. |
 | `--rollback` | disruptive | Restores the last snapshot over current configs; must stay explicit. |
 | `--rules` | knob | Filters browse output to rules. |
 | `--schedule` | knob | Opts in to (or out of) the weekly metrics send; sending data must never be a default. |
@@ -93,6 +97,7 @@ Decision record: [`decisions/adopt-rule-16-default-by-default.md`](decisions/ado
 | `--revoke` | knob | Removes a plugin signer instead of adding one; a different action. |
 | `--signer` | knob | Supplies an SSH public key; input, not behavior. |
 | `--cwd` | knob | Supplies the repo checkout to scope plugin rules to; input, not behavior. |
+| `--source` | knob | Supplies named evidence for a source-aware judge. The judge cannot infer the designated files. |
 | `--strict` | knob | Adds `strictPluginOnlyCustomization` to a printed admin policy; a policy choice for admins, not a default. |
 | `--sources` | knob | Filters browse output to sources. |
 | `--threshold` | knob | Coverage threshold value for `--ci`. |

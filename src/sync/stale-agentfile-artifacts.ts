@@ -46,6 +46,16 @@ function checkoutAbsent(path: string): boolean {
   }
 }
 
+export function activeJudgeSets(sets: NonNullable<AgentBrewState["agentfileJudges"]>) {
+  const active: NonNullable<AgentBrewState["agentfileJudges"]> = {};
+  for (const [owner, judges] of Object.entries(sets)) {
+    if (checkoutAbsent(owner)) continue;
+    const retained = judges.filter((judge) => !checkoutAbsent(judge.owner));
+    if (retained.length) active[owner] = retained;
+  }
+  return active;
+}
+
 /** Track only new or already-owned registrations in the supplied state.yaml snapshot. */
 export function recordMemoryPackOwners(
   state: AgentBrewState,
@@ -69,6 +79,7 @@ export function pruneStaleAgentfileArtifacts(
   rules: string,
 ): { content: string; changed: boolean } {
   const before = JSON.stringify(state);
+  if (state.agentfileJudges) state.agentfileJudges = activeJudgeSets(state.agentfileJudges);
   const owners = state.agentfileRuleOwners ?? {};
   const missing = new Set(
     Object.entries(owners)

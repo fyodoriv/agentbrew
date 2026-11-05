@@ -937,6 +937,14 @@ Skills-only agents are experimental. Sync only writes to their `skillsDir`, and 
 
 See [docs/COMPETITION.md](docs/COMPETITION.md) for the full analysis. Run `npm run docs:competition` after editing `docs/competition-snapshot.json`.
 
+## Judge an artifact before delivery
+
+Ask Claude to review a draft with `/agentbrew`, or run
+`agentbrew judge run --event <event> --artifact <file>`. Declare the rubric
+in your Agentfile. Use `agentbrew judge eval <name>` to check the rubric
+against labeled examples. See the [judge setup guide](docs/plans/judges.md)
+for local server requirements, the full-input policy, and opt-in hooks.
+
 ## CLI reference
 
 ```
@@ -1159,6 +1167,10 @@ npm run publish:latest -- --quick      # skip build when dist/ already matches C
 npm run publish:latest -- --dry-run    # preflight + npm publish --dry-run
 npm run publish:latest -- --otp=123456 # required when npm prompts for 2FA
 ```
+
+Publish from Apple Silicon with Rust 1.97 or later. Add the two Linux
+targets with `rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl`.
+The publish build includes all three judge readers, even with `--quick`.
 
 The script is worktree-safe: it `git fetch origin main --tags` and syncs `package.json` / lockfile / `src/cli.ts` from `origin/main` without checking out `main`. While publishing, `"private": true` is stripped temporarily and restored on exit (even on failure).
 

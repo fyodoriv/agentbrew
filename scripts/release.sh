@@ -60,8 +60,8 @@ sed -i.bak "s/.version(\"$OLD_VERSION\")/.version(\"$NEW_VERSION\")/" src/cli.ts
 
 echo "📦 New version: $NEW_VERSION"
 
-# Rebuild with new version
-npm run build
+# Qualify all package targets before pushing the release tag.
+npm run prepublishOnly
 
 # Verify version in dist
 DIST_VERSION=$(node dist/cli.js --version)
@@ -92,7 +92,7 @@ fi
 # 7. Publish to npm
 echo ""
 echo "🚀 Publishing to npm..."
-npm publish --access public
+npm publish --access public --ignore-scripts=false
 
 echo ""
 echo "✅ Released agentbrew@$NEW_VERSION"

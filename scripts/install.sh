@@ -104,10 +104,15 @@ preflight() {
   if ! command -v git >/dev/null 2>&1; then say "  ✗ git is missing (install Xcode Command Line Tools: xcode-select --install)"; ok=1; fi
   check_node || ok=1
   if ! command -v npm >/dev/null 2>&1; then say "  ✗ npm is missing (it ships with Node.js)"; ok=1; fi
-  if [ -z "${AGENTBREW_INSTALL_CLI:-}" ] && [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] &&
-    ! command -v cargo >/dev/null 2>&1; then
-    say "  ✗ Cargo is missing (install Rust 1.97 or later to build on Apple Silicon)"
-    ok=1
+  if [ -z "${AGENTBREW_INSTALL_CLI:-}" ]; then
+    case "$(uname -s)-$(uname -m)" in
+      Darwin-arm64|Linux-x86_64|Linux-aarch64)
+        if ! command -v cargo >/dev/null 2>&1; then
+          say "  ✗ Cargo is missing (install Rust 1.97 or later for this source build)"
+          ok=1
+        fi
+        ;;
+    esac
   fi
   if command -v gh >/dev/null 2>&1; then say "  ✓ GitHub CLI found (needed later for 'agentbrew contribute')"
   else say "  - GitHub CLI not found: optional, only for sending fixes upstream (brew install gh)"; fi

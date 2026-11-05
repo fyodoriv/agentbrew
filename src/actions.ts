@@ -124,6 +124,9 @@ export const AGENT_NOTES: Readonly<Record<string, string>> = {
 export const NOT_ACTIONS: Readonly<Record<string, string>> = {
   fix: "the drift-repair scheduler's entry point (LaunchAgent, systemd, cron); people and agents run `agentbrew sync`",
   team: "removed in 1.0; it only prints a pointer to `agentbrew plugin`",
+  "judge.gate-report": "the report delivery hook passes the final artifact on stdin",
+  "judge.gate-draft": "the draft delivery hook passes the draft artifact on stdin",
+  "judge.gate-pr": "the PR delivery hook passes the parsed command arguments on stdin",
 };
 
 /** Commander keeps these private; the help and docs tests read `_hidden` the same way. */

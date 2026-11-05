@@ -24,11 +24,17 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Set up Rust for the native judge reader
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          rustup default 1.97.0
+
       - name: Build
         run: npm run build
 
       - name: Verify dist
         run: |
+          test -x dist/native/linux-x64/judge-source
           test -f dist/cli.js || { echo "ERROR: dist/cli.js missing"; exit 1; }
           test -f dist/catalog.yaml || { echo "ERROR: dist/catalog.yaml missing"; exit 1; }
           head -1 dist/cli.js | grep -q '#!/usr/bin/env node' || { echo "ERROR: missing shebang"; exit 1; }

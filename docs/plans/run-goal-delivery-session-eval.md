@@ -41,3 +41,9 @@ same assertions after the eval is added. Root owns publication.
 Anchor: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017),
 preregistration. Issue775 supplies the inventory, single-session handoff and
 confirmed-dead-record recovery requirements.
+
+## Focused evidence
+
+The unchanged eval registry failed all three new contract checks. Adding the
+scenario passed the same frozen assertions. This validates the fixture and
+expected outcomes only; no chat was created and no registry was modified.

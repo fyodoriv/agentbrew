@@ -1018,6 +1018,11 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
 
 `agentbrew --help` shows all commands grouped by category. `agentbrew actions` lists the same commands for agents, generated from the CLI parser, so a new command appears there by itself. When you add one that needs the user's own terminal (an interactive prompt, a foreground loop) or is hard to undo, add it to `TERMINAL_ONLY` or `CONFIRM` in `src/actions.ts`.
 
+Use `eval "$(agentbrew env sanitize)"` to clear environment overrides before
+starting another agent. This command writes only `unset` code, or nothing,
+to stdout. Its banner, repair summary and upgrade notices use stderr.
+Ordinary command banners keep their existing output stream.
+
 A hidden command needs a reason in `NOT_ACTIONS`. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
 
 `agentbrew lint` also guards instruction/rules bloat. See `docs/agent-bloat-lint.md`. It checks:

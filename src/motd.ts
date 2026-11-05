@@ -15,7 +15,7 @@ function isSyncStale(isoDate: string): boolean {
   return age > STALE_THRESHOLD_HOURS * 60 * 60 * 1000;
 }
 
-export function printMotd(commandName: string | undefined): void {
+export function printMotd(commandName: string | undefined, output: (message: string) => void = console.log): void {
   if (!commandName || SILENT_COMMANDS.has(commandName)) return;
 
   const state = loadState();
@@ -40,15 +40,15 @@ export function printMotd(commandName: string | undefined): void {
     }
   }
 
-  console.log(chalk.dim(`\n⚡ ${parts.join(" · ")}`));
+  output(chalk.dim(`\n⚡ ${parts.join(" · ")}`));
 
   // Show auto-repair summary from background runs since last interactive command
   const repairSummary = getRepairSummary();
   if (repairSummary) {
-    console.log(chalk.dim(`  🔧 ${repairSummary}`));
+    output(chalk.dim(`  🔧 ${repairSummary}`));
     clearRepairLog();
   }
 
-  checkForAutoUpgrade();
+  checkForAutoUpgrade(output);
   touchLastSeen();
 }

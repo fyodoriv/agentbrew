@@ -37,3 +37,6 @@ plugin-lock.json
 
 # Agent worktrees inside the checkout are nested git repos (src/repo/gitignore-agent-worktrees.test.ts).
 .claude/worktrees/
+
+# Native migration tooling build output (source remains inventoried).
+/rust/target/

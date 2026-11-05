@@ -91,7 +91,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - `src/cli.test.ts` can time out under load; re-run it first.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.
 - Each test file gets a scratch `HOME` and scrubbed `AGENTBREW_*`/`NO_CACHE` env (`vitest.isolated-home.ts`). It fails on writes to the real `~/.config/agentbrew` or `~/.claude`, and on new repo files. Instructions sync writes `context/*.md` under `AGENTBREW_DIR`, so never point it at the repo root in a test; use a scratch copy (`scratchRepoRoot()` in `src/integration.test.ts`).
-- The owner's global gitignore lists `TASKS.md`. Fixture git repos need `GIT_CONFIG_GLOBAL=/dev/null`; store templates as `*.template.md`.
+- Git tests: `GIT_CONFIG_GLOBAL=/dev/null` avoids owner's `TASKS.md` ignore. Use `*.template.md`; [HOME](docs/plans/rust-source-inventory.md).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).

@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "phase": "bounded native API candidate; supervisor unchanged",
+  "original_archive_sha256": "a54ad7278b8bc5301d5ffd2a94251c004feb971feba96c971ea4063645990757",
+  "modified_original_files": [
+    "src/libproc/sys/macos.rs",
+    "src/libproc/sys/mod.rs",
+    "src/processes.rs",
+    "examples/procinfo.rs"
+  ],
+  "unchanged_original_files": 32,
+  "unsafe_block_count_before": 5,
+  "unsafe_block_count_after": 5,
+  "unsafe_block_contents_unchanged": true,
+  "unsafe_block_sha256_multiset": [
+    "3c68b4513aa929032f65c23f573689d70f278bf6ab1b592267ecc4bde33c8092",
+    "56bd7d42a0a2971087d3fed67caf7cd631f46572447c9ebce7b9cd9fce20996b",
+    "783932f8e81f285376114f1517d52dcaf98ac23b3d64fc510db118b04bca996e",
+    "7c5d5b11df586ad8a74bfa3136a3da73dbafa990e435e83b55135954f81648e8",
+    "c8f2915be2b3780e2ff0c8ea9cdd3181d9c1e58c3dbfb10b991d2dc5d21e019b"
+  ],
+  "new_unsafe_blocks": 0,
+  "safe_source_patch_sha256": "eacec8e1cab53d657ce1c5cee3e4c0596ce143d517af8ce437a4c0c92f861dd4",
+  "root_cargo_lock_sha256": "707bb0f2ebadf1a390de7ced617ddb87cc212cf7f436ac5c04a0c1878ace6a28",
+  "supervisor_behavior_changed": false,
+  "documentation_patch": {
+    "path": "examples/procinfo.rs",
+    "scope": "example output comments only; no executable behavior change",
+    "original_file_sha256": "dd5cf00d686f9f82e65d4a3a6d58007686ded3763f4721d861762c902b0aa0dc",
+    "modified_file_sha256": "df51ee9d97ecd3a40dc0cbe0265e2d7ad60ca9cdc88e1413ecd705184673bd72",
+    "line_replacements": [
+      {
+        "line": 17,
+        "original_line_sha256": "de04404b97cc1f8fcf87de023e0c319c38bd732b3ec7c44acb9fcefb7b5bcb78",
+        "replacement": "//! Path: ~/workspace/libproc-rs/target/debug/procinfo"
+      },
+      {
+        "line": 19,
+        "original_line_sha256": "d57e56006511c05a0da8b028b228d99a73f93e978b2628235490a51ed958ace4",
+        "replacement": "//! Region Filename (at address 0): ~/workspace/libproc-rs/target/debug/procinfo"
+      }
+    ]
+  }
+}

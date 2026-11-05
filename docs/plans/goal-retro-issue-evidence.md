@@ -23,3 +23,10 @@ Anchor: issue #779's observed false refusal; Basili, Caldiera and Rombach
 Scope: the existing necessary shell hook, its regression fixture and docs.
 No new implementation language or network lookup. Estimated active effort:
 20–40 minutes plus shared-queue waiting and the repository's required gate.
+
+## Recorded focused result
+
+The unchanged hook refused both valid issue-link fixtures; malformed and
+negated cases still blocked. After adding the numeric issue-URL alternative,
+the same fixture passed every case. No existing assertion or negation rule
+changed. Required repository validation remains a separate delivery gate.

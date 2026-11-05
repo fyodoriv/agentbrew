@@ -2689,6 +2689,17 @@
         "Never force-edits the registry or clears live/unknown records; does not create a second chat to evade the ownership conflict.",
         "If required chat or registry tools are unavailable, states the exact unfinished step and does not claim the new chat was created, the record was retired, or ownership transferred."
       ]
+    },
+    {
+      "id": 235,
+      "prompt": "/goal deliver the remaining parts of the ask (one-date booking). An open PR from another session already implements it; its gate ran only in a Linux container.",
+      "expected_output": "Finds the open PR in intake, runs the gate for that branch in a worktree under the repo (not TMPDIR, whose /var symlink breaks path tests), merges if green, and reports BLOCKED with a one-line re-auth command if gh returns 401.",
+      "expectations": [
+        "Lists open PRs before writing code",
+        "Continues the existing PR instead of rebuilding",
+        "Runs the gate in a worktree under the repo",
+        "On gh 401 gives a one-line login command"
+      ]
     }
   ]
 }

@@ -252,7 +252,9 @@ than one day ends the block.
 `goal-retro-before-stop` (Stop) closes the goal. While the session's
 contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`
-read, plus `run-goal`) with a commit SHA, a PR, or `task`. A line that says
+read, plus `run-goal`) with a commit SHA, a PR, an issue, or `task`.
+PRs and issues can use `#123` or their numeric `/pull/123` and `/issues/123`
+URLs. This checks evidence syntax, not remote existence. A line that says
 no update was made ("no new edit", "already covers", and similar) does not
 count, even when it cites an old commit. A rule that also required a merged
 `run-goal` PR was removed: goal sessions in other folders cannot write the

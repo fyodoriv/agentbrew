@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   applyResilientToValue,
@@ -178,10 +181,39 @@ describe("resolveEnvVar", () => {
     expect(resolveEnvVar("TOTALLY_UNKNOWN_VAR")).toBeUndefined();
   });
 
-  it("skips fallback when env var is set", () => {
-    process.env.GITHUB_TOKEN = "from-env";
-    expect(resolveEnvVar("GITHUB_TOKEN")).toBe("from-env");
-    delete process.env.GITHUB_TOKEN;
+  // A fake `gh` that acts like the real one: an env token wins over the keyring.
+  function withFakeGh(keyring: boolean, run: () => void): void {
+    const dir = mkdtempSync(join(tmpdir(), "fake-gh-"));
+    const body = keyring
+      ? '#!/bin/sh\nif [ -n "$GH_TOKEN$GITHUB_TOKEN" ]; then echo "${GH_TOKEN:-$GITHUB_TOKEN}"; else echo keyring-good; fi\n'
+      : '#!/bin/sh\nif [ -n "$GH_TOKEN$GITHUB_TOKEN" ]; then echo "${GH_TOKEN:-$GITHUB_TOKEN}"; else exit 1; fi\n';
+    writeFileSync(join(dir, "gh"), body, { mode: 0o755 });
+    const oldPath = process.env.PATH;
+    process.env.PATH = `${dir}:${oldPath}`;
+    try {
+      run();
+    } finally {
+      process.env.PATH = oldPath;
+      delete process.env.GITHUB_TOKEN;
+      delete process.env.GH_TOKEN;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("a stale GITHUB_TOKEN in the env loses to the gh keyring token (#693)", () => {
+    withFakeGh(true, () => {
+      process.env.GITHUB_TOKEN = "dead-env-token";
+      process.env.GH_TOKEN = "dead-gh-token";
+      expect(resolveEnvVar("GITHUB_TOKEN")).toBe("keyring-good");
+      expect(resolveEnvVar("GITHUB_PERSONAL_ACCESS_TOKEN")).toBe("keyring-good");
+    });
+  });
+
+  it("uses the env GITHUB_TOKEN when gh has no keyring login (CI)", () => {
+    withFakeGh(false, () => {
+      process.env.GITHUB_TOKEN = "from-env";
+      expect(resolveEnvVar("GITHUB_TOKEN")).toBe("from-env");
+    });
   });
 
   it("tries gh auth token fallback for GITHUB_TOKEN when env is empty", () => {

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
 import type { AgentBrewState } from "../types.js";
@@ -57,6 +58,34 @@ describe("removed agents stay removed (#286)", () => {
     });
     expect(result.error).toBeUndefined();
     expect(result.status, result.stdout).toBe(1);
+  });
+
+  it("ignores surviving owner files only at the repository root", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "agentbrew-retired-ignore-"));
+    try {
+      const template = join(scratch, "empty-template");
+      mkdirSync(template);
+      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+      env.GIT_CONFIG_NOSYSTEM = "1";
+      env.GIT_CONFIG_GLOBAL = "/dev/null";
+      const git = (...args: string[]) => spawnSync("git", args, { cwd: scratch, env, encoding: "utf8" });
+      expect(git("init", "--quiet", `--template=${template}`).status).toBe(0);
+      writeFileSync(join(scratch, ".gitignore"), readText(".gitignore"));
+
+      const root = ".cursor/owner-config.json";
+      const nested = "nested/.cursor/owner-config.json";
+      for (const path of [root, nested]) {
+        const file = join(scratch, path);
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, "{}\n");
+      }
+      const ignored = (path: string) =>
+        git("-c", "core.excludesFile=/dev/null", "check-ignore", "--no-index", "--", path).status;
+      expect(ignored(root)).toBe(0);
+      expect(ignored(nested)).toBe(1);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
   });
 
   it.each([undefined, CURRENT_SCHEMA_VERSION])("drops retired state at schema %s", (schemaVersion) => {

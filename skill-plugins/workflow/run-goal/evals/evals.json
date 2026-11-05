@@ -2562,6 +2562,16 @@
         "On successful filing, passes verified issue links and scope to the new session",
         "On failed filing, reports partial results and waits before opening a session"
       ]
+    },
+    {
+      "id": 224,
+      "prompt": "/goal make the weekly plan suggest rarer, more unique events, English only, with tests",
+      "expected_output": "Before the full gate, the agent runs every story test that reads the changed ranking (for example the novelty and plan e2e stories), not only its new unit tests. It treats a score change that touches every item (a flat bonus for one-date events) as a reorder of all rankings and drops it when a guard story fails, keeping only the targeted lever (a penalty for frequent events). A language filter drops an event only on evidence of another language, and the agent checks the filter keeps every English fixture before it ships.",
+      "expectations": [
+        "runs the ranking guard stories before the full gate",
+        "drops a flat bonus that reorders all items when a guard fails",
+        "language filter needs evidence of another language"
+      ]
     }
   ]
 }

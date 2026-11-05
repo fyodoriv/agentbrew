@@ -85,3 +85,42 @@ Anchor: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017),
 preregistration. Estimate: active effort 1 / 3 / 6 hours low/likely/high,
 plus shared-queue and gate time. Primary uncertainty is native canary access;
 report progress and revise the estimate when evidence changes it.
+
+## Qualification record
+
+The initial guidance/fixture guard failed all six cases before implementation
+and passed all six afterwards. Independent review then found the older worker
+watchdog still inferred job death from transcript silence. A seventh guard
+failed against that contradiction, then passed after the quiet-wait exception.
+The first changed gate passed 620 tests; later edits require a fresh gate.
+
+Independent baseline simulation already chose quiet native waiting and the
+correct selected metric. Its missing-handle recovery could duplicate a live
+job. Therefore this experiment does not establish a causal four-to-zero
+reduction in live replies or model invocations. The new fixture measures
+specified decisions, not native scheduler behavior. Keep that distinction in
+delivery evidence and any later field measurement.
+
+Native condition amendment remains capability-gated. Codex host scheduling
+and unavailable tools are not changed by this skill. A bounded native Claude
+canary is separate from simulated action traces; setup failure or missing
+deferral evidence cannot qualify it.
+
+The final frozen candidate passed the uncached full gate: 6,275 tests passed,
+33 legacy tests skipped, 414 files passed and two files skipped. All twenty
+verification steps ran fresh; installer e2e correctly skipped because no
+installation path changed. Frozen source hashes were unchanged at completion.
+
+A bounded isolated Claude canary exited zero before its 120-second deadline.
+Target-bound metadata confirms one accepted background handle, the initial
+turn ending before its completion, one owned native completion notice, and
+then a marker read. It retained configured memory and hooks, with an
+invocation-only `dontAsk` permission mode and exact command allowance; no
+account or permission settings were written. This proves native handoff
+capability, not that the revised skill reduced evaluator calls. No real PR
+or other session was changed, and no raw private transcript is published.
+
+The implementation task is complete as a workflow correction. Live evaluator
+invocation savings remain unqualified; future field evidence must retain that
+separate outcome and the original acceptance criteria. No unsupported native
+condition synchronization or Codex idle scheduling is claimed.

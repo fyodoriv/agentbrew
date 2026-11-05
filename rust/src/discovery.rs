@@ -29,6 +29,7 @@ pub struct Fact {
 
 #[derive(Default)]
 pub struct Discovery {
+    pub upstream: crate::upstream_ownership::Evidence,
     pub facts: BTreeMap<String, Fact>,
     pub diagnostics: Vec<Diagnostic>,
     pub boundaries: BTreeMap<String, Boundary>,
@@ -137,7 +138,7 @@ fn static_text(value: &Datum, budget: &mut usize, depth: usize) -> Option<String
     }
 }
 
-fn owned_path(path: &str, parent: Option<&str>) -> Option<String> {
+pub(crate) fn owned_path(path: &str, parent: Option<&str>) -> Option<String> {
     if path.starts_with('/') || path.contains(['\\', ':']) || path.chars().any(char::is_control) {
         return None;
     }
@@ -425,6 +426,16 @@ fn registry_sources(
 
 pub fn discover(snapshot: &Snapshot) -> Discovery {
     let mut result = Discovery::default();
+    match crate::upstream_ownership::inspect(snapshot) {
+        Ok(evidence) => {
+            for fact in &evidence.facts {
+                result.facts.insert(fact.id.clone(), fact.clone());
+            }
+            result.registry_edges.extend(evidence.edges.clone());
+            result.upstream = evidence;
+        }
+        Err(error) => result.diagnostics.push(error),
+    }
     match crate::reviewed_sources::inspect(snapshot) {
         Ok(evidence) => result.reviewed_sources = evidence,
         Err(error) => result.diagnostics.push(error),
@@ -462,6 +473,7 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
     // unresolved module facts or changed body ordinals from surviving a round.
     for _ in 0..=snapshot.entries.len() {
         let mut round = Discovery {
+            upstream: result.upstream.clone(),
             facts: result.facts.clone(),
             required_targets: result.required_targets.clone(),
             registry_edges: result.registry_edges.clone(),

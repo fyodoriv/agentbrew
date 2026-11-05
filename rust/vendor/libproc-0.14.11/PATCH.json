@@ -21,7 +21,7 @@
   ],
   "new_unsafe_blocks": 0,
   "safe_source_patch_sha256": "eacec8e1cab53d657ce1c5cee3e4c0596ce143d517af8ce437a4c0c92f861dd4",
-  "root_cargo_lock_sha256": "707bb0f2ebadf1a390de7ced617ddb87cc212cf7f436ac5c04a0c1878ace6a28",
+  "root_cargo_lock_sha256": "70d791fde70fe45587adc970d1b37b83f3ca7eeae0fe9b55dad5ce8ded4c5459",
   "supervisor_behavior_changed": false,
   "documentation_patch": {
     "path": "examples/procinfo.rs",

@@ -178,6 +178,15 @@ shadowing package/table keys fail closed. Ignored bundles are never opened to
 supply their source evidence. This does not yet qualify arbitrary bundler
 output mappings or complete the repository ledger.
 
+Upstream ownership is separate from executable-family evidence. The
+[ownership experiment](rust-upstream-ownership.md) binds the pinned package's
+original, comment-only, mixed-patch and newly owned files to compiled provenance
+anchors and observed Cargo/Rust consumers. The consumer remains Darwin/test
+scoped. An upstream label clears neither unsupported-language diagnostics nor
+worker, snapshot or edge failures. Mixed whole programs stay unresolved; new
+owned modules cannot inherit the upstream label. Dependency additions and their
+source/lock qualification are recorded in `rust/upstream-dependency-receipt.json`.
+
 Preserve declared source-to-bundle-to-deployment edges. The source inventory is
 distinct from the deployment ownership manifest.
 

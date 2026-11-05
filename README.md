@@ -1131,6 +1131,9 @@ worker and one test thread:
 JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --manifest-path rust/Cargo.toml --lib --test package_entries -- --test-threads=1
 ```
 
+The [upstream ownership plan](docs/plans/rust-upstream-ownership.md) separates
+pinned dependency provenance from owned patches and executable-family proof.
+
 The [source inventory plan](docs/plans/rust-source-inventory.md) defines exact
 receipts, ignored-file privacy and generated-output ownership. The
 [registered parser experiment](docs/plans/rust-source-parser-experiment.md)

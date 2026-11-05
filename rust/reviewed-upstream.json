@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "package": "libproc",
+  "version": "0.14.11",
+  "root": "rust/vendor/libproc-0.14.11",
+  "archive_sha256": "a54ad7278b8bc5301d5ffd2a94251c004feb971feba96c971ea4063645990757",
+  "license_sha256": "96476b7db2b7185d597311f4cb25091dfbfe75ad8197562e4bff72d797bb331c",
+  "files": [
+    {
+      "path": ".cargo_vcs_info.json",
+      "sha256": "79c94ccd8681a88117571de8d36cd112801e8f961279398db8e5f62b427013cc",
+      "original_sha256": "79c94ccd8681a88117571de8d36cd112801e8f961279398db8e5f62b427013cc",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "sha256": "54f3644794fe5bdd8adc7823faacac18b6239b5dbf9de761053025c74d1c8f93",
+      "original_sha256": "54f3644794fe5bdd8adc7823faacac18b6239b5dbf9de761053025c74d1c8f93",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "sha256": "b1026200414c3754a577d1d3829ea7e1ef77962b6c1faaa8799d83b40fe98846",
+      "original_sha256": "b1026200414c3754a577d1d3829ea7e1ef77962b6c1faaa8799d83b40fe98846",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": ".github/workflows/clippy_build_test.yml",
+      "sha256": "11b969208a5eba5269b7814bc9e5ac8643f98638cf8409279451a5b21674ffa3",
+      "original_sha256": "11b969208a5eba5269b7814bc9e5ac8643f98638cf8409279451a5b21674ffa3",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "960942a82f81fe536ea0366fa3a8cb9acf2e01894af2a34b650778be3e6907d9",
+      "original_sha256": "960942a82f81fe536ea0366fa3a8cb9acf2e01894af2a34b650778be3e6907d9",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "CONTRIBUTORS.md",
+      "sha256": "44c22713168dd8cb60f548ebbeb96094655c8a957c24b55ad063c79f1c4268f8",
+      "original_sha256": "44c22713168dd8cb60f548ebbeb96094655c8a957c24b55ad063c79f1c4268f8",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "2e8d251fe163afc06b32cb778abcd83c4e6c42d6b275da785ade2867e2214279",
+      "original_sha256": "2e8d251fe163afc06b32cb778abcd83c4e6c42d6b275da785ade2867e2214279",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "7ff7688557b994022c4819809c4ed2526bc09d48074b328b25445bd0e283efae",
+      "original_sha256": "7ff7688557b994022c4819809c4ed2526bc09d48074b328b25445bd0e283efae",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "Cargo.toml.orig",
+      "sha256": "bc6e4dccfadb58622fbe7467aacd20d3ac730cf59a7030430279fc84936f12bc",
+      "original_sha256": "bc6e4dccfadb58622fbe7467aacd20d3ac730cf59a7030430279fc84936f12bc",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "FUNDING.json",
+      "sha256": "066d6c954573531924185bbfd36b97fb506b3264f5a18db610ea08876bc6bcf5",
+      "original_sha256": "066d6c954573531924185bbfd36b97fb506b3264f5a18db610ea08876bc6bcf5",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "96476b7db2b7185d597311f4cb25091dfbfe75ad8197562e4bff72d797bb331c",
+      "original_sha256": "96476b7db2b7185d597311f4cb25091dfbfe75ad8197562e4bff72d797bb331c",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "30cc710c4c4623bd24c37b3e2f56a6d5291abb6fa3241eadcdbd36d4e62ae330",
+      "original_sha256": "30cc710c4c4623bd24c37b3e2f56a6d5291abb6fa3241eadcdbd36d4e62ae330",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "PATCH.diff",
+      "sha256": "eacec8e1cab53d657ce1c5cee3e4c0596ce143d517af8ce437a4c0c92f861dd4",
+      "original_sha256": null,
+      "mode": 33188,
+      "ownership": "owned-data"
+    },
+    {
+      "path": "PATCH.json",
+      "sha256": "712e00221c43f3784ec664c1ef1eccfb1a6df025f7d2ce6a3bc61d85337edbd0",
+      "original_sha256": null,
+      "mode": 33188,
+      "ownership": "owned-data"
+    },
+    {
+      "path": "PATCH.md",
+      "sha256": "297d37a23787fdeef51f24954ed48b6cb19da7e09aeb1df171e3562730903d6b",
+      "original_sha256": null,
+      "mode": 33188,
+      "ownership": "owned-data"
+    },
+    {
+      "path": "README.md",
+      "sha256": "38cb62048850d8bbe0e3fa9c42a9ef31d53684a0d66cd39eee50d4fc957c9292",
+      "original_sha256": "38cb62048850d8bbe0e3fa9c42a9ef31d53684a0d66cd39eee50d4fc957c9292",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "UPSTREAM.json",
+      "sha256": "90881247a393aefbdd1754204da9a49f6c1b40c6009758427c7c2bb1c5a03949",
+      "original_sha256": null,
+      "mode": 33188,
+      "ownership": "owned-data"
+    },
+    {
+      "path": "build.rs",
+      "sha256": "4588201d84f707ea117e31e19e89559f0eba8ef4d6a16456d671bec7f248ff26",
+      "original_sha256": "4588201d84f707ea117e31e19e89559f0eba8ef4d6a16456d671bec7f248ff26",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "doc/MacosVersions.md",
+      "sha256": "0a3ded72b2c626cfb7cec66639cf629325aaafccaf3d9992498b384d0ef08bf3",
+      "original_sha256": "0a3ded72b2c626cfb7cec66639cf629325aaafccaf3d9992498b384d0ef08bf3",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "doc/References.md",
+      "sha256": "d63433517a1b466e65486980dc3698c2009ef513d3b82d08af883460190fb5f2",
+      "original_sha256": "d63433517a1b466e65486980dc3698c2009ef513d3b82d08af883460190fb5f2",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "doc/TODO.md",
+      "sha256": "c9009e34de844035254770a2af6fdf1cf0f2dc32fe085d03230faf920cea5d1a",
+      "original_sha256": "c9009e34de844035254770a2af6fdf1cf0f2dc32fe085d03230faf920cea5d1a",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "docs_rs/osx_libproc_bindings.rs",
+      "sha256": "bc6385c84451045013539afa8ac7bc525cec2f5d3c34e8fc64c1617f0f248af1",
+      "original_sha256": "bc6385c84451045013539afa8ac7bc525cec2f5d3c34e8fc64c1617f0f248af1",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "examples/dmesg.rs",
+      "sha256": "f37715c8afe033291e8eac1dfe35cf0b86d8be6bbd9f32909282952a222dbd3d",
+      "original_sha256": "f37715c8afe033291e8eac1dfe35cf0b86d8be6bbd9f32909282952a222dbd3d",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "examples/procinfo.rs",
+      "sha256": "df51ee9d97ecd3a40dc0cbe0265e2d7ad60ca9cdc88e1413ecd705184673bd72",
+      "original_sha256": "dd5cf00d686f9f82e65d4a3a6d58007686ded3763f4721d861762c902b0aa0dc",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/lib.rs",
+      "sha256": "69014afba8851c3d8907601de9d8be89cb696184b3aeb61ff9e77e384dd23310",
+      "original_sha256": "69014afba8851c3d8907601de9d8be89cb696184b3aeb61ff9e77e384dd23310",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/bsd_info.rs",
+      "sha256": "aed74224bcd00340807a38f8766ecc5b1dc7f1098fc126f9d05c44dce2a49b72",
+      "original_sha256": "aed74224bcd00340807a38f8766ecc5b1dc7f1098fc126f9d05c44dce2a49b72",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/file_info.rs",
+      "sha256": "e2f982c364eeb4653b7436eaa731563536ea0650f04c19c1b858c02e8c88fad9",
+      "original_sha256": "e2f982c364eeb4653b7436eaa731563536ea0650f04c19c1b858c02e8c88fad9",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/helpers.rs",
+      "sha256": "02ae584c74988324c6315375d179207fc064d594dc2d509fb4a0ffce64bf7cc3",
+      "original_sha256": "02ae584c74988324c6315375d179207fc064d594dc2d509fb4a0ffce64bf7cc3",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/kmesg_buffer.rs",
+      "sha256": "1e950617c87baa00bb66b4fd723c31dba2fca810b39002837ffbbfa951a0c066",
+      "original_sha256": "1e950617c87baa00bb66b4fd723c31dba2fca810b39002837ffbbfa951a0c066",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/mod.rs",
+      "sha256": "5798255afe6d99da9461533b6f17ce99c1836434c9554ef535e3ece532c02f45",
+      "original_sha256": "5798255afe6d99da9461533b6f17ce99c1836434c9554ef535e3ece532c02f45",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/net_info.rs",
+      "sha256": "b06b2e84b0ab74865c31acbc7d7899b295cf1bd620186df5f5671db20f17bade",
+      "original_sha256": "b06b2e84b0ab74865c31acbc7d7899b295cf1bd620186df5f5671db20f17bade",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/pid_rusage.rs",
+      "sha256": "20849a18eed744429e00fd116aa7a899bd98b6a78d548e32ae36641027b0d55f",
+      "original_sha256": "20849a18eed744429e00fd116aa7a899bd98b6a78d548e32ae36641027b0d55f",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/proc_pid.rs",
+      "sha256": "04542eb38f1a07d8145a755004a6084ad27711769109f7703fbceb3580210205",
+      "original_sha256": "04542eb38f1a07d8145a755004a6084ad27711769109f7703fbceb3580210205",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/sys/bounded_group.rs",
+      "sha256": "2950221480babaeb8339f14b156adcafdf9ace03f79d916650c933bdfd1acfc3",
+      "original_sha256": null,
+      "mode": 33188,
+      "ownership": "owned-code"
+    },
+    {
+      "path": "src/libproc/sys/linux.rs",
+      "sha256": "aa42eafb0bcd3eb01576cd1b21da563873721818e91fa19d5411c2bcd822b88b",
+      "original_sha256": "aa42eafb0bcd3eb01576cd1b21da563873721818e91fa19d5411c2bcd822b88b",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/sys/macos.rs",
+      "sha256": "a48050aac4469e1a68014548dd9015568375a285af21725426f17e3933ee66f4",
+      "original_sha256": "035dc35e6d988cd9e36000ac7aff6e0f763e7b86278aae1c9e38fefabfcc1be4",
+      "mode": 33188,
+      "ownership": "mixed-code"
+    },
+    {
+      "path": "src/libproc/sys/mod.rs",
+      "sha256": "b7e1446f612f2d135cf56f73ded27cd259fa595abdcdcbfee743871ec796b720",
+      "original_sha256": "c35134c9ae5183113064f75c0155447f2fdf096f8566a1ee3130b981f47b534d",
+      "mode": 33188,
+      "ownership": "mixed-code"
+    },
+    {
+      "path": "src/libproc/task_info.rs",
+      "sha256": "fa29bf4d7ab4889081a890c31a3eeb9ba8462307bae272f27483ef0094cbd44e",
+      "original_sha256": "fa29bf4d7ab4889081a890c31a3eeb9ba8462307bae272f27483ef0094cbd44e",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/thread_info.rs",
+      "sha256": "3bf1854601b161ff951a4e75a6cedbe3d3b49225219a94ae211e9f51cfeb84d5",
+      "original_sha256": "3bf1854601b161ff951a4e75a6cedbe3d3b49225219a94ae211e9f51cfeb84d5",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/libproc/work_queue_info.rs",
+      "sha256": "41f953c673fbca48940b5144bc3cc0986b3630cbfef2c85c05c907e7d31c6c54",
+      "original_sha256": "41f953c673fbca48940b5144bc3cc0986b3630cbfef2c85c05c907e7d31c6c54",
+      "mode": 33188,
+      "ownership": "upstream"
+    },
+    {
+      "path": "src/processes.rs",
+      "sha256": "1936671b9c477aea829842b8949148749eaed30bc31c9c7d7b95f5329b0c13f5",
+      "original_sha256": "f9c5b85a9855b1e039d0b4e32e6dedd7428207ce223d41f92e60a40146aa6c00",
+      "mode": 33188,
+      "ownership": "mixed-code"
+    }
+  ],
+  "consumers": {
+    "rust/Cargo.toml": "218f96036736e8e264c911e0e01cf47443c671ce9380cc2676464fa40a7de32c",
+    "rust/Cargo.lock": "70d791fde70fe45587adc970d1b37b83f3ca7eeae0fe9b55dad5ce8ded4c5459",
+    "rust/src/lib.rs": "b058d1739ffae1627e42d4401a1497f9d3aa79c5aa20c46f655d5699ac8b37b0",
+    "rust/src/darwin_group.rs": "ec075444cc3f47071f6d426518103eb24141a42d59f929e9331b4965898b5cbe"
+  }
+}

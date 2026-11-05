@@ -303,7 +303,12 @@ pub fn validate(
         {
             issue(&mut errors, "duplicate-component", path);
         }
-        component_policy(manifest, component, &mut errors);
+        if let Some(error) = crate::upstream_ownership::policy(&discovered.upstream, component) {
+            errors.push(error);
+        }
+        if component.disposition != "upstream" {
+            component_policy(manifest, component, &mut errors);
+        }
         let region = &component.source;
         match snapshot
             .entries

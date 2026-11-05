@@ -19,6 +19,8 @@ pub mod source_registries;
 pub mod syntax;
 #[cfg(unix)]
 pub mod transport;
+pub mod upstream_consumers;
+pub mod upstream_ownership;
 pub mod validation;
 pub mod yaml_sources;
 

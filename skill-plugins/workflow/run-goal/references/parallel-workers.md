@@ -147,6 +147,10 @@ Contents: Starting workers · Steering running agents · Files the main session 
 
 ## Waiting
 
+- For CI, metric corrections and native goal evaluation, use
+  [quiet external waits](external-waits.md). Reuse the owned watcher and keep
+  unchanged observations out of user messages.
+
 - A stop hook that blocks while a PR shows conflicts turns every turn into a
   wait. Wait on local state instead: a Monitor that loops until the agent's
   worktree has no unmerged files and a new HEAD.
@@ -158,8 +162,9 @@ Contents: Starting workers · Steering running agents · Files the main session 
   the same day: reuse it and drop your copy.
 - A Monitor runs in the sandbox, where `gh` can fail with a TLS error. Run
   the poller as a background shell outside the sandbox that writes to a log,
-  and let the Monitor follow the log. The poller prints a line for every
-  failure, so silence never hides a dead poller.
+  and let the Monitor observe only meaningful changes or terminal diagnostics.
+  Repeated identical failures stay in the private log without another event;
+  a failed or expired watcher needs an explicit diagnostic and reconciliation.
 - Report two latencies for each picked-up item: issue to pickup (bounded by
   the poll interval) and issue to merged PR (which includes implementation,
   review, and the full gate).
@@ -189,7 +194,10 @@ and the worker then waits forever: in one run three workers sat idle for
 about 3 hours after their gate shells were killed, while the lead checked
 only the `heavy-run` lock and reported "progressing". So:
 
-- In the brief: a worker waits for its gate in the foreground (a 10-minute
+- An accepted live owned wait is exempt from transcript heartbeat and
+  foreground-only requirements below. Use the quiet native completion route
+  in [external-waits.md](external-waits.md); verify its handle and target.
+- In the brief: otherwise a worker waits for its gate in the foreground (a 10-minute
   tool timeout, then wait again on the log's `rc=` line), never by ending
   its turn on a background job. A live worker then writes to its
   transcript at least every 10 minutes.
@@ -198,8 +206,10 @@ only the `heavy-run` lock and reported "progressing". So:
   prints `STALLED <agent> <N>m` for an unfinished worker whose transcript
   has been silent that long, and next to it `KILLED <task>` for each
   background shell whose output ends `[killed]`. Re-arm it at each expiry.
-- On a STALLED line, resume that worker at once with a `SendMessage`: say
-  its gate shell is gone and it must rerun the gate in the foreground.
+- STALLED is a silence signal, not proof of job death. Inspect the owned
+  handle and actual job before recovery. If it is live, keep waiting quietly.
+  If termination is verified, resume the worker with that evidence and the
+  appropriate recovery. Unknown liveness never authorizes a duplicate run.
 - A check-in judges worker liveness from this script, not from the gate
   lock: a lock held by another repo says nothing about your workers.
 

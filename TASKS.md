@@ -136,6 +136,20 @@
 
 ## P0
 
+- [ ] Goals wait quietly for CI and retain the user's selected metric
+  - **ID**: goal-external-waits-and-metric-binding
+  - **Tags**: goals, stability, perf, skills
+  - **Mode**: AFK
+  - **Details**: Owner explicitly requested P0 on 2026-11-05 after native goal evaluation repeatedly resumed a session while CI was unchanged and judged an obsolete metric window. Reuse native background completion or a supported blocking wait. Preserve the original delivery criteria and the latest user-authorized metric definition. This is separate from the existing seven-day shell polling experiment; its denominator and field requirements remain unchanged.
+  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/references/external-waits.md`, `skill-plugins/workflow/run-goal/references/goal-contract.md`, `skill-plugins/workflow/run-goal/references/execution.md`, `skill-plugins/workflow/run-goal/references/parallel-workers.md`, `skill-plugins/workflow/run-goal/evals/evals.json`, `src/skills/run-goal-external-waits.test.ts`, `docs/plans/goal-external-waits-and-metric-binding.md`
+  - **Output**: code
+  - **Acceptance**: unchanged CI observations do not create duplicate watchers or repeated waiting messages; completion/failure wakes the existing work and receives fresh authoritative verification. A metric correction preserves its source, time window, denominator, unit, comparator and threshold in the contract and checker-facing evidence. Native condition changes require an exposed supported operation and readback. Unsupported operations remain explicit, without clearing goals, manufacturing completion or changing pause/block semantics.
+  - **Hypothesis**: a registered CI wait and canonical metric binding reduce duplicate waiting replies in the frozen incident trace from four to zero, with zero wrong-window or reversed-comparator verdicts and zero false goal-state changes in the fixed regression scenarios.
+  - **Measurement**: commit the linked plan first; run `JOBS=1 heavy-run npm exec -- vitest run src/skills/run-goal-external-waits.test.ts --maxWorkers=1`, independent forward evaluation of the declared scenarios, and the normal changed/full gates. Distinguish fixture/guidance evidence from actual native evaluator behavior; no unsupported host guarantee counts as a pass.
+  - **Success**: duplicate_wait_replies=0, duplicate_watchers=0, wrong_metric_verdicts=0, false_goal_mutations=0; verified terminal notification and fresh result readback; existing goal fidelity, delivery and source-count controls pass.
+  - **Pivot**: any duplicate watcher, unchanged-state message loop, stale metric verdict, lost delivery criterion, fabricated host operation or unavailable notification proof rejects the approach. Preserve goal state and diagnose the capability gap rather than clear the goal or claim it complete.
+  - **Anchor**: the owner's reported incident; Claude Code native background-work deferral documentation; exact installed Codex goal tool schema; Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the

@@ -155,7 +155,8 @@
 
 ## P1
 
-- **ID**: env-sanitize-shell-output-788
+- [ ] Keep environment cleanup safe for shell consumption
+  - **ID**: env-sanitize-shell-output-788
   - **Outcome**: Shell cleanup emits only unset code or empty stdout. Human diagnostics remain visible on stderr without changing ordinary command banners.
   - **Details**: Resolve #788. Owns `src/motd.ts`, `src/cli.ts`, `src/commands/cli-env.ts`, `src/auto-upgrade.ts` and their regression controls. Registration: [shell-output plan](docs/plans/env-sanitize-shell-output-788.md).
   - **Hypothesis**: Initialized clean/set CLI stdout contamination falls from two failing controls to zero by routing exact-command human output separately.

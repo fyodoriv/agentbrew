@@ -9,7 +9,7 @@ promising a change, and does verification reconcile the image with the
 system-of-record log?
 
 Hypothesis: the unchanged skill and eval registry fail five new deterministic
-requirements. Narrow guidance and self-contained evals235/236 reduce those
+requirements. Narrow guidance and self-contained evals235/237 reduce those
 failures to zero. Keep the existing independent-review control passing.
 These are structural contract checks, not measured model behavior.
 
@@ -60,3 +60,27 @@ control assumed a particular line break in unchanged prose. Preserve that run
 and correct only the whitespace matcher before repeating the baseline. This
 is fixture setup evidence, not an additional product defect. Source skill and
 evals remain unchanged until the corrected baseline is read.
+
+## Focused evidence
+
+The corrected unchanged-source baseline failed the missing requirements and
+passed the existing independent-review control. The candidate passed the same
+assertions. Formatting then changed only type-layout punctuation and a
+redundant quote escape; a TypeScript AST and decoded-literal comparison
+preserved the checks. Every prior eval object except the explicitly corrected
+incident oracle is unchanged, and that incident prompt is retained exactly.
+This is structural guidance and fixture coverage only, not observed agent
+behavior, an owner submission, or a live screenshot verification.
+
+The first broader gate failed only the existing skill-size checks. Shorten
+only the added guidance to retain that budget; keep all guard assertions and
+fixtures unchanged. Preserve the failed receipt and repeat the scoped gate
+before required full verification.
+
+## Upstream identifier collision
+
+The prediction originally reserved eval235/236. After the scoped measurement,
+upstream added its own eval235. Preserve that object exactly and deliver the
+new ownership/proof scenarios as eval236/237. Only their numeric IDs and
+guard/plan references change; prompts, expected outcomes and assertions stay
+the same. Preserve the original prediction and measured receipts.

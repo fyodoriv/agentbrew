@@ -27,8 +27,10 @@ Require reading the image itself and the system-of-record log before quoting
 completion. An unavailable image/log reader or mismatched run identity leaves
 the criterion unverified. The fixture is not a screenshot of a live app.
 
-Freeze the new guard before its baseline. Preserve every existing eval and
-repeat the exact assertions after the fix. Missing tools, malformed fixture
+Freeze the new guard before its baseline. Retain every existing eval scenario. Correct only eval67's unsafe scope
+oracle, which currently excludes the other team's action without approval;
+retain its incident prompt and require blocked original criteria instead.
+Repeat the exact assertions after the fix. Missing tools, malformed fixture
 data or dependency setup failures are inconclusive, not semantic red.
 
 Measurement from the repo root, with qualified Node/npm and owner PATH:
@@ -50,3 +52,11 @@ Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration. Issue778 supplies the ownership and
 misleading-image failure examples; the retained user goal is the acceptance
 authority.
+
+## Fixture setup correction before implementation
+
+The first guard run found the missing requirements, but its existing approval
+control assumed a particular line break in unchanged prose. Preserve that run
+and correct only the whitespace matcher before repeating the baseline. This
+is fixture setup evidence, not an additional product defect. Source skill and
+evals remain unchanged until the corrected baseline is read.

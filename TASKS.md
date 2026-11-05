@@ -155,16 +155,6 @@
 
 ## P1
 
-- [ ] Keep environment cleanup safe for shell consumption
-  - **ID**: env-sanitize-shell-output-788
-  - **Outcome**: Shell cleanup emits only unset code or empty stdout. Human diagnostics remain visible on stderr without changing ordinary command banners.
-  - **Details**: Resolve #788. Owns `src/motd.ts`, `src/cli.ts`, `src/commands/cli-env.ts`, `src/auto-upgrade.ts` and their regression controls. Registration: [shell-output plan](docs/plans/env-sanitize-shell-output-788.md).
-  - **Hypothesis**: Initialized clean/set CLI stdout contamination falls from two failing controls to zero by routing exact-command human output separately.
-  - **Success**: All registered controls pass; zero non-shell stdout lines, child-shell errors or emitted fixture values; ordinary banners preserved.
-  - **Pivot**: Any contamination, shell error, lost ordinary banner or real external action rejects the approach.
-  - **Measurement**: `heavy-run npx vitest run src/env-sanitize-cli.test.ts src/motd.test.ts src/auto-upgrade.test.ts src/core/env-sanitize.test.ts src/commands/cli-env.test.ts`
-  - **Anchor**: POSIX shell command substitution; Basili et al. (1994), GQM; Munafò et al. (2017), preregistration.
-
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
   - **Tags**: security, stability, dependencies

@@ -97,3 +97,28 @@ list stayed the same.
 This qualifies loopback admission for the disposable browser. The
 owned-target capture window, event completeness, and cleanup still need
 browser evidence.
+
+## Owned-target capture experiment
+
+Can the capture observe each seeded error and close only its leased tab?
+Run the disposable Chrome fixture with
+`heavy-run node "$PAGE_ERROR_CAPTURE_PROBE"`. Use the Chrome debugging
+pipe and the same deny-by-default network profile. Give the fixture one
+allowed loopback HTTP port and keep the browser profile disposable.
+
+Create two tabs in one disposable browser context. Lease one by its target
+ID and keep the other as a sentinel. Enable Runtime and Network on the
+leased session before navigation. Attach to related targets with a startup
+pause. Enable their domains before resuming them. Seed console errors and
+runtime exceptions in the main page, frame, and worker, plus one HTTP
+failure from the main page. The fixture must confirm all seven events were
+emitted before it checks capture. Use a distinct sentinel marker to prove
+its traffic stays outside the report.
+
+Keep the approach only with seven of seven captured events, zero sentinel
+events, and a target list that confirms the exact leased ID disappeared
+while the sentinel remained. Reject it on any missed event, unexpected
+target, unconfirmed close, or missed fixture deadline. The fixture cutoff
+comes from these independently seeded events. It cannot qualify a general
+browser drain. Measurement framing: Basili, Caldiera and Rombach (1994),
+Goal Question Metric. [Chrome DevTools Protocol Target domain](https://chromedevtools.github.io/devtools-protocol/tot/Target/).

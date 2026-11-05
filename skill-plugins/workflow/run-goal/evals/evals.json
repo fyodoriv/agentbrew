@@ -2771,6 +2771,15 @@
         "Never checks out or pays",
         "Keeps the price cache git-ignored"
       ]
+    },
+    {
+      "id": 242,
+      "prompt": "/goal fill 5 store carts in Chrome with the best bulk pack per item, with fees for my memberships. Synthetic scenario: after 3 of 5 done-criteria, the user's app shows a nudge asking what the agent is doing.",
+      "expected_output": "The agent answers the nudge in one line and keeps working in the same turn. It does not end the turn with a progress report while done-criteria remain open, because the goal checker reads a stop as 'not met'. It ends the turn only when all criteria have Goal check lines or it is hopelessly blocked.",
+      "expectations": [
+        "Answers the nudge in one line, then calls tools again in the same turn",
+        "Does not end the turn with a status report while criteria remain"
+      ]
     }
   ]
 }

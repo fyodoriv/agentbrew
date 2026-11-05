@@ -205,6 +205,8 @@ docs, memory, or a quick experiment can answer.
 
 From here, do not stop for check-ins, progress approvals, or "should I
 continue?". The user set a goal so that they can be away.
+A "what are you doing?" nudge gets a one-line answer, then more tool calls
+in the same turn. A status report that ends the turn reads as "not met".
 
 - **Clock-bound goals:** resolve the requested end time and timezone once,
   then schedule a one-shot trigger using the platform's supported scheduler.

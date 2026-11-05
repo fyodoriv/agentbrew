@@ -122,3 +122,17 @@ target, unconfirmed close, or missed fixture deadline. The fixture cutoff
 comes from these independently seeded events. It cannot qualify a general
 browser drain. Measurement framing: Basili, Caldiera and Rombach (1994),
 Goal Question Metric. [Chrome DevTools Protocol Target domain](https://chromedevtools.github.io/devtools-protocol/tot/Target/).
+
+The disposable fixture received all four independent emission receipts.
+Capture observed the six named console and exception events across the
+page, frame, and worker, plus the expected HTTP 503 response. The sentinel
+console event was observed on its separate session and absent from the
+leased-session report. After close, target discovery confirmed the leased
+ID was absent and the sentinel ID remained.
+
+The direct Chrome launch first failed to initialize its nested sandbox.
+The successful run used the same Chromium sandbox setting as Playwright's
+default launch under the outer Darwin profile. Both runs used disposable
+profiles, test keychain flags, the debugging pipe, and synthetic local
+pages. This fixture result leaves production capture integration and
+general event-drain coverage open.

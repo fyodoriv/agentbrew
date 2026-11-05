@@ -35,6 +35,13 @@ Scope: canonical command dispatch, MOTD output and its upgrade diagnostics.
 Do not globally move banners or match raw argument substrings. The output
 sink belongs to each invocation; existing defaults remain unchanged.
 
+Before production edits, strengthen dispatch controls with legal command
+separators, the root version flag and unrelated command arguments containing
+the words env and sanitize. Keep MOTD's existing pre-subcommand timing.
+Resolve only the immediate parsed child token against canonical command
+names or aliases; do not search later arguments. The same zero-failure
+threshold applies to these controls. No earlier failing assertion changes.
+
 Anchor: POSIX shell command substitution substitutes standard output into
 the shell command, https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_03;
 Basili et al. (1994), Goal Question Metric; Munafò et al. (2017), preregistration.

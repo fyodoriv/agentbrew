@@ -82,3 +82,18 @@ the control, then only the first marker in the candidate. The second listener
 must receive zero marker requests and CDP must report access denied for that
 request. Any failed positive control, timeout in place of refusal, or unexpected
 connection rejects the candidate.
+
+The disposable Chrome control reached both loopback markers once. The
+restricted profile reached the allowed marker once and the denied marker
+zero times. CDP reported `net::ERR_ACCESS_DENIED` for the denied request.
+
+The first two launches stopped before navigation because Chromium could
+not bind its profile singleton socket. A standalone Unix socket probe
+reproduced the refusal with the unresolved temporary path and succeeded
+with the resolved path. The final profile allowed only a local bind at
+Chromium's singleton socket under that resolved directory. The TCP allow
+list stayed the same.
+
+This qualifies loopback admission for the disposable browser. The
+owned-target capture window, event completeness, and cleanup still need
+browser evidence.

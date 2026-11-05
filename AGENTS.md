@@ -82,6 +82,8 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 ## Gotchas
 
+- [Pull receipts](docs/repo-map.md#data-flow).
+
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 

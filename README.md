@@ -861,7 +861,13 @@ What does not carry over on its own:
 
 `agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network).
 
-Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
+Offline or auth failures on plain `sync` print a one-line warning and fall back to the cached copy. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**.
+
+Explicit `sync --pull` checks remote source caches again, even after an earlier read in the same process. It reports each refresh, skip or failure and records the accepted checkout's revision, never a newer remote revision over old files. Dirty or detached caches are retained with a reason. A failed refresh exits nonzero. `sync --pull --dry-run` fetches and writes nothing.
+
+Agentbrew's managed cache writers share a checkout lease across processes. An explicit pull keeps it until its file copies and revision reads finish. It waits for another refresh; a synchronous writer reports a busy checkout instead of changing it. If Git child termination is unknown after a timeout, the lease stays in place for verification. Leases are never removed because of age or a parent PID alone. Manual Git commands do not honor this lease.
+
+Local artifact checkouts remain owner-managed. The output names the read path and asks you to fast-forward it explicitly. Git-installed MCP branches use the verified fresh-runtime updater. Pins and refusals remain visible. An artifact registration that still points into the previous MCP runtime stays there until you update that registration. The running checkout is never pulled in place.
 
 ## Supported agents
 

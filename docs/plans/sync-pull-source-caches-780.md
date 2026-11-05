@@ -62,3 +62,23 @@ the smallest result propagation and revision correction. Keep MCP candidate
 publication and active-runtime identity invariants intact. Update README and
 the sync data-flow documentation with behavior. Root coordinates source commits
 and publication after independent review and normal green gates.
+
+## Receipt boundary found by control 4
+
+The supplied checkout-revision map must also be authoritative in `src/lock.ts`.
+A missing accepted revision cannot fall back to a remote lookup. The real Git
+dirty-cache control reproduced that false lock update before the lock change.
+Calling the lock API without a supplied map retains its existing remote lookup
+behavior. This extends the same registered receipt control, not its thresholds.
+
+## Git hook receipt controls for decisions 4 and 7
+
+Retain candidate tree `cd6ba982bce8bb31ff5995c217b12f7543f2858b` and its
+SHA receipt before these controls. Two real local Git fixtures install only
+fixture-owned hook paths: post-merge for an existing cache, and post-checkout
+for a fresh clone. Each hook changes tracked SKILL.md bytes and exits zero.
+The original zero-false-receipt threshold remains: both cases must retain hook
+edits and enabled hook configuration, report neither refreshed nor unchanged,
+accept no SHA, and preserve the prior lock revision. Run the existing focused
+command with `-t "fixture .* hook"` for RED before changing receipt code, then
+run the complete focused cohort and typecheck. No owner Git config is changed.

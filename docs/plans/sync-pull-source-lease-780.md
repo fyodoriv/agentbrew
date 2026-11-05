@@ -74,3 +74,21 @@ of this preparation.
 
 Anchor: Basili, Caldiera and Rombach (1994), GQM; Git working-tree identity;
 Node.js child-process and filesystem exclusive-creation APIs.
+
+## Receipt-bound scope findings
+
+The registered separate-process reproduction failed with the accepted SHA1 in
+state and lock while the installed file contained SHA2 bytes. Retain the valid RED separately from the earlier setup and tree-guard failures;
+those failures are not semantic measurements. A module-only tail cannot close this gap.
+
+The first filesystem draft retained the old module tail. A mixed-order control
+then failed because an existing filesystem owner waited on a tail whose waiter
+needed that owner's filesystem lease. The fix uses one filesystem acquisition
+protocol and per-invocation source grouping. The same control retains the owner
+progress requirement. Another control requires the source-path API to surface a
+typed busy refusal while preserving normal clone-failure behavior.
+
+Exact canonical path permissions remain separate from folded collision keys.
+This can over-serialize case-distinct cache paths on a case-sensitive filesystem;
+it does not equate origins or authorize an unreserved path. The queued-context
+control checks that an expired callback cannot use a later owner's token.

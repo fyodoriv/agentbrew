@@ -156,11 +156,25 @@
 
 ## P1
 
+- [ ] Explicit pull keeps the requested sync modules selected
+  - **ID**: sync-pull-only-parity
+  - **Tags**: sync, cli, reliability
+  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
+  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
+  - **Output**: code
+  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
+  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
+  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
+  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
+  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
+
+
 - [ ] Explicit pulls identify the refreshed or skipped source bytes they deploy
   - **ID**: sync-pull-source-caches-780
   - **Tags**: sync, cache, reliability
   - **Details**: Resolve [issue #780](https://github.com/fyodoriv/agentbrew/issues/780). Register every Git checkout actually read by an explicit pull, refresh eligible caches or report an actionable skip/failure, and preserve active runtime ownership. Prediction: [source cache experiment](docs/plans/sync-pull-source-caches-780.md); [bounded concurrency supplement](docs/plans/sync-pull-source-caches-concurrency-780.md); [cross-process receipt experiment](docs/plans/sync-pull-source-lease-780.md).
-  - **Files**: `src/catalog/source-checkout-lease.ts`, `src/catalog/source-checkout-lease.test.ts`, `src/sync/pull-source-caches.ts`, `src/sync/pull-source-caches.test.ts`, `src/catalog/index-source.ts`, `src/catalog/index-source.test.ts`, `src/update.ts`, `src/update.test.ts`, `src/lock.ts`, `src/lock.test.ts`, `src/skills/skill-versions.ts`, `src/skills/skill-versions.test.ts`, `src/cli-sync-agentfile.test.ts`, `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`, `README.md`, `docs/repo-map.md`, `AGENTS.md`
+  - **Files**: `src/catalog/source-checkout-lease.ts`, `src/catalog/source-checkout-lease.test.ts`, `src/sync/pull-source-caches.ts`, `src/sync/pull-source-caches.test.ts`, `src/catalog/index-source.ts`, `src/catalog/index-source.test.ts`, `src/update.ts`, `src/update.test.ts`, `src/lock.ts`, `src/lock.test.ts`, `src/skills/skill-versions.ts`, `src/skills/skill-versions.test.ts`, `src/cli-sync-agentfile.test.ts`, `src/integration.test.ts`, `src/catalog/cache-realign.ts`, `src/catalog/cache-realign.test.ts`, `src/core/git-retry.ts`, `src/core/git-retry.test.ts`, `src/mcp/git-ref.ts`, `src/mcp/mcp-git-ref.test.ts`, `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`, `README.md`, `docs/repo-map.md`, `AGENTS.md`
   - **Output**: code
   - **Acceptance**: all eight registered decisions match; deployed revision receipts identify actual checkout bytes; no silent stale success or unsafe cache/runtime mutation.
   - **Hypothesis**: explicit invocation refresh outcomes reduce silent stale-success and false revision reports to zero in the eight frozen controls.

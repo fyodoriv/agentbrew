@@ -101,9 +101,14 @@ describe("judge engine dispatch", () => {
 
   it("distinguishes a timeout from a failed engine process without exposing engine errors", () => {
     spawn.mockReturnValueOnce({
+      pid: 0,
+      output: [null, null, null],
+      stdout: "",
+      stderr: "",
+      signal: null,
       status: null,
       error: Object.assign(new Error("private fixture engine detail"), { code: "ETIMEDOUT" }),
-    } as ReturnType<typeof spawnSync>);
+    });
     expect(() => evaluateWithPromptfoo(config(), root)).toThrow(/^Promptfoo timed out\.$/);
     report(2, "{}");
     expect(() => evaluateWithPromptfoo(config(), root)).toThrow(

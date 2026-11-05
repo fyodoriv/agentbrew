@@ -296,3 +296,9 @@ all functional producer and receipt checks. Its expected bytes were fixed by
 the first actual compilation before cache substitution; no replacement hash
 or compiler flag is introduced. Preserve the earlier failing byte-oracle
 baseline and passing final-copy recovery evidence.
+
+## Fake-compiler fixture isolation
+
+[The registered SDK-port controls](source-build-sdk-fixture-764.md) qualify
+self-contained fake-compiler fixtures. Real Cargo, native execution and
+installed publication controls retain their separate supported-host proof.

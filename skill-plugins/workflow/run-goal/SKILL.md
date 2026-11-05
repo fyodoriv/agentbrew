@@ -106,6 +106,7 @@ So:
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
    Classify tasks by their Details (who must act), not only the Blocked flag.
+   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority.
    Before a write to a live store (migration, sync, move), list the target
    read-only and compare it with the goal's stated state. A mismatch changes
    the plan, not the facts: 20 "unmoved" items were already in the list.
@@ -141,10 +142,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   source of each approval: a rule file line, the user's answer, or the goal
   text itself (a goal that names an action approves that action). An approval
   you cannot cite, such as "if the repo rules allow it", is not granted.
-  When the root fix belongs to another team, scope a "resolve" goal to what
-  this session controls (incident resolved, cause confirmed, alerting tuned,
-  fix tracked with that team), and name the other team's action as out of
-  scope. Otherwise the goal checker reads "root fix open" as "not met" forever.
+  When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
+  Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
 - **Budget**: rough time or turn budget. Past twice the budget, report and
   re-plan instead of drifting.
 - **Assumptions and risks**: what you believe without proof.
@@ -302,6 +301,9 @@ and loaded state: the job can undo it.
 
 Before you call a failure "pre-existing", compare it with the unchanged base
 ([references/execution.md](references/execution.md) § Pre-existing failures).
+
+For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
+If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
 
 For UI work, open the screenshots of every view yourself and read them for
 wrong content, not only for presence. Tests that assert "the view shows

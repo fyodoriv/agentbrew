@@ -186,10 +186,19 @@ docs, memory, or a quick experiment can answer.
 - When the user answers with a free-text message instead of the options,
   treat it as the answer. Add each new request in it as a done-criterion,
   and do not re-ask the questions it skipped.
-- To check the user's understanding, ask in plain chat text (not the picker,
-  even if a tutor skill says so), with H/M/L confidence typed inline. While
-  you wait, say so, do the retro work, and never claim "met". On "finish",
-  ship the rest and grade the answers when they come.
+- After a walkthrough, ask quiz readiness once: **Yes now / Later / Skip**.
+  Use the structured question tool when available; honor a user who rejects it.
+  Quiz delivery is separate from intake. On **Yes now**, ask one question at a
+  time and grade it before the next. Use options and client-provided free text;
+  do not add **Other** when the client supplies it.
+- Preserve a pending question until answered. Stop re-fires do not authorize
+  another question, chat re-ask, or waiting message. Do independent work or ready
+  retro tasks. If only the human step remains, yield without re-asking.
+  Do not disable hooks or invent completion to escape the wait.
+- Honor **Later / Skip**. An optional quiz is not a new mandatory criterion.
+  Keep explicit understanding criteria unverified until answers are graded or
+  the user revises the contract. Do not claim mastery or required quiz completion
+  without evidence. Deliver independent work while answers are pending.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 

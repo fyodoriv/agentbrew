@@ -152,6 +152,13 @@ served output after the deploy, not only the pipeline's output.
 - Then fetch the served output and read every entry for wrong content.
   In one run, the plan audit was 100%, but the live calendar feed still had old
   entries with wrong end times, from a path the audit never read.
+- For a dashboard or report goal, include a done-criterion that compares at
+  least the headline numbers with source-of-truth data: raw events, the source
+  channel, or the database. Use the same time window, filters, and counting unit.
+  Keep query and filter checks, but "every query runs" is not a correctness check.
+  Have an independent judge trace mismatches to source records. If source access
+  or required fields are missing, keep the criterion unverified and name the gap.
+  Do not invent requester names or change source data to make the totals agree.
 - A self-built judge needs calibration first. Fix its false failures and call them
   judge bugs, not product wins. Then have a grader that did not write the code
   check a sample against the source.

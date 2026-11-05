@@ -138,3 +138,29 @@ Agent artifact test exemption for this initial commit: registration only;
 no deployed instructions, executable behavior or artifact is changed. The
 existing docs/task gate validates the preparation. No issue-resolution or
 successful build claim is made by this plan.
+
+## Recipe pivot before publication
+
+The first sanitized candidate matched across clean target directories and
+passed the byte-path/architecture checks, but its publisher failed the actual
+native execution control: dyld exited 134 because `-no_uuid` removed the
+required LC_UUID command. That recipe is rejected. Those assets are not
+publication candidates. The duplicate-key manifest control separately exposed
+an unsafe accept; a later duplicate `schemaVersion` could hide its first value.
+
+Before another build, register this narrower recipe: keep the required UUID
+and use the installed Apple linker's `-reproducible` mode. Apple's
+[linker manual](https://github.com/apple-oss-distributions/ld64/blob/main/doc/man/man1/ld-classic.1)
+describes content-derived UUIDs as the default. Require the Mach-O UUID and
+code-signature commands before admitting either asset, then execute the real
+native controls. Predicted loader failures across the fixed pair: zero.
+The existing resource limits, exact-match threshold and all refusal outcomes
+remain unchanged. Pivot again on any loader failure or differing digest.
+
+Use independent source, Cargo cache and target roots for the repeated builds,
+not only separate target directories sharing source/cache paths. Canonical
+builder JSON is part of the closed manifest encoding; duplicate keys must
+reject rather than being overwritten by JSON parsing. Repeat the same focused
+entry command and reproducible builder command above. The final built/cold/pack
+controls remain mandatory. This records a rejected candidate and the next
+prediction, not success or permission to weaken a control.

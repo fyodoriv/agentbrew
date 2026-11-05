@@ -231,3 +231,19 @@ cohort, bound artifact rebuild and required composed-tree gates after the fix.
 **Anchor:** Cargo's [official freshness and fingerprint documentation](https://doc.rust-lang.org/stable/nightly-rustc/cargo/compiler/fingerprint/index.html)
 explains its output/source modification-time checks and their limits;
 Basili et al. (1994), GQM, supplies the acceptance framing.
+
+### Producer-cache variant registered before measurement
+
+The first actual-Cargo top-level-output control passed: Cargo restored the
+correct recorder rather than attesting the substituted final copy. This does
+not prove the review's cache concern. Preserve that positive result. Before
+another measurement, extend the same control to the identical recorder
+executable in Cargo's fixed `release/deps` cache as well as its final copy;
+select the cached recorder by equality to its original digest, not a new
+manifest path. Do not modify the publisher, libraries, source or fingerprints.
+Advance the selected outputs' modification times and require the original
+recorder bytes after the next successful build. Prediction: this producer-cache
+variant exposes one unsafe admission before the fresh-target fix and zero
+after it. If it also passes, do not implement this fix based on the unsupported
+review hypothesis. The command, limits, zero-admission threshold and compiler
+error/publication safeguards above are unchanged.

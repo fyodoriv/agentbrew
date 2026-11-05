@@ -26,7 +26,7 @@ Run every command from the repo root.
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
-| Full gate (step cache shared by worktrees; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — minutes; run once, in the background |
+| Full gate (shared source-only cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` |

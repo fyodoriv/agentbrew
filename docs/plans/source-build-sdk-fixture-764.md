@@ -86,3 +86,40 @@ SDK controls. All heavy runs use the normal queue. No tool installation or GUI a
 Anchor: Basili, Caldiera and Rombach (1994), Goal-Question-Metric;
 Munafò et al. (2017), preregistration; Node child_process.execFileSync interface
 https://nodejs.org/api/child_process.html#child_processexecfilesyncfile-args-options.
+
+## Recorded focused result
+
+The host-unavailable baseline failed the existing compiler-discovery positive
+and passed both unknown-command refusals. Its captured call was the clang
+version request, so the failure is attributable to the host SDK dependency.
+With the exact three response ports, all three controls passed and the
+positive receipt matched every synthetic toolchain field. The full focused
+source/build cohort then passed 95 tests, including both original recorder
+digest and native show/write/read workflows; seven legacy observation cases
+were not selected. Real compiler receipts additionally reject fixture SDK
+version values. Required final-tree and hosted validation remain separate.
+
+## S4 compiler-only response scope, registered before guard measurement
+
+The real Cargo tests bypass the fixture Node wrapper. The real Cargo-free
+bundle keeps that wrapper for absence simulation. Its current code makes
+no SDK calls, but synthetic replies must not hide a future SDK dependency
+without the fake compiler. This clarifies the earlier bypass description.
+
+Before changing the reply guard, add one known clang-version request without
+calling installedCargoFixture. Require ENOENT and nonzero status. Prediction:
+one false fixture permit becomes zero when SDK replies require the private
+fake Cargo executable created by that factory. The three exact version ports
+still work for fake Cargo; both unknown-command refusals stay in force.
+
+```sh
+JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/source-build-capability.test.ts -t 'finds an installed Cargo outside PATH|unrecognized host SDK|SDK unavailable without a fake compiler'
+```
+
+Success: all four scoped controls pass; zero SDK replies without a fake
+compiler; every original native digest and functional oracle remains intact.
+Pivot on any remaining false permit, unknown-command success, metadata
+regression or intercepted real compiler result. This strengthens existing S4;
+no source, artifact, hash, timeout, compiler flag or platform claim changes.
+Anchor: Basili et al.(1994), GQM; Munafò et al.(2017), preregistration;
+the original zero-real-interception S4 requirement.

@@ -65,6 +65,8 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`plans/`](plans/) | Plans for non-trivial tasks, one file per task ID. | agent |
+| [`plans/rust-literal-adapter-registration-proposal-20261105.md`](plans/rust-literal-adapter-registration-proposal-20261105.md) | Which supplemental Rust writer experiment is registered before implementation? | agent |
+| [`plans/rust-literal-adapter-corpus-proposal-20261105.md`](plans/rust-literal-adapter-corpus-proposal-20261105.md) | What exact source, manifest and receipt controls define that experiment? | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |
 | [`specs/`](specs/) | Proposed cross-tool conventions, such as managed-section markers. | both |
 | [`human-blocked-actions/`](human-blocked-actions/) | Steps that need a human (logins, approvals). | human |

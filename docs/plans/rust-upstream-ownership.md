@@ -119,3 +119,32 @@ invocation. No source executes; no owner home, network, installed state or
 worker behavior changes. Keep this policy separate from executable-family
 analysis and bundler closure. Root owns source commits, external publication,
 complete ledger acceptance and any later worker activation.
+
+## Registered supplement: declared dependency with no package files
+
+The first policy matrix mislabeled its package-absent positive: it removed the
+package directory from the snapshot but kept the local Cargo dependency. The
+initial normal repository gate passed that frozen candidate, but the ownership
+adapter returned empty evidence and lost this missing dependency obligation.
+That result does not qualify the package-absent boundary.
+
+Hypothesis: observing declared local dependency paths before the package-absent
+return makes every missing declared package reject, with zero false ownership
+admissions, while a truly absent dependency keeps ordinary inventory behavior.
+This is an admission/edge correction, not worker or executable-family work.
+
+Before the fix, add a negative that removes all package entries while retaining
+the actual Cargo declaration. It must fail semantically because the adapter
+returns empty evidence. Correct only the mislabeled positive by removing the
+actual dependency too; preserve the other frozen controls. After the fix, require
+the negative to reject and the true absent-dependency positive to pass. Check
+actual dependency tables, including target scope; metadata strings are not Cargo
+consumers. A manifest-authored edge cannot replace the missing package.
+
+Success: all registered decisions agree, zero missing declared packages accepted,
+zero true absent-dependency false rejections, and unchanged family/worker/edge
+requirements. Pivot on any wrong decision; do not weaken the earlier controls.
+Use the same frozen policy command above, then the pure regression cohort and
+the normal repository gate on the new frozen candidate. Preserve the earlier
+candidate's gate result and source identity separately. Anchors remain GQM and
+the registered ownership/source-boundary experiment.

@@ -1,3 +1,4 @@
+import Ajv from "ajv";
 import { describe, expect, it } from "vitest";
 import type { JudgeDefinition } from "./definition.js";
 import { readJudgeEvaluation } from "./evaluation-result.js";
@@ -19,13 +20,23 @@ const judge: JudgeDefinition = {
 };
 
 describe("judge Promptfoo configuration", () => {
+  it("pins full-input settings without caller overrides", () => {
+    const provider = buildJudgeEvaluation(judge, "Synthetic artifact").tests[0].assert[0].provider;
+    expect(provider.config).toMatchObject({
+      temperature: 0,
+      num_ctx: 4096,
+      truncate: false,
+      passthrough: { shift: false },
+    });
+  });
+
   it("uses one explicit grader assertion per check and keeps the artifact separate", () => {
     const artifact = "Synthetic artifact {{rubric}}";
     const config = buildJudgeEvaluation(judge, artifact);
     expect(config.providers).toEqual(["echo"]);
     const [test] = config.tests;
     expect(test.providerOutput).toBe(artifact);
-    expect(test.assert.map(({ type, metric, provider }) => [type, metric, provider])).toEqual([
+    expect(test.assert.map(({ type, metric, provider }) => [type, metric, provider.id])).toEqual([
       ["llm-rubric", "clear", "fixture:model"],
       ["llm-rubric", "short", "fixture:model"],
     ]);
@@ -47,6 +58,32 @@ describe("judge Promptfoo configuration", () => {
     const [test] = buildJudgeEvaluation({ ...judge, sees: "artifact+sources" }, "draft", context).tests;
     expect(JSON.parse(test.providerOutput)).toEqual({ artifact: "draft", ...context });
     expect(test.assert[0].rubricPrompt).toContain("supplied source ID");
+  });
+
+  it("requires complete binary response fields and empty artifact-only evidence", () => {
+    const provider = buildJudgeEvaluation(judge, "draft").tests[0].assert[0].provider;
+    const validate = new Ajv().compile(provider.config.format);
+    const response = { reason: { critique: "Clear.", verdict: "PASS", evidence: [] }, pass: true, score: 1 };
+    expect(provider.config.temperature).toBe(0);
+    expect(validate(response)).toBe(true);
+    for (const invalid of [
+      { ...response, reason: { critique: "Clear.", verdict: "PASS" } },
+      { ...response, reason: { ...response.reason, evidence: ["S1"] } },
+      { ...response, score: 0.5 },
+    ])
+      expect(validate(invalid)).toBe(false);
+  });
+
+  it("restricts source-aware evidence to nonempty arrays of designated IDs", () => {
+    const context = { request: "Verify it", sources: [{ id: "S1", text: "Synthetic fact" }] };
+    const provider = buildJudgeEvaluation({ ...judge, sees: "artifact+sources" }, "draft", context).tests[0].assert[0]
+      .provider;
+    const validate = new Ajv().compile(provider.config.format);
+    const response = { reason: { critique: "Grounded.", verdict: "PASS", evidence: ["S1"] }, pass: true, score: 1 };
+    expect(validate(response)).toBe(true);
+    for (const evidence of [[], ["other"], ["S1", "S1"]]) {
+      expect(validate({ ...response, reason: { ...response.reason, evidence } })).toBe(false);
+    }
   });
 
   it("refuses a context mode mismatch", () => {

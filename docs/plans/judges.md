@@ -80,7 +80,7 @@ returns a score, a pass flag, and a reason. Validate these fields before
 turning the reason into critique and evidence. Refuse an incomplete result
 or a citation that does not match the sources supplied to that check.
 
-The runner uses Ollama on loopback port 11434. Set
+The runner requires Ollama 0.40.14 on loopback port 11434. Set
 `AGENTBREW_PROMPTFOO_PACKAGE` to the absolute path of a trusted
 `promptfoo@0.124.1` package directory. The normal Agentbrew install does
 not install Promptfoo. The runner uses a private scratch directory and
@@ -88,6 +88,20 @@ passes no credentials from the agent environment. The grader uses a closed
 JSON response schema and temperature zero. Each reason must contain the
 critique, binary verdict, and evidence array. The normalizer still checks
 score consistency and that evidence names the designated sources.
+
+Before each engine invocation, a direct `/api/version` request verifies that
+server version without the parent process's proxy settings. Its owned
+request, response and Agent are cleaned up on completion. Metadata has a
+two-second total deadline and a 4096-byte retained body limit. Unknown or
+unsupported versions stop before grading. The separate engine deadline is
+120 seconds.
+
+The provider requests a 4096-token context, with input truncation and context
+shifting disabled. It sends the full reader input or refuses; the 128 KiB
+reader limit does not promise that every model can grade that much text.
+A context or provider failure cannot produce a verdict receipt. Calibrate
+the selected model before enabling delivery hooks; example declarations are
+not proof that a model meets the required agreement rates.
 
 Build from source with Rust 1.97 or later on Apple Silicon or Linux
 x64/ARM64 to include the reader for that host. A package built on one
@@ -277,7 +291,7 @@ within that reader limit; a model-context refusal must produce no receipt.
 Use a fresh explicit Node HTTP Agent for fixed
 `127.0.0.1:11434/api/version`, with no proxy settings, caller URL, headers,
 auth or redirect following. Require exact Ollama0.40.14 before each default
-grader invocation. Bound the metadata header/body phase to2000ms and retained
+engine invocation. Bound the metadata header/body phase to2000ms and retained
 body to4096bytes; destroy the owned request, response and Agent on every
 completion and clear its timer. Preserve the existing120000ms engine timeout.
 The metadata check adds its separate bounded overhead.
@@ -319,3 +333,11 @@ Obtain independent source review, merge current main, and run the required
 full gate only after the focused transfer is reviewed. Anchor: Basili,
 Caldiera and Rombach(1994), GQM; Munafò etal.(2017), preregistration; qualified
 Ollama0.40.14 and Node24.21.0 primary implementation contracts.
+
+Source-transfer evidence: the fresh sealed source baseline had twelve wrong
+version-negative dispatches and two accepted positives. Its separate fixed
+provider-policy assertion failed while the existing configuration cases
+passed. After transfer, the focused version, policy, typed-error and dispatch
+cohort passed all forty-seven cases. This is deterministic source-boundary
+evidence; no model was called. Type/lint, current-main integration and the
+final full gate remain separate checks before delivery.

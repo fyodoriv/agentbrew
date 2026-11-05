@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
+import { assertQualifiedOllamaVersion } from "./ollama-version.js";
 import type { buildJudgeEvaluation } from "./promptfoo-config.js";
+import { isJudgeProvider } from "./promptfoo-provider.js";
 
 const PROMPTFOO_VERSION = "0.124.1";
 const MAX_REPORT_BYTES = 8 * 1024 * 1024;
@@ -23,19 +25,17 @@ function engineEntry(packageDirectory: string | undefined): string {
   }
 }
 
-export function evaluateWithPromptfoo(
+export async function evaluateWithPromptfoo(
   config: ReturnType<typeof buildJudgeEvaluation>,
   packageDirectory = process.env.AGENTBREW_PROMPTFOO_PACKAGE,
-): unknown {
+): Promise<unknown> {
   const assertions = config.tests.flatMap((test) => test.assert);
-  if (
-    !assertions.length ||
-    assertions.some(({ provider }) => !/^ollama:chat:[a-zA-Z0-9][a-zA-Z0-9._/-]*(?::[a-zA-Z0-9._-]+)?$/.test(provider))
-  ) {
-    throw new Error("Judge execution requires an Ollama chat model.");
+  if (!assertions.length || assertions.some(({ provider }) => !isJudgeProvider(provider))) {
+    throw new Error("Judge execution requires an Ollama chat model with the fixed response schema.");
   }
 
   const entry = engineEntry(packageDirectory);
+  await assertQualifiedOllamaVersion();
   const scratch = mkdtempSync(join(tmpdir(), "agentbrew-judge-"));
   let failure = "Promptfoo did not produce a readable judge report.";
   try {

@@ -936,7 +936,7 @@ Ask Claude to review a draft with `/agentbrew`, or run
 `agentbrew judge run --event <event> --artifact <file>`. Declare the rubric
 in your Agentfile. Use `agentbrew judge eval <name>` to check the rubric
 against labeled examples. See the [judge setup guide](docs/plans/judges.md)
-for the local model and opt-in hooks.
+for local server requirements, the full-input policy, and opt-in hooks.
 
 ## CLI reference
 

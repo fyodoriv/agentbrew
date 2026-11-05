@@ -164,3 +164,70 @@ reject rather than being overwritten by JSON parsing. Repeat the same focused
 entry command and reproducible builder command above. The final built/cold/pack
 controls remain mandatory. This records a rejected candidate and the next
 prediction, not success or permission to weaken a control.
+
+## Mutable source-build receipt lifecycle
+
+The successful source-build receipt is Cargo-target-directory scoped, under
+`rust/checkup-run/target/aarch64-apple-darwin/release/manifest.json`. A source
+compilation snapshots the fixed inputs before invoking Cargo and refuses to
+record a different source afterward. A successful compilation replaces the
+receipt atomically without following a previous receipt symlink. Input or
+artifact mismatch invalidates it; cleaning the target directory deletes it.
+A failed compile never selects the prebuilt route or replaces the installed
+CLI. Verified executable byte buffers and their private stage belong to one
+build invocation and use the existing stage cleanup owner.
+
+A source archive with no root `.git` entry records `sourceRevision: null`
+for the local source-build recipe only. It still binds every source input
+and artifact digest. Present but broken Git metadata fails; Git metadata
+from a parent checkout is never used. Carried prebuilts always require their
+40-character source revision and cannot use the archive exception.
+
+## Source-cache attestation prediction
+
+Fresh review identified a separate trust question after the frozen full and
+N04 gates passed: a successful Cargo invocation can reuse a newer substituted
+executable in its mutable target cache. Source hashes alone cannot attest
+that Cargo compiled the output bytes. This is a hypothesis until the actual
+compiler control below reproduces it; previous results remain tied to tree
+`47d789fdbe9eef0cb1f92bb7e869f685e0039a80`.
+
+**Hypothesis (GQM):** compiling in a new private target directory per source
+build reduces acceptance of one planted newer valid Mach-O recorder from one
+to zero. The source receipt must bind outputs from that invocation, rather
+than grant provenance to previously mutable cache bytes. Preserve the existing
+atomic CLI publisher and all compiler-error refusal outcomes.
+
+**Measurement:** before production changes, build the exact native source
+with actual installed Cargo in a private fixture. Replace only the recorder
+output with the reviewed publisher bytes, advance its modification time, and
+run the same source-build entry again. The test requires restored recorder
+bytes and a matching source receipt. It uses no mock compiler, downloads,
+tool installation, canonical dependency writes or private payloads.
+
+```sh
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/source-build-capability.test.ts -t 'actual Cargo cache'
+```
+
+**Success:** one planted-cache control changes from failure to pass, with
+zero substituted executable admissions; all existing refusal, source-archive,
+compiler-error and predecessor-preservation controls still pass. A fresh
+private source target is build-invocation scoped and is deleted on success
+or failure. Only bounded, validated executable buffers and their receipt may
+reach the existing source-artifact store and staged CLI publisher.
+
+**Pivot:** any surviving substituted output, compiler-error fallback, unsafe
+source-store replacement, predecessor mutation, unbounded resource use or
+missing exact-tree qualification rejects this route. Stop before publication
+and revise the ownership boundary; do not add Cargo fingerprint parsing or
+weaken receipt checks.
+
+Budget two real source compilations in the control, at most 600 seconds and
+2 GiB of target storage per invocation, one compiler worker. Preserve failed
+and prior-tree receipts privately. Root reviews the reproduced failure and
+source-store publication plan before production changes. Repeat the source
+cohort, bound artifact rebuild and required composed-tree gates after the fix.
+
+**Anchor:** Cargo's [official freshness and fingerprint documentation](https://doc.rust-lang.org/stable/nightly-rustc/cargo/compiler/fingerprint/index.html)
+explains its output/source modification-time checks and their limits;
+Basili et al. (1994), GQM, supplies the acceptance framing.

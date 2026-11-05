@@ -2588,6 +2588,12 @@
       "prompt": "/goal take the best parts of this long pasted spec (auto-pull, schedule, learn from votes, report) and integrate them so the app gives me the best suggestions",
       "expected_output": "During intake the agent maps each part of the pasted spec to code that already exists (sources, scoring, store writes, a scheduled job) and builds only the missing lever with the biggest effect on the stated outcome, here learning from votes across similar items. It measures it offline on the owner's real data read-only (leave-one-out AUC vs the current score), holds out near-duplicates (same title, series parts) so the score is not leaked, files the remaining spec parts as tasks, and runs the full gate in the background.",
       "files": []
+    },
+    {
+      "id": 199,
+      "prompt": "/goal ship the review fixes and merge the PR",
+      "expected_output": "The agent commits, checks that the commit exists (git log shows the new SHA and git status is clean) and only then merges. It never chains gh pr merge after a git commit in one command, since a commit-msg hook (such as a header length limit) can refuse the commit while the merge still runs and ships the PR without the fixes.",
+      "files": []
     }
   ]
 }

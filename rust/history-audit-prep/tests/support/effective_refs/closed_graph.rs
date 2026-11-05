@@ -607,3 +607,6 @@ mod tree_cases;
 
 #[path = "added_lines.rs"]
 mod added_lines;
+
+#[path = "scanner_binding.rs"]
+mod scanner_binding;

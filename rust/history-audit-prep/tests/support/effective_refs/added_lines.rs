@@ -11,16 +11,16 @@ const MAX_LINES: usize = 16;
 const MAX_LINE_BYTES: usize = 128;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct AddedLine {
-    file: PathRow,
-    parent: Option<ObjectId>,
+pub(super) struct AddedLine {
+    pub(super) file: PathRow,
+    pub(super) parent: Option<ObjectId>,
     number: usize,
-    bytes: [u8; MAX_LINE_BYTES],
-    len: usize,
+    pub(super) bytes: [u8; MAX_LINE_BYTES],
+    pub(super) len: usize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum EvidenceRefusal {
+pub(super) enum EvidenceRefusal {
     Graph(Refusal),
     Binary,
     BlobBytes,
@@ -36,6 +36,13 @@ fn evidence(
 ) -> Result<[Option<AddedLine>; MAX_ROWS], EvidenceRefusal> {
     let graph =
         walk(packed, &[], records, &mut Default::default()).map_err(EvidenceRefusal::Graph)?;
+    evidence_from_graph(&graph, records)
+}
+
+pub(super) fn evidence_from_graph(
+    graph: &Report,
+    records: &[Record<'_>],
+) -> Result<[Option<AddedLine>; MAX_ROWS], EvidenceRefusal> {
     let mut rows = [None; MAX_ROWS];
     let mut comparisons = 0;
     for file in graph.paths.iter().flatten().filter(|row| content(row.mode)) {
@@ -46,13 +53,13 @@ fn evidence(
             .filter(|edge| edge.from == file.commit && edge.to.kind == Kind::Commit)
             .peekable();
         if parents.peek().is_none() {
-            compare(file, None, &graph, records, &mut comparisons, &mut rows)?;
+            compare(file, None, graph, records, &mut comparisons, &mut rows)?;
         }
         for parent in parents {
             compare(
                 file,
                 Some(parent.to.id),
-                &graph,
+                graph,
                 records,
                 &mut comparisons,
                 &mut rows,

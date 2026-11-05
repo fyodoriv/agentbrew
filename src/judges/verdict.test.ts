@@ -30,6 +30,27 @@ describe("judge verdict normalization", () => {
     });
   });
 
+  it.each([true, false])("accepts a structured reason with pass=%s", (pass) => {
+    const result = grade(pass, []);
+    const reason = JSON.parse(result.reason);
+    expect(normalizeJudgeVerdict("clear", { ...result, reason })).toEqual({
+      check: "clear",
+      critique,
+      verdict: pass ? "PASS" : "FAIL",
+      evidence: [],
+    });
+  });
+
+  it.each([
+    { critique, verdict: "FAIL", evidence: [] },
+    { critique, verdict: "PASS", evidence: ["S1"] },
+    { critique: "x".repeat(8192), verdict: "PASS", evidence: [] },
+    ["PASS"],
+    null,
+  ])("refuses an invalid structured reason", (reason) => {
+    expect(() => normalizeJudgeVerdict("clear", { ...grade(true, []), reason })).toThrow(/Invalid judge verdict/);
+  });
+
   it.each([
     ["a contradictory score", { ...grade(true, []), score: 0 }, undefined],
     ["a malformed critique", { ...grade(true, []), reason: "PASS" }, undefined],

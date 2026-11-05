@@ -15,11 +15,13 @@ export function normalizeJudgeVerdict(check: string, result: unknown, sourceIds?
   try {
     if (!result || typeof result !== "object") throw new Error();
     const { pass, score, reason } = result as Record<string, unknown>;
-    if (typeof pass !== "boolean" || score !== Number(pass) || typeof reason !== "string" || reason.length > 8192) {
+    if (typeof pass !== "boolean" || score !== Number(pass)) {
       throw new Error();
     }
-    const parsed: unknown = JSON.parse(reason);
-    if (!parsed || typeof parsed !== "object") throw new Error();
+    const encoded = typeof reason === "string" ? reason : JSON.stringify(reason);
+    if (typeof encoded !== "string" || Buffer.byteLength(encoded, "utf8") > 8192) throw new Error();
+    const parsed: unknown = JSON.parse(encoded);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
     const { critique, verdict, evidence } = parsed as Record<string, unknown>;
     const expectedVerdict = pass ? "PASS" : "FAIL";
     if (typeof critique !== "string" || !critique.trim() || verdict !== expectedVerdict) throw new Error();

@@ -2572,6 +2572,16 @@
         "drops a flat bonus that reorders all items when a guard fails",
         "language filter needs evidence of another language"
       ]
+    },
+    {
+      "id": 225,
+      "prompt": "/goal implement a long-term fix for these gh issues in my tooling\n\nSynthetic fixture context. The goal comes right after a turn where `git push git@github.com:owner/app.git ...` failed: 'no such identity: ~/.ssh/id_rsa' and 'Permission denied (publickey)'. `gh auth status` shows a working HTTPS login, and the global gitconfig already uses `gh auth git-credential` for https://github.com. The tooling repo's own origin is also an SSH URL.",
+      "expected_output": "The agent resolves 'these gh issues' from the conversation (the SSH push failure), checks live auth (ssh -T, gh auth status), and states that reading in the contract. It fixes the cause in the tooling source (a github.com SSH-to-HTTPS url rewrite next to the gh credential helper, with a test that other hosts keep SSH), proves it with an exit code that was 128 and is now 0, and notices that its own fetch of the tooling repo hits the same bug.",
+      "expectations": [
+        "states its reading of the vague 'these issues' in the contract",
+        "fixes the tooling source with a test, not only this machine",
+        "proves the fix with a before/after exit code"
+      ]
     }
   ]
 }

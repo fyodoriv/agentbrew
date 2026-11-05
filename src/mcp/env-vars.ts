@@ -66,18 +66,22 @@ function resolveFromKeychain(service: string): string | undefined {
   }
 }
 
-const KEYRING_FIRST = new Set(["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"]);
+// Only GITHUB_TOKEN: gh itself leaks it from the env. An exported
+// GITHUB_PERSONAL_ACCESS_TOKEN is a deliberate choice and keeps winning.
+const KEYRING_FIRST = new Set(["GITHUB_TOKEN"]);
 
-/** Try process.env first, then well-known fallbacks. GitHub tokens try the gh keyring first. */
+/** Try process.env first, then well-known fallbacks. GITHUB_TOKEN tries the gh keyring first. */
 export function resolveEnvVar(varName: string): string | undefined {
-  // GitHub tokens: the keyring login wins; the env value is the fallback (CI).
-  if (KEYRING_FIRST.has(varName)) {
+  // GITHUB_TOKEN: the keyring login wins; the env value is the fallback (CI).
+  const keyringFirst = KEYRING_FIRST.has(varName);
+  if (keyringFirst) {
     const fromKeyring = resolveGitHubToken();
     if (fromKeyring) return fromKeyring;
   }
   const fromEnv = process.env[varName];
   if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-  return ENV_FALLBACKS[varName]?.();
+  // gh was already asked above; do not spawn it twice.
+  return keyringFirst ? undefined : ENV_FALLBACKS[varName]?.();
 }
 
 /**

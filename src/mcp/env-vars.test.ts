@@ -189,13 +189,16 @@ describe("resolveEnvVar", () => {
       : '#!/bin/sh\nif [ -n "$GH_TOKEN$GITHUB_TOKEN" ]; then echo "${GH_TOKEN:-$GITHUB_TOKEN}"; else exit 1; fi\n';
     writeFileSync(join(dir, "gh"), body, { mode: 0o755 });
     const oldPath = process.env.PATH;
+    const oldTokens = { GITHUB_TOKEN: process.env.GITHUB_TOKEN, GH_TOKEN: process.env.GH_TOKEN };
     process.env.PATH = `${dir}:${oldPath}`;
     try {
       run();
     } finally {
       process.env.PATH = oldPath;
-      delete process.env.GITHUB_TOKEN;
-      delete process.env.GH_TOKEN;
+      for (const [k, v] of Object.entries(oldTokens)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
       rmSync(dir, { recursive: true, force: true });
     }
   }
@@ -205,7 +208,19 @@ describe("resolveEnvVar", () => {
       process.env.GITHUB_TOKEN = "dead-env-token";
       process.env.GH_TOKEN = "dead-gh-token";
       expect(resolveEnvVar("GITHUB_TOKEN")).toBe("keyring-good");
-      expect(resolveEnvVar("GITHUB_PERSONAL_ACCESS_TOKEN")).toBe("keyring-good");
+    });
+  });
+
+  it("an exported GITHUB_PERSONAL_ACCESS_TOKEN keeps winning over the keyring", () => {
+    withFakeGh(true, () => {
+      const oldPat = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+      process.env.GITHUB_PERSONAL_ACCESS_TOKEN = "chosen-pat";
+      try {
+        expect(resolveEnvVar("GITHUB_PERSONAL_ACCESS_TOKEN")).toBe("chosen-pat");
+      } finally {
+        if (oldPat === undefined) delete process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+        else process.env.GITHUB_PERSONAL_ACCESS_TOKEN = oldPat;
+      }
     });
   });
 

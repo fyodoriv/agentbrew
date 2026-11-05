@@ -212,3 +212,19 @@ messages with zero disclosures of engine error text. Keep successful and
 completed failing assertions on their existing paths. Any lost case or
 diagnostic disclosure rejects the change. This check uses synthetic engine
 results and does not attribute a previous calibration failure.
+
+### Structured grader reason
+
+The pinned live engine returned a structured reason object. The binary
+score was consistent, and the rendered prompt retained both examples and
+the target position. The normalizer rejected the reason before calibration
+could score it.
+
+Run `./node_modules/.bin/vitest run src/judges/verdict.test.ts`. Expect
+two valid structured verdict cases to fail before the change and pass
+after it. Keep all malformed and inconsistent verdicts refused in both
+representations. Retain the 8192-byte reason limit. Then run
+`heavy-run --exclusive bash scripts/check-judge-calibration.sh` with the
+pinned local model. Keep the approach only at full agreement in both
+orders and zero unsafe verdicts accepted. Any lower agreement or weakened
+refusal rejects it. Anchor: Basili, Caldiera and Rombach (1994), GQM.

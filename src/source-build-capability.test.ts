@@ -50,9 +50,35 @@ function fixture() {
     `import fs from 'node:fs'; import {syncBuiltinESMExports} from 'node:module';
 const original=fs.accessSync;fs.accessSync=(path,...args)=>{if(/^(?:\\/opt\\/homebrew|\\/usr\\/local)\\//.test(String(path))&&/\\/(?:cargo|rustc)$/.test(String(path))){const e=new Error('absent fixture toolchain');e.code='ENOENT';throw e;}return original(path,...args);};syncBuiltinESMExports();\n`,
   );
+  const sdkHostCalls = join(root, "sdk-host-calls.jsonl");
+  // This mutable builtin override belongs only to each generated fixture Node child.
+  writeFileSync(
+    join(root, "sdk-fixture.mjs"),
+    `
+import cp from 'node:child_process';
+import fs from 'node:fs';
+import {syncBuiltinESMExports} from 'node:module';
+const hostExec = cp.execFileSync;
+const replies = new Map([
+  [JSON.stringify(['/usr/bin/clang',['--version']]), 'clang fixture\\n'],
+  [JSON.stringify(['/usr/bin/xcrun',['--sdk','macosx','--show-sdk-version']]), 'sdk fixture\\n'],
+  [JSON.stringify(['/usr/bin/xcrun',['--sdk','macosx','ld','-version_details']]), JSON.stringify({version:'ld fixture'}) + '\\n'],
+]);
+cp.execFileSync = (file, args, options) => {
+  const reply = replies.get(JSON.stringify([file,args]));
+  if (reply !== undefined && fs.existsSync(${JSON.stringify(join(home, ".cargo/bin/cargo"))})) return options?.encoding ? reply : Buffer.from(reply);
+  if (file === '/usr/bin/clang' || file === '/usr/bin/xcrun') {
+    fs.appendFileSync(${JSON.stringify(sdkHostCalls)}, JSON.stringify({file,args}) + '\\n');
+    throw Object.assign(new Error('Host SDK unavailable in fixture'), {code:'ENOENT'});
+  }
+  return hostExec(file,args,options);
+};
+syncBuiltinESMExports();
+`,
+  );
   writeFileSync(
     join(bin, "node"),
-    `#!/bin/bash\nexec '${process.execPath}' --import '${join(root, "no-cargo.mjs")}' "$@"\n`,
+    `#!/bin/bash\nexec '${process.execPath}' --import '${join(root, "no-cargo.mjs")}' --import '${join(root, "sdk-fixture.mjs")}' "$@"\n`,
     { mode: 0o755 },
   );
   writeFileSync(join(bin, "uname"), '#!/bin/bash\nif [[ "$1" == -s ]]; then echo Darwin; else echo arm64; fi\n', {
@@ -90,7 +116,7 @@ fi
   git("add", ".");
   git("-c", "user.name=fixture", "-c", "user.email=fixture@example.com", "commit", "-qm", "fixture");
   const run = (script: string) => spawnSync("/bin/bash", [script], { cwd: root, env, encoding: "utf8" });
-  return { root, env, bin, directory, run };
+  return { root, env, bin, directory, run, sdkHostCalls };
 }
 
 function installedCargoFixture(f: ReturnType<typeof fixture>) {
@@ -254,10 +280,51 @@ describe("native capability trust boundary", () => {
     const f = fixture();
     installedCargoFixture(f);
     const result = f.run("scripts/build-checkup-run.sh");
+    const hostCalls = existsSync(f.sdkHostCalls)
+      ? readFileSync(f.sdkHostCalls, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line))
+      : [];
+    expect(hostCalls, "the compiler fake must not require a host SDK command").toEqual([]);
     expect(result.status, result.stderr).toBe(0);
+    const receipt = JSON.parse(
+      readFileSync(join(f.root, "rust/checkup-run/target/aarch64-apple-darwin/release/manifest.json"), "utf8"),
+    );
+    expect(receipt.toolchain).toEqual({
+      cargo: "cargo fixture",
+      rustc: "rustc fixture",
+      clang: "clang fixture",
+      sdk: "sdk fixture",
+      ld: "ld fixture",
+    });
     expect(readFileSync(join(f.root, "compiler-observed"), "utf8").trim()).toBe("rustc fixture");
     expect(() => native.readPair(f.root, true)).not.toThrow();
     expect(result.stderr).not.toMatch(/using.*prebuilt/i);
+  });
+
+  it.each([
+    ["/usr/bin/clang", ["--not-a-fixture"]],
+    ["/usr/bin/xcrun", ["--sdk", "not-a-fixture"]],
+  ] as const)("refuses an unrecognized host SDK command %s", (file, args) => {
+    const f = fixture();
+    const code = `require('node:child_process').execFileSync(${JSON.stringify(file)},${JSON.stringify(args)});`;
+    const result = spawnSync(join(f.bin, "node"), ["-e", code], { cwd: f.root, env: f.env, encoding: "utf8" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("ENOENT");
+    expect(JSON.parse(readFileSync(f.sdkHostCalls, "utf8").trim())).toEqual({ file, args });
+  });
+
+  it("keeps SDK unavailable without a fake compiler", () => {
+    const f = fixture();
+    const code = "require('node:child_process').execFileSync('/usr/bin/clang',['--version']);";
+    const result = spawnSync(join(f.bin, "node"), ["-e", code], { cwd: f.root, env: f.env, encoding: "utf8" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("ENOENT");
+    expect(JSON.parse(readFileSync(f.sdkHostCalls, "utf8").trim())).toEqual({
+      file: "/usr/bin/clang",
+      args: ["--version"],
+    });
   });
 
   it("does not follow an existing source receipt symlink when recording a successful compilation", () => {
@@ -457,6 +524,9 @@ describe("native capability trust boundary", () => {
       const actualDigest = native.sha256(readFileSync(path));
       const receipt = JSON.parse(readFileSync(join(dirname(path), "manifest.json"), "utf8"));
       expect(receipt.artifacts["checkup-run"].sha256).toBe(actualDigest);
+      expect(receipt.toolchain.clang).not.toBe("clang fixture");
+      expect(receipt.toolchain.sdk).not.toBe("sdk fixture");
+      expect(receipt.toolchain.ld).not.toBe("ld fixture");
       const state = join(f.root, "native-state");
       const invoke = (...args: string[]) => {
         const result = spawnSync(path, args, {

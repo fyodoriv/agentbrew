@@ -123,3 +123,10 @@ regression or intercepted real compiler result. This strengthens existing S4;
 no source, artifact, hash, timeout, compiler flag or platform claim changes.
 Anchor: Basili et al.(1994), GQM; Munafò et al.(2017), preregistration;
 the original zero-real-interception S4 requirement.
+
+The supplemental S4 baseline returned success for the known SDK request
+without the fake compiler. After requiring that factory-created executable
+before a synthetic reply, the same request returned ENOENT; all four selected
+controls passed. Unknown SDK commands still refuse. Production source,
+artifact bindings and expected native digests are unchanged. The earlier full
+and native qualifications remain recorded separately from final-tree checks.

@@ -247,3 +247,30 @@ variant exposes one unsafe admission before the fresh-target fix and zero
 after it. If it also passes, do not implement this fix based on the unsupported
 review hypothesis. The command, limits, zero-admission threshold and compiler
 error/publication safeguards above are unchanged.
+
+### Functional producer oracle registered before candidate measurement
+
+No candidate run has occurred. The private source snapshot intentionally
+changes Cargo package/source paths, which may change executable bytes even
+for the same source. Preserve the original exact-byte positive and RED
+controls, including the adjusted direct-Cargo legacy-cache baseline. Do not
+select another expected executable hash or change compiler flags to match it.
+
+Before the first candidate measurement, register this same stronger producer
+oracle for both old bootstrap and candidate, on both existing substitution
+variants. The tested source-build entry must succeed; its source receipt must
+validate and bind the actual recorder digest. That executable must perform
+synthetic native `show` (missing), `record` (recorded), and `show` (present)
+with the exact timestamp/result/fixture commit and unchanged record digest.
+The admitted recorder must not equal the substituted publisher digest.
+Report original-byte identity separately as a diagnostic; it supplies no
+replacement expected hash or successful behavior claim. This tests native
+producer behavior, not merely a different Mach-O file.
+
+Use the same actual-Cargo command and two-compilation fixture above. Require
+both complete functional workflows to pass on the candidate, with zero
+publisher admissions. The old producer-cache variant must fail this same
+oracle while the final-copy recovery case passes. Any admitted publisher,
+incorrect stored payload or mismatched receipt rejects the fix. Also pin
+source-store parent/artifact link preservation and mixed-cache refusal; these
+are fail-closed store controls, not installed-output transaction claims.

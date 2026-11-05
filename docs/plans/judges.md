@@ -258,3 +258,64 @@ reader then passed all fifteen cases. The judge, action-parity and Codex
 policy cohort passed with zero failures; TypeScript checking passed.
 This is deterministic error-classification evidence, not a model-capacity
 or calibration claim. Ordinary assertion summaries remain accepted.
+
+### Direct version and full-input policy adoption
+
+Register this source transfer before new source edits. Preserve the pending
+closed-response-schema files and their earlier private measurements. The
+published typed-error repair stays unchanged: ERROR reports must not mint
+receipts, and ordinary ASSERTION summaries remain valid.
+
+Goal: use the qualified local server with a complete input or refuse the
+request. Question: do unsupported metadata and proxy routing ever reach the
+grader, and does the fixed provider retain the whole input? Transfer the
+private, reviewed direct HTTP version check and closed provider with
+`num_ctx: 4096`, `truncate: false`, and `shift: false`. Keep the existing
+128KiB input reader. This does not promise successful grading of every input
+within that reader limit; a model-context refusal must produce no receipt.
+
+Use a fresh explicit Node HTTP Agent for fixed
+`127.0.0.1:11434/api/version`, with no proxy settings, caller URL, headers,
+auth or redirect following. Require exact Ollama0.40.14 before each default
+grader invocation. Bound the metadata header/body phase to2000ms and retained
+body to4096bytes; destroy the owned request, response and Agent on every
+completion and clear its timer. Preserve the existing120000ms engine timeout.
+The metadata check adds its separate bounded overhead.
+
+Measurement from the repo root with qualified Node/npm and normal owner PATH:
+
+```sh
+JOBS=1 heavy-run npm exec -- vitest run src/judges/ollama-version.test.ts src/judges/engine-error.test.ts src/judges/promptfoo-config.test.ts src/judges/promptfoo-dispatch.test.ts --maxWorkers=1
+JOBS=1 heavy-run npm run typecheck
+JOBS=1 heavy-run npm run lint:changed
+```
+
+Keep the frozen twelve version decisions and two boundary decisions. Port
+only their test HTTP event adapter; preserve expected grader/receipt outcomes
+and original assertions. Before the new source guard, predict twelve wrong
+negative dispatches and two accepted positives. After it, require all fourteen
+to pass with zero grader calls/receipts on negatives. Keep all twelve typed
+engine-error negatives and three completed verdict positives passing. The
+existing dispatch tests must await the async API without weakening assertions.
+
+The separately registered private native routing controls measured two
+metadata requests reaching a disposable wrong proxy before the direct client
+and zero afterward; both candidate metadata reads completed. This is endpoint
+alignment evidence, not a fabricated old-server or model-capacity case.
+The private fixed-provider experiments retained the same four labeled samples
+and thresholds. This transfer makes no new model-quality measurement.
+
+Success: all frozen version, typed-error and existing focused checks pass,
+with no diagnostic leakage, relaxed input/schema guard or changed receipt
+fields. Pivot on any wrong dispatch, lost valid result, routing discrepancy,
+cleanup failure or skipped input evidence. Preserve model/frontmatter/receipt
+contracts and default model/example/hosted CI configuration. No model calls,
+package pin or observer-engine patch are part of this source step.
+
+G01 remains inconclusive. G02 observed generation and a backend error with
+zero receipts but did not qualify the exact context-capacity category; do not
+relabel that research result. Hosted resource and capacity claims stay open.
+Obtain independent source review, merge current main, and run the required
+full gate only after the focused transfer is reviewed. Anchor: Basili,
+Caldiera and Rombach(1994), GQM; Munafò etal.(2017), preregistration; qualified
+Ollama0.40.14 and Node24.21.0 primary implementation contracts.

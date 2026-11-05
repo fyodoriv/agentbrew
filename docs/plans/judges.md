@@ -251,3 +251,10 @@ Caldiera, and Rombach (1994), Goal Question Metric.
 This repair does not qualify model quality, full-context handling, or hosted
 calibration. Those claims remain open; no default model or context limit
 changes in this experiment.
+
+Observed on the draft candidate: the focused reproduction failed all twelve
+error cases while the three completed verdict controls passed. The typed
+reader then passed all fifteen cases. The judge, action-parity and Codex
+policy cohort passed with zero failures; TypeScript checking passed.
+This is deterministic error-classification evidence, not a model-capacity
+or calibration claim. Ordinary assertion summaries remain accepted.

@@ -84,7 +84,10 @@ The runner uses Ollama on loopback port 11434. Set
 `AGENTBREW_PROMPTFOO_PACKAGE` to the absolute path of a trusted
 `promptfoo@0.124.1` package directory. The normal Agentbrew install does
 not install Promptfoo. The runner uses a private scratch directory and
-passes no credentials from the agent environment.
+passes no credentials from the agent environment. The grader uses a closed
+JSON response schema and temperature zero. Each reason must contain the
+critique, binary verdict, and evidence array. The normalizer still checks
+score consistency and that evidence names the designated sources.
 
 Build from source with Rust 1.97 or later on Apple Silicon or Linux
 x64/ARM64 to include the reader for that host. A package built on one
@@ -228,3 +231,23 @@ representations. Retain the 8192-byte reason limit. Then run
 pinned local model. Keep the approach only at full agreement in both
 orders and zero unsafe verdicts accepted. Any lower agreement or weakened
 refusal rejects it. Anchor: Basili, Caldiera and Rombach (1994), GQM.
+
+### Typed engine-error receipt experiment
+
+Goal: prevent engine errors from producing delivery receipts. Question: does
+the result reader distinguish Promptfoo ERROR (2) from a completed ASSERTION
+failure (1), including its derived row error summary? The private experiment
+found that valid-looking rubric components can accompany an engine error.
+
+Measurement: `./node_modules/.bin/vitest run src/judges/engine-error.test.ts`.
+Predict twelve error-marked synthetic reports produce receipts on the draft
+baseline and zero after the fix. Keep only zero error receipts and all three
+completed PASS/FAIL controls, including an assertion summary, accepted with
+the correct verdict. Reject any accepted engine error, leaked diagnostic,
+or lost completed verdict. Source classification is Promptfoo 0.124.1
+`ResultFailureReason`: NONE=0, ASSERT=1, ERROR=2. Metric anchor: Basili,
+Caldiera, and Rombach (1994), Goal Question Metric.
+
+This repair does not qualify model quality, full-context handling, or hosted
+calibration. Those claims remain open; no default model or context limit
+changes in this experiment.

@@ -82,3 +82,18 @@ edits and enabled hook configuration, report neither refreshed nor unchanged,
 accept no SHA, and preserve the prior lock revision. Run the existing focused
 command with `-t "fixture .* hook"` for RED before changing receipt code, then
 run the complete focused cohort and typecheck. No owner Git config is changed.
+
+## Qualified source and delivery boundary
+
+Source checkpoint `7eb87d4` has the exact full-qualified tree
+`41ab0bb579e52348b16b54be6b3e384f906610b3`. The registered source, concurrency
+and separate-process receipt controls passed, followed by a fresh complete full
+gate and real fast, cold and packed installer qualification. Earlier incomplete
+non-green runs remain preserved; they do not qualify delivery. This is functional
+qualification, not a timing result or live deployment claim.
+
+The final composition includes main's appended eval cases and removes only
+this completed source task. The separate module-selection follow-up remains
+open. The scoped gate must verify these artifact and task changes while the
+qualified runtime and test bytes remain unchanged. Live deployment still needs
+the normal build, pull and authoritative source-receipt readback.

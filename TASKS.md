@@ -170,20 +170,6 @@
   - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
 
 
-- [ ] Explicit pulls identify the refreshed or skipped source bytes they deploy
-  - **ID**: sync-pull-source-caches-780
-  - **Tags**: sync, cache, reliability
-  - **Details**: Resolve [issue #780](https://github.com/fyodoriv/agentbrew/issues/780). Register every Git checkout actually read by an explicit pull, refresh eligible caches or report an actionable skip/failure, and preserve active runtime ownership. Prediction: [source cache experiment](docs/plans/sync-pull-source-caches-780.md); [bounded concurrency supplement](docs/plans/sync-pull-source-caches-concurrency-780.md); [cross-process receipt experiment](docs/plans/sync-pull-source-lease-780.md).
-  - **Files**: `src/catalog/source-checkout-lease.ts`, `src/catalog/source-checkout-lease.test.ts`, `src/sync/pull-source-caches.ts`, `src/sync/pull-source-caches.test.ts`, `src/catalog/index-source.ts`, `src/catalog/index-source.test.ts`, `src/update.ts`, `src/update.test.ts`, `src/lock.ts`, `src/lock.test.ts`, `src/skills/skill-versions.ts`, `src/skills/skill-versions.test.ts`, `src/cli-sync-agentfile.test.ts`, `src/integration.test.ts`, `src/catalog/cache-realign.ts`, `src/catalog/cache-realign.test.ts`, `src/core/git-retry.ts`, `src/core/git-retry.test.ts`, `src/mcp/git-ref.ts`, `src/mcp/mcp-git-ref.test.ts`, `src/mcp/mcp-git.ts`, `src/mcp/mcp-git-install.test.ts`, `README.md`, `docs/repo-map.md`, `AGENTS.md`
-  - **Output**: code
-  - **Acceptance**: all eight registered decisions match; deployed revision receipts identify actual checkout bytes; no silent stale success or unsafe cache/runtime mutation.
-  - **Hypothesis**: explicit invocation refresh outcomes reduce silent stale-success and false revision reports to zero in the eight frozen controls.
-  - **Measurement**: `PATH=/opt/homebrew/opt/rust/bin:$PATH:/opt/homebrew/bin heavy-run npx vitest run src/sync/pull-source-caches.test.ts src/catalog/index-source.test.ts src/update.test.ts src/cli-sync-agentfile.test.ts src/mcp/mcp-git-install.test.ts`; then `heavy-run npm run verify`.
-  - **Success**: eight of eight expected decisions, zero unsafe mutations, and all affected and required gates green.
-  - **Pivot**: any false refresh claim, wrong accepted revision, unsafe checkout change or existing safeguard regression rejects the approach.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Git fast-forward and observed checkout identity contracts.
-
-
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
   - **Tags**: security, stability, dependencies

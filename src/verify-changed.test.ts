@@ -1,5 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,6 +19,152 @@ const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+const emptyQueue = "# Tasks\n\n## P1\n";
+const completeTask = `- [ ] Preserve a valid task
+  - **ID**: fixture-valid
+  - **Details**: A synthetic task for the verification boundary.
+  - **Output**: code
+  - **Hypothesis**: Invalid approvals fall from four to zero.
+  - **Measurement**: Run the execution fixture.
+  - **Success**: Zero invalid approvals and both valid controls pass.
+  - **Pivot**: Any invalid approval or valid refusal.
+  - **Anchor**: The existing strict task gate.
+`;
+const queueCases = [
+  { name: "orphan task fields", valid: false, text: `${emptyQueue}\n${completeTask.split("\n").slice(1).join("\n")}` },
+  {
+    name: "duplicate task IDs",
+    valid: false,
+    text: `${emptyQueue}\n${completeTask}\n${completeTask.replace("Preserve a valid task", "Another task")}`,
+  },
+  {
+    name: "missing P1 hypothesis",
+    valid: false,
+    text: `${emptyQueue}\n${completeTask.replace(/^ {2}- \*\*Hypothesis\*\*:.*\n/m, "")}`,
+  },
+  {
+    name: "tracked conflict markers",
+    valid: false,
+    text: `${emptyQueue}\n${completeTask}\n<<<<<<< HEAD\nleft\n=======\nright\n>>>>>>> incoming\n`,
+  },
+  { name: "complete preregistered task", valid: true, text: `${emptyQueue}\n${completeTask}` },
+  { name: "empty queue with EOF whitespace", valid: false, text: `${emptyQueue}\n` },
+  { name: "format-clean edited empty queue", valid: true, text: `${emptyQueue}\n## P2\n` },
+];
+
+function pinnedTaskTools(): string {
+  const cache = process.env.npm_config_cache;
+  if (!cache) throw new Error("SETUP: npm software cache is unavailable");
+  const packages = join(cache, "_npx");
+  for (const entry of readdirSync(packages).sort()) {
+    const modules = join(packages, entry, "node_modules");
+    const manifest = join(modules, "@tasks-md/lint/package.json");
+    if (!existsSync(manifest)) continue;
+    const lint = JSON.parse(readFileSync(manifest, "utf8"));
+    if (lint.name !== "@tasks-md/lint" || lint.version !== "0.10.2") continue;
+    const parser = JSON.parse(readFileSync(join(modules, "@tasks-md/parser/package.json"), "utf8"));
+    if (
+      lint.bin?.["tasks-lint"] !== "dist/cli.js" ||
+      parser.name !== "@tasks-md/parser" ||
+      parser.version !== "0.10.2"
+    ) {
+      throw new Error("SETUP: cached pinned task tools have unexpected metadata");
+    }
+    return modules;
+  }
+  throw new Error("SETUP: cache @tasks-md/lint@0.10.2 with the normal full gate first");
+}
+
+function executionRepo(): string {
+  const root = repoWithChange("TASKS.md");
+  cpSync(pinnedTaskTools(), join(root, "node_modules"), { recursive: true });
+  mkdirSync(join(root, "scripts"));
+  mkdirSync(join(root, ".fixture-bin"));
+  writeFileSync(join(root, "TASKS.md"), emptyQueue);
+  for (const name of ["lint-tasks-stability", "check-rule-8-pattern-conformance", "check-rule-16-defaults"]) {
+    writeFileSync(
+      join(root, "scripts", `${name}.mjs`),
+      'import { writeFileSync } from "node:fs"; writeFileSync("downstream", "ran");\n',
+    );
+  }
+  for (const name of ["lint-repo-artifacts", "install-e2e-if-needed"]) {
+    writeFileSync(join(root, "scripts", `${name}.sh`), "#!/bin/sh\nexit 0\n");
+  }
+  const npx = join(root, ".fixture-bin", "npx");
+  writeFileSync(
+    npx,
+    `#!/bin/bash
+set -eu
+if [[ "$#" == 4 && "$1" == --yes && "$2" == @tasks-md/lint@0.10.2 && "$3" == --require-prereg && "$4" == TASKS.md ]]; then
+  printf '%s\\n' "$@" > parser-argv
+  exec "$FIXTURE_NODE" "$FIXTURE_LINT" "$3" "$4"
+fi
+if [[ "$#" -ge 2 && "$1" == vitest && "$2" == run ]]; then
+  exit 0
+fi
+echo "SETUP: unexpected npx arguments" >&2
+exit 64
+`,
+  );
+  chmodSync(npx, 0o755);
+  git(root, "add", ".");
+  git(root, "-c", "user.email=a@example.com", "-c", "user.name=a", "commit", "-q", "-m", "fixture baseline");
+  return root;
+}
+
+describe("fast gate task decisions with the real pinned parser", () => {
+  for (const fixture of queueCases) {
+    it(fixture.name, () => {
+      const root = executionRepo();
+      writeFileSync(join(root, "TASKS.md"), fixture.text);
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        PATH: `${join(root, ".fixture-bin")}:${process.env.PATH}`,
+        HOME: join(root, ".home"),
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+        LC_ALL: "C",
+        FIXTURE_NODE: process.execPath,
+        FIXTURE_LINT: join(root, "node_modules/@tasks-md/lint/dist/cli.js"),
+      };
+      delete env.BASH_ENV;
+      delete env.ENV;
+      const result = spawnSync("bash", [SCRIPT, "HEAD"], { cwd: root, env, encoding: "utf8" });
+      const argv = join(root, "parser-argv");
+      console.info(
+        "Task gate observation",
+        JSON.stringify({
+          name: fixture.name,
+          status: result.status,
+          sentinel: existsSync(join(root, "downstream")),
+          mergeReady: result.stdout.includes("verify:changed: merge-ready"),
+          parserInvoked: existsSync(argv),
+        }),
+      );
+      expect(result.error, result.stderr).toBeUndefined();
+      if (fixture.valid) {
+        expect(result.status, result.stdout + result.stderr).toBe(0);
+        expect(existsSync(join(root, "downstream"))).toBe(true);
+        expect(result.stdout).toContain("verify:changed: merge-ready");
+      } else {
+        expect(result.status, result.stdout + result.stderr).not.toBe(0);
+        expect(existsSync(join(root, "downstream"))).toBe(false);
+        expect(result.stdout).not.toContain("verify:changed: merge-ready");
+      }
+      if (fixture.name === "tracked conflict markers") {
+        expect(result.stdout + result.stderr).toContain("leftover conflict marker");
+      } else if (fixture.name === "empty queue with EOF whitespace") {
+        expect(result.stdout + result.stderr).toContain("new blank line at EOF");
+      } else {
+        expect(existsSync(argv)).toBe(true);
+      }
+      if (existsSync(argv)) {
+        expect(readFileSync(argv, "utf8")).toBe("--yes\n@tasks-md/lint@0.10.2\n--require-prereg\nTASKS.md\n");
+      }
+    });
+  }
 });
 
 function git(cwd: string, ...args: string[]): void {

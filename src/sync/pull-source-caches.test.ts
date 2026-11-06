@@ -172,6 +172,21 @@ interface FixtureChildResult {
   output: string;
 }
 
+function refreshFailureCatch(): string {
+  return `.catch(error=>{
+    let kind="other";
+    let errno="OTHER";
+    try {
+      kind=error instanceof SourceCheckoutLeaseRefusal?"lease-refusal":"other";
+      const code=error!==null&&typeof error==="object"?Object.getOwnPropertyDescriptor(error,"code")?.value:undefined;
+      if(["ENOENT","EACCES","EPERM","EEXIST"].includes(code))errno=code;
+    } catch {}
+    console.error("FIXTURE_B_FAILURE="+JSON.stringify({kind,errno}));
+    console.error("fixture refresh failed");
+    process.exitCode=1;
+  });`;
+}
+
 function productionChild(home: string, code: string) {
   const repoRoot = process.cwd();
   const sourceRoot = pathToFileURL(`${join(repoRoot, "src")}/`).href;
@@ -667,6 +682,57 @@ describe("explicit pull bounded progress (#780)", () => {
   });
 });
 
+describe("safe enum failure observation", () => {
+  const marker = "synthetic-private-error-marker";
+  const privateCode = "synthetic-unlisted-errno";
+  const controls = [
+    {
+      name: "typed refusal",
+      expression: `new SourceCheckoutLeaseRefusal(${JSON.stringify(marker)})`,
+      expected: { kind: "lease-refusal", errno: "OTHER" },
+    },
+    {
+      name: "filesystem error",
+      expression: `Object.assign(new Error(${JSON.stringify(marker)}),{code:"ENOENT"})`,
+      expected: { kind: "other", errno: "ENOENT" },
+    },
+    {
+      name: "unexpected error",
+      expression: `Object.assign(new Error(${JSON.stringify(marker)}),{code:${JSON.stringify(privateCode)}})`,
+      expected: { kind: "other", errno: "OTHER" },
+    },
+  ];
+
+  it.each(controls)("classifies $name without publishing raw error fields", async ({ name, expression, expected }) => {
+    const home = join(root, "observation-child-home");
+    mkdirSync(home, { mode: 0o700 });
+    const child = productionChild(
+      home,
+      `import {SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts"; Promise.reject(${expression})${refreshFailureCatch()}`,
+    );
+    const result = await fixtureChildResult(child);
+    const records = result.output.split("\n").filter((line) => line.startsWith("FIXTURE_B_FAILURE="));
+    const successRecords = result.output.split("\n").filter((line) => line.startsWith("FIXTURE_B_RESULT="));
+    expect(result.code).toBe(1);
+    expect(result.output).not.toContain(marker);
+    expect(result.output).not.toContain(privateCode);
+    expect(successRecords).toHaveLength(0);
+    console.log(
+      "FIXTURE_FAILURE_OBSERVATION=" +
+        JSON.stringify({
+          control: name,
+          exit: result.code,
+          records: records.length,
+          successRecords: successRecords.length,
+        }),
+    );
+    expect(records).toHaveLength(1);
+    const record = fixtureRecord<{ kind: string; errno: string }>(result, "FIXTURE_B_FAILURE=");
+    expect(Object.keys(record).sort()).toEqual(["errno", "kind"]);
+    expect(record).toEqual(expected);
+  });
+});
+
 describe("cross-process receipt-bound copy (#780)", () => {
   it("keeps copied bytes bound to the accepted revision across production updater processes", async () => {
     const home = join(root, "shared-child-home");
@@ -708,7 +774,7 @@ describe("cross-process receipt-bound copy (#780)", () => {
       );
       expect(a.done()).toBe(false);
       const newer = commit(x.repo, "newer cross-process bytes");
-      const bCode = `import {indexAllSources} from "./src/catalog/index-source.ts"; indexAllSources([${JSON.stringify(x.source)}],{explicitPull:true}).then(outcomes=>{console.log("FIXTURE_B_RESULT="+JSON.stringify(outcomes));if(outcomes.some(o=>o.status==="failed"))process.exitCode=1}).catch(()=>{console.error("fixture refresh failed");process.exitCode=1});`;
+      const bCode = `import {indexAllSources} from "./src/catalog/index-source.ts"; import {SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts"; indexAllSources([${JSON.stringify(x.source)}],{explicitPull:true}).then(outcomes=>{console.log("FIXTURE_B_RESULT="+JSON.stringify(outcomes));if(outcomes.some(o=>o.status==="failed"))process.exitCode=1})${refreshFailureCatch()}`;
       const b = productionChild(home, bCode);
       children.push(b);
       await fixtureHandshake(() => b.done() || b.output().includes(`Waiting for another refresh of ${x.source.url}`));

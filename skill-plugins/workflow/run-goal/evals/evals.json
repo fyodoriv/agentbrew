@@ -2892,6 +2892,17 @@
         "Re-reads the live value after merge",
         "Reports the remaining token-window limit as a risk to the goal"
       ]
+    },
+    {
+      "id": 253,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal deliver https://github.com/OWNER/REPO/issues/693'. Synthetic evidence: the issue is OPEN; its last owner comment says both fix parts are covered and ends with 'Closing.'; the fix 1 PR is merged; fix 2 is said to live in another repo's doctor script.",
+      "expected_output": "Treats the 'Closing' comment as a claim, not a closed state. Verifies fix 1 is an ancestor of main and its regression test passes, greps the other repo's default branch for fix 2 and checks the live machine state, then closes the issue with an evidence comment and re-reads the state as CLOSED. Writes no new code.",
+      "expectations": [
+        "Notices the issue is still OPEN despite the comment",
+        "Verifies each fix part with fresh evidence before closing",
+        "Does not reimplement already-shipped fixes",
+        "Re-reads the issue state after closing"
+      ]
     }
   ]
 }

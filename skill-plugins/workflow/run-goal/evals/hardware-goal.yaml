@@ -1,0 +1,14 @@
+description: Synthetic hardware goal decisions (issue 829)
+prompts:
+  - file://hardware-prompt.txt
+providers:
+  - id: ollama:chat:qwen3:4b
+    config:
+      temperature: 0
+      think: false
+      num_ctx: 16384
+      num_predict: 30
+defaultTest:
+  vars:
+    policy: file://../SKILL.md
+tests: file://hardware-cases.yaml

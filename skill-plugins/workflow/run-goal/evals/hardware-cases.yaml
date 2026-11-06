@@ -1,0 +1,48 @@
+- description: Unknown transport and identity
+  vars:
+    scenario: A keyboard must be paired; its transport, identifier, and current system identity are all unknown.
+    expected: PROBE
+    wrong: CLASSIC
+  assert:
+    - type: equals
+      value: '{{expected}}'
+- description: Renamed BLE keyboard with corroborated identity
+  vars:
+    scenario: A keyboard uses BLE; system evidence correlates its stable identifier with the user-confirmed renamed device. Required physical setup is complete.
+    expected: BLE
+    wrong: CLASSIC
+  assert:
+    - type: equals
+      value: '{{expected}}'
+- description: Identified classic Bluetooth device
+  vars:
+    scenario: A device uses classic Bluetooth; system evidence and a user-confirmed identifier uniquely identify it. Required physical setup is complete.
+    expected: CLASSIC
+    wrong: BLE extra
+  assert:
+    - type: equals
+      value: '{{expected}}'
+- description: Identified USB device
+  vars:
+    scenario: A device uses USB; system evidence and a user-confirmed identifier uniquely identify it. Required physical setup is complete.
+    expected: USB
+    wrong: BLE
+  assert:
+    - type: equals
+      value: '{{expected}}'
+- description: Indistinguishable BLE keyboards
+  vars:
+    scenario: Two BLE keyboards are indistinguishable; all permitted identity probes are exhausted and no unique identifier or user confirmation is available.
+    expected: HOLD
+    wrong: BLE
+  assert:
+    - type: equals
+      value: '{{expected}}'
+- description: Missing physical key instructions
+  vars:
+    scenario: A BLE keyboard is uniquely identified, but pairing requires a physical key sequence. Its keymap and all other authoritative sources are unavailable.
+    expected: ASK_KEYS
+    wrong: BLE
+  assert:
+    - type: equals
+      value: '{{expected}}'

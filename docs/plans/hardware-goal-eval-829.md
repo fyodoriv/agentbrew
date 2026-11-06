@@ -112,6 +112,29 @@ jq -e '.results.results | length == 6 and all(.[]; .success == false and .failur
 Success requires a nonzero eval exit and six assertion failures. Any accepted
 answer, provider error or missing case rejects the strict-output claim.
 
+## Calibration outcome: unqualified
+
+The echo runs produced six accepted correct answers, six rejected wrong
+answers, six rejected answers with extra text, and six echoed prompts that
+included the full skill and distinct scenarios. The network-denied profile
+refused a live local listener that was reachable without the profile. No
+model inference or hardware command ran.
+
+The original preparation also says to reject the configuration if "a provider
+call occurs," while its required commands call the echo provider. Read
+literally, that condition is triggered. An independent fresh reader confirmed
+the conflict. Therefore this calibration is **unqualified**, despite the
+observed assertion counts. Do not narrow the frozen condition after seeing
+the result or use this run as a behavioral baseline. Pivot to a separately
+registered measurement that does not call a provider during calibration.
+
+The four local result files have SHA-256 hashes, in command order:
+
+- correct: `1cfd172a0a1ea15f40294f97f2006e4d66cd99224242fc0bc8132a310e778b2b`
+- wrong: `209f7fbc2e719a6da47b07a92b40b3d73ccd74eec3dd31f7b4fb5c9575dc8ed7`
+- policy: `d4efe6010ab623c332178e6deb62df0ab856fdeb2d11edb38cb8f670c17d2c34`
+- extra: `ae5f8f0b7f4fff806a1693bdce486454e3b82e10ce21c4ec2ce49ee8e9151298`
+
 ## Later behavior experiment
 
 Only after preparation lands, record SHA-256 hashes of the skill, config,

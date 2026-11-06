@@ -1,0 +1,8 @@
+Apply the following skill to the fictional scenario. Do not run tools.
+
+{{policy}}
+
+Scenario: {{scenario}}
+
+Choose the single next action: PROBE, BLE, CLASSIC, USB, HOLD, or ASK_KEYS.
+Reply with exactly one label and no other text.

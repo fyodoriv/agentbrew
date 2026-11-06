@@ -156,19 +156,19 @@
 
 ## P1
 
-- [ ] Classify concurrent source-refresh failures without exposing private errors
-  - **ID**: source-lease-failure-observation
+- [ ] Observe a real concurrent source-refresh failure before choosing a fix
+  - **ID**: source-lease-real-failure-classification
   - **Tags**: reliability, sync, measurement, privacy
   - **Mode**: AFK
-  - **Details**: A composed full gate retained a successful updater result but its concurrent index child printed only a generic failure and no structured outcome. The unchanged exact case later passed; that does not establish a cause. Follow [the observation preparation](docs/plans/source-lease-failure-observation.md). Add only safe enum evidence at the existing child catch boundary, qualify it with synthetic actual-child controls, and land instrumentation before selecting a product fix. Preserve the failed full result, focused pass, original assertions, exit codes and deadlines.
+  - **Details**: Qualified instrumentation now distinguishes safe failure classes, but the original incident remains unexplained. After its separate delivery, run the [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort): at most ten sequential invocations of the unchanged exact cross-process case. Preserve every exit and log, stop on a classified failure, and never treat passing invocations as a fix or gate retry. Commit this cohort prediction before measurement. No product fix starts from an unclassified incident.
   - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
   - **Output**: measurement
-  - **Acceptance**: typed lease refusal, raw ENOENT and an unexpected synthetic private-marker error each emit the correct enum record, retain failure exit one and disclose no marker, message, stack, cause or path. Observation does not create a successful source outcome or classify the real incident without observed evidence.
-  - **Hypothesis**: safe catch instrumentation reduces missing classification from three of three synthetic actual-child controls to zero, while raw-marker disclosures and false successful outcomes remain zero. Real incident cause remains unknown until an actual failure is classified.
-  - **Measurement**: after committing the linked prediction and adding the proposed controls, run `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts --maxWorkers=1`; retain actual child records and exits. This proposed instrumentation measurement has not run. Run normal required gates before its separate delivery.
-  - **Success**: three of three correct enum records; every child retains exit one; zero raw-marker disclosures; zero false B success records; unchanged original assertions, retry rules and deadlines; required gates pass. Instrumentation lands before a separately registered product fix.
-  - **Pivot**: any missing or incorrect classification, raw private field, false success, changed oracle or raised timeout rejects the instrument. Keep the real cause unknown and revise observation rather than infer a product fix from a passing retry.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and actual-child fixture contracts.
+  - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
+  - **Hypothesis**: the bounded cohort yields at least one classified real failed invocation from the current baseline of zero, with zero unclassified failures, private disclosures or changed failure semantics. If no failure recurs, the evidence remains unverified.
+  - **Measurement**: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`; follow the linked sequential stopping rules, preserve every admission, exit and log, and stop after a classified failure or ten invocations. This cohort has not run.
+  - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
+  - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
 
 - [ ] Explicit pull keeps the requested sync modules selected
   - **ID**: sync-pull-only-parity

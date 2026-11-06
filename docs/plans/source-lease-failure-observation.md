@@ -114,3 +114,96 @@ JOBS=1 CARGO_BUILD_JOBS=1 VITEST_MAX_WORKERS=2 LOCKFILE_SYNC_NPM=npm@10.9.2 NO_C
 ```
 
 Neither command is a claimed instrumentation result at prediction creation.
+
+## Focused observation record
+
+Prediction `5d27c2c` preceded the actual-child controls and instrumentation.
+With the unchanged generic catch, every registered control retained exit one
+and emitted no success record or raw marker, but all lacked classification.
+The control cohort failed exactly on missing enum records.
+
+The shared child catch now emits only the registered kind and errno labels.
+It reads an own code descriptor instead of invoking a getter and retains
+default enums if inspection fails. The existing generic failure notice and
+exit one remain. The real index child and synthetic controls use the same
+catch representation; no product module changed.
+
+The whole source-copy file then passed, including the synthetic controls and
+the unchanged original cross-process case. All registered enum decisions and
+failure exits matched, with no synthetic private-marker or unrecognized-code
+disclosure and no false success record. The original failure did not recur
+in this cohort. Its cause remains UNKNOWN. Full qualification and separate
+instrumentation delivery were still pending at that checkpoint.
+
+## Full instrumentation qualification
+
+After normal composition with default revision `7fa37f6`, the frozen tree
+`5b997f9f26693650c810a16fbea3e9631def40df` passed the uncached full gate:
+6,401 tests passed, 33 were skipped, and all twenty steps ran fresh. The real
+command and its wrapper both exited zero. The qualified test-file SHA256 is
+`eeaa88314b4c279b3cffc2905091902a64aab46bf4e88fbcffe051179bc3f2cf`.
+
+The synthetic controls intentionally retain their failed child-process logs
+as private qualification evidence. Their terminal exit one is part of the
+control, not a failed parent assertion. The expected retained logs contain
+the registered enums, no private marker or unrecognized code, and no success
+record. They are owned evidence, not unidentified cleanup candidates. Keep
+the earlier failed full result and unchanged exact-case pass separately.
+
+This closes instrumentation qualification. It does not classify the original
+incident or qualify a product repair. Delivery remains a separate step.
+
+## Bounded real failure cohort
+
+This is a new prediction added at instrumentation closeout. Commit it before
+running this cohort; it was not part of prediction `5d27c2c`. The prior full
+failure, later focused passes and synthetic controls are retained provenance,
+not samples in this future cohort.
+
+Goal → Question → Metric: before choosing a product repair, can the unchanged
+cross-process case yield an observed real error class? Predict at least one
+real failed invocation with a safe enum record, from a baseline of zero
+classified real failures. Require zero unclassified failures and zero private
+disclosures. No product fix, deadline change, oracle change or exception
+reinterpretation belongs to this measurement.
+
+### Frozen procedure
+
+1. Verify that the qualified instrumentation has merged. Record its exact
+   source revision and the test, lease and index module hashes before the
+   first admission. Preserve every original assertion, retry rule and timeout.
+2. Admit only the existing exact case below, sequentially. Assign immutable
+   invocation IDs 1 through 10 before admission. Each admission consumes its
+   ID; do not replace failed, cancelled or missing observations with a new
+   attempt under the same ID. Never have two cohort invocations active.
+3. Preserve each command, accepted process handle, source revision, terminal
+   exit, complete private log and any retained child log before deciding
+   whether another invocation is allowed. Poll the same live handle after an
+   observation timeout; it is not a reason to restart or advance the cohort.
+4. On the first actual failed invocation with a valid `FIXTURE_B_FAILURE`
+   record, stop. Require exactly the allowed kind/errno fields, establish that
+   the record belongs to this invocation's index child, and retain its real
+   failed exit. Do not turn it into a passing gate result.
+5. An unclassified failure, private error disclosure, missing terminal
+   evidence or changed source invalidates the cohort and stops it. Preserve
+   the result and investigate observation separately. Do not continue until a
+   later pass conceals it, alter a timeout or reset the sample IDs.
+6. If every admitted invocation passes, stop at ten. The criterion remains
+   unverified. Pivot to separately registered controlled-race research, rather
+   than calling repeated passes proof of a fix or continuing indefinitely.
+
+Run this exact existing case for each permitted invocation:
+
+```sh
+JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false
+```
+
+This is a bounded diagnostic cohort, never a gate retry policy. Success
+requires at least one classified actual failed invocation, zero unclassified
+failures, zero private disclosures and the unchanged failure semantics.
+Passing all ten does not satisfy success. A new observed error class is not
+proof of the earlier incident's cause or of its mechanism. Any product repair
+still needs a separate committed prediction and a decisive reproduction.
+
+Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
+Munafò et al. (2017), preregistration. No cohort result is claimed here.

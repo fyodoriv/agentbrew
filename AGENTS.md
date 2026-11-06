@@ -106,7 +106,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
-- Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
+- Fast gate: `git diff --check "$base"`, then `npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md`, before later checks. Fix schema, whitespace and conflict errors first.
 
 ## Delivery
 

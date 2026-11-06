@@ -167,6 +167,8 @@ step() {
   "$@"
 }
 
+step git diff --check "$base"
+step npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md
 step node scripts/lint-tasks-stability.mjs TASKS.md
 step node scripts/check-rule-8-pattern-conformance.mjs
 step node scripts/check-rule-16-defaults.mjs

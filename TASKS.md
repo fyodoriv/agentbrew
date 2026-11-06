@@ -172,6 +172,21 @@
   - **Anchor**: Current command-readiness contract and primary host documentation in the plan; Basili et al. (1994), GQM; Munafò et al. (2017), preregistration.
 
 
+
+- [ ] Validate every sync selection before preparation can publish outputs
+  - **ID**: sync-selection-preflight
+  - **Tags**: security, stability, sync, cli
+  - **Mode**: AFK
+  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
+  - **Files**: `src/cli.ts`, `src/cli-helpers.ts`, `src/update.ts`, existing CLI/update/native-output tests, README and a registered preparation plan.
+  - **Output**: code
+  - **Acceptance**: Empty or unknown selections fail before state application, installation or publication. A valid selection excludes native plugin publication and live content preparation for every unselected module. An invocation without a selection retains normal configured behavior.
+  - **Hypothesis**: a shared preflight boundary reduces predicted unrequested-publication cases from four to zero across the sealed negative controls, while the default and valid selected controls remain correct. Capture the actual baseline before any fix; this is a prospective prediction, not a measured result.
+  - **Measurement**: Commit a plan with exact synthetic inputs and numeric call/write oracles first. Extend `src/cli-sync-agentfile.test.ts`, `src/cli-sync-pull.test.ts` and `src/update.test.ts`; run `JOBS=1 heavy-run npm exec -- vitest run src/cli-sync-agentfile.test.ts src/cli-sync-pull.test.ts src/update.test.ts --maxWorkers=1` for RED and GREEN, then required gates. Add real scratch output sentinels where preparation can publish.
+  - **Success**: zero unrequested calls or writes across every negative control; unknown and empty inputs exit nonzero before mutation; selected/default positive controls remain correct; original explicit-pull and ownership guards stay green.
+  - **Pivot**: Any invalid-input mutation, unselected publication, default regression or weakened ownership check rejects the boundary; revise the preparation route rather than hide its effects with a later filter.
+  - **Anchor**: Current CLI preparation/filter ordering and empty-string guards; Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration.
+
 - [ ] Observe a real concurrent source-refresh failure before choosing a fix
   - **ID**: source-lease-real-failure-classification
   - **Tags**: reliability, sync, measurement, privacy
@@ -185,20 +200,6 @@
   - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
   - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
-
-- [ ] Explicit pull keeps the requested sync modules selected
-  - **ID**: sync-pull-only-parity
-  - **Tags**: sync, cli, reliability
-  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
-  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
-  - **Output**: code
-  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
-  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
-  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
-  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
-  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
-
 
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
@@ -611,7 +612,7 @@
   - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
-  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts. Preserve selected-pull guards for pre-sync installation, live rule aliases and deferred staged-skill cleanup; use the CLI pull and source-skill-prune regressions as sealed migration controls.
   - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
@@ -625,7 +626,7 @@
   - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts. Selected pulls must not publish excluded Git MCP runtimes; retain the runtime and accepted source receipt controls from the pull-source-caches regression.
   - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.

@@ -96,7 +96,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
-- Build after catalog edits; [verify helper deployment](docs/plans/retire-usage-tips.md#cached-reader-recurrence).
+- [Catalog builds](docs/plans/retire-usage-tips.md#cached-reader-recurrence); [pull](README.md#selected-pull-modules).
 - Per-user schedulers: `src/core/`, fakes; [queue handoff](docs/plans/scheduled-repair-queue-admission.md).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.

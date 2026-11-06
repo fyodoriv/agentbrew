@@ -115,3 +115,18 @@ printf '%s\n' "$hardware_status" > "$hardware_parent/exit.txt"
 printf 'evidence: %s\n' "$hardware_parent"
 test "$hardware_status" = 0
 ```
+
+## Result
+
+On 2026-11-06, the one live request timed out waiting for an HTTP response
+with a configured 120-second socket timeout. The wrapper exited 1. No response, HTTP status or context
+proof was produced; the post-request identity check did not run. The frozen
+request hash matched the preregistered value. The runner reached the POST only
+after the pre-request version and digest checks and local-port denial control
+passed. The result is 0/1 and the registered approach is abandoned. It does
+not show whether the server truncates prompts or why it did not respond.
+
+Private local evidence retains the runner, request, sandbox profile, denial
+result, traceback and wrapper exit. It does not prove that the server received
+the request. Future work needs a separately registered measurement path; do
+not retry this control to seek a pass.

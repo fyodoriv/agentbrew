@@ -132,12 +132,18 @@ for skill in $SKILLS; do
     while IFS= read -r line; do
       # The quoted error after "write failed:" is the tool's text, not ours:
       # judge only the part before it for "no update" words and evidence.
-      head=$(printf '%s' "$line" | sed -E 's/[Ww][Rr][Ii][Tt][Ee] [Ff][Aa][Ii][Ll][Ee][Dd]:.*//')
-      printf '%s' "$head" | grep -qiE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' && continue
-      if printf '%s' "$head" | grep -qiE '(^|[^a-z])task([^a-z]|$)'; then
+      head=$(sed -E 's/[Ww][Rr][Ii][Tt][Ee] [Ff][Aa][Ii][Ll][Ee][Dd]:.*//' <<<"$line")
+      # Drop the skill name ("- task-command-center: ..."), so only the
+      # update text is judged.
+      case "$head" in *:*) head="${head#*:}" ;; esac
+      grep -qiE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' <<<"$head" && continue
+      # A task citation ("task <id>") is not evidence by itself: its id may
+      # hold a date or a number. Judge the rest of the line without it.
+      rest=$(sed -E 's/(^|[^A-Za-z])[Tt][Aa][Ss][Kk] +[^ ,;]+/\1/g' <<<"$head")
+      if grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+' <<<"$rest"; then
+        ok=1
+      elif [ "$rest" != "$head" ] && grep -qiE 'write failed: *[^ ]' <<<"$line"; then
         # A task is an update only with the error of a write that was tried.
-        printf '%s' "$line" | grep -qiE 'write failed: *[^ ]' && ok=1
-      elif printf '%s' "$head" | grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+'; then
         ok=1
       fi
     done <<EOF_RETRO

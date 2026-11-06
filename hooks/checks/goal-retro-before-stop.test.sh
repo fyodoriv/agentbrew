@@ -82,6 +82,9 @@ expect "an error text with 'did not' still allows" 0 "$(run taskdidnot)"
 msg=$(jq -cn --arg s taskdated --arg p "$TX" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' | bash "$SCRIPT" 2>&1 >/dev/null)
 case "$msg" in *"task <id>, write failed: <error>"*) ok=0 ;; *) ok=1 ;; esac
 expect "the block message shows the task form" 0 "$ok"
+touch "$RUN_GOAL_STATE_DIR/taskprose.contract.md"
+printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: added the task step, commit 1fcff84\n' >"$RUN_GOAL_STATE_DIR/taskprose.retro.md"
+expect "prose about a task with a commit allows" 0 "$(run taskprose)"
 # Work goes on and uses a new skill: the gate must still see it.
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"code-review"}}]}}' >>"$TX"
 expect "a skill used after the retro blocks again" 2 "$(run s1)"
@@ -145,6 +148,10 @@ touch "$RUN_GOAL_STATE_DIR/s3.contract.md"
 expect "bypass allows" 0 "$(run s3 HOOK_BYPASS_GOAL_RETRO_BEFORE_STOP=1)"
 expect "unsafe session id allows" 0 "$(run '../x')"
 
+touch "$RUN_GOAL_STATE_DIR/taskskill.contract.md"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"task-command-center"}}]}}' >>"$TX"
+printf -- '- write-changelog: fixed, commit 4a0ac04\n- code-review: PR #171\n- run-goal: new eval, PR #130\n- task-command-center: shipped, PR #812\n' >"$RUN_GOAL_STATE_DIR/taskskill.retro.md"
+expect "a skill named with 'task' and a PR allows" 0 "$(run taskskill)"
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then
   for detail in "${FAIL_DETAILS[@]}"; do echo "  FAIL: $detail"; done

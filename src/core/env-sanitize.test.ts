@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   checkEnvHygiene,
@@ -153,14 +154,84 @@ describe("displayEnvCheck", () => {
     errorSpy.mockRestore();
   });
 
-  it("truncates long values at 40 chars", () => {
-    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const longValue = "a".repeat(60);
-    displayEnvCheck([{ variable: "TEST_VAR", value: longValue }]);
-    const output = spy.mock.calls.map((c) => c[0]).join("\n");
-    expect(output).toContain("...");
-    expect(output).not.toContain(longValue);
-    spy.mockRestore();
+  const privacyCases = [
+    ["C01", "ANTHROPIC_MODEL", true],
+    ["C02", "OPENAI_MODEL", true],
+    ["C03", "CLAUDE_MODEL", true],
+    ["C04", "CLAUDECODE", false],
+    ["C05", "CLAUDE_CODE_USE_BEDROCK", true],
+    ["C06", "CLAUDE_CODE_USE_VERTEX", true],
+    ["C07", "OPENAI_API_KEY", false],
+    ["C08", "ANTHROPIC_API_KEY", true],
+    ["C09", "CUSTOM_PRIVACY_VAR", true],
+  ] as const;
+
+  it("keeps the sealed default variable identities", () => {
+    expect(DEFAULT_SANITIZE_VARS).toEqual(privacyCases.slice(0, 8).map(([, variable]) => variable));
+  });
+
+  it.each(privacyCases)("%s displays only the identity of %s", (id, variable, long) => {
+    const marker = `SYNTHETIC_VALUE_${id}_`;
+    const value = marker + (long ? "Z".repeat(64) : "");
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      displayEnvCheck([{ variable, value }]);
+      const line = stripVTControlCharacters(String(logSpy.mock.calls[0][0]));
+      const output = stripVTControlCharacters([...logSpy.mock.calls, ...errorSpy.mock.calls].flat().join("\n"));
+      expect.soft(line).toBe(`  ${variable} is set`);
+      expect.soft(line.split(variable)).toHaveLength(2);
+      expect.soft(output).not.toContain(value);
+      expect.soft(output).not.toContain(marker);
+      expect.soft(output).not.toContain("SYNTHETIC_");
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("does not read a warning value while displaying its identity", () => {
+    let valueReads = 0;
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      displayEnvCheck([
+        {
+          variable: "CUSTOM_PRIVACY_VAR",
+          get value() {
+            valueReads += 1;
+            return "SYNTHETIC_VALUE_GETTER_";
+          },
+        },
+      ]);
+      expect.soft(valueReads).toBe(0);
+      expect(stripVTControlCharacters(String(logSpy.mock.calls[0][0]))).toBe("  CUSTOM_PRIVACY_VAR is set");
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("keeps custom helper selection, internal values and unset output", () => {
+    const variable = "CUSTOM_PRIVACY_VAR";
+    const value = `SYNTHETIC_VALUE_C09_${"Z".repeat(64)}`;
+    process.env[variable] = value;
+    try {
+      const warnings = checkEnvHygiene([variable]);
+      expect(warnings).toEqual([{ variable, value }]);
+      expect(generateSanitizeCommands([variable])).toBe("unset CUSTOM_PRIVACY_VAR");
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        displayEnvCheck(warnings);
+        expect(stripVTControlCharacters(String(logSpy.mock.calls[0][0]))).toBe("  CUSTOM_PRIVACY_VAR is set");
+      } finally {
+        logSpy.mockRestore();
+        errorSpy.mockRestore();
+      }
+    } finally {
+      delete process.env[variable];
+    }
   });
 });
 

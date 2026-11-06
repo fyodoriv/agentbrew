@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { promisify } from "node:util";
+import { promisify, stripVTControlCharacters } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
@@ -16,6 +16,7 @@ let home: string;
 function fixtureEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
     HOME: home,
+    USERPROFILE: home,
     PATH: `${join(home, "bin")}:${dirname(process.execPath)}:/usr/bin:/bin`,
     AGENTBREW_NO_AUTO_INIT: "1",
     AGENTBREW_EVENTS: "0",
@@ -50,7 +51,10 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => rmSync(home, { recursive: true, force: true }));
+afterEach(() => {
+  rmSync(home, { recursive: true, force: true });
+  expect(existsSync(home)).toBe(false);
+});
 
 describe("real sanitize CLI shell output", () => {
   it("keeps clean stdout empty while banner, repair and status remain visible on stderr", {
@@ -147,5 +151,54 @@ describe("real sanitize CLI shell output", () => {
     expect(result.stdout).toContain("⚡");
     expect(result.stdout).toContain("Usage:");
     expect(result.stderr).not.toContain("⚡");
+  });
+});
+
+describe("real env check value privacy", () => {
+  const privacyCases = [
+    ["C01", "ANTHROPIC_MODEL", true],
+    ["C02", "OPENAI_MODEL", true],
+    ["C03", "CLAUDE_MODEL", true],
+    ["C04", "CLAUDECODE", false],
+    ["C05", "CLAUDE_CODE_USE_BEDROCK", true],
+    ["C06", "CLAUDE_CODE_USE_VERTEX", true],
+    ["C07", "OPENAI_API_KEY", false],
+    ["C08", "ANTHROPIC_API_KEY", true],
+  ] as const;
+
+  it.each(privacyCases)("%s reports %s without its value", { timeout: 65_000 }, async (id, variable, long) => {
+    const marker = `SYNTHETIC_VALUE_${id}_`;
+    const value = marker + (long ? "Z".repeat(64) : "");
+    const result = await new Promise<{
+      code: number | string;
+      signal: NodeJS.Signals | null;
+      stdout: string;
+      stderr: string;
+    }>((resolve) => {
+      execFile(
+        process.execPath,
+        ["--import", loader, entry, "env", "check"],
+        {
+          cwd: home,
+          env: fixtureEnv({ [variable]: value }),
+          timeout: 60_000,
+        },
+        (error, stdout, stderr) => {
+          resolve({ code: error?.code ?? 0, signal: error?.signal ?? null, stdout, stderr });
+        },
+      );
+    });
+    const stdout = stripVTControlCharacters(result.stdout);
+    const stderr = stripVTControlCharacters(result.stderr);
+    const output = stdout + stderr;
+    expect.soft(result.code).toBe(1);
+    expect.soft(result.signal).toBeNull();
+    expect.soft(stdout).toContain("⚡");
+    expect.soft(stderr).not.toContain("⚡");
+    expect.soft(stderr).toContain("1 env var(s)");
+    expect.soft(stdout.split("\n").filter((line) => line.includes(variable))).toEqual([`  ${variable} is set`]);
+    expect.soft(output).not.toContain(value);
+    expect.soft(output).not.toContain(marker);
+    expect(output).not.toContain("SYNTHETIC_");
   });
 });

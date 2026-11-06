@@ -1,4 +1,5 @@
 import { execFile, execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -684,6 +685,227 @@ describe("safe enum failure observation", () => {
     const record = fixtureRecord<{ kind: string; errno: string }>(result, "FIXTURE_B_FAILURE=");
     expect(Object.keys(record).sort()).toEqual(["errno", "kind"]);
     expect(record).toEqual(expected);
+  });
+});
+
+async function releaseProbeHandshake(ready: () => boolean): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (!ready()) {
+    if (Date.now() >= deadline) throw new Error("controlled probe handshake expired");
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+  }
+}
+
+async function releaseProbeChildResult(child: ReturnType<typeof productionChild>): Promise<FixtureChildResult> {
+  await releaseProbeHandshake(child.done);
+  return child.finished;
+}
+
+interface ReleaseProbeState {
+  eexist: number;
+  inspections: number;
+  windows: number;
+  workEntries: number;
+  restored: boolean;
+}
+
+describe("controlled source-lease release windows", () => {
+  let releaseWindowFileInvocationMayAdmit = true;
+  const controls = [
+    { id: 1, name: "owner held", exit: 1, kind: "lease-refusal", errno: "OTHER", workEntries: 0 },
+    { id: 2, name: "owner released before contender", exit: 0, kind: null, errno: null, workEntries: 1 },
+    { id: 3, name: "release between EEXIST and inspection", exit: 1, kind: "other", errno: "ENOENT", workEntries: 0 },
+  ];
+
+  it.for(controls)("$id $name", async (control, context) => {
+    if (!releaseWindowFileInvocationMayAdmit) context.skip("Blocked by an earlier unverified physical control");
+    releaseWindowFileInvocationMayAdmit = false;
+    retainFixture = true;
+    const home = join(root, "release-probe-home");
+    const checkout = join(home, "fixture-checkout");
+    mkdirSync(checkout, { recursive: true, mode: 0o700 });
+    const digest = createHash("sha256").update(realpathSync.native(checkout).toLowerCase()).digest("hex");
+    const leasePath = join(home, ".cache", "agentbrew", "source-checkout-leases", digest);
+    const held = join(root, "probe-owner-held");
+    const release = join(root, "probe-owner-release");
+    const inspection = join(root, "probe-at-inspection");
+    const resume = join(root, "probe-inspection-resume");
+    const owner = productionChild(
+      home,
+      `import fs from "node:fs";
+       import {withSourceCheckoutLeases,assertSourceCheckoutLease} from "./src/catalog/source-checkout-lease.ts";
+       withSourceCheckoutLeases([{path:${JSON.stringify(checkout)}}],async()=>{
+         assertSourceCheckoutLease(${JSON.stringify(checkout)});
+         fs.writeFileSync(${JSON.stringify(held)},"held",{flag:"wx",mode:0o600});
+         const deadline=Date.now()+15000;
+         while(!fs.existsSync(${JSON.stringify(release)})){
+           if(Date.now()>=deadline)throw new Error("controlled owner hold expired");
+           await new Promise(done=>setTimeout(done,10));
+         }
+       }).then(()=>console.log("LEASE_PROBE_OWNER_RELEASED=true"))
+       .catch(()=>{console.error("LEASE_PROBE_OWNER_FAILURE");process.exitCode=1});`,
+    );
+    const children = [owner];
+    let contender: ReturnType<typeof productionChild> | undefined;
+    let ownerResult: FixtureChildResult | undefined;
+    let contenderResult: FixtureChildResult | undefined;
+    let invalid = false;
+    let childrenReaped = false;
+    let ownerHeldBeforeContender = false;
+    let ownerHeldUntilContenderDone = false;
+    let ownerReleasedBeforeContender = false;
+    let ownerReleasedBeforeInspection = false;
+    try {
+      await releaseProbeHandshake(() => owner.done() || existsSync(held));
+      if (owner.done() || !existsSync(join(leasePath, "owner"))) throw new Error("controlled owner was not held");
+      ownerHeldBeforeContender = true;
+      if (control.id === 2) {
+        writeFileSync(release, "release");
+        ownerResult = await releaseProbeChildResult(owner);
+        if (ownerResult.code !== 0 || existsSync(leasePath)) throw new Error("controlled pre-release unverified");
+        ownerReleasedBeforeContender = true;
+      }
+      contender = productionChild(
+        home,
+        `import fs from "node:fs";
+         import * as namedFs from "node:fs";
+         import {syncBuiltinESMExports} from "node:module";
+         import {withSourceCheckoutLeases,assertSourceCheckoutLease,SourceCheckoutLeaseRefusal} from "./src/catalog/source-checkout-lease.ts";
+         const target=${JSON.stringify(leasePath)};
+         const realMkdir=fs.mkdirSync;
+         const realLstat=fs.lstatSync;
+         let pendingInspection=false;
+         const state={eexist:0,inspections:0,windows:0,workEntries:0,restored:false};
+         (async()=>{
+           try {
+             fs.mkdirSync=function(...args){
+               try{return Reflect.apply(realMkdir,fs,args);}
+               catch(error){
+                 if(args[0]===target&&error?.code==="EEXIST"){state.eexist++;pendingInspection=true;}
+                 throw error;
+               }
+             };
+             fs.lstatSync=function(...args){
+               if(args[0]===target&&pendingInspection){
+                 pendingInspection=false;
+                 state.inspections++;
+                 if(${control.id}===3){
+                   if(state.windows!==0)throw new Error("controlled inspection repeated");
+                   state.windows++;
+                   fs.writeFileSync(${JSON.stringify(inspection)},"inspection",{flag:"wx",mode:0o600});
+                   const deadline=Date.now()+10000;
+                   while(!fs.existsSync(${JSON.stringify(resume)})){
+                     if(Date.now()>=deadline)throw new Error("controlled inspection resume expired");
+                     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);
+                   }
+                 }
+               }
+               return Reflect.apply(realLstat,fs,args);
+             };
+             syncBuiltinESMExports();
+             await withSourceCheckoutLeases([{path:${JSON.stringify(checkout)}}],async()=>{
+               assertSourceCheckoutLease(${JSON.stringify(checkout)});
+               state.workEntries++;
+             });
+           } finally {
+             fs.mkdirSync=realMkdir;
+             fs.lstatSync=realLstat;
+             syncBuiltinESMExports();
+             state.restored=fs.mkdirSync===realMkdir&&fs.lstatSync===realLstat&&namedFs.mkdirSync===realMkdir&&namedFs.lstatSync===realLstat;
+             console.log("LEASE_PROBE_STATE="+JSON.stringify(state));
+           }
+         })().then(()=>console.log("LEASE_PROBE_ACQUIRED=true"))${refreshFailureCatch()}`,
+      );
+      children.push(contender);
+      if (control.id === 3) {
+        await releaseProbeHandshake(() => contender?.done() || existsSync(inspection));
+        if (contender.done() || owner.done() || !existsSync(inspection))
+          throw new Error("controlled inspection window absent");
+        writeFileSync(release, "release");
+        ownerResult = await releaseProbeChildResult(owner);
+        if (ownerResult.code !== 0 || existsSync(leasePath)) throw new Error("controlled release unverified");
+        ownerReleasedBeforeInspection = true;
+        writeFileSync(resume, "resume");
+      }
+      contenderResult = await releaseProbeChildResult(contender);
+      if (control.id === 1) {
+        ownerHeldUntilContenderDone = !owner.done() && existsSync(join(leasePath, "owner"));
+        writeFileSync(release, "release");
+      }
+    } catch {
+      invalid = true;
+    } finally {
+      writeFileSync(release, "release");
+      writeFileSync(resume, "resume");
+      try {
+        const results = await Promise.all(children.map(releaseProbeChildResult));
+        ownerResult = results[0];
+        contenderResult = results[1];
+        childrenReaped = children.length === 2 && results.every((result) => result.code !== null);
+      } catch {
+        invalid = true;
+      }
+    }
+    const evidence = {
+      id: control.id,
+      evidenceKey: createHash("sha256").update(root).digest("hex").slice(0, 12),
+      invalid,
+      ownerHeldBeforeContender,
+      ownerHeldUntilContenderDone,
+      ownerReleasedBeforeContender,
+      ownerReleasedBeforeInspection,
+      ownerExit: ownerResult?.code ?? null,
+      contenderExit: contenderResult?.code ?? null,
+      childrenReaped,
+      finalLeaseAbsent: !existsSync(leasePath),
+    };
+    writeFileSync(join(root, "release-probe-record.json"), JSON.stringify(evidence), { mode: 0o600 });
+    console.log(`LEASE_RELEASE_WINDOW_OBSERVATION=${JSON.stringify(evidence)}`);
+    expect(invalid).toBe(false);
+    expect(childrenReaped).toBe(true);
+    expect(ownerHeldBeforeContender).toBe(true);
+    expect(ownerResult?.code).toBe(0);
+    expect(ownerResult?.output).toContain("LEASE_PROBE_OWNER_RELEASED=true");
+    expect(evidence.finalLeaseAbsent).toBe(true);
+    expect(contenderResult?.code).toBe(control.exit);
+    const result = contenderResult!;
+    const state = fixtureRecord<ReleaseProbeState>(result, "LEASE_PROBE_STATE=");
+    expect(Object.keys(state).sort()).toEqual(["eexist", "inspections", "restored", "windows", "workEntries"]);
+    expect([ownerResult?.output ?? "", result.output].join("\n")).not.toMatch(
+      /(?:^|\n)\s+at\s|(?:^|\n)[A-Za-z]*Error:|"(?:message|stack|cause|path)"\s*:/,
+    );
+    expect(result.output.split("\n").filter((line) => line.startsWith("FIXTURE_B_FAILURE="))).toHaveLength(
+      control.kind === null ? 0 : 1,
+    );
+    expect(state.restored).toBe(true);
+    expect(state.workEntries).toBe(control.workEntries);
+    if (control.id === 1) {
+      expect(ownerHeldUntilContenderDone).toBe(true);
+      expect(state.eexist).toBeGreaterThan(0);
+      expect(state.inspections).toBe(state.eexist);
+      expect(state.windows).toBe(0);
+    } else if (control.id === 2) {
+      expect(ownerReleasedBeforeContender).toBe(true);
+      expect(state.eexist).toBe(0);
+      expect(state.inspections).toBe(0);
+      expect(state.windows).toBe(0);
+    } else {
+      expect(ownerReleasedBeforeInspection).toBe(true);
+      expect(state.eexist).toBe(1);
+      expect(state.inspections).toBe(1);
+      expect(state.windows).toBe(1);
+    }
+    if (control.kind === null) {
+      expect(result.output).toContain("LEASE_PROBE_ACQUIRED=true");
+      expect(result.output).not.toContain("FIXTURE_B_FAILURE=");
+    } else {
+      expect(result.output).not.toContain("LEASE_PROBE_ACQUIRED=true");
+      expect(fixtureRecord<{ kind: string; errno: string }>(result, "FIXTURE_B_FAILURE=")).toEqual({
+        kind: control.kind,
+        errno: control.errno,
+      });
+    }
+    releaseWindowFileInvocationMayAdmit = true;
   });
 });
 

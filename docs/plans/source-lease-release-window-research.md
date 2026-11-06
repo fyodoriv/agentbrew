@@ -207,5 +207,58 @@ its historical acceptance or resolves the earlier UNKNOWN cause.
 - Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
   (2017), preregistration and reproducibility.
 
-The literature guides the proposed method. It is not evidence that these
-unimplemented probes execute or reproduce the original incident.
+The literature guides the method. It does not establish the earlier
+incident's cause; executed outcomes and their qualification limit follow.
+
+## Executed cohorts and failed qualification
+
+The closed natural cohort still has ten passes and no classified real
+failure. Its result remains UNVERIFIED, and the earlier cause remains UNKNOWN.
+Do not reopen it or count any controlled execution as one of its samples.
+
+Predictions `d640854` and `790eca0` preceded all physical admissions. The
+privacy update was composed before freezing source at tree
+`bbe912a7d2930c96ba1e5527d4db37bc166c7fe3`, with probe SHA256
+`76b8fb17cc7f30aae8e556cfe122ca40a8c2c28369f22b18d62f6a24e460320e`.
+Those source bytes remained unchanged throughout both cohorts.
+
+| Cohort | Actual admissions | Matrix outcomes | Guard evidence |
+| --- | --- | --- | --- |
+| initial | 1, 2, 3 | All match: lease-refusal/OTHER; leased acquisition; other/ENOENT | Lease assertions, physical order, wrapper restoration and every child close verified |
+| verification | 4, 5, 6 | All match the same frozen classes | Actual records and private child logs retained; every child reaped; fresh checks found none live |
+
+The shared error output stayed enum-only. No registered privacy guard
+violation or unlocked work was observed. The inspection-window control used
+a real EEXIST, actual owner termination and removal, and a real subsequent
+lstat. It did not manufacture ENOENT. These are controlled mechanism
+observations, not proof of the earlier incident.
+
+The single uncached full verification nevertheless exited one. It reported
+6,422 passes, one failure and 33 skips; nineteen gate steps were attempted
+with zero cache hits. Exact terminal failure:
+
+```text
+src/plugins/cli-plugin.test.ts:200:3
+add, update, rollback, and remove keep the marketplace copy current
+Error: Test timed out in 30000ms.
+```
+
+That case's source was unchanged by this research. The timeout's cause is
+UNKNOWN; neither an infrastructure attribution nor an unrelated-cause claim
+is supported. The error identifies the case, not the stalled lifecycle
+boundary. A separate [plugin observation preparation](plugin-lifecycle-timeout-observation.md)
+registers safe diagnosis without changing the bound or assertions.
+
+Research qualification is **FALSE** because the qualifying full gate failed.
+The research task stays open. All six physical admissions are consumed;
+there is no retry or replacement admission under this registration. Preserve
+the failed full and every control record. Do not run verify:changed, related
+selection or another full from this checkout as a workaround: they may admit
+the physical controls again. Only explicit non-physical docs, task, privacy,
+bloat or static checks are permitted for this checkpoint.
+
+No product change is qualified or proposed here. Any later physical
+qualification needs a separate committed registration; any product repair
+needs its own diagnosed boundary, decisive reproduction and committed
+hypothesis. Later ordinary regression runs must not be inserted into this
+experiment's denominator.

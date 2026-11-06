@@ -139,3 +139,23 @@ skill. A later candidate must improve by at least one case and reach 6/6; a
 6/6 baseline needs a new measurement. Invalid answers and missing rows count
 as failures. Do not claim actual pairing or general agent behavior from this
 matrix.
+
+## Calibration result
+
+On 2026-11-06, the recorded command sequence exited zero. The exact fixture
+comparison and all four result checks returned true: 6/6 correct answers were
+accepted; 6/6 wrong, extended and invalid answers were rejected. The
+five-answer input exited 5 with the expected incomplete-input error. The
+synthetic listener received two unsandboxed requests and no sandboxed request;
+the sandboxed client exited 7. The commands did not invoke an AI or Promptfoo
+provider, a model or hardware. They do not prove general network isolation or
+an agent's behavior.
+
+The input file SHA-256 is
+`934d44fa31f645408254f92665d1f18d0a8953fb5071c193d82696226ade3fb5`.
+The correct result SHA-256 is
+`122dddd5cbc67c59787e60f4cd78162ac726b7107208e1cd3bf19620e889be68`.
+The wrong, extended and invalid result files each hash to
+`54ebdea09e1ceabe8565720fca8aa804a4d2e98003e3c20c6d750d0a763c3cd2`:
+each contains the same six false decisions. Full local evidence retains the
+inputs, statuses, error and listener records.

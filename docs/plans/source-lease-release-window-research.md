@@ -21,8 +21,11 @@ policy, invent a filesystem error or introduce unlocked fallback.
 
 ## Minimal physical controls
 
-Admit each control once, sequentially, for a maximum of three probes. Do not
-repeat an invalid or unexpected result until it passes.
+Admit each control once, sequentially, in the initial cohort. The separate
+pre-measurement amendment below registers one later verification cohort of
+the same immutable controls. The combined maximum is six physical admissions:
+three initial and three verification. No replacement admission or extra retry
+is permitted.
 
 | Control | Required physical order | Predicted contender result | Work and cleanup guard |
 | --- | --- | --- | --- |
@@ -89,7 +92,7 @@ Goal → Question → Metric: determine whether this controlled release order
 produces a distinct physical error class without changing lease policy.
 Predict the held control yields typed refusal, the pre-released control
 yields verified leased acquisition, and the inspection-window control yields
-an actual raw ENOENT. Require all three once-only controls to match, zero
+an actual raw ENOENT. Require every control to match in each registered cohort, zero
 unclassified outcomes, zero private-error disclosures, zero unlocked work and
 verified termination of every child.
 
@@ -111,10 +114,88 @@ JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t '
 ```
 
 Every matrix row must execute. Missing code, all-skipped execution or missing
-terminal evidence cannot qualify. Follow with affected and required normal
-repo gates before any research delivery. A later product change needs its
-own committed hypothesis and decisive reproduction; this proposal contains
-neither a product patch nor permission to reopen the closed cohort.
+terminal evidence cannot qualify. The one full gate below is the only
+registered physical replay for delivery qualification. Do not run additional
+affected cohorts or repeat the full gate under this registration. A later
+product change needs its own committed hypothesis and decisive reproduction;
+this proposal contains neither a product patch nor permission to reopen the
+closed natural cohort.
+
+## Pre-measurement verification amendment
+
+This amendment was prepared after prediction `d640854`, implementation and
+static preflight, but before any physical outcome. No initial control had
+been admitted. Commit this amendment before either physical cohort. Preserve
+the earlier unexecuted source freeze as provenance, then freeze the committed
+amended plan and exact probe/source bytes before the first admission.
+
+The initial cohort and full-gate verification cohort are distinct. This
+resolves the fact that an unrestricted full gate would execute the physical
+controls again. It does not relax a predicted class, privacy guard, work
+guard, reaping condition or bound.
+
+| Cohort | Admission ordinal | Immutable control ID | Required prediction |
+| --- | --- | --- | --- |
+| initial | 1 | 1: owner held | lease-refusal / OTHER; no work; child exit one |
+| initial | 2 | 2: owner released before contender | valid leased acquisition; child exit zero |
+| initial | 3 | 3: release between EEXIST and inspection | other / ENOENT; no work; child exit one |
+| verification | 4 | 1: owner held | Same frozen prediction |
+| verification | 5 | 2: owner released before contender | Same frozen prediction |
+| verification | 6 | 3: release between EEXIST and inspection | Same frozen prediction |
+
+Admit initial controls separately in the prescribed order, preserving each
+real command, accepted handle, actual log, child records and terminal status
+before deciding whether the next is permitted. Any unexpected or invalid
+result stops initial admissions and makes verification ineligible. Do not
+relabel a failed or cancelled admission as unused capacity.
+
+Verification is eligible only after all initial controls match and the root
+reviews their evidence. It uses the same frozen source/probe bytes in one
+uncached full gate. Preserve the same three control IDs and every actual
+child record. No probe or product change is allowed between cohorts under
+this registration.
+
+Before either cohort, add an invocation-scoped fail-stop latch only to the
+probe describe block. Arm it before starting a physical control and clear it
+only after every original milestone, class, privacy, work and reaping
+assertion passes. If it remains armed, later probe cases skip before creating
+children or touching the fixture. Keep the first unexpected result failed;
+later skipped controls are unadmitted and unverified, never successful.
+The latch belongs to the test-file invocation and is discarded when that
+invocation ends. The initial-cohort controller separately refuses another
+command after any unexpected or unknown result.
+
+Implement and statically check this latch only after the amendment commit,
+before freezing the final source for either physical cohort. It changes
+scheduling, not a prediction or assertion. The existing gate's plain
+`npx vitest run` does not expose a configured global bail option; do not claim
+that an environment variable supplies one. The local fail-stop guard is the
+registered way to prevent later physical admissions within that full run.
+
+The single verification command, after that review:
+
+```sh
+JOBS=1 CARGO_BUILD_JOBS=1 VITEST_MAX_WORKERS=1 LOCKFILE_SYNC_NPM=npm@10.9.2 NO_CACHE=1 heavy-run npm run verify
+```
+
+Before admission, verify that the immutable physical cases execute in their
+registered order and that the local fail-stop latch blocks later physical
+work after an invalid case. If that scheduling cannot be established,
+verification is unavailable; stop before running it. Ordinary unrelated gate
+tests need not be changed, and a full gate that fails elsewhere does not
+qualify research even when its physical controls match.
+
+Count physical admissions across both cohorts, with a ceiling of six. There
+is no automatic full-gate retry even if it fails in an unrelated step before
+or after the controls. Preserve the actual executed/pending control states;
+do not infer successful verification from the initial cohort. A failed gate,
+source change, unknown termination or invalid control needs new registration
+before further physical execution.
+
+Both cohorts matching their unchanged matrix and a successful qualifying
+gate are required for research qualification. The closed ten-invocation
+natural cohort remains closed and UNVERIFIED; no controlled result replaces
+its historical acceptance or resolves the earlier UNKNOWN cause.
 
 ## Method sources
 

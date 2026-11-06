@@ -85,3 +85,19 @@ Retain the command's real exit and private local evidence. This checks only
 the selected model digest and two IPv4 loopback connections. A model baseline
 still needs a separately registered prompt, frozen inputs, local outputs and
 privacy controls. The profile is not a general-purpose network firewall.
+
+## Result
+
+On 2026-11-06, the preregistered block exited zero. All three reads returned
+the same selected-model digest. The synthetic listener received its two
+ordinary requests and no restricted request. The restricted client exited 7
+with a permission error. The profile SHA-256 was
+`8bc4a18e186c1cc3ea8e18448c1c08f9078c6bf8ee456025c59c07aae702eeae`.
+The saved digest file's SHA-256 was
+`ae216e3fca9221a5b914c28fd530d1702329fdf66661acd5bdda41aa9cbeb350`.
+Full local evidence retains the profile, selected digest, markers, counts and
+error without storing the complete model list.
+
+This verifies only the selected endpoint response and the two tested IPv4
+loopback connections on this run. It does not prove the server's identity,
+all network routes, model quality or hardware behavior. No inference ran.

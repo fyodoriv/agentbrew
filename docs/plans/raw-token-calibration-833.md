@@ -92,3 +92,26 @@ chat-mode runner. Register any later skill baseline and comparison separately.
 Anchors: [Ollama generate API](https://docs.ollama.com/api/generate),
 [Ollama v0.40.14 prompt counts](https://github.com/ollama/ollama/blob/v0.40.14/llm/llama_server.go),
 and [Goal Question Metric](https://doi.org/10.1002/9780470172669.ch12).
+
+## Results and pivot
+
+On 2026-11-06, the one mock run exited zero. The saved result records a valid
+response, four rejected negative cases and a permission-denied result for the
+other listener. The individual negative outcomes and cleanup are supported by
+the saved runner reaching success, not by separate raw records. The mock does
+not establish real tokenizer or server behavior.
+
+The one local calibration exited 1. The server returned HTTP 200 and
+`done: true`, but stopped at the output limit after explanatory text rather
+than the required `READY`. The response reported 17 prompt tokens, matching
+the independent tokenizer's 17 IDs. The pre-request checks completed, but
+their loaded-context value was not retained separately; validation stopped
+before the post-request context and identity checks. The result is 0/1, so
+this measurement path is abandoned. It does not prove why the model answered
+that way, or establish a valid skill baseline.
+
+Private local evidence retains both runners and wrappers, prompts, mock wire
+data, token IDs, server response, checks and wrapper exits. The extracted
+tokenizer copy is omitted; the pinned release archive can be verified again.
+The scripts are not in this tree, so the registered commands cannot run from
+the branch alone. The client restriction did not confine the model server.

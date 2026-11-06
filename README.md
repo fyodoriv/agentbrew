@@ -1118,6 +1118,56 @@ The local jks stub, dependency overrides and Node floor remain unchanged.
 The plan tracks the remaining peer work and requires full validation plus
 GitHub fixed-status confirmation before final completion.
 
+### Rust migration preparation
+
+`migration-check` is a developer measurement binary under `rust/`. It is not
+an installed agentbrew runtime command or a new user action. The preparation
+requires Rust 1.97 or newer, Git, and a C compiler for the upstream Bash grammar.
+Parser and vendor dependencies are locked; this is a toolchain cost, not a
+speed or coverage claim.
+
+The draft includes native syntax, caller bindings, held-root reads and a
+strict inventory validator. Pure-library and package-entry checks are separate
+from metadata transport. The current worker fails a normal root-prefix read
+with `TermKillPermission`; full ledger, executable-family classification,
+bundler mappings and lifecycle acceptance remain pending. Do not use this
+draft as a completed repository inventory or a production migration gate.
+
+Failed Git reads can include a bounded transport context: the fixed operation,
+parent stage, worker exit or signal, and known worker reason. It captures no
+arguments, stderr, environment or source payload. Startup rejection remains
+status 2; more specific supervisor failures remain outer errors. Diagnostic
+coverage does not establish classifier correctness or native cleanup safety.
+
+Two compiled records have bounded source review: the Python command-target
+data parser and one generated shell canary in the Rust snapshot fixture.
+The Rust record supplies an exact literal, caller and output binding; it does
+not approve the whole Rust file. Compiled review data is immutable for one
+checker invocation. The manifest cannot select records or override native
+contradictions. See the [reviewed registry plan](docs/plans/rust-source-reviewed-registry.md).
+
+Run the package-entry checks through the owner's shared queue with one compiler
+worker and one test thread:
+
+```bash
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --manifest-path rust/Cargo.toml --test package_entries -- --test-threads=1
+```
+
+The broad library/family invocation is unavailable while its source-count work
+is unbounded and Rust positives remain unqualified. Use only the separately
+registered exact filters in the [staged measurement plan](docs/plans/rust-literal-staged-measurement-proposal-20261105.md)
+and [legacy capture plan](docs/plans/rust-legacy-baseline-capture-20261106.md).
+Historical commands in earlier plans are not fresh run authorization.
+
+The [upstream ownership plan](docs/plans/rust-upstream-ownership.md) separates
+pinned dependency provenance from owned patches and executable-family proof.
+
+The [source inventory plan](docs/plans/rust-source-inventory.md) defines exact
+receipts, ignored-file privacy and generated-output ownership. The
+[registered parser experiment](docs/plans/rust-source-parser-experiment.md)
+defines the correctness controls. Production ports wait for a complete,
+reviewed ledger and passing gates.
+
 ### How `main` health is checked
 
 GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:

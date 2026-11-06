@@ -1,0 +1,261 @@
+--- a/src/libproc/sys/macos.rs
++++ b/src/libproc/sys/macos.rs
+@@ -4,7 +4,8 @@
+ use libc::{c_char, c_int, c_void};
+ 
+ use crate::osx_libproc_bindings;
+-use crate::processes::ProcFilter;
++use crate::processes::{BoundedGroupPids, ProcFilter};
++use super::bounded_group::{bounded_return, checked_capacity};
+ 
+ impl ProcFilter {
+     pub(crate) fn typeinfo(self) -> u32 {
+@@ -59,6 +60,14 @@
+             Err(io::Error::last_os_error())
+         }
+         _ => {
++            if ret as usize % mem::size_of::<u32>() != 0
++                || ret as usize / mem::size_of::<u32>() > pids.capacity()
++            {
++                return Err(io::Error::new(
++                    io::ErrorKind::InvalidData,
++                    "invalid PID result length",
++                ));
++            }
+             // `ret` cannot be negative here - so no possible loss of sign
+             #[allow(clippy::cast_sign_loss)]
+             let items_count = ret as usize / mem::size_of::<u32>();
+@@ -79,6 +88,11 @@
+             0,
+         )
+     };
++    let (ret, pids) = query_pids(proc_type, buffer_size)?;
++    list_pids_ret(ret, pids)
++}
++
++fn query_pids(proc_type: ProcFilter, buffer_size: c_int) -> io::Result<(c_int, Vec<u32>)> {
+     let mut pids = check_listpid_ret(buffer_size)?;
+     let buffer_ptr = pids.as_mut_ptr().cast::<c_void>();
+ 
+@@ -91,7 +105,36 @@
+         )
+     };
+ 
+-    list_pids_ret(ret, pids)
++    if ret >= 0 && (ret > buffer_size || ret as usize % mem::size_of::<u32>() != 0) {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "invalid PID query length",
++        ));
++    }
++    Ok((ret, pids))
++}
++
++pub(crate) fn bounded_group_pids(pgrpid: u32, capacity: usize) -> io::Result<BoundedGroupPids> {
++    let buffer_size = checked_capacity(capacity)?;
++    if pgrpid == 0 || pgrpid > i32::MAX as u32 {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidInput,
++            "invalid process group",
++        ));
++    }
++    let (ret, pids) = query_pids(ProcFilter::ByProgramGroup { pgrpid }, buffer_size)?;
++    let result = bounded_return(ret, io::Error::last_os_error().raw_os_error(), capacity)?;
++    let pids = list_pids_ret(ret, pids)?;
++    if pids.len() != result.items {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "PID query count mismatch",
++        ));
++    }
++    Ok(BoundedGroupPids {
++        pids,
++        complete: result.complete,
++    })
+ }
+ 
+ pub(crate) fn listpidspath(
+--- a/src/libproc/sys/mod.rs
++++ b/src/libproc/sys/mod.rs
+@@ -8,3 +8,6 @@
+ mod macos;
+ #[cfg(target_os = "macos")]
+ pub(crate) use self::macos::*;
++
++#[cfg(target_os = "macos")]
++mod bounded_group;
+--- a/src/processes.rs
++++ b/src/processes.rs
+@@ -5,6 +5,29 @@
+ use crate::libproc::sys::listpids;
+ #[cfg(target_os = "macos")]
+ use crate::libproc::sys::listpidspath;
++
++/// A bounded process-group PID result.
++#[cfg(target_os = "macos")]
++pub struct BoundedGroupPids {
++    /// PID identities returned by the group-filtered query.
++    pub pids: Vec<u32>,
++    /// False when the provided bound was filled or completeness is unknown.
++    pub complete: bool,
++}
++
++/// Query one process group without first allocating a kernel-sized count.
++///
++/// A full result does not establish completeness. Callers must retain their
++/// process-group identity and interpret the returned members separately.
++///
++/// # Errors
++///
++/// Returns an error for an invalid group or capacity, a failed query, or an
++/// empty or malformed native result. A full buffer returns an incomplete result.
++#[cfg(target_os = "macos")]
++pub fn bounded_group_pids(pgrpid: u32, capacity: usize) -> io::Result<BoundedGroupPids> {
++    crate::libproc::sys::bounded_group_pids(pgrpid, capacity)
++}
+ 
+ /// `ProcFilter` is used to filter process ids.
+ /// See [`pids_by_type`] and `pids_by_type_and_path` (macOS only) for details.
+--- /dev/null
++++ b/src/libproc/sys/bounded_group.rs
+@@ -0,0 +1,140 @@
++use std::io;
++
++#[derive(Debug, Eq, PartialEq)]
++pub(crate) struct BoundedReturn {
++    pub(crate) items: usize,
++    pub(crate) complete: bool,
++}
++
++pub(crate) fn checked_capacity(slots: usize) -> io::Result<i32> {
++    let bytes = slots
++        .checked_mul(std::mem::size_of::<u32>())
++        .filter(|bytes| *bytes > 0)
++        .and_then(|bytes| <i32 as std::convert::TryFrom<usize>>::try_from(bytes).ok());
++    bytes.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid PID capacity"))
++}
++
++pub(crate) fn bounded_return(
++    returned_bytes: i32,
++    errno: Option<i32>,
++    slots: usize,
++) -> io::Result<BoundedReturn> {
++    let provided_bytes = checked_capacity(slots)?;
++    if returned_bytes <= 0 {
++        return Err(match errno.filter(|error| *error > 0) {
++            Some(error) => io::Error::from_raw_os_error(error),
++            None => io::Error::new(io::ErrorKind::InvalidData, "empty or failed group query"),
++        });
++    }
++    if returned_bytes > provided_bytes || returned_bytes as usize % std::mem::size_of::<u32>() != 0
++    {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "invalid group query length",
++        ));
++    }
++    let items = returned_bytes as usize / std::mem::size_of::<u32>();
++    Ok(BoundedReturn {
++        items,
++        complete: items < slots,
++    })
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn bounded_group_capacity_is_exactly_two_pid_words() {
++        assert_eq!(checked_capacity(2).unwrap(), 8);
++    }
++
++    #[test]
++    fn bounded_group_capacity_preserves_one_slot_bound() {
++        assert_eq!(checked_capacity(1).unwrap(), 4);
++    }
++
++    #[test]
++    fn bounded_group_zero_capacity_refuses() {
++        assert!(checked_capacity(0).is_err());
++    }
++
++    #[test]
++    fn bounded_group_capacity_multiplication_overflow_refuses() {
++        assert!(checked_capacity(usize::MAX).is_err());
++    }
++
++    #[test]
++    fn bounded_group_capacity_larger_than_native_int_refuses() {
++        assert!(checked_capacity(i32::MAX as usize / 4 + 1).is_err());
++    }
++
++    #[test]
++    fn bounded_group_singleton_is_complete_inside_two_slots() {
++        assert_eq!(
++            bounded_return(4, None, 2).unwrap(),
++            BoundedReturn {
++                items: 1,
++                complete: true
++            }
++        );
++    }
++
++    #[test]
++    fn bounded_group_two_slot_filled_result_is_incomplete() {
++        assert_eq!(
++            bounded_return(8, None, 2).unwrap(),
++            BoundedReturn {
++                items: 2,
++                complete: false
++            }
++        );
++    }
++
++    #[test]
++    fn bounded_group_one_slot_filled_result_is_incomplete() {
++        assert_eq!(
++            bounded_return(4, None, 1).unwrap(),
++            BoundedReturn {
++                items: 1,
++                complete: false
++            }
++        );
++    }
++
++    #[test]
++    fn bounded_group_zero_result_never_proves_complete() {
++        assert!(bounded_return(0, None, 2).is_err());
++    }
++
++    #[test]
++    fn bounded_group_partial_word_refuses() {
++        assert!(bounded_return(5, None, 2).is_err());
++    }
++
++    #[test]
++    fn bounded_group_return_larger_than_provided_buffer_refuses() {
++        assert!(bounded_return(12, None, 2).is_err());
++    }
++
++    #[test]
++    fn bounded_group_negative_query_preserves_permission_error() {
++        assert_eq!(
++            bounded_return(-1, Some(1), 2).unwrap_err().raw_os_error(),
++            Some(1)
++        );
++    }
++
++    #[test]
++    fn bounded_group_zero_query_preserves_permission_error() {
++        assert_eq!(
++            bounded_return(0, Some(1), 2).unwrap_err().raw_os_error(),
++            Some(1)
++        );
++    }
++
++    #[test]
++    fn bounded_group_invalid_capacity_refuses_before_result() {
++        assert!(bounded_return(4, None, 0).is_err());
++    }
++}

@@ -120,3 +120,36 @@ JOBS=1 CARGO_BUILD_JOBS=1 VITEST_MAX_WORKERS=2 LOCKFILE_SYNC_NPM=npm@10.9.2 NO_C
 The delivery orchestrator owns composition and publication. The PR body needs
 the registered hypothesis, required validation headings, terminal proof and
 the agent attribution footer. Remove tool-specific generated attribution.
+
+## Focused qualification record
+
+Prediction commit `b6466ed` preceded the target regressions. Against its
+unchanged data, the focused cohort reported 5 failures and 8 passes: every
+failure identified the missing registered case 246. After normal composition
+of author `b2e738f9`, allocation 245 → 246 preserved the author's new object
+apart from that identifier and retained the frozen historical prefix.
+
+The unchanged historical preservation guard then reported 1 failure and 5
+passes, with `expected length 4, received 5` at its closed-tail assertion.
+Its correction bounds that historical slice without changing its threshold,
+upstream object hashes, schema checks or semantic assertions.
+
+Before GREEN, review identified that putting selection decisions beside the
+actor's source snapshots would disclose the answers. The registered control
+values stayed unchanged; actor input now contains only source evidence, and
+the decision oracle lives in grader-only `expected_output`. A separate guard
+rejects answer keys in the actor prompt. This representation correction was
+approved before measuring GREEN.
+
+The focused cohort then passed 14 checks with actual exit zero. These checks
+qualify fixture evidence, historical preservation and guidance contracts.
+They do not establish live selection accuracy, checker scheduling gains or
+completed full qualification. Original source serialization was retained so
+the historical objects have no unrelated escaping changes.
+
+The first full qualification stopped at Biome before its test suite ran.
+Build and typecheck passed. Biome required the new prefix-hash expression to
+wrap its chained calls; a targeted check reproduced that formatting error.
+Only that line wrapping changed. The unchanged focused assertions then
+passed again, and targeted Biome exited zero. The failed full result remains
+retained; it is not a full-gate pass.

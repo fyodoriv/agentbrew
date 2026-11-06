@@ -75,3 +75,18 @@ any later skill baseline and comparison separately.
 
 Anchors: [llama.cpp completion source](https://github.com/ggml-org/llama.cpp/blob/b12179/tools/completion/completion.cpp)
 and [Goal Question Metric](https://doi.org/10.1002/9780470172669.ch12).
+
+## Mock result and pivot
+
+On 2026-11-06, the single mock exited 1 before its response controls. Its
+network-denial child exited 71: the system Python launcher could not start a
+developer-tool helper inside the restricted process. The saved evidence does
+not establish why that helper could not start. No model was run, and the mock
+did not establish network denial or token-log validation. This is 0/1, so the
+registered path is abandoned without running the local control.
+
+Private local evidence retains the exact control, wrapper, prompt, profile,
+child output and exit records. The scripts are not in this tree, so the
+registered commands cannot run from the branch alone. A later approach needs
+a new registration; changing the launcher and repeating this mock would not
+meet the registered pivot.

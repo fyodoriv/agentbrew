@@ -103,6 +103,12 @@ synthetic values. Success requires the expected timeout and the single record;
 missing, duplicated or private output rejects the sink. This does not run the
 original lifecycle case or explain its earlier timeout.
 
+For the outer runner's cleanup, predict that one synthetic parent and its
+same-group child both terminate after the bounded group kill. A focused
+`plugin lifecycle observation` control must see the expected timeout and
+confirm that the process group no longer exists. Any surviving group or
+unverified kill rejects the cleanup method. This control uses no real plugin.
+
 The proposed describe block does not exist yet. After registration:
 
 ```sh

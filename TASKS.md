@@ -137,20 +137,6 @@
 
 ## P0
 
-- [ ] Enforce task schema and conflict checks in the fast gate
-  - **ID**: fast-gate-task-schema
-  - **Mode**: AFK
-  - **Tags**: ci-gate, stability, git-safety
-  - **Details**: The fast gate accepted a task block that the required full task linter rejected. A separate documentation run also accepted staged conflict markers. The first experiment at 885a127 failed because its valid-labeled empty fixture had an extra EOF blank line; retain that failed record and start the prospective registration separately. Reuse the existing pinned task linter and Git diff check before a fast-gate success; do not write another parser or weaken merge-ready policy.
-  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`, `docs/plans/fast-gate-task-schema.md`, `docs/plans/fast-gate-task-schema-prospective-20261106.md`, existing verification guide.
-  - **Output**: code
-  - **Acceptance**: invalid task shape, missing preregistration, duplicate IDs and leftover conflict markers stop the fast gate before downstream checks or a merge-ready verdict. Format-clean preregistered and empty queues still pass; the retained EOF-whitespace input is a separate negative. Keep the existing source/full-gate routing.
-  - **Hypothesis**: five sealed invalid-input false approvals fall from five to zero, with two of two valid controls retained, by running the same strict task schema as the full gate and the existing Git diff check.
-  - **Measurement**: commit the new prospective prediction first; run `JOBS=1 heavy-run npm exec -- vitest run src/verify-changed.test.ts --maxWorkers=1 --reporter=default --silent=false` against unchanged then fixed script, then normal changed/full gates. Preserve all original six input bytes and add the separate format-clean empty control; require seven complete observation rows and retain the original routing and reader tests. The new execution fixture delegates to the actual pinned task linter offline and stubs only unrelated successful checks.
-  - **Success**: zero of five invalid approvals, two of two valid controls, zero downstream execution on negatives, all eighteen focused tests passing, and no changed full-gate decisions.
-  - **Pivot**: any invalid approval, valid refusal, synthetic upstream-parser replacement or ignored failure rejects the new approach; missing observation rows make a run unqualified; do not mark the gate safe from dry-run text alone.
-  - **Anchor**: observed task-format and staged-marker incidents; existing full gate's @tasks-md/lint 0.10.2; Git diff --check; Basili et al. 1994 GQM; Munafò et al. 2017 preregistration.
-
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the

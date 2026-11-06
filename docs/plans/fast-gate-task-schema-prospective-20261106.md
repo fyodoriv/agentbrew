@@ -138,3 +138,37 @@ Estimate: 30–60 minutes of active work, plus queue/gate time. The prior
 estimate missed fixture-label and observation-mode errors. Include a
 pre-execution check of input bytes against every declared rule and explicit
 reporter configuration in the next estimate.
+
+## Prospective experiment qualification — 2026-11-06
+
+Prediction `6b825c2` was committed before this experiment. The original
+experiment at `885a127` remains failed. Its frozen input bytes, labels and
+failed transcripts were preserved. The prospective registration kept every
+original byte sequence and added only the separately declared clean empty
+queue. The original routing and reader test body remained byte-identical.
+
+The command above ran with the explicit default reporter and console output
+enabled. The unchanged-script RED ended with exit 1: seven failures and
+eleven passes, with exactly seven complete observation rows. Only after that
+terminal RED did the driver add the registered raw Git and pinned strict
+parser checks. GREEN ended with exit 0: eighteen passes and exactly seven
+complete rows. The frozen fixture/oracle hashes stayed unchanged throughout.
+
+| Input | Before | After | Strict parser after | Downstream work after |
+|---|---|---|---|---|
+| Orphan fields | Approved | Refused, exit 1 | Invoked | None |
+| Duplicate IDs | Approved | Refused, exit 1 | Invoked | None |
+| Missing P1 hypothesis | Approved | Refused, exit 1 | Invoked | None |
+| Conflict markers | Approved | Refused by Git, exit 2 | Not reached | None |
+| Complete task | Approved | Approved, exit 0 | Invoked | Success path |
+| Original EOF-whitespace input | Approved | Refused by Git, exit 2 | Not reached | None |
+| Clean edited empty queue | Approved | Approved, exit 0 | Invoked | Success path |
+
+Unsafe approvals fell from five to zero. Both valid controls remained
+approved. Invalid inputs reached neither the downstream sentinel nor the
+merge-ready verdict. The fixture ran the actual cached pinned parser; only
+unrelated successful checks were stand-ins. This proves the registered
+verification boundary, not a new parser or a model-quality result.
+
+Normal repository qualification is pending. The focused experiment does not
+replace the full gate, independent review, leak checks or delivery.

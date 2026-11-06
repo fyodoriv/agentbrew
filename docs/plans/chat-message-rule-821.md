@@ -10,7 +10,7 @@ under 24 hours (edit), the same author after 24 hours (post), a different
 author intervening (post), and an unavailable edit without deletion approval
 (hold). The rule applies to the same channel or thread only.
 
-Measurement: `heavy-run node scripts/eval-chat-message-rule-821.mjs` using
+Measurement: `heavy-run node scripts/eval-chat-message-rule-821.mjs --baseline /tmp/chat-rule-821-baseline.json`, followed by `heavy-run node scripts/eval-chat-message-rule-821.mjs --candidate /tmp/chat-rule-821-baseline.json <recorded-sha256>`, using
 local Ollama model `qwen3:4b`, temperature 0, no tools, no real messages, and
 exact EDIT/POST/HOLD output. First ship the harness and its synthetic transport
 controls as preparation, then capture the no-rule baseline before editing the
@@ -34,3 +34,9 @@ The candidate run must verify that hash and the frozen case/model identity,
 then compare with that exact receipt; it must not rerun baseline. A missing or
 changed receipt fails closed. The boundary case of exactly 24 hours and other
 threads are outside this four-case measurement.
+
+Harness controls: `node --test scripts/eval-chat-message-rule-821.test.mjs`.
+
+The receipt also binds the harness bytes and resolved model digest. The digest
+is checked before and after each cohort. A tag that changes away and back
+between those checks remains outside this measurement.

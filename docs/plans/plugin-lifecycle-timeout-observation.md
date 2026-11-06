@@ -95,6 +95,14 @@ false completion, swallowed error or disclosure rejects this recorder design.
 The controls do not explain the earlier timeout. The previously registered
 one-case diagnostic remains separate and follows delivery of instrumentation.
 
+Before measuring the reporter path, predict that one deliberately timed-out
+synthetic Vitest case retains exactly one safe begin record and no terminal
+record in its captured output. Run it only as a child of the focused
+`plugin lifecycle observation` command above, with a scratch test root and
+synthetic values. Success requires the expected timeout and the single record;
+missing, duplicated or private output rejects the sink. This does not run the
+original lifecycle case or explain its earlier timeout.
+
 The proposed describe block does not exist yet. After registration:
 
 ```sh

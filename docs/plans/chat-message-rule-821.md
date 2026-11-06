@@ -26,3 +26,11 @@ instrumentation only; a later PR changes the rule.
 
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et
 al. (2017), preregistration.
+
+Before model measurement, bind the no-rule sample to an exclusive-create
+local receipt. The receipt stores the fixed cases, expected and actual choices,
+model and temperature. Its SHA-256 is recorded before the candidate exists.
+The candidate run must verify that hash and the frozen case/model identity,
+then compare with that exact receipt; it must not rerun baseline. A missing or
+changed receipt fails closed. The boundary case of exactly 24 hours and other
+threads are outside this four-case measurement.

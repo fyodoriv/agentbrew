@@ -156,6 +156,20 @@
 
 ## P1
 
+- [ ] Observe a real concurrent source-refresh failure before choosing a fix
+  - **ID**: source-lease-real-failure-classification
+  - **Tags**: reliability, sync, measurement, privacy
+  - **Mode**: AFK
+  - **Details**: Qualified instrumentation now distinguishes safe failure classes, but the original incident remains unexplained. After its separate delivery, run the [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort): at most ten sequential invocations of the unchanged exact cross-process case. Preserve every exit and log, stop on a classified failure, and never treat passing invocations as a fix or gate retry. Commit this cohort prediction before measurement. No product fix starts from an unclassified incident.
+  - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
+  - **Output**: measurement
+  - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
+  - **Hypothesis**: the bounded cohort yields at least one classified real failed invocation from the current baseline of zero, with zero unclassified failures, private disclosures or changed failure semantics. If no failure recurs, the evidence remains unverified.
+  - **Measurement**: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`; follow the linked sequential stopping rules, preserve every admission, exit and log, and stop after a classified failure or ten invocations. This cohort has not run.
+  - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
+  - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
+
 - [ ] Explicit pull keeps the requested sync modules selected
   - **ID**: sync-pull-only-parity
   - **Tags**: sync, cli, reliability

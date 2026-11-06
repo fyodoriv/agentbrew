@@ -23,9 +23,13 @@ The measurement commands, to be implemented after this registration commits,
 are run from the repository root:
 
 ```sh
-RAW_CALIBRATION_MODE=mock python3 -I docs/plans/raw-token-calibration-833.py
-RAW_CALIBRATION_MODE=local python3 -I docs/plans/raw-token-calibration-833.py
+RAW_CALIBRATION_MODE=mock bash docs/plans/raw-token-calibration-833-wrapper.sh
+RAW_CALIBRATION_MODE=local bash docs/plans/raw-token-calibration-833-wrapper.sh
 ```
+
+The wrapper runs the previously registered Python command once, saves its
+combined output and actual exit code in a fresh private temporary directory,
+prints that directory, and returns the same exit code. It does not retry.
 
 Run the mock once first; run the local command once only if mock controls and
 independent review pass. The mock must use a synthetic loopback listener and

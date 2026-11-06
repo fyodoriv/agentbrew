@@ -42,3 +42,18 @@ This is a codec and decode control using already saved frames. It does not
 test screencast timing reconstruction, idle-gap capping, live-tab attachment,
 browser cleanup, or agents' use of the skill. It cannot by itself close #828.
 Anchor: [Goal Question Metric](https://doi.org/10.1002/9780470172669.ch12).
+
+## Result
+
+On 2026-11-06, the one saved-frame control passed. The bundled encoder made
+one VP9 WebM clip. The independent inspector reported ten frames, 5/1 fps
+and 2.000000 seconds. The independent decoder produced ten RGB samples; the
+first was `[241, 20, 22]` and the last was `[20, 20, 241]`. All three
+recorded commands exited zero. The output SHA-256 was
+`34c59c4eb6dc190812911e603d692b5ab82558ff8b2f24f2c83900a2a43eb052`.
+
+Private local evidence retains the control script, output, command outcomes,
+metadata and decoded samples. The script and its input frames are not in this
+tree, so the registered command cannot be run from the branch alone. This
+result establishes only the saved-frame codec path described above; it does
+not resolve the untested recording and agent-behavior questions.

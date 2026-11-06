@@ -97,6 +97,21 @@ thresholds. If a wrong answer is
 accepted, a correct answer is rejected, or a provider call occurs, abandon
 this configuration and fix measurement before recording a baseline.
 
+## Supplemental exact-output control
+
+After the original calibration, review found that `BLE extra` is already a
+wrong label for its case. Before running this separate control, predict that
+the expected label followed by ` extra` is rejected in all six cases. This
+does not change the original controls or their thresholds.
+
+```sh
+PROMPTFOO_CONFIG_DIR="$hardware_eval_dir/config" PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_SELF_HOSTED=1 sandbox-exec -p '(version 1)(allow default)(deny network-outbound)' node_modules/.bin/promptfoo eval -c skill-plugins/workflow/run-goal/evals/hardware-goal.yaml -r echo -p skill-plugins/workflow/run-goal/evals/hardware-extra.txt --no-cache --no-share --no-write --no-progress-bar -o "$hardware_eval_dir/extra.json"
+jq -e '.results.results | length == 6 and all(.[]; .success == false and .failureReason == 1 and (.testCase.assert | length) == 1)' "$hardware_eval_dir/extra.json"
+```
+
+Success requires a nonzero eval exit and six assertion failures. Any accepted
+answer, provider error or missing case rejects the strict-output claim.
+
 ## Later behavior experiment
 
 Only after preparation lands, record SHA-256 hashes of the skill, config,

@@ -18,7 +18,10 @@
 #
 # **Retro file**: `<state dir>/<session_id>.retro.md`. Each skill used needs a
 # line that names it and its update: a commit SHA, a PR or issue (`#123`,
-# `/pull/` URL or `/issues/` URL), or `task`. A line that says it made no update ("not
+# `/pull/` URL or `/issues/` URL), or `task` with the quoted error of a write
+# that failed (`write failed: <error>`). A bare task id does not count: a live
+# goal (2026-11-06) parked an approved retro update as a task from a stale
+# memory note without trying the write. A line that says it made no update ("not
 # updated", "no change", "no new edit", "did not", "already covers",
 # "skipped", "duplicate") does not count, even if it cites an old commit:
 # a live retro once passed with "no new edit ... commit 1fcff84".
@@ -124,10 +127,30 @@ case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" 
 MISSING=""
 for skill in $SKILLS; do
   [ -n "$skill" ] || continue
-  if [ -f "$RETRO" ] && grep -F -- "$skill" "$RETRO" | grep -viE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' |
-    grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+|\btask\b'; then
-    continue
+  ok=0
+  if [ -f "$RETRO" ]; then
+    while IFS= read -r line; do
+      # The quoted error after "write failed:" is the tool's text, not ours:
+      # judge only the part before it for "no update" words and evidence.
+      head=$(sed -E 's/[Ww][Rr][Ii][Tt][Ee] [Ff][Aa][Ii][Ll][Ee][Dd]:.*//' <<<"$line")
+      # Drop the skill name ("- task-command-center: ..."), so only the
+      # update text is judged.
+      case "$head" in *:*) head="${head#*:}" ;; esac
+      grep -qiE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' <<<"$head" && continue
+      # A task citation ("task <id>") is not evidence by itself: its id may
+      # hold a date or a number. Judge the rest of the line without it.
+      rest=$(sed -E 's/(^|[^A-Za-z])[Tt][Aa][Ss][Kk] +[^ ,;]+/\1/g' <<<"$head")
+      if grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+' <<<"$rest"; then
+        ok=1
+      elif [ "$rest" != "$head" ] && grep -qiE 'write failed: *[^ ]' <<<"$line"; then
+        # A task is an update only with the error of a write that was tried.
+        ok=1
+      fi
+    done <<EOF_RETRO
+$(grep -F -- "$skill" "$RETRO")
+EOF_RETRO
   fi
+  [ "$ok" = 1 ] && continue
   MISSING="$MISSING $skill"
 done
 
@@ -145,4 +168,4 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
 fi
 echo $((blocks + 1)) >"$COUNTER"
 
-verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA, PR (#123 or URL), or task id. Still missing:$MISSING."
+verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL). A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING."

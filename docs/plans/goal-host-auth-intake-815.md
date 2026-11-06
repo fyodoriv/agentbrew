@@ -10,7 +10,7 @@ identify the stale credential and the human login step before the contract.
 
 Prediction: that case moves from 0/1 documented intake controls to 1/1, with
 zero credential values printed, stored or sent. The unchanged healthy-host
-control must remain usable. Measurement: `jq -e '.evals[] | select(.id == 255)
+control must remain usable. Measurement: `jq -e '.evals[] | select(.id == 256)
 | (.expectations | length >= 4)' skill-plugins/workflow/run-goal/evals/evals.json`
 and a fresh-context judge of the registered scenario against the skill.
 Success requires both controls
@@ -19,3 +19,6 @@ rejects the approach. The evaluation tests guidance, not live model behavior.
 
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et
 al. (2017), preregistration; issue #815's recorded incident.
+
+The case was renumbered from 255 to 256 after the default branch acquired 255.
+Its prediction and outcomes are unchanged.

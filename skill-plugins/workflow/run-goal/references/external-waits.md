@@ -106,3 +106,13 @@ using them; an SDK type or host-only API is not proof of session access.
 
 Fixture guards and forward evaluations test guidance and decisions. They do
 not measure live evaluator invocations or establish unsupported host behavior.
+
+## Liftable pauses
+
+A pause the user can lift (an agent-usage guard, a rate limit with a reset
+time) is a wait, not "impossible". Do not retry a refused agent spawn: each
+retry counts as another refusal and can extend the pause. Ask once for the
+lift command (for example `/agent-guard allow`), arm one background timer
+for the stated reset time, and do every part that needs no agents meanwhile
+(gate, PR, review prep). A button reply such as "Lifted, continue" is not
+the command: check that the tool really runs before you report progress.

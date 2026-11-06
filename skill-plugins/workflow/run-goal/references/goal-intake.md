@@ -83,8 +83,9 @@ value. Never put tokens in logs, chat or untrusted destinations; authorized
 authentication may transmit them to the intended host. A mismatch alone does
 not prove either token invalid.
 
-Put an observed failed login and its human re-login step in the contract
-before work. If a stale override wins, identify its source and correct or
-remove it as authorized; recheck the effective fetch route after repair. Do
-not ask a verified healthy host to re-login. If a probe is unavailable, mark
-that route unknown.
+Report stored-login failures separately. Put a human re-login in the contract
+only when the actual authorized fetch route needs it. If a stale override
+wins, identify its source and correct or remove it as authorized; recheck the
+effective fetch route after repair. Do not ask a verified healthy host to
+re-login even if an unused stored login fails. If a probe is unavailable,
+mark that route unknown.

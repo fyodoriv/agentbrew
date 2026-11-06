@@ -184,6 +184,230 @@ authorized invocation, never as prior completion evidence. Keep invocation
 history empty and the exactly-once oracle unchanged. Preserve the original
 private proposal for provenance. No measured result caused this correction.
 
+## Aggregate preservation amendment (Nov 6, 2026)
+
+Register this correction before reproducing or changing the aggregate guard.
+The preceding full ended successfully: 6,431 passed, 33 skipped, all twenty
+steps fresh, exit zero, on preserved tree `5ba6923e`. Independent review then
+identified that the new test guard rejects valid future additions. A passing
+old candidate does not qualify the changed guard. No new aggregate control
+has run; the before values below are prospective predictions.
+
+## Frozen source and narrow scope
+
+- Prediction: `971ce13461fc87777b8b13d21b22beddedb5a3a2`.
+- Preserved pre-amendment candidate: `5ba6923e7e22bcda450787de2f3f8d067fb38ad9`.
+- Current eval file SHA256:
+  `4c82df9506a5adb741b1af1979aaa89fb15d936e7b493ba1cfae0e41c29f2534`.
+- Original first-246-object SHA256:
+  `094653b7aa5e5f52327d22b434913597ae0506b0e625433e26cb89ef56acd562`.
+- Registered four-case private package SHA256:
+  `65cca1446f2e9e9574646f23abc43bc110ab9cb103f054ac01eb7a0d8be93952`.
+
+Keep SKILL.md, execution guidance and every original/registered eval object
+unchanged. Keep the 399-line budget and preserved 405-line failure unchanged.
+The correction belongs only to the existing owner-and-proof test's aggregate
+preservation contract and this prospective plan amendment. It is not a host,
+actor, model or runtime behavior change.
+
+## Finding
+
+The current normal-file test applies object equality, exact IDs and an
+expectations-only minimum to the entire open tail `evals.slice(246)`.
+Consequently, a valid appended case is refused. A valid case using the schema's
+`assertions` alternative also fails the tail's expectations-only check.
+
+The existing later-addition test exercises only prefixHash and supplies an
+object without required SkillEval fields or schema checks. That does not prove
+the actual aggregate contract accepts valid additions.
+
+## Shared aggregate contract
+
+Use one test-local aggregate function for both the normal current-file
+assertion and every synthetic control. It reads the authoritative array from
+that skill directory's evals/evals.json, uses the existing SkillEval type, and
+calls the real `validateEvals(skillDir)` against that same file.
+
+Retain all current decisions:
+
+1. Complete original first-246-object prefix hash.
+2. Registered-object equality with the committed frozen appendix.
+3. Exact registered ID sequence 247, 248, 249, 250.
+4. Registered expectations minimum, unchanged at three.
+5. Whole-array uniqueness.
+6. Whole-array existing schema validation, including its expectations OR
+   assertions and nonempty-check behavior.
+
+Initially extract the current behavior faithfully: the registered-object,
+ID and minimum-check decisions all use the existing unbounded slice(246).
+Do not fix the bound during extraction. Verify the current-file normal
+assertion uses this SAME aggregate function, not a parallel/prefix-only path.
+
+Only after RED, bound those registration-specific decisions to the exact
+registered segment, slice(246,250). Preserve the original hash, whole-array
+uniqueness/schema, every registered value and every numeric threshold.
+
+## Seven frozen controls
+
+Each row uses a separate private scratch skill directory containing a cloned
+copy of the frozen current array. Mutation rows deliberately change only
+copies. The production eval file and appendix never change. Future IDs here
+are local fixture values, not reservations or additions to the shipped evals.
+Exact deterministic input descriptors are in the companion controls JSON.
+Derive that control base from the frozen first 250 object values, verifying
+the original prefix and exact registered four. Later real contributions must
+not become part of this local control base or collide with its synthetic IDs.
+
+| ID | Input transformation | Expected contract | Required decisive guard |
+| --- | --- | --- | --- |
+| current | Current 250-object array unchanged | Accept | Every aggregate field passes |
+| future-expectations | Append valid local case 251 with three expectations | Accept | Exact registered package stays bounded; whole-array schema/uniqueness pass |
+| future-assertions | Append valid local case 252 with three assertions and no expectations | Accept | Schema alternative stays supported outside the registered segment |
+| duplicate-future | Append two valid local objects sharing future ID 251 | Refuse | Whole-array duplicate detection and actual validator diagnostic |
+| empty-future | Append local case 251 with an empty expectations array | Refuse | Actual validator's nonempty-check minimum |
+| original-mutation | Append a fixed marker to expected_output of original ID 245 | Refuse | Original first-246-object hash |
+| registered-mutation | Append a fixed marker to expected_output of registered ID 250 | Refuse | Complete registered-object equality, including the segment's final element |
+
+The exact equality decision still covers all registered objects 247–250;
+the last-element mutation tests the upper boundary without adding an eighth
+control. No actor/oracle fixture is revised in response to an outcome.
+
+## Pre-registered metric and pivot
+
+GQM: preserve registered fixtures while accepting schema-valid future
+contributions. Question: can the SAME normal-file aggregate contract classify
+all seven fixed controls without dropping historical or schema protection?
+
+Predict false valid-input refusals fall from two to zero. The faithful old
+contract is predicted to accept only current and reject both valid additions;
+the corrected contract must accept all three valid controls and refuse all
+four invalid controls. These before values are predictions, not observed
+measurements. Require zero production historical or registered-four changes.
+
+Success: 3/3 valid accepted; 4/4 invalid refused through their decisive guards;
+zero false valid refusals; all existing fixture/owner/wait/intake tests remain
+green; original prefix and registered package hashes stay unchanged; required
+qualification passes on the new source.
+
+Pivot: any accepted invalid control, refused valid control, lost registered
+minimum/equality decision, changed original object, different validator or
+prefix-only substitute rejects the approach. If faithful extraction does not
+produce the predicted two valid-refusal REDs, stop and inspect the contract
+before changing the representation. Do not revise the expected outcomes.
+
+Anchor: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017),
+preregistration; the actual SkillEval and validateEvals contracts.
+
+## Execution order after root review
+
+1. Let the original full terminate and preserve its result, full candidate,
+   line-budget evidence and private package unchanged.
+2. Add the reviewed prospective amendment to the source plan only. Qualify a
+   normal docs-only prediction commit before any reproduction/helper/control
+   code or target measurement. The root owns that commit.
+3. Extract the faithful old aggregate, route the existing normal-file test
+   through it, and add the seven controls with unchanged expected decisions.
+   Use real scratch JSON files and the actual validator. Capture RED before
+   bounding any registered slice or check.
+4. Correct only the registered-segment bound. Execute the identical controls
+   GREEN, preserving source evidence and every control/oracle byte.
+5. Run fresh qualification for changed source. The earlier full is evidence
+   about its earlier candidate, never a substitute for this new source gate.
+   This is a scoped new correction, not retrying unchanged code.
+
+Focused command after the prediction and controls exist:
+
+```sh
+JOBS=1 heavy-run node node_modules/vitest/vitest.mjs run src/skills/run-goal-owner-and-proof.test.ts src/skills/run-goal-external-waits.test.ts src/skills/run-goal-live-task-intake.test.ts --maxWorkers=1
+```
+
+Then use the repo's applicable changed/full qualification on the corrected
+source. Do not execute any command in this proposal while the original full
+is active or before the root's normal docs prediction commit.
+
+### Exact aggregate-control descriptors
+
+```json
+{
+  "status": "private prospective descriptors; no controls executed",
+  "baseEvalFileSha256": "4c82df9506a5adb741b1af1979aaa89fb15d936e7b493ba1cfae0e41c29f2534",
+  "historicalPrefixSha256": "094653b7aa5e5f52327d22b434913597ae0506b0e625433e26cb89ef56acd562",
+  "registeredPackageSha256": "65cca1446f2e9e9574646f23abc43bc110ab9cb103f054ac01eb7a0d8be93952",
+  "fixtureIdsAreEvalReservations": false,
+  "expectationsAddition": {
+    "id": 251,
+    "prompt": "Synthetic later contribution using expectations.",
+    "expected_output": "Synthetic expected response.",
+    "expectations": [
+      "Retains the synthetic input identity.",
+      "Reports only the supplied fixture evidence.",
+      "Does not claim an unsupported side effect."
+    ]
+  },
+  "assertionsAddition": {
+    "id": 252,
+    "prompt": "Synthetic later contribution using assertions.",
+    "expected_output": "Synthetic expected response.",
+    "assertions": [
+      "Retains the synthetic input identity.",
+      "Reports only the supplied fixture evidence.",
+      "Does not claim an unsupported side effect."
+    ]
+  },
+  "controls": [
+    {
+      "id": "current",
+      "transform": "clone frozen base without changes",
+      "accepted": true
+    },
+    {
+      "id": "future-expectations",
+      "transform": "append exact expectationsAddition object",
+      "accepted": true
+    },
+    {
+      "id": "future-assertions",
+      "transform": "append exact assertionsAddition object, with no expectations property",
+      "accepted": true
+    },
+    {
+      "id": "duplicate-future",
+      "transform": "append two separate clones of expectationsAddition with identical ID 251",
+      "accepted": false,
+      "requiredGuard": "whole-array uniqueness and actual validateEvals duplicate-id diagnostic"
+    },
+    {
+      "id": "empty-future",
+      "transform": "append a clone of expectationsAddition with expectations replaced by an empty array",
+      "accepted": false,
+      "requiredGuard": "actual validateEvals nonempty-check minimum"
+    },
+    {
+      "id": "original-mutation",
+      "transform": "clone base; append originalMutationSuffix to expected_output of the object whose id is 245",
+      "originalMutationSuffix": " synthetic historical mutation",
+      "accepted": false,
+      "requiredGuard": "original first-246-object prefix hash"
+    },
+    {
+      "id": "registered-mutation",
+      "transform": "clone base; append registeredMutationSuffix to expected_output of the object whose id is 250",
+      "registeredMutationSuffix": " synthetic registered mutation",
+      "accepted": false,
+      "requiredGuard": "registered complete-object equality including ID 250"
+    }
+  ],
+  "prediction": {
+    "falseValidRefusalsBefore": 2,
+    "falseValidRefusalsAfter": 0,
+    "validAcceptedAfter": 3,
+    "invalidRefusedAfter": 4,
+    "historicalSourceChangesAllowed": 0,
+    "registeredFourSourceChangesAllowed": 0
+  }
+}
+```
+
 ## Frozen eval appendix
 
 The objects below are prospective additions, not executed test results.

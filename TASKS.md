@@ -137,6 +137,21 @@
 
 ## P0
 
+- [ ] Environment diagnostics identify configured variables without revealing values
+  - **ID**: env-check-value-privacy
+  - **Mode**: AFK
+  - **Tags**: security, privacy, stability
+  - **Details**: Source review found `displayEnvCheck` printing each configured value or its prefix, including API-key variables. Delete value rendering at this existing display boundary. Follow [the registered plan](docs/plans/env-check-value-privacy.md); no live authentication material or owner environment snapshot is a fixture. P0 is justified by the diagnostic disclosure risk.
+  - **Files**: `src/core/env-sanitize.ts`, `src/core/env-sanitize.test.ts`, `src/env-sanitize-cli.test.ts`, `README.md`, `docs/plans/env-check-value-privacy.md`
+  - **Output**: code
+  - **Acceptance**: sealed formatter cases display exactly `  NAME is set`, with no value or prefix; default-variable source-CLI checks retain exit one and their existing streams. Internal checker values, custom helper selection and sanitize shell output remain correct. The display never reads the warning value property.
+  - **Hypothesis**: deleting value rendering reduces predicted synthetic marker disclosures from nine formatter cases to zero; all eight default source-CLI cases also disclose zero. Variable identity remains correct in every case and the formatter reads zero value properties. Baseline is unmeasured at registration.
+  - **Measurement**: commit the plan before regression code; run its exact allowlisted `heavy-run /usr/bin/env -i ... node node_modules/vitest/vitest.mjs run src/core/env-sanitize.test.ts src/env-sanitize-cli.test.ts --maxWorkers=1` command for RED and GREEN, then required repository gates. The custom case uses the helper API only; no CLI custom-variable flag exists. Replace the historical truncation assertion prospectively with the registered privacy contract before RED.
+  - **Success**: zero disclosed full values, markers or prefixes; nine exact name-only formatter cases, eight default CLI warning exits, zero formatter value reads, and all checker/sanitize/stream guards pass. No owner-data dependency in the targeted runner or its children.
+  - **Pivot**: any disclosure, lost variable identity, value-property read, changed exit/stream contract or owner-data dependency rejects the approach. Preserve evidence; do not weaken markers or relabel truncation as redaction.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; OWASP Logging Cheat Sheet, linked in the plan.
+
+
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the

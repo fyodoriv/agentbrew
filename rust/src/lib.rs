@@ -50,3 +50,6 @@ pub fn check_repository(root: &Path, manifest_path: &str) -> Result<CheckReport,
         discovered,
     ))
 }
+
+#[cfg(test)]
+mod rust_family_tests;

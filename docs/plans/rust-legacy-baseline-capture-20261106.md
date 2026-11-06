@@ -114,3 +114,33 @@ B0 enables separately registered observer preparation with unchanged legacy-byte
 comparison. It does not authorize the Rust adapter, marker removal, N18 producer
 seam, N02b resource experiment, seven byte cases or all-family execution. Broader
 task acceptance remains open.
+
+## B0 result (Nov 6, 2026)
+
+Prediction `b759d6f50e49b3a30555d0b060bf4a5480008bde` preceded exporter
+implementation and capture. Independent review checked exhaustive fields,
+option policy, original harness preservation and unchanged product/Cargo/corpus.
+The one registered capture exited zero: one test passed, 142 were filtered out.
+It produced exactly C01, P01, N02a in order, with all eleven Discovery fields
+and six CheckReport fields in each record. Missing baseline records fell from
+three to zero. No observer candidate existed during capture.
+
+Canonical legacy bytes: 3,328 bytes, SHA256
+`1f4d827984fcf4ab3ce5f57d3120e2fee4d05b2c1212730e0b17947edd0d29f3`.
+Separate input metadata: 2,232 bytes, SHA256
+`1c23a7c5de37c7d72898a8fc99be03ee874af3699cf2ec32459ba66c76b068fb`.
+The raw log SHA256 is
+`0a5323c34664530b05cca8370e85923f70f2359418aa9d71a1e0a5721f9fe714`.
+All 137 other registered Rust source/Cargo hashes stayed unchanged. The harness
+changed only by its approved nested declaration. Exporter SHA256 was
+`b3fd231f98b7bb0f55590c46bb9c42fefe677c9d1a9067acf6e596051332edc7`.
+Removing only its appended nested declaration recovers the original loader hash.
+
+Compilation took 5.13 seconds; the test took 0.15 seconds, within the capture
+estimate. Active engineering effort was not instrumented. Preserve the initial
+estimate. Use complete-field compiler checks and a separate input receipt for
+future capture estimates and review. Captured synthetic data and receipts remain
+local; no production output, native Rust qualification, six-positive success,
+all-family gate or completed migration is claimed. Original RED cases remain
+unchanged, and the unbounded family invocation remains prohibited until its
+separate resource prerequisites are qualified.

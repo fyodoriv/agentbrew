@@ -106,7 +106,7 @@ So:
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
    Classify tasks by their Details (who must act), not only the Blocked flag.
-   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority.
+   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority. Check each Git host: [host authentication intake](references/goal-intake.md#host-authentication-intake).
    Before a write to a live store (migration, sync, move), list the target
    read-only and compare it with the goal's stated state. A mismatch changes
    the plan, not the facts: 20 "unmoved" items were already in the list.

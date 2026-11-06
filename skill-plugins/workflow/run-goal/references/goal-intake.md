@@ -65,3 +65,27 @@ separate goal summary. Add two lines to it:
   GitHub repo, `permissions.admin`). Find the person's account, but invite
   only after the operator confirms it. Without admin rights, write a short
   BLOCKED report: who can grant access, and what the person can already do.
+
+## Host authentication intake
+
+Before the contract, identify each Git host the goal must fetch from and check
+the authentication path the fetch will actually use. For GitHub CLI hosts,
+check stored login with token environment overrides removed, including
+`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, and
+`GITHUB_ENTERPRISE_TOKEN`. Check the effective credential separately.
+For example, run `env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u
+GITHUB_ENTERPRISE_TOKEN gh auth status -h <host>` for stored login. Do not
+pass `--show-token` or enable shell tracing.
+
+If an environment token overrides a stored token, compare them only in private
+process memory. Report match, mismatch, absence or unavailable, not either
+value. Never put tokens in logs, chat or untrusted destinations; authorized
+authentication may transmit them to the intended host. A mismatch alone does
+not prove either token invalid.
+
+Report stored-login failures separately. Put a human re-login in the contract
+only when the actual authorized fetch route needs it. If a stale override
+wins, identify its source and correct or remove it as authorized; recheck the
+effective fetch route after repair. Do not ask a verified healthy host to
+re-login even if an unused stored login fails. If a probe is unavailable,
+mark that route unknown.

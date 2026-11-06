@@ -62,6 +62,8 @@ interface ApplyAgentfileOptions {
    */
   pruneOwnedDirs?: boolean;
   includeSkillInstallReport?: boolean;
+  /** Selected sync invocation: defer excluded live rule writes and owned skill cleanup. */
+  syncModules?: readonly string[];
   dryRun?: boolean;
   stateOverride?: AgentBrewState;
 }
@@ -705,7 +707,18 @@ function warnIfLegacyAgentbrewYamlPresent(directoryOrPath: string, quiet: boolea
 }
 
 /** Prune skills the authoritative Agentfile dropped. Returns true when state changed. */
-function pruneAgentfileSkills(agentfile: Agentfile, state: AgentBrewState, dryRun: boolean, quiet: boolean): boolean {
+function selectedSyncModule(options: ApplyAgentfileOptions | undefined, name: string): boolean {
+  return options?.syncModules?.includes(name) ?? true;
+}
+
+function pruneAgentfileSkills(
+  agentfile: Agentfile,
+  state: AgentBrewState,
+  dryRun: boolean,
+  quiet: boolean,
+  options: ApplyAgentfileOptions | undefined,
+): boolean {
+  if (!options?.authoritative || !selectedSyncModule(options, "skills")) return false;
   const before = JSON.stringify(state.agentfileSkills ?? null);
   const pruned = pruneDroppedAgentfileSkills(agentfile, state, {
     removeStaging: (name) => removeInstalledSkillStaging(name, dryRun),
@@ -725,6 +738,7 @@ export function applyAgentfile(
   const pruneOwnedDirs = options?.pruneOwnedDirs ?? authoritative;
   const includeSkillInstallReport = options?.includeSkillInstallReport ?? true;
   const dryRun = options?.dryRun ?? false;
+  const rulesSelected = selectedSyncModule(options, "rules");
 
   warnIfLegacyAgentbrewYamlPresent(directoryOrPath, quiet);
 
@@ -752,7 +766,7 @@ export function applyAgentfile(
   const agentDirsAdded = agentDirs.added;
   const skillsToInstall = collectAgentfileSkills(agentfile, quiet);
   const previousRuleOwners = JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
-  const rulesUpdated = mergeAgentfileRules(agentfile, baseDir, dryRun, state);
+  const rulesUpdated = rulesSelected && mergeAgentfileRules(agentfile, baseDir, dryRun, state);
   const ruleOwnersChanged =
     previousRuleOwners !== JSON.stringify([state.agentfileRuleOwners, state.agentfileRuleHashes]);
   const hooksUpdated = mergeAgentfileHooks(agentfile, state);
@@ -760,7 +774,7 @@ export function applyAgentfile(
   const workStepsChanged = dropLegacyWorkSteps(state);
   const defaultModelUpdated = mergeAgentfileDefaultModel(agentfile, state);
   const memoryUpdated = mergeAgentfileMemory(agentfile, state, baseDir);
-  const agentfileSkillsChanged = authoritative && pruneAgentfileSkills(agentfile, state, dryRun, quiet);
+  const agentfileSkillsChanged = pruneAgentfileSkills(agentfile, state, dryRun, quiet, options);
 
   const result: ApplyAgentfileResult = {
     serversAdded: mcp.added,

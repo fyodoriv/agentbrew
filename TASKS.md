@@ -157,6 +157,21 @@
 
 ## P1
 
+- [ ] Discover newly available skills and verify requested command identity
+  - **ID**: run-goal-skill-discovery-and-routing
+  - **Tags**: skills, workflow, reliability
+  - **Mode**: AFK
+  - **Details**: Resolve issues #793 and #795 through the existing run-goal workflow. Preserve conditional skill requirements after installation and inspect evidenced skill/command identity collisions. Follow the [frozen preparation](docs/plans/run-goal-skill-discovery-and-routing.md); disk deployment is not current-session invocation proof. Preserve literal CLI requests and owner artifacts.
+  - **Files**: `skill-plugins/workflow/run-goal/`, `src/skills/run-goal-owner-and-proof.test.ts`, registered plan.
+  - **Output**: code
+  - **Acceptance**: All four frozen cases retain their original criterion and correct identity/evidence boundary; unavailable capabilities remain unverified. No fabricated refresh, duplicate side effect, owner mutation or CLI reinterpretation.
+  - **Hypothesis**: At least one new guidance guard fails on unchanged source; after correction all four frozen guard groups pass with zero missing guidance guards and unchanged historical eval objects. These checks measure guidance coverage, not live actor quality.
+  - **Measurement**: After prediction commit, `JOBS=1 heavy-run node node_modules/vitest/vitest.mjs run src/skills/run-goal-owner-and-proof.test.ts src/skills/run-goal-external-waits.test.ts src/skills/run-goal-live-task-intake.test.ts --maxWorkers=1` for RED/GREEN; coverage, changed and full gates follow the plan.
+  - **Success**: Four of four fixture groups and all guidance guards pass; zero schema errors, duplicate IDs, historical object mutations, actor-input answer keys or forbidden authored actions.
+  - **Pivot**: No missing guidance guard on unchanged source, any omitted case, unsupported capability, lost criterion, owner mutation or CLI reinterpretation rejects the diagnosis or correction. Preserve frozen fixtures and prior evidence.
+  - **Anchor**: Current command-readiness contract and primary host documentation in the plan; Basili et al. (1994), GQM; Munafò et al. (2017), preregistration.
+
+
 - [ ] Observe a real concurrent source-refresh failure before choosing a fix
   - **ID**: source-lease-real-failure-classification
   - **Tags**: reliability, sync, measurement, privacy

@@ -19,8 +19,12 @@ clearly work better. This holds in every setup: a clone or a fork of this repo
 
 The agent never posts anything on its own. It works in these steps:
 
-1. It writes a short draft: what ran, what was expected, what happened, the
-   version, and a suggested fix.
+1. It checks the fetched upstream default source and matching open or closed
+   issues before drafting. A closed issue alone does not prove a fix. It skips
+   only a finding verified fixed in current source and explains why. Failed
+   verification leaves the finding unknown and pending, with a saved draft.
+   It preserves your checkout and settings. Then it writes a short draft:
+   what ran, what was expected, what happened, the version, and a suggested fix.
 2. It runs `agentbrew report --title "<title>" --body-file <draft.md> --repo fyodoriv/agentbrew`.
    This posts nothing. It replaces private details with placeholders: your
    home folder path, your user name, email addresses, tokens and API keys,
@@ -36,11 +40,16 @@ The agent never posts anything on its own. It works in these steps:
      ✓ re-scan of the final text: nothing private left
    ```
 
-3. It shows you the exact title and body, and any similar issue that already
-   exists, and asks: "Post this issue to github.com/fyodoriv/agentbrew? It is public.
-   (yes / edit / no)".
-4. Only after your yes does it post (`agentbrew report ... --yes`). A refused
-   or failed re-scan (`✗`) is never posted.
+3. It shows you the exact title and body, the safety checklist, and similar
+   issues. If you already approved the same finding, action, and destination,
+   it reuses that approval without asking again. A tool name alone is not that
+   approval. Otherwise it asks: "Post this issue to github.com/fyodoriv/agentbrew?
+   It is public. (yes / edit / no)". Using an existing thread for a comment or
+   reopening action needs approval for that new action, not a duplicate issue.
+4. Only after your yes for that scope does it post (`agentbrew report ... --yes`)
+   and return the issue URL. Each draft is scrubbed and previewed separately.
+   A refused or failed re-scan (`✗`) is never posted. If current fix or duplicate
+   status is unverified, it keeps the scrubbed draft pending instead of posting.
 5. If the fix looks small, it asks a second question: "Want me to make a PR
    that fixes it?" Only after that second yes does it make the change, run
    the repo gate (`npm run verify`), and open the PR with `agentbrew contribute`

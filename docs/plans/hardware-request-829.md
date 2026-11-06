@@ -132,3 +132,26 @@ not prove the real endpoint's response, model quality, all network routes or
 hardware behavior. After it lands, a separate registered baseline must bind
 the committed request construction, skill and cases, selected model digest,
 profile and outputs before any skill edit.
+
+## Result: failed
+
+On 2026-11-06, the preregistered block exited 1. The six saved mock answers
+scored correctly and seven wire records were written. The malformed response
+was rejected with a `jq` parse error, but a separate read-only diagnostic of
+that saved response returned exit 5; the frozen procedure required exit 4.
+The procedure did not save its original parse status separately, so that
+diagnosis is an inference from the saved file and the subsequent check.
+
+The restricted-listener check, post-run input hashes, final listener status
+and final evidence hashes were not reached. The cleanup stop file exists and
+both listener ports were observed closed, but that alone does not prove the
+listener exited zero. The overall preparation is **failed**, not a pass. Do
+not change the expected exit after the result or use it as a model baseline.
+Pivot to a separately registered response-handling approach.
+
+The saved test script SHA-256 is
+`fab23aa948379672366254a870c045b81f98b90b85ffc800a5c2404e746b78ae`.
+The saved six-decision result SHA-256 is
+`122dddd5cbc67c59787e60f4cd78162ac726b7107208e1cd3bf19620e889be68`.
+Private local evidence retains the requests, responses and error. No model
+inference or hardware command ran.

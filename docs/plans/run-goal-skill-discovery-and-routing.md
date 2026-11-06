@@ -408,6 +408,24 @@ is active or before the root's normal docs prediction commit.
 }
 ```
 
+## Results (Nov 6, 2026)
+
+Prediction registration preceded target assertions and guidance edits. The initial guidance reproduction had four expected missing-guidance failures and 28 passing tests. The identical focused command passed 32 tests after the correction, with the four sealed fixtures and historical objects unchanged.
+
+The initial changed gate found a real line-budget failure: SKILL.md measured 405 lines against the strict fewer-than-400-line contract. Only the new routing/discovery text was folded into existing paragraphs; its guidance meaning and every oracle stayed fixed. The corrected source measures 399 split lines. The failed 662-pass/two-failure receipt remains distinct from the later passing changed gate.
+
+Independent review then found that an open-ended registered-segment guard rejected valid future eval additions. The separately committed aggregate amendment registered seven exact controls before their execution. The faithful shared aggregate reproduced two valid-input false refusals (36 tests passed). Bounding only registration-specific checks to objects 246 through 249 removed both false refusals: the identical controls passed 38 tests, accepting all three valid inputs and refusing all four invalid inputs. The actual-file assertion uses the same aggregate and real validator as the scratch controls. Whole-array uniqueness/schema checks still cover future entries, including assertions-only evals. IDs 251/252 exist only in temporary controls; the shipped array ends at 250.
+
+Typecheck and changed-file Biome passed. The first isolated coverage run failed before measurement because its long scratch TMPDIR exceeded the macOS Unix-socket path limit. That failed receipt was retained. Only the same coverage command was repeated with a short scratch path, and it passed; both scratch homes were removed. The final changed gate passed 670 tests across 69 files and 22 deterministic artifact checks. Task preregistration lint, task stability, security, coverage and the normal zero-match leak check executed.
+
+After composition with main `cf5de2e95951473cdc7ae42b4dc51973255fa4f5`, one fresh uncached full gate qualified the independently approved corrected candidate `cde29ab593cd33bca039bb4108c9eb87add26998` at integration commit `8574064222221ce4b5b344d8072743c98a521bd1`. Actual inner and outer exits were zero: 6,456 tests passed, 33 skipped, 420 files passed and two files skipped. All 20 steps ran fresh. The normal installer gate reported no changed install path. The full gate took 946,207 ms; Vitest took 847.75 seconds. Source hashes and the entire unstaged diff matched before and after. The earlier full result on the prior aggregate did not qualify this correction.
+
+Original eval-object prefix SHA256 remains `094653b7aa5e5f52327d22b434913597ae0506b0e625433e26cb89ef56acd562`; the earlier 245-object guard is unchanged. The final eval file SHA256 is `4c82df9506a5adb741b1af1979aaa89fb15d936e7b493ba1cfae0e41c29f2534`.
+
+These results establish deterministic fixture integrity, schema preservation and source-guidance coverage. They do not establish improved actor decisions, a live host refresh or successful current-session invocation. The authored guidance preserves owner artifacts and literal CLI requests and requires actual exposed capabilities. Managed deployment/readback remains a delivery step; deployment bytes alone will not prove invocation.
+
+The fresh full gate took about 15.8 minutes, within the original 15/25/40-minute gate allowance. The unexpected budget and aggregate corrections required extra review and qualification cycles. Active end-to-end time was not instrumented, so no retrospective active-time number is claimed. For future estimates, include an explicit additive-eval aggregate review and strict skill-line-budget check before full qualification. Keep the original estimates above unchanged.
+
 ## Frozen eval appendix
 
 The objects below are prospective additions, not executed test results.

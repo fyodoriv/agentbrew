@@ -84,12 +84,12 @@ So:
 1. Copy the raw goal text verbatim. You will compare against it at the end.
    Shape a long, dictated, or vague goal first: [references/goal-intake.md](references/goal-intake.md).
    A word that can name two deliverables is a question in the one round:
-   "command" can mean a CLI command or an agent slash command.
+   "command" can mean a CLI command or an agent slash command. For an intended slash command, compare matching live skills and commands; record evidenced collisions or unknown precedence in Assumptions and Risks. Keep literal CLI requests unchanged. Follow the [identity procedure](references/execution.md#skill-discovery-and-command-identity).
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
 4. List the skills that look relevant. Load them when you reach their step, not
-   all at once.
+   all at once. After an install or refresh that can change relevant skills, read supported discovery again and reconsider original conditional steps with the [identity procedure](references/execution.md#skill-discovery-and-command-identity).
 5. Find the measurement: an existing test, lint, script, counter, or query
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time

@@ -3,7 +3,7 @@
 Loaded from Phase 4 and Phase 5 of `SKILL.md`. Each bullet comes from a run
 that failed without it.
 
-Contents: During execution · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
+Contents: During execution · Skill discovery and command identity · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
 
 ## During execution
 
@@ -115,6 +115,35 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
   disk (a saved tool-result file, a CLI's stdout) or the tool's reply copied
   without changes. Never summarize while copying. Give the store a way to
   replace a bad copy, and name the rows copied by hand in the report.
+
+## Skill discovery and command identity
+
+After an install or refresh can change relevant skills, use only operations
+actually exposed to the executing host. Read its current-session discovery,
+then inspect the exact skill identity and source. Reconsider original conditional
+steps; when availability is evidenced, load the required skill and invoke it
+once, then verify its matching result. Repeated discovery does not repeat the
+invocation or installation side effect.
+
+Disk presence is not current-session discovery or invocation proof. If discovery
+or invocation is unavailable, keep the original criterion unverified and continue
+independent authorized work. Never invent a refresh/list API or completion
+acknowledgment. Do not create another session, edit native host storage or change
+account syncing/privacy to bypass that gap.
+
+For an intended slash command, compare matching live skills and commands.
+`agentbrew commands list --json` identifies the exact winning source and expected
+target readiness; it does not prove the requested current-session invocation.
+Record evidenced collisions or unknown precedence in Assumptions and Risks.
+Claude skill precedence is host-specific; do not apply it to Codex or cloud hosts.
+Use a real supported route or an authorized source correction, then verify the
+requested identity with invocation readback. With no supported route or correction
+authority, keep that criterion unverified. Do not delete or rename an owner's
+skill, invent a qualified legacy-command name or treat a ready flag as completion.
+
+Keep a literal CLI request's argv unchanged. A matching basename does not justify
+blocking that CLI or asking a name-only question. A matching skill does not turn
+it into a slash request.
 
 ## Gate exit status
 

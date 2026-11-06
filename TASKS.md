@@ -156,6 +156,20 @@
 
 ## P1
 
+- [ ] Classify concurrent source-refresh failures without exposing private errors
+  - **ID**: source-lease-failure-observation
+  - **Tags**: reliability, sync, measurement, privacy
+  - **Mode**: AFK
+  - **Details**: A composed full gate retained a successful updater result but its concurrent index child printed only a generic failure and no structured outcome. The unchanged exact case later passed; that does not establish a cause. Follow [the observation preparation](docs/plans/source-lease-failure-observation.md). Add only safe enum evidence at the existing child catch boundary, qualify it with synthetic actual-child controls, and land instrumentation before selecting a product fix. Preserve the failed full result, focused pass, original assertions, exit codes and deadlines.
+  - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
+  - **Output**: measurement
+  - **Acceptance**: typed lease refusal, raw ENOENT and an unexpected synthetic private-marker error each emit the correct enum record, retain failure exit one and disclose no marker, message, stack, cause or path. Observation does not create a successful source outcome or classify the real incident without observed evidence.
+  - **Hypothesis**: safe catch instrumentation reduces missing classification from three of three synthetic actual-child controls to zero, while raw-marker disclosures and false successful outcomes remain zero. Real incident cause remains unknown until an actual failure is classified.
+  - **Measurement**: after committing the linked prediction and adding the proposed controls, run `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts --maxWorkers=1`; retain actual child records and exits. This proposed instrumentation measurement has not run. Run normal required gates before its separate delivery.
+  - **Success**: three of three correct enum records; every child retains exit one; zero raw-marker disclosures; zero false B success records; unchanged original assertions, retry rules and deadlines; required gates pass. Instrumentation lands before a separately registered product fix.
+  - **Pivot**: any missing or incorrect classification, raw private field, false success, changed oracle or raised timeout rejects the instrument. Keep the real cause unknown and revise observation rather than infer a product fix from a passing retry.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and actual-child fixture contracts.
+
 - [ ] Explicit pull keeps the requested sync modules selected
   - **ID**: sync-pull-only-parity
   - **Tags**: sync, cli, reliability

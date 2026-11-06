@@ -34,3 +34,19 @@ The latter needs its own evaluation before claiming that agents improved.
 
 Anchors: [Chrome DevTools Page protocol](https://chromedevtools.github.io/devtools-protocol/tot/Page/)
 and [Goal Question Metric](https://doi.org/10.1002/9780470172669.ch12).
+
+## Result and pivot
+
+On 2026-11-06, the one synthetic run exited 1 before the candidate encode.
+The old encoder invocation failed with `Unrecognized option 'safe'`; the
+probe's narrower error assertion did not accept that message. The probe did
+not check whether an old output was playable, and it did not run or verify
+the JPEG-pipe/VP9 candidate. This is an invalid 0/1 control, not evidence
+that the candidate route failed. Do not repeat it to seek a passing result.
+
+The run saved two synthetic JPEG frames and the old encoder error. Private
+local evidence also retains the exact probe, traceback and failure record.
+It does not retain the frame timestamps, independently verify the browser's
+cleanup, or establish behavior on a signed-in tab. A different measurement
+path needs a new registration before any further attempt. The date, exit code
+and one-run count come from the execution record, not the saved log alone.

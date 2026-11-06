@@ -90,3 +90,17 @@ candidate for this synthetic test only. Even a pass does not authorize a
 model baseline until the model endpoint's actual port and the corresponding
 profile are independently verified. OpenAI's [Seatbelt implementation](https://github.com/openai/codex/blob/main/codex-rs/sandboxing/src/seatbelt.rs)
 uses localhost filters, but it does not prove this particular profile here.
+
+## Result
+
+On 2026-11-06, the preregistered block exited zero. The allowed listener
+received three requests, the denied listener received two, and the restricted
+request to the denied listener exited 7 with a permission error. All five
+positive marker checks passed. The local profile SHA-256 was
+`d0038f3f5e3ae0116c6ae766350bbbe25c822d943a875dd516e5051a1caa4585`.
+Full local evidence retains the profile, markers, counts and error.
+
+This supports the chosen-port result for these synthetic listeners only. It
+does not establish a universal network boundary, perform model inference or
+identify a real device. A model baseline still needs its own endpoint and
+profile verified before use.

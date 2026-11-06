@@ -1,5 +1,6 @@
 # Tasks
 
+
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -140,14 +141,14 @@
   - **ID**: fast-gate-task-schema
   - **Mode**: AFK
   - **Tags**: ci-gate, stability, git-safety
-  - **Details**: The fast gate accepted a task block that the required full task linter rejected. A separate documentation run also accepted staged conflict markers. Reuse the existing pinned task linter and Git diff check before a fast-gate success; do not write another parser or weaken merge-ready policy.
-  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`, `docs/plans/fast-gate-task-schema.md`, existing verification guide.
+  - **Details**: The fast gate accepted a task block that the required full task linter rejected. A separate documentation run also accepted staged conflict markers. The first experiment at 885a127 failed because its valid-labeled empty fixture had an extra EOF blank line; retain that failed record and start the prospective registration separately. Reuse the existing pinned task linter and Git diff check before a fast-gate success; do not write another parser or weaken merge-ready policy.
+  - **Files**: `scripts/verify-changed.sh`, `src/verify-changed.test.ts`, `docs/plans/fast-gate-task-schema.md`, `docs/plans/fast-gate-task-schema-prospective-20261106.md`, existing verification guide.
   - **Output**: code
-  - **Acceptance**: invalid task shape, missing preregistration, duplicate IDs and leftover conflict markers stop the fast gate before downstream checks or a merge-ready verdict. Valid preregistered and empty queues still pass. Keep the existing source/full-gate routing.
-  - **Hypothesis**: four sealed invalid-input false approvals fall from four to zero, with two of two valid controls retained, by running the same strict task schema as the full gate and the existing Git diff check.
-  - **Measurement**: commit the plan first; run `JOBS=1 heavy-run npm exec -- vitest run src/verify-changed.test.ts --maxWorkers=1` against unchanged then fixed script, then normal changed/full gates. The new execution fixture delegates to the actual pinned task linter offline and stubs only unrelated successful checks.
-  - **Success**: zero invalid approvals, two of two valid controls, early failure before downstream sentinel and no changed full-gate decisions.
-  - **Pivot**: any invalid approval, valid refusal, synthetic upstream-parser replacement or ignored failure rejects the approach; do not mark the gate safe from dry-run text alone.
+  - **Acceptance**: invalid task shape, missing preregistration, duplicate IDs and leftover conflict markers stop the fast gate before downstream checks or a merge-ready verdict. Format-clean preregistered and empty queues still pass; the retained EOF-whitespace input is a separate negative. Keep the existing source/full-gate routing.
+  - **Hypothesis**: five sealed invalid-input false approvals fall from five to zero, with two of two valid controls retained, by running the same strict task schema as the full gate and the existing Git diff check.
+  - **Measurement**: commit the new prospective prediction first; run `JOBS=1 heavy-run npm exec -- vitest run src/verify-changed.test.ts --maxWorkers=1 --reporter=default --silent=false` against unchanged then fixed script, then normal changed/full gates. Preserve all original six input bytes and add the separate format-clean empty control; require seven complete observation rows and retain the original routing and reader tests. The new execution fixture delegates to the actual pinned task linter offline and stubs only unrelated successful checks.
+  - **Success**: zero of five invalid approvals, two of two valid controls, zero downstream execution on negatives, all eighteen focused tests passing, and no changed full-gate decisions.
+  - **Pivot**: any invalid approval, valid refusal, synthetic upstream-parser replacement or ignored failure rejects the new approach; missing observation rows make a run unqualified; do not mark the gate safe from dry-run text alone.
   - **Anchor**: observed task-format and staged-marker incidents; existing full gate's @tasks-md/lint 0.10.2; Git diff --check; Basili et al. 1994 GQM; Munafò et al. 2017 preregistration.
 
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
@@ -168,6 +169,20 @@
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
 ## P1
+
+- [ ] Explicit pull keeps the requested sync modules selected
+  - **ID**: sync-pull-only-parity
+  - **Tags**: sync, cli, reliability
+  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
+  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
+  - **Output**: code
+  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
+  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
+  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
+  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
+  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
+
 
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
@@ -245,6 +260,16 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
+- [ ] Maintainers can replay concurrent eval-ID collisions before choosing prevention
+  - **ID**: eval-id-composition-observation
+  - **Details**: PR796 and PR797 selected242 independently. PR799 later occupied243 while the corrected PR797 candidate still selected243. Reuse the existing eval validator in a synthetic composition harness with two collision fixtures and two valid controls. Retain each input, composed IDs, duplicate diagnostic and object-preservation verdict. Exclude raw user prompts. The harness does not exist yet; this task registers measurement preparation, not prevention or an allocator. Preserve the exact upstream objects. Any later prevention needs its own committed prediction against this baseline.
+  - **Output**: measurement
+  - **Hypothesis**: The proposed harness detects both registered collisions (2/2), accepts both valid controls (2/2), and preserves every input object. It creates a repeatable baseline without changing production allocation.
+  - **Measurement**: `test -f src/skills/eval-id-composition-observation.test.ts && heavy-run npm exec -- vitest run src/skills/eval-id-composition-observation.test.ts --maxWorkers=1`; retain per-fixture decisions and existing validator diagnostics. A missing harness fails the guard and is not a passing measurement. This proposed command has not run.
+  - **Success**: 2/2 collision detections; 2/2 valid controls accepted; zero lost or altered objects; zero unknown outcomes reported as passes; all existing validator tests pass. Land instrumentation before separately registered prevention work.
+  - **Pivot**: Any missed collision, valid refusal, altered object or unknown outcome reported as a pass rejects the harness. If the collision cannot be represented without changing the validator contract, inspect that contract before selecting prevention.
+  - **Anchor**: Existing `src/skills/validate.ts` duplicate-ID contract; PR796, PR797 and PR799 provenance; Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
 ## P2
 
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
@@ -253,7 +278,7 @@
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is unpublished and inventory acceptance remains pending.
+  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is unpublished and inventory acceptance remains pending. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance.
   - **Output**: code
   - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.

@@ -1,10 +1,41 @@
-import { execFile, execFileSync } from "node:child_process";
+import { type ExecFileSyncOptions, execFile, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import chalk from "chalk";
 import { getGitTimeout, gitExec } from "../core/git-retry.js";
 import { realignDivergedCache } from "./cache-realign.js";
+import {
+  assertSourceCheckoutLease,
+  isUnknownSourceGitTermination,
+  noteSourceGitFailure,
+  SourceCheckoutLeaseRefusal,
+  sourceCheckoutKey,
+  sourceCheckoutTerminationUnknown,
+  withSourceCheckoutLeaseSync,
+  withSourceCheckoutLeases,
+} from "./source-checkout-lease.js";
+
+function sourceGitExec(path: string, args: string[], options: Parameters<typeof gitExec>[1] = {}): Buffer {
+  assertSourceCheckoutLease(path);
+  return gitExec(args, {
+    ...options,
+    onAttemptError: (error) => {
+      noteSourceGitFailure(path, error);
+      if (isUnknownSourceGitTermination(error)) throw error;
+    },
+  });
+}
+
+function sourceGitSync(path: string, args: string[], options: ExecFileSyncOptions): string {
+  assertSourceCheckoutLease(path);
+  try {
+    return execFileSync("git", args, options).toString();
+  } catch (error) {
+    noteSourceGitFailure(path, error);
+    throw error;
+  }
+}
 
 /** Detects GitHub Enterprise URLs — any github-like host that isn't github.com. */
 function isGitHubEnterprise(url: string): boolean {
@@ -22,7 +53,7 @@ import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { redactUrlCredentials } from "../core/redact-url.js";
 import { resolveGitCloneUrl } from "../git-source-url.js";
-import { cacheGitEnv } from "../mcp/git-ref.js";
+import { assertCacheOrigin, assertOwnRepo, cacheGitEnv } from "../mcp/git-ref.js";
 import type { Source, SourceItem } from "../types.js";
 import { ICON_SUCCESS } from "../ui/output.js";
 import { checkGitAvailable } from "../utils.js";
@@ -472,7 +503,7 @@ export function getSourceCacheDir(source: Source): string {
 /** Checks out a specific SHA in the given repo directory, ignoring failures. */
 function checkoutSha(cachePath: string, sha: string): void {
   try {
-    execFileSync("git", ["checkout", sha, "--quiet"], {
+    sourceGitSync(cachePath, ["checkout", sha, "--quiet"], {
       env: cacheGitEnv(),
       cwd: cachePath,
       stdio: "pipe",
@@ -487,13 +518,13 @@ function checkoutSha(cachePath: string, sha: string): void {
 /** Fetches from origin and checks out a target SHA. Returns true on success. */
 function fetchAndCheckoutSha(cachePath: string, sha: string): boolean {
   try {
-    gitExec(["fetch", "origin", "--quiet"], {
+    sourceGitExec(cachePath, ["fetch", "origin", "--quiet"], {
       env: cacheGitEnv(),
       cwd: cachePath,
       timeout: 30_000,
       network: true,
     });
-    execFileSync("git", ["checkout", sha, "--quiet"], {
+    sourceGitSync(cachePath, ["checkout", sha, "--quiet"], {
       env: cacheGitEnv(),
       cwd: cachePath,
       stdio: "pipe",
@@ -509,7 +540,7 @@ function fetchAndCheckoutSha(cachePath: string, sha: string): boolean {
 /** Pulls latest changes with fast-forward only. Warns and continues on failure. */
 function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): void {
   try {
-    gitExec(["pull", "--ff-only", "--quiet"], {
+    sourceGitExec(cachePath, ["pull", "--ff-only", "--quiet"], {
       env: cacheGitEnv(),
       cwd: cachePath,
       timeout: 30_000,
@@ -517,6 +548,7 @@ function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): voi
     });
     sessionFetched.add(cacheKey);
   } catch (err) {
+    assertSourceCheckoutLease(cachePath);
     // A failed fast-forward usually means upstream rewrote history. The cache
     // is disposable: realign it instead of deploying stale skills.
     const realigned = realignDivergedCache(cachePath);
@@ -536,7 +568,7 @@ function pullLatest(cachePath: string, sourceUrl: string, cacheKey: string): voi
 /** Clones a new repository and optionally checks out a specific SHA. */
 function cloneNew(source: Source, cachePath: string, targetSha: string | undefined, cacheKey: string): string {
   const gitUrl = toGitUrl(source);
-  gitExec(["clone", "--depth", "1", "--quiet", "--end-of-options", gitUrl, cachePath], {
+  sourceGitExec(cachePath, ["clone", "--depth", "1", "--quiet", "--end-of-options", gitUrl, cachePath], {
     env: cacheGitEnv(),
     timeout: 60_000,
     network: true,
@@ -545,13 +577,13 @@ function cloneNew(source: Source, cachePath: string, targetSha: string | undefin
   // If a specific SHA is requested, unshallow and checkout
   if (targetSha) {
     try {
-      execFileSync("git", ["fetch", "--unshallow", "--quiet"], {
+      sourceGitSync(cachePath, ["fetch", "--unshallow", "--quiet"], {
         env: cacheGitEnv(),
         cwd: cachePath,
         stdio: "pipe",
         timeout: 60_000,
       });
-      execFileSync("git", ["checkout", targetSha, "--quiet"], {
+      sourceGitSync(cachePath, ["checkout", targetSha, "--quiet"], {
         env: cacheGitEnv(),
         cwd: cachePath,
         stdio: "pipe",
@@ -568,6 +600,12 @@ function cloneNew(source: Source, cachePath: string, targetSha: string | undefin
 }
 
 function cloneOrPull(source: Source, options?: { sha?: string }): string | undefined {
+  return withSourceCheckoutLeaseSync({ path: getSourceCacheDir(source), source: source.url }, () =>
+    cloneOrPullLeased(source, options),
+  );
+}
+
+function cloneOrPullLeased(source: Source, options?: { sha?: string }): string | undefined {
   const cachePath = getSourceCacheDir(source);
   // Only a hex commit id may reach `git checkout`; anything else falls back to HEAD.
   const targetSha = options?.sha && /^[0-9a-f]{4,40}$/i.test(options.sha) ? options.sha : undefined;
@@ -621,6 +659,7 @@ export function getSourceCachePath(source: Source, options?: { sha?: string }): 
   try {
     return cloneOrPull(source, options);
   } catch (e) {
+    if (e instanceof SourceCheckoutLeaseRefusal) throw e;
     logSkipped("catalog/index-source/cloneOrPull", e);
     return undefined;
   }
@@ -663,15 +702,33 @@ export function formatItemCounts(items: SourceItem[]): string {
 /** Most cached sources `prefetchCachedSources` pulls at once. */
 const PREFETCH_CONCURRENCY = 8;
 
-function pullAsync(cachePath: string, env: NodeJS.ProcessEnv): Promise<boolean> {
-  return new Promise((resolvePull) => {
-    execFile(
-      "git",
-      ["pull", "--ff-only", "--quiet"],
-      { cwd: cachePath, env, timeout: getGitTimeout(30_000) },
-      (error) => resolvePull(!error),
-    );
-  });
+function pullAsync(cachePath: string, env: NodeJS.ProcessEnv, source?: string): Promise<boolean> {
+  return withSourceCheckoutLeases(
+    [{ path: cachePath, source }],
+    () =>
+      new Promise((resolvePull, rejectPull) => {
+        assertSourceCheckoutLease(cachePath);
+        execFile(
+          "git",
+          ["pull", "--ff-only", "--quiet"],
+          { cwd: cachePath, env, timeout: getGitTimeout(30_000) },
+          (error) => {
+            try {
+              if (error) noteSourceGitFailure(cachePath, error);
+              resolvePull(!error);
+            } catch (failure) {
+              rejectPull(failure);
+            }
+          },
+        );
+      }),
+  );
+}
+
+async function settleSourceWorkers(workers: Promise<void>[]): Promise<void> {
+  const settled = await Promise.allSettled(workers);
+  const failed = settled.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") throw failed.reason;
 }
 
 /**
@@ -702,13 +759,209 @@ async function prefetchCachedSources(sources: Source[]): Promise<void> {
   const worker = async (): Promise<void> => {
     while (next < pending.length) {
       const source = pending[next++] as Source;
-      if (await pullAsync(getSourceCacheDir(source), env)) sessionFetched.add(`${source.url}:HEAD`);
+      if (await pullAsync(getSourceCacheDir(source), env, source.url)) sessionFetched.add(`${source.url}:HEAD`);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, pending.length) }, worker));
+  await settleSourceWorkers(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, pending.length) }, worker));
 }
 
-export async function indexAllSources(sources: Source[]): Promise<void> {
+export interface SourcePullOutcome {
+  source: string;
+  path?: string;
+  status: "refreshed" | "unchanged" | "skipped" | "failed";
+  reason: string;
+  sha?: string;
+}
+
+type PullGit = (path: string, ...args: string[]) => string;
+
+function recordCleanCheckoutReceipt(outcome: SourcePullOutcome, path: string, git: PullGit): boolean {
+  delete outcome.sha;
+  if (git(path, "status", "--porcelain", "--untracked-files=normal")) {
+    outcome.status = "skipped";
+    outcome.reason =
+      "Checkout has local changes after Git completed; preserve or commit them before retrying sync --pull. Revision is unverified.";
+    return false;
+  }
+  outcome.sha = git(path, "rev-parse", "HEAD");
+  return true;
+}
+
+async function refreshExistingSource(
+  source: Source,
+  outcome: SourcePullOutcome,
+  env: NodeJS.ProcessEnv,
+  git: PullGit,
+): Promise<void> {
+  const path = getSourceCacheDir(source);
+  assertOwnRepo(path, env);
+  assertCacheOrigin(path, toGitUrl(source), env);
+  outcome.path = path;
+  if (git(path, "status", "--porcelain", "--untracked-files=normal")) {
+    outcome.status = "skipped";
+    outcome.reason =
+      "Checkout has local changes; preserve or commit them before retrying sync --pull. Revision is unverified.";
+    return;
+  }
+  outcome.sha = git(path, "rev-parse", "HEAD");
+  let branch: string;
+  try {
+    branch = git(path, "symbolic-ref", "--quiet", "HEAD");
+  } catch {
+    outcome.status = "skipped";
+    outcome.reason = "Checkout is pinned or detached; choose its intended branch explicitly before refreshing.";
+    return;
+  }
+  const upstream = git(path, "rev-parse", "--symbolic-full-name", "@{upstream}");
+  if (!branch.startsWith("refs/heads/") || !upstream.startsWith("refs/remotes/origin/")) return;
+  const before = outcome.sha;
+  if (!(await pullAsync(path, env, source.url))) throw new Error("Explicit source pull failed.");
+  if (!recordCleanCheckoutReceipt(outcome, path, git)) return;
+  outcome.status = before === outcome.sha ? "unchanged" : "refreshed";
+  outcome.reason = "Verified source checkout HEAD after fast-forward refresh.";
+}
+
+function recoverCheckoutReceipt(outcome: SourcePullOutcome, git: PullGit): void {
+  delete outcome.sha;
+  if (!outcome.path) return;
+  try {
+    if (!git(outcome.path, "status", "--porcelain", "--untracked-files=normal"))
+      outcome.sha = git(outcome.path, "rev-parse", "HEAD");
+  } catch {
+    // A failed metadata read cannot supply a revision receipt.
+  }
+}
+
+function cloneSourceForPull(source: Source, path: string, env: NodeJS.ProcessEnv): Promise<void> {
+  assertSourceCheckoutLease(path);
+  return new Promise((resolveClone, rejectClone) => {
+    execFile(
+      "git",
+      ["clone", "--depth", "1", "--quiet", "--end-of-options", toGitUrl(source), path],
+      { env, timeout: getGitTimeout(60_000) },
+      (error) => {
+        try {
+          if (error) noteSourceGitFailure(path, error);
+        } catch (failure) {
+          rejectClone(failure);
+          return;
+        }
+        if (error) rejectClone(error);
+        else resolveClone();
+      },
+    );
+  });
+}
+
+/** Explicit pull owns this result; ordinary source reads keep their process memo. */
+async function refreshSourceForPull(source: Source): Promise<SourcePullOutcome> {
+  const outcome: SourcePullOutcome = {
+    source: source.url,
+    status: "failed",
+    reason: "Git refresh unavailable; check source access and branch tracking.",
+  };
+  const env = cacheGitEnv({ unattended: true });
+  const git = (path: string, ...args: string[]) =>
+    sourceGitSync(path, args, { cwd: path, env, stdio: "pipe", encoding: "utf-8", timeout: 30_000 }).trim();
+  if (source.type === "local") {
+    const path = resolveLocalPath(source.url);
+    outcome.path = existsSync(path) ? path : undefined;
+    outcome.status = "skipped";
+    outcome.reason = "Local checkout is owner-managed; fast-forward its branch explicitly, then run sync --pull.";
+    return outcome;
+  }
+  const path = getSourceCacheDir(source);
+  sessionFailed.delete(source.url);
+  try {
+    if (!existsSync(join(path, ".git"))) {
+      mkdirSync(CACHE_DIR, { recursive: true });
+      await cloneSourceForPull(source, path, env);
+      assertOwnRepo(path, env);
+      assertCacheOrigin(path, toGitUrl(source), env);
+      outcome.path = path;
+      if (!recordCleanCheckoutReceipt(outcome, path, git)) return outcome;
+      outcome.status = "refreshed";
+      outcome.reason = "Cloned source checkout.";
+      return outcome;
+    }
+    await refreshExistingSource(source, outcome, env, git);
+  } catch {
+    if (sourceCheckoutTerminationUnknown(path)) {
+      delete outcome.path;
+      delete outcome.sha;
+      outcome.reason = "Git child termination is unknown; the checkout lease is retained for verification.";
+      return outcome;
+    }
+    recoverCheckoutReceipt(outcome, git);
+    outcome.reason =
+      "Fast-forward refresh failed; retained checkout. Check origin access and branch divergence, then retry sync --pull.";
+  } finally {
+    // Later skill copies must read this decision's bytes, never retry with realignment.
+    sessionFetched.add(`${source.url}:HEAD`);
+    if (!outcome.path) sessionFailed.set(source.url, "Source checkout identity or refresh unavailable.");
+  }
+  return outcome;
+}
+
+function explicitCheckoutKey(source: Source): string {
+  const path = source.type === "local" ? resolveLocalPath(source.url) : getSourceCacheDir(source);
+  return sourceCheckoutKey(path);
+}
+
+function refreshCheckoutGroup(sources: Source[], group: number[], outcomes: SourcePullOutcome[]): Promise<void> {
+  const targets = group
+    .map((index) => sources[index] as Source)
+    .filter((source) => source.type !== "local")
+    .map((source) => ({ path: getSourceCacheDir(source), source: source.url }));
+  return withSourceCheckoutLeases(targets, async () => {
+    const identities = new Map<string, SourcePullOutcome>();
+    for (const index of group) {
+      const source = sources[index] as Source;
+      const identity = `${source.type}:${source.url}`;
+      const prior = identities.get(identity);
+      const outcome = prior ? { ...prior } : await refreshSourceForPull(source);
+      identities.set(identity, outcome);
+      outcomes[index] = outcome;
+      applyPullOutcome(source, outcome);
+    }
+  });
+}
+
+function applyPullOutcome(source: Source, outcome: SourcePullOutcome): void {
+  if (outcome.path) {
+    source.availableItems = indexCachedSource(source, outcome.path);
+    if (outcome.status === "refreshed" || outcome.status === "unchanged") source.indexedAt = new Date().toISOString();
+  }
+  if (outcome.sha) source.commitSha = outcome.sha;
+  else delete source.commitSha;
+  console.log(`  ${redactUrlCredentials(source.url)} — ${outcome.status}: ${outcome.reason}`);
+}
+
+async function indexSourcesForPull(sources: Source[]): Promise<SourcePullOutcome[]> {
+  const groups = new Map<string, number[]>();
+  for (const [index, source] of sources.entries()) {
+    const key = explicitCheckoutKey(source);
+    const group = groups.get(key) ?? [];
+    group.push(index);
+    groups.set(key, group);
+  }
+  const pending = [...groups.values()];
+  const outcomes: SourcePullOutcome[] = [];
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < pending.length) {
+      const group = pending[next++] as number[];
+      await refreshCheckoutGroup(sources, group, outcomes);
+    }
+  };
+  await settleSourceWorkers(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, pending.length) }, worker));
+  return outcomes;
+}
+
+export function indexAllSources(sources: Source[], options: { explicitPull: true }): Promise<SourcePullOutcome[]>;
+export function indexAllSources(sources: Source[]): Promise<void>;
+export async function indexAllSources(sources: Source[], options?: { explicitPull?: boolean }): Promise<unknown> {
+  if (options?.explicitPull) return indexSourcesForPull(sources);
   await prefetchCachedSources(sources);
   for (const source of sources) {
     console.log(chalk.dim(`  Indexing ${redactUrlCredentials(source.url)}...`));
@@ -722,6 +975,7 @@ export async function indexAllSources(sources: Source[]): Promise<void> {
       console.log(`  ${chalk.dim("○")} ${redactUrlCredentials(source.url)} — no items found`);
     }
   }
+  return;
 }
 
 export { findSkillDirInCache, parseFrontmatter, scanDirectoryForSkills };

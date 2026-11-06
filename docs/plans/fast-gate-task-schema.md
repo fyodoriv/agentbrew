@@ -57,3 +57,25 @@ Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration
 Estimate: active effort 30–60 minutes plus normal gate and queue time. Do not
 merge this pipeline change ahead of runtime PRs already qualifying if that
 would force unnecessary whole-suite repeats.
+
+## Original experiment result — failed
+
+The registration at `885a127` failed its own pivot. Its empty-queue fixture
+was labeled valid, but its final extra blank line is invalid under the raw
+`git diff --check "$base"` already required above. The unchanged script
+approved that input. The candidate correctly refused it and therefore failed
+the registered valid-control assertion: the focused run ended with a valid
+terminal result of one failure and sixteen passes. This is a fixture-label
+mistake, not a successful experiment or permission to relax the Git check.
+
+The observation driver also lost successful-case console rows because the
+agent reporter suppresses them. Its incomplete parsed observations do not
+replace the failing test result. Preserve the original six input byte
+sequences, frozen labels, result and logs. Do not rerun with changed labels
+and claim success against the original registration.
+
+The [prospective registration](fast-gate-task-schema-prospective-20261106.md)
+starts a separate experiment. It keeps the old empty bytes as a whitespace
+negative and adds a separate edited empty queue with clean formatting. It is
+a proposal until its prediction is committed; no new fixtures or source
+change may run before that commit.

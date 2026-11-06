@@ -1,5 +1,6 @@
 # Tasks
 
+
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -155,6 +156,20 @@
 
 ## P1
 
+- [ ] Explicit pull keeps the requested sync modules selected
+  - **ID**: sync-pull-only-parity
+  - **Tags**: sync, cli, reliability
+  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
+  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
+  - **Output**: code
+  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
+  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
+  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
+  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
+  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
+
+
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
   - **Tags**: security, stability, dependencies
@@ -230,6 +245,16 @@
   - **Preparation**: the installed recorder, parser, and reporter match the reviewed source. An isolated synthetic attempt and completion produced one paired timing record without copying the marker. Prediction commits 88a830b and f4661d6 precede the new fixtures and source. The [observation procedure](docs/plans/sleep-loop-measurement-preparation.md#verified-observation-window) uses the verified start recorded privately.
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
+
+- [ ] Maintainers can replay concurrent eval-ID collisions before choosing prevention
+  - **ID**: eval-id-composition-observation
+  - **Details**: PR796 and PR797 selected242 independently. PR799 later occupied243 while the corrected PR797 candidate still selected243. Reuse the existing eval validator in a synthetic composition harness with two collision fixtures and two valid controls. Retain each input, composed IDs, duplicate diagnostic and object-preservation verdict. Exclude raw user prompts. The harness does not exist yet; this task registers measurement preparation, not prevention or an allocator. Preserve the exact upstream objects. Any later prevention needs its own committed prediction against this baseline.
+  - **Output**: measurement
+  - **Hypothesis**: The proposed harness detects both registered collisions (2/2), accepts both valid controls (2/2), and preserves every input object. It creates a repeatable baseline without changing production allocation.
+  - **Measurement**: `test -f src/skills/eval-id-composition-observation.test.ts && heavy-run npm exec -- vitest run src/skills/eval-id-composition-observation.test.ts --maxWorkers=1`; retain per-fixture decisions and existing validator diagnostics. A missing harness fails the guard and is not a passing measurement. This proposed command has not run.
+  - **Success**: 2/2 collision detections; 2/2 valid controls accepted; zero lost or altered objects; zero unknown outcomes reported as passes; all existing validator tests pass. Land instrumentation before separately registered prevention work.
+  - **Pivot**: Any missed collision, valid refusal, altered object or unknown outcome reported as a pass rejects the harness. If the collision cannot be represented without changing the validator contract, inspect that contract before selecting prevention.
+  - **Anchor**: Existing `src/skills/validate.ts` duplicate-ID contract; PR796, PR797 and PR799 provenance; Basili, Caldiera and Rombach (1994), Goal Question Metric.
 
 ## P2
 

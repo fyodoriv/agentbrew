@@ -42,7 +42,15 @@ vi.mock("./sync/instructions-sync.js", () => ({
 }));
 
 vi.mock("./catalog/index-source.js", () => ({
-  indexAllSources: vi.fn(),
+  indexAllSources: vi.fn(async (sources: Array<{ url: string }>) =>
+    sources.map((source) => ({
+      source: source.url,
+      status: "refreshed",
+      reason: "fixture checkout",
+      sha: "fresh-sha",
+    })),
+  ),
+  getSourceCacheDir: vi.fn(() => "/tmp"),
   getSourceCachePath: vi.fn(),
   findSkillDirInCache: vi.fn((cachePath: string, name: string) =>
     cachePath.includes("no-skills") ? undefined : `${cachePath}/${name}`,
@@ -65,10 +73,6 @@ vi.mock("./catalog/types.js", () => ({
 vi.mock("./lock.js", () => ({
   readLock: vi.fn(),
   updateLock: vi.fn(),
-}));
-
-vi.mock("./skills/skill-versions.js", () => ({
-  recordSourceShas: vi.fn(async () => new Map([["user/repo", "fresh-sha"]])),
 }));
 
 vi.mock("./manifest.js", () => ({
@@ -255,6 +259,7 @@ describe("update", () => {
     await update();
     expect(mockIndexAllSources).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ url: "user/repo" })]),
+      { explicitPull: true },
     );
     expect(mockSaveState).toHaveBeenCalled();
   });

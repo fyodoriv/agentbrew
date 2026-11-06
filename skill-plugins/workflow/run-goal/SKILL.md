@@ -203,10 +203,8 @@ docs, memory, or a quick experiment can answer.
 
 ## Phase 4 — Execute without interruptions
 
-From here, do not stop for check-ins, progress approvals, or "should I
-continue?". The user set a goal so that they can be away.
-A "what are you doing?" nudge gets a one-line answer, then more tool calls
-in the same turn. A status report that ends the turn reads as "not met".
+Work without routine check-ins. Answer a status nudge in one line, then continue actionable work in the same turn.
+When only an external wait remains, use the supported [quiet wait](references/external-waits.md). A printed Goal check line is not completion; verify the original goal criteria with fresh evidence.
 
 - **Clock-bound goals:** resolve the requested end time and timezone once,
   then schedule a one-shot trigger using the platform's supported scheduler.

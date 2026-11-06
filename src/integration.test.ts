@@ -172,7 +172,7 @@ import { execFileSync } from "node:child_process";
 import { addSource } from "./add-source.js";
 import { applyAgentfile } from "./agentfile.js";
 import { detectAgents, discoverAllSkills } from "./agents.js";
-import { getSourceCachePath, indexAllSources, indexSource } from "./catalog/index-source.js";
+import { getSourceCacheDir, getSourceCachePath, indexAllSources, indexSource } from "./catalog/index-source.js";
 import { flushInstallSummary, install } from "./catalog/install.js";
 import { resetStateManager } from "./core/state-manager.js";
 import { healthCheck } from "./health.js";
@@ -1889,6 +1889,7 @@ describe("update single skill + dry-run (US13)", { timeout: 30_000 }, () => {
     // Update cache to v2
     writeFileSync(join(SOURCE_CACHE, "skill-alpha", "SKILL.md"), "# Skill Alpha v2\nUpdated alpha");
     vi.mocked(getSourceCachePath).mockReturnValue(SOURCE_CACHE);
+    vi.mocked(getSourceCacheDir).mockReturnValueOnce(SOURCE_CACHE);
 
     const source = makeSourceWithSkills(["skill-alpha"]);
     const results = refreshInstalledSkills([source], { dryRun: true });
@@ -1999,6 +2000,7 @@ describe("update single skill + dry-run (US13)", { timeout: 30_000 }, () => {
     writeFileSync(join(SOURCE_CACHE, "skill-alpha", "SKILL.md"), "# Skill Alpha v2");
     writeFileSync(join(SOURCE_CACHE, "skill-beta", "SKILL.md"), "# Skill Beta v2");
     vi.mocked(getSourceCachePath).mockReturnValue(SOURCE_CACHE);
+    vi.mocked(getSourceCacheDir).mockReturnValueOnce(SOURCE_CACHE);
 
     const log = captureLog();
     await update({ skillName: "skill-alpha", dryRun: true });

@@ -250,7 +250,7 @@ describe("lock", () => {
       expect(results[0]).toMatchObject({ status: "updated", sha: "known-sha" });
     });
 
-    it("asks the remote for a source whose lookup failed earlier this run", () => {
+    it("retains the lock when this invocation has no accepted checkout revision", () => {
       lockModule.writeLock({
         locked: [
           { source: "test/repo", type: "github", sha: "old-sha", skills: [], lockedAt: "2025-01-01T00:00:00.000Z" },
@@ -268,7 +268,8 @@ describe("lock", () => {
 
       const results = lockModule.updateLock(sources, undefined, new Map([["other/repo", "unrelated-sha"]]));
 
-      expect(results[0]).toMatchObject({ status: "updated", sha: "abc123def456789" });
+      expect(results[0]).toMatchObject({ status: "error" });
+      expect(lockModule.readLock().locked[0].sha).toBe("old-sha");
     });
 
     it("reports up-to-date when SHA matches", () => {

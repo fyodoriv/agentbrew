@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
@@ -12,6 +12,18 @@ vi.mock("node:child_process", () => ({
   execFileSync: vi.fn(),
   execFile: vi.fn(),
   spawnSync: vi.fn(() => ({ stdout: "" })),
+}));
+
+// This suite models Git and the filesystem; the real lease protocol has its own filesystem/process controls.
+vi.mock("./source-checkout-lease.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./source-checkout-lease.js")>()),
+  sourceCheckoutKey: (path: string) => path,
+  assertSourceCheckoutLease: vi.fn(),
+  noteSourceGitFailure: vi.fn(),
+  sourceCheckoutTerminationUnknown: () => false,
+  observeLeasedSourceGit: (_path: string, work: () => unknown) => work(),
+  withSourceCheckoutLeaseSync: (_target: unknown, work: () => unknown) => work(),
+  withSourceCheckoutLeases: async (_targets: unknown, work: () => Promise<unknown>) => work(),
 }));
 
 vi.mock("../utils.js", () => ({
@@ -45,6 +57,10 @@ beforeEach(() => {
   resetSessionCache();
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("parseFrontmatter", () => {

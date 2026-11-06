@@ -216,6 +216,18 @@ start it again after the edits; never report its result for the new code.
   `heavy-run` queues of 15 or more jobs.
 - `git symbolic-ref HEAD refs/heads/NEW` leaves an unborn branch, so every
   file shows as staged. Follow it with `git reset --soft <base>`.
+- Fetch the base branch and diff it against your start point before the
+  first edit and again before the PR. One goal built a Python and Rust
+  pair while main deleted the Python half; the PR could not merge.
+- Run a formatter only on the files you changed (`cargo fmt -- FILE`,
+  `ruff format FILE`). A repo-wide run rewrote 9 untouched files twice.
+- Write logs to the session scratchpad, not a fixed `$TMPDIR` name: another
+  session overwrote a shared `$TMPDIR/gate.log` and its failure looked like ours.
+- Append a new row to an ordered golden list; inserting one mid-file
+  renumbered 148 golden files.
+- A retro skill update covered by a standing approval is done in this
+  session (worktree, PR, merge), not filed as a task. A memory saying the
+  sandbox blocks the repo is a claim: try the write first.
 
 ## Mid-goal changes
 

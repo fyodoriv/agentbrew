@@ -74,6 +74,27 @@ change the denominator, replace real work or raise the timeout.
 
 ## Proposed commands and one later diagnostic
 
+## Recorder registration (2026-11-06)
+
+Before implementation, register one invocation-scoped recorder with a fixed
+stage vocabulary. It writes only stage, state and monotonic timing records to
+an explicitly supplied test-owned sink. The lifecycle case supplies a sink
+that survives its fixture cleanup; no argument or exception text reaches it.
+Each stage emits begin before work and completion only after success. A thrown
+error emits failure and is rethrown unchanged. An unresolved operation keeps
+its begin record without a terminal record.
+
+Prediction: the completed, unresolved and failed synthetic controls each
+classify correctly (3/3), with zero false terminals, swallowed errors or
+private-marker disclosures. The fixed original case retains all assertions
+and its existing timeout. Measurement: `JOBS=1 heavy-run npm exec -- vitest
+run src/plugins/cli-plugin.test.ts -t 'plugin lifecycle observation'
+--maxWorkers=1 --reporter=default --silent=false`. Success requires all three
+controls and all privacy and failure guards. Any missing or duplicate record,
+false completion, swallowed error or disclosure rejects this recorder design.
+The controls do not explain the earlier timeout. The previously registered
+one-case diagnostic remains separate and follows delivery of instrumentation.
+
 The proposed describe block does not exist yet. After registration:
 
 ```sh

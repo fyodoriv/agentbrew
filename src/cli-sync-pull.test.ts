@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +37,7 @@ vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 
 import { install as catalogInstall } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
-import { invalidateState, loadState } from "./state.js";
+import { invalidateState, loadState, saveState } from "./state.js";
 import type { Source } from "./types.js";
 import { update } from "./update.js";
 
@@ -139,6 +139,89 @@ describe("sync --pull dry-run", () => {
     await runSync("--pull");
 
     expect(mockUpdate).toHaveBeenCalledWith({ dryRun: false });
+  });
+});
+
+describe("sync --pull selected skill pruning", () => {
+  it.each([
+    false,
+    true,
+  ])("defers dropped-skill deletion until skills are selected (source removed: %s)", async (dropSource) => {
+    const name = "selected-prune-fixture";
+    const config = join(home, ".config", "agentbrew");
+    const staging = join(config, "installed-skills", name);
+    const deployed = join(home, ".claude", "skills", name);
+    mkdirSync(staging, { recursive: true });
+    mkdirSync(join(home, ".claude", "skills"), { recursive: true });
+    writeFileSync(join(staging, "SKILL.md"), "OWNED_SKILL_FIXTURE\n");
+    symlinkSync(staging, deployed, "dir");
+    try {
+      const state = loadState()!;
+      state.agentfileSkills = [name];
+      state.sources = [
+        {
+          url: STALE_URL,
+          type: "github",
+          skillsInstalled: [name],
+          availableItems: [],
+          addedAt: "2026-01-01",
+          origin: "agentfile",
+        },
+      ];
+      saveState(state);
+      writeFileSync(join(config, "Agentfile.yaml"), yaml.dump({ sources: dropSource ? [] : [STALE_URL], skills: [] }));
+      await runSync("--pull", "--only", "hooks");
+      expect(existsSync(join(staging, "SKILL.md"))).toBe(true);
+      expect(readFileSync(join(deployed, "SKILL.md"), "utf8")).toBe("OWNED_SKILL_FIXTURE\n");
+      expect(loadState()?.agentfileSkills).toEqual([name]);
+
+      await runSync("--pull", "--only", "skills");
+      expect(existsSync(staging)).toBe(false);
+      expect(loadState()?.agentfileSkills).toEqual([]);
+    } finally {
+      rmSync(deployed, { force: true });
+    }
+  });
+});
+
+describe("sync --pull selected rule aliases", () => {
+  it.each([
+    "source-link",
+    "output-link",
+  ])("retains excluded rule bytes and ownership until rules are selected: %s", async (alias) => {
+    const config = join(home, ".config", "agentbrew");
+    const shared = join(config, "shared-rules.md");
+    const output = join(home, ".claude", "CLAUDE.md");
+    mkdirSync(join(home, ".claude"), { recursive: true });
+    if (alias === "source-link") {
+      writeFileSync(output, "OWNER_RULE_FILE_FIXTURE\n");
+      symlinkSync(output, shared);
+    } else {
+      writeFileSync(shared, "OWNER_RULE_FILE_FIXTURE\n");
+      symlinkSync(shared, output);
+    }
+    try {
+      const policy = join(config, "Agentfile.yaml");
+      writeFileSync(policy, yaml.dump({ sources: [STALE_URL], rules: "ORIGINAL_RULE_FIXTURE" }));
+      await runSync("--pull", "--only", "rules");
+      const before = readFileSync(output, "utf8");
+      const owners = JSON.stringify([loadState()?.agentfileRuleOwners, loadState()?.agentfileRuleHashes]);
+      expect(before).toContain("ORIGINAL_RULE_FIXTURE");
+      writeFileSync(policy, yaml.dump({ sources: [STALE_URL], rules: "REPLACEMENT_RULE_FIXTURE" }));
+
+      await runSync("--pull", "--only", "hooks");
+      expect(readFileSync(output, "utf8")).toBe(before);
+      expect(readFileSync(shared, "utf8")).toBe(before);
+      expect(JSON.stringify([loadState()?.agentfileRuleOwners, loadState()?.agentfileRuleHashes])).toBe(owners);
+
+      await runSync("--pull", "--only", "rules");
+      expect(readFileSync(output, "utf8")).toContain("REPLACEMENT_RULE_FIXTURE");
+      expect(readFileSync(output, "utf8")).not.toContain("ORIGINAL_RULE_FIXTURE");
+      expect(readFileSync(shared, "utf8")).toBe(readFileSync(output, "utf8"));
+      expect(JSON.stringify([loadState()?.agentfileRuleOwners, loadState()?.agentfileRuleHashes])).not.toBe(owners);
+    } finally {
+      rmSync(output, { force: true });
+    }
   });
 });
 

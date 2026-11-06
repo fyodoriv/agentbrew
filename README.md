@@ -865,6 +865,14 @@ Offline or auth failures on plain `sync` print a one-line warning and fall back 
 
 Explicit `sync --pull` checks remote source caches again, even after an earlier read in the same process. It reports each refresh, skip or failure and records the accepted checkout's revision, never a newer remote revision over old files. Dirty or detached caches are retained with a reason. A failed refresh exits nonzero. `sync --pull --dry-run` fetches and writes nothing.
 
+### Selected pull modules
+
+Use `sync --pull --only skills,hooks` to refresh sources and deploy only the selected sync modules. Without `--only`, the pull deploys every configured module. Module selection does not restrict source refresh.
+
+A selected pull skips the mixed recommended install. When skills are excluded, it skips skill installation and deployed-skill refresh. When MCP is excluded, it retains Git-installed runtimes and does not publish replacement servers.
+
+Excluded modules defer skill cleanup and rule-file reconciliation, including reconciliation through linked files. A later skills-selected run uses the retained cleanup ownership. Source URL corrections still apply before fetching. Links directly into refreshed source caches can observe new source bytes.
+
 Agentbrew's managed cache writers share a checkout lease across processes. An explicit pull keeps it until its file copies and revision reads finish. It waits for another refresh; a synchronous writer reports a busy checkout instead of changing it. If Git child termination is unknown after a timeout, the lease stays in place for verification. Leases are never removed because of age or a parent PID alone. Manual Git commands do not honor this lease.
 
 Local artifact checkouts remain owner-managed. The output names the read path and asks you to fast-forward it explicitly. Git-installed MCP branches use the verified fresh-runtime updater. Pins and refusals remain visible. An artifact registration that still points into the previous MCP runtime stays there until you update that registration. The running checkout is never pulled in place.

@@ -156,20 +156,6 @@
 
 ## P1
 
-- [ ] Explicit pull keeps the requested sync modules selected
-  - **ID**: sync-pull-only-parity
-  - **Tags**: sync, cli, reliability
-  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
-  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
-  - **Output**: code
-  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
-  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
-  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
-  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
-  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
-
-
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
   - **Tags**: security, stability, dependencies
@@ -581,7 +567,7 @@
   - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
-  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts. Preserve selected-pull guards for pre-sync installation, live rule aliases and deferred staged-skill cleanup; use the CLI pull and source-skill-prune regressions as sealed migration controls.
   - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
@@ -595,7 +581,7 @@
   - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts. Selected pulls must not publish excluded Git MCP runtimes; retain the runtime and accepted source receipt controls from the pull-source-caches regression.
   - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.

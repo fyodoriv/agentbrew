@@ -75,9 +75,10 @@ function reportReadPath(
   path: string,
   outcomes: readonly SourcePullOutcome[],
   runtimeRoots: RuntimeRoot[],
-  dryRun: boolean,
   seen: Set<string>,
+  options: { dryRun: boolean; includeMcpRuntimes: boolean },
 ): ReadResult {
+  const { dryRun, includeMcpRuntimes } = options;
   const result = { skipped: 0, failed: 0 };
   const label = redactUrlCredentials(path);
   if (dryRun) {
@@ -110,7 +111,9 @@ function reportReadPath(
     console.log(
       runtime
         ? `  Local read ${label} — skipped: explicit path retains MCP ${runtime.name}'s previous runtime. Update this artifact registration to the verified replacement before syncing new rules.`
-        : `  Local read ${label} — skipped: owner-managed Git checkout. Fast-forward this checkout explicitly, then run agentbrew sync --pull.`,
+        : !includeMcpRuntimes
+          ? `  Local read ${label} — skipped: retained checkout. Use its owning update command; MCP runtimes are excluded from this pull.`
+          : `  Local read ${label} — skipped: owner-managed Git checkout. Fast-forward this checkout explicitly, then run agentbrew sync --pull.`,
     );
   } catch {
     result.skipped++;
@@ -125,18 +128,24 @@ function reportReadPath(
 export async function pullReadCheckouts(
   state: AgentBrewState,
   outcomes: readonly SourcePullOutcome[],
-  options: { dryRun: boolean },
+  options: { dryRun: boolean; includeMcpRuntimes?: boolean },
 ): Promise<ReadResult> {
   const result = { skipped: 0, failed: 0 };
   const runtimeRoots: RuntimeRoot[] = [];
+  const includeMcpRuntimes = options.includeMcpRuntimes !== false;
   for (const server of state.mcpServers ?? []) {
+    if (!includeMcpRuntimes) {
+      if (server.gitUrl)
+        console.log(`  MCP ${redactUrlCredentials(server.name)} — skipped: MCP module not selected; retained runtime.`);
+      continue;
+    }
     const next = await pullRuntime(server, runtimeRoots, options.dryRun);
     result.skipped += next.skipped;
     result.failed += next.failed;
   }
   const seen = new Set<string>();
   for (const path of readPaths(state)) {
-    const next = reportReadPath(path, outcomes, runtimeRoots, options.dryRun, seen);
+    const next = reportReadPath(path, outcomes, runtimeRoots, seen, { dryRun: options.dryRun, includeMcpRuntimes });
     result.skipped += next.skipped;
     result.failed += next.failed;
   }

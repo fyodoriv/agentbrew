@@ -8,7 +8,7 @@ vi.mock("./cli-helpers.js", async (importOriginal) => {
   return {
     ...actual,
     filterSyncModules: vi.fn((modules: unknown) => modules),
-    shouldInstallAgentfileItems: vi.fn(() => true),
+    shouldInstallAgentfileItems: vi.fn(actual.shouldInstallAgentfileItems),
   };
 });
 
@@ -45,7 +45,7 @@ vi.mock("./catalog/install.js", () => ({ install: vi.fn() }));
 import { applyAgentfile } from "./agentfile.js";
 import { install } from "./catalog/install.js";
 import { buildProgram } from "./cli.js";
-import { shouldInstallAgentfileItems } from "./cli-helpers.js";
+import { filterSyncModules, shouldInstallAgentfileItems } from "./cli-helpers.js";
 import { applyAgentfileAndInstall } from "./commands/cli-install.js";
 import { runSyncParallel } from "./sync-runner.js";
 import { update } from "./update.js";
@@ -134,6 +134,59 @@ describe("sync --no-prune --agentfile", () => {
 });
 
 describe("sync --pull requested owner policy", () => {
+  it.each(["hooks", "skills,hooks"])("keeps pre-pull installation inside selected modules: %s", async (only) => {
+    vi.mocked(applyAgentfile).mockReturnValue({
+      skillsToInstall: ["fixture"],
+      recommendedRequested: true,
+    } as NonNullable<ReturnType<typeof applyAgentfile>>);
+    await buildSilentProgram().parseAsync([
+      "node",
+      "test",
+      "sync",
+      "--pull",
+      "--only",
+      only,
+      "--agentfile",
+      "./Agentfile.yaml",
+    ]);
+    expect(install).not.toHaveBeenCalledWith(undefined, { recommended: true });
+    expect(install).toHaveBeenCalledTimes(only.includes("skills") ? 1 : 0);
+    if (only.includes("skills")) expect(install).toHaveBeenCalledWith("fixture", { skillOnly: true });
+  });
+
+  it("retains named and recommended installation without a module selection", async () => {
+    vi.mocked(applyAgentfile).mockReturnValue({
+      skillsToInstall: ["fixture"],
+      recommendedRequested: true,
+    } as NonNullable<ReturnType<typeof applyAgentfile>>);
+    await buildSilentProgram().parseAsync(["node", "test", "sync", "--pull", "--agentfile", "./Agentfile.yaml"]);
+    expect(install).toHaveBeenCalledWith("fixture", { skillOnly: true });
+    expect(install).toHaveBeenCalledWith(undefined, { recommended: true });
+  });
+
+  it("rejects an invalid pull selection before applying or installing the Agentfile", async () => {
+    vi.mocked(filterSyncModules).mockReturnValueOnce(undefined);
+    await buildSilentProgram().parseAsync([
+      "node",
+      "test",
+      "sync",
+      "--pull",
+      "--only",
+      "unknown",
+      "--agentfile",
+      "./Agentfile.yaml",
+    ]);
+    expect(applyAgentfile).not.toHaveBeenCalled();
+    expect(install).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("forwards the selected sync modules on the pull route", async () => {
+    vi.mocked(applyAgentfile).mockReturnValue(undefined);
+    await buildSilentProgram().parseAsync(["node", "test", "sync", "--pull", "--only", "skills,hooks"]);
+    expect(update).toHaveBeenCalledWith({ dryRun: false, only: "skills,hooks" });
+  });
+
   it("forwards requested skills even when additive application and installation have not recorded a selection", async () => {
     vi.mocked(applyAgentfile).mockReturnValue({
       skillsToInstall: ["skill-creator"],

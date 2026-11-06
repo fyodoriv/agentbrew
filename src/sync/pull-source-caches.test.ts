@@ -411,6 +411,52 @@ describe("explicit pull source bytes (#780)", () => {
     expect(logs.mock.calls.flat().join("\n")).not.toContain("verified candidate update");
   });
 
+  it("refreshes source bytes and receipts without publishing an excluded MCP runtime", async () => {
+    const { repo, source, cache } = fixture();
+    writeLock({
+      locked: [
+        {
+          source: source.url,
+          type: source.type,
+          sha: git(cache, "rev-parse", "HEAD"),
+          skills: ["fixture"],
+          lockedAt: "2026-11-05",
+        },
+      ],
+    });
+    runtime.root = repo;
+    const state = {
+      ...defaultState(),
+      sources: [source],
+      mcpServers: [
+        {
+          name: "fixture-mcp",
+          command: "node",
+          args: [join(repo, "server.js")],
+          env: {},
+          source: "user",
+          gitUrl: pathToFileURL(repo).href,
+          gitRef: "main",
+        },
+      ],
+      skillSourceDirs: [{ label: "fixture-runtime", path: join(repo, "skills") }],
+    };
+    saveState(state);
+    const server = JSON.stringify(loadState()?.mcpServers);
+    const fresh = commit(repo, "new selected pull bytes");
+    const runtimeBytes = readFileSync(join(repo, "skills/fixture/SKILL.md"), "utf8");
+    const logs = vi.spyOn(console, "log");
+    await update({ only: "skills,hooks", skillName: "fixture" });
+    expect(runtime.update).not.toHaveBeenCalled();
+    expect(git(repo, "rev-parse", "HEAD")).toBe(fresh);
+    expect(readFileSync(join(repo, "skills/fixture/SKILL.md"), "utf8")).toBe(runtimeBytes);
+    expect(JSON.stringify(loadState()?.mcpServers)).toBe(server);
+    expect(git(cache, "rev-parse", "HEAD")).toBe(fresh);
+    expect(readLock().locked.find((entry) => entry.source === source.url)?.sha).toBe(fresh);
+    expect(logs.mock.calls.flat().join("\n")).toContain("MCP fixture-mcp — skipped: MCP module not selected");
+    expect(logs.mock.calls.flat().join("\n")).not.toContain("Fast-forward this checkout explicitly");
+  });
+
   it("reports a pinned MCP runtime without invoking an updater or changing its files", async () => {
     const { repo } = fixture();
     runtime.root = repo;

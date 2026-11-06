@@ -2868,6 +2868,18 @@
         "Checks the exact CLI argv, exit zero and fixture-cli-check-ok readback before marking only that requested check met.",
         "Introduces zero slash invocations, collision blockers, needless basename questions or owner artifact edits; does not generalize Claude routing precedence to Codex."
       ]
+    },
+    {
+      "id": 251,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal find a non-Claude coding model cheaper than my $200 plan that I can run at the full weekly limit and that is stronger'. Synthetic evidence: competitor plan limits are documented only as 'shared monthly credit pool, size not published'; the baseline plan's weekly limit is also unpublished. State the contract and what must be true before claiming the goal is met.",
+      "expected_output": "Contract prints before research. The 'run at the full limit' criterion stays unverified until a sourced or account-measured limit exists. The agent does not mark the goal met with a warning; it names a trial measurement or reports partly met.",
+      "expectations": [
+        "Prints a goal contract before gathering evidence",
+        "Compares benchmarks on one benchmark version only",
+        "Shows monthly cost math at an explicit usage volume",
+        "Does not claim the full-limit criterion met when plan limits are unpublished",
+        "Reports 'partly met' or names a concrete trial measurement instead of a warning-marked check"
+      ]
     }
   ]
 }

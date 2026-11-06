@@ -368,16 +368,20 @@ with actuals and update the estimation method as described in
    for a standing approval for retro skill updates. With one, make the
    change in a worktree of that repo and ship it by its rules. Without one,
    park it and ask at the end with the exact diff.
-   When the skill source is read-only for this user (their rules or the
-   sandbox), do not edit it: record the update as a task, with the exact
-   proposed change, in a repo the user can write, and cite its id.
+   A note or memory that says a source is read-only is a claim, not proof:
+   try the write first. Only when a write you tried fails (the user's
+   rules forbid it, or the sandbox refuses it), record the update as a
+   task, with the exact proposed change, in a repo the user can write, and
+   cite it with the error: `task <id>, write failed: <error>`. A bare task
+   id does not pass the retro hook.
 5. **Save the retro**: in Claude Code with agentbrew, write the Skills
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
    skill used has such a line (it gives up after three tries). Ship each
-   writable change in this session (gate, PR, merge, cite the PR); when the
-   sandbox blocks the repo, cite a task instead and never bypass it.
+   writable change in this session (gate, PR, merge, cite the PR); when a
+   write you tried is refused, cite the task with its error and never
+   bypass the refusal.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
 7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
    in the retro file, run `scripts/export-goals.py`, and refresh the one

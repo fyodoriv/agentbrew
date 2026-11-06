@@ -63,8 +63,7 @@ export function displayEnvCheck(warnings: EnvWarning[]): void {
 
   console.error(chalk.bold(`\n${ICON_WARNING} ${warnings.length} env var(s) could leak across agent boundaries:\n`));
   for (const warning of warnings) {
-    const truncated = warning.value.length > 40 ? `${warning.value.slice(0, 37)}...` : warning.value;
-    console.log(`  ${chalk.yellow(warning.variable)}=${chalk.dim(truncated)}`);
+    console.log(`  ${chalk.yellow(warning.variable)} is set`);
   }
   console.log(chalk.dim(`\n  These vars override agent defaults when an orchestrator launches child sessions.`));
   console.log(chalk.dim(`  Run ${chalk.white("eval $(agentbrew env sanitize)")} to unset them.\n`));

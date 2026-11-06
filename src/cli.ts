@@ -132,7 +132,14 @@ function configureProgramRoot(program: Command): void {
     })
     .hook("preSubcommand", (_thisCommand, subcommand) => {
       const isJson = process.argv.includes("--json");
-      if (!isJson) printMotd(subcommand.name());
+      const childToken = _thisCommand.args[1];
+      const nestedCommand =
+        subcommand.name() === "env"
+          ? subcommand.commands.find(
+              (command) => command.name() === childToken || command.aliases().includes(childToken),
+            )
+          : undefined;
+      if (!isJson) printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
     })
     .configureHelp({
       formatHelp(cmd, helper) {

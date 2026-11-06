@@ -268,7 +268,7 @@
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is unpublished and inventory acceptance remains pending.
+  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is unpublished and inventory acceptance remains pending. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance.
   - **Output**: code
   - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
@@ -399,8 +399,8 @@
   - **Mode**: AFK
   - **Implementation decision**: One Rust record owner serves the existing Agentbrew and dotfiles callers. Follow the [registered controls](docs/plans/checkup-run-records.md).
   - **Tags**: checkup, state
-  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end.
-  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
+  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end. Issue #764's source-build adapters reuse this recorder/publisher under [separately preregistered controls](docs/plans/source-build-prebuilt-764.md) (initial registration `81b7c9b`, cache extension `0d02ed8`). Qualify the original six callers and later targets under this task's existing controls.
+  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, `scripts/native-build-tools.mjs`, `scripts/build-native-prebuilt.mjs`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
   - **Output**: code
   - **Acceptance**: Preserve prior completed records and rich history. Qualify all three producers, stale recovery, skill decisions and required installed targets.
   - **Hypothesis**: Complete FIRST/TWO cases rise from a predicted 0/6 to 6/6, with zero unsafe writes, stale replays or extra export probes.

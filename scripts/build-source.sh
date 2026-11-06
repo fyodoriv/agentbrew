@@ -9,7 +9,6 @@ if [[ "$(uname -s)-$(uname -m)" != Darwin-arm64 ]]; then
 fi
 
 repo="$(pwd -P)"
-publisher="$repo/rust/checkup-run/target/aarch64-apple-darwin/release/publish-dist"
 repo_identity="$(stat -f '%d:%i' "$repo")"
 head="$(git rev-parse --verify HEAD 2>/dev/null || true)"
 previous=absent
@@ -37,7 +36,7 @@ cleanup() {
       cd -P -- "$stage" &&
       [[ "$(directory_identity .)" == "$stage_identity" ]] &&
       [[ "$(directory_identity ./dist)" == "$cleanup_dist" ]] &&
-      rm -rf -- ./dist ./state ./package.json
+      rm -rf -- ./dist ./state ./.native ./package.json
   ); then
     printf '%s\n' 'agentbrew: retained an unverified build stage' >&2
     return
@@ -47,6 +46,8 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+native="$(node scripts/native-build-tools.mjs prepare "$stage")"
+publisher="$native/publish-dist"
 AGENTBREW_BUILD_OUT_DIR="$stage/dist" tsup
 candidate_identity="$(directory_identity "$stage/dist")"
 cleanup_dist="$candidate_identity"

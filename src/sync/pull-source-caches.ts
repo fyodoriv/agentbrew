@@ -1,3 +1,4 @@
+// Pattern: Adapter — registered readers produce source-pull outcomes.
 import { execFileSync } from "node:child_process";
 import { realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";

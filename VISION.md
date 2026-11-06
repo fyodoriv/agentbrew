@@ -254,6 +254,8 @@ Each load-bearing artifact names the published pattern it follows. A new artifac
 
 | Artifact | Pattern | Source | Conformance | Notes |
 |---|---|---|---|---|
+| `src/catalog/source-checkout-lease.ts` | Scoped Locking | Schmidt et al. 2000, *Pattern-Oriented Software Architecture*, vol. 2 | partial | Async invocation scope acquires ordered leases; uncertain Git termination retains them. |
+| `src/sync/pull-source-caches.ts` | Adapter | Gamma et al. 1994, *Design Patterns* | full | Adapts registered readers and verified MCP update results to source-pull outcomes. |
 | `src/mcp/adapters.ts` | Adapter | Gamma et al. 1994, *Design Patterns* | full | `getAdapter()` picks one adapter per `mcpFormat`; each turns a server into one agent's config shape. |
 | `src/adapters/rule-lint.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | `RuleLint` is the port; rule linters plug in behind it. |
 | `src/adapters/rule-lint.minsky.ts` | Ports and Adapters | Cockburn 2005, "Hexagonal Architecture" | full | Adapter that runs Minsky's rule scripts with `--repo`. |

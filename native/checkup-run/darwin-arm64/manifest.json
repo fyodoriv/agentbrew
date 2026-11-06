@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "target": "aarch64-apple-darwin",
+  "recipe": {
+    "id": "checkup-prebuilt-v1",
+    "target": "aarch64-apple-darwin",
+    "minimumMacOS": "11.0.0",
+    "flags": [
+      "-Cdebuginfo=0",
+      "-Cstrip=symbols",
+      "-Clink-arg=-Wl,-reproducible"
+    ],
+    "sourceRemap": "/agentbrew",
+    "registryRemap": "/cargo",
+    "offline": true
+  },
+  "recipeSha256": "ea98d9752ef06608d1a189bb02ba9da3d3eb70252a496dd5528448f84ccf504d",
+  "inputs": [
+    {
+      "path": "rust/checkup-run/Cargo.toml",
+      "sha256": "0d473f6de371796d2cd2fff0e565dafae9c6fe0eca7126c1c4889150da782f12"
+    },
+    {
+      "path": "rust/checkup-run/Cargo.lock",
+      "sha256": "f9144dc78733de9bfa2513ef4cd1bb1b3acc66cfd3d8d805604d1e7a80dfafeb"
+    },
+    {
+      "path": "rust/checkup-run/src/bin/publish-dist.rs",
+      "sha256": "fd3346e46c76fd48c07afb82902fdf87732f90056211bc4d0103db3715a0c592"
+    },
+    {
+      "path": "rust/checkup-run/src/lib.rs",
+      "sha256": "de5a780fc1bde3cb2fbc425075f353222431a74d650e220fc2569f22ad2e30eb"
+    },
+    {
+      "path": "rust/checkup-run/src/main.rs",
+      "sha256": "4346521381cf0b66b846280135befee32532487aa0e3dd42ec336d4166ab13d1"
+    },
+    {
+      "path": "rust/checkup-run/src/tests.rs",
+      "sha256": "fe21296fed08a866622682ba095202280547d1a3c41525588eb6b54e94aebe59"
+    },
+    {
+      "path": "rust/checkup-run/tests/native_read_guard.rs",
+      "sha256": "4e2ed57f47f64d0d82de9a3928e58985f76486363d17c6e4985d8324bbbcbad2"
+    },
+    {
+      "path": "scripts/build-native-prebuilt.mjs",
+      "sha256": "33ed4a589142e0f59aae247588ed082a00b119734b4107d270020c8eb83f3628"
+    },
+    {
+      "path": "scripts/native-build-tools.mjs",
+      "sha256": "6aa4c0739c78693d409db888fbcc6deb884815ae86a5c2927c405245498ca5d4"
+    }
+  ],
+  "toolchain": {
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27) (Homebrew)",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+    "clang": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+    "sdk": "27.2",
+    "ld": "27106.1"
+  },
+  "sourceRevision": "81db7d001b89da1251f81ba69ae0889f73073a79",
+  "artifacts": {
+    "checkup-run": {
+      "bytes": 497232,
+      "sha256": "cf8d059cee142fc6ff9fd68366ed7be9f51904ecf3c828cd72089b68ef488943"
+    },
+    "publish-dist": {
+      "bytes": 396336,
+      "sha256": "f95c99814e3777c26a6a9f474cafb56c19339fe016b38972f0c083561b13f44a"
+    }
+  }
+}

@@ -214,3 +214,7 @@ start it again after the edits; never report its result for the new code.
   filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
   longer matched the answer.
+  Bind metric changes with [external-waits.md](external-waits.md): preserve
+  the window, denominator, unit, comparator and threshold; print the revised
+  criterion for the checker. Native condition synchronization needs a supported
+  accepted operation and readback. Otherwise report that binding unverified.

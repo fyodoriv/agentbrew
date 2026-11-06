@@ -16,6 +16,8 @@ every turn.
 **Metric** (Goal → Question → Metric)
 - Question: <what we need to know to call it done>
 - Primary: <metric>, baseline <value>, target <value>, command `<command>`
+- Binding: <definition>; query/source <...>; window <...>; denominator <...>;
+  unit <...>; comparator <...>; threshold <...>; user-authorized revision <...>
 - Guards (must not get worse): <tests, lint, build, latency, ...>
 - Success: <keep threshold> · Pivot: <change-approach threshold>
 

@@ -68,9 +68,9 @@ goal checker knows what "done" means, and the user cannot review your plan.
 
 ## Why the transcript matters
 
-In Claude Code, `/goal` sets a session Stop hook. After each turn, a small fast
-model reads the condition and the transcript and returns "not yet met", "met",
-or "impossible". The checker has no tools. It sees only what you wrote.
+Claude Code's native `/goal` evaluator reads the condition and conversation;
+it cannot use tools. Native background shell/subagent work defers evaluation. Use the
+[quiet-wait and metric-binding procedure](references/external-waits.md) for CI and user corrections.
 
 So:
 
@@ -233,7 +233,7 @@ continue?". The user set a goal so that they can be away.
   you have read its output. Filling it in early is a false claim, even if you
   plan to run it next.
 - When one part is blocked, park it with a note and continue with the other
-  parts. Come back to it later.
+  parts. For CI, use [quiet external waits](references/external-waits.md); come back on a verified event.
 - A new request, a drop request, or an answer that changes a default
   mid-goal: follow "Mid-goal changes" in [references/execution.md](references/execution.md)
   (update the contract, every artifact built on the old default, and the

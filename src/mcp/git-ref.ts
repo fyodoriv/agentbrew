@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { observeLeasedSourceGit } from "../catalog/source-checkout-lease.js";
 import { errorMessage } from "../core/errors.js";
 import { stripUrlCredentials } from "../core/redact-url.js";
 
@@ -86,13 +87,15 @@ export function cacheGitEnv(options: { unattended?: boolean } = {}): NodeJS.Proc
 
 function gitIn(repoDir: string, env: NodeJS.ProcessEnv): Git {
   return (...args) =>
-    execFileSync("git", args, {
-      cwd: repoDir,
-      env,
-      encoding: "utf-8",
-      stdio: "pipe",
-      timeout: GIT_REF_TIMEOUT_MS,
-    }).trim();
+    observeLeasedSourceGit(repoDir, () =>
+      execFileSync("git", args, {
+        cwd: repoDir,
+        env,
+        encoding: "utf-8",
+        stdio: "pipe",
+        timeout: GIT_REF_TIMEOUT_MS,
+      }).trim(),
+    );
 }
 
 /**

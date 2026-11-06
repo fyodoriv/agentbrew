@@ -1,5 +1,6 @@
 # Tasks
 
+
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -154,6 +155,20 @@
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
 ## P1
+
+- [ ] Explicit pull keeps the requested sync modules selected
+  - **ID**: sync-pull-only-parity
+  - **Tags**: sync, cli, reliability
+  - **Details**: A deployed `agentbrew sync --pull --only skills,hooks` ran all configured sync modules. Current `src/cli.ts` forwards dry-run and requested skills to update but drops the module selection. Preserve the requested module set across the pull route, while an invocation without a selection retains every configured module. This is a separate follow-up to #780, not part of its cache receipt change.
+  - **Files**: `src/cli.ts`, `src/update.ts`, `src/update.test.ts`, `src/cli-sync-agentfile.test.ts`, `README.md`
+  - **Output**: code
+  - **Acceptance**: selected pull invokes only skills and hooks; every configured module still runs by default; CLI and update paths agree.
+  - **Hypothesis**: forwarding the selected modules reduces excluded sync module calls from six to zero in the skills-and-hooks pull control, without reducing eight default module calls.
+  - **Measurement**: `heavy-run npx vitest run src/cli-sync-agentfile.test.ts src/update.test.ts`; add and record an actual failing selection regression before the fix.
+  - **Success**: zero excluded module calls, two selected module calls, eight default module calls, and green affected and required gates.
+  - **Pivot**: any excluded module call, missing selected module, or default-module regression rejects the approach.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; GitHub #780 follow-up observation of CLI selection parity.
+
 
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence

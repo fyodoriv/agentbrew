@@ -48,6 +48,8 @@ interface GitExecOptions {
   network?: boolean;
   /** Environment for git (default: the process environment). */
   env?: NodeJS.ProcessEnv;
+  /** Observe each failed attempt; throwing refuses an unsafe retry. */
+  onAttemptError?: (error: unknown) => void;
 }
 
 /**
@@ -70,6 +72,7 @@ export function gitExec(args: string[], options: GitExecOptions = {}): Buffer {
       });
     } catch (error) {
       lastError = error;
+      options.onAttemptError?.(error);
       if (attempt >= maxRetries || !isTransientError(error)) {
         break;
       }

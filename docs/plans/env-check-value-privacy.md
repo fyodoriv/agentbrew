@@ -178,3 +178,52 @@ Estimate: active effort 30 / 60 / 120 minutes, elapsed 45 / 90 / 180 minutes
 low / likely / high. Existing safe CLI scaffolding reduces uncertainty.
 Queue time, upstream composition and full-gate failures can extend elapsed
 time. Revise the forecast from actual evidence, retaining the original.
+
+## Recorded result — 2026-11-06
+
+Prediction commit: `3f7c55d40e07b8538ea96957974d9699142d2907`.
+The historical truncation expectation was replaced before the first RED run,
+as registered. The existing formatter implementation remained unchanged for RED.
+
+| Stage | Real exit | Observed result |
+| --- | --- | --- |
+| RED, isolated targeted runner | 1 | 19 expected privacy failures; 28 preservation cases passed |
+| GREEN, same isolated runner and frozen assertions | 0 | 47 passed; no failed case |
+| Uncached composed full gate | 0 | 6420 passed; 33 skipped; all 20 gate steps fresh, none cached |
+
+RED exposed the synthetic marker in every sealed formatter row and every
+default-variable source-CLI row. It also failed the zero-read getter guard.
+For example, the CLI printed an `ANTHROPIC_MODEL=` line containing
+`SYNTHETIC_VALUE_C01_` instead of the registered exact name-only line. This was an actual disclosure
+assertion failure, not a setup error or a test against the owner's environment.
+
+GREEN reduced formatter marker disclosures from 9/9 to 0/9 and actual-CLI
+marker disclosures from 8/8 to 0/8. All exact variable-name lines passed,
+the getter recorded zero reads, and warning exits remained one. Clean check,
+internal checker values, custom helper selection, unset commands and existing
+sanitize shell/stream behavior passed. The custom case used the helper API;
+it was not presented as a CLI option.
+
+Both targeted runners used the registered outer `env -i` allowlist. Their CLI
+children used explicit scratch environments, synthetic values and the
+npm-prefix-only stub. No owner environment snapshot or real authentication
+material was used as qualification input. Each CLI fixture removed its scratch
+HOME; both outer scratch directories were also removed and their absence
+recorded. No owner-environment `env check`, init or sync was used as a baseline.
+
+The test source hashes were identical between RED and GREEN. Before the full
+gate, Biome changed only test layout and trailing commas; it changed no fixture,
+assertion or oracle. The runtime formatter and README hashes stayed exact.
+The full gate qualified tree `95b8f64ae25aa0c98321d9d13850b74d064c8ba5`,
+composed with main `c3331d9fd9dde61911b63cff81ef351bb57c407a`.
+Its source hashes and tree stayed unchanged for the entire run. Inner and outer
+exit receipts both recorded zero. Install e2e correctly skipped because no
+install path changed. These normal repository checks do not establish that
+every unrelated test avoids owner-environment reads.
+
+Private receipts retain the RED/GREEN logs, source hashes, cleanup records,
+full log, real exit codes, frozen composed sources and gate timings. Only this
+plan and the completed task block change for closeout; the qualified runtime,
+tests, README and always-loaded guide remain unchanged. No timing improvement
+or field recurrence measurement is claimed. The completed task leaves the queue;
+its prediction and evidence remain here.

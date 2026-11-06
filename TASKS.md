@@ -137,20 +137,6 @@
 
 ## P0
 
-- [ ] Environment diagnostics identify configured variables without revealing values
-  - **ID**: env-check-value-privacy
-  - **Mode**: AFK
-  - **Tags**: security, privacy, stability
-  - **Details**: Source review found `displayEnvCheck` printing each configured value or its prefix, including API-key variables. Delete value rendering at this existing display boundary. Follow [the registered plan](docs/plans/env-check-value-privacy.md); no live authentication material or owner environment snapshot is a fixture. P0 is justified by the diagnostic disclosure risk.
-  - **Files**: `src/core/env-sanitize.ts`, `src/core/env-sanitize.test.ts`, `src/env-sanitize-cli.test.ts`, `README.md`, `docs/plans/env-check-value-privacy.md`
-  - **Output**: code
-  - **Acceptance**: sealed formatter cases display exactly `  NAME is set`, with no value or prefix; default-variable source-CLI checks retain exit one and their existing streams. Internal checker values, custom helper selection and sanitize shell output remain correct. The display never reads the warning value property.
-  - **Hypothesis**: deleting value rendering reduces predicted synthetic marker disclosures from nine formatter cases to zero; all eight default source-CLI cases also disclose zero. Variable identity remains correct in every case and the formatter reads zero value properties. Baseline is unmeasured at registration.
-  - **Measurement**: commit the plan before regression code; run its exact allowlisted `heavy-run /usr/bin/env -i ... node node_modules/vitest/vitest.mjs run src/core/env-sanitize.test.ts src/env-sanitize-cli.test.ts --maxWorkers=1` command for RED and GREEN, then required repository gates. The custom case uses the helper API only; no CLI custom-variable flag exists. Replace the historical truncation assertion prospectively with the registered privacy contract before RED.
-  - **Success**: zero disclosed full values, markers or prefixes; nine exact name-only formatter cases, eight default CLI warning exits, zero formatter value reads, and all checker/sanitize/stream guards pass. No owner-data dependency in the targeted runner or its children.
-  - **Pivot**: any disclosure, lost variable identity, value-property read, changed exit/stream contract or owner-data dependency rejects the approach. Preserve evidence; do not weaken markers or relabel truncation as redaction.
-  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; OWASP Logging Cheat Sheet, linked in the plan.
-
 
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
@@ -170,6 +156,20 @@
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
 ## P1
+
+- [ ] Observe a real concurrent source-refresh failure before choosing a fix
+  - **ID**: source-lease-real-failure-classification
+  - **Tags**: reliability, sync, measurement, privacy
+  - **Mode**: AFK
+  - **Details**: Qualified instrumentation now distinguishes safe failure classes, but the original incident remains unexplained. After its separate delivery, run the [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort): at most ten sequential invocations of the unchanged exact cross-process case. Preserve every exit and log, stop on a classified failure, and never treat passing invocations as a fix or gate retry. Commit this cohort prediction before measurement. No product fix starts from an unclassified incident.
+  - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
+  - **Output**: measurement
+  - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
+  - **Hypothesis**: the bounded cohort yields at least one classified real failed invocation from the current baseline of zero, with zero unclassified failures, private disclosures or changed failure semantics. If no failure recurs, the evidence remains unverified.
+  - **Measurement**: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`; follow the linked sequential stopping rules, preserve every admission, exit and log, and stop after a classified failure or ten invocations. This cohort has not run.
+  - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
+  - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
 
 - [ ] Explicit pull keeps the requested sync modules selected
   - **ID**: sync-pull-only-parity

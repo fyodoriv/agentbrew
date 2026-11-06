@@ -260,3 +260,24 @@ establish the real model's output, the identity of a local server, all network
 routes or hardware behavior. After qualification, a separately registered
 baseline must bind the committed request procedure, skill, cases, model digest,
 network profile and outputs before a skill edit.
+
+## Result
+
+On 2026-11-06, the preregistered program exited zero. Its six mock requests
+matched the frozen scenarios and skill, all six mock replies scored correctly,
+and the wrong, extended and invalid controls each rejected six answers. It
+rejected the incomplete set and malformed JSON. The other listener received
+one ordinary request; the restricted connection returned `EPERM`. The program
+recorded seven mock requests and checked its listener and request threads before
+reporting success.
+
+The test-program SHA-256 was
+`47203e257c315b43beb8eaab012ee9bfb89e13605f00402196038f6be3ea7029`;
+the result file SHA-256 was
+`4689a4b7c101507481a6e7e9378ff4e901da8cc5cb20e60cafefafeca6d3d330`.
+Private local evidence retains the program, wire requests, responses, profile
+and result. The result records the counters and denial errno; it is not an
+independent network trace. No model inference or hardware command ran.
+
+This is preparation only. The test does not establish real-model behavior,
+server identity or general network isolation.

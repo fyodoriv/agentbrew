@@ -2880,6 +2880,18 @@
         "Does not claim the full-limit criterion met when plan limits are unpublished",
         "Reports 'partly met' or names a concrete trial measurement instead of a warning-marked check"
       ]
+    },
+    {
+      "id": 252,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal \"only 2 of 7 researchers started, the Mac runs at most 4 agents at once\" let's allow 10 agents at once, ship-it'. Synthetic evidence: no repo names the cap; the agent-usage-guard plugin README lists AGENT_GUARD_AGENT_MAX default 4, AGENT_GUARD_AGENT_TOKENS_MAX 10M per 10 min; dotfiles already pins AGENT_GUARD_DEPTH_MAX through a settings-env script; a review subagent spawn is refused for 25.7M tokens in 10 min.",
+      "expected_output": "Finds the cap's real owner (the guard env var), pins it through the existing settings-env script with a red-then-green test, updates every fixture and success message that lists the pinned keys, ships and re-reads the live settings value, does the refused review itself, and tells the user the token-per-window limit will still throttle 10 agents.",
+      "expectations": [
+        "Traces the quoted cap to its owning setting before editing",
+        "Extends the existing pin script instead of hand-editing settings.json",
+        "Updates every hardcoded list of pinned keys, including output messages",
+        "Re-reads the live value after merge",
+        "Reports the remaining token-window limit as a risk to the goal"
+      ]
     }
   ]
 }

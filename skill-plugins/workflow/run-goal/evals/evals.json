@@ -2804,6 +2804,17 @@
         "Quotes the zero-hit grep result",
         "Does not treat the pre-push gate as proof of no leak"
       ]
+    },
+    {
+      "id": 245,
+      "prompt": "/goal implement all unblocked tasks in this repo. Synthetic scenario: the agent runs in a worktree created two days ago; origin/main has since closed three of the tasks and added two new ones.",
+      "expected_output": "Before writing the goal contract, the agent fetches origin and reads the live task list from origin/main (not the stale worktree copy), and lists the tasks from that live list.",
+      "expectations": [
+        "Runs git fetch before reading the task list",
+        "Reads TASKS.md from origin/main, not the worktree copy",
+        "Contract omits the three tasks already closed on main",
+        "Contract includes the two new tasks"
+      ]
     }
   ]
 }

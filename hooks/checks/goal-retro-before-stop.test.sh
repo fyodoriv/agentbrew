@@ -70,6 +70,18 @@ expect "a bare task id blocks: try the write first" 2 "$(run taskbare)"
 touch "$RUN_GOAL_STATE_DIR/taskfailed.contract.md"
 printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: task retro-run-goal-eval, write failed: Operation not permitted\n' >"$RUN_GOAL_STATE_DIR/taskfailed.retro.md"
 expect "a task with the failed write's error allows" 0 "$(run taskfailed)"
+touch "$RUN_GOAL_STATE_DIR/taskdated.contract.md"
+printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: task retro-run-goal-20261106\n' >"$RUN_GOAL_STATE_DIR/taskdated.retro.md"
+expect "a bare task id with a date still blocks" 2 "$(run taskdated)"
+touch "$RUN_GOAL_STATE_DIR/taskhash.contract.md"
+printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: task #12\n' >"$RUN_GOAL_STATE_DIR/taskhash.retro.md"
+expect "a bare task number still blocks" 2 "$(run taskhash)"
+touch "$RUN_GOAL_STATE_DIR/taskdidnot.contract.md"
+printf -- '- write-changelog: fixed, commit 4a0ac04\n- run-goal: task retro-x, Write failed: sandbox did not allow the write\n' >"$RUN_GOAL_STATE_DIR/taskdidnot.retro.md"
+expect "an error text with 'did not' still allows" 0 "$(run taskdidnot)"
+msg=$(jq -cn --arg s taskdated --arg p "$TX" '{hook_event_name:"Stop",session_id:$s,transcript_path:$p}' | bash "$SCRIPT" 2>&1 >/dev/null)
+case "$msg" in *"task <id>, write failed: <error>"*) ok=0 ;; *) ok=1 ;; esac
+expect "the block message shows the task form" 0 "$ok"
 # Work goes on and uses a new skill: the gate must still see it.
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"code-review"}}]}}' >>"$TX"
 expect "a skill used after the retro blocks again" 2 "$(run s1)"

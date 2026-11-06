@@ -127,10 +127,24 @@ case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" 
 MISSING=""
 for skill in $SKILLS; do
   [ -n "$skill" ] || continue
-  if [ -f "$RETRO" ] && grep -F -- "$skill" "$RETRO" | grep -viE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' |
-    grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+|\btask\b.*write failed: |write failed: .*\btask\b'; then
-    continue
+  ok=0
+  if [ -f "$RETRO" ]; then
+    while IFS= read -r line; do
+      # The quoted error after "write failed:" is the tool's text, not ours:
+      # judge only the part before it for "no update" words and evidence.
+      head=$(printf '%s' "$line" | sed -E 's/[Ww][Rr][Ii][Tt][Ee] [Ff][Aa][Ii][Ll][Ee][Dd]:.*//')
+      printf '%s' "$head" | grep -qiE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' && continue
+      if printf '%s' "$head" | grep -qiE '(^|[^a-z])task([^a-z]|$)'; then
+        # A task is an update only with the error of a write that was tried.
+        printf '%s' "$line" | grep -qiE 'write failed: *[^ ]' && ok=1
+      elif printf '%s' "$head" | grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+'; then
+        ok=1
+      fi
+    done <<EOF_RETRO
+$(grep -F -- "$skill" "$RETRO")
+EOF_RETRO
   fi
+  [ "$ok" = 1 ] && continue
   MISSING="$MISSING $skill"
 done
 
@@ -148,4 +162,4 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
 fi
 echo $((blocks + 1)) >"$COUNTER"
 
-verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL). A task counts only with the quoted error of a write you tried (`task <id>, write failed: <error>`): with a standing approval, ship the update instead. Still missing:$MISSING."
+verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL). A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING."

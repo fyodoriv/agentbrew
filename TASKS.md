@@ -161,7 +161,7 @@
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli
   - **Mode**: AFK
-  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
+  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. The [continuation handoff](docs/plans/sync-selection-continuation-handoff-20261106.md) preserves current evidence and unapproved design; register and land bounded measurement infrastructure before capturing target cases. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
   - **Files**: `src/cli.ts`, `src/cli-helpers.ts`, `src/update.ts`, existing CLI/update/native-output tests, README and a registered preparation plan.
   - **Output**: code
   - **Acceptance**: Empty or unknown selections fail before state application, installation or publication. A valid selection excludes native plugin publication and live content preparation for every unselected module. An invocation without a selection retains normal configured behavior.

@@ -398,3 +398,25 @@ register a baseline separately. That registration must pin the runner hash,
 skill and case hashes, the selected model digest and the one-run comparison
 threshold before invoking model mode. A model tag or digest is a server report,
 not cryptographic proof of the model that actually produced a response.
+
+## Mock result
+
+On 2026-11-06, the preregistered mock command exited zero. All six requests
+matched their mock wire copies and scored correctly. The wrong, extended and
+invalid answer controls each rejected six answers; the incomplete set,
+malformed JSON, mock overflow and four tampered synthetic proof controls were
+rejected. The selected mock digest stayed the same, the other local listener
+received only its ordinary request, and the restricted connection was refused.
+The runner reported success only after its bounded cleanup checks.
+
+The runner SHA-256 was
+`95ac43efde5bda4ae9039af7986b4d0018263a073ac0472408f6c27c716c65d6`;
+the result SHA-256 was
+`826be21aef22b52098f3e2729a26ed7a889ca500e5bce3e2eb0a14823a87127a`.
+Private local evidence retains the runner, manifest, requests, responses,
+mock wire copies, profile, result and wrapper exit. The proof checks used
+synthetic data. The overflow response and individual proof-control outcomes
+were not saved separately; their success relies on the frozen runner reaching
+exit zero. There is no independent network trace of the mock run. This does
+not establish a real server's context handling,
+identity, model behavior, server-side network isolation or hardware behavior.

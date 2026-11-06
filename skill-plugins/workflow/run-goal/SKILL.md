@@ -265,7 +265,7 @@ Then write a **BLOCKED** report: what is blocked, the evidence, what you
 tried, and the exact action you need from the user. Explain each blocker in
 full, so the user can answer without other context: what the thing is in
 plain words, why it is blocked, the options, and what each option changes
-for the user. End it with
+for the user. A liftable pause is a wait, not this: [§ Liftable pauses](references/external-waits.md#liftable-pauses). End it with
 `Goal status: impossible without <X>.`
 
 ## Phase 5 — Verify

@@ -220,11 +220,11 @@ start it again after the edits; never report its result for the new code.
   first edit and again before the PR. One goal built a Python and Rust
   pair while main deleted the Python half; the PR could not merge.
 - Run a formatter only on the files you changed (`cargo fmt -- FILE`,
-  `ruff format FILE`). A repo-wide run rewrote 9 untouched files twice.
+  `ruff format FILE`). A repo-wide run rewrote many untouched files.
 - Write logs to the session scratchpad, not a fixed `$TMPDIR` name: another
   session overwrote a shared `$TMPDIR/gate.log` and its failure looked like ours.
 - Append a new row to an ordered golden list; inserting one mid-file
-  renumbered 148 golden files.
+  renumbered every golden after it.
 - A retro skill update covered by a standing approval is done in this
   session (worktree, PR, merge), not filed as a task. A memory saying the
   sandbox blocks the repo is a claim: try the write first.

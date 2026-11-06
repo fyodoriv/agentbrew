@@ -1,3 +1,6 @@
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", () => ({
@@ -42,7 +45,15 @@ vi.mock("./sync/instructions-sync.js", () => ({
 }));
 
 vi.mock("./catalog/index-source.js", () => ({
-  indexAllSources: vi.fn(),
+  indexAllSources: vi.fn(async (sources: Array<{ url: string }>) =>
+    sources.map((source) => ({
+      source: source.url,
+      status: "refreshed",
+      reason: "fixture checkout",
+      sha: "fresh-sha",
+    })),
+  ),
+  getSourceCacheDir: vi.fn(() => "/tmp"),
   getSourceCachePath: vi.fn(),
   findSkillDirInCache: vi.fn((cachePath: string, name: string) =>
     cachePath.includes("no-skills") ? undefined : `${cachePath}/${name}`,
@@ -65,10 +76,6 @@ vi.mock("./catalog/types.js", () => ({
 vi.mock("./lock.js", () => ({
   readLock: vi.fn(),
   updateLock: vi.fn(),
-}));
-
-vi.mock("./skills/skill-versions.js", () => ({
-  recordSourceShas: vi.fn(async () => new Map([["user/repo", "fresh-sha"]])),
 }));
 
 vi.mock("./manifest.js", () => ({
@@ -149,6 +156,43 @@ function makeSource(overrides?: Partial<{ url: string; type: string; skillsInsta
 }
 
 describe("update", () => {
+  it.each([
+    false,
+    true,
+  ])("retains excluded deployed skills and later prunes them (source absent: %s)", async (sourceAbsent) => {
+    const name = "api-selected-prune-fixture";
+    const config = join(homedir(), ".config", "agentbrew");
+    const policy = join(config, "Agentfile.yaml");
+    const staging = join(config, "installed-skills", name);
+    const deployed = join(homedir(), ".claude", "skills", name);
+    expect(existsSync(policy)).toBe(false);
+    mkdirSync(staging, { recursive: true });
+    mkdirSync(join(homedir(), ".claude", "skills"), { recursive: true });
+    writeFileSync(policy, "skills: []\n");
+    writeFileSync(join(staging, "SKILL.md"), "OWNED_API_SKILL_FIXTURE\n");
+    symlinkSync(staging, deployed, "dir");
+    const state = {
+      ...makeState(),
+      agentfileSkills: [name],
+      sources: sourceAbsent ? [] : [makeSource({ skillsInstalled: [name] })],
+    };
+    mockLoadState.mockReturnValue(state);
+    mockExecFileSync.mockReturnValue("up to date" as never);
+    try {
+      await update({ only: "hooks" });
+      expect(existsSync(join(staging, "SKILL.md"))).toBe(true);
+      expect(readFileSync(join(deployed, "SKILL.md"), "utf8")).toBe("OWNED_API_SKILL_FIXTURE\n");
+      expect(state.agentfileSkills).toEqual([name]);
+      await update({ only: "skills" });
+      expect(existsSync(staging)).toBe(false);
+      expect(state.agentfileSkills).toEqual([]);
+    } finally {
+      rmSync(policy, { force: true });
+      rmSync(deployed, { force: true });
+      rmSync(staging, { recursive: true, force: true });
+    }
+  });
+
   it("returns early when not initialized", async () => {
     mockLoadState.mockReturnValue(undefined);
     await update();
@@ -185,6 +229,52 @@ describe("update", () => {
     await update();
     expect(vi.mocked(clearSyncErrors)).toHaveBeenCalledOnce();
     expect(vi.mocked(saveSyncErrors)).not.toHaveBeenCalled();
+  });
+
+  it.each(["skills,hooks", " Skills , HOOKS , skills "])("deploys only selected pull modules: %s", async (only) => {
+    mockLoadState.mockReturnValue(makeState());
+    mockExecFileSync.mockReturnValue("up to date" as never);
+    await update({ only });
+    expect(mockSyncSkills).toHaveBeenCalledOnce();
+    expect(vi.mocked(syncHooks)).toHaveBeenCalledOnce();
+    for (const excluded of [syncMcpServers, syncRules, syncCommands, syncAgentDefs, syncModels, syncInstructions]) {
+      expect(excluded).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects unknown pull modules before refreshing or deploying", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    const previousExitCode = process.exitCode;
+    try {
+      await update({ only: "skills,unknown" });
+      expect(process.exitCode).toBe(1);
+      expect(mockExecFileSync).not.toHaveBeenCalled();
+      expect(mockIndexAllSources).not.toHaveBeenCalled();
+      expect(mockSaveState).not.toHaveBeenCalled();
+      for (const engine of [
+        syncMcpServers,
+        syncRules,
+        syncSkills,
+        syncCommands,
+        syncAgentDefs,
+        syncHooks,
+        syncModels,
+        syncInstructions,
+      ]) {
+        expect(engine).not.toHaveBeenCalled();
+      }
+    } finally {
+      process.exitCode = previousExitCode;
+    }
+  });
+
+  it("does not run the external skills updater when skills are excluded", async () => {
+    mockLoadState.mockReturnValue(makeState());
+    mockExecFileSync.mockReturnValue("outdated" as never);
+    await update({ only: "hooks" });
+    expect(mockExecFileSync).not.toHaveBeenCalled();
+    expect(vi.mocked(syncHooks)).toHaveBeenCalledOnce();
+    expect(mockSyncSkills).not.toHaveBeenCalled();
   });
 
   it("keeps syncing after an engine fails and records the error", async () => {
@@ -255,6 +345,7 @@ describe("update", () => {
     await update();
     expect(mockIndexAllSources).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ url: "user/repo" })]),
+      { explicitPull: true },
     );
     expect(mockSaveState).toHaveBeenCalled();
   });

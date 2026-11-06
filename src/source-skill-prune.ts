@@ -1,5 +1,5 @@
 import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, resolve } from "node:path";
 import { getStateSources } from "./agentfile.js";
 import { INSTALLED_SKILLS_DIR } from "./paths.js";
 import type { AgentBrewState } from "./types.js";
@@ -22,6 +22,9 @@ function isTeamOwned(source: { origin?: string }): boolean {
  * the new list is pruned, so a skill installed by hand is never touched. The
  * first run records the list and prunes nothing. Without this, a dropped skill
  * stayed in `skillsInstalled` and `sync --pull` copied it back.
+ * A selected sync defers this call until skills are selected. The retained
+ * marker also owns cleanup after its source is removed; a team-only owner keeps
+ * its staging even when it is absent from the new Agentfile skill list.
  */
 export function pruneDroppedAgentfileSkills(
   agentfile: { skills?: string[] },
@@ -45,7 +48,7 @@ export function pruneDroppedAgentfileSkills(
       source.skillsInstalled.splice(index, 1);
       found = true;
     }
-    if (found) {
+    if (found || !getStateSources(state).some((source) => source.skillsInstalled.includes(name))) {
       deps.removeStaging(name);
       pruned.push(name);
     }
@@ -71,7 +74,9 @@ export function backsHandInstalledSkill(
 
 /** Remove one skill folder from the installed-skills staging dir. No-op in dry-run. */
 export function removeInstalledSkillStaging(name: string, dryRun: boolean): void {
-  const skillDir = join(expandHome(INSTALLED_SKILLS_DIR), name);
+  const stagingRoot = resolve(expandHome(INSTALLED_SKILLS_DIR));
+  const skillDir = resolve(stagingRoot, name);
+  if (dirname(skillDir) !== stagingRoot) throw new Error("Refusing a skill path outside its staging directory.");
   if (dryRun || !existsSync(skillDir)) return;
   rmSync(skillDir, { recursive: true });
 }

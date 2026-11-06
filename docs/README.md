@@ -69,6 +69,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`plans/rust-literal-adapter-corpus-proposal-20261105.md`](plans/rust-literal-adapter-corpus-proposal-20261105.md) | What exact source, manifest and receipt controls define that experiment? | agent |
 | [`plans/rust-literal-staged-measurement-proposal-20261105.md`](plans/rust-literal-staged-measurement-proposal-20261105.md) | How do setup checks and a bounded unchanged-API baseline precede the full corpus? | agent |
 | [`plans/rust-byte-literal-supplement-proposal-20261105.md`](plans/rust-byte-literal-supplement-proposal-20261105.md) | Which separate byte-literal controls qualify strict decoding? | agent |
+| [`plans/rust-legacy-baseline-capture-20261106.md`](plans/rust-legacy-baseline-capture-20261106.md) | What independent legacy output must observer instrumentation preserve? | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |
 | [`specs/`](specs/) | Proposed cross-tool conventions, such as managed-section markers. | both |
 | [`human-blocked-actions/`](human-blocked-actions/) | Steps that need a human (logins, approvals). | human |

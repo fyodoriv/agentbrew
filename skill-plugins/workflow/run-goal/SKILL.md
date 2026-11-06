@@ -68,9 +68,9 @@ goal checker knows what "done" means, and the user cannot review your plan.
 
 ## Why the transcript matters
 
-In Claude Code, `/goal` sets a session Stop hook. After each turn, a small fast
-model reads the condition and the transcript and returns "not yet met", "met",
-or "impossible". The checker has no tools. It sees only what you wrote.
+Claude Code's native `/goal` evaluator reads the condition and conversation;
+it cannot use tools. Native background shell/subagent work defers evaluation. Use the
+[quiet-wait and metric-binding procedure](references/external-waits.md) for CI and user corrections.
 
 So:
 
@@ -84,12 +84,12 @@ So:
 1. Copy the raw goal text verbatim. You will compare against it at the end.
    Shape a long, dictated, or vague goal first: [references/goal-intake.md](references/goal-intake.md).
    A word that can name two deliverables is a question in the one round:
-   "command" can mean a CLI command or an agent slash command.
+   "command" can mean a CLI command or an agent slash command. For an intended slash command, compare matching live skills and commands; record evidenced collisions or unknown precedence in Assumptions and Risks. Keep literal CLI requests unchanged. Follow the [identity procedure](references/execution.md#skill-discovery-and-command-identity).
 2. Load the repo context: `AGENTS.md`/`CLAUDE.md`, the task backend, and the
    project-entry script if the repo has one.
 3. Search memory and mistake notes for the goal's topic, if a memory tool exists.
 4. List the skills that look relevant. Load them when you reach their step, not
-   all at once.
+   all at once. After an install or refresh that can change relevant skills, read supported discovery again and reconsider original conditional steps with the [identity procedure](references/execution.md#skill-discovery-and-command-identity).
 5. Find the measurement: an existing test, lint, script, counter, or query
    that can prove the end state. For a speed goal, time each part before
    you pick the lever: the lever a task names may not be where the time
@@ -106,6 +106,7 @@ So:
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
    Classify tasks by their Details (who must act), not only the Blocked flag.
+   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority.
    Before a write to a live store (migration, sync, move), list the target
    read-only and compare it with the goal's stated state. A mismatch changes
    the plan, not the facts: 20 "unmoved" items were already in the list.
@@ -141,10 +142,8 @@ Write the contract in the chat before you change anything. Fill in the template 
   source of each approval: a rule file line, the user's answer, or the goal
   text itself (a goal that names an action approves that action). An approval
   you cannot cite, such as "if the repo rules allow it", is not granted.
-  When the root fix belongs to another team, scope a "resolve" goal to what
-  this session controls (incident resolved, cause confirmed, alerting tuned,
-  fix tracked with that team), and name the other team's action as out of
-  scope. Otherwise the goal checker reads "root fix open" as "not met" forever.
+  When another team owns a required change, keep the original acceptance criteria blocked or unverified. Only explicit user approval may replace those criteria with a narrower goal.
+  Name the owner, route and test path. An owner-ask draft or filed request is not evidence the original goal is complete; post only with authorization.
 - **Budget**: rough time or turn budget. Past twice the budget, report and
   re-plan instead of drifting.
 - **Assumptions and risks**: what you believe without proof.
@@ -186,17 +185,26 @@ docs, memory, or a quick experiment can answer.
 - When the user answers with a free-text message instead of the options,
   treat it as the answer. Add each new request in it as a done-criterion,
   and do not re-ask the questions it skipped.
-- To check the user's understanding, ask in plain chat text (not the picker,
-  even if a tutor skill says so), with H/M/L confidence typed inline. While
-  you wait, say so, do the retro work, and never claim "met". On "finish",
-  ship the rest and grade the answers when they come.
+- After a walkthrough, ask quiz readiness once: **Yes now / Later / Skip**.
+  Use the structured question tool when available; honor a user who rejects it.
+  Quiz delivery is separate from intake. On **Yes now**, ask one question at a
+  time and grade it before the next. Use options and client-provided free text;
+  do not add **Other** when the client supplies it.
+- Preserve a pending question until answered. Stop re-fires do not authorize
+  another question, chat re-ask, or waiting message. Do independent work or ready
+  retro tasks. If only the human step remains, yield without re-asking.
+  Do not disable hooks or invent completion to escape the wait.
+- Honor **Later / Skip**. An optional quiz is not a new mandatory criterion.
+  Keep explicit understanding criteria unverified until answers are graded or
+  the user revises the contract. Do not claim mastery or required quiz completion
+  without evidence. Deliver independent work while answers are pending.
 - After the answers, update the contract if needed, then say once:
   "Working autonomously until done or blocked."
 
 ## Phase 4 — Execute without interruptions
 
-From here, do not stop for check-ins, progress approvals, or "should I
-continue?". The user set a goal so that they can be away.
+Work without routine check-ins. Answer a status nudge in one line, then continue actionable work in the same turn.
+When only an external wait remains, use the supported [quiet wait](references/external-waits.md). A printed Goal check line is not completion; verify the original goal criteria with fresh evidence.
 
 - **Clock-bound goals:** resolve the requested end time and timezone once,
   then schedule a one-shot trigger using the platform's supported scheduler.
@@ -225,7 +233,7 @@ continue?". The user set a goal so that they can be away.
   you have read its output. Filling it in early is a false claim, even if you
   plan to run it next.
 - When one part is blocked, park it with a note and continue with the other
-  parts. Come back to it later.
+  parts. For CI, use [quiet external waits](references/external-waits.md); come back on a verified event.
 - A new request, a drop request, or an answer that changes a default
   mid-goal: follow "Mid-goal changes" in [references/execution.md](references/execution.md)
   (update the contract, every artifact built on the old default, and the
@@ -293,6 +301,9 @@ and loaded state: the job can undo it.
 
 Before you call a failure "pre-existing", compare it with the unchanged base
 ([references/execution.md](references/execution.md) § Pre-existing failures).
+
+For every proof image, read the image itself and cross-check the system-of-record log for the same run or item. A caption, filename or worker verdict is not completion evidence.
+If either reader is unavailable, evidence conflicts or identities differ, leave the criterion unverified and report the gap. Do not manufacture pending input.
 
 For UI work, open the screenshots of every view yourself and read them for
 wrong content, not only for presence. Tests that assert "the view shows

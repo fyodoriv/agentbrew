@@ -250,3 +250,41 @@ the baseline has five unsafe negative families and four supported positives.
 The production repair target remains zero unsafe negative families. The guard,
 clone, stamp and cache scripts are unchanged, and their task stays open. Full
 repository qualification and delivery of this preparation are still required.
+
+## Full-gate cache admission
+
+The N4 repair addresses cached verification. A checkout's dependency folder
+does not have a trusted content receipt. When it exists, dependency-sensitive
+steps run fresh and do not save a reusable pass. This also applies to a
+dangling installation link. The shared cache retains the exact independent
+commands listed in `scripts/verify.sh`. A command that selects a tool from the
+local install, or an ambient script loader, cannot use the independent path.
+Keep that list in step with the default plan as scripts gain dependencies.
+The four scoped commands check source security patterns, root artifacts,
+task stability and the default hook fixtures. The hook runner checks its
+outer helper executables before using the sanitized fixture environment.
+Lockfile and rule checks with unresolved selector or Git state inputs run
+fresh. The new keys separate these passes from older cache receipts.
+Artifact lint also runs fresh when a root regular file starts with an
+equals sign. Git ignore rules can omit that file from the source key.
+
+The built-in plan does not use a no-install fallback. A custom
+`VERIFY_PLAN` can reuse a fixture cache only when the local install and
+ambient loaders are absent. This preserves the existing fixture port.
+
+The historical N4 experiment recorded reuse and a failing separate
+predicate. The gate splits plan lines into arguments, so the original
+inline shell operator did not run the predicate inside the counting script.
+For the before/after repair measurement, put the same predicate in the
+script the gate executes. Keep the original payload, mutation and separate
+predicate control. In a warmed mixed plan, run the four actual independent
+scripts. Require all four independent
+hits and a fresh dependency-sensitive run. Require that run to fail after
+the installed payload changes. Qualify the mixed-plan fixture with its
+child shell and Node loaders unset. An unqualified ambient loader can
+observe the local install, so the normal gate preserves that environment
+and skips independent cache reuse in that case.
+
+The guard, donor and target-stamp repair remains open. Package declarations
+and the protected optional-peer findings stay in scope for their separate
+acceptance checks.

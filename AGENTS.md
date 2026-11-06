@@ -26,10 +26,10 @@ Run every command from the repo root.
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
-| Full gate (step cache shared by worktrees; after an outside change, `NO_CACHE=1` runs all) | `npm run verify` — minutes; run once, in the background |
+| Full gate (shared source-only cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
 | Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
 | Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
-| Build | `npm run build` |
+| Build | `npm run build` ([native receipts](docs/plans/source-build-prebuilt-764.md)) |
 | Metrics with goal and pivot | `bash scripts/metrics.sh` |
 
 ## Where to change what
@@ -91,12 +91,12 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - `src/cli.test.ts` can time out under load; re-run it first.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.
 - Each test file gets a scratch `HOME` and scrubbed `AGENTBREW_*`/`NO_CACHE` env (`vitest.isolated-home.ts`). It fails on writes to the real `~/.config/agentbrew` or `~/.claude`, and on new repo files. Instructions sync writes `context/*.md` under `AGENTBREW_DIR`, so never point it at the repo root in a test; use a scratch copy (`scratchRepoRoot()` in `src/integration.test.ts`).
-- Git tests: `GIT_CONFIG_GLOBAL=/dev/null` avoids owner's `TASKS.md` ignore. Use `*.template.md`; [HOME](docs/plans/rust-source-inventory.md).
+- Git: `GIT_CONFIG_GLOBAL=/dev/null` avoids owner's `TASKS.md` ignore. Use `*.template.md`; [HOME](docs/plans/rust-source-inventory.md).
 - A vitest `globalSetup` teardown error only logs; it does not fail the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
 - `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
-- Build after catalog edits; [verify helper deployment](docs/plans/retire-usage-tips.md#cached-reader-recurrence).
+- [Catalog builds](docs/plans/retire-usage-tips.md#cached-reader-recurrence); [pull](README.md#selected-pull-modules).
 - Per-user schedulers: `src/core/`, fakes; [queue handoff](docs/plans/scheduled-repair-queue-admission.md).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
@@ -106,7 +106,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
 - opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
-- Every `- **ID**:` task needs Hypothesis, Success, Pivot, Measurement, and Anchor, each with the list dash (`  - **Field**:`); `npx @tasks-md/lint --fix TASKS.md` adds the dash.
+- Fast gate: `git diff --check "$base"`, then `npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md`, before later checks. Fix schema, whitespace and conflict errors first.
 
 ## Delivery
 

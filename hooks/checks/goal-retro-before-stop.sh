@@ -17,8 +17,8 @@
 # transcript's write lag does not hide them at stop time.
 #
 # **Retro file**: `<state dir>/<session_id>.retro.md`. Each skill used needs a
-# line that names it and its update: a commit SHA, a PR (`#123` or a
-# `/pull/` URL), or `task`. A line that says it made no update ("not
+# line that names it and its update: a commit SHA, a PR or issue (`#123`,
+# `/pull/` URL or `/issues/` URL), or `task`. A line that says it made no update ("not
 # updated", "no change", "no new edit", "did not", "already covers",
 # "skipped", "duplicate") does not count, even if it cites an old commit:
 # a live retro once passed with "no new edit ... commit 1fcff84".
@@ -125,7 +125,7 @@ MISSING=""
 for skill in $SKILLS; do
   [ -n "$skill" ] || continue
   if [ -f "$RETRO" ] && grep -F -- "$skill" "$RETRO" | grep -viE 'not updated|no change|no new|no edit|did not|already cover|skipped|duplicate' |
-    grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|\btask\b'; then
+    grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+|\btask\b'; then
     continue
   fi
   MISSING="$MISSING $skill"

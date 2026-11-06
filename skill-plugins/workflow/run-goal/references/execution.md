@@ -3,7 +3,7 @@
 Loaded from Phase 4 and Phase 5 of `SKILL.md`. Each bullet comes from a run
 that failed without it.
 
-Contents: During execution · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
+Contents: During execution · Skill discovery and command identity · Gate exit status · Pre-existing failures · Metrics and stale gates · Mid-goal changes
 
 ## During execution
 
@@ -116,6 +116,35 @@ Contents: During execution · Gate exit status · Pre-existing failures · Metri
   without changes. Never summarize while copying. Give the store a way to
   replace a bad copy, and name the rows copied by hand in the report.
 
+## Skill discovery and command identity
+
+After an install or refresh can change relevant skills, use only operations
+actually exposed to the executing host. Read its current-session discovery,
+then inspect the exact skill identity and source. Reconsider original conditional
+steps; when availability is evidenced, load the required skill and invoke it
+once, then verify its matching result. Repeated discovery does not repeat the
+invocation or installation side effect.
+
+Disk presence is not current-session discovery or invocation proof. If discovery
+or invocation is unavailable, keep the original criterion unverified and continue
+independent authorized work. Never invent a refresh/list API or completion
+acknowledgment. Do not create another session, edit native host storage or change
+account syncing/privacy to bypass that gap.
+
+For an intended slash command, compare matching live skills and commands.
+`agentbrew commands list --json` identifies the exact winning source and expected
+target readiness; it does not prove the requested current-session invocation.
+Record evidenced collisions or unknown precedence in Assumptions and Risks.
+Claude skill precedence is host-specific; do not apply it to Codex or cloud hosts.
+Use a real supported route or an authorized source correction, then verify the
+requested identity with invocation readback. With no supported route or correction
+authority, keep that criterion unverified. Do not delete or rename an owner's
+skill, invent a qualified legacy-command name or treat a ready flag as completion.
+
+Keep a literal CLI request's argv unchanged. A matching basename does not justify
+blocking that CLI or asking a name-only question. A matching skill does not turn
+it into a slash request.
+
 ## Gate exit status
 
 Read the gate's own exit status, not a line that a wrapper printed. In
@@ -152,6 +181,13 @@ served output after the deploy, not only the pipeline's output.
 - Then fetch the served output and read every entry for wrong content.
   In one run, the plan audit was 100%, but the live calendar feed still had old
   entries with wrong end times, from a path the audit never read.
+- For a dashboard or report goal, include a done-criterion that compares at
+  least the headline numbers with source-of-truth data: raw events, the source
+  channel, or the database. Use the same time window, filters, and counting unit.
+  Keep query and filter checks, but "every query runs" is not a correctness check.
+  Have an independent judge trace mismatches to source records. If source access
+  or required fields are missing, keep the criterion unverified and name the gap.
+  Do not invent requester names or change source data to make the totals agree.
 - A self-built judge needs calibration first. Fix its false failures and call them
   judge bugs, not product wins. Then have a grader that did not write the code
   check a sample against the source.
@@ -207,3 +243,7 @@ start it again after the edits; never report its result for the new code.
   filed tickets from its defaults, and then a mid-goal
   answer changed one of those defaults, so the tickets built on it no
   longer matched the answer.
+  Bind metric changes with [external-waits.md](external-waits.md): preserve
+  the window, denominator, unit, comparator and threshold; print the revised
+  criterion for the checker. Native condition synchronization needs a supported
+  accepted operation and readback. Otherwise report that binding unverified.

@@ -132,7 +132,14 @@ function configureProgramRoot(program: Command): void {
     })
     .hook("preSubcommand", (_thisCommand, subcommand) => {
       const isJson = process.argv.includes("--json");
-      if (!isJson) printMotd(subcommand.name());
+      const childToken = _thisCommand.args[1];
+      const nestedCommand =
+        subcommand.name() === "env"
+          ? subcommand.commands.find(
+              (command) => command.name() === childToken || command.aliases().includes(childToken),
+            )
+          : undefined;
+      if (!isJson) printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
     })
     .configureHelp({
       formatHelp(cmd, helper) {
@@ -288,6 +295,7 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     return true;
   }
   if (options.pull) {
+    if (options.only && !filterSyncModules(buildSyncModules({}), options.only)) return true;
     // Apply the Agentfile to state first, so the pull sees corrected source URLs
     // and does not fetch (or fail on) entries the Agentfile already dropped.
     const applied = await applyAgentfileBeforePull(options);
@@ -296,6 +304,7 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
     await installAgentfileItemsBeforePull(applied, options);
     await update({
       dryRun: options.dryRun ?? false,
+      ...(options.only ? { only: options.only } : {}),
       ...(applied?.skillsToInstall.length ? { requestedSkills: applied.skillsToInstall } : {}),
     });
     return true;
@@ -319,6 +328,7 @@ async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<Ap
       authoritative: options.prune !== false,
       includeSkillInstallReport: false,
       dryRun: options.dryRun,
+      ...(options.only ? { syncModules: options.only.split(",").map((name) => name.trim().toLowerCase()) } : {}),
     });
     if (!applied) throw new Error("Agentfile application returned no result");
     return applied;
@@ -330,12 +340,12 @@ async function applyAgentfileBeforePull(options: SyncCommandOptions): Promise<Ap
 
 /** Install skills the Agentfile requests. Skipped on --dry-run. */
 async function installAgentfileItemsBeforePull(applied: AppliedAgentfile, options: SyncCommandOptions): Promise<void> {
-  if (!applied || options.dryRun) return;
+  if (!applied || options.dryRun || !shouldInstallAgentfileItems(options.only)) return;
   const { install: catalogInstall } = await import("./catalog/install.js");
   for (const skillName of applied.skillsToInstall) {
     await catalogInstall(skillName, { skillOnly: true });
   }
-  if (applied.recommendedRequested) await catalogInstall(undefined, { recommended: true });
+  if (applied.recommendedRequested && !options.only) await catalogInstall(undefined, { recommended: true });
 }
 
 /** Fail closed when a locked source or plugin drifted (issue #208, S1/S2). */

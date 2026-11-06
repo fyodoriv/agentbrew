@@ -126,7 +126,7 @@ export function updateLock(
       continue;
     }
 
-    const newSha = knownShas?.get(source.url) ?? getGitHeadSha(source);
+    const newSha = knownShas ? knownShas.get(source.url) : getGitHeadSha(source);
     if (!newSha) {
       results.push({ source: entry.source, status: "error" });
       continue;

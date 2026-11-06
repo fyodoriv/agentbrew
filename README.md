@@ -861,7 +861,21 @@ What does not carry over on its own:
 
 `agentbrew sync` soft-updates **agentbrew-managed skill sources** (catalog and global Agentfile `origin: global`) when their cache is older than 30 minutes, then re-copies any installed skills from the refreshed cache before deploying symlinks. User-, project-, and agentfile-added sources refresh only on explicit `agentbrew sync --pull`. Within the TTL window, plain `sync` stays quiet (no network).
 
-Offline or auth failures print a one-line warning and fall back to the cached copy; `sync` never crashes on a transient refresh error. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**. Force a fresh pull of every source with `agentbrew sync --pull`.
+Offline or auth failures on plain `sync` print a one-line warning and fall back to the cached copy. `agentbrew status --verbose` labels managed sources as **always-fresh on sync**.
+
+Explicit `sync --pull` checks remote source caches again, even after an earlier read in the same process. It reports each refresh, skip or failure and records the accepted checkout's revision, never a newer remote revision over old files. Dirty or detached caches are retained with a reason. A failed refresh exits nonzero. `sync --pull --dry-run` fetches and writes nothing.
+
+### Selected pull modules
+
+Use `sync --pull --only skills,hooks` to refresh sources and deploy only the selected sync modules. Without `--only`, the pull deploys every configured module. Module selection does not restrict source refresh.
+
+A selected pull skips the mixed recommended install. When skills are excluded, it skips skill installation and deployed-skill refresh. When MCP is excluded, it retains Git-installed runtimes and does not publish replacement servers.
+
+Excluded modules defer skill cleanup and rule-file reconciliation, including reconciliation through linked files. A later skills-selected run uses the retained cleanup ownership. Source URL corrections still apply before fetching. Links directly into refreshed source caches can observe new source bytes.
+
+Agentbrew's managed cache writers share a checkout lease across processes. An explicit pull keeps it until its file copies and revision reads finish. It waits for another refresh; a synchronous writer reports a busy checkout instead of changing it. If Git child termination is unknown after a timeout, the lease stays in place for verification. Leases are never removed because of age or a parent PID alone. Manual Git commands do not honor this lease.
+
+Local artifact checkouts remain owner-managed. The output names the read path and asks you to fast-forward it explicitly. Git-installed MCP branches use the verified fresh-runtime updater. Pins and refusals remain visible. An artifact registration that still points into the previous MCP runtime stays there until you update that registration. The running checkout is never pulled in place.
 
 ## Supported agents
 
@@ -1018,6 +1032,14 @@ agentbrew classify <repo-path>         Classify a repo as solo or shared (downst
 
 `agentbrew --help` shows all commands grouped by category. `agentbrew actions` lists the same commands for agents, generated from the CLI parser, so a new command appears there by itself. When you add one that needs the user's own terminal (an interactive prompt, a foreground loop) or is hard to undo, add it to `TERMINAL_ONLY` or `CONFIRM` in `src/actions.ts`.
 
+`agentbrew env check` reports which override variables are set without printing
+their values or value prefixes. It exits with status 1 when an override is set.
+
+Use `eval "$(agentbrew env sanitize)"` to clear environment overrides before
+starting another agent. This command writes only `unset` code, or nothing,
+to stdout. Its banner, repair summary and upgrade notices use stderr.
+Ordinary command banners keep their existing output stream.
+
 A hidden command needs a reason in `NOT_ACTIONS`. Some commands are scheduled for deletion — see [docs/VISION.md § "Shipped — being removed"](docs/VISION.md#shipped--being-removed) and [TASKS.md](TASKS.md).
 
 `agentbrew lint` also guards instruction/rules bloat. See `docs/agent-bloat-lint.md`. It checks:
@@ -1124,12 +1146,18 @@ not approve the whole Rust file. Compiled review data is immutable for one
 checker invocation. The manifest cannot select records or override native
 contradictions. See the [reviewed registry plan](docs/plans/rust-source-reviewed-registry.md).
 
-Run the foundation checks through the owner's shared queue with one compiler
+Run the package-entry checks through the owner's shared queue with one compiler
 worker and one test thread:
 
 ```bash
-JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --manifest-path rust/Cargo.toml --lib --test package_entries -- --test-threads=1
+JOBS=1 CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --manifest-path rust/Cargo.toml --test package_entries -- --test-threads=1
 ```
+
+The broad library/family invocation is unavailable while its source-count work
+is unbounded and Rust positives remain unqualified. Use only the separately
+registered exact filters in the [staged measurement plan](docs/plans/rust-literal-staged-measurement-proposal-20261105.md)
+and [legacy capture plan](docs/plans/rust-legacy-baseline-capture-20261106.md).
+Historical commands in earlier plans are not fresh run authorization.
 
 The [upstream ownership plan](docs/plans/rust-upstream-ownership.md) separates
 pinned dependency provenance from owned patches and executable-family proof.
@@ -1159,6 +1187,16 @@ bash hooks/checks/gh-pr-agent-artifacts-require-tests.test.sh
 High-risk artifacts need deterministic tests, behavioral evals, or an exemption reason. The PR-time hook accepts same-PR `*.test.*`, `hooks/checks/*.test.sh`, `agent-artifact-evals/**`, `evals/evals.json`, or `Agent artifact test exemption: <reason>` in the PR body.
 
 `npm run build` fails before `tsup` when `node_modules` has drifted from `package-lock.json`, with the remediation `deps out of sync — run npm ci`. After `tsup`, the postbuild guard runs `node dist/cli.js --version` so CI catches missing or unrunnable CLI output instead of leaving `bin/agentbrew` to fall back to source execution later.
+
+Apple Silicon source builds use installed Cargo, including ordinary Rustup
+and Homebrew locations outside PATH. Without Cargo, they use the source-bound
+checked-in native pair through the same staged atomic publisher. They never
+reuse an unverified Cargo target or silently omit native checkup records.
+[Installation behavior](INSTALL.md) explains refusal and recovery;
+[the prebuilt plan](docs/plans/source-build-prebuilt-764.md) records the build,
+privacy and reproducibility controls. Native source or bootstrap changes
+require regenerating that pair with the registered offline builder.
+
 
 Real e2e scenarios (opt-in; fixture-backed):
 

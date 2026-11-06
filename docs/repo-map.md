@@ -36,6 +36,38 @@ agentbrew/
 
 ## Data Flow
 
+A module's fetched-source memo is not a new explicit pull result. Test both
+  deployed cache bytes and recorded checkout SHA after an earlier same-process
+  read. Never use remote HEAD as proof of the bytes deployed. MCP update callers
+  must inspect its publication outcome, not a pre-existing process exit code.
+
+Explicit pull uses invocation-owned source outcomes from `src/catalog/index-source.ts`.
+`src/catalog/source-checkout-lease.ts` owns the cross-process checkout leases.
+An invocation reserves its full sorted key set before starting work. Async local
+permission names exact canonical paths and a matching active token. It is cleared
+before release, so a queued callback cannot inherit permission from a finished
+invocation. A conservative folded collision key can serialize case-distinct paths
+on a case-sensitive volume; it never grants path or origin identity.
+
+Managed source clone, pull, pin, prefetch and realignment paths all use this
+boundary. The legacy MCP cache helper participates when called. Private MCP
+candidate directories and their publication namespace keep their existing policy.
+Ordinary APIs still return mutable paths. Explicit update retains the lease through
+its skill copy and lock receipt, then releases before later engine deployment.
+Mocked Git/filesystem unit suites mock the lease boundary; real ownership and
+process controls remain separate. Restore stubbed Git environment values in
+afterEach so an early assertion cannot hide the repository tree check.
+
+Unknown Git termination retains the lease; failed worker groups finish their
+settlement barrier before any other invocation-owned lease is released.
+
+Only accepted clean checkout HEADs supply revision receipts. Ordinary source reads
+retain their process memo; that memo cannot suppress an explicit pull.
+`src/sync/pull-source-caches.ts` traces registered local artifact paths to their
+Git roots and reports ownership skips. Git-installed MCP branches retain their
+existing candidate build and verified publication route. Exact local artifact
+paths into previous runtimes are reported and never silently redirected.
+
 ```
 agentbrew state                     sync engine                     target
 ───────────────                     ───────────                     ──────

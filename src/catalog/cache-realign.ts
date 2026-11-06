@@ -2,6 +2,12 @@ import { execFileSync } from "node:child_process";
 import { errorMessage } from "../core/errors.js";
 import { gitExec } from "../core/git-retry.js";
 import { cacheGitEnv } from "../mcp/git-ref.js";
+import {
+  assertSourceCheckoutLease,
+  isUnknownSourceGitTermination,
+  noteSourceGitFailure,
+  withSourceCheckoutLeaseSync,
+} from "./source-checkout-lease.js";
 
 export type RealignResult =
   | { status: "realigned"; upstream: string; salvageBranch?: string; kept: number }
@@ -11,7 +17,13 @@ export type RealignResult =
 // ...) dropped, so a sync started from a git hook resets the cache, never the
 // hook's repo.
 function git(cachePath: string, args: string[], env: NodeJS.ProcessEnv): string {
-  return execFileSync("git", args, { cwd: cachePath, env, stdio: "pipe", timeout: 30_000, encoding: "utf-8" }).trim();
+  assertSourceCheckoutLease(cachePath);
+  try {
+    return execFileSync("git", args, { cwd: cachePath, env, stdio: "pipe", timeout: 30_000, encoding: "utf-8" }).trim();
+  } catch (error) {
+    noteSourceGitFailure(cachePath, error);
+    throw error;
+  }
 }
 
 function resolveUpstream(cachePath: string, env: NodeJS.ProcessEnv): string {
@@ -30,9 +42,23 @@ function resolveUpstream(cachePath: string, env: NodeJS.ProcessEnv): string {
  * be fetched (offline); the caller then keeps the cached data and warns.
  */
 export function realignDivergedCache(cachePath: string, now: Date = new Date()): RealignResult {
+  return withSourceCheckoutLeaseSync({ path: cachePath }, () => realignLeasedCache(cachePath, now));
+}
+
+function realignLeasedCache(cachePath: string, now: Date): RealignResult {
   const env = cacheGitEnv();
   try {
-    gitExec(["fetch", "origin", "--quiet"], { cwd: cachePath, env, timeout: 30_000, network: true });
+    assertSourceCheckoutLease(cachePath);
+    gitExec(["fetch", "origin", "--quiet"], {
+      cwd: cachePath,
+      env,
+      timeout: 30_000,
+      network: true,
+      onAttemptError: (error) => {
+        noteSourceGitFailure(cachePath, error);
+        if (isUnknownSourceGitTermination(error)) throw error;
+      },
+    });
     const upstream = resolveUpstream(cachePath, env);
     const kept = Number(git(cachePath, ["rev-list", "--count", `${upstream}..HEAD`], env));
     let salvageBranch: string | undefined;

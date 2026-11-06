@@ -105,7 +105,7 @@ function doUpgrade(latestVersion: string): boolean {
  * outdated, auto-upgrade silently and print one line. For npx, skip entirely.
  * Never blocks the user — errors are swallowed.
  */
-export function checkForAutoUpgrade(): void {
+export function checkForAutoUpgrade(output: (message: string) => void = console.log): void {
   try {
     if (isNpxRun()) return;
 
@@ -129,12 +129,12 @@ export function checkForAutoUpgrade(): void {
     if (isGlobalInstall()) {
       const upgraded = doUpgrade(latest);
       if (upgraded) {
-        console.log(`  ${ICON_SUCCESS} Auto-upgraded agentbrew ${current} → ${latest}`);
+        output(`  ${ICON_SUCCESS} Auto-upgraded agentbrew ${current} → ${latest}`);
       } else {
-        console.log(chalk.dim(`  Update available: agentbrew ${current} → ${latest} (run: agentbrew upgrade)`));
+        output(chalk.dim(`  Update available: agentbrew ${current} → ${latest} (run: agentbrew upgrade)`));
       }
     } else {
-      console.log(chalk.dim(`  Update available: agentbrew ${current} → ${latest} (run: npm i -g agentbrew@latest)`));
+      output(chalk.dim(`  Update available: agentbrew ${current} → ${latest} (run: npm i -g agentbrew@latest)`));
     }
   } catch (e) {
     logSkipped("auto-upgrade/log", e);

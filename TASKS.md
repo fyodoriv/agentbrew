@@ -1,5 +1,6 @@
 # Tasks
 
+
 <!-- policy: Run tests before every commit. Never skip CI checks.
              `npm run verify` must pass before every commit (AGENTS.md rule #1).
      policy: Maintain 95%+ coverage on statements, functions, and lines. Branch coverage target is 95%.
@@ -136,6 +137,7 @@
 
 ## P0
 
+
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
      agentbrew further into pure orchestration: two delegations that shrink the
@@ -154,6 +156,34 @@
      and is the precondition check Phase 3 re-runs before decommissioning rules. -->
 
 ## P1
+
+- [ ] Validate every sync selection before preparation can publish outputs
+  - **ID**: sync-selection-preflight
+  - **Tags**: security, stability, sync, cli
+  - **Mode**: AFK
+  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
+  - **Files**: `src/cli.ts`, `src/cli-helpers.ts`, `src/update.ts`, existing CLI/update/native-output tests, README and a registered preparation plan.
+  - **Output**: code
+  - **Acceptance**: Empty or unknown selections fail before state application, installation or publication. A valid selection excludes native plugin publication and live content preparation for every unselected module. An invocation without a selection retains normal configured behavior.
+  - **Hypothesis**: a shared preflight boundary reduces predicted unrequested-publication cases from four to zero across the sealed negative controls, while the default and valid selected controls remain correct. Capture the actual baseline before any fix; this is a prospective prediction, not a measured result.
+  - **Measurement**: Commit a plan with exact synthetic inputs and numeric call/write oracles first. Extend `src/cli-sync-agentfile.test.ts`, `src/cli-sync-pull.test.ts` and `src/update.test.ts`; run `JOBS=1 heavy-run npm exec -- vitest run src/cli-sync-agentfile.test.ts src/cli-sync-pull.test.ts src/update.test.ts --maxWorkers=1` for RED and GREEN, then required gates. Add real scratch output sentinels where preparation can publish.
+  - **Success**: zero unrequested calls or writes across every negative control; unknown and empty inputs exit nonzero before mutation; selected/default positive controls remain correct; original explicit-pull and ownership guards stay green.
+  - **Pivot**: Any invalid-input mutation, unselected publication, default regression or weakened ownership check rejects the boundary; revise the preparation route rather than hide its effects with a later filter.
+  - **Anchor**: Current CLI preparation/filter ordering and empty-string guards; Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration.
+
+- [ ] Observe a real concurrent source-refresh failure before choosing a fix
+  - **ID**: source-lease-real-failure-classification
+  - **Tags**: reliability, sync, measurement, privacy
+  - **Mode**: AFK
+  - **Details**: Qualified instrumentation now distinguishes safe failure classes, but the original incident remains unexplained. After its separate delivery, run the [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort): at most ten sequential invocations of the unchanged exact cross-process case. Preserve every exit and log, stop on a classified failure, and never treat passing invocations as a fix or gate retry. Commit this cohort prediction before measurement. No product fix starts from an unclassified incident.
+  - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
+  - **Output**: measurement
+  - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
+  - **Hypothesis**: the bounded cohort yields at least one classified real failed invocation from the current baseline of zero, with zero unclassified failures, private disclosures or changed failure semantics. If no failure recurs, the evidence remains unverified.
+  - **Measurement**: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`; follow the linked sequential stopping rules, preserve every admission, exit and log, and stop after a classified failure or ten invocations. This cohort has not run.
+  - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
+  - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
 
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
@@ -182,6 +212,21 @@
   - **Success**: zero unsafe frozen rows, no new unresolved security finding, zero protected-contract changes, passing installation/tree/full-gate evidence, and every frozen GitHub alert fixed with a timestamp.
   - **Pivot**: any remaining affected copy, missing optional/registry evidence, unsupported parent resolution, unrelated root change, forge reintroduction or gate regression rejects the candidate. Preserve unknowns and revise the resolution approach rather than changing the denominator, dismissing alerts or forcing a major override.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary advisories and published parent manifests linked in the plan.
+
+- [ ] Repair the two new dependency alerts through compatible upstream parents
+  - **ID**: dependency-alerts-172-175
+  - **Tags**: security, stability, dependencies
+  - **Mode**: AFK
+  - **Blocked**: needs-compatible-upstream-parent-and-peer-contract — published parents still require vulnerable minimatch 10.x. The newer Promptfoo that fixes its pinned Hono copy adds a peer incompatible with the protected jks stub and retains the watcher peer conflict. Require compatible primary metadata before implementation.
+  - **Details**: Repair only alerts 172 (`@hono/node-server`, GHSA-rmxm-3fg6-px4f) and 175 (`minimatch`, GHSA-g3hv-75wg-m249). [The evidence and preparation plan](docs/plans/dependency-alerts-172-175.md) records exact ranges and parent constraints. Keep the original nine-row `dependency-alert-remediation` cohort, including MSAL alert 162, unchanged. Preserve optional paths, the local jks stub, existing overrides and the Node floor. This records read-only triage, not a passing baseline or an authorized package update.
+  - **Files**: future supported parent resolution in `package.json` and `package-lock.json`; dependency/security documentation; no unrelated root update is pre-approved.
+  - **Output**: code
+  - **Acceptance**: neither new advisory range matches any resolved locked copy; the complete optional graph has no invalid/missing edges, normal installation and full gate pass, protected contracts remain unchanged, and both alerts report fixed with timestamps. No dismissal, omitted path, forced major override or reduced original-nine requirement counts as success.
+  - **Hypothesis**: after compatible metadata and a committed exact candidate prediction, the two unsafe advisory rows fall from a predicted two to zero, with zero new unresolved findings, invalid/missing edges or protected-contract changes. Count rows, not vulnerable package nodes; measure the baseline before implementation.
+  - **Measurement**: first commit the exact supported parent selection and runnable experiment; then run the plan's proposed two-row semver query, strict full-graph/audit checks through npm 10, qualified task-owned normal install, existing lockfile/full gates and live GitHub fixed-status query. Commands are future steps, not passing harness evidence.
+  - **Success**: zero unsafe rows among these two, zero new unresolved findings, zero invalid/missing full-tree edges, zero protected-contract changes, green normal installation/full gate and two fixed-alert timestamps. The original nine-row experiment remains separate.
+  - **Pivot**: any affected copy, unsupported parent resolution, concealed peer error, omitted optional path, new unresolved finding, protected-contract change or missing acceptance evidence rejects the candidate. Keep the task blocked rather than force a major override or change the denominator.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; primary GitHub advisory APIs and published parent manifests linked in the plan.
 
 - [ ] Restore a supported full dependency graph without forcing the watcher peer
   - **ID**: dependency-peer-compatibility
@@ -216,6 +261,16 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
+- [ ] Maintainers can replay concurrent eval-ID collisions before choosing prevention
+  - **ID**: eval-id-composition-observation
+  - **Details**: PR796 and PR797 selected242 independently. PR799 later occupied243 while the corrected PR797 candidate still selected243. Reuse the existing eval validator in a synthetic composition harness with two collision fixtures and two valid controls. Retain each input, composed IDs, duplicate diagnostic and object-preservation verdict. Exclude raw user prompts. The harness does not exist yet; this task registers measurement preparation, not prevention or an allocator. Preserve the exact upstream objects. Any later prevention needs its own committed prediction against this baseline.
+  - **Output**: measurement
+  - **Hypothesis**: The proposed harness detects both registered collisions (2/2), accepts both valid controls (2/2), and preserves every input object. It creates a repeatable baseline without changing production allocation.
+  - **Measurement**: `test -f src/skills/eval-id-composition-observation.test.ts && heavy-run npm exec -- vitest run src/skills/eval-id-composition-observation.test.ts --maxWorkers=1`; retain per-fixture decisions and existing validator diagnostics. A missing harness fails the guard and is not a passing measurement. This proposed command has not run.
+  - **Success**: 2/2 collision detections; 2/2 valid controls accepted; zero lost or altered objects; zero unknown outcomes reported as passes; all existing validator tests pass. Land instrumentation before separately registered prevention work.
+  - **Pivot**: Any missed collision, valid refusal, altered object or unknown outcome reported as a pass rejects the harness. If the collision cannot be represented without changing the validator contract, inspect that contract before selecting prevention.
+  - **Anchor**: Existing `src/skills/validate.ts` duplicate-ID contract; PR796, PR797 and PR799 provenance; Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
 ## P2
 
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
@@ -224,7 +279,7 @@
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is under qualification and inventory acceptance remains pending. Reviewed-boundary plan: [source registry](docs/plans/rust-source-reviewed-registry.md). Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance. Run order: [staged measurement](docs/plans/rust-literal-staged-measurement-proposal-20261105.md). Separate decoder controls: [byte-literal supplement](docs/plans/rust-byte-literal-supplement-proposal-20261105.md).
+  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is under qualification and inventory acceptance remains pending. Reviewed-boundary plan: [source registry](docs/plans/rust-source-reviewed-registry.md). Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance. Run order: [staged measurement](docs/plans/rust-literal-staged-measurement-proposal-20261105.md). Separate decoder controls: [byte-literal supplement](docs/plans/rust-byte-literal-supplement-proposal-20261105.md). Observer preparation starts from [independent legacy capture](docs/plans/rust-legacy-baseline-capture-20261106.md); the three captured records do not qualify Rust discovery.
   - **Output**: code
   - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
@@ -355,8 +410,8 @@
   - **Mode**: AFK
   - **Implementation decision**: One Rust record owner serves the existing Agentbrew and dotfiles callers. Follow the [registered controls](docs/plans/checkup-run-records.md).
   - **Tags**: checkup, state
-  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end.
-  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
+  - **Details**: Issue #572: one JSON file per checkup under `${XDG_STATE_HOME:-~/.local/state}/checkups/<checkup>.json` with `finished_at`, `result`, and `commits`. Show the previous completion at start and save a valid completion at end. Issue #764's source-build adapters reuse this recorder/publisher under [separately preregistered controls](docs/plans/source-build-prebuilt-764.md) (initial registration `81b7c9b`, cache extension `0d02ed8`). Qualify the original six callers and later targets under this task's existing controls.
+  - **Files**: `scripts/checkup.sh`, `scripts/build-checkup-run.sh`, `scripts/build-source.sh`, `scripts/native-build-tools.mjs`, `scripts/build-native-prebuilt.mjs`, rendered checkup template, generic checkup CLI and Rust record owner, dotfiles tooling-checkup adapter and skill
   - **Output**: code
   - **Acceptance**: Preserve prior completed records and rich history. Qualify all three producers, stale recovery, skill decisions and required installed targets.
   - **Hypothesis**: Complete FIRST/TWO cases rise from a predicted 0/6 to 6/6, with zero unsafe writes, stale replays or extra export probes.
@@ -541,7 +596,7 @@
   - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
-  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts. Preserve selected-pull guards for pre-sync installation, live rule aliases and deferred staged-skill cleanup; use the CLI pull and source-skill-prune regressions as sealed migration controls.
   - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
@@ -555,7 +610,7 @@
   - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
   - **Output**: code
   - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts.
+  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts. Selected pulls must not publish excluded Git MCP runtimes; retain the runtime and accepted source receipt controls from the pull-source-caches regression.
   - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
   - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
   - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.

@@ -7,6 +7,7 @@ import { ExitPromptError } from "@inquirer/core";
 import { confirm, password } from "@inquirer/prompts";
 import chalk from "chalk";
 import { getStateServers } from "../agentfile.js";
+import { sourceCheckoutTerminationUnknown, withSourceCheckoutLeaseSync } from "../catalog/source-checkout-lease.js";
 import { errorMessage } from "../core/errors.js";
 import { logSkipped } from "../core/logger.js";
 import { redactUrlCredentials, stripUrlCredentials } from "../core/redact-url.js";
@@ -210,7 +211,7 @@ function updateCachedRepo(repoDir: string, gitUrl: string, gitRef: string | unde
   } catch (error) {
     if (error instanceof CacheRefusal) throw error;
     const message = errorMessage(error);
-    throw new Error(`Failed to update repo: ${message}`);
+    throw new Error(`Failed to update repo: ${message}`, { cause: error });
   }
 }
 
@@ -227,15 +228,17 @@ function cloneFresh(gitUrl: string, repoDir: string, gitRef: string | undefined,
   });
   if (result.status !== 0) {
     const stderr = result.stderr?.toString() ?? "";
-    throw new Error(`git clone failed: ${stderr.trim() || "unknown error"}`);
+    throw new Error(`git clone failed: ${stderr.trim() || "unknown error"}`, {
+      cause: result.error ?? (result.signal ? result : undefined),
+    });
   }
   if (!gitRef) return;
   try {
     checkoutPinnedRef(repoDir, gitRef, env);
   } catch (error) {
     // Remove the half-made clone, so the next run starts fresh instead of updating it.
-    rmSync(repoDir, { recursive: true, force: true });
-    throw new Error(`git checkout failed: ${errorMessage(error)}`);
+    if (!sourceCheckoutTerminationUnknown(repoDir)) rmSync(repoDir, { recursive: true, force: true });
+    throw new Error(`git checkout failed: ${errorMessage(error)}`, { cause: error });
   }
 }
 
@@ -260,9 +263,11 @@ export function cloneOrUpdateRepo(
   }
   // Unattended runs stop git's own login prompts, so a private repo with no saved login fails at once.
   const unattended = options.unattended ?? isUnattended();
-  if (existsSync(repoDir)) updateCachedRepo(repoDir, gitUrl, gitRef, unattended);
-  else cloneFresh(gitUrl, repoDir, gitRef, unattended);
-  return repoDir;
+  return withSourceCheckoutLeaseSync({ path: repoDir, source: gitUrl }, () => {
+    if (existsSync(repoDir)) updateCachedRepo(repoDir, gitUrl, gitRef, unattended);
+    else cloneFresh(gitUrl, repoDir, gitRef, unattended);
+    return repoDir;
+  });
 }
 
 /**
@@ -691,10 +696,13 @@ export async function installMcpFromGit(gitUrl: string, options?: GitInstallOpti
 }
 
 /** Resolve the saved branch into a fresh candidate. Never pull the running checkout. */
-export async function updateMcpFromGit(name: string, options?: Pick<GitInstallOptions, "freshRuntime">): Promise<void> {
+export async function updateMcpFromGit(
+  name: string,
+  options?: Pick<GitInstallOptions, "freshRuntime">,
+): Promise<GitPublicationOutcome> {
   if (!checkGitAvailable()) {
     process.exitCode = 1;
-    return;
+    return "refused-before-publication";
   }
   try {
     validateRepoName(name);
@@ -703,7 +711,7 @@ export async function updateMcpFromGit(name: string, options?: Pick<GitInstallOp
     if (!previous.gitUrl) {
       console.log("This MCP server was not installed from git. Use its original installation source to update it.");
       process.exitCode = 1;
-      return;
+      return "refused-before-publication";
     }
     const unattended = isUnattended();
     const oldRoot = registeredRuntime(previous, join(GIT_CACHE_DIR, name), name);
@@ -731,9 +739,10 @@ export async function updateMcpFromGit(name: string, options?: Pick<GitInstallOp
     const outcome = await publishCandidate(candidate, previous, desired, true, unattended);
     if (outcome !== "verified") {
       publicationFailed(outcome);
-      return;
+      return outcome;
     }
     console.log(`  ${ICON_SUCCESS} ${name} updated to ${desired.gitRef}\n`);
+    return "verified";
   } catch (error) {
     reportMissingRuntimeHint(error);
     console.error(
@@ -744,5 +753,6 @@ export async function updateMcpFromGit(name: string, options?: Pick<GitInstallOp
       ),
     );
     process.exitCode = 1;
+    return "refused-before-publication";
   }
 }

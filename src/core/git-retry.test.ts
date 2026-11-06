@@ -15,6 +15,19 @@ beforeEach(() => {
 });
 
 describe("gitExec", () => {
+  it("lets a checkout owner stop retries after unknown Git child termination", () => {
+    const timeout = Object.assign(new Error("fixture Git timeout"), { code: "ETIMEDOUT" });
+    mockExecFileSync.mockImplementation(() => {
+      throw timeout;
+    });
+    const ownerFailure = vi.fn((error: unknown) => {
+      throw error;
+    });
+    expect(() => gitExec(["pull"], { onAttemptError: ownerFailure })).toThrow(timeout);
+    expect(mockExecFileSync).toHaveBeenCalledTimes(1);
+    expect(ownerFailure).toHaveBeenCalledWith(timeout);
+  });
+
   it("executes a git command and returns output", () => {
     mockExecFileSync.mockReturnValue(Buffer.from("ok"));
     const result = gitExec(["status"]);

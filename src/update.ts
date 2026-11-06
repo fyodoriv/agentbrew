@@ -1,16 +1,24 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import chalk from "chalk";
 import { getStateSources, loadAgentfile } from "./agentfile.js";
-import { findSkillDirInCache, getSourceCachePath, indexAllSources } from "./catalog/index-source.js";
+import {
+  findSkillDirInCache,
+  getSourceCacheDir,
+  getSourceCachePath,
+  indexAllSources,
+  type SourcePullOutcome,
+} from "./catalog/index-source.js";
 import { refreshRecommendedCatalogRules } from "./catalog/install-other.js";
 import { copySkillFromCache, isInstalledSkillCurrent } from "./catalog/install-skill.js";
 import { installedSkillOwners } from "./catalog/skill-owners.js";
+import { withSourceCheckoutLeases } from "./catalog/source-checkout-lease.js";
 import { loadCatalog } from "./catalog/types.js";
+import { filterSyncModules } from "./cli-helpers.js";
 import { clearSyncErrors, errorMessage, SyncError, SyncErrorCollector, saveSyncErrors } from "./core/errors.js";
 import { redactUrlCredentials } from "./core/redact-url.js";
 import { readLock, updateLock } from "./lock.js";
 import { loadManifest, saveManifest } from "./manifest.js";
-import { recordSourceShas } from "./skills/skill-versions.js";
 import { pruneDroppedAgentfileSkills, removeInstalledSkillStaging } from "./source-skill-prune.js";
 import { requireState, saveState } from "./state.js";
 import { syncAgentDefs } from "./sync/agents-sync.js";
@@ -19,6 +27,7 @@ import { syncHooks } from "./sync/hooks-sync.js";
 import { syncInstructions } from "./sync/instructions-sync.js";
 import { syncMcpServers } from "./sync/mcp-sync.js";
 import { syncModels } from "./sync/model-sync.js";
+import { pullReadCheckouts } from "./sync/pull-source-caches.js";
 import { syncRules } from "./sync/rules-sync.js";
 import { syncSkills } from "./sync/skills-sync.js";
 import type { AgentBrewState, Source } from "./types.js";
@@ -29,6 +38,7 @@ import { expandHome } from "./utils.js";
 
 interface UpdateOptions {
   dryRun?: boolean;
+  only?: string;
   skillName?: string;
   requestedSkills?: readonly string[];
 }
@@ -52,11 +62,15 @@ function refreshSkillResult(source: Source, skillName: string, cachePath: string
  * of every installed name (see installedSkillOwners). A source whose cache no
  * longer has the skill cannot own it, so the next source that ships it does.
  */
-function refreshPlan(sources: Source[]): { cachePaths: Map<Source, string>; owners: Map<string, string> } {
+function refreshPlan(
+  sources: Source[],
+  dryRun: boolean,
+): { cachePaths: Map<Source, string>; owners: Map<string, string> } {
   const cachePaths = new Map<Source, string>();
   for (const source of sources) {
     if (source.type === "local" || source.skillsInstalled.length === 0) continue;
-    const cachePath = getSourceCachePath(source);
+    const cachePath = dryRun ? getSourceCacheDir(source) : getSourceCachePath(source);
+    if (dryRun && (!cachePath || !existsSync(cachePath))) continue;
     if (cachePath) cachePaths.set(source, cachePath);
   }
   const owners = installedSkillOwners(sources, (source, name) => {
@@ -73,7 +87,7 @@ function refreshPlan(sources: Source[]): { cachePaths: Map<Source, string>; owne
  */
 export function refreshInstalledSkills(sources: Source[], options?: UpdateOptions): RefreshResult[] {
   const results: RefreshResult[] = [];
-  const { cachePaths, owners } = refreshPlan(sources);
+  const { cachePaths, owners } = refreshPlan(sources, options?.dryRun ?? false);
 
   for (const [source, cachePath] of cachePaths) {
     const skillsToRefresh = options?.skillName
@@ -133,13 +147,18 @@ function updateBuiltinSkills(): void {
   }
 }
 
-async function reindexSourcesAndRecord(sources: Source[], state: AgentBrewState): Promise<Map<string, string>> {
+interface PullResult {
+  shas: Map<string, string>;
+  outcomes: SourcePullOutcome[];
+}
+
+async function reindexSourcesAndRecord(sources: Source[], state: AgentBrewState): Promise<PullResult> {
   console.log(chalk.bold("\nSources"));
-  await indexAllSources(sources);
-  // Record latest SHAs, in parallel; the lock update below reuses them.
-  const shas = await recordSourceShas(sources);
+  const outcomes = (await indexAllSources(sources, { explicitPull: true })) ?? [];
+  const shas = new Map(outcomes.flatMap((outcome) => (outcome.sha ? [[outcome.source, outcome.sha] as const] : [])));
+  if (outcomes.some((outcome) => outcome.status === "failed")) process.exitCode = 1;
   saveState(state);
-  return shas;
+  return { shas, outcomes };
 }
 
 /**
@@ -221,9 +240,9 @@ const SYNC_ENGINES: ReadonlyArray<{
 ];
 
 /** Runs every engine even when one fails, and records the result for `agentbrew status`. */
-async function syncAllEngines(requests: readonly string[]): Promise<boolean> {
+async function syncAllEngines(requests: readonly string[], engines: typeof SYNC_ENGINES): Promise<boolean> {
   const collector = new SyncErrorCollector();
-  for (const engine of SYNC_ENGINES) {
+  for (const engine of engines) {
     console.log(chalk.bold(engine.label));
     try {
       await engine.run(requests);
@@ -270,9 +289,9 @@ async function reindexSourcesIfNeeded(
   sources: Source[],
   state: AgentBrewState,
   isDryRun: boolean,
-): Promise<Map<string, string>> {
+): Promise<PullResult> {
   if (sources.length > 0 && !isDryRun) return reindexSourcesAndRecord(sources, state);
-  return new Map();
+  return { shas: new Map(), outcomes: [] };
 }
 
 function printSourcePullPlan(sources: Source[], prefix: string): void {
@@ -318,7 +337,14 @@ function pruneDroppedGlobalAgentfileSkills(state: AgentBrewState, dryRun: boolea
   }
 }
 
+function selectedSyncEngines(options: UpdateOptions | undefined): typeof SYNC_ENGINES | undefined {
+  return options?.only ? filterSyncModules(SYNC_ENGINES, options.only) : SYNC_ENGINES;
+}
+
 export async function update(options?: UpdateOptions): Promise<void> {
+  const engines = selectedSyncEngines(options);
+  if (!engines) return;
+  const selectedModules = new Set(engines.map((engine) => engine.name));
   const state = requireState();
   if (!state) return;
   const liveRequests = options?.skillName ? [] : readUpdateSkillRequests();
@@ -331,7 +357,9 @@ export async function update(options?: UpdateOptions): Promise<void> {
   console.log(chalk.bold(`\n${prefix}Checking for updates...\n`));
 
   // 1. Update skills via npx skills update (skip in dry-run and single-skill modes)
-  const externalUpdaterWithheld = updateBuiltinSkillsIfNeeded(state, { ...options, requestedSkills }, isDryRun);
+  const externalUpdaterWithheld = selectedModules.has("skills")
+    ? updateBuiltinSkillsIfNeeded(state, { ...options, requestedSkills }, isDryRun)
+    : false;
 
   // Clear the mcpm-bridge attempted-missing cache so the next sync
   // retries every state server. mcpm's registry may have grown since
@@ -342,34 +370,67 @@ export async function update(options?: UpdateOptions): Promise<void> {
   }
 
   // 2. Prune skills the global Agentfile dropped, so step 3 does not copy them back
-  pruneDroppedGlobalAgentfileSkills(state, isDryRun);
+  if (selectedModules.has("skills")) pruneDroppedGlobalAgentfileSkills(state, isDryRun);
 
   // 3. Re-index all sources (pulls latest via git)
   const sources = getStateSources(state);
+  const refresh = () => refreshSourceBytesAndReceipts(state, sources, options, prefix, { isDryRun, selectedModules });
+  const targets = isDryRun
+    ? []
+    : sources
+        .filter((source) => source.type !== "local")
+        .map((source) => ({ path: getSourceCacheDir(source), source: source.url }));
+  const skipped = isDryRun ? await refresh() : await withSourceCheckoutLeases(targets, refresh);
+
+  // 6. Refresh slimmed catalog rule bodies into shared-rules.md before deploy
+  // (`sync --pull` exits before installRecommended; regular sync runs refresh there).
+  if (selectedModules.has("rules")) refreshCatalogRulesIfNeeded(isDryRun);
+
+  // 7. Re-sync all engines to all agents (skip in dry-run)
+  if (!isDryRun && !(await syncAllEngines(requestedSkills, engines))) {
+    console.log(chalk.bold.yellow("\n⚠ Update finished with sync errors — run `agentbrew status` for details.\n"));
+    return;
+  }
+
+  printUpdateCompletion(prefix, externalUpdaterWithheld, skipped > 0);
+}
+
+async function refreshSourceBytesAndReceipts(
+  state: AgentBrewState,
+  sources: Source[],
+  options: UpdateOptions | undefined,
+  prefix: string,
+  selection: { isDryRun: boolean; selectedModules: ReadonlySet<string> },
+): Promise<number> {
+  const { isDryRun, selectedModules } = selection;
   if (isDryRun) printSourcePullPlan(sources, prefix);
-  const knownShas = await reindexSourcesIfNeeded(sources, state, isDryRun);
+  const { shas: knownShas, outcomes } = await reindexSourcesIfNeeded(sources, state, isDryRun);
+  const checkouts = await pullReadCheckouts(state, outcomes, {
+    dryRun: isDryRun,
+    includeMcpRuntimes: selectedModules.has("mcp"),
+  });
+  const skipped = checkouts.skipped + outcomes.filter((outcome) => outcome.status === "skipped").length;
+  if (checkouts.failed) process.exitCode = 1;
 
   // 4. Refresh installed skill files from updated caches (skip writes in dry-run)
-  printInstalledSkillUpdates(sources, options, prefix, isDryRun);
+  if (selectedModules.has("skills")) printInstalledSkillUpdates(sources, options, prefix, isDryRun);
 
   // 5. Update lock file with latest SHAs (skip in dry-run)
   if (!isDryRun) {
     printLockResults(sources, knownShas);
   }
 
-  // 6. Refresh slimmed catalog rule bodies into shared-rules.md before deploy
-  // (`sync --pull` exits before installRecommended; regular sync runs refresh there).
-  refreshCatalogRulesIfNeeded(isDryRun);
+  return skipped;
+}
 
-  // 7. Re-sync all engines to all agents (skip in dry-run)
-  if (!isDryRun && !(await syncAllEngines(requestedSkills))) {
-    console.log(chalk.bold.yellow("\n⚠ Update finished with sync errors — run `agentbrew status` for details.\n"));
-    return;
-  }
-
+function printUpdateCompletion(prefix: string, externalUpdaterWithheld: boolean, skipped: boolean): void {
   console.log(
     chalk.bold(
-      `\n${prefix}✓ ${externalUpdaterWithheld ? "Managed updates complete; external skills updater withheld" : "Update complete"}.\n`,
+      process.exitCode
+        ? "\nUpdate finished with refresh errors; review source outcomes above.\n"
+        : skipped
+          ? "\nUpdate finished with skipped sources or runtimes; review the reasons above.\n"
+          : `\n${prefix}✓ ${externalUpdaterWithheld ? "Managed updates complete; external skills updater withheld" : "Update complete"}.\n`,
     ),
   );
 }

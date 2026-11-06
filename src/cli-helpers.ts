@@ -2,7 +2,6 @@ import chalk from "chalk";
 import type { Command } from "commander";
 
 import { cliError } from "./core/cli-error.js";
-import type { buildSyncModules } from "./sync-runner.js";
 
 /** Render grouped command sections for the top-level help output. */
 export function formatGroupedCommandSections(
@@ -91,10 +90,7 @@ export function formatHiddenCommands(
 }
 
 /** Filter sync modules by a comma-separated --only list. Returns undefined on validation error. */
-export function filterSyncModules(
-  modules: ReturnType<typeof buildSyncModules>,
-  only: string,
-): ReturnType<typeof buildSyncModules> | undefined {
+export function filterSyncModules<T extends { name: string }>(modules: readonly T[], only: string): T[] | undefined {
   const validNames = new Set(modules.map((m) => m.name));
   const requested = only.split(",").map((s) => s.trim().toLowerCase());
   const invalid = requested.filter((r) => !validNames.has(r));

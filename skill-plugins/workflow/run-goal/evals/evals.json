@@ -2903,6 +2903,17 @@
         "Does not reimplement already-shipped fixes",
         "Re-reads the issue state after closing"
       ]
+    },
+    {
+      "id": 254,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal take the best parts of this feature and integrate it with myapp https://news.example.com/finance-tool'. Synthetic evidence: the article lists 4 features; myapp already has 1 of them under another command; the worktree was cut 2 days ago; origin/main has since deleted the Python half of a Python/Rust pair the change would touch. The user's rules give standing approval for retro skill updates in the skill's repo.",
+      "expected_output": "Reads the article first and maps each feature to existing code, so the baseline counts the existing feature as covered instead of building it again. Fetches origin/main before the first edit, sees the deleted Python half, and builds Rust-only on the current base. Formats only changed files. At the end, ships the retro skill update as a PR in the skill's repo under the standing approval, instead of filing a task.",
+      "expectations": [
+        "Maps every article feature to existing code before building",
+        "Fetches and diffs the base branch before the first edit",
+        "Does not rebuild a feature that already exists",
+        "Ships the retro skill update in the same session under the standing approval"
+      ]
     }
   ]
 }

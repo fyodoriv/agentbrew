@@ -16,6 +16,7 @@ if (nodeMajor < 20) {
 import chalk from "chalk";
 import { Command } from "commander";
 import { registerCheckupRunCommand } from "./checkup-run-command.js";
+import { checkCliBuildDrift } from "./cli-build-health.js";
 import {
   filterSyncModules,
   formatGroupedCommandSections,
@@ -214,6 +215,7 @@ interface SyncCommandOptions {
 }
 
 async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
+  for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
   const started = Date.now();
   let ok = false;
   try {

@@ -207,3 +207,23 @@ still needs a separate committed prediction and a decisive reproduction.
 
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration. No cohort result is claimed here.
+
+## Closed cohort result
+
+The committed cohort reached its cap on 2026-11-06. Every one of its ten
+sequential invocations passed with actual exit zero. No real failed
+invocation was classified. Source-equivalent observer revision `3558265`
+matched merged revision `c3331d9` at tree
+`e9b991d6149160bc523ca4b83c22c78de34b5879`. Its source hashes stayed unchanged.
+
+Private evidence retains immutable admission IDs, commands, native handles,
+complete logs, real exits and the sequential-admission audit. No unclassified
+failure or private-error disclosure was detected. Those guards do not satisfy
+the missing real-failure criterion: the outcome is **UNVERIFIED**, and the
+earlier incident's cause remains **UNKNOWN**.
+
+This cohort is closed. Do not admit another invocation or count older runs as
+its samples. The separate [controlled release-window research
+prediction](source-lease-release-window-research.md) studies an artificial
+schedule. Even a physical synthetic reproduction cannot satisfy this cohort's
+historical acceptance or establish the earlier incident's cause.

@@ -116,3 +116,6 @@ lift command (for example `/agent-guard allow`), arm one background timer
 for the stated reset time, and do every part that needs no agents meanwhile
 (gate, PR, review prep). A button reply such as "Lifted, continue" is not
 the command: check that the tool really runs before you report progress.
+A refused pre-merge review spawn holds the merge too: a self-review does not
+replace the fresh-context review, and a standing merge approval does not skip
+it. Push and open the PR, then merge only after the review runs.

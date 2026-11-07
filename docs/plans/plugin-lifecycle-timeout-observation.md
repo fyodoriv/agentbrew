@@ -281,3 +281,10 @@ API preparation: the real lifecycle test does not yet export health to an
 external controller. The group-signal runner and real diagnostic stay
 unqualified. Anchor: the recorder protocol; Basili, Caldiera and Rombach
 (1994), Goal Question Metric.
+
+The throwing-clock red control reproduced a begin-only stage marked healthy.
+After the correction, all nine pure health controls, type checking and the
+focused style check passed. Independent source review found no false-healthy
+path in the registered pure scope. The real lifecycle health channel and
+process-group runner remain unqualified; these results do not run or qualify
+the draft's full gate.

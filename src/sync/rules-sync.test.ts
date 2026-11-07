@@ -871,8 +871,8 @@ describe("getRulesTargets — unsupported-agent skip coverage", () => {
     const names = targets.map((t) => t.agentName);
     expect(names).toContain("claude-code");
     expect(names).toContain("augment");
-    // opencode has mcpConfig + commandsDir but no rulesFile.
-    expect(names).not.toContain("opencode");
+    // opencode gained a global rulesFile (~/.config/opencode/AGENTS.md).
+    expect(names).toContain("opencode");
   });
 
   it("every returned target has a non-empty rulesFile path", () => {

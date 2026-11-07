@@ -73,6 +73,11 @@ const CARVEOUT_MATRIX: CarveoutRow[] = [
     // un-sharing surfaces here.
     expectedRulesFile: "~/.claude/CLAUDE.md",
   },
+  {
+    name: "opencode",
+    // ai-rules has no global-rules target for OpenCode; native write.
+    expectedRulesFile: "~/.config/opencode/AGENTS.md",
+  },
 ];
 
 describe("Rules carve-out matrix — per-agent metadata invariants", () => {

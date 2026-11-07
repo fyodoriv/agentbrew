@@ -157,6 +157,64 @@
 
 ## P1
 
+- [ ] Diagnose the updates-landed hook timing gate
+  - **ID**: updates-landed-timeout-test-stability
+  - **Tags**: tests, stability, hooks
+  - **Mode**: AFK investigation
+  - **Details**: On Nov 7, the full Agentbrew gate failed the hung-script control in `hooks/checks/updates-landed.test.sh`: it requires elapsed time below five seconds and reported five seconds. The hook targets a three-second timeout. A separate focused run passed all 12 controls, so the failure did not recur there. The cause and whether output was empty in the failed run are not established. Before running the hung fixture again, independently qualify task-owned process-group creation, signal targeting and child reaping, or prepare a non-signaling instrumented test. This prerequisite also applies to any full gate that runs the fixture. Do not assume load or raise the threshold without evidence.
+  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh` and related guidance only if the diagnosed behavior requires it.
+  - **Output**: code
+  - **Acceptance**: The hung-script case finishes within its qualified bound, remains silent, and leaves no owned child behind. The complete hook fixture and repository gates pass without skipping the control.
+  - **Hypothesis**: After a root cause and distinct experiment are registered, the observed gate failure falls from one to zero across three qualified focused runs while preserving the timeout and cleanup behavior.
+  - **Measurement**: Preserve the original gate log; after the ownership prerequisite passes, reproduce with `JOBS=1 heavy-run bash hooks/checks/updates-landed.test.sh`. Before a change, register a precise failure mechanism and controls. Then run the focused command three times and `JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.2 heavy-run npm run verify`.
+  - **Success**: All three focused runs and the full gate pass, with the hung child stopped, no output and no unowned process touched.
+  - **Pivot**: Any repeat failure, missing control, lingering owned child, unqualified environment or failed full gate rejects the candidate; retain evidence and redesign it.
+  - **Anchor**: Nov 7 gate failure; Forsgren, Humble and Kim (2018), reliability; Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+- [ ] Investigate missing integrity metadata in the npm lockfile
+  - **ID**: lockfile-integrity-metadata
+  - **Tags**: dependencies, security, reliability
+  - **Mode**: AFK investigation
+  - **Details**: On Nov 7, a read-only scan of `package-lock.json` found 79 of 907 non-root, non-link entries without an `integrity` field. This is a metadata observation, not proof of a vulnerability. Classify each missing field by source, platform and optional status, and establish whether npm verifies the installed bytes by another mechanism. Do not expose private registry details or credentials.
+  - **Files**: `package-lock.json`, dependency verification scripts and docs only if the investigation supports a change.
+  - **Output**: code
+  - **Acceptance**: Every missing field has a verified explanation or a safely regenerated integrity value; installs remain reproducible and all dependency and repository gates pass. Preserve the current lockfile until a qualified replacement is tested.
+  - **Hypothesis**: A qualified regeneration or verification mechanism reduces unexplained missing integrity metadata from 79 to zero without changing the intended dependency graph.
+  - **Measurement**: First commit a classification and an exact safe experiment. Count non-root, non-link entries lacking integrity before and after; verify all originally flagged records are explained or covered, compare the resolved dependency graph, and run the repository dependency and full gates.
+  - **Success**: Zero unexplained original entries, zero unintended graph changes, no secret exposure and all required gates passing.
+  - **Pivot**: Any unexplained entry, unintended graph change, unverified source or failed gate rejects the candidate; preserve the evidence and investigate a different mechanism.
+  - **Anchor**: Nov 7 lockfile scan; NIST SP 800-218 (software supply chain integrity); Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+- [ ] Make the Git-backed MCP install tests complete reliably
+  - **ID**: mcp-git-install-test-timeouts
+  - **Tags**: tests, stability, mcp
+  - **Mode**: AFK investigation
+  - **Details**: On Nov 7, the full Agentbrew gate reported seven timeouts in `src/mcp/mcp-git-install.test.ts`: the cases at lines 457, 508 and 528 exceeded 30 seconds, and four at lines 652, 679, 707 and 724 exceeded 5 seconds. The test run reported 45 passing cases in that file. A focused rerun then timed out at lines 652 and 724 while 50 cases passed. The cause remains unknown; diagnose from both logs before changing code or thresholds. Use a scratch HOME and Git config, local synthetic repos and task-owned scratch installs only; do not install into user or global state or expose private output. Prove owned-child cleanup after a timeout.
+  - **Files**: `src/mcp/mcp-git-install.test.ts`, relevant install or test-fixture code only after root cause is established, and contributor test guidance if behavior changes.
+  - **Output**: code
+  - **Acceptance**: The affected install scenarios complete without timeout in qualified runs, preserve their existing assertions and secret-redaction checks, and the full gate passes. No timeout increase or skip alone counts as a fix.
+  - **Hypothesis**: After the root cause is established and a distinct fix is registered, the seven observed timeout failures fall to zero across all 52 cases in each of three qualified focused runs, without a lost assertion or secret disclosure.
+  - **Measurement**: Preserve the original full-gate failure; reproduce with `JOBS=1 VITEST_MAX_WORKERS=1 heavy-run npx vitest run --maxWorkers=1 src/mcp/mcp-git-install.test.ts`. Before any candidate, register exact root-cause controls and thresholds. Then run that command three times and `JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.2 heavy-run npm run verify`, retaining exit codes and test totals.
+  - **Success**: Three complete focused runs each report all 52 cases passed with zero timeout, lost assertions, skipped cases or secret disclosures; the normal full gate also passes.
+  - **Pivot**: Any timeout, missing case, skipped case, secret disclosure, unqualified environment or full-gate failure rejects the candidate. If the failure does not reproduce, keep the cause unknown and instrument it before changing code.
+  - **Anchor**: Nov 7 full-gate test log; Basili, Caldiera and Rombach (1994), Goal Question Metric; Forsgren, Humble and Kim (2018), stability.
+
+
+- [ ] Keep sync previews from changing the recorded sync result
+  - **ID**: sync-preview-preserves-status
+  - **Tags**: sync, reliability, safety
+  - **Mode**: AFK
+  - **Details**: On Nov 7, a successful `agentbrew sync --dry-run --only instructions` printed a completed-sync summary and refreshed the last-sync status. The runner calls the sync-error writer during previews, and its parallel path also saves a manifest. Source inspection shows failed previews may also record error events; test that separately in scratch state. A preview must not replace a previous real sync result or claim it performed a sync. Verify the effective status, manifest and event-log paths are all inside isolated scratch state before importing the runner; do not use or expose real user records.
+  - **Files**: `src/sync-runner.ts`, its existing tests, and sync usage documentation.
+  - **Output**: code
+  - **Acceptance**: Successful and failed previews preserve preexisting sync-status, manifest and event-log bytes for sequential and parallel runners, and the no-change preview is identified as a preview. Real syncs retain their current success and failure reporting.
+  - **Hypothesis**: Preserving preview-only state reduces predicted false or overwritten sync records from 4/4 isolated preview controls to 0/4, with both real-sync controls unchanged.
+  - **Measurement**: Add isolated real-file controls in a qualified runner test; register its exact focused command and run it before and after the change, then `JOBS=1 NO_CACHE=1 LOCKFILE_SYNC_NPM=npm@10.9.2 heavy-run npm run verify`. Record baseline results before implementation. Land qualified instrumentation first if no existing harness can measure real status and manifest bytes.
+  - **Success**: All four preview controls preserve exact seeded status, manifest and event-log bytes, the preview summary is explicit, both real-sync controls keep their intended status updates, and the full gate passes.
+  - **Pivot**: Any changed preview state, misleading completed-sync summary, lost real-sync update, missing evidence or gate regression rejects the approach; preserve the failed evidence and redesign it.
+  - **Anchor**: Session-observed preview on Nov 7; Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
+
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli

@@ -39,9 +39,8 @@ src/skills/run-goal-external-waits.test.ts --maxWorkers=1`. This is source and
 schema evidence, not a live model or host evaluation. Earlier13/13GREEN
 remains bound to its original255daa99 composition, not this new main.
 
-The follow-up `eval-id-composition-observation` in TASKS.md registers a
-measurement-first preparation task. It does not claim a collision-prevention
-mechanism or an existing observation harness.
+The follow-up synthetic composition observation registered a measurement-first
+preparation task. It did not claim a collision-prevention mechanism.
 
 ## Synthetic composition observation (2026-11-06)
 

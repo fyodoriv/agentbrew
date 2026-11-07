@@ -5,8 +5,19 @@
  *
  * Repos, keys, and HOME are scratch. Git reads an empty global config file.
  */
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +49,7 @@ import { defaultState, saveState } from "../state.js";
 import { fixtureGit, fixtureKey, type PluginFixture, pluginFixture } from "../test-utils/plugin-fixture.js";
 import { marketplaceDir } from "./claude-native.js";
 import { registerPluginCommands } from "./cli-plugin.js";
+import { lifecycleObservation, writeObservation } from "./lifecycle-observation.js";
 import { revokeSigner, trustSigner } from "./signers.js";
 import { addPlugin, applyAdd, planAdd, pluginDir, pluginsRoot } from "./store.js";
 
@@ -79,6 +91,43 @@ async function add(...extra: string[]): Promise<void> {
 
 function staging(): string[] {
   return existsSync(pluginsRoot()) ? readdirSync(pluginsRoot()).filter((n) => n.startsWith(".staging-")) : [];
+}
+
+async function runObservationChild(args: string[], timeout: number) {
+  const child = spawn(process.execPath, args, { detached: true, stdio: ["ignore", "pipe", "pipe"] });
+  let output = "";
+  let timedOut = false;
+  let killError: unknown;
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => {
+    output += chunk;
+  });
+  child.stderr.on("data", (chunk: string) => {
+    output += chunk;
+  });
+  const status = await new Promise<number | null>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (child.pid) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch (error) {
+          killError = error;
+        }
+      }
+    }, timeout);
+    child.once("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once("close", (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
+  });
+  if (killError && (killError as NodeJS.ErrnoException).code !== "ESRCH") throw killError;
+  return { status, output, timedOut, pid: child.pid };
 }
 
 beforeEach(() => {
@@ -186,6 +235,170 @@ describe("planAdd and applyAdd", () => {
   });
 });
 
+describe("plugin lifecycle observation", () => {
+  it("records a completed stage once", async () => {
+    const records: string[] = [];
+    const times = [10, 12];
+    const observe = lifecycleObservation(
+      "test",
+      (record) => records.push(record),
+      () => times.shift() ?? NaN,
+    );
+    expect(await observe("add", async () => 42)).toBe(42);
+    const parsed = records.map((record) => JSON.parse(record));
+    expect(parsed).toEqual([
+      { invocation: "test", stage: "add", state: "begin", time: 10 },
+      { invocation: "test", stage: "add", state: "complete", time: 12, duration: 2 },
+    ]);
+  });
+
+  it("leaves an unresolved stage incomplete", () => {
+    const records: string[] = [];
+    const observe = lifecycleObservation("test", (record) => records.push(record));
+    void observe("add", () => new Promise(() => {}));
+    expect(records.map((record) => JSON.parse(record).state)).toEqual(["begin"]);
+  });
+
+  it("rethrows failures without disclosing their contents", async () => {
+    const records: string[] = [];
+    const observe = lifecycleObservation("test", (record) => records.push(record));
+    const failure = new Error("private-marker");
+    await expect(
+      observe("add", async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+    expect(records.map((record) => JSON.parse(record).state)).toEqual(["begin", "failed"]);
+    expect(records.join(" ")).not.toContain("private-marker");
+  });
+
+  it("preserves an action error if recording its failure also fails", async () => {
+    const failure = new Error("action failure");
+    const observe = lifecycleObservation("test", (record) => {
+      if (JSON.parse(record).state === "failed") throw new Error("sink failure");
+    });
+    await expect(
+      observe("add", async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+  });
+
+  it("does not record a second terminal when completion recording fails", async () => {
+    const states: string[] = [];
+    const observe = lifecycleObservation("test", (record) => {
+      const state = JSON.parse(record).state;
+      states.push(state);
+      if (state === "complete") throw new Error("sink failure");
+    });
+    await expect(observe("add", async () => 42)).rejects.toThrow("sink failure");
+    expect(states).toEqual(["begin", "complete"]);
+  });
+
+  it("rejects an invalid initial clock before emitting a record", async () => {
+    const records: string[] = [];
+    const observe = lifecycleObservation(
+      "test",
+      (record) => records.push(record),
+      () => NaN,
+    );
+    await expect(observe("add", async () => 42)).rejects.toThrow("Invalid observation timing");
+    expect(records).toEqual([]);
+  });
+
+  it("marks invalid failure timing while preserving the action error", async () => {
+    const records: string[] = [];
+    const times = [10, 9];
+    const failure = new Error("action failure");
+    const observe = lifecycleObservation(
+      "test",
+      (record) => records.push(record),
+      () => times.shift() ?? NaN,
+    );
+    await expect(
+      observe("add", async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+    expect(records.map((record) => JSON.parse(record).state)).toEqual(["begin", "invalid"]);
+  });
+
+  it("retains an incomplete record when the observing process times out", () => {
+    const child = spawnSync(process.execPath, ["--import", "tsx", "src/plugins/lifecycle-observation-fixture.ts"], {
+      encoding: "utf8",
+      timeout: 3000,
+    });
+    expect((child.error as NodeJS.ErrnoException | undefined)?.code).toBe("ETIMEDOUT");
+    const records = child.stderr
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ invocation: "synthetic", stage: "add", state: "begin" });
+  });
+
+  it("finishes a partial observation write", () => {
+    const chunks: Buffer[] = [];
+    writeObservation("record", (_fd, bytes, offset, length) => {
+      const count = Math.min(length, 2);
+      chunks.push(bytes.subarray(offset, offset + count));
+      return count;
+    });
+    expect(Buffer.concat(chunks).toString()).toBe("record\n");
+  });
+
+  it("terminates a stalled runner and its same-group child", async () => {
+    const script =
+      'const {spawn}=require("node:child_process"); spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"inherit"}); console.log("ready"); setInterval(()=>{},1000)';
+    const child = await runObservationChild(["-e", script], 1500);
+    expect(child.output).toContain("ready");
+    expect(child.timedOut).toBe(true);
+    expect(child.pid).toBeDefined();
+    let error: NodeJS.ErrnoException | undefined;
+    try {
+      process.kill(-child.pid!, 0);
+    } catch (caught) {
+      error = caught as NodeJS.ErrnoException;
+    }
+    expect(error?.code).toBe("ESRCH");
+  });
+
+  it("retains an incomplete record through a Vitest timeout", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "lifecycle-reporter-"));
+    try {
+      symlinkSync(join(process.cwd(), "node_modules"), join(scratch, "node_modules"));
+      writeFileSync(
+        join(scratch, "vitest.config.mjs"),
+        'export default { test: { include: ["*.test.ts"], testTimeout: 500 } };\n',
+      );
+      const modulePath = JSON.stringify(join(process.cwd(), "src/plugins/lifecycle-observation.ts"));
+      writeFileSync(
+        join(scratch, "timeout.test.ts"),
+        `import { it } from "vitest";\nimport { lifecycleObservation, writeObservation } from ${modulePath};\nit("synthetic timeout", async () => { await lifecycleObservation("synthetic", writeObservation)("add", () => new Promise(() => {})); });\n`,
+      );
+      const child = await runObservationChild(
+        [
+          join(process.cwd(), "node_modules/vitest/vitest.mjs"),
+          "run",
+          "--root",
+          scratch,
+          "--maxWorkers=1",
+          "--reporter=default",
+        ],
+        20000,
+      );
+      expect(child.timedOut).toBe(false);
+      expect(child.status).toBe(1);
+      expect(child.output).toContain("Test timed out in 500ms");
+      const records = child.output.split("\n").filter((line) => line.startsWith('{"invocation":'));
+      expect(records).toHaveLength(1);
+      expect(JSON.parse(records[0])).toMatchObject({ invocation: "synthetic", stage: "add", state: "begin" });
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   const run = async (...args: string[]) => {
     const program = new Command().exitOverride();
@@ -198,30 +411,37 @@ describe("plugin commands re-emit the Claude Code plugin copy (#447)", () => {
   });
 
   it("add, update, rollback, and remove keep the marketplace copy current", async () => {
-    await run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes");
-    expect(existsSync(copy())).toBe(true);
+    const observe = lifecycleObservation(randomUUID(), writeObservation);
+    await observe("add", () => run("add", `${f.dir}@v1.0.0`, "--signer", KEY.pub, "--yes"));
     const hooks = () => {
       const path = join(copy(), "hooks", "hooks.json");
       return existsSync(path) ? readFileSync(path, "utf-8") : "";
     };
-    expect(hooks()).not.toContain("acme-v2-hook");
+    await observe("initial-copy", () => {
+      expect(existsSync(copy())).toBe(true);
+      expect(hooks()).not.toContain("acme-v2-hook");
+    });
 
     const manifest = {
       ...MANIFEST,
       capabilities: { ...MANIFEST.capabilities, hooks: ["SessionStart"] },
       contributes: { hooks: "hooks/hooks.json" },
     };
-    f.release("v2.0.0", { "agentbrew-plugin.yaml": yaml.dump(manifest), "hooks/hooks.json": hook });
+    await observe("release", () =>
+      f.release("v2.0.0", { "agentbrew-plugin.yaml": yaml.dump(manifest), "hooks/hooks.json": hook }),
+    );
     vi.mocked(confirm).mockResolvedValue(true);
-    await run("update", "acme", "v2.0.0");
-    expect(process.exitCode).toBeUndefined();
-    expect(hooks()).toContain("acme-v2-hook");
+    await observe("update", () => run("update", "acme", "v2.0.0"));
+    await observe("updated-copy", () => {
+      expect(process.exitCode).toBeUndefined();
+      expect(hooks()).toContain("acme-v2-hook");
+    });
 
-    await run("rollback", "acme");
-    expect(hooks()).not.toContain("acme-v2-hook");
+    await observe("rollback", () => run("rollback", "acme"));
+    await observe("rolled-back-copy", () => expect(hooks()).not.toContain("acme-v2-hook"));
 
-    await run("remove", "acme");
-    expect(existsSync(copy())).toBe(false);
+    await observe("remove", () => run("remove", "acme"));
+    await observe("final-copy", () => expect(existsSync(copy())).toBe(false));
   });
 });
 

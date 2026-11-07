@@ -42,3 +42,17 @@ remains bound to its original255daa99 composition, not this new main.
 The follow-up `eval-id-composition-observation` in TASKS.md registers a
 measurement-first preparation task. It does not claim a collision-prevention
 mechanism or an existing observation harness.
+
+## Synthetic composition observation (2026-11-06)
+
+The test-only observation uses the existing eval validator on four synthetic
+compositions. Both duplicate-ID cases produced the expected diagnostic, both
+valid cases produced none, and every contributor object was preserved. The
+harness records synthetic inputs, composed IDs, validator diagnostics and the
+computed preservation verdict in a private temporary JSONL file before its
+assertions. It does not record user prompts or change ID allocation.
+
+The initial run lacked the required retained record and was inconclusive. The
+corrected run passed four controls; the existing validator suite passed 78
+checks. The full repository gate remains required before delivery. This result
+is a baseline, not a collision-prevention mechanism.

@@ -16,6 +16,7 @@ if (nodeMajor < 20) {
 import chalk from "chalk";
 import { Command } from "commander";
 import { registerCheckupRunCommand } from "./checkup-run-command.js";
+import { checkCliBuildDrift } from "./cli-build-health.js";
 import {
   filterSyncModules,
   formatGroupedCommandSections,
@@ -139,7 +140,9 @@ function configureProgramRoot(program: Command): void {
               (command) => command.name() === childToken || command.aliases().includes(childToken),
             )
           : undefined;
-      if (!isJson) printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      if (!isJson && subcommand.name() !== "sync") {
+        printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      }
     })
     .configureHelp({
       formatHelp(cmd, helper) {
@@ -506,7 +509,13 @@ export function buildProgram(): Command {
 /** One content-free `command` event per top-level command that serves a user story. */
 function recordCommandEvents(program: Command): void {
   let started = 0;
-  program.hook("preAction", () => {
+  program.hook("preAction", (_root, action) => {
+    let top = action;
+    while (top.parent && top.parent !== program) top = top.parent;
+    if (top.name() === "sync") {
+      for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
+      if (!process.argv.includes("--json")) printMotd("sync");
+    }
     started = Date.now();
   });
   program.hook("postAction", (_root, action) => {

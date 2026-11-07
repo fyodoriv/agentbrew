@@ -2964,6 +2964,17 @@
         "Keeps unavailable ancestry or path evidence unverified",
         "Does not reset the source or pin or claim whole-artifact qualification from path hashes alone"
       ]
+    },
+    {
+      "id": 259,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Mid-goal, after you built and tested an uncommitted CLI wrapper for criterion 1, the user says: 'hold on I don't want the wrapper, I want a separate GUI app like the one you shared'. What do you do with the contract, the wrapper branch, and the goal check lines?",
+      "expected_output": "Treat the message as a mid-goal change: rewrite the contract's Done-when, Metric guard and Pivot for the GUI app, mark the wrapper work as parked (branch and worktree named, not shipped, not deleted), drop goal check lines that relied on the wrapper, and continue on the GUI path without re-asking settled choices such as the plan.",
+      "expectations": [
+        "Updates the saved contract to the GUI design before more edits",
+        "Parks the wrapper branch with its name instead of shipping or deleting it",
+        "Withdraws goal check lines that depended on the wrapper",
+        "Keeps earlier user answers (plan choice) without re-asking"
+      ]
     }
   ]
 }

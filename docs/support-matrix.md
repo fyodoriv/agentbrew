@@ -32,6 +32,20 @@ agentbrew, adopt its source with `agentbrew install <source-directory>`. Review 
 outside a generated agent directory before adoption. Sync never moves or
 removes these folders during this check.
 
+## OpenCode boundaries
+
+OpenCode (CLI and Desktop) gets skills, commands, MCP servers (memory
+included), and global rules (`~/.config/opencode/AGENTS.md`).
+
+- **Judges and reviewers**: skills such as run-goal ask for a fresh-context
+  subagent. Claude Code uses its built-in subagents; OpenCode uses its built-in
+  `general` subagent through its task tool. agentbrew syncs no agent
+  definitions for either, so nothing extra is needed.
+- **Hooks**: Claude Code PreToolUse hooks do not run in OpenCode. The dotfiles
+  `git` and `gh` wrappers are the only backstop there.
+- **Model**: agentbrew does not set OpenCode's model. Pick it per run
+  (`opencode run -m <provider/model>`) or in the Desktop model picker.
+
 ## Codex boundaries
 
 - Commands deploy as native skills named `agentbrew-command-<name>`. Invoke one

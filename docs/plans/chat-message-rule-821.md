@@ -255,3 +255,74 @@ does not discover `scripts/*.test.mjs`; a normal full-gate pass alone does not
 run or replace them. Run the explicit Node command as a separate required
 check. Durable automatic discovery remains open for the later rule work. No
 live-model baseline has been recorded.
+
+## Local full-gate discovery
+
+The normal full gate currently omits the Node controls. Add one foreground
+step to its default plan; do not add a new timeout, background process or
+parent-side group signal. The paused-writer fake child has bounded cleanup;
+other existing fake child calls have no registered finite timeout. This change
+does not establish a finite cleanup bound for every child. Hosted CI currently
+runs a different command and is outside this registration.
+
+Goal: make the normal local gate enforce the synthetic receipt controls.
+Question: does one uncached default-plan step execute all sixteen controls and
+refuse incomplete results? Predict **4/4** synthetic gate-parser controls
+pass: a complete 16/16 TAP report is accepted, while missing or duplicate
+cases, skips/todos, and a forged passing summary are refused. The default
+plan has exactly one new named step, changing 20 steps to **21**, and the
+step runs the parser controls plus all 16 fake-transport controls. A nonzero
+runner or malformed/incomplete TAP must stop the gate. No live model or real
+chat is used.
+
+Commit this prediction before editing the gate or its helpers. First add a named `default gate includes chat rule controls` test against the
+unchanged plan. It must fail for the fixed missing-step assertion, not setup:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+heavy-run node --test --test-reporter=tap --test-name-pattern='^default gate includes chat rule controls$' scripts/chat-rule-gate.test.mjs 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Eq '^not ok [0-9]+ - default gate includes chat rule controls$' "$log" && grep -Fq '# fail 1' "$log" && grep -Fq 'missing chat-rule gate step' "$log"
+BASH
+```
+
+Then add a small foreground helper and exact TAP parser. The helper runs the
+five parser/plan tests and then the sixteen underlying controls. The helper
+itself must enforce all five named passes and exact zero-failure, zero-skip and
+zero-todo counts before running the underlying controls. The parser and plan
+tests inspect only synthetic TAP and the plan source; they never
+invoke the helper, so they cannot recurse or contact a model. Measure with:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+heavy-run node --test --test-reporter=tap scripts/chat-rule-gate.test.mjs 2>&1 | tee "$log" || exit 1
+grep -Fxq '# tests 5' "$log" && grep -Fxq '# pass 5' "$log" && grep -Fxq '# fail 0' "$log" && grep -Fxq '# skipped 0' "$log" && grep -Fxq '# todo 0' "$log" || exit 2
+for name in 'default gate includes chat rule controls' 'accepts complete 16-case report' 'rejects missing or duplicate cases' 'rejects skipped or todo cases' 'rejects forged passing summary'; do
+  grep -Eq "^ok [0-9]+ - $name$" "$log" || exit 2
+done
+heavy-run bash scripts/run-chat-rule-controls.sh
+BASH
+```
+
+The parser must require the `1..16` plan, all sixteen distinct named records
+in their expected positions, and exact 16 passed, zero failed, skipped and
+todo summary. It must reject a forged passing summary with missing or duplicate
+records. A custom `VERIFY_PLAN` fixture may test gate failure propagation but
+cannot qualify the default full gate. After the focused controls pass, unset
+`VERIFY_PLAN` and run ordinary `heavy-run npm run verify`; retain its terminal
+log and require all 21 steps. Preserve the source-only cache policy; the new
+step must run fresh with the local install.
+
+Success requires all four parser controls, the named default-plan test, all
+sixteen underlying controls, zero false-green cases and the 21-step full gate.
+Any omitted test accepted as green, changed cache policy, model contact,
+unowned child or failed gate rejects this integration. This is local regression
+instrumentation only. The real model baseline, hosted CI and the later rule
+remain separate work. Anchor: the existing `scripts/verify.sh` contract and
+Basili, Caldiera and Rombach (1994), Goal Question Metric.

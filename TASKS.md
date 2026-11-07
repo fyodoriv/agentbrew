@@ -300,6 +300,19 @@
 
 ## P2
 
+- [ ] Measure whether a chat rule prevents duplicate follow-ups
+  - **ID**: chat-message-rule-decision-821
+  - **Tags**: agents, evaluation, communication
+  - **Mode**: AFK
+  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md). The preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. It does not send real messages or establish model performance.
+  - **Output**: code
+  - **Acceptance**: Capture the bound no-rule baseline before the candidate exists, then test the candidate on the same four synthetic cases. Keep real chat untouched.
+  - **Hypothesis**: The candidate gets 4/4 decisions correct and at least one fewer wrong decision than the frozen baseline.
+  - **Measurement**: Run the baseline and candidate commands in the registered plan with the same local model, exact receipt and model digest.
+  - **Success**: Four correct decisions and at least one fewer error than baseline.
+  - **Pivot**: Any wrong decision, unavailable model or no improvement rejects the approach; preserve the original receipt.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
 
 - [ ] Account for every executable before migrating it

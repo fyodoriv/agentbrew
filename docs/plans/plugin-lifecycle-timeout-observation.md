@@ -220,3 +220,64 @@ the closed source-lease cohorts or permits another real diagnostic.
 
 Anchor: the existing observation protocol; Basili, Caldiera and Rombach
 (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
+## Clock and reentrancy health supplement
+
+The first five pure health controls passed, but independent review found two
+false-healthy paths: a thrown clock after action success can leave only `begin`,
+and a reentrant sink can read healthy before its terminal record is accepted.
+Reject that candidate. The retained recorder and test file have SHA-256
+`abee80b906d41b1b08c8150f7d1addd2dd938fdc76da2c134fdab2ecff57bc7f` and
+`9655b636b83cc0e9b9f2b9203c7b7c71d95affaafac903f45769c3dbe08b36b5`.
+Restore and verify those exact bytes before extending the controls.
+
+Goal: prevent incomplete records from appearing healthy. Predict **4/4** new
+pure controls pass: a throwing initial clock is unqualified; a throwing
+terminal clock after success is unqualified and preserves the clock error; a
+throwing terminal clock after action failure is unqualified and preserves the
+exact action error; and reentrant reads during both begin and completion see
+pending until the sink returns. That last control also runs two concurrent
+stages: health stays pending when only one completes, and becomes healthy only
+after the last terminal sink returns. In a separate concurrent subcase, a
+failed sink makes health unqualified even after another stage completes. The
+prior five controls remain intact. No process is launched or signaled, and no
+private error text enters either sink.
+
+Commit this prediction before adding controls or changing the recorder. The
+named red control must show the current candidate treats a throwing terminal
+clock as healthy, not fail during setup:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/plugins/lifecycle-recorder-health.test.ts -t 'throwing terminal clock remains unqualified' --maxWorkers=1 --reporter=verbose --silent=false 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Fq 'throwing terminal clock remains unqualified' "$log" && grep -Eq 'Tests[[:space:]]+1 failed' "$log" && grep -Fq 'clock exception was treated healthy' "$log"
+BASH
+```
+
+Then revise the pure recorder and run:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/plugins/lifecycle-recorder-health.test.ts --maxWorkers=1 --reporter=verbose --silent=false 2>&1 | tee "$log" || exit 1
+grep -Eq 'Tests[[:space:]]+9 passed' "$log" || exit 2
+for name in 'throwing initial clock remains unqualified' 'throwing terminal clock remains unqualified' 'throwing failure clock preserves action' 'reentrant health stays pending'; do
+  grep -Fq "$name" "$log" || exit 2
+done
+BASH
+```
+
+Success requires 9/9 pure controls, no false healthy state, preserved exception
+identity, no private disclosure and eventual qualification of the separate
+runner boundary and normal full gate. A false healthy state, lost action error,
+unsafe disclosure or failed gate rejects the revised method. This remains an
+API preparation: the real lifecycle test does not yet export health to an
+external controller. The group-signal runner and real diagnostic stay
+unqualified. Anchor: the recorder protocol; Basili, Caldiera and Rombach
+(1994), Goal Question Metric.

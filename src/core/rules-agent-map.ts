@@ -81,6 +81,10 @@ export const AGENTBREW_ONLY_RULES_RATIONALE: Readonly<Record<string, string>> = 
   // delegation boundary; the actual file write happens once via
   // claude-code's path.
   "claude-desktop": "Shares ~/.claude/CLAUDE.md with claude-code via readsFrom; ai-rules conflates them under claude.",
+
+  // opencode: ai-rules writes a project AGENTS.md, not OpenCode's global
+  // ~/.config/opencode/AGENTS.md, so agentbrew writes the global file natively.
+  opencode: "ai-rules has no global-rules target for OpenCode; agentbrew writes ~/.config/opencode/AGENTS.md natively.",
 });
 
 /**

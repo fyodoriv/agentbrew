@@ -47,7 +47,7 @@ describe("AGENTBREW_ONLY_RULES_AGENTS", () => {
     // claude-code). Treated as a carve-out at the delegation boundary so
     // the dispatcher knows not to issue a separate `ai-rules generate
     // --agents claude-desktop` call.
-    expect(new Set(AGENTBREW_ONLY_RULES_AGENTS)).toEqual(new Set(["augment", "claude-desktop"]));
+    expect(new Set(AGENTBREW_ONLY_RULES_AGENTS)).toEqual(new Set(["augment", "claude-desktop", "opencode"]));
   });
 
   it("every carve-out exists in agents.yaml", () => {
@@ -68,7 +68,7 @@ describe("AGENTBREW_ONLY_RULES_AGENTS", () => {
 
 describe("AGENTBREW_ONLY_RULES_RATIONALE", () => {
   it("has a rationale for each AGENTBREW_ONLY_RULES_AGENTS entry", () => {
-    expect(Object.keys(AGENTBREW_ONLY_RULES_RATIONALE).sort()).toEqual(["augment", "claude-desktop"]);
+    expect(Object.keys(AGENTBREW_ONLY_RULES_RATIONALE).sort()).toEqual(["augment", "claude-desktop", "opencode"]);
   });
 
   it("every rationale is a non-empty single-sentence string", () => {

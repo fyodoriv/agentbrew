@@ -902,7 +902,7 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | goose | ✓ | ✓ | ✓ | — | — | — | — |
 | kilo | ✓ | — | ✓ | — | — | — | — |
 | kiro | ✓ | ✓ | — | — | — | — | — |
-| opencode | ✓ | ✓ | — | ✓ | — | — | — |
+| opencode | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | roo-code | ✓ | ✓ | ✓ | — | — | — | — |
 
 ### SKILL.md feature support

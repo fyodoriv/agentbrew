@@ -159,6 +159,7 @@
 
 - [ ] Diagnose the updates-landed hook timing gate
   - **ID**: updates-landed-timeout-test-stability
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/865
   - **Tags**: tests, stability, hooks
   - **Mode**: AFK investigation
   - **Details**: On Nov 7, the full Agentbrew gate failed the hung-script control in `hooks/checks/updates-landed.test.sh`: it requires elapsed time below five seconds and reported five seconds. The hook targets a three-second timeout. A separate focused run passed all 12 controls, so the failure did not recur there. The cause and whether output was empty in the failed run are not established. Before running the hung fixture again, independently qualify task-owned process-group creation, signal targeting and child reaping, or prepare a non-signaling instrumented test. This prerequisite also applies to any full gate that runs the fixture. Do not assume load or raise the threshold without evidence.
@@ -173,6 +174,7 @@
 
 - [ ] Investigate missing integrity metadata in the npm lockfile
   - **ID**: lockfile-integrity-metadata
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/865
   - **Tags**: dependencies, security, reliability
   - **Mode**: AFK investigation
   - **Details**: On Nov 7, a read-only scan of `package-lock.json` found 79 of 907 non-root, non-link entries without an `integrity` field. This is a metadata observation, not proof of a vulnerability. Classify each missing field by source, platform and optional status, and establish whether npm verifies the installed bytes by another mechanism. Do not expose private registry details or credentials.
@@ -187,6 +189,7 @@
 
 - [ ] Make the Git-backed MCP install tests complete reliably
   - **ID**: mcp-git-install-test-timeouts
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/865
   - **Tags**: tests, stability, mcp
   - **Mode**: AFK investigation
   - **Details**: On Nov 7, the full Agentbrew gate reported seven timeouts in `src/mcp/mcp-git-install.test.ts`: the cases at lines 457, 508 and 528 exceeded 30 seconds, and four at lines 652, 679, 707 and 724 exceeded 5 seconds. The test run reported 45 passing cases in that file. A focused rerun then timed out at lines 652 and 724 while 50 cases passed. The cause remains unknown; diagnose from both logs before changing code or thresholds. Use a scratch HOME and Git config, local synthetic repos and task-owned scratch installs only; do not install into user or global state or expose private output. Prove owned-child cleanup after a timeout.
@@ -202,6 +205,7 @@
 
 - [ ] Keep sync previews from changing the recorded sync result
   - **ID**: sync-preview-preserves-status
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/865
   - **Tags**: sync, reliability, safety
   - **Mode**: AFK
   - **Details**: On Nov 7, a successful `agentbrew sync --dry-run --only instructions` printed a completed-sync summary and refreshed the last-sync status. The runner calls the sync-error writer during previews, and its parallel path also saves a manifest. Source inspection shows failed previews may also record error events; test that separately in scratch state. A preview must not replace a previous real sync result or claim it performed a sync. Verify the effective status, manifest and event-log paths are all inside isolated scratch state before importing the runner; do not use or expose real user records.

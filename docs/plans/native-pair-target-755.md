@@ -86,3 +86,11 @@ registered plan must bind and qualify those pieces before any production change.
 Anchors: #764's source-bound pair verifier and #755's composed publisher;
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
 (2017), preregistration.
+
+The two named controls passed against the pinned real verifier. The fixed
+target and alternate-recipe canary were accepted; changing only the target
+was refused. All source and synthetic pair hashes and modes matched, and the
+sentinel counts stayed at zero after their canaries. The frozen #764 test blob
+remained unchanged. Independent review confirmed the source-level boundary.
+No binary was executed or qualified, and the reader and installation remain
+unproved.

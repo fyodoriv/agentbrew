@@ -300,6 +300,19 @@
 
 ## P2
 
+- [ ] Remind an agent to draft a review request after adding reviewers
+  - **ID**: review-ask-classifier-822
+  - **Tags**: agents, hooks, communication
+  - **Mode**: AFK
+  - **Details**: Issue #822 needs a reminder-only hook and a generic rule, without sending chat messages. The [classifier preparation](docs/plans/review-ask-classifier-822.md) and its [gate](docs/plans/review-ask-classifier-gate-822.md) cover bounded synthetic CLI inputs through `hooks/lib/review-request-classifier-test.py`, `hooks/checks/review-request-classifier.test.sh` and `hooks/checks/review-request-classifier-gate.test.sh`. They do not qualify a real event, MCP request or optional channel.
+  - **Output**: code
+  - **Acceptance**: Qualify actual event and command-success semantics before enabling a hook. Register separate real-agent and MCP controls before claiming support; keep all messages as drafts.
+  - **Hypothesis**: The preparation recognizes 2/2 supported synthetic reviewer forms and yields 0/8 false positives, without process or network calls.
+  - **Measurement**: Run the two wrapper commands and existing consumer suite in the registered classifier and gate plans.
+  - **Success**: Two positives, eight negatives and all six wrapper controls pass with zero output leaks or classifier process/network calls.
+  - **Pivot**: Any missed positive, false positive, disclosure, unexpected call or existing-consumer regression rejects the classifier approach.
+  - **Anchor**: Existing PR command parser; Claude hooks reference; Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
 - [ ] Measure whether a chat rule prevents duplicate follow-ups
   - **ID**: chat-message-rule-decision-821
   - **Tags**: agents, evaluation, communication

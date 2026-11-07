@@ -10,7 +10,7 @@
 # seconds in tools, or had at least AGENTBREW_PERF_REVIEW_MIN_BLOCKED
 # (default 3) blocked calls (attempted, never ran), block the stop once and
 # ask the agent for a short "Time review": what took longest, one concrete
-# speedup, and a task when a speedup saves a minute or more and recurs. `stop_hook_active` is true on
+# speedup, and action on unblocked in-scope delays. `stop_hook_active` is true on
 # the stop that follows a block, so the hook never loops.
 
 set -uo pipefail
@@ -61,7 +61,7 @@ REASON="$(hook_jq -r --argjson min "$MIN_SECS" --argjson minBlocked "$MIN_BLOCKE
          + "\([.blockedKeys[] | "\(.key) \(.count)x"] | join(", ")). Each one cost a model round trip; "
          + "split compound Bash commands into simple ones and meet hook gates before the call. " else "" end)
     + "Before you stop, add a short \"Time review\" (at most 5 lines): what took longest, one concrete speedup, "
-    + "and whether the slow step recurs. When a speedup saves 1 minute or more and recurs, file a task for it. "
+    + "and whether the slow step recurs. Fix unblocked in-scope speedups; follow user and repository task policy for remaining work. "
     + "Details: node ~/.config/agentbrew/scripts/agent-perf.mjs report --session \($sid). Guide: the perf-review skill."
   end
 ' <<<"$TURN" 2>/dev/null)"

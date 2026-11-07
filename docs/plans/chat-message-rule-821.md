@@ -200,3 +200,50 @@ rejects this method. Preserve actual failures and do not alter the original
 four-case model baseline. Anchor: issue #821's preregistered baseline binding;
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
 (2017), preregistration.
+
+## Finalization coverage supplement
+
+The fourteen registered synthetic controls passed. Independent review found
+that they did not prove candidate acceptance of a valid recovered receipt,
+marker permissions, rejection of malformed or mismatched markers, or bounded
+cleanup of the paused test child. Treat the fourteen-control run as incomplete
+qualification. The retained harness and tests have SHA-256
+`612adc6581b6d96a09f0cc21fa6a49c1824e8e9e32ae953029b9285bf1fcddf3` and
+`66e33d298576fc00043e68f76d64386b82334e67510114605c9f0256cf7bc1c5`.
+Restore and verify those bytes before extending controls.
+
+Goal: prove the marker boundary in both directions. Predict **2/2** additional
+entrypoint controls reject malformed and mismatched markers with the fixed
+unfinalized diagnostic and zero generation. The recovered-finalized control
+must also show the real candidate path accepts the receipt, completes all four
+fake candidate generation requests and passes the threshold: the fake baseline
+chooses POST in all cases (2/4), and the fake candidate chooses
+EDIT, POST, POST, HOLD (4/4). The marker must have mode 600 and exact hash plus
+newline. All
+fourteen prior controls remain intact. Use a synthetic catalog and fake model;
+no live model or real chat is accessed. Bound the fake child's wait and the
+parent's owned-child wait, and release and reap the child on every test path.
+The paused-race control also runs a synthetic no-release subcase and proves its
+owned child reaches a terminal state and is reaped within five seconds.
+
+Commit this prediction before extending the tests. Run the complete suite:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+heavy-run node --test --test-reporter=tap scripts/eval-chat-message-rule-821.test.mjs 2>&1 | tee "$log" || exit 1
+grep -Fxq '# tests 16' "$log" && grep -Fxq '# pass 16' "$log" && grep -Fxq '# fail 0' "$log" || exit 2
+for name in 'malformed marker rejected' 'mismatched marker rejected' 'finalized receipt survives lost report'; do
+  grep -Eq "^ok [0-9]+ - $name$" "$log" || exit 2
+done
+BASH
+```
+
+Success requires all 16 controls, correct private marker bytes, bounded child
+cleanup and the normal full gate. Any accepted bad marker, refused valid
+receipt, leaked generation on rejection, unowned child or failed gate rejects
+this method. No power-loss durability or global cross-path retry guarantee is
+claimed. Anchor: the original receipt-binding experiment; Basili, Caldiera and
+Rombach (1994), Goal Question Metric.

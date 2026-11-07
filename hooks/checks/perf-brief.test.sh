@@ -49,6 +49,7 @@ check "Test 1b (SessionStart JSON: $OUT)" "$(printf '%s' "$OUT" | jq -e '.hookSp
 CONTEXT="$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.additionalContext // ""')"
 check "Test 1c (brief names the project and top step)" "$(case "$CONTEXT" in (*"alpha"*"npm run verify 3m30s"*) echo 0 ;; (*) echo 1 ;; esac)"
 check "Test 1d (brief has at most 5 lines)" "$([ "$(printf '%s\n' "$CONTEXT" | wc -l)" -le 5 ] && echo 0 || echo 1)"
+check "Test 1e (safe iteration hint)" "$(case "$CONTEXT" in (*"affected checks"*"external state"*"without exposing values"*"unknown inputs"*"required full gate"*) echo 0 ;; (*) echo 1 ;; esac)"
 
 # Test 2: a project without rows → silent.
 OUT="$(printf '{"hook_event_name":"SessionStart","cwd":"%s"}' "$TMP/work/empty" | bash "$SCRIPT" 2>/dev/null)"

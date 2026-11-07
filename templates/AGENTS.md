@@ -87,6 +87,10 @@ beyond the goal. **Depth**: use an expert's raw data, tools, and methods.
 **Range**: borrow methods from other fields. Prove results with an outside
 judge, not self-review. Details: shared-rules **## Ambition with models**.
 
+### Fast, safe iterations
+
+During each iteration, measure recurring slow steps and use affected checks or a validated cache when they give the needed signal. Key reuse to all relevant effective inputs, including external state, without exposing values or guessable hashes; verify invalidation. Unknown inputs require the full check. Keep the required final gate, and fix in-scope recurring delays when unblocked.
+
 ### Reuse before implementation
 
 GET → WRAP → CONTRIBUTE → ABSORB. Keep new code behind adapters when upstream may replace it.

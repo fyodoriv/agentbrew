@@ -13,11 +13,13 @@ agents can see which steps are slow and which slow steps repeat.
 | Hook `perf-record-attempt` (PreToolUse, all tools) | Appends an attempt row before each tool call, so a call that never runs still counts. |
 | Hook `perf-record-denied` (PermissionDenied) | Appends a denied row when the auto mode classifier denies a call. |
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
-| Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
+| Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief and a safe iteration hint when data exists. |
 | Hook `perf-task-review` (Stop, opt-in) | Asks for a "Time review" after a long turn. Enable it in the hooks overlay `enabled:` list. |
 | Hook `poll-loop-hint` (PreToolUse Bash, opt-in) | Hints at a background run or a blocking wait when a command polls with a `sleep` loop. Enable it in the hooks overlay `enabled:` list. |
 | Claude Code `statusLine` | Shows session time, tool time, and the slowest step. |
 | Skill `perf-review` | Tells an agent how to read the report and when to file a speedup task. |
+
+The reviewer checks a fresh, input-bound required-gate result independently. If evidence or external inputs cannot be verified, the reviewer re-executes affected steps without that cache or reports blocked. A qualified pass need not be repeated unless the user or project requires an independent or uncached run.
 
 The hooks are on by default for Claude Code. They run with `async: true`, so
 Claude Code does not wait for them. They never block and never print. The

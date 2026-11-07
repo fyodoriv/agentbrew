@@ -13,7 +13,18 @@ description: >
 # Perf review
 
 Answer two questions with data: what took the longest, and what can be
-faster. Then file a task only for a speedup that is real and recurs.
+faster. Fix an unblocked in-scope speedup; follow user and repo policy for remaining work.
+
+## During each iteration
+
+Measure recurring slow steps while work is in progress. Use affected checks
+and cached passes only when all relevant effective inputs, including external state,
+and cache invalidation are known. Bind private inputs without exposing values or
+guessable hashes; if that is not possible, rerun the check. For unknown dependencies,
+run the conservative full check. Keep the required full gate before delivery. Never bypass privacy
+checks or the heavy-run queue. Fix an unblocked in-scope delay; for blocked or
+out-of-scope work, follow the user's and repo's task policy. Compare before and
+after timings before claiming speed.
 
 ## 1. Get the numbers
 
@@ -58,7 +69,7 @@ Field meanings and counting rules: agentbrew `docs/agent-perf.md`.
    approval). That time is not in `toolMs` or `topKeys`, so never file a
    speedup task for the step. A long prompt wait points at a permission rule
    or at unattended work that needed a person.
-7. Ignore steps under a minute in total. They are noise.
+7. For historical ranking, default to one minute total unless the user or repo sets a tighter bar. Assess the current iteration even when history is missing.
 8. Check attribution before comparing a task's target. Old `heavy-run npm`
    and `heavy-run make` rows have unknown leaf commands; an absent direct key
    is not zero. A loop or compound row is whole-call wall time, not component
@@ -98,9 +109,10 @@ Speedup: run the one changed test file while iterating; full gate once at the en
 Recurs: yes, every edit loop in this repo. Filed: <task id or link>.
 ```
 
-## 5. File a task only when it pays
+## 5. Record work that remains
 
-File a task when the speedup saves 1 minute or more AND the step recurs
+Follow the user's and repo's task policy first. If neither specifies a rule,
+file a task when the speedup saves 1 minute or more AND the step recurs
 (it shows in the 7-day report, not only in this task). Use the repo's task
 backend (`detect-task-backend`). The task names the step key, the 7-day
 count and total from the report, the change, and the expected saving as its

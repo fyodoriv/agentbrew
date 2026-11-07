@@ -87,6 +87,39 @@
         "Retains unknown mode and unresolved18 observations; no absent-alias zero claim",
         "Does not infer timeout cause from2 failures or close after one day"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "A test suite takes five minutes on each edit. Its cache misses untracked files and external state. How should you proceed during this task?",
+      "expected_output": "Measure the slow loop, use affected checks when justified, and do not reuse the cache with unknown inputs. Run the full required gate before delivery; fix an unblocked in-scope cache defect.",
+      "expectations": [
+        "Measures the relevant loop before claiming savings",
+        "Uses affected checks only when their scope is justified",
+        "Treats unknown dependencies and external state as a conservative full check, not a cache hit",
+        "Keeps the required full gate and does not bypass privacy or the heavy-run queue",
+        "Fixes an unblocked in-scope cache defect or records a real blocker",
+        "Does not expose private values or guessable hashes in cache keys"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "A reviewer has an exact-input green gate receipt, but this project requires the reviewer to run the gate independently without cache. Can they skip the run?",
+      "expected_output": "Follow the stricter project rule and run the required uncached gate through the configured queue. If it cannot run, report blocked.",
+      "expectations": [
+        "Requires the independent uncached gate despite the existing receipt",
+        "Does not bypass the configured heavy-run queue",
+        "Reports blocked rather than claiming a pass when the run cannot be done"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "A cached pass matches the tracked tree, but the reviewer cannot verify the current private external inputs. Can the reviewer accept it?",
+      "expected_output": "Treat the evidence as unqualified and rerun the required check; if it cannot run, report blocked. Do not reveal private inputs.",
+      "expectations": [
+        "Treats unverifiable external inputs as a miss",
+        "Reruns the required gate or reports blocked",
+        "Does not expose private values or guessable hashes"
+      ]
     }
   ]
 }

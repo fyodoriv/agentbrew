@@ -20,10 +20,39 @@ const names = [
   "mismatched marker rejected",
 ];
 
-export function validateChatRuleTap(text) {
+const schemaNames = [
+  "valid enum decisions",
+  "exact request schema",
+  "malformed JSON refused",
+  "missing key refused",
+  "extra key refused",
+  "unknown enum refused",
+  "non-string refused",
+  "duplicate key refused",
+  "HTTP failure refused",
+  "transport failure refused",
+];
+const schemaGateNames = [
+  "schema gate included",
+  "complete schema report accepted",
+  "missing duplicate or skipped schema rejected",
+  "forged schema summary rejected",
+];
+
+function validateNamedTap(text, names) {
   const lines = text.split(/\r?\n/);
   const once = (line) => lines.filter((entry) => entry === line).length === 1;
-  if (!["1..16", "# tests 16", "# pass 16", "# fail 0", "# cancelled 0", "# skipped 0", "# todo 0"].every(once)) {
+  if (
+    ![
+      `1..${names.length}`,
+      `# tests ${names.length}`,
+      `# pass ${names.length}`,
+      "# fail 0",
+      "# cancelled 0",
+      "# skipped 0",
+      "# todo 0",
+    ].every(once)
+  ) {
     throw new Error("Incomplete chat-rule TAP summary");
   }
   for (const pattern of [
@@ -43,9 +72,22 @@ export function validateChatRuleTap(text) {
   }
 }
 
+export function validateChatRuleTap(text) {
+  return validateNamedTap(text, names);
+}
+export function validateSchemaTap(text) {
+  return validateNamedTap(text, schemaNames);
+}
+export function validateSchemaGateTap(text) {
+  return validateNamedTap(text, schemaGateNames);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    validateChatRuleTap(readFileSync(process.argv[2], "utf8"));
+    const text = readFileSync(process.argv[2], "utf8");
+    if (process.argv[3] === "--schema") validateSchemaTap(text);
+    else if (process.argv[3] === "--schema-gate") validateSchemaGateTap(text);
+    else validateChatRuleTap(text);
     console.log("chat-rule TAP verified");
   } catch {
     console.error("chat-rule TAP rejected");

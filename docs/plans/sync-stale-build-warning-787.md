@@ -73,3 +73,56 @@ work; it does not inspect the owner's configuration.
 
 Anchor: issue #787's before-write requirement; Basili, Caldiera and Rombach
 (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
+## Parsed-command placement experiment
+
+The first ordering placement moved the check into the root hook. Its 20 focused
+checks passed, but independent review found that Commander invokes that hook
+before processing sync help or invalid options. The placement would therefore
+run the health check for those non-executing commands. Reject that placement;
+the focused pass did not cover this behavior.
+
+Goal: make the warning precede sync writes without inspecting build health for
+help or invalid input. Question: can sync defer its status hook until after
+successful parsing, then warn before that hook? Predict **4/4** initialized
+stale sync paths warn once before hook output and writes; **1/1** current path
+stays quiet and runs; and **2/2** help and invalid-option paths make zero build
+health checks and zero status-hook writes. The help and invalid paths will
+intentionally stop running the status hook; this removes their current status
+output and writes. Non-sync commands retain their existing hook behavior.
+
+Commit this prediction before adding tests or changing the placement. The
+initialized-state test file is retained locally in the rejected candidate
+stash, SHA-256
+`b55fb0f74000e7c645eaa4ae3933387e7d93276d904f3bebadc49ccb48c05e6f`.
+Restore and verify those exact bytes first, then append controls without
+changing its existing cases. Preserve the original focused cases. Add named
+synthetic help and invalid-option controls; run the help control against the
+existing action-level candidate and require a named failing test, one-failed
+summary and the fixed `sync help ran status hook` assertion. A setup failure is
+inconclusive:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/cli-sync-build-health.test.ts -t 'sync help skips build health and status hook' --maxWorkers=1 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Fq 'sync help skips build health and status hook' "$log" && grep -Eq 'Tests[[:space:]]+1 failed' "$log" && grep -Fq 'sync help ran status hook' "$log"
+BASH
+```
+
+Then implement the parsed-command placement and run:
+
+```sh
+JOBS=1 heavy-run npm exec -- vitest run src/cli-sync-build-health.test.ts src/cli-build-health.test.ts --maxWorkers=1
+```
+
+Keep the change only if every control and the full normal repository gate pass.
+Any late or duplicated warning, help/invalid health check or status-hook write,
+changed non-sync behavior, or failed gate rejects this placement. Do not alter
+the build-health classifier or automatically rebuild. Tests use synthetic
+state and mock external work. Anchor: issue #787's before-write requirement;
+Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017),
+preregistration.

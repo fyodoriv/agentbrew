@@ -126,3 +126,47 @@ the build-health classifier or automatically rebuild. Tests use synthetic
 state and mock external work. Anchor: issue #787's before-write requirement;
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017),
 preregistration.
+
+## Command timing preservation supplement
+
+The parsed-action placement passed 22 focused checks. Independent source
+review found an unmeasured timing change: the root `preAction` starts the
+command event before the moved status hook. Reject that placement until the
+original timing boundary is preserved. The retained test file has SHA-256
+`dc270004eaa7317a50005f93e24c0ce20608cfa4263444263c6c20d49f2d56fa`;
+restore and verify its exact bytes before appending the timing control.
+
+Goal: preserve the command event's original timing boundary. Question: can the
+parsed sync warning and status hook run before the event timer starts?
+Predict **1/1** synthetic clock control reports exactly 20 ms of command work,
+excluding 1,000 ms spent in the mocked status hook. The test supplies a known
+synthetic story and requires exactly one `event: command` record with `ms: 20`;
+the rejected placement must record 1,020 ms in the red control. It does not
+confuse that record with the separate `sync` event. All four stale paths,
+current, help, invalid and non-sync controls must remain correct. This is a
+clock-controlled ordering test, not a latency measurement.
+
+Commit this prediction before changing code or adding the timing test. Restore
+the retained test and parsed-action candidate, then run the named red control
+below. It must fail with the fixed timing assertion; a setup failure is
+inconclusive:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/cli-sync-build-health.test.ts -t 'sync command timing excludes status hook' --maxWorkers=1 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Fq 'sync command timing excludes status hook' "$log" && grep -Eq 'Tests[[:space:]]+1 failed' "$log" && grep -Fq 'sync command timing included status hook' "$log" && grep -Fq '1020' "$log"
+BASH
+```
+
+Then run the warning and status hook in the parsed sync `preAction` boundary
+before the command event timer starts. The existing `preSubcommand` hook stays
+unchanged for non-sync commands. Re-run the full focused command from the
+parsed-command experiment and the normal full repository gate. A timing
+mismatch, late warning, unwanted help/invalid side effect, non-sync regression,
+or failed gate rejects this placement. Preserve the classifier and do not
+automatically rebuild. Anchor: issue #787; the existing `recordCommandEvents`
+boundary; Basili, Caldiera and Rombach (1994), Goal Question Metric.

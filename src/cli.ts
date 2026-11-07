@@ -140,7 +140,9 @@ function configureProgramRoot(program: Command): void {
               (command) => command.name() === childToken || command.aliases().includes(childToken),
             )
           : undefined;
-      if (!isJson) printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      if (!isJson && subcommand.name() !== "sync") {
+        printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      }
     })
     .configureHelp({
       formatHelp(cmd, helper) {
@@ -215,7 +217,6 @@ interface SyncCommandOptions {
 }
 
 async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
-  for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
   const started = Date.now();
   let ok = false;
   try {
@@ -508,7 +509,13 @@ export function buildProgram(): Command {
 /** One content-free `command` event per top-level command that serves a user story. */
 function recordCommandEvents(program: Command): void {
   let started = 0;
-  program.hook("preAction", () => {
+  program.hook("preAction", (_root, action) => {
+    let top = action;
+    while (top.parent && top.parent !== program) top = top.parent;
+    if (top.name() === "sync") {
+      for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
+      if (!process.argv.includes("--json")) printMotd("sync");
+    }
     started = Date.now();
   });
   program.hook("postAction", (_root, action) => {

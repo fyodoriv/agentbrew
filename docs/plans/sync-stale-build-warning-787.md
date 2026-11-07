@@ -170,3 +170,8 @@ mismatch, late warning, unwanted help/invalid side effect, non-sync regression,
 or failed gate rejects this placement. Preserve the classifier and do not
 automatically rebuild. Anchor: issue #787; the existing `recordCommandEvents`
 boundary; Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+The named timing red control observed 1,020 ms before the correction. The
+parsed preAction placement passed all 23 focused tests, including the 20 ms
+command-event check, the initialized sync paths, and help and invalid controls.
+Independent source review passed. The normal full gate remains required.

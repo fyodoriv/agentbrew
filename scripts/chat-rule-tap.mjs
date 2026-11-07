@@ -38,6 +38,27 @@ const schemaGateNames = [
   "missing duplicate or skipped schema rejected",
   "forged schema summary rejected",
 ];
+const runnerNames = [
+  "valid baseline finalizes",
+  "valid candidate compares",
+  "existing reservation refuses",
+  "orphan marker refuses",
+  "interrupted reservation refuses retry",
+  "concurrent admission single",
+  "case hash mismatch refuses",
+  "unsafe case path refuses",
+  "digest drift refuses finalization",
+  "malformed response stays private",
+  "failed finalization refuses candidate",
+  "candidate binding mismatch refuses",
+  "no improvement rejects",
+];
+const runnerGateNames = [
+  "runner gate included",
+  "complete runner report accepted",
+  "missing duplicate or skipped runner rejected",
+  "forged runner summary rejected",
+];
 
 function validateNamedTap(text, names) {
   const lines = text.split(/\r?\n/);
@@ -81,12 +102,20 @@ export function validateSchemaTap(text) {
 export function validateSchemaGateTap(text) {
   return validateNamedTap(text, schemaGateNames);
 }
+export function validateRunnerTap(text) {
+  return validateNamedTap(text, runnerNames);
+}
+export function validateRunnerGateTap(text) {
+  return validateNamedTap(text, runnerGateNames);
+}
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const text = readFileSync(process.argv[2], "utf8");
     if (process.argv[3] === "--schema") validateSchemaTap(text);
     else if (process.argv[3] === "--schema-gate") validateSchemaGateTap(text);
+    else if (process.argv[3] === "--runner") validateRunnerTap(text);
+    else if (process.argv[3] === "--runner-gate") validateRunnerGateTap(text);
     else validateChatRuleTap(text);
     console.log("chat-rule TAP verified");
   } catch {

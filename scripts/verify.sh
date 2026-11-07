@@ -196,6 +196,7 @@ skills-coverage npm run --silent skills:coverage
 playwright-install npm run --silent playwright:install
 chat-rule-controls bash scripts/run-chat-rule-controls.sh
 chat-rule-schema-controls bash scripts/run-chat-rule-schema-controls.sh
+chat-schema-runner-controls bash scripts/run-chat-schema-runner-controls.sh
 test-all npx vitest run
 install-e2e bash scripts/install-e2e-if-needed.sh
 PLAN

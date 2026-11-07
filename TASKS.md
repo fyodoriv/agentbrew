@@ -304,7 +304,7 @@
   - **ID**: chat-message-rule-decision-821
   - **Tags**: agents, evaluation, communication
   - **Mode**: AFK
-  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md). The preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. It does not send real messages or establish model performance.
+  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md); its first baseline stopped on an invalid response. The separate [schema pivot](docs/plans/chat-rule-schema-pivot-821.md) prepares `scripts/chat-rule-schema-protocol.mjs` and `scripts/run-chat-rule-schema-controls.sh` without a model call. The earlier preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. None sends real messages or establishes model performance.
   - **Output**: code
   - **Acceptance**: Capture the bound no-rule baseline before the candidate exists, then test the candidate on the same four synthetic cases. Keep real chat untouched.
   - **Hypothesis**: The candidate gets 4/4 decisions correct and at least one fewer wrong decision than the frozen baseline.

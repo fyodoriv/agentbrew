@@ -57,3 +57,7 @@ register a new prediction if that count changes.
 
 Anchors: existing `scripts/chat-rule-tap.mjs` gate contract; Basili, Caldiera
 and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
+The named missing-gate control failed before the change. The dedicated runner
+passed four gate controls and ten protocol controls; the existing sixteen
+receipt controls also passed. The full 22-step gate remains required.

@@ -105,3 +105,8 @@ validity does not establish decision quality or real-chat performance.
 Anchors: [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs);
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
 (2017), preregistration.
+
+The unimplemented control produced the registered red result. The synthetic
+suite then passed all ten named controls and the existing sixteen receipt
+controls. The original reservation remained zero bytes with the same SHA-256.
+No model or real chat was used; these results do not measure decision quality.

@@ -341,3 +341,98 @@ passed. After transfer, the focused version, policy, typed-error and dispatch
 cohort passed all forty-seven cases. This is deterministic source-boundary
 evidence; no model was called. Type/lint, current-main integration and the
 final full gate remain separate checks before delivery.
+
+## Current-main integration prediction (2026-11-07)
+
+This draft's source parent is `7b36f93784c543a5a39a092999bcb1f3830f7019`;
+the main parent is `24a3c6fbbd83b685fe142699eaf0d935f0e70406`. Their merge
+preview has five conflicted paths: `INSTALL.md`, `scripts/build-source.sh`,
+`scripts/install-e2e-if-needed.sh`, `scripts/install.sh`, and `tsup.config.ts`.
+Historical passing tests apply only to the older tree. Preserve both parents'
+install, native-build, judge packaging and delivery safeguards. If either
+parent changes, record and independently review a new integration prediction
+before resolving the changed tree.
+
+Goal: integrate the reviewed draft without losing either side's behavior.
+Question: can the five conflicted files be reconciled with zero lost install,
+native-build or judge safeguards? Predict zero failed controls in the affected
+install/build and judge suites, zero removed safeguards in independent
+both-parent review, and a passing normal full gate. The shipped model
+calibration and optional live connector remain separate acceptance gaps.
+
+Commit this prediction before resolving conflicts. After a normal merge of
+the pinned main parent, require all eight listed test files to exist and have
+at least one executed passing test each. Preserve and report skipped cases;
+never count them as passes. Keep opt-in locked-install observations unset:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+report=$(mktemp) || exit 2
+trap 'rm -f "$report"' EXIT
+files=(src/install-script.test.ts src/build-pipeline-guard.test.ts src/install-e2e-trigger.test.ts src/docs/install-playbook.test.ts src/judges/ollama-version.test.ts src/judges/engine-error.test.ts src/judges/promptfoo-config.test.ts src/judges/promptfoo-dispatch.test.ts)
+for file in "${files[@]}"; do test -f "$file" || exit 2; done
+env -u LOCKED_INSTALL_OBSERVATION -u LOCKED_INSTALL_OBSERVATION_NPM_CLI -u CHECKUP_RUN_OBSERVATION -u CHECKUP_RUN_TEST_CLI -u HISTORY_SCANNER_CALIBRATION JOBS=1 heavy-run npm exec -- vitest run "${files[@]}" --maxWorkers=1 --reporter=json --outputFile="$report" || exit 1
+node - "$report" "${files[@]}" <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const [file, ...expected] = process.argv.slice(2);
+const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+if (!report.success || report.testResults.length !== expected.length) process.exit(1);
+for (const name of expected) {
+  const item = report.testResults.find((test) => path.resolve(test.name) === path.resolve(name));
+  if (!item || !item.assertionResults.some((test) => test.status === 'passed') || item.assertionResults.some((test) => test.status === 'failed')) process.exit(1);
+  const skipped = item.assertionResults.filter((test) => test.status !== 'passed');
+  console.log(JSON.stringify({file: name, passed: item.assertionResults.length - skipped.length, skipped: skipped.map((test) => ({name: test.fullName, status: test.status}))}));
+  if (skipped.some((test) => !test.fullName.includes('locked-install guard observations (qualification required)') || !['pending', 'skipped'].includes(test.status))) process.exit(1);
+}
+NODE
+BASH
+```
+
+Then run the installed-package hook scenario in its scratch-only environment,
+not in the owner's agent configuration. This test installs its own safety
+shims and macOS sandbox. No model call or activation of user hooks is allowed.
+
+```sh
+bash <<'BASH'
+set -euo pipefail
+unset LOCKED_INSTALL_OBSERVATION LOCKED_INSTALL_OBSERVATION_NPM_CLI CHECKUP_RUN_OBSERVATION CHECKUP_RUN_TEST_CLI HISTORY_SCANNER_CALIBRATION VERIFY_PLAN
+report=$(mktemp)
+gate_log=$(mktemp)
+trap 'rm -f "$report"' EXIT
+JOBS=1 heavy-run npm run build
+JOBS=1 heavy-run npm run test:real-e2e -- real-e2e/scenarios/us01-us21-npm-package-hooks.test.ts --maxWorkers=1 --reporter=json --outputFile="$report"
+node - "$report" <<'NODE'
+const fs = require('node:fs');
+const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const tests = report.testResults.flatMap((file) => file.assertionResults);
+for (const name of ['syncs only the declared judge and gates the exact PR body', 'ships a working judge reader in the installed package']) {
+  if (!tests.some((test) => test.fullName.endsWith(name) && test.status === 'passed')) process.exit(1);
+  console.log(`passed: ${name}`);
+}
+NODE
+JOBS=1 heavy-run npm run typecheck
+JOBS=1 heavy-run npm run lint:changed
+test -f src/sync/pull-source-caches.test.ts
+if rg -q 'controlled source-lease release windows' src/sync/pull-source-caches.test.ts; then
+  exit 2
+else
+  status=$?
+  [ "$status" -eq 1 ] || exit 2
+fi
+JOBS=1 heavy-run npm run verify 2>&1 | tee "$gate_log"
+grep -Eq '^verify: passed; [0-9]+ of 20 steps from cache\.' "$gate_log"
+printf 'Private full-gate log: %s\n' "$gate_log"
+BASH
+```
+
+Independently compare each resolved conflict to both parents. Review related
+auto-merged installation and native-build files too; textual auto-merge is not
+proof of correct composition. Any lost safeguard, failed control, skipped
+required evidence or failed gate rejects the reconciliation. Preserve both
+sources and revise rather than drop one side. This is integration evidence,
+not hosted model calibration, live connector proof or hook activation.
+
+Anchor: issue #752's existing delivery contract; current install/build guards;
+Basili, Caldiera and Rombach (1994), Goal Question Metric.

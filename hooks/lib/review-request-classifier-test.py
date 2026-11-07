@@ -24,6 +24,7 @@ class ReviewRequestTests(unittest.TestCase):
                 result = parser.reviewer_request(command)
                 if expected:
                     self.assertEqual(parser.target(command), {"number": "123", "repo": ""})
+                    self.assertFalse(parser.reviewer_request(command + " --add-label label"))
             self.assertIs(result, expected)
             self.assertEqual(stdout.getvalue(), "")
             self.assertEqual(stderr.getvalue(), "")

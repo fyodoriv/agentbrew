@@ -25,7 +25,7 @@ def command_words(command):
         return None
 
 
-def target(command, words=None, include_review=False):
+def target(command, words=None):
     if any(character in command for character in "$`*?[]{}"):
         return None
     words = command_words(command) if words is None else words
@@ -48,7 +48,7 @@ def target(command, words=None, include_review=False):
         "ready": {"--undo"},
         "edit": {"--remove-milestone"},
     }[action]
-    repo, i, review_request = "", 4, False
+    repo, i = "", 4
     while i < len(words):
         word = words[i]
         flag, equals, value = word.partition("=")
@@ -64,20 +64,23 @@ def target(command, words=None, include_review=False):
                 if not re.fullmatch(r"(?:[A-Za-z0-9][A-Za-z0-9.:-]*/)?[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9_.-]+", value):
                     return None
                 repo = value
-            elif flag == "--add-reviewer" and value.strip() and not value.startswith("-"):
-                review_request = True
         elif word not in switches:
             return None
         i += 1
-    result = {"number": number, "repo": repo}
-    if include_review:
-        result["review_request"] = review_request
-    return result
+    return {"number": number, "repo": repo}
 
 
 def reviewer_request(command):
-    result = target(command, include_review=True)
-    return bool(result and result["review_request"])
+    words = command_words(command)
+    if words is None or target(command, words) is None or words[2] != "edit":
+        return False
+    if len(words) == 6 and words[4] == "--add-reviewer":
+        value = words[5]
+    elif len(words) == 5 and words[4].startswith("--add-reviewer="):
+        value = words[4].partition("=")[2]
+    else:
+        return False
+    return bool(value.strip() and not value.startswith("-"))
 
 
 def main():

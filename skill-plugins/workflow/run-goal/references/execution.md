@@ -171,6 +171,19 @@ did not finish (an unset pattern, a grep error, or a diff grep skipped as binary
 
 ## Served output
 
+For a managed-source deployment, retain each strict readback failure and its
+actual exit. If the source advanced, do not reset it or call the original
+exact-revision check successful. Under the existing source lease, record the
+expected revision, actual source revision and pin separately; check source and
+pin agreement. For an advance, verify that expected is an ancestor of actual;
+inspect the complete intervening delta. Compare installed bytes with source
+hashes for every delivered path, and record the scope and qualification of
+intervening changes. A descendant alone does not prove installed content or
+the whole artifact. Report exact-revision delivery and inspected
+content-provenance delivery separately. A backward or divergent revision, pin disagreement or
+missing evidence remains unverified for investigation. Never silently accept
+an arbitrary descendant, suppress a failure or move a source or pin backward.
+
 When the goal is about what users see (a feed, a page, a report), measure the
 served output after the deploy, not only the pipeline's output.
 

@@ -2975,6 +2975,17 @@
         "Withdraws goal check lines that depended on the wrapper",
         "Keeps earlier user answers (plan choice) without re-asking"
       ]
+    },
+    {
+      "id": 260,
+      "prompt": "/goal redo last week grocery order with today delivery, sort carts in my chrome. Mid-run the user changes quantities twice and adds flavour bans.",
+      "expected_output": "Updates the contract file with each change, re-edits every filled cart, saves the new rules to the app prefs, re-reads each cart line by line, and reports totals at each store earliest slot; never places the order.",
+      "expectations": [
+        "contract records each mid-goal change",
+        "every cart re-read after the change",
+        "new preference saved as a durable rule",
+        "no Place order / Checkout pressed"
+      ]
     }
   ]
 }

@@ -304,13 +304,13 @@
   - **ID**: chat-message-rule-decision-821
   - **Tags**: agents, evaluation, communication
   - **Mode**: AFK
-  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md). The preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. It does not send real messages or establish model performance.
+  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md); its first baseline stopped on an invalid response. The separate [schema pivot](docs/plans/chat-rule-schema-pivot-821.md) prepares `scripts/chat-rule-schema-protocol.mjs` and `scripts/run-chat-rule-schema-controls.sh` without a model call. The earlier preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. None sends real messages or establishes model performance.
   - **Output**: code
-  - **Acceptance**: Capture the bound no-rule baseline before the candidate exists, then test the candidate on the same four synthetic cases. Keep real chat untouched.
-  - **Hypothesis**: The candidate gets 4/4 decisions correct and at least one fewer wrong decision than the frozen baseline.
-  - **Measurement**: Run the baseline and candidate commands in the registered plan with the same local model, exact receipt and model digest.
-  - **Success**: Four correct decisions and at least one fewer error than baseline.
-  - **Pivot**: Any wrong decision, unavailable model or no improvement rejects the approach; preserve the original receipt.
+  - **Acceptance**: Preserve the failed original baseline and its receipt. Before a new model attempt or candidate rule, register a distinct protocol, independently selected cases, exact measurement and numeric thresholds. Keep real chat untouched.
+  - **Hypothesis**: The original prediction was 4/4 correct decisions and at least one fewer error than its frozen baseline; that experiment stopped before a baseline was captured. A new decision prediction must be registered separately.
+  - **Measurement**: The original plan's baseline and candidate commands are historical and must not be rerun. Register new exact commands, model, cases, receipt and digest before a new attempt.
+  - **Success**: The original 4/4 and one-fewer-error threshold remains historical; a distinct experiment must set its own numeric decision threshold before measurement.
+  - **Pivot**: The original invalid response rejects that approach and its empty receipt stays reserved. A distinct approach must register its own pivot before measurement.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
 
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->

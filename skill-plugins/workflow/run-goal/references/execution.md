@@ -155,7 +155,7 @@ A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
 `tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
 its status decides the commit. Run the gate into a log, read `$rc`, and
 commit and push only when it is 0:
-`log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
+`log="$(mktemp "${TMPDIR:-/tmp}/gate-<name>.XXXXXX")"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
 When the gate fails, the whole line also exits 1, so a background task reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
 A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
@@ -164,7 +164,7 @@ never put it in the gate slot above, and never chain the next step on it
 with `&&`: a clean check then skips the commit, and a check that finds a
 leak lets the commit run. Stage first. Then count matches in the staged
 diff, and commit only when the count is exactly 0:
-`git add …; n=; d="${TMPDIR:-/tmp}/staged.diff"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+`git add …; n=; d="$(mktemp "${TMPDIR:-/tmp}/staged.XXXXXX")"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
 Plain `git diff` skips staged and new files. Commit only what is staged: no `-a`, no paths after `git commit`.
 A failed `git diff` leaves the count empty, so the commit does not run. An empty count means the check
 did not finish (an unset pattern, a grep error, or a diff grep skipped as binary): find the cause first.
@@ -234,8 +234,16 @@ start it again after the edits; never report its result for the new code.
   pair while main deleted the Python half; the PR could not merge.
 - Run a formatter only on the files you changed (`cargo fmt -- FILE`,
   `ruff format FILE`). A repo-wide run rewrote many untouched files.
-- Write logs to the session scratchpad, not a fixed `$TMPDIR` name: another
-  session overwrote a shared `$TMPDIR/gate.log` and its failure looked like ours.
+- Write logs to the session scratchpad or a `mktemp` name, never a fixed
+  `$TMPDIR` name: another session overwrote a shared `$TMPDIR/gate.log` and
+  its failure looked like ours; a fixed `$TMPDIR/dry.txt` once showed another
+  app's private data in the transcript.
+- Clean up your own disk use. Keep goal scratch under
+  `~/.local/state/<repo>-goal-YYYY-MM-DD/` or a `mktemp` folder, and delete
+  its build output (`node_modules`, `target`, `.venv`) and finished
+  checkouts before the final report. Goal runs once left 40 GB of copies
+  and Rust targets there and filled the disk; dotfiles'
+  `agent-scratch-prune` is only the backstop.
 - Append a new row to an ordered golden list; inserting one mid-file
   renumbered every golden after it.
 - A retro skill update covered by a standing approval is done in this

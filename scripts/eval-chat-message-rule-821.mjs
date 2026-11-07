@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { link, lstat, mkdtemp, open, readFile, rm } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import yaml from "js-yaml";
 
@@ -125,26 +126,79 @@ export function checkThreshold(baseline, candidate) {
     throw new Error("Candidate did not meet the registered threshold");
 }
 
+async function assertNoFinalizationMarker(receiptPath) {
+  try {
+    await lstat(`${receiptPath}.finalized`);
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+  throw new Error("Baseline finalization marker already exists");
+}
+
+async function publishFinalizationMarker(receiptPath, text) {
+  const dir = await mkdtemp(join(dirname(receiptPath), ".chat-rule-marker-"));
+  try {
+    const temporary = join(dir, "marker");
+    const marker = await open(temporary, "wx", 0o600);
+    try {
+      await marker.writeFile(`${createHash("sha256").update(text).digest("hex")}\n`);
+      await marker.sync();
+    } finally {
+      await marker.close();
+    }
+    await link(temporary, `${receiptPath}.finalized`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function readFinalizedReceipt(receiptPath) {
+  try {
+    const [text, marker] = await Promise.all([
+      readFile(receiptPath, "utf8"),
+      readFile(`${receiptPath}.finalized`, "utf8"),
+    ]);
+    const hash = createHash("sha256").update(text).digest("hex");
+    if (marker !== `${hash}\n`) throw new Error("marker mismatch");
+    return text;
+  } catch {
+    throw new Error("Baseline receipt is not finalized");
+  }
+}
+
 async function main() {
   const [mode, receiptPath, expectedHash] = process.argv.slice(2);
   if (!receiptPath || !["--baseline", "--candidate"].includes(mode))
     throw new Error("Use --baseline RECEIPT or --candidate RECEIPT SHA256");
   const catalog = yaml.load(await readFile(new URL("../src/catalog.yaml", import.meta.url), "utf8"));
   const rule = catalog.rules?.find((entry) => entry.name === "merge-recent-chat-messages")?.content;
-  const digest = await modelDigest();
   const harness = createHash("sha256")
     .update(await readFile(new URL(import.meta.url)))
     .digest("hex");
   if (mode === "--baseline") {
     if (rule) throw new Error("Baseline must be recorded before the candidate rule exists");
-    const results = await stableCohort("", digest, requestModel, modelDigest);
+    const reservation = await open(receiptPath, "wx", 0o600);
+    let results;
+    let text;
+    try {
+      await assertNoFinalizationMarker(receiptPath);
+      const digest = await modelDigest();
+      results = await stableCohort("", digest, requestModel, modelDigest);
+      text = makeReceipt(results, digest, harness);
+      await reservation.writeFile(text);
+      await reservation.sync();
+      await publishFinalizationMarker(receiptPath, text);
+    } finally {
+      await reservation.close();
+    }
     report("baseline", results);
-    const text = makeReceipt(results, digest, harness);
-    await writeFile(receiptPath, text, { flag: "wx", mode: 0o600 });
     console.log(`baseline sha256: ${createHash("sha256").update(text).digest("hex")}`);
     return;
   }
-  const baseline = report("baseline", readReceipt(await readFile(receiptPath, "utf8"), expectedHash, digest, harness));
+  const finalized = await readFinalizedReceipt(receiptPath);
+  const digest = await modelDigest();
+  const baseline = report("baseline", readReceipt(finalized, expectedHash, digest, harness));
   if (typeof rule !== "string" || !rule.trim()) throw new Error("Candidate rule is missing");
   const candidate = report("candidate", await stableCohort(rule, digest, requestModel, modelDigest));
   checkThreshold(baseline, candidate);

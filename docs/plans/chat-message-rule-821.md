@@ -247,3 +247,11 @@ receipt, leaked generation on rejection, unowned child or failed gate rejects
 this method. No power-loss durability or global cross-path retry guarantee is
 claimed. Anchor: the original receipt-binding experiment; Basili, Caldiera and
 Rombach (1994), Goal Question Metric.
+
+## Regression coverage limit
+
+The sixteen fake-transport controls passed separately. The normal Vitest gate
+does not discover `scripts/*.test.mjs`; a normal full-gate pass alone does not
+run or replace them. Run the explicit Node command as a separate required
+check. Durable automatic discovery remains open for the later rule work. No
+live-model baseline has been recorded.

@@ -49,7 +49,7 @@ const tests = r.testResults.flatMap((f) => f.assertionResults);
 const cases = [['sync busy checkout guidance', 'missing sync checkout digest'], ['async busy checkout guidance', 'missing async checkout digest']];
 if (r.numTotalTests !== 2 || tests.length !== 2 || r.numPendingTests !== 0 || r.numTodoTests !== 0) process.exit(1);
 for (const [name, diagnostic] of cases) {
-  const hits = tests.filter((t) => t.fullName.endsWith(name));
+  const hits = tests.filter((t) => t.fullName === `source lease refusal guidance ${name}`);
   if (hits.length !== 1) process.exit(1);
   const t = hits[0];
   if (mode === 'green' ? t.status !== 'passed' : t.status !== 'failed' || !t.failureMessages.some((m) => m.includes(diagnostic))) process.exit(1);
@@ -79,3 +79,8 @@ It must not instruct automatic removal or claim the earlier incident's cause.
 Anchor: current lease acquisition and retained-child contracts; Basili,
 Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017),
 preregistration. Closed physical research cohorts are not used.
+
+The first red command was inconclusive: `endsWith` matched the sync name
+against the async name too. The exact-name correction above preserves both
+registered controls and thresholds. A diagnostic run showed the two intended
+missing-digest failures; it does not replace the corrected red command.

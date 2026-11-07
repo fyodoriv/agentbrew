@@ -1,0 +1,72 @@
+{
+  "pair": {
+    "checkup-run": {
+      "hex": "cffaedfe0c000001000000000200000005000000a800000000000000000000001b00000018000000010101010101010101010101010101011d00000010000000c80000000100000032000000180000000100000000000b0000000000000000000c00000034000000180000000000000000000000000000002f7573722f6c69622f6c696253797374656d2e422e64796c696200000c00000034000000180000000000000000000000000000002f7573722f6c69622f6c696269636f6e762e322e64796c696200000000",
+      "bytes": 201,
+      "sha256": "d11f4b3739375029edca465760c52c949060eb0ce2a7bcf41341fa87ff6eef36",
+      "mode": "0600"
+    },
+    "publish-dist": {
+      "hex": "cffaedfe0c000001000000000200000005000000a800000000000000000000001b00000018000000020202020202020202020202020202021d00000010000000c80000000100000032000000180000000100000000000b0000000000000000000c00000034000000180000000000000000000000000000002f7573722f6c69622f6c696253797374656d2e422e64796c696200000c00000034000000180000000000000000000000000000002f7573722f6c69622f6c696269636f6e762e322e64796c696200000000",
+      "bytes": 201,
+      "sha256": "fe993ca73e67daa394895d3d5bbec8c066955e95299055bcd9a0a044563099a9",
+      "mode": "0600"
+    }
+  },
+  "sources": [
+    {
+      "path": "rust/checkup-run/Cargo.toml",
+      "bytes": 36,
+      "sha256": "f1d07df4fb043e2f2cf0c0590124b669490273971825f7323db56bc51439e398",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/Cargo.lock",
+      "bytes": 36,
+      "sha256": "78f3c6271e8bbed97cca9a9d5facc3a1e5cb89dac840b84fd394d5ed835d1966",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/src/bin/publish-dist.rs",
+      "bytes": 49,
+      "sha256": "80492ad4381c04fddfd1f8c66d1d96876c6c173ef89e2e4e82126ba0728f9a29",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/src/lib.rs",
+      "bytes": 36,
+      "sha256": "fcf5c76d556624049a931a1512f4c59e9694e049d8b527a0fd2bcd480029421a",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/src/main.rs",
+      "bytes": 37,
+      "sha256": "3638da6d35071b7a06b82c37f30b632e7c375e04abbe05ce9092a59c94cb46e2",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/src/tests.rs",
+      "bytes": 38,
+      "sha256": "30c5563350048e7ee27aada0f399fca1dd198f3b8963339de424b950e84f4fa9",
+      "mode": "0600"
+    },
+    {
+      "path": "rust/checkup-run/tests/native_read_guard.rs",
+      "bytes": 52,
+      "sha256": "daec449030f03e0b5a057a944b13e45fe3c392de9b18c4169138fcb74035abfd",
+      "mode": "0600"
+    },
+    {
+      "path": "scripts/build-native-prebuilt.mjs",
+      "bytes": 42,
+      "sha256": "11a23568c60d7adc8e598a42e3cf9082561113483a678743256374559b7b0a5e",
+      "mode": "0600"
+    },
+    {
+      "path": "scripts/native-build-tools.mjs",
+      "bytes": 39,
+      "sha256": "cd500ac4c01dff5caff3dfa71094d0d6f19e26a69a51a856f37f7be422e66f91",
+      "mode": "0600"
+    }
+  ]
+}

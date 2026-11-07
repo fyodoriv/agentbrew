@@ -35,6 +35,7 @@ CWD="$(json_get "${INPUT:-{\}}" '.cwd')"
 
 BRIEF="$(node "$HELPER" brief --cwd "$CWD" 2>/dev/null)"
 [ -n "$BRIEF" ] || verdict_bypass "$HOOK_ID" "no perf rows for this project"
+BRIEF="$BRIEF | Iteration: use affected checks; bind external state without exposing values; unknown inputs need a full check; keep the required full gate."
 
 hook_jq -nc --arg brief "$BRIEF" \
   '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $brief}}' || exit 0

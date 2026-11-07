@@ -194,6 +194,7 @@ knip npx knip --no-progress
 eval-agent-artifacts npm run --silent eval:agent-artifacts
 skills-coverage npm run --silent skills:coverage
 playwright-install npm run --silent playwright:install
+chat-rule-controls bash scripts/run-chat-rule-controls.sh
 test-all npx vitest run
 install-e2e bash scripts/install-e2e-if-needed.sh
 PLAN

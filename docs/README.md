@@ -23,6 +23,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | Doc | Answers | Audience |
 |---|---|---|
 | [`skill-directories.md`](skill-directories.md) | How do I deploy every current and future local skill while preserving other owners? | both |
+| [`source-lease-recovery.md`](source-lease-recovery.md) | How do I investigate a busy source checkout safely? | both |
 | [`shared-memory-research.md`](shared-memory-research.md) | How do I enable recall and dated updates for research? | both |
 | [`measure-context-budget.md`](measure-context-budget.md) | How do I measure how much context agentbrew adds to each session? | both |
 | [`observability.md`](observability.md) | Where are the logs, which events and errors are recorded, and how does the health check show each fix? | both |

@@ -49,6 +49,13 @@ function refusal(reason: string): never {
   throw new SourceCheckoutLeaseRefusal(`Source checkout unavailable: ${reason}. No unlocked fallback is allowed.`);
 }
 
+function busyRefusal(target: PreparedTarget): never {
+  const id = basename(target.lockPath).slice(0, 12);
+  refusal(
+    `checkout is busy or its previous owner needs verification; checkout ID ${id}; see https://github.com/fyodoriv/agentbrew/blob/main/docs/source-lease-recovery.md`,
+  );
+}
+
 /** Resolve aliases and conservatively fold lease-key case so fresh names cannot race on case-insensitive volumes. */
 function canonicalCheckoutPath(path: string): string {
   let parent = resolve(path);
@@ -185,8 +192,7 @@ async function acquireWaiting(target: PreparedTarget, deadline: number): Promise
       console.log(`Waiting for another refresh of ${target.label}.`);
       reported = true;
     }
-    if (Date.now() >= deadline)
-      refusal("checkout is busy or its previous owner needs verification; retry after it is released");
+    if (Date.now() >= deadline) busyRefusal(target);
     await new Promise((done) => setTimeout(done, LEASE_POLL_MS));
   }
 }
@@ -259,7 +265,7 @@ export function withSourceCheckoutLeaseSync<T>(target: SourceCheckoutTarget, wor
   };
   try {
     const checkout = tryAcquire(prepared[0] as PreparedTarget);
-    if (!checkout) refusal("checkout is busy or its previous owner needs verification; retry after it is released");
+    if (!checkout) busyRefusal(prepared[0] as PreparedTarget);
     scope.held.set(checkout.key, checkout);
     return checkoutScopes.run(scope, () => runScopedSync(scope, work));
   } catch (error) {

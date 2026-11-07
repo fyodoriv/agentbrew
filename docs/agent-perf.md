@@ -263,8 +263,8 @@ Both hooks are on by default for Claude Code and need `node` on the hook
   steps (long turn) and the blocked calls by step key (blocked turn). A
   blocked call wastes a model round trip, so the reason suggests splitting
   compound Bash commands and meeting hook gates first. It asks for a Time review of at most 5 lines: what took longest, one
-  concrete speedup, and a task when a speedup saves a minute or more and
-  recurs. The next stop has `stop_hook_active: true`, so the hook stays
+  concrete speedup, and whether it recurs. Fix unblocked in-scope speedups;
+  follow user and repository task policy for remaining work. The next stop has `stop_hook_active: true`, so the hook stays
   silent and cannot loop. Bypass: `HOOK_BYPASS_PERF_TASK_REVIEW=1`;
   `MINSKY_PIPELINE=1` also skips it.
 

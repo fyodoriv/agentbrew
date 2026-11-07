@@ -297,15 +297,6 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
-- [ ] Maintainers can replay concurrent eval-ID collisions before choosing prevention
-  - **ID**: eval-id-composition-observation
-  - **Details**: PR796 and PR797 selected242 independently. PR799 later occupied243 while the corrected PR797 candidate still selected243. Reuse the existing eval validator in a synthetic composition harness with two collision fixtures and two valid controls. Retain each input, composed IDs, duplicate diagnostic and object-preservation verdict. Exclude raw user prompts. Draft PR #848 contains the synthetic observation harness; its four focused controls passed with objects preserved. The normal full gate remains pending a compliant qualification route. This is measurement preparation, not prevention or an allocator. Preserve the exact upstream objects. Any later prevention needs its own committed prediction against this baseline.
-  - **Output**: measurement
-  - **Hypothesis**: The proposed harness detects both registered collisions (2/2), accepts both valid controls (2/2), and preserves every input object. It creates a repeatable baseline without changing production allocation.
-  - **Measurement**: `test -f src/skills/eval-id-composition-observation.test.ts && heavy-run npm exec -- vitest run src/skills/eval-id-composition-observation.test.ts --maxWorkers=1`; retain per-fixture decisions and existing validator diagnostics. A missing harness fails the guard and is not a passing measurement. The focused command passed on the draft; full repository qualification is still pending.
-  - **Success**: 2/2 collision detections; 2/2 valid controls accepted; zero lost or altered objects; zero unknown outcomes reported as passes; all existing validator tests pass. Land instrumentation before separately registered prevention work.
-  - **Pivot**: Any missed collision, valid refusal, altered object or unknown outcome reported as a pass rejects the harness. If the collision cannot be represented without changing the validator contract, inspect that contract before selecting prevention.
-  - **Anchor**: Existing `src/skills/validate.ts` duplicate-ID contract; PR796, PR797 and PR799 provenance; Basili, Caldiera and Rombach (1994), Goal Question Metric.
 
 ## P2
 

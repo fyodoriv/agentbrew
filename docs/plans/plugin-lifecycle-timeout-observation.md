@@ -136,3 +136,87 @@ instrumentation qualification so no capped probe is replayed.
 Anchor: Basili, Caldiera and Rombach (1994), Goal Question Metric;
 Munafò et al. (2017), preregistration; the existing in-process lifecycle test
 and its retained terminal failure.
+
+
+## Recorder health preparation
+
+Independent review found that a failed terminal-record sink can silently
+leave only a begin record. The earlier focused passes did not qualify that
+boundary. No new real lifecycle diagnostic has run.
+
+Goal: distinguish missing recorder evidence from an unfinished lifecycle
+action. Question: can an invocation-owned health state and an independent
+fixed fallback signal expose a sink failure while preserving the original
+thrown object? Predict **5/5** synthetic controls pass:
+
+- `recorder health signals primary failure`: a failing primary terminal sink
+  marks health unqualified and emits one fixed fallback signal.
+- `recorder health survives both sinks failing`: both channels fail and health
+  stays unqualified.
+- `recorder health preserves action identity`: the exact action object is
+  rethrown unchanged with no private payload in either channel.
+- `recorder health accepts complete stage`: successful recording is healthy.
+- `recorder health leaves pending stage incomplete`: an unresolved action
+  remains incomplete and is never reported as a terminal action.
+
+The fallback channel is test-owned and independent of the primary sink. It
+receives only a fixed payload-free failure signal. The state belongs to one
+recorder invocation. An external controller may qualify a run only when it
+has valid lifecycle records and positive health evidence. If both channels
+fail or process loss prevents health observation, the result is unqualified.
+No in-memory flag is claimed durable after process loss.
+
+Commit this prediction before writing the new test file or changing the
+recorder. Add a named synthetic test that runs the existing recorder, preserves
+the original thrown object, and fails specifically because no health signal is
+available. Setup failure is inconclusive:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/plugins/lifecycle-recorder-health.test.ts -t 'recorder health signals primary failure' --maxWorkers=1 --reporter=verbose --silent=false 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Fq 'recorder health signals primary failure' "$log" && grep -Eq 'Tests[[:space:]]+1 failed' "$log" && grep -Fq 'missing recorder health' "$log"
+BASH
+```
+
+Then implement the health boundary. Run a separate pure test file so these
+controls do not launch or signal any child process. Require all five names and
+the exact passed-test count:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+JOBS=1 heavy-run npm exec -- vitest run src/plugins/lifecycle-recorder-health.test.ts --maxWorkers=1 --reporter=verbose --silent=false 2>&1 | tee "$log" || exit 1
+grep -Eq 'Tests[[:space:]]+5 passed' "$log" || exit 2
+for name in 'recorder health signals primary failure' 'recorder health survives both sinks failing' 'recorder health preserves action identity' 'recorder health accepts complete stage' 'recorder health leaves pending stage incomplete'; do
+  grep -Fq "$name" "$log" || exit 2
+done
+BASH
+```
+
+Success requires all five named controls, unchanged original action identity,
+zero false qualified states or private disclosures, and the normal full gate.
+Any missing health, false completion, swallowed error, disclosure, or failed
+gate rejects this method. Keep the earlier timeout cause UNKNOWN.
+
+The runner's failed-group-signal and process identity boundary is separate and
+still unqualified. A detached PID or an apparently live leader does not prove
+a race-free group identity. Do not add a signal when that identity is unknown,
+and do not claim finite reaping after permission failure, uninterruptible
+sleep, or escaped descendants. A later registered runner method must retain the
+owned handle and report unqualified evidence without signaling unowned
+processes. At this stage run only the separate pure recorder-health file. The draft's
+existing lifecycle file contains the unqualified group-signal runner, and the
+normal full gate discovers it. The original runner controls and this draft's
+full gate must wait until a group-ownership and failed-signal method is
+independently registered and qualified. The full gate remains eventual
+acceptance; pure recorder controls do not qualify it. No control here changes
+the closed source-lease cohorts or permits another real diagnostic.
+
+Anchor: the existing observation protocol; Basili, Caldiera and Rombach
+(1994), Goal Question Metric; Munafò et al. (2017), preregistration.

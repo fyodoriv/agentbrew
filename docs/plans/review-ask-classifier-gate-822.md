@@ -43,3 +43,14 @@ the approach. The wrapper and tests use synthetic inputs only.
 
 Anchor: `scripts/run-hook-fixtures.sh`; Basili, Caldiera and Rombach (1994),
 Goal Question Metric; Munafò et al. (2017), preregistration.
+
+The first direct wrapper-control run was inconclusive: an inherited Bash
+startup file put the real Python ahead of the scratch fake, so the nonzero
+fixture did not run. The corrected fixture uses `env -i` and checks a private
+fake-interpreter invocation marker for every mode. All six synthetic wrapper
+controls then passed. No owner interpreter was changed.
+
+The first stock fixture run then rejected Python's older valid unittest name
+format. The wrapper now accepts the exact older and newer name formats, and
+the valid fake control exercises both. No failed, skipped or extra case is
+accepted by that compatibility change.

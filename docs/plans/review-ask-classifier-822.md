@@ -79,3 +79,8 @@ also need their own evidence and predictions. Unknowns must not become success.
 Anchors: existing `pr-command-target.py`; [Claude hooks reference](https://code.claude.com/docs/en/hooks);
 Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
 (2017), preregistration.
+
+The unimplemented positive failed as registered. The candidate then passed
+both positives and all eight negatives, and the existing consumer suite passed
+29 checks. The stock hook-fixture suite discovered the two new wrappers and
+passed. This does not establish real hook delivery or command success.

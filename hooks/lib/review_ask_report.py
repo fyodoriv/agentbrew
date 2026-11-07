@@ -12,6 +12,14 @@ NAMES = (
 
 
 def valid_report(text, status=None):
+    return _valid_report(text, status, "__main__")
+
+
+def valid_imported_report(text, status=None):
+    return _valid_report(text, status, "review_ask_event_fixture")
+
+
+def _valid_report(text, status, module):
     if not isinstance(text, str) or type(status) is not int or status != 0:
         return False
     lines = text.splitlines()
@@ -19,7 +27,7 @@ def valid_report(text, status=None):
     if len(results) != len(NAMES):
         return False
     for line, name in zip(results, NAMES):
-        pattern = rf"test_{name} \(__main__\.ReviewAskEventTest(?:\.test_{name})?\) \.\.\. ok"
+        pattern = rf"test_{name} \({re.escape(module)}\.ReviewAskEventTest(?:\.test_{name})?\) \.\.\. ok"
         if re.fullmatch(pattern, line) is None:
             return False
     summaries = [line for line in lines if re.match(r"^Ran \d+ tests? in ", line)]

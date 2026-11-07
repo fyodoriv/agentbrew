@@ -84,3 +84,8 @@ The first red command was inconclusive: `endsWith` matched the sync name
 against the async name too. The exact-name correction above preserves both
 registered controls and thresholds. A diagnostic run showed the two intended
 missing-digest failures; it does not replace the corrected red command.
+
+The corrected red command observed both missing-digest failures. After the
+change, both named controls passed with unchanged synthetic owner records and
+no work callbacks or owner output. The existing lease suite passed 16 tests
+with an isolated home. These results do not qualify stale-lease removal.

@@ -117,3 +117,86 @@ A real baseline remains separately gated by the original four-case protocol.
 
 Anchor: the original exclusive-receipt registration; Basili, Caldiera and
 Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration.
+
+## Atomic receipt finalization supplement
+
+The reservation candidate passed its ten synthetic controls, but independent
+review found an untested boundary: a failed receipt sync could leave complete
+JSON at the reserved path before finalization. Candidate mode could then accept
+it. Reject that candidate. The retained harness and tests have SHA-256
+`37cbd00ae9ddb1aa5f0a16fcdd09b410f456bbcce8b826d83f653052e67932f2` and
+`8d5016144c2ead8a480870e5f82eb0d6b49c600175c2760484d2e1c28253bced`.
+Restore and verify those exact bytes before appending controls.
+
+Goal: publish a complete baseline only after its data is synced. Question: can
+candidate mode distinguish an in-flight or failed reservation from a finalized
+receipt? Predict **4/4** new fake-transport entrypoint controls pass, while all
+ten prior controls remain intact:
+
+1. A synthetic sync failure after the receipt bytes are written leaves no
+   finalized receipt; candidate mode reaches and reports the fixed unfinalized
+   rejection before generation.
+2. A candidate racing a paused pre-finalization write gets the same rejection;
+   it cannot observe a partially published completion.
+3. A process interruption or reporting failure after finalization leaves one
+   hash-verifiable completed receipt, and a retry makes zero new model requests.
+4. A pre-existing orphan finalization marker is detected after reservation and
+   before any metadata or generation request; preserve both it and the new
+   incomplete reservation.
+
+Use a private, hash-bound finalization marker published atomically only after
+the receipt bytes have synced. Exclusive reservation stays at the original
+path. Candidate mode must verify the marker and receipt before accepting the
+baseline. A missing, malformed or mismatched marker is unfinalized. Never
+overwrite an existing marker; incomplete and orphaned attempts remain evidence,
+not automatic retry permission. Temporary marker files contain only the receipt
+hash and are removed only when owned by this attempt. Marker bytes are complete,
+synced, and mode 600 before linking. Check for an orphan marker before any model
+request. The publication point is the successful atomic marker link; a process
+interruption after it may leave a valid, unreported receipt. Power-loss and
+machine-crash durability are outside this experiment. The sync-failure control
+must prove complete receipt bytes were written and the injected sync failed;
+the racing control must prove candidate execution occurred while publication
+was paused. Both require the fixed unfinalized diagnostic and zero candidate
+generation. The tests inject failures and barriers into a child process
+with fake transport and private scratch data; they never contact a model.
+
+Commit this prediction before adding controls or changing the candidate.
+Restore the retained files, append the named sync-failure control and confirm
+its fixed `candidate accepted unsynced receipt` assertion fails against the
+retained candidate. Setup failure is inconclusive:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+heavy-run node --test --test-reporter=tap --test-name-pattern='^sync failure cannot finalize receipt$' scripts/eval-chat-message-rule-821.test.mjs 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+[ "$status" -ne 0 ] && grep -Eq '^not ok [0-9]+ - sync failure cannot finalize receipt$' "$log" && grep -Fq '# fail 1' "$log" && grep -Fq 'candidate accepted unsynced receipt' "$log"
+BASH
+```
+
+Then implement atomic finalization and require all fourteen tests, the four
+named new controls, and the normal full gate:
+
+```sh
+bash <<'BASH'
+set -o pipefail
+log=$(mktemp) || exit 2
+trap 'rm -f "$log"' EXIT
+heavy-run node --test --test-reporter=tap scripts/eval-chat-message-rule-821.test.mjs 2>&1 | tee "$log" || exit 1
+grep -Fxq '# tests 14' "$log" && grep -Fxq '# pass 14' "$log" && grep -Fxq '# fail 0' "$log" || exit 2
+for name in 'sync failure cannot finalize receipt' 'inflight receipt stays unfinalized' 'finalized receipt survives lost report' 'orphan marker blocks model requests'; do
+  grep -Eq "^ok [0-9]+ - $name$" "$log" || exit 2
+done
+BASH
+```
+
+Success requires 14/14 controls, zero false completion or overwritten marker,
+and zero generation on unfinalized candidate input. Any false complete receipt,
+lost reservation, unverified marker, repeated model admission or failed gate
+rejects this method. Preserve actual failures and do not alter the original
+four-case model baseline. Anchor: issue #821's preregistered baseline binding;
+Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al.
+(2017), preregistration.

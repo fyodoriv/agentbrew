@@ -250,11 +250,10 @@ Rombach (1994), Goal Question Metric.
 
 ## Regression coverage limit
 
-The sixteen fake-transport controls passed separately. The normal Vitest gate
-does not discover `scripts/*.test.mjs`; a normal full-gate pass alone does not
-run or replace them. Run the explicit Node command as a separate required
-check. Durable automatic discovery remains open for the later rule work. No
-live-model baseline has been recorded.
+The sixteen fake-transport controls passed separately. Vitest does not discover
+`scripts/*.test.mjs`; the default local full gate now runs them through a
+separate checked foreground step. Hosted CI uses a different command and does
+not gain that discovery here. No live-model baseline has been recorded.
 
 ## Local full-gate discovery
 
@@ -326,3 +325,7 @@ unowned child or failed gate rejects this integration. This is local regression
 instrumentation only. The real model baseline, hosted CI and the later rule
 remain separate work. Anchor: the existing `scripts/verify.sh` contract and
 Basili, Caldiera and Rombach (1994), Goal Question Metric.
+
+The five parser and plan controls and all sixteen underlying controls passed.
+A separate scratch-plan check confirmed a failed step stops before the next
+step. The final 21-step full gate remains required on the delivery tree.

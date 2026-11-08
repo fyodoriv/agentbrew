@@ -3107,14 +3107,16 @@
     {
       "id": 271,
       "prompt": "Simulated decision trace only. Do not run commands or tools. A /goal run is about to launch a review workflow over 12 open PRs: 9 are small docs or test-only diffs and 3 are code changes. Each code PR will likely need a fixer and a re-review. The machine's agent-usage-guard has a rolling start cap of 40 agent starts per 10 minutes, and other sessions on the Mac also start agents. How does the agent plan the fan-out?",
-      "expected_output": "Before launching, it counts planned agent starts: reviewers, fixers, and the re-reviews that fix rounds need, and compares the total with the guard's rolling start cap (AGENT_GUARD_ROLLING_MAX). It keeps headroom for later reviews and other sessions. It groups the 9 small PRs under one reviewer per few PRs instead of one reviewer each, and gives each code PR its own reviewer. If the total still does not fit, it runs the fan-out in waves 10 minutes apart. If the guard refuses a start with \"agents started on this machine\", it does not retry at once and waits for the window to roll, because nobody can approve in a /goal run.",
+      "expected_output": "Before launching, it reads the live cap from settings (jq -r '.env.AGENT_GUARD_ROLLING_MAX // \"12\"' ~/.claude/settings.json) and counts planned agent starts: reviewers, fixers, and the re-reviews that fix rounds need, and compares the total with the guard's rolling start cap (AGENT_GUARD_ROLLING_MAX). It keeps headroom for later reviews and other sessions. It groups the 9 small PRs under one reviewer per few PRs instead of one reviewer each, and gives each code PR its own reviewer. If the total still does not fit, it runs the fan-out in waves 10 minutes apart. If the guard refuses a start with \"agents started on this machine\", it stops or cancels the rest of the fan-out (if the guard refuses agent calls 5 times within 10 minutes, it pauses every agent spawn in the session), does not retry at once, and waits for the window to roll, because nobody can approve in a /goal run.",
       "expectations": [
+        "Reads the live cap from settings instead of assuming a number",
         "Counts planned agent starts, including fixers and re-reviews, before launching",
         "Compares the total with the guard's rolling start cap (AGENT_GUARD_ROLLING_MAX)",
         "Keeps headroom for later reviews and other sessions",
         "Groups small PRs under one reviewer instead of one reviewer per PR",
         "Gives each code PR its own fresh-context reviewer",
         "Splits the fan-out into waves 10 minutes apart when it does not fit",
+        "After an 'agents started on this machine' refusal, stops or cancels the rest of the fan-out to avoid the session fuse",
         "After an 'agents started on this machine' refusal, does not retry at once and waits for the window to roll"
       ]
     }

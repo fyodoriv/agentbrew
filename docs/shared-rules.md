@@ -218,6 +218,10 @@ Every request to set up a tool (skill, MCP server, command, hook, plugin, CLI) f
 - Prove it in a scratch HOME (`HOME=$(mktemp -d)`) with one real call (or `--help` when it needs a login), then install for real.
 - Pin every version: a tag or commit (`--git <url> --ref <tag>`, catalog entry, Agentfile), never a moving branch. Report what you checked.
 
+## Local AI models
+
+Ollama is the one local model engine; never install a second one (LM Studio, mlx-lm) next to it. A repo that needs a local model lists its tag in `.agents/local-models` in the same PR, so dotfiles `local-models` keeps it and removes models no repo lists. Pull models on demand (`local-models ensure`), never "just in case".
+
 ## Agent rule/skill changes → sync + fix drift + commit
 
 After rule/skill/config edits: `agentbrew sync` → `agentbrew status --fix` until **0 drift** → commit `tooling/agentbrew/docs/shared-rules.md` when shared rules changed.

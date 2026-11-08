@@ -3099,7 +3099,9 @@
         "States that a self-review does not replace the pre-merge review",
         "States that the standing merge approval does not skip the review",
         "Treats the refusal as a liftable pause: one ask for the lift and one timer for the reset time",
-        "Continues work that needs no agents while waiting"
+        "Continues work that needs no agents while waiting",
+        "Tells the user the guard cutoff (80%) is below the plan's real limit and how much remains",
+        "Puts the lift command in the Needed-from-you line instead of 'nothing'"
       ]
     }
   ]

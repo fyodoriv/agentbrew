@@ -35,7 +35,8 @@
 # the session folder's `.claude/skills` and `.agents/skills`. An owned slash
 # command is a source too: `<name>.md` in `~/.*/commands`,
 # `~/.config/*/commands`, the session folder's `.claude/commands`, or a
-# plugin's `commands/` (ship-it is one). So is any SKILL.md the session read
+# plugin's `commands/` (ship-it is one), at any depth (`commands/team/
+# deploy.md` counts for `team:deploy`); plugin symlinks are followed. So is any SKILL.md the session read
 # that exists, wherever it is. A goal blocked three Stops on one such skill
 # (2026-11-07).
 #
@@ -156,7 +157,16 @@ case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" 
 
 SESSION_CWD="$(json_get "$INPUT" '.cwd')"
 # Exit 0 when a local source exists for $1: a SKILL.md in any skills folder,
-# a SKILL.md the session read, or an owned slash command (commands/<name>.md).
+# a SKILL.md the session read, or an owned slash command (commands/<name>.md,
+# also nested as commands/<sub>/<name>.md). Plugin symlinks are followed.
+# Exit 0 when commands folder $1 holds $2.md at any depth: nested folders
+# (commands/team/deploy.md) serve "team:deploy", counted as "deploy".
+# find -L follows symlinks; it detects loops and skips them, and -maxdepth
+# bounds the walk.
+has_command_file() {
+  [ -d "$1" ] || return 1
+  [ -n "$(find -L "$1" -maxdepth 6 -type f -name "$2.md" -print -quit 2>/dev/null)" ]
+}
 has_local_skill() {
   local name="$1" dir
   case "$READ_SKILLS" in *" $name "*) return 0 ;; esac
@@ -173,16 +183,16 @@ has_local_skill() {
     [ -f "$dir/$name/SKILL.md" ] && return 0
   done
   for dir in "$HOME"/.*/commands "$HOME"/.config/*/commands; do
-    [ -f "$dir/$name.md" ] && return 0
+    has_command_file "$dir" "$name" && return 0
   done
   if [ -n "$SESSION_CWD" ]; then
     for dir in "$SESSION_CWD/.claude/skills" "$SESSION_CWD/.agents/skills"; do
       [ -f "$dir/$name/SKILL.md" ] && return 0
     done
-    [ -f "$SESSION_CWD/.claude/commands/$name.md" ] && return 0
+    has_command_file "$SESSION_CWD/.claude/commands" "$name" && return 0
   fi
   [ -d "$HOME/.claude/plugins" ] &&
-    [ -n "$(find "$HOME/.claude/plugins" -maxdepth 8 \( -path "*/skills/$name/SKILL.md" -o -path "*/commands/$name.md" \) -print -quit 2>/dev/null)" ] &&
+    [ -n "$(find -L "$HOME/.claude/plugins" -maxdepth 8 \( -path "*/skills/$name/SKILL.md" -o -path "*/commands/$name.md" \) -print -quit 2>/dev/null)" ] &&
     return 0
   return 1
 }

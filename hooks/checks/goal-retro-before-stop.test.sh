@@ -215,6 +215,34 @@ jq -cn --arg f "$ROOT/elsewhere/skills/x/SKILL.md" '{type:"assistant",message:{c
 touch "$RUN_GOAL_STATE_DIR/host9.contract.md"
 printf -- '- run-goal: new eval, PR #130\n- x: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host9.retro.md"
 expect "host-served claim blocks for a skill read from an existing SKILL.md" 2 "$(run host9 HOME=$HOSTHOME)"
+# Nested slash commands (commands/<sub>/<name>.md) are sources too: a Skill
+# call to "team:deploy" counts as "deploy" and must not pass as host-served.
+TX="$ROOT/hostnested.jsonl"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"team:deploy"}}]}}' >"$TX"
+mkdir -p "$HOSTHOME/.claude/commands/team"
+touch "$HOSTHOME/.claude/commands/team/deploy.md"
+touch "$RUN_GOAL_STATE_DIR/host10.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- deploy: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host10.retro.md"
+expect "host-served claim blocks for a nested ~/.claude/commands/<sub>/<name>.md" 2 "$(run host10 HOME=$HOSTHOME)"
+rm -rf "$HOSTHOME/.claude/commands"
+mkdir -p "$ROOT/proj2/.claude/commands/team"
+touch "$ROOT/proj2/.claude/commands/team/deploy.md"
+touch "$RUN_GOAL_STATE_DIR/host11.contract.md"
+cp "$RUN_GOAL_STATE_DIR/host10.retro.md" "$RUN_GOAL_STATE_DIR/host11.retro.md"
+code=$(jq -cn --arg p "$TX" --arg c "$ROOT/proj2" '{hook_event_name:"Stop",session_id:"host11",transcript_path:$p,cwd:$c}' |
+  env HOME="$HOSTHOME" bash "$SCRIPT" >/dev/null 2>&1; echo $?)
+expect "host-served claim blocks for a nested project .claude/commands/<sub>/<name>.md" 2 "$code"
+# A symlinked plugin folder is followed; a symlink loop does not hang the hook.
+TX="$ROOT/hostlink.jsonl"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"local:lk"}}]}}' >"$TX"
+mkdir -p "$ROOT/outside/p/skills/lk" "$HOSTHOME/.claude/plugins/marketplaces"
+touch "$ROOT/outside/p/skills/lk/SKILL.md"
+ln -s "$ROOT/outside" "$HOSTHOME/.claude/plugins/marketplaces/local"
+ln -s "$ROOT/outside" "$ROOT/outside/p/loop"
+touch "$RUN_GOAL_STATE_DIR/host12.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- lk: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host12.retro.md"
+expect "host-served claim blocks when a symlinked plugin folder ships the SKILL.md" 2 "$(run host12 HOME=$HOSTHOME)"
+rm -rf "$HOSTHOME/.claude/plugins"
 TX="$TX_SAVE"
 
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"

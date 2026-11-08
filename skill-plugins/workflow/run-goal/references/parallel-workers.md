@@ -57,6 +57,18 @@ Contents: Starting workers · Steering running agents · Files the main session 
 - A guard that caps subagent depth at 1 stops a worker from starting its own
   reviewer. Check the cap first; when it blocks, review the diff yourself
   and say so in the merge evidence.
+- The agent-usage-guard also caps agent starts per 10 minutes on the whole
+  machine (`AGENT_GUARD_ROLLING_MAX`; 40 on the owner's Mac, 12 by default).
+  Every workflow agent, reviewer, fixer, and re-review counts. Before a
+  fan-out, count the agent starts it plans, add the re-reviews that fix
+  rounds will need, and keep the total well under the cap. Leave headroom
+  for later reviews. Use one reviewer for several small PRs (for example,
+  up to 4 docs or test-only diffs per reviewer) instead of one reviewer per
+  PR. If the plan still does not fit, run it in waves 10 minutes apart. In
+  one run, a review workflow plus a fix workflow used all 40 starts, and the
+  guard refused a fixer's re-review and a later review with "agents started
+  on this machine". Nobody can approve that in a `/goal` run. After such a
+  refusal, do not retry at once: wait for the 10-minute window to roll.
 - A worker whose reviewer hits a usage limit and merges after a self-review
   has not been reviewed. Run a fresh-context review of the merged commit
   yourself, and fix what it finds in a follow-up PR. In one run, both

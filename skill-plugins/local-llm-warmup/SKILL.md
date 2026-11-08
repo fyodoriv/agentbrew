@@ -67,7 +67,9 @@ model on disk (LM Studio held 11 GB of duplicates on one Mac, 2026-11-07).
 Each repo that needs a local model reserves it in `.agents/local-models`
 (one tag per line). dotfiles `local-models ensure` pulls reserved models on
 demand, and its 6-hour prune removes models no repo reserves. When you add
-a local model to an app, add its tag to that file in the same PR.
+a local model to an app, add its tag to that file in the same PR. Many repos
+ignore `.agents/`: run `git check-ignore -v .agents/local-models` and, if it
+is ignored, allow just that file in `.gitignore`, or `git add` skips it.
 
 ## opencode.json — the production template
 

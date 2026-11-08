@@ -3076,6 +3076,18 @@
         "Reads the scheduler-started run log after reload",
         "Compares whole failing test files on the unchanged base before calling them pre-existing"
       ]
+    },
+    {
+      "id": 269,
+      "prompt": "/goal keep my app's data in sync every week with a scheduled job",
+      "expected_output": "Checks the main checkout's state before wiring the job, builds the job's binary from its own clean worktree of the default branch with the data root passed by env var, runs the job's commands from that worktree once as proof, and records the scheduler's next run time.",
+      "expectations": [
+        "main checkout state checked before wiring the job",
+        "job builds from a clean default-branch worktree, not the main checkout",
+        "data root passed by env var",
+        "one proof run from that worktree",
+        "next scheduled run recorded"
+      ]
     }
   ]
 }

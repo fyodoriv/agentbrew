@@ -65,6 +65,13 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
   first. It covers the base commit, the heavy-run queue, messages to running
   agents, session-owned files, merges, stacked PRs, and watch pollers.
+- A scheduled or recurring job that runs a repo's code builds from its own
+  clean worktree of the default branch (`git worktree add --detach <state
+  dir> origin/main`, refreshed each run), never from the user's main
+  checkout: another session can leave that checkout mid-merge or on an old
+  commit, and the job then runs stale or broken code. Point the job's data
+  root at the main checkout with an env var, and prove it by running the
+  job's commands from that worktree once.
 - When something pops up on the user's screen (a dialog, a window) and you
   trace which process started it, log the process and its parent chain.
   Never kill processes that you or your workers did not start. Killing them

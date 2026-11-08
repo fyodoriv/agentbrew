@@ -1,0 +1,3 @@
+# Ollama models this repo needs. dotfiles bin/local-models never removes them
+# and pulls them on demand (local-models ensure). One tag per line.
+qwen3:4b   # scripts/eval-chat-message-rule-821.mjs

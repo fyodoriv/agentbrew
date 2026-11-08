@@ -26,6 +26,15 @@
 # "skipped", "duplicate") does not count, even if it cites an old commit:
 # a live retro once passed with "no new edit ... commit 1fcff84".
 #
+# **Host-served skills**: the host app serves some skills (for example
+# artifact-design from the Claude app) with no source on this Mac, so no
+# update or write is possible. A line "<skill>: host-served, no source"
+# passes only when no `<name>/SKILL.md` exists in any skills folder:
+# `~/.*/skills`, `~/.config/*/skills`, the Claude app's skills folder,
+# agentbrew's installed-skills, plugin skills under `~/.claude/plugins`, and
+# the session folder's `.claude/skills` and `.agents/skills`. A goal blocked
+# three Stops on one such skill (2026-11-07).
+#
 # **State** (session-file scope, shared with goal-set-loads-run-goal and
 # goal-contract-before-edit): the hook acts only while
 # `<session_id>.contract.md` exists (a goal with a saved contract). It counts
@@ -46,6 +55,8 @@
 #
 # **Configuration** (optional):
 #   - RUN_GOAL_STATE_DIR: state folder. Default `$HOME/.cache/agentbrew/run-goal`.
+#   - RUN_GOAL_SKILL_DIRS: colon-separated skills folders for the host-served
+#     check. Replaces the default folders above.
 
 set -euo pipefail
 
@@ -124,6 +135,33 @@ fi
 
 case "$SKILLS" in *run-goal*) ;; *) SKILLS="$(printf '%s\nrun-goal' "$SKILLS")" ;; esac
 
+SESSION_CWD="$(json_get "$INPUT" '.cwd')"
+# Exit 0 when a local SKILL.md exists for $1 in any skills folder.
+has_local_skill() {
+  local name="$1" dir
+  if [ -n "${RUN_GOAL_SKILL_DIRS:-}" ]; then
+    local IFS=:
+    for dir in $RUN_GOAL_SKILL_DIRS; do
+      [ -n "$dir" ] && [ -f "$dir/$name/SKILL.md" ] && return 0
+    done
+    return 1
+  fi
+  for dir in "$HOME"/.*/skills "$HOME"/.config/*/skills \
+    "$HOME/Library/Application Support/Claude/skills" \
+    "$HOME/.config/agentbrew/installed-skills"; do
+    [ -f "$dir/$name/SKILL.md" ] && return 0
+  done
+  if [ -n "$SESSION_CWD" ]; then
+    for dir in "$SESSION_CWD/.claude/skills" "$SESSION_CWD/.agents/skills"; do
+      [ -f "$dir/$name/SKILL.md" ] && return 0
+    done
+  fi
+  [ -d "$HOME/.claude/plugins" ] &&
+    [ -n "$(find "$HOME/.claude/plugins" -maxdepth 8 -path "*/skills/$name/SKILL.md" -print -quit 2>/dev/null)" ] &&
+    return 0
+  return 1
+}
+
 MISSING=""
 for skill in $SKILLS; do
   [ -n "$skill" ] || continue
@@ -141,6 +179,9 @@ for skill in $SKILLS; do
       # hold a date or a number. Judge the rest of the line without it.
       rest=$(sed -E 's/(^|[^A-Za-z])[Tt][Aa][Ss][Kk] +[^ ,;]+/\1/g' <<<"$head")
       if grep -qE '\b[0-9a-f]{7,40}\b|#[0-9]+|/pull/[0-9]+|/issues/[0-9]+' <<<"$rest"; then
+        ok=1
+      elif grep -qiE '(^|[^A-Za-z])host-served' <<<"$head" && ! has_local_skill "$skill"; then
+        # No source on this Mac: nothing to update or write.
         ok=1
       elif [ "$rest" != "$head" ] && grep -qiE 'write failed: *[^ ]' <<<"$line"; then
         # A task is an update only with the error of a write that was tried.
@@ -168,4 +209,4 @@ if [ "$blocks" -ge "$MAX_BLOCKS" ]; then
 fi
 echo $((blocks + 1)) >"$COUNTER"
 
-verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL). A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING."
+verdict_block "$HOOK_ID" "The goal's retro is not done. Update every skill used (run-goal Phase 6), then save the Skills updated list with the Write tool to $RETRO (pre-approved): one line per skill with its commit SHA or PR (#123 or URL); a skill with no local SKILL.md may say <skill>: host-served, no source. A task counts only with the quoted error of a write you tried (task <id>, write failed: <error>): with a standing approval, ship the update instead. Still missing:$MISSING."

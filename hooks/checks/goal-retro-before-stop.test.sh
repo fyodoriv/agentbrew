@@ -152,6 +152,46 @@ touch "$RUN_GOAL_STATE_DIR/taskskill.contract.md"
 jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"task-command-center"}}]}}' >>"$TX"
 printf -- '- write-changelog: fixed, commit 4a0ac04\n- code-review: PR #171\n- run-goal: new eval, PR #130\n- task-command-center: shipped, PR #812\n' >"$RUN_GOAL_STATE_DIR/taskskill.retro.md"
 expect "a skill named with 'task' and a PR allows" 0 "$(run taskskill)"
+# Host-served skills (task retro-host-served-skills): a skill the host app
+# serves (for example artifact-design) has no source on this Mac, so no
+# update is possible. "<skill>: host-served, no source" passes only when no
+# local SKILL.md for it exists; an owned skill with that line still blocks.
+TX_SAVE="$TX"
+TX="$ROOT/host.jsonl"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"artifact-design"}}]}}' >"$TX"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"owned-skill"}}]}}' >>"$TX"
+HOSTHOME="$ROOT/hosthome"
+mkdir -p "$HOSTHOME/.codex/skills/owned-skill"
+touch "$HOSTHOME/.codex/skills/owned-skill/SKILL.md"
+touch "$RUN_GOAL_STATE_DIR/host1.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- artifact-design: host-served, no source\n- owned-skill: new eval, PR #131\n' >"$RUN_GOAL_STATE_DIR/host1.retro.md"
+expect "host-served skill with no local SKILL.md allows on the first Stop" 0 "$(run host1 HOME=$HOSTHOME)"
+expect "host-served pass leaves no block counter" 0 "$(has host1.stopblocks)"
+touch "$RUN_GOAL_STATE_DIR/host2.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- artifact-design: host-served, no source\n- owned-skill: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host2.retro.md"
+expect "host-served claim for a skill with a local SKILL.md blocks" 2 "$(run host2 HOME=$HOSTHOME)"
+mkdir -p "$HOSTHOME/.claude/plugins/cache/mkt/plug/1.0/skills/artifact-design"
+touch "$HOSTHOME/.claude/plugins/cache/mkt/plug/1.0/skills/artifact-design/SKILL.md"
+touch "$RUN_GOAL_STATE_DIR/host3.contract.md"
+cp "$RUN_GOAL_STATE_DIR/host1.retro.md" "$RUN_GOAL_STATE_DIR/host3.retro.md"
+expect "host-served claim blocks when a plugin ships the SKILL.md" 2 "$(run host3 HOME=$HOSTHOME)"
+rm -rf "$HOSTHOME/.claude/plugins"
+mkdir -p "$ROOT/proj/.claude/skills/artifact-design"
+touch "$ROOT/proj/.claude/skills/artifact-design/SKILL.md"
+touch "$RUN_GOAL_STATE_DIR/host4.contract.md"
+cp "$RUN_GOAL_STATE_DIR/host1.retro.md" "$RUN_GOAL_STATE_DIR/host4.retro.md"
+code=$(jq -cn --arg p "$TX" --arg c "$ROOT/proj" '{hook_event_name:"Stop",session_id:"host4",transcript_path:$p,cwd:$c}' |
+  env HOME="$HOSTHOME" bash "$SCRIPT" >/dev/null 2>&1; echo $?)
+expect "host-served claim blocks when the project has the SKILL.md" 2 "$code"
+mkdir -p "$ROOT/only"
+touch "$RUN_GOAL_STATE_DIR/host5.contract.md"
+cp "$RUN_GOAL_STATE_DIR/host2.retro.md" "$RUN_GOAL_STATE_DIR/host5.retro.md"
+expect "RUN_GOAL_SKILL_DIRS replaces the default folders" 0 "$(run host5 "HOME=$HOSTHOME RUN_GOAL_SKILL_DIRS=$ROOT/only")"
+touch "$RUN_GOAL_STATE_DIR/host6.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- artifact-design: used it\n- owned-skill: new eval, PR #131\n' >"$RUN_GOAL_STATE_DIR/host6.retro.md"
+expect "a host-served skill without the host-served line still blocks" 2 "$(run host6 HOME=$HOSTHOME)"
+TX="$TX_SAVE"
+
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"
 if [ "$FAIL" -gt 0 ]; then
   for detail in "${FAIL_DETAILS[@]}"; do echo "  FAIL: $detail"; done

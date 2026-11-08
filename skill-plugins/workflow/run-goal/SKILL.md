@@ -370,7 +370,7 @@ with actuals and update the estimation method as described in
    park it and ask at the end with the exact diff.
    A note that says a source is read-only is a claim: try the write. Only
    when it fails, file a task with the exact change in a writable repo and
-   cite `task <id>, write failed: <error>`; a bare task id does not pass.
+   cite `task <id>, write failed: <error>`; a bare task id does not pass. A host-served skill (no local `SKILL.md`): `<skill>: host-served, no source`.
 5. **Save the retro**: in Claude Code with agentbrew, write the Skills
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The

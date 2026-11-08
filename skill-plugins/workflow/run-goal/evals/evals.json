@@ -3140,6 +3140,18 @@
         "Re-judges blind with unlabeled A/B versions",
         "Has a fresh reviewer check the diff before merge"
       ]
+    },
+    {
+      "id": 274,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: \"confirm OpenCode is fully set up like Claude and update tooling if needed\". A hosted-model probe passes, but the default local model times out. A sibling checkout is dirty, and an upstream standalone skill became a plugin. What does done require?",
+      "expected_output": "It uses a goal contract, preserves the dirty checkout, tests the configured default model rather than substituting a hosted success, and keeps readiness incomplete while that default fails. It classifies the upstream conversion from source history without deleting the installed copy. The closeout includes fresh evidence, a reviewable report, and retro updates for every skill, with third-party changes routed as proposals instead of installed-mirror edits.",
+      "expectations": [
+        "Preserves unrelated dirty work and uses only safe fast-forwards",
+        "Does not let an explicitly selected hosted-model pass hide a default-model failure",
+        "Classifies upstream skill-to-plugin conversion without deleting local content",
+        "Keeps the goal partly met or blocked until every readiness criterion has fresh evidence",
+        "Updates every used skill and routes third-party changes through the ownership rule"
+      ]
     }
   ]
 }

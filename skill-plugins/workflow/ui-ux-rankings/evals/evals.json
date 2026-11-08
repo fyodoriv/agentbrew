@@ -136,6 +136,18 @@
         "Measures chart lines against their panels at 3:1 or more in light and dark, with a planted low-contrast failure",
         "Keeps the host accent hue and clearly distinguishes fixture checks from real-host visual evidence"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "Build a local HTML report for an OpenCode tooling-readiness goal. Hosted model, MCP, browser and doctor checks pass, but the configured local default times out and a protected .gitconfig apply needs a person. Keep it private and readable on a phone.",
+      "expected_output": "A self-contained local report whose first view says the goal is partly met or blocked, names both unresolved items before the passing evidence, and offers only real next actions. It uses readable responsive text, measured contrast, reduced-motion-safe presentation, and no private absolute paths or credentials. Accessibility claims require an actual audit.",
+      "expectations": [
+        "Opens on the failed readiness criterion and required human decisions rather than a success banner",
+        "Keeps private machine paths and credentials out of the report",
+        "Uses at least 14 px text, 44 px interactive targets, and no sideways phone scroll",
+        "Separates verified passes, failures, pending checks, and next actions",
+        "Runs an accessibility audit before claiming one or reports it as not run"
+      ]
     }
   ]
 }

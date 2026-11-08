@@ -88,6 +88,17 @@
         "Detects task backend via .tasksmd.json when present",
         "Does not reuse prior-repo VISION/TASKS context for the new checkout"
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "Before a tooling refresh, inspect two sibling repos. One declares GitHub Issues, the other uses TASKS.md, and one has no RECURRING.md. Recommend current work without guessing.",
+      "expected_output": "Runs the loader from each repo root, applies each declared task backend, reads the live queue, and treats the absent recurring file as no recurring input rather than inventing due work.",
+      "expectations": [
+        "Loads context separately for each sibling repo",
+        "Uses Agentfile and task-backend declarations before the TASKS.md default",
+        "Reads the current queue instead of recommending remembered task IDs",
+        "Handles a missing RECURRING.md explicitly without inventing cadence or tasks"
+      ]
     }
   ]
 }

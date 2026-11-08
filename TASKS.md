@@ -823,6 +823,20 @@
   - **Pivot**: Any unexplained residue, invalid receipt or unresolved frozen-support conflict -> keep migration incomplete and resolve the specific boundary; do not change the goal to converted lines.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
+- [ ] Classify upstream skill-to-plugin conversions during source refresh
+  - **ID**: classify-upstream-skill-plugin-conversions
+  - **Tags**: skills, sync, ownership, upstream
+  - **Mode**: AFK
+  - **Details**: On 2026-11-08, `agentbrew sync --pull` printed `insecure-defaults not found in trailofbits/skills`. Upstream commit `82e8e0a` intentionally removed its `SKILL.md` and converted it to a plugin-only workflow. A refresh should distinguish this from a missing or broken source, preserve owner-modified installed content, and never silently prune it.
+  - **Files**: `src/update.ts`, source/skill discovery and removal tests, `README.md`
+  - **Output**: code
+  - **Acceptance**: a synthetic upstream skill-to-plugin conversion produces an explicit classified result and supported migration guidance on repeated refreshes; owner edits and unmanaged copies survive; the status report does not keep calling the source missing.
+  - **Hypothesis**: source-aware conversion classification reduces unclassified `not found` refresh warnings for the fixture from 1 to 0 with 0 unowned removals.
+  - **Measurement**: `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/update.test.ts` with a conversion fixture and a repeated-refresh ownership control.
+  - **Success**: 0 unclassified conversion warnings and 0 unowned removals in the fixture and repeat control.
+  - **Pivot**: if plugin conversion cannot be detected generically, require an explicit recorded classification instead of adding layout guesses or automatic deletion.
+  - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
+
 ## P3
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
@@ -895,6 +909,62 @@
 
     2026-10-16 — re-checked: `neiii/bridle@master` (last push 2026-08-15, not archived) still joins singular `"command"` / `"skill"` at `opencode.rs` lines 43-45 / 75-77, and no issue on the topic exists. The staged draft is still accurate; the only step left is the approved `gh issue create`.
   - **Last-enriched**: 2026-10-16
+
+- [ ] Propose a local-model component-isolation eval to systematic-debugging
+  - **ID**: systematic-debugging-local-model-boundary
+  - **Tags**: skills, debugging, third-party, opencode
+  - **Details**: The third-party `systematic-debugging` skill (obra/superpowers) worked for the 2026-11-08 OpenCode/Ollama investigation, but has no eval for this boundary: raw Ollama answered with reasoning disabled while the full OpenCode default timed out. Propose an eval requiring component isolation, cancellation only of session-owned smoke requests, and no readiness claim when the configured default still fails. Do not edit the installed mirror.
+  - **Files**: none in this repo (upstream eval proposal); the scenario is retained in dotfiles `skills/update-tooling/evals/evals.json`
+  - **Output**: docs
+  - **Acceptance**: the exact eval proposal is filed upstream after owner approval, or this task records the maintainer/owner decision; a fresh-agent trial separates CLI, server, model, and reasoning-control evidence before a fix.
+  - **Hypothesis**: with this eval, a fresh agent identifies the failing component and avoids a false default-model readiness claim in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent simulated trials using the OpenCode hosted-pass/local-default-timeout scenario; count correct component isolation and readiness verdicts.
+  - **Success**: 3 of 3 trials keep the default unready, isolate the boundary, and preserve unrelated sessions.
+  - **Pivot**: if upstream declines, keep the scenario in the owned update-tooling eval and close this proposal.
+  - **Anchor**: systematic-debugging Phases 1–3; Ollama OpenAI compatibility `reasoning_effort` documentation (checked 2026-11-08).
+  - **Blocked**: needs-owner-approval — filing on obra/superpowers is a public post in another org and needs approval for the exact text.
+
+- [ ] Propose a readiness-evidence review eval to requesting-code-review
+  - **ID**: requesting-code-review-readiness-evidence
+  - **Tags**: skills, review, third-party, opencode
+  - **Details**: `requesting-code-review` (obra/superpowers) needs a case where tests and Agentbrew status are green but the configured OpenCode default model still times out. The reviewer must inspect that evidence and reject a full-readiness claim rather than approve from the diff alone.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires claim-by-claim review against live evidence and a `not ready` verdict when any required runtime probe fails.
+  - **Hypothesis**: the added case makes a fresh reviewer reject a false full-readiness claim in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-reviewer trials with green static checks and a failing default-model probe.
+  - **Success**: 3 of 3 reviews reject full readiness and name the failed probe.
+  - **Pivot**: if upstream declines, retain the case in run-goal's owned eval and close this proposal.
+  - **Anchor**: requesting-code-review plan-alignment and evidence rules; the 2026-11-08 OpenCode readiness run.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a live-state readiness eval to verification-before-completion
+  - **ID**: verification-before-completion-live-readiness
+  - **Tags**: skills, verification, third-party, opencode
+  - **Details**: `verification-before-completion` (obra/superpowers) needs a case where a sync or fix line says success but a later apply reverts it. Require fresh default-model, MCP, installed-file, and chezmoi-state reads before the final claim; never reuse an earlier hosted-model pass.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that rejects stale or substitute evidence and verifies the actual configured runtime and live applied state.
+  - **Hypothesis**: the added case prevents stale or wrong-model completion evidence in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials with an earlier hosted pass, a failed default probe, and drift after an apply.
+  - **Success**: 3 of 3 trials require fresh default-runtime and live-state evidence before any claim.
+  - **Pivot**: if upstream declines, retain the case in the owned update-tooling eval and close this proposal.
+  - **Anchor**: verification-before-completion's Iron Law; OpenCode served-output and Ollama evidence from 2026-11-08.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a guarded retro-delivery eval to finishing-a-development-branch
+  - **ID**: finishing-development-branch-guarded-retro
+  - **Tags**: skills, delivery, third-party
+  - **Details**: `finishing-a-development-branch` (obra/superpowers) needs a goal-retro case with pre-approved PR delivery, unrelated dirty work elsewhere, and a failing required runtime probe. Run the full gate and independent review before merging the eval-only change, never use the retro PR to hide the goal blocker, and never force-clean a worktree.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval covering the standing-approval path, green gate, independent review, honest blocked-goal report, and preservation of unowned work.
+  - **Hypothesis**: the added case makes fresh agents deliver an approved retro without false completion or unsafe cleanup in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials using the approved retro/green-gate/unrelated-dirty-work scenario.
+  - **Success**: 3 of 3 trials keep the runtime blocker visible and avoid unowned changes and forced cleanup.
+  - **Pivot**: if upstream declines, retain the case in run-goal's owned eval and close this proposal.
+  - **Anchor**: finishing-a-development-branch verification and cleanup rules; the 2026-11-08 tooling retro run.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
 
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->

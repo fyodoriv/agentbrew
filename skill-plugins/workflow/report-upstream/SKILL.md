@@ -81,6 +81,9 @@ Small bugs, data loss, and safety gaps get a fix PR instead (see step 5).
    what happened (the error line), the tool version (`agentbrew --version`,
    `git -C <repo> rev-parse --short HEAD`), and a suggested fix if you have
    one. Keep it short. Leave out the person's own project details.
+   When the person's rules say "issue, not PR" for repos they do not own,
+   put the proposed change (a short diff or exact steps) in this draft, so it
+   is part of the previewed and approved issue body.
 2. **Scrub and preview**:
    `agentbrew report --title "<title>" --body-file <draft.md> --repo <owner/name>`.
    It replaces home paths, user names, emails, tokens and keys, IP addresses,
@@ -108,8 +111,7 @@ Small bugs, data loss, and safety gaps get a fix PR instead (see step 5).
    PR body. Fix or task, the regression test, the privacy check, carrying an
    unmerged fix on the person's machine, and PR upkeep:
    [references/fix-and-task-prs.md](references/fix-and-task-prs.md).
-   When the person's rules say "issue, not PR" for repos they do not own,
-   skip this offer: put the proposed change (diff or steps) in the issue body.
+   Under an "issue, not PR" rule, do not offer a fix PR (see step 1).
 
 ## Safety rules
 

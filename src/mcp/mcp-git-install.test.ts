@@ -25,6 +25,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 // build`; only state and the agent sync are mocked. Scratch HOME comes from
 // vitest.isolated-home.ts; git reads an empty scratch global config.
 
+// Real git plus a real npm build: under a loaded full gate one test can pass
+// 30s, so these suites get more time (they finish in seconds when idle).
+const REAL_GIT_TIMEOUT_MS = 120_000;
+
 vi.mock("../sync/mcp-sync.js", async (importOriginal) => ({
   addMcpServer: vi.fn(),
   syncMcpServers: vi.fn(),
@@ -222,7 +226,7 @@ afterAll(() => {
   rmSync(GIT_CACHE_DIR, { recursive: true, force: true });
 });
 
-describe("a failed --git install or update exits 1 and registers nothing stale (real git)", () => {
+describe("a failed --git install or update exits 1 and registers nothing stale (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   it("exits 1 when the ref is refused", async () => {
     const repo = nodeRepo("refused-ref");
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -324,7 +328,7 @@ describe("a failed --git install or update exits 1 and registers nothing stale (
   });
 });
 
-describe("a re-pin registers the output its own build wrote, and a refused one puts the cache back (real git)", () => {
+describe("a re-pin registers the output its own build wrote, and a refused one puts the cache back (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   const sha = (dir: string, ref: string) => git(dir, "rev-parse", `${ref}^{commit}`);
 
   it("removes new partial output after a failed re-pin and preserves user files", async () => {
@@ -504,7 +508,7 @@ describe("a re-pin registers the output its own build wrote, and a refused one p
   });
 });
 
-describe("build output that belongs to HEAD still installs (real git)", () => {
+describe("build output that belongs to HEAD still installs (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   it("keeps an earlier successful build of the same commit when this build fails", async () => {
     const repo = nodeRepo("same-commit");
     await installMcpFromGit(repo, { ref: "v1", nonInteractive: true });
@@ -569,7 +573,7 @@ describe("build output that belongs to HEAD still installs (real git)", () => {
   });
 });
 
-describe("git installs take env values without waiting on a prompt (real git)", () => {
+describe("git installs take env values without waiting on a prompt (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   const KEY = "MCP_TEST_API_KEY";
   const SECRET = "s3cret-value-123";
 
@@ -751,7 +755,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
   }, 5000);
 });
 
-describe("an unattended clone never waits on git's login prompt (real git)", () => {
+describe("an unattended clone never waits on git's login prompt (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   /**
    * An HTTP git remote that asks for a login on every request, like a private
    * https repo. It runs in its own process: the clone uses spawnSync, which
@@ -795,7 +799,7 @@ describe("an unattended clone never waits on git's login prompt (real git)", () 
   }
 });
 
-describe("a git URL's credentials never reach output or state (real git)", () => {
+describe("a git URL's credentials never reach output or state (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   const TOKEN = "tok123secret";
 
   function printed(): string {
@@ -892,7 +896,7 @@ describe("a git URL's credentials never reach output or state (real git)", () =>
   }
 });
 
-describe("an unattended SSH clone never waits on ssh's prompts (real git)", () => {
+describe("an unattended SSH clone never waits on ssh's prompts (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
   it("runs ssh with BatchMode, so a clone that would prompt fails fast", async () => {
     const log = join(root, "ssh-args.log");
     const fakeSsh = join(root, "fake-ssh");

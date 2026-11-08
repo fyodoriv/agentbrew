@@ -261,7 +261,11 @@ source on the machine, so no update is possible. Its line
 exists in any skills folder (`~/.*/skills`, `~/.config/*/skills`, the
 Claude app's skills folder, agentbrew's installed skills, plugin skills
 under `~/.claude/plugins`, and the session folder's `.claude/skills` and
-`.agents/skills`; `RUN_GOAL_SKILL_DIRS` replaces this list). Before this,
+`.agents/skills`; `RUN_GOAL_SKILL_DIRS` replaces this list). An owned
+slash command is a source too: `<skill>.md` in `~/.*/commands`,
+`~/.config/*/commands`, the session folder's `.claude/commands`, or a
+plugin's `commands/` under `~/.claude/plugins` (for example `ship-it`). So
+is any `SKILL.md` the session read that exists, wherever it is. Before this,
 such a goal blocked three Stops and then gave up. A line that says
 no update was made ("no new edit", "already covers", and similar) does not
 count, even when it cites an old commit. A rule that also required a merged

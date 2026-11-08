@@ -190,6 +190,31 @@ expect "RUN_GOAL_SKILL_DIRS replaces the default folders" 0 "$(run host5 "HOME=$
 touch "$RUN_GOAL_STATE_DIR/host6.contract.md"
 printf -- '- run-goal: new eval, PR #130\n- artifact-design: used it\n- owned-skill: new eval, PR #131\n' >"$RUN_GOAL_STATE_DIR/host6.retro.md"
 expect "a host-served skill without the host-served line still blocks" 2 "$(run host6 HOME=$HOSTHOME)"
+# An owned slash command (commands/<name>.md, for example ship-it) is a local
+# source too: a host-served line for it must block.
+TX="$ROOT/hostcmd.jsonl"
+jq -cn '{type:"assistant",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"cmd-only"}}]}}' >"$TX"
+mkdir -p "$HOSTHOME/.claude/commands"
+touch "$HOSTHOME/.claude/commands/cmd-only.md"
+touch "$RUN_GOAL_STATE_DIR/host7.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- cmd-only: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host7.retro.md"
+expect "host-served claim blocks for a skill with only a commands/<name>.md" 2 "$(run host7 HOME=$HOSTHOME)"
+rm -rf "$HOSTHOME/.claude/commands"
+mkdir -p "$HOSTHOME/.claude/plugins/cache/mkt/plug/1.0/commands"
+touch "$HOSTHOME/.claude/plugins/cache/mkt/plug/1.0/commands/cmd-only.md"
+touch "$RUN_GOAL_STATE_DIR/host8.contract.md"
+cp "$RUN_GOAL_STATE_DIR/host7.retro.md" "$RUN_GOAL_STATE_DIR/host8.retro.md"
+expect "host-served claim blocks when a plugin ships commands/<name>.md" 2 "$(run host8 HOME=$HOSTHOME)"
+rm -rf "$HOSTHOME/.claude/plugins"
+# A skill counted from a Read of an existing SKILL.md has a source on disk,
+# even outside the searched folders: a host-served line for it must block.
+TX="$ROOT/hostread.jsonl"
+mkdir -p "$ROOT/elsewhere/skills/x"
+touch "$ROOT/elsewhere/skills/x/SKILL.md"
+jq -cn --arg f "$ROOT/elsewhere/skills/x/SKILL.md" '{type:"assistant",message:{content:[{type:"tool_use",name:"Read",input:{file_path:$f}}]}}' >"$TX"
+touch "$RUN_GOAL_STATE_DIR/host9.contract.md"
+printf -- '- run-goal: new eval, PR #130\n- x: host-served, no source\n' >"$RUN_GOAL_STATE_DIR/host9.retro.md"
+expect "host-served claim blocks for a skill read from an existing SKILL.md" 2 "$(run host9 HOME=$HOSTHOME)"
 TX="$TX_SAVE"
 
 echo "goal-retro-before-stop.test.sh: $PASS passed, $FAIL failed"

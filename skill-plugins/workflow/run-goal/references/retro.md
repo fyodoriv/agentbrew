@@ -62,7 +62,7 @@ never the installed mirror.
 | The user owns the repo (their local checkout, origin under their account) | Edit the source `SKILL.md` or reference. Add or adjust an eval that would catch the problem. Ship it through that repo's normal delivery flow: branch, gate, PR, and merge when green, if the repo's rules allow the agent to merge. |
 | A third party owns it | Do not fork it silently. Add a task to the user's own task queue with the proposed change, or ask at the end before you open an upstream issue or PR. |
 | You cannot find the source | Report it as a gap in the final report. |
-| The host app serves it (for example `artifact-design` from the Claude app), and no `<skill>/SKILL.md` exists in any local skills folder | Nothing to edit. Write `<skill>: host-served, no source` in the retro file. The `goal-retro-before-stop` hook rejects that line when a local `SKILL.md` for the skill exists. |
+| The host app serves it (for example `artifact-design` from the Claude app), and no `<skill>/SKILL.md` or owned `commands/<skill>.md` exists locally | Nothing to edit. Write `<skill>: host-served, no source` in the retro file. The `goal-retro-before-stop` hook rejects that line when a local `SKILL.md` or command file for the skill exists, or when the session read its `SKILL.md`. |
 
 After the change merges, redeploy it the way that repo says (for agentbrew:
 pull, `npm run build`, `agentbrew sync --pull`; plain `sync` skips a skill

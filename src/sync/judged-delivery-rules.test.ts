@@ -23,6 +23,8 @@ const safeguards = {
   "explain-before-showing": ["What it means", "2 to 6", "Proposed action", "no post needed", "commitments"],
   "human-review-blockers": ["running app", "never marks", "confirms in chat", "Human check"],
   "judge-operator-audience": ["Gate 1", "Gate 2", "Gate 3", "proof page", "no draft", "audience"],
+  "recommended-option-first": ["recommended option first", "Recommended", "fresh-reader judge fails", "first thoughts"],
+  "chat-merge-recent-message": ["second message in a row", "24 hours", "Edit that message", "one merged message"],
 };
 
 afterEach(() => vi.restoreAllMocks());

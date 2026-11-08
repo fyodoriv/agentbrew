@@ -2004,6 +2004,7 @@ rules:
       after it as alternatives. A fresh-reader judge fails a draft whose
       recommended option is not first. An early write-up shared for review says
       "first thoughts", not "plan".
+
   - name: chat-merge-recent-message
     description: "Edit your own recent chat message instead of posting twice in a row."
     category: workflow
@@ -2013,6 +2014,7 @@ rules:
       your own last message there is under 24 hours old. Edit that message to
       merge the new content, or delete it and post one merged message. This is
       the chat twin of one comment per place on a PR.
+
   - name: functional-judge
     description: "Run every feature with an independent judge before asking for review."
     category: workflow

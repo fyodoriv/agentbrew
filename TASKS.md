@@ -157,20 +157,6 @@
 
 ## P1
 
-- [ ] Workflow fan-outs stay inside the agent-usage-guard start cap
-  - **ID**: workflow-guard-start-budget
-  - **Tags**: workflow, agents, retro
-  - **Mode**: AFK
-  - **Details**: Goal retro 2026-11-08. A review workflow plus a fix workflow used every agent start the agent-usage-guard allows per 10 minutes (`AGENT_GUARD_ROLLING_MAX`, now pinned at 40 by dotfiles #546). The guard then refused one fixer's re-review and one later review; nobody can approve in a `/goal` run. The `workflow-authoring` skill is Anthropic's built-in, so its own text cannot change here: add the guidance to run-goal's `references/parallel-workers.md` instead (count planned agent starts against the guard's cap before launching; batch or reuse one reviewer for small PRs), and propose the same note upstream.
-  - **Files**: `skill-plugins/workflow/run-goal/references/parallel-workers.md`, `skill-plugins/workflow/run-goal/evals/evals.json`
-  - **Output**: docs
-  - **Acceptance**: run-goal tells the agent to check the guard's start cap before a fan-out and to group small PRs per reviewer; an eval pins it.
-  - **Hypothesis**: guard start-cap refusals during goal-run review fan-outs drop from 2 in the 2026-11-08 run to 0 in the next run with a fan-out of 8 or more.
-  - **Measurement**: count `agent-usage-guard` "agents started on this machine" refusals in the next such goal transcript (`rg -c "agents started on this machine" <transcript>`).
-  - **Success**: 0 refusals.
-  - **Pivot**: 2 or more refusals means the guidance does not work; raise the cap per run or serialize reviews instead.
-  - **Anchor**: agent-usage-guard `core/agents.ts` rolling-start rule; Basili, Caldiera and Rombach (1994), GQM.
-
 - [ ] Validate every sync selection before preparation can publish outputs
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli
@@ -853,6 +839,20 @@
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 ## P3
+
+- [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
+  - **ID**: workflow-authoring-guard-budget-upstream
+  - **Tags**: workflow, agents, third-party
+  - **Details**: `workflow-authoring` is Anthropic's built-in skill, so its text cannot change here. run-goal's `references/parallel-workers.md` now says to read the live agent-usage-guard start cap, count planned agent starts (reviewers, fixers, re-reviews) before a fan-out, group small PRs per reviewer, and stop the fan-out after the first refusal. Propose a short version of that note upstream through the `report-upstream` skill, with the 2026-11-08 goal-run data (2 refusals after a review plus fix fan-out).
+  - **Files**: none in this repo (upstream proposal); `skill-plugins/workflow/run-goal/references/parallel-workers.md` is the source text
+  - **Output**: docs
+  - **Acceptance**: the upstream issue is filed after the owner approves the exact text, or this task records why it was not filed.
+  - **Hypothesis**: with the note in workflow-authoring, a fresh agent that writes a fan-out workflow plans its agent starts under the guard cap in 3 of 3 trials.
+  - **Measurement**: three fresh-agent trials that load only workflow-authoring and plan a 12-PR review fan-out; count plans that state a start total under the live cap.
+  - **Success**: 3 of 3 plans stay under the cap.
+  - **Pivot**: if upstream declines, keep the note in run-goal only and close this task.
+  - **Anchor**: agent-usage-guard `core/agents.ts` rolling-start rule; Basili, Caldiera and Rombach (1994), GQM.
+  - **Blocked**: needs-owner-approval — 2026-11-08: filing on Anthropic's repo is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget

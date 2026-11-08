@@ -1994,6 +1994,25 @@ rules:
       functional judge PASS for every feature, with no FAIL.
       Use review-pr/references/draft-judge.md for the judge procedure.
 
+  - name: recommended-option-first
+    description: "List the recommended option first wherever a doc offers options."
+    category: workflow
+    recommended: false
+    content: |
+      In any doc, plan, proof page, or PR body that lists options, put the
+      recommended option first and label it "Recommended". List the others
+      after it as alternatives. A fresh-reader judge fails a draft whose
+      recommended option is not first. An early write-up shared for review says
+      "first thoughts", not "plan".
+  - name: chat-merge-recent-message
+    description: "Edit your own recent chat message instead of posting twice in a row."
+    category: workflow
+    recommended: false
+    content: |
+      In a chat thread or channel, never post a second message in a row when
+      your own last message there is under 24 hours old. Edit that message to
+      merge the new content, or delete it and post one merged message. This is
+      the chat twin of one comment per place on a PR.
   - name: functional-judge
     description: "Run every feature with an independent judge before asking for review."
     category: workflow

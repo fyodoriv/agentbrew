@@ -383,3 +383,14 @@ Codex stores individual hook enable/disable preferences separately from the
 generated hook definitions. Sync must preserve these preferences and existing
 trust choices. Disable an incompatible legacy hook through Codex's native
 hook settings; do not trust it only to remove a review warning.
+
+## OpenCode hooks
+
+OpenCode has no hooks file. `agentbrew sync` deploys the `claude-hooks`
+plugin (`templates/opencode/claude-hooks.js`) to
+`~/.config/opencode/plugin/` when `~/.config/opencode` exists. The plugin runs
+the Claude Code hooks from `settings.json` with the same stdin JSON and verdict
+rules. The event map and limits are in
+[support-matrix.md](support-matrix.md#opencode-boundaries). A hook can check
+`CLAUDE_HOOKS_HOST=opencode` when it needs to act differently there. Tests:
+`src/opencode-hooks/claude-hooks.test.ts`.

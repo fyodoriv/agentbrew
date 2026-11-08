@@ -30,6 +30,15 @@ export const HELPER_SCRIPT_SOURCES: Readonly<Record<string, string>> = {
   "verify-vision-trace.sh": join("templates", "scripts", "verify-vision-trace.sh"),
 };
 
+/**
+ * OpenCode plugins agentbrew deploys to `~/.config/opencode/plugin/` when
+ * OpenCode is installed. `claude-hooks.js` runs Claude Code hooks in OpenCode.
+ */
+export const OPENCODE_PLUGIN_DIR = "~/.config/opencode/plugin";
+export const OPENCODE_PLUGIN_SOURCES: Readonly<Record<string, string>> = {
+  "claude-hooks.js": join("templates", "opencode", "claude-hooks.js"),
+};
+
 const EXECUTABLE_MODE = 0o755;
 
 type HelperScriptAction = "installed" | "updated" | "unchanged" | "kept-user-file";

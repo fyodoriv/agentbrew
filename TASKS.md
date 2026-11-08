@@ -297,21 +297,6 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
-
-- [ ] Let a goal retro pass for host-served skills that have no source to edit
-  - **ID**: retro-host-served-skills
-  - **Tags**: hooks, run-goal, stability
-  - **Mode**: AFK
-  - **Details**: `goal-retro-before-stop` requires a SHA, PR, or a task with a failed-write error for every skill used. Host-served skills (for example artifact-design from the Claude app) have no source file on this Mac, so no update or write is possible, and the hook blocks three Stops before it gives up (seen 2026-11-07). Accept a line that names the skill as host-served only when no SKILL.md for it exists under any synced skill directory.
-  - **Files**: `hooks/checks/goal-retro-before-stop.sh`, `hooks/checks/goal-retro-before-stop.test.sh`, `docs/hook-protocol.md`, run-goal SKILL.md retro section.
-  - **Output**: code
-  - **Acceptance**: A retro line "<skill>: host-served, no source" passes when no local SKILL.md exists for that skill and blocks when one does.
-  - **Hypothesis**: wasted Stop blocks on host-served skills drop from 3 per goal to 0, with no owned skill passing without evidence.
-  - **Measurement**: `bash hooks/checks/goal-retro-before-stop.test.sh` with a fixture host-served skill and a fixture owned skill.
-  - **Success**: host-served fixture allowed on the first Stop; owned fixture still blocked.
-  - **Pivot**: if a local-source check cannot tell host-served from owned skills reliably, keep the block and document the give-up limit instead.
-  - **Anchor**: goal-retro-before-stop block log 2026-11-07; Basili, Caldiera and Rombach (1994), GQM.
-
 ## P2
 
 - [ ] Remind an agent to draft a review request after adding reviewers

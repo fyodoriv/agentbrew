@@ -62,6 +62,17 @@ describe("report-upstream scoped consent and freshness guidance (#792)", () => {
     expect(skill).toMatch(/do not[^.]*reset[^.]*clean[^.]*switch[^.]*owner settings/i);
   });
 
+  it("puts the proposed change in the draft under an issue-only rule (#877)", () => {
+    const draftStep = skill.slice(skill.indexOf("1. **Draft**"), skill.indexOf("2. **Scrub and preview**"));
+    expect(draftStep).toMatch(/"issue, not PR"[^.]*do not own[^.]*proposed change[^.]*draft/i);
+    expect(draftStep).toMatch(/previewed and approved issue body/i);
+    expect(skill).toMatch(/"issue, not PR" rule, do not offer a fix PR/);
+    const issueOnly = evals.find(({ id }) => id === 12);
+    expect(issueOnly?.expectations).toContain(
+      "the proposed diff or steps appear in the approved preview before posting",
+    );
+  });
+
   it("keeps the four registered objects exact while allowing later valid additions", () => {
     expect(digest(plan)).toBe("072bdab214dc7abfdb824c5d2b16f2333eb4778e42aad3e7eaafc68f86c52cca");
     const frozen = [...plan.matchAll(/```json\n([\s\S]*?)\n```/g)].map((match) => JSON.parse(match[1]));

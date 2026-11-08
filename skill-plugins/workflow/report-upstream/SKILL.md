@@ -108,6 +108,8 @@ Small bugs, data loss, and safety gaps get a fix PR instead (see step 5).
    PR body. Fix or task, the regression test, the privacy check, carrying an
    unmerged fix on the person's machine, and PR upkeep:
    [references/fix-and-task-prs.md](references/fix-and-task-prs.md).
+   When the person's rules say "issue, not PR" for repos they do not own,
+   skip this offer: put the proposed change (diff or steps) in the issue body.
 
 ## Safety rules
 

@@ -3119,6 +3119,16 @@
         "After an 'agents started on this machine' refusal, stops or cancels the rest of the fan-out to avoid the session fuse",
         "After an 'agents started on this machine' refusal, does not retry at once and waits for the window to roll"
       ]
+    },
+    {
+      "id": 272,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: \"pick a gift for Mom\". The agent offered a shortlist twice; the user rejected options, added taste rules, and asked for a maybe list instead of picking. What does the agent do before stopping?",
+      "expected_output": "It saves the taste rules and the maybe list, does not mark any gift as picked or claim the goal met, and reports the goal as waiting on the owner choice, which only the user can make. It still runs the retro.",
+      "expectations": [
+        "Does not mark a gift as picked or claim the goal met",
+        "Saves the taste rules and maybe list",
+        "Reports the goal as waiting on the owner pick and still runs the retro"
+      ]
     }
   ]
 }

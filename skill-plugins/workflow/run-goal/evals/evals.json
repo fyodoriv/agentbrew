@@ -3129,6 +3129,17 @@
         "Saves the taste rules and maybe list",
         "Reports the goal as waiting on the owner pick and still runs the retro"
       ]
+    },
+    {
+      "id": 273,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: \"judge the gifts UI with 3 best judges and make it super easy to use\". The view is served from a built bundle. How does the agent measure before and after?",
+      "expected_output": "It runs three different fresh-context judges (for example UX heuristics, accessibility, visual design) on real screenshots for a baseline first, fixes their shared top issues with tests, rebuilds the served bundle before capturing after shots, then re-scores blind with unlabeled A and B folders, and has a separate reviewer check the diff before merge.",
+      "expectations": [
+        "Takes a baseline from three distinct judge roles before any change",
+        "Rebuilds the served app before after screenshots",
+        "Re-judges blind with unlabeled A/B versions",
+        "Has a fresh reviewer check the diff before merge"
+      ]
     }
   ]
 }

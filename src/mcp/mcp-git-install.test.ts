@@ -226,7 +226,9 @@ afterAll(() => {
   rmSync(GIT_CACHE_DIR, { recursive: true, force: true });
 });
 
-describe("a failed --git install or update exits 1 and registers nothing stale (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
+describe("a failed --git install or update exits 1 and registers nothing stale (real git)", {
+  timeout: REAL_GIT_TIMEOUT_MS,
+}, () => {
   it("exits 1 when the ref is refused", async () => {
     const repo = nodeRepo("refused-ref");
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -328,7 +330,9 @@ describe("a failed --git install or update exits 1 and registers nothing stale (
   });
 });
 
-describe("a re-pin registers the output its own build wrote, and a refused one puts the cache back (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
+describe("a re-pin registers the output its own build wrote, and a refused one puts the cache back (real git)", {
+  timeout: REAL_GIT_TIMEOUT_MS,
+}, () => {
   const sha = (dir: string, ref: string) => git(dir, "rev-parse", `${ref}^{commit}`);
 
   it("removes new partial output after a failed re-pin and preserves user files", async () => {
@@ -573,7 +577,9 @@ describe("build output that belongs to HEAD still installs (real git)", { timeou
   });
 });
 
-describe("git installs take env values without waiting on a prompt (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {
+describe("git installs take env values without waiting on a prompt (real git)", {
+  timeout: REAL_GIT_TIMEOUT_MS,
+}, () => {
   const KEY = "MCP_TEST_API_KEY";
   const SECRET = "s3cret-value-123";
 
@@ -639,7 +645,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
     expect(mockAddMcpServer).not.toHaveBeenCalled();
     // The missing key fails before the clone and build start.
     expect(existsSync(join(GIT_CACHE_DIR, "env-mcp-add"))).toBe(false);
-  }, 5000);
+  });
 
   it("`install --git --env KEY` with no terminal exits 1 naming a missing key, and never prompts", async () => {
     const repo = envRepo("env-install");
@@ -651,7 +657,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
     expect(vi.mocked(console.error)).toHaveBeenCalledWith(expect.stringContaining(KEY));
     expect(mockPassword).not.toHaveBeenCalled();
     expect(mockAddMcpServer).not.toHaveBeenCalled();
-  }, 5000);
+  });
 
   it("stores a reference for a key set in the environment and a value for KEY=VALUE, and never prints the value", async () => {
     const repo = envRepo("env-set");
@@ -678,7 +684,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
       expect.objectContaining({ gitUrl: repo }),
     );
     expect(printed()).not.toContain(SECRET);
-  }, 5000);
+  });
 
   it("asks in a terminal with hidden input and saves the value where agents read it", async () => {
     const repo = envRepo("env-typed");
@@ -698,7 +704,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
       expect.anything(),
     );
     expect(printed()).not.toContain(SECRET);
-  }, 5000);
+  });
 
   it("exits 130 when the prompt is cancelled with Ctrl-C", async () => {
     const repo = envRepo("env-cancel");
@@ -706,7 +712,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
     await withTerminal(true, () => installMcpFromGit(repo, { envPairs: [KEY] }));
     expect(process.exitCode).toBe(130);
     expect(mockAddMcpServer).not.toHaveBeenCalled();
-  }, 5000);
+  });
 
   it("keeps the env vars of an installed server that a re-install does not pass again", async () => {
     const repo = envRepo("env-keep");
@@ -723,7 +729,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
       { [KEY]: `\${${KEY}}`, MODE: "slow", LEVEL: "2" },
       expect.anything(),
     );
-  }, 5000);
+  });
 
   it("refuses an entry that is not KEY or KEY=VALUE without echoing it, and a lower-case key", async () => {
     const repo = envRepo("env-bad-name");
@@ -752,7 +758,7 @@ describe("git installs take env values without waiting on a prompt (real git)", 
       { http_proxy: "http://proxy.example.com" },
       expect.anything(),
     );
-  }, 5000);
+  });
 });
 
 describe("an unattended clone never waits on git's login prompt (real git)", { timeout: REAL_GIT_TIMEOUT_MS }, () => {

@@ -78,6 +78,17 @@
         "Identifies unmanaged skill folders without deleting or overwriting them",
         "Checks shared skill discovery before proposing duplicate copies"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "Show whether OpenCode is ready. Its config directory and skills exist, but the CLI, configured model, or MCP runtime may be unavailable. Do not inspect credential files.",
+      "expected_output": "Reports configured, detected, executable, model-ready, and MCP-ready as separate states. It uses fresh non-credential probes and never infers runtime readiness from files or a clean Agentbrew status alone.",
+      "expectations": [
+        "Separates configuration presence from CLI and model readiness",
+        "Checks the configured default model and connected MCP runtime",
+        "Does not read credential or auth files",
+        "Does not equate drift=0 with a working OpenCode runtime"
+      ]
     }
   ]
 }

@@ -280,3 +280,19 @@ start it again after the edits; never report its result for the new code.
   the window, denominator, unit, comparator and threshold; print the revised
   criterion for the checker. Native condition synchronization needs a supported
   accepted operation and readback. Otherwise report that binding unverified.
+
+## Hardware, connectors and demo video
+
+- Hardware goal: probe the transport (BLE, classic, USB) and the device's real
+  ID (vendor/product ID, the user's own name for it) before you pick a tool,
+  for example `system_profiler SPBluetoothDataType`. Match by ID.
+- A connector reconnect runs at turn end. Re-check its status next turn before
+  you call it fixed.
+- Demo video: record the live, signed-in tab with CDP `Page.startScreencast`. A new
+  `recordVideo` context loses the session.
+- Turn on the app's live refresh first, or the video shows stale state.
+- Frames arrive only when the page changes. Rebuild a fixed frame rate and cap
+  idle gaps (about 1 s).
+- Playwright's bundled ffmpeg has no `concat`/`image2` demuxer and no H.264.
+  This works: `cat frames/*.jpg | ffmpeg -f image2pipe -framerate 5 -c:v mjpeg -i pipe:0 -c:v libvpx-vp9 -pix_fmt yuv420p out.webm`.
+- Read a few frames from the output before you report the video done.

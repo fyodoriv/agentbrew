@@ -2998,6 +2998,73 @@
         "logs and dry-run output go to the session scratchpad or a mktemp name",
         "final free-space number re-measured with df after the cleanup"
       ]
+    },
+    {
+      "id": 262,
+      "prompt": "/goal fully prepare me for a 1:1 call, fix everything that is broken and report suggestions",
+      "expected_output": "Reads calendar, chat, tracker and HR sources read-only, finds the meeting time as the real deadline, lists broken connectors with the session connector status tool before any edit, queues a reconnect and re-checks status next turn instead of claiming a fix, and labels claims a fresh grader cannot verify as self-reported or cuts them.",
+      "expectations": [
+        "meeting time recorded as the deadline in the contract",
+        "connector status listed before any repair",
+        "reconnect queued, then re-checked in a later turn; no same-turn fix claim",
+        "unverifiable claims labeled self-reported, cited to a local log, or cut"
+      ]
+    },
+    {
+      "id": 263,
+      "prompt": "Simulated decision trace only. A goal says: keep checking the PR has no issues, the review bot found new issues. After three fix rounds the bot still posts two new comments per push, and CI lint auto-fix once rewrote an inline command back to a broken form. The contract set a pivot of three rounds.",
+      "expected_output": "Does not treat the self-set pivot as the user's end state. Sorts each bot comment as stale (already fixed on head) or real, fixes the real ones, finds the reverted fix by reading the CI auto-fix commit diff, guards it with a test, and keeps re-checking until the PR is clean or truly blocked.",
+      "expectations": [
+        "self-set pivot not used to stop while the user's end state is unmet",
+        "each comment classified stale or real against the head commit",
+        "reverted fix traced to the auto-fix commit diff",
+        "a test or lint pins the fixed form"
+      ]
+    },
+    {
+      "id": 264,
+      "prompt": "/goal pair my BLE keyboard on profile 2",
+      "expected_output": "Checks the device's transport (BLE vs classic, USB) and real identity (vendor/product ID, the user's renamed name) with system_profiler SPBluetoothDataType before choosing a tool, matches by ID not default name, and only then picks a BLE-capable path instead of a classic inquiry scan.",
+      "expectations": [
+        "transport and IDs probed before any pairing tool runs",
+        "device matched by ID, not by default name",
+        "no classic-Bluetooth inquiry scan used for a BLE device"
+      ]
+    },
+    {
+      "id": 265,
+      "prompt": "/goal record a short demo video of the new orders page in my signed-in app",
+      "expected_output": "Records with CDP Page.startScreencast on the live signed-in tab (not a new recordVideo context), turns on live refresh first, rebuilds a fixed frame rate with idle gaps capped, encodes with a command the bundled ffmpeg supports (image2pipe + mjpeg in, libvpx-vp9 out), and checks frames from the video before reporting.",
+      "expectations": [
+        "screencast on the existing tab keeps the session",
+        "encode command works with Playwright's bundled ffmpeg",
+        "idle gaps capped so the video stays short",
+        "frames read from the output before claiming done"
+      ]
+    },
+    {
+      "id": 266,
+      "prompt": "/goal update my tooling repos, check they all run, and make my start command fast",
+      "expected_output": "Takes a per-repo baseline (commits behind, local changes) and a timed baseline of the command before any change, prints the contract before commands that fast-forward repos, parks human-only doctor items by name, profiles the slow step before proposing a fix, files a parent-app fix as an issue, and waits on a long apply with a process wait instead of ending the turn.",
+      "expectations": [
+        "per-repo and timing baselines before changes",
+        "contract printed before any repo-changing command",
+        "human-only doctor items parked, not changed",
+        "slow step profiled before a fix",
+        "long background job awaited, not abandoned at turn end"
+      ]
+    },
+    {
+      "id": 267,
+      "prompt": "/goal make my Claude Code hooks also run in the other agent app where I run a cheaper model; there must be an adapter",
+      "expected_output": "Reads the other app's plugin or hook API before designing, builds one adapter that reads the existing Claude hooks at runtime (no copied list), keeps Claude's stdin JSON and block rules, proves a block live with a model that is registered in that app's config (checked first, not assumed) and that fits in memory, and documents events with no mapping.",
+      "expectations": [
+        "host plugin API read before design",
+        "adapter reads the same hook settings at runtime",
+        "live block proven with a model listed in the app's config",
+        "heavy model loads kept off the shared heavy-run queue under memory pressure",
+        "unmapped events named in docs"
+      ]
     }
   ]
 }

@@ -980,6 +980,20 @@
   - **Anchor**: test-driven-development's red/green and whole-suite rules; the 2026-11-08 OpenCode V2 bootstrap investigation.
   - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
 
+- [ ] Propose a quota-read boundary eval to agent-browser
+  - **ID**: agent-browser-quota-read-boundary
+  - **Tags**: skills, browser, third-party, kimi
+  - **Details**: `agent-browser` (vercel-labs/agent-browser) needs an eval for quota reads where a supported CLI/API endpoint exists. Require using that endpoint with redacted credential handling, not browser automation or invented URLs. The no-weekly response should show actual 5-hour and monthly windows rather than a fabricated total.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires supported endpoint reuse, no credential in browser content or curl argv, and an explicit no-weekly fallback.
+  - **Hypothesis**: the added case keeps fresh agents on supported read-only quota paths with zero credential disclosures in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials with weekly, no-weekly, and malformed-response fixtures; count correct endpoint, redaction, and fallback decisions.
+  - **Success**: 3 of 3 trials avoid invented endpoints and secrets while preserving the actual quota windows.
+  - **Pivot**: if upstream declines, keep the scenario in the owned add-command eval and close this proposal.
+  - **Anchor**: agent-browser trust-boundary and auth guidance; Kimi `GET /coding/v1/usages` contract.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->
 

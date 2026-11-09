@@ -148,6 +148,19 @@
         "Separates verified passes, failures, pending checks, and next actions",
         "Runs an accessibility audit before claiming one or reports it as not run"
       ]
+    },
+    {
+      "id": 14,
+      "prompt": "Get our checkout page to pass 10 principal UI judges at 8 or more.",
+      "expected_output": "Reads judge-learnings.md, shoots phone/desktop x light/dark, writes context.txt and decisions.txt, runs ten blind lens judges from judge.mjs prompt, scores them with judge.mjs score, fixes consensus issues worst first, re-judges with new judges, and adds a judge-learnings line.",
+      "expectations": [
+        "Reads references/judge-learnings.md before the first round",
+        "Each judge gets only the judge.mjs prompt for its lens, never earlier scores or the target",
+        "Scores with scripts/judge.mjs score, not with free scores the judges invent",
+        "Fixes only issues that two or more judges name, unless a blocker it can see itself",
+        "Adds a dated line to references/judge-learnings.md after the run",
+        "Reports the target as met only when judge.mjs score exits 0 for that round"
+      ]
     }
   ]
 }

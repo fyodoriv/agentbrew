@@ -3177,6 +3177,51 @@
         "Limits six agents to at most two running full gates and four held gates",
         "Keeps merge as a separate step after review"
       ]
+    },
+    {
+      "id": 277,
+      "prompt": "/goal pr review <url>",
+      "expected_output": "The contract names the review criteria: read the diff, check each finding, and post one review with its URL. Inline comment lines come from diff hunk headers, never from gh pr diff output line numbers. When the PR removes public exports, the agent checks the release config.",
+      "expectations": [
+        "Contract includes reading the diff, checking each finding, and posting one review with its URL",
+        "Inline comment lines are derived from hunk headers, not gh pr diff output line numbers",
+        "Removed public exports trigger a release-config check",
+        "Findings are verified against the PR before the review is posted"
+      ]
+    },
+    {
+      "id": 278,
+      "prompt": "/goal pull the latest tooling in every repo. One repo is on a merged or pushed feature branch behind main.",
+      "expected_output": "The agent compares stash contents with upstream commits before resolving anything. A pushed, clean feature checkout returns to the default branch and fast-forwards it. Unpushed work is never discarded.",
+      "expectations": [
+        "Compares stash contents with upstream commits before resolving",
+        "Returns a pushed, clean feature checkout to the default branch",
+        "Fast-forwards the default branch",
+        "Never discards unpushed work"
+      ]
+    },
+    {
+      "id": 279,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Two background subagents are still running when the Stop hook asks for the retro file. What does the agent do?",
+      "expected_output": "The agent writes no fake retro lines and makes no met claim. It keeps working or waits quietly for the subagent notifications, then verifies their results and writes the retro.",
+      "expectations": [
+        "Does not write placeholder retro lines",
+        "Does not claim the goal is met while subagents are still running",
+        "Waits for the subagent notifications instead of ending with pending work",
+        "Verifies the subagent results before writing the retro"
+      ]
+    },
+    {
+      "id": 280,
+      "prompt": "/goal do all tasks until this direction is ready. One PR's optional comment checks still fail with HTTP 403 after a rerun.",
+      "expected_output": "The agent checks isCrossRepository or the head repository owner and reads the base branch's required checks from branch protection. It reports that a fork PR's workflow token is read-only and parks replacing the PR as an operator decision instead of re-running the same failing job again.",
+      "expectations": [
+        "Checks isCrossRepository or the head repository owner",
+        "Reads required checks from the base branch's branch protection",
+        "Reports that the fork PR workflow token is read-only",
+        "Does not re-run the same failing job more than once",
+        "Parks replacing the PR as an operator decision"
+      ]
     }
   ]
 }

@@ -353,6 +353,8 @@ Dirs from other Agentfiles or added by hand are never removed. State written bef
 
 `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`.
 
+OpenCode's local Ollama bootstrap is separate from `defaultModel`. On V2 it writes `providers.ollama` with `reasoning_effort: "none"` for the selected model and removes the legacy provider and implicit small-model selection, so Qwen3 does not spend the readiness budget on reasoning or an implicit secondary model. V1 keeps its existing provider shape.
+
 Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
 **Work day.** `/work` lives in [careerbrew](https://github.com/fyodoriv/careerbrew), not in agentbrew (#610). Install careerbrew and run `agentbrew sync`: its Agentfile (`commands: [./commands]`) deploys careerbrew's `/work`. Add day steps with `careerbrew config set work_steps "/a, /b"`. An Agentfile `workSteps:` key is still accepted, but agentbrew ignores it, and the next sync removes old `workSteps` from `state.yaml`.

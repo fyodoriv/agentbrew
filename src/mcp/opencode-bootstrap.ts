@@ -412,6 +412,31 @@ function pullModel(model: string): boolean {
   }
 }
 
+type LegacyOllamaModel = { name?: string; tools?: boolean };
+type V2OllamaModel = { name?: string; capabilities?: { tools?: boolean }; body?: Record<string, unknown> };
+type LegacyOllamaProvider = { name?: string; models?: Record<string, LegacyOllamaModel> };
+type V2OllamaProvider = {
+  [key: string]: unknown;
+  name?: string;
+  settings?: Record<string, unknown>;
+  body?: Record<string, unknown>;
+  models?: Record<string, V2OllamaModel>;
+};
+
+/** Read the major version from V1 (`1.19.5`) and V2 (`opencode v2.2.6`) output. */
+export function opencodeMajorFromVersion(version: string): 1 | 2 {
+  const match = version.match(/(?:^|\s)v?(\d+)\./);
+  if (!match) throw new Error("Unrecognized OpenCode version output");
+  const major = Number(match[1]);
+  if (major !== 1 && major !== 2) throw new Error(`Unsupported OpenCode major version: ${major}`);
+  return major;
+}
+
+function detectOpencodeMajor(): 1 | 2 {
+  if (!isInstalled("opencode")) return 2;
+  return opencodeMajorFromVersion(execFileSync("opencode", ["--version"], { encoding: "utf8", timeout: 10_000 }));
+}
+
 /** Write provider + model config to opencode.json, preserving existing keys.
  *
  *  This stays separate from the Agentfile `defaultModel` / `modelOverrides`
@@ -425,26 +450,31 @@ function pullModel(model: string): boolean {
  *    provider setup.
  *  - If opencode declared `modelConfig`, model sync would overwrite this
  *    local model with the hosted default on every drift-repair tick.
- *  Revisit when model sync can write a provider block per agent. */
-function writeOpencodeProviderConfig(model: string): void {
+ *  Revisit when model sync can write a provider block per agent.
+ *  Exported for the source-driven config-write harness. */
+export function writeOpencodeProviderConfig(model: string): void {
   const configPath = expandHome(OPENCODE_CONFIG);
   mkdirSync(expandHome("~/.config/opencode"), { recursive: true });
 
   const config = readMcpJson(configPath) as Record<string, unknown>;
-  writeMcpJson(configPath, buildOpencodeProviderConfig(config, model));
+  writeMcpJson(configPath, buildOpencodeProviderConfig(config, model, detectOpencodeMajor()));
 }
 
-/** Return `existing` with the bootstrap's `provider` and `model` keys set.
+/** Return `existing` with the bootstrap's provider and model settings.
  *
  *  Shape follows https://opencode.ai/config.json (pinned by a trimmed copy in
  *  src/mcp/fixtures/ and opencode-bootstrap.test.ts):
  *  - `model` is a `provider/model` string.
- *  - `provider.ollama` is an OpenAI-compatible custom provider. The schema
- *    marks `provider` deprecated in favour of `providers`, but `providers`
- *    has no `baseURL` field yet, and released opencode builds read `provider`.
- *  - An old object-shaped `small_model` is dropped; opencode then falls back
- *    to `model`. Exported for the schema test. */
-export function buildOpencodeProviderConfig(existing: Record<string, unknown>, model: string): Record<string, unknown> {
+ *  - V1 keeps `provider.ollama`. V2 replaces it with `providers.ollama` and
+ *    removes `small_model`, so only the selected model handles primary and
+ *    small tasks with an OpenAI-compatible `reasoning_effort` body.
+ *  - V1 drops only an old object-shaped `small_model`. Unrelated keys and
+ *    unrelated provider fields are preserved. Exported for the schema test. */
+export function buildOpencodeProviderConfig(
+  existing: Record<string, unknown>,
+  model: string,
+  runtimeMajor: 1 | 2 = 1,
+): Record<string, unknown> {
   const config: Record<string, unknown> = {
     ...existing,
     provider: {
@@ -457,6 +487,37 @@ export function buildOpencodeProviderConfig(existing: Record<string, unknown>, m
     },
     model: `ollama/${model}`,
   };
+  if (runtimeMajor === 2) {
+    const legacy = (existing.provider as { ollama?: LegacyOllamaProvider } | undefined)?.ollama ?? {};
+    const existingV2 = (existing.providers as { ollama?: V2OllamaProvider } | undefined)?.ollama ?? {};
+    const existingModel = existingV2.models?.[model];
+    const legacyModel = legacy.models?.[model];
+    const models: Record<string, V2OllamaModel> = {
+      [model]: existingModel
+        ? { ...existingModel, body: { ...existingModel.body, reasoning_effort: "none" } }
+        : {
+            name: legacyModel?.name ?? model,
+            capabilities: { tools: legacyModel?.tools ?? true },
+            body: { reasoning_effort: "none" },
+          },
+    };
+    delete config.small_model;
+    config.providers = {
+      ...(existing.providers as Record<string, unknown> | undefined),
+      ollama: {
+        ...existingV2,
+        name: existingV2.name ?? legacy.name ?? "Ollama (local)",
+        package: "@opencode/ai/providers/openai-compatible",
+        settings: { ...existingV2.settings, baseURL: OLLAMA_URL },
+        models,
+      },
+    };
+    const legacyConfigProvider = config.provider as Record<string, unknown> | undefined;
+    if (legacyConfigProvider) {
+      delete legacyConfigProvider.ollama;
+      if (Object.keys(legacyConfigProvider).length === 0) delete config.provider;
+    }
+  }
   if (typeof config.small_model !== "string") delete config.small_model;
   return config;
 }
@@ -484,7 +545,7 @@ function ensureDirectories(): void {
  * - Tunes OLLAMA_NUM_CTX based on available memory headroom
  *
  * The MCP servers in opencode.json are managed by agentbrew's MCP sync —
- * this bootstrap only writes the `provider` and `model` keys.
+ * this bootstrap only writes provider and model settings.
  */
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Bootstrap function is intentionally complex
 export async function bootstrapOpencode(options?: { model?: string; dryRun?: boolean }): Promise<void> {

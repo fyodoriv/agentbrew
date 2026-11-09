@@ -966,6 +966,20 @@
   - **Anchor**: finishing-a-development-branch verification and cleanup rules; the 2026-11-08 tooling retro run.
   - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
 
+- [ ] Propose a generated-config runtime-proof eval to test-driven-development
+  - **ID**: test-driven-development-runtime-config-proof
+  - **Tags**: skills, testing, third-party, opencode
+  - **Details**: `test-driven-development` (obra/superpowers) needs a case where unit contracts pass but generated OpenCode config still fails live. The 2026-11-08 fix required red/green cycles plus actual V2 smoke evidence for removing the legacy provider and implicit small model, and placing `reasoning_effort` on the selected model. Unit success alone was not enough.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires a failing contract before each production change and a real runtime probe of the generated artifact before completion.
+  - **Hypothesis**: the added case prevents unit-only false completion in 3 of 3 simulated generated-config trials.
+  - **Measurement**: three fresh-agent trials with valid unit contracts and a failing real V2 default-model probe; count trials that require live evidence before delivery.
+  - **Success**: 3 of 3 trials preserve red/green evidence and reject completion until the real generated config responds within the registered bound.
+  - **Pivot**: if upstream declines, retain the scenario in the owned OpenCode bootstrap tests and close this proposal.
+  - **Anchor**: test-driven-development's red/green and whole-suite rules; the 2026-11-08 OpenCode V2 bootstrap investigation.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->
 

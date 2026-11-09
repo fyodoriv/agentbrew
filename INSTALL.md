@@ -113,8 +113,9 @@ When Cargo is unavailable, the build verifies the checked-in Darwin arm64
 pair against its source, lock, builder recipe and artifact digests. It uses
 the same native publisher and recorder without downloading or installing a
 toolchain. Missing, modified or stale helpers refuse before publication.
-An installed compiler failure still fails the build; it does not select the
-prebuilt route. Cargo installed through Rustup or Homebrew can be found even
+A normal Cargo compile or link exit uses the verified prebuilt route and
+warns about the `SDKROOT` workaround. Signals, spawn failures, timeouts, and
+receipt errors still fail closed. Cargo installed through Rustup or Homebrew can be found even
 when its directory is absent from PATH. See the
 [registered source-build boundary](docs/plans/source-build-prebuilt-764.md).
 

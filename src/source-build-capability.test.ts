@@ -127,6 +127,7 @@ function installedCargoFixture(f: ReturnType<typeof fixture>) {
     join(tools, "cargo"),
     `#!/bin/bash
 if [[ "$1" == --version ]]; then echo 'cargo fixture'; exit 0; fi
+if [[ -f .fixture-cargo-link-failure ]]; then echo 'ld: tapi error: malformed file' >&2; exit 65; fi
 rustc --version > compiler-observed
 target=rust/checkup-run/target
 while [[ $# -gt 0 ]]; do
@@ -152,6 +153,19 @@ describe.runIf(process.platform === "darwin" && process.arch === "arm64")("sourc
     const result = f.run("scripts/build-source.sh");
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(f.root, "dist/cli.js"), "utf8")).toContain("console.log");
+  });
+  it("falls back to the verified prebuilt pair when the installed Cargo linker fails", () => {
+    const f = fixture();
+    installedCargoFixture(f);
+    writeFileSync(join(f.root, ".fixture-cargo-link-failure"), "unreadable SDK\n");
+    const prebuild = f.run("scripts/build-checkup-run.sh");
+    expect(prebuild.status, prebuild.stderr).toBe(0);
+    expect(prebuild.stderr).toMatch(/SDKROOT/);
+    expect(prebuild.stderr).toMatch(/linker|SDK/i);
+    const result = f.run("scripts/build-source.sh");
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(f.root, "dist/cli.js"), "utf8")).toContain("console.log");
+    expect(existsSync(join(f.root, ".agentbrew-native-prebuilt-fallback"))).toBe(false);
   });
   it("preserves a usable predecessor when the Cargo-free TypeScript candidate fails", () => {
     const f = fixture();
@@ -581,14 +595,47 @@ describe("native capability trust boundary", () => {
     expect(existsSync(join(f.root, "rust/checkup-run/target/aarch64-apple-darwin/release/manifest.json"))).toBe(false);
   });
 
-  it("propagates an available compiler failure without using the prebuilt pair or modifying the predecessor", () => {
+  it.each([
+    ["a signal exit", "#!/bin/bash\nkill -TERM $$\n"],
+    ["a spawn failure", "#!/missing/interpreter\n"],
+  ])("does not fall back after %s", (_name, cargo) => {
+    const f = fixture();
+    writeFileSync(join(f.bin, "cargo"), cargo, { mode: 0o755 });
+    const result = f.run("scripts/build-checkup-run.sh");
+    expect(result.status).toBe(1);
+    expect(result.stderr).not.toMatch(/using.*prebuilt/i);
+    expect(existsSync(join(f.root, ".agentbrew-native-prebuilt-fallback"))).toBe(false);
+  });
+  it("does not fall back after a post-build toolchain status 65", () => {
+    const f = fixture();
+    installedCargoFixture(f);
+    writeFileSync(join(f.env.HOME, ".cargo/bin/rustc"), "#!/bin/bash\nexit 65\n", { mode: 0o755 });
+    const result = f.run("scripts/build-checkup-run.sh");
+    expect(result.status).toBe(1);
+    expect(result.stderr).not.toMatch(/using.*prebuilt/i);
+    expect(existsSync(join(f.root, ".agentbrew-native-prebuilt-fallback"))).toBe(false);
+  });
+  it("does not infer fallback from a stale source receipt without the admission marker", () => {
+    const f = fixture();
+    installedCargoFixture(f);
+    expect(f.run("scripts/build-checkup-run.sh").status).toBe(0);
+    writeFileSync(
+      join(f.root, "rust/checkup-run/src/lib.rs"),
+      `${readFileSync(join(f.root, "rust/checkup-run/src/lib.rs"), "utf8")}\n`,
+    );
+    const result = f.run("scripts/build-source.sh");
+    expect(result.status).not.toBe(0);
+    expect(existsSync(join(f.root, "dist"))).toBe(false);
+  });
+  it("uses the prebuilt pair after a compiler failure without modifying the predecessor", () => {
     const f = fixture();
     writeFileSync(join(f.bin, "cargo"), "#!/bin/bash\nexit 79\n", { mode: 0o755 });
     mkdirSync(join(f.root, "dist"));
     writeFileSync(join(f.root, "dist/cli.js"), "previous usable CLI\n");
     const result = f.run("scripts/build-checkup-run.sh");
-    expect(result.status).toBe(79);
-    expect(result.stderr).not.toMatch(/using.*prebuilt/i);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toMatch(/using.*prebuilt/i);
+    expect(result.stderr).toMatch(/SDKROOT/);
     expect(readFileSync(join(f.root, "dist/cli.js"), "utf8")).toBe("previous usable CLI\n");
   });
 });
@@ -607,6 +654,10 @@ describe.runIf(process.platform === "darwin" && process.arch === "arm64")("actua
         );
       },
     });
+    const manifestPath = join(f.directory, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.inputs = native.inputs(f.root);
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     rmSync(join(f.bin, "tsup"));
     execFileSync("/bin/cp", ["-cR", join(source, "node_modules"), join(f.root, "node_modules")]);
     const npm = realpathSync(execFileSync("/usr/bin/which", ["npm"], { encoding: "utf8" }).trim());

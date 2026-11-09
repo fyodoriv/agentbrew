@@ -1141,8 +1141,10 @@ High-risk artifacts need deterministic tests, behavioral evals, or an exemption 
 `npm run build` fails before `tsup` when `node_modules` has drifted from `package-lock.json`, with the remediation `deps out of sync — run npm ci`. After `tsup`, the postbuild guard runs `node dist/cli.js --version` so CI catches missing or unrunnable CLI output instead of leaving `bin/agentbrew` to fall back to source execution later.
 
 Apple Silicon source builds use installed Cargo, including ordinary Rustup
-and Homebrew locations outside PATH. Without Cargo, they use the source-bound
-checked-in native pair through the same staged atomic publisher. They never
+and Homebrew locations outside PATH. Without Cargo, or when Cargo cannot
+compile or link the helper, they use the source-bound checked-in native pair
+through the same staged atomic publisher. A linker failure warns that an
+unreadable SDK may be the cause and names `SDKROOT` as the override. They never
 reuse an unverified Cargo target or silently omit native checkup records.
 [Installation behavior](INSTALL.md) explains refusal and recovery;
 [the prebuilt plan](docs/plans/source-build-prebuilt-764.md) records the build,

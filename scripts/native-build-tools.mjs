@@ -258,11 +258,31 @@ export function readPair(root = ROOT, source = false) {
   validateManifest(root, manifest, pair, source ? SOURCE_RECIPE : RECIPE);
   return pair;
 }
+const fallbackMarker = (root) => join(root, ".agentbrew-native-prebuilt-fallback");
+function clearPrebuiltFallback(root) {
+  const path = fallbackMarker(root);
+  if (!fs.lstatSync(path, { throwIfNoEntry: false })) return;
+  readRegularFile(path, 16);
+  fs.unlinkSync(path);
+}
+export function admitPrebuiltFallback(root = ROOT) {
+  readPair(root, false);
+  clearPrebuiltFallback(root);
+  fs.writeFileSync(fallbackMarker(root), "prebuilt\n", { mode: 0o600, flag: "wx" });
+}
+function consumePrebuiltFallback(root) {
+  const path = fallbackMarker(root);
+  if (!fs.lstatSync(path, { throwIfNoEntry: false })) return false;
+  if (readRegularFile(path, 16).toString() !== "prebuilt\n") fail();
+  fs.unlinkSync(path);
+  return true;
+}
 export function prepare(root, stage) {
   if (dirname(stage) !== root || !/^\.agentbrew-build\.[A-Za-z0-9]{8}$/.test(stage.slice(root.length + 1))) fail();
   const st = fs.lstatSync(stage);
   if (!st.isDirectory() || st.isSymbolicLink() || st.uid !== process.getuid?.() || st.mode & 0o077) fail();
-  const pair = readPair(root, Boolean(resolveCargo()));
+  const prebuiltFallback = consumePrebuiltFallback(root);
+  const pair = readPair(root, Boolean(resolveCargo()) && !prebuiltFallback);
   const destination = join(stage, ".native");
   fs.mkdirSync(destination, { mode: 0o700 });
   for (const name of ASSETS) fs.writeFileSync(join(destination, name), pair[name], { mode: 0o700, flag: "wx" });
@@ -364,6 +384,7 @@ function recordSource(frozenInputs, cargo, directory) {
   publishPair(ROOT, SOURCE_STORE, pair, receipt, true);
 }
 function compileSource() {
+  clearPrebuiltFallback(ROOT);
   const cargo = resolveCargo();
   if (!cargo) fail();
   const frozenInputs = inputs(ROOT);
@@ -381,26 +402,38 @@ function compileSource() {
       fs.mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
       fs.writeFileSync(path, bytes, { mode: 0o600, flag: "wx" });
     }
-    execFileSync(
-      cargo,
-      [
-        "build",
-        "--locked",
-        "--release",
-        "--manifest-path",
-        join(snapshot, "rust/checkup-run/Cargo.toml"),
-        "--target",
-        TARGET,
-        "--target-dir",
-        target,
-      ],
-      {
-        cwd: ROOT,
-        env: { ...process.env, PATH: `${dirname(cargo)}:${process.env.PATH}` },
-        stdio: "inherit",
-        timeout: 600_000,
-      },
-    );
+    try {
+      execFileSync(
+        cargo,
+        [
+          "build",
+          "--locked",
+          "--release",
+          "--manifest-path",
+          join(snapshot, "rust/checkup-run/Cargo.toml"),
+          "--target",
+          TARGET,
+          "--target-dir",
+          target,
+        ],
+        {
+          cwd: ROOT,
+          env: { ...process.env, PATH: `${dirname(cargo)}:${process.env.PATH}` },
+          stdio: "inherit",
+          timeout: 600_000,
+        },
+      );
+    } catch (error) {
+      if (
+        Number.isInteger(error.status) &&
+        error.status > 0 &&
+        error.status < 256 &&
+        !error.signal &&
+        error.code !== "ETIMEDOUT"
+      )
+        error.nativeCompileFailed = true;
+      throw error;
+    }
     const current = fs.lstatSync(directory);
     if (
       !current.isDirectory() ||
@@ -428,6 +461,9 @@ function main() {
     case "verify-prebuilt":
       readPair();
       return;
+    case "use-prebuilt":
+      admitPrebuiltFallback();
+      return;
     case "available":
       if (!resolveCargo()) readPair();
       return;
@@ -449,6 +485,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(
       "Native build capability unavailable: verify the source-bound prebuilt pair or make an existing Rust toolchain available. No staged build was published.",
     );
-    process.exitCode = Number.isInteger(error.status) && error.status > 0 && error.status < 256 ? error.status : 1;
+    process.exitCode = error.nativeCompileFailed
+      ? 65
+      : Number.isInteger(error.status) && error.status > 0 && error.status < 256 && error.status !== 65
+        ? error.status
+        : 1;
   }
 }

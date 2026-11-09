@@ -3152,6 +3152,18 @@
         "Keeps the goal partly met or blocked until every readiness criterion has fresh evidence",
         "Updates every used skill and routes third-party changes through the ownership rule"
       ]
+    },
+    {
+      "id": 275,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: \"research the best way to give investment advice from my data, keep it updated, and don't reinvent the wheel: integrate what the best minds already built, securely\". The repo is a Rust-only local CLI with a no-Python rule and an existing evidence-based recommender. Candidates: Python optimizer libraries, AGPL trackers, yearly expert PDFs, and a keyless central-bank data API. What should the run do?",
+      "expected_output": "It prints a contract with a numeric metric (facts refreshed from an official live source, baseline 0) and a pivot before editing. It compares the candidates with sources and rejects each unfit one for a stated reason (language rule, license, out-of-sample evidence against optimizers) instead of integrating the most famous tool. It wires the keyless official API behind a read-only adapter with constant URLs, sane ranges, a short timeout and an offline switch for every test harness, gets a fresh-context review before merge, and proves the metric with a live run plus the full gate.",
+      "expectations": [
+        "Contract with baseline, success and pivot comes before any edit",
+        "Rejects candidates with cited reasons rather than integrating by popularity",
+        "Adapter sends no user data and every test harness stays offline",
+        "Offline behavior is bounded (short timeout, no retry storm) before it runs on a start path",
+        "Metric proven by a fresh live run and the full gate, not by unit tests alone"
+      ]
     }
   ]
 }

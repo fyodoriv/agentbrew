@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
 import { describe, expect, it } from "vitest";
-import { buildOpencodeProviderConfig, opencodeMajorFromVersion } from "./opencode-bootstrap.js";
+import { buildOpencodeProviderConfig, computeOllamaEnv, opencodeMajorFromVersion } from "./opencode-bootstrap.js";
 
 // Trimmed copy of https://opencode.ai/config.json (see its $comment).
 const schema = JSON.parse(
@@ -74,15 +74,82 @@ describe("buildOpencodeProviderConfig", () => {
         package: "@opencode/ai/providers/openai-compatible",
         settings: { baseURL: "http://localhost:11434/v1" },
         models: {
-          "qwen3:14b": { name: "qwen3:14b", capabilities: { tools: true }, body: { reasoning_effort: "none" } },
+          "qwen3:14b": {
+            name: "qwen3:14b",
+            capabilities: { tools: true },
+            body: { reasoning_effort: "none" },
+            limit: { context: 40960, output: 4096 },
+          },
         },
       },
     });
+    expect(config.compaction).toEqual({ auto: false });
     expect(config).not.toHaveProperty("small_model");
     expect(config).not.toHaveProperty("provider");
     expect(config.theme).toBe("dark");
     const configForValidation = Object.fromEntries(Object.entries(config).filter(([key]) => key !== "theme"));
     expect(validate(configForValidation)).toEqual([]);
+  });
+
+  it("preserves compaction choices and unrelated model limits on V2", () => {
+    const config = buildOpencodeProviderConfig(
+      {
+        compaction: { auto: true, keep: { tokens: 12000 } },
+        providers: {
+          ollama: {
+            models: {
+              "qwen3:14b": {
+                limit: { output: 8192 },
+              },
+            },
+          },
+        },
+      },
+      "qwen3:14b",
+      2,
+    );
+
+    expect(config.compaction).toEqual({ auto: false, keep: { tokens: 12000 } });
+    expect(config.providers).toMatchObject({
+      ollama: { models: { "qwen3:14b": { limit: { context: 40960, output: 8192 } } } },
+    });
+  });
+
+  it("does not apply Qwen3 readiness defaults to other model families", () => {
+    const config = buildOpencodeProviderConfig(
+      {
+        compaction: { auto: true },
+        providers: {
+          ollama: {
+            models: { "llama3.1:8b": { limit: { context: 8192, output: 1024 } } },
+          },
+        },
+      },
+      "llama3.1:8b",
+      2,
+    );
+
+    expect(config.compaction).toEqual({ auto: true });
+    expect(config.providers).toMatchObject({
+      ollama: { models: { "llama3.1:8b": { limit: { context: 8192, output: 1024 } } } },
+    });
+  });
+
+  it("uses the effective Ollama context and keeps smaller-memory profiles bounded", () => {
+    expect(computeOllamaEnv({ totalMemoryGB: 32 } as Parameters<typeof computeOllamaEnv>[0]).OLLAMA_NUM_CTX).toBe(
+      "40960",
+    );
+    expect(computeOllamaEnv({ totalMemoryGB: 64 } as Parameters<typeof computeOllamaEnv>[0]).OLLAMA_NUM_CTX).toBe(
+      "40960",
+    );
+    expect(computeOllamaEnv({ totalMemoryGB: 16 } as Parameters<typeof computeOllamaEnv>[0]).OLLAMA_NUM_CTX).toBe(
+      "8192",
+    );
+
+    const config = buildOpencodeProviderConfig({}, "qwen3:14b", 2, 32768);
+    expect(config.providers).toMatchObject({
+      ollama: { models: { "qwen3:14b": { limit: { context: 32768, output: 4096 } } } },
+    });
   });
 
   it("reads installed V1 and V2 version strings and rejects unknown versions", () => {

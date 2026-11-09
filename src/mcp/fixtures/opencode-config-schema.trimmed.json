@@ -1,5 +1,5 @@
 {
-  "$comment": "Trimmed from https://opencode.ai/config.json on 2026-10-19: the keys the opencode bootstrap writes (model, provider, providers) plus their local $defs. Top-level additionalProperties stays false like the live schema, so an unknown key such as small_model with a wrong shape fails.",
+  "$comment": "Trimmed from https://opencode.ai/config.json on 2026-11-09: the keys the opencode bootstrap writes (model, provider, providers, compaction) plus their local $defs. Top-level additionalProperties stays false like the live schema, so an unknown key such as small_model with a wrong shape fails.",
   "type": "object",
   "properties": {
     "model": {
@@ -46,10 +46,44 @@
       "additionalProperties": {
         "$ref": "#/$defs/Config.ProviderEncoded"
       }
+    },
+    "compaction": {
+      "type": "object",
+      "properties": {
+        "auto": {
+          "type": "boolean"
+        },
+        "keep": {
+          "type": "object",
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "buffer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Config.Compaction.Percent"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
   "$defs": {
+    "Config.Compaction.Percent": {
+      "type": "string",
+      "pattern": "^([1-9]\\d?(\\.\\d+)?)%$"
+    },
     "Config.Model.Capabilities": {
       "type": "object",
       "properties": {

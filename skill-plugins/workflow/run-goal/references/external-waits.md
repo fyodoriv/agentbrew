@@ -58,6 +58,16 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    the same current head and run attempt; a replaced head makes the old
    result stale. Keep original review, merge and installed-state requirements.
 
+### Local gates that end in a push
+
+A local full gate can pause for minutes or hours (a load or memory guard
+such as `heavy-run`). Never start a bare gate and plan to push "when it
+ends": the push then waits for your next turn. Start one background job
+that gates HEAD, checks HEAD did not move, then pushes and opens the PR
+only on exit 0. Stop any older gate on a stale commit first, so the
+guard's queue frees resources. Run at most two full gates at once; hold
+worktree agents beyond that. Merge stays a separate step after review.
+
 ### Host routes
 
 **Claude Code:** registered native background shell/subagent work defers goal

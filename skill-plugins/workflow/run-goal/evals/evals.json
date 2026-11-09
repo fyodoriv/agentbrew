@@ -3164,6 +3164,18 @@
         "Offline behavior is bounded (short timeout, no retry storm) before it runs on a start path",
         "Metric proven by a fresh live run and the full gate, not by unit tests alone"
       ]
+    },
+    {
+      "id": 276,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. A goal run has a fix branch ready. Its full local gate runs in the background but a memory guard (heavy-run) paused it, and a newer commit landed on the branch since the gate started. Six worktree agents also run full gates. What should the run do so delivery continues on its own?",
+      "expected_output": "It stops the gate on the stale commit, starts one background job that gates HEAD, checks HEAD did not move, and pushes and opens the PR only on exit 0, holds extra worktree gates to about two at once, and keeps merge as a separate step after review.",
+      "expectations": [
+        "Stops or discards the gate running on the stale commit",
+        "Starts one background job that chains gate, HEAD check, push and PR creation on exit 0",
+        "Does not plan to push manually after the gate ends",
+        "Limits parallel full gates to about two",
+        "Keeps merge as a separate step after review"
+      ]
     }
   ]
 }

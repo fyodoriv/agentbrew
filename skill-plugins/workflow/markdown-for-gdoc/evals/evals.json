@@ -41,7 +41,7 @@
       "expectations": [
         "Uses nested bullet lists or simple tables for diagrams instead of ASCII art or box-drawing characters",
         "Keeps all code lines ≤65 characters with 2-space indentation for readability in Google Docs",
-        "Includes <details> tags with short descriptive summaries for collapsible sections",
+        "Includes <details open> tags with short descriptive summaries for sections expanded by default",
         "Uses inline markdown links [text](url) instead of reference-style links",
         "Avoids strikethrough, markdown image syntax, and skipped heading levels (no # then ###)"
       ]

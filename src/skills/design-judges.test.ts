@@ -41,6 +41,8 @@ describe("design judges", () => {
   it("the prompt is blind and carries settled decisions", () => {
     const p = judge.prompt({ lens: "a11y", shots: "/s", decisions: "row Keep stays quiet" });
     expect(p).toMatch(/row Keep stays quiet/);
+    expect(p).toMatch(/expanded by default/i);
+    expect(p).toMatch(/real reason/i);
     expect(p).toMatch(/ISSUE: <blocker\|major\|minor>/);
     expect(p).not.toMatch(/\b(score target|previous|last round|earlier score)\b/i);
     expect(Object.keys(judge.LENSES)).toHaveLength(10);

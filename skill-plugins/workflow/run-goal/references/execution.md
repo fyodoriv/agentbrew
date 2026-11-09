@@ -7,6 +7,7 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 
 ## During execution
 
+- Print one combined goal status block only when a criterion changes state, at a milestone, or after about 30 minutes of work. Never repeat an unchanged goal check. Quiet waits print nothing until the awaited event arrives. Keep every criterion and its fresh evidence in the final report.
 - A goal with more than five requirements gets a traceability test: one
   entry per requirement, mapped to the files and tests that meet it. It fails
   when a mapped path is missing, and it is the coverage metric in the contract.

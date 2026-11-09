@@ -18,13 +18,30 @@ import { saveSharedRules, syncRules } from "./rules-sync.js";
 
 const safeguards = {
   "judged-drafts": ["target conversation", "labeled link", "Before saving", "independent judge"],
-  "functional-judge": ["every feature", "every value", "PASS", "FAIL", "review ask"],
+  "functional-judge": [
+    "every feature",
+    "every value",
+    "PASS",
+    "FAIL",
+    "review ask",
+    "expanded by default",
+    "collapsed without a real",
+  ],
   "pr-evidence-labels": ["what", "why", "Real vs mocked", "vi.mock", "Date", "captions"],
   "explain-before-showing": ["What it means", "2 to 6", "Proposed action", "no post needed", "commitments"],
   "human-review-blockers": ["running app", "never marks", "confirms in chat", "Human check"],
   "judge-operator-audience": ["Gate 1", "Gate 2", "Gate 3", "proof page", "no draft", "audience"],
   "recommended-option-first": ["recommended option first", "Recommended", "fresh-reader judge fails", "first thoughts"],
-  "chat-merge-recent-message": ["second message in a row", "24 hours", "Edit that message", "one merged message"],
+  "chat-merge-recent-message": [
+    "second message in a row",
+    "24 hours",
+    "Edit that message",
+    "one merged message",
+    "edit or delete-and-repost yourself",
+    "Never give the operator a paste block",
+    "reader already acted",
+    "post the update as a new message",
+  ],
 };
 
 afterEach(() => vi.restoreAllMocks());

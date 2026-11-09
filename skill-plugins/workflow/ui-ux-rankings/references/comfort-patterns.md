@@ -22,6 +22,7 @@ Pin it as a test in the repo's gate, on phone and desktop, light and dark:
 
 ## Layout and navigation
 
+- **Collapsible sections are expanded by default.** Use `<details open>` and expanded accordions. Collapse only for a real reason, such as a very long raw log or large data dump; open existing folds when editing another author's page unless that exception applies. Judges reject an unjustified collapsed section.
 - **Home is what needs the user.** The first view opens on a short list of one-tap answers (rate,
   "did you go?", vote, approve). Cap it at about 4 rows plus one "N more" link, so a busy month
   never buries the view. Moves: task time, Nielsen (visibility, recognition).

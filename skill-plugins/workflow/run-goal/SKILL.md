@@ -37,7 +37,7 @@ What you will see:
 1. The agent reads the repo and takes a baseline. It changes nothing yet.
 2. It prints a goal contract: done-criteria, a metric, and a pivot.
 3. It asks at most one round of questions. You can skip it.
-4. It works alone and prints a `Goal check` line per criterion.
+4. It works alone and prints a combined goal status block only for a state change, milestone, or 30-minute interval.
 5. It ends with a published Artifact report, a retro, and updates to the skills it used.
 
 Tips: name an end state, not an activity. Add "and ship it" if a PR is
@@ -59,7 +59,7 @@ Follow this order, even for a small goal:
    For a research or Q&A goal, print it as soon as the questions are known,
    before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
-4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
+4. Work, printing one combined goal status block only when a criterion changes state, at a milestone, or after about 30 minutes of work (Phase 4).
 5. Verify with fresh evidence (Phase 5), then the retro and the final
    report (Phase 6).
 
@@ -203,7 +203,7 @@ docs, memory, or a quick experiment can answer.
 
 ## Phase 4 — Execute without interruptions
 
-Work without routine check-ins. Answer a status nudge in one line, then continue actionable work in the same turn.
+Work without routine check-ins. Answer a status nudge in one line, then continue actionable work in the same turn. Print one combined goal status block only when a criterion changes state, at a milestone, or after about 30 minutes of work. Never repeat an unchanged goal check. Quiet waits print nothing until the awaited event arrives. The final report still lists every criterion with fresh evidence.
 When only an external wait remains, use the supported [quiet wait](references/external-waits.md). A printed Goal check line is not completion; verify the original goal criteria with fresh evidence.
 
 - **Clock-bound goals:** resolve the requested end time and timezone once,
@@ -211,8 +211,8 @@ When only an external wait remains, use the supported [quiet wait](references/ex
   The trigger runs wrap-up, Phase 5 and Phase 6. Verify the saved trigger and
   record its id, local time, timezone and numeric `Clock wrap-up epoch: <unix>`
   on its own line in the contract. If no scheduler exists, report that limit;
-  do not pretend a wakeup is armed. Until the deadline, print one goal-check
-  line per turn naming the trigger and time. The draft retro may say
+  do not pretend a wakeup is armed. Until the deadline, unchanged work produces no new goal check;
+  use the normal state-change, milestone, or interval cadence. The draft retro may say
   `Goal result: in progress (clock goal, wrap-up at HH:MM)`; this defers the
   retro hook only before the numeric deadline. After the trigger fires or
   the deadline passes, finish verification and the final retro; never claim
@@ -244,7 +244,7 @@ When only an external wait remains, use the supported [quiet wait](references/ex
   outside the workspace, spending money) and that the contract does not
   cover: park it. Do all the other work first. Ask about it at the end, in
   one batch.
-- After each done-criterion, print a goal check line:
+- After each done-criterion changes state, print the next combined goal status block:
   `Goal check 2/4 ✅ <criterion> — <evidence>`.
   When the criterion covers a list (tasks moved, events made), name every
   item and quote the tool's own result lines (titles, saved times, version).

@@ -19,6 +19,8 @@
 **Needed from you:** <the review or the one action, or "nothing">
 ```
 
+When `Needed from you` asks the user to check, review, or edit a target, open that target in the same response with the host's editor or browser tool. Give the closing-ask judge the exact report and its opening tool result. The judge returns FAIL for a path-only ask, an unopened target, or an unsupported "opened" claim.
+
 Use these two fields on every goal status update. Verify running and queued
 background work and agent waits before reporting them. Name what each agent
 is waiting for. Give the next check time with its time zone, a time interval,

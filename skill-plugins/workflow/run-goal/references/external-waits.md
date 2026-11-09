@@ -2,7 +2,8 @@
 
 Use this when CI or another external event is the only remaining work, or
 when the user clarifies a goal's metric. A waiting dependency is not proof
-that the goal is complete or impossible.
+that the goal is complete or impossible. Quiet waits print nothing until the
+awaited event arrives; unchanged observations get no goal status block.
 
 ## Bind the selected metric
 

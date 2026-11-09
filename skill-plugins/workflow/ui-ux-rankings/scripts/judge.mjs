@@ -38,6 +38,7 @@ export function prompt({ lens, shots, context = "", decisions = "" }) {
     context ? `Product context:\n${context}` : "",
     decisions ? `Settled decisions (the owner chose these; do not report them as issues):\n${decisions}` : "",
     `Your lens: ${what}. Report only what your lens covers.`,
+    "Collapsible sections are expanded by default. Report a section collapsed without a real reason when your lens covers it.",
     "List the issues a principal would flag in review. Severity:",
     "- blocker: broken, unusable, unreadable, or inaccessible in a screenshot; a ship-stopper.",
     "- major: clearly slows or confuses the main task, or breaks the page's own system on every screen.",

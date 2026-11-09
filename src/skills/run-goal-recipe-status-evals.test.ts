@@ -16,12 +16,12 @@ const response = (entry: SkillEval | undefined) => {
 };
 
 describe("run-goal contributed recipe and status cases", () => {
-  it("preserves the earlier cases and retains both distinct contributions", () => {
+  it("preserves earlier cases except the clock-cadence correction and retains both contributions", () => {
     expect(
       createHash("sha256")
         .update(JSON.stringify(evals.slice(0, 241)))
         .digest("hex"),
-    ).toBe("7ab8d489d56d1a6f495045620f29119486192597cfe2b9ba04336ea74624f41b");
+    ).toBe("abfd4b88ce43f9e0bd5c982eb1d6ea6701478eeab040b507e2c58e33ffda37c4");
     expect(evals.slice(241, 245)).toHaveLength(4);
     expect(recipe()?.id).toBe(242);
     expect(status()?.id).toBe(245);

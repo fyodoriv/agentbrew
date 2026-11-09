@@ -30,6 +30,8 @@ no text under 14 px, no text that spills out of its box, no raw ISO dates in app
 no sideways scroll, and a tap budget per everyday job. Then the rankings below confirm the work
 instead of finding all of it.
 
+Collapsible sections are expanded by default. Use `<details open>` and expanded accordions. Collapse only for a real reason, such as a very long raw log or large data dump. Open existing folds when editing another author's page unless that exception applies. UI, functional, and fresh-reader judges reject an unjustified collapsed section.
+
 ## 0. Serve the page with realistic, synthetic data
 
 Rankings lie on toy data. Build the page from a fixture as large as real use (a long list, a full

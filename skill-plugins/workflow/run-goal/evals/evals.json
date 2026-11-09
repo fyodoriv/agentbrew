@@ -2361,7 +2361,7 @@
       "expected_output": "Resolves timezone, verifies a supported one-shot wrap-up trigger, records its epoch in the contract and uses a draft retro only before the deadline.",
       "expectations": [
         "Does not claim met before the requested time or loop on Stop retries",
-        "Names verified trigger and time in one goal-check line per turn; reports missing scheduler honestly",
+        "Names the verified trigger and time when state changes; unchanged work produces no new goal check; reports missing scheduler honestly",
         "Runs wrap-up and final verification and retro at deadline; expired draft cannot pass as final"
       ]
     },
@@ -3258,6 +3258,28 @@
         "Opens a fresh sign-in tab right before it asks the operator",
         "Runs only one browser agent at a time in the shared CDP 9223 Chrome",
         "Re-checks that the session is live before it trusts a watcher, not the tab title"
+      ]
+    },
+    {
+      "id": 284,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. A long clock-bound goal has unchanged criteria for several turns, then enters a quiet CI wait. When does the agent print goal status?",
+      "expected_output": "It prints one combined goal status block only when a criterion changes state, at a milestone, or after about 30 minutes of work. It does not repeat an unchanged goal check, including once per turn for a clock goal. During the quiet wait it prints nothing until the awaited event arrives. Its final report still gives every criterion fresh evidence.",
+      "expectations": [
+        "Uses one combined block for a state change, milestone, or 30-minute interval",
+        "Does not repeat unchanged checks on each turn",
+        "A quiet wait prints nothing until its event",
+        "The final report retains every criterion and fresh evidence"
+      ]
+    },
+    {
+      "id": 285,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. A goal closeout says 'Needed from you: review this local HTML report' but gives only its path. The host has an editor-preview tool and a browser tab tool. What must happen?",
+      "expected_output": "Before sending the ask, the agent opens the report with the appropriate editor preview or browser tool and gives the closing-ask judge the exact report and opening tool result. The judge rejects a path-only ask, an unopened target, or an unsupported opened claim. The agent does not merely repeat the path or ask the user to find it.",
+      "expectations": [
+        "Opens the review target in the browser or editor before asking",
+        "Gives the judge the opening tool result for verification",
+        "The judge rejects an ask whose target was not opened",
+        "Does not leave the user to find and open the artifact"
       ]
     }
   ]

@@ -7,6 +7,8 @@ For UI work, check every panel and component under every value of each input,
 filter, and dropdown. Capture each state and inspect the screenshot. A control
 that changes nothing visible fails unless its specified behavior explains it.
 
+Collapsible sections are expanded by default. The functional judge returns FAIL for a section collapsed without a real reason, such as a very long raw log or large data dump.
+
 The judge returns PASS or FAIL per feature, with the screenshot or transcript
 for each result. Fix every FAIL, then judge the changed feature and any affected
 feature again at the new head. Hold the ready claim and review ask until all

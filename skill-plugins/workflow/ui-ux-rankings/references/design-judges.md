@@ -47,7 +47,7 @@ Research points the same way:
    judges reach the target, and the consensus list (issues two or more judges name). Exit 0 only
    when every judge reaches the target.
 5. **Fix.** Fix consensus issues, worst weight first. A one-judge issue is taste unless it is a
-   blocker you can see in the shot yourself. Re-shoot, then a new round.
+   blocker you can see in the shot yourself. Collapsible sections are expanded by default; reject a collapsed section without a real reason. Re-shoot, then a new round.
 
 ## When it stalls
 

@@ -118,7 +118,7 @@ Structure follows **overview → details → code**.
 
 3. **Config Design**
    - Config structure and how merging works (concise rules + table). Use plain language for headings ("How Merging Works", not "Merge Semantics").
-   - Full config example in `<details>`. No worked examples here—capture those as test cases in section 6.
+   - Full config example in `<details open>`. No worked examples here—capture those as test cases in section 6.
    - Edge case rules (brief prose, not walkthroughs).
 4. **Implementation Steps**
    - Each phase opens with a one-sentence "why" explaining what it enables.
@@ -188,7 +188,7 @@ Do NOT embed full code listings in the RFC. Instead:
 RFCs are published to Google Docs, so all content must render correctly there. Use standard markdown (no HTML except `<details>`/`<summary>`), avoid raw URLs (use `[text](url)`), keep tables simple (no merged cells), and use fenced code blocks with language tags.
 
 Additional RFC-specific rules:
-- All code blocks must be wrapped in collapsed `<details>` with a short `<summary>` line.
+- Collapsible sections are expanded by default. Wrap code blocks in `<details open>` with a short `<summary>` line. Collapse only for a real reason, such as a very long raw log or large data dump.
 - **Code line length: 65 chars max.** Use 2-space indentation in all code blocks (TypeScript, JSON, JSON Schema). Break long lines at logical boundaries (function args, object properties, conditions).
 - Code examples must be complete and runnable.
 - Infer types from usage where possible (no redundant interfaces).

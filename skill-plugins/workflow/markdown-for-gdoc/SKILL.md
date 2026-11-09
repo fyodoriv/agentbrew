@@ -68,14 +68,14 @@ Examples: [`references/diagram-alternatives.md`](references/diagram-alternatives
 
 - **Code line length: 65 chars max.** Google Docs code blocks (when pasted) don't soft-wrap. Long lines get cut off or cause horizontal scrolling.
 - Use 2-space indentation in all code blocks.
-- Keep code blocks short (under 20 lines). For longer code, use `<details>` sections or link to the source.
+- Keep code blocks short (under 20 lines). For longer code, use `<details open>` sections or link to the source.
 - Use `jsonc` language tag for JSON with comments.
 
 ## `<details>` Tags
 
 `<details>` / `<summary>` tags **do not collapse** in Google Docs. They render as flat content with the summary as a heading-like line. This is still useful — treat them as labeled collapsible sections that degrade gracefully to labeled sections.
 
-- Use `<details>` for content that's useful but not critical for a first read (long examples, full config dumps, load chain details).
+- Collapsible sections are expanded by default. Use `<details open>` for content that's useful but not critical for a first read (long examples, full config dumps, load chain details). Collapse only for a real reason, such as a very long raw log or large data dump.
 - Keep the `<summary>` text short and descriptive — it becomes a visible label in Google Docs.
 
 ## Headings

@@ -16,9 +16,11 @@ describe("fresh-reader review", () => {
     expect(rule).toMatch(/PR title, body, and proof; report; draft; dashboard; document; or final reply/);
   });
 
-  it("gives a separate fresh subagent only the artifact and checklist", () => {
+  it("gives a separate fresh subagent only the artifact, checklist, and required opening evidence", () => {
     expect(rule).toMatch(/separate fresh subagent without conversation history/);
-    expect(rule).toMatch(/only the exact finished artifact and the readability checklist/);
+    expect(rule).toMatch(
+      /only the exact finished artifact, the readability checklist below, and the opening tool result/,
+    );
     expect(rule).toMatch(/Never send the author's summary/);
   });
 

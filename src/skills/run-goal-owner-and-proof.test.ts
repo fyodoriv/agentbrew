@@ -90,7 +90,7 @@ const prefixHash = (entries: SkillEval[]) =>
   createHash("sha256")
     .update(JSON.stringify(entries.slice(0, 246)))
     .digest("hex");
-const originalPrefixHash = "094653b7aa5e5f52327d22b434913597ae0506b0e625433e26cb89ef56acd562";
+const originalPrefixHash = "fff8084b1d0a3e77f1339b9d837b1c86497a69f2913d911d07242b082d9816da";
 const structured = (id: number, label: string, field: "prompt" | "expected_output") => {
   const entry = scenario(id);
   expect(entry, `missing registered discovery case ${id}`).toBeDefined();

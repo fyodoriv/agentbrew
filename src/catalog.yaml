@@ -2012,8 +2012,12 @@ rules:
     content: |
       In a chat thread or channel, never post a second message in a row when
       your own last message there is under 24 hours old. Edit that message to
-      merge the new content, or delete it and post one merged message. This is
-      the chat twin of one comment per place on a PR.
+      merge the new content, or delete it and post one merged message. Make the
+      edit or delete-and-repost yourself. Never give the operator a paste block
+      to do it. If a reader already acted on that last message (approved it,
+      answered it, or did the ask), post the update as a new message instead.
+      An edit would hide news the reader already treated as done. This is the
+      chat twin of one comment per place on a PR.
 
   - name: functional-judge
     description: "Run every feature with an independent judge before asking for review."
@@ -2025,9 +2029,10 @@ rules:
       For UI work, open every panel and component under every value of each input,
       filter, and dropdown; capture and inspect screenshots. A control that changes
       nothing visible is a FAIL unless its stated behavior explains that result.
-      Give PASS or FAIL per feature with a screenshot or transcript. Fix every FAIL
-      and judge again. Green build checks alone do not prove functionality.
-      Follow review-pr/references/feature-readiness.md.
+      Give PASS or FAIL per feature with a screenshot or transcript. Collapsible
+      sections are expanded by default; FAIL a section collapsed without a real
+      reason. Fix every FAIL and judge again. Green build checks alone do not
+      prove functionality. Follow review-pr/references/feature-readiness.md.
 
   - name: pr-evidence-labels
     description: "Explain what a PR changes and label each real or mocked proof."

@@ -59,6 +59,8 @@ if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test(
 # A read-only skill source gets a task in a writable repo, not an edit (#273).
 if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("read-only") and test("task in a repo you can write")' >/dev/null 2>&1; then
   PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context routes read-only skill sources to a task"); fi
+if printf '%s' "$SRC_OUT" | jq -e '.hookSpecificOutput.additionalContext | test("only when a criterion changes state, at a milestone, or after about 30 minutes") and test("never repeat an unchanged goal check") and test("quiet waits print nothing")' >/dev/null 2>&1; then
+  PASS=$((PASS + 1)); else FAIL=$((FAIL + 1)); FAIL_DETAILS+=("context throttles goal checks and keeps quiet waits silent"); fi
 
 # Marker lifecycle shared with goal-contract-before-edit.
 marker_check() {

@@ -426,6 +426,12 @@ These results establish deterministic fixture integrity, schema preservation and
 
 The fresh full gate took about 15.8 minutes, within the original 15/25/40-minute gate allowance. The unexpected budget and aggregate corrections required extra review and qualification cycles. Active end-to-end time was not instrumented, so no retrospective active-time number is claimed. For future estimates, include an explicit additive-eval aggregate review and strict skill-line-budget check before full qualification. Keep the original estimates above unchanged.
 
+## Later authorized exception (#908)
+
+Issue #908 later replaces eval 206's per-turn clock-check expectation with the state-change, milestone, and interval cadence. This later behavior correction does not change the recorded #793/#795 experiment or its result. The original zero-change criterion governed that delivery; it is not a permanent ban on authorized behavior fixes.
+
+The amended integrity prefixes are `7873fd15c3b907ff70c3ccd5dd8a784e953ccf5f8e21f8f984e507bb4c6caee9` for the first 245 objects, `fff8084b1d0a3e77f1339b9d837b1c86497a69f2913d911d07242b082d9816da` for the first 246, and `abfd4b88ce43f9e0bd5c982eb1d6ea6701478eeab040b507e2c58e33ffda37c4` for the first 241. Eval 206 is the only historical object changed for this exception.
+
 ## Frozen eval appendix
 
 The objects below are prospective additions, not executed test results.

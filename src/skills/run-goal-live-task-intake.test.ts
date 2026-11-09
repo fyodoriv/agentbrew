@@ -7,7 +7,7 @@ import { validateEvals } from "./validate.js";
 
 const root = join(resolve(import.meta.dirname, "../.."), "skill-plugins/workflow/run-goal");
 const evals = JSON.parse(readFileSync(join(root, "evals/evals.json"), "utf8")).evals as SkillEval[];
-const historicalHash = "74399b8e25d08d78f26587fac484820b7932e4887d34ccc4a73f70a0303b5ffc";
+const historicalHash = "7873fd15c3b907ff70c3ccd5dd8a784e953ccf5f8e21f8f984e507bb4c6caee9";
 const prefixHash = (entries: SkillEval[]) =>
   createHash("sha256")
     .update(JSON.stringify(entries.slice(0, 245)))
@@ -39,13 +39,13 @@ const response = () => {
 };
 
 describe("run-goal fresh task intake", () => {
-  it("preserves every historical object and passes the existing schema", () => {
+  it("preserves historical objects except the documented clock correction and passes the schema", () => {
     expect(prefixHash(evals)).toBe(historicalHash);
     expect(new Set(evals.map(({ id }) => id)).size).toBe(evals.length);
     expect(validateEvals(root).filter(({ severity }) => severity === "error")).toEqual([]);
   });
 
-  it("accepts additive cases while rejecting historical mutation", () => {
+  it("accepts additive cases while rejecting undocumented historical mutation", () => {
     const addition = { id: "synthetic-later-case", prompt: "Synthetic addition" } as unknown as SkillEval;
     expect(prefixHash([...evals, addition])).toBe(historicalHash);
     const changed = structuredClone(evals);

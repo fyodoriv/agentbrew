@@ -63,9 +63,10 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
 A local full gate can pause for minutes or hours (a load or memory guard
 such as `heavy-run`). Never start a bare gate and plan to push "when it
 ends": the push then waits for your next turn. Start one background job
-that gates HEAD, checks HEAD did not move, then pushes and opens the PR
-only on exit 0. Stop any older gate on a stale commit first, so the
-guard's queue frees resources. Run at most two full gates at once; hold
+that gates HEAD, checks both HEAD and the fetched PR base did not move,
+then pushes and opens the PR only on exit 0. Stop any older gate on a stale
+commit or base first, so the guard's queue frees resources. If the base moved,
+integrate it and rerun the gate instead of publishing the old result. Run at most two full gates at once; hold
 worktree agents beyond that. Merge stays a separate step after review.
 
 ### Host routes

@@ -183,5 +183,17 @@
         "Does not duplicate a pending implementation just to clear an issue count"
       ]
     }
+    ,
+    {
+      "id": 19,
+      "prompt": "Optimize OpenCode with a command-center spec, dry run, and implementation plan. The owner rejects any platform-specific command files and insists the local default stay unchanged.",
+      "expected_output": "Records the rejection in the spec and capability map, keeps only the existing CLI highspeed default and duplicate instruction trim, and updates SYNC-STATUS and the dry-run log before implementation.",
+      "expectations": [
+        "Updates spec, capability map, and SYNC-STATUS after the owner's scope correction",
+        "Does not add platform-specific command files",
+        "Keeps the local default and uses existing CLI/config owners",
+        "Records dry-run evidence before feature work"
+      ]
+    }
   ]
 }

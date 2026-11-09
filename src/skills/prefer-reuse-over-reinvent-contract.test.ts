@@ -56,7 +56,7 @@ describe("prefer-reuse-over-reinvent skill contract", () => {
 
   it("keeps eval metadata and pressure scenarios", () => {
     expect(evals.skill_name).toBe("prefer-reuse-over-reinvent");
-    expect(evals.evals).toHaveLength(10);
+    expect(evals.evals).toHaveLength(11);
     requireTerms(expectationText(evalById(3)), ["repo-local typo", "outside the skill scope"]);
     requireTerms(expectationText(evalById(8)), ["90-day", "adapter"]);
   });

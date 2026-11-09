@@ -994,6 +994,34 @@
   - **Anchor**: agent-browser trust-boundary and auth guidance; Kimi `GET /coding/v1/usages` contract.
   - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
 
+- [ ] Propose a platform-command exclusion eval to spec-driven-development
+  - **ID**: spec-driven-development-platform-command-exclusion
+  - **Tags**: skills, specifications, third-party, opencode
+  - **Details**: `spec-driven-development` (obra/superpowers) needs an eval where the owner rejects platform-specific command files. The revised spec must remove them while retaining the measurable optimization outcome and local-default constraint.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires scope revision before planning, with no hidden command files added.
+  - **Hypothesis**: the added case prevents platform-command scope creep in 3 of 3 simulated specification trials.
+  - **Measurement**: three fresh-agent specification trials with an owner rejection; count specs that preserve the outcome without adding commands.
+  - **Success**: Every revised spec excludes command files and retains measurable acceptance criteria.
+  - **Pivot**: if upstream declines, retain the case in the owned task-command-center eval and close this proposal.
+  - **Anchor**: spec-driven-development boundary and scope-check rules; the 2026-11-09 optimization spec revision.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a measured optimization eval to writing-plans
+  - **ID**: writing-plans-measured-optimization
+  - **Tags**: skills, planning, third-party, performance
+  - **Details**: `writing-plans` (obra/superpowers) needs an eval for a measured optimization that reuses an existing highspeed CLI instead of adding commands. Require baseline evidence, owner constraints, a fact/proposal ledger, and exact verification, not a performance guarantee from one sample.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval covering baseline/after metrics, existing-tool reuse, local-default preservation, and no platform-specific commands.
+  - **Hypothesis**: the added case makes fresh plans evidence-bounded and reuse-first in 3 of 3 simulated optimization trials.
+  - **Measurement**: three fresh-plan trials with baseline latency and context snapshots; count plans with exact verification and no unsupported speedup claim.
+  - **Success**: Every plan uses existing tools, preserves constraints, and avoids new command files and guarantees.
+  - **Pivot**: if upstream declines, retain the case in the owned task-command-center eval and close this proposal.
+  - **Anchor**: writing-plans evidence and current-state requirements; the 2026-11-09 optimization baseline.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->
 

@@ -67,5 +67,17 @@
         "Records Last-fired and the next weekly date after evidence is available"
       ]
     }
+    ,
+    {
+      "id": 7,
+      "prompt": "Optimize OpenCode goal work without changing the local default or adding platform-specific commands. Deployed instructions are ~8,135 tokens and one keychain policy section is duplicated in detailed docs.",
+      "expected_output": "Measures the baseline first, condenses only duplicated policy text while retaining its detailed link, syncs through AgentBrew, and confirms the deployed total is below 8,000 without dropping rules.",
+      "expectations": [
+        "Uses `agentbrew measure context` for before/after evidence",
+        "Preserves the local default and detailed keychain policy link",
+        "Does not add platform-specific command files",
+        "Syncs and verifies the deployed result instead of editing generated text"
+      ]
+    }
   ]
 }

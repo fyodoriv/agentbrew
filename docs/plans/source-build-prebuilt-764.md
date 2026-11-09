@@ -40,8 +40,10 @@ mutable Cargo target file can substitute for the verified pair.
 
 When installed Cargo exists, resolve it through the normal PATH or ordinary
 Rustup/Homebrew locations, expose its adjacent compiler directory to its
-child, and compile fresh. An available compiler failure propagates; it never
-selects the prebuilt fallback. When Cargo is genuinely absent, verify and use
+child, and compile fresh. The original no-fallback decision for a compiler
+failure is amended only for a normal Cargo compile/link exit by
+[the #789 controls](native-build-link-fallback-789.md); all other failures
+still propagate. When Cargo is genuinely absent, verify and use
 the fixed pair without compilation. Keep existing staged CLI validation,
 checkup qualification and atomic directory exchange in both cases. The
 installer must accept that qualified capability and explain a refusal. Source
@@ -63,7 +65,7 @@ registration. Read-only source inspection is not a passing baseline.
 | C03 | Cargo found outside PATH, adjacent compiler absent from child PATH | Supply that directory; do not misclassify as absent Cargo |
 | C04 | Cargo genuinely absent, valid fixed prebuilt pair | Fresh CLI version, no false build drift, native show/record works |
 | C05 | Cold scratch source has no Cargo target output | Same successful prebuilt route; no runtime compile/download |
-| C06 | Available Cargo or compiler reports an error | Fail; no fallback and no predecessor mutation |
+| C06 | Available Cargo or compiler reports an error | Original decision amended by #789: a normal Cargo compile/link exit uses the explicitly admitted prebuilt route; every other error fails without predecessor mutation |
 | C07 | TypeScript compilation fails on the no-Cargo route | Preserve the usable predecessor byte identities |
 | C08 | Publisher or recorder bytes changed | Reject each variant before execution/publication |
 | C09 | Native source, lock, builder or recipe differs | Reject each stale receipt variant |
@@ -189,8 +191,9 @@ The installed CLI still uses the existing Rust atomic publisher.
 Private source copies, compiler targets, pending files and verified stage
 buffers belong to one build invocation. Normal success/failure removes only
 its owned private directories. A changed directory identity is retained with
-a warning. A failed compiler never selects the prebuilt route or replaces
-the installed CLI.
+a warning. Under the #789 amendment, a normal Cargo compile/link exit can
+select the verified prebuilt route through an explicit one-shot marker. No
+other failure selects it, and no failure replaces the installed CLI directly.
 
 A source archive with no root `.git` entry records `sourceRevision: null`
 for the local source-build recipe only. It still binds every source input

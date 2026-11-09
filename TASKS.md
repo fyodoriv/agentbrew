@@ -299,6 +299,20 @@
 
 ## P2
 
+- [ ] Detect duplicate Ollama servers before they split the local prompt cache
+  - **ID**: ollama-single-server-readiness
+  - **Tags**: opencode, local-ai, reliability, readiness
+  - **Mode**: AFK
+  - **Details**: On 2026-11-09 the Ollama desktop app and `com.agentbrew.ollama` competed for port 11434. The managed server repeatedly logged `address already in use`; requests alternated between separate caches and runner settings, causing fresh-session smoke times to vary from 16 seconds to a 120-second timeout. The duplicate app was stopped and three runs then passed in 48, 26, and 16 seconds. Add a supported readiness check that identifies this ownership conflict without killing a user process.
+  - **Files**: `src/mcp/opencode-bootstrap.ts`, OpenCode/Ollama readiness checks and tests, `README.md`.
+  - **Output**: code
+  - **Acceptance**: the check reports duplicate Ollama listeners or server processes and names the managed endpoint; one managed server passes; no user process is stopped automatically.
+  - **Hypothesis**: an explicit duplicate-server check makes this cache-splitting failure visible before smoke tests, reducing undiagnosed competing-server states from one observed incident to zero in the final fixture and live check.
+  - **Measurement**: run the new check with one managed server and with an isolated duplicate-server fixture, then rerun the three no-override smoke tests.
+  - **Success**: the fixture reports the conflict, the live single-server check passes, and all three smoke runs finish within 120 seconds.
+  - **Pivot**: if listener inspection cannot attribute ownership reliably, report the endpoint and process evidence without automatic remediation instead of changing ports.
+  - **Anchor**: Ollama runner and `ollama serve` logs from 2026-11-09; Basili, Caldiera and Rombach 1994 (GQM).
+
 - [ ] Remind an agent to draft a review request after adding reviewers
   - **ID**: review-ask-classifier-822
   - **Tags**: agents, hooks, communication

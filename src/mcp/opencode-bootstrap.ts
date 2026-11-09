@@ -213,10 +213,8 @@ export function computeOllamaEnv(profile: MachineProfile): Record<string, string
   // Context window: Apple Silicon can handle large contexts
   // M3 Max with 32B Q4 has ~12GB headroom for KV cache → ~32K context
   // Smaller machines get proportionally less
-  if (profile.totalMemoryGB >= 64) {
-    env.OLLAMA_NUM_CTX = "32768";
-  } else if (profile.totalMemoryGB >= 32) {
-    env.OLLAMA_NUM_CTX = "16384";
+  if (profile.totalMemoryGB >= 32) {
+    env.OLLAMA_NUM_CTX = "40960";
   } else {
     env.OLLAMA_NUM_CTX = "8192";
   }
@@ -388,9 +386,13 @@ function installOllama(): boolean {
 }
 
 /** Start Ollama service (fallback when launchd is not available). */
-function startOllamaFallback(): boolean {
+function startOllamaFallback(environment: Record<string, string>): boolean {
   console.log(chalk.dim("  Starting Ollama service..."));
-  const child = spawn("ollama", ["serve"], { stdio: "ignore", detached: true });
+  const child = spawn("ollama", ["serve"], {
+    stdio: "ignore",
+    detached: true,
+    env: { ...process.env, ...environment },
+  });
   child.unref();
   for (let i = 0; i < 10; i++) {
     if (isOllamaRunning()) return true;
@@ -413,7 +415,12 @@ function pullModel(model: string): boolean {
 }
 
 type LegacyOllamaModel = { name?: string; tools?: boolean };
-type V2OllamaModel = { name?: string; capabilities?: { tools?: boolean }; body?: Record<string, unknown> };
+type V2OllamaModel = {
+  name?: string;
+  capabilities?: { tools?: boolean };
+  body?: Record<string, unknown>;
+  limit?: { context?: number; output?: number };
+};
 type LegacyOllamaProvider = { name?: string; models?: Record<string, LegacyOllamaModel> };
 type V2OllamaProvider = {
   [key: string]: unknown;
@@ -452,12 +459,30 @@ function detectOpencodeMajor(): 1 | 2 {
  *    local model with the hosted default on every drift-repair tick.
  *  Revisit when model sync can write a provider block per agent.
  *  Exported for the source-driven config-write harness. */
-export function writeOpencodeProviderConfig(model: string): void {
+export function writeOpencodeProviderConfig(model: string, contextTokens = 40960): void {
   const configPath = expandHome(OPENCODE_CONFIG);
   mkdirSync(expandHome("~/.config/opencode"), { recursive: true });
 
   const config = readMcpJson(configPath) as Record<string, unknown>;
-  writeMcpJson(configPath, buildOpencodeProviderConfig(config, model, detectOpencodeMajor()));
+  writeMcpJson(configPath, buildOpencodeProviderConfig(config, model, detectOpencodeMajor(), contextTokens));
+}
+
+function buildV2OllamaModel(
+  model: string,
+  contextTokens: number,
+  existingModel?: V2OllamaModel,
+  legacyModel?: LegacyOllamaModel,
+): V2OllamaModel {
+  const base: V2OllamaModel = existingModel ?? {
+    name: legacyModel?.name ?? model,
+    capabilities: { tools: legacyModel?.tools ?? true },
+  };
+  const configured = { ...base, body: { ...base.body, reasoning_effort: "none" } };
+  if (!model.startsWith("qwen3:")) return configured;
+  return {
+    ...configured,
+    limit: { output: 4096, ...existingModel?.limit, context: contextTokens },
+  };
 }
 
 /** Return `existing` with the bootstrap's provider and model settings.
@@ -468,12 +493,15 @@ export function writeOpencodeProviderConfig(model: string): void {
  *  - V1 keeps `provider.ollama`. V2 replaces it with `providers.ollama` and
  *    removes `small_model`, so only the selected model handles primary and
  *    small tasks with an OpenAI-compatible `reasoning_effort` body.
+ *  - V2 uses Qwen3's real limits and disables automatic compaction so fixed
+ *    instructions do not force a summary before the first answer.
  *  - V1 drops only an old object-shaped `small_model`. Unrelated keys and
  *    unrelated provider fields are preserved. Exported for the schema test. */
 export function buildOpencodeProviderConfig(
   existing: Record<string, unknown>,
   model: string,
   runtimeMajor: 1 | 2 = 1,
+  contextTokens = 40960,
 ): Record<string, unknown> {
   const config: Record<string, unknown> = {
     ...existing,
@@ -493,14 +521,14 @@ export function buildOpencodeProviderConfig(
     const existingModel = existingV2.models?.[model];
     const legacyModel = legacy.models?.[model];
     const models: Record<string, V2OllamaModel> = {
-      [model]: existingModel
-        ? { ...existingModel, body: { ...existingModel.body, reasoning_effort: "none" } }
-        : {
-            name: legacyModel?.name ?? model,
-            capabilities: { tools: legacyModel?.tools ?? true },
-            body: { reasoning_effort: "none" },
-          },
+      [model]: buildV2OllamaModel(model, contextTokens, existingModel, legacyModel),
     };
+    if (model.startsWith("qwen3:")) {
+      config.compaction = {
+        ...(existing.compaction as Record<string, unknown> | undefined),
+        auto: false,
+      };
+    }
     delete config.small_model;
     config.providers = {
       ...(existing.providers as Record<string, unknown> | undefined),
@@ -618,7 +646,7 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
         }
       } else {
         console.log(chalk.yellow("  ⚠ Could not load launchd agent — falling back to manual start"));
-        if (!isOllamaRunning()) startOllamaFallback();
+        if (!isOllamaRunning()) startOllamaFallback(ollamaEnv);
       }
 
       // Print tuning summary
@@ -634,7 +662,7 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
     } else if (dryRun) {
       console.log(chalk.blue("  ~ Would start Ollama service"));
     } else {
-      if (startOllamaFallback()) {
+      if (startOllamaFallback(computeOllamaEnv(profile))) {
         console.log(chalk.green("  ✓ Ollama service started"));
       } else {
         console.log(chalk.yellow("  ⚠ Could not start Ollama — run `ollama serve` manually"));
@@ -656,7 +684,7 @@ export async function bootstrapOpencode(options?: { model?: string; dryRun?: boo
   if (dryRun) {
     console.log(chalk.blue(`  ~ Would write provider + model config to ${OPENCODE_CONFIG}`));
   } else {
-    writeOpencodeProviderConfig(recommendation.model);
+    writeOpencodeProviderConfig(recommendation.model, Number(computeOllamaEnv(profile).OLLAMA_NUM_CTX));
     console.log(chalk.green(`  ✓ OpenCode config written (${OPENCODE_CONFIG})`));
   }
 

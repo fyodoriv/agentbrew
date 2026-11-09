@@ -3222,6 +3222,43 @@
         "Does not re-run the same failing job more than once",
         "Parks replacing the PR as an operator decision"
       ]
+    },
+    {
+      "id": 281,
+      "prompt": "/goal research what our team and I can do for Endor readiness. The report artifact is already published. Mid-goal, the user says: 'X frontend = our team; I don't want to see backend-only parts.'",
+      "expected_output": "The agent records the narrowed scope in the contract, then updates the existing artifact rather than only adding sections. It removes backend-only rows, rewrites ownership lines to match the user's definition, and recomputes totals and budget lines after the removals. Sections that share one funded row get a combined budget line so it is not double-counted. A fresh judge reviews the revised artifact.",
+      "expectations": [
+        "Updates the contract or otherwise records the mid-goal scope change",
+        "Removes out-of-scope rows from the existing published artifact",
+        "Rewrites ownership lines to match the user's definition",
+        "Re-runs a judge on the revised artifact",
+        "Recomputes totals and budget lines after removal, including a combined line for shared funding"
+      ]
+    },
+    {
+      "id": 282,
+      "prompt": "/goal keep working until there are 0 unblocked issues/PRs in repos A, B, C, then keep watching and resolve new ones. Peer sessions keep merging PRs, and one peer says a grep of the deployed file is its deploy check.",
+      "expected_output": "The contract counts unblocked items separately from upstream waits, operator questions, and missing runners. The agent arms a recurring watch and cites its id. Every pass re-lists live issue and PR state instead of reusing an earlier count. It reviews PRs merged by peer sessions and fixes any defect with a follow-up PR. When the peer's deploy check fails by design, the agent reports that failure with the real delivery path and its proof rather than forcing the check to pass.",
+      "expectations": [
+        "Counts blocked items separately, including upstream waits, operator questions, and missing runners",
+        "Arms a recurring watch and cites its id",
+        "Re-lists live state on every watch pass",
+        "Reviews peer-merged PRs after merge and fixes defects with a follow-up PR",
+        "Reports a deploy check that fails by design with the real delivery path and proof"
+      ]
+    },
+    {
+      "id": 283,
+      "prompt": "/goal get 3 PRs green with screenshots. The browser proofs sit behind sign-ins: a test account from a test-account service, and a bot account on the company enterprise SSO. Two browser agents already share the CDP 9223 Chrome, and a sign-in watcher reports success because the tab title did not change.",
+      "expected_output": "The agent asks the operator to retrieve and enter each credential and never prints or types the password itself. It acquires the temp browser headed with TEMP_BROWSER_HEADED=1 so the operator can see it, and opens a fresh sign-in tab right before it asks. It runs only one browser agent at a time in the shared CDP 9223 Chrome, because parallel agents hijacked each other's tabs. Before it trusts the watcher, it re-checks that the session is live, because tab titles stay the same after a session expires.",
+      "expectations": [
+        "Has the operator retrieve and enter credentials without printing password values",
+        "Never types the username or password itself",
+        "Acquires the temp browser headed with TEMP_BROWSER_HEADED=1",
+        "Opens a fresh sign-in tab right before it asks the operator",
+        "Runs only one browser agent at a time in the shared CDP 9223 Chrome",
+        "Re-checks that the session is live before it trusts a watcher, not the tab title"
+      ]
     }
   ]
 }

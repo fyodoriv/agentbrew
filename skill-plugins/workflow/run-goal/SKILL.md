@@ -280,12 +280,7 @@ exist. Run the repo's own gate and required PR-body validators locally;
 require exit 0 and name the environment.
 Do not poll a host that does not run checks or add CI without a request.
 With no workflows and no checks, the same local-gate rule applies. Missing
-checks on this PR alone do not prove CI is absent.
-When hosted checks exist, they are the gate: wait for every check, and never
-merge on a pending or red one. A test that fails only on the clean runner
-has a hidden need (a tool, a shell, a config file). Read the job log
-(`gh api repos/<o>/<r>/actions/jobs/<id>/logs` works while the run goes on),
-then reproduce it locally with `env -i` and a minimal `PATH` before a fix.
+checks on this PR alone do not prove CI is absent. Hosted checks that exist are the gate; never merge on a pending or red one: [§ Hosted checks](references/execution.md#hosted-checks).
 
 Read the gate's own exit status, never a wrapper's line or a pipe's, and gate a
 count check on exactly 0: the exact command lines are in

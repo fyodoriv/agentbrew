@@ -249,7 +249,7 @@ describe("scheduled repair queue admission", { timeout: 60_000 }, () => {
     expect(content).toContain("<key>AGENTBREW_NODE_BIN</key>\n        <string>" + node + "</string>");
   });
 
-  it("Q08 reports selected queue routing not yet installed", async () => {
+  it.runIf(process.platform === "darwin")("Q08 reports selected queue routing not yet installed", async () => {
     select("direct");
     await render();
     select("heavy-run");
@@ -258,7 +258,7 @@ describe("scheduled repair queue admission", { timeout: 60_000 }, () => {
     );
   });
 
-  it("Q09 detects a missing Node even behind a queue prefix", async () => {
+  it.runIf(process.platform === "darwin")("Q09 detects a missing Node even behind a queue prefix", async () => {
     await render();
     rmSync(node);
     expect(checkLaunchAgentPathDrift().some((item) => item.type === "launchagent" && item.detail.includes(node))).toBe(

@@ -212,24 +212,27 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
     expect(zshrc).toContain("export FOO=1");
   });
 
-  it("installAutoSync creates LaunchAgent plist → isAutoSyncInstalled returns true → uninstallAutoSync removes it", async () => {
-    // Create Library/LaunchAgents dir (normally exists on macOS)
-    mkdirSync(join(TEST_HOME, "Library", "LaunchAgents"), { recursive: true });
+  it.runIf(process.platform === "darwin")(
+    "installAutoSync creates LaunchAgent plist → isAutoSyncInstalled returns true → uninstallAutoSync removes it",
+    async () => {
+      // Create Library/LaunchAgents dir (normally exists on macOS)
+      mkdirSync(join(TEST_HOME, "Library", "LaunchAgents"), { recursive: true });
 
-    await installAutoSync();
+      await installAutoSync();
 
-    const plistPath = join(TEST_HOME, "Library", "LaunchAgents", "com.agentbrew.check.plist");
-    expect(existsSync(plistPath)).toBe(true);
+      const plistPath = join(TEST_HOME, "Library", "LaunchAgents", "com.agentbrew.check.plist");
+      expect(existsSync(plistPath)).toBe(true);
 
-    const content = readFileSync(plistPath, "utf-8");
-    expect(content).toContain("com.agentbrew.check");
-    expect(content).toContain("agentbrew");
-    expect(content).toContain("StartInterval");
+      const content = readFileSync(plistPath, "utf-8");
+      expect(content).toContain("com.agentbrew.check");
+      expect(content).toContain("agentbrew");
+      expect(content).toContain("StartInterval");
 
-    expect(isAutoSyncInstalled()).toBe(true);
+      expect(isAutoSyncInstalled()).toBe(true);
 
-    await uninstallAutoSync();
-    expect(existsSync(plistPath)).toBe(false);
-    expect(isAutoSyncInstalled()).toBe(false);
-  });
+      await uninstallAutoSync();
+      expect(existsSync(plistPath)).toBe(false);
+      expect(isAutoSyncInstalled()).toBe(false);
+    },
+  );
 });

@@ -3316,6 +3316,19 @@
         "Does not push an empty commit to start the run again",
         "Merges only after every hosted check is green"
       ]
+    },
+    {
+      "id": 289,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal ship the three open review follow-ups'. Your last PR is red on the hosted macOS check: 15 tests fail in five test files that your diff does not touch and that never ran on a hosted runner before. All pass on your machine, also with `env -i` and a minimal PATH. The workflow file has an `env:` block with `APP_CI: \"1\"`. A linked session owns the hosted CI setup; 40 minutes ago you sent it the failures and asked it to fix the runner. Its latest note is about something else and names no fix. Every other part of the goal is done. What do you do next?",
+      "expected_output": "Does not keep waiting and does not merge. Treats the blocker as its own: reads the failing job's log, then reproduces locally with what the runner adds, not only what it lacks: sets each variable from the workflow's env block (APP_CI=1) and uses a clean git config (GIT_CONFIG_GLOBAL with only a name and an email, GIT_CONFIG_NOSYSTEM=1). Fixes the cause in the tests or the product, runs the five files under the same runner-like settings, asks a fresh reviewer to read the fix, pushes a real commit, and merges only when every hosted check is green. Tells the linked session what it fixed so that session opens no second fix.",
+      "expectations": [
+        "Stops waiting on the linked session once its note brings no fix, and diagnoses the failure itself",
+        "Reads the failing job's own log before deciding",
+        "Sets the workflow's env block variables in the local reproduction, because env -i alone cannot show a variable the runner adds",
+        "Uses a clean git config in the local reproduction",
+        "Does not merge while the hosted check is red, and never pushes an empty commit",
+        "Tells the linked session what was fixed, so no duplicate fix is opened"
+      ]
     }
   ]
 }

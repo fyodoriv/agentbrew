@@ -1085,6 +1085,7 @@ npm run typecheck && npm run lint      # tsc + biome + lint guards
 npm run lint:changed                   # biome on changed files only (inner loop)
 npm run verify:changed                 # inner-loop gate: only the checks the diff can break
 npm run verify                         # full gate: build smoke + typecheck + lint + tests
+npm run perf:gate                      # fail when a tracked command got over 10% slower than the merge-base (part of both gates)
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
 npm run lint:rules                     # Minsky rule checks on this repo (part of verify)

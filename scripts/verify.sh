@@ -178,6 +178,7 @@ default_plan() {
   cat <<'PLAN'
 lockfile-sync bash scripts/check-lockfile-sync.sh
 build-pipeline bash scripts/build-pipeline-guard.sh --full
+perf-gate node scripts/perf-gate.mjs
 typecheck npx tsc --noEmit
 biome npx biome check src scripts real-e2e --error-on-warnings
 lint-security bash scripts/lint-security.sh

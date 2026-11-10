@@ -93,6 +93,57 @@ drift=1 status=failed
 The fixes live in `DRIFT_FIXES` in `src/drift-fixes.ts`. Its type is a record
 over every `DriftItem` type, so a new drift type without a fix fails `tsc`.
 
+## Performance gate
+
+`npm run perf:gate` (also a step of `npm run verify` and
+`npm run verify:changed`) stops a PR that makes a tracked command slower.
+`scripts/perf-gate.mjs` times each command in `scripts/perf-budget.tsv` in two
+trees in the same run: your working tree and a checkout of the merge-base with
+the default branch. It needs no stored baseline, so it works the same on every
+machine.
+
+- **Tracked commands**: `agentbrew --version`, `--help`, and `actions --json`
+  from `dist/cli.js`, and the hook checks that run on agent Bash calls. Each
+  hook gets a `git status` PreToolUse payload on stdin.
+- **Fails when** the fastest run in your tree is more than 10% and more than
+  3 ms slower than the fastest run at the base, or above the command's ceiling
+  in the budget file.
+- **How it times**: 2 warmups, then 15 runs per tree, base and head in turn,
+  with a small fixed environment (`AGENTBREW_EVENTS=0`, `DO_NOT_TRACK=1`) and
+  a scratch HOME. It compares the minimums. A command that looks slower is
+  timed again, up to two more rounds.
+- **Skips** when the diff touches no runtime path (the `PERF_GATE_PATH` lines
+  of the base and head budget files; test files never count):
+  `perf gate: skipped (no runtime change)`. `npm run perf:gate -- --force`
+  times anyway.
+- **Builds**: the CLI rows need `dist/`. The gate builds the base checkout
+  once per commit (`PERF_GATE_BUILD`), and rebuilds your tree when
+  `dist/build-info.json` is older than a build input. A warm run takes under
+  30 s.
+- **Queue**: timing runs through `heavy-run --exclusive` when it is on PATH.
+  Inside a heavy-run slot (`heavy-run npm run verify`) it runs directly.
+- **On a failure**: make the command faster. If the cost is intended, raise
+  the ceiling and give the reason in the PR. A step above 10% in one PR also
+  needs a `PERF_GATE_ALLOW=<name>:<reason>` line in the budget file; the next
+  PR removes it.
+- **New hot-path command**: add its row to the budget file in the same PR.
+  A command whose file does not exist at the base commit gets the ceiling
+  check only. A row cannot leave the file without an allow line.
+- **No silent pass (exit 2)**: no base commit (run `git fetch origin`, or set
+  `PERF_GATE_BASE=<ref>`; `PERF_GATE_NO_BASE=1` checks the ceilings only), a
+  base checkout at another commit, a failed base build, a command that fails
+  at the base, a budget file with no command or no runtime path, or an allow
+  line that names no command.
+- **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
+  `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
+  and `verdict`.
+- **Base checkouts**: detached worktrees under
+  `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock; the
+  newest two are kept. The gate removes only its own worktrees.
+- **Field numbers**: the gate measures one machine before a merge. Numbers
+  from real installs will be on the performance dashboard (link: to be added
+  with the telemetry timing events).
+
 ## Weekly metrics share (opt-in)
 
 The only data that can leave the machine. It is off by default, and it

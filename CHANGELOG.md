@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `npm run perf:gate` fails a PR that makes a tracked command more than 10%
+  slower than the merge-base, or slower than its ceiling in
+  `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,
+  `actions --json`, and the hook checks that run on agent Bash calls, in both
+  trees in the same run. `npm run verify` and `npm run verify:changed` run it.
 - `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
 - The wrap-up skill's `open-work.sh` tags a branch whose added lines are
   already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as

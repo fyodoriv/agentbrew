@@ -424,7 +424,7 @@
   - **ID**: rust-hook-chain-timing
   - **Tags**: migration, rust, performance
   - **Mode**: AFK
-  - **Details**: Step 1 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. The validation review measured about 8 hooks per Bash call, each 125-483 ms, but no command prints the time of the whole chain. Add a `hook-bash-chain` row to `scripts/perf-budget.tsv` that runs every PreToolUse Bash check for one `git status` payload. Add a sampled, content-free field event for the same chain (`ms`, hook count, `runtime`) that passes `sanitizeEvent`. Prove an A/A run of the gate (base and head at the same commit). No check logic changes.
+  - **Details**: Step 1 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. The validation review measured about 8 hooks per Bash call, each 125-483 ms, but no command prints the time of the whole chain. Add a `hook-bash-chain` row to `scripts/perf-budget.tsv` that runs every PreToolUse Bash check for one `git status` payload. Add a sampled, content-free field event for the same chain (`duration_ms`, hook count, `runtime`) that passes `sanitizeEvent`; the local log line keeps `ms`. Prove an A/A run of the gate (base and head at the same commit). No check logic changes.
   - **Output**: code
   - **Acceptance**: The gate prints `hook-bash-chain` with `base_min`, `head_min` and `ratio`. An A/A run passes 20 of 20 times. The event carries no command text, path or argument. Docs: `docs/observability.md` and `docs/hook-protocol.md`.
   - **Hypothesis**: A whole-chain row moves the hook cost of one agent Bash call from unmeasured to one number, with 0 false alarms in 20 A/A runs, so the dispatcher slice can register an absolute prediction.
@@ -437,27 +437,27 @@
   - **ID**: rust-hook-dispatcher
   - **Tags**: migration, rust, performance
   - **Mode**: AFK
-  - **Details**: Step 2 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Each agent Bash call starts about 8 hook processes. Run the PreToolUse Bash checks through one dispatcher that reads the payload once. Weigh a single shell dispatcher first; build the Rust one only when the shell one misses the number. Deliver a Rust binary through the existing [prebuilt native path](docs/plans/source-build-prebuilt-764.md). Keep each check's verdict, exit code, bypass variable and opt-in state. Commit the absolute `hook-bash-chain` baseline from step 1 before any dispatcher code.
+  - **Details**: Step 2 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Each agent Bash call starts about 8 hook processes. Run the PreToolUse Bash checks through one dispatcher that reads the payload once. Weigh a single shell dispatcher first; build the Rust one only when the shell one misses the number. Deliver a Rust binary through the existing [prebuilt native path](docs/plans/source-build-prebuilt-764.md). Keep each check's verdict, exit code, bypass variable and opt-in state. Commit the absolute `hook-bash-chain` baseline from step 1 before any dispatcher code. The PR must not change the row's command path: the row keeps calling the same entry file, or the gate prints `ratio` `null`. If the PR adds Rust code, it also adds the cargo step to `scripts/verify.sh`, and that step must run only when `rust/` changed.
   - **Output**: code
   - **Blocked by**: rust-hook-chain-timing
   - **Acceptance**: Gate G in the plan. `bash scripts/run-hook-fixtures.sh` passes with 0 changed verdicts. Hostile heredocs, substitutions, bad JSON, absent tools and timeouts keep their deny or unknown result. The old per-check path stays until rollback is proven.
   - **Hypothesis**: One dispatcher that parses the payload once cuts the `hook-bash-chain` time by at least 50% against the merge-base, with 100% verdict parity and 0 new false permits.
-  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` `ratio`) and `bash scripts/run-hook-fixtures.sh`.
-  - **Success**: `ratio` at most 0.50; hook fixtures 100% green; peak RSS median ratio at most 1.10; within 14 days the field p50 of the chain event for `runtime` `rust` is at most half of `shell`.
-  - **Pivot**: `ratio` above 0.80 -> abandon the dispatcher and keep per-check scripts. Any new false permit -> stop and change the parser boundary, never an allow rule.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` `ratio`) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: `ratio` at most 0.50; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05; within 14 days the p50 of the chain event for the version after the switch is at most half of the version before it, on the owner's dashboard or by the plan's local-log fallback command.
+  - **Pivot**: `ratio` above 0.80 -> abandon the dispatcher, keep per-check scripts, and add the slice as a recorded exception row in the plan with its measured number. Any new false permit -> stop and change the parser boundary, never an allow rule.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 - [ ] Run the remaining hook families without an interpreter start per call
   - **ID**: rust-hooks-and-generated-helpers
   - **Tags**: migration, rust, performance
   - **Mode**: AFK
-  - **Details**: Step 3 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. After the Bash dispatcher, the other hook families (Write and Edit checks, Stop and session hooks, `perf-record`, generated helper scripts) still start `jq`, Perl or Python per call. Move one family per PR into the dispatcher. Each family first adds its `hook-*` row to `scripts/perf-budget.tsv`, then registers its number. Keep protocol, opt-ins, safe unknown handling and ownership-aware deployment. Keep only necessary shell shims.
+  - **Details**: Step 3 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. After the Bash dispatcher, the other hook families (Write and Edit checks, Stop and session hooks, `perf-record`, generated helper scripts) still start `jq`, Perl or Python per call. Move one family per PR into the dispatcher. Each family first adds its `hook-*` row to `scripts/perf-budget.tsv` in its own PR, so the row exists at the base, then registers its number. A port PR must not change the row's command path, or the gate prints `ratio` `null`. Keep protocol, opt-ins, safe unknown handling and ownership-aware deployment. Keep only necessary shell shims.
   - **Output**: code
   - **Blocked by**: rust-hook-dispatcher
   - **Acceptance**: Gate G in the plan for each family. Permitted and denied controls keep their verdicts. Each family has a budget row before its port and a rollback receipt after it.
   - **Hypothesis**: Moving a hook family into the dispatcher cuts its `hook-*` row by at least 30% against the merge-base, with 100% verdict parity and 0 new false permits or injection paths.
-  - **Measurement**: `npm run --silent perf:gate -- --force --json` (each ported `hook-*` row) and `bash scripts/run-hook-fixtures.sh`.
-  - **Success**: Each ported row has `ratio` at most 0.70; hook fixtures 100% green; peak RSS median ratio at most 1.10.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (each ported `hook-*` row) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: Each ported row has `ratio` at most 0.70; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05.
   - **Pivot**: A family with `ratio` above 0.90 stays in shell and becomes a recorded exception in the plan. Any deny, unknown or injection regression -> stop and change the parser boundary.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
@@ -465,11 +465,11 @@
   - **ID**: rust-cold-path-profile
   - **Tags**: migration, rust, performance, measurement
   - **Mode**: AFK
-  - **Details**: Step 4 of the [Rust migration](docs/plans/rust-migration.md). The validation review did not profile sync, catalog, MCP lifecycle or doctor probes. They are recorded exceptions until a profile shows owned code is the cost. Profile each command on synthetic fixtures in a scratch HOME. Split wall time into owned interpreter code, git, network and child tools. Put the result next to the command's field p50. Write the table into the plan. Port nothing.
+  - **Details**: Step 4 of the [Rust migration](docs/plans/rust-migration.md). The validation review did not profile sync, catalog, MCP lifecycle or doctor probes. They are recorded exceptions until a profile shows owned code is the cost. Profile each command on synthetic fixtures in a scratch HOME. Split wall time into owned interpreter code, git, network and child tools. Put the result next to the event's local p50. Write the table into the plan. Port nothing.
   - **Output**: measurement
-  - **Acceptance**: The plan has one row per profiled command: field p50, share of wall time in owned code, and the decision (stays an exception, or reopens with a number). Every reopened slice gets its own task block with the five pre-registration fields.
+  - **Acceptance**: The plan has one row per profiled command: local p50, share of wall time in owned code, and the decision (stays an exception, or reopens with a number). Every reopened slice gets its own task block with the five pre-registration fields.
   - **Hypothesis**: Owned interpreter code is under 50% of wall time in at least 80% of the profiled families, so those stay recorded exceptions and no port starts on a guess.
-  - **Measurement**: `jq -s '[.[] | select(.command == "sync") | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl` per command for the field p50, and `node --cpu-prof dist/cli.js <command>` on the registered fixture for the share.
+  - **Measurement**: `jq -s '[.[] | select(.event == "sync") | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl` per event name for the local p50 (it printed 1201 on 2026-11-10; it prints `null` for an event with no logged line), and `node --cpu-prof dist/cli.js <command>` on the registered fixture for the share.
   - **Success**: 100% of the listed command families have a profile row and a decision in the plan.
   - **Pivot**: If the profiler cannot separate child-tool time from owned time in 2 or more families -> switch to wall-clock spans around child calls and drop the CPU profile.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
@@ -478,23 +478,36 @@
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Step 5 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Create a reviewed component manifest and a small Rust validator (`migration-check inventory --check`). No full harness. Each owned executable gets one state: `ported`, `exception` (with its row in the plan) or `frozen`. List the grandfathered crates under `rust/`. Embedded programs, extensionless entrypoints and generated executables must not escape. This step is exempt by name from the "without its former interpreter" clause of gate G. Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is preserved in [draft PR #767](https://github.com/fyodoriv/agentbrew/pull/767) at checkpoint `6e32d628`; it remains unmerged. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md).
+  - **Details**: Step 5 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Create a reviewed component manifest and a small Rust validator (`migration-check inventory --check`). No full harness. Each owned executable gets one of five states: `ported`, `exception` (with its row in the plan), `frozen`, `grandfathered` (the crates under `rust/` that shipped before gate G) or `out-of-scope` (UI presentation and shell that must stay shell). Embedded programs, extensionless entrypoints and generated executables must not escape. This step is exempt by name from the "without its former interpreter" clause of gate G. Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is preserved in [draft PR #767](https://github.com/fyodoriv/agentbrew/pull/767) at checkpoint `6e32d628`; it remains unmerged. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md).
   - **Output**: code
-  - **Acceptance**: Each executable component has an owner, a caller boundary and one of the three states. Planted omissions fail the validator. `rust/Cargo.toml` and the `migration-check` binary exist after this merges. No production replacement occurs in this task.
+  - **Acceptance**: Each executable component has an owner, a caller boundary and one of the five states. Planted omissions fail the validator. `rust/Cargo.toml` and the `migration-check` binary exist after this merges. No production replacement occurs in this task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
   - **Measurement**: `heavy-run cargo build --locked --release --manifest-path rust/Cargo.toml --bin migration-check && heavy-run rust/target/release/migration-check inventory --check` — runnable after this task merges, not before.
   - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected; cold build at most 120 s.
   - **Pivot**: Any missed embedded or extensionless component -> abandon suffix-only discovery and use content/caller analysis. Missing evidence is not passing.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Prove every owned executable is ported, a recorded exception or frozen
+- [ ] Rule on the default choices in the Rust re-plan
+  - **ID**: rust-owner-rules-on-replan-defaults
+  - **Tags**: migration, rust, decision
+  - **Mode**: HITL
+  - **Details**: The 2026-11-09 validation review said the final audit needs an owner decision. The re-plan shipped without a question round, so the [Decisions (2026-11-10)](docs/plans/rust-migration.md#decisions-2026-11-10) table holds defaults adopted on the reviewer's recommendation. The owner did not decide them. The owner reads the seven rows and writes "kept" or the changed choice beside each, in this plan and in the dotfiles plan. The two rows that most need a ruling: the five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`), and existing Rust code as `grandfathered`. Porting stays paused until the owner starts it; this ruling does not start it.
+  - **Output**: docs
+  - **Acceptance**: Each row of the Decisions table in both plans carries the owner's ruling and its date. A reversed default updates the matching plan step and task in the same PR.
+  - **Hypothesis**: One owner pass over the table moves the count of default choices with no owner ruling from 7 to 0 in both plans, so the final audit rests on a decision and not on a default.
+  - **Measurement**: `rg -c 'Owner ruling' docs/plans/rust-migration.md` in each repository after the ruling lands: one match per row of the table.
+  - **Success**: 7 rulings in each plan; 0 rows without one.
+  - **Pivot**: If the owner reverses the audit states (more than 2 of the five rejected), stop the audit task and re-plan the audit; do not patch the states one by one.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
+
+- [ ] Prove every owned executable has one of the five audit states
   - **ID**: rust-final-audit
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. Recorded exceptions and frozen support are named audit states, adopted by default on 2026-11-10; the owner can reverse that. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
+  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. The five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`) are a default adopted on 2026-11-10; the owner rules on them in `rust-owner-rules-on-replan-defaults`. A slice that ended at its Pivot counts as `exception`. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
   - **Output**: measurement
-  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory
-  - **Acceptance**: Every owned component in the manifest is `ported` with receipts, `exception` with a plan row, or `frozen`. Every ported slice still meets its number on the current tree. Installed artifacts agree with receipts.
+  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory, rust-owner-rules-on-replan-defaults
+  - **Acceptance**: Every owned component in the manifest has one of the five states; `ported` has receipts and `exception` has a plan row. Every ported slice still meets its number on the current tree. Installed artifacts agree with receipts.
   - **Hypothesis**: Reconciling the manifest with the tree exposes every gap: 0 unrecorded owned components, and 100% of ported slices still at or under their registered `ratio`.
   - **Measurement**: `heavy-run rust/target/release/migration-check inventory --check` (runnable after `rust-source-inventory` merges) and `npm run --silent perf:gate -- --force --json`.
   - **Success**: 0 unrecorded components; 100% of ported rows pass the gate; 0 safety or behavior regressions in `heavy-run npm run verify`.

@@ -57,7 +57,7 @@ PERF_GATE_BUILD_INPUT=rust/
 
 # Allow section: one line per intended slowdown above 10% in this PR.
 #   PERF_GATE_ALLOW=<name>:<reason>
-# The ceiling still applies. The next PR removes the line: the gate fails on
-# an allow line that the base already has.
+# The ceiling still applies. The next PR removes the line: the gate stops on
+# an allow line that the base has unchanged (same name and same reason).
 # A PR that changes scripts/perf-gate.mjs needs PERF_GATE_ALLOW=perf-gate:<reason>.
 PERF_GATE_ALLOW=perf-gate:slower now also needs the paired runs to agree, to stop false alarms under load

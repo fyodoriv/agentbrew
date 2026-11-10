@@ -62,6 +62,12 @@
 // - A PR that changes this script needs PERF_GATE_ALLOW=perf-gate:<reason> in
 //   the budget file: the changed script judges its own PR, so a reviewer must
 //   see that.
+// - An allow line counts when the base budget file does not have the same
+//   line (same name and same reason). A line that the base has unchanged is
+//   stale: the gate stops before any timing and names the line to remove.
+// - Cache cleanup never follows a symlink (it unlinks it) and removes a
+//   folder only when the gate's own marker (<commit>.ready, or
+//   <commit>.building of a build that did not end) says the gate made it.
 // - This tree is rebuilt first when its build output is older than a build
 //   input, so the gate never times a stale dist/.
 // - Every run gets a small fixed environment (PATH, a scratch HOME, TMPDIR,
@@ -78,6 +84,7 @@ import {
   appendFileSync,
   closeSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
@@ -86,6 +93,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  unlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -324,13 +332,27 @@ function withLock(cache, fn) {
   }
 }
 
-/** Remove one of the gate's own checkouts. It refuses any other path. */
+const isSymlink = (path) => lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() ?? false;
+
+/**
+ * Remove one of the gate's own checkouts. Never run a repo-wide `git worktree
+ * prune`: that would also drop a stale worktree of the user. A symlink is
+ * unlinked, never followed. A folder is removed only when a marker of the
+ * gate (<commit>.ready or <commit>.building) says the gate made it. Returns
+ * false when it left the path alone.
+ */
 function removeCheckout(root, cache, sha) {
   if (!cache || !SHA.test(sha)) fail(`perf gate: refusing to remove ${join(cache, sha)}`);
   const dir = join(cache, sha);
-  rmSync(`${dir}.ready`, { force: true });
-  git(root, "worktree", "remove", "--force", dir);
-  rmSync(dir, { recursive: true, force: true });
+  const markers = [`${dir}.ready`, `${dir}.building`];
+  if (isSymlink(dir)) unlinkSync(dir);
+  else if (existsSync(dir)) {
+    if (!markers.some((marker) => existsSync(marker))) return false;
+    git(root, "worktree", "remove", "--force", dir);
+    rmSync(dir, { recursive: true, force: true });
+  }
+  for (const marker of markers) rmSync(marker, { force: true });
+  return true;
 }
 
 /** Keep this checkout, the newest other one, and any that a gate used in the last hour. */
@@ -341,13 +363,25 @@ function pruneCheckouts(root, cache, current) {
     .map((name) => ({ name, ready: statSync(join(cache, `${name}.ready`), { throwIfNoEntry: false })?.mtimeMs ?? 0 }))
     .sort((a, b) => b.ready - a.ready);
   for (const [index, other] of others.entries()) {
-    if (other.ready === 0 || (index > 0 && other.ready < recent)) removeCheckout(root, cache, other.name);
+    if (other.ready !== 0 && (index === 0 || other.ready >= recent)) continue;
+    if (!removeCheckout(root, cache, other.name)) {
+      const path = join(cache, other.name);
+      console.error(
+        `perf gate: left ${path} alone: the gate did not make it (no ${path}.ready). Remove it by hand if it is old.`,
+      );
+    }
   }
 }
 
 function createCheckout(root, cache, sha, budget) {
   const dir = join(cache, sha);
-  removeCheckout(root, cache, sha);
+  if (!removeCheckout(root, cache, sha)) {
+    fail(
+      `perf gate: ${dir} is in the way, and the gate did not make it (no ${dir}.ready). Move it away and run again.`,
+    );
+  }
+  // The marker says "the gate made this folder" from the first moment, so a killed build can be cleaned up.
+  writeFileSync(`${dir}.building`, "");
   // --force: a checkout that was deleted by hand is still registered.
   const added = git(
     root,
@@ -365,6 +399,7 @@ function createCheckout(root, cache, sha, budget) {
   const problem = buildTree(dir, budget, root);
   if (problem) fail(`perf gate: cannot build the base commit, so there is nothing to compare with: ${problem}`);
   writeFileSync(`${dir}.ready`, "");
+  rmSync(`${dir}.building`, { force: true });
 }
 
 /** Returns the built base tree. Its HEAD must be the base commit. */
@@ -373,7 +408,7 @@ function ensureBase(root, sha, budget) {
   const dir = join(cache, sha);
   mkdirSync(cache, { recursive: true });
   withLock(cache, () => {
-    if (!existsSync(`${dir}.ready`)) createCheckout(root, cache, sha, budget);
+    if (isSymlink(dir) || !existsSync(`${dir}.ready`)) createCheckout(root, cache, sha, budget);
     const now = new Date();
     utimesSync(`${dir}.ready`, now, now);
     pruneCheckouts(root, cache, sha);
@@ -386,6 +421,12 @@ function ensureBase(root, sha, budget) {
   }
   return dir;
 }
+
+/**
+ * An allow line counts for this PR when the base does not have the same line
+ * (same name, same reason). A line that the base has unchanged is stale.
+ */
+const freshAllow = (name, allow, baseAllow) => name in allow && baseAllow[name] !== allow[name];
 
 // ── Timing (runs in a child process, inside the heavy-run slot) ───────
 const slower = (base, head) => head > base * RATIO && head - base > FLOOR_MS;
@@ -471,7 +512,7 @@ function judgeSpeed(command, state, plan, row) {
   const paired =
     row.paired_delta_ms === null ? "" : `${row.paired_delta_ms >= 0 ? "+" : ""}${row.paired_delta_ms.toFixed(1)} ms`;
   if (looksSlower(state)) {
-    const allowed = command.name in plan.allow && !(command.name in plan.baseAllow);
+    const allowed = freshAllow(command.name, plan.allow, plan.baseAllow);
     row.verdict = allowed ? "allowed" : "slower";
     if (!allowed) {
       problems.push(
@@ -660,11 +701,29 @@ function headBudget(root) {
 function checkSelfChange(root, sha, head, base) {
   if (!sha || !git(root, "cat-file", "-e", `${sha}:${SELF}`).ok) return;
   if (git(root, "diff", "--no-renames", "--quiet", sha, "--", SELF).ok) return;
-  if (SELF_ALLOW in head.allow && !(SELF_ALLOW in base.allow)) return;
+  if (freshAllow(SELF_ALLOW, head.allow, base.allow)) return;
+  const same =
+    SELF_ALLOW in head.allow ? "\nThe line there now is the same as in the base: write this PR's own reason." : "";
   fail(
     `perf gate: ${SELF} differs from the base, and it judges its own PR.\n` +
-      `Add PERF_GATE_ALLOW=${SELF_ALLOW}:<reason> to ${BUDGET} so the review sees it; the next PR removes the line.`,
+      `Add PERF_GATE_ALLOW=${SELF_ALLOW}:<reason> to ${BUDGET} so the review sees it.${same}`,
   );
+}
+
+/**
+ * A stale allow line stops the gate before any timing. Returns true when it
+ * printed one. The fix is to remove the line, not to make a command faster.
+ */
+function staleAllowLines(head, base) {
+  const stale = Object.keys(head.allow)
+    .sort()
+    .filter((name) => !freshAllow(name, head.allow, base.allow));
+  if (stale.length === 0) return false;
+  console.error("perf gate: an allow line covers one PR, and the base budget file already has this one.");
+  for (const name of stale)
+    console.error(`remove this line from ${BUDGET}: PERF_GATE_ALLOW=${name}:${head.allow[name]}`);
+  console.error("(If this PR needs the allow again, write the line with this PR's own reason.)");
+  return true;
 }
 
 /** Problems that the two budget files show without any timing. */
@@ -676,15 +735,9 @@ function budgetProblems(head, base) {
     if (name !== SELF_ALLOW && !headNames.has(name) && !baseNames.has(name)) {
       fail(`perf gate: PERF_GATE_ALLOW=${name} names no command of the budget file`);
     }
-    // An allow line is for one PR. One that the base already has is stale.
-    if (name in base.allow) {
-      problems.push(
-        `PERF_GATE_ALLOW=${name} is already in the base budget file: remove the line (it covers one PR only)`,
-      );
-    }
   }
   for (const name of [...baseNames].sort()) {
-    if (!headNames.has(name) && !(name in head.allow)) {
+    if (!headNames.has(name) && !freshAllow(name, head.allow, base.allow)) {
       problems.push(
         `${name} is in the base budget file but not in this one: put the row back, or add PERF_GATE_ALLOW=${name}:<reason>`,
       );
@@ -704,6 +757,7 @@ function main(options) {
   const atBase = baseBudget(root, sha);
   const problems = budgetProblems(budget, atBase);
   checkSelfChange(root, sha, budget, atBase);
+  if (staleAllowLines(budget, atBase)) return 1;
 
   // With no base commit (PERF_GATE_NO_BASE=1) the diff is unknown, so the gate runs.
   const paths = [...new Set([...budget.paths, ...atBase.paths])];

@@ -247,7 +247,10 @@ machine.
 - **On a failure**: make the command faster. If the cost is intended, raise
   the ceiling and give the reason in the PR. A step above 10% in one PR also
   needs a `PERF_GATE_ALLOW=<name>:<reason>` line in the budget file; the next
-  PR removes it.
+  PR removes it. An allow line counts when the base budget file does not have
+  the same line (same name and same reason). A line that the base has
+  unchanged is stale: the gate stops before any timing and prints
+  `remove this line from scripts/perf-budget.tsv: <line>`.
 - **New hot-path command**: add its row to the budget file in the same PR.
   A command whose file does not exist at the base commit gets the ceiling
   check only. A row cannot leave the file without an allow line.
@@ -277,7 +280,11 @@ machine.
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.
-  The gate removes only its own worktrees.
+  The gate removes only its own worktrees. It unlinks a symlink in the cache
+  and never follows it. It removes a folder only when its own marker
+  (`<commit>.ready`, or `<commit>.building` of a build that did not end) is
+  there; a folder without one is left with a note, or stops the gate (exit 2)
+  when it is in the way of the base checkout.
 - **Field numbers**: the gate measures one machine before a merge. Numbers
   from real installs will be on the performance dashboard (link: to be added
   with the telemetry timing events).

@@ -1,5 +1,7 @@
 # Human-blocked action: restore agentbrew release authentication
 
+> Update 2026-11-10: GitHub Actions is on for `fyodoriv/agentbrew` ([`docs/ci.md`](../ci.md)). The text below records the state on 2026-07-20.
+
 **Status**: pending
 **Filed**: 2026-07-20
 **TASKS.md entry**: restore-agentbrew-release-automation

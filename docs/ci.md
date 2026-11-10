@@ -19,6 +19,10 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 - **Tools the runner lacks.** The runner has no `ai-rules` CLI and no agent CLIs. Tests that need them accept the documented skip there. A change to delegated rule sync (`src/sync/rules-delegate.ts`) still needs `npm run verify:changed` on a machine with `ai-rules`.
 - **Linux image.** The Linux job runs on `ubuntu-24.04` until Playwright supports the newer image (task `ci-ubuntu-latest-playwright`).
 
+## Step cache (like nx)
+
+`scripts/verify.sh` records each step that passed, keyed on the step's inputs. A later run skips a step whose inputs did not change, and prints `cached (inputs unchanged since it passed)`. The hosted job keeps that record between runs with `actions/cache`. A cache entry cannot be changed, so each run saves a new entry and restores the newest one. A pull request can read `main`'s entries and its own; it cannot write to `main`'s. The last gate line shows the effect: `verify: passed; N of M steps from cache`. To run every step, delete the entries: `gh cache delete --all`.
+
 ## Cost and limits
 
 - **Cost: zero.** Standard GitHub-hosted runners are free and unlimited for public repositories ([GitHub docs](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)). Never switch a job to a larger runner: those are billed.

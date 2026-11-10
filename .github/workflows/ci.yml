@@ -72,5 +72,20 @@ jobs:
             ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore the gate step cache
+        # scripts/verify.sh skips a step whose inputs passed before, like nx.
+        # A cache entry cannot be changed, so each run saves a new one and
+        # restores the newest. A pull request reads its own entries and
+        # main's; it cannot write to main's.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/gate-cache
+          key: gate-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            gate-${{ runner.os }}-
+
+      - name: Point the gate at the step cache
+        run: echo "AGENTBREW_GATE_CACHE_DIR=$RUNNER_TEMP/gate-cache" >> "$GITHUB_ENV"
+
       - name: Gate (npm run verify)
         run: npm run verify

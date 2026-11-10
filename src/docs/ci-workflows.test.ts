@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 // way a workflow could leak a token or run with more rights than it needs.
 const workflowsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".github", "workflows");
 const workflows = readdirSync(workflowsDir)
-  .filter((name) => name.endsWith(".yml"))
+  .filter((name) => /\.ya?ml$/.test(name))
   .map((name) => ({ name, text: readFileSync(join(workflowsDir, name), "utf8") }));
 
 /** Lines that are not YAML comments. */
@@ -24,7 +24,8 @@ describe("hosted workflows", () => {
   it.each(workflows)("$name pins every action to a full commit SHA", ({ text }) => {
     const uses = codeLines(text).filter((line) => /^\s*(-\s*)?uses:/.test(line));
     for (const line of uses) {
-      expect(line).toMatch(/uses:\s*[\w.-]+\/[\w./-]+@[0-9a-f]{40}\s+#\s*v\d/);
+      // Only GitHub-owned actions, each at a full commit SHA.
+      expect(line).toMatch(/uses:\s*(actions|github)\/[\w./-]+@[0-9a-f]{40}\s+#\s*v\d/);
     }
   });
 
@@ -34,7 +35,12 @@ describe("hosted workflows", () => {
 
   it.each(workflows)("$name never runs fork code with repo rights or secrets", ({ text }) => {
     const code = codeLines(text).join("\n");
-    expect(code).not.toMatch(/pull_request_target/);
+    expect(code).not.toMatch(/pull_request_target|workflow_run|issue_comment/);
+    // Event text (a PR title, a branch name) may steer a job, never a script.
+    const eventLines = codeLines(text).filter((line) => line.includes("github.event."));
+    for (const line of eventLines) {
+      expect(line.trim()).toMatch(/^(if|group|cancel-in-progress):/);
+    }
     expect(code).not.toMatch(/\$\{\{\s*secrets\./);
     // A step that prints the environment could expose values in a public log.
     expect(code).not.toMatch(/^\s*(-\s*)?run:\s*(env|printenv|set)\s*$/m);
@@ -47,14 +53,35 @@ describe("hosted workflows", () => {
     }
   });
 
-  it("the release workflow starts only by hand", () => {
+  it("every workflow starts only from its allowed triggers", () => {
+    // A new trigger is a decision: add it here in the same change.
+    const allowed: Record<string, string[]> = {
+      "auto-publish.yml": ["workflow_dispatch"],
+      "ci.yml": ["workflow_dispatch"],
+      "oss-readiness.yml": ["workflow_dispatch"],
+      "pr-vision-trace.yml": ["workflow_dispatch"],
+      "publish.yml": ["push"],
+    };
+    for (const { name, text } of workflows) {
+      const code = codeLines(text).join("\n");
+      const on = code.match(/^on:\n((?:[ \t]+.*\n|\n)*)/m)?.[1] ?? "";
+      const keys = on
+        .split("\n")
+        .filter((line) => /^ {2}\S/.test(line))
+        .map((line) => line.trim().replace(/:.*$/, ""));
+      expect(keys, name).toEqual(allowed[name] ?? []);
+    }
+  });
+
+  it("the release workflow bumps the version on main only", () => {
     const text = workflows.find((w) => w.name === "auto-publish.yml")?.text ?? "";
-    const code = codeLines(text).join("\n");
-    // The whole trigger block is one key: workflow_dispatch.
-    const on = code.match(/^on:\n((?:[ \t]+.*\n|\n)*)/m)?.[1] ?? "";
-    const keys = on.split("\n").filter((line) => /^ {2}\S/.test(line));
-    expect(keys).toEqual(["  workflow_dispatch:"]);
-    expect(code).toMatch(/if: github\.ref == 'refs\/heads\/main'/);
+    expect(text).toMatch(/if: github\.ref == 'refs\/heads\/main'/);
+  });
+
+  it.each(workflows)("$name gives every job a time limit", ({ text }) => {
+    const jobs = codeLines(text).filter((line) => /^\s+runs-on:/.test(line)).length;
+    const limits = codeLines(text).filter((line) => /^\s+timeout-minutes:/.test(line)).length;
+    expect(limits).toBe(jobs);
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

@@ -86,7 +86,7 @@ Three independent leak categories are blocked:
 | **L1** Secret scanning | GitHub secret scanning with push protection | Secret-shaped tokens |
 | **L2** Pre-commit hook | `~/apps/tooling/dotfiles/git-hooks/pre-commit` (global) | Content + secret + author-email on staged files (when wired) |
 | **L3** Pre-push hook | `~/apps/tooling/dotfiles/git-hooks/pre-push` (global) | Blocks a push to `github.com/fyodoriv/agentbrew` when any author or committer email matches the private-email pattern |
-| **L4** CI (GitHub Actions) | `.github/workflows/oss-readiness.yml` | Runs the no-internal-refs test and a private-email check (manual start today) |
+| **L4** CI (GitHub Actions) | `.github/workflows/oss-readiness.yml` | Runs the no-internal-refs test and a private-email check (manual start today). A hosted runner has no private-pattern file, so there the test has no private pattern to match and the email check skips; the local L2/L3 gates stay the authority |
 
 GitHub Actions is disabled on `fyodoriv/agentbrew` today. The CI layers do
 not run. `npm run verify` is the local gate: it runs the no-internal-refs

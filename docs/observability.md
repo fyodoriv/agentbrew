@@ -129,17 +129,30 @@ machine.
 - **New hot-path command**: add its row to the budget file in the same PR.
   A command whose file does not exist at the base commit gets the ceiling
   check only. A row cannot leave the file without an allow line.
+- **Exit 1 (a result)**: a command got slower, is over its ceiling, or fails
+  in your tree; a row left the budget file; or an allow line is stale.
 - **No silent pass (exit 2)**: no base commit (run `git fetch origin`, or set
   `PERF_GATE_BASE=<ref>`; `PERF_GATE_NO_BASE=1` checks the ceilings only), a
-  base checkout at another commit, a failed base build, a command that fails
-  at the base, a budget file with no command or no runtime path, or an allow
-  line that names no command.
+  base checkout at another commit, a failed build, a command that fails at the
+  base, a budget file with no command or no runtime path, an allow line that
+  names no command, a cache lock that another gate holds for too long, or any
+  unexpected error.
+- **The gate script itself**: a PR that changes `scripts/perf-gate.mjs` needs
+  `PERF_GATE_ALLOW=perf-gate:<reason>` in the budget file, or the gate exits 2.
+  The changed script judges its own PR, so the review must see the line.
+- **Settings (env)**: `PERF_GATE_BASE` (ref to compare with),
+  `PERF_GATE_NO_BASE=1` (ceilings only when no base resolves),
+  `PERF_GATE_RUNS` (default 15), `PERF_GATE_WARMUPS` (default 2),
+  `PERF_GATE_LOCK_WAIT` (seconds to wait for the cache lock, default 900),
+  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests), and
+  `XDG_CACHE_HOME` (where the base checkouts live).
 - **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
   `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
   and `verdict`.
 - **Base checkouts**: detached worktrees under
-  `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock; the
-  newest two are kept. The gate removes only its own worktrees.
+  `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
+  current one, the newest other one, and any used in the last hour are kept.
+  The gate removes only its own worktrees.
 - **Field numbers**: the gate measures one machine before a merge. Numbers
   from real installs will be on the performance dashboard (link: to be added
   with the telemetry timing events).

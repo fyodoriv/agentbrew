@@ -19,7 +19,7 @@ Run every command from the repo root.
 | Install | `bash scripts/worktree-deps.sh` |
 | Run the CLI from source | `npm run dev -- <command>` |
 | One test file | `npx vitest run src/path/file.test.ts` |
-| Tests for the diff | `npm test` |
+| Tests for the diff (not a folder) | `npm test` (`vitest related`) |
 | All tests | `npm run test:all` |
 | Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
 | Rule lints (Minsky rules; skipped without a Minsky checkout) | `npm run lint:rules` |
@@ -75,7 +75,7 @@ maps each rule to its check. Other files cite these numbers.
 13. Commits use conventional headers (`type: description`, <= 72 chars). Never bypass the hook.
 14. Publishing outside `fyodoriv/agentbrew` (npm, releases, other repos, Slack, Jira) needs explicit approval in the current session.
 15. Never mock `expandHome` as identity in a test that writes files.
-16. Performance is a gate: `npm run perf:gate` must pass (a tracked command gets at most 10% slower per PR); new hot-path commands join `scripts/perf-budget.tsv`. [Details](docs/observability.md#performance-gate).
+16. Performance is a gate: `npm run perf:gate` must pass; new hot-path commands join `scripts/perf-budget.tsv`. [Details](docs/observability.md#performance-gate).
 
 Also: no counts of agents, skills, tests, or files in docs or comments.
 Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
@@ -97,7 +97,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - A vitest `globalSetup` teardown error only logs, never fails the run. Use a `setupFiles` `afterAll` hook.
 - In the agent sandbox, ssh, `gh` TLS, `.git/config` writes, tsx IPC, and hook-fixture `mktemp` fail; run them outside it (`$TMPDIR` differs).
 - A fake tool first on `PATH` in a test needs `BASH_ENV` and `ENV` deleted from the child env (the host `BASH_ENV` re-adds dotfiles shims).
-- `jks-js` is a local stub (`scripts/stubs/jks-js`): it keeps the unpatched `node-forge` out.
+- `jks-js` is a local stub (`scripts/stubs/jks-js`) that keeps the unpatched `node-forge` out until upstream fixes it.
 - [Catalog builds](docs/plans/retire-usage-tips.md#cached-reader-recurrence); [pull](README.md#selected-pull-modules).
 - Per-user schedulers: `src/core/`, fakes; [queue handoff](docs/plans/scheduled-repair-queue-admission.md).
 - PR hooks match `gh pr` even inside heredocs; write hook test input with the Write tool.

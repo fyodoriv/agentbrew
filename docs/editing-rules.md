@@ -100,6 +100,37 @@ no hardcoded secret may reach the repo.** Full design lives in
 [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).
 Update the overlay file to extend coverage.
 
+## Command and gotcha details
+
+`AGENTS.md` has a size limit, so it keeps these lines short. The full facts:
+
+- **Rule lints**: `npm run lint:rules` skips when it finds no Minsky checkout.
+  It looks in `AGENTBREW_MINSKY_DIR`, then in `~/apps/tooling/minsky`.
+- **Tests for the diff**: `npm test` runs `vitest related` on the changed
+  files. It does not take a folder.
+- **Full gate**: the cache of `npm run verify` is shared between worktrees and
+  is keyed on source files only.
+- **Install e2e**: `npm run test:install-e2e` runs the real
+  `scripts/install.sh` in a scratch HOME.
+- **Repo checkup**: its speed step is the speed review of
+  [`docs/agent-perf.md`](agent-perf.md).
+- **Fast gate order**: `git diff --check "$base"` runs first, then
+  `npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md`, before the later
+  checks.
+- **`src/cli.test.ts` timeout under load**: re-run that file first, before you
+  look for another cause.
+- **`jks-js` stub**: it stays until upstream fixes the `node-forge` dependency.
+- **`gh auth token` and the keyring**: the fix is issue #693.
+- **opencode schema fixture**: refresh it when the upstream schema changes.
+- **vitest `globalSetup` teardown**: an error there only logs; it does not fail
+  the run.
+- **Gotchas**: a gotcha becomes a test or a lint if a machine can check it.
+  Otherwise it goes into `## Gotchas`.
+- **Delivery step 3**: "run `npm run verify`" means the full gate.
+- **Rule 11**: record the gaps you see while you work.
+- **Docs upkeep**: "the routing table" is `## Where to change what` in
+  `AGENTS.md`.
+
 ## Feedback Loop Guardrails
 
 **Principle: "Your CLAUDE.md is a suggestion. Your linter isn't."** ([zernie.com/blog/feedback-loop-is-all-you-need](https://zernie.com/blog/feedback-loop-is-all-you-need/))

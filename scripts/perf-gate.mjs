@@ -24,6 +24,7 @@
 //   PERF_GATE_RUNS       timed runs per tree (default 15)
 //   PERF_GATE_WARMUPS    untimed runs per tree first (default 2)
 //   PERF_GATE_HEAVY_RUN  0 = never call heavy-run (tests)
+//   PERF_GATE_LOCK_WAIT  seconds to wait for the cache lock (default 900)
 //
 // Timing choices:
 // - One node process starts every run of both trees with spawnSync and reads
@@ -35,13 +36,17 @@
 //   minimums are merged. A real slowdown stays; a load spike does not.
 // - The base is a detached git worktree under
 //   ~/.cache/agentbrew/perf-gate.noindex/<commit>, built once (PERF_GATE_BUILD
-//   in the budget file) under a lock; the newest two are kept. The gate
-//   removes only its own worktrees.
+//   in the budget file) under a lock. This one, the newest other one, and
+//   any used in the last hour are kept. The gate removes only its own
+//   worktrees.
 // - No silent pass: no base commit, a base checkout at another commit, a
 //   failed base build, or a command that fails at the base all exit 2.
 // - The head budget file does not decide its own scope: the runtime paths are
 //   the union of the base and head lists, and a row that the base has cannot
 //   leave the file without an allow line.
+// - A PR that changes this script needs PERF_GATE_ALLOW=perf-gate:<reason> in
+//   the budget file: the changed script judges its own PR, so a reviewer must
+//   see that.
 // - This tree is rebuilt first when its build output is older than a build
 //   input, so the gate never times a stale dist/.
 // - Every run gets a small fixed environment (PATH, a scratch HOME, TMPDIR,
@@ -61,13 +66,14 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { delimiter, join, normalize } from "node:path";
+import { delimiter, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const BUDGET = "scripts/perf-budget.tsv";
@@ -76,7 +82,10 @@ const FLOOR_MS = 3;
 const NAME = /^[A-Za-z0-9_.-]+$/;
 const SHA = /^[0-9a-f]{40}$/;
 const TEST_FILE = /\.test\.[a-z]+$/;
-const LOCK_WAIT_MS = 15 * 60 * 1000;
+const SELF = "scripts/perf-gate.mjs";
+// The allow name for a change to this script itself.
+const SELF_ALLOW = "perf-gate";
+const RECENT_MS = 60 * 60 * 1000;
 
 class SetupError extends Error {}
 const fail = (message) => {
@@ -231,35 +240,70 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-function lockOwnerIsGone(lock) {
+/** The pid in a lock directory, or 0 while its owner has not written it yet. */
+function lockPid(lock) {
   try {
-    process.kill(Number(readFileSync(join(lock, "pid"), "utf-8")), 0);
-    return false;
-  } catch (error) {
-    return error.code === "ESRCH" || error.code === "ENOENT";
+    return Number(readFileSync(join(lock, "pid"), "utf-8")) || 0;
+  } catch {
+    return 0;
   }
 }
 
-/** Run fn while this process holds the cache lock (a directory; mkdir is atomic). */
+function isGone(pid) {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return error.code === "ESRCH";
+  }
+}
+
+/**
+ * Take the lock away from an owner that is gone. The rename is atomic, so one
+ * waiter wins. A lock with no pid file is never taken: its owner may be alive.
+ */
+function takeOverDeadLock(lock) {
+  const pid = lockPid(lock);
+  if (pid === 0 || !isGone(pid)) return;
+  const stale = `${lock}.stale.${process.pid}`;
+  try {
+    renameSync(lock, stale);
+  } catch {
+    return;
+  }
+  // Another waiter took over first and this is its live lock: give it back.
+  if (lockPid(stale) !== pid) renameSync(stale, lock);
+  else rmSync(stale, { recursive: true, force: true });
+}
+
+/**
+ * Run fn while this process holds the cache lock. The lock is a directory
+ * that already holds the pid file when it is renamed into place.
+ */
 function withLock(cache, fn) {
   const lock = join(cache, "lock");
-  const deadline = Date.now() + LOCK_WAIT_MS;
+  const mine = mkdtempSync(join(cache, "lock.new."));
+  writeFileSync(join(mine, "pid"), String(process.pid));
+  const deadline = Date.now() + count("PERF_GATE_LOCK_WAIT", 900, 0) * 1000;
   for (;;) {
     try {
-      mkdirSync(lock);
+      // Fails while another lock directory (never empty) is in place.
+      renameSync(mine, lock);
       break;
     } catch (error) {
-      if (error.code !== "EEXIST") throw error;
+      if (!["EEXIST", "ENOTEMPTY"].includes(error.code)) throw error;
+      if (Date.now() > deadline) {
+        rmSync(mine, { recursive: true, force: true });
+        fail(`perf gate: another perf gate holds ${lock} for too long. If none runs, delete that directory.`);
+      }
       sleep(200);
-      if (lockOwnerIsGone(lock)) rmSync(lock, { recursive: true, force: true });
-      else if (Date.now() > deadline) fail(`perf gate: another perf gate holds ${lock} for too long`);
+      takeOverDeadLock(lock);
     }
   }
   try {
-    writeFileSync(join(lock, "pid"), String(process.pid));
     return fn();
   } finally {
-    rmSync(lock, { recursive: true, force: true });
+    if (lockPid(lock) === process.pid) rmSync(lock, { recursive: true, force: true });
   }
 }
 
@@ -272,14 +316,15 @@ function removeCheckout(root, cache, sha) {
   rmSync(dir, { recursive: true, force: true });
 }
 
-/** Keep this checkout and the newest other one. */
+/** Keep this checkout, the newest other one, and any that a gate used in the last hour. */
 function pruneCheckouts(root, cache, current) {
+  const recent = Date.now() - RECENT_MS;
   const others = readdirSync(cache)
     .filter((name) => SHA.test(name) && name !== current)
     .map((name) => ({ name, ready: statSync(join(cache, `${name}.ready`), { throwIfNoEntry: false })?.mtimeMs ?? 0 }))
     .sort((a, b) => b.ready - a.ready);
   for (const [index, other] of others.entries()) {
-    if (index > 0 || other.ready === 0) removeCheckout(root, cache, other.name);
+    if (other.ready === 0 || (index > 0 && other.ready < recent)) removeCheckout(root, cache, other.name);
   }
 }
 
@@ -307,7 +352,7 @@ function createCheckout(root, cache, sha, budget) {
 
 /** Returns the built base tree. Its HEAD must be the base commit. */
 function ensureBase(root, sha, budget) {
-  const cache = join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "agentbrew", "perf-gate.noindex");
+  const cache = resolve(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "agentbrew", "perf-gate.noindex");
   const dir = join(cache, sha);
   mkdirSync(cache, { recursive: true });
   withLock(cache, () => {
@@ -534,7 +579,7 @@ function parseArgs(args) {
 function printHelp() {
   const header = readFileSync(fileURLToPath(import.meta.url), "utf-8")
     .split("\n")
-    .slice(2, 26);
+    .slice(2, 27);
   console.log(header.map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
 }
 
@@ -553,13 +598,27 @@ function headBudget(root) {
   return budget;
 }
 
+/**
+ * This script judges the PR that changes it. So a change to it must show in
+ * the budget file, where a reviewer looks: without the allow line, exit 2.
+ */
+function checkSelfChange(root, sha, head, base) {
+  if (!sha || !git(root, "cat-file", "-e", `${sha}:${SELF}`).ok) return;
+  if (git(root, "diff", "--no-renames", "--quiet", sha, "--", SELF).ok) return;
+  if (SELF_ALLOW in head.allow && !(SELF_ALLOW in base.allow)) return;
+  fail(
+    `perf gate: ${SELF} differs from the base, and it judges its own PR.\n` +
+      `Add PERF_GATE_ALLOW=${SELF_ALLOW}:<reason> to ${BUDGET} so the review sees it; the next PR removes the line.`,
+  );
+}
+
 /** Problems that the two budget files show without any timing. */
 function budgetProblems(head, base) {
   const headNames = new Set(head.commands.map((command) => command.name));
   const baseNames = new Set(base.commands.map((command) => command.name));
   const problems = [];
   for (const name of Object.keys(head.allow).sort()) {
-    if (!headNames.has(name) && !baseNames.has(name)) {
+    if (name !== SELF_ALLOW && !headNames.has(name) && !baseNames.has(name)) {
       fail(`perf gate: PERF_GATE_ALLOW=${name} names no command of the budget file`);
     }
     // An allow line is for one PR. One that the base already has is stale.
@@ -589,6 +648,7 @@ function main(options) {
   const { ref, sha, date } = baseCommit(root);
   const atBase = baseBudget(root, sha);
   const problems = budgetProblems(budget, atBase);
+  checkSelfChange(root, sha, budget, atBase);
 
   // With no base commit (PERF_GATE_NO_BASE=1) the diff is unknown, so the gate runs.
   const paths = [...new Set([...budget.paths, ...atBase.paths])];
@@ -610,7 +670,7 @@ try {
   else if (options.time) process.exitCode = timeAll(JSON.parse(process.env.PERF_GATE_PLAN ?? "{}"));
   else process.exitCode = main(options);
 } catch (error) {
-  if (!(error instanceof SetupError)) throw error;
-  console.error(error.message);
+  // Only a measured slowdown or a ceiling breach is exit 1.
+  console.error(error instanceof SetupError ? error.message : `perf gate: unexpected error: ${error?.stack ?? error}`);
   process.exitCode = 2;
 }

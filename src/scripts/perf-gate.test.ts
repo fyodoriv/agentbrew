@@ -8,6 +8,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -255,7 +256,8 @@ describe("perf gate runs", () => {
     expect(readFileSync(calls, "utf-8")).toBe("--exclusive\n");
   });
 
-  it("caches the base checkout by commit and keeps only two", () => {
+  /** Run the gate on three merge-bases in a row; age makes the older ready markers that old first. */
+  function threeBases(ageMs: number): string[] {
     const shas = [git("rev-parse", "main")];
     writeFileSync(join(fix, "tool.sh"), "#!/bin/sh\nsleep 0.10\n# touch\n");
     expect(gate().status).toBe(0);
@@ -266,13 +268,39 @@ describe("perf gate runs", () => {
       git("branch", "-q", "-f", "main", "work");
       shas.push(git("rev-parse", "main"));
       writeFileSync(join(fix, "tool.sh"), `#!/bin/sh\nsleep 0.10\n# touch ${step}\n`);
+      for (const [index, sha] of shas.slice(0, -1).entries()) {
+        const then = new Date(Date.now() - ageMs - (shas.length - index) * 60_000);
+        if (ageMs > 0) utimesSync(join(cacheDir(), `${sha}.ready`), then, then);
+      }
       const result = gate();
       expect(result.status, result.all).toBe(0);
     }
-    const kept = readdirSync(cacheDir()).filter((name) => !name.endsWith(".ready"));
-    expect(kept.sort()).toEqual([shas[1], shas[2]].sort());
+    return shas;
+  }
+  const checkouts = () =>
+    readdirSync(cacheDir())
+      .filter((name) => /^[0-9a-f]{40}$/.test(name))
+      .sort();
+
+  it("caches the base checkout by commit and keeps only two old ones", () => {
+    const shas = threeBases(2 * 60 * 60 * 1000);
+    expect(checkouts()).toEqual([shas[1], shas[2]].sort());
     expect(git("worktree", "list").split("\n")).toHaveLength(3);
     expect(cacheDir()).toContain("perf-gate.noindex");
+  });
+
+  it("keeps a base checkout that a gate used in the last hour", () => {
+    const shas = threeBases(0);
+    expect(checkouts()).toEqual([...shas].sort());
+  });
+
+  it("resolves a relative cache path, so the checkout does not depend on the working directory", () => {
+    writeFileSync(join(fix, "tool.sh"), "#!/bin/sh\nsleep 0.10\n# touch\n");
+    const result = gate([], { XDG_CACHE_HOME: "relcache" });
+    expect(result.status, result.all).toBe(0);
+    const checkout = join(fix, "relcache", "agentbrew", "perf-gate.noindex", git("rev-parse", "main"));
+    expect(existsSync(join(checkout, "tool.sh"))).toBe(true);
+    expect(git("worktree", "list")).toContain(checkout);
   });
 });
 
@@ -437,6 +465,50 @@ describe("perf gate has no silent pass", () => {
     expect(existsSync(join(cacheDir(), "lock"))).toBe(false);
   });
 
+  it("waits for a lock with no pid in it or a live owner, and exits 2 when the wait ends", () => {
+    writeFileSync(join(fix, "tool.sh"), "#!/bin/sh\nsleep 0.10\n# touch\n");
+    mkdirSync(join(cacheDir(), "lock"), { recursive: true });
+    writeFileSync(join(cacheDir(), "lock", "pid"), "");
+    const noPid = gate([], { PERF_GATE_LOCK_WAIT: "1" });
+    expect(noPid.status, noPid.all).toBe(2);
+    expect(noPid.stderr).toContain("another perf gate holds");
+    expect(existsSync(join(cacheDir(), "lock"))).toBe(true);
+
+    writeFileSync(join(cacheDir(), "lock", "pid"), String(process.pid));
+    const live = gate([], { PERF_GATE_LOCK_WAIT: "1" });
+    expect(live.status, live.all).toBe(2);
+    expect(readFileSync(join(cacheDir(), "lock", "pid"), "utf-8")).toBe(String(process.pid));
+    expect(readdirSync(cacheDir())).toEqual(["lock"]);
+  });
+
+  it("exits 2 on an unexpected error: exit 1 is only for a measured result", () => {
+    const result = gate(["--time"], { PERF_GATE_PLAN: "{not json" });
+    expect(result.status, result.all).toBe(2);
+    expect(result.stderr).toContain("perf gate: unexpected error");
+  });
+
+  it("needs an allow line when the gate script itself differs from the base", () => {
+    const self = join(fix, "scripts", "perf-gate.mjs");
+    // No gate script at the base (the PR that adds the gate): no allow line is needed.
+    writeFileSync(self, "// the gate\n");
+    writeFileSync(join(fix, "tool.sh"), "#!/bin/sh\nsleep 0.10\n# touch\n");
+    const added = gate();
+    expect(added.status, added.all).toBe(0);
+
+    commit("add the gate script");
+    git("branch", "-q", "-f", "main", "work");
+    writeFileSync(self, "// the gate, with a wider limit\n");
+    const changed = gate();
+    expect(changed.status, changed.all).toBe(2);
+    expect(changed.stderr).toContain("scripts/perf-gate.mjs differs from the base");
+    expect(changed.stderr).toContain("PERF_GATE_ALLOW=perf-gate:<reason>");
+    expect(changed.stdout).toBe("");
+
+    budget("tool\t2000\tsh tool.sh", "PERF_GATE_ALLOW=perf-gate:new estimator");
+    const allowed = gate();
+    expect(allowed.status, allowed.all).toBe(0);
+  });
+
   it("removes only its own worktrees: a stale worktree of the user stays registered", () => {
     const other = join(dir, "user-worktree");
     git("worktree", "add", "-q", "--detach", other, "main");
@@ -465,6 +537,11 @@ describe("the committed perf budget", () => {
     for (const path of ["src/", "hooks/", "templates/scripts/", "package.json", "tsup.config.ts"]) {
       expect(rows).toContain(`PERF_GATE_PATH=${path}`);
     }
+    for (const path of ["tsconfig.json", "scripts/build-source.sh", "native/", "rust/"]) {
+      expect(rows).toContain(`PERF_GATE_PATH=${path}`);
+      expect(rows).toContain(`PERF_GATE_BUILD_INPUT=${path}`);
+    }
+    expect(rows).toContain("PERF_GATE_BUILD_INPUT=package-lock.json");
     expect(rows).toContain("PERF_GATE_BUILD=npm run build");
   });
 

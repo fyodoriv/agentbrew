@@ -28,6 +28,10 @@ PERF_GATE_PATH=templates/scripts/
 PERF_GATE_PATH=package.json
 PERF_GATE_PATH=package-lock.json
 PERF_GATE_PATH=tsup.config.ts
+PERF_GATE_PATH=tsconfig.json
+PERF_GATE_PATH=scripts/build-source.sh
+PERF_GATE_PATH=native/
+PERF_GATE_PATH=rust/
 PERF_GATE_PATH=scripts/perf-budget.tsv
 PERF_GATE_PATH=scripts/perf-gate.mjs
 
@@ -44,9 +48,15 @@ PERF_GATE_BUILD_INPUT=src/
 PERF_GATE_BUILD_INPUT=templates/
 PERF_GATE_BUILD_INPUT=commands/
 PERF_GATE_BUILD_INPUT=package.json
+PERF_GATE_BUILD_INPUT=package-lock.json
 PERF_GATE_BUILD_INPUT=tsup.config.ts
+PERF_GATE_BUILD_INPUT=tsconfig.json
+PERF_GATE_BUILD_INPUT=scripts/build-source.sh
+PERF_GATE_BUILD_INPUT=native/
+PERF_GATE_BUILD_INPUT=rust/
 
 # Allow section: one line per intended slowdown above 10% in this PR.
 #   PERF_GATE_ALLOW=<name>:<reason>
 # The ceiling still applies. The next PR removes the line: the gate fails on
 # an allow line that the base already has.
+# A PR that changes scripts/perf-gate.mjs needs PERF_GATE_ALLOW=perf-gate:<reason>.

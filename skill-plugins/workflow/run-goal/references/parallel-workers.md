@@ -159,7 +159,10 @@ Contents: Starting workers · Steering running agents · Files the main session 
   eval id from `origin/main`'s max at that moment: outside sessions take ids
   too, and four PRs in one run collided on ids 128 to 131.
 - A gate whose base moved during the run cannot count. Stop it at once to
-  free the lock, merge main, and queue it again.
+  free the lock, merge main, and queue it again. When the default branch
+  moves under several open PRs, each one needs a new gate run: merge them in
+  dependency order, and tell every affected worker at once, with the new
+  base SHA.
 - Trust the gate's exit status, not its last line. One run printed
   "verify: passed" and exited 1; a clean rerun was needed before the push.
 
@@ -203,6 +206,10 @@ in another. Another unreviewed PR had a high-severity trust bypass. Before
 you count a fix as done, read the review's output yourself, not only the
 worker's report. If no review ran, run one now. If the PR already merged,
 review the merged diff and send each finding back as a new fix round.
+
+Review rounds on one PR must converge. After the second fix round, tell the
+worker that the next round is the last, and that every finding still open
+becomes a task in the same PR.
 
 A worker that ends its turn while its gate waits in the `heavy-run` queue
 shows as "completed", but its last line says it is waiting. That is not a

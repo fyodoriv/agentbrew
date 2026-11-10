@@ -55,6 +55,10 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   as stale findings in the deliverable.
 - A gate you write yourself is unproven: plant one violation per rule, see it
   fail. A "flaky" step: run it alone and check its CPU time against its limit.
+  A new gate that measures time: before you merge it, count its false alarms
+  on the path where it will really run (inside the full gate, on a loaded
+  machine), not only in a quiet or exclusive slot. One gate had 0 false
+  alarms in 5 quiet runs and 2 in 20 on the real path.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules, unique log names (`$TMPDIR` is shared), and the exact base
@@ -225,6 +229,11 @@ same flags on the unchanged base (a detached worktree) and compare the two
 failure lists. Only a failure on both lists is pre-existing. A wait loop on
 a background job must run outside the agent sandbox: `pgrep` and `ps` fail
 inside it, so the loop exits at once and looks finished.
+
+When a test fails the gate without your diff, stop retrying: a pass on a
+blind rerun proves nothing. Find its root cause and fix it in its own small
+PR. Then merge the fix branch into the waiting branch, prove both with one
+full gate on that combined tree, and merge the fix PR first.
 
 ## Metrics and stale gates
 

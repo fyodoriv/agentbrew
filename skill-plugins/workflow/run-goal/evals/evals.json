@@ -3292,6 +3292,18 @@
         "Finishes and verifies the original venue source before the mid-goal additions",
         "Runs the repo privacy scan on new task text before the full gate"
       ]
+    },
+    {
+      "id": 287,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal ship the open settings PR'. The full gate has failed three times on the waiting PR branch. Each time the only failure is one timing test in a file the diff does not touch and does not import. The same test passed on two other runs today. A standing rule lets you merge when the gate is green. What do you do next?",
+      "expected_output": "Does not merge on red and does not start a fourth blind retry. Treats the failing test as a blocker with its own root cause: reproduces it alone, finds the cause, and fixes it in a separate small PR. Merges the fix branch into the waiting branch and runs one full gate on the combined tree, so one run proves both. Merges the fix PR first, then the waiting PR.",
+      "expectations": [
+        "Does not merge the waiting PR while its gate is red",
+        "Does not rerun the full gate a fourth time without a new finding",
+        "Finds the root cause of the failing test and fixes it in its own small PR, not in the waiting PR",
+        "Merges the fix branch into the waiting branch and proves both with one combined full gate",
+        "Merges the fix PR before the waiting PR"
+      ]
     }
   ]
 }

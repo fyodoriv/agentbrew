@@ -134,6 +134,8 @@ function lineTime(line: string): number {
  * lines from the start of the log, so the stored count can be too high. The
  * mark finds the place again: the same line, or, when the trim removed it,
  * the first line with a later time. A state with no mark keeps the count.
+ * A mark that has no readable time gives no place to start from: all of the
+ * log counts as handled, so some events are skipped and none is sent twice.
  */
 function handled(lines: string[], state: TelemetryState): number {
   const sent = Math.min(state.sent, lines.length);
@@ -141,7 +143,7 @@ function handled(lines: string[], state: TelemetryState): number {
   const at = lines.lastIndexOf(state.mark);
   if (at >= 0) return at + 1;
   const markTime = lineTime(state.mark);
-  if (!Number.isFinite(markTime)) return sent;
+  if (!Number.isFinite(markTime)) return lines.length;
   const next = lines.findIndex((line) => lineTime(line) > markTime);
   return next < 0 ? lines.length : next;
 }
@@ -608,41 +610,75 @@ export interface SendResult {
   pending?: number;
 }
 
+/** The release function of a held send lock; `holds` says whether the lock is still this owner's. */
+export type SendLock = (() => void) & { holds: () => boolean };
+
+/** Make the file with the token. False when it exists: "wx" lets only one process make it. */
+function createOnce(file: string, token: string): boolean {
+  try {
+    writeFileSync(file, token, { flag: "wx", mode: 0o600 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** True when the file is older than LOCK_STALE_MS, or dated that far in the future (the clock was set back). */
+function staleFile(file: string): boolean {
+  return Math.abs(Date.now() - statSync(file).mtimeMs) >= LOCK_STALE_MS;
+}
+
+/**
+ * Replace a stale lock. Only one process at a time may do this: the one that
+ * makes the guard file. Under the guard it checks the lock's age again, so it
+ * never replaces a lock that another process took over a moment before. The
+ * rename swaps the lock in one step: there is no moment with no lock.
+ */
+function takeOverStale(file: string, token: string): boolean {
+  if (!staleFile(file)) return false;
+  const guard = `${file}.steal`;
+  if (!createOnce(guard, token)) {
+    // A guard left by a dead process is removed. This send stops; the next one tries again.
+    if (staleFile(guard)) rmSync(guard, { force: true });
+    return false;
+  }
+  const mine = `${file}.${token.replace(" ", ".")}`;
+  try {
+    if (!staleFile(file)) return false;
+    writeFileSync(mine, token, { mode: 0o600 });
+    renameSync(mine, file);
+    return true;
+  } finally {
+    rmSync(mine, { force: true });
+    rmSync(guard, { force: true });
+  }
+}
+
 /**
  * One send at a time on a machine: a lock file beside the state. It holds the
  * owner's pid and a random nonce. Returns the release function, or undefined
- * when another send holds a fresh lock. A lock older than LOCK_STALE_MS (or
- * dated that far in the future: the clock was set back) was left by a dead
- * process. It is replaced in one step, by a rename, so there is no moment with
- * no lock. Release removes the lock only when it still holds this owner's token.
+ * when another send holds a fresh lock. A lock older than LOCK_STALE_MS was
+ * left by a dead process; takeOverStale replaces it. Release removes the lock
+ * only when it still holds this owner's token.
  */
-export function acquireLock(file = `${statePath()}.lock`): (() => void) | undefined {
+export function acquireLock(file = `${statePath()}.lock`): SendLock | undefined {
   const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
-  const mine = `${file}.${token.replace(" ", ".")}`;
-  const holds = (): boolean => readFileSync(file, "utf-8") === token;
+  const holds = (): boolean => {
+    try {
+      return readFileSync(file, "utf-8") === token;
+    } catch {
+      return false;
+    }
+  };
+  const release = (): void => {
+    if (holds()) rmSync(file, { force: true });
+  };
   try {
     mkdirSync(dirname(file), { recursive: true });
-    try {
-      // "wx" fails when the file exists: only one process can make it.
-      writeFileSync(file, token, { flag: "wx", mode: 0o600 });
-    } catch {
-      if (Math.abs(Date.now() - statSync(file).mtimeMs) < LOCK_STALE_MS) return undefined;
-      writeFileSync(mine, token, { mode: 0o600 });
-      renameSync(mine, file);
-    }
-    // Two processes can replace a stale lock at the same time. The last rename wins; the other one stops here.
-    if (!holds()) return undefined;
-    return () => {
-      try {
-        if (holds()) rmSync(file, { force: true });
-      } catch {
-        // No lock file: nothing to release.
-      }
-    };
+    if (!createOnce(file, token) && !takeOverStale(file, token)) return undefined;
+    return holds() ? Object.assign(release, { holds }) : undefined;
   } catch {
     return undefined;
-  } finally {
-    rmSync(mine, { force: true });
   }
 }
 
@@ -656,29 +692,38 @@ export async function send(
   version: string,
   options: TelemetryDeps & { dryRun?: boolean; auto?: boolean } = {},
 ): Promise<SendResult> {
-  let release: (() => void) | undefined;
+  let release: SendLock | undefined;
   const now = options.now ?? Date.now();
   try {
-    const state = loadState();
-    const lines = readLines();
-    const cursor = startCursor(lines, handled(lines, state), now);
-    if (options.dryRun) {
-      const body = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "<posthog_key>", state.installId, version);
-      return { sent: 0, pending: lines.length - cursor, body };
-    }
-    const st = statusOf(state, lines, options);
+    if (options.dryRun) return dryRun(version, now);
+    const st = statusOf(loadState(), readLines(), options);
     if (!st.on) return { sent: 0, skipped: st.reason };
     release = acquireLock();
     if (!release) return { sent: 0, skipped: "another send is running" };
+    // The state and the log are read under the lock: a send that ended a moment ago has moved the cursor.
+    const state = loadState();
+    const lines = readLines();
+    if (state.consent !== "yes") return { sent: 0, skipped: "consent changed" };
+    const cursor = startCursor(lines, handled(lines, state), now);
     patchState(cursorAt(lines, cursor));
     if (cursor >= lines.length) return { sent: 0, skipped: "nothing new" };
-    return await postBatches(lines, cursor, { key: st.key, installId: state.installId, version }, options);
+    const id = { key: st.key, installId: state.installId, version, holds: release.holds };
+    return await postBatches(lines, cursor, id, options);
   } catch (e) {
     logSkipped("core/telemetry/send", e);
     return { sent: 0, skipped: "error" };
   } finally {
     if (release) finishAttempt(release, now);
   }
+}
+
+/** The next request body with the key hidden, and how many events wait. Sends nothing and takes no lock. */
+function dryRun(version: string, now: number): SendResult {
+  const state = loadState();
+  const lines = readLines();
+  const cursor = startCursor(lines, handled(lines, state), now);
+  const body = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "<posthog_key>", state.installId, version);
+  return { sent: 0, pending: lines.length - cursor, body };
 }
 
 /**
@@ -704,13 +749,15 @@ function finishAttempt(release: () => void, now: number): void {
 async function postBatches(
   lines: string[],
   start: number,
-  id: { key: string; installId: string; version: string },
+  id: { key: string; installId: string; version: string; holds: () => boolean },
   options: TelemetryDeps & { auto?: boolean },
 ): Promise<SendResult> {
   const autoBudget = options.auto ? AbortSignal.timeout(AUTO_TIMEOUT_MS) : undefined;
   let cursor = start;
   let sent = 0;
   while (cursor < lines.length) {
+    // Checked before every request, the first one too: a send whose lock another process took over must stop.
+    if (!id.holds()) return { sent, skipped: "lock lost" };
     if (loadState().consent !== "yes") return { sent, skipped: "consent changed" };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);

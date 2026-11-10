@@ -125,6 +125,8 @@ describe("agentbrew sync with a send that cannot finish", () => {
       const run = await runSync(home, { AGENTBREW_TELEMETRY_URL: url });
       expect(run.code).toBe(baseline.code);
       expect(run.addedMs).toBeLessThan(ADDED_LIMIT_MS);
+      // "No added time": the hung send costs the sync under a second more than a sync with no send.
+      expect(run.addedMs - baseline.addedMs).toBeLessThan(1_000);
       expect(await waitFor(() => sockets.length > 0, 15_000), "the send reached the server").toBe(true);
       // The send is a separate, quiet process: it adds no event of its own.
       expect(run.commands).toEqual(["sync"]);

@@ -14,7 +14,7 @@ if (nodeMajor < 20) {
 }
 
 import chalk from "chalk";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { registerCheckupRunCommand } from "./checkup-run-command.js";
 import { checkCliBuildDrift } from "./cli-build-health.js";
 import {
@@ -225,7 +225,8 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   } finally {
     if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
-  if (!options.dryRun) await (await import("./core/telemetry.js")).sendDaily(version);
+  // The daily send runs in a process of its own; the sync does not wait for it.
+  if (!options.dryRun) (await import("./core/telemetry-auto.js")).startDailySend();
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -471,7 +472,8 @@ export function buildProgram(): Command {
     )
     .argument("<action>", "status | on | off | ask | send")
     .option("--dry-run", "print the next request body and send nothing")
-    .action(async (action: string, options: { dryRun?: boolean }) => {
+    .addOption(new Option("--auto", "the daily send that a sync starts: quiet, with a hard time limit").hideHelp())
+    .action(async (action: string, options: { dryRun?: boolean; auto?: boolean }) => {
       const t = await import("./core/telemetry.js");
       if (!["status", "on", "off", "ask", "send"].includes(action)) {
         console.error(`unknown action ${action}: use status, on, off, ask, or send`);
@@ -479,7 +481,7 @@ export function buildProgram(): Command {
         return;
       }
       if (action === "send") {
-        console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
+        await telemetrySend(t, options);
         return;
       }
       if (action === "ask") {
@@ -552,6 +554,25 @@ function recordCommandEvents(program: Command): void {
   });
 }
 
+/**
+ * `telemetry send --auto`: the detached process a sync starts. One quiet daily
+ * send, then the process ends. The timer is the hard limit: a DNS lookup that
+ * never returns ignores the send's own timeout and would keep the process alive.
+ */
+async function autoSend(t: typeof import("./core/telemetry.js")): Promise<never> {
+  setTimeout(() => process.exit(0), t.AUTO_TIMEOUT_MS + 1_000);
+  await t.sendDaily(version);
+  process.exit(0);
+}
+
+async function telemetrySend(
+  t: typeof import("./core/telemetry.js"),
+  options: { dryRun?: boolean; auto?: boolean },
+): Promise<void> {
+  if (options.auto) await autoSend(t);
+  console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
+}
+
 function telemetryStatusLine(st: {
   on: boolean;
   reason: string;
@@ -596,5 +617,6 @@ if (isCliEntrypoint(import.meta.url)) {
     process.exit(1);
   });
 
-  buildProgram().parse();
+  // parseAsync waits for the async action and the async postAction hook.
+  void buildProgram().parseAsync();
 }

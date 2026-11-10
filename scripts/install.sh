@@ -174,7 +174,8 @@ cmd_plan() {
   say "       (agentbrew config set claudePermissions keep)."
   say "  5. Heal: 'agentbrew status --fix' repairs any drift it finds."
   say "  6. Verify: 'agentbrew lint', then the doctor 'agentbrew status --ci'."
-  say "  7. Ask one question: share anonymous performance numbers? (see Your choices)"
+  say "  7. Ask one question, only when this build has a project key: share anonymous"
+  say "     performance numbers? With no key, nothing is asked or printed (see Your choices)."
   step "If something goes wrong"
   say "  A critical error in steps 2-4 or 6 restores the backup automatically."
   say "  You can also undo by hand any time: bash $REPO_DIR/scripts/install.sh restore"
@@ -186,7 +187,8 @@ cmd_plan() {
   say "  - Share anonymous performance numbers? Asked last, in your terminal, with an"
   say "    example event and the privacy promise. Nothing is sent unless you say yes"
   say "    (Enter counts as yes). --no-telemetry answers no without the question."
-  say "    Asked only when this build has a project key; with none, nothing can be sent."
+  say "    Asked only when this build has a project key; with none, nothing can be sent,"
+  say "    nobody is asked, and the installer prints nothing about telemetry."
 }
 
 # Backup ids are timestamps, so the glob's sort order is oldest first.

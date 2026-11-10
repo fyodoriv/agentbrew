@@ -115,8 +115,7 @@ So:
    credential or connector, not a session-only one). Check it where its consumer
    runs: a GUI app reads the launchd env and PATH, not your shell; a needed app
    restart is a user step, not "met". To rate a tool, check it
-   runs here and find its usage data; with none, rate only the design. [§ Probes](references/execution.md#hardware-connectors-and-demo-video).
-   Check that this machine holds each input a proof needs (a record file, a cohort old enough) before a criterion promises real data: [§ Proof inputs](references/execution.md#proof-inputs-and-decided-measurements).
+   runs here and find its usage data; with none, rate only the design. [§ Probes](references/execution.md#hardware-connectors-and-demo-video). Before a criterion promises real data, check this machine holds each proof input: [§ Proof inputs](references/execution.md#proof-inputs-and-decided-measurements).
 8. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions share the account),
    drafts included, and unmerged branches and worktrees (`wrap-up`'s

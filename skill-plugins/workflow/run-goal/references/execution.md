@@ -328,6 +328,16 @@ start it again after the edits; never report its result for the new code.
 - Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`
   works while the run goes on.
 - Reproduce it locally with `env -i` and a minimal `PATH` before a fix.
+- The runner also adds things. Read each `env:` block of the workflow (file,
+  job and step level) and set every variable in the local run, plus the
+  runner's own `CI=true` and `GITHUB_ACTIONS=true`: one `DOTFILES_CI=1` there
+  turned off the checks that some doctor tests assert. Use a clean git
+  config too (`GIT_CONFIG_GLOBAL=<file with only a name and an email>`,
+  `GIT_CONFIG_NOSYSTEM=1`): other tests needed `init.defaultBranch`.
+- A blocker you handed to another session is still yours. When its next
+  note brings no fix, tell that session you take the blocker back, then read
+  the log and reproduce the failure yourself. Tell that session what you
+  fixed, so it does not open a second fix.
 - Never push an empty commit to start a run again. Close and reopen the pull
   request, or push the real fix.
 - A test of one operating system's feature runs only there

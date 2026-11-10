@@ -30,6 +30,8 @@ Every other action: run `agentbrew actions --json`. It lists every command (gene
 
 When the user asks what agentbrew sends, or wants telemetry on or off ("does agentbrew phone home?", "stop the tracking"): run `agentbrew telemetry status` and `agentbrew telemetry send --dry-run` and show both. Run `agentbrew telemetry off` or `agentbrew telemetry on` only after the user gives that answer themselves; `on` prints one example event and the privacy promise, so show them. Nothing is sent unless the user said yes. PostHog sees the request IP address like any web server; the location lookup is off.
 
+When the user asks how much agentbrew helps ("how much time does agentbrew save me?", "is agentbrew worth it?"): run `agentbrew metrics --days 30` and show the "Estimated time saved" line. Say that it is an estimate (3 seconds per detected agent for each sync, 60 seconds per drift item a repair fixed), not a measurement.
+
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.
 
 

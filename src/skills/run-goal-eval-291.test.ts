@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const root = join(resolve(import.meta.dirname, "..", ".."), "skill-plugins", "workflow", "run-goal");
 const execution = readFileSync(join(root, "references", "execution.md"), "utf8");
+const skill = readFileSync(join(root, "SKILL.md"), "utf8");
 const section = execution.split("## Proof inputs and decided measurements\n")[1]?.split("\n## ")[0] ?? "";
 const evals = JSON.parse(readFileSync(join(root, "evals", "evals.json"), "utf8")).evals as Array<{
   id: number;
@@ -19,13 +20,15 @@ describe("run-goal proof inputs and decided measurements", () => {
     expect(section).toMatch(/Check each input at intake, read-only, before you print the\s+contract/);
     expect(section).toMatch(/real data\s+now, a fixture or scratch run, or real data after a named date or event/);
     expect(section).toMatch(/Never create the missing record or send invented events/);
+    expect(section).toMatch(/a measurement that every install can produce/);
+    expect(skill).toContain("references/execution.md#proof-inputs-and-decided-measurements");
   });
 
   it("stops a measurement whose verdict is decided", () => {
     expect(section).toMatch(/stops when the verdict is decided/);
-    expect(section).toMatch(/report the partial counts as measured/);
-    expect(section).toMatch(/apply the registered pivot/);
-    expect(section).toMatch(/shared queue/);
+    expect(section).toMatch(/report\s+the\s+partial\s+counts\s+as\s+measured/);
+    expect(section).toMatch(/apply\s+the\s+registered\s+pivot/);
+    expect(section).toMatch(/holds\s+every\s+other\s+project's\s+work\s+behind\s+it/);
   });
 
   it("has an eval with a missing install record, a young cohort and a decided measurement", () => {

@@ -352,6 +352,7 @@ start it again after the edits; never report its result for the new code.
   contract. For each proof, the contract says which kind it is: real data
   now, a fixture or scratch run, or real data after a named date or event.
   Never create the missing record or send invented events to fill a chart.
+  Offer, as a suggestion, a measurement that every install can produce.
   One goal promised six dashboard tiles with real data; this machine had no
   install record and no install was 14 days old, so three tiles stayed empty.
 - A measurement with a registered line stops when the verdict is decided.

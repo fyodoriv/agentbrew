@@ -312,19 +312,6 @@
   - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
   - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
-- [ ] The LaunchAgent queue test Q01 passes on a loaded machine
-  - **ID**: launchagent-queue-q01-load-flake
-  - **Tags**: tests, flaky, sync
-  - **Details**: `src/sync/launchagent-queue.test.ts` Q01 fails with "expected 124 to be +0" (a timeout exit code) inside `heavy-run npm run verify` when the 1-minute load is above 10. It was seen on 2026-11-09 and 2026-11-10 on branches that do not touch `src/sync/`. The file alone passes each time. Find which wait runs out under load, and make the test wait on the event it needs, not on a fixed time.
-  - **Files**: `src/sync/launchagent-queue.test.ts`, `src/sync/`
-  - **Output**: code
-  - **Acceptance**: Q01 passes 20 times in a row while a CPU load of 10 or more runs beside it, and it still fails when the queue does not start the job.
-  - **Hypothesis**: waiting on the event moves the Q01 failures under load 10 or more from about 1 in 3 full gates to 0 in 20 runs.
-  - **Measurement**: `npx vitest run src/sync/launchagent-queue.test.ts -t Q01` 20 times, with a busy loop on every core beside it; record the load per run.
-  - **Success**: 0 failures in 20 runs at load 10 or more.
-  - **Pivot**: if 1 or more of the 20 runs fails, raise the timeout only for that case and file the queue's slow start as a product bug with the measured times.
-  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] The perf gate's catch rate for small slowdowns under load is measured
   - **ID**: perf-gate-marginal-slowdown-detection-under-load
   - **Tags**: perf, tests

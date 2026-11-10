@@ -4,15 +4,21 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 20
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
           cache: npm
 
       - name: Install
@@ -37,6 +43,6 @@ jobs:
           echo "Tag: $EXPECTED, Binary: $ACTUAL"
           [ "$EXPECTED" = "$ACTUAL" ] || { echo "ERROR: version mismatch"; exit 1; }
 
-      # Auto-publishing runs via .github/workflows/auto-publish.yml on every main push.
+      # The version bump runs via .github/workflows/auto-publish.yml, started by hand.
       # Manual releases: npm run release [patch|minor|major] (see scripts/release.sh).
       # This workflow only verifies that tagged releases have correct dist output.

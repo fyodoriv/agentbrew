@@ -325,6 +325,53 @@ describe("field telemetry", () => {
       expect(status()).toMatchObject({ consent: "yes", on: true });
     });
 
+    it("only one process shows the consent question", async () => {
+      unset();
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.ask.lock`;
+      let answer: (text: string | undefined) => void = () => {};
+      const firstWrite = vi.fn();
+      const first = askOnFirstRun("1", {
+        interactive: true,
+        write: firstWrite,
+        ask: () => new Promise((resolve) => (answer = resolve)),
+        now: NOW,
+      });
+      await vi.waitFor(() => expect(firstWrite).toHaveBeenCalled());
+      expect(existsSync(lock)).toBe(true);
+      expect(savedState().askCount).toBe(1);
+      // A second process read the state before the first one saved the ask: to it, nothing was asked yet.
+      unset();
+      const secondWrite = vi.fn();
+      const secondAsk = answers("y");
+      await askOnFirstRun("1", { interactive: true, write: secondWrite, ask: secondAsk, now: NOW });
+      expect(secondWrite).not.toHaveBeenCalled();
+      expect(secondAsk).not.toHaveBeenCalled();
+      expect(savedState().askCount).toBeUndefined();
+      expect(status().consent).toBe("unset");
+      // The first one ends: its answer is saved and the lock is gone.
+      answer("n");
+      await first;
+      expect(status().consent).toBe("no");
+      expect(existsSync(lock)).toBe(false);
+    });
+
+    it("a question lock that a dead process left does not block the question for long", async () => {
+      unset();
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.ask.lock`;
+      writeFileSync(lock, "999999 dead");
+      const write = vi.fn();
+      // A fresh lock: a person may still be reading the question in another terminal.
+      await askOnFirstRun("1", { interactive: true, write, ask: answers("y"), now: NOW });
+      expect(write).not.toHaveBeenCalled();
+      // Past the stale time the lock is replaced, and the question shows again.
+      const old = new Date(Date.now() - 11 * 60 * 1000);
+      utimesSync(lock, old, old);
+      await askOnFirstRun("1", { interactive: true, write, ask: answers("y"), now: NOW });
+      expect(write).toHaveBeenCalled();
+      expect(status().consent).toBe("yes");
+      expect(existsSync(lock)).toBe(false);
+    });
+
     it("after a normal command only a typed y or n counts: Enter alone leaves it unset", async () => {
       expect(QUESTION_EXPLICIT).toBe("Share anonymous performance numbers? [y/n] ");
       const write = vi.fn();

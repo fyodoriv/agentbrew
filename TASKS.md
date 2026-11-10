@@ -325,19 +325,6 @@
   - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
   - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
 
-- [ ] Two terminals never show the telemetry question at the same time
-  - **ID**: telemetry-consent-question-lock
-  - **Tags**: telemetry, consent
-  - **Details**: The send lock (`acquireLock` in `src/core/telemetry.ts`) covers a send, not the consent question. Two commands that end at the same time in two terminals can both show the question, and both add to `askCount`, so one moment uses two of the allowed asks. The answers cannot conflict in a harmful way (the last saved answer wins, and a no stops every send), but the double question is noise. Take a lock around the question, with a longer stale time than the send lock because a person may take a while to answer.
-  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: while one process shows the question, a second `askOnFirstRun` shows nothing and does not change `askCount`; after the first one ends, the lock is gone.
-  - **Hypothesis**: a question lock moves the questions shown by two commands that end together from 2 to 1.
-  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "only one process shows the consent question"`
-  - **Success**: exactly 1 question for two concurrent callers, and `askCount` rises by 1.
-  - **Pivot**: if a lock can leave a person with no question after a crash for more than a day, drop the lock and make `askCount` and `askedAt` a compare-and-set instead.
-  - **Anchor**: Munafò et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] Decide whether pull requests must carry a Vision trace block
   - **ID**: decide-pr-vision-trace-gate
   - **Tags**: ci, docs, process

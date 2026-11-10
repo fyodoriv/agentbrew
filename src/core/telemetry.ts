@@ -47,6 +47,12 @@ const INSTALL_ID = /^[0-9a-f]{32}$/;
 const KEY = /^phc_[A-Za-z0-9]+$/;
 /** A send lock older than this was left by a dead process. */
 const LOCK_STALE_MS = 60_000;
+/**
+ * The question lock is stale after this long. Longer than the send lock: a
+ * person may take a while to answer. Shorter than the daily ask limit, so a
+ * lock that a crash left never hides the question for a day.
+ */
+const QUESTION_LOCK_STALE_MS = 10 * 60 * 1000;
 /** After a command starts the detached daily send, no command starts a second one for this long. */
 const AUTO_START_GAP_MS = 60_000;
 /** A log line is far shorter than this; a longer mark in the state file is dropped. */
@@ -585,19 +591,30 @@ export async function askOnFirstRun(
   version: string,
   deps: TelemetryDeps & { command?: string; argv?: readonly string[] } = {},
 ): Promise<void> {
+  let release: SendLock | undefined;
   try {
     // The installer turns this path off (AGENTBREW_TELEMETRY_ASK): it asks the question itself, last.
     if (!canAsk(deps) || envOff() || process.env.AGENTBREW_TELEMETRY_ASK === "0") return;
     if (quietCommand(deps.command, deps.argv)) return;
-    const state = loadState();
     const now = deps.now ?? Date.now();
-    if (state.consent || withinDay(state.askedAt, now) || (state.askCount ?? 0) >= MAX_ASKS) return;
-    if (!hasKey(deps, state, now)) return;
+    const state = loadState();
+    if (!questionDue(state, now) || !hasKey(deps, state, now)) return;
+    // One question at a time on a machine: two commands that end together in two terminals show it once.
+    release = acquireLock(`${statePath()}.ask.lock`, QUESTION_LOCK_STALE_MS);
+    // Under the lock the state is read again: another process may have asked a moment ago.
+    if (!release || !questionDue(loadState(), now)) return;
     const result = await askConsent(version, deps);
     if (result.line) (deps.write ?? ((text: string) => process.stderr.write(text)))(`${result.line}\n`);
   } catch (e) {
     logSkipped("core/telemetry/askOnFirstRun", e);
+  } finally {
+    release?.();
   }
+}
+
+/** True when a normal command may show the question: no answer yet, not asked in the last day, and asks left. */
+function questionDue(state: TelemetryState, now: number): boolean {
+  return !state.consent && !withinDay(state.askedAt, now) && (state.askCount ?? 0) < MAX_ASKS;
 }
 
 /** Where a send starts: past what was sent, past a truncated log's end, and past the backlog cap. */
@@ -638,9 +655,9 @@ function createOnce(file: string, token: string): boolean {
   }
 }
 
-/** True when the file is older than LOCK_STALE_MS, or dated that far in the future (the clock was set back). */
-function staleFile(file: string): boolean {
-  return Math.abs(Date.now() - statSync(file).mtimeMs) >= LOCK_STALE_MS;
+/** True when the file is older than `staleMs`, or dated that far in the future (the clock was set back). */
+function staleFile(file: string, staleMs = LOCK_STALE_MS): boolean {
+  return Math.abs(Date.now() - statSync(file).mtimeMs) >= staleMs;
 }
 
 /**
@@ -649,8 +666,8 @@ function staleFile(file: string): boolean {
  * never replaces a lock that another process took over a moment before. The
  * rename swaps the lock in one step: there is no moment with no lock.
  */
-function takeOverStale(file: string, token: string): boolean {
-  if (!staleFile(file)) return false;
+function takeOverStale(file: string, token: string, staleMs: number): boolean {
+  if (!staleFile(file, staleMs)) return false;
   const guard = `${file}.steal`;
   if (!createOnce(guard, token)) {
     // A guard left by a dead process is removed. This send stops; the next one tries again.
@@ -659,7 +676,7 @@ function takeOverStale(file: string, token: string): boolean {
   }
   const mine = `${file}.${token.replace(" ", ".")}`;
   try {
-    if (!staleFile(file)) return false;
+    if (!staleFile(file, staleMs)) return false;
     writeFileSync(mine, token, { mode: 0o600 });
     renameSync(mine, file);
     return true;
@@ -674,9 +691,10 @@ function takeOverStale(file: string, token: string): boolean {
  * owner's pid and a random nonce. Returns the release function, or undefined
  * when another send holds a fresh lock. A lock older than LOCK_STALE_MS was
  * left by a dead process; takeOverStale replaces it. Release removes the lock
- * only when it still holds this owner's token.
+ * only when it still holds this owner's token. The consent question uses the
+ * same lock with its own file and a longer stale time.
  */
-export function acquireLock(file = `${statePath()}.lock`): SendLock | undefined {
+export function acquireLock(file = `${statePath()}.lock`, staleMs = LOCK_STALE_MS): SendLock | undefined {
   const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
   const holds = (): boolean => {
     try {
@@ -690,7 +708,7 @@ export function acquireLock(file = `${statePath()}.lock`): SendLock | undefined 
   };
   try {
     mkdirSync(dirname(file), { recursive: true });
-    if (!createOnce(file, token) && !takeOverStale(file, token)) return undefined;
+    if (!createOnce(file, token) && !takeOverStale(file, token, staleMs)) return undefined;
     return holds() ? Object.assign(release, { holds }) : undefined;
   } catch {
     return undefined;

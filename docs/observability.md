@@ -116,17 +116,20 @@ both are empty.
 
 A send never fails a command.
 
-- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The send is awaited inside the command, so a scheduler run (the repair job) finishes it or gives up within the limit. The attempt time is written when the send ends: a send that the system killed part-way is tried again on the next run, not a day later.
+- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The sync does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the sync and cannot change its exit code. That process records no event of its own.
+- The attempt time is written when the send ends: a send that the system killed part-way (a scheduler job that ended) is tried again on the next run, not a day later.
 - `app_version` is the released package version (`1.2.3`, or `1.2.3-rc.1`). Any other text, such as a local suffix or a commit, is sent as `0.0.0`.
 - The key is never put in a process argument or a log line. A network error logs only its error name.
-- The automatic send stops after 3 seconds in total. `agentbrew telemetry send` allows 10 seconds per request.
+- The automatic send stops after 3 seconds in total, and its process ends itself 1 second later whatever is still open. A DNS lookup that never returns cannot be cancelled; this hard limit ends the process anyway. `agentbrew telemetry send` allows 10 seconds per request.
+- The Keychain lookup stops after 1 second. A lookup that hangs means "no key", never an error.
 - One request holds at most 500 events. The cursor moves only after a 2xx answer.
 - A send skips everything but the newest 2,000 events of the last 30 days, so a first send never uploads an old history.
 - The state file (`~/.local/share/agentbrew/logs/telemetry.json`, or `AGENTBREW_TELEMETRY_STATE`; mode 600) is written with a temp file and a rename. The installer's backup and restore do not touch it.
 - A state file that cannot be read starts again at the end of the log. A shorter log moves the cursor to its end.
-- A hung server cannot hold the process open: the answer body is cancelled, and a real-socket test pins the exit time and the exit code.
+- The event log has a size cap: over 2 MiB it is cut to the whole lines in its newest 1 MiB (see [Logs](#logs)). The cursor survives the cut: the state file keeps the text of the last handled line (`mark`) and finds it again. When the cut removed that line too, the send starts at the first line with a later time. Nothing is sent twice.
+- A hung server or a hung DNS lookup cannot hold a sync: `src/core/telemetry-cli.test.ts` runs the real `agentbrew sync` against both and pins the added time (under 3.5 seconds) and the exit code.
 - Each save re-reads the state file and changes only the cursor and the send times, so a `telemetry off` given during a send is kept. The send stops before its next request.
-- One send runs at a time on a machine (a lock file beside the state; a lock older than 60 seconds is ignored).
+- One send runs at a time on a machine: a lock file beside the state holds the sender's process id and a random token. A send removes only its own lock. A lock more than 60 seconds old, or dated more than 60 seconds in the future (the clock was set back), is stale; the next send replaces it in one step, with a rename.
 - Errors are swallowed; `AGENTBREW_DEBUG=1` prints them.
 
 `npm run docs:proof` reads the per-install totals back for the README Proof
@@ -142,7 +145,7 @@ salted hash, never the install id. With no key or no network it prints one
 
 | Log | Path | Written by | Content |
 |---|---|---|---|
-| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per command run, sync, scheduled repair, and error. See [Events](#events). |
+| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per command run, sync, scheduled repair, and error. Over 2 MiB it is cut to its newest 1 MiB, in whole lines. See [Events](#events). |
 | Repair log | `~/.config/agentbrew/repair-log.json` | `src/repair-log.ts` | What the scheduled repair fixed since you last ran a command. `agentbrew status` prints a summary and clears it. |
 | Sync errors | `~/.config/agentbrew/sync-errors.json` | `src/core/errors.ts` | The errors of the last sync, with messages. Stays local. |
 | Scheduler output | `~/.local/share/agentbrew/logs/launchagent.log`, `launchagent.err`, `cron.log`, `auto-sync.log` | the LaunchAgent, cron, systemd timer, or watcher | Raw output of `agentbrew fix`, trimmed to the newest lines past 1 MB. |

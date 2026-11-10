@@ -1,6 +1,10 @@
-import { mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { PassThrough } from "node:stream";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AUTO_TIMEOUT_MS,
@@ -13,8 +17,10 @@ import {
   consentText,
   defaultKey,
   defaultKeyFile,
+  drainInput,
   loadState,
   QUESTION,
+  QUESTION_EXPLICIT,
   resolveKey,
   send,
   sendDaily,
@@ -100,6 +106,28 @@ describe("field telemetry", () => {
       expect(defaultKey(join(dir, "missing"))).toBe("");
       delete process.env.AGENTBREW_POSTHOG_KEY;
       expect(resolveKey({ keychain: () => "", defaultKeyFile: join(dir, "k0") })).toEqual({ key: "", source: "none" });
+    });
+
+    it("an env or Keychain value that is not one phc_ key is no key", async () => {
+      const file = join(dirname(process.env.AGENTBREW_TELEMETRY_STATE as string), "key.txt");
+      writeFileSync(file, "phc_fromFile1\n");
+      for (const bad of ["sk_live_abc", "phc_has space", "phc_ok\nx", "janedoe", "phc_"]) {
+        process.env.AGENTBREW_POSTHOG_KEY = bad;
+        // A set env var stops the lookup: a bad one is never replaced by another source.
+        expect(resolveKey({ keychain: () => "phc_fromKeychain", defaultKeyFile: file }), bad).toEqual({
+          key: "",
+          source: "none",
+        });
+        const fetchImpl = ok();
+        expect(await send("1", { fetchImpl })).toEqual({ sent: 0, skipped: "no key" });
+        expect(fetchImpl).not.toHaveBeenCalled();
+        delete process.env.AGENTBREW_POSTHOG_KEY;
+        expect(resolveKey({ keychain: () => bad, defaultKeyFile: file }), bad).toEqual({
+          key: "phc_fromFile1",
+          source: "default",
+        });
+        expect(resolveKey({ keychain: () => bad, defaultKeyFile: join(file, "missing") }).source).toBe("none");
+      }
     });
   });
 
@@ -215,9 +243,29 @@ describe("field telemetry", () => {
       expect(result).toMatchObject({ consent: stored, asked: false });
       expect(ask).not.toHaveBeenCalled();
       expect(write).not.toHaveBeenCalled();
-      // An opt-out env var on a re-install does not rewrite a stored yes either.
-      process.env.AGENTBREW_TELEMETRY = "0";
-      expect((await askConsent("1", { install: true, interactive: true, write, ask })).consent).toBe(stored);
+      expect(readFileSync(process.env.AGENTBREW_TELEMETRY_STATE as string, "utf-8")).toBe(before);
+    });
+
+    it.each([
+      ["AGENTBREW_TELEMETRY", "0"],
+      ["DO_NOT_TRACK", "1"],
+    ])("an opt-out at a re-install (%s) records no even over a stored yes; a stored no stays as it is", async (name, value) => {
+      setConsent("yes", NOW);
+      process.env[name] = value;
+      const ask = answers("y");
+      // Outside the installer the env var blocks sending but does not change the stored answer.
+      expect((await askConsent("1", { interactive: true, write: vi.fn(), ask })).consent).toBe("yes");
+      expect(savedState().consent).toBe("yes");
+      const result = await askConsent("1", { install: true, interactive: true, write: vi.fn(), ask, now: NOW + 5_000 });
+      expect(result).toMatchObject({ consent: "no", asked: false });
+      expect(result.line).toMatch(/^Telemetry is off \(/);
+      expect(ask).not.toHaveBeenCalled();
+      expect(savedState()).toMatchObject({ consent: "no", consentAt: new Date(NOW + 5_000).toISOString() });
+      // The reverse never happens: no flag or env var turns a stored no into a yes.
+      const before = readFileSync(process.env.AGENTBREW_TELEMETRY_STATE as string, "utf-8");
+      await askConsent("1", { install: true, interactive: true, write: vi.fn(), ask });
+      delete process.env[name];
+      await askConsent("1", { install: true, interactive: true, write: vi.fn(), ask });
       expect(readFileSync(process.env.AGENTBREW_TELEMETRY_STATE as string, "utf-8")).toBe(before);
     });
 
@@ -233,23 +281,116 @@ describe("field telemetry", () => {
       expect(status()).toMatchObject({ consent: "no", reason: "you said no" });
     });
 
-    it("the first interactive run of a normal command asks once; a later run sends", async () => {
+    it("the first interactive run of a normal command asks, then at most once a day", async () => {
       const write = vi.fn();
-      const fetchImpl = ok();
-      await askOnFirstRun("1", { interactive: true, write, ask: answers(undefined) });
+      const ask = answers(undefined);
+      await askOnFirstRun("1", { interactive: true, write, ask, now: NOW });
       expect(write.mock.calls[0][0]).toContain("Help make agentbrew faster");
-      expect(savedState().askedAt).toBeDefined();
-      // Shown once: an unanswered question is not repeated.
+      expect(ask).toHaveBeenCalledWith(QUESTION_EXPLICIT);
+      expect(savedState().askedAt).toBe(new Date(NOW).toISOString());
+      // An unanswered question is not repeated on the same day.
       const again = vi.fn();
-      await askOnFirstRun("1", { interactive: true, write: again, ask: answers("y") });
+      await askOnFirstRun("1", { interactive: true, write: again, ask: answers("y"), now: NOW + 3_600_000 });
       expect(again).not.toHaveBeenCalled();
       expect(status().consent).toBe("unset");
-
-      unset();
-      await askOnFirstRun("1", { interactive: true, write, ask: answers("") });
+      await askOnFirstRun("1", { interactive: true, write: again, ask: answers("y"), now: NOW + 86_400_000 + 1 });
+      expect(again).toHaveBeenCalled();
       expect(status()).toMatchObject({ consent: "yes", on: true });
+    });
+
+    it("after a normal command only a typed y or n counts: Enter alone leaves it unset", async () => {
+      expect(QUESTION_EXPLICIT).toBe("Share anonymous performance numbers? [y/n] ");
+      const write = vi.fn();
+      const ask = answers("", "y");
+      await askOnFirstRun("1", { interactive: true, write, ask, now: NOW });
+      expect(ask).toHaveBeenCalledTimes(1);
+      expect(status()).toMatchObject({ consent: "unset", on: false });
+      expect(write.mock.calls.at(-1)?.[0]).toMatch(/^No answer\. Nothing is sent\./);
+      const fetchImpl = ok();
       await sendDaily("1", { fetchImpl, now: NOW });
-      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(fetchImpl).not.toHaveBeenCalled();
+      unset();
+      await askOnFirstRun("1", { interactive: true, write, ask: answers("n"), now: NOW });
+      expect(status().consent).toBe("no");
+    });
+
+    it("input typed before the question is thrown away, so a stray Enter is not an answer", async () => {
+      const order: string[] = [];
+      const drain = vi.fn(async () => {
+        order.push("drain");
+      });
+      const ask = vi.fn(async () => {
+        order.push("ask");
+        return "n";
+      });
+      await askConsent("1", { install: true, interactive: true, write: vi.fn(), ask, drain });
+      expect(order).toEqual(["drain", "ask"]);
+
+      // The default drain empties a stream that already holds a typed-ahead Enter.
+      const input = new PassThrough();
+      input.write("\n\ny\n");
+      await drainInput(input, 20);
+      expect(input.readableLength).toBe(0);
+      expect(input.read()).toBeNull();
+      expect(input.isPaused()).toBe(true);
+      expect(input.listenerCount("data")).toBe(0);
+    });
+
+    it("an answer given in another process while the question shows is not written back", async () => {
+      // `telemetry off` runs elsewhere while this process prints the question.
+      const write = vi.fn(() => {
+        if (loadState().consent !== "no") setConsent("no", NOW);
+      });
+      const result = await askConsent("1", { interactive: true, write, ask: answers(undefined), now: NOW });
+      expect(result.consent).toBe("unset");
+      expect(savedState()).toMatchObject({ consent: "no", askedAt: new Date(NOW).toISOString() });
+    });
+
+    it("a yes covers only later events: nothing recorded before the yes is sent", async () => {
+      expect(status().pending).toBe(2);
+      await askConsent("1", { install: true, interactive: true, write: vi.fn(), ask: answers("y"), now: NOW });
+      expect(savedState().sent).toBe(2);
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+      expect((await send("1", { dryRun: true, now: NOW })).body).toMatchObject({ batch: [] });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      appendFileSync(process.env.AGENTBREW_EVENTS_FILE as string, `${row(new Date(NOW).toISOString())}\n`);
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 1 });
+      // A second yes does not skip events that wait.
+      appendFileSync(process.env.AGENTBREW_EVENTS_FILE as string, `${row(new Date(NOW).toISOString())}\n`);
+      setConsent("yes", NOW);
+      expect(status().pending).toBe(1);
+      // no -> yes skips what was recorded while it was off; so does a new state file.
+      setConsent("no", NOW);
+      setConsent("yes", NOW);
+      expect(status().pending).toBe(0);
+      process.env.AGENTBREW_TELEMETRY_STATE = join(dirname(process.env.AGENTBREW_EVENTS_FILE as string), "new.json");
+      expect(loadState().sent).toBe(4);
+      setConsent("yes", NOW);
+      expect(await send("1", { fetchImpl: ok(), now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+    });
+
+    it("the question path does not start a Keychain lookup on every run when no key is set", async () => {
+      delete process.env.AGENTBREW_POSTHOG_KEY;
+      const dir = dirname(process.env.AGENTBREW_TELEMETRY_STATE as string);
+      const empty = join(dir, "empty-key.txt");
+      writeFileSync(empty, "");
+      const keychain = vi.fn(() => "");
+      const deps = { interactive: true, write: vi.fn(), ask: answers("y"), keychain, defaultKeyFile: empty };
+      await askOnFirstRun("1", { ...deps, now: NOW });
+      await askOnFirstRun("1", { ...deps, now: NOW + 60_000 });
+      await askOnFirstRun("1", { ...deps, now: NOW + 3_600_000 });
+      expect(keychain).toHaveBeenCalledTimes(1);
+      expect(savedState().keychainMissAt).toBe(new Date(NOW).toISOString());
+      await askOnFirstRun("1", { ...deps, now: NOW + 86_400_000 + 1 });
+      expect(keychain).toHaveBeenCalledTimes(2);
+      expect(deps.write).not.toHaveBeenCalled();
+      // The default file or the env var answers "is there a key" with no Keychain lookup at all.
+      const withKey = join(dir, "key.txt");
+      writeFileSync(withKey, "phc_fromFile1\n");
+      await askOnFirstRun("1", { ...deps, defaultKeyFile: withKey, now: NOW + 86_400_000 + 2 });
+      expect(keychain).toHaveBeenCalledTimes(2);
+      expect(deps.write).toHaveBeenCalled();
     });
 
     it("a normal command stays silent with no terminal, an off switch, or no key", async () => {
@@ -362,6 +503,11 @@ describe("field telemetry", () => {
         ["", "Users", "janedoe", "secret-project"].join("/"),
         "janedoe42",
         "Jane.Doe",
+        // Plain words: only a fixed name list keeps these out, a pattern does not.
+        "janedoe",
+        "ACMECORP",
+        "acme-corp",
+        "ACME_CORP",
         "jane.doe@example.com",
         "https://git.example.com/team/repo.git",
         "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
@@ -395,7 +541,7 @@ describe("field telemetry", () => {
       const body = buildBatch(tampered, "<posthog_key>", ID, canaries[0]);
       const text = JSON.stringify(body);
       for (const canary of canaries) expect(text, canary).not.toContain(canary);
-      expect(text).not.toMatch(/jane|example\.com|ghp_|a94a8/i);
+      expect(text).not.toMatch(/jane|acme|example\.com|ghp_|a94a8/i);
       const batch = body.batch as { event: string; timestamp?: string; properties: Record<string, unknown> }[];
       expect(batch).toHaveLength(2 * canaries.length);
       const allowed = [
@@ -522,6 +668,94 @@ describe("field telemetry", () => {
       expect(savedState().sent).toBe(BATCH_SIZE);
       expect(await send("1", { fetchImpl: ok(), now: NOW })).toEqual({ sent: 20 });
     });
+
+    it("`telemetry off` during a send stops it and is not overwritten with the old yes", async () => {
+      writeLog(Array(BATCH_SIZE * 3).fill(row(new Date(NOW).toISOString())));
+      seedState();
+      // The answer changes in another process while the first request is in flight.
+      const fetchImpl = vi.fn(async () => {
+        setConsent("no", NOW);
+        return new Response("{}", { status: 200 });
+      });
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: BATCH_SIZE, skipped: "consent changed" });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(savedState()).toMatchObject({ consent: "no", sent: BATCH_SIZE });
+      expect(status()).toMatchObject({ on: false, reason: "you said no" });
+    });
+
+    it("a second send on the same machine waits out the first; a dead send's lock expires", async () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      writeFileSync(lock, "");
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 0, skipped: "another send is running" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(savedState().sent).toBe(0);
+      const old = new Date(Date.now() - 10 * 60_000);
+      utimesSync(lock, old, old);
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 2 });
+      expect(readdirSync(dirname(lock)).sort()).toEqual(["events.jsonl", "telemetry.json"]);
+    });
+
+    it.each([
+      ["never answers", ""],
+      [
+        "answers 200 and never ends the body",
+        "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ntransfer-encoding: chunked\r\n\r\n",
+      ],
+    ])(
+      "a server that %s cannot hold the process open or change its exit code",
+      { timeout: 120_000 },
+      async (_name, head) => {
+        const sockets: Socket[] = [];
+        const server = createServer((socket) => {
+          sockets.push(socket);
+          socket.on("error", () => {});
+          if (head) socket.once("data", () => socket.write(head));
+        });
+        // Needs a real local port: outside the agent sandbox (AGENTS.md Gotchas).
+        await new Promise<void>((resolve, reject) => {
+          server.once("error", reject);
+          server.listen(0, "127.0.0.1", resolve);
+        });
+        const { port } = server.address() as { port: number };
+        const dir = dirname(process.env.AGENTBREW_TELEMETRY_STATE as string);
+        const script = join(dir, "child.mjs");
+        // A real process on a real socket: the automatic send, then a normal end with exit code 7.
+        writeFileSync(
+          script,
+          [
+            `const t = await import(${JSON.stringify(pathToFileURL(join(ROOT, "src/core/telemetry.ts")).href)});`,
+            'process.stdout.write("START\\n");',
+            "const started = Date.now();",
+            'await t.sendDaily("1.0.0");',
+            "process.stdout.write(`DONE ${Date.now() - started}\\n`);",
+            "process.exitCode = 7;",
+          ].join("\n"),
+        );
+        try {
+          const child = spawn(process.execPath, ["--import", "tsx", script], {
+            cwd: ROOT,
+            env: { ...process.env, AGENTBREW_TELEMETRY_URL: `http://127.0.0.1:${port}/batch/`, AGENTBREW_EVENTS: "0" },
+            stdio: ["ignore", "pipe", "inherit"],
+          });
+          let out = "";
+          let startedAt = 0;
+          child.stdout.on("data", (chunk: Buffer) => {
+            out += chunk.toString();
+            if (!startedAt && out.includes("START")) startedAt = Date.now();
+          });
+          const code = await new Promise<number | null>((resolve) => child.on("close", resolve));
+          const total = Date.now() - startedAt;
+          expect(sockets.length, "the request reached the server").toBeGreaterThan(0);
+          expect(code).toBe(7);
+          expect(Number(/DONE (\d+)/.exec(out)?.[1])).toBeLessThanOrEqual(AUTO_TIMEOUT_MS + 500);
+          expect(total).toBeLessThanOrEqual(AUTO_TIMEOUT_MS + 1_000);
+        } finally {
+          for (const socket of sockets) socket.destroy();
+          server.close();
+        }
+      },
+    );
 
     it("writes the state file whole, with mode 600", async () => {
       await send("1", { fetchImpl: ok() });

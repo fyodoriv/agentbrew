@@ -483,7 +483,7 @@ export function buildProgram(): Command {
         return;
       }
       if (action === "ask") {
-        // The installer's consent question. It never asks twice and never changes a stored answer.
+        // The installer's consent question. It never asks twice; only an opt-out (--no-telemetry) changes a stored answer.
         console.log((await t.askConsent(version, { install: true })).line);
         return;
       }

@@ -22,9 +22,11 @@ The stored answer is `unset`, `yes`, or `no`. Nothing is sent unless it is `yes`
 |---|---|
 | Install in a terminal (`scripts/install.sh run`) | The last step asks, after a banner: what is sent, one real event as JSON, the privacy promise, where the numbers go, how to change the answer, then `Share anonymous performance numbers? [Y/n]`. Enter or `y` records `yes`; `n` records `no`. One line confirms the result. |
 | Install with no terminal, or with `CI` set | No question. The answer stays `unset`. Nothing is sent. |
-| Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. |
-| Re-install or update | Never asks again. Never changes a stored answer. |
-| First command in a terminal while the answer is `unset` | Asks the same question once, on stderr. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. With no answer it does not ask again. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
+| Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. This also holds at a re-install with a stored `yes`: an explicit opt-out always wins. |
+| Re-install or update | Never asks again. Never changes a stored answer, except for the opt-out above. Nothing ever turns a stored `no` into a `yes` but you. |
+| A command in a terminal while the answer is `unset` | Asks the same question on stderr, at most once a day, as `[y/n]`: only a typed `y` or `n` counts, and Enter alone leaves the answer `unset`. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
+| Keys typed before the question shows | Thrown away. A stray Enter is never an answer. |
+| The answer becomes `yes` | The cursor moves to the end of the event log. Only events recorded after the yes are sent. |
 | `agentbrew telemetry on` / `off` | Records `yes` / `no` at any time. `on` prints the example and the promise. |
 | A state file that cannot be read | Counts as `unset`, never `yes`. A readable `no` is kept. |
 | A state file from before the question | Has no answer: `unset`. An earlier `telemetry off` counts as `no`. |
@@ -64,13 +66,14 @@ your OS and CPU type, and a random install id. One item per line of the
 | `timestamp` | When the event happened (UTC) |
 | `command` | The top-level command, only when it is in `COMMAND_NAMES` (`src/core/events.ts`) |
 | `ok`, `ms` | Did it work, and the wall time in ms |
-| `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types: fixed words made of letters only |
+| `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
 | `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |
 
 ### The privacy promise
 
 Never a path, file name, host name, user name, argument, message, or content. No IP-based location. No person profile.
+PostHog sees the IP address of each request, like any web server. The location lookup (GeoIP) is off, and no location is stored.
 The code that enforces this is `src/core/events.ts` (`sanitizeEvent`) and
 `src/core/telemetry.ts` (`buildBatch`). Each line is checked against the
 allowlist again at send time, so an edited or older log line cannot send a
@@ -103,7 +106,10 @@ agentbrew reads it in this order: `AGENTBREW_POSTHOG_KEY`, then the owner's
 Keychain item `agentbrew` / `posthog_key`, then the committed file
 `src/core/telemetry-default-key.txt` (shipped as `dist/telemetry-default-key.txt`).
 An empty file means no key, and nothing is sent. A set but empty
-`AGENTBREW_POSTHOG_KEY` also means no key.
+`AGENTBREW_POSTHOG_KEY` also means no key. A value from any source that is
+not one `phc_` key (letters and digits) is no key. The question path reads the
+env var and the file first, and asks the Keychain at most once a day when
+both are empty.
 
 ### Reliable
 
@@ -115,6 +121,9 @@ A send never fails a command.
 - A send skips everything but the newest 2,000 events of the last 30 days, so a first send never uploads an old history.
 - The state file (`~/.local/share/agentbrew/logs/telemetry.json`, or `AGENTBREW_TELEMETRY_STATE`; mode 600) is written with a temp file and a rename. The installer's backup and restore do not touch it.
 - A state file that cannot be read starts again at the end of the log. A shorter log moves the cursor to its end.
+- A hung server cannot hold the process open: the answer body is cancelled, and a real-socket test pins the exit time and the exit code.
+- Each save re-reads the state file and changes only the cursor and the send times, so a `telemetry off` given during a send is kept. The send stops before its next request.
+- One send runs at a time on a machine (a lock file beside the state; a lock older than 60 seconds is ignored).
 - Errors are swallowed; `AGENTBREW_DEBUG=1` prints them.
 
 `npm run docs:proof` reads the per-install totals back for the README Proof
@@ -137,9 +146,9 @@ salted hash, never the install id. With no key or no network it prints one
 | Agent step timings | see [`agent-perf.md`](agent-perf.md) | perf hooks | Per-step tool time for agent sessions. |
 
 The event log is content-free by construction. `sanitizeEvent` keeps only
-allow-listed fields. A string field must match an enum-like pattern (a story
-ID, a lower-case module or drift type, an upper-case error code; letters
-only), so a path, server name, token, or error message can never reach the file.
+allow-listed fields. A string field is kept only when its value is in a fixed list
+(command names, sync modules, drift types, error codes) or is a story ID, so
+a path, server name, token, plain word, or error message can never reach the file.
 
 Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 (`vitest.config.ts`), and `src/core/events.test.ts` asserts that.

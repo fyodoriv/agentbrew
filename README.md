@@ -131,7 +131,7 @@ pie title Drift items found by scheduled repair
 agentbrew can send anonymous performance numbers to PostHog EU. You are asked at install; it is on only after you say yes (Enter counts as yes).
 The numbers feed a public speed dashboard and a check that catches a slow release.
 
-**The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one real event, and the privacy promise first. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the first command you run in a terminal asks once. A re-install or an update never asks again and never changes your answer.
+**The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one real event, and the privacy promise first. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the next command you run in a terminal asks, at most once a day, and there only a typed `y` or `n` counts. A re-install or an update never asks again and never changes your answer; only `--no-telemetry` (or an opt-out variable) at a re-install turns a yes into a no. A yes covers only what happens after it: nothing recorded before the yes is sent.
 
 **What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. One event per command run, sync, scheduled repair, and error:
 
@@ -154,7 +154,7 @@ The numbers feed a public speed dashboard and a check that catches a slow releas
 }
 ```
 
-**The privacy promise.** Never a path, file name, host name, user name, argument, message, or content. No IP-based location. No person profile. The code that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`.
+**The privacy promise.** Never a path, file name, host name, user name, argument, message, or content. No IP-based location. No person profile. PostHog sees the IP address of each request, like any web server. The location lookup (GeoIP) is off, and no location is stored. Every name that is sent (command, error code, sync module, drift type) comes from a fixed list in the code. The code that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`.
 
 **Say no, or change your answer.** Any one of these:
 
@@ -184,7 +184,7 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 |---|---|---|
 | Setup | this repo and your own Agentfile | the same, plus your company's signed plugin (`agentbrew-<org>`) |
 | Company content | none | only from the company plugin: its skills, rules, MCP servers, and hooks. This public repo never names a company |
-| Your data | stays on this machine; agentbrew has no server and sends nothing anywhere | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
+| Your data | stays on this machine; agentbrew has no server. It sends only the anonymous [telemetry](#telemetry) numbers, and only after you say yes | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
 | Plugin trust | none needed | signed tags only, and each capability is denied until the plugin declares it ([Company plugins](#company-plugins)) |
 
 **Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins).

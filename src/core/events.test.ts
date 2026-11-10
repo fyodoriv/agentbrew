@@ -1,8 +1,17 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { COMMAND_NAMES, eventsEnabled, recordEvent, sanitizeEvent, storyForCommand, storyForModule } from "./events.js";
+import {
+  COMMAND_NAMES,
+  DRIFT_TYPES,
+  ERROR_CODES,
+  eventsEnabled,
+  recordEvent,
+  sanitizeEvent,
+  storyForCommand,
+  storyForModule,
+} from "./events.js";
 
 const scratch = mkdtempSync(join(tmpdir(), "agentbrew-events-"));
 const saved = { on: process.env.AGENTBREW_EVENTS, file: process.env.AGENTBREW_EVENTS_FILE };
@@ -67,10 +76,58 @@ describe("sanitizeEvent", () => {
     expect(JSON.stringify(out)).not.toContain("private-notes");
   });
 
-  it("keeps enum-shaped codes and modules", () => {
+  it("keeps known codes and modules", () => {
     expect(
       sanitizeEvent({ event: "error", story: "US03", ok: false, code: "SYNC_ERROR", module: "mcp" }),
     ).toMatchObject({ code: "SYNC_ERROR", module: "mcp", story: "US03" });
+  });
+
+  it("keeps a name only from a fixed list: a plain word in an edited log line is dropped", () => {
+    const out = sanitizeEvent({
+      event: "error",
+      story: "US03",
+      ok: false,
+      code: "ACMECORP",
+      module: "janedoe",
+      types: ["janedoe", "acme-corp", "skills", "constructor", "__proto__"],
+    });
+    expect(out).toEqual({ ts: expect.any(String), event: "error", story: "US03", ok: false, types: ["skills"] });
+    for (const word of ["ACME_CORP", "constructor", "toString", "__proto__"]) {
+      const kept = sanitizeEvent({ event: "error", ok: false, code: word, module: word });
+      expect(kept).not.toHaveProperty("code");
+      expect(kept).not.toHaveProperty("module");
+    }
+  });
+
+  it("the fixed lists hold every name the code records", () => {
+    const src = join(import.meta.dirname, "..");
+    const read = (file: string) => readFileSync(join(src, file), "utf-8");
+    // Drift types: the DriftItem["type"] union.
+    const union = read("drift-checks/types.ts").split("export interface DriftItem")[1].split("detail: string")[0];
+    const driftTypes = [...union.matchAll(/\| "([a-z-]+)"/g)].map((m) => m[1]);
+    expect(driftTypes.length).toBeGreaterThan(5);
+    expect([...DRIFT_TYPES].sort()).toEqual(driftTypes.sort());
+    // Sync modules: each one keeps its name.
+    const modules = [
+      ...`${read("sync-runner.ts")}${read("update.ts")}`.matchAll(/\bname: "([a-z-]+)",?\s+(?:fn|label|run)\b/g),
+    ].map((m) => m[1]);
+    expect(modules.length).toBeGreaterThan(5);
+    for (const module of modules) {
+      expect(sanitizeEvent({ event: "error", ok: false, module }), module).toMatchObject({ module });
+    }
+    // Error codes: every AgentBrewError code in the source, plus the repair fallback.
+    const codes = new Set(["UNEXPECTED"]);
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(join(src, dir), { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (path.endsWith(".ts") && !path.endsWith(".test.ts")) {
+          for (const m of read(path).matchAll(/(?:AgentBrewError|super)\("([A-Z_]+)"/g)) codes.add(m[1]);
+        }
+      }
+    };
+    walk(".");
+    expect([...ERROR_CODES].sort()).toEqual([...codes].sort());
   });
 });
 

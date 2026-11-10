@@ -78,7 +78,8 @@ Ask these together, in one round:
    type, and a random install id to PostHog EU, for a public speed dashboard.
    Never a path, file name, host name,
    user name, argument, message, or content.
-   No IP-based location. No person profile."
+   No IP-based location. No person profile. PostHog sees the request's IP
+   address, like any web server; the location lookup is off."
    Show one example event from the README "Telemetry" section. Yes / No.
    Nothing is sent unless the user says yes.
 
@@ -90,10 +91,11 @@ claudePermissions keep` before setup).
 For question 5: No → `--no-telemetry`. Yes → after the install, run
 `agentbrew telemetry on` (it records the yes and prints the example and the
 promise; show them). No answer → pass nothing: the answer stays unset,
-nothing is sent, and the user is asked once in their own terminal. A person
+nothing is sent, and the user is asked in their own terminal (at most once a day). A person
 who runs the installer in a terminal is asked there, as its last step
 (`[Y/n]`, Enter counts as yes). A re-install never asks again and never
-changes a stored answer. Full contract:
+changes a stored answer; only `--no-telemetry` at a re-install turns a yes
+into a no. Full contract:
 [`docs/observability.md`](docs/observability.md#field-telemetry).
 
 With `--no-recommended`, setup downloads nothing: it fetches no catalog

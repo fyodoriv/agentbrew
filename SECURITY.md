@@ -57,7 +57,8 @@ email identities may ever reach it.
 agentbrew sends anonymous performance numbers only after the user says yes to
 a question at install (Enter counts as yes). Never a path, file name, host
 name, user name, argument, message, or content. No IP-based location. No
-person profile. `agentbrew telemetry off`, `--no-telemetry`,
+person profile. PostHog sees the IP address of each request, like any web
+server; the location lookup (GeoIP) is off, and no location is stored. `agentbrew telemetry off`, `--no-telemetry`,
 `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` each stop it. The code
 that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`. The
 question, every field, and every off switch:

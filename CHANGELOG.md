@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3-second limit. `agentbrew telemetry off`, `--no-telemetry`,
   `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` stop it;
   `agentbrew telemetry status` and `send --dry-run` show what happens. The
+  A yes covers only later events. PostHog sees the request IP address like
+  any web server; GeoIP is off and no location is stored. The
   default project key file ships empty, so nothing is sent yet. This replaces
   the owner-key opt-in. See README "Telemetry".
 - `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).

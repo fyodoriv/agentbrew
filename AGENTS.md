@@ -26,7 +26,7 @@ Run every command from the repo root.
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
-| Full gate (shared cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
+| Full gate (hosted CI runs it per PR; `NO_CACHE=1` runs all) | `npm run verify` — in background |
 | Repo checkup (doctor, gate, metrics, speed, audit) | `npm run checkup` |
 | Install e2e (scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` ([native receipts](docs/plans/source-build-prebuilt-764.md)) |
@@ -87,7 +87,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
-- CI `npm run verify` (Actions off) [Perf limits](docs/agent-perf.md).
+- [CI](docs/ci.md); [perf limits](docs/agent-perf.md).
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under load; re-run it.
@@ -114,12 +114,12 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run verify:changed`. Unless it says `merge-ready`, run `npm run verify` once before merge.
+3. Iterate with `npm run verify:changed`. The hosted check runs the full `npm run verify`; run it here only when Actions is off.
    Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.
 5. Push and open a PR. The body has `## Summary`, `## Details`, `## Docs`, a hypothesis block, and `## Visual proof` (a pasted terminal transcript).
-6. When the gate is green, squash-merge. Remove the worktree and the branch.
+6. When every hosted check is green, squash-merge. Remove the worktree and branch.
 
 ## Docs upkeep
 

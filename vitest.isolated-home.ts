@@ -36,7 +36,10 @@ process.env.npm_config_cache ??= join(realHome, ".npm");
 process.env.HOME = scratchHome;
 process.env.USERPROFILE = scratchHome;
 // Keep the real browser cache so Playwright tests find their browsers.
-process.env.PLAYWRIGHT_BROWSERS_PATH ??= join(realHome, "Library", "Caches", "ms-playwright");
+process.env.PLAYWRIGHT_BROWSERS_PATH ??=
+  process.platform === "darwin"
+    ? join(realHome, "Library", "Caches", "ms-playwright")
+    : join(realHome, ".cache", "ms-playwright");
 // Fixture repos commit with a test identity, not the developer's ~/.gitconfig.
 fs.writeFileSync(join(scratchHome, ".gitconfig"), "[user]\n\tname = agentbrew test\n\temail = test@example.com\n");
 

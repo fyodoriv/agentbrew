@@ -42,7 +42,7 @@ function setup(opts: { worktreeLock: string; mainModules?: boolean; env?: Record
 }
 
 describe("worktree-deps.sh", () => {
-  it("clones node_modules when the lockfiles match", () => {
+  it.runIf(process.platform === "darwin")("clones node_modules when the lockfiles match", () => {
     const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":1}\n' });
     const result = run();
     expect(result.status, result.stderr).toBe(0);
@@ -58,7 +58,7 @@ describe("worktree-deps.sh", () => {
     expect(result.stdout).toContain("cloned node_modules with clonefile(2)");
   });
 
-  it("falls back to cp -cR when the one-call clone is not available", () => {
+  it.runIf(process.platform === "darwin")("falls back to cp -cR when the one-call clone is not available", () => {
     const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":1}\n', env: { WORKTREE_DEPS_PYTHON: "false" } });
     const result = run();
     expect(result.status, result.stderr).toBe(0);
@@ -67,19 +67,22 @@ describe("worktree-deps.sh", () => {
     expect(npmCalls()).toBe("");
   });
 
-  it("keeps a cloned node_modules when the lockfile has not changed since the clone", () => {
-    const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":1}\n' });
-    expect(run().status).toBe(0);
-    const marker = join(wt, "node_modules", "kept.txt");
-    writeFileSync(marker, "still here\n");
-    const result = run();
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("node_modules already matches package-lock.json");
-    expect(existsSync(marker)).toBe(true);
-    expect(npmCalls()).toBe("");
-  });
+  it.runIf(process.platform === "darwin")(
+    "keeps a cloned node_modules when the lockfile has not changed since the clone",
+    () => {
+      const { wt, run, npmCalls } = setup({ worktreeLock: '{"lock":1}\n' });
+      expect(run().status).toBe(0);
+      const marker = join(wt, "node_modules", "kept.txt");
+      writeFileSync(marker, "still here\n");
+      const result = run();
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("node_modules already matches package-lock.json");
+      expect(existsSync(marker)).toBe(true);
+      expect(npmCalls()).toBe("");
+    },
+  );
 
-  it("clones again when the lockfile changed since the last clone", () => {
+  it.runIf(process.platform === "darwin")("clones again when the lockfile changed since the last clone", () => {
     const { main, wt, run } = setup({ worktreeLock: '{"lock":1}\n' });
     expect(run().status).toBe(0);
     const marker = join(wt, "node_modules", "stale.txt");

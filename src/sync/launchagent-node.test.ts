@@ -163,7 +163,7 @@ describe("auto-sync LaunchAgent Node path (#356)", () => {
     expect(errors.some((line) => line.includes(gone) && line.includes("agentbrew auto-sync install"))).toBe(true);
   });
 
-  describe("status drift for the job's Node", () => {
+  describe.runIf(process.platform === "darwin")("status drift for the job's Node", () => {
     /** Install, then make the plist run `program` as if no override had been set. */
     async function installRunning(program: string): Promise<void> {
       const installed = fakeNode(join(root, "installed", "bin", "node"));

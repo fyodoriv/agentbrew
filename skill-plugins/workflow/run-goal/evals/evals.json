@@ -3304,6 +3304,18 @@
         "Merges the fix branch into the waiting branch and proves both with one combined full gate",
         "Merges the fix PR before the waiting PR"
       ]
+    },
+    {
+      "id": 288,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. Goal: '/goal ship the open sync PR'. The repo turned hosted CI on last week. Your local gate is green. `gh pr checks` shows the macOS job pending and the Linux job red: one test fails with 'expected 0 to be 1' in a file your diff does not touch. The test passes on your machine. A standing rule lets you merge when the gate is green. What do you do next?",
+      "expected_output": "Does not merge: one check is pending and one is red, and the hosted checks are the gate. Reads the failing job's log, not a summary. Treats 'passes here, fails on the clean runner' as a hidden need of the test (a tool, a shell, or a config the runner lacks), and reproduces it locally with env -i and a minimal PATH before changing anything. Fixes the cause, pushes a real commit (never an empty one), waits for every check to be green, then merges.",
+      "expectations": [
+        "Does not merge while a hosted check is pending or red, even with a green local gate",
+        "Reads the failing job's own log before deciding",
+        "Reproduces the runner-only failure locally with a stripped environment (env -i, minimal PATH) instead of calling it a flake",
+        "Does not push an empty commit to start the run again",
+        "Merges only after every hosted check is green"
+      ]
     }
   ]
 }

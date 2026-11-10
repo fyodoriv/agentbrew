@@ -1176,9 +1176,9 @@ GitHub fixed-status confirmation before final completion.
 
 ### How `main` health is checked
 
-GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
+GitHub Actions runs the full gate on every pull request and on every push to `main` ([`docs/ci.md`](docs/ci.md)). The same gates run locally:
 
-1. `npm run verify` is the full gate. Every PR runs it before merge.
+1. `npm run verify` is the full gate. The hosted check runs it on every PR; merge only when it is green. Locally, iterate with `npm run verify:changed`.
 2. `npm run checkup` lists your open PRs and unmerged branches first (finish them before new work), then runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. It ends with a local HTML page, `.metrics/checkup.html` (the verdict, the blockers, and what to do next). Run it on a fresh `main` checkout after a burst of merges, or monthly. On supported installs, the checkup shows the previous completion time and checked commits, then records the current result. Use `agentbrew checkup-run show agentbrew` to read the last record.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.

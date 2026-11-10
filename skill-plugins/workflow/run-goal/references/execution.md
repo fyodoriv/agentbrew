@@ -318,3 +318,17 @@ start it again after the edits; never report its result for the new code.
 - Playwright's bundled ffmpeg has no `concat`/`image2` demuxer and no H.264.
   This works: `cat frames/*.jpg | ffmpeg -f image2pipe -framerate 5 -c:v mjpeg -i pipe:0 -c:v libvpx-vp9 -pix_fmt yuv420p out.webm`.
 - Read a few frames from the output before you report the video done.
+
+## Hosted checks
+
+- When hosted checks exist, they are the gate. Wait for every check. Never
+  merge on a pending or red one, also with a green local gate.
+- A test that fails only on the clean runner has a hidden need: a tool, a
+  shell, a config file, or another operating system.
+- Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`
+  works while the run goes on.
+- Reproduce it locally with `env -i` and a minimal `PATH` before a fix.
+- Never push an empty commit to start a run again. Close and reopen the pull
+  request, or push the real fix.
+- A test of one operating system's feature runs only there
+  (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.

@@ -378,6 +378,62 @@
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
 
+- [ ] Move the hosted Linux job back to ubuntu-latest when Playwright supports it
+  - **ID**: ci-ubuntu-latest-playwright
+  - **Tags**: ci, tests
+  - **Mode**: AFK
+  - **Details**: On 2026-11-10 the first hosted run of `.github/workflows/ci.yml` failed on `ubuntu-latest` at the `playwright-install` step: `Playwright does not support chromium on ubuntu26.04-x64`. The job now runs on `ubuntu-24.04`. GitHub removes old images over time, so check the installed Playwright version against the newest image and move the label back when Chromium installs there.
+  - **Files**: `.github/workflows/ci.yml`, `package.json`
+  - **Output**: code
+  - **Acceptance**: the `verify` job passes on `ubuntu-latest`, and the pin comment in `ci.yml` is gone.
+  - **Hypothesis**: a Playwright version with a Chromium build for the newest image moves `playwright-install` failures on `ubuntu-latest` from 1 of 1 to 0.
+  - **Measurement**: `gh workflow run ci.yml --ref <branch>` on a branch with `ubuntu-latest`, then `gh run view <id> --json jobs --jq '.jobs[].conclusion'`.
+  - **Success**: every job prints `success`.
+  - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Key the hosted step cache on the runner image and on more of each step's inputs
+  - **ID**: ci-step-cache-key-image-and-inputs
+  - **Tags**: ci, cache, perf
+  - **Mode**: AFK
+  - **Details**: The hosted job keeps the `scripts/verify.sh` step record with `actions/cache` under the key `gate-<matrix.os>-<run>`. Two gaps, found by the review of the pull request that turned hosted CI on. (1) The key has no runner image version. When `macos-latest` moves to a new image, a step record made with the older `jq` or `bash` is reused. Add the image name (`ImageOS`) and `RUNNER_ARCH` to the key through a step output. (2) On a pull request only the hook-fixture step is served from the record: the lint steps key on `origin/main` and every repo file, and the test step never caches. Give the lint steps listed inputs so a docs-only change skips them, and measure the saved time.
+  - **Files**: `.github/workflows/ci.yml`, `scripts/verify.sh`, `docs/ci.md`
+  - **Output**: code
+  - **Acceptance**: the cache key holds the image name, and a second hosted run of a docs-only change serves the lint steps from the record.
+  - **Hypothesis**: listed inputs for the lint steps move the cached share of a docs-only hosted run from 1 step to every lint step, with no stale pass after an image change.
+  - **Measurement**: the last gate line of the hosted job log (`verify: passed; N of M steps from cache`) on two runs of one docs-only branch.
+  - **Success**: N on the second run covers every lint step.
+  - **Pivot**: if a lint step cannot list its inputs without missing a real failure in a seeded test, leave it uncached and close the task with only the image key.
+  - **Anchor**: Mokhov, Mitchell and Peyton Jones (2018), Build Systems à la Carte.
+
+- [ ] Write rules natively when a native agent shares its file with a delegated agent and ai-rules is missing
+  - **ID**: rules-shared-file-native-fallback
+  - **Tags**: sync, rules
+  - **Mode**: AFK
+  - **Details**: Found on the first hosted run (2026-11-10), where the `ai-rules` CLI is not installed. `dedupeRulesWritesByResolvedPath` in `src/sync/rules-sync.ts` gives a shared rules file to the delegated agent. With no `ai-rules`, that write is skipped, so a natively synced agent on the same real file (seen with `opencode` in `src/integration.test.ts`, "sync → sync → status converges") keeps zero managed sections. The test now allows zero only for that shared-file case. Decide the behaviour: let the native agent write when the delegated write is skipped, or keep the skip and say so in the warning.
+  - **Files**: `src/sync/rules-sync.ts`, `src/integration.test.ts`, `src/sync/rules-sync.test.ts`
+  - **Output**: code
+  - **Acceptance**: with `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules`, the integration test asserts exactly one managed section for every native agent, with no shared-file exception.
+  - **Hypothesis**: a native fallback for a shared file moves native agents with zero managed sections on a machine without `ai-rules` from 1 to 0.
+  - **Measurement**: `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules npx vitest run src/integration.test.ts`
+  - **Success**: every test in the file passes with the exception removed.
+  - **Pivot**: if a native write to the shared file breaks the delegated agent's content on the next sync with `ai-rules`, keep the skip and print the file in the warning instead.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Make the perf gate timing tests steady on hosted runners
+  - **ID**: perf-gate-tests-hosted-noise
+  - **Tags**: ci, tests, perf
+  - **Mode**: AFK
+  - **Details**: On the hosted macOS run of 2026-11-10 a few timing cases in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). A retry on every timing case did not help: the next run failed on other cases (`base 63.0 ms head 108.1 ms +71.5% slower` for an unchanged tool). The gate-spawning groups now skip on the hosted macOS runner only (`HOSTED_MAC` in the test file); they still run on hosted Linux and on a local Mac. Remove that skip when this task lands. A retry does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
+  - **Files**: `src/scripts/perf-gate.test.ts`, `scripts/perf-gate.mjs`
+  - **Output**: code
+  - **Acceptance**: the file passes 20 of 20 hosted macOS runs with `retry` set to 0.
+  - **Hypothesis**: fixtures that do not depend on the wall clock move hosted failures of this file from a failure in the first hosted run to none in 20 runs.
+  - **Measurement**: `gh run list -w ci.yml -L 20 --json conclusion --jq '[.[]|select(.conclusion=="failure")]|length'`, then read each failed log for `perf-gate.test.ts`.
+  - **Success**: 0 failures of this file in 20 runs.
+  - **Pivot**: if a fake clock needs a large change in the gate (more than a screen of code), run this file in its own serial step after the suite.
+  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests.
+
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
   - **Tags**: opencode, local-ai, reliability, readiness

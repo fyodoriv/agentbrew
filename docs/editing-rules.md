@@ -64,9 +64,9 @@ It is public. There is no mirror.
 Contribute from any machine:
 
 1. Create a feature branch from `main`.
-2. Run `npm run verify`.
+2. Run `npm run verify:changed` and the leak check.
 3. Push the branch: `git push origin <branch>`.
-4. Open a PR on `github.com/fyodoriv/agentbrew`, then merge it.
+4. Open a PR on `github.com/fyodoriv/agentbrew`. Merge it when every hosted check is green.
 5. Run `git pull` on `main` to get the latest.
 
 **No private email, no org identifier outside the allowlist, and
@@ -91,10 +91,13 @@ no hardcoded secret may reach the repo.** Full design lives in
    violators, and add a row to the "Pattern history" table at the bottom
    of `SECURITY.md`.
 
-3. **`npm run verify` is the local gate.** Run it before every push.
+3. **`npm run verify` is the full gate.** GitHub Actions runs it on every
+   pull request ([`docs/ci.md`](ci.md)). Run `npm run verify:changed` before
+   a push; run the full gate locally only when Actions is off.
    The CI workflow (`.github/workflows/oss-readiness.yml`) runs the
-   no-internal-refs test and a private-email check. GitHub Actions is
-   disabled on `fyodoriv/agentbrew` today, so CI does not run.
+   no-internal-refs test and a private-email check on every pull request.
+   A hosted runner has no private-pattern file, so the local gates stay
+   the authority for leaks ([`docs/ci.md`](ci.md)).
 
 `dotfiles/lib/oss-readiness.sh` reads the same `oss-readiness.env` as
 [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).
@@ -158,5 +161,5 @@ Do not write counts of tests, files, lines, agents, skills, commands, servers, o
 2. **Complexity limits are non-negotiable.** This repo enforces `noExcessiveCognitiveComplexity: 15` via biome. If your function exceeds it, decompose — extract helpers, name things properly, separate concerns. Do not suppress.
 3. **No `any` in production code.** Strict TypeScript means agents can't exploit type holes. `noExplicitAny: error` is active. Use `unknown` + type guards instead.
 4. **User-facing CLI output goes through the `chalk`-wrapped `console.log` / `console.error` conventions already in the codebase.** `noConsole` is intentionally `off` in biome — agentbrew is a CLI that prints to stdout/stderr by design. Non-user-facing diagnostics (swallowed errors, silent skips) must use `logSkipped()` / `logger.warn()` so they can be filtered and instrumented.
-5. **Run the full verify gate before claiming done.** `npm run verify` = typecheck + biome + security lint + all tests. No exceptions.
+5. **Pass the full verify gate before claiming done.** `npm run verify` = typecheck + biome + security lint + all tests. The hosted check on the pull request runs it; a green hosted check is the proof. No exceptions.
 6. **When something goes wrong, ask: "Can this be a lint rule?"** Every bug that reaches CI should become a rule that prevents the next one. The system feeds on its own failures.

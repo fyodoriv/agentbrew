@@ -2,7 +2,7 @@ name: CI
 
 # The hosted copy of the local gate: `npm run verify`, the same command a
 # contributor runs before a push. Hosted on GitHub's standard runners, which
-# are free for public repositories.
+# are free for public repositories. See docs/ci.md.
 #
 # Safety:
 # - No secrets are used. A fork PR gets a read-only token and no secrets.
@@ -11,6 +11,10 @@ name: CI
 # - Steps never print the environment.
 
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -31,7 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # ubuntu-24.04, not ubuntu-latest: Playwright has no Chromium build
+        # for the newer image yet (TASKS.md ci-ubuntu-latest-playwright).
+        os: [ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -49,6 +55,15 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Install test tools
+        # git-filter-repo: the test of scripts/sanitize-history.sh needs it.
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install git-filter-repo
+          else
+            sudo apt-get update && sudo apt-get install -y git-filter-repo
+          fi
+
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -56,6 +71,21 @@ jobs:
             ~/.cache/ms-playwright
             ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore the gate step cache
+        # scripts/verify.sh skips a step whose inputs passed before, like nx.
+        # A cache entry cannot be changed, so each run saves a new one and
+        # restores the newest. A pull request reads its own entries and
+        # main's; it cannot write to main's.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/gate-cache
+          key: gate-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            gate-${{ matrix.os }}-
+
+      - name: Point the gate at the step cache
+        run: echo "AGENTBREW_GATE_CACHE_DIR=$RUNNER_TEMP/gate-cache" >> "$GITHUB_ENV"
 
       - name: Gate (npm run verify)
         run: npm run verify

@@ -554,22 +554,12 @@ function recordCommandEvents(program: Command): void {
   });
 }
 
-/**
- * `telemetry send --auto`: the detached process a sync starts. One quiet daily
- * send, then the process ends. The timer is the hard limit: a DNS lookup that
- * never returns ignores the send's own timeout and would keep the process alive.
- */
-async function autoSend(t: typeof import("./core/telemetry.js")): Promise<never> {
-  setTimeout(() => process.exit(0), t.AUTO_TIMEOUT_MS + 1_000);
-  await t.sendDaily(version);
-  process.exit(0);
-}
-
 async function telemetrySend(
   t: typeof import("./core/telemetry.js"),
   options: { dryRun?: boolean; auto?: boolean },
 ): Promise<void> {
-  if (options.auto) await autoSend(t);
+  // The detached process a sync starts: quiet, and it ends itself.
+  if (options.auto) return (await import("./core/telemetry-auto.js")).runAutoSend(version);
   console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
 }
 

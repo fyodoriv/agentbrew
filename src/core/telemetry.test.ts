@@ -43,7 +43,7 @@ import {
   setConsent,
   status,
 } from "./telemetry.js";
-import { startDailySend } from "./telemetry-auto.js";
+import { runAutoSend, startDailySend } from "./telemetry-auto.js";
 
 // The debug log is captured, so a test can prove that no log line holds the key.
 vi.mock("./logger.js", async (original) => ({
@@ -933,6 +933,94 @@ describe("field telemetry", () => {
       setConsent("no", NOW);
       expect(start(NOW)).toBe(false);
       expect(spawnImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("the detached send does not carry a debugger flag from the parent", () => {
+      const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
+      const execArgv = process.execArgv;
+      process.execArgv = ["--inspect-brk=0", "--import", "tsx", "--inspect", "--inspect-port=0"];
+      try {
+        expect(startDailySend({ now: NOW, spawnImpl: spawnImpl as unknown as typeof spawn })).toBe(true);
+      } finally {
+        process.execArgv = execArgv;
+      }
+      const args = (spawnImpl.mock.calls[0] as unknown as [string, string[]])[1];
+      expect(args.slice(0, 2)).toEqual(["--import", "tsx"]);
+      expect(args.join(" ")).not.toContain("--inspect");
+    });
+
+    it("the detached send ends itself when the send never settles", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        const exit = vi.fn();
+        void runAutoSend("1.0.0", { sendDaily: () => new Promise<void>(() => {}), exit });
+        await vi.advanceTimersByTimeAsync(AUTO_TIMEOUT_MS + 999);
+        expect(exit).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
+        // A send that ends in time exits at once, and the timer does not fire later.
+        const quick = vi.fn();
+        await runAutoSend("1.0.0", { sendDaily: async () => {}, exit: quick });
+        await vi.advanceTimersByTimeAsync(AUTO_TIMEOUT_MS * 2);
+        expect(quick).toHaveBeenCalledExactlyOnceWith(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("two processes cannot both take over one stale lock", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const other = `1 ${"c".repeat(32)}`;
+      writeFileSync(lock, other);
+      utimesSync(lock, old, old);
+      // Another process is in the middle of the takeover: it holds the takeover guard.
+      writeFileSync(`${lock}.steal`, `2 ${"d".repeat(32)}`);
+      expect(acquireLock()).toBeUndefined();
+      expect(readFileSync(lock, "utf-8")).toBe(other);
+      // A guard left by a dead process is removed; the try after that takes the lock.
+      utimesSync(`${lock}.steal`, old, old);
+      expect(acquireLock()).toBeUndefined();
+      const release = acquireLock();
+      expect(release).toBeTypeOf("function");
+      expect(readdirSync(dirname(lock)).sort()).toEqual(["events.jsonl", "telemetry.json", "telemetry.json.lock"]);
+      release?.();
+    });
+
+    it("a send that lost its lock stops before the next request", async () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      writeLog(Array(BATCH_SIZE * 2).fill(row(new Date(NOW).toISOString())));
+      const fetchImpl = vi.fn(async () => {
+        writeFileSync(lock, `1 ${"a".repeat(32)}`);
+        return new Response("{}", { status: 200 });
+      });
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: BATCH_SIZE, skipped: "lock lost" });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("a send that starts as another one ends does not send the same events again", async () => {
+      // The key comes from the Keychain fake. It runs after the first look at the
+      // state and before the lock: there, another process finishes its send.
+      delete process.env.AGENTBREW_POSTHOG_KEY;
+      const keychain = vi.fn(() => {
+        seedState({ sent: 2, mark: lines[1] });
+        return "phc_test";
+      });
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, keychain, now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(keychain).toHaveBeenCalledTimes(1);
+    });
+
+    it("a mark that cannot be read skips to the end of the log, never back", async () => {
+      const at = (i: number) => row(new Date(NOW - 3_600_000 + i * 1_000).toISOString());
+      writeLog(Array.from({ length: 10 }, (_, i) => at(i)));
+      seedState({ sent: 5, mark: "not a log line" });
+      expect(status().pending).toBe(0);
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(savedState().sent).toBe(10);
     });
 
     it("the send lock names its owner, and a send releases only its own lock", async () => {

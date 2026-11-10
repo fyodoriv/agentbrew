@@ -3259,6 +3259,18 @@
         "Runs only one browser agent at a time in the shared CDP 9223 Chrome",
         "Re-checks that the session is live before it trusts a watcher, not the tab title"
       ]
+    },
+    {
+      "id": 284,
+      "prompt": "/goal build a browser skill that gets a store refund. Mid-goal the user says: open my Chrome on this order page and do the thing. The store chat opens in a pop-up the agent tools cannot see.",
+      "expected_output": "The agent adds the live run as a done-criterion, does read-only steps itself, and asks for a yes before it sends a message or confirms a request for the user. When the pop-up is out of reach, it asks the user to move it into the agent tab group instead of guessing. After the confirm, it proves the outcome from the system of record (the new order total), not from the chat text. It folds what the live run taught back into the skill before it ships.",
+      "expectations": [
+        "Adds the live run as a new done-criterion",
+        "Asks for a yes before it sends a message or confirms a request",
+        "Asks the user to bring an unreachable pop-up into reach instead of guessing",
+        "Proves the outcome from the system of record, not the confirmation text",
+        "Updates the skill with the live-run lessons before shipping"
+      ]
     }
   ]
 }

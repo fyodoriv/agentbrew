@@ -392,6 +392,20 @@
   - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
 
+- [ ] Key the hosted step cache on the runner image and on more of each step's inputs
+  - **ID**: ci-step-cache-key-image-and-inputs
+  - **Tags**: ci, cache, perf
+  - **Mode**: AFK
+  - **Details**: The hosted job keeps the `scripts/verify.sh` step record with `actions/cache` under the key `gate-<matrix.os>-<run>`. Two gaps, found by the review of the pull request that turned hosted CI on. (1) The key has no runner image version. When `macos-latest` moves to a new image, a step record made with the older `jq` or `bash` is reused. Add the image name (`ImageOS`) and `RUNNER_ARCH` to the key through a step output. (2) On a pull request only the hook-fixture step is served from the record: the lint steps key on `origin/main` and every repo file, and the test step never caches. Give the lint steps listed inputs so a docs-only change skips them, and measure the saved time.
+  - **Files**: `.github/workflows/ci.yml`, `scripts/verify.sh`, `docs/ci.md`
+  - **Output**: code
+  - **Acceptance**: the cache key holds the image name, and a second hosted run of a docs-only change serves the lint steps from the record.
+  - **Hypothesis**: listed inputs for the lint steps move the cached share of a docs-only hosted run from 1 step to every lint step, with no stale pass after an image change.
+  - **Measurement**: the last gate line of the hosted job log (`verify: passed; N of M steps from cache`) on two runs of one docs-only branch.
+  - **Success**: N on the second run covers every lint step.
+  - **Pivot**: if a lint step cannot list its inputs without missing a real failure in a seeded test, leave it uncached and close the task with only the image key.
+  - **Anchor**: Mokhov, Mitchell and Peyton Jones (2018), Build Systems à la Carte.
+
 - [ ] Write rules natively when a native agent shares its file with a delegated agent and ai-rules is missing
   - **ID**: rules-shared-file-native-fallback
   - **Tags**: sync, rules

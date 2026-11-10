@@ -291,8 +291,8 @@ machine.
 - **Measured (2026-11-10)**: the perf step in one normal heavy-run slot while
   other gates ran, 20 clean runs and 20 runs with a seeded slowdown (13 ms
   more in one hook, about +25% to +35%). The 1-minute load was 6.5 to 36.5 for
-  the clean runs (10 or more for 13 of them) and 6.0 to 9.3 for the seeded
-  runs. The three rules were judged on the same samples.
+  the clean runs (10 or more for 12 of them) and 5.9 to 10.3 for the seeded
+  runs (10 or more for 1 of them). The three rules were judged on the same samples.
 
   | Rule | False alarms, 20 clean runs | Caught, 20 seeded runs |
   |---|---|---|

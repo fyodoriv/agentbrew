@@ -17,6 +17,12 @@ wrong thing, and asks questions the files could answer.
   the goal. The downstream steps become chunks or parked items.
 - Follow-up messages refine the same goal. Only an unrelated topic is a new
   goal.
+- A goal can arrive in two parts. `/goal` refuses a condition over 4,000
+  characters, so the user may set a short goal ("based on prompts I'll share
+  now") and paste the full request in a message before or after it. Treat
+  that pasted request as the goal text: copy it verbatim and build the
+  contract from it, not from the short condition. Do not ask the user to
+  shorten it.
 
 ## 2. Push back
 

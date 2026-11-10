@@ -181,6 +181,16 @@
         "Reruns with a read-all-first rule",
         "Asks the judge to report how many shots it read"
       ]
+    },
+    {
+      "id": 17,
+      "prompt": "Three judge rounds in a row fixed every shared note, and the panel mean moved 8.12, 8.27, 8.16. The user asks whether to run another round.",
+      "expected_output": "Calls the movement noise, recommends stopping the judge rounds, and files the remaining notes as one checklist task with a numeric goal instead of another round.",
+      "expectations": [
+        "Does not call a 0.1-0.3 change a regression or a gain",
+        "Recommends stopping after three flat rounds",
+        "Turns the remaining notes into a task with a measurable target"
+      ]
     }
   ]
 }

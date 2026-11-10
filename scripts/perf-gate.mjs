@@ -8,13 +8,18 @@
 // same verdict on any machine.
 //
 // A command fails when
-//   head_min > base_min * 1.10  AND  head_min - base_min > 3 ms   (slower), or
-//   head_min > its ceiling in the budget file                     (over-ceiling).
+//   head_min > base_min * 1.10  AND  head_min - base_min > 3 ms, AND the
+//   paired runs agree (see "Timing choices")                      (slower), or
+//   head_min > its ceiling in the budget file, while base_min is
+//   not above it in the same run                                  (over-ceiling).
+// When base_min is above the ceiling too, the command passes with the verdict
+// over-ceiling-at-base, and the summary line counts it.
 // A command whose file does not exist at the base commit is "new": only the
 // ceiling applies. Any other problem on the base side is a setup error.
 //
 // Usage: node scripts/perf-gate.mjs [--json] [--force]     (npm run perf:gate)
-//   --json   print one JSON object (per command: base_min, head_min, ratio, verdict)
+//   --json   print one JSON object (per command: base_min, head_min, ratio,
+//            paired_delta_ms, over_ceiling_at_base, verdict; and problems)
 //   --force  time the commands even when the diff touches no runtime path
 // Exit: 0 pass or skipped, 1 a command is slower or over its ceiling, 2 setup error.
 //
@@ -25,6 +30,8 @@
 //   PERF_GATE_WARMUPS    untimed runs per tree first (default 2)
 //   PERF_GATE_HEAVY_RUN  0 = never call heavy-run (tests)
 //   PERF_GATE_LOCK_WAIT  seconds to wait for the cache lock (default 900)
+//   PERF_GATE_SAMPLES    file that gets one JSON line per command with every
+//                        timed [base, head] pair in ms (to study the noise)
 //
 // Timing choices:
 // - One node process starts every run of both trees with spawnSync and reads
@@ -32,8 +39,19 @@
 //   (B H H B ...), so both see the same machine load.
 // - The minimum of the runs, not the mean: noise only adds time, so the
 //   minimum is the most stable estimate (Chen and Revels 2016).
+// - The two minimums alone gave false alarms on a loaded machine (two clean
+//   PRs failed inside `heavy-run npm run verify` at load 10 to 14): one tree
+//   can get a quiet run that the other never gets. So "slower" also needs the
+//   paired runs to agree. Each pass times base and head back to back; that is
+//   one pair. The median of (head - base) over the pairs must be above the
+//   same limit (10% of base_min, and 3 ms). Load hits both runs of a pair
+//   alike, so the median difference of a clean tree stays near zero, and a
+//   real slowdown shifts every pair (paired comparison: Box, Hunter and Hunter 2005).
 // - A command that looks slower is timed again (up to two more rounds) and the
-//   minimums are merged. A real slowdown stays; a load spike does not.
+//   runs are merged. A real slowdown stays; a load spike does not.
+// - A final confirm in `heavy-run --exclusive` is not possible from inside a
+//   heavy-run slot: the exclusive run waits for every slot, and this gate
+//   holds one.
 // - The base is a detached git worktree under
 //   ~/.cache/agentbrew/perf-gate.noindex/<commit>, built once (PERF_GATE_BUILD
 //   in the budget file) under a lock. This one, the newest other one, and
@@ -47,6 +65,14 @@
 // - A PR that changes this script needs PERF_GATE_ALLOW=perf-gate:<reason> in
 //   the budget file: the changed script judges its own PR, so a reviewer must
 //   see that.
+// - An allow line counts when the base budget file does not have the same
+//   line (same name and same reason). A line that the base has unchanged is
+//   stale: the gate stops before any timing and names the line to remove.
+//   The skip comes first: a diff with no runtime path still skips, with a
+//   note, so a docs-only PR does not have to edit the budget file.
+// - Cache cleanup never follows a symlink (it unlinks it) and removes a
+//   folder only when the gate's own marker (<commit>.ready, or
+//   <commit>.building of a build that did not end) says the gate made it.
 // - This tree is rebuilt first when its build output is older than a build
 //   input, so the gate never times a stale dist/.
 // - Every run gets a small fixed environment (PATH, a scratch HOME, TMPDIR,
@@ -60,16 +86,20 @@
 
 import { spawnSync } from "node:child_process";
 import {
+  appendFileSync,
   closeSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
+  unlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -308,13 +338,27 @@ function withLock(cache, fn) {
   }
 }
 
-/** Remove one of the gate's own checkouts. It refuses any other path. */
+const isSymlink = (path) => lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink() ?? false;
+
+/**
+ * Remove one of the gate's own checkouts. Never run a repo-wide `git worktree
+ * prune`: that would also drop a stale worktree of the user. A symlink is
+ * unlinked, never followed. A folder is removed only when a marker of the
+ * gate (<commit>.ready or <commit>.building) says the gate made it. Returns
+ * false when it left the path alone.
+ */
 function removeCheckout(root, cache, sha) {
   if (!cache || !SHA.test(sha)) fail(`perf gate: refusing to remove ${join(cache, sha)}`);
   const dir = join(cache, sha);
-  rmSync(`${dir}.ready`, { force: true });
-  git(root, "worktree", "remove", "--force", dir);
-  rmSync(dir, { recursive: true, force: true });
+  const markers = [`${dir}.ready`, `${dir}.building`];
+  if (isSymlink(dir)) unlinkSync(dir);
+  else if (existsSync(dir)) {
+    if (!markers.some((marker) => existsSync(marker))) return false;
+    git(root, "worktree", "remove", "--force", dir);
+    rmSync(dir, { recursive: true, force: true });
+  }
+  for (const marker of markers) rmSync(marker, { force: true });
+  return true;
 }
 
 /** Keep this checkout, the newest other one, and any that a gate used in the last hour. */
@@ -325,13 +369,25 @@ function pruneCheckouts(root, cache, current) {
     .map((name) => ({ name, ready: statSync(join(cache, `${name}.ready`), { throwIfNoEntry: false })?.mtimeMs ?? 0 }))
     .sort((a, b) => b.ready - a.ready);
   for (const [index, other] of others.entries()) {
-    if (other.ready === 0 || (index > 0 && other.ready < recent)) removeCheckout(root, cache, other.name);
+    if (other.ready !== 0 && (index === 0 || other.ready >= recent)) continue;
+    if (!removeCheckout(root, cache, other.name)) {
+      const path = join(cache, other.name);
+      console.error(
+        `perf gate: left ${path} alone: the gate did not make it (no ${path}.ready). Remove it by hand if it is old.`,
+      );
+    }
   }
 }
 
 function createCheckout(root, cache, sha, budget) {
   const dir = join(cache, sha);
-  removeCheckout(root, cache, sha);
+  if (!removeCheckout(root, cache, sha)) {
+    fail(
+      `perf gate: ${dir} is in the way, and the gate did not make it (no ${dir}.ready). Move it away and run again.`,
+    );
+  }
+  // The marker says "the gate made this folder" from the first moment, so a killed build can be cleaned up.
+  writeFileSync(`${dir}.building`, "");
   // --force: a checkout that was deleted by hand is still registered.
   const added = git(
     root,
@@ -349,6 +405,7 @@ function createCheckout(root, cache, sha, budget) {
   const problem = buildTree(dir, budget, root);
   if (problem) fail(`perf gate: cannot build the base commit, so there is nothing to compare with: ${problem}`);
   writeFileSync(`${dir}.ready`, "");
+  rmSync(`${dir}.building`, { force: true });
 }
 
 /** Returns the built base tree. Its HEAD must be the base commit. */
@@ -357,7 +414,7 @@ function ensureBase(root, sha, budget) {
   const dir = join(cache, sha);
   mkdirSync(cache, { recursive: true });
   withLock(cache, () => {
-    if (!existsSync(`${dir}.ready`)) createCheckout(root, cache, sha, budget);
+    if (isSymlink(dir) || !existsSync(`${dir}.ready`)) createCheckout(root, cache, sha, budget);
     const now = new Date();
     utimesSync(`${dir}.ready`, now, now);
     pruneCheckouts(root, cache, sha);
@@ -370,6 +427,12 @@ function ensureBase(root, sha, budget) {
   }
   return dir;
 }
+
+/**
+ * An allow line counts for this PR when the base does not have the same line
+ * (same name, same reason). A line that the base has unchanged is stale.
+ */
+const freshAllow = (name, allow, baseAllow) => name in allow && baseAllow[name] !== allow[name];
 
 // ── Timing (runs in a child process, inside the heavy-run slot) ───────
 const slower = (base, head) => head > base * RATIO && head - base > FLOOR_MS;
@@ -388,63 +451,112 @@ function measure(command, dir, env) {
   return { ms, status: result.status ?? 127 };
 }
 
-function runSide(side, timed, state, context) {
-  if (state.failed !== null || state.baseFailed !== null || (side === "base" && !state.hasBase)) return;
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/** The median of (head - base) over the pairs: what a typical back-to-back run costs more. */
+const pairedDelta = (pairs) => (pairs.length > 0 ? median(pairs.map(([base, head]) => head - base)) : null);
+
+/**
+ * Slower: the two minimums say so, and the paired runs agree. It reads only
+ * baseMin, headMin, and pairs. Exported so a test can pin the limit.
+ */
+export function looksSlower(state) {
+  if (state.baseMin === null || !slower(state.baseMin, state.headMin)) return false;
+  const delta = pairedDelta(state.pairs);
+  return delta === null || delta > Math.max(FLOOR_MS, state.baseMin * (RATIO - 1));
+}
+
+/** Run the command in one tree. Returns its wall time, or null when the run did not count. */
+function runSide(side, state, context) {
+  if (state.failed !== null || state.baseFailed !== null || (side === "base" && !state.hasBase)) return null;
   const { ms, status } = measure(context.command, side === "base" ? context.plan.base : context.plan.head, context.env);
-  if (status !== 0) {
-    if (side === "head") state.failed = status;
-    else state.baseFailed = status;
-    return;
-  }
-  if (!timed) return;
-  if (side === "base") state.baseMin = Math.min(state.baseMin ?? Number.POSITIVE_INFINITY, ms);
-  else {
-    state.headMin = Math.min(state.headMin ?? Number.POSITIVE_INFINITY, ms);
-    state.count += 1;
-  }
+  if (status === 0) return ms;
+  if (side === "head") state.failed = status;
+  else state.baseFailed = status;
+  return null;
+}
+
+/** One pass: both trees back to back. Swap the order each pass, so neither tree always runs first. */
+function runPass(pass, timed, state, context) {
+  const first = pass % 2 ? "base" : "head";
+  const times = { base: null, head: null };
+  times[first] = runSide(first, state, context);
+  const second = first === "base" ? "head" : "base";
+  times[second] = runSide(second, state, context);
+  if (!timed || times.head === null) return;
+  state.headMin = Math.min(state.headMin ?? Number.POSITIVE_INFINITY, times.head);
+  state.count += 1;
+  if (times.base === null) return;
+  state.baseMin = Math.min(state.baseMin ?? Number.POSITIVE_INFINITY, times.base);
+  state.pairs.push([times.base, times.head]);
 }
 
 function timeCommand(command, plan, env) {
   const hasBase = plan.base !== "" && !command.isNew;
-  const state = { hasBase, baseMin: null, headMin: null, failed: null, baseFailed: null, count: 0 };
+  const state = { hasBase, baseMin: null, headMin: null, failed: null, baseFailed: null, count: 0, pairs: [] };
   const context = { command, plan, env };
   const round = (times, timed) => {
-    for (let pass = 1; pass <= times; pass++) {
-      // Swap the order each pass, so neither tree always runs first.
-      for (const side of pass % 2 ? ["base", "head"] : ["head", "base"]) runSide(side, timed, state, context);
-    }
+    for (let pass = 1; pass <= times; pass++) runPass(pass, timed, state, context);
   };
   round(plan.warmups, false);
   round(plan.runs, true);
-  const again = () =>
-    state.failed === null && state.baseFailed === null && hasBase && slower(state.baseMin, state.headMin);
+  const again = () => state.failed === null && state.baseFailed === null && looksSlower(state);
   for (let extra = 0; extra < 2 && again(); extra++) round(plan.runs, true);
+  if (process.env.PERF_GATE_SAMPLES) {
+    const pairs = state.pairs.map((pair) => pair.map((ms) => Number(ms.toFixed(3))));
+    appendFileSync(process.env.PERF_GATE_SAMPLES, `${JSON.stringify({ name: command.name, pairs })}\n`);
+  }
   return state;
+}
+
+/** The ceiling check. A ceiling that the base breaks too in this run is not this tree's fault. */
+function judgeCeiling(command, state, row) {
+  if (state.headMin <= command.ceiling) return [];
+  const over = `${command.name} is over its ceiling: ${state.headMin.toFixed(1)} ms > ${command.ceiling} ms`;
+  if (state.baseMin !== null && state.baseMin > command.ceiling) {
+    console.error(
+      `perf gate: ${over}, but so is the base (${state.baseMin.toFixed(1)} ms): this machine is slow now, or the ceiling is too low. Not counted against this tree.`,
+    );
+    row.over_ceiling_at_base = true;
+    if (row.verdict === "ok") row.verdict = "over-ceiling-at-base";
+    return [];
+  }
+  row.verdict = "over-ceiling";
+  return [over];
 }
 
 function judgeSpeed(command, state, plan, row) {
   const problems = [];
   if (state.baseMin !== null && state.baseMin > 0) row.ratio = state.headMin / state.baseMin;
-  if (state.baseMin !== null && slower(state.baseMin, state.headMin)) {
-    const change = ((row.ratio - 1) * 100).toFixed(1);
-    const allowed = command.name in plan.allow && !(command.name in plan.baseAllow);
+  row.paired_delta_ms = pairedDelta(state.pairs);
+  const change = row.ratio === null ? "" : ((row.ratio - 1) * 100).toFixed(1);
+  const paired =
+    row.paired_delta_ms === null ? "" : `${row.paired_delta_ms >= 0 ? "+" : ""}${row.paired_delta_ms.toFixed(1)} ms`;
+  if (looksSlower(state)) {
+    const allowed = freshAllow(command.name, plan.allow, plan.baseAllow);
     row.verdict = allowed ? "allowed" : "slower";
     if (!allowed) {
       problems.push(
-        `${command.name} got slower: ${state.baseMin.toFixed(1)} ms -> ${state.headMin.toFixed(1)} ms (+${change}%; the limit is +10% and ${FLOOR_MS} ms)`,
+        `${command.name} got slower: ${state.baseMin.toFixed(1)} ms -> ${state.headMin.toFixed(1)} ms (+${change}%; the limit is +10% and ${FLOOR_MS} ms; paired runs: ${paired})`,
       );
     }
+  } else if (state.baseMin !== null && slower(state.baseMin, state.headMin)) {
+    console.error(
+      `perf gate: ${command.name}: the fastest runs differ by +${change}%, but the paired runs do not (median difference ${paired}): load noise, not a slowdown`,
+    );
   }
-  if (state.headMin > command.ceiling) {
-    row.verdict = "over-ceiling";
-    problems.push(`${command.name} is over its ceiling: ${state.headMin.toFixed(1)} ms > ${command.ceiling} ms`);
-  }
+  problems.push(...judgeCeiling(command, state, row));
   return problems;
 }
 
 /** Turn the times of one command into its row, its problems, and its setup errors. */
 function judge(command, state, plan) {
   const row = { name: command.name, base_min: state.baseMin, head_min: state.headMin, ratio: null };
+  Object.assign(row, { paired_delta_ms: null, over_ceiling_at_base: false });
   Object.assign(row, { ceiling_ms: command.ceiling, runs: state.count, verdict: "error" });
   const text = `(status ${state.failed ?? state.baseFailed}): ${command.argv.join(" ")}`;
   if (state.failed !== null) {
@@ -458,16 +570,21 @@ function judge(command, state, plan) {
   return { row, problems: judgeSpeed(command, state, plan, row), errors: [] };
 }
 
-function printJson(plan, rows, ok) {
+const atBaseCount = (rows) => rows.filter((row) => row.over_ceiling_at_base).length;
+
+function printJson(plan, rows, ok, problems) {
   const round = (value) => (value === null ? null : Number(value.toFixed(3)));
   const commands = rows.map((row) => ({
     ...row,
     base_min: round(row.base_min),
     head_min: round(row.head_min),
     ratio: round(row.ratio),
+    paired_delta_ms: round(row.paired_delta_ms),
   }));
   const base = { base: plan.sha || null, base_ref: plan.ref, base_ref_date: plan.date || null };
-  console.log(JSON.stringify({ skipped: false, ok, ...base, limit_ratio: RATIO, limit_ms: FLOOR_MS, commands }));
+  const limits = { limit_ratio: RATIO, limit_ms: FLOOR_MS, estimator: "min-and-paired-median" };
+  const totals = { over_ceiling_at_base: atBaseCount(rows), problems };
+  console.log(JSON.stringify({ skipped: false, ok, ...base, ...limits, ...totals, commands }));
 }
 
 function printTable(plan, rows, ok, seconds) {
@@ -481,8 +598,9 @@ function printTable(plan, rows, ok, seconds) {
     );
   }
   const verdict = ok ? "pass" : "FAIL";
+  const atBase = atBaseCount(rows) > 0 ? `; ${atBaseCount(rows)} over its ceiling at the base too` : "";
   console.log(
-    `perf gate: ${verdict} (${rows.length} commands, base ${plan.sha ? plan.sha.slice(0, 12) : "none"}, ${seconds.toFixed(1)} s)`,
+    `perf gate: ${verdict} (${rows.length} commands, base ${plan.sha ? plan.sha.slice(0, 12) : "none"}, ${seconds.toFixed(1)} s${atBase})`,
   );
 }
 
@@ -531,7 +649,7 @@ function timeAll(plan) {
     rmSync(scratch, { recursive: true, force: true });
   }
   const ok = result.problems.length === 0 && result.errors.length === 0;
-  if (plan.json) printJson(plan, result.rows, ok);
+  if (plan.json) printJson(plan, result.rows, ok, [...result.problems, ...result.errors]);
   else printTable(plan, result.rows, ok, Number(process.hrtime.bigint() - started) / 1e9);
   for (const error of result.errors) console.error(`perf gate: ${error}`);
   if (result.problems.length > 0) printProblems(result.problems);
@@ -583,7 +701,7 @@ function parseArgs(args) {
 function printHelp() {
   const header = readFileSync(fileURLToPath(import.meta.url), "utf-8")
     .split("\n")
-    .slice(2, 27);
+    .slice(2, 34);
   console.log(header.map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
 }
 
@@ -609,11 +727,47 @@ function headBudget(root) {
 function checkSelfChange(root, sha, head, base) {
   if (!sha || !git(root, "cat-file", "-e", `${sha}:${SELF}`).ok) return;
   if (git(root, "diff", "--no-renames", "--quiet", sha, "--", SELF).ok) return;
-  if (SELF_ALLOW in head.allow && !(SELF_ALLOW in base.allow)) return;
+  if (freshAllow(SELF_ALLOW, head.allow, base.allow)) return;
+  const same =
+    SELF_ALLOW in head.allow ? "\nThe line there now is the same as in the base: write this PR's own reason." : "";
   fail(
     `perf gate: ${SELF} differs from the base, and it judges its own PR.\n` +
-      `Add PERF_GATE_ALLOW=${SELF_ALLOW}:<reason> to ${BUDGET} so the review sees it; the next PR removes the line.`,
+      `Add PERF_GATE_ALLOW=${SELF_ALLOW}:<reason> to ${BUDGET} so the review sees it.${same}`,
   );
+}
+
+/** The allow lines that the base has unchanged, each as "remove this line from <file>: <line>". */
+function staleAllowLines(head, base) {
+  return Object.keys(head.allow)
+    .sort()
+    .filter((name) => !freshAllow(name, head.allow, base.allow))
+    .map((name) => `remove this line from ${BUDGET}: PERF_GATE_ALLOW=${name}:${head.allow[name]}`);
+}
+
+/**
+ * A stale allow line stops the gate before any timing. The fix is to remove
+ * the line, not to make a command faster. With --json, stdout still gets JSON.
+ */
+function failStale(stale, json) {
+  console.error("perf gate: an allow line covers one PR, and the base budget file already has this one.");
+  for (const line of stale) console.error(line);
+  console.error("(If this PR needs the allow again, write the line with this PR's own reason.)");
+  if (json) {
+    const problems = stale.map((line) => `stale allow line: ${line}`);
+    console.log(JSON.stringify({ skipped: false, ok: false, problems }));
+  }
+  return 1;
+}
+
+/** A diff with no runtime path skips, stale line or not: a docs-only PR must not have to edit the budget file. */
+function skipUnchanged(stale, json) {
+  if (stale.length > 0) {
+    console.error(`perf gate: note: ${BUDGET} has an allow line that the base has unchanged (stale).`);
+    console.error("This diff changes no runtime path, so the gate still skips;");
+    console.error("the next PR that changes a runtime path must remove this line:");
+    for (const line of stale) console.error(`  ${line.replace(/^remove this line from \S+: /, "")}`);
+  }
+  return skip(json, "no runtime change");
 }
 
 /** Problems that the two budget files show without any timing. */
@@ -625,15 +779,9 @@ function budgetProblems(head, base) {
     if (name !== SELF_ALLOW && !headNames.has(name) && !baseNames.has(name)) {
       fail(`perf gate: PERF_GATE_ALLOW=${name} names no command of the budget file`);
     }
-    // An allow line is for one PR. One that the base already has is stale.
-    if (name in base.allow) {
-      problems.push(
-        `PERF_GATE_ALLOW=${name} is already in the base budget file: remove the line (it covers one PR only)`,
-      );
-    }
   }
   for (const name of [...baseNames].sort()) {
-    if (!headNames.has(name) && !(name in head.allow)) {
+    if (!headNames.has(name) && !freshAllow(name, head.allow, base.allow)) {
       problems.push(
         `${name} is in the base budget file but not in this one: put the row back, or add PERF_GATE_ALLOW=${name}:<reason>`,
       );
@@ -653,10 +801,12 @@ function main(options) {
   const atBase = baseBudget(root, sha);
   const problems = budgetProblems(budget, atBase);
   checkSelfChange(root, sha, budget, atBase);
+  const stale = staleAllowLines(budget, atBase);
 
   // With no base commit (PERF_GATE_NO_BASE=1) the diff is unknown, so the gate runs.
   const paths = [...new Set([...budget.paths, ...atBase.paths])];
-  if (!options.force && sha && !runtimeChange(root, sha, paths)) return skip(options.json, "no runtime change");
+  if (!options.force && sha && !runtimeChange(root, sha, paths)) return skipUnchanged(stale, options.json);
+  if (stale.length > 0) return failStale(stale, options.json);
 
   const base = sha ? ensureBase(root, sha, budget) : "";
   buildHead(root, budget);
@@ -668,13 +818,24 @@ function main(options) {
   return runTimer({ ...plan, commands, allow: budget.allow, baseAllow: atBase.allow });
 }
 
-try {
-  const options = parseArgs(process.argv.slice(2));
-  if (options.help) printHelp();
-  else if (options.time) process.exitCode = timeAll(JSON.parse(process.env.PERF_GATE_PLAN ?? "{}"));
-  else process.exitCode = main(options);
-} catch (error) {
-  // Only a measured slowdown or a ceiling breach is exit 1.
-  console.error(error instanceof SetupError ? error.message : `perf gate: unexpected error: ${error?.stack ?? error}`);
-  process.exitCode = 2;
+/** True when node runs this file as the program; false when a test imports it. */
+function isProgram() {
+  return (
+    process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+  );
+}
+
+if (isProgram()) {
+  try {
+    const options = parseArgs(process.argv.slice(2));
+    if (options.help) printHelp();
+    else if (options.time) process.exitCode = timeAll(JSON.parse(process.env.PERF_GATE_PLAN ?? "{}"));
+    else process.exitCode = main(options);
+  } catch (error) {
+    // Only a measured slowdown or a ceiling breach is exit 1.
+    console.error(
+      error instanceof SetupError ? error.message : `perf gate: unexpected error: ${error?.stack ?? error}`,
+    );
+    process.exitCode = 2;
+  }
 }

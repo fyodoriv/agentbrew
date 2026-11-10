@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,
   `actions --json`, and the hook checks that run on agent Bash calls, in both
   trees in the same run. `npm run verify` and `npm run verify:changed` run it.
+  A command counts as slower only when the paired back-to-back runs agree
+  with the two minimums, so a busy machine does not fail a clean PR.
+  A stale allow line does not stop a docs-only PR, and a ceiling that the
+  base breaks too shows as `over-ceiling-at-base`.
 - Anonymous performance telemetry, asked at install; on only after you say
   yes (Enter counts as yes). The installer's last step shows what is sent, one
   example event, and the privacy promise, then asks `[Y/n]`. It asks only when

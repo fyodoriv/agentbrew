@@ -225,11 +225,21 @@ machine.
   from `dist/cli.js`, and the hook checks that run on agent Bash calls. Each
   hook gets a `git status` PreToolUse payload on stdin.
 - **Fails when** the fastest run in your tree is more than 10% and more than
-  3 ms slower than the fastest run at the base, or above the command's ceiling
-  in the budget file.
+  3 ms slower than the fastest run at the base, and the paired runs agree; or
+  when the fastest run is above the command's ceiling in the budget file.
+  A ceiling that the base breaks too in the same run does not count: the
+  machine is slow then, not your tree. The gate prints a note, shows the
+  verdict `over-ceiling-at-base` for that command, and counts such commands
+  in its summary line.
+- **Paired runs**: each pass times base and head back to back; that is one
+  pair. The median of (head - base) over the pairs must also be above the
+  limit (10% of the base minimum, and 3 ms). Load hits both runs of a pair
+  alike, so a clean tree stays near zero on a busy machine. When only the
+  minimums differ, the gate passes and prints
+  `load noise, not a slowdown` for that command.
 - **How it times**: 2 warmups, then 15 runs per tree, base and head in turn,
   with a small fixed environment (`AGENTBREW_EVENTS=0`, `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`) and
-  a scratch HOME, which also holds `AGENTBREW_EVENTS_FILE`. It compares the minimums. A command that looks slower is
+  a scratch HOME, which also holds `AGENTBREW_EVENTS_FILE`. A command that looks slower is
   timed again, up to two more rounds.
 - **Skips** when the diff touches no runtime path (the `PERF_GATE_PATH` lines
   of the base and head budget files; test files never count):
@@ -244,7 +254,12 @@ machine.
 - **On a failure**: make the command faster. If the cost is intended, raise
   the ceiling and give the reason in the PR. A step above 10% in one PR also
   needs a `PERF_GATE_ALLOW=<name>:<reason>` line in the budget file; the next
-  PR removes it.
+  PR removes it. An allow line counts when the base budget file does not have
+  the same line (same name and same reason). A line that the base has
+  unchanged is stale: the gate stops before any timing and prints
+  `remove this line from scripts/perf-budget.tsv: <line>`. The skip comes
+  first: a diff with no runtime path still skips and only prints a note about
+  the stale line, so a docs-only PR does not edit the budget file.
 - **New hot-path command**: add its row to the budget file in the same PR.
   A command whose file does not exist at the base commit gets the ceiling
   check only. A row cannot leave the file without an allow line.
@@ -263,15 +278,37 @@ machine.
   `PERF_GATE_NO_BASE=1` (ceilings only when no base resolves),
   `PERF_GATE_RUNS` (default 15), `PERF_GATE_WARMUPS` (default 2),
   `PERF_GATE_LOCK_WAIT` (seconds to wait for the cache lock, default 900),
-  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests), and
+  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests),
+  `PERF_GATE_SAMPLES=<file>` (one JSON line per command with every timed
+  `[base, head]` pair in ms, to study the noise), and
   `XDG_CACHE_HOME` (where the base checkouts live).
 - **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
   `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
-  and `verdict`.
+  `paired_delta_ms`, `over_ceiling_at_base`, and `verdict`. `estimator` names
+  the rule (`min-and-paired-median`), `over_ceiling_at_base` at the top is the
+  count, and `problems` lists each failure as text. A stale allow line prints
+  `{"skipped":false,"ok":false,"problems":[...]}`.
+- **Measured (2026-11-10)**: the perf step in one normal heavy-run slot while
+  other gates ran, 20 clean runs and 20 runs with a seeded slowdown (13 ms
+  more in one hook, about +25% to +35%). The 1-minute load was 6.5 to 36.5 for
+  the clean runs (10 or more for 12 of them) and 5.9 to 10.3 for the seeded
+  runs (10 or more for 1 of them). The three rules were judged on the same samples.
+
+  | Rule | False alarms, 20 clean runs | Caught, 20 seeded runs |
+  |---|---|---|
+  | Two minimums alone | 2 | 20 |
+  | Paired median alone | 1 | 20 |
+  | Both must agree (the gate) | 0 | 20 |
+
+  Not measured: a slowdown of 10% to 15% at load 10 or more.
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.
-  The gate removes only its own worktrees.
+  The gate removes only its own worktrees. It unlinks a symlink in the cache
+  and never follows it. It removes a folder only when its own marker
+  (`<commit>.ready`, or `<commit>.building` of a build that did not end) is
+  there; a folder without one is left with a note, or stops the gate (exit 2)
+  when it is in the way of the base checkout.
 - **Field numbers**: the gate measures one machine before a merge. Numbers
   from real installs will be on the performance dashboard (link: to be added
   with the telemetry timing events).

@@ -3,7 +3,9 @@
 # Command rows are tab-separated:
 #   name <TAB> ceiling_ms <TAB> command <TAB> stdin (optional, one line)
 # - command runs from the tree root with no shell: words split on spaces.
-# - ceiling_ms is the hard limit for the fastest run on any machine. It is
+# - ceiling_ms is the limit for the fastest run. A breach fails the gate,
+#   unless the base is over the ceiling too in the same run (a slow machine
+#   then, not the PR; the verdict is over-ceiling-at-base). It is
 #   about 2x the value on the owner's Mac (2026-11-09) and stops slow drift
 #   across many PRs. Raise it only with a reason in the PR.
 # - Every command must be side-effect free and offline. It runs with a small

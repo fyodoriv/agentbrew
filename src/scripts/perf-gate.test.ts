@@ -178,9 +178,25 @@ describe("perf gate verdicts", () => {
     budget("tool\t20\tsh tool.sh");
     const result = gate();
     expect(result.status, result.all).toBe(0);
-    expect(result.stdout).toMatch(/tool.*ok/);
+    expect(result.stdout).toMatch(/tool.*over-ceiling-at-base/);
+    expect(result.stdout).toMatch(
+      /perf gate: pass \(1 commands, base [0-9a-f]{12}, [\d.]+ s; 1 over its ceiling at the base too\)/,
+    );
     expect(result.stderr).toContain("tool is over its ceiling");
     expect(result.stderr).toContain("but so is the base");
+
+    const report = JSON.parse(gate(["--json"]).stdout);
+    expect(report).toMatchObject({ ok: true, over_ceiling_at_base: 1 });
+    expect(report.commands[0]).toMatchObject({ verdict: "over-ceiling-at-base", over_ceiling_at_base: true });
+  });
+
+  it("marks no command as over its ceiling at the base in a normal run", () => {
+    writeFileSync(join(fix, "tool.sh"), QUICKER);
+    const result = gate();
+    expect(result.stdout).not.toContain("over its ceiling");
+    const report = JSON.parse(gate(["--json"]).stdout);
+    expect(report.over_ceiling_at_base).toBe(0);
+    expect(report.commands[0].over_ceiling_at_base).toBe(false);
   });
 
   it("gives a command that is missing at the base the ceiling check only", () => {
@@ -255,6 +271,41 @@ describe("perf gate verdicts", () => {
   });
 });
 
+describe("perf gate slower rule on noise-free samples", () => {
+  type Slower = (state: { baseMin: number | null; headMin: number; pairs: number[][] }) => boolean;
+  /** Every pair is the same: the base time, and the base time plus the step. */
+  async function verdict(base: number, step: number): Promise<boolean> {
+    const { looksSlower } = (await import(GATE)) as { looksSlower: Slower };
+    const pairs = Array.from({ length: 15 }, () => [base, base + step]);
+    return looksSlower({ baseMin: base, headMin: base + step, pairs });
+  }
+
+  // The limit is max(3 ms, 10% of the base): 3 ms at 30, 4 ms at 40, 12 ms at 120.
+  it.each([
+    [30, 3],
+    [40, 4],
+    [120, 12],
+  ])("puts the limit for a %i ms base at %i ms", async (base, limit) => {
+    expect(await verdict(base, limit - 0.1)).toBe(false);
+    expect(await verdict(base, limit + 0.1)).toBe(true);
+  });
+
+  it.each([
+    ["+12% on 40 ms", 40, 40 * 0.12],
+    ["+10.5% on 120 ms", 120, 120 * 0.105],
+    ["+3.5 ms on 30 ms", 30, 3.5],
+  ])("catches %s", async (_shape, base, step) => {
+    expect(await verdict(base, step)).toBe(true);
+  });
+
+  it("needs the paired runs to agree with the two fastest runs", async () => {
+    const { looksSlower } = (await import(GATE)) as { looksSlower: Slower };
+    // One lucky base run: the minimums differ by 20%, the typical pair by nothing.
+    const pairs = [[100, 120], ...Array.from({ length: 14 }, () => [120, 120])];
+    expect(looksSlower({ baseMin: 100, headMin: 120, pairs })).toBe(false);
+  });
+});
+
 describe("perf gate scope", () => {
   it("skips a diff with no runtime change, and a test file is not one", () => {
     budget("PERF_GATE_PATH=lib/", "tool\t2000\tsh tool.sh");
@@ -271,6 +322,33 @@ describe("perf gate scope", () => {
 
     const json = gate(["--json"]);
     expect(JSON.parse(json.stdout)).toEqual({ skipped: true, reason: "no runtime change" });
+  });
+
+  it("still skips a docs-only diff when the budget file has a stale allow line", () => {
+    budget("tool\t2000\tsh tool.sh", "PERF_GATE_ALLOW=tool:merged with the last PR");
+    commit("allow");
+    git("branch", "-q", "-f", "main", "work");
+    writeFileSync(join(fix, "README.md"), "docs\n");
+
+    const result = gate();
+    expect(result.status, result.all).toBe(0);
+    expect(result.stdout).toBe("perf gate: skipped (no runtime change)\n");
+    expect(result.stderr).toContain("the next PR that changes a runtime path must remove this line");
+    expect(result.stderr).toContain("PERF_GATE_ALLOW=tool:merged with the last PR");
+    expect(JSON.parse(gate(["--json"]).stdout)).toEqual({ skipped: true, reason: "no runtime change" });
+
+    // A runtime change brings the stale line back as a failure, and --json still prints JSON.
+    writeFileSync(join(fix, "tool.sh"), QUICKER);
+    const stale = gate(["--json"]);
+    expect(stale.status, stale.all).toBe(1);
+    expect(stale.stderr).toContain(
+      "remove this line from scripts/perf-budget.tsv: PERF_GATE_ALLOW=tool:merged with the last PR",
+    );
+    const report = JSON.parse(stale.stdout);
+    expect(report).toMatchObject({ skipped: false, ok: false });
+    expect(report.problems).toEqual([
+      "stale allow line: remove this line from scripts/perf-budget.tsv: PERF_GATE_ALLOW=tool:merged with the last PR",
+    ]);
   });
 
   it("times the commands with --force when there is no runtime change", () => {

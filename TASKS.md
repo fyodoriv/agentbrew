@@ -299,6 +299,45 @@
 
 ## P2
 
+- [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
+  - **ID**: updates-landed-fixture-wall-clock-limit
+  - **Tags**: tests, flaky, hooks
+  - **Details**: Test 5 of the `updates-landed.sh` hook fixture ("hung script -> silent within 5s") checks a wall-clock limit. On 2026-11-10 it took 11 s and failed inside `heavy-run npm run verify`, on a branch that does not touch `hooks/`: heavy-run had paused the slot under memory pressure, and the pause counts as test time. A plain rerun passed. Judge the hook by what it does (it stops waiting for the hung script and prints nothing), not by the wall clock of the whole test, or measure only the hook's own timeout.
+  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh`
+  - **Output**: code
+  - **Acceptance**: the fixture passes when the test process is stopped for 10 s in the middle of Test 5 (`kill -STOP`, then `kill -CONT`), and still fails when the hook waits for the hung script without a limit.
+  - **Hypothesis**: a check that does not count paused time moves the failures of Test 5 under a 10 s pause from 1 of 1 to 0 of 10.
+  - **Measurement**: a test that runs the fixture 10 times with a 10 s `kill -STOP` pause in Test 5, plus one run with the hook's timeout removed.
+  - **Success**: 0 failures in 10 paused runs, and the run without the timeout fails.
+  - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
+  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The LaunchAgent queue test Q01 passes on a loaded machine
+  - **ID**: launchagent-queue-q01-load-flake
+  - **Tags**: tests, flaky, sync
+  - **Details**: `src/sync/launchagent-queue.test.ts` Q01 fails with "expected 124 to be +0" (a timeout exit code) inside `heavy-run npm run verify` when the 1-minute load is above 10. It was seen on 2026-11-09 and 2026-11-10 on branches that do not touch `src/sync/`. The file alone passes each time. Find which wait runs out under load, and make the test wait on the event it needs, not on a fixed time.
+  - **Files**: `src/sync/launchagent-queue.test.ts`, `src/sync/`
+  - **Output**: code
+  - **Acceptance**: Q01 passes 20 times in a row while a CPU load of 10 or more runs beside it, and it still fails when the queue does not start the job.
+  - **Hypothesis**: waiting on the event moves the Q01 failures under load 10 or more from about 1 in 3 full gates to 0 in 20 runs.
+  - **Measurement**: `npx vitest run src/sync/launchagent-queue.test.ts -t Q01` 20 times, with a busy loop on every core beside it; record the load per run.
+  - **Success**: 0 failures in 20 runs at load 10 or more.
+  - **Pivot**: if 1 or more of the 20 runs fails, raise the timeout only for that case and file the queue's slow start as a product bug with the measured times.
+  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The perf gate's catch rate for small slowdowns under load is measured
+  - **ID**: perf-gate-marginal-slowdown-detection-under-load
+  - **Tags**: perf, tests
+  - **Details**: The 2026-11-10 measurement of the perf gate (`docs/observability.md`, "Performance gate") seeded a slowdown of 25% to 35% and ran the seeded runs at load 6.0 to 9.3. Two things are unknown. First: how often the gate catches a slowdown of 10% to 15% when the 1-minute load is 10 or more; the paired median must clear the same limit as the minimums, and noise can hide a small step. Second: a slowdown that hits only some runs (two modes, for example every third run takes 30% more) moves neither the minimum nor the median, so both rules miss it. Measure the first with `PERF_GATE_SAMPLES`. For the second, decide by measurement whether a high-quantile rule (for example the 90th percentile of the paired differences) catches it without new false alarms.
+  - **Files**: `scripts/perf-gate.mjs`, `src/scripts/perf-gate.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: `docs/observability.md` has a dated table with the catch rate for a seeded +12% step at load 10 or more (20 runs) and the false alarms of 20 clean runs at the same load; and a test pins what the gate does with a two-mode slowdown (caught, or a documented limit).
+  - **Hypothesis**: at load 10 or more, the gate catches a seeded +12% slowdown in 18 or more of 20 in-gate runs, with 0 false alarms in 20 clean runs.
+  - **Measurement**: 20 clean and 20 seeded runs of `PERF_GATE_SAMPLES=<file> node scripts/perf-gate.mjs --force` in a normal heavy-run slot with a busy loop that holds the load at 10 or more; record the load per run.
+  - **Success**: 18 or more of 20 seeded runs caught, and 0 false alarms in 20.
+  - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
+  - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
+
 - [ ] A command that throws or exits early still records its event
   - **ID**: telemetry-event-on-throw-or-early-exit
   - **Tags**: telemetry, cli

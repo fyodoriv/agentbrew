@@ -12,12 +12,14 @@
 //   paired runs agree (see "Timing choices")                      (slower), or
 //   head_min > its ceiling in the budget file, while base_min is
 //   not above it in the same run                                  (over-ceiling).
+// When base_min is above the ceiling too, the command passes with the verdict
+// over-ceiling-at-base, and the summary line counts it.
 // A command whose file does not exist at the base commit is "new": only the
 // ceiling applies. Any other problem on the base side is a setup error.
 //
 // Usage: node scripts/perf-gate.mjs [--json] [--force]     (npm run perf:gate)
 //   --json   print one JSON object (per command: base_min, head_min, ratio,
-//            paired_delta_ms, verdict)
+//            paired_delta_ms, over_ceiling_at_base, verdict; and problems)
 //   --force  time the commands even when the diff touches no runtime path
 // Exit: 0 pass or skipped, 1 a command is slower or over its ceiling, 2 setup error.
 //
@@ -66,6 +68,8 @@
 // - An allow line counts when the base budget file does not have the same
 //   line (same name and same reason). A line that the base has unchanged is
 //   stale: the gate stops before any timing and names the line to remove.
+//   The skip comes first: a diff with no runtime path still skips, with a
+//   note, so a docs-only PR does not have to edit the budget file.
 // - Cache cleanup never follows a symlink (it unlinks it) and removes a
 //   folder only when the gate's own marker (<commit>.ready, or
 //   <commit>.building of a build that did not end) says the gate made it.
@@ -91,6 +95,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -455,8 +460,11 @@ function median(values) {
 /** The median of (head - base) over the pairs: what a typical back-to-back run costs more. */
 const pairedDelta = (pairs) => (pairs.length > 0 ? median(pairs.map(([base, head]) => head - base)) : null);
 
-/** Slower: the two minimums say so, and the paired runs agree. */
-function looksSlower(state) {
+/**
+ * Slower: the two minimums say so, and the paired runs agree. It reads only
+ * baseMin, headMin, and pairs. Exported so a test can pin the limit.
+ */
+export function looksSlower(state) {
   if (state.baseMin === null || !slower(state.baseMin, state.headMin)) return false;
   const delta = pairedDelta(state.pairs);
   return delta === null || delta > Math.max(FLOOR_MS, state.baseMin * (RATIO - 1));
@@ -513,6 +521,8 @@ function judgeCeiling(command, state, row) {
     console.error(
       `perf gate: ${over}, but so is the base (${state.baseMin.toFixed(1)} ms): this machine is slow now, or the ceiling is too low. Not counted against this tree.`,
     );
+    row.over_ceiling_at_base = true;
+    if (row.verdict === "ok") row.verdict = "over-ceiling-at-base";
     return [];
   }
   row.verdict = "over-ceiling";
@@ -546,7 +556,7 @@ function judgeSpeed(command, state, plan, row) {
 /** Turn the times of one command into its row, its problems, and its setup errors. */
 function judge(command, state, plan) {
   const row = { name: command.name, base_min: state.baseMin, head_min: state.headMin, ratio: null };
-  row.paired_delta_ms = null;
+  Object.assign(row, { paired_delta_ms: null, over_ceiling_at_base: false });
   Object.assign(row, { ceiling_ms: command.ceiling, runs: state.count, verdict: "error" });
   const text = `(status ${state.failed ?? state.baseFailed}): ${command.argv.join(" ")}`;
   if (state.failed !== null) {
@@ -560,7 +570,9 @@ function judge(command, state, plan) {
   return { row, problems: judgeSpeed(command, state, plan, row), errors: [] };
 }
 
-function printJson(plan, rows, ok) {
+const atBaseCount = (rows) => rows.filter((row) => row.over_ceiling_at_base).length;
+
+function printJson(plan, rows, ok, problems) {
   const round = (value) => (value === null ? null : Number(value.toFixed(3)));
   const commands = rows.map((row) => ({
     ...row,
@@ -571,7 +583,8 @@ function printJson(plan, rows, ok) {
   }));
   const base = { base: plan.sha || null, base_ref: plan.ref, base_ref_date: plan.date || null };
   const limits = { limit_ratio: RATIO, limit_ms: FLOOR_MS, estimator: "min-and-paired-median" };
-  console.log(JSON.stringify({ skipped: false, ok, ...base, ...limits, commands }));
+  const totals = { over_ceiling_at_base: atBaseCount(rows), problems };
+  console.log(JSON.stringify({ skipped: false, ok, ...base, ...limits, ...totals, commands }));
 }
 
 function printTable(plan, rows, ok, seconds) {
@@ -585,8 +598,9 @@ function printTable(plan, rows, ok, seconds) {
     );
   }
   const verdict = ok ? "pass" : "FAIL";
+  const atBase = atBaseCount(rows) > 0 ? `; ${atBaseCount(rows)} over its ceiling at the base too` : "";
   console.log(
-    `perf gate: ${verdict} (${rows.length} commands, base ${plan.sha ? plan.sha.slice(0, 12) : "none"}, ${seconds.toFixed(1)} s)`,
+    `perf gate: ${verdict} (${rows.length} commands, base ${plan.sha ? plan.sha.slice(0, 12) : "none"}, ${seconds.toFixed(1)} s${atBase})`,
   );
 }
 
@@ -635,7 +649,7 @@ function timeAll(plan) {
     rmSync(scratch, { recursive: true, force: true });
   }
   const ok = result.problems.length === 0 && result.errors.length === 0;
-  if (plan.json) printJson(plan, result.rows, ok);
+  if (plan.json) printJson(plan, result.rows, ok, [...result.problems, ...result.errors]);
   else printTable(plan, result.rows, ok, Number(process.hrtime.bigint() - started) / 1e9);
   for (const error of result.errors) console.error(`perf gate: ${error}`);
   if (result.problems.length > 0) printProblems(result.problems);
@@ -687,7 +701,7 @@ function parseArgs(args) {
 function printHelp() {
   const header = readFileSync(fileURLToPath(import.meta.url), "utf-8")
     .split("\n")
-    .slice(2, 31);
+    .slice(2, 34);
   console.log(header.map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
 }
 
@@ -722,20 +736,38 @@ function checkSelfChange(root, sha, head, base) {
   );
 }
 
-/**
- * A stale allow line stops the gate before any timing. Returns true when it
- * printed one. The fix is to remove the line, not to make a command faster.
- */
+/** The allow lines that the base has unchanged, each as "remove this line from <file>: <line>". */
 function staleAllowLines(head, base) {
-  const stale = Object.keys(head.allow)
+  return Object.keys(head.allow)
     .sort()
-    .filter((name) => !freshAllow(name, head.allow, base.allow));
-  if (stale.length === 0) return false;
+    .filter((name) => !freshAllow(name, head.allow, base.allow))
+    .map((name) => `remove this line from ${BUDGET}: PERF_GATE_ALLOW=${name}:${head.allow[name]}`);
+}
+
+/**
+ * A stale allow line stops the gate before any timing. The fix is to remove
+ * the line, not to make a command faster. With --json, stdout still gets JSON.
+ */
+function failStale(stale, json) {
   console.error("perf gate: an allow line covers one PR, and the base budget file already has this one.");
-  for (const name of stale)
-    console.error(`remove this line from ${BUDGET}: PERF_GATE_ALLOW=${name}:${head.allow[name]}`);
+  for (const line of stale) console.error(line);
   console.error("(If this PR needs the allow again, write the line with this PR's own reason.)");
-  return true;
+  if (json) {
+    const problems = stale.map((line) => `stale allow line: ${line}`);
+    console.log(JSON.stringify({ skipped: false, ok: false, problems }));
+  }
+  return 1;
+}
+
+/** A diff with no runtime path skips, stale line or not: a docs-only PR must not have to edit the budget file. */
+function skipUnchanged(stale, json) {
+  if (stale.length > 0) {
+    console.error(`perf gate: note: ${BUDGET} has an allow line that the base has unchanged (stale).`);
+    console.error("This diff changes no runtime path, so the gate still skips;");
+    console.error("the next PR that changes a runtime path must remove this line:");
+    for (const line of stale) console.error(`  ${line.replace(/^remove this line from \S+: /, "")}`);
+  }
+  return skip(json, "no runtime change");
 }
 
 /** Problems that the two budget files show without any timing. */
@@ -769,11 +801,12 @@ function main(options) {
   const atBase = baseBudget(root, sha);
   const problems = budgetProblems(budget, atBase);
   checkSelfChange(root, sha, budget, atBase);
-  if (staleAllowLines(budget, atBase)) return 1;
+  const stale = staleAllowLines(budget, atBase);
 
   // With no base commit (PERF_GATE_NO_BASE=1) the diff is unknown, so the gate runs.
   const paths = [...new Set([...budget.paths, ...atBase.paths])];
-  if (!options.force && sha && !runtimeChange(root, sha, paths)) return skip(options.json, "no runtime change");
+  if (!options.force && sha && !runtimeChange(root, sha, paths)) return skipUnchanged(stale, options.json);
+  if (stale.length > 0) return failStale(stale, options.json);
 
   const base = sha ? ensureBase(root, sha, budget) : "";
   buildHead(root, budget);
@@ -785,13 +818,24 @@ function main(options) {
   return runTimer({ ...plan, commands, allow: budget.allow, baseAllow: atBase.allow });
 }
 
-try {
-  const options = parseArgs(process.argv.slice(2));
-  if (options.help) printHelp();
-  else if (options.time) process.exitCode = timeAll(JSON.parse(process.env.PERF_GATE_PLAN ?? "{}"));
-  else process.exitCode = main(options);
-} catch (error) {
-  // Only a measured slowdown or a ceiling breach is exit 1.
-  console.error(error instanceof SetupError ? error.message : `perf gate: unexpected error: ${error?.stack ?? error}`);
-  process.exitCode = 2;
+/** True when node runs this file as the program; false when a test imports it. */
+function isProgram() {
+  return (
+    process.argv[1] !== undefined && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+  );
+}
+
+if (isProgram()) {
+  try {
+    const options = parseArgs(process.argv.slice(2));
+    if (options.help) printHelp();
+    else if (options.time) process.exitCode = timeAll(JSON.parse(process.env.PERF_GATE_PLAN ?? "{}"));
+    else process.exitCode = main(options);
+  } catch (error) {
+    // Only a measured slowdown or a ceiling breach is exit 1.
+    console.error(
+      error instanceof SetupError ? error.message : `perf gate: unexpected error: ${error?.stack ?? error}`,
+    );
+    process.exitCode = 2;
+  }
 }

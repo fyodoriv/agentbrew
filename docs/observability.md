@@ -228,7 +228,9 @@ machine.
   3 ms slower than the fastest run at the base, and the paired runs agree; or
   when the fastest run is above the command's ceiling in the budget file.
   A ceiling that the base breaks too in the same run does not count: the
-  machine is slow then, not your tree. The gate prints a note.
+  machine is slow then, not your tree. The gate prints a note, shows the
+  verdict `over-ceiling-at-base` for that command, and counts such commands
+  in its summary line.
 - **Paired runs**: each pass times base and head back to back; that is one
   pair. The median of (head - base) over the pairs must also be above the
   limit (10% of the base minimum, and 3 ms). Load hits both runs of a pair
@@ -255,7 +257,9 @@ machine.
   PR removes it. An allow line counts when the base budget file does not have
   the same line (same name and same reason). A line that the base has
   unchanged is stale: the gate stops before any timing and prints
-  `remove this line from scripts/perf-budget.tsv: <line>`.
+  `remove this line from scripts/perf-budget.tsv: <line>`. The skip comes
+  first: a diff with no runtime path still skips and only prints a note about
+  the stale line, so a docs-only PR does not edit the budget file.
 - **New hot-path command**: add its row to the budget file in the same PR.
   A command whose file does not exist at the base commit gets the ceiling
   check only. A row cannot leave the file without an allow line.
@@ -280,8 +284,23 @@ machine.
   `XDG_CACHE_HOME` (where the base checkouts live).
 - **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
   `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
-  `paired_delta_ms`, and `verdict`. `estimator` names the rule
-  (`min-and-paired-median`).
+  `paired_delta_ms`, `over_ceiling_at_base`, and `verdict`. `estimator` names
+  the rule (`min-and-paired-median`), `over_ceiling_at_base` at the top is the
+  count, and `problems` lists each failure as text. A stale allow line prints
+  `{"skipped":false,"ok":false,"problems":[...]}`.
+- **Measured (2026-11-10)**: the perf step in one normal heavy-run slot while
+  other gates ran, 20 clean runs and 20 runs with a seeded slowdown (13 ms
+  more in one hook, about +25% to +35%). The 1-minute load was 6.5 to 36.5 for
+  the clean runs (10 or more for 13 of them) and 6.0 to 9.3 for the seeded
+  runs. The three rules were judged on the same samples.
+
+  | Rule | False alarms, 20 clean runs | Caught, 20 seeded runs |
+  |---|---|---|
+  | Two minimums alone | 2 | 20 |
+  | Paired median alone | 1 | 20 |
+  | Both must agree (the gate) | 0 | 20 |
+
+  Not measured: a slowdown of 10% to 15% at load 10 or more.
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.

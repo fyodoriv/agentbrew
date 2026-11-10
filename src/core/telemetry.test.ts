@@ -1090,6 +1090,48 @@ describe("field telemetry", () => {
       release?.();
     });
 
+    it("a takeover guard that another process made a moment ago is never removed", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const guard = `${lock}.steal`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const dead = `1 ${"c".repeat(32)}`;
+      const live = `3 ${"e".repeat(32)}`;
+      writeFileSync(lock, dead);
+      utimesSync(lock, old, old);
+      writeFileSync(guard, `2 ${"d".repeat(32)}`);
+      utimesSync(guard, old, old);
+      // This process saw a stale guard. Before it removes the guard, a second
+      // process removes it and a third one makes a new one for its own takeover.
+      const betweenCheckAndRemoval = () => {
+        rmSync(guard);
+        writeFileSync(guard, live);
+      };
+      expect(acquireLock(lock, undefined, betweenCheckAndRemoval)).toBeUndefined();
+      // The live guard is still there, so no second process can start a takeover beside the third one.
+      expect(readFileSync(guard, "utf-8")).toBe(live);
+      expect(readFileSync(lock, "utf-8")).toBe(dead);
+      expect(readdirSync(dirname(lock)).sort()).toEqual([
+        "events.jsonl",
+        "telemetry.json",
+        "telemetry.json.lock",
+        "telemetry.json.lock.steal",
+      ]);
+    });
+
+    it("a takeover replaces only the dead lock it saw, never a lock that came after", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const guard = `${lock}.steal`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      writeFileSync(lock, `1 ${"c".repeat(32)}`);
+      utimesSync(lock, old, old);
+      writeFileSync(guard, `2 ${"d".repeat(32)}`);
+      utimesSync(guard, old, old);
+      // While this process handles the stale guard, another send completes its takeover.
+      const live = `3 ${"e".repeat(32)}`;
+      expect(acquireLock(lock, undefined, () => writeFileSync(lock, live))).toBeUndefined();
+      expect(readFileSync(lock, "utf-8")).toBe(live);
+    });
+
     it("a send that lost its lock stops before the next request", async () => {
       const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
       writeLog(Array(BATCH_SIZE * 2).fill(row(new Date(NOW).toISOString())));

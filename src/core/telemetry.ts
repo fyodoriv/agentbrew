@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { getLogDir } from "../sync/scheduler-paths.js";
@@ -660,29 +660,78 @@ function staleFile(file: string, staleMs = LOCK_STALE_MS): boolean {
   return Math.abs(Date.now() - statSync(file).mtimeMs) >= staleMs;
 }
 
+/** The text of the file, or undefined when it is gone. */
+function readOrUndefined(file: string): string | undefined {
+  try {
+    return readFileSync(file, "utf-8");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Remove a guard that a dead takeover left. A check of its age and then a
+ * delete would be two steps: between them another process can remove the old
+ * guard and a third one can make a new one, which the delete would then
+ * remove. So the guard is moved away in one step (a rename; only one process
+ * gets the file), and the age of what was moved is checked. A fresh one
+ * belongs to a live takeover and goes back.
+ */
+function removeStaleGuard(guard: string, token: string): void {
+  const moved = `${guard}.${token.replace(" ", ".")}`;
+  try {
+    renameSync(guard, moved);
+  } catch {
+    return;
+  }
+  try {
+    // A hard link puts a live guard back; it fails when a newer guard is there, and that one stays.
+    if (!staleFile(moved)) linkSync(moved, guard);
+  } catch {
+    // The newer guard stays.
+  } finally {
+    rmSync(moved, { force: true });
+  }
+}
+
 /**
  * Replace a stale lock. Only one process at a time may do this: the one that
- * makes the guard file. Under the guard it checks the lock's age again, so it
- * never replaces a lock that another process took over a moment before. The
- * rename swaps the lock in one step: there is no moment with no lock.
+ * makes the guard file. Under the guard it checks again that the lock is the
+ * same dead one, so it never replaces a lock that another process took over a
+ * moment before. The swap itself checks that too: the lock is moved away (one
+ * step), compared with the dead one, and the new lock is made with a hard
+ * link, which fails when another lock is there. `seam` is for tests: it runs
+ * between the sight of a stale guard and its removal.
  */
-function takeOverStale(file: string, token: string, staleMs: number): boolean {
+function takeOverStale(file: string, token: string, staleMs: number, seam?: () => void): boolean {
   if (!staleFile(file, staleMs)) return false;
+  const dead = readFileSync(file, "utf-8");
   const guard = `${file}.steal`;
   if (!createOnce(guard, token)) {
     // A guard left by a dead process is removed. This send stops; the next one tries again.
-    if (staleFile(guard)) rmSync(guard, { force: true });
+    if (staleFile(guard)) {
+      seam?.();
+      removeStaleGuard(guard, token);
+    }
     return false;
   }
   const mine = `${file}.${token.replace(" ", ".")}`;
+  const moved = `${mine}.old`;
   try {
-    if (!staleFile(file, staleMs)) return false;
+    if (!staleFile(file, staleMs) || readOrUndefined(file) !== dead) return false;
     writeFileSync(mine, token, { mode: 0o600 });
-    renameSync(mine, file);
+    renameSync(file, moved);
+    if (readOrUndefined(moved) !== dead) {
+      // Not the dead lock: another send made it a moment ago. It goes back.
+      linkSync(moved, file);
+      return false;
+    }
+    linkSync(mine, file);
     return true;
   } finally {
     rmSync(mine, { force: true });
-    rmSync(guard, { force: true });
+    rmSync(moved, { force: true });
+    if (readOrUndefined(guard) === token) rmSync(guard, { force: true });
   }
 }
 
@@ -694,7 +743,11 @@ function takeOverStale(file: string, token: string, staleMs: number): boolean {
  * only when it still holds this owner's token. The consent question uses the
  * same lock with its own file and a longer stale time.
  */
-export function acquireLock(file = `${statePath()}.lock`, staleMs = LOCK_STALE_MS): SendLock | undefined {
+export function acquireLock(
+  file = `${statePath()}.lock`,
+  staleMs = LOCK_STALE_MS,
+  seam?: () => void,
+): SendLock | undefined {
   const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
   const holds = (): boolean => {
     try {
@@ -708,7 +761,7 @@ export function acquireLock(file = `${statePath()}.lock`, staleMs = LOCK_STALE_M
   };
   try {
     mkdirSync(dirname(file), { recursive: true });
-    if (!createOnce(file, token) && !takeOverStale(file, token, staleMs)) return undefined;
+    if (!createOnce(file, token) && !takeOverStale(file, token, staleMs, seam)) return undefined;
     return holds() ? Object.assign(release, { holds }) : undefined;
   } catch {
     return undefined;

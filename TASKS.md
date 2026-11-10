@@ -764,19 +764,6 @@
 
 ## P3
 
-- [ ] A dead takeover guard cannot let two telemetry sends hold the lock
-  - **ID**: telemetry-stale-guard-removal-race
-  - **Tags**: telemetry, concurrency
-  - **Details**: A stale send lock is replaced only by the process that makes the guard file `telemetry.json.lock.steal` (`takeOverStale` in `src/core/telemetry.ts`). A guard that a dead process left is removed after 60 seconds, with a `stat` and then a delete. Those two steps are not one step. If a process died during a takeover, and later several sends start in the same moment, one of them can delete a guard that another one just made. Two processes can then both replace the lock. The check before every request (`lock lost`) limits the harm to one batch. Close the gap: remove a stale guard with an atomic step (for example rename it to a unique name and check the age of what was moved), or use an OS file lock.
-  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: a test with real processes starts many sends at once against a stale lock and a stale guard; the test server gets each event exactly once.
-  - **Hypothesis**: an atomic guard removal moves the duplicate events in a many-process race on a stale lock with a stale guard from "possible" to 0 in 200 rounds.
-  - **Measurement**: `npx vitest run src/core/telemetry-race.test.ts`
-  - **Success**: 0 duplicate events in 200 rounds of 8 concurrent senders.
-  - **Pivot**: if a file-only design still shows 1 or more duplicates, give each batch an id and let the server drop repeats.
-  - **Anchor**: Kleppmann 2016, "How to do distributed locking" (a lock with a timeout needs a fencing check); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream
   - **Tags**: workflow, agents, third-party

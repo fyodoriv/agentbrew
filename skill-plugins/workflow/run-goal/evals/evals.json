@@ -3341,6 +3341,18 @@
         "Recommends a new repository from a clean commit instead of changing visibility, and leaves the visibility change to the owner",
         "Uses a fresh-context grader for missing surfaces and reports the rounds and what each found, without claiming zero when a round still found one"
       ]
+    },
+    {
+      "id": 291,
+      "prompt": "Simulated decision trace only. Do not run commands or tools. The user first ran '/goal Let\\'s improve weekly suggestions. * the this-week list shows the same market on 11 days ... * remove the pinned label * stop suggesting picnics and hikes in November * where is the volunteering shift I asked for? Here is a 7,000-character curator prompt: ...'. The CLI answered 'Goal condition is limited to 4000 characters (got 10658)'. The user then ran '/goal Let\\'s improve weekly suggestions based on prompts I\\'ll share now' and the same long text arrives again as a message. What is the goal text, what goes in the contract, and how do you prove the planner change works?",
+      "expected_output": "Uses the long pasted request as the verbatim goal text (not only the short condition) and does not ask the user to shorten it. Turns each bullet into a done-criterion with proof (the repeated list, the label, the seasonal filter, the missing shift in app and calendar) and treats the curator prompt as the source of ranking rules. Takes a baseline on the real data (for example 11 repeated lines) before editing. Proves the change with red-then-green tests, then runs the real pipeline on real data before claiming done, because a new scoring penalty can push scores below a threshold and crash code that fixtures never reach. Reads the real output for wrong content and applies the pivot rule to it.",
+      "expectations": [
+        "Takes the long pasted request as the goal text and does not ask the user to shorten it",
+        "Makes each bullet of the request a done-criterion with its own proof",
+        "Takes a baseline on the real data before any edit",
+        "Runs the real pipeline on real data before claiming done, not only unit tests",
+        "Reads the real output for wrong content and judges the pivot threshold on it"
+      ]
     }
   ]
 }

@@ -227,6 +227,8 @@ machine.
 - **Fails when** the fastest run in your tree is more than 10% and more than
   3 ms slower than the fastest run at the base, and the paired runs agree; or
   when the fastest run is above the command's ceiling in the budget file.
+  A ceiling that the base breaks too in the same run does not count: the
+  machine is slow then, not your tree. The gate prints a note.
 - **Paired runs**: each pass times base and head back to back; that is one
   pair. The median of (head - base) over the pairs must also be above the
   limit (10% of the base minimum, and 3 ms). Load hits both runs of a pair

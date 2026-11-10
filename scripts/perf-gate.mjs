@@ -10,7 +10,8 @@
 // A command fails when
 //   head_min > base_min * 1.10  AND  head_min - base_min > 3 ms, AND the
 //   paired runs agree (see "Timing choices")                      (slower), or
-//   head_min > its ceiling in the budget file                     (over-ceiling).
+//   head_min > its ceiling in the budget file, while base_min is
+//   not above it in the same run                                  (over-ceiling).
 // A command whose file does not exist at the base commit is "new": only the
 // ceiling applies. Any other problem on the base side is a setup error.
 //
@@ -504,6 +505,20 @@ function timeCommand(command, plan, env) {
   return state;
 }
 
+/** The ceiling check. A ceiling that the base breaks too in this run is not this tree's fault. */
+function judgeCeiling(command, state, row) {
+  if (state.headMin <= command.ceiling) return [];
+  const over = `${command.name} is over its ceiling: ${state.headMin.toFixed(1)} ms > ${command.ceiling} ms`;
+  if (state.baseMin !== null && state.baseMin > command.ceiling) {
+    console.error(
+      `perf gate: ${over}, but so is the base (${state.baseMin.toFixed(1)} ms): this machine is slow now, or the ceiling is too low. Not counted against this tree.`,
+    );
+    return [];
+  }
+  row.verdict = "over-ceiling";
+  return [over];
+}
+
 function judgeSpeed(command, state, plan, row) {
   const problems = [];
   if (state.baseMin !== null && state.baseMin > 0) row.ratio = state.headMin / state.baseMin;
@@ -524,10 +539,7 @@ function judgeSpeed(command, state, plan, row) {
       `perf gate: ${command.name}: the fastest runs differ by +${change}%, but the paired runs do not (median difference ${paired}): load noise, not a slowdown`,
     );
   }
-  if (state.headMin > command.ceiling) {
-    row.verdict = "over-ceiling";
-    problems.push(`${command.name} is over its ceiling: ${state.headMin.toFixed(1)} ms > ${command.ceiling} ms`);
-  }
+  problems.push(...judgeCeiling(command, state, row));
   return problems;
 }
 

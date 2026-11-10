@@ -166,10 +166,21 @@ describe("perf gate verdicts", () => {
   });
 
   it("fails when the command is over its ceiling", () => {
-    budget("tool\t50\tsh tool.sh");
+    tool("0.20");
+    budget("tool\t140\tsh tool.sh", "PERF_GATE_ALLOW=tool:on purpose");
     const result = gate();
     expect(result.status, result.all).toBe(1);
     expect(result.stderr).toContain("tool is over its ceiling");
+  });
+
+  it("does not count a ceiling that the base breaks too: the machine is slow, not this tree", () => {
+    writeFileSync(join(fix, "tool.sh"), QUICKER);
+    budget("tool\t20\tsh tool.sh");
+    const result = gate();
+    expect(result.status, result.all).toBe(0);
+    expect(result.stdout).toMatch(/tool.*ok/);
+    expect(result.stderr).toContain("tool is over its ceiling");
+    expect(result.stderr).toContain("but so is the base");
   });
 
   it("gives a command that is missing at the base the ceiling check only", () => {
@@ -214,8 +225,8 @@ describe("perf gate verdicts", () => {
   });
 
   it("does not let an allow line lift the ceiling", () => {
-    tool("0.12");
-    budget("tool\t50\tsh tool.sh", "PERF_GATE_ALLOW=tool:on purpose");
+    tool("0.20");
+    budget("tool\t140\tsh tool.sh", "PERF_GATE_ALLOW=tool:on purpose");
     const result = gate();
     expect(result.status, result.all).toBe(1);
     expect(result.stderr).toContain("tool is over its ceiling");

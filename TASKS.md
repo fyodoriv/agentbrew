@@ -410,7 +410,7 @@
   - **ID**: perf-gate-tests-hosted-noise
   - **Tags**: ci, tests, perf
   - **Mode**: AFK
-  - **Details**: On the hosted macOS run of 2026-11-10 a few timing cases in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). They had no retry; they now use the file's `TIMING` retry like the other timing tests. A retry lowers the failure rate but does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
+  - **Details**: On the hosted macOS run of 2026-11-10 a few timing cases in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). A retry on every timing case did not help: the next run failed on other cases (`base 63.0 ms head 108.1 ms +71.5% slower` for an unchanged tool). The gate-spawning groups now skip on the hosted macOS runner only (`HOSTED_MAC` in the test file); they still run on hosted Linux and on a local Mac. Remove that skip when this task lands. A retry does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
   - **Files**: `src/scripts/perf-gate.test.ts`, `scripts/perf-gate.mjs`
   - **Output**: code
   - **Acceptance**: the file passes 20 of 20 hosted macOS runs with `retry` set to 0.

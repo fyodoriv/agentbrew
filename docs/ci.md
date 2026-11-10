@@ -17,6 +17,7 @@ GitHub Actions runs the gate for `fyodoriv/agentbrew`, so a pull request no long
 
 - **Leaks.** The private-pattern file is not on the runner. Run the local leak check before every push.
 - **Tools the runner lacks.** The runner has no `ai-rules` CLI and no agent CLIs. Tests that need them accept the documented skip there. A change to delegated rule sync (`src/sync/rules-delegate.ts`) still needs `npm run verify:changed` on a machine with `ai-rules`.
+- **Perf gate timing tests on macOS.** The gate-spawning groups of `src/scripts/perf-gate.test.ts` skip on the hosted macOS runner: its wall clock is too noisy for them. They run on the hosted Linux runner and on a local Mac (task `perf-gate-tests-hosted-noise`).
 - **Linux image.** The Linux job runs on `ubuntu-24.04` until Playwright supports the newer image (task `ci-ubuntu-latest-playwright`).
 
 ## Step cache (like nx)

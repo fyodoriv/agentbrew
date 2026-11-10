@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// Pins the safety contract of the hosted workflows (docs/ci.md): a public
+// Pins the safety contract of the hosted workflows (SECURITY.md): a public
 // repo runs code from strangers' pull requests, so each rule here closes one
 // way a workflow could leak a token or run with more rights than it needs.
 const workflowsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".github", "workflows");
@@ -50,8 +50,11 @@ describe("hosted workflows", () => {
   it("the release workflow starts only by hand", () => {
     const text = workflows.find((w) => w.name === "auto-publish.yml")?.text ?? "";
     const code = codeLines(text).join("\n");
-    expect(code).toMatch(/^on:\n\s+workflow_dispatch:/m);
-    expect(code).not.toMatch(/^\s+push:/m);
+    // The whole trigger block is one key: workflow_dispatch.
+    const on = code.match(/^on:\n((?:[ \t]+.*\n|\n)*)/m)?.[1] ?? "";
+    const keys = on.split("\n").filter((line) => /^ {2}\S/.test(line));
+    expect(keys).toEqual(["  workflow_dispatch:"]);
+    expect(code).toMatch(/if: github\.ref == 'refs\/heads\/main'/);
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

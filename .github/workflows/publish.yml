@@ -40,6 +40,6 @@ jobs:
           echo "Tag: $EXPECTED, Binary: $ACTUAL"
           [ "$EXPECTED" = "$ACTUAL" ] || { echo "ERROR: version mismatch"; exit 1; }
 
-      # Auto-publishing runs via .github/workflows/auto-publish.yml on every main push.
+      # The version bump runs via .github/workflows/auto-publish.yml, started by hand.
       # Manual releases: npm run release [patch|minor|major] (see scripts/release.sh).
       # This workflow only verifies that tagged releases have correct dist output.

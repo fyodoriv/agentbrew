@@ -2,7 +2,7 @@ name: CI
 
 # The hosted copy of the local gate: `npm run verify`, the same command a
 # contributor runs before a push. Hosted on GitHub's standard runners, which
-# are free for public repositories. See docs/ci.md.
+# are free for public repositories.
 #
 # Safety:
 # - No secrets are used. A fork PR gets a read-only token and no secrets.

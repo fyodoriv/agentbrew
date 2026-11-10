@@ -171,6 +171,16 @@
         "Asks for r/<lens>.txt right after each lens",
         "Arms a capped background watchdog on r/ and scores what exists on timeout"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "A judge agent returns 10 lens verdicts after reading 6 of the 40 screenshots.",
+      "expected_output": "Rejects those verdicts, moves the files aside, and reruns the agent with a brief that requires reading every screenshot first and reporting the count read.",
+      "expectations": [
+        "Does not score verdicts from a subset of shots",
+        "Reruns with a read-all-first rule",
+        "Asks the judge to report how many shots it read"
+      ]
     }
   ]
 }

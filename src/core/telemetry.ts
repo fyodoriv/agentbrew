@@ -848,6 +848,16 @@ function finishAttempt(release: () => void, now: number): void {
   }
 }
 
+/** Why a send must stop before its next request, or undefined when it may go on. */
+function stopBeforeRequest(holds: () => boolean, cursor: number): string | undefined {
+  if (!holds()) return "lock lost";
+  const state = loadState();
+  if (state.consent !== "yes") return "consent changed";
+  // The lock can be away for a moment (see acquireLock). A send that ran in that gap has moved
+  // the cursor on disk past this one: these lines are sent, so this send stops.
+  return state.sent > cursor ? "lock lost" : undefined;
+}
+
 /**
  * Post the lines from the cursor on, one batch per request. Before each
  * request the stored answer is read again: `telemetry off` in another process
@@ -865,12 +875,8 @@ async function postBatches(
   let sent = 0;
   while (cursor < lines.length) {
     // Checked before every request, the first one too: a send whose lock another process took over must stop.
-    if (!id.holds()) return { sent, skipped: "lock lost" };
-    const before = loadState();
-    if (before.consent !== "yes") return { sent, skipped: "consent changed" };
-    // The lock can be away for a moment (see acquireLock). A send that ran in that gap has moved
-    // the cursor on disk past this one: these lines are sent, so this send stops.
-    if (before.sent > cursor) return { sent, skipped: "lock lost" };
+    const stop = stopBeforeRequest(id.holds, cursor);
+    if (stop) return { sent, skipped: stop };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);
     const count = (body.batch as unknown[]).length;

@@ -341,6 +341,20 @@
 
 <!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
 
+- [ ] Re-plan the Rust migration around measured user benefit
+  - **ID**: rust-plan-replan-after-validation
+  - **Tags**: migration, rust
+  - **Mode**: HITL
+  - **Details**: The 2026-11-09 validation review found the plan cannot run as written and puts the measured hot path (hook helpers) at step 16. Apply the seven MUST findings in [Rust migration](docs/plans/rust-migration.md#validation-review-2026-11-09) to both plans and task queues, and get the owner's decision on each SHOULD change (hook dispatcher first, cold-path exceptions, test tasks, smaller inventory). Porting stays paused until this lands.
+  - **Output**: docs
+  - **Acceptance**: Both plans carry no open MUST finding; every remaining slice names a user-benefit metric or is a recorded exception; the owner's decisions are written in the plans.
+  - **Hypothesis**: Fixing the seven MUST findings moves the count of plan steps that cannot run as written from 7 to 0, so the first port can start with a runnable gate.
+  - **Measurement**: `rg -c '^[0-9]+\. \*\*' docs/plans/rust-migration.md` on the "Findings to fix" list after each finding is resolved and removed — target 0.
+  - **Success**: 0 open MUST findings in both plans, confirmed by an independent reviewer.
+  - **Pivot**: If more than 2 MUST findings cannot be resolved without dropping gate G, abandon the all-code migration and keep only measured hot-path slices.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
+
+
 - [ ] Account for every executable before migrating it
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust

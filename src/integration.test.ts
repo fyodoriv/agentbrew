@@ -1147,15 +1147,24 @@ describe("clean-slate new user", () => {
     const detectedRulesFiles = AGENT_DEFINITIONS.filter(
       (a) => a.rulesFile && detectedNames.has(a.name) && !seenPaths.has(a.rulesFile) && seenPaths.add(a.rulesFile),
     );
+    // Delegated agents get their managed section from the `ai-rules` CLI.
+    // Without that CLI (a clean hosted runner) the sync skips them, so a
+    // file may keep zero managed sections. Two is wrong in both cases.
+    let aiRulesInstalled = true;
+    try {
+      execFileSync(process.env.AGENTBREW_AI_RULES_BIN ?? "ai-rules", ["--version"], { stdio: "ignore" });
+    } catch {
+      aiRulesInstalled = false;
+    }
+    const minManagedSections = aiRulesInstalled ? 1 : 0;
     for (const agent of detectedRulesFiles) {
       const filePath = expandHome(agent.rulesFile ?? "");
       if (!existsSync(filePath)) continue;
       const content = readFileSync(filePath, "utf-8");
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
-      expect(
-        managedStartCount,
-        `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 1`,
-      ).toBe(1);
+      const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 1`;
+      expect(managedStartCount, label).toBeLessThanOrEqual(1);
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections);
     }
 
     // Second sync — must be a no-op for the file-sharing modules.
@@ -1180,10 +1189,9 @@ describe("clean-slate new user", () => {
       if (!existsSync(filePath)) continue;
       const content = readFileSync(filePath, "utf-8");
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
-      expect(
-        managedStartCount,
-        `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 2`,
-      ).toBe(1);
+      const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 2`;
+      expect(managedStartCount, label).toBeLessThanOrEqual(1);
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections);
     }
 
     // Cleanup

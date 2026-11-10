@@ -160,6 +160,8 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
   it("installShellHook creates hook script + appends to .zshrc → isShellHookInstalled returns true", () => {
     const zshrcPath = join(TEST_HOME, ".zshrc");
     writeFileSync(zshrcPath, "# test zshrc\n");
+    // The hook goes to the rc file of $SHELL. A hosted runner uses bash.
+    vi.stubEnv("SHELL", "/bin/zsh");
 
     installShellHook();
 
@@ -183,6 +185,7 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
     const zshrc2 = readFileSync(zshrcPath, "utf-8");
     const guardCount = zshrc2.split("# agentbrew shell hook").length - 1;
     expect(guardCount).toBe(1);
+    vi.unstubAllEnvs();
   });
 
   it("uninstallShellHook removes hook script + cleans .zshrc → isShellHookInstalled returns false", () => {

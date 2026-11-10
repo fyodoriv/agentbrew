@@ -35,7 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # ubuntu-24.04, not ubuntu-latest: Playwright has no Chromium build
+        # for the newer image yet (TASKS.md ci-ubuntu-latest-playwright).
+        os: [ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -52,6 +54,15 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Install test tools
+        # git-filter-repo: the test of scripts/sanitize-history.sh needs it.
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install git-filter-repo
+          else
+            sudo apt-get update && sudo apt-get install -y git-filter-repo
+          fi
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

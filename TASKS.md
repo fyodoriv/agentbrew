@@ -325,19 +325,6 @@
   - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
   - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
 
-- [ ] Telemetry is sent even when the user never runs `sync`
-  - **ID**: telemetry-auto-send-beyond-sync
-  - **Tags**: telemetry, cli
-  - **Details**: The daily send starts only at the end of `agentbrew sync` (`handleSyncCommand` in `src/cli.ts` calls `startDailySend`). A machine that runs other commands (`status`, `update`, the scheduled repair) and never a plain sync sends nothing, so the public numbers miss those installs. Start the due check from the shared `postAction` hook for every non-quiet command, or from the scheduled repair. The check must stay cheap: no network and no Keychain lookup on each command.
-  - **Files**: `src/cli.ts`, `src/core/telemetry-auto.ts`, `src/core/telemetry.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: with a stored yes, a key, and no attempt in the last day, a non-sync command starts the detached send once; a second command in the same day starts none; a quiet command (`--json`, `completions`, `hook`) starts none.
-  - **Hypothesis**: starting the due check after every non-quiet command moves the command paths that can start the daily send from 1 (`sync`) to all non-quiet commands, and the due check takes under 5 ms when no send is due.
-  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "a non-sync command starts the daily send"`
-  - **Success**: the test passes, and the measured due-check time is under 5 ms.
-  - **Pivot**: if the due check takes 5 ms or more, start the send only from the scheduled repair and from `sync`.
-  - **Anchor**: Kohavi, Tang, Xu 2020 (sample ratio and coverage bias in telemetry); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] Two terminals never show the telemetry question at the same time
   - **ID**: telemetry-consent-question-lock
   - **Tags**: telemetry, consent

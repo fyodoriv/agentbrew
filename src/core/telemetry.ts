@@ -47,6 +47,8 @@ const INSTALL_ID = /^[0-9a-f]{32}$/;
 const KEY = /^phc_[A-Za-z0-9]+$/;
 /** A send lock older than this was left by a dead process. */
 const LOCK_STALE_MS = 60_000;
+/** After a command starts the detached daily send, no command starts a second one for this long. */
+const AUTO_START_GAP_MS = 60_000;
 /** A log line is far shorter than this; a longer mark in the state file is dropped. */
 const MARK_MAX = 4_000;
 /** A released package version. A local suffix (a commit, a word) does not match, so it is never sent. */
@@ -78,6 +80,8 @@ interface TelemetryState {
   lastSend?: string;
   /** Last send attempt, failed or not; the daily gate reads it so a dead network costs one try a day. */
   lastAttempt?: string;
+  /** When a command last started the detached daily send. That send writes `lastAttempt` when it ends. */
+  autoStartAt?: string;
 }
 
 export type KeySource = "env" | "keychain" | "default" | "none";
@@ -97,6 +101,8 @@ export interface TelemetryDeps {
   drain?: () => Promise<void>;
   fetchImpl?: typeof fetch;
   now?: number;
+  /** Internal: the due check of the command that starts the send (claimDailySend). */
+  claim?: boolean;
 }
 
 export function statePath(): string {
@@ -230,6 +236,7 @@ function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryS
     askCount: typeof askCount === "number" && Number.isInteger(askCount) && askCount >= 0 ? askCount : undefined,
     lastSend: isoOrUndefined(parsed.lastSend),
     lastAttempt: isoOrUndefined(parsed.lastAttempt),
+    autoStartAt: isoOrUndefined(parsed.autoStartAt),
     keychainMissAt: isoOrUndefined(parsed.keychainMissAt),
   };
 }
@@ -808,18 +815,37 @@ async function postOne(
   }
 }
 
+/** The state when the daily send is due (see sendDailyDue), else undefined. */
+function dueState(deps: TelemetryDeps): TelemetryState | undefined {
+  if (envOff()) return undefined;
+  const state = loadState();
+  if (state.consent !== "yes") return undefined;
+  const now = deps.now ?? Date.now();
+  if (withinDay(state.lastAttempt ?? state.lastSend, now)) return undefined;
+  // A command started the send a moment ago, and it has not ended yet.
+  const started = Date.parse(state.autoStartAt ?? "");
+  if (deps.claim && Number.isFinite(started) && Math.abs(now - started) < AUTO_START_GAP_MS) return undefined;
+  return hasKey(deps, state, now) ? state : undefined;
+}
+
 /**
  * True when the daily send is due: no off switch, a stored "yes", no attempt
  * in the last day, and a key. Cheap: no network, and no Keychain lookup on
- * each sync when no key is set.
+ * each command when no key is set.
  */
 export function sendDailyDue(deps: TelemetryDeps = {}): boolean {
-  if (envOff()) return false;
-  const state = loadState();
-  if (state.consent !== "yes") return false;
-  const now = deps.now ?? Date.now();
-  if (withinDay(state.lastAttempt ?? state.lastSend, now)) return false;
-  return hasKey(deps, state, now);
+  return dueState(deps) !== undefined;
+}
+
+/**
+ * For the command that starts the detached send: true when the send is due
+ * and no other command started it in the last minute. It then writes the
+ * start time, so the next command starts no second process.
+ */
+export function claimDailySend(deps: TelemetryDeps = {}): boolean {
+  if (!dueState({ ...deps, claim: true })) return false;
+  patchState({ autoStartAt: new Date(deps.now ?? Date.now()).toISOString() });
+  return true;
 }
 
 /**

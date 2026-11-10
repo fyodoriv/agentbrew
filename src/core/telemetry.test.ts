@@ -952,6 +952,45 @@ describe("field telemetry", () => {
       expect(spawnImpl).toHaveBeenCalledTimes(1);
     });
 
+    it("a non-sync command starts the daily send", async () => {
+      const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
+      const afterCommand = (command: string, argv: string[], now: number) =>
+        startDailySend({ command, argv, now, spawnImpl: spawnImpl as unknown as typeof spawn });
+      // A quiet command starts none: machine-readable output, completion, a hook, and the send itself.
+      expect(afterCommand("status", ["status", "--json"], NOW)).toBe(false);
+      expect(afterCommand("completions", ["completions", "zsh"], NOW)).toBe(false);
+      expect(afterCommand("hook", ["hook", "run"], NOW)).toBe(false);
+      expect(afterCommand("telemetry", ["telemetry", "send", "--auto"], NOW)).toBe(false);
+      expect(spawnImpl).not.toHaveBeenCalled();
+      // A stored yes, a key, and no attempt in the last day: `status` starts the send once.
+      expect(afterCommand("status", ["status"], NOW)).toBe(true);
+      expect(spawnImpl).toHaveBeenCalledTimes(1);
+      // A second command a moment later starts none: the first send has not ended yet.
+      expect(afterCommand("fix", ["fix"], NOW + 1_000)).toBe(false);
+      // The started process sends and writes the attempt time; no command starts one for the rest of the day.
+      const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+      await sendDaily("1.0.0", { now: NOW + 2_000, fetchImpl });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(afterCommand("update", ["update"], NOW + 60 * 60 * 1000)).toBe(false);
+      expect(spawnImpl).toHaveBeenCalledTimes(1);
+      // The next day a command starts it again.
+      expect(afterCommand("status", ["status"], NOW + 25 * 60 * 60 * 1000)).toBe(true);
+      expect(spawnImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("the due check after a command is cheap when no send is due", () => {
+      seedState({ lastAttempt: new Date(NOW).toISOString() });
+      const spawnImpl = vi.fn();
+      const rounds = 200;
+      const started = performance.now();
+      for (let i = 0; i < rounds; i += 1) {
+        startDailySend({ command: "status", argv: ["status"], now: NOW + 1_000, spawnImpl: spawnImpl as never });
+      }
+      const each = (performance.now() - started) / rounds;
+      expect(spawnImpl).not.toHaveBeenCalled();
+      expect(each).toBeLessThan(5);
+    });
+
     it("the detached send does not carry a debugger flag from the parent", () => {
       const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
       const execArgv = process.execArgv;

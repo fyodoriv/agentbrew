@@ -225,8 +225,6 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   } finally {
     if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
-  // The daily send runs in a process of its own; the sync does not wait for it.
-  if (!options.dryRun) (await import("./core/telemetry-auto.js")).startDailySend();
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -575,6 +573,8 @@ function recordCommandEvents(program: Command): void {
     while (top.parent && top.parent !== program) top = top.parent;
     const command = top.name();
     closeCommandEvent(!process.exitCode);
+    // The daily send runs in a process of its own; the command does not wait for it.
+    (await import("./core/telemetry-auto.js")).startDailySend({ command, argv: process.argv.slice(2) });
     // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
     if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
       const t = await import("./core/telemetry.js");

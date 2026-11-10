@@ -116,7 +116,8 @@ both are empty.
 
 A send never fails a command.
 
-- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The sync does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the sync and cannot change its exit code. That process records no event of its own.
+- A send happens at most once a day, and one try counts even when it fails. Every command checks whether a send is due when it ends, so a machine that runs `status`, `update`, or the scheduled `fix` and never a plain sync still sends. A quiet command does not check: one with `--json`, `completions`, `hook`, and `telemetry` itself. The check reads the state file only: no network, and no Keychain lookup when a key file or the env var is set. A test pins it under 5 ms.
+- The command does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the command and cannot change its exit code. That process records no event of its own. The command writes the start time (`autoStartAt`), and for the next minute no other command starts a second process.
 - The attempt time is written when the send ends: a send that the system killed part-way (a scheduler job that ended) is tried again on the next run, not a day later.
 - `app_version` is the released package version (`1.2.3`, or `1.2.3-rc.1`). Any other text, such as a local suffix or a commit, is sent as `0.0.0`.
 - The key is never put in a process argument or a log line. A network error logs only its error name.

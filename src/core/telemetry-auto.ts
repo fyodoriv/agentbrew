@@ -1,23 +1,29 @@
 import { spawn } from "node:child_process";
 import { logSkipped } from "./logger.js";
-import { AUTO_TIMEOUT_MS, sendDaily, sendDailyDue, type TelemetryDeps } from "./telemetry.js";
+import { AUTO_TIMEOUT_MS, claimDailySend, quietCommand, sendDaily, type TelemetryDeps } from "./telemetry.js";
 
 /**
- * The automatic send after a sync, as a separate process.
+ * The automatic send after a command, as a separate process.
  *
  * A network call can hang where no timeout reaches it: a DNS lookup that
- * never returns cannot be cancelled, and it keeps a process alive. So the
- * sync never does the send itself. When a send is due, it starts
+ * never returns cannot be cancelled, and it keeps a process alive. So a
+ * command never does the send itself. When a send is due, it starts
  * `agentbrew telemetry send --auto` as a detached process and does not wait
  * for it. That process has its own hard time limit (runAutoSend).
+ *
+ * Every command that is not quiet runs this check (the postAction hook in
+ * cli.ts), so a machine that never runs a plain sync still sends. A quiet
+ * command starts none: `--json`, completion, a hook, and `telemetry` itself.
  *
  * The command line holds no key and no argument from the user. The child
  * reads the key the same way every command does.
  */
-export function startDailySend(deps: TelemetryDeps & { spawnImpl?: typeof spawn } = {}): boolean {
+export function startDailySend(
+  deps: TelemetryDeps & { spawnImpl?: typeof spawn; command?: string; argv?: readonly string[] } = {},
+): boolean {
   try {
     const script = process.argv[1];
-    if (!script || !sendDailyDue(deps)) return false;
+    if (!script || quietCommand(deps.command, deps.argv) || !claimDailySend(deps)) return false;
     const child = (deps.spawnImpl ?? spawn)(
       process.execPath,
       // A debugger flag is not passed on: the child would wait for a debugger or fight for its port.
@@ -25,7 +31,7 @@ export function startDailySend(deps: TelemetryDeps & { spawnImpl?: typeof spawn 
       // AGENTBREW_EVENTS=0: the send is not a command the user ran, so it records no event.
       { detached: true, stdio: "ignore", env: { ...process.env, AGENTBREW_EVENTS: "0" } },
     );
-    // A start that fails (no process slot) must not break the sync.
+    // A start that fails (no process slot) must not break the command.
     child.on("error", (e) => logSkipped("core/telemetry-auto/spawn", e instanceof Error ? e.name : "error"));
     child.unref();
     return true;

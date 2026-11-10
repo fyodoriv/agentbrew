@@ -521,11 +521,42 @@ export function buildProgram(): Command {
 }
 
 /**
+ * The command that has started and has no `command` event yet. CLI-process
+ * scope: one per process, set before the action and cleared when its event is
+ * written. The exit guard reads it, so a run that throws or calls
+ * `process.exit` in its action still leaves one event.
+ */
+let openCommand: { command: string; started: number } | undefined;
+let exitGuardSet = false;
+
+/** Write the open command's event, at most once per run. */
+function closeCommandEvent(ok: boolean): void {
+  const open = openCommand;
+  if (!open) return;
+  openCommand = undefined;
+  recordEvent({
+    event: "command",
+    command: open.command,
+    story: storyForCommand(open.command),
+    ok,
+    ms: Date.now() - open.started,
+  });
+}
+
+/**
+ * The process `exit` listener: a command that never reached the postAction
+ * hook (it threw, or its action called `process.exit`) gets its event here.
+ * It is synchronous, as an exit listener must be. Exported for tests.
+ */
+export function recordCommandEventAtExit(code: number): void {
+  closeCommandEvent(code === 0);
+}
+
+/**
  * One content-free `command` event per command run: the top-level command
  * name (never an argument), ok, and wall time. Every command passes through here.
  */
 function recordCommandEvents(program: Command): void {
-  let started = 0;
   program.hook("preAction", (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
@@ -533,19 +564,17 @@ function recordCommandEvents(program: Command): void {
       for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
       if (!process.argv.includes("--json")) printMotd("sync");
     }
-    started = Date.now();
+    if (!exitGuardSet) {
+      exitGuardSet = true;
+      process.on("exit", recordCommandEventAtExit);
+    }
+    openCommand = { command: top.name(), started: Date.now() };
   });
   program.hook("postAction", async (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
     const command = top.name();
-    recordEvent({
-      event: "command",
-      command,
-      story: storyForCommand(command),
-      ok: !process.exitCode,
-      ms: Date.now() - started,
-    });
+    closeCommandEvent(!process.exitCode);
     // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
     if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
       const t = await import("./core/telemetry.js");

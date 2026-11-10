@@ -103,9 +103,10 @@ Three independent leak categories are blocked:
 
 Hosted CI ([`docs/ci.md`](docs/ci.md)) runs `npm run verify` on every pull
 request. It cannot run the private-pattern gate: that pattern file lives
-only on the owner's machine and is never uploaded. So `npm run verify` on
-your machine and the pre-push hook stay the authority for leaks. Run the
-gate before every push.
+only on the owner's machine and is never uploaded. So the leak
+check in [`docs/editing-rules.md`](docs/editing-rules.md) and the pre-push
+hook on your machine stay the authority for leaks. Run that leak check
+before every push.
 
 ### Private emails are blocked, never rewritten
 

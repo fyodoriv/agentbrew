@@ -1156,7 +1156,11 @@ describe("clean-slate new user", () => {
     } catch {
       aiRulesInstalled = false;
     }
-    const minManagedSections = aiRulesInstalled ? 1 : 0;
+    // Only delegated agents may have zero; a natively synced agent must
+    // always have one.
+    const { AGENTBREW_ONLY_RULES_AGENTS } = await import("./core/rules-agent-map.js");
+    const minManagedSections = (agentName: string): number =>
+      aiRulesInstalled || AGENTBREW_ONLY_RULES_AGENTS.has(agentName) ? 1 : 0;
     for (const agent of detectedRulesFiles) {
       const filePath = expandHome(agent.rulesFile ?? "");
       if (!existsSync(filePath)) continue;
@@ -1164,7 +1168,7 @@ describe("clean-slate new user", () => {
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
       const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 1`;
       expect(managedStartCount, label).toBeLessThanOrEqual(1);
-      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections);
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(agent.name));
     }
 
     // Second sync — must be a no-op for the file-sharing modules.
@@ -1191,7 +1195,7 @@ describe("clean-slate new user", () => {
       const managedStartCount = (content.match(/<!-- agentbrew:start -->/g) ?? []).length;
       const label = `${agent.name} (${agent.rulesFile}) should have exactly one managed section after sync 2`;
       expect(managedStartCount, label).toBeLessThanOrEqual(1);
-      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections);
+      expect(managedStartCount, label).toBeGreaterThanOrEqual(minManagedSections(agent.name));
     }
 
     // Cleanup

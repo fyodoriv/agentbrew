@@ -369,8 +369,9 @@ showed why: most of its time went to code diffs, where it ran the whole
 | Code (`src/`, `scripts/`, `real-e2e/`, `templates/`) | The same, plus `npx tsc --noEmit` and `npm run lint:changed` when source files changed, and `vitest related` on the changed source files instead of the whole suite. |
 | Package files, `tsconfig`, vitest, Biome, or knip config | The full `npm run verify`. |
 
-A code diff ends with "run full npm run verify before merge": run the full
-gate once, before merge, not in the loop. `npm test` runs `vitest related` on
+A code diff ends with "the hosted check must pass npm run verify before
+merge": the hosted check runs the full gate on the pull request, not you in
+the loop. `npm test` runs `vitest related` on
 the diff alone; prefer it to a whole folder (`npx vitest run src/`).
 
 ### Test selection

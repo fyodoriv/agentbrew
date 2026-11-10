@@ -17,7 +17,7 @@ public package release remains blocked.
 ## Why it cannot be avoided
 
 The documented automatic path did not start. `github.com/fyodoriv/agentbrew`
-is the only canonical home, and GitHub Actions is disabled there. The workflow
+is the only canonical home, and GitHub Actions was disabled there at that time. The workflow
 includes a `workflow_dispatch` fallback, but a maintainer must enable Actions
 on `fyodoriv/agentbrew` before anyone can trigger it. The documented manual
 fallback also cannot run because `npm whoami` returns `ENEEDAUTH`; obtaining

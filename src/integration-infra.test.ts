@@ -7,7 +7,7 @@ import { join } from "node:path";
  * prevent side effects during state-management tests. Here we test the
  * real implementations against a sandboxed home directory.
  */
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks that must be hoisted ──────────────────────────────────────────────
 
@@ -105,6 +105,10 @@ beforeEach(() => {
   mkdirSync(join(TEST_HOME, ".config", "agentbrew"), { recursive: true });
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 afterAll(() => {
   process.env.HOME = originalHome;
   rmSync(TEST_HOME, { recursive: true, force: true });
@@ -185,7 +189,6 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
     const zshrc2 = readFileSync(zshrcPath, "utf-8");
     const guardCount = zshrc2.split("# agentbrew shell hook").length - 1;
     expect(guardCount).toBe(1);
-    vi.unstubAllEnvs();
   });
 
   it("uninstallShellHook removes hook script + cleans .zshrc → isShellHookInstalled returns false", () => {

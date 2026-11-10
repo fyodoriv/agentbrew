@@ -52,6 +52,18 @@ It is public. The repo has a strict **no-leak** contract: no details of
 private internal infrastructure, no hardcoded secrets, and no private
 email identities may ever reach it.
 
+### Telemetry
+
+agentbrew sends anonymous performance numbers only after the user says yes to
+a question at install (Enter counts as yes). Never a path, file name, host
+name, user name, argument, message, or content. No IP-based location. No
+person profile. `agentbrew telemetry off`, `--no-telemetry`,
+`AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` each stop it. The code
+that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`. The
+question, every field, and every off switch:
+[`docs/observability.md`](docs/observability.md#field-telemetry). Report a
+field that should not be sent as a vulnerability.
+
 ### Contract
 
 Three independent leak categories are blocked:

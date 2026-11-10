@@ -1,18 +1,121 @@
 # Observability
 
 How to see what agentbrew did on this machine, what failed, and how to fix it.
-Everything stays on the machine by default. agentbrew has no external error
-reporter ([`VISION.md`](VISION.md) § Non-goals). It has two opt-in exits: the
-[weekly metrics share](#weekly-metrics-share-opt-in), and field telemetry.
+Logs and error messages stay on the machine. agentbrew has no external error
+reporter ([`VISION.md`](VISION.md) § Non-goals). Two things can leave it, each
+only after you say yes: [field telemetry](#field-telemetry) (anonymous
+performance numbers) and the [weekly metrics share](#weekly-metrics-share-opt-in).
 
-Field telemetry sends the content-free event log to PostHog EU once a day, as
-anonymous counts under a random install id (no person profile, no GeoIP). It
-sends nothing until you set a project key (`AGENTBREW_POSTHOG_KEY`, or the
-Keychain item `agentbrew` / `posthog_key`). `agentbrew telemetry status` shows
-its state, `agentbrew telemetry send --dry-run` prints the exact body, and
-`agentbrew telemetry off` or `DO_NOT_TRACK=1` stops it. Each line is checked
-against the event allowlist again at send time, so an edited or older log line
-cannot send a path or name; a canary test in `src/core/telemetry.test.ts` pins this.
+## Field telemetry
+
+agentbrew can send the content-free event log to PostHog EU as anonymous
+performance numbers (decided 2026-11-09, [`VISION.md`](VISION.md)). It is
+asked at install; on only after you say yes (Enter counts as yes). The numbers
+from all installs feed a public speed dashboard (p50 and p95 per command,
+version, and runtime) and a regression gate.
+
+### The consent question
+
+The stored answer is `unset`, `yes`, or `no`. Nothing is sent unless it is `yes`.
+
+| When | What happens |
+|---|---|
+| Install in a terminal (`scripts/install.sh run`) | The last step asks, after a banner: what is sent, one real event as JSON, the privacy promise, where the numbers go, how to change the answer, then `Share anonymous performance numbers? [Y/n]`. Enter or `y` records `yes`; `n` records `no`. One line confirms the result. |
+| Install with no terminal, or with `CI` set | No question. The answer stays `unset`. Nothing is sent. |
+| Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. |
+| Re-install or update | Never asks again. Never changes a stored answer. |
+| First command in a terminal while the answer is `unset` | Asks the same question once, on stderr. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. With no answer it does not ask again. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
+| `agentbrew telemetry on` / `off` | Records `yes` / `no` at any time. `on` prints the example and the promise. |
+| A state file that cannot be read | Counts as `unset`, never `yes`. A readable `no` is kept. |
+| A state file from before the question | Has no answer: `unset`. An earlier `telemetry off` counts as `no`. |
+
+An agent that installs for you has no terminal. `INSTALL.md` tells it to show
+you the question and run `agentbrew telemetry on` or pass `--no-telemetry`.
+
+### What is sent
+
+The command name, its duration, ok or error, counts, the agentbrew version,
+your OS and CPU type, and a random install id. One item per line of the
+[event log](#events):
+
+```json
+{
+  "event": "agentbrew.command",
+  "distinct_id": "<random install id>",
+  "timestamp": "2026-11-09T11:00:00.000Z",
+  "properties": {
+    "ok": true,
+    "command": "sync",
+    "ms": 1840,
+    "app_version": "1.0.0",
+    "os": "darwin",
+    "arch": "arm64",
+    "runtime": "ts",
+    "$geoip_disable": true,
+    "$process_person_profile": false
+  }
+}
+```
+
+| Field | Values |
+|---|---|
+| `event` | `agentbrew.` plus `command`, `sync`, `repair`, or `error` |
+| `distinct_id` | A random id made on this machine. Delete `telemetry.json` to get a new one (the answer is then `unset`). |
+| `timestamp` | When the event happened (UTC) |
+| `command` | The top-level command, only when it is in `COMMAND_NAMES` (`src/core/events.ts`) |
+| `ok`, `ms` | Did it work, and the wall time in ms |
+| `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types: fixed words made of letters only |
+| `driftBefore`, `repaired`, `remaining` | Counts |
+| `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |
+
+### The privacy promise
+
+Never a path, file name, host name, user name, argument, message, or content. No IP-based location. No person profile.
+The code that enforces this is `src/core/events.ts` (`sanitizeEvent`) and
+`src/core/telemetry.ts` (`buildBatch`). Each line is checked against the
+allowlist again at send time, so an edited or older log line cannot send a
+path, name, email, URL, or token. A canary test in
+`src/core/telemetry.test.ts` pins this.
+
+### Off switches
+
+Nothing is sent when any of these is true, whatever the stored answer is:
+
+| Switch | Effect |
+|---|---|
+| The answer is `no` or `unset` | `agentbrew telemetry off` records `no`; `agentbrew telemetry on` records `yes` |
+| `DO_NOT_TRACK` | Any value except empty or `0` |
+| `AGENTBREW_TELEMETRY=0` | Blocks every send; at install it also records `no` |
+| `CI` | Any value |
+| No project key | See the key order below |
+
+### Inspect it
+
+`agentbrew telemetry status` shows on or off, the reason, the consent answer
+and when it was given, the key source (never the key), the pending count, and
+the last send. `agentbrew telemetry send --dry-run` prints the exact next
+request body with the key shown as `<posthog_key>`, and sends nothing.
+
+### The key
+
+A PostHog project key can only write events; it is public by design.
+agentbrew reads it in this order: `AGENTBREW_POSTHOG_KEY`, then the owner's
+Keychain item `agentbrew` / `posthog_key`, then the committed file
+`src/core/telemetry-default-key.txt` (shipped as `dist/telemetry-default-key.txt`).
+An empty file means no key, and nothing is sent. A set but empty
+`AGENTBREW_POSTHOG_KEY` also means no key.
+
+### Reliable
+
+A send never fails a command.
+
+- `agentbrew sync` sends at most once a day, and one try counts even when it fails.
+- The automatic send stops after 3 seconds in total. `agentbrew telemetry send` allows 10 seconds per request.
+- One request holds at most 500 events. The cursor moves only after a 2xx answer.
+- A send skips everything but the newest 2,000 events of the last 30 days, so a first send never uploads an old history.
+- The state file (`~/.local/share/agentbrew/logs/telemetry.json`, or `AGENTBREW_TELEMETRY_STATE`; mode 600) is written with a temp file and a rename. The installer's backup and restore do not touch it.
+- A state file that cannot be read starts again at the end of the log. A shorter log moves the cursor to its end.
+- Errors are swallowed; `AGENTBREW_DEBUG=1` prints them.
 
 `npm run docs:proof` reads the per-install totals back for the README Proof
 section when a personal PostHog query key and project id are set
@@ -27,7 +130,7 @@ salted hash, never the install id. With no key or no network it prints one
 
 | Log | Path | Written by | Content |
 |---|---|---|---|
-| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per sync, scheduled repair, and error. See [Events](#events). |
+| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per command run, sync, scheduled repair, and error. See [Events](#events). |
 | Repair log | `~/.config/agentbrew/repair-log.json` | `src/repair-log.ts` | What the scheduled repair fixed since you last ran a command. `agentbrew status` prints a summary and clears it. |
 | Sync errors | `~/.config/agentbrew/sync-errors.json` | `src/core/errors.ts` | The errors of the last sync, with messages. Stays local. |
 | Scheduler output | `~/.local/share/agentbrew/logs/launchagent.log`, `launchagent.err`, `cron.log`, `auto-sync.log` | the LaunchAgent, cron, systemd timer, or watcher | Raw output of `agentbrew fix`, trimmed to the newest lines past 1 MB. |
@@ -35,8 +138,8 @@ salted hash, never the install id. With no key or no network it prints one
 
 The event log is content-free by construction. `sanitizeEvent` keeps only
 allow-listed fields. A string field must match an enum-like pattern (a story
-ID, a lower-case module or drift type, an upper-case error code), so a path,
-server name, or error message can never reach the file.
+ID, a lower-case module or drift type, an upper-case error code; letters
+only), so a path, server name, token, or error message can never reach the file.
 
 Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 (`vitest.config.ts`), and `src/core/events.test.ts` asserts that.
@@ -46,11 +149,12 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 | Event | When | Fields | Story |
 |---|---|---|---|
 | `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
-| `command` | each other top-level command that serves a story (`init`, `install`, `status`, `team`, ...) | `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts` |
+| `command` | each command run, `sync` and `fix` too | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
 
-Every event also has `ts` (ISO time) and `story`. `scripts/metrics.sh` turns
+Every event also has `ts` (ISO time), and `story` unless it is a `command` with none.
+A command that throws or exits early records no `command` event. `scripts/metrics.sh` turns
 the events into the rates in [`metrics.md`](metrics.md).
 
 ## Errors

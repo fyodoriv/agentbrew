@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { eventsEnabled, recordEvent, sanitizeEvent, storyForCommand, storyForModule } from "./events.js";
+import { COMMAND_NAMES, eventsEnabled, recordEvent, sanitizeEvent, storyForCommand, storyForModule } from "./events.js";
 
 const scratch = mkdtempSync(join(tmpdir(), "agentbrew-events-"));
 const saved = { on: process.env.AGENTBREW_EVENTS, file: process.env.AGENTBREW_EVENTS_FILE };
@@ -71,6 +71,48 @@ describe("sanitizeEvent", () => {
     expect(
       sanitizeEvent({ event: "error", story: "US03", ok: false, code: "SYNC_ERROR", module: "mcp" }),
     ).toMatchObject({ code: "SYNC_ERROR", module: "mcp", story: "US03" });
+  });
+});
+
+describe("command events", () => {
+  it("keeps the command name, ok, and duration; a story only when the command serves one", () => {
+    expect(sanitizeEvent({ event: "command", command: "metrics", ok: true, ms: 12.6 })).toEqual({
+      ts: expect.any(String),
+      event: "command",
+      ok: true,
+      command: "metrics",
+      ms: 13,
+    });
+    expect(sanitizeEvent({ event: "command", command: "status", story: "US25", ok: false })).toMatchObject({
+      command: "status",
+      story: "US25",
+      ok: false,
+    });
+  });
+
+  it("drops a command name that is not a known command: no argument or typed word is kept", () => {
+    for (const command of ["status --json", "~/private/Agentfile.yaml", "janedoe", "my-private-skill", ""]) {
+      expect(sanitizeEvent({ event: "command", command, ok: true })).not.toHaveProperty("command");
+    }
+    expect(COMMAND_NAMES.has("sync")).toBe(true);
+  });
+
+  it("drops tokens, hashes, and ids from enum fields", () => {
+    const hash = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
+    const out = sanitizeEvent({ event: "error", story: "US03", ok: false, code: "E1234", module: hash, types: [hash] });
+    expect(out).toEqual({ ts: expect.any(String), event: "error", story: "US03", ok: false, types: [] });
+  });
+
+  it("recording costs well under 5 ms and never throws", () => {
+    process.env.AGENTBREW_EVENTS = "1";
+    process.env.AGENTBREW_EVENTS_FILE = join(scratch, "cost.jsonl");
+    const started = performance.now();
+    for (let i = 0; i < 200; i += 1) recordEvent({ event: "command", command: "status", ok: true, ms: i });
+    expect((performance.now() - started) / 200).toBeLessThan(5);
+    // A log path that cannot be written (its parent is a file) must not throw.
+    process.env.AGENTBREW_EVENTS_FILE = join(scratch, "cost.jsonl", "nested", "events.jsonl");
+    expect(() => recordEvent({ event: "command", command: "status", ok: true })).not.toThrow();
+    expect(() => recordEvent({} as never)).not.toThrow();
   });
 });
 

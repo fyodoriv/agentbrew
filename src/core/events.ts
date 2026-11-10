@@ -4,13 +4,13 @@ import { getLogDir } from "../sync/scheduler-paths.js";
 import { logSkipped } from "./logger.js";
 
 /**
- * Content-free event log: one JSON line per sync, scheduled repair, or error.
+ * Content-free event log: one JSON line per command, sync, scheduled repair, or error.
  * docs/observability.md lists every event and field; scripts/metrics.sh reads it.
  *
  * Privacy: only allow-listed fields are written. String fields must match a
  * strict enum-like pattern, so no path, server name, message, or other free
- * text can reach the file. Nothing leaves the machine unless the owner sets a
- * PostHog key (core/telemetry.ts, opt-in).
+ * text can reach the file. core/telemetry.ts sends these lines as anonymous
+ * performance numbers, only after the user said yes to the consent question.
  *
  * Lifecycle: the file is append-only, owned by the user's home
  * (~/.local/share/agentbrew/logs/events.jsonl, or AGENTBREW_EVENTS_FILE).
@@ -18,12 +18,15 @@ import { logSkipped } from "./logger.js";
  */
 
 /** Event names. Add one here and in docs/observability.md together. */
-export type EventName = "sync" | "repair" | "error" | "command";
+export const EVENT_NAMES = ["sync", "repair", "error", "command"] as const;
+export type EventName = (typeof EVENT_NAMES)[number];
 
 export interface AgentbrewEvent {
   event: EventName;
-  /** User story the event proves or breaks, such as "US06". */
-  story: string;
+  /** User story the event proves or breaks, such as "US06". A `command` event may have none. */
+  story?: string;
+  /** Top-level command name, from COMMAND_NAMES. Never an argument. */
+  command?: string;
   ok: boolean;
   ms?: number;
   /** Drift items found before a repair. */
@@ -41,8 +44,10 @@ export interface AgentbrewEvent {
 }
 
 const STORY = /^US\d{2}$/;
-const ENUM = /^[a-z][a-z0-9-]{0,40}$/;
-const CODE = /^[A-Z][A-Z0-9_]{0,40}$/;
+// Letters only (plus one separator): a token, hash, or id cannot match.
+const ENUM = /^[a-z]+(-[a-z]+)*$/;
+const CODE = /^[A-Z]+(_[A-Z]+)*$/;
+const ENUM_MAX = 40;
 const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining"] as const;
 
 /** Story that each sync module serves (the error-to-story map in docs/observability.md). */
@@ -87,6 +92,53 @@ const COMMAND_STORY: Readonly<Record<string, string>> = {
   memory: "US29",
 };
 
+/**
+ * Every top-level command, plus "agentbrew" for the bare start command. A
+ * `command` event keeps its name only when it is in this list, so no typed
+ * word can reach the log. src/action-parity.test.ts fails when a command is missing.
+ */
+export const COMMAND_NAMES: ReadonlySet<string> = new Set([
+  "agentbrew",
+  "actions",
+  "agentfile",
+  "agents",
+  "audit-skills",
+  "auto-sync",
+  "bootstrap",
+  "catalog",
+  "checkup-run",
+  "classify",
+  "commands",
+  "completions",
+  "config",
+  "contribute",
+  "env",
+  "export",
+  "fix",
+  "hook",
+  "hooks",
+  "import",
+  "init",
+  "install",
+  "lint",
+  "lock",
+  "mcp",
+  "measure",
+  "memory",
+  "metrics",
+  "plugin",
+  "remove",
+  "report",
+  "rules",
+  "setup",
+  "skills",
+  "status",
+  "sync",
+  "team",
+  "telemetry",
+  "upgrade",
+]);
+
 export function storyForCommand(command: string): string | undefined {
   return COMMAND_STORY[command];
 }
@@ -105,19 +157,21 @@ export function eventsFilePath(): string {
 
 /** Keep only allow-listed fields with safe values. Exported for tests. */
 export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
-  const out: Record<string, unknown> = {
-    ts: new Date().toISOString(),
-    event: input.event,
-    story: STORY.test(input.story) ? input.story : "US08",
-    ok: input.ok === true,
-  };
+  const out: Record<string, unknown> = { ts: new Date().toISOString(), event: input.event };
+  const story = typeof input.story === "string" && STORY.test(input.story) ? input.story : undefined;
+  // Only a `command` event may have no story: most commands serve none.
+  if (story || input.event !== "command") out.story = story ?? "US08";
+  out.ok = input.ok === true;
+  if (typeof input.command === "string" && COMMAND_NAMES.has(input.command)) out.command = input.command;
   for (const key of NUMBER_FIELDS) {
     const value = input[key];
     if (typeof value === "number" && Number.isFinite(value) && value >= 0) out[key] = Math.round(value);
   }
-  if (input.types) out.types = [...new Set(input.types.filter((t) => ENUM.test(t)))].sort();
-  if (input.code && CODE.test(input.code)) out.code = input.code;
-  if (input.module && ENUM.test(input.module)) out.module = input.module;
+  const isEnum = (v: unknown, pattern: RegExp): v is string =>
+    typeof v === "string" && v.length <= ENUM_MAX && pattern.test(v);
+  if (Array.isArray(input.types)) out.types = [...new Set(input.types.filter((t) => isEnum(t, ENUM)))].sort();
+  if (isEnum(input.code, CODE)) out.code = input.code;
+  if (isEnum(input.module, ENUM)) out.module = input.module;
   return out;
 }
 

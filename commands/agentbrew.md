@@ -28,6 +28,8 @@ Every other action: run `agentbrew actions --json`. It lists every command (gene
 - `confirm`: it is hard to undo. Say what it changes, and run it only after the user says yes.
 - `agent_note`: what you must do differently, for example a `--dry-run` to show first.
 
+When the user asks what agentbrew sends, or wants telemetry on or off ("does agentbrew phone home?", "stop the tracking"): run `agentbrew telemetry status` and `agentbrew telemetry send --dry-run` and show both. Run `agentbrew telemetry off` or `agentbrew telemetry on` only after the user gives that answer themselves; `on` prints one example event and the privacy promise, so show them. Nothing is sent unless the user said yes.
+
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.
 
 

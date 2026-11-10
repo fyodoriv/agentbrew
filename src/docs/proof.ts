@@ -360,7 +360,7 @@ function fieldAndHealth(file: ProofFile): string[] {
 export function render(file: ProofFile): string {
   const lines = [
     "Every number below comes from `docs/proof/metrics.json`. `npm run docs:proof` writes that file and this section.",
-    "Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). Nothing is uploaded; each machine aggregates its own log.",
+    "Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). The proof reads each machine's own log; the same log feeds the anonymous [telemetry](#telemetry).",
     "",
     "| Claim | Theory | Metric | Result | Source |",
     "|---|---|---|---|---|",

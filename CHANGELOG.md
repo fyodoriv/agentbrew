@@ -24,6 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Anonymous performance telemetry, asked at install; on only after you say
+  yes (Enter counts as yes). The installer's last step shows what is sent, one
+  real event, and the privacy promise, then asks `[Y/n]`. Every command run
+  records one content-free `command` event (top-level command name, duration,
+  ok). `agentbrew sync` sends at most once a day to PostHog EU, with a
+  3-second limit. `agentbrew telemetry off`, `--no-telemetry`,
+  `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` stop it;
+  `agentbrew telemetry status` and `send --dry-run` show what happens. The
+  default project key file ships empty, so nothing is sent yet. This replaces
+  the owner-key opt-in. See README "Telemetry".
 - `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
 - The wrap-up skill's `open-work.sh` tags a branch whose added lines are
   already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as

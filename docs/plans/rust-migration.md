@@ -5,7 +5,8 @@ This plan was rewritten on 2026-11-10 after the
 [validation review](#validation-review-2026-11-09). No code is ported yet.
 The re-plan Pivot did not apply: gate G stays. A first independent review of
 this rewrite found five of the seven MUST findings only partly resolved. This
-revision applies its fixes. A second review has not confirmed them yet. The
+revision applies its fixes. A second independent review on 2026-11-10 graded all
+seven findings resolved in both plans. The
 owner has not ruled on the defaults in
 [Decisions](#decisions-2026-11-10); task `rust-owner-rules-on-replan-defaults`
 tracks that. The measured hot path (hook helpers) now comes first.
@@ -42,8 +43,9 @@ Two existing tools measure each slice:
   ([details](../observability.md)). The local event log keeps the same time
   as `ms`. The owner's dashboard ("Tooling performance: agentbrew +
   dotfiles", private since 2026-11-10) shows p50 and p95 of `duration_ms`
-  by command, version and runtime. It needs a login; a public link is to
-  be added.
+  by command, version and runtime. It is in the owner's PostHog project
+  and needs a login. It cannot be verified from the repository. A public
+  link is to be added.
 
 ## Evidence and current state
 
@@ -162,12 +164,14 @@ names the event in `event`. Few lines carry a `command` field, so a filter
 on `.command` prints `null`.
 
 ```bash
-jq -s --arg since 2026-11-03 '[.[] | select(.event == "sync" and .ts >= $since) | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl
+jq -s --arg since 2026-11-03 --arg until 2026-11-11 '[.[] | select(.event == "sync" and .ts >= $since and .ts < $until) | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl
 ```
 
-It printed `1953`: the same p50 for the lines since the given date. This is
-the **local-log fallback** for any check that names the dashboard. Change
-the event name and the date. It prints `null` when no line matches.
+It printed `1953`: the same p50 for the lines from `since` up to, but not
+including, `until`. With `since` 2026-10-20 and `until` 2026-11-03 it
+printed `1184`. This is the **local-log fallback** for any check that names
+the dashboard. Change the event name and both dates. It prints `null` when
+no line matches.
 
 ```bash
 node ~/.config/agentbrew/scripts/agent-perf.mjs report --all --days 7 --json
@@ -381,9 +385,10 @@ proof of deployed behavior or field performance.
 **14-day field check.** Within 14 days after a switch, the owner's dashboard
 must show the gain for the new version. The dashboard is private and has no
 public link yet. When it is not available, use the local-log fallback
-command with the slice's event name and the switch date, and compare it
-with the same command for the 14 days before the switch. No gain in either
-source rolls the slice back.
+command with the slice's event name. Run it once with `since` at the
+switch date and `until` 14 days later. Run it again with `since` 14 days
+before the switch and `until` at the switch date. Compare the two. No gain
+in either source rolls the slice back.
 
 **Final audit rule.** The audit passes when every owned executable
 component in the manifest has one of five states:
@@ -452,8 +457,9 @@ the reviewer wrote it.
 
 Status on 2026-11-10: a first review of the re-plan graded findings 1, 6
 and 7 resolved and findings 2, 3, 4 and 5 partly resolved in this
-repository. This revision applies the fixes it asked for. No second review
-has confirmed them. The task's Success line needs that confirmation.
+repository. This revision applies the fixes it asked for. A second
+independent review on 2026-11-10 graded all seven findings resolved in both
+plans.
 
 ### Resolved findings (2026-11-10)
 

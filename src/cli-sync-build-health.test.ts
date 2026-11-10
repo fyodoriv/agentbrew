@@ -44,7 +44,7 @@ vi.mock("./ops.js", () => ({ rollbackAgentConfigs: vi.fn() }));
 import { checkForAutoUpgrade } from "./auto-upgrade.js";
 import { buildProgram } from "./cli.js";
 import { checkCliBuildDrift } from "./cli-build-health.js";
-import { recordEvent, storyForCommand } from "./core/events.js";
+import { recordEvent } from "./core/events.js";
 import { prepareWorkspaceAgentfile } from "./core/workspaces.js";
 import { rollbackAgentConfigs } from "./ops.js";
 import { clearRepairLog, touchLastSeen } from "./repair-log.js";
@@ -167,7 +167,6 @@ describe("initialized sync root-hook ordering", () => {
     let clock = 0;
     vi.spyOn(Date, "now").mockImplementation(() => clock);
     vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.mocked(storyForCommand).mockReturnValueOnce("US11");
     vi.mocked(checkForAutoUpgrade).mockImplementationOnce(() => {
       clock += 1000;
     });
@@ -182,5 +181,8 @@ describe("initialized sync root-hook ordering", () => {
       .filter((event) => event.event === "command");
     expect(commandEvents).toHaveLength(1);
     expect(commandEvents[0].ms, "sync command timing included status hook").toBe(20);
+    // Every command records its name, also one that serves no user story.
+    expect(commandEvents[0]).toMatchObject({ command: "sync", ok: true });
+    expect(commandEvents[0].story).toBeUndefined();
   });
 });

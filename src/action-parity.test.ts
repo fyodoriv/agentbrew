@@ -27,6 +27,7 @@ import {
   TERMINAL_ONLY,
 } from "./actions.js";
 import { buildProgram } from "./cli.js";
+import { COMMAND_NAMES } from "./core/events.js";
 import { validateAgentbrewCommand } from "./docs/runnable-examples.js";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -72,6 +73,19 @@ describe("action parity: CLI and agents (agentbrew has no UI)", () => {
     expect(missing, "CLI commands with no agent path: add a reason to NOT_ACTIONS in src/actions.ts").toEqual([]);
     expect(catalog.map((a) => a.name)).toEqual(cli.filter((c) => !c.hidden).map((c) => c.name));
     expect(catalog.length).toBeGreaterThan(50);
+  });
+
+  it("every top-level command is a known name for the content-free `command` event", () => {
+    const program = buildProgram();
+    const names = [program.name(), ...program.commands.map((c) => c.name())];
+    expect(
+      names.filter((n) => !COMMAND_NAMES.has(n)),
+      "add the command to COMMAND_NAMES in src/core/events.ts",
+    ).toEqual([]);
+    expect(
+      [...COMMAND_NAMES].filter((n) => !names.includes(n)),
+      "remove the retired command",
+    ).toEqual([]);
   });
 
   it("agents get the same list from `agentbrew actions --json`", async () => {

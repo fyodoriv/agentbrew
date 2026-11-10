@@ -4,13 +4,13 @@ import { getLogDir } from "../sync/scheduler-paths.js";
 import { logSkipped } from "./logger.js";
 
 /**
- * Content-free event log: one JSON line per sync, scheduled repair, or error.
+ * Content-free event log: one JSON line per command, sync, scheduled repair, or error.
  * docs/observability.md lists every event and field; scripts/metrics.sh reads it.
  *
- * Privacy: only allow-listed fields are written. String fields must match a
- * strict enum-like pattern, so no path, server name, message, or other free
- * text can reach the file. Nothing leaves the machine unless the owner sets a
- * PostHog key (core/telemetry.ts, opt-in).
+ * Privacy: only allow-listed fields are written. A string field is kept only
+ * when its value is in a fixed list of known names, so no path, server name,
+ * message, or other free text can reach the file. core/telemetry.ts sends these lines as anonymous
+ * performance numbers, only after the user said yes to the consent question.
  *
  * Lifecycle: the file is append-only, owned by the user's home
  * (~/.local/share/agentbrew/logs/events.jsonl, or AGENTBREW_EVENTS_FILE).
@@ -18,12 +18,15 @@ import { logSkipped } from "./logger.js";
  */
 
 /** Event names. Add one here and in docs/observability.md together. */
-export type EventName = "sync" | "repair" | "error" | "command";
+export const EVENT_NAMES = ["sync", "repair", "error", "command"] as const;
+export type EventName = (typeof EVENT_NAMES)[number];
 
 export interface AgentbrewEvent {
   event: EventName;
-  /** User story the event proves or breaks, such as "US06". */
-  story: string;
+  /** User story the event proves or breaks, such as "US06". A `command` event may have none. */
+  story?: string;
+  /** Top-level command name, from COMMAND_NAMES. Never an argument. */
+  command?: string;
   ok: boolean;
   ms?: number;
   /** Drift items found before a repair. */
@@ -41,11 +44,12 @@ export interface AgentbrewEvent {
 }
 
 const STORY = /^US\d{2}$/;
-const ENUM = /^[a-z][a-z0-9-]{0,40}$/;
-const CODE = /^[A-Z][A-Z0-9_]{0,40}$/;
 const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining"] as const;
 
-/** Story that each sync module serves (the error-to-story map in docs/observability.md). */
+/**
+ * Story that each sync module serves (the error-to-story map in docs/observability.md).
+ * Its keys are every sync module name; a `module` is kept only when it is one of them.
+ */
 const MODULE_STORY: Readonly<Record<string, string>> = {
   mcp: "US03",
   rules: "US04",
@@ -87,6 +91,100 @@ const COMMAND_STORY: Readonly<Record<string, string>> = {
   memory: "US29",
 };
 
+/**
+ * Every top-level command, plus "agentbrew" for the bare start command. A
+ * `command` event keeps its name only when it is in this list, so no typed
+ * word can reach the log. src/action-parity.test.ts fails when a command is missing.
+ */
+export const COMMAND_NAMES: ReadonlySet<string> = new Set([
+  "agentbrew",
+  "actions",
+  "agentfile",
+  "agents",
+  "audit-skills",
+  "auto-sync",
+  "bootstrap",
+  "catalog",
+  "checkup-run",
+  "classify",
+  "commands",
+  "completions",
+  "config",
+  "contribute",
+  "env",
+  "export",
+  "fix",
+  "hook",
+  "hooks",
+  "import",
+  "init",
+  "install",
+  "lint",
+  "lock",
+  "mcp",
+  "measure",
+  "memory",
+  "metrics",
+  "plugin",
+  "remove",
+  "report",
+  "rules",
+  "setup",
+  "skills",
+  "status",
+  "sync",
+  "team",
+  "telemetry",
+  "upgrade",
+]);
+
+/**
+ * Every drift type (DriftItem["type"] in src/drift-checks/types.ts). A `types`
+ * entry is kept only when it is in this list. src/core/events.test.ts fails
+ * when the two lists differ.
+ */
+export const DRIFT_TYPES: ReadonlySet<string> = new Set([
+  "agents",
+  "claude-desktop-mcp",
+  "claude-plugin",
+  "retired-mod",
+  "cli-build",
+  "env-hygiene",
+  "organization-overlay",
+  "mcp",
+  "mcp-bare-placeholder",
+  "mcp-catalog-pin",
+  "mcp-env-vars",
+  "mcp-playwright-isolated",
+  "mcp-stale",
+  "mcp-permissions",
+  "mcp-user-added",
+  "models",
+  "rules",
+  "rules-source",
+  "skills",
+  "skills-user-added",
+  "statusline-user-added",
+  "skill-validity",
+  "commands",
+  "commands-user-added",
+  "hooks",
+  "instructions",
+  "launchagent",
+  "memory-launchagent",
+]);
+
+/** Every error code the CLI records. A `code` is kept only when it is in this list. */
+export const ERROR_CODES: ReadonlySet<string> = new Set([
+  "SYNC_ERROR",
+  "CONFIG_ERROR",
+  "ADAPTER_ERROR",
+  "INVALID_MCP",
+  "UNEXPECTED",
+]);
+
+const MODULE_NAMES: ReadonlySet<string> = new Set(Object.keys(MODULE_STORY));
+
 export function storyForCommand(command: string): string | undefined {
   return COMMAND_STORY[command];
 }
@@ -105,19 +203,22 @@ export function eventsFilePath(): string {
 
 /** Keep only allow-listed fields with safe values. Exported for tests. */
 export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
-  const out: Record<string, unknown> = {
-    ts: new Date().toISOString(),
-    event: input.event,
-    story: STORY.test(input.story) ? input.story : "US08",
-    ok: input.ok === true,
-  };
+  const out: Record<string, unknown> = { ts: new Date().toISOString(), event: input.event };
+  const story = typeof input.story === "string" && STORY.test(input.story) ? input.story : undefined;
+  // Only a `command` event may have no story: most commands serve none.
+  if (story || input.event !== "command") out.story = story ?? "US08";
+  out.ok = input.ok === true;
+  if (typeof input.command === "string" && COMMAND_NAMES.has(input.command)) out.command = input.command;
   for (const key of NUMBER_FIELDS) {
     const value = input[key];
     if (typeof value === "number" && Number.isFinite(value) && value >= 0) out[key] = Math.round(value);
   }
-  if (input.types) out.types = [...new Set(input.types.filter((t) => ENUM.test(t)))].sort();
-  if (input.code && CODE.test(input.code)) out.code = input.code;
-  if (input.module && ENUM.test(input.module)) out.module = input.module;
+  // Names come from fixed lists, never from a pattern: an edited log line cannot send a word of its own.
+  const known = (v: unknown, names: { has(name: string): boolean }): v is string =>
+    typeof v === "string" && names.has(v);
+  if (Array.isArray(input.types)) out.types = [...new Set(input.types.filter((t) => known(t, DRIFT_TYPES)))].sort();
+  if (known(input.code, ERROR_CODES)) out.code = input.code;
+  if (known(input.module, MODULE_NAMES)) out.module = input.module;
   return out;
 }
 

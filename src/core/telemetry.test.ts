@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { PassThrough } from "node:stream";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { logSkipped } from "./logger.js";
 import {
   AUTO_TIMEOUT_MS,
   askConsent,
@@ -19,14 +20,22 @@ import {
   defaultKeyFile,
   drainInput,
   loadState,
+  MAX_ASKS,
   QUESTION,
   QUESTION_EXPLICIT,
+  quietCommand,
   resolveKey,
   send,
   sendDaily,
   setConsent,
   status,
 } from "./telemetry.js";
+
+// The debug log is captured, so a test can prove that no log line holds the key.
+vi.mock("./logger.js", async (original) => ({
+  ...(await original<typeof import("./logger.js")>()),
+  logSkipped: vi.fn(),
+}));
 
 const ROOT = join(import.meta.dirname, "../..");
 const NOW = Date.parse("2026-11-09T12:00:00.000Z");
@@ -136,7 +145,7 @@ describe("field telemetry", () => {
     const answers = (...lines: (string | undefined)[]) => vi.fn(async () => lines.shift());
     beforeEach(unset);
 
-    it("is loud: a banner, what is sent, one real example, the promise, where it goes, how to change it", async () => {
+    it("is loud: a banner, what is sent, one example event, the promise, where it goes, how to change it", async () => {
       const write = vi.fn();
       const ask = answers("y");
       await askConsent("1.0.0", { install: true, interactive: true, write, ask, now: NOW });
@@ -149,13 +158,17 @@ describe("field telemetry", () => {
       expect(text).toMatch(
         /never a path, file name, host name, user name,\nargument, message, or content\. No IP-based location\. No person profile\./,
       );
+      // It is an example, and the text says so: it is not an event from this machine.
+      expect(text).toContain("One example event, in the exact shape that is sent:");
+      expect(text).not.toMatch(/real event/i);
+      expect(text).toMatch(/PostHog sees the IP address of the request/);
       expect(text).toContain("src/core/events.ts");
       expect(text).toContain("docs/observability.md#field-telemetry");
       expect(text).toContain("PostHog EU");
       expect(text).toContain("agentbrew telemetry off");
       expect(ask).toHaveBeenCalledWith(QUESTION);
       expect(QUESTION).toBe("Share anonymous performance numbers? [Y/n] ");
-      // The example is a real event: the same builder that makes the request body made it.
+      // The example has the real shape: the same builder that makes the request body made it.
       const example = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
       const line = JSON.stringify({
         ts: new Date(NOW).toISOString(),
@@ -393,6 +406,83 @@ describe("field telemetry", () => {
       expect(deps.write).toHaveBeenCalled();
     });
 
+    it("with no key nobody is asked and the installer path prints nothing", async () => {
+      delete process.env.AGENTBREW_POSTHOG_KEY;
+      const dir = dirname(process.env.AGENTBREW_TELEMETRY_STATE as string);
+      const empty = join(dir, "empty-key.txt");
+      writeFileSync(empty, "");
+      const write = vi.fn();
+      const ask = answers("y");
+      const deps = {
+        install: true,
+        interactive: true,
+        write,
+        ask,
+        keychain: () => "",
+        defaultKeyFile: empty,
+        now: NOW,
+      };
+      expect(await askConsent("1", deps)).toEqual({ consent: "unset", asked: false, line: "" });
+      expect(await askConsent("1", { ...deps, interactive: false })).toEqual({
+        consent: "unset",
+        asked: false,
+        line: "",
+      });
+      expect(write).not.toHaveBeenCalled();
+      expect(ask).not.toHaveBeenCalled();
+      expect(savedState().consent).toBeUndefined();
+      // An opt-out flag is still recorded, with nothing printed.
+      process.env.AGENTBREW_TELEMETRY = "0";
+      expect(await askConsent("1", deps)).toEqual({ consent: "no", asked: false, line: "" });
+      expect(savedState().consent).toBe("no");
+      delete process.env.AGENTBREW_TELEMETRY;
+      expect(await askConsent("1", deps)).toEqual({ consent: "no", asked: false, line: "" });
+      // With a key the same call asks.
+      unset();
+      const withKey = join(dir, "key.txt");
+      writeFileSync(withKey, "phc_fromFile1\n");
+      expect((await askConsent("1", { ...deps, defaultKeyFile: withKey })).asked).toBe(true);
+    });
+
+    it("never asks after help, a version, completion, or machine-readable output", async () => {
+      expect(quietCommand("status", ["status"])).toBe(false);
+      for (const argv of [
+        ["status", "--json"],
+        ["--version"],
+        ["-V"],
+        ["sync", "--help"],
+        ["mcp", "-h"],
+        ["x", "--json=1"],
+      ]) {
+        expect(quietCommand("status", argv), argv.join(" ")).toBe(true);
+      }
+      for (const command of ["completions", "telemetry", "hook"]) expect(quietCommand(command, [command])).toBe(true);
+      const write = vi.fn();
+      const ask = answers("y");
+      await askOnFirstRun("1", { interactive: true, write, ask, command: "actions", argv: ["actions", "--json"] });
+      await askOnFirstRun("1", { interactive: true, write, ask, command: "completions", argv: ["completions", "zsh"] });
+      expect(write).not.toHaveBeenCalled();
+      expect(savedState().askedAt).toBeUndefined();
+      await askOnFirstRun("1", { interactive: true, write, ask, command: "status", argv: ["status"] });
+      expect(write).toHaveBeenCalled();
+    });
+
+    it("an unanswered question backs off: once a day, a few times, then silence until `telemetry ask`", async () => {
+      expect(MAX_ASKS).toBeLessThanOrEqual(3);
+      const write = vi.fn();
+      const day = 86_400_000 + 1;
+      for (let i = 0; i < MAX_ASKS + 4; i += 1) {
+        await askOnFirstRun("1", { interactive: true, write, ask: answers(""), now: NOW + i * day });
+      }
+      const banners = write.mock.calls.filter((c) => String(c[0]).includes("Help make agentbrew faster"));
+      expect(banners).toHaveLength(MAX_ASKS);
+      expect(savedState()).toMatchObject({ askCount: MAX_ASKS });
+      expect(status().consent).toBe("unset");
+      // The explicit command still asks.
+      const result = await askConsent("1", { install: true, interactive: true, write, ask: answers("n") });
+      expect(result).toMatchObject({ asked: true, consent: "no" });
+    });
+
     it("a normal command stays silent with no terminal, an off switch, or no key", async () => {
       const write = vi.fn();
       const ask = answers("y");
@@ -561,6 +651,43 @@ describe("field telemetry", () => {
         expect(item.properties.app_version).toBe("0.0.0");
         expect(item.properties.types ?? ["skills"]).toEqual(["skills"]);
       }
+    });
+
+    it("sends only a released version number: a local suffix or commit is replaced", () => {
+      const version = (v: string) =>
+        (buildBatch([lines[1]], "k", ID, v).batch as { properties: { app_version: string } }[])[0].properties
+          .app_version;
+      expect(version("1.2.3")).toBe("1.2.3");
+      expect(version("2.0.0-rc.1")).toBe("2.0.0-rc.1");
+      for (const local of [
+        "1.2.3-janedoe",
+        "1.2.3-0a1b2c3",
+        "1.2.3-dev.janedoe",
+        "1.2.3+a94a8fe",
+        "0a1b2c3d",
+        "main",
+      ]) {
+        expect(version(local), local).toBe("0.0.0");
+      }
+    });
+
+    it("the key never reaches a log line, an error message, or a process argument", async () => {
+      vi.mocked(logSkipped).mockClear();
+      // The worst case: the network error text quotes the whole request.
+      const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        throw new Error(`request failed: ${String(init?.body)}`);
+      });
+      const result = await send("1", { fetchImpl: fetchImpl as unknown as typeof fetch });
+      expect(result).toEqual({ sent: 0, skipped: "network" });
+      const logged = JSON.stringify(
+        vi.mocked(logSkipped).mock.calls.map(([where, e]) => [where, e instanceof Error ? e.message : String(e)]),
+      );
+      expect(logged).toContain("core/telemetry/send");
+      expect(JSON.stringify(result) + logged).not.toContain("phc_test");
+      // The only child process is the Keychain read, with fixed arguments: the key comes back on stdout.
+      const source = readFileSync(join(ROOT, "src/core/telemetry.ts"), "utf-8");
+      expect(source.match(/execFileSync\(|spawn\(|exec\(/g)).toEqual(["execFileSync("]);
+      expect(source).toContain('["find-generic-password", "-s", "agentbrew", "-a", "posthog_key", "-w"]');
     });
 
     it("keeps a command name only from the known command list", () => {
@@ -756,6 +883,31 @@ describe("field telemetry", () => {
         }
       },
     );
+
+    it("the attempt time is written when the send ends, so a killed send is tried again soon", async () => {
+      let answer: (res: Response) => void = () => {};
+      const fetchImpl = vi.fn(() => new Promise<Response>((resolve) => (answer = resolve)));
+      const run = send("1", { fetchImpl: fetchImpl as unknown as typeof fetch, now: NOW });
+      await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalled());
+      // A scheduler job that ends here kills the send. Nothing on disk says "wait a day".
+      expect(savedState().lastAttempt).toBeUndefined();
+      answer(new Response("{}", { status: 200 }));
+      expect(await run).toEqual({ sent: 2 });
+      expect(savedState().lastAttempt).toBe(new Date(NOW).toISOString());
+    });
+
+    it("the after-sync path starts no Keychain lookup on each sync when no key is set", async () => {
+      delete process.env.AGENTBREW_POSTHOG_KEY;
+      const empty = join(dirname(process.env.AGENTBREW_TELEMETRY_STATE as string), "empty-key.txt");
+      writeFileSync(empty, "");
+      const keychain = vi.fn(() => "");
+      const fetchImpl = ok();
+      for (const minutes of [0, 30, 60, 90]) {
+        await sendDaily("1", { fetchImpl, keychain, defaultKeyFile: empty, now: NOW + minutes * 60_000 });
+      }
+      expect(keychain).toHaveBeenCalledTimes(1);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    });
 
     it("writes the state file whole, with mode 600", async () => {
       await send("1", { fetchImpl: ok() });

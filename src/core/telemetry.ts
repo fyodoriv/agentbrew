@@ -46,7 +46,13 @@ const INSTALL_ID = /^[0-9a-f]{32}$/;
 const KEY = /^phc_[A-Za-z0-9]+$/;
 /** A send lock older than this was left by a dead process. */
 const LOCK_STALE_MS = 60_000;
-const VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z.]{1,20})?$/;
+/** A released package version. A local suffix (a commit, a word) does not match, so it is never sent. */
+const VERSION = /^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d{1,3})?$/;
+/** Outside the installer the question shows at most this many times; then only `agentbrew telemetry ask` shows it. */
+export const MAX_ASKS = 3;
+/** Commands that never show the question: their output is read by a program. */
+const QUIET_COMMANDS: ReadonlySet<string> = new Set(["telemetry", "completions", "hook"]);
+const QUIET_FLAGS: ReadonlySet<string> = new Set(["--json", "--version", "-V", "--help", "-h"]);
 
 export type Consent = "yes" | "no";
 
@@ -60,6 +66,8 @@ interface TelemetryState {
   consentAt?: string;
   /** When a normal command last showed the question; it shows at most once a day outside the installer. */
   askedAt?: string;
+  /** How many times a normal command showed the question; it stops at MAX_ASKS. */
+  askCount?: number;
   /** When the Keychain last had no key; it is not asked again for a day. */
   keychainMissAt?: string;
   lastSend?: string;
@@ -149,24 +157,8 @@ export function loadState(): TelemetryState {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     // `enabled: false` is the old spelling of "no" (`telemetry off` before the consent question).
     saidNo = parsed.consent === "no" || (parsed.consent === undefined && parsed.enabled === false);
-    if (
-      typeof parsed.installId === "string" &&
-      INSTALL_ID.test(parsed.installId) &&
-      Number.isInteger(parsed.sent) &&
-      (parsed.sent as number) >= 0
-    ) {
-      const consent: Consent | undefined = saidNo ? "no" : parsed.consent === "yes" ? "yes" : undefined;
-      return {
-        installId: parsed.installId,
-        sent: parsed.sent as number,
-        consent,
-        consentAt: consent ? isoOrUndefined(parsed.consentAt) : undefined,
-        askedAt: isoOrUndefined(parsed.askedAt),
-        lastSend: isoOrUndefined(parsed.lastSend),
-        lastAttempt: isoOrUndefined(parsed.lastAttempt),
-        keychainMissAt: isoOrUndefined(parsed.keychainMissAt),
-      };
-    }
+    const state = readState(parsed, saidNo);
+    if (state) return state;
   } catch (e) {
     logSkipped("core/telemetry/loadState", e);
   }
@@ -181,6 +173,25 @@ export function loadState(): TelemetryState {
     logSkipped("core/telemetry/resetState", e);
   }
   return fresh;
+}
+
+/** The parsed file as a state, or undefined when its id or cursor is not valid. */
+function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryState | undefined {
+  const { installId, sent, askCount } = parsed;
+  if (typeof installId !== "string" || !INSTALL_ID.test(installId)) return undefined;
+  if (typeof sent !== "number" || !Number.isInteger(sent) || sent < 0) return undefined;
+  const consent: Consent | undefined = saidNo ? "no" : parsed.consent === "yes" ? "yes" : undefined;
+  return {
+    installId,
+    sent,
+    consent,
+    consentAt: consent ? isoOrUndefined(parsed.consentAt) : undefined,
+    askedAt: isoOrUndefined(parsed.askedAt),
+    askCount: typeof askCount === "number" && Number.isInteger(askCount) && askCount >= 0 ? askCount : undefined,
+    lastSend: isoOrUndefined(parsed.lastSend),
+    lastAttempt: isoOrUndefined(parsed.lastAttempt),
+    keychainMissAt: isoOrUndefined(parsed.keychainMissAt),
+  };
 }
 
 function keychainKey(): string {
@@ -323,7 +334,7 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
   return { api_key: key, batch };
 }
 
-/** One real event, exactly as it is sent, for the consent question. */
+/** One example event in the exact shape that is sent (the same builder makes it), for the consent question. */
 export function exampleEvent(version: string, installId: string, now = Date.now()): Record<string, unknown> {
   const line = JSON.stringify({
     ts: new Date(now).toISOString(),
@@ -335,7 +346,7 @@ export function exampleEvent(version: string, installId: string, now = Date.now(
   return (buildBatch([line], "", installId, version).batch as Record<string, unknown>[])[0];
 }
 
-/** What is sent, one real example, and the privacy promise. The consent question shows it; so does `telemetry on`. */
+/** What is sent, one example event, and the privacy promise. The consent question shows it; so does `telemetry on`. */
 export function consentText(version: string, deps: TelemetryDeps = {}): string {
   const bar = "=".repeat(68);
   return [
@@ -347,7 +358,7 @@ export function consentText(version: string, deps: TelemetryDeps = {}): string {
     "What is sent: the command name, its duration, ok or error, counts,",
     "the agentbrew version, your OS and CPU type, and a random install id.",
     "",
-    "One real event, exactly as it is sent:",
+    "One example event, in the exact shape that is sent:",
     "",
     JSON.stringify(exampleEvent(version, loadState().installId, deps.now), null, 2),
     "",
@@ -384,7 +395,7 @@ export interface AskResult {
   consent: Consent | "unset";
   /** True when the question was shown now. */
   asked: boolean;
-  /** One line that says the result and how to change it. */
+  /** One line that says the result and how to change it. Empty when there is no key: nothing to say. */
   line: string;
 }
 
@@ -411,23 +422,33 @@ export async function drainInput(
   }
 }
 
-/** The result when the question is not shown: an opt-out env var, a stored answer, or no terminal. */
+/**
+ * The result when the question is not shown: no key, an opt-out env var, a
+ * stored answer, or no terminal. With no key nothing can be sent, so nothing
+ * is asked and nothing is printed (the line is empty).
+ */
 function answerWithoutAsking(deps: TelemetryDeps & { install?: boolean }): AskResult | undefined {
   const state = loadState();
   const off = envOff();
   const optOut = off && off !== "CI" ? off : undefined;
+  const key = hasKey(deps, state, deps.now ?? Date.now());
+  const optOutLine = `Telemetry is off (${optOut}). Nothing is sent. ${CHANGE}`;
   if (optOut && deps.install) {
     if (state.consent !== "no") setConsent("no", deps.now);
-    return { consent: "no", asked: false, line: `Telemetry is off (${optOut}). Nothing is sent. ${CHANGE}` };
+    return { consent: "no", asked: false, line: key ? optOutLine : "" };
   }
+  if (!key) return { consent: state.consent ?? "unset", asked: false, line: "" };
   if (state.consent) {
     const word = state.consent === "yes" ? "on (you said yes)" : "off (you said no)";
     return { consent: state.consent, asked: false, line: `Telemetry stays ${word}. ${CHANGE}` };
   }
-  if (optOut) {
-    return { consent: "unset", asked: false, line: `Telemetry is off (${optOut}). Nothing is sent. ${CHANGE}` };
-  }
-  if (canAsk(deps)) return undefined;
+  return unansweredWithoutAsking(optOut ? optOutLine : undefined, canAsk(deps));
+}
+
+/** No stored answer: an opt-out env var or a missing terminal ends it; otherwise the question shows (undefined). */
+function unansweredWithoutAsking(optOutLine: string | undefined, terminal: boolean): AskResult | undefined {
+  if (optOutLine) return { consent: "unset", asked: false, line: optOutLine };
+  if (terminal) return undefined;
   return {
     consent: "unset",
     asked: false,
@@ -452,8 +473,10 @@ export async function askConsent(
   if (settled) return settled;
   const write = deps.write ?? ((text: string) => process.stderr.write(text));
   write(`${consentText(version, deps)}\n`);
-  // Outside the installer the question shows at most once a day.
-  if (!deps.install) patchState({ askedAt: new Date(deps.now ?? Date.now()).toISOString() });
+  // Outside the installer the question shows at most once a day, and at most MAX_ASKS times.
+  if (!deps.install) {
+    patchState({ askedAt: new Date(deps.now ?? Date.now()).toISOString(), askCount: (loadState().askCount ?? 0) + 1 });
+  }
   await (deps.drain ?? (deps.ask ? async () => {} : drainInput))();
   const answer = await readYesNo(deps, write, !deps.install);
   if (!answer) return { consent: "unset", asked: true, line: `No answer. Nothing is sent. ${CHANGE}` };
@@ -481,20 +504,33 @@ async function readYesNo(
   return undefined;
 }
 
+/** True when a command must stay silent: its output is machine-readable, or it is help, a version, or completion. */
+export function quietCommand(command: string | undefined, argv: readonly string[] = []): boolean {
+  if (command !== undefined && QUIET_COMMANDS.has(command)) return true;
+  return argv.some((arg) => QUIET_FLAGS.has(arg) || arg.startsWith("--json="));
+}
+
 /**
- * After a normal command: ask the consent question when it was never answered,
- * was not shown in the last day, a person is at the terminal, and telemetry
- * could be on. Silent in a pipe, hook, scheduler, or agent run. Never throws.
+ * After a normal command: ask the consent question when it was never
+ * answered, a key is set, a person is at the terminal, and the command is not
+ * a quiet one. An unanswered question backs off: at most once a day, at most
+ * MAX_ASKS times, then silence until `agentbrew telemetry ask`. Silent in a
+ * pipe, hook, scheduler, or agent run. Never throws.
  */
-export async function askOnFirstRun(version: string, deps: TelemetryDeps = {}): Promise<void> {
+export async function askOnFirstRun(
+  version: string,
+  deps: TelemetryDeps & { command?: string; argv?: readonly string[] } = {},
+): Promise<void> {
   try {
     // The installer turns this path off (AGENTBREW_TELEMETRY_ASK): it asks the question itself, last.
     if (!canAsk(deps) || envOff() || process.env.AGENTBREW_TELEMETRY_ASK === "0") return;
+    if (quietCommand(deps.command, deps.argv)) return;
     const state = loadState();
     const now = deps.now ?? Date.now();
-    if (state.consent || withinDay(state.askedAt, now) || !hasKey(deps, state, now)) return;
+    if (state.consent || withinDay(state.askedAt, now) || (state.askCount ?? 0) >= MAX_ASKS) return;
+    if (!hasKey(deps, state, now)) return;
     const result = await askConsent(version, deps);
-    (deps.write ?? ((text: string) => process.stderr.write(text)))(`${result.line}\n`);
+    if (result.line) (deps.write ?? ((text: string) => process.stderr.write(text)))(`${result.line}\n`);
   } catch (e) {
     logSkipped("core/telemetry/askOnFirstRun", e);
   }
@@ -559,8 +595,8 @@ export async function send(
   options: TelemetryDeps & { dryRun?: boolean; auto?: boolean } = {},
 ): Promise<SendResult> {
   let release: (() => void) | undefined;
+  const now = options.now ?? Date.now();
   try {
-    const now = options.now ?? Date.now();
     const state = loadState();
     const lines = readLines();
     const cursor = startCursor(lines, state.sent, now);
@@ -572,18 +608,28 @@ export async function send(
     if (!st.on) return { sent: 0, skipped: st.reason };
     release = acquireLock();
     if (!release) return { sent: 0, skipped: "another send is running" };
-    patchState({ sent: cursor, lastAttempt: new Date(now).toISOString() });
+    patchState({ sent: cursor });
     if (cursor >= lines.length) return { sent: 0, skipped: "nothing new" };
     return await postBatches(lines, cursor, { key: st.key, installId: state.installId, version }, options);
   } catch (e) {
     logSkipped("core/telemetry/send", e);
     return { sent: 0, skipped: "error" };
   } finally {
-    try {
-      release?.();
-    } catch (e) {
-      logSkipped("core/telemetry/unlock", e);
-    }
+    if (release) finishAttempt(release, now);
+  }
+}
+
+/**
+ * End of a send that held the lock: record the attempt, then unlock. The
+ * attempt time is written last, so a send that the system killed part-way
+ * (a scheduler job that ended) is tried again on the next run, not a day later.
+ */
+function finishAttempt(release: () => void, now: number): void {
+  try {
+    patchState({ lastAttempt: new Date(now).toISOString() });
+    release();
+  } catch (e) {
+    logSkipped("core/telemetry/finishAttempt", e);
   }
 }
 
@@ -638,7 +684,8 @@ async function postOne(
     await res.body?.cancel().catch(() => {});
     return res.ok ? undefined : `http ${res.status}`;
   } catch (e) {
-    logSkipped("core/telemetry/send", e);
+    // Only the error name is logged: a network error text must never carry the request body or the key.
+    logSkipped("core/telemetry/send", e instanceof Error ? e.name : "error");
     return "network";
   }
 }
@@ -654,6 +701,8 @@ export async function sendDaily(version: string, deps: TelemetryDeps = {}): Prom
     if (state.consent !== "yes") return;
     const now = deps.now ?? Date.now();
     if (withinDay(state.lastAttempt ?? state.lastSend, now)) return;
+    // No key: stop here, so a sync does not start a Keychain lookup each time.
+    if (!hasKey(deps, state, now)) return;
     await send(version, { ...deps, auto: true });
   } catch (e) {
     logSkipped("core/telemetry/sendDaily", e);

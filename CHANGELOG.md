@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Anonymous performance telemetry, asked at install; on only after you say
   yes (Enter counts as yes). The installer's last step shows what is sent, one
-  real event, and the privacy promise, then asks `[Y/n]`. Every command run
+  example event, and the privacy promise, then asks `[Y/n]`. It asks only when
+  a project key is present. Every command run
   records one content-free `command` event (top-level command name, duration,
   ok). `agentbrew sync` sends at most once a day to PostHog EU, with a
   3-second limit. `agentbrew telemetry off`, `--no-telemetry`,

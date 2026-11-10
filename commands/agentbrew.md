@@ -3,7 +3,7 @@ description: Start agentbrew (agent config state, what needs you, next step) and
 allowed-tools: Bash(agentbrew:*)
 ---
 
-Run `agentbrew` with no arguments. If `agentbrew` is not on PATH, run `npx agentbrew`. It is safe and fast: it reads local files only, makes no network calls, and changes no agent config. In a person's own terminal it may ask the one-time telemetry question (`[y/n]`); an agent run never sees it. It prints the agents, MCP servers, skills, last sync, drift, and the drift-repair job, then a `Next:` line with the exact command and a `Then:` list.
+Run `agentbrew` with no arguments. If `agentbrew` is not on PATH, run `npx agentbrew`. It is safe and fast: it reads local files only, makes no network calls, and changes no agent config. In a person's own terminal it may ask the telemetry question (`[y/n]`, only when a project key is present, at most 3 times); an agent run never sees it. It prints the agents, MCP servers, skills, last sync, drift, and the drift-repair job, then a `Next:` line with the exact command and a `Then:` list.
 
 Then, answer first:
 

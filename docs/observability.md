@@ -20,11 +20,12 @@ The stored answer is `unset`, `yes`, or `no`. Nothing is sent unless it is `yes`
 
 | When | What happens |
 |---|---|
-| Install in a terminal (`scripts/install.sh run`) | The last step asks, after a banner: what is sent, one real event as JSON, the privacy promise, where the numbers go, how to change the answer, then `Share anonymous performance numbers? [Y/n]`. Enter or `y` records `yes`; `n` records `no`. One line confirms the result. |
+| No project key (the shipped default file is empty) | Nothing can be sent, so nobody is asked, at install or later. The installer prints nothing about telemetry. An opt-out flag is still recorded. |
+| Install in a terminal (`scripts/install.sh run`) | The last step asks, after a banner: what is sent, one example event as JSON, the privacy promise, where the numbers go, how to change the answer, then `Share anonymous performance numbers? [Y/n]`. Enter or `y` records `yes`; `n` records `no`. One line confirms the result. |
 | Install with no terminal, or with `CI` set | No question. The answer stays `unset`. Nothing is sent. |
 | Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. This also holds at a re-install with a stored `yes`: an explicit opt-out always wins. |
 | Re-install or update | Never asks again. Never changes a stored answer, except for the opt-out above. Nothing ever turns a stored `no` into a `yes` but you. |
-| A command in a terminal while the answer is `unset` | Asks the same question on stderr, at most once a day, as `[y/n]`: only a typed `y` or `n` counts, and Enter alone leaves the answer `unset`. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
+| A command in a terminal while the answer is `unset` | Asks the same question on stderr, as `[y/n]`: only a typed `y` or `n` counts, and Enter alone leaves the answer `unset`. Unanswered, it shows at most once a day and at most 3 times; then it stays silent until `agentbrew telemetry ask`. It never follows `--help`, `--version`, `completions`, `hook`, or a command with `--json`. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
 | Keys typed before the question shows | Thrown away. A stray Enter is never an answer. |
 | The answer becomes `yes` | The cursor moves to the end of the event log. Only events recorded after the yes are sent. |
 | `agentbrew telemetry on` / `off` | Records `yes` / `no` at any time. `on` prints the example and the promise. |
@@ -115,7 +116,9 @@ both are empty.
 
 A send never fails a command.
 
-- `agentbrew sync` sends at most once a day, and one try counts even when it fails.
+- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The send is awaited inside the command, so a scheduler run (the repair job) finishes it or gives up within the limit. The attempt time is written when the send ends: a send that the system killed part-way is tried again on the next run, not a day later.
+- `app_version` is the released package version (`1.2.3`, or `1.2.3-rc.1`). Any other text, such as a local suffix or a commit, is sent as `0.0.0`.
+- The key is never put in a process argument or a log line. A network error logs only its error name.
 - The automatic send stops after 3 seconds in total. `agentbrew telemetry send` allows 10 seconds per request.
 - One request holds at most 500 events. The cursor moves only after a 2xx answer.
 - A send skips everything but the newest 2,000 events of the last 30 days, so a first send never uploads an old history.

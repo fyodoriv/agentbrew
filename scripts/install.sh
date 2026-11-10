@@ -186,6 +186,7 @@ cmd_plan() {
   say "  - Share anonymous performance numbers? Asked last, in your terminal, with an"
   say "    example event and the privacy promise. Nothing is sent unless you say yes"
   say "    (Enter counts as yes). --no-telemetry answers no without the question."
+  say "    Asked only when this build has a project key; with none, nothing can be sent."
 }
 
 # Backup ids are timestamps, so the glob's sort order is oldest first.
@@ -453,7 +454,8 @@ cmd_run() {
   # The telemetry question, loud and last, so it is never lost in build output.
   # In a terminal it asks [Y/n]. With no terminal it asks nothing and the answer
   # stays unset. A stored answer is kept: a re-install never asks again.
-  step "One question: anonymous performance numbers"
+  # With no project key (the shipped default) nothing can be sent: the command
+  # then asks nothing and prints nothing.
   [ "$telemetry" -eq 1 ] || export AGENTBREW_TELEMETRY=0
   "$AGENTBREW_CMD" telemetry ask || say "  ! Could not save the answer. Nothing is sent. Answer later: agentbrew telemetry on | off"
 

@@ -483,8 +483,10 @@ export function buildProgram(): Command {
         return;
       }
       if (action === "ask") {
-        // The installer's consent question. It never asks twice; only an opt-out (--no-telemetry) changes a stored answer.
-        console.log((await t.askConsent(version, { install: true })).line);
+        // The installer's consent question. It never asks twice; only an opt-out (--no-telemetry)
+        // changes a stored answer. With no project key it prints nothing.
+        const { line } = await t.askConsent(version, { install: true });
+        if (line) console.log(line);
         return;
       }
       if (action === "on") {
@@ -492,12 +494,7 @@ export function buildProgram(): Command {
         console.log(t.consentText(version));
       }
       if (action === "off") t.setConsent("no");
-      const st = t.status();
-      const answered = st.consentAt ? ` (answered ${st.consentAt})` : "";
-      console.log(
-        `telemetry: ${st.on ? "on" : "off"} (${st.reason}); consent: ${st.consent}${answered}; key: ${st.keySource}; ` +
-          `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}`,
-      );
+      console.log(telemetryStatusLine(t.status()));
     });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);
@@ -547,11 +544,28 @@ function recordCommandEvents(program: Command): void {
       ok: !process.exitCode,
       ms: Date.now() - started,
     });
-    // A person at a terminal who was never asked gets the telemetry question once (a no-terminal install skips it).
-    if (command !== "telemetry" && process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
-      await (await import("./core/telemetry.js")).askOnFirstRun(version);
+    // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
+    if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
+      const t = await import("./core/telemetry.js");
+      await t.askOnFirstRun(version, { command, argv: process.argv.slice(2) });
     }
   });
+}
+
+function telemetryStatusLine(st: {
+  on: boolean;
+  reason: string;
+  consent: string;
+  consentAt?: string;
+  keySource: string;
+  pending: number;
+  lastSend?: string;
+}): string {
+  const answered = st.consentAt ? ` (answered ${st.consentAt})` : "";
+  return (
+    `telemetry: ${st.on ? "on" : "off"} (${st.reason}); consent: ${st.consent}${answered}; key: ${st.keySource}; ` +
+    `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}`
+  );
 }
 
 export function isCliEntrypoint(moduleUrl: string, argvPath = process.argv[1]): boolean {

@@ -231,7 +231,9 @@ esac
     // The doctor runs after lint; the telemetry question comes last.
     expect(calls.trim().split("\n").at(-2)).toMatch(/^status --ci /);
     expect(calls.trim().split("\n").at(-1)).toMatch(/^telemetry ask .*TELEMETRY=$/);
-    expect(result.stdout).toMatch(/== One question: anonymous performance numbers\nSTUB CONSENT QUESTION\n\n== Done/);
+    // The installer adds no heading of its own: with no project key the CLI prints nothing, and so does the installer.
+    expect(result.stdout).toMatch(/STUB CONSENT QUESTION\n\n== Done/);
+    expect(result.stdout).not.toMatch(/One question|performance numbers/i);
     expect(result.stdout).toContain("agentbrew contribute");
     expect(result.stdout).toContain("add a test and update the docs");
     const backups = spawnSync("ls", [join(home, ".local", "state", "agentbrew", "install-backups")], {

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { getLogDir } from "../sync/scheduler-paths.js";
@@ -47,6 +47,14 @@ const INSTALL_ID = /^[0-9a-f]{32}$/;
 const KEY = /^phc_[A-Za-z0-9]+$/;
 /** A send lock older than this was left by a dead process. */
 const LOCK_STALE_MS = 60_000;
+/**
+ * The question lock is stale after this long. Longer than the send lock: a
+ * person may take a while to answer. Shorter than the daily ask limit, so a
+ * lock that a crash left never hides the question for a day.
+ */
+const QUESTION_LOCK_STALE_MS = 10 * 60 * 1000;
+/** After a command starts the detached daily send, no command starts a second one for this long. */
+const AUTO_START_GAP_MS = 60_000;
 /** A log line is far shorter than this; a longer mark in the state file is dropped. */
 const MARK_MAX = 4_000;
 /** A released package version. A local suffix (a commit, a word) does not match, so it is never sent. */
@@ -78,6 +86,8 @@ interface TelemetryState {
   lastSend?: string;
   /** Last send attempt, failed or not; the daily gate reads it so a dead network costs one try a day. */
   lastAttempt?: string;
+  /** When a command last started the detached daily send. That send writes `lastAttempt` when it ends. */
+  autoStartAt?: string;
 }
 
 export type KeySource = "env" | "keychain" | "default" | "none";
@@ -97,6 +107,8 @@ export interface TelemetryDeps {
   drain?: () => Promise<void>;
   fetchImpl?: typeof fetch;
   now?: number;
+  /** Internal: the due check of the command that starts the send (claimDailySend). */
+  claim?: boolean;
 }
 
 export function statePath(): string {
@@ -230,6 +242,7 @@ function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryS
     askCount: typeof askCount === "number" && Number.isInteger(askCount) && askCount >= 0 ? askCount : undefined,
     lastSend: isoOrUndefined(parsed.lastSend),
     lastAttempt: isoOrUndefined(parsed.lastAttempt),
+    autoStartAt: isoOrUndefined(parsed.autoStartAt),
     keychainMissAt: isoOrUndefined(parsed.keychainMissAt),
   };
 }
@@ -578,19 +591,30 @@ export async function askOnFirstRun(
   version: string,
   deps: TelemetryDeps & { command?: string; argv?: readonly string[] } = {},
 ): Promise<void> {
+  let release: SendLock | undefined;
   try {
     // The installer turns this path off (AGENTBREW_TELEMETRY_ASK): it asks the question itself, last.
     if (!canAsk(deps) || envOff() || process.env.AGENTBREW_TELEMETRY_ASK === "0") return;
     if (quietCommand(deps.command, deps.argv)) return;
-    const state = loadState();
     const now = deps.now ?? Date.now();
-    if (state.consent || withinDay(state.askedAt, now) || (state.askCount ?? 0) >= MAX_ASKS) return;
-    if (!hasKey(deps, state, now)) return;
+    const state = loadState();
+    if (!questionDue(state, now) || !hasKey(deps, state, now)) return;
+    // One question at a time on a machine: two commands that end together in two terminals show it once.
+    release = acquireLock(`${statePath()}.ask.lock`, QUESTION_LOCK_STALE_MS);
+    // Under the lock the state is read again: another process may have asked a moment ago.
+    if (!release || !questionDue(loadState(), now)) return;
     const result = await askConsent(version, deps);
     if (result.line) (deps.write ?? ((text: string) => process.stderr.write(text)))(`${result.line}\n`);
   } catch (e) {
     logSkipped("core/telemetry/askOnFirstRun", e);
+  } finally {
+    release?.();
   }
+}
+
+/** True when a normal command may show the question: no answer yet, not asked in the last day, and asks left. */
+function questionDue(state: TelemetryState, now: number): boolean {
+  return !state.consent && !withinDay(state.askedAt, now) && (state.askCount ?? 0) < MAX_ASKS;
 }
 
 /** Where a send starts: past what was sent, past a truncated log's end, and past the backlog cap. */
@@ -631,34 +655,94 @@ function createOnce(file: string, token: string): boolean {
   }
 }
 
-/** True when the file is older than LOCK_STALE_MS, or dated that far in the future (the clock was set back). */
-function staleFile(file: string): boolean {
-  return Math.abs(Date.now() - statSync(file).mtimeMs) >= LOCK_STALE_MS;
+/** True when the file is older than `staleMs`, or dated that far in the future (the clock was set back). */
+function staleFile(file: string, staleMs = LOCK_STALE_MS): boolean {
+  return Math.abs(Date.now() - statSync(file).mtimeMs) >= staleMs;
+}
+
+/** The text of the file, or undefined when it is gone. */
+function readOrUndefined(file: string): string | undefined {
+  try {
+    return readFileSync(file, "utf-8");
+  } catch {
+    return undefined;
+  }
 }
 
 /**
- * Replace a stale lock. Only one process at a time may do this: the one that
- * makes the guard file. Under the guard it checks the lock's age again, so it
- * never replaces a lock that another process took over a moment before. The
- * rename swaps the lock in one step: there is no moment with no lock.
+ * Remove a guard that a dead takeover left. A check of its age and then a
+ * delete would be two steps: between them another process can remove the old
+ * guard and a third one can make a new one, which the delete would then
+ * remove. So the guard is moved away in one step (a rename; only one process
+ * gets the file), and the age of what was moved is checked. A fresh one
+ * belongs to a live takeover and goes back.
  */
-function takeOverStale(file: string, token: string): boolean {
-  if (!staleFile(file)) return false;
+function removeStaleGuard(guard: string, token: string): void {
+  const moved = `${guard}.${token.replace(" ", ".")}`;
+  try {
+    renameSync(guard, moved);
+  } catch {
+    return;
+  }
+  try {
+    // A hard link puts a live guard back; it fails when a newer guard is there, and that one stays.
+    if (!staleFile(moved)) linkSync(moved, guard);
+  } catch {
+    // The newer guard stays.
+  } finally {
+    rmSync(moved, { force: true });
+  }
+}
+
+/** How long an owner reads a lock that is gone again before the lock counts as lost, and the step. */
+const LOCK_GONE_WAIT_MS = 2000;
+const LOCK_GONE_STEP_MS = 2;
+
+/** A test seam of the lock takeover; the argument names the point it runs at. */
+type LockSeam = (at: "stale-guard" | "guard-held" | "lock-moved") => void;
+
+/**
+ * Replace a stale lock. Only one process at a time may do this: the one that
+ * makes the guard file. Under the guard it checks again that the lock is the
+ * same dead one, so it never replaces a lock that another process took over a
+ * moment before. The swap itself checks that too: the lock is moved away (one
+ * step), compared with the dead one, and the new lock is made with a hard
+ * link, which fails when another lock is there. `seam` is for tests: it runs
+ * between the sight of a stale guard and its removal ("stale-guard"), and
+ * right after this process made the guard ("guard-held"), and right after it
+ * moved the lock away ("lock-moved").
+ */
+function takeOverStale(file: string, token: string, staleMs: number, seam?: LockSeam): boolean {
+  if (!staleFile(file, staleMs)) return false;
+  const dead = readFileSync(file, "utf-8");
   const guard = `${file}.steal`;
   if (!createOnce(guard, token)) {
     // A guard left by a dead process is removed. This send stops; the next one tries again.
-    if (staleFile(guard)) rmSync(guard, { force: true });
+    if (staleFile(guard)) {
+      seam?.("stale-guard");
+      removeStaleGuard(guard, token);
+    }
     return false;
   }
   const mine = `${file}.${token.replace(" ", ".")}`;
+  const moved = `${mine}.old`;
   try {
-    if (!staleFile(file)) return false;
+    seam?.("guard-held");
+    if (!staleFile(file, staleMs) || readOrUndefined(file) !== dead) return false;
     writeFileSync(mine, token, { mode: 0o600 });
-    renameSync(mine, file);
+    renameSync(file, moved);
+    seam?.("lock-moved");
+    if (readOrUndefined(moved) !== dead) {
+      // Not the dead lock: another send made it a moment ago. It goes back.
+      linkSync(moved, file);
+      return false;
+    }
+    linkSync(mine, file);
     return true;
   } finally {
     rmSync(mine, { force: true });
-    rmSync(guard, { force: true });
+    rmSync(moved, { force: true });
+    if (readOrUndefined(guard) === token) rmSync(guard, { force: true });
   }
 }
 
@@ -667,23 +751,39 @@ function takeOverStale(file: string, token: string): boolean {
  * owner's pid and a random nonce. Returns the release function, or undefined
  * when another send holds a fresh lock. A lock older than LOCK_STALE_MS was
  * left by a dead process; takeOverStale replaces it. Release removes the lock
- * only when it still holds this owner's token.
+ * only when it still holds this owner's token. The consent question uses the
+ * same lock with its own file and a longer stale time.
  */
-export function acquireLock(file = `${statePath()}.lock`): SendLock | undefined {
+export function acquireLock(
+  file = `${statePath()}.lock`,
+  staleMs = LOCK_STALE_MS,
+  seam?: LockSeam,
+): SendLock | undefined {
   const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
+  // A takeover in another process moves the lock aside to compare it. A live lock goes back a
+  // moment later, so a lock that is gone is read again for a short time before it counts as lost.
+  // Without the wait, the owner would stop and its lock would belong to no process until it is stale.
+  // A lost lock stays lost: later calls answer at once, with no second wait.
+  let lost = false;
   const holds = (): boolean => {
-    try {
-      return readFileSync(file, "utf-8") === token;
-    } catch {
-      return false;
+    if (lost) return false;
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    for (const until = Date.now() + LOCK_GONE_WAIT_MS; ; ) {
+      const text = readOrUndefined(file);
+      if (text !== undefined || Date.now() >= until) {
+        lost = text !== token;
+        return !lost;
+      }
+      Atomics.wait(pause, 0, 0, LOCK_GONE_STEP_MS);
     }
   };
+  // Release never waits: a lock that is gone needs no removal.
   const release = (): void => {
-    if (holds()) rmSync(file, { force: true });
+    if (!lost && readOrUndefined(file) === token) rmSync(file, { force: true });
   };
   try {
     mkdirSync(dirname(file), { recursive: true });
-    if (!createOnce(file, token) && !takeOverStale(file, token)) return undefined;
+    if (!createOnce(file, token) && !takeOverStale(file, token, staleMs, seam)) return undefined;
     return holds() ? Object.assign(release, { holds }) : undefined;
   } catch {
     return undefined;
@@ -748,6 +848,16 @@ function finishAttempt(release: () => void, now: number): void {
   }
 }
 
+/** Why a send must stop before its next request, or undefined when it may go on. */
+function stopBeforeRequest(holds: () => boolean, cursor: number): string | undefined {
+  if (!holds()) return "lock lost";
+  const state = loadState();
+  if (state.consent !== "yes") return "consent changed";
+  // The lock can be away for a moment (see acquireLock). A send that ran in that gap has moved
+  // the cursor on disk past this one: these lines are sent, so this send stops.
+  return state.sent > cursor ? "lock lost" : undefined;
+}
+
 /**
  * Post the lines from the cursor on, one batch per request. Before each
  * request the stored answer is read again: `telemetry off` in another process
@@ -765,8 +875,8 @@ async function postBatches(
   let sent = 0;
   while (cursor < lines.length) {
     // Checked before every request, the first one too: a send whose lock another process took over must stop.
-    if (!id.holds()) return { sent, skipped: "lock lost" };
-    if (loadState().consent !== "yes") return { sent, skipped: "consent changed" };
+    const stop = stopBeforeRequest(id.holds, cursor);
+    if (stop) return { sent, skipped: stop };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);
     const count = (body.batch as unknown[]).length;
@@ -808,18 +918,37 @@ async function postOne(
   }
 }
 
+/** The state when the daily send is due (see sendDailyDue), else undefined. */
+function dueState(deps: TelemetryDeps): TelemetryState | undefined {
+  if (envOff()) return undefined;
+  const state = loadState();
+  if (state.consent !== "yes") return undefined;
+  const now = deps.now ?? Date.now();
+  if (withinDay(state.lastAttempt ?? state.lastSend, now)) return undefined;
+  // A command started the send a moment ago, and it has not ended yet.
+  const started = Date.parse(state.autoStartAt ?? "");
+  if (deps.claim && Number.isFinite(started) && Math.abs(now - started) < AUTO_START_GAP_MS) return undefined;
+  return hasKey(deps, state, now) ? state : undefined;
+}
+
 /**
  * True when the daily send is due: no off switch, a stored "yes", no attempt
  * in the last day, and a key. Cheap: no network, and no Keychain lookup on
- * each sync when no key is set.
+ * each command when no key is set.
  */
 export function sendDailyDue(deps: TelemetryDeps = {}): boolean {
-  if (envOff()) return false;
-  const state = loadState();
-  if (state.consent !== "yes") return false;
-  const now = deps.now ?? Date.now();
-  if (withinDay(state.lastAttempt ?? state.lastSend, now)) return false;
-  return hasKey(deps, state, now);
+  return dueState(deps) !== undefined;
+}
+
+/**
+ * For the command that starts the detached send: true when the send is due
+ * and no other command started it in the last minute. It then writes the
+ * start time, so the next command starts no second process.
+ */
+export function claimDailySend(deps: TelemetryDeps = {}): boolean {
+  if (!dueState({ ...deps, claim: true })) return false;
+  patchState({ autoStartAt: new Date(deps.now ?? Date.now()).toISOString() });
+  return true;
 }
 
 /**

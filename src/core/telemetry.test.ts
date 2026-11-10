@@ -325,6 +325,53 @@ describe("field telemetry", () => {
       expect(status()).toMatchObject({ consent: "yes", on: true });
     });
 
+    it("only one process shows the consent question", async () => {
+      unset();
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.ask.lock`;
+      let answer: (text: string | undefined) => void = () => {};
+      const firstWrite = vi.fn();
+      const first = askOnFirstRun("1", {
+        interactive: true,
+        write: firstWrite,
+        ask: () => new Promise((resolve) => (answer = resolve)),
+        now: NOW,
+      });
+      await vi.waitFor(() => expect(firstWrite).toHaveBeenCalled());
+      expect(existsSync(lock)).toBe(true);
+      expect(savedState().askCount).toBe(1);
+      // A second process read the state before the first one saved the ask: to it, nothing was asked yet.
+      unset();
+      const secondWrite = vi.fn();
+      const secondAsk = answers("y");
+      await askOnFirstRun("1", { interactive: true, write: secondWrite, ask: secondAsk, now: NOW });
+      expect(secondWrite).not.toHaveBeenCalled();
+      expect(secondAsk).not.toHaveBeenCalled();
+      expect(savedState().askCount).toBeUndefined();
+      expect(status().consent).toBe("unset");
+      // The first one ends: its answer is saved and the lock is gone.
+      answer("n");
+      await first;
+      expect(status().consent).toBe("no");
+      expect(existsSync(lock)).toBe(false);
+    });
+
+    it("a question lock that a dead process left does not block the question for long", async () => {
+      unset();
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.ask.lock`;
+      writeFileSync(lock, "999999 dead");
+      const write = vi.fn();
+      // A fresh lock: a person may still be reading the question in another terminal.
+      await askOnFirstRun("1", { interactive: true, write, ask: answers("y"), now: NOW });
+      expect(write).not.toHaveBeenCalled();
+      // Past the stale time the lock is replaced, and the question shows again.
+      const old = new Date(Date.now() - 11 * 60 * 1000);
+      utimesSync(lock, old, old);
+      await askOnFirstRun("1", { interactive: true, write, ask: answers("y"), now: NOW });
+      expect(write).toHaveBeenCalled();
+      expect(status().consent).toBe("yes");
+      expect(existsSync(lock)).toBe(false);
+    });
+
     it("after a normal command only a typed y or n counts: Enter alone leaves it unset", async () => {
       expect(QUESTION_EXPLICIT).toBe("Share anonymous performance numbers? [y/n] ");
       const write = vi.fn();
@@ -952,6 +999,45 @@ describe("field telemetry", () => {
       expect(spawnImpl).toHaveBeenCalledTimes(1);
     });
 
+    it("a non-sync command starts the daily send", async () => {
+      const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
+      const afterCommand = (command: string, argv: string[], now: number) =>
+        startDailySend({ command, argv, now, spawnImpl: spawnImpl as unknown as typeof spawn });
+      // A quiet command starts none: machine-readable output, completion, a hook, and the send itself.
+      expect(afterCommand("status", ["status", "--json"], NOW)).toBe(false);
+      expect(afterCommand("completions", ["completions", "zsh"], NOW)).toBe(false);
+      expect(afterCommand("hook", ["hook", "run"], NOW)).toBe(false);
+      expect(afterCommand("telemetry", ["telemetry", "send", "--auto"], NOW)).toBe(false);
+      expect(spawnImpl).not.toHaveBeenCalled();
+      // A stored yes, a key, and no attempt in the last day: `status` starts the send once.
+      expect(afterCommand("status", ["status"], NOW)).toBe(true);
+      expect(spawnImpl).toHaveBeenCalledTimes(1);
+      // A second command a moment later starts none: the first send has not ended yet.
+      expect(afterCommand("fix", ["fix"], NOW + 1_000)).toBe(false);
+      // The started process sends and writes the attempt time; no command starts one for the rest of the day.
+      const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+      await sendDaily("1.0.0", { now: NOW + 2_000, fetchImpl });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(afterCommand("update", ["update"], NOW + 60 * 60 * 1000)).toBe(false);
+      expect(spawnImpl).toHaveBeenCalledTimes(1);
+      // The next day a command starts it again.
+      expect(afterCommand("status", ["status"], NOW + 25 * 60 * 60 * 1000)).toBe(true);
+      expect(spawnImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("the due check after a command is cheap when no send is due", () => {
+      seedState({ lastAttempt: new Date(NOW).toISOString() });
+      const spawnImpl = vi.fn();
+      const rounds = 200;
+      const started = performance.now();
+      for (let i = 0; i < rounds; i += 1) {
+        startDailySend({ command: "status", argv: ["status"], now: NOW + 1_000, spawnImpl: spawnImpl as never });
+      }
+      const each = (performance.now() - started) / rounds;
+      expect(spawnImpl).not.toHaveBeenCalled();
+      expect(each).toBeLessThan(5);
+    });
+
     it("the detached send does not carry a debugger flag from the parent", () => {
       const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
       const execArgv = process.execArgv;
@@ -1002,6 +1088,72 @@ describe("field telemetry", () => {
       expect(release).toBeTypeOf("function");
       expect(readdirSync(dirname(lock)).sort()).toEqual(["events.jsonl", "telemetry.json", "telemetry.json.lock"]);
       release?.();
+    });
+
+    it("a takeover guard that another process made a moment ago is never removed", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const guard = `${lock}.steal`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const dead = `1 ${"c".repeat(32)}`;
+      const live = `3 ${"e".repeat(32)}`;
+      writeFileSync(lock, dead);
+      utimesSync(lock, old, old);
+      writeFileSync(guard, `2 ${"d".repeat(32)}`);
+      utimesSync(guard, old, old);
+      // This process saw a stale guard. Before it removes the guard, a second
+      // process removes it and a third one makes a new one for its own takeover.
+      const betweenCheckAndRemoval = () => {
+        rmSync(guard);
+        writeFileSync(guard, live);
+      };
+      expect(acquireLock(lock, undefined, betweenCheckAndRemoval)).toBeUndefined();
+      // The live guard is still there, so no second process can start a takeover beside the third one.
+      expect(readFileSync(guard, "utf-8")).toBe(live);
+      expect(readFileSync(lock, "utf-8")).toBe(dead);
+      expect(readdirSync(dirname(lock)).sort()).toEqual([
+        "events.jsonl",
+        "telemetry.json",
+        "telemetry.json.lock",
+        "telemetry.json.lock.steal",
+      ]);
+    });
+
+    it("a takeover replaces only the dead lock it saw, never a lock that came after", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const guard = `${lock}.steal`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      writeFileSync(lock, `1 ${"c".repeat(32)}`);
+      utimesSync(lock, old, old);
+      writeFileSync(guard, `2 ${"d".repeat(32)}`);
+      utimesSync(guard, old, old);
+      // While this process handles the stale guard, another send completes its takeover.
+      const live = `3 ${"e".repeat(32)}`;
+      expect(acquireLock(lock, undefined, () => writeFileSync(lock, live))).toBeUndefined();
+      expect(readFileSync(lock, "utf-8")).toBe(live);
+    });
+
+    it("under its own guard, a takeover leaves a lock that another send made a moment before", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const live = `3 ${"e".repeat(32)}`;
+      // The other send's lock is fresh, then (second case) old on the clock but not the dead one.
+      for (const age of [undefined, old]) {
+        writeFileSync(lock, `1 ${"c".repeat(32)}`);
+        utimesSync(lock, old, old);
+        const points: string[] = [];
+        const result = acquireLock(lock, undefined, (at) => {
+          points.push(at);
+          if (at !== "guard-held") return;
+          writeFileSync(lock, live);
+          if (age) utimesSync(lock, age, age);
+        });
+        expect(result).toBeUndefined();
+        // The check under the guard stops the takeover: the live lock is never moved away.
+        expect(points).toEqual(["guard-held"]);
+        expect(readFileSync(lock, "utf-8")).toBe(live);
+        expect(existsSync(`${lock}.steal`)).toBe(false);
+        rmSync(lock);
+      }
     });
 
     it("a send that lost its lock stops before the next request", async () => {

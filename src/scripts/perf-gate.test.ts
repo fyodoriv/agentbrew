@@ -302,6 +302,17 @@ describe("perf gate slower rule on noise-free samples", () => {
     expect(await verdict(base, step)).toBe(true);
   });
 
+  it("does not catch a slowdown that hits only some runs: a known limit, in docs/observability.md", async () => {
+    const { looksSlower } = (await import(GATE)) as { looksSlower: Slower };
+    // Two modes: every third run takes 30% more. The fastest head run and the
+    // typical pair are both unchanged, so neither rule sees it.
+    const pairs = Array.from({ length: 15 }, (_, i) => [100, i % 3 === 0 ? 130 : 100]);
+    expect(looksSlower({ baseMin: 100, headMin: 100, pairs })).toBe(false);
+    // When most runs are slow, the typical pair moves, but the fastest run does not: still not caught.
+    const mostly = Array.from({ length: 15 }, (_, i) => [100, i % 3 === 0 ? 100 : 130]);
+    expect(looksSlower({ baseMin: 100, headMin: 100, pairs: mostly })).toBe(false);
+  });
+
   it("needs the paired runs to agree with the two fastest runs", async () => {
     const { looksSlower } = (await import(GATE)) as { looksSlower: Slower };
     // One lucky base run: the minimums differ by 20%, the typical pair by nothing.

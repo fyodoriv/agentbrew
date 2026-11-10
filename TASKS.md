@@ -324,45 +324,7 @@
   - **Success**: 18 or more of 20 seeded runs caught, and 0 false alarms in 20.
   - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
   - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
-
-- [ ] A command that throws or exits early still records its event
-  - **ID**: telemetry-event-on-throw-or-early-exit
-  - **Tags**: telemetry, cli
-  - **Details**: The `command` event is written in the Commander `postAction` hook (`recordCommandEvents` in `src/cli.ts`). A command that throws, or that calls `process.exit` in its action, never reaches that hook, so it records no event. The failures that matter most are then missing from the event log, and the error rate that telemetry and `scripts/metrics.sh` report is too low. Record the event on these paths too (for example from the `unhandledRejection` and `uncaughtException` handlers and a `process.on("exit")` guard), with `ok: false`, and never twice for one run.
-  - **Files**: `src/cli.ts`, `src/core/events.ts`, `src/cli.test.ts`
-  - **Output**: code
-  - **Acceptance**: a test runs a command that throws and a command that exits early with a non-zero code; each writes exactly one `command` event with `ok: false`. A command that ends normally still writes exactly one.
-  - **Hypothesis**: recording on the error and exit paths moves the share of failed command runs that leave an event from 0 of 2 failure paths to 2 of 2.
-  - **Measurement**: `npx vitest run src/cli.test.ts -t "records a command event when the command throws or exits early"`
-  - **Success**: both failure paths record exactly one event (2 of 2), and the normal path still records exactly one.
-  - **Pivot**: if one path cannot record without a second event on normal runs, record only from the error handlers and document the early-exit gap in `docs/observability.md`.
-  - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate needs complete failure data); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
-- [ ] Telemetry is sent even when the user never runs `sync`
-  - **ID**: telemetry-auto-send-beyond-sync
-  - **Tags**: telemetry, cli
-  - **Details**: The daily send starts only at the end of `agentbrew sync` (`handleSyncCommand` in `src/cli.ts` calls `startDailySend`). A machine that runs other commands (`status`, `update`, the scheduled repair) and never a plain sync sends nothing, so the public numbers miss those installs. Start the due check from the shared `postAction` hook for every non-quiet command, or from the scheduled repair. The check must stay cheap: no network and no Keychain lookup on each command.
-  - **Files**: `src/cli.ts`, `src/core/telemetry-auto.ts`, `src/core/telemetry.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: with a stored yes, a key, and no attempt in the last day, a non-sync command starts the detached send once; a second command in the same day starts none; a quiet command (`--json`, `completions`, `hook`) starts none.
-  - **Hypothesis**: starting the due check after every non-quiet command moves the command paths that can start the daily send from 1 (`sync`) to all non-quiet commands, and the due check takes under 5 ms when no send is due.
-  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "a non-sync command starts the daily send"`
-  - **Success**: the test passes, and the measured due-check time is under 5 ms.
-  - **Pivot**: if the due check takes 5 ms or more, start the send only from the scheduled repair and from `sync`.
-  - **Anchor**: Kohavi, Tang, Xu 2020 (sample ratio and coverage bias in telemetry); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
-- [ ] Two terminals never show the telemetry question at the same time
-  - **ID**: telemetry-consent-question-lock
-  - **Tags**: telemetry, consent
-  - **Details**: The send lock (`acquireLock` in `src/core/telemetry.ts`) covers a send, not the consent question. Two commands that end at the same time in two terminals can both show the question, and both add to `askCount`, so one moment uses two of the allowed asks. The answers cannot conflict in a harmful way (the last saved answer wins, and a no stops every send), but the double question is noise. Take a lock around the question, with a longer stale time than the send lock because a person may take a while to answer.
-  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: while one process shows the question, a second `askOnFirstRun` shows nothing and does not change `askCount`; after the first one ends, the lock is gone.
-  - **Hypothesis**: a question lock moves the questions shown by two commands that end together from 2 to 1.
-  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "only one process shows the consent question"`
-  - **Success**: exactly 1 question for two concurrent callers, and `askCount` rises by 1.
-  - **Pivot**: if a lock can leave a person with no question after a crash for more than a day, drop the lock and make `askCount` and `askedAt` a compare-and-set instead.
-  - **Anchor**: Munafò et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+  - **Status**: measured on 2026-11-10 (`docs/observability.md`, "Performance gate"): 13 of 20 seeded runs caught (the seed was +16% to +20%, not +12%), 0 false alarms in 40 clean runs, and a test pins the two-mode limit. That is under the success line, so the pivot applies. Still open: the second pass with `heavy-run --exclusive` for marginal cases is not built.
 
 - [ ] Decide whether pull requests must carry a Vision trace block
   - **ID**: decide-pr-vision-trace-gate
@@ -802,19 +764,6 @@
   - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
 
 ## P3
-
-- [ ] A dead takeover guard cannot let two telemetry sends hold the lock
-  - **ID**: telemetry-stale-guard-removal-race
-  - **Tags**: telemetry, concurrency
-  - **Details**: A stale send lock is replaced only by the process that makes the guard file `telemetry.json.lock.steal` (`takeOverStale` in `src/core/telemetry.ts`). A guard that a dead process left is removed after 60 seconds, with a `stat` and then a delete. Those two steps are not one step. If a process died during a takeover, and later several sends start in the same moment, one of them can delete a guard that another one just made. Two processes can then both replace the lock. The check before every request (`lock lost`) limits the harm to one batch. Close the gap: remove a stale guard with an atomic step (for example rename it to a unique name and check the age of what was moved), or use an OS file lock.
-  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
-  - **Output**: code
-  - **Acceptance**: a test with real processes starts many sends at once against a stale lock and a stale guard; the test server gets each event exactly once.
-  - **Hypothesis**: an atomic guard removal moves the duplicate events in a many-process race on a stale lock with a stale guard from "possible" to 0 in 200 rounds.
-  - **Measurement**: `npx vitest run src/core/telemetry-race.test.ts`
-  - **Success**: 0 duplicate events in 200 rounds of 8 concurrent senders.
-  - **Pivot**: if a file-only design still shows 1 or more duplicates, give each batch an id and let the server drop repeats.
-  - **Anchor**: Kleppmann 2016, "How to do distributed locking" (a lock with a timeout needs a fencing check); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream

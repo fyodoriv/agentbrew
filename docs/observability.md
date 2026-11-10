@@ -25,7 +25,7 @@ The stored answer is `unset`, `yes`, or `no`. Nothing is sent unless it is `yes`
 | Install with no terminal, or with `CI` set | No question. The answer stays `unset`. Nothing is sent. |
 | Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. This also holds at a re-install with a stored `yes`: an explicit opt-out always wins. |
 | Re-install or update | Never asks again. Never changes a stored answer, except for the opt-out above. Nothing ever turns a stored `no` into a `yes` but you. |
-| A command in a terminal while the answer is `unset` | Asks the same question on stderr, as `[y/n]`: only a typed `y` or `n` counts, and Enter alone leaves the answer `unset`. Unanswered, it shows at most once a day and at most 3 times; then it stays silent until `agentbrew telemetry ask`. It never follows `--help`, `--version`, `completions`, `hook`, or a command with `--json`. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). |
+| A command in a terminal while the answer is `unset` | Asks the same question on stderr, as `[y/n]`: only a typed `y` or `n` counts, and Enter alone leaves the answer `unset`. Unanswered, it shows at most once a day and at most 3 times; then it stays silent until `agentbrew telemetry ask`. It never follows `--help`, `--version`, `completions`, `hook`, or a command with `--json`. It needs a terminal on stdin, stdout, and stderr, so a pipe, hook, scheduler, or agent run stays silent. `AGENTBREW_TELEMETRY_ASK=0` skips it (the installer sets it for its own commands). Two commands that end together in two terminals show it once: a lock file beside the state (`telemetry.json.ask.lock`) covers the question, and the second command stays silent. A lock that a crash left is replaced after 10 minutes. |
 | Keys typed before the question shows | Thrown away. A stray Enter is never an answer. |
 | The answer becomes `yes` | The cursor moves to the end of the event log. Only events recorded after the yes are sent. |
 | `agentbrew telemetry on` / `off` | Records `yes` / `no` at any time. `on` prints the example and the promise. |
@@ -116,7 +116,8 @@ both are empty.
 
 A send never fails a command.
 
-- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The sync does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the sync and cannot change its exit code. That process records no event of its own.
+- A send happens at most once a day, and one try counts even when it fails. Every command checks whether a send is due when it ends, so a machine that runs `status`, `update`, or the scheduled `fix` and never a plain sync still sends. A quiet command does not check: one with `--json`, `completions`, `hook`, and `telemetry` itself. The check reads the state file only: no network, and no Keychain lookup when a key file or the env var is set. A test pins it under 5 ms.
+- The command does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the command and cannot change its exit code. That process records no event of its own. The command writes the start time (`autoStartAt`), and for the next minute no other command starts a second process.
 - The attempt time is written when the send ends: a send that the system killed part-way (a scheduler job that ended) is tried again on the next run, not a day later.
 - `app_version` is the released package version (`1.2.3`, or `1.2.3-rc.1`). Any other text, such as a local suffix or a commit, is sent as `0.0.0`.
 - The key is never put in a process argument or a log line. A network error logs only its error name.
@@ -129,7 +130,7 @@ A send never fails a command.
 - The event log has a size cap: over 2 MiB it is cut to the whole lines in its newest 1 MiB (see [Logs](#logs)). The cursor survives the cut: the state file keeps the text of the last handled line (`mark`) and finds it again. When the cut removed that line too, the send starts at the first line with a later time. A mark that cannot be read moves the cursor to the end of the log. Nothing is sent twice.
 - A hung server or a hung DNS lookup cannot hold a sync: `src/core/telemetry-cli.test.ts` runs the real `agentbrew sync` against both and pins the added time (under 3.5 seconds) and the exit code.
 - Each save re-reads the state file and changes only the cursor and the send times, so a `telemetry off` given during a send is kept. The send stops before its next request.
-- One send runs at a time on a machine: a lock file beside the state holds the sender's process id and a random token. A send removes only its own lock. A lock more than 60 seconds old, or dated more than 60 seconds in the future (the clock was set back), is stale; the next send replaces it in one step, with a rename. Only one process at a time may replace a stale lock: the one that makes a guard file beside it, and it checks the lock's age again under the guard. A send reads the state and the log after it has the lock, and checks before every request that the lock is still its own, so two sends never post the same events.
+- One send runs at a time on a machine: a lock file beside the state holds the sender's process id and a random token. A send removes only its own lock. A lock more than 60 seconds old, or dated more than 60 seconds in the future (the clock was set back), is stale; the next send replaces it. Only one process at a time may replace a stale lock: the one that makes a guard file beside it. Under the guard it checks again that the lock is the same dead one. The swap checks that too: the lock is moved away in one step, compared with the dead one, and the new lock is made with a hard link, which fails when another lock is there. A guard that a dead takeover left is removed in one step as well: it is moved away with a rename, and a guard that turns out to be fresh goes back. `src/core/telemetry-race.test.ts` starts real processes at the same instant against a stale lock and a stale guard, and the test server gets each event exactly once. A send reads the state and the log after it has the lock, and checks before every request that the lock is still its own, so two sends never post the same events.
 - Errors are swallowed; `AGENTBREW_DEBUG=1` prints them.
 
 `npm run docs:proof` reads the per-install totals back for the README Proof
@@ -164,7 +165,7 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 | Event | When | Fields | Story |
 |---|---|---|---|
 | `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
-| `command` | each command run, `sync` and `fix` too | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
+| `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event, and its `ok` follows the exit code (a process `exit` listener writes it; the long-running `auto-sync watch` is left out); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
 
@@ -300,7 +301,29 @@ machine.
   | Paired median alone | 1 | 20 |
   | Both must agree (the gate) | 0 | 20 |
 
-  Not measured: a slowdown of 10% to 15% at load 10 or more.
+- **Measured, small step under load (2026-11-10)**: the same method in a
+  normal heavy-run slot, with every run started at a 1-minute load of 10 or
+  more. 40 clean runs (load 10.1 to 49.2) and 20 runs with a smaller seeded
+  slowdown: 13 ms more in one hook, +20% on the fastest run and +16% on the
+  median run. A +12% step was the target; the seed came out larger. The load
+  at the start of a seeded run was 10.0 to 28.4 for 14 of them and 42.8 to
+  173.8 for 6 of them. A load spike over 100 covered 7 runs.
+
+  | Rule | False alarms, 40 clean runs | Caught, 20 seeded runs |
+  |---|---|---|
+  | Two minimums alone | 8 | 15 |
+  | Paired median alone | 6 | 17 |
+  | Both must agree (the gate) | 0 | 13 |
+  | 90th percentile of the paired differences | 40 | 20 |
+
+  The gate missed 7 of the 20 seeded runs: 4 at load 10.0 to 21.1 and 3 during
+  the spike. In one spike run it also named a hook that had no change. So in a
+  shared slot the gate has no false alarms at load 10 to 50, but it is not
+  reliable for a step under about 20%. A step that small can pass. A rule on
+  the 90th percentile fails every clean run, so it is not an option.
+- **Known limit**: a slowdown that hits only some runs (for example every
+  third run takes 30% more) moves neither the minimum nor the median. The gate
+  does not catch it. A test pins this.
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.

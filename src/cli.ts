@@ -225,8 +225,6 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   } finally {
     if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
   }
-  // The daily send runs in a process of its own; the sync does not wait for it.
-  if (!options.dryRun) (await import("./core/telemetry-auto.js")).startDailySend();
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -472,7 +470,7 @@ export function buildProgram(): Command {
     )
     .argument("<action>", "status | on | off | ask | send")
     .option("--dry-run", "print the next request body and send nothing")
-    .addOption(new Option("--auto", "the daily send that a sync starts: quiet, with a hard time limit").hideHelp())
+    .addOption(new Option("--auto", "the daily send that a command starts: quiet, with a hard time limit").hideHelp())
     .action(async (action: string, options: { dryRun?: boolean; auto?: boolean }) => {
       const t = await import("./core/telemetry.js");
       if (!["status", "on", "off", "ask", "send"].includes(action)) {
@@ -521,11 +519,44 @@ export function buildProgram(): Command {
 }
 
 /**
+ * The command that has started and has no `command` event yet. CLI-process
+ * scope: one per process, set before the action and cleared when its event is
+ * written. The exit guard reads it, so a run that throws or calls
+ * `process.exit` in its action still leaves one event.
+ */
+let openCommand: { command: string; leaf: string; started: number } | undefined;
+let exitGuardSet = false;
+
+/** Write the open command's event, at most once per run. */
+function closeCommandEvent(ok: boolean): void {
+  const open = openCommand;
+  if (!open) return;
+  openCommand = undefined;
+  recordEvent({
+    event: "command",
+    command: open.command,
+    story: storyForCommand(open.command),
+    ok,
+    ms: Date.now() - open.started,
+  });
+}
+
+/**
+ * The process `exit` listener: a command that never reached the postAction
+ * hook (it threw, or its action called `process.exit`) gets its event here.
+ * It is synchronous, as an exit listener must be. Exported for tests.
+ */
+export function recordCommandEventAtExit(code: number): void {
+  // The watcher runs for hours and ends itself: its uptime is not a command duration.
+  if (openCommand?.command === "auto-sync" && openCommand.leaf === "watch") return;
+  closeCommandEvent(code === 0);
+}
+
+/**
  * One content-free `command` event per command run: the top-level command
  * name (never an argument), ok, and wall time. Every command passes through here.
  */
 function recordCommandEvents(program: Command): void {
-  let started = 0;
   program.hook("preAction", (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
@@ -533,19 +564,19 @@ function recordCommandEvents(program: Command): void {
       for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
       if (!process.argv.includes("--json")) printMotd("sync");
     }
-    started = Date.now();
+    if (!exitGuardSet) {
+      exitGuardSet = true;
+      process.on("exit", recordCommandEventAtExit);
+    }
+    openCommand = { command: top.name(), leaf: action.name(), started: Date.now() };
   });
   program.hook("postAction", async (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
     const command = top.name();
-    recordEvent({
-      event: "command",
-      command,
-      story: storyForCommand(command),
-      ok: !process.exitCode,
-      ms: Date.now() - started,
-    });
+    closeCommandEvent(!process.exitCode);
+    // The daily send runs in a process of its own; the command does not wait for it.
+    (await import("./core/telemetry-auto.js")).startDailySend({ command, argv: process.argv.slice(2) });
     // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
     if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
       const t = await import("./core/telemetry.js");
@@ -558,7 +589,7 @@ async function telemetrySend(
   t: typeof import("./core/telemetry.js"),
   options: { dryRun?: boolean; auto?: boolean },
 ): Promise<void> {
-  // The detached process a sync starts: quiet, and it ends itself.
+  // The detached process a command starts: quiet, and it ends itself.
   if (options.auto) return (await import("./core/telemetry-auto.js")).runAutoSend(version);
   console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
 }

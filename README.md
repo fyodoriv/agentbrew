@@ -165,7 +165,7 @@ export AGENTBREW_TELEMETRY=0                   # at install: records no. Later: 
 export DO_NOT_TRACK=1                          # the same; any value except empty or 0
 ```
 
-Nothing is sent when `CI` is set, or when no project key is present. A send happens after `agentbrew sync`, at most once a day, in a separate process that the sync does not wait for; it gives up after 3 seconds. A failed or hung send never fails or slows a command.
+Nothing is sent when `CI` is set, or when no project key is present. A send happens after a command (not after one with `--json`, a completion, or a hook), at most once a day, in a separate process that the command does not wait for; it gives up after 3 seconds. A failed or hung send never fails or slows a command.
 
 **Inspect it.**
 

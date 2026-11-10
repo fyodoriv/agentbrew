@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { type Command, CommanderError } from "commander";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { buildProgram, HELP_COMMAND_GROUPS, isCliEntrypoint } from "./cli.js";
+import { buildProgram, HELP_COMMAND_GROUPS, isCliEntrypoint, recordCommandEventAtExit } from "./cli.js";
 
 const run = promisify(execFile);
 const CLI_SPAWN_TIMEOUT_MS = 60_000;
@@ -302,6 +302,68 @@ describe("HELP_COMMAND_GROUPS", () => {
     for (const group of HELP_COMMAND_GROUPS) {
       expect(group.title.length).toBeGreaterThan(0);
       expect(group.names.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("command events", () => {
+  it("records a command event when the command throws or exits early", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ab-command-event-"));
+    const file = join(dir, "events.jsonl");
+    vi.stubEnv("AGENTBREW_EVENTS", "1");
+    vi.stubEnv("AGENTBREW_EVENTS_FILE", file);
+    const commandEvents = (): { command?: string; ok?: boolean }[] =>
+      existsSync(file)
+        ? readFileSync(file, "utf-8")
+            .split("\n")
+            .filter(Boolean)
+            .map((line) => JSON.parse(line) as { event: string; command?: string; ok?: boolean })
+            .filter((row) => row.event === "command")
+        : [];
+    // The real program, with the action of `status` replaced. The entry point ends the
+    // process on a throw (exit code 1); the exit listener is what the test calls then.
+    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      recordCommandEventAtExit(code ?? 0);
+      throw new Error("PROCESS_EXIT");
+    }) as never);
+    const runStatus = async (action: () => void): Promise<void> => {
+      const program = buildProgram();
+      program.commands.find((command) => command.name() === "status")?.action(action);
+      await program.parseAsync(["node", "agentbrew", "status"]).catch(() => recordCommandEventAtExit(1));
+    };
+    try {
+      await runStatus(() => {
+        throw new Error("the command failed");
+      });
+      // The real wiring: the program put the listener on the process `exit` event.
+      expect(process.listeners("exit")).toContain(recordCommandEventAtExit);
+      expect(commandEvents()).toEqual([expect.objectContaining({ command: "status", ok: false })]);
+
+      await runStatus(() => process.exit(3));
+      expect(commandEvents()).toHaveLength(2);
+      expect(commandEvents()[1]).toMatchObject({ command: "status", ok: false });
+
+      // The auto-sync watcher runs for hours and ends itself: no event. Its other subcommands get one.
+      const runAutoSync = async (leaf: string): Promise<void> => {
+        const program = buildProgram();
+        const group = program.commands.find((command) => command.name() === "auto-sync");
+        group?.commands.find((command) => command.name() === leaf)?.action(() => process.exit(0));
+        await program.parseAsync(["node", "agentbrew", "auto-sync", leaf]).catch(() => {});
+      };
+      await runAutoSync("watch");
+      expect(commandEvents()).toHaveLength(2);
+      await runAutoSync("status");
+      expect(commandEvents()).toHaveLength(3);
+      expect(commandEvents()[2]).toMatchObject({ command: "auto-sync", ok: true });
+
+      await runStatus(() => {});
+      recordCommandEventAtExit(0);
+      expect(commandEvents()).toHaveLength(4);
+      expect(commandEvents()[3]).toMatchObject({ command: "status", ok: true });
+    } finally {
+      exit.mockRestore();
+      vi.unstubAllEnvs();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

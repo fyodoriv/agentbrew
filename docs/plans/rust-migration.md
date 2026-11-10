@@ -233,6 +233,69 @@ pinning, estimator/noise budget, required host bridges and the frozen-support
 policy conflict. Name the owner and required evidence before any consumer
 depends on a choice. Do not turn an open decision into an exclusion.
 
+## Validation review (2026-11-09)
+
+An independent reviewer checked this plan against measured timings on
+2026-11-09. Verdict: **re-plan before any port**. Zero of the 48 tasks in the
+two repositories are done. The owner paused porting the same day and asked
+for field metrics and a speed gate first
+([Telemetry](../observability.md), performance gate).
+
+Measured on one loaded Mac; treat the numbers as a ranking, not a benchmark:
+
+- Direct CLI use is rare for agents (6 runs in 9 days). `agentbrew --version`
+  takes about 145 ms against a 34 ms Node floor; `dotfiles --version` takes
+  about 64 ms. Startup is not the hot path.
+- Hook helpers are the hot path. About 28,000 agent Bash calls in 9 days each
+  fired about 8 hooks of 125-483 ms; `bash -c true` takes about 7 ms.
+- In dotfiles, `app-priority` ran 17,488 times (1.3 s mean), and the Bats
+  `test` step is 74% of gate time.
+- Sync, git maintenance, upgrade, catalog, MCP lifecycle and doctor probes
+  are likely dominated by git, network and child tools. They were not
+  profiled; a port there needs a profile first.
+- Rust compiles are already the largest agent Bash cost in other
+  repositories. This plan has no build-time budget.
+
+Findings to fix before work resumes (MUST):
+
+1. **Stale evidence.** The evidence table reviews an old revision. The
+   repository now has Rust code that never passed gate G. State whether it is
+   grandfathered or must pass G.
+2. **Commands cannot run.** Every measurement command needs
+   `rust/Cargo.toml` and `migration-check`. Both exist only in an unmerged
+   draft. Mark them "runnable after the inventory step merges". Build with
+   plain `heavy-run` first; time only the built binary under `--exclusive`.
+3. **Gate G contradicts the preparation steps.** Inventory, harness and
+   native delivery still dispatch to the old runtime, so they cannot run
+   "without the legacy runtime". Exempt them by name.
+4. **The statistic is not usable.** An upper 95% bound on a p95 ratio from 60
+   pairs rests on about three tail samples, and measured noise was 19-50%.
+   Name the estimator (for example a bootstrap of the median ratio) and
+   measure the noise floor first, or every result is "inconclusive".
+5. **The final audit cannot pass.** Frozen agent support stays, exclusions
+   are forbidden, and the audit needs zero unexplained legacy components.
+   This needs an owner decision.
+6. **One cross-repo rule.** Say once whether dotfiles work waits for the
+   agentbrew validator, and how the shared crate is pinned (git revision plus
+   vendoring) so `--locked` builds work offline.
+7. **No user benefit metric.** Each slice needs one (for example p95 hook
+   time per agent Bash call). A slice with none becomes a recorded exception.
+
+Proposed changes (SHOULD, owner decides):
+
+- Move one hook-dispatcher slice to the front, with a pre-registered p95 cut
+  per agent Bash call. It does not need native delivery or the full harness.
+- Keep cold paths (doctor probes, sync orchestration) as recorded exceptions.
+- Drop the separate "move tests to Rust" tasks; tests move with their slice.
+- Cut the inventory step to a manifest and a small validator.
+- Weigh cheaper options per slice first: lazy command loading and the Node
+  compile cache for CLI startup; one `ps` pass for `app-priority`; parallel
+  or cached doctor probes; `bats --jobs` for the gate.
+
+Every later port must show its gain on the field dashboard and pass the
+performance gate. Events carry a `runtime` field (`ts`, `shell`, `rust`) for
+that comparison.
+
 ## Measurement anchors
 
 - Basili, Caldiera and Rombach (1994), *The Goal Question Metric Approach*:

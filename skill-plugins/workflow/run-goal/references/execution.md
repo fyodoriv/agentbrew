@@ -10,6 +10,12 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 - A goal with more than five requirements gets a traceability test: one
   entry per requirement, mapped to the files and tests that meet it. It fails
   when a mapped path is missing, and it is the coverage metric in the contract.
+- Never end a turn waiting with nothing armed to wake you (a usage-limit
+  window, an agent, a build). Arm a background watchdog first: an until-loop
+  on the expected output files with a hard cap (30 min). Give every
+  background agent a time box and tell it to write each result file as soon
+  as it is done. A watchdog that times out with few files means a stalled
+  agent: stop it, keep what it wrote, and relaunch smaller.
 - A subagent that stops on a usage limit keeps its work. After the reset,
   resume it with `SendMessage`; do not redo its work or start a new agent.
 - Research subagents use web fetch and search only, never browser tools: a

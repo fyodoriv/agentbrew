@@ -3259,6 +3259,39 @@
         "Runs only one browser agent at a time in the shared CDP 9223 Chrome",
         "Re-checks that the session is live before it trusts a watcher, not the tab title"
       ]
+    },
+    {
+      "id": 284,
+      "prompt": "/goal build a browser skill that gets a store refund. Mid-goal the user says: open my Chrome on this order page and do the thing. The store chat opens in a pop-up the agent tools cannot see.",
+      "expected_output": "The agent adds the live run as a done-criterion, does read-only steps itself, and asks for a yes before it sends a message or confirms a request for the user. When the pop-up is out of reach, it asks the user to move it into the agent tab group instead of guessing. After the confirm, it proves the outcome from the system of record (the new order total), not from the chat text. It folds what the live run taught back into the skill before it ships.",
+      "expectations": [
+        "Adds the live run as a new done-criterion",
+        "Asks for a yes before it sends a message or confirms a request",
+        "Asks the user to bring an unreachable pop-up into reach instead of guessing",
+        "Proves the outcome from the system of record, not the confirmation text",
+        "Updates the skill with the live-run lessons before shipping"
+      ]
+    },
+    {
+      "id": 285,
+      "prompt": "/goal judge the UI. You launched a background judge agent and the usage guard says wait 10 minutes. What do you do before ending the turn?",
+      "expected_output": "Arms a background watchdog (until-loop on the judge's output files, hard cap) so the session wakes; time-boxes the agent and asks for incremental result files; does not end the turn with nothing armed.",
+      "expectations": [
+        "Arms a background watchdog with a hard cap before ending the turn",
+        "Asks the agent to write each result file as soon as it is done",
+        "Does not end the turn with nothing armed to wake it"
+      ]
+    },
+    {
+      "id": 286,
+      "prompt": "/goal make events from venue page X always considered in plans. Mid-goal the user adds: also add five more venues, and add the shift I just signed up for (the page lists two dates) to the calendar. Research shows none of the five venues has a feed the app reads. What do you do?",
+      "expected_output": "Keeps the original criterion as the primary deliverable and finishes it; asks one question to pick the signed-up date instead of guessing; adds the calendar entry through the app CLI; files concrete per-venue tasks with probe evidence instead of claiming them done; runs the privacy scan before the gate when task text names real places.",
+      "expectations": [
+        "Asks which of the listed dates was signed up for before writing a calendar entry",
+        "Does not mark the five extra venues done; files tasks with probe evidence",
+        "Finishes and verifies the original venue source before the mid-goal additions",
+        "Runs the repo privacy scan on new task text before the full gate"
+      ]
     }
   ]
 }

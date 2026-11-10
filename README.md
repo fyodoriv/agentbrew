@@ -143,7 +143,7 @@ The numbers feed a public speed dashboard and a check that catches a slow releas
   "properties": {
     "ok": true,
     "command": "sync",
-    "ms": 1840,
+    "duration_ms": 1840,
     "app_version": "1.0.0",
     "os": "darwin",
     "arch": "arm64",
@@ -165,7 +165,7 @@ export AGENTBREW_TELEMETRY=0                   # at install: records no. Later: 
 export DO_NOT_TRACK=1                          # the same; any value except empty or 0
 ```
 
-Nothing is sent when `CI` is set, or when no project key is present. A send happens after `agentbrew sync`, at most once a day, and gives up after 3 seconds. A failed send never fails a command.
+Nothing is sent when `CI` is set, or when no project key is present. A send happens after `agentbrew sync`, at most once a day, in a separate process that the sync does not wait for; it gives up after 3 seconds. A failed or hung send never fails or slows a command.
 
 **Inspect it.**
 
@@ -643,7 +643,7 @@ agentbrew status --ci --ignore-session-env  # for health checks run by an agent
 
 **Agent-session env.** `env-hygiene` drift flags vars such as `CLAUDECODE` that leak into child agent sessions. An agent session (for example Claude Code) sets `CLAUDECODE` in its own child processes. So when an agent runs `agentbrew status`, `CLAUDECODE` is in the process env, but that is not machine drift. If the caller is an agent session (`CLAUDECODE` set and no tty), or you pass `--ignore-session-env`, status prints it as a `warning:` line and does not count it as drift. If a shell startup file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, and similar) exports `CLAUDECODE`, it is still drift: that file leaks the var into every session.
 
-Every drift item ends with its fix (`— fix: <command>`). Each command run, sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (`AGENTBREW_EVENTS=0` turns it off). These lines feed the anonymous [telemetry](#telemetry). See [`docs/observability.md`](docs/observability.md).
+Every drift item ends with its fix (`— fix: <command>`). Each command run, sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (`AGENTBREW_EVENTS=0` turns it off; the file is cut to its newest 1 MiB when it passes 2 MiB). These lines feed the anonymous [telemetry](#telemetry). See [`docs/observability.md`](docs/observability.md).
 
 When the global CLI runs from a git checkout (for example after `npm link`), `agentbrew status` also checks that its `dist/` is current. Each build writes `dist/build-info.json` with the commit it came from. If the checkout later moved to a commit that changes `src/`, `templates/`, `package.json`, `package-lock.json`, or `tsup.config.ts`, status reports `CLI build: stale` with the rebuild command. `agentbrew sync` prints the same warning before its status line or any sync work. Sync help and invalid options do not run that status check. The warning needs a build that includes this check; rebuild an older CLI once to enable it. `agentbrew status --fix` rebuilds in place.
 
@@ -1138,6 +1138,7 @@ npm run typecheck && npm run lint      # tsc + biome + lint guards
 npm run lint:changed                   # biome on changed files only (inner loop)
 npm run verify:changed                 # inner-loop gate: only the checks the diff can break
 npm run verify                         # full gate: build smoke + typecheck + lint + tests
+npm run perf:gate                      # fail when a tracked command got over 10% slower than the merge-base (part of both gates)
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
 npm run lint:rules                     # Minsky rule checks on this repo (part of verify)

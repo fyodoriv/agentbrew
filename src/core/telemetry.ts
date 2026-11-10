@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { getLogDir } from "../sync/scheduler-paths.js";
@@ -35,6 +35,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The automatic send may add at most this much time to a command, over all its requests. */
 export const AUTO_TIMEOUT_MS = 3_000;
 const MANUAL_TIMEOUT_MS = 10_000;
+const KEYCHAIN_TIMEOUT_MS = 1_000;
 export const BATCH_SIZE = 500;
 /** A send skips events older than the newest BACKLOG_EVENTS or BACKLOG_DAYS, so no old history is uploaded. */
 export const BACKLOG_EVENTS = 2_000;
@@ -46,6 +47,8 @@ const INSTALL_ID = /^[0-9a-f]{32}$/;
 const KEY = /^phc_[A-Za-z0-9]+$/;
 /** A send lock older than this was left by a dead process. */
 const LOCK_STALE_MS = 60_000;
+/** A log line is far shorter than this; a longer mark in the state file is dropped. */
+const MARK_MAX = 4_000;
 /** A released package version. A local suffix (a commit, a word) does not match, so it is never sent. */
 const VERSION = /^\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d{1,3})?$/;
 /** Outside the installer the question shows at most this many times; then only `agentbrew telemetry ask` shows it. */
@@ -60,6 +63,8 @@ interface TelemetryState {
   installId: string;
   /** Event log lines already sent or skipped. */
   sent: number;
+  /** The text of the last handled line. It finds the cursor again after the log is trimmed. */
+  mark?: string;
   /** The answer to the consent question. Absent means unset: nothing is sent. */
   consent?: Consent;
   /** When the answer was given. */
@@ -111,6 +116,38 @@ function readLines(): string[] {
   }
 }
 
+/** The cursor as state fields: how many lines are handled, and the text of the last one. */
+function cursorAt(lines: string[], sent: number): Pick<TelemetryState, "sent" | "mark"> {
+  return { sent, mark: sent > 0 ? lines[sent - 1] : undefined };
+}
+
+function lineTime(line: string): number {
+  try {
+    return Date.parse(String((JSON.parse(line) as { ts?: unknown }).ts));
+  } catch {
+    return Number.NaN;
+  }
+}
+
+/**
+ * How many lines of the log, as it is now, are handled. events.ts trims old
+ * lines from the start of the log, so the stored count can be too high. The
+ * mark finds the place again: the same line, or, when the trim removed it,
+ * the first line with a later time. A state with no mark keeps the count.
+ * A mark that has no readable time gives no place to start from: all of the
+ * log counts as handled, so some events are skipped and none is sent twice.
+ */
+function handled(lines: string[], state: TelemetryState): number {
+  const sent = Math.min(state.sent, lines.length);
+  if (state.mark === undefined || lines[state.sent - 1] === state.mark) return sent;
+  const at = lines.lastIndexOf(state.mark);
+  if (at >= 0) return at + 1;
+  const markTime = lineTime(state.mark);
+  if (!Number.isFinite(markTime)) return lines.length;
+  const next = lines.findIndex((line) => lineTime(line) > markTime);
+  return next < 0 ? lines.length : next;
+}
+
 function isoOrUndefined(value: unknown): string | undefined {
   return typeof value === "string" && ISO_TS.test(value) ? value : undefined;
 }
@@ -150,7 +187,8 @@ export function loadState(): TelemetryState {
   try {
     raw = readFileSync(statePath(), "utf-8");
   } catch {
-    return { installId: randomUUID().replace(/-/g, ""), sent: readLines().length };
+    const lines = readLines();
+    return { installId: randomUUID().replace(/-/g, ""), ...cursorAt(lines, lines.length) };
   }
   let saidNo = false;
   try {
@@ -162,9 +200,10 @@ export function loadState(): TelemetryState {
   } catch (e) {
     logSkipped("core/telemetry/loadState", e);
   }
+  const lines = readLines();
   const fresh: TelemetryState = {
     installId: randomUUID().replace(/-/g, ""),
-    sent: readLines().length,
+    ...cursorAt(lines, lines.length),
     consent: saidNo ? "no" : undefined,
   };
   try {
@@ -177,13 +216,14 @@ export function loadState(): TelemetryState {
 
 /** The parsed file as a state, or undefined when its id or cursor is not valid. */
 function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryState | undefined {
-  const { installId, sent, askCount } = parsed;
+  const { installId, sent, askCount, mark } = parsed;
   if (typeof installId !== "string" || !INSTALL_ID.test(installId)) return undefined;
   if (typeof sent !== "number" || !Number.isInteger(sent) || sent < 0) return undefined;
   const consent: Consent | undefined = saidNo ? "no" : parsed.consent === "yes" ? "yes" : undefined;
   return {
     installId,
     sent,
+    mark: typeof mark === "string" && mark.length <= MARK_MAX ? mark : undefined,
     consent,
     consentAt: consent ? isoOrUndefined(parsed.consentAt) : undefined,
     askedAt: isoOrUndefined(parsed.askedAt),
@@ -194,12 +234,17 @@ function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryS
   };
 }
 
-function keychainKey(): string {
+/**
+ * The owner's Keychain item; "" when there is none. `bin` is a seam for tests.
+ */
+export function keychainKey(bin = "security"): string {
   if (process.platform !== "darwin") return "";
   try {
-    return execFileSync("security", ["find-generic-password", "-s", "agentbrew", "-a", "posthog_key", "-w"], {
+    return execFileSync(bin, ["find-generic-password", "-s", "agentbrew", "-a", "posthog_key", "-w"], {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "ignore"],
+      // A lookup that hangs (a locked Keychain) is cut off. The throw below makes it "no key".
+      timeout: KEYCHAIN_TIMEOUT_MS,
     }).trim();
   } catch {
     return "";
@@ -266,14 +311,14 @@ export interface TelemetryStatus {
   lastSend?: string;
 }
 
-function statusOf(state: TelemetryState, lineCount: number, deps: TelemetryDeps): TelemetryStatus & { key: string } {
+function statusOf(state: TelemetryState, lines: string[], deps: TelemetryDeps): TelemetryStatus & { key: string } {
   const { key, source } = resolveKey(deps);
   const base = {
     key,
     consent: state.consent ?? ("unset" as const),
     consentAt: state.consentAt,
     keySource: source,
-    pending: Math.max(0, lineCount - state.sent),
+    pending: lines.length - handled(lines, state),
     lastSend: state.lastSend,
   };
   const off = envOff();
@@ -286,7 +331,7 @@ function statusOf(state: TelemetryState, lineCount: number, deps: TelemetryDeps)
 
 /** On or off, why, the consent answer, where the key comes from (never its value), pending events, last send. */
 export function status(deps: TelemetryDeps = {}): TelemetryStatus {
-  const { key: _key, ...rest } = statusOf(loadState(), readLines().length, deps);
+  const { key: _key, ...rest } = statusOf(loadState(), readLines(), deps);
   return rest;
 }
 
@@ -297,8 +342,9 @@ export function status(deps: TelemetryDeps = {}): TelemetryStatus {
  */
 export function setConsent(consent: Consent, now = Date.now()): void {
   const state = loadState();
-  const sent = consent === "yes" && state.consent !== "yes" ? readLines().length : state.sent;
-  saveState({ ...state, sent, consent, consentAt: new Date(now).toISOString() });
+  const lines = consent === "yes" && state.consent !== "yes" ? readLines() : undefined;
+  const cursor = lines ? cursorAt(lines, lines.length) : {};
+  saveState({ ...state, ...cursor, consent, consentAt: new Date(now).toISOString() });
 }
 
 function machine(version: string): Record<string, unknown> {
@@ -323,12 +369,20 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
     // Re-apply the event allowlist: a line written by an older or edited log
     // must not carry a path, name, or other content off the machine.
     if (!e || !(EVENT_NAMES as readonly unknown[]).includes(e.event)) continue;
-    const { ts: _now, event, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
+    // The log keeps `ms`; the request names it `duration_ms`, the name the
+    // other tools on the same dashboard send.
+    const { ts: _now, event, ms, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
     batch.push({
       event: `agentbrew.${String(event)}`,
       distinct_id: installId,
       timestamp: isoOrUndefined(e.ts),
-      properties: { ...rest, ...machine(version), $geoip_disable: true, $process_person_profile: false },
+      properties: {
+        ...rest,
+        ...(ms === undefined ? {} : { duration_ms: ms }),
+        ...machine(version),
+        $geoip_disable: true,
+        $process_person_profile: false,
+      },
     });
   }
   return { api_key: key, batch };
@@ -472,11 +526,14 @@ export async function askConsent(
   const settled = answerWithoutAsking(deps);
   if (settled) return settled;
   const write = deps.write ?? ((text: string) => process.stderr.write(text));
-  write(`${consentText(version, deps)}\n`);
   // Outside the installer the question shows at most once a day, and at most MAX_ASKS times.
-  if (!deps.install) {
-    patchState({ askedAt: new Date(deps.now ?? Date.now()).toISOString(), askCount: (loadState().askCount ?? 0) + 1 });
-  }
+  // The state is saved before the text shows, so the example event has the install id that is kept.
+  patchState(
+    deps.install
+      ? {}
+      : { askedAt: new Date(deps.now ?? Date.now()).toISOString(), askCount: (loadState().askCount ?? 0) + 1 },
+  );
+  write(`${consentText(version, deps)}\n`);
   await (deps.drain ?? (deps.ask ? async () => {} : drainInput))();
   const answer = await readYesNo(deps, write, !deps.install);
   if (!answer) return { consent: "unset", asked: true, line: `No answer. Nothing is sent. ${CHANGE}` };
@@ -561,62 +618,120 @@ export interface SendResult {
   pending?: number;
 }
 
-/**
- * One send at a time on a machine: a lock file beside the state. Returns the
- * release function, or undefined when another send holds a fresh lock.
- */
-function acquireLock(): (() => void) | undefined {
-  const file = `${statePath()}.lock`;
-  for (let tries = 0; tries < 2; tries += 1) {
-    try {
-      mkdirSync(dirname(file), { recursive: true });
-      closeSync(openSync(file, "wx", 0o600));
-      return () => rmSync(file, { force: true });
-    } catch {
-      try {
-        if (Date.now() - statSync(file).mtimeMs < LOCK_STALE_MS) return undefined;
-        rmSync(file, { force: true });
-      } catch {
-        return undefined;
-      }
-    }
+/** The release function of a held send lock; `holds` says whether the lock is still this owner's. */
+export type SendLock = (() => void) & { holds: () => boolean };
+
+/** Make the file with the token. False when it exists: "wx" lets only one process make it. */
+function createOnce(file: string, token: string): boolean {
+  try {
+    writeFileSync(file, token, { flag: "wx", mode: 0o600 });
+    return true;
+  } catch {
+    return false;
   }
-  return undefined;
+}
+
+/** True when the file is older than LOCK_STALE_MS, or dated that far in the future (the clock was set back). */
+function staleFile(file: string): boolean {
+  return Math.abs(Date.now() - statSync(file).mtimeMs) >= LOCK_STALE_MS;
+}
+
+/**
+ * Replace a stale lock. Only one process at a time may do this: the one that
+ * makes the guard file. Under the guard it checks the lock's age again, so it
+ * never replaces a lock that another process took over a moment before. The
+ * rename swaps the lock in one step: there is no moment with no lock.
+ */
+function takeOverStale(file: string, token: string): boolean {
+  if (!staleFile(file)) return false;
+  const guard = `${file}.steal`;
+  if (!createOnce(guard, token)) {
+    // A guard left by a dead process is removed. This send stops; the next one tries again.
+    if (staleFile(guard)) rmSync(guard, { force: true });
+    return false;
+  }
+  const mine = `${file}.${token.replace(" ", ".")}`;
+  try {
+    if (!staleFile(file)) return false;
+    writeFileSync(mine, token, { mode: 0o600 });
+    renameSync(mine, file);
+    return true;
+  } finally {
+    rmSync(mine, { force: true });
+    rmSync(guard, { force: true });
+  }
+}
+
+/**
+ * One send at a time on a machine: a lock file beside the state. It holds the
+ * owner's pid and a random nonce. Returns the release function, or undefined
+ * when another send holds a fresh lock. A lock older than LOCK_STALE_MS was
+ * left by a dead process; takeOverStale replaces it. Release removes the lock
+ * only when it still holds this owner's token.
+ */
+export function acquireLock(file = `${statePath()}.lock`): SendLock | undefined {
+  const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
+  const holds = (): boolean => {
+    try {
+      return readFileSync(file, "utf-8") === token;
+    } catch {
+      return false;
+    }
+  };
+  const release = (): void => {
+    if (holds()) rmSync(file, { force: true });
+  };
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    if (!createOnce(file, token) && !takeOverStale(file, token)) return undefined;
+    return holds() ? Object.assign(release, { holds }) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
  * Send what is pending, at most BATCH_SIZE events per request. The cursor
  * moves only after a 2xx answer. With dryRun, return the next body and send
- * nothing. `auto` is the after-sync path: one AUTO_TIMEOUT_MS budget for all
+ * nothing. `auto` is the daily send: one AUTO_TIMEOUT_MS budget for all
  * requests. Never throws.
  */
 export async function send(
   version: string,
   options: TelemetryDeps & { dryRun?: boolean; auto?: boolean } = {},
 ): Promise<SendResult> {
-  let release: (() => void) | undefined;
+  let release: SendLock | undefined;
   const now = options.now ?? Date.now();
   try {
-    const state = loadState();
-    const lines = readLines();
-    const cursor = startCursor(lines, state.sent, now);
-    if (options.dryRun) {
-      const body = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "<posthog_key>", state.installId, version);
-      return { sent: 0, pending: lines.length - cursor, body };
-    }
-    const st = statusOf(state, lines.length, options);
+    if (options.dryRun) return dryRun(version, now);
+    const st = statusOf(loadState(), readLines(), options);
     if (!st.on) return { sent: 0, skipped: st.reason };
     release = acquireLock();
     if (!release) return { sent: 0, skipped: "another send is running" };
-    patchState({ sent: cursor });
+    // The state and the log are read under the lock: a send that ended a moment ago has moved the cursor.
+    const state = loadState();
+    const lines = readLines();
+    if (state.consent !== "yes") return { sent: 0, skipped: "consent changed" };
+    const cursor = startCursor(lines, handled(lines, state), now);
+    patchState(cursorAt(lines, cursor));
     if (cursor >= lines.length) return { sent: 0, skipped: "nothing new" };
-    return await postBatches(lines, cursor, { key: st.key, installId: state.installId, version }, options);
+    const id = { key: st.key, installId: state.installId, version, holds: release.holds };
+    return await postBatches(lines, cursor, id, options);
   } catch (e) {
     logSkipped("core/telemetry/send", e);
     return { sent: 0, skipped: "error" };
   } finally {
     if (release) finishAttempt(release, now);
   }
+}
+
+/** The next request body with the key hidden, and how many events wait. Sends nothing and takes no lock. */
+function dryRun(version: string, now: number): SendResult {
+  const state = loadState();
+  const lines = readLines();
+  const cursor = startCursor(lines, handled(lines, state), now);
+  const body = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "<posthog_key>", state.installId, version);
+  return { sent: 0, pending: lines.length - cursor, body };
 }
 
 /**
@@ -642,13 +757,15 @@ function finishAttempt(release: () => void, now: number): void {
 async function postBatches(
   lines: string[],
   start: number,
-  id: { key: string; installId: string; version: string },
+  id: { key: string; installId: string; version: string; holds: () => boolean },
   options: TelemetryDeps & { auto?: boolean },
 ): Promise<SendResult> {
   const autoBudget = options.auto ? AbortSignal.timeout(AUTO_TIMEOUT_MS) : undefined;
   let cursor = start;
   let sent = 0;
   while (cursor < lines.length) {
+    // Checked before every request, the first one too: a send whose lock another process took over must stop.
+    if (!id.holds()) return { sent, skipped: "lock lost" };
     if (loadState().consent !== "yes") return { sent, skipped: "consent changed" };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);
@@ -662,7 +779,8 @@ async function postBatches(
     sent += count;
     cursor += chunk.length;
     const fresh = loadState();
-    saveState({ ...fresh, sent: Math.max(fresh.sent, cursor), lastSend: lastSend ?? fresh.lastSend });
+    const next = cursor >= fresh.sent ? cursorAt(lines, cursor) : {};
+    saveState({ ...fresh, ...next, lastSend: lastSend ?? fresh.lastSend });
   }
   return { sent };
 }
@@ -691,19 +809,27 @@ async function postOne(
 }
 
 /**
- * The after-sync path: send at most once a day, and only after a "yes".
- * Never throws, and adds at most AUTO_TIMEOUT_MS to the command.
+ * True when the daily send is due: no off switch, a stored "yes", no attempt
+ * in the last day, and a key. Cheap: no network, and no Keychain lookup on
+ * each sync when no key is set.
+ */
+export function sendDailyDue(deps: TelemetryDeps = {}): boolean {
+  if (envOff()) return false;
+  const state = loadState();
+  if (state.consent !== "yes") return false;
+  const now = deps.now ?? Date.now();
+  if (withinDay(state.lastAttempt ?? state.lastSend, now)) return false;
+  return hasKey(deps, state, now);
+}
+
+/**
+ * The daily send: at most once a day, and only after a "yes". Never throws.
+ * A sync does not run it in its own process: it starts a separate process for
+ * it (telemetry-auto.ts) and does not wait.
  */
 export async function sendDaily(version: string, deps: TelemetryDeps = {}): Promise<void> {
   try {
-    if (envOff()) return;
-    const state = loadState();
-    if (state.consent !== "yes") return;
-    const now = deps.now ?? Date.now();
-    if (withinDay(state.lastAttempt ?? state.lastSend, now)) return;
-    // No key: stop here, so a sync does not start a Keychain lookup each time.
-    if (!hasKey(deps, state, now)) return;
-    await send(version, { ...deps, auto: true });
+    if (sendDailyDue(deps)) await send(version, { ...deps, auto: true });
   } catch (e) {
     logSkipped("core/telemetry/sendDaily", e);
   }

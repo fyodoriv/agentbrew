@@ -24,19 +24,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `npm run perf:gate` fails a PR that makes a tracked command more than 10%
+  slower than the merge-base, or slower than its ceiling in
+  `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,
+  `actions --json`, and the hook checks that run on agent Bash calls, in both
+  trees in the same run. `npm run verify` and `npm run verify:changed` run it.
+  A command counts as slower only when the paired back-to-back runs agree
+  with the two minimums, so a busy machine does not fail a clean PR.
+  A stale allow line does not stop a docs-only PR, and a ceiling that the
+  base breaks too shows as `over-ceiling-at-base`.
 - Anonymous performance telemetry, asked at install; on only after you say
   yes (Enter counts as yes). The installer's last step shows what is sent, one
   example event, and the privacy promise, then asks `[Y/n]`. It asks only when
   a project key is present. Every command run
   records one content-free `command` event (top-level command name, duration,
   ok). `agentbrew sync` sends at most once a day to PostHog EU, with a
-  3-second limit. `agentbrew telemetry off`, `--no-telemetry`,
+  3-second limit, in a separate process that the sync does not wait for. `agentbrew telemetry off`, `--no-telemetry`,
   `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` stop it;
-  `agentbrew telemetry status` and `send --dry-run` show what happens. The
+  `agentbrew telemetry status` and `send --dry-run` show what happens.
   A yes covers only later events. PostHog sees the request IP address like
   any web server; GeoIP is off and no location is stored. The
   default project key file ships empty, so nothing is sent yet. This replaces
   the owner-key opt-in. See README "Telemetry".
+- The event log (`events.jsonl`) has a size cap: over 2 MiB it is cut to its
+  newest 1 MiB, in whole lines.
 - `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
 - The wrap-up skill's `open-work.sh` tags a branch whose added lines are
   already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as

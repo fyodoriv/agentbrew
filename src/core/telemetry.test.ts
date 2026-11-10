@@ -1,5 +1,16 @@
 import { spawn } from "node:child_process";
-import { appendFileSync, mkdtempSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { logSkipped } from "./logger.js";
 import {
   AUTO_TIMEOUT_MS,
+  acquireLock,
   askConsent,
   askOnFirstRun,
   BACKLOG_DAYS,
@@ -19,6 +31,7 @@ import {
   defaultKey,
   defaultKeyFile,
   drainInput,
+  keychainKey,
   loadState,
   MAX_ASKS,
   QUESTION,
@@ -30,6 +43,7 @@ import {
   setConsent,
   status,
 } from "./telemetry.js";
+import { runAutoSend, startDailySend } from "./telemetry-auto.js";
 
 // The debug log is captured, so a test can prove that no log line holds the key.
 vi.mock("./logger.js", async (original) => ({
@@ -564,7 +578,7 @@ describe("field telemetry", () => {
       expect(body.batch[1].properties).toEqual({
         ok: true,
         command: "status",
-        ms: 41,
+        duration_ms: 41,
         app_version: "1.0.0",
         os: expect.stringMatching(/^(darwin|linux|other)$/),
         arch: expect.stringMatching(/^(arm64|x64|other)$/),
@@ -585,6 +599,23 @@ describe("field telemetry", () => {
       expect(JSON.stringify(r)).not.toContain("phc_test");
       expect(fetchImpl).not.toHaveBeenCalled();
       expect(readFileSync(process.env.AGENTBREW_TELEMETRY_STATE as string, "utf-8")).toBe(before);
+    });
+
+    it("the request body names the duration duration_ms, never ms, for every event with a duration", () => {
+      const lines = ["command", "sync", "repair"].map((event) =>
+        JSON.stringify({ ts: "2026-11-09T12:00:00.000Z", event, command: "status", ok: true, ms: 41 }),
+      );
+      const batch = buildBatch(lines, "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[];
+      expect(batch).toHaveLength(lines.length);
+      for (const item of batch) {
+        expect(item.properties.duration_ms).toBe(41);
+        expect(item.properties).not.toHaveProperty("ms");
+      }
+      // An event with no duration gets neither name.
+      const bare = buildBatch([JSON.stringify({ event: "command", command: "status", ok: true })], "", ID, "1.0.0");
+      const properties = (bare.batch as { properties: Record<string, unknown> }[])[0].properties;
+      expect(properties).not.toHaveProperty("duration_ms");
+      expect(properties).not.toHaveProperty("ms");
     });
 
     it("canary: no path, user name, email, URL, or token leaves the machine, even from an edited log", () => {
@@ -639,7 +670,7 @@ describe("field telemetry", () => {
         "$process_person_profile",
         "app_version",
         "arch",
-        "ms",
+        "duration_ms",
         "ok",
         "os",
         "runtime",
@@ -894,6 +925,214 @@ describe("field telemetry", () => {
       answer(new Response("{}", { status: 200 }));
       expect(await run).toEqual({ sent: 2 });
       expect(savedState().lastAttempt).toBe(new Date(NOW).toISOString());
+    });
+
+    it("a sync starts the daily send as a detached process and does not wait for it", () => {
+      const unref = vi.fn();
+      const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref }));
+      const start = (now: number) => startDailySend({ now, spawnImpl: spawnImpl as unknown as typeof spawn });
+      expect(start(NOW)).toBe(true);
+      const [bin, args, options] = spawnImpl.mock.calls[0] as unknown as [string, string[], Record<string, unknown>];
+      expect(bin).toBe(process.execPath);
+      expect(args.slice(-3)).toEqual(["telemetry", "send", "--auto"]);
+      // The key is never on a command line.
+      expect(args.join(" ")).not.toContain("phc_");
+      expect(options).toMatchObject({ detached: true, stdio: "ignore" });
+      expect((options.env as NodeJS.ProcessEnv).AGENTBREW_EVENTS).toBe("0");
+      expect(unref).toHaveBeenCalledTimes(1);
+      // Not due: no process starts. An attempt in the last day, an off switch, or no yes.
+      seedState({ lastAttempt: new Date(NOW).toISOString() });
+      expect(start(NOW + 60_000)).toBe(false);
+      seedState();
+      process.env.DO_NOT_TRACK = "1";
+      expect(start(NOW)).toBe(false);
+      delete process.env.DO_NOT_TRACK;
+      setConsent("no", NOW);
+      expect(start(NOW)).toBe(false);
+      expect(spawnImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("the detached send does not carry a debugger flag from the parent", () => {
+      const spawnImpl = vi.fn(() => ({ on: vi.fn(), unref: vi.fn() }));
+      const execArgv = process.execArgv;
+      process.execArgv = ["--inspect-brk=0", "--import", "tsx", "--inspect", "--inspect-port=0"];
+      try {
+        expect(startDailySend({ now: NOW, spawnImpl: spawnImpl as unknown as typeof spawn })).toBe(true);
+      } finally {
+        process.execArgv = execArgv;
+      }
+      const args = (spawnImpl.mock.calls[0] as unknown as [string, string[]])[1];
+      expect(args.slice(0, 2)).toEqual(["--import", "tsx"]);
+      expect(args.join(" ")).not.toContain("--inspect");
+    });
+
+    it("the detached send ends itself when the send never settles", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        const exit = vi.fn();
+        void runAutoSend("1.0.0", { sendDaily: () => new Promise<void>(() => {}), exit });
+        await vi.advanceTimersByTimeAsync(AUTO_TIMEOUT_MS + 999);
+        expect(exit).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
+        // A send that ends in time exits at once, and the timer does not fire later.
+        const quick = vi.fn();
+        await runAutoSend("1.0.0", { sendDaily: async () => {}, exit: quick });
+        await vi.advanceTimersByTimeAsync(AUTO_TIMEOUT_MS * 2);
+        expect(quick).toHaveBeenCalledExactlyOnceWith(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("two processes cannot both take over one stale lock", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const other = `1 ${"c".repeat(32)}`;
+      writeFileSync(lock, other);
+      utimesSync(lock, old, old);
+      // Another process is in the middle of the takeover: it holds the takeover guard.
+      writeFileSync(`${lock}.steal`, `2 ${"d".repeat(32)}`);
+      expect(acquireLock()).toBeUndefined();
+      expect(readFileSync(lock, "utf-8")).toBe(other);
+      // A guard left by a dead process is removed; the try after that takes the lock.
+      utimesSync(`${lock}.steal`, old, old);
+      expect(acquireLock()).toBeUndefined();
+      const release = acquireLock();
+      expect(release).toBeTypeOf("function");
+      expect(readdirSync(dirname(lock)).sort()).toEqual(["events.jsonl", "telemetry.json", "telemetry.json.lock"]);
+      release?.();
+    });
+
+    it("a send that lost its lock stops before the next request", async () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      writeLog(Array(BATCH_SIZE * 2).fill(row(new Date(NOW).toISOString())));
+      const fetchImpl = vi.fn(async () => {
+        writeFileSync(lock, `1 ${"a".repeat(32)}`);
+        return new Response("{}", { status: 200 });
+      });
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: BATCH_SIZE, skipped: "lock lost" });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("a send that starts as another one ends does not send the same events again", async () => {
+      // The key comes from the Keychain fake. It runs after the first look at the
+      // state and before the lock: there, another process finishes its send.
+      delete process.env.AGENTBREW_POSTHOG_KEY;
+      const keychain = vi.fn(() => {
+        seedState({ sent: 2, mark: lines[1] });
+        return "phc_test";
+      });
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, keychain, now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(keychain).toHaveBeenCalledTimes(1);
+    });
+
+    it("a mark that cannot be read skips to the end of the log, never back", async () => {
+      const at = (i: number) => row(new Date(NOW - 3_600_000 + i * 1_000).toISOString());
+      writeLog(Array.from({ length: 10 }, (_, i) => at(i)));
+      seedState({ sent: 5, mark: "not a log line" });
+      expect(status().pending).toBe(0);
+      const fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(savedState().sent).toBe(10);
+    });
+
+    it("the send lock names its owner, and a send releases only its own lock", async () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      let during = "";
+      const reading = vi.fn(async () => {
+        during = readFileSync(lock, "utf-8");
+        return new Response("{}", { status: 200 });
+      });
+      expect(await send("1", { fetchImpl: reading, now: NOW })).toEqual({ sent: 2 });
+      expect(during).toMatch(new RegExp(`^${process.pid} [0-9a-f]{32}$`));
+      expect(existsSync(lock)).toBe(false);
+      // Another process took the lock over while this send was running. Its lock stays.
+      seedState();
+      const other = `1 ${"a".repeat(32)}`;
+      const stolen = vi.fn(async () => {
+        writeFileSync(lock, other);
+        return new Response("{}", { status: 200 });
+      });
+      expect(await send("1", { fetchImpl: stolen, now: NOW })).toEqual({ sent: 2 });
+      expect(readFileSync(lock, "utf-8")).toBe(other);
+    });
+
+    it("a lock dated in the future (the clock was set back) is stale, not held for ever", async () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      writeFileSync(lock, `1 ${"a".repeat(32)}`);
+      const future = new Date(Date.now() + 10 * 60_000);
+      utimesSync(lock, future, future);
+      expect(await send("1", { fetchImpl: ok(), now: NOW })).toEqual({ sent: 2 });
+      expect(existsSync(lock)).toBe(false);
+    });
+
+    it("a stale lock is replaced in one step; a fresh one is left alone", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const other = `1 ${"b".repeat(32)}`;
+      writeFileSync(lock, other);
+      expect(acquireLock()).toBeUndefined();
+      expect(readFileSync(lock, "utf-8")).toBe(other);
+      const old = new Date(Date.now() - 10 * 60_000);
+      utimesSync(lock, old, old);
+      const release = acquireLock();
+      expect(release).toBeTypeOf("function");
+      expect(readFileSync(lock, "utf-8")).toMatch(new RegExp(`^${process.pid} [0-9a-f]{32}$`));
+      // The new lock is fresh: a second send does not get it.
+      expect(acquireLock()).toBeUndefined();
+      release?.();
+      expect(readdirSync(dirname(lock)).sort()).toEqual(["events.jsonl", "telemetry.json"]);
+    });
+
+    it("the cursor stays right when the log is trimmed: nothing is sent twice, nothing new is skipped", async () => {
+      const at = (i: number) => row(new Date(NOW - 3_600_000 + i * 1_000).toISOString());
+      const times = (rows: string[]) => rows.map((line) => JSON.parse(line).ts);
+      const sentTimes = (fetchImpl: ReturnType<typeof vi.fn>) =>
+        (bodyOf(fetchImpl).batch as { timestamp: string }[]).map((b) => b.timestamp);
+      const first = Array.from({ length: 100 }, (_, i) => at(i));
+      writeLog(first);
+      expect(await send("1", { fetchImpl: ok(), now: NOW })).toEqual({ sent: 100 });
+      // The log loses its oldest part; new lines came after the send.
+      const added = Array.from({ length: 50 }, (_, i) => at(100 + i));
+      writeLog([...first.slice(70), ...added]);
+      expect(status().pending).toBe(50);
+      let fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 50 });
+      expect(sentTimes(fetchImpl)).toEqual(times(added));
+      expect(savedState().sent).toBe(80);
+      // The next trim removes the last sent line too. Only lines newer than it are sent.
+      const more = Array.from({ length: 20 }, (_, i) => at(150 + i));
+      writeLog(more);
+      expect(status().pending).toBe(20);
+      fetchImpl = ok();
+      expect(await send("1", { fetchImpl, now: NOW })).toEqual({ sent: 20 });
+      expect(sentTimes(fetchImpl)).toEqual(times(more));
+      expect(await send("1", { fetchImpl: ok(), now: NOW })).toEqual({ sent: 0, skipped: "nothing new" });
+    });
+
+    it("the example event in the question shows the install id that is then saved", async () => {
+      rmSync(process.env.AGENTBREW_TELEMETRY_STATE as string);
+      let text = "";
+      const write = (chunk: string) => {
+        text += chunk;
+      };
+      await askConsent("1.0.0", { install: true, interactive: true, write, ask: async () => "y", now: NOW });
+      const shown = /"distinct_id": "([0-9a-f]{32})"/.exec(text)?.[1];
+      expect(shown).toBeDefined();
+      expect(shown).toBe(savedState().installId);
+    });
+
+    it.skipIf(process.platform !== "darwin")("a Keychain lookup that hangs is cut off and means no key", () => {
+      // A stand-in for a `security` that waits on a locked Keychain.
+      const slow = join(dirname(process.env.AGENTBREW_TELEMETRY_STATE as string), "slow-security");
+      writeFileSync(slow, "#!/bin/sh\nexec sleep 5\n");
+      chmodSync(slow, 0o755);
+      const started = Date.now();
+      expect(keychainKey(slow)).toBe("");
+      expect(Date.now() - started).toBeLessThan(2_500);
     });
 
     it("the after-sync path starts no Keychain lookup on each sync when no key is set", async () => {

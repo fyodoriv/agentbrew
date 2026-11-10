@@ -218,6 +218,9 @@ else
   step npx vitest run "${unique_tests[@]}"
 fi
 
+# Tracked commands may not get slower (it skips a diff with no runtime path).
+step env PERF_GATE_BASE="$base_ref" node scripts/perf-gate.mjs
+
 # The install playbook drives the one-step install e2e (no-op for other paths).
 step bash scripts/install-e2e-if-needed.sh "$base_ref"
 

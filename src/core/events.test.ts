@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
@@ -7,6 +7,8 @@ import {
   DRIFT_TYPES,
   ERROR_CODES,
   eventsEnabled,
+  KEEP_LOG_BYTES,
+  MAX_LOG_BYTES,
   recordEvent,
   sanitizeEvent,
   storyForCommand,
@@ -158,6 +160,31 @@ describe("command events", () => {
     const hash = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
     const out = sanitizeEvent({ event: "error", story: "US03", ok: false, code: "E1234", module: hash, types: [hash] });
     expect(out).toEqual({ ts: expect.any(String), event: "error", story: "US03", ok: false, types: [] });
+  });
+
+  it("cuts a log that passed the size cap to its newest whole lines", () => {
+    const dir = join(scratch, "cap");
+    mkdirSync(dir);
+    const file = join(dir, "events.jsonl");
+    process.env.AGENTBREW_EVENTS = "1";
+    process.env.AGENTBREW_EVENTS_FILE = file;
+    const line = (i: number) =>
+      JSON.stringify({ ts: "2026-11-09T12:00:00.000Z", event: "command", ok: true, command: "status", ms: i });
+    // Under the cap: nothing is cut.
+    writeFileSync(file, `${line(0)}\n`);
+    recordEvent({ event: "command", command: "sync", ok: true, ms: 7 });
+    expect(readFileSync(file, "utf-8").split("\n").filter(Boolean)).toHaveLength(2);
+    // Over the cap: the newest lines stay, whole and in order, and the new event is the last one.
+    const old = Array.from({ length: Math.ceil(MAX_LOG_BYTES / line(0).length) + 10 }, (_, i) => line(i));
+    writeFileSync(file, `${old.join("\n")}\n`);
+    expect(statSync(file).size).toBeGreaterThan(MAX_LOG_BYTES);
+    recordEvent({ event: "command", command: "sync", ok: true, ms: 7 });
+    const kept = readFileSync(file, "utf-8").split("\n").filter(Boolean);
+    expect(statSync(file).size).toBeLessThanOrEqual(KEEP_LOG_BYTES);
+    expect(JSON.parse(kept.at(-1) as string)).toMatchObject({ command: "sync", ms: 7 });
+    expect(kept.slice(0, -1)).toEqual(old.slice(old.length - (kept.length - 1)));
+    expect(kept.length).toBeGreaterThan(2_000);
+    expect(readdirSync(dir)).toEqual(["events.jsonl"]);
   });
 
   it("recording costs well under 5 ms and never throws", () => {

@@ -49,7 +49,7 @@ your OS and CPU type, and a random install id. One item per line of the
   "properties": {
     "ok": true,
     "command": "sync",
-    "ms": 1840,
+    "duration_ms": 1840,
     "app_version": "1.0.0",
     "os": "darwin",
     "arch": "arm64",
@@ -66,7 +66,7 @@ your OS and CPU type, and a random install id. One item per line of the
 | `distinct_id` | A random id made on this machine. Delete `telemetry.json` to get a new one (the answer is then `unset`). |
 | `timestamp` | When the event happened (UTC) |
 | `command` | The top-level command, only when it is in `COMMAND_NAMES` (`src/core/events.ts`) |
-| `ok`, `ms` | Did it work, and the wall time in ms |
+| `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`) |
 | `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
 | `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |
@@ -116,17 +116,20 @@ both are empty.
 
 A send never fails a command.
 
-- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The send is awaited inside the command, so a scheduler run (the repair job) finishes it or gives up within the limit. The attempt time is written when the send ends: a send that the system killed part-way is tried again on the next run, not a day later.
+- `agentbrew sync` sends at most once a day, and one try counts even when it fails. The sync does not send in its own process. When a send is due, it starts `agentbrew telemetry send --auto` as a separate, detached process and does not wait for it (`src/core/telemetry-auto.ts`). So a send that hangs adds no time to the sync and cannot change its exit code. That process records no event of its own.
+- The attempt time is written when the send ends: a send that the system killed part-way (a scheduler job that ended) is tried again on the next run, not a day later.
 - `app_version` is the released package version (`1.2.3`, or `1.2.3-rc.1`). Any other text, such as a local suffix or a commit, is sent as `0.0.0`.
 - The key is never put in a process argument or a log line. A network error logs only its error name.
-- The automatic send stops after 3 seconds in total. `agentbrew telemetry send` allows 10 seconds per request.
+- The automatic send stops after 3 seconds in total, and its process ends itself 1 second later whatever is still open. A DNS lookup that never returns cannot be cancelled; this hard limit ends the process anyway. `agentbrew telemetry send` allows 10 seconds per request.
+- The Keychain lookup stops after 1 second. A lookup that hangs means "no key", never an error.
 - One request holds at most 500 events. The cursor moves only after a 2xx answer.
 - A send skips everything but the newest 2,000 events of the last 30 days, so a first send never uploads an old history.
 - The state file (`~/.local/share/agentbrew/logs/telemetry.json`, or `AGENTBREW_TELEMETRY_STATE`; mode 600) is written with a temp file and a rename. The installer's backup and restore do not touch it.
 - A state file that cannot be read starts again at the end of the log. A shorter log moves the cursor to its end.
-- A hung server cannot hold the process open: the answer body is cancelled, and a real-socket test pins the exit time and the exit code.
+- The event log has a size cap: over 2 MiB it is cut to the whole lines in its newest 1 MiB (see [Logs](#logs)). The cursor survives the cut: the state file keeps the text of the last handled line (`mark`) and finds it again. When the cut removed that line too, the send starts at the first line with a later time. A mark that cannot be read moves the cursor to the end of the log. Nothing is sent twice.
+- A hung server or a hung DNS lookup cannot hold a sync: `src/core/telemetry-cli.test.ts` runs the real `agentbrew sync` against both and pins the added time (under 3.5 seconds) and the exit code.
 - Each save re-reads the state file and changes only the cursor and the send times, so a `telemetry off` given during a send is kept. The send stops before its next request.
-- One send runs at a time on a machine (a lock file beside the state; a lock older than 60 seconds is ignored).
+- One send runs at a time on a machine: a lock file beside the state holds the sender's process id and a random token. A send removes only its own lock. A lock more than 60 seconds old, or dated more than 60 seconds in the future (the clock was set back), is stale; the next send replaces it in one step, with a rename. Only one process at a time may replace a stale lock: the one that makes a guard file beside it, and it checks the lock's age again under the guard. A send reads the state and the log after it has the lock, and checks before every request that the lock is still its own, so two sends never post the same events.
 - Errors are swallowed; `AGENTBREW_DEBUG=1` prints them.
 
 `npm run docs:proof` reads the per-install totals back for the README Proof
@@ -142,7 +145,7 @@ salted hash, never the install id. With no key or no network it prints one
 
 | Log | Path | Written by | Content |
 |---|---|---|---|
-| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per command run, sync, scheduled repair, and error. See [Events](#events). |
+| Event log | `~/.local/share/agentbrew/logs/events.jsonl` (or `AGENTBREW_EVENTS_FILE`) | `src/core/events.ts` | Content-free JSON lines: one per command run, sync, scheduled repair, and error. Over 2 MiB it is cut to its newest 1 MiB, in whole lines. See [Events](#events). |
 | Repair log | `~/.config/agentbrew/repair-log.json` | `src/repair-log.ts` | What the scheduled repair fixed since you last ran a command. `agentbrew status` prints a summary and clears it. |
 | Sync errors | `~/.config/agentbrew/sync-errors.json` | `src/core/errors.ts` | The errors of the last sync, with messages. Stays local. |
 | Scheduler output | `~/.local/share/agentbrew/logs/launchagent.log`, `launchagent.err`, `cron.log`, `auto-sync.log` | the LaunchAgent, cron, systemd timer, or watcher | Raw output of `agentbrew fix`, trimmed to the newest lines past 1 MB. |
@@ -208,6 +211,107 @@ drift=1 status=failed
 
 The fixes live in `DRIFT_FIXES` in `src/drift-fixes.ts`. Its type is a record
 over every `DriftItem` type, so a new drift type without a fix fails `tsc`.
+
+## Performance gate
+
+`npm run perf:gate` (also a step of `npm run verify` and
+`npm run verify:changed`) stops a PR that makes a tracked command slower.
+`scripts/perf-gate.mjs` times each command in `scripts/perf-budget.tsv` in two
+trees in the same run: your working tree and a checkout of the merge-base with
+the default branch. It needs no stored baseline, so it works the same on every
+machine.
+
+- **Tracked commands**: `agentbrew --version`, `--help`, and `actions --json`
+  from `dist/cli.js`, and the hook checks that run on agent Bash calls. Each
+  hook gets a `git status` PreToolUse payload on stdin.
+- **Fails when** the fastest run in your tree is more than 10% and more than
+  3 ms slower than the fastest run at the base, and the paired runs agree; or
+  when the fastest run is above the command's ceiling in the budget file.
+  A ceiling that the base breaks too in the same run does not count: the
+  machine is slow then, not your tree. The gate prints a note, shows the
+  verdict `over-ceiling-at-base` for that command, and counts such commands
+  in its summary line.
+- **Paired runs**: each pass times base and head back to back; that is one
+  pair. The median of (head - base) over the pairs must also be above the
+  limit (10% of the base minimum, and 3 ms). Load hits both runs of a pair
+  alike, so a clean tree stays near zero on a busy machine. When only the
+  minimums differ, the gate passes and prints
+  `load noise, not a slowdown` for that command.
+- **How it times**: 2 warmups, then 15 runs per tree, base and head in turn,
+  with a small fixed environment (`AGENTBREW_EVENTS=0`, `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`) and
+  a scratch HOME, which also holds `AGENTBREW_EVENTS_FILE`. A command that looks slower is
+  timed again, up to two more rounds.
+- **Skips** when the diff touches no runtime path (the `PERF_GATE_PATH` lines
+  of the base and head budget files; test files never count):
+  `perf gate: skipped (no runtime change)`. `npm run perf:gate -- --force`
+  times anyway.
+- **Builds**: the CLI rows need `dist/`. The gate builds the base checkout
+  once per commit (`PERF_GATE_BUILD`), and rebuilds your tree when
+  `dist/build-info.json` is older than a build input. A warm run takes under
+  30 s.
+- **Queue**: timing runs through `heavy-run --exclusive` when it is on PATH.
+  Inside a heavy-run slot (`heavy-run npm run verify`) it runs directly.
+- **On a failure**: make the command faster. If the cost is intended, raise
+  the ceiling and give the reason in the PR. A step above 10% in one PR also
+  needs a `PERF_GATE_ALLOW=<name>:<reason>` line in the budget file; the next
+  PR removes it. An allow line counts when the base budget file does not have
+  the same line (same name and same reason). A line that the base has
+  unchanged is stale: the gate stops before any timing and prints
+  `remove this line from scripts/perf-budget.tsv: <line>`. The skip comes
+  first: a diff with no runtime path still skips and only prints a note about
+  the stale line, so a docs-only PR does not edit the budget file.
+- **New hot-path command**: add its row to the budget file in the same PR.
+  A command whose file does not exist at the base commit gets the ceiling
+  check only. A row cannot leave the file without an allow line.
+- **Exit 1 (a result)**: a command got slower, is over its ceiling, or fails
+  in your tree; a row left the budget file; or an allow line is stale.
+- **No silent pass (exit 2)**: no base commit (run `git fetch origin`, or set
+  `PERF_GATE_BASE=<ref>`; `PERF_GATE_NO_BASE=1` checks the ceilings only), a
+  base checkout at another commit, a failed build, a command that fails at the
+  base, a budget file with no command or no runtime path, an allow line that
+  names no command, a cache lock that another gate holds for too long, or any
+  unexpected error.
+- **The gate script itself**: a PR that changes `scripts/perf-gate.mjs` needs
+  `PERF_GATE_ALLOW=perf-gate:<reason>` in the budget file, or the gate exits 2.
+  The changed script judges its own PR, so the review must see the line.
+- **Settings (env)**: `PERF_GATE_BASE` (ref to compare with),
+  `PERF_GATE_NO_BASE=1` (ceilings only when no base resolves),
+  `PERF_GATE_RUNS` (default 15), `PERF_GATE_WARMUPS` (default 2),
+  `PERF_GATE_LOCK_WAIT` (seconds to wait for the cache lock, default 900),
+  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests),
+  `PERF_GATE_SAMPLES=<file>` (one JSON line per command with every timed
+  `[base, head]` pair in ms, to study the noise), and
+  `XDG_CACHE_HOME` (where the base checkouts live).
+- **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
+  `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
+  `paired_delta_ms`, `over_ceiling_at_base`, and `verdict`. `estimator` names
+  the rule (`min-and-paired-median`), `over_ceiling_at_base` at the top is the
+  count, and `problems` lists each failure as text. A stale allow line prints
+  `{"skipped":false,"ok":false,"problems":[...]}`.
+- **Measured (2026-11-10)**: the perf step in one normal heavy-run slot while
+  other gates ran, 20 clean runs and 20 runs with a seeded slowdown (13 ms
+  more in one hook, about +25% to +35%). The 1-minute load was 6.5 to 36.5 for
+  the clean runs (10 or more for 12 of them) and 5.9 to 10.3 for the seeded
+  runs (10 or more for 1 of them). The three rules were judged on the same samples.
+
+  | Rule | False alarms, 20 clean runs | Caught, 20 seeded runs |
+  |---|---|---|
+  | Two minimums alone | 2 | 20 |
+  | Paired median alone | 1 | 20 |
+  | Both must agree (the gate) | 0 | 20 |
+
+  Not measured: a slowdown of 10% to 15% at load 10 or more.
+- **Base checkouts**: detached worktrees under
+  `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
+  current one, the newest other one, and any used in the last hour are kept.
+  The gate removes only its own worktrees. It unlinks a symlink in the cache
+  and never follows it. It removes a folder only when its own marker
+  (`<commit>.ready`, or `<commit>.building` of a build that did not end) is
+  there; a folder without one is left with a note, or stops the gate (exit 2)
+  when it is in the way of the base checkout.
+- **Field numbers**: the gate measures one machine before a merge. Numbers
+  from real installs will be on the performance dashboard (link: to be added
+  with the telemetry timing events).
 
 ## Weekly metrics share (opt-in)
 

@@ -23,6 +23,7 @@ Other files cite these numbers, so never renumber them.
 13. **Global git hooks are active** — `~/apps/dotfiles/git-hooks/` contains `pre-commit` (secret scanning) and `commit-msg` (conventional commits enforcement). Commit messages MUST match `type(scope): description` or `type: description` (≤72 chars first line). Multi-line messages work if the first line matches. If a hook blocks silently, check with `bash -x ~/apps/dotfiles/git-hooks/commit-msg .git/COMMIT_EDITMSG`. Never use `core.hooksPath=/dev/null` — fix the message instead.
 14. **Publishing requires explicit per-action approval** — any task step that would publish, send, or broadcast to a destination outside `fyodoriv/agentbrew` is blocked until the user explicitly approves that specific action in the current session. Covered: `npm publish`, `gh release create`, creating/commenting/reviewing PRs or issues at ANY external repo (public or private, including any other org's repos), Slack / Teams / email, Jira, pushing to any `github.com/*` repo other than `fyodoriv/agentbrew`, or registering on `skills.sh`. Research, reading, drafting PR bodies, and local testing are NOT publishing. Approval to CLAIM a task is NOT approval to PUBLISH — ask fresh approval at the publish moment. The full policy lives in the file-level `<!-- policy: PUBLISHING REQUIRES EXPLICIT PER-ACTION APPROVAL -->` comment at the top of [`TASKS.md`](TASKS.md); the global External Communication Ban in the global agent instructions covers the same ground.
 15. **Never mock `expandHome` as pure identity when the code under test writes files.** An identity mock (`expandHome: (p) => p`) leaks literal `~` paths into `writeFileSync` / `symlinkSync` / `mkdirSync`, which the OS then resolves against cwd, producing a `./~/` directory in the repo. This pollutes `biome check`, `git status`, and future test runs. Safe alternatives: (a) a tmpdir pattern — mock `expandHome` as `(p) => p.replace(/^~/, mockHome)` where `mockHome` is a `vi.hoisted()` tmpdir created in `beforeAll` and deleted in `afterAll` (see [`src/lint.test.ts:58`](src/lint.test.ts), [`src/sync/skills-sync.test.ts`](src/sync/skills-sync.test.ts)); (b) mock the filesystem-writing callee directly (`vi.mock('./shell-hook.js', ...)` — see [`src/init.test.ts`](src/init.test.ts)). When in doubt, prefer (b) — it's cheaper than managing tmpdirs. The pollution guard (`./~/` exclusion) was removed from `biome.json` once the identity-mock leaks were fixed; adding a new identity mock will re-break verify.
+16. **Performance is a gate** — `npm run perf:gate` must pass. It times each command in `scripts/perf-budget.tsv` in your tree and at the merge-base in the same run. A tracked command may get at most 10% slower in a PR (and never above its ceiling). A new hot-path command joins the budget file in the PR that adds it. An intended larger step needs a `PERF_GATE_ALLOW=<name>:<reason>` line, which the next PR removes. Details: [`docs/observability.md`](observability.md#performance-gate).
 
 ## How each rule is enforced
 
@@ -49,6 +50,7 @@ fails when a rule has no row or a named file is missing.
 | 13 | Hook `hooks/checks/git-commit-conventional.sh` and the global `commit-msg` git hook. |
 | 14 | Hook `hooks/checks/no-cross-workspace-publish.sh` (blocks a PR, fork, or push outside the workspace without approval). |
 | 15 | Advisory: an identity mock is legal when the code under test writes no files. |
+| 16 | Test `src/scripts/perf-gate.test.ts` pins the gate (`scripts/perf-gate.mjs`), which `npm run verify` and `npm run verify:changed` both run. |
 
 ## Frozen agents
 
@@ -100,6 +102,37 @@ no hardcoded secret may reach the repo.** Full design lives in
 `dotfiles/lib/oss-readiness.sh` reads the same `oss-readiness.env` as
 [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).
 Update the overlay file to extend coverage.
+
+## Command and gotcha details
+
+`AGENTS.md` has a size limit, so it keeps these lines short. The full facts:
+
+- **Rule lints**: `npm run lint:rules` skips when it finds no Minsky checkout.
+  It looks in `AGENTBREW_MINSKY_DIR`, then in `~/apps/tooling/minsky`.
+- **Tests for the diff**: `npm test` runs `vitest related` on the changed
+  files. It does not take a folder.
+- **Full gate**: the cache of `npm run verify` is shared between worktrees and
+  is keyed on source files only.
+- **Install e2e**: `npm run test:install-e2e` runs the real
+  `scripts/install.sh` in a scratch HOME.
+- **Repo checkup**: its speed step is the speed review of
+  [`docs/agent-perf.md`](agent-perf.md).
+- **Fast gate order**: `git diff --check "$base"` runs first, then
+  `npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md`, before the later
+  checks.
+- **`src/cli.test.ts` timeout under load**: re-run that file first, before you
+  look for another cause.
+- **`jks-js` stub**: it stays until upstream fixes the `node-forge` dependency.
+- **`gh auth token` and the keyring**: the fix is issue #693.
+- **opencode schema fixture**: refresh it when the upstream schema changes.
+- **vitest `globalSetup` teardown**: an error there only logs; it does not fail
+  the run.
+- **Gotchas**: a gotcha becomes a test or a lint if a machine can check it.
+  Otherwise it goes into `## Gotchas`.
+- **Delivery step 3**: "run `npm run verify`" means the full gate.
+- **Rule 11**: record the gaps you see while you work.
+- **Docs upkeep**: "the routing table" is `## Where to change what` in
+  `AGENTS.md`.
 
 ## Feedback Loop Guardrails
 

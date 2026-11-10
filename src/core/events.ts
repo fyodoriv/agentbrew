@@ -1,5 +1,6 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, closeSync, mkdirSync, openSync, readSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { getLogDir } from "../sync/scheduler-paths.js";
 import { logSkipped } from "./logger.js";
 
@@ -222,13 +223,39 @@ export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
   return out;
 }
 
-/** Append one event. Never throws: a log failure must not break a sync. */
+/**
+ * The log's size cap. A log over MAX_LOG_BYTES is cut to the whole lines in
+ * its newest KEEP_LOG_BYTES, so it never grows without limit. The kept part
+ * holds more than a week of normal use and more than one telemetry backlog.
+ */
+export const MAX_LOG_BYTES = 2 * 1024 * 1024;
+export const KEEP_LOG_BYTES = 1024 * 1024;
+
+/** Cut a log that passed the cap. Reads only the tail; a temp file plus rename replaces the log whole. */
+function trimLog(file: string): void {
+  const { size } = statSync(file);
+  if (size <= MAX_LOG_BYTES) return;
+  const tail = Buffer.alloc(KEEP_LOG_BYTES);
+  const fd = openSync(file, "r");
+  let read = 0;
+  try {
+    read = readSync(fd, tail, 0, KEEP_LOG_BYTES, size - KEEP_LOG_BYTES);
+  } finally {
+    closeSync(fd);
+  }
+  const text = tail.toString("utf-8", 0, read);
+  // The first line is cut in the middle: drop it.
+  writeFileAtomicSync(file, text.slice(text.indexOf("\n") + 1));
+}
+
+/** Append one event, then trim a log that passed the cap. Never throws: a log failure must not break a sync. */
 export function recordEvent(input: AgentbrewEvent): void {
   if (!eventsEnabled()) return;
   const file = eventsFilePath();
   try {
     mkdirSync(dirname(file), { recursive: true });
     appendFileSync(file, `${JSON.stringify(sanitizeEvent(input))}\n`, "utf-8");
+    trimLog(file);
   } catch (e) {
     logSkipped("core/events/appendFileSync", e);
   }

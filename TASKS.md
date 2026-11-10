@@ -299,6 +299,71 @@
 
 ## P2
 
+- [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
+  - **ID**: updates-landed-fixture-wall-clock-limit
+  - **Tags**: tests, flaky, hooks
+  - **Details**: Test 5 of the `updates-landed.sh` hook fixture ("hung script -> silent within 5s") checks a wall-clock limit. On 2026-11-10 it took 11 s and failed inside `heavy-run npm run verify`, on a branch that does not touch `hooks/`: heavy-run had paused the slot under memory pressure, and the pause counts as test time. A plain rerun passed. Judge the hook by what it does (it stops waiting for the hung script and prints nothing), not by the wall clock of the whole test, or measure only the hook's own timeout.
+  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh`
+  - **Output**: code
+  - **Acceptance**: the fixture passes when the test process is stopped for 10 s in the middle of Test 5 (`kill -STOP`, then `kill -CONT`), and still fails when the hook waits for the hung script without a limit.
+  - **Hypothesis**: a check that does not count paused time moves the failures of Test 5 under a 10 s pause from 1 of 1 to 0 of 10.
+  - **Measurement**: a test that runs the fixture 10 times with a 10 s `kill -STOP` pause in Test 5, plus one run with the hook's timeout removed.
+  - **Success**: 0 failures in 10 paused runs, and the run without the timeout fails.
+  - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
+  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The perf gate's catch rate for small slowdowns under load is measured
+  - **ID**: perf-gate-marginal-slowdown-detection-under-load
+  - **Tags**: perf, tests
+  - **Details**: The 2026-11-10 measurement of the perf gate (`docs/observability.md`, "Performance gate") seeded a slowdown of 25% to 35% and ran the seeded runs at load 6.0 to 9.3. Two things are unknown. First: how often the gate catches a slowdown of 10% to 15% when the 1-minute load is 10 or more; the paired median must clear the same limit as the minimums, and noise can hide a small step. Second: a slowdown that hits only some runs (two modes, for example every third run takes 30% more) moves neither the minimum nor the median, so both rules miss it. Measure the first with `PERF_GATE_SAMPLES`. For the second, decide by measurement whether a high-quantile rule (for example the 90th percentile of the paired differences) catches it without new false alarms.
+  - **Files**: `scripts/perf-gate.mjs`, `src/scripts/perf-gate.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: `docs/observability.md` has a dated table with the catch rate for a seeded +12% step at load 10 or more (20 runs) and the false alarms of 20 clean runs at the same load; and a test pins what the gate does with a two-mode slowdown (caught, or a documented limit).
+  - **Hypothesis**: at load 10 or more, the gate catches a seeded +12% slowdown in 18 or more of 20 in-gate runs, with 0 false alarms in 20 clean runs.
+  - **Measurement**: 20 clean and 20 seeded runs of `PERF_GATE_SAMPLES=<file> node scripts/perf-gate.mjs --force` in a normal heavy-run slot with a busy loop that holds the load at 10 or more; record the load per run.
+  - **Success**: 18 or more of 20 seeded runs caught, and 0 false alarms in 20.
+  - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
+  - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
+
+- [ ] A command that throws or exits early still records its event
+  - **ID**: telemetry-event-on-throw-or-early-exit
+  - **Tags**: telemetry, cli
+  - **Details**: The `command` event is written in the Commander `postAction` hook (`recordCommandEvents` in `src/cli.ts`). A command that throws, or that calls `process.exit` in its action, never reaches that hook, so it records no event. The failures that matter most are then missing from the event log, and the error rate that telemetry and `scripts/metrics.sh` report is too low. Record the event on these paths too (for example from the `unhandledRejection` and `uncaughtException` handlers and a `process.on("exit")` guard), with `ok: false`, and never twice for one run.
+  - **Files**: `src/cli.ts`, `src/core/events.ts`, `src/cli.test.ts`
+  - **Output**: code
+  - **Acceptance**: a test runs a command that throws and a command that exits early with a non-zero code; each writes exactly one `command` event with `ok: false`. A command that ends normally still writes exactly one.
+  - **Hypothesis**: recording on the error and exit paths moves the share of failed command runs that leave an event from 0 of 2 failure paths to 2 of 2.
+  - **Measurement**: `npx vitest run src/cli.test.ts -t "records a command event when the command throws or exits early"`
+  - **Success**: both failure paths record exactly one event (2 of 2), and the normal path still records exactly one.
+  - **Pivot**: if one path cannot record without a second event on normal runs, record only from the error handlers and document the early-exit gap in `docs/observability.md`.
+  - **Anchor**: Forsgren, Humble, Kim 2018 (change failure rate needs complete failure data); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] Telemetry is sent even when the user never runs `sync`
+  - **ID**: telemetry-auto-send-beyond-sync
+  - **Tags**: telemetry, cli
+  - **Details**: The daily send starts only at the end of `agentbrew sync` (`handleSyncCommand` in `src/cli.ts` calls `startDailySend`). A machine that runs other commands (`status`, `update`, the scheduled repair) and never a plain sync sends nothing, so the public numbers miss those installs. Start the due check from the shared `postAction` hook for every non-quiet command, or from the scheduled repair. The check must stay cheap: no network and no Keychain lookup on each command.
+  - **Files**: `src/cli.ts`, `src/core/telemetry-auto.ts`, `src/core/telemetry.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: with a stored yes, a key, and no attempt in the last day, a non-sync command starts the detached send once; a second command in the same day starts none; a quiet command (`--json`, `completions`, `hook`) starts none.
+  - **Hypothesis**: starting the due check after every non-quiet command moves the command paths that can start the daily send from 1 (`sync`) to all non-quiet commands, and the due check takes under 5 ms when no send is due.
+  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "a non-sync command starts the daily send"`
+  - **Success**: the test passes, and the measured due-check time is under 5 ms.
+  - **Pivot**: if the due check takes 5 ms or more, start the send only from the scheduled repair and from `sync`.
+  - **Anchor**: Kohavi, Tang, Xu 2020 (sample ratio and coverage bias in telemetry); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] Two terminals never show the telemetry question at the same time
+  - **ID**: telemetry-consent-question-lock
+  - **Tags**: telemetry, consent
+  - **Details**: The send lock (`acquireLock` in `src/core/telemetry.ts`) covers a send, not the consent question. Two commands that end at the same time in two terminals can both show the question, and both add to `askCount`, so one moment uses two of the allowed asks. The answers cannot conflict in a harmful way (the last saved answer wins, and a no stops every send), but the double question is noise. Take a lock around the question, with a longer stale time than the send lock because a person may take a while to answer.
+  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: while one process shows the question, a second `askOnFirstRun` shows nothing and does not change `askCount`; after the first one ends, the lock is gone.
+  - **Hypothesis**: a question lock moves the questions shown by two commands that end together from 2 to 1.
+  - **Measurement**: `npx vitest run src/core/telemetry.test.ts -t "only one process shows the consent question"`
+  - **Success**: exactly 1 question for two concurrent callers, and `askCount` rises by 1.
+  - **Pivot**: if a lock can leave a person with no question after a crash for more than a day, drop the lock and make `askCount` and `askedAt` a compare-and-set instead.
+  - **Anchor**: Munafò et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
 - [ ] Decide whether pull requests must carry a Vision trace block
   - **ID**: decide-pr-vision-trace-gate
   - **Tags**: ci, docs, process
@@ -312,34 +377,6 @@
   - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
-
-- [ ] Teach the run-goal skill that agentbrew now has hosted CI
-  - **ID**: run-goal-skill-hosted-ci-wording
-  - **Tags**: skills, ci, docs
-  - **Mode**: AFK
-  - **Details**: GitHub Actions now runs `npm run verify` on every pull request ([`docs/ci.md`](docs/ci.md)). The run-goal skill and four of its evals still describe a repo with no CI and tell the agent to merge on the local gate alone. The text stays correct for repos without CI, but it must also say what to do when hosted checks exist: wait for the check, read the log on a failure, and never merge on a red or pending check. The session that owns the run-goal retro makes this edit; the hosted-CI change did not touch the skill on purpose.
-  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/evals/evals.json`
-  - **Output**: mixed
-  - **Acceptance**: The skill names both cases (hosted checks present, no hosted checks). One new eval covers a repo with a pending hosted check, and the agent waits for it.
-  - **Hypothesis**: one explicit rule moves merges made while a hosted check is red or pending from an unknown number to 0 of the next 10 goal merges.
-  - **Measurement**: `gh pr list --state merged -L 10 --json number,statusCheckRollup --jq '[.[]|select(any(.statusCheckRollup[]?; .conclusion!="SUCCESS" and .conclusion!="SKIPPED" and .conclusion!="NEUTRAL"))]|length'`
-  - **Success**: 0 of 10.
-  - **Pivot**: 2 or more of 10 means the rule is not loaded at merge time; move the check into a deterministic hook instead of skill text.
-  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
-
-- [ ] Make the launchagent queue test Q01 pass under machine load
-  - **ID**: launchagent-queue-q01-load-timeout
-  - **Tags**: tests, reliability
-  - **Mode**: AFK
-  - **Details**: On 2026-11-09 `src/sync/launchagent-queue.test.ts` test Q01 ("keeps repair behind selected queue admission") failed 3 of 3 full-gate runs with `expected 124 to be +0` while the load average was 25 to 30. It passed 12 of 12 runs under `heavy-run --exclusive` at load 8.5. Exit 124 is the 3.5-second timer inside the test's own fixture queue, so the test measures machine speed, not queue order. Replace the wall-clock limit with an ordering assertion, or wait on an explicit ready signal.
-  - **Files**: `src/sync/launchagent-queue.test.ts`
-  - **Output**: code
-  - **Acceptance**: Q01 passes 20 of 20 runs while a second full gate runs on the same machine, and it still fails when the queue admission order is broken on purpose.
-  - **Hypothesis**: removing the fixed 3.5-second timer moves Q01 failures under load from 3 of 3 to 0 of 20.
-  - **Measurement**: `for i in $(seq 20); do npx vitest run src/sync/launchagent-queue.test.ts -t Q01 >/dev/null 2>&1 || echo fail; done | wc -l`, run while `heavy-run npm run verify` runs in a second worktree.
-  - **Success**: 0 failures of 20.
-  - **Pivot**: 2 or more failures of 20 means the queue itself is slow under load, not only the test; measure queue admission time and file that as its own task.
-  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests (async wait is the top cause).
 
 - [ ] Move the hosted Linux job back to ubuntu-latest when Playwright supports it
   - **ID**: ci-ubuntu-latest-playwright
@@ -922,6 +959,19 @@
   - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
 
 ## P3
+
+- [ ] A dead takeover guard cannot let two telemetry sends hold the lock
+  - **ID**: telemetry-stale-guard-removal-race
+  - **Tags**: telemetry, concurrency
+  - **Details**: A stale send lock is replaced only by the process that makes the guard file `telemetry.json.lock.steal` (`takeOverStale` in `src/core/telemetry.ts`). A guard that a dead process left is removed after 60 seconds, with a `stat` and then a delete. Those two steps are not one step. If a process died during a takeover, and later several sends start in the same moment, one of them can delete a guard that another one just made. Two processes can then both replace the lock. The check before every request (`lock lost`) limits the harm to one batch. Close the gap: remove a stale guard with an atomic step (for example rename it to a unique name and check the age of what was moved), or use an OS file lock.
+  - **Files**: `src/core/telemetry.ts`, `src/core/telemetry.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: a test with real processes starts many sends at once against a stale lock and a stale guard; the test server gets each event exactly once.
+  - **Hypothesis**: an atomic guard removal moves the duplicate events in a many-process race on a stale lock with a stale guard from "possible" to 0 in 200 rounds.
+  - **Measurement**: `npx vitest run src/core/telemetry-race.test.ts`
+  - **Success**: 0 duplicate events in 200 rounds of 8 concurrent senders.
+  - **Pivot**: if a file-only design still shows 1 or more duplicates, give each batch an id and let the server drop repeats.
+  - **Anchor**: Kleppmann 2016, "How to do distributed locking" (a lock with a timeout needs a fencing check); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
 - [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
   - **ID**: workflow-authoring-guard-budget-upstream

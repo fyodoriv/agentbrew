@@ -1104,7 +1104,7 @@ Skills marked with `metadata.internal: true` are hidden unless the env var is se
 
 ### Gap 8: Telemetry-backed popularity signals
 
-Skills CLI's telemetry (opt-out) feeds the skills.sh leaderboard, which gives users a real signal about skill adoption. Agentbrew has no telemetry, so catalog entries can't be ranked by usage.
+Skills CLI's telemetry (opt-out) feeds the skills.sh leaderboard, which gives users a real signal about skill adoption. Agentbrew's telemetry (asked at install, on only after a yes, since 2026-11-09) sends performance numbers only, never a skill name, so catalog entries can't be ranked by usage.
 
 ---
 

@@ -297,7 +297,34 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
+- [ ] The perf gate does not fail a clean tree under load
+  - **ID**: perf-gate-false-alarm-rate-under-load
+  - **Tags**: perf, gate, stability
+  - **Details**: On 2026-11-09, 1 of 5 clean runs of `node scripts/perf-gate.mjs` failed in a non-exclusive `heavy-run` slot at load average 10 to 14: `hook-poll-loop-hint` 96.5 ms -> 107.7 ms (+11.6%), after the confirm rounds. In an exclusive slot, 0 of 5 clean runs failed. Inside `heavy-run npm run verify` the step runs non-exclusive, so a clean PR can fail its gate.
+  - **Files**: `scripts/perf-gate.mjs`, `src/scripts/perf-gate.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: the gate passes 20 of 20 clean runs in a non-exclusive `heavy-run` slot under load, and still fails 20 of 20 runs with a seeded 20% slowdown.
+  - **Hypothesis**: a final confirm round in an exclusive slot, or a load-aware retry, cuts false alarms from 1 of 5 to 0 of 20 without a missed seeded 20% slowdown in 20 of 20.
+  - **Measurement**: `heavy-run bash -c 'for i in $(seq 20); do node scripts/perf-gate.mjs --force >/dev/null 2>&1; echo "clean $i exit=$?"; done'` on a clean tree, then the same loop with `sleep 0.013` added at the top of `hooks/checks/no-home-crawl.sh`.
+  - **Success**: 0 of 20 clean runs exit 1, and 20 of 20 seeded runs exit 1.
+  - **Pivot**: more than 1 of 20 clean runs fails, or a seeded run passes -> change the estimator (for example a paired median of differences) instead of adding retries.
+  - **Anchor**: Mytkowicz et al. 2009 (measurement bias); Chen and Revels 2016 (minimum estimator); fyodoriv/agentbrew#921 measurement.
+
 ## P2
+
+- [ ] Decide whether pull requests must carry a Vision trace block
+  - **ID**: decide-pr-vision-trace-gate
+  - **Tags**: ci, docs, process
+  - **Mode**: HITL
+  - **Details**: `.github/workflows/pr-vision-trace.yml` failed every pull request that had no `Vision trace` block. No recent pull request body has one, so the workflow is parked: it starts only by hand. The owner decides: restore the `pull_request` trigger and add the block to the PR template and agent rules, or delete the workflow, its script and its test.
+  - **Files**: `.github/workflows/pr-vision-trace.yml`, `scripts/check-pr-vision-trace.mjs`, `.github/PULL_REQUEST_TEMPLATE.md`
+  - **Output**: mixed
+  - **Acceptance**: The workflow either runs on every pull request and passes on a body written from the template, or it is gone with its script and test.
+  - **Hypothesis**: one clear rule moves the share of merged pull requests that match the declared trace policy from 0 of the last 6 to 6 of the next 6.
+  - **Measurement**: `gh pr list --state merged -L 6 --json body --jq '[.[]|.body|test("Vision trace")]|map(select(.))|length'`
+  - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
+  - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
 
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness

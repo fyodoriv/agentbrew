@@ -231,7 +231,7 @@ describe("perf gate scope", () => {
 
 describe("perf gate runs", () => {
   it("gives the commands a scratch HOME and not the caller's environment", () => {
-    const check = `[ -z "\${SECRET_THING:-}" ] && [ "$DO_NOT_TRACK" = 1 ] && [ "$AGENTBREW_EVENTS" = 0 ] && [ "$HOME" != "${process.env.HOME}" ]`;
+    const check = `[ -z "\${SECRET_THING:-}" ] && [ "$DO_NOT_TRACK" = 1 ] && [ "$AGENTBREW_EVENTS" = 0 ] && [ "$AGENTBREW_TELEMETRY" = 0 ] && [ "$AGENTBREW_EVENTS_FILE" = "$HOME/events.jsonl" ] && [ "$HOME" != "${process.env.HOME}" ]`;
     writeFileSync(join(fix, "tool.sh"), `#!/bin/sh\n${check}\n`);
     const result = gate([], { SECRET_THING: "x" });
     expect(result.status, result.all).toBe(0);

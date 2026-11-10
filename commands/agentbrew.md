@@ -3,7 +3,7 @@ description: Start agentbrew (agent config state, what needs you, next step) and
 allowed-tools: Bash(agentbrew:*)
 ---
 
-Run `agentbrew` with no arguments. If `agentbrew` is not on PATH, run `npx agentbrew`. It is safe and fast: it reads local files only, makes no network calls, and changes nothing. It prints the agents, MCP servers, skills, last sync, drift, and the drift-repair job, then a `Next:` line with the exact command and a `Then:` list.
+Run `agentbrew` with no arguments. If `agentbrew` is not on PATH, run `npx agentbrew`. It is safe and fast: it reads local files only, makes no network calls, and changes no agent config. In a person's own terminal it may ask the telemetry question (`[y/n]`, only when a project key is present, at most 3 times); an agent run never sees it. It prints the agents, MCP servers, skills, last sync, drift, and the drift-repair job, then a `Next:` line with the exact command and a `Then:` list.
 
 Then, answer first:
 
@@ -27,6 +27,8 @@ Every other action: run `agentbrew actions --json`. It lists every command (gene
 - `terminal_only`: only the user can run it. Give them the exact command for their own terminal.
 - `confirm`: it is hard to undo. Say what it changes, and run it only after the user says yes.
 - `agent_note`: what you must do differently, for example a `--dry-run` to show first.
+
+When the user asks what agentbrew sends, or wants telemetry on or off ("does agentbrew phone home?", "stop the tracking"): run `agentbrew telemetry status` and `agentbrew telemetry send --dry-run` and show both. Run `agentbrew telemetry off` or `agentbrew telemetry on` only after the user gives that answer themselves; `on` prints one example event and the privacy promise, so show them. Nothing is sent unless the user said yes. PostHog sees the request IP address like any web server; the location lookup is off.
 
 If agentbrew fails, surprises you, or could clearly work better, offer once to report it (CONTRIBUTING.md "Report problems and ideas"). Show the user the exact text, and post only after they say yes.
 

@@ -50,7 +50,8 @@
 // - This tree is rebuilt first when its build output is older than a build
 //   input, so the gate never times a stale dist/.
 // - Every run gets a small fixed environment (PATH, a scratch HOME, TMPDIR,
-//   AGENTBREW_EVENTS=0, DO_NOT_TRACK=1), so no event, telemetry, or hook log
+//   AGENTBREW_EVENTS=0, AGENTBREW_TELEMETRY=0, DO_NOT_TRACK=1, and
+//   AGENTBREW_EVENTS_FILE in the scratch HOME), so no event, telemetry, or hook log
 //   reaches the real HOME.
 // - Timing runs through `heavy-run --exclusive` when heavy-run is on PATH.
 //   Inside a heavy-run slot (HEAVY_RUN_SLOT is set, as in `heavy-run npm run
@@ -500,7 +501,10 @@ function printProblems(problems) {
 
 function timeRows(plan, scratch) {
   const env = { PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: join(scratch, "home"), TMPDIR: tmpdir() };
-  Object.assign(env, { AGENTBREW_EVENTS: "0", DO_NOT_TRACK: "1" });
+  // No event and no telemetry in a timed run. If a switch ever fails, the log stays in the scratch HOME.
+  const eventLog = join(env.HOME, "events.jsonl");
+  Object.assign(env, { AGENTBREW_EVENTS: "0", AGENTBREW_TELEMETRY: "0", DO_NOT_TRACK: "1" });
+  Object.assign(env, { AGENTBREW_EVENTS_FILE: eventLog });
   mkdirSync(env.HOME);
   const result = { rows: [], problems: [...plan.problems], errors: [] };
   plan.commands.forEach((command, index) => {

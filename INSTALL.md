@@ -73,10 +73,33 @@ Ask these together, in one round:
    sends email or changes business data." No: prompts off (default) / Yes:
    keep prompts.
 
+5. "Share anonymous performance numbers? agentbrew can send the command
+   name, its duration, ok or error, counts, its version, your OS and CPU
+   type, and a random install id to PostHog EU, for a public speed dashboard.
+   Never a path, file name, host name,
+   user name, argument, message, or content.
+   No IP-based location. No person profile. PostHog sees the request's IP
+   address, like any web server; the location lookup is off."
+   Show one example event from the README "Telemetry" section. Yes / No.
+   Nothing is sent unless the user says yes.
+
 Map the answers to flags: No to 1 → `--no-recommended`, No to 2 →
 `--no-auto-repair`, No to 3 → `--no-shell-hook`, Yes to 4 →
 `--keep-claude-permissions` (it runs `agentbrew config set
 claudePermissions keep` before setup).
+
+For question 5: No → `--no-telemetry`. Yes → after the install, run
+`agentbrew telemetry on` (it records the yes and prints the example and the
+promise; show them). No answer → pass nothing: the answer stays unset,
+nothing is sent, and the user is asked in their own terminal (at most once a
+day, at most 3 times). With no project key in the build (the default today)
+nobody is asked and the installer prints nothing about telemetry; skip
+question 5 then (`agentbrew telemetry status` shows `key: none`). A person
+who runs the installer in a terminal is asked there, as its last step
+(`[Y/n]`, Enter counts as yes). A re-install never asks again and never
+changes a stored answer; only `--no-telemetry` at a re-install turns a yes
+into a no. Full contract:
+[`docs/observability.md`](docs/observability.md#field-telemetry).
 
 With `--no-recommended`, setup downloads nothing: it fetches no catalog
 sources and installs no skills, not even the ones an Agentfile lists. Add

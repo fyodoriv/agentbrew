@@ -171,7 +171,8 @@ function tallyEvent(t: Tally, row: Record<string, unknown>): void {
       t.driftRepaired += Number(row.repaired) || 0;
       break;
     case "command":
-      t.commands += 1;
+      // Only commands that serve a user story count; the log now holds every command run.
+      if (typeof row.story === "string") t.commands += 1;
       break;
     case "error":
       if (typeof row.story === "string" && /^US\d{2}$/.test(row.story)) {

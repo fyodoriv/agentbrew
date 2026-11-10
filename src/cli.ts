@@ -466,23 +466,35 @@ export function buildProgram(): Command {
     });
   program
     .command("telemetry")
-    .description("Anonymous usage counts to PostHog EU: status, on, off, or send (--dry-run shows what would go)")
-    .argument("<action>", "status | on | off | send")
-    .option("--dry-run", "print the batch and send nothing")
+    .description(
+      "Anonymous performance numbers to PostHog EU, only after you say yes: status, on, off, ask, or send (--dry-run shows what would go)",
+    )
+    .argument("<action>", "status | on | off | ask | send")
+    .option("--dry-run", "print the next request body and send nothing")
     .action(async (action: string, options: { dryRun?: boolean }) => {
       const t = await import("./core/telemetry.js");
-      if (action === "on" || action === "off") t.setEnabled(action === "on");
-      if (action === "send") {
-        console.log(JSON.stringify(await t.send(version, options), null, 2));
-        return;
-      }
-      if (!["status", "on", "off"].includes(action)) {
-        console.error(`unknown action ${action}: use status, on, off, or send`);
+      if (!["status", "on", "off", "ask", "send"].includes(action)) {
+        console.error(`unknown action ${action}: use status, on, off, ask, or send`);
         process.exitCode = 2;
         return;
       }
-      const st = t.status();
-      console.log(`telemetry: ${st.on ? "on" : "off"} (${st.reason}), ${st.pending} event(s) pending`);
+      if (action === "send") {
+        console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
+        return;
+      }
+      if (action === "ask") {
+        // The installer's consent question. It never asks twice; only an opt-out (--no-telemetry)
+        // changes a stored answer. With no project key it prints nothing.
+        const { line } = await t.askConsent(version, { install: true });
+        if (line) console.log(line);
+        return;
+      }
+      if (action === "on") {
+        t.setConsent("yes");
+        console.log(t.consentText(version));
+      }
+      if (action === "off") t.setConsent("no");
+      console.log(telemetryStatusLine(t.status()));
     });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);
@@ -506,7 +518,10 @@ export function buildProgram(): Command {
   return program;
 }
 
-/** One content-free `command` event per top-level command that serves a user story. */
+/**
+ * One content-free `command` event per command run: the top-level command
+ * name (never an argument), ok, and wall time. Every command passes through here.
+ */
 function recordCommandEvents(program: Command): void {
   let started = 0;
   program.hook("preAction", (_root, action) => {
@@ -518,12 +533,39 @@ function recordCommandEvents(program: Command): void {
     }
     started = Date.now();
   });
-  program.hook("postAction", (_root, action) => {
+  program.hook("postAction", async (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
-    const story = storyForCommand(top.name());
-    if (story) recordEvent({ event: "command", story, ok: !process.exitCode, ms: Date.now() - started });
+    const command = top.name();
+    recordEvent({
+      event: "command",
+      command,
+      story: storyForCommand(command),
+      ok: !process.exitCode,
+      ms: Date.now() - started,
+    });
+    // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
+    if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
+      const t = await import("./core/telemetry.js");
+      await t.askOnFirstRun(version, { command, argv: process.argv.slice(2) });
+    }
   });
+}
+
+function telemetryStatusLine(st: {
+  on: boolean;
+  reason: string;
+  consent: string;
+  consentAt?: string;
+  keySource: string;
+  pending: number;
+  lastSend?: string;
+}): string {
+  const answered = st.consentAt ? ` (answered ${st.consentAt})` : "";
+  return (
+    `telemetry: ${st.on ? "on" : "off"} (${st.reason}); consent: ${st.consent}${answered}; key: ${st.keySource}; ` +
+    `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}`
+  );
 }
 
 export function isCliEntrypoint(moduleUrl: string, argvPath = process.argv[1]): boolean {

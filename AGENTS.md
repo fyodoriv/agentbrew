@@ -85,7 +85,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
-- [Hosted CI](docs/ci.md) runs `npm run verify` on PRs. [Perf limits](docs/agent-perf.md).
+- [Hosted CI](docs/ci.md) gates PRs. [Perf limits](docs/agent-perf.md).
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
 - `src/cli.test.ts` can time out under load; re-run it first.

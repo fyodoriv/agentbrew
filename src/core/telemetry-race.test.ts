@@ -81,12 +81,15 @@ function startSender(url: string): Sender {
 }
 
 /** A round's files: a few events, a stored yes, a lock a dead send left, and a guard a dead takeover left. */
+// Ten minutes ago on the real clock, so every round is in the past: a send skips events older than its backlog limit.
+const SEED_START = Date.now() - 600_000;
+
 function seedRound(round: number): string {
   const dir = join(home, `round-${round}`);
   mkdirSync(dir);
   const rows = Array.from({ length: EVENTS_PER_ROUND }, (_, i) =>
     JSON.stringify({
-      ts: new Date(Date.UTC(2026, 10, 9, 12, 0, 0) + round * 1000 + i).toISOString(),
+      ts: new Date(SEED_START + round * 1000 + i).toISOString(),
       event: "command",
       command: "status",
       ok: true,

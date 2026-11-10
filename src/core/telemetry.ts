@@ -694,6 +694,13 @@ function removeStaleGuard(guard: string, token: string): void {
   }
 }
 
+/** How long an owner reads a lock that is gone again before the lock counts as lost, and the step. */
+const LOCK_GONE_WAIT_MS = 2000;
+const LOCK_GONE_STEP_MS = 2;
+
+/** A test seam of the lock takeover; the argument names the point it runs at. */
+type LockSeam = (at: "stale-guard" | "guard-held") => void;
+
 /**
  * Replace a stale lock. Only one process at a time may do this: the one that
  * makes the guard file. Under the guard it checks again that the lock is the
@@ -701,16 +708,17 @@ function removeStaleGuard(guard: string, token: string): void {
  * moment before. The swap itself checks that too: the lock is moved away (one
  * step), compared with the dead one, and the new lock is made with a hard
  * link, which fails when another lock is there. `seam` is for tests: it runs
- * between the sight of a stale guard and its removal.
+ * between the sight of a stale guard and its removal ("stale-guard"), and
+ * right after this process made the guard ("guard-held").
  */
-function takeOverStale(file: string, token: string, staleMs: number, seam?: () => void): boolean {
+function takeOverStale(file: string, token: string, staleMs: number, seam?: LockSeam): boolean {
   if (!staleFile(file, staleMs)) return false;
   const dead = readFileSync(file, "utf-8");
   const guard = `${file}.steal`;
   if (!createOnce(guard, token)) {
     // A guard left by a dead process is removed. This send stops; the next one tries again.
     if (staleFile(guard)) {
-      seam?.();
+      seam?.("stale-guard");
       removeStaleGuard(guard, token);
     }
     return false;
@@ -718,6 +726,7 @@ function takeOverStale(file: string, token: string, staleMs: number, seam?: () =
   const mine = `${file}.${token.replace(" ", ".")}`;
   const moved = `${mine}.old`;
   try {
+    seam?.("guard-held");
     if (!staleFile(file, staleMs) || readOrUndefined(file) !== dead) return false;
     writeFileSync(mine, token, { mode: 0o600 });
     renameSync(file, moved);
@@ -746,14 +755,19 @@ function takeOverStale(file: string, token: string, staleMs: number, seam?: () =
 export function acquireLock(
   file = `${statePath()}.lock`,
   staleMs = LOCK_STALE_MS,
-  seam?: () => void,
+  seam?: LockSeam,
 ): SendLock | undefined {
   const token = `${process.pid} ${randomUUID().replace(/-/g, "")}`;
+  // A takeover in another process moves the lock aside to compare it. A live lock goes back a
+  // moment later, so a lock that is gone is read again for a short time before it counts as lost.
+  // Without the wait, the owner would stop and its lock would belong to no process until it is stale.
   const holds = (): boolean => {
-    try {
-      return readFileSync(file, "utf-8") === token;
-    } catch {
-      return false;
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    for (let waited = 0; ; waited += LOCK_GONE_STEP_MS) {
+      const text = readOrUndefined(file);
+      if (text !== undefined) return text === token;
+      if (waited >= LOCK_GONE_WAIT_MS) return false;
+      Atomics.wait(pause, 0, 0, LOCK_GONE_STEP_MS);
     }
   };
   const release = (): void => {

@@ -1132,6 +1132,26 @@ describe("field telemetry", () => {
       expect(readFileSync(lock, "utf-8")).toBe(live);
     });
 
+    it("under its own guard, a takeover leaves a lock that another send made a moment before", () => {
+      const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
+      const old = new Date(Date.now() - 10 * 60_000);
+      const live = `3 ${"e".repeat(32)}`;
+      // The other send's lock is fresh, then (second case) old on the clock but not the dead one.
+      for (const age of [undefined, old]) {
+        writeFileSync(lock, `1 ${"c".repeat(32)}`);
+        utimesSync(lock, old, old);
+        const result = acquireLock(lock, undefined, (at) => {
+          if (at !== "guard-held") return;
+          writeFileSync(lock, live);
+          if (age) utimesSync(lock, age, age);
+        });
+        expect(result).toBeUndefined();
+        expect(readFileSync(lock, "utf-8")).toBe(live);
+        expect(existsSync(`${lock}.steal`)).toBe(false);
+        rmSync(lock);
+      }
+    });
+
     it("a send that lost its lock stops before the next request", async () => {
       const lock = `${process.env.AGENTBREW_TELEMETRY_STATE}.lock`;
       writeLog(Array(BATCH_SIZE * 2).fill(row(new Date(NOW).toISOString())));

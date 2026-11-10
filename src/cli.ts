@@ -470,7 +470,7 @@ export function buildProgram(): Command {
     )
     .argument("<action>", "status | on | off | ask | send")
     .option("--dry-run", "print the next request body and send nothing")
-    .addOption(new Option("--auto", "the daily send that a sync starts: quiet, with a hard time limit").hideHelp())
+    .addOption(new Option("--auto", "the daily send that a command starts: quiet, with a hard time limit").hideHelp())
     .action(async (action: string, options: { dryRun?: boolean; auto?: boolean }) => {
       const t = await import("./core/telemetry.js");
       if (!["status", "on", "off", "ask", "send"].includes(action)) {
@@ -547,6 +547,8 @@ function closeCommandEvent(ok: boolean): void {
  * It is synchronous, as an exit listener must be. Exported for tests.
  */
 export function recordCommandEventAtExit(code: number): void {
+  // The watcher runs for hours and ends itself: its uptime is not a command duration.
+  if (openCommand?.command === "auto-sync") return;
   closeCommandEvent(code === 0);
 }
 
@@ -587,7 +589,7 @@ async function telemetrySend(
   t: typeof import("./core/telemetry.js"),
   options: { dryRun?: boolean; auto?: boolean },
 ): Promise<void> {
-  // The detached process a sync starts: quiet, and it ends itself.
+  // The detached process a command starts: quiet, and it ends itself.
   if (options.auto) return (await import("./core/telemetry-auto.js")).runAutoSend(version);
   console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
 }

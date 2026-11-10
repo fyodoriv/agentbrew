@@ -165,7 +165,7 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 | Event | When | Fields | Story |
 |---|---|---|---|
 | `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
-| `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event with `ok: false` (a process `exit` listener writes it); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
+| `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event, and its `ok` follows the exit code (a process `exit` listener writes it; the long-running `auto-sync` watcher is left out); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
 

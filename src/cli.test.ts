@@ -335,6 +335,8 @@ describe("command events", () => {
       await runStatus(() => {
         throw new Error("the command failed");
       });
+      // The real wiring: the program put the listener on the process `exit` event.
+      expect(process.listeners("exit")).toContain(recordCommandEventAtExit);
       expect(commandEvents()).toEqual([expect.objectContaining({ command: "status", ok: false })]);
 
       await runStatus(() => process.exit(3));

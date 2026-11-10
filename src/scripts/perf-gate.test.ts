@@ -123,6 +123,43 @@ describe("perf gate verdicts", () => {
     expect(result.stdout).toMatch(/tool\s+base.*head.*ok/);
   });
 
+  it("passes when only one lucky base run is faster: the paired runs decide, not the two minimums", () => {
+    // The base tool is fast once (its first run), then as slow as the head tool.
+    const lucky = '#!/bin/sh\nn=$(cat "$HOME/n" 2>/dev/null || echo 0)\necho $((n + 1)) > "$HOME/n"\n';
+    writeFileSync(join(fix, "tool.sh"), `${lucky}[ "$n" = 0 ] && exec sleep 0.03\nsleep 0.10\n`);
+    commit("a base with one fast run");
+    git("branch", "-q", "-f", "main", "work");
+    tool("0.10");
+    const samples = join(dir, "samples.jsonl");
+    const result = gate(["--json"], { PERF_GATE_RUNS: "5", PERF_GATE_SAMPLES: samples });
+    expect(result.status, result.all).toBe(0);
+    const report = JSON.parse(result.stdout);
+    expect(report.estimator).toBe("min-and-paired-median");
+    const [row] = report.commands;
+    // The minimums alone say "slower" (the old verdict); the pairs say "same".
+    expect(row.ratio).toBeGreaterThan(1.5);
+    expect(Math.abs(row.paired_delta_ms)).toBeLessThan(30);
+    expect(row.verdict).toBe("ok");
+    expect(result.stderr).toContain("tool: the fastest runs differ");
+    expect(result.stderr).toContain("load noise, not a slowdown");
+
+    const [line] = readFileSync(samples, "utf-8").trim().split("\n");
+    const dump = JSON.parse(line ?? "{}");
+    expect(dump.name).toBe("tool");
+    expect(dump.pairs).toHaveLength(5);
+    expect(dump.pairs[0]).toHaveLength(2);
+  });
+
+  it("reports the paired difference of a real slowdown", TIMING, () => {
+    tool(SLOW);
+    const result = gate(["--json"], { PERF_GATE_RUNS: "5" });
+    expect(result.status, result.all).toBe(1);
+    const [row] = JSON.parse(result.stdout).commands;
+    expect(row.verdict).toBe("slower");
+    expect(row.paired_delta_ms).toBeGreaterThan(30);
+    expect(result.stderr).toMatch(/tool got slower: .*paired runs: \+\d/);
+  });
+
   it("fails when the command is over its ceiling", () => {
     budget("tool\t50\tsh tool.sh");
     const result = gate();

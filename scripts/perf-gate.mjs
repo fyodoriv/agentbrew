@@ -8,13 +8,15 @@
 // same verdict on any machine.
 //
 // A command fails when
-//   head_min > base_min * 1.10  AND  head_min - base_min > 3 ms   (slower), or
+//   head_min > base_min * 1.10  AND  head_min - base_min > 3 ms, AND the
+//   paired runs agree (see "Timing choices")                      (slower), or
 //   head_min > its ceiling in the budget file                     (over-ceiling).
 // A command whose file does not exist at the base commit is "new": only the
 // ceiling applies. Any other problem on the base side is a setup error.
 //
 // Usage: node scripts/perf-gate.mjs [--json] [--force]     (npm run perf:gate)
-//   --json   print one JSON object (per command: base_min, head_min, ratio, verdict)
+//   --json   print one JSON object (per command: base_min, head_min, ratio,
+//            paired_delta_ms, verdict)
 //   --force  time the commands even when the diff touches no runtime path
 // Exit: 0 pass or skipped, 1 a command is slower or over its ceiling, 2 setup error.
 //
@@ -25,6 +27,8 @@
 //   PERF_GATE_WARMUPS    untimed runs per tree first (default 2)
 //   PERF_GATE_HEAVY_RUN  0 = never call heavy-run (tests)
 //   PERF_GATE_LOCK_WAIT  seconds to wait for the cache lock (default 900)
+//   PERF_GATE_SAMPLES    file that gets one JSON line per command with every
+//                        timed [base, head] pair in ms (to study the noise)
 //
 // Timing choices:
 // - One node process starts every run of both trees with spawnSync and reads
@@ -32,8 +36,19 @@
 //   (B H H B ...), so both see the same machine load.
 // - The minimum of the runs, not the mean: noise only adds time, so the
 //   minimum is the most stable estimate (Chen and Revels 2016).
+// - The two minimums alone gave false alarms on a loaded machine (two clean
+//   PRs failed inside `heavy-run npm run verify` at load 10 to 14): one tree
+//   can get a quiet run that the other never gets. So "slower" also needs the
+//   paired runs to agree. Each pass times base and head back to back; that is
+//   one pair. The median of (head - base) over the pairs must be above the
+//   same limit (10% of base_min, and 3 ms). Load hits both runs of a pair
+//   alike, so the median difference of a clean tree stays near zero, and a
+//   real slowdown shifts every pair (paired comparison: Box, Hunter and Hunter 2005).
 // - A command that looks slower is timed again (up to two more rounds) and the
-//   minimums are merged. A real slowdown stays; a load spike does not.
+//   runs are merged. A real slowdown stays; a load spike does not.
+// - A final confirm in `heavy-run --exclusive` is not possible from inside a
+//   heavy-run slot: the exclusive run waits for every slot, and this gate
+//   holds one.
 // - The base is a detached git worktree under
 //   ~/.cache/agentbrew/perf-gate.noindex/<commit>, built once (PERF_GATE_BUILD
 //   in the budget file) under a lock. This one, the newest other one, and
@@ -60,6 +75,7 @@
 
 import { spawnSync } from "node:child_process";
 import {
+  appendFileSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -388,52 +404,84 @@ function measure(command, dir, env) {
   return { ms, status: result.status ?? 127 };
 }
 
-function runSide(side, timed, state, context) {
-  if (state.failed !== null || state.baseFailed !== null || (side === "base" && !state.hasBase)) return;
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/** The median of (head - base) over the pairs: what a typical back-to-back run costs more. */
+const pairedDelta = (pairs) => (pairs.length > 0 ? median(pairs.map(([base, head]) => head - base)) : null);
+
+/** Slower: the two minimums say so, and the paired runs agree. */
+function looksSlower(state) {
+  if (state.baseMin === null || !slower(state.baseMin, state.headMin)) return false;
+  const delta = pairedDelta(state.pairs);
+  return delta === null || delta > Math.max(FLOOR_MS, state.baseMin * (RATIO - 1));
+}
+
+/** Run the command in one tree. Returns its wall time, or null when the run did not count. */
+function runSide(side, state, context) {
+  if (state.failed !== null || state.baseFailed !== null || (side === "base" && !state.hasBase)) return null;
   const { ms, status } = measure(context.command, side === "base" ? context.plan.base : context.plan.head, context.env);
-  if (status !== 0) {
-    if (side === "head") state.failed = status;
-    else state.baseFailed = status;
-    return;
-  }
-  if (!timed) return;
-  if (side === "base") state.baseMin = Math.min(state.baseMin ?? Number.POSITIVE_INFINITY, ms);
-  else {
-    state.headMin = Math.min(state.headMin ?? Number.POSITIVE_INFINITY, ms);
-    state.count += 1;
-  }
+  if (status === 0) return ms;
+  if (side === "head") state.failed = status;
+  else state.baseFailed = status;
+  return null;
+}
+
+/** One pass: both trees back to back. Swap the order each pass, so neither tree always runs first. */
+function runPass(pass, timed, state, context) {
+  const first = pass % 2 ? "base" : "head";
+  const times = { base: null, head: null };
+  times[first] = runSide(first, state, context);
+  const second = first === "base" ? "head" : "base";
+  times[second] = runSide(second, state, context);
+  if (!timed || times.head === null) return;
+  state.headMin = Math.min(state.headMin ?? Number.POSITIVE_INFINITY, times.head);
+  state.count += 1;
+  if (times.base === null) return;
+  state.baseMin = Math.min(state.baseMin ?? Number.POSITIVE_INFINITY, times.base);
+  state.pairs.push([times.base, times.head]);
 }
 
 function timeCommand(command, plan, env) {
   const hasBase = plan.base !== "" && !command.isNew;
-  const state = { hasBase, baseMin: null, headMin: null, failed: null, baseFailed: null, count: 0 };
+  const state = { hasBase, baseMin: null, headMin: null, failed: null, baseFailed: null, count: 0, pairs: [] };
   const context = { command, plan, env };
   const round = (times, timed) => {
-    for (let pass = 1; pass <= times; pass++) {
-      // Swap the order each pass, so neither tree always runs first.
-      for (const side of pass % 2 ? ["base", "head"] : ["head", "base"]) runSide(side, timed, state, context);
-    }
+    for (let pass = 1; pass <= times; pass++) runPass(pass, timed, state, context);
   };
   round(plan.warmups, false);
   round(plan.runs, true);
-  const again = () =>
-    state.failed === null && state.baseFailed === null && hasBase && slower(state.baseMin, state.headMin);
+  const again = () => state.failed === null && state.baseFailed === null && looksSlower(state);
   for (let extra = 0; extra < 2 && again(); extra++) round(plan.runs, true);
+  if (process.env.PERF_GATE_SAMPLES) {
+    const pairs = state.pairs.map((pair) => pair.map((ms) => Number(ms.toFixed(3))));
+    appendFileSync(process.env.PERF_GATE_SAMPLES, `${JSON.stringify({ name: command.name, pairs })}\n`);
+  }
   return state;
 }
 
 function judgeSpeed(command, state, plan, row) {
   const problems = [];
   if (state.baseMin !== null && state.baseMin > 0) row.ratio = state.headMin / state.baseMin;
-  if (state.baseMin !== null && slower(state.baseMin, state.headMin)) {
-    const change = ((row.ratio - 1) * 100).toFixed(1);
+  row.paired_delta_ms = pairedDelta(state.pairs);
+  const change = row.ratio === null ? "" : ((row.ratio - 1) * 100).toFixed(1);
+  const paired =
+    row.paired_delta_ms === null ? "" : `${row.paired_delta_ms >= 0 ? "+" : ""}${row.paired_delta_ms.toFixed(1)} ms`;
+  if (looksSlower(state)) {
     const allowed = command.name in plan.allow && !(command.name in plan.baseAllow);
     row.verdict = allowed ? "allowed" : "slower";
     if (!allowed) {
       problems.push(
-        `${command.name} got slower: ${state.baseMin.toFixed(1)} ms -> ${state.headMin.toFixed(1)} ms (+${change}%; the limit is +10% and ${FLOOR_MS} ms)`,
+        `${command.name} got slower: ${state.baseMin.toFixed(1)} ms -> ${state.headMin.toFixed(1)} ms (+${change}%; the limit is +10% and ${FLOOR_MS} ms; paired runs: ${paired})`,
       );
     }
+  } else if (state.baseMin !== null && slower(state.baseMin, state.headMin)) {
+    console.error(
+      `perf gate: ${command.name}: the fastest runs differ by +${change}%, but the paired runs do not (median difference ${paired}): load noise, not a slowdown`,
+    );
   }
   if (state.headMin > command.ceiling) {
     row.verdict = "over-ceiling";
@@ -445,6 +493,7 @@ function judgeSpeed(command, state, plan, row) {
 /** Turn the times of one command into its row, its problems, and its setup errors. */
 function judge(command, state, plan) {
   const row = { name: command.name, base_min: state.baseMin, head_min: state.headMin, ratio: null };
+  row.paired_delta_ms = null;
   Object.assign(row, { ceiling_ms: command.ceiling, runs: state.count, verdict: "error" });
   const text = `(status ${state.failed ?? state.baseFailed}): ${command.argv.join(" ")}`;
   if (state.failed !== null) {
@@ -465,9 +514,11 @@ function printJson(plan, rows, ok) {
     base_min: round(row.base_min),
     head_min: round(row.head_min),
     ratio: round(row.ratio),
+    paired_delta_ms: round(row.paired_delta_ms),
   }));
   const base = { base: plan.sha || null, base_ref: plan.ref, base_ref_date: plan.date || null };
-  console.log(JSON.stringify({ skipped: false, ok, ...base, limit_ratio: RATIO, limit_ms: FLOOR_MS, commands }));
+  const limits = { limit_ratio: RATIO, limit_ms: FLOOR_MS, estimator: "min-and-paired-median" };
+  console.log(JSON.stringify({ skipped: false, ok, ...base, ...limits, commands }));
 }
 
 function printTable(plan, rows, ok, seconds) {
@@ -583,7 +634,7 @@ function parseArgs(args) {
 function printHelp() {
   const header = readFileSync(fileURLToPath(import.meta.url), "utf-8")
     .split("\n")
-    .slice(2, 27);
+    .slice(2, 31);
   console.log(header.map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
 }
 

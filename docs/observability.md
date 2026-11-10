@@ -222,11 +222,17 @@ machine.
   from `dist/cli.js`, and the hook checks that run on agent Bash calls. Each
   hook gets a `git status` PreToolUse payload on stdin.
 - **Fails when** the fastest run in your tree is more than 10% and more than
-  3 ms slower than the fastest run at the base, or above the command's ceiling
-  in the budget file.
+  3 ms slower than the fastest run at the base, and the paired runs agree; or
+  when the fastest run is above the command's ceiling in the budget file.
+- **Paired runs**: each pass times base and head back to back; that is one
+  pair. The median of (head - base) over the pairs must also be above the
+  limit (10% of the base minimum, and 3 ms). Load hits both runs of a pair
+  alike, so a clean tree stays near zero on a busy machine. When only the
+  minimums differ, the gate passes and prints
+  `load noise, not a slowdown` for that command.
 - **How it times**: 2 warmups, then 15 runs per tree, base and head in turn,
   with a small fixed environment (`AGENTBREW_EVENTS=0`, `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`) and
-  a scratch HOME, which also holds `AGENTBREW_EVENTS_FILE`. It compares the minimums. A command that looks slower is
+  a scratch HOME, which also holds `AGENTBREW_EVENTS_FILE`. A command that looks slower is
   timed again, up to two more rounds.
 - **Skips** when the diff touches no runtime path (the `PERF_GATE_PATH` lines
   of the base and head budget files; test files never count):
@@ -260,11 +266,14 @@ machine.
   `PERF_GATE_NO_BASE=1` (ceilings only when no base resolves),
   `PERF_GATE_RUNS` (default 15), `PERF_GATE_WARMUPS` (default 2),
   `PERF_GATE_LOCK_WAIT` (seconds to wait for the cache lock, default 900),
-  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests), and
+  `PERF_GATE_HEAVY_RUN=0` (never call heavy-run; for tests),
+  `PERF_GATE_SAMPLES=<file>` (one JSON line per command with every timed
+  `[base, head]` pair in ms, to study the noise), and
   `XDG_CACHE_HOME` (where the base checkouts live).
 - **Machine output**: `npm run --silent perf:gate -- --json` prints `base`,
   `base_ref`, `base_ref_date`, and per command `base_min`, `head_min`, `ratio`,
-  and `verdict`.
+  `paired_delta_ms`, and `verdict`. `estimator` names the rule
+  (`min-and-paired-median`).
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.

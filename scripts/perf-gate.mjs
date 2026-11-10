@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// <!-- scope: human-approved owner goal 2026-11-09 (tooling changes must not make tracked commands slower); this file is that gate -->
 // perf-gate: fail when a tracked command got slower than the merge-base.
 //
 // The gate times each command in scripts/perf-budget.tsv in two trees in the
@@ -533,7 +534,7 @@ function parseArgs(args) {
 function printHelp() {
   const header = readFileSync(fileURLToPath(import.meta.url), "utf-8")
     .split("\n")
-    .slice(1, 25);
+    .slice(2, 26);
   console.log(header.map((line) => line.replace(/^\/\/ ?/, "")).join("\n"));
 }
 

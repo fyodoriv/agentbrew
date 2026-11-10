@@ -92,6 +92,8 @@ function executionRepo(): string {
   for (const name of ["lint-repo-artifacts", "install-e2e-if-needed"]) {
     writeFileSync(join(root, "scripts", `${name}.sh`), "#!/bin/sh\nexit 0\n");
   }
+  // The speed gate has its own tests (src/scripts/perf-gate.test.ts).
+  writeFileSync(join(root, "scripts", "perf-gate.mjs"), "");
   const npx = join(root, ".fixture-bin", "npx");
   writeFileSync(
     npx,

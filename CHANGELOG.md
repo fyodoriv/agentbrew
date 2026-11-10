@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `npm run perf:gate` fails a PR that makes a tracked command more than 10%
+  slower than the merge-base, or slower than its ceiling in
+  `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,
+  `actions --json`, and the hook checks that run on agent Bash calls, in both
+  trees in the same run. `npm run verify` and `npm run verify:changed` run it.
 - Anonymous performance telemetry, asked at install; on only after you say
   yes (Enter counts as yes). The installer's last step shows what is sent, one
   example event, and the privacy promise, then asks `[Y/n]`. It asks only when

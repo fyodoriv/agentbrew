@@ -1,0 +1,62 @@
+# Performance budget: the commands scripts/perf-gate.mjs times (npm run perf:gate).
+#
+# Command rows are tab-separated:
+#   name <TAB> ceiling_ms <TAB> command <TAB> stdin (optional, one line)
+# - command runs from the tree root with no shell: words split on spaces.
+# - ceiling_ms is the hard limit for the fastest run on any machine. It is
+#   about 2x the value on the owner's Mac (2026-11-09) and stops slow drift
+#   across many PRs. Raise it only with a reason in the PR.
+# - Every command must be side-effect free and offline. It runs with a small
+#   fixed environment (AGENTBREW_EVENTS=0, DO_NOT_TRACK=1) and a scratch HOME.
+# - The hook rows get one PreToolUse payload for a plain `git status` Bash
+#   call: the path every agent Bash call takes.
+#
+# A new hot-path command joins this file in the PR that adds it.
+cli-version	300	node dist/cli.js --version
+cli-help	300	node dist/cli.js --help
+cli-actions-json	300	node dist/cli.js actions --json
+hook-perf-record	100	bash hooks/checks/perf-record.sh	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"},"cwd":"/tmp","session_id":"perf-gate","tool_use_id":"perf-gate"}
+hook-no-home-crawl	200	bash hooks/checks/no-home-crawl.sh	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"},"cwd":"/tmp","session_id":"perf-gate","tool_use_id":"perf-gate"}
+hook-poll-loop-hint	200	bash hooks/checks/poll-loop-hint.sh	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"},"cwd":"/tmp","session_id":"perf-gate","tool_use_id":"perf-gate"}
+hook-pr-body-docs	200	bash hooks/checks/gh-pr-body-requires-docs.sh	{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"},"cwd":"/tmp","session_id":"perf-gate","tool_use_id":"perf-gate"}
+
+# Runtime paths: the gate times the commands only when the diff touches one.
+# A test file (*.test.ts, *.test.sh) never counts.
+PERF_GATE_PATH=src/
+PERF_GATE_PATH=hooks/
+PERF_GATE_PATH=templates/scripts/
+PERF_GATE_PATH=package.json
+PERF_GATE_PATH=package-lock.json
+PERF_GATE_PATH=tsup.config.ts
+PERF_GATE_PATH=tsconfig.json
+PERF_GATE_PATH=scripts/build-source.sh
+PERF_GATE_PATH=native/
+PERF_GATE_PATH=rust/
+PERF_GATE_PATH=scripts/perf-budget.tsv
+PERF_GATE_PATH=scripts/perf-gate.mjs
+
+# Build: the CLI rows run dist/cli.js, so each tree needs a build.
+# - PERF_GATE_BUILD runs in a tree root. The base checkout is built once and
+#   cached by commit. This tree is rebuilt when PERF_GATE_BUILD_OUTPUT is older
+#   than a file under a PERF_GATE_BUILD_INPUT path.
+# - PERF_GATE_BUILD_DEPS runs first in the base checkout only, with this tree's
+#   root as its last argument (it clones node_modules from there).
+PERF_GATE_BUILD=npm run build
+PERF_GATE_BUILD_DEPS=bash scripts/worktree-deps.sh
+PERF_GATE_BUILD_OUTPUT=dist/build-info.json
+PERF_GATE_BUILD_INPUT=src/
+PERF_GATE_BUILD_INPUT=templates/
+PERF_GATE_BUILD_INPUT=commands/
+PERF_GATE_BUILD_INPUT=package.json
+PERF_GATE_BUILD_INPUT=package-lock.json
+PERF_GATE_BUILD_INPUT=tsup.config.ts
+PERF_GATE_BUILD_INPUT=tsconfig.json
+PERF_GATE_BUILD_INPUT=scripts/build-source.sh
+PERF_GATE_BUILD_INPUT=native/
+PERF_GATE_BUILD_INPUT=rust/
+
+# Allow section: one line per intended slowdown above 10% in this PR.
+#   PERF_GATE_ALLOW=<name>:<reason>
+# The ceiling still applies. The next PR removes the line: the gate fails on
+# an allow line that the base already has.
+# A PR that changes scripts/perf-gate.mjs needs PERF_GATE_ALLOW=perf-gate:<reason>.

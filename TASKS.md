@@ -297,6 +297,19 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
+- [ ] The perf gate does not fail a clean tree under load
+  - **ID**: perf-gate-false-alarm-rate-under-load
+  - **Tags**: perf, gate, stability
+  - **Details**: On 2026-11-09, 1 of 5 clean runs of `node scripts/perf-gate.mjs` failed in a non-exclusive `heavy-run` slot at load average 10 to 14: `hook-poll-loop-hint` 96.5 ms -> 107.7 ms (+11.6%), after the confirm rounds. In an exclusive slot, 0 of 5 clean runs failed. Inside `heavy-run npm run verify` the step runs non-exclusive, so a clean PR can fail its gate.
+  - **Files**: `scripts/perf-gate.mjs`, `src/scripts/perf-gate.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: the gate passes 20 of 20 clean runs in a non-exclusive `heavy-run` slot under load, and still fails 20 of 20 runs with a seeded 20% slowdown.
+  - **Hypothesis**: a final confirm round in an exclusive slot, or a load-aware retry, cuts false alarms from 1 of 5 to 0 of 20 without a missed seeded 20% slowdown in 20 of 20.
+  - **Measurement**: `heavy-run bash -c 'for i in $(seq 20); do node scripts/perf-gate.mjs --force >/dev/null 2>&1; echo "clean $i exit=$?"; done'` on a clean tree, then the same loop with `sleep 0.013` added at the top of `hooks/checks/no-home-crawl.sh`.
+  - **Success**: 0 of 20 clean runs exit 1, and 20 of 20 seeded runs exit 1.
+  - **Pivot**: more than 1 of 20 clean runs fails, or a seeded run passes -> change the estimator (for example a paired median of differences) instead of adding retries.
+  - **Anchor**: Mytkowicz et al. 2009 (measurement bias); Chen and Revels 2016 (minimum estimator); fyodoriv/agentbrew#921 measurement.
+
 ## P2
 
 - [ ] Decide whether pull requests must carry a Vision trace block

@@ -16,13 +16,15 @@ const expectations = () => [scenario()?.expected_output, ...(scenario()?.expecta
 
 describe("run-goal hosted failure that the runner's own settings cause", () => {
   it("tells the agent to set the workflow env block and a clean git config locally", () => {
-    expect(hosted).toMatch(/workflow's `env:` block[\s\S]*set each\s+variable/i);
+    expect(hosted).toMatch(/each `env:` block of the workflow[\s\S]*set every variable/i);
+    expect(hosted).toMatch(/CI=true[\s\S]*GITHUB_ACTIONS=true/);
     expect(hosted).toMatch(/GIT_CONFIG_GLOBAL[\s\S]*GIT_CONFIG_NOSYSTEM=1/);
   });
 
   it("keeps a blocker handed to another session with the agent", () => {
     expect(hosted).toMatch(/handed to another session is still yours/i);
-    expect(hosted).toMatch(/tell that session what you fixed/i);
+    expect(hosted).toMatch(/tell that session you take the blocker back/i);
+    expect(hosted).toMatch(/tell that session what you\s+fixed/i);
   });
 
   it("has an eval whose failure survives env -i and whose peer session brings no fix", () => {

@@ -12,7 +12,7 @@ const evals = JSON.parse(readFileSync(join(root, "evals", "evals.json"), "utf8")
   expected_output: string;
   expectations: string[];
 }>;
-const scenario = () => evals.find(({ id }) => id === 291);
+const scenario = () => evals.find(({ id }) => id === 292);
 const expectations = () => [scenario()?.expected_output, ...(scenario()?.expectations ?? [])].join(" ");
 
 describe("run-goal proof inputs and decided measurements", () => {

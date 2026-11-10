@@ -11,8 +11,9 @@ performance numbers) and the [weekly metrics share](#weekly-metrics-share-opt-in
 agentbrew can send the content-free event log to PostHog EU as anonymous
 performance numbers (decided 2026-11-09, [`VISION.md`](VISION.md)). It is
 asked at install; on only after you say yes (Enter counts as yes). The numbers
-from all installs feed a public speed dashboard (p50 and p95 per command,
-version, and runtime) and a regression gate.
+from all installs feed a dashboard that is private to the maintainer (p50 and
+p95 per command, version, and runtime; totals and averages of the estimated
+time saved) and a regression gate.
 
 ### The consent question
 
@@ -38,8 +39,9 @@ you the question and run `agentbrew telemetry on` or pass `--no-telemetry`.
 ### What is sent
 
 The command name, its duration, ok or error, counts, the agentbrew version,
-your OS and CPU type, and a random install id. One item per line of the
-[event log](#events):
+your OS and CPU type, and a random install id. A sync or repair also sends
+an estimate of the seconds it saved ([How much it helps](#how-much-it-helps)).
+One item per line of the [event log](#events):
 
 ```json
 {
@@ -69,7 +71,31 @@ your OS and CPU type, and a random install id. One item per line of the
 | `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`) |
 | `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
+| `agents` | On a `sync`: how many agents it deployed to. A number, never a name |
+| `seconds_saved` | On a `sync` or `repair`: the estimated seconds saved (the event log names it `secondsSaved`) |
 | `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |
+
+### How much it helps
+
+The baseline is a person who has several AI coding agents and edits each
+agent's config by hand. `src/core/gains.ts` holds one estimate table:
+
+| Action | Estimate |
+|---|---|
+| One sync that works | 3 seconds for each agent it deployed to |
+| One repair that leaves no drift | 60 seconds for each drift item it fixed |
+| A sync or repair that fails | 0 |
+
+Saved time is an estimate, chosen low: each action takes a person longer by
+hand. Durations (`ms`, `duration_ms`) are measured. A sync counts the agents
+it deployed to: the detected agents in state, the set every sync module
+targets. A `--dry-run` writes no event, and a `--rollback` deploys nothing,
+so it saves 0. A repair that leaves drift counts as failed and saves 0, also
+when it fixed some items.
+
+`agentbrew metrics --days 30` prints the sum for this machine from the local
+event log: "Estimated time saved, last 30 days: N min". The maintainer sums
+`seconds_saved` per install and over all installs.
 
 ### The privacy promise
 
@@ -164,9 +190,9 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 
 | Event | When | Fields | Story |
 |---|---|---|---|
-| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
+| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0), `agents` (agents it deployed to), `secondsSaved` ([estimate](#how-much-it-helps)) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
 | `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event, and its `ok` follows the exit code (a process `exit` listener writes it; the long-running `auto-sync watch` is left out); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
-| `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left) | US06 |
+| `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left), `secondsSaved` ([estimate](#how-much-it-helps)) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
 
 Every event also has `ts` (ISO time), and `story` unless it is a `command` with none.

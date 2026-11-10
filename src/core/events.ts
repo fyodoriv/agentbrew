@@ -36,6 +36,10 @@ export interface AgentbrewEvent {
   repaired?: number;
   /** Drift items left after a repair. */
   remaining?: number;
+  /** Agents a sync deployed to. A count, never a name. */
+  agents?: number;
+  /** Estimated seconds saved against editing each agent's config by hand (core/gains.ts). */
+  secondsSaved?: number;
   /** Drift types left after a repair (enum names from DriftItem["type"]). */
   types?: string[];
   /** Error code, such as "SYNC_ERROR". */
@@ -45,7 +49,7 @@ export interface AgentbrewEvent {
 }
 
 const STORY = /^US\d{2}$/;
-const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining"] as const;
+const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining", "agents", "secondsSaved"] as const;
 
 /**
  * Story that each sync module serves (the error-to-story map in docs/observability.md).

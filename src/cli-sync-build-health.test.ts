@@ -163,6 +163,39 @@ describe("initialized sync root-hook ordering", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it("a sync event carries the detected agent count and its estimated seconds saved", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    health.mockReturnValue([]);
+    vi.mocked(loadState).mockReturnValue({
+      agents: [
+        { name: "claude", detected: true },
+        { name: "codex", detected: true },
+        { name: "kiro", detected: false },
+      ],
+    } as never);
+    const syncEvent = () =>
+      vi
+        .mocked(recordEvent)
+        .mock.calls.map(([event]) => event)
+        .find((event) => event.event === "sync");
+    await buildProgram().parseAsync(["node", "test", "sync", "--only", "mcp", "--no-recommended"]);
+    expect(syncEvent()).toMatchObject({ ok: true, agents: 2, secondsSaved: 6 });
+
+    // A failed sync saves 0.
+    vi.mocked(recordEvent).mockClear();
+    vi.mocked(runSyncParallel).mockImplementationOnce(async () => {
+      process.exitCode = 1;
+    });
+    await buildProgram().parseAsync(["node", "test", "sync", "--only", "mcp", "--no-recommended"]);
+    expect(syncEvent()).toMatchObject({ ok: false, agents: 2, secondsSaved: 0 });
+    process.exitCode = undefined;
+
+    // A rollback deploys nothing: no agents, nothing saved.
+    vi.mocked(recordEvent).mockClear();
+    await buildProgram().parseAsync(["node", "test", "sync", "--rollback"]);
+    expect(syncEvent()).toMatchObject({ agents: 0, secondsSaved: 0 });
+  });
+
   it("sync command timing excludes status hook", async () => {
     let clock = 0;
     vi.spyOn(Date, "now").mockImplementation(() => clock);

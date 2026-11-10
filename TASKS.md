@@ -299,6 +299,45 @@
 
 ## P2
 
+- [ ] The maintainer can see how long an install takes to reach a clean status
+  - **ID**: telemetry-install-event
+  - **Tags**: telemetry, install, metrics
+  - **Details**: Telemetry sends `agentbrew.command`, sync, repair, and error events. No event says how long a new install took to reach a clean `agentbrew status`. The install receipt already holds the local number (`zero_to_configured_s` in `scripts/metrics.sh`), but it never leaves the machine, so the maintainer cannot see the first-run cost over all installs. Add an `install` event with numbers only (`ms`, `ok`), written once per finished install and sent only after a yes. It must pass `sanitizeEvent` and the send-time allowlist. Found while adding `seconds_saved` (2026-11-10).
+  - **Files**: `src/core/events.ts`, `src/core/telemetry.ts`, `scripts/install.sh`, `docs/observability.md`, `README.md`
+  - **Output**: code
+  - **Acceptance**: one finished install in a scratch HOME leaves one `install` event with `ms` and `ok`, and `agentbrew telemetry send --dry-run` shows it as `agentbrew.install` with `duration_ms`. An install with `--no-telemetry` sends nothing.
+  - **Hypothesis**: install events in the request body go from 0 to 1 per finished install, so the maintainer can read the median time to a clean status.
+  - **Measurement**: `npx vitest run src/core/events.test.ts src/core/telemetry.test.ts` and `npm run test:install-e2e`.
+  - **Success**: the new tests pass, and the install e2e finds 1 `install` event with a `duration_ms` number.
+  - **Pivot**: if the installer cannot tell when status is clean without a second slow status run, send the receipt's `seconds` value as is and name the gap in the docs.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Forsgren, Humble, Kim 2018 (lead time as a delivery metric).
+
+- [ ] The saved-time estimates match measured hand-edit times
+  - **ID**: telemetry-gain-calibration
+  - **Tags**: telemetry, metrics, research
+  - **Details**: `src/core/gains.ts` estimates the seconds saved for each synced agent and for each repaired drift item (the table in `docs/observability.md`, "How much it helps"). Both values are guesses, chosen low; no measurement backs them. Known gaps: a sync with `--only` counts the same as a full sync; a repair that fixes some items but leaves drift saves 0; a sync that changes nothing counts the same as one that deploys new content. Time the baseline (a person edits one agent's config by hand, and finds and fixes one drift item by hand) for each drift type, then set the table from the measured medians. Keep the estimate low: use the fastest quartile, not the mean.
+  - **Files**: `src/core/gains.ts`, `src/core/gains.test.ts`, `docs/observability.md`, `README.md`
+  - **Output**: measurement
+  - **Acceptance**: `docs/observability.md` shows the timed baseline for a sync and for each repaired drift type, with the method and the sample size, and the table in `src/core/gains.ts` uses those numbers.
+  - **Hypothesis**: the measured fastest-quartile hand-edit time is at least the current estimate for each action, so the current table does not overstate the gain.
+  - **Measurement**: a timed script (`scripts/` plus a doc table) with at least 10 hand-edit trials per action, written down before the trials start.
+  - **Success**: each table value is at or below the measured fastest quartile for its action.
+  - **Pivot**: if a measured fastest quartile is below the current estimate, lower the table value to it in the same PR.
+  - **Anchor**: Card, Moran, Newell 1980 (Keystroke-Level Model for task time); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The telemetry docs and comments agree with the shipped key and the event code
+  - **ID**: telemetry-stale-claims-install-and-events
+  - **Tags**: docs, telemetry
+  - **Details**: Stale claims are left after the 2026-11-10 docs fix. First: a comment in `scripts/install.sh` (the consent step) still says "With no project key (the shipped default)"; a write-only project key ships in the repo now. Second: `docs/observability.md` ("Events") says "A command that throws or exits early records no `command` event", but the table above it and `recordCommandEventAtExit` in `src/cli.ts` say such a run still leaves one event. Fix both lines. `scripts/install.sh` is an install path, so the gate runs the install e2e for it.
+  - **Files**: `scripts/install.sh`, `docs/observability.md`
+  - **Output**: docs
+  - **Acceptance**: `rg -n "shipped default\)" scripts/install.sh` and `rg -n "records no .command. event" docs/observability.md` both print nothing.
+  - **Hypothesis**: stale telemetry claims in these two files go from 2 to 0.
+  - **Measurement**: `rg -c "shipped default\)" scripts/install.sh; rg -c "records no .command. event" docs/observability.md`
+  - **Success**: both commands print nothing (0 matches), and `npm run verify:changed` exits 0.
+  - **Pivot**: if the events line is right and the code is wrong, file a bug task for `recordCommandEventAtExit` and leave the line.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Lethbridge, Singer, Forward 2003 (how software engineers use documentation: stale docs lose trust).
+
 - [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
   - **ID**: updates-landed-fixture-wall-clock-limit
   - **Tags**: tests, flaky, hooks

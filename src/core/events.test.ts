@@ -64,6 +64,24 @@ describe("event log", () => {
 });
 
 describe("sanitizeEvent", () => {
+  it("keeps the gain fields as numbers and drops a string or negative value", () => {
+    expect(sanitizeEvent({ event: "sync", ok: true, agents: 4, secondsSaved: 12 })).toMatchObject({
+      agents: 4,
+      secondsSaved: 12,
+    });
+    const bad = sanitizeEvent({
+      event: "sync",
+      ok: true,
+      agents: "claude,codex" as unknown as number,
+      secondsSaved: -12,
+    });
+    expect(bad).not.toHaveProperty("agents");
+    expect(bad).not.toHaveProperty("secondsSaved");
+    const text = sanitizeEvent({ event: "repair", ok: true, agents: -1, secondsSaved: "120" as unknown as number });
+    expect(text).not.toHaveProperty("agents");
+    expect(text).not.toHaveProperty("secondsSaved");
+  });
+
   it("drops free text: paths, names, and messages never reach the log", () => {
     const out = sanitizeEvent({
       event: "error",

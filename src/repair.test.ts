@@ -216,7 +216,21 @@ describe("fix", () => {
         repaired: 1,
         remaining: 1,
         types: ["mcp"],
+        // Drift is left, so the repair failed: it saves 0.
+        secondsSaved: 0,
       }),
+    );
+  });
+
+  it("a repair that clears 2 drift items records 120 estimated seconds saved", async () => {
+    mockLoadState.mockReturnValue(makeState() as never);
+    mockCollectDrift.mockReturnValue([
+      { agent: "kiro", type: "mcp", detail: "missing server: a" },
+      { agent: "kiro", type: "rules", detail: "no managed section" },
+    ]);
+    await fix();
+    expect(vi.mocked(recordEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "repair", ok: true, repaired: 2, remaining: 0, secondsSaved: 120 }),
     );
   });
 

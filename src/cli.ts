@@ -44,6 +44,7 @@ import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
+import { syncGain } from "./core/gains.js";
 import { installOutputRedaction } from "./core/redact-output.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
@@ -219,11 +220,25 @@ interface SyncCommandOptions {
 async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   const started = Date.now();
   let ok = false;
+  let deployed = false;
   try {
-    await runSyncCommand(options);
+    deployed = await runSyncCommand(options);
     ok = !process.exitCode;
   } finally {
-    if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
+    if (!options.dryRun) {
+      const gain = syncGain(ok, deployed ? await syncedAgentCount() : 0);
+      recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started, ...gain });
+    }
+  }
+}
+
+/** Agents the sync deployed to: the detected agents in state, the set every sync module targets. */
+async function syncedAgentCount(): Promise<number> {
+  try {
+    const { loadState } = await import("./state.js");
+    return loadState()?.agents?.filter((agent) => agent.detected).length ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -236,14 +251,15 @@ function syncStory(options: SyncCommandOptions): string {
   return "US08";
 }
 
-async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
+/** Runs the sync. True when it reached a deploy step (a full sync or a pull), false when it stopped before one. */
+async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   if (options.pull) {
     const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
-    if (!readUpdateSkillRequests(options)) return;
+    if (!readUpdateSkillRequests(options)) return false;
   }
   if (!options.rollback) await handleSyncWorkspaces(options);
-  if (await handleSyncEarlyExits(options)) return;
-  if (await refuseSyncOnLockDrift()) return;
+  if (await handleSyncEarlyExits(options)) return options.pull === true && !options.rollback;
+  if (await refuseSyncOnLockDrift()) return false;
   if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
@@ -259,7 +275,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   let modules = buildSyncModules(syncOpts);
   if (options.only) {
     const filtered = filterSyncModules(modules, options.only);
-    if (!filtered) return;
+    if (!filtered) return false;
     modules = filtered;
   }
 
@@ -281,6 +297,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   } else {
     await runSyncParallel(modules, runnerOpts);
   }
+  return true;
 }
 
 /** In workspace mode, swap the base Agentfile for one merged with every per-repo Agentfile. */

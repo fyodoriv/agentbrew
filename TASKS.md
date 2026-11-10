@@ -418,89 +418,100 @@
   - **Pivot**: The original invalid response rejects that approach and its empty receipt stays reserved. A distinct approach must register its own pivot before measurement.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
 
-<!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
+<!-- Rust migration requested 2026-11-01; re-planned 2026-11-10: measured hot paths first. Porting stays paused until the owner starts it. -->
 
-- [ ] Re-plan the Rust migration around measured user benefit
-  - **ID**: rust-plan-replan-after-validation
-  - **Tags**: migration, rust
-  - **Mode**: HITL
-  - **Details**: The 2026-11-09 validation review found the plan cannot run as written and puts the measured hot path (hook helpers) at step 16. Apply the seven MUST findings in [Rust migration](docs/plans/rust-migration.md#validation-review-2026-11-09) to both plans and task queues, and get the owner's decision on each SHOULD change (hook dispatcher first, cold-path exceptions, test tasks, smaller inventory). Porting stays paused until this lands.
-  - **Output**: docs
-  - **Acceptance**: Both plans carry no open MUST finding; every remaining slice names a user-benefit metric or is a recorded exception; the owner's decisions are written in the plans.
-  - **Hypothesis**: Fixing the seven MUST findings moves the count of plan steps that cannot run as written from 7 to 0, so the first port can start with a runnable gate.
-  - **Measurement**: `rg -c '^[0-9]+\. \*\*' docs/plans/rust-migration.md` on the "Findings to fix" list after each finding is resolved and removed — target 0.
-  - **Success**: 0 open MUST findings in both plans, confirmed by an independent reviewer.
-  - **Pivot**: If more than 2 MUST findings cannot be resolved without dropping gate G, abandon the all-code migration and keep only measured hot-path slices.
+- [ ] Show how long the hooks of one agent Bash call take
+  - **ID**: rust-hook-chain-timing
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 1 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. The validation review measured about 8 hooks per Bash call, each 125-483 ms, but no command prints the time of the whole chain. Add a `hook-bash-chain` row to `scripts/perf-budget.tsv` that runs every PreToolUse Bash check for one `git status` payload. Add a sampled, content-free field event for the same chain (`duration_ms`, hook count, `runtime`) that passes `sanitizeEvent`; the local log line keeps `ms`. Prove an A/A run of the gate (base and head at the same commit). No check logic changes.
+  - **Output**: code
+  - **Acceptance**: The gate prints `hook-bash-chain` with `base_min`, `head_min` and `ratio`. An A/A run passes 20 of 20 times. The event carries no command text, path or argument. Docs: `docs/observability.md` and `docs/hook-protocol.md`.
+  - **Hypothesis**: A whole-chain row moves the hook cost of one agent Bash call from unmeasured to one number, with 0 false alarms in 20 A/A runs, so the dispatcher slice can register an absolute prediction.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` row), run 20 times at one commit.
+  - **Success**: The row prints in 20 of 20 runs; 0 A/A runs fail the gate; the new event passes the `sanitizeEvent` tests.
+  - **Pivot**: 2 or more of 20 A/A runs fail -> the chain is too noisy for the gate rule; time each check as its own row and sum the minimums, and drop the single chain row.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (A/A tests).
+
+- [ ] Cut the hook wait on every agent Bash call by half
+  - **ID**: rust-hook-dispatcher
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 2 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Each agent Bash call starts about 8 hook processes. Run the PreToolUse Bash checks through one dispatcher that reads the payload once. Weigh a single shell dispatcher first; build the Rust one only when the shell one misses the number. Deliver a Rust binary through the existing [prebuilt native path](docs/plans/source-build-prebuilt-764.md). Keep each check's verdict, exit code, bypass variable and opt-in state. Commit the absolute `hook-bash-chain` baseline from step 1 before any dispatcher code. The PR must not change the row's command path: the row keeps calling the same entry file, or the gate prints `ratio` `null`. If the PR adds Rust code, it also adds the cargo step to `scripts/verify.sh`, and that step must run only when `rust/` changed.
+  - **Output**: code
+  - **Blocked by**: rust-hook-chain-timing
+  - **Acceptance**: Gate G in the plan. `bash scripts/run-hook-fixtures.sh` passes with 0 changed verdicts. Hostile heredocs, substitutions, bad JSON, absent tools and timeouts keep their deny or unknown result. The old per-check path stays until rollback is proven.
+  - **Hypothesis**: One dispatcher that parses the payload once cuts the `hook-bash-chain` time by at least 50% against the merge-base, with 100% verdict parity and 0 new false permits.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` `ratio`) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: `ratio` at most 0.50; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05; within 14 days the p50 of the chain event for the version after the switch is at most half of the version before it, on the owner's dashboard or by the plan's local-log fallback command.
+  - **Pivot**: `ratio` above 0.80 -> abandon the dispatcher, keep per-check scripts, and add the slice as a recorded exception row in the plan with its measured number. Any new false permit -> stop and change the parser boundary, never an allow rule.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Run the remaining hook families without an interpreter start per call
+  - **ID**: rust-hooks-and-generated-helpers
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 3 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. After the Bash dispatcher, the other hook families (Write and Edit checks, Stop and session hooks, `perf-record`, generated helper scripts) still start `jq`, Perl or Python per call. Move one family per PR into the dispatcher. Each family first adds its `hook-*` row to `scripts/perf-budget.tsv` in its own PR, so the row exists at the base, then registers its number. A port PR must not change the row's command path, or the gate prints `ratio` `null`. Keep protocol, opt-ins, safe unknown handling and ownership-aware deployment. Keep only necessary shell shims.
+  - **Output**: code
+  - **Blocked by**: rust-hook-dispatcher
+  - **Acceptance**: Gate G in the plan for each family. Permitted and denied controls keep their verdicts. Each family has a budget row before its port and a rollback receipt after it.
+  - **Hypothesis**: Moving a hook family into the dispatcher cuts its `hook-*` row by at least 30% against the merge-base, with 100% verdict parity and 0 new false permits or injection paths.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (each ported `hook-*` row) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: Each ported row has `ratio` at most 0.70; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05.
+  - **Pivot**: A family with `ratio` above 0.90 stays in shell and becomes a recorded exception in the plan. Any deny, unknown or injection regression -> stop and change the parser boundary.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Find out where sync, catalog, MCP and doctor time goes before any port
+  - **ID**: rust-cold-path-profile
+  - **Tags**: migration, rust, performance, measurement
+  - **Mode**: AFK
+  - **Details**: Step 4 of the [Rust migration](docs/plans/rust-migration.md). The validation review did not profile sync, catalog, MCP lifecycle or doctor probes. They are recorded exceptions until a profile shows owned code is the cost. Profile each command on synthetic fixtures in a scratch HOME. Split wall time into owned interpreter code, git, network and child tools. Put the result next to the event's local p50. Write the table into the plan. Port nothing.
+  - **Output**: measurement
+  - **Acceptance**: The plan has one row per profiled command: local p50, share of wall time in owned code, and the decision (stays an exception, or reopens with a number). Every reopened slice gets its own task block with the five pre-registration fields.
+  - **Hypothesis**: Owned interpreter code is under 50% of wall time in at least 80% of the profiled families, so those stay recorded exceptions and no port starts on a guess.
+  - **Measurement**: `jq -s '[.[] | select(.event == "sync") | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl` per event name for the local p50 (it printed 1201 on 2026-11-10; it prints `null` for an event with no logged line), and `node --cpu-prof dist/cli.js <command>` on the registered fixture for the share.
+  - **Success**: 100% of the listed command families have a profile row and a decision in the plan.
+  - **Pivot**: If the profiler cannot separate child-tool time from owned time in 2 or more families -> switch to wall-clock spans around child calls and drop the CPU profile.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-
-- [ ] Account for every executable before migrating it
+- [ ] Account for every executable with a small manifest and validator
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is preserved in [draft PR #767](https://github.com/fyodoriv/agentbrew/pull/767) at checkpoint `6e32d628`; it remains unmerged and inventory acceptance remains pending. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance.
+  - **Details**: Step 5 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Create a reviewed component manifest and a small Rust validator (`migration-check inventory --check`). No full harness. Each owned executable gets one of five states: `ported`, `exception` (with its row in the plan), `frozen`, `grandfathered` (the crates under `rust/` that shipped before gate G) or `out-of-scope` (UI presentation and shell that must stay shell). Embedded programs, extensionless entrypoints and generated executables must not escape. This step ports nothing, so only the behavior and safety clauses of gate G apply to it. Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is preserved in [draft PR #767](https://github.com/fyodoriv/agentbrew/pull/767) at checkpoint `6e32d628`; it remains unmerged. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md).
   - **Output**: code
-  - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
+  - **Acceptance**: Each executable component has an owner, a caller boundary and one of the five states. Planted omissions fail the validator. `rust/Cargo.toml` and the `migration-check` binary exist after this merges. No production replacement occurs in this task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
-  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- inventory --check` — proposed command delivered by this task, not currently available.
-  - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected.
+  - **Measurement**: `heavy-run cargo build --locked --release --manifest-path rust/Cargo.toml --bin migration-check && heavy-run rust/target/release/migration-check inventory --check` — runnable after this task merges, not before.
+  - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected; cold build at most 120 s.
   - **Pivot**: Any missed embedded or extensionless component -> abandon suffix-only discovery and use content/caller analysis. Missing evidence is not passing.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Measure compatibility and resource use before replacing runtime code
-  - **ID**: rust-measurement-harness
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Land the shared Rust measurement engine and versioned workload/receipt protocol as a preparation PR. Dotfiles consumes a pinned adapter to this owner implementation. Seal unchanged-source baselines; each later port commits actual numeric predictions before replacement code. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-source-inventory
-  - **Acceptance**: Capture exits, output, file bytes/permissions/side effects, child lifetime, cold/warm execution, CPU, peak RSS and install footprint in private sanitized receipts. Pin source, fixtures, toolchain, platform and cache. Reject planted semantic, privacy, cleanup, missing-sample and resource failures.
-  - **Hypothesis**: Registered differential workloads and sealed baselines make 100% of planted invalid receipts and behavior/resource violations fail before any production port can pass.
-  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- harness-selftest` — proposed command delivered by this task; no baseline result is claimed.
-  - **Success**: 100% of registered planted violations rejected; 0 missing/contaminated measurements reported as passing; baseline replay meets its preregistered noise bound.
-  - **Pivot**: Any false pass or non-repeatable baseline -> stop ports and change instrumentation or workload design, not thresholds after results.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+- [ ] Rule on the default choices in the Rust re-plan
+  - **ID**: rust-owner-rules-on-replan-defaults
+  - **Tags**: migration, rust, decision
+  - **Mode**: HITL
+  - **Details**: The 2026-11-09 validation review said the final audit needs an owner decision. The re-plan shipped without a question round, so the [Decisions (2026-11-10)](docs/plans/rust-migration.md#decisions-2026-11-10) table holds defaults adopted on the reviewer's recommendation. The owner did not decide them. The owner reads the seven rows and writes "kept" or the changed choice beside each, in this plan and in the dotfiles plan. The two rows that most need a ruling: the five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`), and existing Rust code as `grandfathered`. Porting stays paused until the owner starts it; this ruling does not start it.
+  - **Output**: docs
+  - **Acceptance**: Each row of the Decisions table in both plans carries the owner's ruling and its date. A reversed default updates the matching plan step and task in the same PR.
+  - **Hypothesis**: One owner pass over the table moves the count of default choices with no owner ruling from 7 to 0 in both plans, so the final audit rests on a decision and not on a default.
+  - **Measurement**: `rg -c 'Owner ruling' docs/plans/rust-migration.md` in each repository after the ruling lands: one match per row of the table.
+  - **Success**: 7 rulings in each plan; 0 rows without one.
+  - **Pivot**: If the owner reverses the audit states (more than 2 of the five rejected), stop the audit task and re-plan the audit; do not patch the states one by one.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Run a native candidate beside the current CLI with proven rollback
-  - **ID**: rust-native-delivery
+- [ ] Prove every owned executable has one of the five audit states
+  - **ID**: rust-final-audit
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Add locked Rust builds, asset resolution and per-slice candidate dispatch for scratch installs. Keep the live entrypoint until the slice passes G; prove atomic replacement and recovery first. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-measurement-harness
-  - **Acceptance**: Scratch install, missing assets, wrong architecture, interrupted update and rollback preserve approved configuration and executable ownership. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: Native dispatch succeeds in 100% of supported scratch cases and recovery in 100% of interruption cases, with 0 behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-native-delivery --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 100% supported scratch dispatch and rollback; 0 ownership errors.
-  - **Pivot**: Any rollback, asset or compatibility failure -> change dispatch before moving callers. An upper resource ratio above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Preserve exact text and file safety through native parsing
-  - **ID**: rust-text-and-file-primitives
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Move parsing, redaction, environment and filesystem leaves behind Rust interfaces. Preserve untouched bytes, encodings, symlink rules, modes and atomic writes. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-native-delivery
-  - **Acceptance**: Escaped JSON, CRLF, unknown keys, traversal, symlink swaps, malformed input and planted credentials preserve approved output and rejection behavior. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted leaf workloads run without an owned legacy interpreter, with 0 approved-behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-text-and-file-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 unintended byte changes, unexpected writes or missed planted secrets.
-  - **Pivot**: Any corruption, unexpected write or secret false negative -> change parser/I/O boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep child lifetimes and resource limits correct in native adapters
-  - **ID**: rust-process-primitives
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port safe argv, environment scrubbing, retries, scheduler calls, timeouts, signals and owned process-group cleanup. Consume machine-wide admission and worker budgets; separate queue wait from execution. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-native-delivery
-  - **Acceptance**: TERM/INT, timeout, wrapper death, failed probes, hostile environment and child escape controls leave no owned work alive or reservation released early. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted execution preserves approved behavior with 0 orphaned children, budget bypasses or secret disclosures, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-process-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 orphaned owned children, admission bypasses or unintended environment disclosures.
-  - **Pivot**: Any lifecycle/admission violation -> replace the process-ownership design before moving consumers. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. The five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`) are a default adopted on 2026-11-10; the owner rules on them in `rust-owner-rules-on-replan-defaults`. A slice that ended at its Pivot counts as `exception`. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
+  - **Output**: measurement
+  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory, rust-owner-rules-on-replan-defaults
+  - **Acceptance**: Every owned component in the manifest has one of the five states; `ported` has receipts and `exception` has a plan row. Every ported slice still meets its number on the current tree. Installed artifacts agree with receipts.
+  - **Hypothesis**: Reconciling the manifest with the tree exposes every gap: 0 unrecorded owned components, and 100% of ported slices still at or under their registered `ratio`.
+  - **Measurement**: `heavy-run rust/target/release/migration-check inventory --check` (runnable after `rust-source-inventory` merges) and `npm run --silent perf:gate -- --force --json`.
+  - **Success**: 0 unrecorded components; 100% of ported rows pass the gate; 0 safety or behavior regressions in `heavy-run npm run verify`.
+  - **Pivot**: Any unrecorded component or failed ported row -> the migration stays open; fix that boundary. Do not change the goal to converted lines.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 - [ ] Validate the November skills-target delta in native runtimes
@@ -719,216 +730,6 @@
   - **Files**: `.github/workflows/auto-publish.yml`, `scripts/publish-latest.sh`, `docs/human-blocked-actions/agentbrew-release-auth-2026-07-20.md`
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
-
-- [ ] Change configuration natively without losing ownership
-  - **ID**: rust-state-and-agentfile
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Migrate state/settings, Agentfile merge/mutation, manifests, paths and locks. Preserve schemas, layers, user text, transaction recovery and no-op behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives
-  - **Acceptance**: Concurrent updates, failed writes, stale locks, relative paths, unknown fields and repeated no-ops preserve approved state and recovery. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted configuration workloads run natively with 0 lost updates, foreign-owner writes or approved-behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-state-and-agentfile --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 lost updates, unowned changes or persistent no-op mutations.
-  - **Pivot**: Any data loss/ownership mismatch -> change transaction and merge boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Install and update source content through native ownership-aware adapters
-  - **ID**: rust-catalog-and-sources
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port catalog/source registration, fetch/cache, skill tools, import/install/update/remove and pruning. Keep upstream delegation, provenance and user-kept targets. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Offline, changed-ref, deleted-source, duplicate-name, interrupted fetch and user-modified-target controls preserve approved outcomes and ownership. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted local source operations run natively with 0 unowned removals, provenance collisions or behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-catalog-and-sources --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 unowned removals or provenance collisions; delegated upstream tools stay delegated.
-  - **Pivot**: Any provenance/removal defect -> change source/cache adapter, not a silent fallback. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Deploy skills and content natively with the same ownership rules
-  - **ID**: rust-sync-content
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
-  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts. Preserve selected-pull guards for pre-sync installation, live rule aliases and deferred staged-skill cleanup; use the CLI pull and source-skill-prune regressions as sealed migration controls.
-  - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
-  - **Pivot**: Any primary-host gap or ownership loss -> change engine contract before the next engine. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Reconcile native agent settings without changing trust or opt-ins
-  - **ID**: rust-sync-configuration
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts. Selected pulls must not publish excluded Git MCP runtimes; retain the runtime and accepted source receipt controls from the pull-source-caches regression.
-  - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.
-  - **Pivot**: Any trust, opt-in or source-refresh regression -> revise configuration ownership. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Manage MCP lifecycle through bounded native adapters
-  - **ID**: rust-mcp-lifecycle
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port registry, entrypoint resolution, pin/build registration, setup, validation, probing and healing in measured slices. Baseline delivered re-pin fixes; preserve delegated and optional-model boundaries. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives, rust-catalog-and-sources
-  - **Acceptance**: Runnable directory/symlink entrypoints, refused pins, failed builds, bad schemas, offline registry and bounded probes preserve approved register-or-rollback behavior. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted lifecycle cases preserve behavior with 0 unverified build registrations or surviving probe children, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-mcp-lifecycle --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 invalid registrations or surviving probe children; unsupported/unknown outcomes remain honest.
-  - **Pivot**: Any invalid registration or cleanup failure -> change lifecycle boundary and retain the previous path. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep shared semantic memory private through native integration
-  - **ID**: rust-memory-integration
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned memory transport/readiness, pack/provenance ledgers, backup and lifecycle bridges. Delegate the service itself; preserve enablement, deduplication, retention and privacy choices. Keep native chat histories separate. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-sync-configuration, rust-process-primitives
-  - **Acceptance**: Synthetic enabled/disabled, stale-owner, changed-pack, corrupt-backup and unavailable-service cases preserve records and honest errors. No conversation history is imported or synchronized. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted integration cases preserve approved behavior with 0 private payload leaks, unauthorized record deletions or chat-history imports, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-memory-integration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 privacy/retention/opt-in regressions, private payloads in receipts or native history imports.
-  - **Pivot**: Any privacy/retention/opt-in regression -> stop and change integration boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep signed plugins and public-write approvals intact in native flows
-  - **ID**: rust-plugin-trust-and-feedback
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port plugin signatures/scopes, overlay composition, contribution drafts, report sanitization and publication adapters. Preserve approvals and human-only allowances; use fake external writers. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources, rust-process-primitives
-  - **Acceptance**: Wrong/revoked signer, capability escalation, malformed overlay, private references and denied publication fail closed. Approved local drafts work; tests never post publicly. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted trust/draft cases preserve behavior with 0 new false permits, disclosures or real test publications, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-plugin-trust-and-feedback --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 trust bypasses, private-reference disclosures or real public writes from tests.
-  - **Pivot**: Any trust/publication bypass -> abandon the affected adapter design before rollout. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Detect and repair drift through native diagnostics
-  - **ID**: rust-diagnostics-and-repair
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port health snapshots, drift decisions/fixes, repair provenance, status/ops and next steps. Require post-fix verification; retain unknown/unsupported states, dry-run and changed-source detection. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle
-  - **Acceptance**: Planted drift, ineffective repairs, unavailable tools, concurrent source changes and empty evidence preserve severity, exits and repair ownership. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted diagnostics preserve behavior with 0 false healthy/fixed results or unowned repairs, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-diagnostics-and-repair --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 false healthy/fixed results and 0 repairs outside recorded ownership.
-  - **Pivot**: Any false success -> change evidence or repair boundary rather than weaken checks. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Measure the same operational outcomes through native collectors
-  - **ID**: rust-metrics-and-perf
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port event processing, context measurement, perf recording, usage/weekly metrics and report-data processing. Preserve histories, attribution limits, safe labels and time windows. Separate queue, external-tool and workload time. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives
-  - **Acceptance**: Malformed events, missing data, clock skew, daylight-saving changes, unknown timeout causes and planted secrets preserve honest metric meaning and redaction. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted collectors preserve semantics with 0 payload disclosures or unknown-to-causal relabeling, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-metrics-and-perf --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 changed metric meanings, private payload disclosures or fabricated zeroes/causal claims.
-  - **Pivot**: Any semantic/privacy mismatch -> redesign receipt/aggregation boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Run every supported user action through the native CLI
-  - **ID**: rust-cli-and-actions
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port command orchestration by action family through one parser/action registry. Include bootstrap, completion, portable bundles, lint/audit and browser screenshot orchestration. Preserve argv, exits, prompts, confirmations and terminal-only reasons. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf
-  - **Acceptance**: Every discovered converted action has a native route; help, invalid input, noninteractive refusal and safe scratch actions preserve CLI/agent discovery and approval behavior. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted actions run natively with 0 missing discovery paths or consent regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-cli-and-actions --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% native routes for converted actions; 0 missing CLI/agent discovery paths or consent regressions.
-  - **Pivot**: Any missing action or consent regression -> change dispatch before another action family. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Enforce the same hook decisions with native executable helpers
-  - **ID**: rust-hooks-and-generated-helpers
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port hook checks, Python/Perl/jq helpers and generated executable logic by hook family. Preserve protocol, opt-ins, parsing, safe unknown handling, endpoint setup and ownership-aware deployment. Retain only necessary shell shims. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile
-  - **Acceptance**: Permitted/denied controls plus hostile heredocs, substitutions, bad JSON, absent tools and timeouts preserve verdicts and bounded execution. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted hook cases preserve behavior with 0 new false permits, injection paths or hidden legacy business logic, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-hooks-and-generated-helpers --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 new false permits, injection paths or unexplained owned interpreted hook logic.
-  - **Pivot**: Any deny/unknown or injection regression -> change parser/protocol boundary, not an allow rule. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Run owned workflow utilities and generated projects natively
-  - **ID**: rust-workflow-tools-and-scaffolds
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port README/review/goal/watch/open-work/rankings utilities and executable project scaffolds in separate workflow slices. Retain prompts and declarative assets; UI presentation is narrow, while report-data and browser orchestration remain in scope. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-metrics-and-perf
-  - **Acceptance**: Scratch repositories/projects, cancelled watches, absent dashboards, denied public actions and interrupted scaffolds preserve outputs, approvals and cleanup. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted workflow/generated non-UI logic runs natively with 0 behavior, approval or cleanup regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-workflow-tools-and-scaffolds --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% native converted workflows and generated non-UI logic; 0 real test publications or surviving owned children.
-  - **Pivot**: Any workflow/generated-project mismatch -> change wrapper/template boundary before deletion. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Retain independent defect detection while moving non-UI tests to Rust
-  - **ID**: rust-tests-and-evals
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned non-UI tests, fake services, eval providers, affected selection, fixtures and executable test configuration alongside completed production slices. Retain each old oracle until its Rust replacement detects the same planted defects. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-measurement-harness
-  - **Acceptance**: Old and Rust runners reject the same planted production, cleanup, redaction and approval defects. Test each production slice before retiring its oracle; fixture rewrites retain negative behavior. Keep only necessary shell-boundary fixtures and actual UI adapters.
-  - **Hypothesis**: Rust test/eval replacements retain 100% registered planted-defect detection with 0 omitted contracts and no resource regression beyond 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-tests-and-evals --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code; retain existing full gate.
-  - **Success**: 100% registered planted defects detected; 0 omitted behavior contracts; G for test-runner lifecycle/resources.
-  - **Pivot**: Any lost defect detection -> retain the old oracle and redesign the Rust fixture/test boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Build and install the native tool without redundant project runtimes
-  - **ID**: rust-build-release-and-install
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned verification, docs generators, lints, checkup, build/install/update/uninstall/release and CI executable steps. Produce locked native artifacts; preserve integrity and approval gates. No registry publication is needed to prove local behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-cli-and-actions, rust-workflow-tools-and-scaffolds, rust-tests-and-evals
-  - **Acceptance**: Supported scratch clean install, no-op update, offline failure, wrong architecture, missing asset, interrupted replacement, uninstall and rollback meet registered contracts. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% supported converted install/update/recovery cases run without a project Node/Python/Perl runtime for owned non-UI logic, with 0 safety/behavior regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-build-release-and-install --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% supported install/update/rollback cases; 0 unverified artifact replacements or approval bypasses.
-  - **Pivot**: Any installation/recovery defect -> change packaging before native defaults. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Prove all eligible code and deployed paths have migration evidence
-  - **ID**: rust-final-audit
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Reconcile source inventory, every step's before/after receipts, generated targets, installed source, docs and remaining dependencies. Delete only proven unused implementations. Frozen residue remains an unresolved policy boundary, never false completion. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: measurement
-  - **Blocked by**: rust-source-inventory, rust-measurement-harness, rust-native-delivery, rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile, rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf, rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-workflow-tools-and-scaffolds, rust-tests-and-evals, rust-build-release-and-install
-  - **Acceptance**: Every eligible owned component maps to tested Rust delivery; each exception has a narrow reason and test. No unsupported all-code or speed claim is made. Current whole-tool behavior and installed artifacts agree with receipts.
-  - **Hypothesis**: Complete source/caller and deployment reconciliation exposes all remaining gaps: 0 unclassified or unexplained eligible legacy components, complete valid per-step receipts, and 0 safety/behavior regressions.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- final-audit` — proposed harness command; run existing full gate and re-read installed-source evidence.
-  - **Success**: 0 unexplained eligible legacy components; 100% valid per-step receipts; G on declared whole-tool workflows; no unresolved policy conflict hidden as an exception.
-  - **Pivot**: Any unexplained residue, invalid receipt or unresolved frozen-support conflict -> keep migration incomplete and resolve the specific boundary; do not change the goal to converted lines.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 - [ ] Classify upstream skill-to-plugin conversions during source refresh
   - **ID**: classify-upstream-skill-plugin-conversions

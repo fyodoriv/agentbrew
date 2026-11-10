@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// Pins the safety contract of the hosted workflows (SECURITY.md): a public
+// Pins the safety contract of the hosted workflows (docs/ci.md): a public
 // repo runs code from strangers' pull requests, so each rule here closes one
 // way a workflow could leak a token or run with more rights than it needs.
 const workflowsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".github", "workflows");
@@ -57,8 +57,8 @@ describe("hosted workflows", () => {
     // A new trigger is a decision: add it here in the same change.
     const allowed: Record<string, string[]> = {
       "auto-publish.yml": ["workflow_dispatch"],
-      "ci.yml": ["workflow_dispatch"],
-      "oss-readiness.yml": ["workflow_dispatch"],
+      "ci.yml": ["pull_request", "push", "workflow_dispatch"],
+      "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
       "publish.yml": ["push"],
     };

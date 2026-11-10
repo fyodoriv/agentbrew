@@ -91,8 +91,9 @@ no hardcoded secret may reach the repo.** Full design lives in
 
 3. **`npm run verify` is the local gate.** Run it before every push.
    The CI workflow (`.github/workflows/oss-readiness.yml`) runs the
-   no-internal-refs test and a private-email check. GitHub Actions is
-   disabled on `fyodoriv/agentbrew` today, so CI does not run.
+   no-internal-refs test and a private-email check on every pull request.
+   A hosted runner has no private-pattern file, so the local gates stay
+   the authority for leaks ([`docs/ci.md`](ci.md)).
 
 `dotfiles/lib/oss-readiness.sh` reads the same `oss-readiness.env` as
 [`src/oss/no-internal-refs.test.ts`](src/oss/no-internal-refs.test.ts).

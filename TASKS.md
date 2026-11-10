@@ -313,6 +313,34 @@
   - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
 
+- [ ] Teach the run-goal skill that agentbrew now has hosted CI
+  - **ID**: run-goal-skill-hosted-ci-wording
+  - **Tags**: skills, ci, docs
+  - **Mode**: AFK
+  - **Details**: GitHub Actions now runs `npm run verify` on every pull request ([`docs/ci.md`](docs/ci.md)). The run-goal skill and four of its evals still describe a repo with no CI and tell the agent to merge on the local gate alone. The text stays correct for repos without CI, but it must also say what to do when hosted checks exist: wait for the check, read the log on a failure, and never merge on a red or pending check. The session that owns the run-goal retro makes this edit; the hosted-CI change did not touch the skill on purpose.
+  - **Files**: `skill-plugins/workflow/run-goal/SKILL.md`, `skill-plugins/workflow/run-goal/evals/evals.json`
+  - **Output**: mixed
+  - **Acceptance**: The skill names both cases (hosted checks present, no hosted checks). One new eval covers a repo with a pending hosted check, and the agent waits for it.
+  - **Hypothesis**: one explicit rule moves merges made while a hosted check is red or pending from an unknown number to 0 of the next 10 goal merges.
+  - **Measurement**: `gh pr list --state merged -L 10 --json number,statusCheckRollup --jq '[.[]|select(any(.statusCheckRollup[]?; .conclusion!="SUCCESS" and .conclusion!="SKIPPED" and .conclusion!="NEUTRAL"))]|length'`
+  - **Success**: 0 of 10.
+  - **Pivot**: 2 or more of 10 means the rule is not loaded at merge time; move the check into a deterministic hook instead of skill text.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Make the launchagent queue test Q01 pass under machine load
+  - **ID**: launchagent-queue-q01-load-timeout
+  - **Tags**: tests, reliability
+  - **Mode**: AFK
+  - **Details**: On 2026-11-09 `src/sync/launchagent-queue.test.ts` test Q01 ("keeps repair behind selected queue admission") failed 3 of 3 full-gate runs with `expected 124 to be +0` while the load average was 25 to 30. It passed 12 of 12 runs under `heavy-run --exclusive` at load 8.5. Exit 124 is the 3.5-second timer inside the test's own fixture queue, so the test measures machine speed, not queue order. Replace the wall-clock limit with an ordering assertion, or wait on an explicit ready signal.
+  - **Files**: `src/sync/launchagent-queue.test.ts`
+  - **Output**: code
+  - **Acceptance**: Q01 passes 20 of 20 runs while a second full gate runs on the same machine, and it still fails when the queue admission order is broken on purpose.
+  - **Hypothesis**: removing the fixed 3.5-second timer moves Q01 failures under load from 3 of 3 to 0 of 20.
+  - **Measurement**: `for i in $(seq 20); do npx vitest run src/sync/launchagent-queue.test.ts -t Q01 >/dev/null 2>&1 || echo fail; done | wc -l`, run while `heavy-run npm run verify` runs in a second worktree.
+  - **Success**: 0 failures of 20.
+  - **Pivot**: 2 or more failures of 20 means the queue itself is slow under load, not only the test; measure queue admission time and file that as its own task.
+  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests (async wait is the top cause).
+
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
   - **Tags**: opencode, local-ai, reliability, readiness

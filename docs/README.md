@@ -29,6 +29,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`observability.md`](observability.md) | Where are the logs, which events and errors are recorded, and how does the health check show each fix? | both |
 | [`metrics.md`](metrics.md) | How do we know agentbrew works? Each metric with its goal, pivot, and command. | both |
 | [`usage-tips.md`](usage-tips.md) | Why were usage tips retired, and what happens to old tip history? | human |
+| [`ci.md`](ci.md) | What does hosted CI run, what does it cost, and what still runs only on my machine? | both |
 | [`agent-perf.md`](agent-perf.md) | Which agent steps take the longest? The perf log, its privacy rules, and `agent-perf.mjs`. | both |
 | [`testing-agent-artifacts.md`](testing-agent-artifacts.md) | How do I test skills, commands, hooks, and rules? | agent |
 | [`agent-guide-baseline.md`](agent-guide-baseline.md) | How do I write an `AGENTS.md` for any repo? The cross-repo contract. | both |

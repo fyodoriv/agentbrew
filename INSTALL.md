@@ -75,7 +75,8 @@ Ask these together, in one round:
 
 5. "Share anonymous performance numbers? agentbrew can send the command
    name, its duration, ok or error, counts, its version, your OS and CPU
-   type, and a random install id to PostHog EU, for a public speed dashboard.
+   type, a random install id, and an estimate of the seconds a sync or
+   repair saved to PostHog EU. The maintainer reads the totals and averages.
    Never a path, file name, host name,
    user name, argument, message, or content.
    No IP-based location. No person profile. PostHog sees the request's IP
@@ -92,8 +93,8 @@ For question 5: No → `--no-telemetry`. Yes → after the install, run
 `agentbrew telemetry on` (it records the yes and prints the example and the
 promise; show them). No answer → pass nothing: the answer stays unset,
 nothing is sent, and the user is asked in their own terminal (at most once a
-day, at most 3 times). With no project key in the build (the default today)
-nobody is asked and the installer prints nothing about telemetry; skip
+day, at most 3 times). With no project key in the build (a fork that empties the
+shipped key file) nobody is asked and the installer prints nothing about telemetry; skip
 question 5 then (`agentbrew telemetry status` shows `key: none`). A person
 who runs the installer in a terminal is asked there, as its last step
 (`[Y/n]`, Enter counts as yes). A re-install never asks again and never

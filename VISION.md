@@ -224,7 +224,7 @@ Hard boundaries. Out of scope unless a specific [trigger in the dissolution anal
 - **Absorbed features from competitors** — contribute to them or point users at them directly
 - **Backwards compatibility (pre-v1)** — one user today; removals are one commit
 - **A mirror of the team skills registry** — skills live in one dedicated repo; agentbrew registers it, not mirrors it
-- **Telemetry with content, or without a yes** — since 2026-11-09 agentbrew sends anonymous performance numbers (`agentbrew telemetry`), because numbers from all installs feed a public speed dashboard and a regression gate. It is asked at install; on only after you say yes (Enter counts as yes). The question is loud: it shows one example event and the privacy promise. It is asked only when a project key is present. It sends only allow-listed fields, and never with `agentbrew telemetry off`, `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK`, or `CI` set. This replaces the 2026-10-26 owner-key opt-in decision. The weekly aggregate share (`agentbrew metrics share`) stays opt-in; leaderboards belong to skills.sh
+- **Telemetry with content, or without a yes** — since 2026-11-09 agentbrew sends anonymous performance numbers (`agentbrew telemetry`), because numbers from all installs feed a speed dashboard (private to the maintainer) and a regression gate. It is asked at install; on only after you say yes (Enter counts as yes). The question is loud: it shows one example event and the privacy promise. It is asked only when a project key is present. It sends only allow-listed fields, and never with `agentbrew telemetry off`, `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK`, or `CI` set. This replaces the 2026-10-26 owner-key opt-in decision. The weekly aggregate share (`agentbrew metrics share`) stays opt-in; leaderboards belong to skills.sh
 - **Bi-directional sync** — agentbrew is one-way (Agentfile → agent configs)
 - **A daemon separate from the OS scheduler** — auto-repair uses launchd / systemd / Windows Task Scheduler
 
@@ -235,7 +235,7 @@ the full boundaries.
 
 - Not a per-agent config UI (NG1), and not a skill author or host (NG2).
 - No bespoke support for excluded agents (NG3) and no new work for frozen ones (NG4).
-- No telemetry with content, and none without a yes. Anonymous performance numbers are asked at install; on only after you say yes (Enter counts as yes). Decided 2026-11-09: numbers from all installs feed a public dashboard and a regression gate. They never hold content, paths, or names, and `agentbrew telemetry off` or `DO_NOT_TRACK=1` stops them.
+- No telemetry with content, and none without a yes. Anonymous performance numbers are asked at install; on only after you say yes (Enter counts as yes). Decided 2026-11-09: numbers from all installs feed a speed dashboard (private to the maintainer) and a regression gate. They never hold content, paths, or names, and `agentbrew telemetry off` or `DO_NOT_TRACK=1` stops them.
 - No content hosting, registry, IDE extension, framework, or daemon of its own.
 
 ## Coexistence with other tools

@@ -383,8 +383,8 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
     // must not carry a path, name, or other content off the machine.
     if (!e || !(EVENT_NAMES as readonly unknown[]).includes(e.event)) continue;
     // The log keeps `ms`; the request names it `duration_ms`, the name the
-    // other tools on the same dashboard send.
-    const { ts: _now, event, ms, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
+    // other tools on the same dashboard send. `secondsSaved` becomes `seconds_saved` the same way.
+    const { ts: _now, event, ms, secondsSaved, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
     batch.push({
       event: `agentbrew.${String(event)}`,
       distinct_id: installId,
@@ -392,6 +392,7 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
       properties: {
         ...rest,
         ...(ms === undefined ? {} : { duration_ms: ms }),
+        ...(secondsSaved === undefined ? {} : { seconds_saved: secondsSaved }),
         ...machine(version),
         $geoip_disable: true,
         $process_person_profile: false,
@@ -424,6 +425,7 @@ export function consentText(version: string, deps: TelemetryDeps = {}): string {
     "",
     "What is sent: the command name, its duration, ok or error, counts,",
     "the agentbrew version, your OS and CPU type, and a random install id.",
+    "A sync or repair also sends an estimate of the seconds it saved you.",
     "",
     "One example event, in the exact shape that is sent:",
     "",
@@ -436,7 +438,7 @@ export function consentText(version: string, deps: TelemetryDeps = {}): string {
     "The code that enforces this is src/core/events.ts and src/core/telemetry.ts; see",
     PRIVACY_DOC,
     "",
-    "Where the numbers go: PostHog EU, for a public speed dashboard.",
+    "Where the numbers go: PostHog EU. The maintainer reads the totals and averages.",
     "Change your answer any time: agentbrew telemetry off  /  agentbrew telemetry on",
     "",
   ].join("\n");

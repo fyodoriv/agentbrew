@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Telemetry shows how much agentbrew helps. A `sync` event has `agents` (how
+  many agents are detected on this machine, the set a sync targets) and `secondsSaved`; a `repair` event has
+  `secondsSaved`. The estimate for each synced agent is 3 seconds, and for each repaired
+  drift item 60 seconds, against editing each agent's config by hand; a
+  failed run saves 0. The opt-in request sends them as `agents` and
+  `seconds_saved`: numbers only. `agentbrew metrics` prints the local sum as
+  "Estimated time saved". The docs no longer call the dashboard public or the
+  project key absent.
+
 - `npm run perf:gate` fails a PR that makes a tracked command more than 10%
   slower than the merge-base, or slower than its ceiling in
   `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,

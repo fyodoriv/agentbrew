@@ -129,11 +129,11 @@ pie title Drift items found by scheduled repair
 ## Telemetry
 
 agentbrew can send anonymous performance numbers to PostHog EU. You are asked at install; it is on only after you say yes (Enter counts as yes).
-The numbers feed a public speed dashboard and a check that catches a slow release.
+The maintainer reads the totals and averages (the dashboard is private) and uses them to catch a slow release.
 
-**The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one example event, and the privacy promise first. It is asked only when a project key is present: with none (the shipped default today) nothing can be sent, nobody is asked, and the installer prints nothing about telemetry. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the next command you run in a terminal asks, and there only a typed `y` or `n` counts. That question never follows `--help`, `--version`, completion, or `--json` output. Unanswered, it comes back at most once a day and at most 3 times; after that only `agentbrew telemetry ask` shows it. A re-install or an update never asks again and never changes your answer; only `--no-telemetry` (or an opt-out variable) at a re-install turns a yes into a no. A yes covers only what happens after it: nothing recorded before the yes is sent.
+**The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one example event, and the privacy promise first. It is asked only when a project key is present. A write-only project key ships in the repo. With none (a fork that empties the key file) nothing can be sent, nobody is asked, and the installer prints nothing about telemetry. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the next command you run in a terminal asks, and there only a typed `y` or `n` counts. That question never follows `--help`, `--version`, completion, or `--json` output. Unanswered, it comes back at most once a day and at most 3 times; after that only `agentbrew telemetry ask` shows it. A re-install or an update never asks again and never changes your answer; only `--no-telemetry` (or an opt-out variable) at a re-install turns a yes into a no. A yes covers only what happens after it: nothing recorded before the yes is sent.
 
-**What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. One event per command run, sync, scheduled repair, and error:
+**What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. A sync also sends `agents` (how many agents are detected on this machine, the set a sync targets; 0 when the sync stopped before a deploy step; a number, never a name). A sync or repair also sends `seconds_saved`, an estimate (see "How much it helps" below). One event per command run, sync, scheduled repair, and error:
 
 ```json
 {
@@ -172,6 +172,20 @@ Nothing is sent when `CI` is set, or when no project key is present. A send happ
 ```bash
 agentbrew telemetry status           # on or off, the reason, your answer and its date, the key source, pending events, last send
 agentbrew telemetry send --dry-run   # the exact next request body, key hidden; sends nothing
+```
+
+**How much it helps.** The baseline is a person who has several AI coding agents and edits each agent's config by hand. agentbrew estimates the time it saves against that baseline:
+
+| Action | Estimate |
+|---|---|
+| One sync that works | 3 seconds for each agent detected on this machine |
+| One repair that leaves no drift | 60 seconds for each drift item it fixed |
+| A sync or repair that fails | 0 |
+
+Saved time is an estimate, chosen low. Durations are measured. A sync that changes nothing, a `--only` sync, and a sync that a scheduler or a script runs count the same as a full sync, so the number is a rough estimate. See the estimate for this machine (it reads the local event log and uploads nothing). The event log keeps about its newest 1 MiB, so the sum for a long window can be a lower bound.
+
+```bash
+agentbrew metrics --days 30   # prints "Estimated time saved, last 30 days: N min (...)"
 ```
 
 Full contract: [`docs/observability.md`](docs/observability.md#field-telemetry).
@@ -822,7 +836,7 @@ whole calls; they do not prove polling or identify timeout causes.
 
 ### One local metrics report
 
-`agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers.
+`agentbrew metrics` puts agent tool time, hook blocks and warnings, MCP health, and the [estimated time saved](#telemetry) from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers.
 
 `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
 

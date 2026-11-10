@@ -36,6 +36,10 @@ export interface AgentbrewEvent {
   repaired?: number;
   /** Drift items left after a repair. */
   remaining?: number;
+  /** Agents detected on this machine, the set a sync targets; 0 when the sync stopped before a deploy step. A count, never a name. */
+  agents?: number;
+  /** Estimated seconds saved against editing each agent's config by hand (core/gains.ts). */
+  secondsSaved?: number;
   /** Drift types left after a repair (enum names from DriftItem["type"]). */
   types?: string[];
   /** Error code, such as "SYNC_ERROR". */
@@ -45,7 +49,15 @@ export interface AgentbrewEvent {
 }
 
 const STORY = /^US\d{2}$/;
-const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining"] as const;
+const NUMBER_FIELDS = ["ms", "driftBefore", "repaired", "remaining", "agents", "secondsSaved"] as const;
+/**
+ * Upper bounds of the gain fields. A value above its bound is dropped, not
+ * clamped: no real run reaches it, so it is an edited or broken log line.
+ */
+export const NUMBER_MAX: Readonly<Partial<Record<(typeof NUMBER_FIELDS)[number], number>>> = {
+  agents: 100,
+  secondsSaved: 86_400,
+};
 
 /**
  * Story that each sync module serves (the error-to-story map in docs/observability.md).
@@ -202,6 +214,12 @@ export function eventsFilePath(): string {
   return process.env.AGENTBREW_EVENTS_FILE || join(getLogDir(), "events.jsonl");
 }
 
+/** A finite number, not negative, and not above the field's bound (NUMBER_MAX). */
+function safeNumber(key: (typeof NUMBER_FIELDS)[number], value: unknown): value is number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return false;
+  return value <= (NUMBER_MAX[key] ?? Number.POSITIVE_INFINITY);
+}
+
 /** Keep only allow-listed fields with safe values. Exported for tests. */
 export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
   const out: Record<string, unknown> = { ts: new Date().toISOString(), event: input.event };
@@ -212,7 +230,7 @@ export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
   if (typeof input.command === "string" && COMMAND_NAMES.has(input.command)) out.command = input.command;
   for (const key of NUMBER_FIELDS) {
     const value = input[key];
-    if (typeof value === "number" && Number.isFinite(value) && value >= 0) out[key] = Math.round(value);
+    if (safeNumber(key, value)) out[key] = Math.round(value);
   }
   // Names come from fixed lists, never from a pattern: an edited log line cannot send a word of its own.
   const known = (v: unknown, names: { has(name: string): boolean }): v is string =>

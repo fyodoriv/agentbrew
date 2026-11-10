@@ -665,6 +665,51 @@ describe("field telemetry", () => {
       expect(properties).not.toHaveProperty("ms");
     });
 
+    it("the request body gains seconds_saved and agents, and no other new name", () => {
+      const line = JSON.stringify({
+        ts: "2026-11-09T12:00:00.000Z",
+        event: "sync",
+        story: "US08",
+        ok: true,
+        ms: 41,
+        agents: 4,
+        secondsSaved: 12,
+      });
+      const { properties } = (
+        buildBatch([line], "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[]
+      )[0];
+      expect(properties).toMatchObject({ agents: 4, seconds_saved: 12, duration_ms: 41 });
+      expect(Object.keys(properties).sort()).toEqual([
+        "$geoip_disable",
+        "$process_person_profile",
+        "agents",
+        "app_version",
+        "arch",
+        "duration_ms",
+        "ok",
+        "os",
+        "runtime",
+        "seconds_saved",
+        "story",
+      ]);
+      // The log name never leaves the machine, and an edited log line sends no text in the new fields.
+      expect(properties).not.toHaveProperty("secondsSaved");
+      const edited = JSON.stringify({ event: "repair", ok: true, agents: "janedoe", secondsSaved: "janedoe" });
+      const tampered = (
+        buildBatch([edited], "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[]
+      )[0].properties;
+      expect(tampered).not.toHaveProperty("agents");
+      expect(tampered).not.toHaveProperty("seconds_saved");
+      expect(JSON.stringify(tampered)).not.toContain("janedoe");
+      // A number above its bound is dropped at send time too.
+      const huge = JSON.stringify({ event: "sync", ok: true, agents: 5000, secondsSaved: 9_999_999 });
+      const bounded = (
+        buildBatch([huge], "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[]
+      )[0].properties;
+      expect(bounded).not.toHaveProperty("agents");
+      expect(bounded).not.toHaveProperty("seconds_saved");
+    });
+
     it("canary: no path, user name, email, URL, or token leaves the machine, even from an edited log", () => {
       const canaries = [
         // Built at run time: the push gate refuses a literal home path.
@@ -701,6 +746,8 @@ describe("field telemetry", () => {
           module: canary,
           types: [canary, "skills"],
           driftBefore: canary,
+          agents: canary,
+          secondsSaved: canary,
         }),
         JSON.stringify({ ts: canary, event: canary, ok: canary }),
         JSON.stringify({ ts: canary, event: "janedoe", ok: true }),

@@ -1,10 +1,11 @@
 /**
  * `agentbrew metrics`: one local report of what agentbrew does on this
- * machine. It reads three local logs that agentbrew already writes and
+ * machine. It reads local logs that agentbrew already writes and
  * uploads nothing:
  *   - the agent perf log (perf-record hooks) through agent-perf.mjs,
  *   - the hook decision log (~/.cache/agentbrew/hook-decisions.jsonl),
- *   - the MCP health snapshot (~/.cache/agentbrew/mcp-health.json).
+ *   - the MCP health snapshot (~/.cache/agentbrew/mcp-health.json),
+ *   - the content-free event log, for the estimated time saved (core/gains.ts).
  *
  * `--share` renders a Markdown snapshot that a user can paste into an issue
  * or PR. It holds only aggregates: no project names, paths, session ids,
@@ -14,6 +15,7 @@ import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync } fr
 import { homedir, platform, release } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { type GainSummary, gainLine, summarizeGains } from "../core/gains.js";
 import { logSkipped } from "../core/logger.js";
 import { HELPER_SCRIPTS_DIR } from "../paths.js";
 import { expandHome } from "../utils.js";
@@ -53,6 +55,8 @@ export interface UsageMetrics {
   };
   hooks: { available: boolean; decisions: number; blocks: number; warns: number; top: HookStat[] };
   mcp: { available: boolean; ok: number; failing: number; failingNames: string[] };
+  /** Estimated time saved in the window (sync and repair events). An estimate, not a measurement. */
+  gains: GainSummary;
 }
 
 export interface CollectOptions {
@@ -192,6 +196,18 @@ export function collectMcpHealth(path: string): UsageMetrics["mcp"] {
   }
 }
 
+/** Read the event log (AGENTBREW_EVENTS_FILE, or the default under `home`) and sum the estimated time saved. */
+function collectGains(home: string, env: NodeJS.ProcessEnv, sinceMs: number): GainSummary {
+  const file = env.AGENTBREW_EVENTS_FILE || join(home, ".local", "share", "agentbrew", "logs", "events.jsonl");
+  try {
+    if (!existsSync(file)) return { available: false, secondsSaved: 0 };
+    return summarizeGains(readFileSync(file, "utf-8").split("\n"), sinceMs);
+  } catch (error) {
+    logSkipped("metrics/usage/collectGains", error);
+    return { available: false, secondsSaved: 0 };
+  }
+}
+
 export async function collectUsageMetrics(options: CollectOptions = {}): Promise<UsageMetrics> {
   const days = options.days && options.days > 0 ? options.days : 7;
   const home = options.home ?? homedir();
@@ -207,6 +223,7 @@ export async function collectUsageMetrics(options: CollectOptions = {}): Promise
     agentTime: await collectAgentTime({ ...options, days, home, env, nowMs }),
     hooks: collectHookStats(join(cacheDir, "hook-decisions.jsonl"), nowMs - days * DAY_MS),
     mcp: collectMcpHealth(join(cacheDir, "mcp-health.json")),
+    gains: collectGains(home, env, nowMs - days * DAY_MS),
   };
 }
 
@@ -250,6 +267,7 @@ export function renderUsageText(m: UsageMetrics): string {
   } else {
     lines.push("MCP servers: no health snapshot yet (`agentbrew status` writes one).");
   }
+  lines.push("", gainLine(m.gains, m.days));
   lines.push("", "Share a privacy-safe snapshot: agentbrew metrics --share metrics.md");
   return lines.join("\n");
 }

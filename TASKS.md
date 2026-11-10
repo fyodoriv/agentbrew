@@ -299,6 +299,20 @@
 
 ## P2
 
+- [ ] Decide whether pull requests must carry a Vision trace block
+  - **ID**: decide-pr-vision-trace-gate
+  - **Tags**: ci, docs, process
+  - **Mode**: HITL
+  - **Details**: `.github/workflows/pr-vision-trace.yml` failed every pull request that had no `Vision trace` block. No recent pull request body has one, so the workflow is parked: it starts only by hand. The owner decides: restore the `pull_request` trigger and add the block to the PR template and agent rules, or delete the workflow, its script and its test.
+  - **Files**: `.github/workflows/pr-vision-trace.yml`, `scripts/check-pr-vision-trace.mjs`, `.github/PULL_REQUEST_TEMPLATE.md`
+  - **Output**: decision, then code
+  - **Acceptance**: The workflow either runs on every pull request and passes on a body written from the template, or it is gone with its script and test.
+  - **Hypothesis**: one clear rule moves the share of merged pull requests that match the declared trace policy from 0 of the last 6 to 6 of the next 6.
+  - **Measurement**: `gh pr list --state merged -L 6 --json body --jq '[.[]|.body|test("Vision trace")]|map(select(.))|length'`
+  - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
+  - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
+
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
   - **Tags**: opencode, local-ai, reliability, readiness

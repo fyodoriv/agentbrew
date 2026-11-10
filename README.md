@@ -1186,7 +1186,7 @@ Unavailable marketplace metadata is not proof that a mod was retired.
 
 ### Publishing to npm
 
-The `Auto-release` workflow bumps the patch version on `main`, commits `release: vX.Y.Z [skip ci]`, and pushes a tag. It runs on pushes to `main` and on `workflow_dispatch`. GitHub Actions is disabled on `fyodoriv/agentbrew` today, so the workflow does not run. **npm publish is manual** (2FA OTP + maintainer credentials).
+The `Auto-release` workflow bumps the patch version on `main`, commits `release: vX.Y.Z [skip ci]`, and pushes a tag. It starts only by hand (`workflow_dispatch`), never on a push, and only when GitHub Actions is on for the repo. **npm publish is manual** (2FA OTP + maintainer credentials).
 
 ```bash
 npm login                              # once per machine — npm whoami to verify

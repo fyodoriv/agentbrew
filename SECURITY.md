@@ -74,7 +74,7 @@ Three independent leak categories are blocked:
 
 3. **Secret leaks** — hardcoded API keys, OAuth tokens, AWS keys,
    private keys. Caught by:
-   - GitHub secret scanning, and gitleaks in `.github/workflows/ci.yml`.
+   - GitHub secret scanning with push protection.
    - `~/apps/tooling/dotfiles/git-hooks/pre-commit` when `core.hooksPath`
      points at the dotfiles repo's hooks (recommended for any host that
      contributes).
@@ -83,7 +83,7 @@ Three independent leak categories are blocked:
 
 | Layer | Where | What it catches |
 |-------|-------|-----------------|
-| **L1** Secret scanning | GitHub secret scanning; gitleaks in `.github/workflows/ci.yml` | Secret-shaped tokens |
+| **L1** Secret scanning | GitHub secret scanning with push protection | Secret-shaped tokens |
 | **L2** Pre-commit hook | `~/apps/tooling/dotfiles/git-hooks/pre-commit` (global) | Content + secret + author-email on staged files (when wired) |
 | **L3** Pre-push hook | `~/apps/tooling/dotfiles/git-hooks/pre-push` (global) | Blocks a push to `github.com/fyodoriv/agentbrew` when any author or committer email matches the private-email pattern |
 | **L4** CI (GitHub Actions) | `.github/workflows/oss-readiness.yml` | Runs the no-internal-refs test and a private-email check on every PR |

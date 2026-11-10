@@ -128,7 +128,7 @@ describe("perf gate verdicts", () => {
     expect(result.stdout).toMatch(/tool\s+base.*head.*ok/);
   });
 
-  it("passes when only one lucky base run is faster: the paired runs decide, not the two minimums", () => {
+  it("passes when only one lucky base run is faster: the paired runs decide, not the two minimums", TIMING, () => {
     // The base tool is fast once (its first run), then slower than the head tool.
     const lucky = '#!/bin/sh\nn=$(cat "$HOME/n" 2>/dev/null || echo 0)\necho $((n + 1)) > "$HOME/n"\n';
     writeFileSync(join(fix, "tool.sh"), `${lucky}[ "$n" = 0 ] && exec sleep 0.03\nsleep 0.10\n`);
@@ -425,7 +425,7 @@ describe("perf gate runs", () => {
       .filter((name) => /^[0-9a-f]{40}$/.test(name))
       .sort();
 
-  it("caches the base checkout by commit and keeps only two old ones", () => {
+  it("caches the base checkout by commit and keeps only two old ones", TIMING, () => {
     const shas = threeBases(2 * 60 * 60 * 1000);
     expect(checkouts()).toEqual([shas[1], shas[2]].sort());
     expect(git("worktree", "list").split("\n")).toHaveLength(3);
@@ -652,7 +652,7 @@ describe("perf gate has no silent pass", () => {
     expect(allowed.status, allowed.all).toBe(0);
   });
 
-  it("lets two gate PRs in a row pass: an allow line is compared by name and reason", () => {
+  it("lets two gate PRs in a row pass: an allow line is compared by name and reason", TIMING, () => {
     const self = join(fix, "scripts", "perf-gate.mjs");
     writeFileSync(self, "// the gate\n");
     commit("add the gate script");

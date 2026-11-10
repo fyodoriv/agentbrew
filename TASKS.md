@@ -392,6 +392,34 @@
   - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
   - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
 
+- [ ] Write rules natively when a native agent shares its file with a delegated agent and ai-rules is missing
+  - **ID**: rules-shared-file-native-fallback
+  - **Tags**: sync, rules
+  - **Mode**: AFK
+  - **Details**: Found on the first hosted run (2026-11-10), where the `ai-rules` CLI is not installed. `dedupeRulesWritesByResolvedPath` in `src/sync/rules-sync.ts` gives a shared rules file to the delegated agent. With no `ai-rules`, that write is skipped, so a natively synced agent on the same real file (seen with `opencode` in `src/integration.test.ts`, "sync → sync → status converges") keeps zero managed sections. The test now allows zero only for that shared-file case. Decide the behaviour: let the native agent write when the delegated write is skipped, or keep the skip and say so in the warning.
+  - **Files**: `src/sync/rules-sync.ts`, `src/integration.test.ts`, `src/sync/rules-sync.test.ts`
+  - **Output**: code
+  - **Acceptance**: with `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules`, the integration test asserts exactly one managed section for every native agent, with no shared-file exception.
+  - **Hypothesis**: a native fallback for a shared file moves native agents with zero managed sections on a machine without `ai-rules` from 1 to 0.
+  - **Measurement**: `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules npx vitest run src/integration.test.ts`
+  - **Success**: 105 of 105 tests pass with the exception removed.
+  - **Pivot**: if a native write to the shared file breaks the delegated agent's content on the next sync with `ai-rules`, keep the skip and print the file in the warning instead.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Make the perf gate timing tests steady on hosted runners
+  - **ID**: perf-gate-tests-hosted-noise
+  - **Tags**: ci, tests, perf
+  - **Mode**: AFK
+  - **Details**: On the hosted macOS run of 2026-11-10 three tests in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). They had no retry; they now use the file's `TIMING` retry like the other timing tests. A retry lowers the failure rate but does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
+  - **Files**: `src/scripts/perf-gate.test.ts`, `scripts/perf-gate.mjs`
+  - **Output**: code
+  - **Acceptance**: the file passes 20 of 20 hosted macOS runs with `retry` set to 0.
+  - **Hypothesis**: fixtures that do not depend on the wall clock move hosted failures of this file from 3 tests in 1 run to 0 in 20 runs.
+  - **Measurement**: `gh run list -w ci.yml -L 20 --json conclusion --jq '[.[]|select(.conclusion=="failure")]|length'`, then read each failed log for `perf-gate.test.ts`.
+  - **Success**: 0 failures of this file in 20 runs.
+  - **Pivot**: if a fake clock needs more than 50 lines in the gate, run this file in its own serial step after the suite.
+  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests.
+
 - [ ] Detect duplicate Ollama servers before they split the local prompt cache
   - **ID**: ollama-single-server-readiness
   - **Tags**: opencode, local-ai, reliability, readiness

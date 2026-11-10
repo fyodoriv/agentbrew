@@ -1140,12 +1140,16 @@ describe("field telemetry", () => {
       for (const age of [undefined, old]) {
         writeFileSync(lock, `1 ${"c".repeat(32)}`);
         utimesSync(lock, old, old);
+        const points: string[] = [];
         const result = acquireLock(lock, undefined, (at) => {
+          points.push(at);
           if (at !== "guard-held") return;
           writeFileSync(lock, live);
           if (age) utimesSync(lock, age, age);
         });
         expect(result).toBeUndefined();
+        // The check under the guard stops the takeover: the live lock is never moved away.
+        expect(points).toEqual(["guard-held"]);
         expect(readFileSync(lock, "utf-8")).toBe(live);
         expect(existsSync(`${lock}.steal`)).toBe(false);
         rmSync(lock);

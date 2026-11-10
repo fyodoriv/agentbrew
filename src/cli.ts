@@ -524,7 +524,7 @@ export function buildProgram(): Command {
  * written. The exit guard reads it, so a run that throws or calls
  * `process.exit` in its action still leaves one event.
  */
-let openCommand: { command: string; started: number } | undefined;
+let openCommand: { command: string; leaf: string; started: number } | undefined;
 let exitGuardSet = false;
 
 /** Write the open command's event, at most once per run. */
@@ -548,7 +548,7 @@ function closeCommandEvent(ok: boolean): void {
  */
 export function recordCommandEventAtExit(code: number): void {
   // The watcher runs for hours and ends itself: its uptime is not a command duration.
-  if (openCommand?.command === "auto-sync") return;
+  if (openCommand?.command === "auto-sync" && openCommand.leaf === "watch") return;
   closeCommandEvent(code === 0);
 }
 
@@ -568,7 +568,7 @@ function recordCommandEvents(program: Command): void {
       exitGuardSet = true;
       process.on("exit", recordCommandEventAtExit);
     }
-    openCommand = { command: top.name(), started: Date.now() };
+    openCommand = { command: top.name(), leaf: action.name(), started: Date.now() };
   });
   program.hook("postAction", async (_root, action) => {
     let top = action;

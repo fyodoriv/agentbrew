@@ -80,10 +80,10 @@ function startSender(url: string): Sender {
   return { child, next };
 }
 
-/** A round's files: a few events, a stored yes, a lock a dead send left, and a guard a dead takeover left. */
 // Ten minutes ago on the real clock, so every round is in the past: a send skips events older than its backlog limit.
 const SEED_START = Date.now() - 600_000;
 
+/** A round's files: a few events, a stored yes, a lock a dead send left, and a guard a dead takeover left. */
 function seedRound(round: number): string {
   const dir = join(home, `round-${round}`);
   mkdirSync(dir);

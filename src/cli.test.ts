@@ -343,10 +343,23 @@ describe("command events", () => {
       expect(commandEvents()).toHaveLength(2);
       expect(commandEvents()[1]).toMatchObject({ command: "status", ok: false });
 
+      // The auto-sync watcher runs for hours and ends itself: no event. Its other subcommands get one.
+      const runAutoSync = async (leaf: string): Promise<void> => {
+        const program = buildProgram();
+        const group = program.commands.find((command) => command.name() === "auto-sync");
+        group?.commands.find((command) => command.name() === leaf)?.action(() => process.exit(0));
+        await program.parseAsync(["node", "agentbrew", "auto-sync", leaf]).catch(() => {});
+      };
+      await runAutoSync("watch");
+      expect(commandEvents()).toHaveLength(2);
+      await runAutoSync("status");
+      expect(commandEvents()).toHaveLength(3);
+      expect(commandEvents()[2]).toMatchObject({ command: "auto-sync", ok: true });
+
       await runStatus(() => {});
       recordCommandEventAtExit(0);
-      expect(commandEvents()).toHaveLength(3);
-      expect(commandEvents()[2]).toMatchObject({ command: "status", ok: true });
+      expect(commandEvents()).toHaveLength(4);
+      expect(commandEvents()[3]).toMatchObject({ command: "status", ok: true });
     } finally {
       exit.mockRestore();
       vi.unstubAllEnvs();

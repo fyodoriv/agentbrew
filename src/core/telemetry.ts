@@ -699,7 +699,7 @@ const LOCK_GONE_WAIT_MS = 2000;
 const LOCK_GONE_STEP_MS = 2;
 
 /** A test seam of the lock takeover; the argument names the point it runs at. */
-type LockSeam = (at: "stale-guard" | "guard-held") => void;
+type LockSeam = (at: "stale-guard" | "guard-held" | "lock-moved") => void;
 
 /**
  * Replace a stale lock. Only one process at a time may do this: the one that
@@ -709,7 +709,8 @@ type LockSeam = (at: "stale-guard" | "guard-held") => void;
  * step), compared with the dead one, and the new lock is made with a hard
  * link, which fails when another lock is there. `seam` is for tests: it runs
  * between the sight of a stale guard and its removal ("stale-guard"), and
- * right after this process made the guard ("guard-held").
+ * right after this process made the guard ("guard-held"), and right after it
+ * moved the lock away ("lock-moved").
  */
 function takeOverStale(file: string, token: string, staleMs: number, seam?: LockSeam): boolean {
   if (!staleFile(file, staleMs)) return false;
@@ -730,6 +731,7 @@ function takeOverStale(file: string, token: string, staleMs: number, seam?: Lock
     if (!staleFile(file, staleMs) || readOrUndefined(file) !== dead) return false;
     writeFileSync(mine, token, { mode: 0o600 });
     renameSync(file, moved);
+    seam?.("lock-moved");
     if (readOrUndefined(moved) !== dead) {
       // Not the dead lock: another send made it a moment ago. It goes back.
       linkSync(moved, file);
@@ -761,17 +763,23 @@ export function acquireLock(
   // A takeover in another process moves the lock aside to compare it. A live lock goes back a
   // moment later, so a lock that is gone is read again for a short time before it counts as lost.
   // Without the wait, the owner would stop and its lock would belong to no process until it is stale.
+  // A lost lock stays lost: later calls answer at once, with no second wait.
+  let lost = false;
   const holds = (): boolean => {
+    if (lost) return false;
     const pause = new Int32Array(new SharedArrayBuffer(4));
-    for (let waited = 0; ; waited += LOCK_GONE_STEP_MS) {
+    for (const until = Date.now() + LOCK_GONE_WAIT_MS; ; ) {
       const text = readOrUndefined(file);
-      if (text !== undefined) return text === token;
-      if (waited >= LOCK_GONE_WAIT_MS) return false;
+      if (text !== undefined || Date.now() >= until) {
+        lost = text !== token;
+        return !lost;
+      }
       Atomics.wait(pause, 0, 0, LOCK_GONE_STEP_MS);
     }
   };
+  // Release never waits: a lock that is gone needs no removal.
   const release = (): void => {
-    if (holds()) rmSync(file, { force: true });
+    if (!lost && readOrUndefined(file) === token) rmSync(file, { force: true });
   };
   try {
     mkdirSync(dirname(file), { recursive: true });
@@ -858,7 +866,11 @@ async function postBatches(
   while (cursor < lines.length) {
     // Checked before every request, the first one too: a send whose lock another process took over must stop.
     if (!id.holds()) return { sent, skipped: "lock lost" };
-    if (loadState().consent !== "yes") return { sent, skipped: "consent changed" };
+    const before = loadState();
+    if (before.consent !== "yes") return { sent, skipped: "consent changed" };
+    // The lock can be away for a moment (see acquireLock). A send that ran in that gap has moved
+    // the cursor on disk past this one: these lines are sent, so this send stops.
+    if (before.sent > cursor) return { sent, skipped: "lock lost" };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);
     const count = (body.batch as unknown[]).length;

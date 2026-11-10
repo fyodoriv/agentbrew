@@ -143,7 +143,7 @@ The numbers feed a public speed dashboard and a check that catches a slow releas
   "properties": {
     "ok": true,
     "command": "sync",
-    "ms": 1840,
+    "duration_ms": 1840,
     "app_version": "1.0.0",
     "os": "darwin",
     "arch": "arm64",

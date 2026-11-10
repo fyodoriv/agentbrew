@@ -578,7 +578,7 @@ describe("field telemetry", () => {
       expect(body.batch[1].properties).toEqual({
         ok: true,
         command: "status",
-        ms: 41,
+        duration_ms: 41,
         app_version: "1.0.0",
         os: expect.stringMatching(/^(darwin|linux|other)$/),
         arch: expect.stringMatching(/^(arm64|x64|other)$/),
@@ -599,6 +599,23 @@ describe("field telemetry", () => {
       expect(JSON.stringify(r)).not.toContain("phc_test");
       expect(fetchImpl).not.toHaveBeenCalled();
       expect(readFileSync(process.env.AGENTBREW_TELEMETRY_STATE as string, "utf-8")).toBe(before);
+    });
+
+    it("the request body names the duration duration_ms, never ms, for every event with a duration", () => {
+      const lines = ["command", "sync", "repair"].map((event) =>
+        JSON.stringify({ ts: "2026-11-09T12:00:00.000Z", event, command: "status", ok: true, ms: 41 }),
+      );
+      const batch = buildBatch(lines, "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[];
+      expect(batch).toHaveLength(lines.length);
+      for (const item of batch) {
+        expect(item.properties.duration_ms).toBe(41);
+        expect(item.properties).not.toHaveProperty("ms");
+      }
+      // An event with no duration gets neither name.
+      const bare = buildBatch([JSON.stringify({ event: "command", command: "status", ok: true })], "", ID, "1.0.0");
+      const properties = (bare.batch as { properties: Record<string, unknown> }[])[0].properties;
+      expect(properties).not.toHaveProperty("duration_ms");
+      expect(properties).not.toHaveProperty("ms");
     });
 
     it("canary: no path, user name, email, URL, or token leaves the machine, even from an edited log", () => {
@@ -653,7 +670,7 @@ describe("field telemetry", () => {
         "$process_person_profile",
         "app_version",
         "arch",
-        "ms",
+        "duration_ms",
         "ok",
         "os",
         "runtime",

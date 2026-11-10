@@ -49,7 +49,7 @@ your OS and CPU type, and a random install id. One item per line of the
   "properties": {
     "ok": true,
     "command": "sync",
-    "ms": 1840,
+    "duration_ms": 1840,
     "app_version": "1.0.0",
     "os": "darwin",
     "arch": "arm64",
@@ -66,7 +66,7 @@ your OS and CPU type, and a random install id. One item per line of the
 | `distinct_id` | A random id made on this machine. Delete `telemetry.json` to get a new one (the answer is then `unset`). |
 | `timestamp` | When the event happened (UTC) |
 | `command` | The top-level command, only when it is in `COMMAND_NAMES` (`src/core/events.ts`) |
-| `ok`, `ms` | Did it work, and the wall time in ms |
+| `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`) |
 | `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
 | `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |

@@ -369,12 +369,20 @@ export function buildBatch(lines: string[], key: string, installId: string, vers
     // Re-apply the event allowlist: a line written by an older or edited log
     // must not carry a path, name, or other content off the machine.
     if (!e || !(EVENT_NAMES as readonly unknown[]).includes(e.event)) continue;
-    const { ts: _now, event, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
+    // The log keeps `ms`; the request names it `duration_ms`, the name the
+    // other tools on the same dashboard send.
+    const { ts: _now, event, ms, ...rest } = sanitizeEvent(e as unknown as AgentbrewEvent);
     batch.push({
       event: `agentbrew.${String(event)}`,
       distinct_id: installId,
       timestamp: isoOrUndefined(e.ts),
-      properties: { ...rest, ...machine(version), $geoip_disable: true, $process_person_profile: false },
+      properties: {
+        ...rest,
+        ...(ms === undefined ? {} : { duration_ms: ms }),
+        ...machine(version),
+        $geoip_disable: true,
+        $process_person_profile: false,
+      },
     });
   }
   return { api_key: key, batch };

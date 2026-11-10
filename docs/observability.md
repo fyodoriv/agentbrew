@@ -301,7 +301,29 @@ machine.
   | Paired median alone | 1 | 20 |
   | Both must agree (the gate) | 0 | 20 |
 
-  Not measured: a slowdown of 10% to 15% at load 10 or more.
+- **Measured, small step under load (2026-11-10)**: the same method in a
+  normal heavy-run slot, with every run started at a 1-minute load of 10 or
+  more. 40 clean runs (load 10.1 to 49.2) and 20 runs with a smaller seeded
+  slowdown: 13 ms more in one hook, +20% on the fastest run and +16% on the
+  median run. A +12% step was the target; the seed came out larger. The load
+  at the start of a seeded run was 10.0 to 28.4 for 14 of them and 42.8 to
+  173.8 for 6 of them. A load spike over 100 covered 7 runs.
+
+  | Rule | False alarms, 40 clean runs | Caught, 20 seeded runs |
+  |---|---|---|
+  | Two minimums alone | 8 | 15 |
+  | Paired median alone | 6 | 17 |
+  | Both must agree (the gate) | 0 | 13 |
+  | 90th percentile of the paired differences | 40 | 20 |
+
+  The gate missed 7 of the 20 seeded runs: 4 at load 10.0 to 21.1 and 3 during
+  the spike. In one spike run it also named a hook that had no change. So in a
+  shared slot the gate has no false alarms at load 10 to 50, but it is not
+  reliable for a step under about 20%. A step that small can pass. A rule on
+  the 90th percentile fails every clean run, so it is not an option.
+- **Known limit**: a slowdown that hits only some runs (for example every
+  third run takes 30% more) moves neither the minimum nor the median. The gate
+  does not catch it. A test pins this.
 - **Base checkouts**: detached worktrees under
   `~/.cache/agentbrew/perf-gate.noindex/<commit>`, built under a lock. The
   current one, the newest other one, and any used in the last hour are kept.

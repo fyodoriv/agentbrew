@@ -324,6 +324,7 @@
   - **Success**: 18 or more of 20 seeded runs caught, and 0 false alarms in 20.
   - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
   - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
+  - **Status**: measured on 2026-11-10 (`docs/observability.md`, "Performance gate"): 13 of 20 seeded runs caught (the seed was +16% to +20%, not +12%), 0 false alarms in 40 clean runs, and a test pins the two-mode limit. That is under the success line, so the pivot applies. Still open: the second pass with `heavy-run --exclusive` for marginal cases is not built.
 
 - [ ] Decide whether pull requests must carry a Vision trace block
   - **ID**: decide-pr-vision-trace-gate

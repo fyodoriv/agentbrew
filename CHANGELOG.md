@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `agentbrew telemetry status` and `send --dry-run` show what happens.
   A yes covers only later events. PostHog sees the request IP address like
   any web server; GeoIP is off and no location is stored. The
-  default project key file ships empty, so nothing is sent yet. This replaces
+  default project key file holds the write-only project key since 2026-11-10. This replaces
   the owner-key opt-in. See README "Telemetry".
 - The event log (`events.jsonl`) has a size cap: over 2 MiB it is cut to its
   newest 1 MiB, in whole lines.

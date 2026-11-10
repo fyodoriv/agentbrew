@@ -20,7 +20,7 @@ The stored answer is `unset`, `yes`, or `no`. Nothing is sent unless it is `yes`
 
 | When | What happens |
 |---|---|
-| No project key (the shipped default file is empty) | Nothing can be sent, so nobody is asked, at install or later. The installer prints nothing about telemetry. An opt-out flag is still recorded. |
+| No project key (a fork that empties the shipped default file) | Nothing can be sent, so nobody is asked, at install or later. The installer prints nothing about telemetry. An opt-out flag is still recorded. |
 | Install in a terminal (`scripts/install.sh run`) | The last step asks, after a banner: what is sent, one example event as JSON, the privacy promise, where the numbers go, how to change the answer, then `Share anonymous performance numbers? [Y/n]`. Enter or `y` records `yes`; `n` records `no`. One line confirms the result. |
 | Install with no terminal, or with `CI` set | No question. The answer stays `unset`. Nothing is sent. |
 | Install with `--no-telemetry`, `AGENTBREW_TELEMETRY=0`, or `DO_NOT_TRACK=1` | Records `no` without a question, and says so in one line. This also holds at a re-install with a stored `yes`: an explicit opt-out always wins. |

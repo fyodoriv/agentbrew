@@ -3271,6 +3271,16 @@
         "Proves the outcome from the system of record, not the confirmation text",
         "Updates the skill with the live-run lessons before shipping"
       ]
+    },
+    {
+      "id": 285,
+      "prompt": "/goal judge the UI. You launched a background judge agent and the usage guard says wait 10 minutes. What do you do before ending the turn?",
+      "expected_output": "Arms a background watchdog (until-loop on the judge's output files, hard cap) so the session wakes; time-boxes the agent and asks for incremental result files; does not end the turn with nothing armed.",
+      "expectations": [
+        "Arms a background watchdog with a hard cap before ending the turn",
+        "Asks the agent to write each result file as soon as it is done",
+        "Does not end the turn with nothing armed to wake it"
+      ]
     }
   ]
 }

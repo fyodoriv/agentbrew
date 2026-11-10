@@ -161,6 +161,16 @@
         "Adds a dated line to references/judge-learnings.md after the run",
         "Reports the target as met only when judge.mjs score exits 0 for that round"
       ]
+    },
+    {
+      "id": 15,
+      "prompt": "Run the 10-lens principal judge panel on 40 screenshots.",
+      "expected_output": "Splits lenses across agents (5 or fewer each), tells each to write r/<lens>.txt right after each lens, time-boxes them, and arms a background watchdog on r/ with a cap; scores what exists on timeout.",
+      "expectations": [
+        "Gives each judge agent 5 lenses or fewer",
+        "Asks for r/<lens>.txt right after each lens",
+        "Arms a capped background watchdog on r/ and scores what exists on timeout"
+      ]
     }
   ]
 }

@@ -133,7 +133,7 @@ The maintainer reads the totals and averages (the dashboard is private) and uses
 
 **The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one example event, and the privacy promise first. It is asked only when a project key is present. A write-only project key ships in the repo. With none (a fork that empties the key file) nothing can be sent, nobody is asked, and the installer prints nothing about telemetry. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the next command you run in a terminal asks, and there only a typed `y` or `n` counts. That question never follows `--help`, `--version`, completion, or `--json` output. Unanswered, it comes back at most once a day and at most 3 times; after that only `agentbrew telemetry ask` shows it. A re-install or an update never asks again and never changes your answer; only `--no-telemetry` (or an opt-out variable) at a re-install turns a yes into a no. A yes covers only what happens after it: nothing recorded before the yes is sent.
 
-**What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. A sync also sends `agents` (how many agents it deployed to, a number, never a name). A sync or repair also sends `seconds_saved`, an estimate (see "How much it helps" below). One event per command run, sync, scheduled repair, and error:
+**What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. A sync also sends `agents` (how many agents are detected on this machine, the set a sync targets; 0 when the sync stopped before a deploy step; a number, never a name). A sync or repair also sends `seconds_saved`, an estimate (see "How much it helps" below). One event per command run, sync, scheduled repair, and error:
 
 ```json
 {
@@ -178,11 +178,11 @@ agentbrew telemetry send --dry-run   # the exact next request body, key hidden; 
 
 | Action | Estimate |
 |---|---|
-| One sync that works | 3 seconds for each agent it deployed to |
+| One sync that works | 3 seconds for each agent detected on this machine |
 | One repair that leaves no drift | 60 seconds for each drift item it fixed |
 | A sync or repair that fails | 0 |
 
-Saved time is an estimate, chosen low. Durations are measured. See the estimate for this machine (it reads the local event log and uploads nothing):
+Saved time is an estimate, chosen low. Durations are measured. A sync that changes nothing, a `--only` sync, and a sync that a scheduler or a script runs count the same as a full sync, so the number is a rough estimate. See the estimate for this machine (it reads the local event log and uploads nothing). The event log keeps about its newest 1 MiB, so the sum for a long window can be a lower bound.
 
 ```bash
 agentbrew metrics --days 30   # prints "Estimated time saved, last 30 days: N min (...)"

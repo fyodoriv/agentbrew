@@ -9,6 +9,7 @@ import {
   eventsEnabled,
   KEEP_LOG_BYTES,
   MAX_LOG_BYTES,
+  NUMBER_MAX,
   recordEvent,
   sanitizeEvent,
   storyForCommand,
@@ -80,6 +81,19 @@ describe("sanitizeEvent", () => {
     const text = sanitizeEvent({ event: "repair", ok: true, agents: -1, secondsSaved: "120" as unknown as number });
     expect(text).not.toHaveProperty("agents");
     expect(text).not.toHaveProperty("secondsSaved");
+  });
+
+  it("drops a gain value above its bound and keeps one at the bound", () => {
+    expect(NUMBER_MAX).toEqual({ agents: 100, secondsSaved: 86_400 });
+    expect(sanitizeEvent({ event: "sync", ok: true, agents: 100, secondsSaved: 86_400 })).toMatchObject({
+      agents: 100,
+      secondsSaved: 86_400,
+    });
+    const over = sanitizeEvent({ event: "sync", ok: true, ms: 9_999_999, agents: 101, secondsSaved: 86_401 });
+    expect(over).not.toHaveProperty("agents");
+    expect(over).not.toHaveProperty("secondsSaved");
+    // The other number fields have no bound.
+    expect(over.ms).toBe(9_999_999);
   });
 
   it("drops free text: paths, names, and messages never reach the log", () => {

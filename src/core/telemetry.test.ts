@@ -701,6 +701,13 @@ describe("field telemetry", () => {
       expect(tampered).not.toHaveProperty("agents");
       expect(tampered).not.toHaveProperty("seconds_saved");
       expect(JSON.stringify(tampered)).not.toContain("janedoe");
+      // A number above its bound is dropped at send time too.
+      const huge = JSON.stringify({ event: "sync", ok: true, agents: 5000, secondsSaved: 9_999_999 });
+      const bounded = (
+        buildBatch([huge], "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[]
+      )[0].properties;
+      expect(bounded).not.toHaveProperty("agents");
+      expect(bounded).not.toHaveProperty("seconds_saved");
     });
 
     it("canary: no path, user name, email, URL, or token leaves the machine, even from an edited log", () => {

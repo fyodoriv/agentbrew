@@ -232,7 +232,7 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   }
 }
 
-/** Agents the sync deployed to: the detected agents in state, the set every sync module targets. */
+/** Agents detected on this machine: the set every sync module targets. */
 async function syncedAgentCount(): Promise<number> {
   try {
     const { loadState } = await import("./state.js");
@@ -258,7 +258,8 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
     if (!readUpdateSkillRequests(options)) return false;
   }
   if (!options.rollback) await handleSyncWorkspaces(options);
-  if (await handleSyncEarlyExits(options)) return options.pull === true && !options.rollback;
+  const early = await handleSyncEarlyExits(options);
+  if (early) return early === "deployed";
   if (await refuseSyncOnLockDrift()) return false;
   if (!options.dryRun) await emitNativePluginOutput();
 
@@ -307,14 +308,15 @@ async function handleSyncWorkspaces(options: SyncCommandOptions): Promise<void> 
   if (merged) options.agentfile = merged;
 }
 
-async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolean> {
+/** "deployed": a pull ran its deploy step. "stopped": the run ended with no deploy (a rollback, an unknown `--only` name). */
+async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<"deployed" | "stopped" | undefined> {
   if (options.rollback) {
     const { rollbackAgentConfigs } = await import("./ops.js");
     await rollbackAgentConfigs();
-    return true;
+    return "stopped";
   }
   if (options.pull) {
-    if (options.only && !filterSyncModules(buildSyncModules({}), options.only)) return true;
+    if (options.only && !filterSyncModules(buildSyncModules({}), options.only)) return "stopped";
     // Apply the Agentfile to state first, so the pull sees corrected source URLs
     // and does not fetch (or fail on) entries the Agentfile already dropped.
     const applied = await applyAgentfileBeforePull(options);
@@ -326,9 +328,9 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
       ...(options.only ? { only: options.only } : {}),
       ...(applied?.skillsToInstall.length ? { requestedSkills: applied.skillsToInstall } : {}),
     });
-    return true;
+    return "deployed";
   }
-  return false;
+  return undefined;
 }
 
 type AppliedAgentfile = ReturnType<typeof import("./agentfile.js").applyAgentfile>;

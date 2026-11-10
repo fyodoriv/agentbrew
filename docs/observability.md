@@ -71,8 +71,8 @@ One item per line of the [event log](#events):
 | `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`) |
 | `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
-| `agents` | On a `sync`: how many agents it deployed to. A number, never a name |
-| `seconds_saved` | On a `sync` or `repair`: the estimated seconds saved (the event log names it `secondsSaved`) |
+| `agents` | On a `sync`: how many agents are detected on this machine (the set a sync targets). 0 when the sync stopped before a deploy step. A number, never a name. A value above 100 is dropped |
+| `seconds_saved` | On a `sync` or `repair`: the estimated seconds saved (the event log names it `secondsSaved`). A value above 86400 is dropped, not clamped |
 | `app_version`, `os`, `arch`, `runtime` | The agentbrew version; `darwin`, `linux`, or `other`; `arm64`, `x64`, or `other`; and `ts` |
 
 ### How much it helps
@@ -82,19 +82,24 @@ agent's config by hand. `src/core/gains.ts` holds one estimate table:
 
 | Action | Estimate |
 |---|---|
-| One sync that works | 3 seconds for each agent it deployed to |
+| One sync that works | 3 seconds for each agent detected on this machine |
 | One repair that leaves no drift | 60 seconds for each drift item it fixed |
 | A sync or repair that fails | 0 |
 
 Saved time is an estimate, chosen low: each action takes a person longer by
 hand. Durations (`ms`, `duration_ms`) are measured. A sync counts the agents
-it deployed to: the detected agents in state, the set every sync module
-targets. A `--dry-run` writes no event, and a `--rollback` deploys nothing,
-so it saves 0. A repair that leaves drift counts as failed and saves 0, also
-when it fixed some items.
+detected on this machine: the set every sync module targets. A sync that
+changes nothing, a `--only` sync, and a sync that a scheduler or a script
+runs count the same as a full sync, so the number is a rough estimate.
+`agents` is 0 when the sync stopped before a deploy step: it threw, a lock
+check refused it, a `--only` name was unknown, or it was a `--rollback`.
+A `--dry-run` writes no event. A repair that leaves drift counts as failed
+and saves 0, also when it fixed some items.
 
 `agentbrew metrics --days 30` prints the sum for this machine from the local
-event log: "Estimated time saved, last 30 days: N min". The maintainer sums
+event log: "Estimated time saved, last 30 days: N min" (seconds when the sum
+is under one minute). The event log keeps about its newest 1 MiB, so the sum
+for a long window can be a lower bound. The maintainer sums
 `seconds_saved` per install and over all installs.
 
 ### The privacy promise
@@ -190,7 +195,7 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 
 | Event | When | Fields | Story |
 |---|---|---|---|
-| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0), `agents` (agents it deployed to), `secondsSaved` ([estimate](#how-much-it-helps)) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
+| `sync` | each `agentbrew sync` that is not `--dry-run` | `ms`, `ok` (no error and exit code 0), `agents` (agents detected on this machine; 0 when the sync stopped before a deploy step), `secondsSaved` ([estimate](#how-much-it-helps)) | US08; `--rollback` US26, `--pull` US13, `--agentfile` US23, `--discover` US11 |
 | `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event, and its `ok` follows the exit code (a process `exit` listener writes it; the long-running `auto-sync watch` is left out); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left), `secondsSaved` ([estimate](#how-much-it-helps)) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |

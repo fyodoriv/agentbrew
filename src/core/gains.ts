@@ -6,8 +6,10 @@
  * time is not. docs/observability.md ("How much it helps") shows this table.
  * Change a value here and there together.
  */
+import { NUMBER_MAX } from "./events.js";
+
 export const SAVED_SECONDS = {
-  /** One sync, per agent it deployed to. Copying one config to one agent by hand takes longer. */
+  /** One sync, per agent detected on this machine (the set a sync targets). Copying one config to one agent by hand takes longer. */
   syncPerAgent: 3,
   /** One repair, per drift item it fixed. Finding and fixing one broken config by hand takes longer. */
   repairPerItem: 60,
@@ -46,7 +48,9 @@ export function summarizeGains(lines: string[], sinceMs: number): GainSummary {
     if (!e || (e.event !== "sync" && e.event !== "repair")) continue;
     if (!(Date.parse(String(e.ts)) >= sinceMs)) continue;
     available = true;
-    secondsSaved += count(e.secondsSaved);
+    // The same bound as sanitizeEvent: a larger value is an edited or broken line.
+    const seconds = count(e.secondsSaved);
+    if (seconds <= (NUMBER_MAX.secondsSaved ?? Number.POSITIVE_INFINITY)) secondsSaved += seconds;
   }
   return { available, secondsSaved };
 }
@@ -55,5 +59,7 @@ export function summarizeGains(lines: string[], sinceMs: number): GainSummary {
 export function gainLine(summary: GainSummary, days: number): string {
   const rates = `sync: ${SAVED_SECONDS.syncPerAgent} s per agent; repair: ${SAVED_SECONDS.repairPerItem} s per fixed item`;
   if (!summary.available) return `Estimated time saved: no data yet (${rates}).`;
-  return `Estimated time saved, last ${days} days: ${Math.round(summary.secondsSaved / 60)} min (${rates})`;
+  const s = summary.secondsSaved;
+  const amount = s < 60 ? `${s} s` : `${Math.round(s / 60)} min`;
+  return `Estimated time saved, last ${days} days: ${amount} (${rates})`;
 }

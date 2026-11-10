@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { sanitizeEvent } from "./events.js";
+import { NUMBER_MAX, sanitizeEvent } from "./events.js";
 import { gainLine, repairGain, SAVED_SECONDS, summarizeGains, syncGain } from "./gains.js";
 import { buildBatch } from "./telemetry.js";
 
@@ -14,8 +16,16 @@ function sent(event: Parameters<typeof sanitizeEvent>[0]): Record<string, unknow
 }
 
 describe("estimated time saved", () => {
-  it("the estimate table holds the documented sync and repair values", () => {
-    expect(SAVED_SECONDS).toEqual({ syncPerAgent: 3, repairPerItem: 60 });
+  it("the estimate tables in the docs hold the values the code uses", () => {
+    const root = join(import.meta.dirname, "..", "..");
+    for (const doc of ["docs/observability.md", "README.md"]) {
+      const text = readFileSync(join(root, doc), "utf-8");
+      const seconds = (row: RegExp) => Number(text.match(row)?.[1]);
+      expect(seconds(/^\| One sync that works \| (\d+) seconds for each agent/m), doc).toBe(SAVED_SECONDS.syncPerAgent);
+      expect(seconds(/^\| One repair that leaves no drift \| (\d+) seconds for each drift item/m), doc).toBe(
+        SAVED_SECONDS.repairPerItem,
+      );
+    }
   });
 
   it("a sync to N agents saves 3N seconds, in the log and in the request", () => {
@@ -58,6 +68,8 @@ describe("estimated time saved", () => {
       JSON.stringify({ ts: TS, event: "command", command: "sync", ok: true, secondsSaved: 300 }),
       JSON.stringify({ ts: TS, event: "sync", ok: true, secondsSaved: "900" }),
       JSON.stringify({ ts: TS, event: "sync", ok: true, secondsSaved: -900 }),
+      // Above the bound that sanitizeEvent applies: an edited line adds nothing.
+      JSON.stringify({ ts: TS, event: "repair", ok: true, secondsSaved: (NUMBER_MAX.secondsSaved as number) + 1 }),
       "not json",
       "",
     ];
@@ -69,6 +81,11 @@ describe("estimated time saved", () => {
     expect(gainLine({ available: true, secondsSaved: 132 }, 30)).toBe(
       "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 60 s per fixed item)",
     );
+    // A sum under one minute prints seconds, never "0 min".
+    expect(gainLine({ available: true, secondsSaved: 12 }, 7)).toBe(
+      "Estimated time saved, last 7 days: 12 s (sync: 3 s per agent; repair: 60 s per fixed item)",
+    );
+    expect(gainLine({ available: true, secondsSaved: 0 }, 7)).toContain("last 7 days: 0 s (");
     expect(gainLine({ available: false, secondsSaved: 0 }, 30)).toContain("no data yet");
   });
 });

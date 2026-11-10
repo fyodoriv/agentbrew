@@ -196,6 +196,48 @@ describe("initialized sync root-hook ordering", () => {
     expect(syncEvent()).toMatchObject({ agents: 0, secondsSaved: 0 });
   });
 
+  describe("sync gain fields on the other paths", () => {
+    const twoAgents = {
+      agents: [
+        { name: "claude", detected: true },
+        { name: "codex", detected: true },
+      ],
+    } as never;
+    const syncEvent = () =>
+      vi
+        .mocked(recordEvent)
+        .mock.calls.map(([event]) => event)
+        .find((event) => event.event === "sync");
+
+    beforeEach(() => {
+      vi.spyOn(console, "log").mockImplementation(() => {});
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      health.mockReturnValue([]);
+      vi.mocked(loadState).mockReturnValue(twoAgents);
+    });
+
+    it("a sync that throws records no agents and nothing saved", async () => {
+      vi.mocked(runSyncParallel).mockRejectedValueOnce(new Error("boom"));
+      await expect(
+        buildProgram().parseAsync(["node", "test", "sync", "--only", "mcp", "--no-recommended"]),
+      ).rejects.toThrow("boom");
+      expect(syncEvent()).toMatchObject({ ok: false, agents: 0, secondsSaved: 0 });
+    });
+
+    it("a pull that deploys records the detected agents", async () => {
+      await buildProgram().parseAsync(["node", "test", "sync", "--pull"]);
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(syncEvent()).toMatchObject({ ok: true, agents: 2, secondsSaved: 6 });
+    });
+
+    it("a pull with an unknown --only name deploys nothing and records no agents", async () => {
+      await buildProgram().parseAsync(["node", "test", "sync", "--pull", "--only", "not-a-module"]);
+      expect(update).not.toHaveBeenCalled();
+      expect(syncEvent()).toMatchObject({ agents: 0, secondsSaved: 0 });
+      process.exitCode = undefined;
+    });
+  });
+
   it("sync command timing excludes status hook", async () => {
     let clock = 0;
     vi.spyOn(Date, "now").mockImplementation(() => clock);

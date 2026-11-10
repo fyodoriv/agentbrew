@@ -235,7 +235,7 @@ the full boundaries.
 
 - Not a per-agent config UI (NG1), and not a skill author or host (NG2).
 - No bespoke support for excluded agents (NG3) and no new work for frozen ones (NG4).
-- No telemetry with content, and none without a yes. Anonymous performance numbers are asked at install; on only after you say yes (Enter counts as yes). Decided 2026-11-09: numbers from all installs feed a public dashboard and a regression gate. They never hold content, paths, or names, and `agentbrew telemetry off` or `DO_NOT_TRACK=1` stops them.
+- No telemetry with content, and none without a yes. Anonymous performance numbers are asked at install; on only after you say yes (Enter counts as yes). Decided 2026-11-09: numbers from all installs feed a speed dashboard (private to the maintainer) and a regression gate. They never hold content, paths, or names, and `agentbrew telemetry off` or `DO_NOT_TRACK=1` stops them.
 - No content hosting, registry, IDE extension, framework, or daemon of its own.
 
 ## Coexistence with other tools

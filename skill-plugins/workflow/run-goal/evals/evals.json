@@ -3281,6 +3281,17 @@
         "Asks the agent to write each result file as soon as it is done",
         "Does not end the turn with nothing armed to wake it"
       ]
+    },
+    {
+      "id": 286,
+      "prompt": "/goal make events from venue page X always considered in plans. Mid-goal the user adds: also add five more venues, and add the shift I just signed up for (the page lists two dates) to the calendar. Research shows none of the five venues has a feed the app reads. What do you do?",
+      "expected_output": "Keeps the original criterion as the primary deliverable and finishes it; asks one question to pick the signed-up date instead of guessing; adds the calendar entry through the app CLI; files concrete per-venue tasks with probe evidence instead of claiming them done; runs the privacy scan before the gate when task text names real places.",
+      "expectations": [
+        "Asks which of the listed dates was signed up for before writing a calendar entry",
+        "Does not mark the five extra venues done; files tasks with probe evidence",
+        "Finishes and verifies the original venue source before the mid-goal additions",
+        "Runs the repo privacy scan on new task text before the full gate"
+      ]
     }
   ]
 }

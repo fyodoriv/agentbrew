@@ -191,6 +191,17 @@
         "Recommends stopping after three flat rounds",
         "Turns the remaining notes into a task with a measurable target"
       ]
+    },
+    {
+      "id": 18,
+      "prompt": "A layout pilot passed its new tests (content covers 70% of the width, one filled button, adjacent tiles differ), but the judge panel mean fell from 7.15 to 7.07 and Week dropped 0.40. The desktop layout hides two sections the phone shows. Should we ship it and keep polishing?",
+      "expected_output": "Does not ship. Names the desktop/phone content gap as the cause, says the judge-worded tests were gamed, honors the pre-registered pivot, and calls further polish noise within ±0.3.",
+      "expectations": [
+        "Does not ship a layout that hides content on desktop that the phone shows",
+        "Says tests copied from judges' wording can pass while the user-visible state is wrong",
+        "Honors a pre-registered pivot instead of polishing more",
+        "Treats mean moves within ±0.3 over three rounds as noise and recommends stopping the rounds"
+      ]
     }
   ]
 }

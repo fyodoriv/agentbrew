@@ -53,6 +53,11 @@ Research points the same way:
 
 - Two rounds that gain less than 0.3 on the mean: stop polishing. Change the layout concept, or
   ask one human designer and add their points to `decisions.txt`.
+- A mean within ±0.3 over three rounds is noise, not a gain or a regression. Stop polishing and
+  stop judging: file the open notes as one checklist task with a numeric goal. (Held twice:
+  cashcast and sidequest.)
+- A guard test checks the state the user sees (scrolled, phone and desktop), and a layout change
+  keeps the same content on desktop and phone. Tests copied from a judge's wording are easy to game.
 - Judges flip on the same element: settle it in `decisions.txt` and keep it.
 - Never report the target as met unless `score` printed it for this round's judges.
 

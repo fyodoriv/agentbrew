@@ -258,7 +258,7 @@ async function runFix(started: number): Promise<void> {
     driftBefore: driftBefore.length,
     repaired: repaired.length,
     remaining: remainingItems.length,
-    ...repairGain(remainingItems.length === 0, repaired.length),
+    ...repairGain(repaired.length),
     types: remainingItems.map((d) => d.type),
   });
 

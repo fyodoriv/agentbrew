@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AUTO_FIXABLE_TYPES } from "../drift-fixes.js";
 import { NUMBER_MAX, sanitizeEvent } from "./events.js";
-import { gainLine, repairGain, SAVED_SECONDS, summarizeGains, syncGain } from "./gains.js";
+import { gainLine, repairGain, SAVED_SECONDS, summarizeGains, syncGain, targetedAgentCount } from "./gains.js";
 import { klmSeconds, lowestRepairSeconds, REPAIR_OPS, SYNC_PER_AGENT_OPS } from "./klm.js";
 import { buildBatch } from "./telemetry.js";
 
@@ -24,9 +24,7 @@ describe("estimated time saved", () => {
       const text = readFileSync(join(root, doc), "utf-8");
       const seconds = (row: RegExp) => Number(text.match(row)?.[1]);
       expect(seconds(/^\| One sync that works \| (\d+) seconds for each agent/m), doc).toBe(SAVED_SECONDS.syncPerAgent);
-      expect(seconds(/^\| One repair that leaves no drift \| (\d+) seconds for each drift item/m), doc).toBe(
-        SAVED_SECONDS.repairPerItem,
-      );
+      expect(seconds(/^\| One repair \| (\d+) seconds for each drift item/m), doc).toBe(SAVED_SECONDS.repairPerItem);
     }
   });
 
@@ -45,19 +43,40 @@ describe("estimated time saved", () => {
     expect(sent({ event: "sync", ok: false, ...syncGain(false, 4) })).toMatchObject({ agents: 4, seconds_saved: 0 });
   });
 
-  it("a repair of 2 items saves 10 seconds; a failed repair saves 0", () => {
-    expect(repairGain(true, 2)).toEqual({ secondsSaved: 10 });
-    expect(sent({ event: "repair", ok: true, repaired: 2, ...repairGain(true, 2) })).toMatchObject({
+  it("a repair of 2 fixed items saves 10 seconds, also when drift is left", () => {
+    expect(repairGain(2)).toEqual({ secondsSaved: 10 });
+    expect(sent({ event: "repair", ok: true, repaired: 2, ...repairGain(2) })).toMatchObject({
       repaired: 2,
       seconds_saved: 10,
     });
-    expect(repairGain(false, 2)).toEqual({ secondsSaved: 0 });
+    // A repair that fixed 2 items and left 1 still did the 2 fixes.
+    expect(sent({ event: "repair", ok: false, repaired: 2, remaining: 1, ...repairGain(2) })).toMatchObject({
+      ok: false,
+      seconds_saved: 10,
+    });
+    expect(repairGain(0)).toEqual({ secondsSaved: 0 });
+  });
+
+  it("a --only sync counts only the detected agents the named modules target", () => {
+    // claude-code has every surface; augment has skills and a rules file only.
+    const detected = new Set(["claude-code", "augment"]);
+    expect(targetedAgentCount(detected)).toBe(2);
+    expect(targetedAgentCount(detected, "skills")).toBe(2);
+    expect(targetedAgentCount(detected, "rules")).toBe(2);
+    expect(targetedAgentCount(detected, "mcp")).toBe(1);
+    expect(targetedAgentCount(detected, "hooks, Commands")).toBe(1);
+    // An agent in two named modules counts once.
+    expect(targetedAgentCount(detected, "mcp,hooks")).toBe(1);
+    expect(targetedAgentCount(new Set(["augment"]), "mcp")).toBe(0);
+    // An undetected agent never counts.
+    expect(targetedAgentCount(new Set(["augment"]), "skills")).toBe(1);
+    expect(targetedAgentCount(detected, "not-a-module")).toBe(0);
   });
 
   it("a count that is not a positive number counts as 0", () => {
     expect(syncGain(true, -3)).toEqual({ agents: 0, secondsSaved: 0 });
     expect(syncGain(true, Number.NaN)).toEqual({ agents: 0, secondsSaved: 0 });
-    expect(repairGain(true, "2" as unknown as number)).toEqual({ secondsSaved: 0 });
+    expect(repairGain("2" as unknown as number)).toEqual({ secondsSaved: 0 });
   });
 
   it("sums the window's sync and repair events and skips old, other, and bad lines", () => {

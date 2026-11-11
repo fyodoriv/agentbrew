@@ -83,18 +83,24 @@ agent's config by hand. `src/core/gains.ts` holds one estimate table:
 | Action | Estimate |
 |---|---|
 | One sync that works | 3 seconds for each agent detected on this machine |
-| One repair that leaves no drift | 5 seconds for each drift item it fixed |
-| A sync or repair that fails | 0 |
+| One repair | 5 seconds for each drift item it fixed |
+| A sync that fails | 0 |
 
 Saved time is an estimate, chosen low: each value is at or below the modelled
-time of the hand work (next section). Durations (`ms`, `duration_ms`) are measured. A sync counts the agents
-detected on this machine: the set every sync module targets. A sync that
-changes nothing, a `--only` sync, and a sync that a scheduler or a script
-runs count the same as a full sync, so the number is a rough estimate.
-`agents` is 0 when the sync stopped before a deploy step: it threw, a lock
-check refused it, a `--only` name was unknown, or it was a `--rollback`.
-A `--dry-run` writes no event. A repair that leaves drift counts as failed
-and saves 0, also when it fixed some items.
+time of the hand work (next section). Durations (`ms`, `duration_ms`) are measured. A sync counts the detected
+agents that it targets: every detected agent for a full sync, and for a
+`--only` sync only the agents the named modules write to (for example, an
+agent with no MCP config is not counted by `--only mcp`). `agents` is 0 when
+the sync stopped before a deploy step: it threw, a lock check refused it, a
+`--only` name was unknown, or it was a `--rollback`. A `--dry-run` writes no
+event. A repair counts every item it fixed, also when other drift is left;
+the event then has `ok: false` and the saved time of the fixed items.
+
+Known limit: a sync that changes no file counts the same as a full sync, and a
+sync that a scheduler or a script runs counts too. The sync modules do not
+report "nothing changed", and finding out would need a scan of every deployed
+file before and after each sync. That cost is not worth a rough estimate, so
+the number can overstate the gain.
 
 #### How the estimate is modelled
 

@@ -8,6 +8,7 @@
  * docs/observability.md ("How much it helps") shows this table.
  * Change a value here and there together.
  */
+import { AGENT_DEFINITIONS, type AgentConfig } from "../types.js";
 import { NUMBER_MAX } from "./events.js";
 
 export const SAVED_SECONDS = {
@@ -25,9 +26,36 @@ export function syncGain(ok: boolean, agents: number): { agents: number; seconds
   return { agents: n, secondsSaved: ok ? n * SAVED_SECONDS.syncPerAgent : 0 };
 }
 
-/** Gain field of a `repair` event. A failed repair (drift is left) saves 0. */
-export function repairGain(ok: boolean, repaired: number): { secondsSaved: number } {
-  return { secondsSaved: ok ? count(repaired) * SAVED_SECONDS.repairPerItem : 0 };
+/** Gain field of a `repair` event. Every fixed item counts, also when other drift is left. */
+export function repairGain(repaired: number): { secondsSaved: number } {
+  return { secondsSaved: count(repaired) * SAVED_SECONDS.repairPerItem };
+}
+
+/** The agent setting that makes an agent a target of each sync module (the modules in buildSyncModules). */
+const MODULE_TARGET_FIELD: Record<string, keyof Omit<AgentConfig, "detected">> = {
+  mcp: "mcpConfig",
+  rules: "rulesFile",
+  commands: "commandsDir",
+  agents: "agentsDir",
+  skills: "skillsDir",
+  hooks: "hooksFile",
+  models: "modelConfig",
+  instructions: "rulesFile",
+};
+
+/**
+ * Detected agents that a sync touches. With a `--only` list (comma-separated
+ * module names), only the agents that one of the named modules targets.
+ * A module name that is not known counts no agent.
+ */
+export function targetedAgentCount(detected: ReadonlySet<string>, only?: string): number {
+  if (!only) return detected.size;
+  const present = AGENT_DEFINITIONS.filter((agent) => detected.has(agent.name));
+  const fields = only
+    .split(",")
+    .map((name) => MODULE_TARGET_FIELD[name.trim().toLowerCase()])
+    .filter((field): field is keyof Omit<AgentConfig, "detected"> => field !== undefined);
+  return present.filter((agent) => fields.some((field) => agent[field] !== undefined)).length;
 }
 
 export interface GainSummary {

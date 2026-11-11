@@ -168,7 +168,7 @@ describe("initialized sync root-hook ordering", () => {
     health.mockReturnValue([]);
     vi.mocked(loadState).mockReturnValue({
       agents: [
-        { name: "claude", detected: true },
+        { name: "claude-code", detected: true },
         { name: "codex", detected: true },
         { name: "kiro", detected: false },
       ],
@@ -196,10 +196,29 @@ describe("initialized sync root-hook ordering", () => {
     expect(syncEvent()).toMatchObject({ agents: 0, secondsSaved: 0 });
   });
 
+  it("a --only sync counts only the agents its module targets", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    health.mockReturnValue([]);
+    // augment has no MCP config, so an mcp-only sync does not touch it.
+    vi.mocked(loadState).mockReturnValue({
+      agents: [
+        { name: "claude-code", detected: true },
+        { name: "augment", detected: true },
+      ],
+    } as never);
+    const syncEvent = () =>
+      vi
+        .mocked(recordEvent)
+        .mock.calls.map(([event]) => event)
+        .find((event) => event.event === "sync");
+    await buildProgram().parseAsync(["node", "test", "sync", "--only", "mcp", "--no-recommended"]);
+    expect(syncEvent()).toMatchObject({ ok: true, agents: 1, secondsSaved: 3 });
+  });
+
   describe("sync gain fields on the other paths", () => {
     const twoAgents = {
       agents: [
-        { name: "claude", detected: true },
+        { name: "claude-code", detected: true },
         { name: "codex", detected: true },
       ],
     } as never;

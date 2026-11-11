@@ -43,6 +43,8 @@ your OS and CPU type, and a random install id. A sync or repair also sends
 an estimate of the seconds it saved ([How much it helps](#how-much-it-helps)).
 The first finished install of a machine also sends how long it took, and whether
 its last status check was clean. A re-run of the installer sends no install event.
+The maintainer's dashboard reads it in one tile: first installs, the share with a
+clean check, and the median and p95 time of the clean ones.
 One item per line of the [event log](#events):
 
 ```json

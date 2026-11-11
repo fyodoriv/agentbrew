@@ -665,6 +665,41 @@ describe("field telemetry", () => {
       expect(properties).not.toHaveProperty("ms");
     });
 
+    it("an install event is sent as agentbrew.install with duration_ms and ok, and no other new name", () => {
+      const line = JSON.stringify({
+        ts: "2026-11-09T12:00:00.000Z",
+        event: "install",
+        story: "US01",
+        ok: true,
+        ms: 41_000,
+      });
+      const [item] = buildBatch([line], "<posthog_key>", ID, "1.0.0").batch as {
+        event: string;
+        properties: Record<string, unknown>;
+      }[];
+      expect(item.event).toBe("agentbrew.install");
+      expect(item.properties).toMatchObject({ ok: true, duration_ms: 41_000, story: "US01" });
+      expect(item.properties).not.toHaveProperty("ms");
+      expect(Object.keys(item.properties).sort()).toEqual([
+        "$geoip_disable",
+        "$process_person_profile",
+        "app_version",
+        "arch",
+        "duration_ms",
+        "ok",
+        "os",
+        "runtime",
+        "story",
+      ]);
+      // An edited line sends no text.
+      const edited = JSON.stringify({ event: "install", ok: true, ms: "janedoe", command: "janedoe", code: "janedoe" });
+      const tampered = (
+        buildBatch([edited], "<posthog_key>", ID, "1.0.0").batch as { properties: Record<string, unknown> }[]
+      )[0].properties;
+      expect(JSON.stringify(tampered)).not.toContain("janedoe");
+      expect(tampered).not.toHaveProperty("duration_ms");
+    });
+
     it("the request body gains seconds_saved and agents, and no other new name", () => {
       const line = JSON.stringify({
         ts: "2026-11-09T12:00:00.000Z",

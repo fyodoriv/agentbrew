@@ -5,7 +5,7 @@ import { getLogDir } from "../sync/scheduler-paths.js";
 import { logSkipped } from "./logger.js";
 
 /**
- * Content-free event log: one JSON line per command, sync, scheduled repair, or error.
+ * Content-free event log: one JSON line per command, sync, scheduled repair, error, or finished install.
  * docs/observability.md lists every event and field; scripts/metrics.sh reads it.
  *
  * Privacy: only allow-listed fields are written. A string field is kept only
@@ -19,7 +19,7 @@ import { logSkipped } from "./logger.js";
  */
 
 /** Event names. Add one here and in docs/observability.md together. */
-export const EVENT_NAMES = ["sync", "repair", "error", "command"] as const;
+export const EVENT_NAMES = ["sync", "repair", "error", "command", "install"] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 
 export interface AgentbrewEvent {
@@ -29,6 +29,7 @@ export interface AgentbrewEvent {
   /** Top-level command name, from COMMAND_NAMES. Never an argument. */
   command?: string;
   ok: boolean;
+  /** Wall time in ms. An `install` event: the time from the installer's start to its clean status check. */
   ms?: number;
   /** Drift items found before a repair. */
   driftBefore?: number;
@@ -206,6 +207,20 @@ export function storyForModule(module: string | undefined): string {
   return (module && MODULE_STORY[module]) || "US08";
 }
 
+/** The `--ms` value of `telemetry record-install`: 1 to 9 digits, or null. A sign, a dot, text or nothing is refused. */
+export function parseInstallMs(value: string | undefined): number | null {
+  return /^\d{1,9}$/.test(value ?? "") ? Number(value) : null;
+}
+
+/**
+ * One `install` event: numbers and a boolean only. `ok` is true when the
+ * installer's final status check was clean. `scripts/install.sh run` records it
+ * through `agentbrew telemetry record-install`, once per first finished install of a machine.
+ */
+export function recordInstallEvent(ms: number, ok: boolean): void {
+  recordEvent({ event: "install", story: "US01", ok, ms });
+}
+
 export function eventsEnabled(): boolean {
   return process.env.AGENTBREW_EVENTS !== "0";
 }
@@ -225,7 +240,8 @@ export function sanitizeEvent(input: AgentbrewEvent): Record<string, unknown> {
   const out: Record<string, unknown> = { ts: new Date().toISOString(), event: input.event };
   const story = typeof input.story === "string" && STORY.test(input.story) ? input.story : undefined;
   // Only a `command` event may have no story: most commands serve none.
-  if (story || input.event !== "command") out.story = story ?? "US08";
+  // An install serves the first-install story; any other event falls back to the sync story.
+  if (story || input.event !== "command") out.story = story ?? (input.event === "install" ? "US01" : "US08");
   out.ok = input.ok === true;
   if (typeof input.command === "string" && COMMAND_NAMES.has(input.command)) out.command = input.command;
   for (const key of NUMBER_FIELDS) {

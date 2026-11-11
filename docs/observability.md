@@ -41,6 +41,8 @@ you the question and run `agentbrew telemetry on` or pass `--no-telemetry`.
 The command name, its duration, ok or error, counts, the agentbrew version,
 your OS and CPU type, and a random install id. A sync or repair also sends
 an estimate of the seconds it saved ([How much it helps](#how-much-it-helps)).
+The first finished install of a machine also sends how long it took, and whether
+its last status check was clean. A re-run of the installer sends no install event.
 One item per line of the [event log](#events):
 
 ```json
@@ -64,11 +66,11 @@ One item per line of the [event log](#events):
 
 | Field | Values |
 |---|---|
-| `event` | `agentbrew.` plus `command`, `sync`, `repair`, or `error` |
+| `event` | `agentbrew.` plus `command`, `sync`, `repair`, `error`, or `install` |
 | `distinct_id` | A random id made on this machine. Delete `telemetry.json` to get a new one (the answer is then `unset`). |
 | `timestamp` | When the event happened (UTC) |
 | `command` | The top-level command, only when it is in `COMMAND_NAMES` (`src/core/events.ts`) |
-| `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`) |
+| `ok`, `duration_ms` | Did it work, and the wall time in ms (the event log names it `ms`). On an `install`: did the final status check come out clean, and the time to it |
 | `story`, `code`, `module`, `types` | A story ID (`US06`), an error code, a sync module, drift types. Each name comes from a fixed list in `src/core/events.ts`; any other word is dropped |
 | `driftBefore`, `repaired`, `remaining` | Counts |
 | `agents` | On a `sync`: how many agents are detected on this machine (the set a sync targets). 0 when the sync stopped before a deploy step. A number, never a name. A value above 100 is dropped |
@@ -244,9 +246,10 @@ Turn it off with `AGENTBREW_EVENTS=0`. Every test runs with it off
 | `command` | each command run, `sync` and `fix` too. A run that throws, or whose action ends the process, still leaves one event, and its `ok` follows the exit code (a process `exit` listener writes it; the long-running `auto-sync watch` is left out); no run leaves two | `command` (the top-level name from `COMMAND_NAMES`, never an argument), `ms`, `ok` (exit code 0) | `storyForCommand` in `src/core/events.ts`; none for a command that serves no story |
 | `repair` | each scheduled or manual `agentbrew fix` | `ms`, `ok` (no drift left), `driftBefore`, `repaired`, `remaining`, `types` (drift types left), `secondsSaved` ([estimate](#how-much-it-helps)) | US06 |
 | `error` | each sync module error, and a repair that throws | `ok: false`, `code`, `module` | from the map below |
+| `install` | once per machine: the first `scripts/install.sh run` that reaches its end (a re-run records none; an install that fails and rolls back records none) | `ms` (from the installer's start to the end of its `agentbrew status --ci` check; counted in whole seconds, so a multiple of 1000), `ok` (that check was clean; false when it found drift). The installer writes it after the question, so a yes given later (for example `agentbrew telemetry on` by an agent) does not send it | US01 |
 
 Every event also has `ts` (ISO time), and `story` unless it is a `command` with none.
-A command that throws or exits early records no `command` event. `scripts/metrics.sh` turns
+A command that throws or exits early still records one `command` event (see the table above). `scripts/metrics.sh` turns
 the events into the rates in [`metrics.md`](metrics.md).
 
 ## Errors

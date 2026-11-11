@@ -6,10 +6,12 @@ import {
   COMMAND_NAMES,
   DRIFT_TYPES,
   ERROR_CODES,
+  EVENT_NAMES,
   eventsEnabled,
   KEEP_LOG_BYTES,
   MAX_LOG_BYTES,
   NUMBER_MAX,
+  parseInstallMs,
   recordEvent,
   sanitizeEvent,
   storyForCommand,
@@ -162,6 +164,51 @@ describe("sanitizeEvent", () => {
     };
     walk(".");
     expect([...ERROR_CODES].sort()).toEqual([...codes].sort());
+  });
+});
+
+describe("install events", () => {
+  it("takes only a whole number of 1 to 9 digits as the install time", () => {
+    expect(parseInstallMs("41000")).toBe(41_000);
+    expect(parseInstallMs("0")).toBe(0);
+    // A clock that steps back gives a negative time; it is refused, not sent.
+    for (const bad of [undefined, "", "-1000", "12.5", "1e3", "abc", "41000ms", " 41000", "1234567890"]) {
+      expect(parseInstallMs(bad), String(bad)).toBeNull();
+    }
+  });
+
+  it("keeps ms and ok on an install event, under the first-install story", () => {
+    expect(EVENT_NAMES).toContain("install");
+    const out = sanitizeEvent({ event: "install", ok: true, ms: 41_000 });
+    expect(out).toMatchObject({ event: "install", story: "US01", ok: true, ms: 41_000 });
+    expect(Object.keys(out).sort()).toEqual(["event", "ms", "ok", "story", "ts"]);
+  });
+
+  it("drops free text and bad numbers: an edited install line sends only ms and ok", () => {
+    const out = sanitizeEvent({
+      event: "install",
+      ok: true,
+      ms: "fast" as unknown as number,
+      command: "~/someone/project",
+      code: "~/someone/project",
+      module: "someone",
+    });
+    expect(out).not.toHaveProperty("ms");
+    expect(out).not.toHaveProperty("command");
+    expect(out).not.toHaveProperty("code");
+    expect(out).not.toHaveProperty("module");
+    expect(sanitizeEvent({ event: "install", ok: false, ms: -5 })).toMatchObject({ ok: false });
+    expect(sanitizeEvent({ event: "install", ok: false, ms: -5 })).not.toHaveProperty("ms");
+  });
+
+  it("recordEvent writes one install line with ms and ok", () => {
+    const file = join(scratch, "install.jsonl");
+    process.env.AGENTBREW_EVENTS = "1";
+    process.env.AGENTBREW_EVENTS_FILE = file;
+    recordEvent({ event: "install", ok: true, ms: 41_000 });
+    const lines = readFileSync(file, "utf-8").trim().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toMatchObject({ event: "install", ok: true, ms: 41_000 });
   });
 });
 

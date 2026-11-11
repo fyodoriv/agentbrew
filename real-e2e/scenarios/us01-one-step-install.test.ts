@@ -158,6 +158,40 @@ describe.concurrent(`us01 one-step install (${COLD ? "cold: npm ci + build" : "f
       expect(existsSync(join(home, "Library", "LaunchAgents", "com.agentbrew.check.plist"))).toBe(false);
       expect(existsSync(join(home, ".local", "bin", "agentbrew"))).toBe(true);
       if (COLD) expectInstalledCheckupRun(join(home, ".local", "bin", "agentbrew"), root);
+      // One finished install leaves one `install` event: a duration and ok, nothing else.
+      const log = readFileSync(join(home, ".local", "share", "agentbrew", "logs", "events.jsonl"), "utf-8");
+      const written = log
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .filter((e) => e.event === "install");
+      expect(written).toHaveLength(1);
+      expect(Object.keys(written[0]).sort()).toEqual(["event", "ms", "ok", "story", "ts"]);
+      expect(typeof written[0].ms).toBe("number");
+      // No answer was given (no terminal), so no state file exists yet. A state that starts at the
+      // top of the log lets the dry run show what a yes would send.
+      const state = join(root, "telemetry-state.json");
+      writeFileSync(state, `${JSON.stringify({ installId: "0123456789abcdef0123456789abcdef", sent: 0 })}\n`);
+      const dry = spawnSync(join(home, ".local", "bin", "agentbrew"), ["telemetry", "send", "--dry-run"], {
+        env: {
+          HOME: home,
+          PATH: process.env.PATH ?? "",
+          TMPDIR: join(root, "tmp"),
+          AGENTBREW_TELEMETRY_STATE: state,
+          AGENTBREW_TELEMETRY_ASK: "0",
+        },
+        encoding: "utf-8",
+      });
+      expect(dry.status, dry.stderr).toBe(0);
+      const batch = (
+        JSON.parse(dry.stdout.slice(dry.stdout.indexOf("{"))) as {
+          body: { batch: { event: string; properties: Record<string, unknown> }[] };
+        }
+      ).body.batch;
+      const installs = batch.filter((e) => e.event === "agentbrew.install");
+      expect(installs).toHaveLength(1);
+      expect(typeof installs[0].properties.duration_ms).toBe("number");
+      expect(typeof installs[0].properties.ok).toBe("boolean");
       expect(out).toContain("agentbrew contribute");
       // "No" to the recommended set means no downloads and no skill installs.
       expect(out).not.toMatch(/Fetching /);

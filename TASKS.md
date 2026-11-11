@@ -299,6 +299,19 @@
 
 ## P2
 
+- [ ] The telemetry file sink refuses a target whose parent folder is a symlink
+  - **ID**: telemetry-file-sink-symlinked-parent
+  - **Tags**: telemetry, security
+  - **Details**: The org log sink (`kind: file`) checks that the target file is not a symlink and that the path is inside the home folder. `parsePath` in `src/core/telemetry-sink.ts` uses `resolve`, not the real path, so a parent folder that is a symlink to a place outside home passes the check. The policy file comes from a trusted overlay, so the risk is low. Resolve the real path of the nearest existing parent and apply the inside-home check to it.
+  - **Files**: `src/core/telemetry-sink.ts`, `src/core/telemetry-sink.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: a policy whose `path` has a symlinked parent that leaves the home folder is invalid, and nothing is written.
+  - **Hypothesis**: file-sink path shapes that can write outside the home folder go from 1 known shape to 0.
+  - **Measurement**: `npx vitest run src/core/telemetry-sink.test.ts -t "symlinked parent"`
+  - **Success**: the new case passes, and it is red on the unchanged reader.
+  - **Pivot**: if the real-path check breaks a home folder that is itself a symlink, compare against the real path of home and keep the check; drop it only if both fail.
+  - **Anchor**: MITRE CWE-59 (improper link resolution before file access).
+
 - [ ] The health-check integration test passes when it runs alone
   - **ID**: integration-health-clean-test-order-dependent
   - **Tags**: tests, reliability

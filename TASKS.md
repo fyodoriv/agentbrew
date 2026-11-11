@@ -1110,6 +1110,6 @@
     - **Pivot**: if two applications made after a threshold is met are both rejected, close this task and stop applying.
     - **Anchor**: Anthropic Claude for Open Source program terms (https://www.anthropic.com/claude-for-oss-terms); Basili, Caldiera and Rombach (1994), GQM.
   - **Files**: none (owner fills web forms); this task records the outcome
-  - **Output**: decision
+  - **Output**: docs
   - **Acceptance**: the owner has applied to each program whose threshold agentbrew meets, and this task records each answer, or records why no application was made.
   - **Blocked**: needs-traction-and-owner-application — 2026-11-10: agentbrew is below every threshold. Agents never submit applications or forms; the owner applies. Unblock when the measurement shows 50 or more stars or 20 or more contributors, or when the owner chooses to try the discretionary tracks.

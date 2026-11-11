@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changes a row, when a row needs the user, and at end of day; `dashboard.statusPath` still updates on
   every row change.
 
+### Changed
+
+- The saved-time estimate for a repair drops from 60 to 5 seconds per fixed
+  drift item. The sync estimate does not change. Both are now set
+  from a Keystroke-Level Model of the hand work (`src/core/klm.ts`): modelled,
+  not timed with people. `docs/observability.md` shows the method and table.
+
 ### Added
 
 - Telemetry shows how much agentbrew helps. A `sync` event has `agents` (how

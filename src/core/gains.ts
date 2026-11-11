@@ -2,17 +2,19 @@
  * Estimated time that agentbrew saves, against one baseline: a person who has
  * several AI coding agents and edits each agent's config by hand.
  *
- * The values are estimates, chosen low. Durations (`ms`) are measured; saved
- * time is not. docs/observability.md ("How much it helps") shows this table.
+ * The values are modelled, not timed with people: each is at or below the
+ * Keystroke-Level Model total of the hand procedure in klm.ts, rounded down
+ * to whole seconds. Durations (`ms`) are measured; saved time is not.
+ * docs/observability.md ("How much it helps") shows this table.
  * Change a value here and there together.
  */
 import { NUMBER_MAX } from "./events.js";
 
 export const SAVED_SECONDS = {
-  /** One sync, per agent detected on this machine (the set a sync targets). Copying one config to one agent by hand takes longer. */
+  /** One sync, per agent detected on this machine (the set a sync targets). Model: 5.2 s; the earlier estimate of 3 s is lower, so it stays. */
   syncPerAgent: 3,
-  /** One repair, per drift item it fixed. Finding and fixing one broken config by hand takes longer. */
-  repairPerItem: 60,
+  /** One repair, per drift item it fixed. Model: 5.2 s for the cheapest drift type, rounded down. */
+  repairPerItem: 5,
 } as const;
 
 const count = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.round(n) : 0);

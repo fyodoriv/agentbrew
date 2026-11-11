@@ -313,7 +313,9 @@ receipt_begin() {
   mkdir -p "$dir" 2>/dev/null || return 0
   RECEIPT_STARTED_AT="$(_receipt_now)"
   RECEIPT_START_S="$(date +%s)"
-  [ -s "$dir/install-before.json" ] && return 0
+  # A machine with a "before" record was installed earlier: this run is a re-run.
+  RECEIPT_FIRST_RUN=1
+  [ -s "$dir/install-before.json" ] && RECEIPT_FIRST_RUN=0 && return 0
   printf '{"taken_at":"%s","launchagents":%s,"claude_skills":%s,"claude_hooks":%s,"claude_md_bytes":%s,"claude_permissions":"%s"}\n' \
     "$RECEIPT_STARTED_AT" "$(measure_launchagents)" "$(measure_claude_skills)" "$(measure_claude_hooks)" \
     "$(measure_claude_md_bytes)" "$(measure_claude_permissions)" >"$dir/install-before.json" 2>/dev/null || true
@@ -451,15 +453,30 @@ cmd_run() {
 
   step "7/7 Verify"
   "$AGENTBREW_CMD" lint || critical "verification (agentbrew lint)"
-  "$AGENTBREW_CMD" status --ci || say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."
+  # The install event: how long the install took to reach a clean status check. The
+  # clean check is this run, so no second status run is needed. Seconds, as the receipt counts them.
+  local status_clean=1 clean_at_s
+  "$AGENTBREW_CMD" status --ci || { status_clean=0; say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."; }
+  clean_at_s="$(date +%s)"
 
   # The telemetry question, loud and last, so it is never lost in build output.
   # In a terminal it asks [Y/n]. With no terminal it asks nothing and the answer
   # stays unset. A stored answer is kept: a re-install never asks again.
-  # With no project key (the shipped default) nothing can be sent: the command
-  # then asks nothing and prints nothing.
+  # With no project key (a fork that empties the key file) nothing can be sent:
+  # the command then asks nothing and prints nothing.
   [ "$telemetry" -eq 1 ] || export AGENTBREW_TELEMETRY=0
   "$AGENTBREW_CMD" telemetry ask || say "  ! Could not save the answer. Nothing is sent. Answer later: agentbrew telemetry on | off"
+
+  # One install event, after the question: a yes covers only later events. It holds a
+  # number (ms) and a boolean (a clean status check), never a path or a name. It is
+  # written to the local log whatever the answer; only a yes sends it. Only the first
+  # install of a machine counts: a re-run is fast and would pull the median down. With
+  # no start time (the receipt folder could not be made) there is no number to record.
+  if [ -n "${RECEIPT_START_S:-}" ] && [ "${RECEIPT_FIRST_RUN:-0}" -eq 1 ]; then
+    local event_args=(--ms "$(((clean_at_s - RECEIPT_START_S) * 1000))")
+    [ "$status_clean" -eq 1 ] && event_args+=(--ok)
+    "$AGENTBREW_CMD" telemetry record-install "${event_args[@]}" 2>/dev/null || true
+  fi
 
   receipt_finish true
   step "Done"

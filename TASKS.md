@@ -312,31 +312,45 @@
   - **Pivot**: if the test needs the whole earlier chain by design, merge it into that chain's test and delete the separate case.
   - **Anchor**: Luo et al. 2014 (an empirical analysis of flaky tests: test order dependency).
 
-- [ ] The maintainer can see how long an install takes to reach a clean status
-  - **ID**: telemetry-install-event
-  - **Tags**: telemetry, install, metrics
-  - **Details**: Telemetry sends `agentbrew.command`, sync, repair, and error events. No event says how long a new install took to reach a clean `agentbrew status`. The install receipt already holds the local number (`zero_to_configured_s` in `scripts/metrics.sh`), but it never leaves the machine, so the maintainer cannot see the first-run cost over all installs. Add an `install` event with numbers only (`ms`, `ok`), written once per finished install and sent only after a yes. It must pass `sanitizeEvent` and the send-time allowlist. Found while adding `seconds_saved` (2026-11-10).
-  - **Files**: `src/core/events.ts`, `src/core/telemetry.ts`, `scripts/install.sh`, `docs/observability.md`, `README.md`
+- [ ] The changed-files gate runs the task-queue guards when TASKS.md changes
+  - **ID**: verify-changed-runs-tasks-md-guards
+  - **Tags**: ci, tests, dx
+  - **Details**: On 2026-11-10 two pull requests passed `npm run verify:changed` and then failed the hosted check on a task-queue guard: `src/docs/tasks-md-output-cadence.test.ts` (an **Output** value outside the allowed list) and `src/docs/volatile-count-claims.test.ts`. The changed-files gate did not select these tests for a change to `TASKS.md` alone. Each miss cost one hosted round of about 20 minutes. Map `TASKS.md` and `docs/*.md` to the `src/docs/` guard tests in the changed-files selection.
+  - **Files**: `scripts/verify-changed.mjs`, `src/verify-changed.test.ts`
   - **Output**: code
-  - **Acceptance**: one finished install in a scratch HOME leaves one `install` event with `ms` and `ok`, and `agentbrew telemetry send --dry-run` shows it as `agentbrew.install` with `duration_ms`. An install with `--no-telemetry` sends nothing.
-  - **Hypothesis**: install events in the request body go from 0 to 1 per finished install, so the maintainer can read the median time to a clean status.
-  - **Measurement**: `npx vitest run src/core/events.test.ts src/core/telemetry.test.ts` and `npm run test:install-e2e`.
-  - **Success**: the new tests pass, and the install e2e finds 1 `install` event with a `duration_ms` number.
-  - **Pivot**: if the installer cannot tell when status is clean without a second slow status run, send the receipt's `seconds` value as is and name the gap in the docs.
-  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Forsgren, Humble, Kim 2018 (lead time as a delivery metric).
+  - **Acceptance**: a change to `TASKS.md` alone makes `npm run verify:changed` run the tests under `src/docs/`.
+  - **Hypothesis**: hosted failures on a task-queue guard that the local gate passed go from 2 in one day to 0 in the next 10 pull requests that change `TASKS.md`.
+  - **Measurement**: `npx vitest run src/verify-changed.test.ts`, with a new case that asserts the selection for a `TASKS.md`-only change holds `src/docs/tasks-md-output-cadence.test.ts`.
+  - **Success**: the new case passes, and it is red on the unchanged selection.
+  - **Pivot**: if the selection cannot map a doc file to tests, run the whole `src/docs/` folder on every changed-files gate and measure the added seconds; drop it above 20 seconds.
+  - **Anchor**: Gligoric, Eloussi, Marinov 2015 (practical regression test selection); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
 
-- [ ] The telemetry docs and comments agree with the shipped key and the event code
-  - **ID**: telemetry-stale-claims-install-and-events
-  - **Tags**: docs, telemetry
-  - **Details**: Stale claims are left after the 2026-11-10 docs fix. First: a comment in `scripts/install.sh` (the consent step) still says "With no project key (the shipped default)"; a write-only project key ships in the repo now. Second: `docs/observability.md` ("Events") says "A command that throws or exits early records no `command` event", but the table above it and `recordCommandEventAtExit` in `src/cli.ts` say such a run still leaves one event. Fix both lines. `scripts/install.sh` is an install path, so the gate runs the install e2e for it.
-  - **Files**: `scripts/install.sh`, `docs/observability.md`
-  - **Output**: docs
-  - **Acceptance**: `rg -n "shipped default\)" scripts/install.sh` and `rg -n "records no .command. event" docs/observability.md` both print nothing.
-  - **Hypothesis**: stale telemetry claims in these two files go from 2 to 0.
-  - **Measurement**: `rg -c "shipped default\)" scripts/install.sh; rg -c "records no .command. event" docs/observability.md`
-  - **Success**: both commands print nothing (0 matches), and `npm run verify:changed` exits 0.
-  - **Pivot**: if the events line is right and the code is wrong, file a bug task for `recordCommandEventAtExit` and leave the line.
-  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Lethbridge, Singer, Forward 2003 (how software engineers use documentation: stale docs lose trust).
+- [ ] The task lint rejects a task with no Success line or no ID
+  - **ID**: task-lint-success-and-id-gaps
+  - **Tags**: tasks, lint, measurement
+  - **Details**: A review of the "measure every task" rule (2026-11-10) found two gaps in the lint step `npx @tasks-md/lint --require-prereg TASKS.md`. It accepts an **Acceptance** line in place of **Success**, and it skips a block that has no **ID**. So a task can pass the gate without a numeric keep line. Check both in this repo first (a small test over `TASKS.md`), then report the gap to the tasks.md repo.
+  - **Files**: `src/docs/`, `TASKS.md`, `docs/shared-rules.md`
+  - **Output**: code
+  - **Acceptance**: a task block with no **Success** line, or with no **ID**, fails a test in this repo.
+  - **Hypothesis**: task shapes that pass the gate without a Success line go from 2 known shapes to 0.
+  - **Measurement**: `npx vitest run src/docs/` with two new cases, one per shape, each built from a fixture block.
+  - **Success**: both cases pass, and each is red against a lint that accepts the shape.
+  - **Pivot**: if existing tasks fail in numbers above 10, backfill them in a first PR and turn the check on in a second.
+  - **Anchor**: Munafo et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] Old agent worktrees are removed when their branch is merged
+  - **ID**: stale-worktrees-cleanup
+  - **Tags**: dx, disk, cleanup
+  - **Details**: On 2026-11-10 `git worktree list` in this repo showed about 100 worktrees, most from merged or closed work. Each holds a `node_modules` folder, so they cost disk space and slow file search. Add a safe prune: remove a worktree only when its branch is merged into `origin/main` and it has no uncommitted file and no unpushed commit; list the rest with the reason.
+  - **Files**: `scripts/`, `docs/agent-workflow.md`
+  - **Output**: code
+  - **Acceptance**: one command lists each worktree as removed or kept with its reason, and never removes one with uncommitted or unpushed work.
+  - **Hypothesis**: worktrees of merged branches go from about 100 to 0, with no lost work.
+  - **Measurement**: `git worktree list | wc -l` before and after, and a test with three fixture worktrees (merged and clean, dirty, unpushed).
+  - **Success**: the test passes; the count after is the number of kept worktrees the command names.
+  - **Pivot**: if the merged check cannot see squash merges, match on the pull request state through `gh` and keep any worktree it cannot match.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
 
 - [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
   - **ID**: updates-landed-fixture-wall-clock-limit

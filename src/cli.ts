@@ -493,9 +493,12 @@ export function buildProgram(): Command {
     )
     .argument("<action>", "status | on | off | ask | send")
     .option("--dry-run", "print the next request body and send nothing")
+    .addOption(new Option("--ms <n>", "record-install: time to a clean status check, in ms").hideHelp())
+    .addOption(new Option("--ok", "record-install: the status check was clean").hideHelp())
     .addOption(new Option("--auto", "the daily send that a command starts: quiet, with a hard time limit").hideHelp())
-    .action(async (action: string, options: { dryRun?: boolean; auto?: boolean }) => {
+    .action(async (action: string, options: { dryRun?: boolean; auto?: boolean; ms?: string; ok?: boolean }) => {
       const t = await import("./core/telemetry.js");
+      if (action === "record-install") return recordInstall(options);
       if (!["status", "on", "off", "ask", "send"].includes(action)) {
         console.error(`unknown action ${action}: use status, on, off, ask, or send`);
         process.exitCode = 2;
@@ -606,6 +609,18 @@ function recordCommandEvents(program: Command): void {
       await t.askOnFirstRun(version, { command, argv: process.argv.slice(2) });
     }
   });
+}
+
+/** `telemetry record-install`, called by scripts/install.sh once per finished install. Numbers and a boolean only. */
+async function recordInstall(options: { ms?: string; ok?: boolean }): Promise<void> {
+  const events = await import("./core/events.js");
+  const ms = events.parseInstallMs(options.ms);
+  if (ms === null) {
+    console.error("record-install needs --ms <whole number of milliseconds>");
+    process.exitCode = 2;
+    return;
+  }
+  events.recordInstallEvent(ms, options.ok === true);
 }
 
 async function telemetrySend(

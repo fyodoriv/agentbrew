@@ -426,6 +426,7 @@ export function consentText(version: string, deps: TelemetryDeps = {}): string {
     "What is sent: the command name, its duration, ok or error, counts,",
     "the agentbrew version, your OS and CPU type, and a random install id.",
     "A sync or repair also sends an estimate of the seconds it saved you.",
+    "A finished install also sends how long it took to reach a clean check.",
     "",
     "One example event, in the exact shape that is sent:",
     "",

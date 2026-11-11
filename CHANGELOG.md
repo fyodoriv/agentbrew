@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Telemetry shows how long a new install takes. The first finished `scripts/install.sh run`
+  on a machine writes one `install` event (`ms`, `ok`): the time to the end of its
+  `agentbrew status --ci` check, in whole seconds, and whether that check was clean.
+  The time is sent either way, so read the median over `ok` installs. A re-run records none. It is sent as
+  `agentbrew.install` with `duration_ms` only after a yes; `--no-telemetry` sends
+  nothing. An install that fails and rolls back records none.
 - Telemetry shows how much agentbrew helps. A `sync` event has `agents` (how
   many agents are detected on this machine, the set a sync targets) and `secondsSaved`; a `repair` event has
   `secondsSaved`. The estimate for each synced agent is 3 seconds, and for each repaired

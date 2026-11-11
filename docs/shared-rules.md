@@ -53,6 +53,8 @@ These apply to skills, chains, and wizards that perform work (real edits), not r
 - Completed tasks are removed, not checked off.
 - Stability, regression-catching, observability, deployment-infra, auth-path, data-integrity, and CI-gate work is P0 unless a repo explicitly says otherwise.
 - Validate task files with `npx @tasks-md/lint TASKS.md` when edited.
+- **Measure every task (IRON LAW):** every task block, at every priority, carries `Hypothesis`, `Measurement`, `Success`, `Pivot`, and `Anchor`. Check with `npx @tasks-md/lint --require-prereg TASKS.md`. A quick capture without these fields is not a task yet: add them before the task is filed.
+- **Measure in use, not only in tests:** a task that changes what a user gets also names where the effect shows after it ships: a telemetry event, a dashboard tile, or a metrics command. When that number does not exist, the task adds it, or a first task does. A change that adds or changes an event also updates the events doc and the dashboard tile, and reads the tile back when real data arrives. Never invent an event to fill a tile.
 
 ## Reuse before implementation
 

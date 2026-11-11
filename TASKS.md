@@ -299,6 +299,19 @@
 
 ## P2
 
+- [ ] The health-check integration test passes when it runs alone
+  - **ID**: integration-health-clean-test-order-dependent
+  - **Tags**: tests, reliability
+  - **Details**: `npx vitest run src/integration.test.ts -t "reports clean when everything is in sync"` fails on unchanged `main` (916e35b8, 2026-11-10): expected `clean`, received `Drift: 9 issue(s) (9 commands)` at `src/integration.test.ts:813`. In the full file it passes, so it leans on state that an earlier test leaves (deployed commands). Under load the same test also hit its 15000 ms limit once in `verify:changed`. Make the test set up its own state.
+  - **Files**: `src/integration.test.ts`
+  - **Output**: code
+  - **Acceptance**: the filtered command above exits 0, and the full file still passes.
+  - **Hypothesis**: failures of this test when it runs alone go from 1 of 1 to 0 of 5 runs.
+  - **Measurement**: `for i in 1 2 3 4 5; do npx vitest run src/integration.test.ts -t "reports clean when everything is in sync" || echo FAIL; done`
+  - **Success**: 0 FAIL lines in 5 runs.
+  - **Pivot**: if the test needs the whole earlier chain by design, merge it into that chain's test and delete the separate case.
+  - **Anchor**: Luo et al. 2014 (an empirical analysis of flaky tests: test order dependency).
+
 - [ ] The maintainer can see how long an install takes to reach a clean status
   - **ID**: telemetry-install-event
   - **Tags**: telemetry, install, metrics

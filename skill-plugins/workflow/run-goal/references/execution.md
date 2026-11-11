@@ -342,3 +342,21 @@ start it again after the edits; never report its result for the new code.
   request, or push the real fix.
 - A test of one operating system's feature runs only there
   (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.
+
+## Proof inputs and decided measurements
+
+- A criterion that promises "real data from this machine" needs inputs this
+  machine may not have: a record file that only newer installs write, an
+  account or cohort that is old enough, an event that only a fresh install
+  sends. Check each input at intake, read-only, before you print the
+  contract. For each proof, the contract says which kind it is: real data
+  now, a fixture or scratch run, or real data after a named date or event.
+  Never create the missing record or send invented events to fill a chart.
+  Offer, as a suggestion, a measurement that every install can produce.
+  One goal promised six dashboard tiles with real data; this machine had no
+  install record and no install was 14 days old, so three tiles stayed empty.
+- A measurement with a registered line stops when the verdict is decided.
+  When the line is "0 false alarms" and one run is a false alarm, more runs
+  cannot change the verdict. Stop it, report the partial counts as measured,
+  and apply the registered pivot. This matters most in a shared queue: an
+  exclusive timing run holds every other project's work behind it.

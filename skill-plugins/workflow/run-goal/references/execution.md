@@ -363,9 +363,9 @@ start it again after the edits; never report its result for the new code.
 
 ## Borrowed sessions and guards the gate skips
 
-- A proof that reads a live store through a borrowed session (a signed-in
-  browser tab, a connector, a token that expires) can lose that session
-  before the end of a long goal. Read each row back and quote it in the chat
+- Some proofs read a live store through a borrowed session: a signed-in
+  browser tab, a connector, a token that expires. A long goal can lose that
+  session before its end. Read each row back and quote it in the chat
   as soon as its data exists, with the time of the read. Probe the session
   again before the last criterion. When it is gone, try each allowed route
   once (another browser the rules allow, the store's own CLI). If none is
@@ -377,13 +377,14 @@ start it again after the edits; never report its result for the new code.
   showed the login page.
 - A changed-files gate can skip the guards for the files you changed. Before
   you push a change to a task queue, an agent guide, or a rules file, find
-  the repo tests that read that file (`rg -l "<file name>" tests src`) and
-  run them by name: size budgets, allowed field values, required fields.
+  the repo tests that read that file: `rg -l "<file name>" tests src`. Then
+  run them by name. They hold size budgets, allowed field values and
+  required fields.
   Then merge the base branch and run them once more, because another
   session's push can break the same guard. In one goal the local gate passed
-  three pushes that the hosted check then failed: an agent guide 131 bytes
-  over its budget, a task field outside the allowed list, and task fields
-  nested one level too deep. Each miss cost a hosted round of 6 to 20
+  three pushes that the hosted check then failed. The causes: an agent guide
+  131 bytes over its budget, a task field outside the allowed list, and task
+  fields nested one level too deep. Each miss cost a hosted round of 6 to 20
   minutes.
 - When you stop a worker, its queued and running jobs stop with it. Before
   you stop one, list its jobs in the shared queue. After, start again each

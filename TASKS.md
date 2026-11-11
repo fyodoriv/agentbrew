@@ -1106,3 +1106,23 @@
   - **Success**: all proposed fixtures reject false completion.
   - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
+- [ ] Apply to open-source AI maintainer programs when agentbrew has traction
+  - **ID**: oss-ai-maintainer-programs
+  - **Tags**: funding, ai-cost, owner-action
+  - **Details**: Some vendors give open-source maintainers free AI. Research on 2026-11-10 found that agentbrew misses every published threshold, so applying now is a long shot. Recheck when the repo grows. Programs and rules as read on 2026-11-10 (reread each page before acting):
+    - Claude for Open Source (https://claude.com/contact-sales/claude-for-oss): 6 months of the top Claude plan, paid billing pauses. Any one of: 20 or more external contributors with merged PRs in 12 months, 200,000 or more monthly downloads, 500 or more dependent repos, OpenSSF criticality 0.4 or above. It also has a discretionary "apply anyway" track.
+    - OpenAI Codex for Open Source (https://developers.openai.com/codex/community/codex-for-oss): 6 months of ChatGPT Pro plus API credits. No numeric rule; it wants a "widely used public project".
+    - Greptile for open source (https://www.greptile.com/pricing/open-source): free AI review, automatic at 50 stars.
+    - Atlas Cloud OSS program (https://atlascloud.ai/docs/en/oss-program): monthly credits from about 100 stars.
+    - GitHub Copilot Pro for maintainers: automatic for a "popular" repo; check https://github.com/settings/copilot.
+    - No application needed on a public repo: CodeRabbit and Sourcery free AI review, Sentry for Open Source (includes Seer).
+    - **Hypothesis**: once agentbrew passes one threshold, one accepted application removes 6 months of AI subscription cost for the owner.
+    - **Measurement**: `gh api repos/fyodoriv/agentbrew -q .stargazers_count` and `gh api repos/fyodoriv/agentbrew/contributors -q length`
+    - **Success**: at least one program accepts and the benefit is active on the owner's account.
+    - **Pivot**: if two applications made after a threshold is met are both rejected, close this task and stop applying.
+    - **Anchor**: Anthropic Claude for Open Source program terms (https://www.anthropic.com/claude-for-oss-terms); Basili, Caldiera and Rombach (1994), GQM.
+  - **Files**: none (owner fills web forms); this task records the outcome
+  - **Output**: decision
+  - **Acceptance**: the owner has applied to each program whose threshold agentbrew meets, and this task records each answer, or records why no application was made.
+  - **Blocked**: needs-traction-and-owner-application — 2026-11-10: agentbrew is below every threshold. Agents never submit applications or forms; the owner applies. Unblock when the measurement shows 50 or more stars or 20 or more contributors, or when the owner chooses to try the discretionary tracks.

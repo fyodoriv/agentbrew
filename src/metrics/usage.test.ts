@@ -127,7 +127,7 @@ describe("agentbrew metrics", () => {
     const metrics = await collectUsageMetrics({ home, env: {}, nowMs: NOW, days: 30, perfScript: "missing.mjs" });
     expect(metrics.gains).toEqual({ available: true, secondsSaved: 132 });
     expect(renderUsageText(metrics)).toContain(
-      "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 60 s per fixed item)",
+      "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 5 s per fixed item)",
     );
   });
 

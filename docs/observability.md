@@ -83,11 +83,11 @@ agent's config by hand. `src/core/gains.ts` holds one estimate table:
 | Action | Estimate |
 |---|---|
 | One sync that works | 3 seconds for each agent detected on this machine |
-| One repair that leaves no drift | 60 seconds for each drift item it fixed |
+| One repair that leaves no drift | 5 seconds for each drift item it fixed |
 | A sync or repair that fails | 0 |
 
-Saved time is an estimate, chosen low: each action takes a person longer by
-hand. Durations (`ms`, `duration_ms`) are measured. A sync counts the agents
+Saved time is an estimate, chosen low: each value is at or below the modelled
+time of the hand work (next section). Durations (`ms`, `duration_ms`) are measured. A sync counts the agents
 detected on this machine: the set every sync module targets. A sync that
 changes nothing, a `--only` sync, and a sync that a scheduler or a script
 runs count the same as a full sync, so the number is a rough estimate.
@@ -95,6 +95,45 @@ runs count the same as a full sync, so the number is a rough estimate.
 check refused it, a `--only` name was unknown, or it was a `--rollback`.
 A `--dry-run` writes no event. A repair that leaves drift counts as failed
 and saves 0, also when it fixed some items.
+
+#### How the estimate is modelled
+
+The numbers are modelled, not timed with people. No person timed a hand edit.
+They come from the Keystroke-Level Model (KLM; Card, Moran, Newell 1980): the
+time of a task is the sum of small operator times. `src/core/klm.ts` holds the
+operators and each hand procedure as an explicit sequence, and
+`src/core/gains.test.ts` pins every total.
+
+| Operator | Seconds | Meaning |
+|---|---|---|
+| K | 0.2 | One key (skilled typist, about 55 words per minute); a chord such as Cmd+V is 2 K |
+| P | 1.1 | Point with the mouse |
+| H | 0.4 | Move a hand between keyboard and mouse |
+| M | 1.35 | Think before a step |
+| B | 0.1 | Press or release the mouse button (a click is 2 B) |
+| R(t) | t | Wait for the system (no procedure below needs one) |
+
+The procedures are the smallest honest ones: an expert user, no mistakes, and
+no time to find the problem or to write the config. For a repair, the person
+notices the problem (one M) but does not search for it. The shared procedure
+"edit one entry" is: M, K K (switch to the open file), M, P B B (click the
+place), K K (paste), K K (save).
+
+| Action | Operator sequence | Modelled | Table value |
+|---|---|---|---|
+| Sync, per agent | edit one entry | 5.2 s | 3 s |
+| Repair: `mcp`, `mcp-bare-placeholder`, `mcp-catalog-pin`, `mcp-playwright-isolated`, `mcp-permissions`, `rules`, `commands`, `hooks`, `instructions`, `agents`, `models` | edit one entry | 5.2 s | 5 s |
+| Repair: `rules-source` (delete one duplicate paragraph) | M, K K, M, P, 6 B (triple click), K (delete), K K | 5.4 s | 5 s |
+| Repair: `skills` (make one missing link in a shell) | M, H, 21 K | 5.95 s | 5 s |
+| Repair: `launchagent` (type one path in a plist) | M, K K, M, P B B, 12 K, K K | 7.2 s | 5 s |
+
+The table value is the lower of the old estimate and the model, rounded down
+to whole seconds, and never above any modelled value. The repair value uses the
+cheapest drift type for every type, so no event needs a new field. The sync
+model gave 5.2 s, above the old 3 s, so the old 3 s stays. The old repair
+estimate of 60 s was far above the model, so it dropped to 5 s. The model
+leaves out the time to discover a problem and to write the config, so real
+hand work takes longer and the estimate stays low.
 
 `agentbrew metrics --days 30` prints the sum for this machine from the local
 event log: "Estimated time saved, last 30 days: N min" (seconds when the sum

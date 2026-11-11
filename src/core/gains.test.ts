@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { AUTO_FIXABLE_TYPES } from "../drift-fixes.js";
 import { NUMBER_MAX, sanitizeEvent } from "./events.js";
 import { gainLine, repairGain, SAVED_SECONDS, summarizeGains, syncGain } from "./gains.js";
+import { klmSeconds, lowestRepairSeconds, REPAIR_OPS, SYNC_PER_AGENT_OPS } from "./klm.js";
 import { buildBatch } from "./telemetry.js";
 
 const ID = "00000000-0000-4000-8000-000000000000";
@@ -43,11 +45,11 @@ describe("estimated time saved", () => {
     expect(sent({ event: "sync", ok: false, ...syncGain(false, 4) })).toMatchObject({ agents: 4, seconds_saved: 0 });
   });
 
-  it("a repair of 2 items saves 120 seconds; a failed repair saves 0", () => {
-    expect(repairGain(true, 2)).toEqual({ secondsSaved: 120 });
+  it("a repair of 2 items saves 10 seconds; a failed repair saves 0", () => {
+    expect(repairGain(true, 2)).toEqual({ secondsSaved: 10 });
     expect(sent({ event: "repair", ok: true, repaired: 2, ...repairGain(true, 2) })).toMatchObject({
       repaired: 2,
-      seconds_saved: 120,
+      seconds_saved: 10,
     });
     expect(repairGain(false, 2)).toEqual({ secondsSaved: 0 });
   });
@@ -62,7 +64,7 @@ describe("estimated time saved", () => {
     const since = Date.parse("2026-11-01T00:00:00.000Z");
     const lines = [
       JSON.stringify({ ts: TS, event: "sync", ok: true, agents: 4, secondsSaved: 12 }),
-      JSON.stringify({ ts: TS, event: "repair", ok: true, repaired: 2, secondsSaved: 120 }),
+      JSON.stringify({ ts: TS, event: "repair", ok: true, repaired: 2, secondsSaved: 10 }),
       JSON.stringify({ ts: TS, event: "sync", ok: false, agents: 4, secondsSaved: 0 }),
       JSON.stringify({ ts: "2026-10-01T00:00:00.000Z", event: "sync", ok: true, secondsSaved: 300 }),
       JSON.stringify({ ts: TS, event: "command", command: "sync", ok: true, secondsSaved: 300 }),
@@ -73,19 +75,52 @@ describe("estimated time saved", () => {
       "not json",
       "",
     ];
-    expect(summarizeGains(lines, since)).toEqual({ available: true, secondsSaved: 132 });
+    expect(summarizeGains(lines, since)).toEqual({ available: true, secondsSaved: 22 });
     expect(summarizeGains(["not json"], since)).toEqual({ available: false, secondsSaved: 0 });
   });
 
   it("the metrics line names the window, the minutes, and both rates", () => {
     expect(gainLine({ available: true, secondsSaved: 132 }, 30)).toBe(
-      "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 60 s per fixed item)",
+      "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 5 s per fixed item)",
     );
     // A sum under one minute prints seconds, never "0 min".
     expect(gainLine({ available: true, secondsSaved: 12 }, 7)).toBe(
-      "Estimated time saved, last 7 days: 12 s (sync: 3 s per agent; repair: 60 s per fixed item)",
+      "Estimated time saved, last 7 days: 12 s (sync: 3 s per agent; repair: 5 s per fixed item)",
     );
     expect(gainLine({ available: true, secondsSaved: 0 }, 7)).toContain("last 7 days: 0 s (");
     expect(gainLine({ available: false, secondsSaved: 0 }, 30)).toContain("no data yet");
+  });
+
+  it("the KLM totals of the hand procedures are pinned", () => {
+    expect(klmSeconds(SYNC_PER_AGENT_OPS)).toBe(5.2);
+    expect(klmSeconds(["K", "P", "H", "M", "B", { R: 2 }])).toBe(5.15);
+    const totals = Object.fromEntries(Object.entries(REPAIR_OPS).map(([type, ops]) => [type, klmSeconds(ops)]));
+    expect(totals).toEqual({
+      mcp: 5.2,
+      "mcp-bare-placeholder": 5.2,
+      "mcp-catalog-pin": 5.2,
+      "mcp-playwright-isolated": 5.2,
+      "mcp-permissions": 5.2,
+      rules: 5.2,
+      commands: 5.2,
+      hooks: 5.2,
+      instructions: 5.2,
+      agents: 5.2,
+      models: 5.2,
+      "rules-source": 5.4,
+      skills: 5.95,
+      launchagent: 7.2,
+    });
+  });
+
+  it("every drift type that repair fixes has a modelled procedure", () => {
+    expect(Object.keys(REPAIR_OPS).sort()).toEqual([...AUTO_FIXABLE_TYPES].sort());
+  });
+
+  it("each table value is at or below its modelled seconds", () => {
+    expect(SAVED_SECONDS.syncPerAgent).toBeLessThanOrEqual(klmSeconds(SYNC_PER_AGENT_OPS));
+    expect(SAVED_SECONDS.repairPerItem).toBeLessThanOrEqual(lowestRepairSeconds());
+    for (const ops of Object.values(REPAIR_OPS))
+      expect(SAVED_SECONDS.repairPerItem).toBeLessThanOrEqual(klmSeconds(ops));
   });
 });

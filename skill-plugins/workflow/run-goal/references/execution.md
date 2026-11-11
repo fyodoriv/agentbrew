@@ -360,3 +360,33 @@ start it again after the edits; never report its result for the new code.
   cannot change the verdict. Stop it, report the partial counts as measured,
   and apply the registered pivot. This matters most in a shared queue: an
   exclusive timing run holds every other project's work behind it.
+
+## Borrowed sessions and guards the gate skips
+
+- Some proofs read a live store through a borrowed session: a signed-in
+  browser tab, a connector, a token that expires. A long goal can lose that
+  session before its end. Read each row back and quote it in the chat
+  as soon as its data exists, with the time of the read. Probe the session
+  again before the last criterion. When it is gone, try each allowed route
+  once (another browser the rules allow, the store's own CLI). If none is
+  signed in, the read is a human step: say which window to open or where to
+  sign in, keep the criterion unverified, and finish every other part. Never
+  present rows from an earlier read as the fresh final read, and never sign
+  in with a password yourself. One goal left its dashboard read-back for the
+  end; by then the browser extension had dropped, and two other browsers
+  showed the login page.
+- A changed-files gate can skip the guards for the files you changed. Before
+  you push a change to a task queue, an agent guide, or a rules file, find
+  the repo tests that read that file: `rg -l "<file name>" tests src`. Then
+  run them by name. They hold size budgets, allowed field values and
+  required fields.
+  Then merge the base branch and run them once more, because another
+  session's push can break the same guard. In one goal the local gate passed
+  three pushes that the hosted check then failed. The causes: an agent guide
+  131 bytes over its budget, a task field outside the allowed list, and task
+  fields nested one level too deep. Each miss cost a hosted round of 6 to 20
+  minutes.
+- When you stop a worker, its queued and running jobs stop with it. Before
+  you stop one, list its jobs in the shared queue. After, start again each
+  job you still need, in the background, or the branch waits on a job that
+  no longer exists.

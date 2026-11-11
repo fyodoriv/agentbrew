@@ -180,6 +180,103 @@ and when it was given, the key source (never the key), the pending count, and
 the last send. `agentbrew telemetry send --dry-run` prints the exact next
 request body with the key shown as `<posthog_key>`, and sends nothing.
 
+### Org log sink
+
+An org overlay can send the events (and, when it turns it on, agentbrew's own
+error log lines) to a company log location instead of PostHog. It drops one
+file: `~/.config/agentbrew/telemetry-sink.json`. The base repo holds only this
+generic setting. No file means nothing changes: the request is the same as
+before. Not tested against a real Splunk server: the tests follow Splunk's
+public HEC format, plus one run against a local HTTP server.
+
+```json
+{
+  "version": 1,
+  "kind": "splunk-hec",
+  "consent": "managed",
+  "error_logs": true,
+  "url": "https://splunk.example.com:8088/services/collector/event",
+  "token": { "keychain": { "service": "org-telemetry", "account": "hec_token" } },
+  "index": "devtools",
+  "sourcetype": "agentbrew:telemetry",
+  "source": "agentbrew"
+}
+```
+
+| Field | Rule |
+|---|---|
+| `version` | Must be `1`. |
+| `kind` | `posthog` (the public default), `splunk-hec`, `file`, or `off` (send nothing, ask nothing). |
+| `consent` | `ask` (default: the stored answer decides) or `managed` (sends without a stored yes and never asks). `managed` needs `splunk-hec` or `file`. |
+| `error_logs` | `true` or `false` (default). `true` needs `splunk-hec` or `file`. |
+| `url` | `splunk-hec` only, required. `https`, no user info. |
+| `token` | `splunk-hec` only, required. Exactly one of `{"keychain":{"service","account"}}`, `{"file":"~/path"}`, `{"env":"NAME"}`. 1 to 512 characters, no whitespace or control characters. A token file must be a regular file that group and others cannot read. |
+| `path` | `file` only, required. Absolute or `~/`, inside your home, and not a symlink. |
+| `index`, `sourcetype`, `source` | Optional, `[A-Za-z0-9_:.-]{1,64}`. Defaults: `agentbrew:telemetry` and `agentbrew`. |
+
+Any other key, a bad value, bad JSON, or a file that group or others can write
+makes the policy **invalid**. Then nothing is sent anywhere (not to PostHog
+either), no question is asked, and `telemetry status` says
+`sink policy invalid: <reason code>`. It never prints the file. Tests set the
+path with `AGENTBREW_TELEMETRY_SINK_FILE`.
+
+**`splunk-hec`.** One POST per batch to `url` with `Authorization: Splunk <token>`.
+The body is one JSON object per event, joined by newlines (Splunk's HEC batch
+format): `{"time": <epoch seconds>, "source", "sourcetype", "index" (only when
+set), "event": {...}}`. `event` holds the same event name and properties as the
+PostHog body, plus `install_id` and `version`. A 2xx is success. No request goes
+to the public default, and the PostHog key is never read.
+
+**`file`.** One JSON line per event appended to `path`: the same `event` object
+plus `time` (ISO) and `sourcetype`. The folder is created with mode 700 and the
+file with mode 600. A file over 10 MB is renamed to `<path>.1` (replacing an old
+one) and a new file starts. No network request.
+
+**Consent.** With `ask`, the question names the destination ("your
+organization's log system at splunk.example.com:8088") and the stored answer
+decides. With `managed`, status says `managed by org policy`. A stored `no`
+(`agentbrew telemetry off`) still stops it; `telemetry on` clears it. The env off
+switches (`DO_NOT_TRACK`, `CI`, `AGENTBREW_TELEMETRY=0`) stop every sink.
+The daily detached send follows the same rules: it runs under `managed`, and
+not under `off` or an invalid policy.
+
+**Destination change.** The state file stores a fingerprint of the sink (kind
+plus host or path, never the token). When it differs from the stored one (a new,
+changed, or removed policy), the next send moves the cursor to the end of the
+event log and sends nothing. Events recorded for one destination never go to
+another. A policy that says `off`, or an invalid one (fingerprint `off` or
+`invalid`), is noted by the check that runs after each command and by a manual
+send. So events recorded while the policy said off are not sent after the file
+is removed. One limit: a policy that was added and removed with no agentbrew
+run in between leaves no trace.
+
+**Token safety.** The token is not in status, dry-run output, logs, error text,
+state, or a process argument list. A Keychain token is read with
+`security find-generic-password`, whose arguments hold only the service and
+account names. Dry run shows `<token>`. Status shows the source (keychain, file,
+or env).
+
+**Error logs.** With `error_logs: true` on an org sink, new lines of these files
+in `~/.local/share/agentbrew/logs/` are forwarded, and no other file is read:
+
+- `launchagent.err` (stderr of the scheduled sync and repair)
+- `mcp-memory.err.log` (stderr of the memory server agent)
+- `mcp-memory-maintain.err.log` (stderr of the memory maintenance agent)
+
+One event per line: name `agentbrew.error_log`, sourcetype `agentbrew:error_log`,
+fields `file` (the base name) and `line`. Before it leaves, a line has URL
+credentials hidden, the home folder shown as `~`, and is cut at 2000 characters.
+A send forwards at most 200 lines. A cursor per file is kept in the state file
+(a byte offset; reset when the file shrank). The first send with error logs on
+records where each file ends, so old lines are never sent. A line without its
+newline waits for the next send. With `posthog` or no policy this path is not
+reachable, so error log lines are never sent to PostHog.
+
+**Check it.** `agentbrew telemetry status` shows the sink kind and host (or the
+file path with `~`), the consent source, error logs on or off, and the token
+source. `agentbrew telemetry send --dry-run` prints the next request with the
+token shown as `<token>`. It does not show error log lines.
+
 ### The key
 
 A PostHog project key can only write events; it is public by design.

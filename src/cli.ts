@@ -640,11 +640,22 @@ function telemetryStatusLine(st: {
   keySource: string;
   pending: number;
   lastSend?: string;
+  sink?: { kind: string; target?: string; consentSource: string; errorLogs: boolean; tokenSource?: string };
 }): string {
   const answered = st.consentAt ? ` (answered ${st.consentAt})` : "";
   return (
     `telemetry: ${st.on ? "on" : "off"} (${st.reason}); consent: ${st.consent}${answered}; key: ${st.keySource}; ` +
-    `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}`
+    `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}${sinkLine(st.sink)}`
+  );
+}
+
+/** The org sink part of the status line; empty without an org sink policy. Never the token or the URL path. */
+function sinkLine(sink: Parameters<typeof telemetryStatusLine>[0]["sink"]): string {
+  if (!sink) return "";
+  const token = sink.tokenSource ? `; token: ${sink.tokenSource}` : "";
+  return (
+    `\n  sink: ${sink.kind}${sink.target ? ` ${sink.target}` : ""}; consent source: ${sink.consentSource}; ` +
+    `error logs: ${sink.errorLogs ? "on" : "off"}${token}`
   );
 }
 

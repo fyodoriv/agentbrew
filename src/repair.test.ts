@@ -216,8 +216,8 @@ describe("fix", () => {
         repaired: 1,
         remaining: 1,
         types: ["mcp"],
-        // Drift is left, so the repair failed: it saves 0.
-        secondsSaved: 0,
+        // Drift is left, but the one fixed item was real work: 1 x 5 s.
+        secondsSaved: 5,
       }),
     );
   });

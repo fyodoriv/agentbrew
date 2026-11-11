@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The saved-time estimate is more exact in two cases. A `--only` sync counts
+  only the detected agents its modules write to, not all detected agents. A
+  repair that fixed some items but left drift records the fixed items times
+  5 seconds, not 0. A sync that changes no file still counts as a full sync:
+  the sync modules do not report that, so it stays a known limit in
+  `docs/observability.md`.
 - The saved-time estimate for a repair drops from 60 to 5 seconds per fixed
   drift item. The sync estimate does not change. Both are now set
   from a Keystroke-Level Model of the hand work (`src/core/klm.ts`): modelled,

@@ -325,19 +325,6 @@
   - **Pivot**: if the installer cannot tell when status is clean without a second slow status run, send the receipt's `seconds` value as is and name the gap in the docs.
   - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Forsgren, Humble, Kim 2018 (lead time as a delivery metric).
 
-- [ ] The saved-time estimate counts a sync that changes nothing, a `--only` sync, and a partial repair correctly
-  - **ID**: telemetry-gain-edge-cases
-  - **Tags**: telemetry, metrics
-  - **Details**: After the KLM calibration (2026-11-10), three gaps remain in the callers of `src/core/gains.ts`. A sync that deploys nothing new counts the same as one that changes every agent; the sync code does not report "nothing changed" today. A `--only` sync counts all detected agents, not the ones it touched. A repair that fixes some items but leaves drift saves 0 (`repairGain(ok, ...)` in `src/repair.ts`), though the fixed items were real. Each needs a signal from the sync or repair code, not a new text field.
-  - **Files**: `src/cli.ts`, `src/repair.ts`, `src/core/gains.ts`, `src/core/gains.test.ts`, `docs/observability.md`, `README.md`
-  - **Output**: code
-  - **Acceptance**: a sync that changes no file records `secondsSaved` 0; a `--only <module>` sync counts only the agents that module targets; a repair with 2 fixed items and 1 left records 2 times the repair value. `docs/observability.md` no longer lists these as known gaps.
-  - **Hypothesis**: the share of recorded syncs that saved time while changing nothing drops from all of them to 0, so the sum stops overstating the gain.
-  - **Measurement**: `npx vitest run src/core/gains.test.ts src/repair.test.ts src/cli-sync-build-health.test.ts` with new cases for each of the three.
-  - **Success**: the three new cases pass and the existing gain tests pass.
-  - **Pivot**: if "nothing changed" needs a scan of every deployed file, drop that case and keep the other two.
-  - **Anchor**: Card, Moran, Newell 1980 (Keystroke-Level Model for task time); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
-
 - [ ] The telemetry docs and comments agree with the shipped key and the event code
   - **ID**: telemetry-stale-claims-install-and-events
   - **Tags**: docs, telemetry

@@ -44,7 +44,7 @@ import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
-import { syncGain } from "./core/gains.js";
+import { syncGain, targetedAgentCount } from "./core/gains.js";
 import { installOutputRedaction } from "./core/redact-output.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
@@ -226,17 +226,21 @@ async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
     ok = !process.exitCode;
   } finally {
     if (!options.dryRun) {
-      const gain = syncGain(ok, deployed ? await syncedAgentCount() : 0);
+      const gain = syncGain(ok, deployed ? await syncedAgentCount(options.only) : 0);
       recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started, ...gain });
     }
   }
 }
 
-/** Agents detected on this machine: the set every sync module targets. */
-async function syncedAgentCount(): Promise<number> {
+/** Agents detected on this machine that the sync targets: all of them, or those of the `--only` modules. */
+async function syncedAgentCount(only?: string): Promise<number> {
   try {
     const { loadState } = await import("./state.js");
-    return loadState()?.agents?.filter((agent) => agent.detected).length ?? 0;
+    const detected =
+      loadState()
+        ?.agents?.filter((agent) => agent.detected)
+        .map((agent) => agent.name) ?? [];
+    return targetedAgentCount(new Set(detected), only);
   } catch {
     return 0;
   }

@@ -48,6 +48,7 @@ Pending work lives in the repo-declared backend. Detect it from `Agentfile.yaml`
 
 - Use the declared issue/task CLI for `task_backend: github-issues`; do not recreate `TASKS.md`.
 - For `TASKS.md`, keep the tasks.md shape and validate it with the repo's task linter. Remove completed blocks.
+- Every task carries its measurement: `Hypothesis`, `Measurement`, `Success`, `Pivot`, `Anchor`, at every priority. A user-facing change also names the event, tile, or metrics command that shows its effect in use. Details: shared-rules **## Task queues**.
 - If `.minsky/repo.yaml` exists, keep its required P0/P1 evidence fields.
 
 ## Critical rules

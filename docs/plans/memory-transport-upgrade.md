@@ -188,6 +188,17 @@ protected, tested sequence before changing the pin.
 - **Anchor:** `src/memory/launchagent.ts`, `src/memory/paths.ts`, and the
   launchd `print` output for the managed daemon.
 
+- **Enable-state hypothesis:** A refused upgrade must not mark an inactive
+  memory configuration as enabled, while an already-enabled configuration is
+  preserved so it can continue to use the old daemon.
+- **Measurement:** Exercise `enableMemory` with both initial states and a
+  synthetic upgrade refusal.
+- **Success:** Zero refused attempts change the input state; the result reports
+  whether memory was already enabled and retains the refusal reason.
+- **Pivot:** If the state cannot be preserved without changing the existing
+  configuration, do not ship the upgrade guard.
+- **Anchor:** `src/memory/enable.ts` and `src/commands/cli-memory.ts`.
+
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a
 writer already holding the lock prevented an early snapshot, and its commit

@@ -19,6 +19,92 @@ const source = resolve(import.meta.dirname, "..");
 const native = await import(new URL("../scripts/native-build-tools.mjs", import.meta.url).href);
 const builder = await import(new URL("../scripts/build-native-prebuilt.mjs", import.meta.url).href);
 const roots: string[] = [];
+
+function producerDiagnostic(
+  stderr: string,
+  env: NodeJS.ProcessEnv,
+  probe: () => { insideFixture: boolean; deps: string; build: string; fingerprint: string },
+) {
+  try {
+    const { insideFixture, deps, build, fingerprint } = probe();
+    return {
+      available: true,
+      cargoPathInsideFixtureLexical: insideFixture,
+      version: "unknown",
+      compileTextPresent: /Compiling checkup-run\b/.test(stderr),
+      finishedTextPresent: /Finished `release` profile/.test(stderr),
+      deps,
+      build,
+      fingerprint,
+      buildDirOverridePresent: ["CARGO_BUILD_BUILD_DIR", "CARGO_BUILD_TARGET_DIR", "CARGO_TARGET_DIR"].some(
+        (key) => key in env,
+      ),
+    };
+  } catch {
+    return { available: false };
+  }
+}
+
+function producerProbe(cargo: string, root: string, release: string) {
+  const kind = (name: string) => {
+    try {
+      const stat = fs.lstatSync(join(release, name));
+      return stat.isDirectory() ? "directory" : "other";
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
+      throw error;
+    }
+  };
+  const rel = relative(root, cargo);
+  return {
+    insideFixture: rel !== ".." && !rel.startsWith("../") && !rel.startsWith("/"),
+    deps: kind("deps"),
+    build: kind("build"),
+    fingerprint: kind(".fingerprint"),
+  };
+}
+
+function producerEntries(deps: string, diagnostic: () => object, emit: (text: string) => void) {
+  if (!existsSync(deps)) emit(`CARGO_PRODUCER_DIAGNOSTIC=${JSON.stringify(diagnostic())}`);
+  return fs.readdirSync(deps);
+}
+
+describe("producer diagnostic", () => {
+  it.each(["missing", "directory", "other"])("reports the %s layout as a closed category", (kind) => {
+    const diagnostic = producerDiagnostic("Compiling checkup-run", {}, () => ({
+      insideFixture: false,
+      deps: kind,
+      build: "missing",
+      fingerprint: "missing",
+    }));
+    expect(diagnostic).toMatchObject({ available: true, deps: kind, cargoPathInsideFixtureLexical: false });
+    expect(JSON.stringify(diagnostic)).not.toContain("Compiling checkup-run");
+  });
+
+  it("keeps the original missing-directory failure when the safe probe fails", () => {
+    const release = mkdtempSync(join(tmpdir(), "cargo-diagnostic-"));
+    roots.push(release);
+    const deps = join(release, "deps");
+    const output: string[] = [];
+    const diag = () =>
+      producerDiagnostic("private-canary", { CARGO_TARGET_DIR: "private-canary" }, () => {
+        throw new Error("private-canary");
+      });
+    expect.assertions(4);
+    try {
+      producerEntries(deps, diag, (text) => output.push(text));
+    } catch (error) {
+      expect(error).toMatchObject({ code: "ENOENT", syscall: "scandir" });
+    }
+    expect(output).toEqual(['CARGO_PRODUCER_DIAGNOSTIC={"available":false}']);
+    expect(output.join()).not.toContain("private-canary");
+    expect(producerProbe(join(release, "cargo"), release, release)).toMatchObject({
+      insideFixture: true,
+      deps: "missing",
+    });
+  });
+});
+
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -506,8 +592,11 @@ describe("native capability trust boundary", () => {
       const targets = [path];
       if (variant === "producer cache") {
         const deps = join(dirname(path), "deps");
-        const producers = fs
-          .readdirSync(deps)
+        const producers = producerEntries(
+          deps,
+          () => producerDiagnostic(first.stderr, env, () => producerProbe(cargo, f.root, dirname(path))),
+          (message) => console.error(message),
+        )
           .filter((name) => /^checkup_run-[a-f0-9]+$/.test(name))
           .map((name) => join(deps, name))
           .filter((candidate) => native.sha256(readFileSync(candidate)) === native.sha256(original));

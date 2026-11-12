@@ -3427,6 +3427,34 @@
         "Does not add to cart or pay when the user chose options only",
         "Reruns the full gate on the fixed commit after reviewer fixes"
       ]
+    },
+    {
+      "id": 298,
+      "prompt": "A new multi-step goal has an available output artifact tool. The contract is saved. What do you do before work, and after the first milestone?",
+      "expected_output": "Create a plan artifact in task outputs after the contract and before execution Verify the artifact is visible and update the same artifact with evidence, blockers, and next actions at the milestone.",
+      "expectations": [
+        "Create a plan artifact in task outputs after the contract and before execution",
+        "Verify the artifact is visible and update the same artifact with evidence, blockers, and next actions at the milestone"
+      ]
+    },
+    {
+      "id": 299,
+      "prompt": "A goal resumes after a pause. Its plan artifact already exists in task outputs. A second milestone has just completed. What do you do?",
+      "expected_output": "Find and reuse the existing plan artifact rather than creating a replacement Update that same artifact with milestone evidence, blockers, and next actions.",
+      "expectations": [
+        "Find and reuse the existing plan artifact rather than creating a replacement",
+        "Update that same artifact with milestone evidence, blockers, and next actions"
+      ]
+    },
+    {
+      "id": 300,
+      "prompt": "A goal contains private data and no private artifact output tool is available. What do you do before work and at each milestone?",
+      "expected_output": "Create one private local HTML report after the contract and before execution Share its full path, state the output limitation, and update the same report at each milestone Do not claim publication or block the goal.",
+      "expectations": [
+        "Create one private local HTML report after the contract and before execution",
+        "Share its full path, state the output limitation, and update the same report at each milestone",
+        "Do not claim publication or block the goal"
+      ]
     }
   ]
 }

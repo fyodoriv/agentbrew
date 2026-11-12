@@ -59,8 +59,14 @@ Follow this order, even for a small goal:
    For a research or Q&A goal, print it as soon as the questions are known,
    before you gather evidence for any one answer.
 3. Ask the one question round, or record your defaults (Phase 3).
-4. Work, printing a `Goal check` line after each done-criterion (Phase 4).
-5. Verify with fresh evidence (Phase 5), then the retro and the final
+4. Create a plan Artifact in the task outputs before execution. Include the
+   milestones, evidence, blockers, and next actions. Update the same Artifact
+   at every milestone; on resume, find and reuse it. Verify the output is
+   visible. For private content or an unavailable Artifact tool, use one
+   private local HTML report, share its path, and state the output limitation.
+   Do not block work or claim publication when the tool is unavailable.
+5. Work, printing a `Goal check` line after each done-criterion (Phase 4).
+6. Verify with fresh evidence (Phase 5), then the retro and the final
    report (Phase 6).
 
 A small goal gets a short contract, not none. Without it, neither you nor the
@@ -385,7 +391,7 @@ with actuals and update the estimation method as described in
 
 ## Final report
 
-Publish the final report as an Artifact (shared-rules **## Long-run
+Update the same plan Artifact with the final report. Publish the final report as an Artifact (shared-rules **## Long-run
 reports**; in Claude Code: the Artifact tool, a Dashboard Artifact for numbers
 a recurring run refreshes), not a loose HTML file. It shows what was done, the
 blockers (each explained in full, as in Phase 4), and what to do next. Only

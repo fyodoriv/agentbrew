@@ -196,6 +196,21 @@ It is not connected to sync or a CLI action. Database identity and an
 exclusive handoff between the last stopped check and candidate startup remain
 unproven; the draft sequence must not be used for a live upgrade yet.
 
+- **Reservation hypothesis:** A SQLite writer reservation held by the upgrade
+  process prevents another SQLite writer from changing the database while the
+  old daemon is stopped and its snapshot is taken.
+- **Measurement:** Use a scratch SQLite database and a second process to test
+  write contention, backup under reservation, release after exceptions,
+  database replacement, and unsupported runtime behavior.
+- **Success:** Zero tested competing writes succeed while reserved; a verified
+  snapshot includes committed pre-lock data; the lock releases on all tested
+  exits; unsupported runtimes and replaced paths refuse the operation.
+- **Pivot:** If the runtime cannot provide the reservation, fail closed. A
+  successful reservation alone does not establish an exclusive launchd
+  handoff after release and must not authorize a live upgrade.
+- **Anchor:** [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html)
+  and Node's [`node:sqlite` API](https://nodejs.org/api/sqlite.html).
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

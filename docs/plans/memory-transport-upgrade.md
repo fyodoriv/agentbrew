@@ -421,6 +421,13 @@ It did not measure automatic extraction, all client integrations, or quality.
   deciding whether automatic capture can be enabled. Do not test real data.
 - **Anchor:** [Upstream 12.8.0 plugin](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/opencode/memory-plugin.js).
 
+The network-denied synthetic event test observed one mock memory write, and
+its request body included the `#skip` marker. The test passed only a synthetic
+assistant message; it does not establish the behavior of every OpenCode event
+or whether a real server would accept the write. Keep automatic capture off
+for real sessions until the upstream marker and privacy behavior are fixed or
+independently verified.
+
 ## Upstream Codex short correction
 
 - **Hypothesis:** Under default capture settings, an ordinary short correction

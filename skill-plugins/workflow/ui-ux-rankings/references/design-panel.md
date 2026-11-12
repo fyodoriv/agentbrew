@@ -77,6 +77,16 @@ When the panel stalls:
 - Without a ledger, raters flip at the plateau: in one 22-round run, round 21 asked to remove a
   "No reason recorded" line and round 22 asked for it back, and the toolbar shadows were asked
   heavier and lighter in turn. Nine rounds of built fixes stayed near 7.0. The ledger above stops that.
+- A ledger stops reversals, not the plateau. In the same run, rounds 23-30 kept the judges consistent and
+  built every shared fix, yet means stayed within 0.1 (about 7.1 and 7.0). Then raters began to
+  oppose whole classes of fix ("every box has an ink edge, too busy" next to "add the ink edge here").
+  Five flat rounds with a consistent ledger is a real stall: stop and report it, and name the
+  lever CSS cannot pull (the content, the motion idea, a new layout).
+- When a ledger decision leaves a new flaw that 3 of 3 raters name (a card cut to fit its content left a
+  dead band beside it), write a superseding ledger line that settles both asks. Do not flip back.
+- Check each fix in the shot before you spend raters: in one run, an older rule with higher specificity
+  silently beat three new blocks (`.tile.tile:has()` at 0,5,0), and a parent's `flex-basis:100%` kept
+  a "fit to content" card full width.
 - Stills cannot show motion, so The FWA and Godly stay near 5 to 6 for any static capture. When the
   page has motion, shoot a frame strip of each main transition (`rankings.cjs frames`, which pauses
   every animation at exact times), add a MOTION.txt that says what each strip shows, or report that

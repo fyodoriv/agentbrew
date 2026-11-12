@@ -121,6 +121,14 @@ explicit and prove its recovery behavior; a fresh timestamp alone is not proof.
 Upstream also supports a base-directory setting and path aliases. Resolving the
 CLI environment alone does not prove that the launchd job uses the same path;
 verify the job's effective environment before treating a backup as its database.
+Both inspected upstream wheels also load the first available `.env` from a
+search list that includes the working directory, package ancestors, and
+`~/.mcp-memory/.env`. Those settings can select the database when launchd's
+environment does not. Checking only Agentbrew's environment or `launchctl
+getenv` therefore cannot establish the effective database path. On this Mac,
+the home-directory and memory-home `.env` candidates were absent when checked;
+package-ancestor candidates and future changes still need consideration. Do
+not print or copy the content of any such file.
 The `memory fix` repair path can also kick-start the daemon when its MCP check
 fails. An upgrade safeguard must account for that path: a refused or failed
 upgrade must not let repair start the new version before the snapshot is safe.
@@ -143,6 +151,20 @@ tests pass. This is not yet a safe upgrade path: a missing plist or an existing
 plist that does not reflect the running job can conceal the database's version.
 The effective launchd environment, shutdown, backup and restart still need a
 protected, tested sequence before changing the pin.
+
+- **Identity hypothesis:** Refusing to start a new managed job when a known
+  database already exists without a plist, or when a loaded job reports a
+  different or unknown pin, closes those automatic-start gaps.
+- **Measurement:** Exercise synthetic LaunchAgent output and scratch database
+  paths for matching, changed, malformed, absent and unreadable cases.
+- **Success:** Zero tested existing or unknown databases without a managed
+  plist start automatically; zero tested loaded-job pin mismatches cause a
+  plist replacement, reload or kick-start. A fresh empty home and matching
+  loaded job remain usable.
+- **Pivot:** If the effective launchd environment or loaded job cannot be
+  identified, block the automatic start and leave the upgrade undeployed.
+- **Anchor:** `src/memory/launchagent.ts`, `src/memory/paths.ts`, and the
+  launchd `print` output for the managed daemon.
 
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a

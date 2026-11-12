@@ -121,6 +121,9 @@ explicit and prove its recovery behavior; a fresh timestamp alone is not proof.
 Upstream also supports a base-directory setting and path aliases. Resolving the
 CLI environment alone does not prove that the launchd job uses the same path;
 verify the job's effective environment before treating a backup as its database.
+The `memory fix` repair path can also kick-start the daemon when its MCP check
+fails. An upgrade safeguard must account for that path: a refused or failed
+upgrade must not let repair start the new version before the snapshot is safe.
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a
 writer already holding the lock prevented an early snapshot, and its commit

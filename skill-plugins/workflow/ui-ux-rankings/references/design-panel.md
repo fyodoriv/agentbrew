@@ -28,6 +28,31 @@ work, a long list) before rating.
 | Lapa Ninja | a consistent visual system, spacing, components | one score |
 | Mobbin | app-UI patterns users already know, states, edge cases | one score |
 
+**Pick the judges that fit the page.** The table suits marketing, portfolio and launch pages. A
+work tool (an editor, a catalogue, a dashboard, a review queue) is not built to win The FWA or
+Godly: those reward spectacle, so they hold a good tool near 6 and the mean near 7 forever. In one
+run, 30 rounds on two tool pages stayed at 7.0-7.2 for this reason. For a tool page, swap The FWA,
+Godly and CSS Winner for app judges with published criteria: Apple Design Awards (Interaction,
+Delight, Inclusivity), Nielsen's ten heuristics, and Material/HIG component fit. Say which panel you
+used in the report.
+
+**Calibrate before you iterate.** Before round 1, the same blind raters rate one or two reference
+pages of the same type that people call best in class (screenshots of a well-known product's
+equivalent view, both themes). The reference's blind mean is the realistic ceiling: set the target at
+the reference mean minus 0.3, not a fixed 8.0. If a reference scores 7.5, a target of 8 asks for
+more than the best product in the field gets from these raters.
+
+**Make each round count:**
+
+- Ask raters for fixes with an expected gain ("+0.3 on Mobbin and Land-book") and build the largest
+  first. Cap a round at one fix per element class (edges, chips, type), so raters do not later call
+  the page "too much of X".
+- After three rounds that each gain less than 0.15, stop CSS polish and run one structural round:
+  build two real alternatives (a new layout, a new main motif, real motion), shoot both, and let
+  new raters pick and score them side by side. Keep the winner, or stop.
+- Budget: about 10 rounds per page. Past that, report the scores, the reference ceiling and the
+  structural options instead of polishing.
+
 Anchors, so the scale means the same each time:
 
 - **5**: works and is clean, but generic: default controls, no identity, no state polish.

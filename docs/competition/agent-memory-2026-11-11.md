@@ -155,6 +155,10 @@ does not test how products extract or persist memories. It is Claude-specific,
 and its authors also make a competing memory product. Beacon and the current
 service need reviewed adapters before a matched run. Treat the benchmark as one
 input, not proof of a complete cross-agent ranking.
+At benchmark revision `c1b15726f1153b02dda0490ca1936bb86a809514`, its
+[Supermemory adapter](https://github.com/GiulioDER/agent-memory-bench/blob/c1b15726f1153b02dda0490ca1936bb86a809514/adapters/supermemory/adapter.py)
+defaults to the local API and uses the official Claude Code plugin. This offers
+a reusable comparison arm, but it has not been run for this decision.
 Its current published run reports no statistically clear winner. It used one
 seed per task and did not match memory arms for token budget. Its authors also
 disclose that the run's registration followed the first session. These limits

@@ -114,7 +114,7 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run verify:changed`. The hosted check runs the full `npm run verify`; run it here only when Actions is off.
+3. Use hosted CI for `npm run verify`; run focused local reproductions when needed.
    Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.

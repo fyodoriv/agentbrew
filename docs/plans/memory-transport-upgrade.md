@@ -9,6 +9,10 @@
 - **Pivot:** If any runtime chooses the wrong tests or any lock or fail-closed assertion fails, retain the draft and investigate before merging.
 - **Anchor:** GitHub Actions run 43321701534, job 131543721578; `src/memory/write-reservation.test.ts`.
 
+The Node 22.23.4 test reproduced the CI failure before the change. After the
+import probe, the focused file passed on Node 20.20.2, 22.23.4, and 24.21.0.
+Node 20 ran the unavailable-runtime case; Nodes 22 and 24 ran the lock cases.
+
 ## Before implementation
 
 - **Root cause:** The managed daemon pins `mcp-memory-service` 11.7.0 and runs unauthenticated Streamable HTTP on loopback. Its preflight accepts arbitrary origins. The upstream advisory identifies this class of exposure and says 12.6.0 fixes it.

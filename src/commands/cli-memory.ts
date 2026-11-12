@@ -267,8 +267,13 @@ export function registerMemoryCommands(program: Command): void {
       const state = requireState();
       if (!state) return;
       const result = enableMemory(state);
+      if (result.launchAgent.upgradeBlocked) {
+        process.exitCode = 1;
+        if (options.json) printJson({ ...result });
+        else console.error(result.launchAgent.reason);
+        return;
+      }
       saveState(state);
-      if (result.launchAgent.upgradeBlocked) process.exitCode = 1;
       if (options.json) {
         printJson({ ...result });
       } else {

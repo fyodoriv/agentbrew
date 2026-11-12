@@ -534,6 +534,7 @@ upgrade workflow is still needed before that version can change automatically.
 When the job file is missing, setup also refuses to start if it finds the
 default database, relevant custom launchd settings, or an upstream home `.env`.
 These checks do not establish every possible upstream configuration source.
+On refusal, the existing memory-enabled setting is preserved.
 
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing

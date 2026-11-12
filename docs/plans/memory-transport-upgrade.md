@@ -199,6 +199,10 @@ protected, tested sequence before changing the pin.
   configuration, do not ship the upgrade guard.
 - **Anchor:** `src/memory/enable.ts` and `src/commands/cli-memory.ts`.
 
+The inactive-state regression failed before the change. After the change, the
+inactive and already-enabled cases both preserve their input state; the CLI
+does not save state or claim enablement when it reports a refusal.
+
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a
 writer already holding the lock prevented an early snapshot, and its commit

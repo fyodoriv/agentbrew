@@ -95,9 +95,11 @@ vi.mock("../memory/invoke.js", () => ({
 }));
 
 import { writeFileSync } from "node:fs";
+import { enableMemory } from "../memory/enable.js";
 import { installMemoryLaunchAgents, kickstartMemoryDaemon, memoryLaunchAgentSupported } from "../memory/launchagent.js";
 import { mcpToolsListHealthy } from "../memory/mcp-client.js";
 import { checkProjectMemorySync, syncClaudeProjectMemories } from "../memory/project-sync.js";
+import { saveState } from "../state.js";
 import { registerMemoryCommands } from "./cli-memory.js";
 import { buildTestProgram } from "./test-program.js";
 
@@ -111,6 +113,19 @@ beforeEach(() => {
 });
 
 describe("registerMemoryCommands", () => {
+  it("does not save or claim enablement when an upgrade is refused", async () => {
+    vi.mocked(enableMemory).mockReturnValueOnce({
+      enabled: false,
+      launchAgent: { installed: false, upgradeBlocked: true, reason: "protected backup required" },
+    });
+    const program = buildProgram();
+    await program.parseAsync(["node", "test", "memory", "enable"]);
+    expect(saveState).not.toHaveBeenCalled();
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining("Memory enabled"));
+    expect(console.error).toHaveBeenCalledWith("protected backup required");
+    expect(process.exitCode).toBe(1);
+  });
+
   it("registers memory top-level command with pack subcommands", async () => {
     const program = buildProgram();
     await program.parseAsync(["node", "test", "memory", "status", "--json"]);

@@ -158,6 +158,12 @@ not establish the required restart safety.
 - **Anchor:** `src/memory/backup.ts` and SQLite's
   [online backup documentation](https://www.sqlite.org/backup.html).
 
+The collision and existing-destination tests failed before the change and passed
+after it. A separate two-process test preserved and verified both snapshots.
+Publishing uses an exclusive hard link from a staged file in the destination
+directory. If that filesystem does not support hard links, creation fails
+instead of replacing a prior backup.
+
 ## OpenCode instruction gap
 
 The shared instruction template names Claude Code and Codex, but not OpenCode.

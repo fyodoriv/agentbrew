@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { constants, copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { errorMessage } from "../core/errors.js";
@@ -53,13 +54,13 @@ export function sqliteBackup(sourceDb: string, destDb: string, options?: SqliteB
   }
   const sqliteBin = options?.sqliteBin ?? "sqlite3";
   mkdirSync(dirname(destDb), { recursive: true });
-  const tempBackup = join(tmpdir(), `agentbrew-memory-backup-${process.pid}-${Date.now()}`);
-  const staging = `${destDb}.partial.${process.pid}`;
+  const uniqueId = randomUUID();
+  const tempBackup = join(tmpdir(), `agentbrew-memory-backup-${uniqueId}`);
+  const staging = `${destDb}.partial.${uniqueId}`;
   try {
     execFileSync(sqliteBin, [sourceDb, `.backup '${tempBackup}'`], { encoding: "utf-8" });
-    copyFileSync(tempBackup, staging);
-    rmSync(destDb, { force: true });
-    copyFileSync(staging, destDb);
+    copyFileSync(tempBackup, staging, constants.COPYFILE_EXCL);
+    linkSync(staging, destDb);
   } finally {
     rmSync(tempBackup, { force: true });
     rmSync(staging, { force: true });
@@ -104,7 +105,7 @@ export function newestBackupInDir(backupsDir: string): string | undefined {
 /** Write a timestamped backup of `sourceDb` into `backupsDir` and return its path. */
 export function writeMemoryBackup(sourceDb: string, backupsDir: string, now: Date = new Date()): string {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "_");
-  const dest = join(backupsDir, `agentbrew-memory_${stamp}.db`);
+  const dest = join(backupsDir, `agentbrew-memory_${stamp}_${randomUUID()}.db`);
   sqliteBackup(sourceDb, dest);
   return dest;
 }

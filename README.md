@@ -530,6 +530,9 @@ Avoid visiting untrusted pages while this daemon is running. A newer version
 needs a verified backup and migration test before it can replace this pin.
 
 The backup command returns an error when its integrity check fails.
+Each backup gets a unique name and is published without replacing an existing
+snapshot. Backup creation fails if the destination filesystem cannot create
+the required hard link.
 Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
 `MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
 use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream

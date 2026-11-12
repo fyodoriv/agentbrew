@@ -1,7 +1,8 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   backupAgeSec,
@@ -9,6 +10,7 @@ import {
   newestBackupInDir,
   pruneMemoryBackups,
   rotateMemoryBackup,
+  sqliteBackup,
   writeMemoryBackup,
 } from "./backup.js";
 
@@ -90,8 +92,73 @@ describe("writeMemoryBackup", () => {
 
       const dest = writeMemoryBackup(source, backupsDir, new Date("2026-10-08T03:15:00Z"));
 
-      expect(dest).toBe(join(backupsDir, "agentbrew-memory_20261008_031500.db"));
+      expect(dest).toMatch(/agentbrew-memory_20261008_031500_[0-9a-f-]+\.db$/);
       expect(newestBackupInDir(backupsDir)).toBe(dest);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves both snapshots when backups share a timestamp", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentbrew-backup-collision-"));
+    try {
+      const source = join(dir, "source.db");
+      execFileSync("sqlite3", [
+        source,
+        "CREATE TABLE memories (id INTEGER, deleted_at TEXT); INSERT INTO memories VALUES (1, NULL);",
+      ]);
+      const now = new Date("2026-10-08T03:15:00Z");
+      const first = writeMemoryBackup(source, join(dir, "backups"), now);
+      execFileSync("sqlite3", [source, "INSERT INTO memories VALUES (2, NULL);"]);
+      const second = writeMemoryBackup(source, join(dir, "backups"), now);
+
+      expect(second).not.toBe(first);
+      expect(execFileSync("sqlite3", [first, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim()).toBe(
+        "1",
+      );
+      expect(execFileSync("sqlite3", [second, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim()).toBe(
+        "2",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("never replaces an existing destination", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentbrew-backup-existing-"));
+    try {
+      const source = join(dir, "source.db");
+      const dest = join(dir, "existing.db");
+      execFileSync("sqlite3", [source, "CREATE TABLE memories (id INTEGER);"]);
+      writeFileSync(dest, "existing snapshot");
+      expect(() => sqliteBackup(source, dest)).toThrow();
+      expect(readFileSync(dest, "utf-8")).toBe("existing snapshot");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps backups from separate processes started at the same time", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentbrew-backup-parallel-"));
+    try {
+      const source = join(dir, "source.db");
+      execFileSync("sqlite3", [
+        source,
+        "CREATE TABLE memories (id INTEGER, deleted_at TEXT); INSERT INTO memories VALUES (1, NULL);",
+      ]);
+      const run = promisify(execFile);
+      const script = `import { writeMemoryBackup } from ${JSON.stringify(new URL("./backup.ts", import.meta.url).href)};
+        console.log(writeMemoryBackup(process.argv[1], process.argv[2], new Date("2026-10-08T03:15:00Z")));`;
+      const args = ["--import", "tsx", "--input-type=module", "-e", script, source, join(dir, "backups")];
+      const [first, second] = await Promise.all([run(process.execPath, args), run(process.execPath, args)]);
+      const paths = [first.stdout.trim(), second.stdout.trim()];
+      expect(new Set(paths).size).toBe(2);
+      for (const path of paths) {
+        expect(execFileSync("sqlite3", [path, "PRAGMA integrity_check;"], { encoding: "utf-8" }).trim()).toBe("ok");
+        expect(execFileSync("sqlite3", [path, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim()).toBe(
+          "1",
+        );
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

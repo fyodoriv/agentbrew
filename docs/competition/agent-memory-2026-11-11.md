@@ -125,6 +125,10 @@ does not test how products extract or persist memories. It is Claude-specific,
 and its authors also make a competing memory product. Beacon and the current
 service need reviewed adapters before a matched run. Treat the benchmark as one
 input, not proof of a complete cross-agent ranking.
+Its current published run reports no statistically clear winner. It used one
+seed per task and did not match memory arms for token budget. Its authors also
+disclose that the run's registration followed the first session. These limits
+make it useful for designing a comparison, not for choosing our winner.
 
 The [Agent Memory Leaderboard coding analysis](https://agentmemories.ai/blog?post=coding-leaderboard-analysis-20260915)
 reports a separate evaluation using historical tasks from 12 repositories and

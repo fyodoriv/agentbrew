@@ -167,9 +167,11 @@ upgrade must not let repair start the new version before the snapshot is safe.
 
 The draft guard blocks a changed or unreadable pin in an existing plist or a
 loaded job. Both sync and repair stop before kick-starting after a refusal. Its
-focused tests pass, including a failed launchd probe. This is not yet a safe
-upgrade path: a missing plist can conceal an existing database, and the
-effective launchd environment, shutdown, backup and restart still need a
+focused tests pass, including a failed launchd probe. With a missing plist, the
+draft also refuses setup for a known default database, home dotenv, custom
+launchd path or backend, or an unreadable launchd environment. This is not yet
+a safe upgrade path: package-ancestor dotenv and other unobserved configuration
+can still conceal an existing database. Shutdown, backup and restart also need a
 protected, tested sequence before changing the pin.
 
 - **Identity hypothesis:** Refusing to start a new managed job when a known

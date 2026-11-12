@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
@@ -11,7 +11,7 @@ import {
 } from "../sync/scheduler-paths.js";
 import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
-import { memoryLaunchAgentLogDir } from "./paths.js";
+import { defaultMemoryDbPath, memoryLaunchAgentLogDir } from "./paths.js";
 
 export const MEMORY_AGENT_LABEL = "com.agentbrew.mcp-memory";
 export const MEMORY_MAINTAIN_LABEL = "com.agentbrew.mcp-memory-maintain";
@@ -307,6 +307,31 @@ function installedMemoryJobPinMatches(plistPath: string): boolean {
   }
 }
 
+function knownPathAbsent(path: string): boolean {
+  try {
+    lstatSync(path);
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+}
+
+function noKnownPriorMemory(home: string): boolean {
+  const paths = [defaultMemoryDbPath(home), join(home, ".env"), join(home, ".mcp-memory", ".env")];
+  if (!paths.every(knownPathAbsent)) return false;
+  for (const name of [
+    "MCP_MEMORY_SQLITE_PATH",
+    "MCP_MEMORY_SQLITEVEC_PATH",
+    "MCP_MEMORY_BASE_DIR",
+    "MCP_MEMORY_STORAGE_BACKEND",
+  ]) {
+    if (process.env[name]) return false;
+    const value = probeLaunchctl(["getenv", name], 5_000);
+    if (!value || value.status !== 0 || value.stdout.trim()) return false;
+  }
+  return true;
+}
+
 export function installMemoryLaunchAgents(): {
   installed: boolean;
   upgradeBlocked?: boolean;
@@ -335,6 +360,13 @@ export function installMemoryLaunchAgents(): {
   }
 
   const daemonPlist = memoryPlistPath();
+  if (!existsSync(daemonPlist) && !noKnownPriorMemory(home)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory setup requires a protected backup and a verified database path",
+    };
+  }
   if (!loadedMemoryJobPinMatches()) {
     return {
       installed: false,

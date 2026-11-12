@@ -4,7 +4,7 @@ import { homeIsUsersHome } from "./home-guard.js";
 import { logSkipped } from "./logger.js";
 
 /** launchctl verbs that only read launchd state. Every other verb changes it. */
-const READ_ONLY_VERBS = new Set(["print", "print-disabled", "list", "blame", "version", "help"]);
+const READ_ONLY_VERBS = new Set(["print", "print-disabled", "list", "blame", "version", "help", "getenv"]);
 
 /** True when HOME is the real user's home folder (see homeIsUsersHome). */
 export function launchdTargetsThisHome(): boolean {

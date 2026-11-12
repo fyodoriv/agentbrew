@@ -531,6 +531,9 @@ needs a verified backup and migration test before it can replace this pin.
 If an existing managed job file or loaded job has a different or unreadable
 service pin, sync and memory repair refuse to replace or restart it. A protected
 upgrade workflow is still needed before that version can change automatically.
+When the job file is missing, setup also refuses to start if it finds the
+default database, relevant custom launchd settings, or an upstream home `.env`.
+These checks do not establish every possible upstream configuration source.
 
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing

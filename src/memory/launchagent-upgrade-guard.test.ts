@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../core/launchctl.js", () => ({
   launchdTargetsThisHome: () => true,
-  probeLaunchctl: vi.fn(() => ({ status: 113, stdout: "" })),
+  probeLaunchctl: vi.fn((args: string[]) => ({ status: args[0] === "getenv" ? 0 : 113, stdout: "" })),
   runLaunchctl: vi.fn((args: string[]) => {
     if (args[0] === "print") throw new Error("fixture job not loaded");
     return "";
@@ -15,11 +15,14 @@ vi.mock("../core/launchctl.js", () => ({
 import { probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import { MEMORY_PINNED_SPEC } from "./constants.js";
 import { buildMemoryDaemonPlist, installMemoryLaunchAgents, MEMORY_AGENT_LABEL } from "./launchagent.js";
+import { defaultMemoryDbPath } from "./paths.js";
 
 const plist = join(homedir(), "Library/LaunchAgents", `${MEMORY_AGENT_LABEL}.plist`);
 
 afterEach(() => {
   rmSync(plist, { force: true });
+  rmSync(defaultMemoryDbPath(), { force: true });
+  rmSync(join(homedir(), ".env"), { force: true });
   vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
@@ -60,6 +63,52 @@ describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () 
 
     expect(installMemoryLaunchAgents()).toMatchObject({ installed: true });
     expect(vi.mocked(runLaunchctl).mock.calls.some(([args]) => args[0] === "load")).toBe(true);
+  });
+
+  it("does not start a new job against a pre-existing default database", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    const db = defaultMemoryDbPath();
+    mkdirSync(join(homedir(), "Library/Application Support/mcp-memory"), { recursive: true });
+    writeFileSync(db, "synthetic existing database");
+
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not guess the database when an upstream working-directory dotenv exists", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    writeFileSync(join(homedir(), ".env"), "SYNTHETIC=1\n");
+
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not guess the database when launchd has a custom path", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    vi.mocked(probeLaunchctl).mockImplementation((args) =>
+      args[0] === "getenv" ? { status: 0, stdout: "/fixture/custom-memory.db\n" } : { status: 113, stdout: "" },
+    );
+    try {
+      expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+      expect(
+        vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+      ).toEqual([]);
+    } finally {
+      vi.mocked(probeLaunchctl).mockImplementation((args) => ({ status: args[0] === "getenv" ? 0 : 113, stdout: "" }));
+    }
+  });
+
+  it("does not start a new job when launchd environment cannot be checked", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    vi.mocked(probeLaunchctl).mockReturnValueOnce(undefined);
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
   });
 
   it("blocks a job whose installed pin cannot be read", () => {

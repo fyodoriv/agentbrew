@@ -56,5 +56,5 @@ The fixture package is compiled with a target-scoped cfg and has a separate
 lockfile. The source-wiring mutation checks and fake-syscall helper tests do
 not execute `Leader::signal`, `Drop`, the fixture or the worker. They do not
 prove ownership, cleanup, historical behavior or production binary identity.
-A proposed hosted macOS job will check the declared compile boundaries
-without running the fixture; its verification is pending. A physical run still needs the separate ownership review.
+A hosted macOS job checks the declared compile boundaries without running
+the fixture. Its verification is pending. A physical run still needs the separate ownership review.

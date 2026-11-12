@@ -120,3 +120,38 @@ jobs:
             [ "$(grep -Ec "^test $name \.\.\. ok$" "$log")" -eq 1 ]
           done
           grep -Eq '^test result: ok\. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$log"
+
+  inventory-guard-compile:
+    name: inventory guard compile (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: |
+          cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+          cargo +1.97.0 fetch --locked --manifest-path rust/owner-hosted-fixture/Cargo.toml
+      - name: Check compile-only guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/owner-guard-target"
+          python3 rust/tests/hosted_signal_boundary_test.py -v 2>&1 | tee "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^test_boundary_and_distinct_refusal_are_present .* \.\.\. ok$' "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^test_bypass_and_cfg_removal_mutations_are_rejected .* \.\.\. ok$' "$RUNNER_TEMP/owner-source-tests.log"
+          grep -Eq '^Ran 2 tests? in ' "$RUNNER_TEMP/owner-source-tests.log"
+          rustup run 1.97.0 rustc --test rust/src/owner_guarded_dispatch.rs -o "$RUNNER_TEMP/owner-guard-tests"
+          "$RUNNER_TEMP/owner-guard-tests" | tee "$RUNNER_TEMP/owner-guard-tests.log"
+          test "$(grep -Ec '^test tests::term_kill_and_drop_retries_never_call_the_syscall \.\.\. ok$' "$RUNNER_TEMP/owner-guard-tests.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$RUNNER_TEMP/owner-guard-tests.log"
+          if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
+          grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
+          cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'
+          if cargo +1.97.0 rustc --locked --offline --manifest-path rust/Cargo.toml --lib -- --cfg owner_hosted_experiment > "$RUNNER_TEMP/main-refusal.log" 2>&1; then exit 1; fi
+          grep -Fq 'owner_hosted_experiment is forbidden in the main package' "$RUNNER_TEMP/main-refusal.log"
+          cargo +1.97.0 check --locked --offline --manifest-path rust/Cargo.toml --lib

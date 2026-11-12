@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -165,6 +166,66 @@ describe("hosted workflows", () => {
     const skipped = structuredClone(document);
     skipped.jobs["inventory-receipt"].steps[3].if = "false";
     expect(safe(skipped)).toBe(false);
+  });
+
+  it("keeps the hosted signal guard compile-only and isolated", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    const document = load(text) as {
+      permissions: Record<string, string>;
+      env: Record<string, string>;
+      defaults?: unknown;
+      jobs: Record<
+        string,
+        {
+          "runs-on": string;
+          "timeout-minutes": number;
+          steps: Array<Record<string, unknown>>;
+        }
+      >;
+    };
+    const safe = (input: typeof document): boolean => {
+      const job = input.jobs["inventory-guard-compile"];
+      const keys = (value: object) => Object.keys(value).sort().join(",");
+      const hash = (value: unknown) =>
+        typeof value === "string" ? createHash("sha256").update(value).digest("hex") : "";
+      if (!job || keys(job) !== "name,runs-on,steps,timeout-minutes") return false;
+      if (JSON.stringify(input.permissions) !== JSON.stringify({ contents: "read" }) || input.defaults !== undefined)
+        return false;
+      if (JSON.stringify(input.env) !== JSON.stringify({ DO_NOT_TRACK: "1", AGENTBREW_EVENTS: "0" })) return false;
+      if (job["runs-on"] !== "macos-latest" || job["timeout-minutes"] !== 30) return false;
+      const steps = job.steps;
+      if (steps.length !== 4 || steps.map(keys).join("|") !== "uses,with|name,run|name,run|name,run,shell")
+        return false;
+      if (steps[0].uses !== "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1") return false;
+      if (JSON.stringify(steps[0].with) !== JSON.stringify({ "persist-credentials": false })) return false;
+      if (steps[1].run !== "rustup toolchain install 1.97.0 --profile minimal" || steps[3].shell !== "bash")
+        return false;
+      return (
+        hash(steps[2].run) === "ad73e8930d5592b65a482b3495f86eda76a3a70851ce8a6c7f377443e436bb00" &&
+        hash(steps[3].run) === "b56958b0afef96f14858d07dc2ad3b770a468daab15338836de5d0fd188edb2a"
+      );
+    };
+    expect(safe(document)).toBe(true);
+    const runner = structuredClone(document);
+    runner.jobs["inventory-guard-compile"]["runs-on"] = "self-hosted";
+    expect(safe(runner)).toBe(false);
+    const credentials = structuredClone(document);
+    credentials.jobs["inventory-guard-compile"].steps[0].with = {
+      "persist-credentials": true,
+    };
+    expect(safe(credentials)).toBe(false);
+    const target = structuredClone(document);
+    target.jobs["inventory-guard-compile"].steps[3].run = "cargo run --bin lifecycle-fixture";
+    expect(safe(target)).toBe(false);
+    const environment = structuredClone(document);
+    environment.env.RUSTFLAGS = "--cfg owner_hosted_experiment";
+    expect(safe(environment)).toBe(false);
+    const privileges = structuredClone(document);
+    privileges.permissions.contents = "write";
+    expect(safe(privileges)).toBe(false);
+    const extra = structuredClone(document);
+    extra.jobs["inventory-guard-compile"].steps.push({ run: "true" });
+    expect(safe(extra)).toBe(false);
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

@@ -1,5 +1,14 @@
 # Shared memory transport upgrade prediction
 
+## Node 22 capability detection correction
+
+- **Root cause:** On Node 22.23.4, `node:sqlite` imports successfully but is absent from `builtinModules`. The reservation test mistakes this runtime for one without SQLite and expects a successful operation to fail.
+- **Hypothesis:** Detecting the actual SQLite import will select the correct reservation tests on Node 22 and Node 24, while keeping the missing-module failure test on Node 20.
+- **Measurement:** Run `node_modules/vitest/vitest.mjs run src/memory/write-reservation.test.ts` using Node 20, 22, and 24.
+- **Success:** All runnable tests pass on each of the three runtimes; Node 22 and 24 run the SQLite lock tests, and Node 20 runs the unavailable-runtime test.
+- **Pivot:** If any runtime chooses the wrong tests or any lock or fail-closed assertion fails, retain the draft and investigate before merging.
+- **Anchor:** GitHub Actions run 43321701534, job 131543721578; `src/memory/write-reservation.test.ts`.
+
 ## Before implementation
 
 - **Root cause:** The managed daemon pins `mcp-memory-service` 11.7.0 and runs unauthenticated Streamable HTTP on loopback. Its preflight accepts arbitrary origins. The upstream advisory identifies this class of exposure and says 12.6.0 fixes it.

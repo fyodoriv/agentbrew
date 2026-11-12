@@ -129,10 +129,12 @@ for the stated reset time, and do every part that needs no agents meanwhile
 the command: check that the tool really runs before you report progress.
 A refused pre-merge review spawn holds the merge too: a self-review does not
 replace the fresh-context review, and a standing merge approval does not skip
-it. Push and open the PR, then merge only after the review runs.
+it. Push and open the PR, then merge only after the review runs, its findings
+are fixed, and a review of the fix finds nothing new (SKILL.md, Phase 5).
 A guard cutoff is not the plan limit. In the same message as the first
-refusal, tell the user the cutoff, the plan's real use from the refusal text (for example "guard
-stops agents at 80%; Claude is at 84% of 100%"), and the lift command, and put
-that command in the "Needed from you" line. Never write "Needed from you:
-nothing" while the queue waits on a lift. A silent wait at 84% held 7 merges
-for 8 hours (2026-11-08) while the user expected only Claude's own limit.
+refusal, tell the user the cutoff, the plan's real use from the refusal text
+(for example "guard stops agents at 80%; Claude is at 84% of 100%"), and the
+lift command, and put that command in the "Needed from you" line. Never
+write "Needed from you: nothing" while the queue waits on a lift. A silent
+wait at 84% held 7 merges for 8 hours (2026-11-08) while the user expected
+only Claude's own limit.

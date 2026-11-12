@@ -53,6 +53,7 @@ the version comparison does not prove an exploit or rule out unknown issues.
 | [Mem0](https://github.com/mem0ai/mem0) | Hosted and self-hosted memory APIs. | Its former self-hosted [OpenMemory MCP project is archived](https://github.com/mem0ai/openmemory/blob/main/openmemory-archive/README.md); current local coding-agent integration needs verification. |
 | [Graphiti](https://github.com/getzep/graphiti) | Temporal knowledge-graph retrieval. | Its MCP and REST servers are reference implementations, not production deployments; upstream says they omit authentication and authorization. |
 | [Letta](https://github.com/letta-ai/letta-code) | Persistent agent state and a [local backend](https://docs.letta.com/self-hosting/app-server). | It is an agent platform; its fit as a drop-in shared store for all existing clients has not been demonstrated. |
+| [World Model MCP](https://github.com/SaravananJaichandar/world-model-mcp) | Local MIT-licensed memory with provenance; its README documents Claude Code and a [Codex adapter](https://github.com/SaravananJaichandar/world-model-mcp/blob/main/adapters/codex/README.md). | The Codex adapter is labeled experimental. The README does not document an OpenCode adapter; shared storage, client lifecycle, and privacy need a trial. Its published coding benchmark is maintained by the same author as the product. |
 
 Beacon is a candidate for capturing useful lessons, including as a complement
 to the existing store. Its local MCP exposes approved memory; it does not itself
@@ -113,3 +114,16 @@ does not test how products extract or persist memories. It is Claude-specific,
 and its authors also make a competing memory product. Beacon and the current
 service need reviewed adapters before a matched run. Treat the benchmark as one
 input, not proof of a complete cross-agent ranking.
+
+The [Agent Memory Leaderboard coding analysis](https://agentmemories.ai/blog?post=coding-leaderboard-analysis-20260915)
+reports a separate evaluation using historical tasks from 12 repositories and
+150 tasks to solve. Its [evaluation process](https://agentmemories.ai/)
+requires publicly reachable participant endpoints, so it is not a reason to
+expose the local memory database. The published rankings do not establish the
+best choice for this machine or compare the specific configurations here.
+
+The author of World Model MCP also published a
+[pre-registered repeat-mistake benchmark](https://github.com/SaravananJaichandar/coding-agent-memory-benchmark).
+It compares memory on and off for 49 paired tasks with Claude Code. It is a
+single-author, self-published product study, not an independent comparison of
+the candidates above or a test of Codex and OpenCode.

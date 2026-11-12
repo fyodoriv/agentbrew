@@ -219,6 +219,20 @@ an end-to-end snapshot check on that format is queued. Node 20 lacks this module
 and the draft fails closed there. The reservation ends before candidate startup,
 so it does not yet close the launchd handoff gap.
 
+- **Candidate-registration hypothesis:** Registering the candidate while the
+  SQLite reservation is still held prevents competing database writes between
+  the verified snapshot and the launch request. Releasing the reservation
+  before waiting for readiness lets the candidate initialize its database.
+- **Measurement:** Attempt a competing write during candidate registration,
+  then write during the candidate health check after reservation release.
+  Exercise registration and health failures against a synthetic database.
+- **Success:** The competing write fails, the post-release write succeeds, and
+  no tested candidate failure restores an old snapshot over current data.
+- **Pivot:** If registration waits for database readiness while the reservation
+  is held, or if competing launchd changes are not controlled, do not deploy.
+- **Anchor:** `src/memory/upgrade-sequence.ts` and upstream 12.8
+  `server_impl.py` initialization order.
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

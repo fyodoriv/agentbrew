@@ -49,6 +49,13 @@ to the existing store. Its local MCP exposes approved memory; it does not itself
 approve pending candidates. Do not install cloud forwarding or capture private
 traces for the comparison. Use synthetic data and a separate local store.
 
+Beacon's [local workflow](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx)
+scores traces but does not write the lesson text. A person or agent can author
+a candidate without the hosted evaluator, then approve it. Approved memory is
+project-scoped; its local MCP memory tools are read-only. This differs from the
+current agent workflow, which can write a shared memory directly. Local Beacon
+is therefore not yet shown to be a drop-in replacement for that workflow.
+
 ## Published hosted pricing
 
 Prices below were checked November 11 and can change. They are not the cost of

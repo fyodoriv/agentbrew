@@ -343,3 +343,16 @@ endpoint alone does not prove that Kimi will recall or save memory.
   and transport first.
 - **Anchor:** `templates/AGENTS.md` and the OpenCode entry in
   `src/core/agents.yaml`.
+
+## Beacon local review and recall
+
+- **Hypothesis:** A synthetic candidate can be approved and retrieved through
+  Beacon's local MCP server without network access.
+- **Measurement:** In a scratch project, approve the existing synthetic
+  candidate, start the local stdio server with network access denied, and call
+  its memory search tool. Check the returned lesson and project scope.
+- **Success:** The approved lesson is returned for its own project and is not
+  returned for a different scratch project.
+- **Pivot:** If approval or MCP recall needs external access or crosses project
+  scope, do not recommend this workflow for local private memory.
+- **Anchor:** [Beacon's local memory workflow](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx).

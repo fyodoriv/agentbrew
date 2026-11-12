@@ -41,6 +41,11 @@ original fact as the query. Its first run failed because CoreML could not create
 a working directory inside the isolation boundary; the passing retry selected
 the CPU provider explicitly. It does not prove CoreML behavior or live data
 compatibility.
+The upstream 12.8 `memory check-db` command reported schema 22 with no pending
+migrations on that upgraded synthetic database. On the restored 11.7 snapshot,
+it returned nonzero and listed eight pending migrations. The command opens the
+specified database read-only. This check can help detect an incomplete upgrade,
+but it does not prove semantic recall or protect writes around a restart.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 

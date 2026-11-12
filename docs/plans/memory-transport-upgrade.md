@@ -174,6 +174,21 @@ a safe upgrade path: package-ancestor dotenv and other unobserved configuration
 can still conceal an existing database. Shutdown, backup and restart also need a
 protected, tested sequence before changing the pin.
 
+- **Restart-sequence hypothesis:** Stopping the old managed daemon, verifying
+  a fresh SQLite backup, and confirming it remains stopped before starting the
+  candidate protects the restore point and avoids overwriting live data on a
+  failed candidate start.
+- **Measurement:** Exercise the sequence against synthetic databases and
+  controlled stop, backup, verification, concurrent-restart and candidate
+  failures. Inspect the database and backup after each failure.
+- **Success:** In every tested failure before candidate start, the candidate is
+  never invoked. After candidate start, no failure overwrites the live database
+  with the older snapshot; both the database and snapshot remain available.
+- **Pivot:** If a concurrent restart cannot be detected at the handoff or if
+  effective database identity is uncertain, do not use the sequence live.
+- **Anchor:** `src/memory/backup.ts`, `src/memory/launchagent.ts`, and
+  [SQLite online backups](https://www.sqlite.org/backup.html).
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

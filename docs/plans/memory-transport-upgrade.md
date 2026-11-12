@@ -420,3 +420,13 @@ It did not measure automatic extraction, all client integrations, or quality.
 - **Pivot:** If either count differs, inspect the hook behavior and test setup
   before recommending the default lifecycle.
 - **Anchor:** [Upstream 12.8.0 Codex hook](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/memory-hook.js).
+
+- **Skip-turn hypothesis:** The same upstream hook excludes a synthetic
+  `#skip` user turn and its otherwise capturable assistant reply.
+- **Measurement:** Send marked and unmarked synthetic turns to the isolated
+  hook with a mock HTTP client and compare their write counts.
+- **Success:** The marked turn writes zero memories and the matching unmarked
+  control writes one. No network or real transcript is used.
+- **Pivot:** If the marked turn writes or the control does not, do not rely on
+  this hook for privacy until the cause is understood.
+- **Anchor:** [Upstream Codex hook tests](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/tests/memory-hook.test.js).

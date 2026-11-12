@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
+### Added
+
+- Org log sink: `~/.config/agentbrew/telemetry-sink.json` routes telemetry events
+  to a Splunk HEC endpoint or a local file instead of PostHog, with managed
+  consent and optional forwarding of agentbrew's own error log lines.
+  See `docs/observability.md` "Org log sink".
+
 ### Removed
 
 - The `learn-project` skill, its `stage-learn-sources` script, and its guide

@@ -61,7 +61,10 @@ jobs:
           if [ "$RUNNER_OS" = "macOS" ]; then
             HOMEBREW_NO_AUTO_UPDATE=1 brew install git-filter-repo
           else
-            sudo apt-get update && sudo apt-get install -y git-filter-repo
+            # PyPI fallback: a runner DNS failure for the Ubuntu archive
+            # must not stop the gate.
+            { sudo apt-get update && sudo apt-get install -y git-filter-repo; } ||
+              pipx install git-filter-repo
           fi
 
       - name: Cache Playwright browsers

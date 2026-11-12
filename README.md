@@ -188,6 +188,8 @@ Saved time is an estimate, chosen low, and modelled (Keystroke-Level Model), not
 agentbrew metrics --days 30   # prints "Estimated time saved, last 30 days: N min (...)"
 ```
 
+**Org sink.** A company overlay can send the events to its own log system instead of PostHog (and, when it turns it on, agentbrew's own error log lines) with one settings file, `~/.config/agentbrew/telemetry-sink.json`. Error log lines go only to that org sink, never to PostHog. See [Org log sink](docs/observability.md#org-log-sink).
+
 Full contract: [`docs/observability.md`](docs/observability.md#field-telemetry).
 
 ## Personal and corporate machines

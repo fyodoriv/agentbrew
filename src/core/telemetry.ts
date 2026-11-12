@@ -1,11 +1,29 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
 import { getLogDir } from "../sync/scheduler-paths.js";
 import { type AgentbrewEvent, EVENT_NAMES, eventsFilePath, sanitizeEvent } from "./events.js";
 import { logSkipped } from "./logger.js";
+import {
+  deliver,
+  dryRunBody,
+  type ErrorCursors,
+  errorLogEnds,
+  errorObjects,
+  hecEvents,
+  isOrgSink,
+  readErrorLines,
+  readSinkPolicy,
+  resolveToken,
+  type SinkPolicy,
+  type SinkRead,
+  type SinkStatus,
+  sinkDestination,
+  sinkFingerprint,
+  sinkStatus,
+} from "./telemetry-sink.js";
 
 /**
  * Field telemetry: sends the content-free event log (core/events.ts) to
@@ -88,6 +106,10 @@ interface TelemetryState {
   lastAttempt?: string;
   /** When a command last started the detached daily send. That send writes `lastAttempt` when it ends. */
   autoStartAt?: string;
+  /** The destination the cursor belongs to (telemetry-sink.ts `sinkFingerprint`); absent means the public default. */
+  sinkFp?: string;
+  /** Error log forwarding: byte offset per file. Absent until the first send with `error_logs` on. */
+  errCursors?: ErrorCursors;
 }
 
 export type KeySource = "env" | "keychain" | "default" | "none";
@@ -244,7 +266,16 @@ function readState(parsed: Record<string, unknown>, saidNo: boolean): TelemetryS
     lastAttempt: isoOrUndefined(parsed.lastAttempt),
     autoStartAt: isoOrUndefined(parsed.autoStartAt),
     keychainMissAt: isoOrUndefined(parsed.keychainMissAt),
+    sinkFp: typeof parsed.sinkFp === "string" && parsed.sinkFp.length <= MARK_MAX ? parsed.sinkFp : undefined,
+    errCursors: readCursors(parsed.errCursors),
   };
+}
+
+function readCursors(raw: unknown): ErrorCursors | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: ErrorCursors = {};
+  for (const [k, v] of Object.entries(raw)) if (typeof v === "number" && Number.isInteger(v) && v >= 0) out[k] = v;
+  return out;
 }
 
 /**
@@ -296,6 +327,12 @@ export function resolveKey(deps: TelemetryDeps = {}): { key: string; source: Key
  * (a `security` process) only when both are empty, and then at most once a day.
  */
 function hasKey(deps: TelemetryDeps, state: TelemetryState, now: number): boolean {
+  // An org sink needs no PostHog key and never reads one; `ask` asks about the org destination.
+  const sink = readSinkPolicy();
+  if (sink.status === "invalid") return false;
+  if (sink.status === "ok" && (sink.policy.kind === "off" || isOrgSink(sink.policy))) {
+    return isOrgSink(sink.policy) && sink.policy.consent === "ask";
+  }
   const fromEnv = process.env.AGENTBREW_POSTHOG_KEY;
   if (fromEnv !== undefined) return KEY.test(fromEnv);
   if (defaultKey(deps.defaultKeyFile)) return true;
@@ -322,24 +359,62 @@ export interface TelemetryStatus {
   keySource: KeySource;
   pending: number;
   lastSend?: string;
+  /** Present only with an org sink policy (telemetry-sink.ts). */
+  sink?: SinkStatus;
+}
+
+/** True when the stored answer lets a send go: a yes, or, under a managed org sink, anything but a no. */
+function consentOk(state: TelemetryState, sink: SinkRead): boolean {
+  if (sink.status === "ok" && isOrgSink(sink.policy) && sink.policy.consent === "managed")
+    return state.consent !== "no";
+  return state.consent === "yes";
 }
 
 function statusOf(state: TelemetryState, lines: string[], deps: TelemetryDeps): TelemetryStatus & { key: string } {
-  const { key, source } = resolveKey(deps);
+  const sink = readSinkPolicy();
   const base = {
-    key,
+    key: "",
     consent: state.consent ?? ("unset" as const),
     consentAt: state.consentAt,
-    keySource: source,
+    keySource: "none" as KeySource,
     pending: lines.length - handled(lines, state),
     lastSend: state.lastSend,
   };
+  const stopped = stoppedReason(sink);
+  if (stopped) return { ...base, on: false, reason: stopped };
   const off = envOff();
-  if (off) return { ...base, on: false, reason: off };
-  if (state.consent === "no") return { ...base, on: false, reason: "you said no" };
-  if (state.consent !== "yes") return { ...base, on: false, reason: "not answered yet" };
-  if (!key) return { ...base, on: false, reason: "no key" };
-  return { ...base, on: true, reason: "on" };
+  const org = orgOf(sink);
+  if (org) return { ...base, sink: sinkStatus(org), ...orgAnswer(state, org.consent, off) };
+  const { key, source } = resolveKey(deps);
+  return { ...base, key, keySource: source, ...publicAnswer(state, key, off) };
+}
+
+/** Why a policy stops every send, or undefined. */
+function stoppedReason(sink: SinkRead): string | undefined {
+  if (sink.status === "invalid") return `sink policy invalid: ${sink.reason}`;
+  return sink.status === "ok" && sink.policy.kind === "off" ? "off by org policy" : undefined;
+}
+
+/** On or off for an org sink. A managed sink needs no stored yes; a stored no still stops it. */
+function orgAnswer(
+  state: TelemetryState,
+  consent: "ask" | "managed",
+  off: string | undefined,
+): { on: boolean; reason: string } {
+  if (off) return { on: false, reason: off };
+  if (state.consent === "no") return { on: false, reason: "you said no" };
+  if (consent === "managed") return { on: true, reason: "managed by org policy" };
+  if (state.consent !== "yes") return { on: false, reason: "not answered yet" };
+  return { on: true, reason: "on" };
+}
+
+/** On or off for the public default: it needs a stored yes and a key. */
+function publicAnswer(state: TelemetryState, key: string, off: string | undefined): { on: boolean; reason: string } {
+  if (off) return { on: false, reason: off };
+  if (state.consent === "no") return { on: false, reason: "you said no" };
+  if (state.consent !== "yes") return { on: false, reason: "not answered yet" };
+  if (!key) return { on: false, reason: "no key" };
+  return { on: true, reason: "on" };
 }
 
 /** On or off, why, the consent answer, where the key comes from (never its value), pending events, last send. */
@@ -414,6 +489,14 @@ export function exampleEvent(version: string, installId: string, now = Date.now(
   return (buildBatch([line], "", installId, version).batch as Record<string, unknown>[])[0];
 }
 
+function destinationLine(): string {
+  const sink = readSinkPolicy();
+  if (sink.status === "ok" && isOrgSink(sink.policy)) {
+    return `Where the numbers go: ${sinkDestination(sink.policy)}, not the public dashboard.`;
+  }
+  return "Where the numbers go: PostHog EU. The maintainer reads the totals and averages.";
+}
+
 /** What is sent, one example event, and the privacy promise. The consent question shows it; so does `telemetry on`. */
 export function consentText(version: string, deps: TelemetryDeps = {}): string {
   const bar = "=".repeat(68);
@@ -439,7 +522,7 @@ export function consentText(version: string, deps: TelemetryDeps = {}): string {
     "The code that enforces this is src/core/events.ts and src/core/telemetry.ts; see",
     PRIVACY_DOC,
     "",
-    "Where the numbers go: PostHog EU. The maintainer reads the totals and averages.",
+    destinationLine(),
     "Change your answer any time: agentbrew telemetry off  /  agentbrew telemetry on",
     "",
   ].join("\n");
@@ -643,6 +726,8 @@ export interface SendResult {
   body?: Record<string, unknown>;
   /** Dry run only: events waiting after the backlog cap. */
   pending?: number;
+  /** Error log lines forwarded to an org sink in this send. */
+  errorLines?: number;
 }
 
 /** The release function of a held send lock; `holds` says whether the lock is still this owner's. */
@@ -808,18 +893,27 @@ export async function send(
   try {
     if (options.dryRun) return dryRun(version, now);
     const st = statusOf(loadState(), readLines(), options);
-    if (!st.on) return { sent: 0, skipped: st.reason };
+    if (!st.on) {
+      noteStoppedSink(readSinkPolicy());
+      return { sent: 0, skipped: st.reason };
+    }
     release = acquireLock();
     if (!release) return { sent: 0, skipped: "another send is running" };
     // The state and the log are read under the lock: a send that ended a moment ago has moved the cursor.
     const state = loadState();
     const lines = readLines();
-    if (state.consent !== "yes") return { sent: 0, skipped: "consent changed" };
+    const sinkRead = readSinkPolicy();
+    const blocked = blockedUnderLock(state, lines, sinkRead);
+    if (blocked) return { sent: 0, skipped: blocked };
+    const org = orgOf(sinkRead);
+    const token = org?.token ? resolveToken(org.token) : undefined;
+    if (org?.token && token === undefined) return { sent: 0, skipped: "sink token unavailable" };
     const cursor = startCursor(lines, handled(lines, state), now);
     patchState(cursorAt(lines, cursor));
-    if (cursor >= lines.length) return { sent: 0, skipped: "nothing new" };
-    const id = { key: st.key, installId: state.installId, version, holds: release.holds };
-    return await postBatches(lines, cursor, id, options);
+    const id = { key: st.key, installId: state.installId, version, holds: release.holds, sinkRead, token };
+    const result: SendResult =
+      cursor >= lines.length ? { sent: 0, skipped: "nothing new" } : await postBatches(lines, cursor, id, options);
+    return await withErrorLogs(result, org, state, id, options);
   } catch (e) {
     logSkipped("core/telemetry/send", e);
     return { sent: 0, skipped: "error" };
@@ -828,11 +922,84 @@ export async function send(
   }
 }
 
+/** The org policy of a read, or undefined for the public default. */
+function orgOf(read: SinkRead): SinkPolicy | undefined {
+  return read.status === "ok" && isOrgSink(read.policy) ? read.policy : undefined;
+}
+
+/** True for a policy that stops every send: `off`, or an invalid file. */
+function sinkStops(read: SinkRead): boolean {
+  return read.status === "invalid" || (read.status === "ok" && read.policy.kind === "off");
+}
+
+/**
+ * Why a send that holds the lock must not start, or undefined. A changed
+ * destination is noted here: events recorded for one destination never go to
+ * another, so the cursor moves to the end of the log.
+ */
+function blockedUnderLock(state: TelemetryState, lines: string[], sinkRead: SinkRead): string | undefined {
+  if (sinkStops(sinkRead)) {
+    noteStoppedSink(sinkRead);
+    return "sink policy changed";
+  }
+  if (!consentOk(state, sinkRead)) return "consent changed";
+  const fp = sinkFingerprint(sinkRead);
+  if ((state.sinkFp ?? "public") === fp) return undefined;
+  const errCursors = orgOf(sinkRead)?.errorLogs ? errorLogEnds(getLogDir()) : undefined;
+  patchState({ ...cursorAt(lines, lines.length), sinkFp: fp, errCursors });
+  return "destination changed";
+}
+
+/** After the events: forward error log lines to an org sink that asks for them. */
+async function withErrorLogs(
+  result: SendResult,
+  org: SinkPolicy | undefined,
+  state: TelemetryState,
+  id: SendId,
+  options: TelemetryDeps & { auto?: boolean },
+): Promise<SendResult> {
+  if (!org) return result;
+  if (!org.errorLogs) {
+    if (state.errCursors) patchState({ errCursors: undefined });
+    return result;
+  }
+  if (result.skipped !== undefined && result.skipped !== "nothing new") return result;
+  const errorLines = await sendErrorLogs(org, id, options);
+  return errorLines ? { ...result, errorLines } : result;
+}
+
+/**
+ * A policy that stops every send (`off`, or an invalid file) is noted here:
+ * the cursor moves to the end of the log and the fingerprint is stored. No
+ * send does it, because none runs. Without this, events recorded while the
+ * policy said off would go out once the file is removed. It never makes a
+ * state file: with none there is no cursor to protect. Never throws.
+ */
+function noteStoppedSink(sink: SinkRead): void {
+  try {
+    const fp = sinkFingerprint(sink);
+    if (!existsSync(statePath()) || (loadState().sinkFp ?? "public") === fp) return;
+    const lines = readLines();
+    patchState({ ...cursorAt(lines, lines.length), sinkFp: fp, errCursors: undefined });
+  } catch (e) {
+    logSkipped("core/telemetry/noteStoppedSink", e);
+  }
+}
+
 /** The next request body with the key hidden, and how many events wait. Sends nothing and takes no lock. */
 function dryRun(version: string, now: number): SendResult {
   const state = loadState();
   const lines = readLines();
-  const cursor = startCursor(lines, handled(lines, state), now);
+  const sink = readSinkPolicy();
+  if (sink.status === "invalid") return { sent: 0, skipped: `sink policy invalid: ${sink.reason}` };
+  if (sink.status === "ok" && sink.policy.kind === "off") return { sent: 0, skipped: "off by org policy" };
+  const changed = (state.sinkFp ?? "public") !== sinkFingerprint(sink);
+  const cursor = changed ? lines.length : startCursor(lines, handled(lines, state), now);
+  if (sink.status === "ok" && isOrgSink(sink.policy)) {
+    const batch = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "", state.installId, version).batch;
+    const events = hecEvents(batch as Record<string, unknown>[], sink.policy, state.installId, version, now);
+    return { sent: 0, pending: lines.length - cursor, body: dryRunBody(sink.policy, events) };
+  }
   const body = buildBatch(lines.slice(cursor, cursor + BATCH_SIZE), "<posthog_key>", state.installId, version);
   return { sent: 0, pending: lines.length - cursor, body };
 }
@@ -852,13 +1019,37 @@ function finishAttempt(release: () => void, now: number): void {
 }
 
 /** Why a send must stop before its next request, or undefined when it may go on. */
-function stopBeforeRequest(holds: () => boolean, cursor: number): string | undefined {
+function stopBeforeRequest(holds: () => boolean, cursor: number, sink: SinkRead): string | undefined {
   if (!holds()) return "lock lost";
   const state = loadState();
-  if (state.consent !== "yes") return "consent changed";
+  if (!consentOk(state, sink)) return "consent changed";
   // The lock can be away for a moment (see acquireLock). A send that ran in that gap has moved
   // the cursor on disk past this one: these lines are sent, so this send stops.
   return state.sent > cursor ? "lock lost" : undefined;
+}
+
+/** What one send needs for every request. */
+interface SendId {
+  key: string;
+  installId: string;
+  version: string;
+  holds: () => boolean;
+  sinkRead: SinkRead;
+  token?: string;
+}
+
+/** One batch to the org sink, or to the public default. Returns why it failed, or undefined. */
+function postChunk(
+  body: Record<string, unknown>,
+  id: SendId,
+  signal: AbortSignal,
+  fetchImpl?: typeof fetch,
+): Promise<string | undefined> {
+  const sink = orgOf(id.sinkRead);
+  if (!sink) return postOne(body, signal, fetchImpl);
+  const now = Date.now();
+  const events = hecEvents(body.batch as Record<string, unknown>[], sink, id.installId, id.version, now);
+  return deliver(sink, events, { token: id.token, signal, fetchImpl, now });
 }
 
 /**
@@ -870,7 +1061,7 @@ function stopBeforeRequest(holds: () => boolean, cursor: number): string | undef
 async function postBatches(
   lines: string[],
   start: number,
-  id: { key: string; installId: string; version: string; holds: () => boolean },
+  id: SendId,
   options: TelemetryDeps & { auto?: boolean },
 ): Promise<SendResult> {
   const autoBudget = options.auto ? AbortSignal.timeout(AUTO_TIMEOUT_MS) : undefined;
@@ -878,14 +1069,14 @@ async function postBatches(
   let sent = 0;
   while (cursor < lines.length) {
     // Checked before every request, the first one too: a send whose lock another process took over must stop.
-    const stop = stopBeforeRequest(id.holds, cursor);
+    const stop = stopBeforeRequest(id.holds, cursor, id.sinkRead);
     if (stop) return { sent, skipped: stop };
     const chunk = lines.slice(cursor, cursor + BATCH_SIZE);
     const body = buildBatch(chunk, id.key, id.installId, id.version);
     const count = (body.batch as unknown[]).length;
     let lastSend: string | undefined;
     if (count > 0) {
-      const failed = await postOne(body, autoBudget ?? AbortSignal.timeout(MANUAL_TIMEOUT_MS), options.fetchImpl);
+      const failed = await postChunk(body, id, autoBudget ?? AbortSignal.timeout(MANUAL_TIMEOUT_MS), options.fetchImpl);
       if (failed) return { sent, skipped: failed };
       lastSend = new Date().toISOString();
     }
@@ -896,6 +1087,41 @@ async function postBatches(
     saveState({ ...fresh, ...next, lastSend: lastSend ?? fresh.lastSend });
   }
   return { sent };
+}
+
+/**
+ * Forward new lines of agentbrew's own error logs to the org sink. The first
+ * send with `error_logs` on only records where each file ends. The cursors
+ * move only after the sink took the lines. Returns how many lines were sent.
+ */
+async function sendErrorLogs(
+  sink: SinkPolicy,
+  id: { installId: string; version: string; sinkRead: SinkRead; token?: string },
+  options: TelemetryDeps & { auto?: boolean },
+): Promise<number> {
+  const dir = getLogDir();
+  const before = loadState();
+  if (!before.errCursors) {
+    patchState({ errCursors: errorLogEnds(dir) });
+    return 0;
+  }
+  const { lines, cursors } = readErrorLines(dir, before.errCursors);
+  if (lines.length === 0) {
+    if (JSON.stringify(cursors) !== JSON.stringify(before.errCursors)) patchState({ errCursors: cursors });
+    return 0;
+  }
+  if (!consentOk(loadState(), id.sinkRead)) return 0;
+  const now = Date.now();
+  const signal = options.auto ? AbortSignal.timeout(AUTO_TIMEOUT_MS) : AbortSignal.timeout(MANUAL_TIMEOUT_MS);
+  const failed = await deliver(sink, errorObjects(lines, sink, id.installId, id.version, now), {
+    token: id.token,
+    signal,
+    fetchImpl: options.fetchImpl,
+    now,
+  });
+  if (failed) return 0;
+  patchState({ errCursors: cursors });
+  return lines.length;
 }
 
 /** One request. Returns why it failed, or undefined after a 2xx. */
@@ -923,14 +1149,21 @@ async function postOne(
 
 /** The state when the daily send is due (see sendDailyDue), else undefined. */
 function dueState(deps: TelemetryDeps): TelemetryState | undefined {
+  const sink = readSinkPolicy();
+  if (sinkStops(sink)) {
+    noteStoppedSink(sink);
+    return undefined;
+  }
   if (envOff()) return undefined;
   const state = loadState();
-  if (state.consent !== "yes") return undefined;
+  if (!consentOk(state, sink)) return undefined;
   const now = deps.now ?? Date.now();
   if (withinDay(state.lastAttempt ?? state.lastSend, now)) return undefined;
   // A command started the send a moment ago, and it has not ended yet.
   const started = Date.parse(state.autoStartAt ?? "");
   if (deps.claim && Number.isFinite(started) && Math.abs(now - started) < AUTO_START_GAP_MS) return undefined;
+  // An org sink needs no PostHog key.
+  if (sink.status === "ok" && isOrgSink(sink.policy)) return state;
   return hasKey(deps, state, now) ? state : undefined;
 }
 

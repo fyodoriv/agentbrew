@@ -65,6 +65,13 @@ question, every field, and every off switch:
 [`docs/observability.md`](docs/observability.md#field-telemetry). Report a
 field that should not be sent as a vulnerability.
 
+An org overlay can route these events to a company log system with
+`~/.config/agentbrew/telemetry-sink.json`, and can switch on forwarding of
+agentbrew's own error log lines. Those lines are new content: they go only to
+that org sink, with URL credentials hidden and the home path shown as `~`,
+never to PostHog. The file's rules are in
+[`docs/observability.md`](docs/observability.md#org-log-sink).
+
 ### Contract
 
 Three independent leak categories are blocked:

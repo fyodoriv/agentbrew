@@ -543,7 +543,8 @@ use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream
 for the daemon and the CLI, and use absolute paths for custom locations. The
 upstream daemon can also load `.env` files; Agentbrew's backup path resolver
 does not read them. Confirm that the CLI and daemon point to the same database
-before relying on a backup.
+before relying on a backup. When maintenance falls back to upstream `check-db`,
+it explicitly passes the database path resolved by the CLI.
 
 Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,

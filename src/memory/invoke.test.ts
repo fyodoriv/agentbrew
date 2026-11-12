@@ -31,6 +31,24 @@ describe("invokeMemoryMaintenance", () => {
     expect(result.command).toBe("check-db");
     expect(spawnSync).toHaveBeenCalledTimes(2);
   });
+
+  it("passes the resolved custom base-directory database to check-db", () => {
+    spawnSync
+      .mockReset()
+      .mockReturnValueOnce({ status: 2, stdout: "", stderr: "Error: No such command 'maintain'." })
+      .mockReturnValueOnce({ status: 0, stdout: "schema ok", stderr: "" });
+
+    invokeMemoryMaintenance({ uvxBin: "/fixture/uvx", env: { MCP_MEMORY_BASE_DIR: "/tmp/synthetic-memory" } });
+
+    const args = spawnSync.mock.calls[1]?.[1] as string[];
+    expect(args.slice(-3)).toEqual(["check-db", "--db-path", "/tmp/synthetic-memory/sqlite_vec.db"]);
+  });
+
+  it("does not invoke check-db after successful maintenance", () => {
+    spawnSync.mockReset().mockReturnValueOnce({ status: 0, stdout: "ok", stderr: "" });
+    invokeMemoryMaintenance({ uvxBin: "/fixture/uvx" });
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("invokeMemory", () => {

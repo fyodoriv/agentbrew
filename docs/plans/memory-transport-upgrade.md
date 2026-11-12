@@ -62,6 +62,10 @@ database from the one the daemon uses.
   success as proof that the running daemon's database was checked.
 - **Anchor:** `src/memory/invoke.ts`, `src/memory/paths.ts`, and the inspected
   upstream 12.8 `cli/main.py` resolver.
+
+The custom-base test failed before the change and passed after Agentbrew began
+passing `--db-path`. The normal maintenance-success test also passed. This
+fix resolves the CLI's configured path; it does not read the daemon's dotenv.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 

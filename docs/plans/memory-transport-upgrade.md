@@ -22,3 +22,9 @@ has recovery logic for existing databases, but inspecting that code does not
 prove a safe upgrade or downgrade. Test with synthetic data first. A live
 rollback must restore a verified pre-upgrade backup; do not assume an older
 binary can safely open a database migrated by the newer version.
+
+The candidate's published tool registry and the live `tools/list` response
+were compared for the memory lifecycle tools Agentbrew calls. The candidate
+declares each checked tool without removing a top-level input field or adding a
+required top-level field. This is a static shape check only. It does not check
+types, nested schemas, returned data, permissions, or runtime compatibility.

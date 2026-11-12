@@ -13,12 +13,20 @@ registration. The engine is the upstream SQLite-backed service, pinned in
 [`src/memory/constants.ts`](../../src/memory/constants.ts). The
 [shared-memory story](../user-stories/29-shared-memory-packs.md) describes its
 loopback endpoint and project-memory ingestion. Claude Code and Codex use the
-same endpoint. OpenCode's configuration declares that endpoint; an actual Kimi
-session still needs a successful recall test.
+same endpoint. On November 12, an OpenCode session using Kimi called
+`memory_search` and its recorded tool result contained the public advisory
+record. This proves one shared read, not the full session lifecycle.
 
 On November 11, a Codex-written research record was returned by Claude Code's
-`memory_search` tool. This proves one cross-client read, not general retrieval
-quality or OpenCode compatibility.
+`memory_search` tool. Together, these are targeted cross-client reads, not a
+measure of general retrieval quality or complete lifecycle compatibility.
+
+The OpenCode trial used a scratch project. Its configuration included a rule
+intended to deny code-mode `execute`, but the recorded session shows completed
+`execute` calls. Those calls searched the memory tools and made a read-only
+query. The reason for the rule mismatch is unverified; do not rely on that
+scratch policy as an enforcement boundary. Bootstrap and session-save calls
+were not demonstrated in this trial.
 
 ## Security gate
 

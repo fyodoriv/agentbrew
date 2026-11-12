@@ -30,9 +30,7 @@ describe("memory database path", () => {
   });
 
   it("honors the upstream backup-directory alias after the primary setting", () => {
-    expect(resolveMemoryBackupsDir({ mcpMemoryBackupsPath: "/tmp/alternate-backups" })).toBe(
-      "/tmp/alternate-backups",
-    );
+    expect(resolveMemoryBackupsDir({ mcpMemoryBackupsPath: "/tmp/alternate-backups" })).toBe("/tmp/alternate-backups");
     expect(
       resolveMemoryBackupsDir({
         MCP_MEMORY_BACKUPS_PATH: "/tmp/primary-backups",

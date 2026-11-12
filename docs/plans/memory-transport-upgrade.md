@@ -27,20 +27,20 @@ Static inspection of the wheel shows later migrations create tables or indexes,
 alter tables, and run an update. This is another reason to verify a restore,
 not a substitute for running the candidate against synthetic data.
 
-A scratch rehearsal is prepared to write harmless facts with the old service,
-make a SQLite backup, read them with the new service, then restore the backup
-and read them with the old service. It first checks that its OS isolation blocks
-network and access outside scratch. It uses the upstream test-only hash
-embedding fallback. A pass would not validate the installed ONNX embedding
-model, the HTTP origin fix, or any real client. Never enable this fallback on
-the live database: mixing hash vectors with real embeddings can damage recall.
+On November 12, an isolated rehearsal stored harmless facts on 11.7, made a
+SQLite backup, recalled the facts on 12.8, then restored the backup and recalled
+them on 11.7. It checked that isolation denied outside files and network. This
+run used the upstream test-only hash embedding fallback. Never enable that
+fallback on the live database: mixing hash vectors with real embeddings can
+damage recall.
 
-A second rehearsal uses ONNX with hash fallback disabled and the public model
-archive verified against the upstream checksum. Its first run failed because
-CoreML could not create a working directory inside the isolation boundary. A
-CPU-only retry is queued. The hash-based rehearsal reached the restored-old
-service but timed out while the machine's shared work queue paused for memory
-pressure; it is also queued for another attempt. Neither run has passed.
+A second rehearsal passed the same upgrade and restore sequence using ONNX,
+with hash fallback disabled and the public model archive verified against the
+upstream checksum. It checked exact recall and semantic retrieval using each
+original fact as the query. Its first run failed because CoreML could not create
+a working directory inside the isolation boundary; the passing retry selected
+the CPU provider explicitly. It does not prove CoreML behavior or live data
+compatibility.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 

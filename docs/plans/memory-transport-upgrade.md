@@ -254,6 +254,21 @@ This did not test the real service or competing launchd changes.
 The synthetic trial met its stated success condition. It does not establish
 exclusive control of the real daemon or prove upstream service readiness.
 
+- **Service handoff hypothesis:** A temporary launchd job can start the actual
+  candidate service against a reserved synthetic database and reach MCP
+  readiness after the reservation is released.
+- **Measurement:** Start the candidate in an isolated scratch environment with
+  network denied, hold a SQLite write reservation across job registration,
+  then release it and check MCP initialization and synthetic recall.
+- **Success:** Registration returns while the reservation is held, MCP
+  initialization and recall succeed after release, and the temporary job is
+  removed. The test never accesses the live database or daemon.
+- **Pivot:** If isolation, startup, recall, or cleanup fails, do not use the
+  proposed handoff for a live upgrade. A pass still does not prove exclusive
+  ownership against another launchd controller.
+- **Anchor:** The candidate's `server_impl.py` initialization order and
+  [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html).
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

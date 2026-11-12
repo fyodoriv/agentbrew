@@ -35,6 +35,12 @@ embedding fallback. A pass would not validate the installed ONNX embedding
 model, the HTTP origin fix, or any real client. Never enable this fallback on
 the live database: mixing hash vectors with real embeddings can damage recall.
 
+A separate scratch HTTP rehearsal is prepared to reproduce the old origin
+behavior and check the patched version. It uses a temporary loopback port and a
+separate synthetic database for each version. Its isolation check must first
+prove that the temporary port works and the live memory port is unreachable.
+The test has not run yet.
+
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate
 declares each checked tool without removing fields or adding required fields

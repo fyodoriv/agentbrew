@@ -220,7 +220,9 @@ Node 20 lacks this module
 and the draft fails closed there. The reservation now remains held through
 candidate registration and ends before the readiness check. This blocks
 competing SQLite writes during that interval, but does not stop another process
-from replacing the launchd job. Actual registration and startup remain untested.
+from replacing the launchd job. A temporary synthetic launchd job registered
+while the reservation was held and wrote after release; cleanup was verified.
+This did not test the real service or competing launchd changes.
 
 - **Candidate-registration hypothesis:** Registering the candidate while the
   SQLite reservation is still held prevents competing database writes between
@@ -248,6 +250,9 @@ from replacing the launchd job. Actual registration and startup remain untested.
   another process can replace the real daemon during handoff, do not deploy.
 - **Anchor:** `src/memory/upgrade-sequence.ts` and
   [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html).
+
+The synthetic trial met its stated success condition. It does not establish
+exclusive control of the real daemon or prove upstream service readiness.
 
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
@@ -363,3 +368,7 @@ endpoint alone does not prove that Kimi will recall or save memory.
 - **Pivot:** If approval or MCP recall needs external access or crosses project
   scope, do not recommend this workflow for local private memory.
 - **Anchor:** [Beacon's local memory workflow](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx).
+
+The isolated trial approved and retrieved the synthetic lesson for its own
+project and returned no result for a second project with network access denied.
+It did not measure automatic extraction, all client integrations, or quality.

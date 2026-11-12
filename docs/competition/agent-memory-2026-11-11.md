@@ -56,7 +56,7 @@ the version comparison does not prove an exploit or rule out unknown issues.
 
 | Product | Relevant strengths | Limitation for this decision |
 |---|---|---|
-| [Beacon](https://github.com/Asymptote-Labs/agent-beacon) | Captures activity across Claude Code, Codex, and OpenCode. Its [local MCP](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/mcp.mdx) serves reviewed project memory and local traces. | Its interactive setup preselects cloud forwarding. Trace capture can retain session content. Its [evaluation command](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx) defaults to a hosted evaluator. Local-only retrieval and end-to-end quality have not been measured here. |
+| [Beacon](https://github.com/Asymptote-Labs/agent-beacon) | Captures activity across Claude Code, Codex, and OpenCode. Its [local MCP](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/mcp.mdx) serves reviewed project memory and local traces. | Its interactive setup preselects cloud forwarding. Trace capture can retain session content. Its [evaluation command](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx) defaults to a hosted evaluator. A synthetic local-only recall test passed; end-to-end quality and all client lifecycles remain unmeasured. |
 | [MCP Memory Service](https://github.com/doobidoo/mcp-memory-service) | Existing local SQLite and ONNX search, MCP and REST, backed by an upstream maintainer. | The installed pin predates security fixes. A newer release still needs migration and client tests. |
 | [Cognee](https://github.com/topoteretes/cognee) | Open-source graph memory, local-model Python setup, and an MCP server with remember, recall, and forget tools. | Its [MCP server defaults to a separate dataset per agent](https://github.com/topoteretes/cognee/blob/main/cognee-mcp/README.md); sharing needs explicit configuration. Its tool names differ from Agentbrew's lifecycle. The local MCP setup, migration, and all three clients need a matched test. |
 | [Supermemory](https://supermemory.ai/blog/opencode-memory/) | Vendor documents plugins for Claude Code, Codex, and OpenCode, including OpenCode 2, with shared project memory and a local server option. | Its [self-hosting guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/overview.mdx) says the server binary is not open source, has a free-tier document limit, and does not include the hosted MCP server. Local model, telemetry, retention, migration, and cross-client behavior need testing. |
@@ -78,9 +78,10 @@ a candidate without the hosted evaluator, then approve it. Approved memory is
 project-scoped; its local MCP memory tools are read-only. This differs from the
 current agent workflow, which can write a shared memory directly. Local Beacon
 is therefore not yet shown to be a drop-in replacement for that workflow.
-On November 12, an isolated test with network access denied created and listed
-a candidate from a synthetic Claude Code trace. It did not test approval,
-retrieval, other clients, or the quality of the resulting memory.
+On November 12, isolated tests with network access denied created and approved
+a candidate from a synthetic Claude Code trace. Local MCP returned the lesson
+for its project and no result for a second project. Other clients and memory
+quality were not tested.
 
 Supermemory is worth a separate local trial because its documented plugins
 cover the requested clients. Its [product page](https://supermemory.ai/product/)

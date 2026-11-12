@@ -1,18 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { upgradeMemoryWithSnapshot } from "./upgrade-sequence.js";
 
-describe("memory upgrade snapshot sequence", () => {
+describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot sequence", () => {
   it("does not back up or start the candidate if stopping the old daemon fails", async () => {
     const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-stop-"));
     try {
+      const db = join(dir, "memory.db");
+      execFileSync("sqlite3", [db, "CREATE TABLE memories (id INTEGER, deleted_at TEXT);"]);
       const startCandidate = vi.fn();
       const startOld = vi.fn();
       const result = await upgradeMemoryWithSnapshot({
-        dbPath: join(dir, "memory.db"),
+        dbPath: db,
         backupsDir: join(dir, "backups"),
         stopOld: async () => {
           throw new Error("synthetic stop failure");
@@ -51,6 +54,11 @@ describe("memory upgrade snapshot sequence", () => {
         dbPath: db,
         backupsDir: join(dir, "backups"),
         stopOld: async () => {
+          expect(() =>
+            execFileSync("sqlite3", ["-cmd", ".timeout 50", db, "INSERT INTO memories VALUES (99, NULL);"], {
+              stdio: "pipe",
+            }),
+          ).toThrow();
           stopped = true;
         },
         isOldStopped: async () => stopped,

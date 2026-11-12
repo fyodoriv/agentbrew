@@ -1,5 +1,6 @@
 import { errorMessage } from "../core/errors.js";
 import { verifySqliteBackup, writeMemoryBackup } from "./backup.js";
+import { withMemoryWriteReservation } from "./write-reservation.js";
 
 export interface MemoryUpgradeOperations {
   dbPath: string;
@@ -20,29 +21,36 @@ export interface MemoryUpgradeResult {
 
 /** Sequence only. Callers must establish database identity and an exclusive handoff. */
 export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): Promise<MemoryUpgradeResult> {
-  try {
-    await ops.stopOld();
-  } catch (error) {
-    return { ok: false, stage: "stop", error: errorMessage(error) };
-  }
-
+  const progress: { stage: "stop" | "backup" } = { stage: "stop" };
   let snapshot: string | undefined;
   try {
-    if (!(await ops.isOldStopped())) throw new Error("old memory daemon did not stop");
-    snapshot = writeMemoryBackup(ops.dbPath, ops.backupsDir);
-    if (!verifySqliteBackup(snapshot).ok) throw new Error("memory backup failed verification");
-    if (!(await ops.isOldStopped())) throw new Error("old memory daemon restarted during backup");
+    await withMemoryWriteReservation(ops.dbPath, async (assertHeld) => {
+      await ops.stopOld();
+      progress.stage = "backup";
+      if (!(await ops.isOldStopped())) throw new Error("old memory daemon did not stop");
+      assertHeld();
+      snapshot = writeMemoryBackup(ops.dbPath, ops.backupsDir);
+      if (!verifySqliteBackup(snapshot).ok) throw new Error("memory backup failed verification");
+      if (!(await ops.isOldStopped())) throw new Error("old memory daemon restarted during backup");
+      assertHeld();
+    });
   } catch (error) {
     try {
-      if (await ops.isOldStopped()) await ops.startOld();
+      if (progress.stage === "backup" && (await ops.isOldStopped())) await ops.startOld();
     } catch {
       // Preserve the database and snapshot; the caller must report recovery failure.
-      return { ok: false, stage: "backup", snapshot, error: `${errorMessage(error)}; old daemon recovery failed` };
+      return {
+        ok: false,
+        stage: progress.stage,
+        snapshot,
+        error: `${errorMessage(error)}; old daemon recovery failed`,
+      };
     }
-    return { ok: false, stage: "backup", snapshot, error: errorMessage(error) };
+    return { ok: false, stage: progress.stage, snapshot, error: errorMessage(error) };
   }
 
   try {
+    if (!snapshot) throw new Error("verified memory snapshot is missing");
     await ops.startCandidate(snapshot);
     if (!(await ops.candidateHealthy())) throw new Error("candidate memory daemon is not healthy");
     return { ok: true, stage: "complete", snapshot };

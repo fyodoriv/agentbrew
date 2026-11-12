@@ -211,6 +211,14 @@ unproven; the draft sequence must not be used for a live upgrade yet.
 - **Anchor:** [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html)
   and Node's [`node:sqlite` API](https://nodejs.org/api/sqlite.html).
 
+The draft now holds the reservation in the upgrade process during stop and
+snapshot. Focused tests verified competing-write rejection, backup, release on
+error, replaced-file detection, and refusal when the built-in module is absent.
+A scratch database produced by the upstream service accepted the reservation;
+an end-to-end snapshot check on that format is queued. Node 20 lacks this module
+and the draft fails closed there. The reservation ends before candidate startup,
+so it does not yet close the launchd handoff gap.
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

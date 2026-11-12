@@ -69,6 +69,17 @@ When the panel stalls:
   for flaws the placeholder had hidden (a phone spread that used half the width, cut-off captions).
   Treat that drop as a list of findings, not a regression of the page. Re-baseline on the new
   fixture, and compare later rounds only with that new baseline.
+- Rate every view mode, not only the default. Stills of one view hid that Page and Grid views filled only
+  the top 60% of each page; a motion strip per mode showed it, and all three raters named it at once.
+- Raters cap every judge at 7 for a flaw inside the content too (a doubled frame or stray balloon tail in a
+  drawn picture). Page CSS cannot fix that, so a fixture with such flaws holds the panel near 7. Clean the
+  fixture before you chase the last point.
+- A state the page shows only for judged data needs judged data in the fixture. When most items carry no
+  verdict, raters ask for verdicts on every card; check the fixture's pipeline ran before you redesign.
+- Serve the shots from a threaded server with a large backlog on a free port. Python's `http.server`
+  drops requests under parallel shots (broken pictures read as flaws), and a port already in use serves
+  another app's page. `rankings.cjs` waits for on-screen pictures and reloads broken ones, bypasses the
+  page's CSP so axe can run, and skips items in a closed `<details>`.
 - If two rounds in a row gain less than 0.3 on the panel mean, stop and report the scores, what
   holds them back, and the options (a bolder concept, real content, motion evidence), instead of
   polishing further. Never report the target as met when blind raters did not give it.

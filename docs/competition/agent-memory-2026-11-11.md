@@ -37,8 +37,10 @@ adapter passed its own unit tests in a network-denied scratch environment.
 Those tests show that its OpenCode 2 capture adapter reads assistant text only.
 The example enables automatic capture and session summaries. An isolated test
 of the pinned marker detector returned false for ordinary `#skip` and
-`#remember` inputs, so do not enable automatic capture on real sessions until
-the write path and privacy behavior are verified. The adapter tests do not prove
+`#remember` inputs. A separate synthetic OpenCode 2 adapter test dropped a
+user message containing `#skip` while retaining the assistant reply for capture
+processing. Do not enable automatic capture on real sessions until the write
+path and privacy behavior are verified. The adapter tests do not prove
 end-to-end lifecycle behavior or correction capture.
 
 The same upstream release also provides [Codex memory hooks](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/README.md)

@@ -46,7 +46,9 @@ for retrieval and session checkpoints. Its published tests include a user
 `#skip` turn and forced `#remember` capture; this is a different adapter from
 the OpenCode plugin. In a network-denied scratch test, the Codex hook's shared
 marker detector recognized the same ordinary `#skip` and `#remember` examples
-that the OpenCode detector missed. It requires Codex hook trust and reads local transcripts.
+that the OpenCode detector missed. A separate synthetic parser test retained a
+user correction and final answer while excluding instruction, commentary, and
+reasoning records. It requires Codex hook trust and reads local transcripts.
 Compatibility with this machine's existing hooks, privacy rules, and shared
 memory lifecycle is unverified; do not install it into the live setup yet.
 

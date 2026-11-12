@@ -31,3 +31,18 @@ continuous membership, cleanup, or the cause of issue #810.
 Anchor: [hosted ownership prediction](inventory-hosted-owner-prediction.md),
 `rust/src/worker_owner.rs` and `rust/src/transport.rs`; Basili, Caldiera and
 Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
+## Build-boundary clarification before implementation
+
+A separate nested Cargo package keeps the dedicated fixture out of ordinary
+main-package targets. The target-scoped command above is replaced for this
+experiment by `heavy-run cargo rustc --locked --offline --manifest-path
+rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg
+owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'`. The
+fixture has its own pinned dependency graph and lockfile; its evidence is not
+a claim about a byte-identical production binary. Use a private target folder
+and bind the included source files and exact compiler configuration. The main
+package must still compile without the experiment cfg. A fixture build without
+the cfg must fail. No package-wide feature or inherited compiler flag may be
+used to activate the guard. No source, fixture or worker was executed to make
+this clarification.

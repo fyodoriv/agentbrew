@@ -162,6 +162,34 @@ fn validate_observation(value: Value) -> Result<(String, cleanup_observation::St
     Ok((encoded, state))
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct BoundaryFacts {
+    terminal: Terminal,
+    reservation: Reservation,
+    handle: Identity,
+    group_requested: Requested,
+}
+
+fn shadow_boundary(
+    facts: BoundaryFacts,
+    sink: Option<&mut dyn FnMut(&str) -> Result<(), ()>>,
+) -> BoundaryFacts {
+    let observation = Observation {
+        terminal: facts.terminal,
+        reservation: facts.reservation,
+        handle: facts.handle,
+        group_requested: facts.group_requested,
+        group_match: Identity::Unknown,
+        owner_match: Identity::Unknown,
+        term: ObservationTerm::Unknown,
+        cleanup: Cleanup::Unknown,
+    };
+    if let (Some(sink), Ok(encoded)) = (sink, serde_json::to_string(&observation)) {
+        let _ = sink(&encoded);
+    }
+    facts
+}
+
 fn valid() -> Value {
     json!({"terminal":"success", "reservation":"held", "target":"owned", "group":"owned", "identity":"matches", "term":"sent", "cleanup":"success"})
 }
@@ -180,6 +208,38 @@ fn complete_record_accepted() {
     let (encoded, state) = validate_observation(observed()).expect("bounded observation");
     assert_eq!(state, cleanup_observation::State::Consistent);
     assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), observed());
+    let facts = BoundaryFacts { terminal: Terminal::Success, reservation: Reservation::Held,
+        handle: Identity::Matches, group_requested: Requested::Yes };
+    let mut captured = Vec::new();
+    assert_eq!(shadow_boundary(facts, Some(&mut |bytes| { captured.push(bytes.to_owned()); Ok(()) })), facts);
+    let value: Value = serde_json::from_str(&captured[0]).unwrap();
+    assert_eq!(value["group_match"], "unknown");
+    assert_eq!(value["owner_match"], "unknown");
+    assert_eq!(value["term"], "unknown");
+    assert_eq!(value["cleanup"], "unknown");
+    assert_eq!(shadow_boundary(facts, None), facts);
+    assert_eq!(shadow_boundary(facts, Some(&mut |_| Err(()))), facts);
+    for terminal in [Terminal::Success, Terminal::Failure, Terminal::Unknown] {
+        for reservation in [Reservation::Held, Reservation::NotHeld, Reservation::Unknown] {
+            for handle in [Identity::Matches, Identity::Mismatch, Identity::Unknown] {
+                for group_requested in [Requested::Yes, Requested::No, Requested::Unknown] {
+                    let input = BoundaryFacts { terminal, reservation, handle, group_requested };
+                    assert_eq!(shadow_boundary(input, None), input);
+                    assert_eq!(shadow_boundary(input, Some(&mut |_| Err(()))), input);
+                    let mut encoded = None;
+                    assert_eq!(shadow_boundary(input, Some(&mut |value| {
+                        encoded = Some(value.to_owned());
+                        Ok(())
+                    })), input);
+                    let actual: Observation = serde_json::from_str(encoded.as_deref().unwrap()).unwrap();
+                    assert_eq!((actual.terminal, actual.reservation, actual.handle, actual.group_requested),
+                               (terminal, reservation, handle, group_requested));
+                    assert_eq!((actual.group_match, actual.owner_match, actual.term, actual.cleanup),
+                               (Identity::Unknown, Identity::Unknown, ObservationTerm::Unknown, Cleanup::Unknown));
+                }
+            }
+        }
+    }
 }
 
 #[test]

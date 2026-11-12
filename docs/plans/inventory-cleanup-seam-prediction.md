@@ -25,3 +25,20 @@ a separate prediction, ownership and lifecycle review before any admission.
 
 Anchor: issue #810; the [observation prediction](inventory-cleanup-observation-prediction.md);
 Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
+
+The preparation adapter is not connected to the worker. A generic test sink
+can block, panic or have side effects, so its successful pure tests do not
+prove live cleanup behavior. Before instrumentation, design and review a
+bounded nonblocking sink and its failure policy, then prove decision and error
+parity on injected worker paths.
+
+A later source-only review narrowed issue #810's recorded TERM reason. The
+worker maps `EPERM` from its group signal to reason 15 after the reservation
+and non-error `WNOWAIT` checks. The pinned rustix 1.1.4 crate archive matched
+`Cargo.lock`; its libc source calls `kill` with the negated group ID, and an
+independent review checked that source. The [Apple kill manual](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/kill.2.html)
+describes group signaling and permission errors. This does not establish the
+historical binary or backend, group membership, target credentials, kernel
+decision or physical cause. Drop may attempt cleanup again; the receipt does
+not prove those attempts ended or succeeded. No process was signaled in this
+review.

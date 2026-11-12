@@ -10,6 +10,12 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
 - A goal with more than five requirements gets a traceability test: one
   entry per requirement, mapped to the files and tests that meet it. It fails
   when a mapped path is missing, and it is the coverage metric in the contract.
+- Never end a turn waiting with nothing armed to wake you (a usage-limit
+  window, an agent, a build). Arm a background watchdog first: an until-loop
+  on the expected output files with a hard cap (30 min). Give every
+  background agent a time box and tell it to write each result file as soon
+  as it is done. A watchdog that times out with few files means a stalled
+  agent: stop it, keep what it wrote, and relaunch smaller.
 - A subagent that stops on a usage limit keeps its work. After the reset,
   resume it with `SendMessage`; do not redo its work or start a new agent.
 - Research subagents use web fetch and search only, never browser tools: a
@@ -49,6 +55,10 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   as stale findings in the deliverable.
 - A gate you write yourself is unproven: plant one violation per rule, see it
   fail. A "flaky" step: run it alone and check its CPU time against its limit.
+  A new gate that measures time: before you merge it, count its false alarms
+  on the path where it will really run (inside the full gate, on a loaded
+  machine), not only in a quiet or exclusive slot. One gate had 0 false
+  alarms in 5 quiet runs and 2 in 20 on the real path.
 - Log each non-obvious decision in one line: what you chose, and why.
 - Parallel workers (subagents): give them one shared brief file with the
   delivery rules, unique log names (`$TMPDIR` is shared), and the exact base
@@ -65,6 +75,13 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   loop): read [references/parallel-workers.md](references/parallel-workers.md)
   first. It covers the base commit, the heavy-run queue, messages to running
   agents, session-owned files, merges, stacked PRs, and watch pollers.
+- A scheduled or recurring job that runs a repo's code builds from its own
+  clean worktree of the default branch (`git worktree add --detach <state
+  dir> origin/main`, refreshed each run), never from the user's main
+  checkout: another session can leave that checkout mid-merge or on an old
+  commit, and the job then runs stale or broken code. Point the job's data
+  root at the main checkout with an env var, and prove it by running the
+  job's commands from that worktree once.
 - When something pops up on the user's screen (a dialog, a window) and you
   trace which process started it, log the process and its parent chain.
   Never kill processes that you or your workers did not start. Killing them
@@ -155,7 +172,7 @@ A pipe hides the status too: after `gate | tail -20`, `$?` is the status of
 `tail`. Never pipe the gate's own output (`gate | tail`, `gate | tee`) when
 its status decides the commit. Run the gate into a log, read `$rc`, and
 commit and push only when it is 0:
-`log="${TMPDIR:-/tmp}/gate-<name>.log"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
+`log="$(mktemp "${TMPDIR:-/tmp}/gate-<name>.XXXXXX")"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
 When the gate fails, the whole line also exits 1, so a background task reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
 A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
@@ -164,12 +181,25 @@ never put it in the gate slot above, and never chain the next step on it
 with `&&`: a clean check then skips the commit, and a check that finds a
 leak lets the commit run. Stage first. Then count matches in the staged
 diff, and commit only when the count is exactly 0:
-`git add …; n=; d="${TMPDIR:-/tmp}/staged.diff"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
+`git add …; n=; d="$(mktemp "${TMPDIR:-/tmp}/staged.XXXXXX")"; git diff --cached > "$d" && n=$(grep -icE -- "${pattern:?}" "$d"); echo "count=$n"; [ "$n" = 0 ] && git commit …`.
 Plain `git diff` skips staged and new files. Commit only what is staged: no `-a`, no paths after `git commit`.
 A failed `git diff` leaves the count empty, so the commit does not run. An empty count means the check
 did not finish (an unset pattern, a grep error, or a diff grep skipped as binary): find the cause first.
 
 ## Served output
+
+For a managed-source deployment, retain each strict readback failure and its
+actual exit. If the source advanced, do not reset it or call the original
+exact-revision check successful. Under the existing source lease, record the
+expected revision, actual source revision and pin separately; check source and
+pin agreement. For an advance, verify that expected is an ancestor of actual;
+inspect the complete intervening delta. Compare installed bytes with source
+hashes for every delivered path, and record the scope and qualification of
+intervening changes. A descendant alone does not prove installed content or
+the whole artifact. Report exact-revision delivery and inspected
+content-provenance delivery separately. A backward or divergent revision, pin disagreement or
+missing evidence remains unverified for investigation. Never silently accept
+an arbitrary descendant, suppress a failure or move a source or pin backward.
 
 When the goal is about what users see (a feed, a page, a report), measure the
 served output after the deploy, not only the pipeline's output.
@@ -200,6 +230,11 @@ failure lists. Only a failure on both lists is pre-existing. A wait loop on
 a background job must run outside the agent sandbox: `pgrep` and `ps` fail
 inside it, so the loop exits at once and looks finished.
 
+When a test fails the gate without your diff, stop retrying: a pass on a
+blind rerun proves nothing. Find its root cause and fix it in its own small
+PR. Then merge the fix branch into the waiting branch, prove both with one
+full gate on that combined tree, and merge the fix PR first.
+
 ## Metrics and stale gates
 
 A metric is code too. Before you trust a new counter's numbers or merge
@@ -216,6 +251,26 @@ start it again after the edits; never report its result for the new code.
   `heavy-run` queues of 15 or more jobs.
 - `git symbolic-ref HEAD refs/heads/NEW` leaves an unborn branch, so every
   file shows as staged. Follow it with `git reset --soft <base>`.
+- Fetch the base branch and diff it against your start point before the
+  first edit and again before the PR. One goal built a Python and Rust
+  pair while main deleted the Python half; the PR could not merge.
+- Run a formatter only on the files you changed (`cargo fmt -- FILE`,
+  `ruff format FILE`). A repo-wide run rewrote many untouched files.
+- Write logs to the session scratchpad or a `mktemp` name, never a fixed
+  `$TMPDIR` name: another session overwrote a shared `$TMPDIR/gate.log` and
+  its failure looked like ours; a fixed `$TMPDIR/dry.txt` once showed another
+  app's private data in the transcript.
+- Clean up your own disk use. Keep goal scratch under
+  `~/.local/state/<repo>-goal-YYYY-MM-DD/` or a `mktemp` folder, and delete
+  its build output (`node_modules`, `target`, `.venv`) and finished
+  checkouts before the final report. Goal runs once left 40 GB of copies
+  and Rust targets there and filled the disk; dotfiles'
+  `agent-scratch-prune` is only the backstop.
+- Append a new row to an ordered golden list; inserting one mid-file
+  renumbered every golden after it.
+- A retro skill update covered by a standing approval is done in this
+  session (worktree, PR, merge), not filed as a task. A memory saying the
+  sandbox blocks the repo is a claim: try the write first.
 
 ## Mid-goal changes
 
@@ -247,3 +302,101 @@ start it again after the edits; never report its result for the new code.
   the window, denominator, unit, comparator and threshold; print the revised
   criterion for the checker. Native condition synchronization needs a supported
   accepted operation and readback. Otherwise report that binding unverified.
+
+## Hardware, connectors and demo video
+
+- Hardware goal: probe the transport (BLE, classic, USB) and the device's real
+  ID (vendor/product ID, the user's own name for it) before you pick a tool,
+  for example `system_profiler SPBluetoothDataType`. Match by ID.
+- A connector reconnect runs at turn end. Re-check its status next turn before
+  you call it fixed.
+- Demo video: record the live, signed-in tab with CDP `Page.startScreencast`. A new
+  `recordVideo` context loses the session.
+- Turn on the app's live refresh first, or the video shows stale state.
+- Frames arrive only when the page changes. Rebuild a fixed frame rate and cap
+  idle gaps (about 1 s).
+- Playwright's bundled ffmpeg has no `concat`/`image2` demuxer and no H.264.
+  This works: `cat frames/*.jpg | ffmpeg -f image2pipe -framerate 5 -c:v mjpeg -i pipe:0 -c:v libvpx-vp9 -pix_fmt yuv420p out.webm`.
+- Read a few frames from the output before you report the video done.
+
+## Hosted checks
+
+- When hosted checks exist, they are the gate. Wait for every check. Never
+  merge on a pending or red one, also with a green local gate.
+- A test that fails only on the clean runner has a hidden need: a tool, a
+  shell, a config file, or another operating system.
+- Read the job log first. `gh api repos/<o>/<r>/actions/jobs/<id>/logs`
+  works while the run goes on.
+- Reproduce it locally with `env -i` and a minimal `PATH` before a fix.
+- The runner also adds things. Read each `env:` block of the workflow (file,
+  job and step level) and set every variable in the local run, plus the
+  runner's own `CI=true` and `GITHUB_ACTIONS=true`: one `DOTFILES_CI=1` there
+  turned off the checks that some doctor tests assert. Use a clean git
+  config too (`GIT_CONFIG_GLOBAL=<file with only a name and an email>`,
+  `GIT_CONFIG_NOSYSTEM=1`): other tests needed `init.defaultBranch`.
+- A blocker you handed to another session is still yours. When its next
+  note brings no fix, tell that session you take the blocker back, then read
+  the log and reproduce the failure yourself. Tell that session what you
+  fixed, so it does not open a second fix.
+- A job that fails before your tests start (a package install, a DNS error
+  such as `Temporary failure resolving`) is a runner outage, not your change.
+  The log proves it: quote the failing step and line. Start the failed job
+  again once. If it fails the same way, do not keep waiting: in the same pull
+  request, remove the need for the failing service (install the tool from
+  its source repo, or add a second registry as a fallback), and say so in
+  the body. One goal lost 90 minutes and five runs to a package-server DNS
+  outage before two small workflow edits made both gates pass.
+- A changed gate still has to pass: the merge waits for the green run of
+  the edited workflow. An outage never permits a merge on a red check.
+- Never push an empty commit to start a run again. Close and reopen the pull
+  request, or push the real fix.
+- A test of one operating system's feature runs only there
+  (`it.runIf(process.platform === "darwin")`). Never weaken its assertion.
+
+## Proof inputs and decided measurements
+
+- A criterion that promises "real data from this machine" needs inputs this
+  machine may not have: a record file that only newer installs write, an
+  account or cohort that is old enough, an event that only a fresh install
+  sends. Check each input at intake, read-only, before you print the
+  contract. For each proof, the contract says which kind it is: real data
+  now, a fixture or scratch run, or real data after a named date or event.
+  Never create the missing record or send invented events to fill a chart.
+  Offer, as a suggestion, a measurement that every install can produce.
+  One goal promised six dashboard tiles with real data; this machine had no
+  install record and no install was 14 days old, so three tiles stayed empty.
+- A measurement with a registered line stops when the verdict is decided.
+  When the line is "0 false alarms" and one run is a false alarm, more runs
+  cannot change the verdict. Stop it, report the partial counts as measured,
+  and apply the registered pivot. This matters most in a shared queue: an
+  exclusive timing run holds every other project's work behind it.
+
+## Borrowed sessions and guards the gate skips
+
+- Some proofs read a live store through a borrowed session: a signed-in
+  browser tab, a connector, a token that expires. A long goal can lose that
+  session before its end. Read each row back and quote it in the chat
+  as soon as its data exists, with the time of the read. Probe the session
+  again before the last criterion. When it is gone, try each allowed route
+  once (another browser the rules allow, the store's own CLI). If none is
+  signed in, the read is a human step: say which window to open or where to
+  sign in, keep the criterion unverified, and finish every other part. Never
+  present rows from an earlier read as the fresh final read, and never sign
+  in with a password yourself. One goal left its dashboard read-back for the
+  end; by then the browser extension had dropped, and two other browsers
+  showed the login page.
+- A changed-files gate can skip the guards for the files you changed. Before
+  you push a change to a task queue, an agent guide, or a rules file, find
+  the repo tests that read that file: `rg -l "<file name>" tests src`. Then
+  run them by name. They hold size budgets, allowed field values and
+  required fields.
+  Then merge the base branch and run them once more, because another
+  session's push can break the same guard. In one goal the local gate passed
+  three pushes that the hosted check then failed. The causes: an agent guide
+  131 bytes over its budget, a task field outside the allowed list, and task
+  fields nested one level too deep. Each miss cost a hosted round of 6 to 20
+  minutes.
+- When you stop a worker, its queued and running jobs stop with it. Before
+  you stop one, list its jobs in the shared queue. After, start again each
+  job you still need, in the background, or the branch waits on a job that
+  no longer exists.

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] — Unreleased
 
+### Added
+
+- Org log sink: `~/.config/agentbrew/telemetry-sink.json` routes telemetry events
+  to a Splunk HEC endpoint or a local file instead of PostHog, with managed
+  consent and optional forwarding of agentbrew's own error log lines.
+  See `docs/observability.md` "Org log sink".
+
 ### Removed
 
 - The `learn-project` skill, its `stage-learn-sources` script, and its guide
@@ -22,8 +29,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changes a row, when a row needs the user, and at end of day; `dashboard.statusPath` still updates on
   every row change.
 
+### Changed
+
+- The saved-time estimate is more exact in two cases. A `--only` sync counts
+  only the detected agents its modules write to, not all detected agents. A
+  repair that fixed some items but left drift records the fixed items times
+  5 seconds, not 0. A sync that changes no file still counts as a full sync:
+  the sync modules do not report that, so it stays a known limit in
+  `docs/observability.md`.
+- The saved-time estimate for a repair drops from 60 to 5 seconds per fixed
+  drift item. The sync estimate does not change. Both are now set
+  from a Keystroke-Level Model of the hand work (`src/core/klm.ts`): modelled,
+  not timed with people. `docs/observability.md` shows the method and table.
+
 ### Added
 
+- Telemetry shows how long a new install takes. The first finished `scripts/install.sh run`
+  on a machine writes one `install` event (`ms`, `ok`): the time to the end of its
+  `agentbrew status --ci` check, in whole seconds, and whether that check was clean.
+  The time is sent either way, so read the median over `ok` installs. A re-run records none. It is sent as
+  `agentbrew.install` with `duration_ms` only after a yes; `--no-telemetry` sends
+  nothing. An install that fails and rolls back records none.
+- Telemetry shows how much agentbrew helps. A `sync` event has `agents` (how
+  many agents are detected on this machine, the set a sync targets) and `secondsSaved`; a `repair` event has
+  `secondsSaved`. The estimate for each synced agent is 3 seconds, and for each repaired
+  drift item 60 seconds, against editing each agent's config by hand; a
+  failed run saves 0. The opt-in request sends them as `agents` and
+  `seconds_saved`: numbers only. `agentbrew metrics` prints the local sum as
+  "Estimated time saved". The docs no longer call the dashboard public or the
+  project key absent.
+
+- `npm run perf:gate` fails a PR that makes a tracked command more than 10%
+  slower than the merge-base, or slower than its ceiling in
+  `scripts/perf-budget.tsv`. It times `agentbrew --version`, `--help`,
+  `actions --json`, and the hook checks that run on agent Bash calls, in both
+  trees in the same run. `npm run verify` and `npm run verify:changed` run it.
+  A command counts as slower only when the paired back-to-back runs agree
+  with the two minimums, so a busy machine does not fail a clean PR.
+  A stale allow line does not stop a docs-only PR, and a ceiling that the
+  base breaks too shows as `over-ceiling-at-base`.
+- Anonymous performance telemetry, asked at install; on only after you say
+  yes (Enter counts as yes). The installer's last step shows what is sent, one
+  example event, and the privacy promise, then asks `[Y/n]`. It asks only when
+  a project key is present. Every command run
+  records one content-free `command` event (top-level command name, duration,
+  ok). A command sends at most once a day to PostHog EU, with a
+  3-second limit, in a separate process that the command does not wait for
+  (never after `--json`, a completion, or a hook). `agentbrew telemetry off`, `--no-telemetry`,
+  `AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` stop it;
+  `agentbrew telemetry status` and `send --dry-run` show what happens.
+  A yes covers only later events. PostHog sees the request IP address like
+  any web server; GeoIP is off and no location is stored. The
+  default project key file holds the write-only project key since 2026-11-10. This replaces
+  the owner-key opt-in. See README "Telemetry".
+- The event log (`events.jsonl`) has a size cap: over 2 MiB it is cut to its
+  newest 1 MiB, in whole lines.
 - `/work` lists each app checkout a plugin works with (from its Agentfile paths and `workCheckouts:`) in `repoWatch.checkouts` and fast-forwards them before the first step (#600).
 - The wrap-up skill's `open-work.sh` tags a branch whose added lines are
   already on the default branch (90% or more, `OPEN_WORK_LANDED_PCT`) as

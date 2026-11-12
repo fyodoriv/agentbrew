@@ -110,6 +110,27 @@ describe("agentbrew metrics", () => {
     }
   });
 
+  it("prints the estimated time saved from the event log, for the window only", async () => {
+    const home = fakeHome();
+    const logs = join(home, ".local", "share", "agentbrew", "logs");
+    mkdirSync(logs, { recursive: true });
+    writeFileSync(
+      join(logs, "events.jsonl"),
+      [
+        { ts: "2026-10-15T10:00:00.000Z", event: "sync", ok: true, agents: 4, secondsSaved: 12 },
+        { ts: "2026-10-15T11:00:00.000Z", event: "repair", ok: true, repaired: 2, secondsSaved: 120 },
+        { ts: "2026-09-01T10:00:00.000Z", event: "repair", ok: true, repaired: 9, secondsSaved: 540 },
+      ]
+        .map((e) => JSON.stringify(e))
+        .join("\n"),
+    );
+    const metrics = await collectUsageMetrics({ home, env: {}, nowMs: NOW, days: 30, perfScript: "missing.mjs" });
+    expect(metrics.gains).toEqual({ available: true, secondsSaved: 132 });
+    expect(renderUsageText(metrics)).toContain(
+      "Estimated time saved, last 30 days: 2 min (sync: 3 s per agent; repair: 5 s per fixed item)",
+    );
+  });
+
   it("reports missing data instead of failing on a fresh machine", async () => {
     const home = mkdtempSync(join(tmpdir(), "agentbrew-metrics-empty-"));
     roots.push(home);
@@ -117,6 +138,8 @@ describe("agentbrew metrics", () => {
     expect(metrics.agentTime.available).toBe(false);
     expect(metrics.hooks.available).toBe(false);
     expect(renderUsageText(metrics)).toContain("no data yet");
+    expect(metrics.gains).toEqual({ available: false, secondsSaved: 0 });
+    expect(renderUsageText(metrics)).toContain("Estimated time saved: no data yet");
     expect(renderUsageShare(metrics, undefined)).toContain("No data.");
   });
 

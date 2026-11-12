@@ -49,6 +49,7 @@
     "verify": "bash scripts/verify.sh",
     "checkup": "bash scripts/checkup.sh",
     "verify:changed": "bash scripts/verify-changed.sh",
+    "perf:gate": "node scripts/perf-gate.mjs",
     "measure:context": "tsx src/cli.ts measure context",
     "audit:context-tree": "bash scripts/audit-context-tree.sh",
     "release": "bash scripts/release.sh",

@@ -103,7 +103,7 @@ RETRO_STEP=" The retro's skill updates are in scope for every goal, including ru
 if [ -n "$SOURCE_DIR" ]; then
   RETRO_STEP="$RETRO_STEP (its source: $SOURCE_DIR; change it in a worktree of that repo)"
 fi
-RETRO_STEP="$RETRO_STEP. When a skill source is read-only for you (by your rules or the sandbox), do not edit it: record the update as a task in a repo you can write, and cite that task id"
+RETRO_STEP="$RETRO_STEP. With a standing approval for retro updates, ship each one in this session (worktree, gate, PR, merge). A memory or note that says a repo is read-only is a claim: try the write first. Only when a write you tried fails, record the update as a task in a repo you can write and cite it with the error: task <id>, write failed: <error>"
 if [ -n "$SESSION_ID" ]; then
   RETRO_STEP="$RETRO_STEP. Save the Skills updated list with Write to $STATE_DIR/$SESSION_ID.retro.md (pre-approved): one line per skill used with its commit SHA, PR, or task id; the session cannot end until every skill used has one"
 fi

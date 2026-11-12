@@ -2,6 +2,7 @@ import { join } from "node:path";
 import chalk from "chalk";
 import { AgentBrewError } from "./core/errors.js";
 import { recordEvent } from "./core/events.js";
+import { repairGain } from "./core/gains.js";
 import { logSkipped } from "./core/logger.js";
 import type { DriftItem } from "./drift.js";
 import {
@@ -257,6 +258,7 @@ async function runFix(started: number): Promise<void> {
     driftBefore: driftBefore.length,
     repaired: repaired.length,
     remaining: remainingItems.length,
+    ...repairGain(repaired.length),
     types: remainingItems.map((d) => d.type),
   });
 

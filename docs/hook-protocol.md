@@ -254,7 +254,21 @@ contract file exists, it blocks Stop until `<session_id>.retro.md` has one
 line per skill used (each `Skill` call, plus each `skills/<name>/SKILL.md`
 read, plus `run-goal`) with a commit SHA, a PR, an issue, or `task`.
 PRs and issues can use `#123` or their numeric `/pull/123` and `/issues/123`
-URLs. This checks evidence syntax, not remote existence. A line that says
+URLs. This checks evidence syntax, not remote existence. A skill the host
+app serves (for example `artifact-design` from the Claude app) has no
+source on the machine, so no update is possible. Its line
+`<skill>: host-served, no source` passes only when no `<skill>/SKILL.md`
+exists in any skills folder (`~/.*/skills`, `~/.config/*/skills`, the
+Claude app's skills folder, agentbrew's installed skills, plugin skills
+under `~/.claude/plugins`, and the session folder's `.claude/skills` and
+`.agents/skills`; `RUN_GOAL_SKILL_DIRS` replaces this list). An owned
+slash command is a source too: `<skill>.md` in `~/.*/commands`,
+`~/.config/*/commands`, the session folder's `.claude/commands`, or a
+plugin's `commands/` under `~/.claude/plugins` (for example `ship-it`).
+Command folders are searched at any depth, so `commands/team/deploy.md`
+counts for `team:deploy`. Symlinked plugin folders are followed. So
+is any `SKILL.md` the session read that exists, wherever it is. Before this,
+such a goal blocked three Stops and then gave up. A line that says
 no update was made ("no new edit", "already covers", and similar) does not
 count, even when it cites an old commit. A rule that also required a merged
 `run-goal` PR was removed: goal sessions in other folders cannot write the
@@ -383,3 +397,14 @@ Codex stores individual hook enable/disable preferences separately from the
 generated hook definitions. Sync must preserve these preferences and existing
 trust choices. Disable an incompatible legacy hook through Codex's native
 hook settings; do not trust it only to remove a review warning.
+
+## OpenCode hooks
+
+OpenCode has no hooks file. `agentbrew sync` deploys the `claude-hooks`
+plugin (`templates/opencode/claude-hooks.js`) to
+`~/.config/opencode/plugin/` when `~/.config/opencode` exists. The plugin runs
+the Claude Code hooks from `settings.json` with the same stdin JSON and verdict
+rules. The event map and limits are in
+[support-matrix.md](support-matrix.md#opencode-boundaries). A hook can check
+`CLAUDE_HOOKS_HOST=opencode` when it needs to act differently there. Tests:
+`src/opencode-hooks/claude-hooks.test.ts`.

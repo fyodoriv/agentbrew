@@ -178,6 +178,7 @@ default_plan() {
   cat <<'PLAN'
 lockfile-sync bash scripts/check-lockfile-sync.sh
 build-pipeline bash scripts/build-pipeline-guard.sh --full
+perf-gate node scripts/perf-gate.mjs
 typecheck npx tsc --noEmit
 biome npx biome check src scripts real-e2e --error-on-warnings
 lint-security bash scripts/lint-security.sh
@@ -194,6 +195,8 @@ knip npx knip --no-progress
 eval-agent-artifacts npm run --silent eval:agent-artifacts
 skills-coverage npm run --silent skills:coverage
 playwright-install npm run --silent playwright:install
+chat-rule-controls bash scripts/run-chat-rule-controls.sh
+chat-rule-schema-controls bash scripts/run-chat-rule-schema-controls.sh
 test-all npx vitest run
 install-e2e bash scripts/install-e2e-if-needed.sh
 PLAN

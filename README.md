@@ -87,7 +87,7 @@ Something breaks silently: nobody notices until a tool stops working.
 
 <!-- proof:start -->
 Every number below comes from `docs/proof/metrics.json`. `npm run docs:proof` writes that file and this section.
-Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). Nothing is uploaded; each machine aggregates its own log.
+Each headline row is a field outcome: `real use` numbers come from the local, content-free event log that every real `agentbrew sync` and scheduled repair writes ([`docs/observability.md`](docs/observability.md)). The proof reads each machine's own log; the same log feeds the anonymous [telemetry](#telemetry).
 
 | Claim | Theory | Metric | Result | Source |
 |---|---|---|---|---|
@@ -126,6 +126,72 @@ pie title Drift items found by scheduled repair
 ```
 <!-- proof:end -->
 
+## Telemetry
+
+agentbrew can send anonymous performance numbers to PostHog EU. You are asked at install; it is on only after you say yes (Enter counts as yes).
+The maintainer reads the totals and averages (the dashboard is private) and uses them to catch a slow release.
+
+**The question.** The installer asks it last, in your terminal: "Share anonymous performance numbers? [Y/n]". It shows what is sent, one example event, and the privacy promise first. It is asked only when a project key is present. A write-only project key ships in the repo. With none (a fork that empties the key file) nothing can be sent, nobody is asked, and the installer prints nothing about telemetry. With no terminal (an agent or a script runs the install) it asks nothing and nothing is sent; the next command you run in a terminal asks, and there only a typed `y` or `n` counts. That question never follows `--help`, `--version`, completion, or `--json` output. Unanswered, it comes back at most once a day and at most 3 times; after that only `agentbrew telemetry ask` shows it. A re-install or an update never asks again and never changes your answer; only `--no-telemetry` (or an opt-out variable) at a re-install turns a yes into a no. A yes covers only what happens after it: nothing recorded before the yes is sent.
+
+**What is sent.** The command name, its duration, ok or error, counts, the agentbrew version, your OS and CPU type, and a random install id. A sync also sends `agents` (how many agents are detected on this machine, the set a sync targets; 0 when the sync stopped before a deploy step; a number, never a name). A sync or repair also sends `seconds_saved`, an estimate (see "How much it helps" below). A finished install sends one `install` event: `duration_ms` (the time to a clean `agentbrew status --ci`, in whole seconds) and `ok`, nothing else. One event per command run, sync, scheduled repair, error, and finished install:
+
+```json
+{
+  "event": "agentbrew.command",
+  "distinct_id": "<random install id>",
+  "timestamp": "2026-11-09T11:00:00.000Z",
+  "properties": {
+    "ok": true,
+    "command": "sync",
+    "duration_ms": 1840,
+    "app_version": "1.0.0",
+    "os": "darwin",
+    "arch": "arm64",
+    "runtime": "ts",
+    "$geoip_disable": true,
+    "$process_person_profile": false
+  }
+}
+```
+
+**The privacy promise.** Never a path, file name, host name, user name, argument, message, or content. No IP-based location. No person profile. PostHog sees the IP address of each request, like any web server. The location lookup (GeoIP) is off, and no location is stored. Every name that is sent (command, error code, sync module, drift type) comes from a fixed list in the code. The code that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`.
+
+**Say no, or change your answer.** Any one of these:
+
+```bash
+agentbrew telemetry off                        # records no; `agentbrew telemetry on` records yes
+bash scripts/install.sh run --yes --no-telemetry   # records no at install, with no question
+export AGENTBREW_TELEMETRY=0                   # at install: records no. Later: blocks every send
+export DO_NOT_TRACK=1                          # the same; any value except empty or 0
+```
+
+Nothing is sent when `CI` is set, or when no project key is present. A send happens after a command (not after one with `--json`, a completion, or a hook), at most once a day, in a separate process that the command does not wait for; it gives up after 3 seconds. A failed or hung send never fails or slows a command.
+
+**Inspect it.**
+
+```bash
+agentbrew telemetry status           # on or off, the reason, your answer and its date, the key source, pending events, last send
+agentbrew telemetry send --dry-run   # the exact next request body, key hidden; sends nothing
+```
+
+**How much it helps.** The baseline is a person who has several AI coding agents and edits each agent's config by hand. agentbrew estimates the time it saves against that baseline:
+
+| Action | Estimate |
+|---|---|
+| One sync that works | 3 seconds for each agent detected on this machine |
+| One repair | 5 seconds for each drift item it fixed |
+| A sync that fails | 0 |
+
+Saved time is an estimate, chosen low, and modelled (Keystroke-Level Model), not timed with people; the method is in [`docs/observability.md`](docs/observability.md#how-the-estimate-is-modelled). Durations are measured. A `--only` sync counts only the agents its modules write to, and a repair counts every item it fixed. A sync that changes nothing counts the same as a full sync, because the sync does not report "nothing changed", so the number is a rough estimate. See the estimate for this machine (it reads the local event log and uploads nothing). The event log keeps about its newest 1 MiB, so the sum for a long window can be a lower bound.
+
+```bash
+agentbrew metrics --days 30   # prints "Estimated time saved, last 30 days: N min (...)"
+```
+
+**Org sink.** A company overlay can send the events to its own log system instead of PostHog (and, when it turns it on, agentbrew's own error log lines) with one settings file, `~/.config/agentbrew/telemetry-sink.json`. Error log lines go only to that org sink, never to PostHog. See [Org log sink](docs/observability.md#org-log-sink).
+
+Full contract: [`docs/observability.md`](docs/observability.md#field-telemetry).
+
 ## Personal and corporate machines
 
 agentbrew works the same way on both. What changes is what a company plugin adds and where your data may go.
@@ -134,7 +200,7 @@ agentbrew works the same way on both. What changes is what a company plugin adds
 |---|---|---|
 | Setup | this repo and your own Agentfile | the same, plus your company's signed plugin (`agentbrew-<org>`) |
 | Company content | none | only from the company plugin: its skills, rules, MCP servers, and hooks. This public repo never names a company |
-| Your data | stays on this machine; agentbrew has no server and sends nothing anywhere | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
+| Your data | stays on this machine; agentbrew has no server. It sends only the anonymous [telemetry](#telemetry) numbers, and only after you say yes | the same. **Company names and internal links stay private**: they live only in the plugin and in a local pattern file, and leak gates block a push or a GitHub post that holds one |
 | Plugin trust | none needed | signed tags only, and each capability is denied until the plugin declares it ([Company plugins](#company-plugins)) |
 
 **Corporate plugins.** A company plugin is a private repo named `agentbrew-<org>`. Its companions are `careerbrew-<org>` (career workflows) and `dotfiles-<org>` (machine setup). To find yours, ask your team for its `agentbrew-<org>` link, or run `agentbrew plugin list` on a machine that already has it. To build one, run `agentbrew plugin new <dir> --name <name>` and read [Company plugins](#company-plugins).
@@ -352,6 +418,8 @@ Dirs from other Agentfiles or added by hand are never removed. State written bef
 **Default model.** `defaultModel` deploys one model id to every detected agent that has a file-managed model setting: Claude Code (`~/.claude/settings.json` `model`) and Codex (`~/.codex/config.toml` `model`). `modelOverrides` handles per-agent differences: a string swaps in that provider's id for the same model. `null` skips the agent (useful when a model isn't available on that agent's provider/gateway yet — drop the override line once it is).
 
 `defaultEffort` is written next to the model for agents that keep reasoning effort in its own key: Claude Code (`effortLevel`) and Codex (`model_reasoning_effort`). A skipped agent keeps its own effort too. `agentbrew init` writes the recommended default — `claude-opus-5-5` at `xhigh` effort, with Codex skipped — into a new Agentfile unless the machine already has a `defaultModel`.
+
+OpenCode's local Ollama bootstrap is separate from `defaultModel`. On V2 it writes `providers.ollama` with `reasoning_effort: "none"` for the selected model and removes the legacy provider and implicit small-model selection, so Qwen3 does not spend the readiness budget on reasoning or an implicit secondary model. On machines with at least 32 GB of memory it sets Qwen3's 40,960-token context and a 4,096-token output default; smaller-memory profiles keep their lower context bound. Automatic compaction is off for Qwen3 because the fixed instructions and tools can trigger a character-based compaction estimate in a fresh session; manual compaction remains available. Existing output limits, non-Qwen models, and other compaction choices are preserved. V1 keeps its existing provider shape.
 
 Drift-repair re-applies the default every 30 minutes, so a manually flipped model reverts on the next tick. Before that tick, `agentbrew status` lists the agent as `models` drift with the expected model, and `agentbrew status --fix` repairs it; agents are set-when-present, meaning removing `defaultModel` from the Agentfile stops managing models without rewriting anything.
 
@@ -591,9 +659,9 @@ agentbrew status --ci --ignore-session-env  # for health checks run by an agent
 
 **Agent-session env.** `env-hygiene` drift flags vars such as `CLAUDECODE` that leak into child agent sessions. An agent session (for example Claude Code) sets `CLAUDECODE` in its own child processes. So when an agent runs `agentbrew status`, `CLAUDECODE` is in the process env, but that is not machine drift. If the caller is an agent session (`CLAUDECODE` set and no tty), or you pass `--ignore-session-env`, status prints it as a `warning:` line and does not count it as drift. If a shell startup file (`~/.zshrc`, `~/.zprofile`, `~/.bashrc`, and similar) exports `CLAUDECODE`, it is still drift: that file leaks the var into every session.
 
-Every drift item ends with its fix (`— fix: <command>`). Each sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (`AGENTBREW_EVENTS=0` turns it off). Nothing leaves the machine unless you opt in by setting a PostHog key: then `agentbrew telemetry` sends these same lines once a day as anonymous counts (`agentbrew telemetry status`, `off`, `send --dry-run`; `DO_NOT_TRACK=1` also stops it). See [`docs/observability.md`](docs/observability.md).
+Every drift item ends with its fix (`— fix: <command>`). Each command run, sync, scheduled repair, and error also adds one content-free line to `~/.local/share/agentbrew/logs/events.jsonl` (`AGENTBREW_EVENTS=0` turns it off; the file is cut to its newest 1 MiB when it passes 2 MiB). These lines feed the anonymous [telemetry](#telemetry). See [`docs/observability.md`](docs/observability.md).
 
-When the global CLI runs from a git checkout (for example after `npm link`), `agentbrew status` also checks that its `dist/` is current. Each build writes `dist/build-info.json` with the commit it came from. If the checkout later moved to a commit that changes `src/`, `templates/`, `package.json`, `package-lock.json`, or `tsup.config.ts`, status reports `CLI build: stale` with the rebuild command. `agentbrew status --fix` rebuilds in place.
+When the global CLI runs from a git checkout (for example after `npm link`), `agentbrew status` also checks that its `dist/` is current. Each build writes `dist/build-info.json` with the commit it came from. If the checkout later moved to a commit that changes `src/`, `templates/`, `package.json`, `package-lock.json`, or `tsup.config.ts`, status reports `CLI build: stale` with the rebuild command. `agentbrew sync` prints the same warning before its status line or any sync work. Sync help and invalid options do not run that status check. The warning needs a build that includes this check; rebuild an older CLI once to enable it. `agentbrew status --fix` rebuilds in place.
 
 The `Auto-repair` line in `agentbrew status` shows what the scheduler really does, not only whether its file exists. It says `active` only after a successful run in the last 90 minutes. Other states:
 
@@ -770,7 +838,7 @@ whole calls; they do not prove polling or identify timeout causes.
 
 ### One local metrics report
 
-`agentbrew metrics` puts agent tool time, hook blocks and warnings, and MCP health from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers.
+`agentbrew metrics` puts agent tool time, hook blocks and warnings, MCP health, and the [estimated time saved](#telemetry) from the last 7 days in one report. It reads only local logs and uploads nothing. `--days N` changes the window, and `--json` prints raw numbers.
 
 `agentbrew metrics --share metrics.md` writes an aggregate-only Markdown snapshot to attach to an issue or PR. The snapshot has no project names, paths, session ids, prompts, hook reasons, MCP server names, or hook ids from private overlays.
 
@@ -902,7 +970,7 @@ Each column is a sync module. ✓ means `agentbrew sync` writes to that surface 
 | goose | ✓ | ✓ | ✓ | — | — | — | — |
 | kilo | ✓ | — | ✓ | — | — | — | — |
 | kiro | ✓ | ✓ | — | — | — | — | — |
-| opencode | ✓ | ✓ | — | ✓ | — | — | — |
+| opencode | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | roo-code | ✓ | ✓ | ✓ | — | — | — | — |
 
 ### SKILL.md feature support
@@ -1013,6 +1081,9 @@ agentbrew hook install --shell         Install shell hook for project detection
 agentbrew upgrade [--check]            Check for / install CLI updates
 agentbrew env {check|sanitize}         Review env vars that could leak across sessions
 agentbrew completions                  Shell completions (bash, zsh, fish)
+agentbrew telemetry status|on|off|ask|send [--dry-run]
+                                       Anonymous performance numbers, only after you say yes;
+                                       send --dry-run prints the exact body
 agentbrew metrics [--days N] [--json] [--share [file]]
 agentbrew metrics share [--dry-run] [--send] [--sink dir:<path>|git:<path>|none] [--schedule weekly|off]
                                        Local agent time, hook, and MCP metrics;
@@ -1083,6 +1154,7 @@ npm run typecheck && npm run lint      # tsc + biome + lint guards
 npm run lint:changed                   # biome on changed files only (inner loop)
 npm run verify:changed                 # inner-loop gate: only the checks the diff can break
 npm run verify                         # full gate: build smoke + typecheck + lint + tests
+npm run perf:gate                      # fail when a tracked command got over 10% slower than the merge-base (part of both gates)
 npm run build                          # deps drift guard + tsup → dist/ + CLI smoke
 npm run verify:build-pipeline          # npm ls + build + dist/cli.js --version
 npm run lint:rules                     # Minsky rule checks on this repo (part of verify)
@@ -1170,9 +1242,9 @@ reviewed ledger and passing gates.
 
 ### How `main` health is checked
 
-GitHub Actions is off for this repo, so there is no CI badge. `main` is healthy when the local gates pass on it:
+GitHub Actions runs the full gate on every pull request and on every push to `main` ([`docs/ci.md`](docs/ci.md)). The same gates run locally:
 
-1. `npm run verify` is the full gate. Every PR runs it before merge.
+1. `npm run verify` is the full gate. The hosted check runs it on every PR; merge only when it is green. Locally, iterate with `npm run verify:changed`.
 2. `npm run checkup` lists your open PRs and unmerged branches first (finish them before new work), then runs the doctor (`agentbrew status --ci`), the cached gate, metrics, and a speed review. It ends with a local HTML page, `.metrics/checkup.html` (the verdict, the blockers, and what to do next). Run it on a fresh `main` checkout after a burst of merges, or monthly. On supported installs, the checkup shows the previous completion time and checked commits, then records the current result. Use `agentbrew checkup-run show agentbrew` to read the last record.
 
 `npm run lint` and `npm run verify` also fail on repo-root `=...` files, which usually come from unquoted shell package constraints. Quote Python specs in docs or setup commands, for example `pip install 'package>=1.2.3'`.
@@ -1189,8 +1261,10 @@ High-risk artifacts need deterministic tests, behavioral evals, or an exemption 
 `npm run build` fails before `tsup` when `node_modules` has drifted from `package-lock.json`, with the remediation `deps out of sync — run npm ci`. After `tsup`, the postbuild guard runs `node dist/cli.js --version` so CI catches missing or unrunnable CLI output instead of leaving `bin/agentbrew` to fall back to source execution later.
 
 Apple Silicon source builds use installed Cargo, including ordinary Rustup
-and Homebrew locations outside PATH. Without Cargo, they use the source-bound
-checked-in native pair through the same staged atomic publisher. They never
+and Homebrew locations outside PATH. Without Cargo, or when Cargo cannot
+compile or link the helper, they use the source-bound checked-in native pair
+through the same staged atomic publisher. A linker failure warns that an
+unreadable SDK may be the cause and names `SDKROOT` as the override. They never
 reuse an unverified Cargo target or silently omit native checkup records.
 [Installation behavior](INSTALL.md) explains refusal and recovery;
 [the prebuilt plan](docs/plans/source-build-prebuilt-764.md) records the build,
@@ -1232,7 +1306,7 @@ Unavailable marketplace metadata is not proof that a mod was retired.
 
 ### Publishing to npm
 
-The `Auto-release` workflow bumps the patch version on `main`, commits `release: vX.Y.Z [skip ci]`, and pushes a tag. It runs on pushes to `main` and on `workflow_dispatch`. GitHub Actions is disabled on `fyodoriv/agentbrew` today, so the workflow does not run. **npm publish is manual** (2FA OTP + maintainer credentials).
+The `Auto-release` workflow bumps the patch version on `main`, commits `release: vX.Y.Z [skip ci]`, and pushes a tag. It starts only by hand (`workflow_dispatch`), never on a push, and only when GitHub Actions is on for the repo. **npm publish is manual** (2FA OTP + maintainer credentials).
 
 ```bash
 npm login                              # once per machine — npm whoami to verify

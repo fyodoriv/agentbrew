@@ -57,6 +57,24 @@ Contents: Starting workers · Steering running agents · Files the main session 
 - A guard that caps subagent depth at 1 stops a worker from starting its own
   reviewer. Check the cap first; when it blocks, review the diff yourself
   and say so in the merge evidence.
+- The agent-usage-guard also caps agent starts per 10 minutes on the whole
+  machine (`AGENT_GUARD_ROLLING_MAX`, 12 by default). Read the live cap
+  before you plan:
+  `jq -r '.env.AGENT_GUARD_ROLLING_MAX // "12"' ~/.claude/settings.json`.
+  Every workflow agent, reviewer, fixer, and re-review counts. Before a
+  fan-out, count the agent starts it plans, add the re-reviews that fix
+  rounds will need, and keep the total well under the cap. Leave headroom
+  for later reviews. Use one reviewer for several small PRs (for example,
+  up to 4 docs or test-only diffs per reviewer) instead of one reviewer per
+  PR. If the plan still does not fit, run it in waves 10 minutes apart. In
+  one run, a review workflow plus a fix workflow used every start the cap
+  allowed, and the guard refused a fixer's re-review and a later review
+  with "agents started on this machine". Nobody can approve that in a
+  `/goal` run. The guard also has a session fuse: if it refuses agent
+  calls 5 times within 10 minutes, it pauses every agent spawn in that
+  session for 10 minutes. So after the first refusal, stop or cancel the
+  rest of the fan-out, and do not retry at once: wait for the 10-minute
+  window to roll.
 - A worker whose reviewer hits a usage limit and merges after a self-review
   has not been reviewed. Run a fresh-context review of the merged commit
   yourself, and fix what it finds in a follow-up PR. In one run, both
@@ -141,7 +159,10 @@ Contents: Starting workers · Steering running agents · Files the main session 
   eval id from `origin/main`'s max at that moment: outside sessions take ids
   too, and four PRs in one run collided on ids 128 to 131.
 - A gate whose base moved during the run cannot count. Stop it at once to
-  free the lock, merge main, and queue it again.
+  free the lock, merge main, and queue it again. When the default branch
+  moves under several open PRs, each one needs a new gate run: merge them in
+  dependency order, and tell every affected worker at once, with the new
+  base SHA.
 - Trust the gate's exit status, not its last line. One run printed
   "verify: passed" and exited 1; a clean rerun was needed before the push.
 
@@ -185,6 +206,10 @@ in another. Another unreviewed PR had a high-severity trust bypass. Before
 you count a fix as done, read the review's output yourself, not only the
 worker's report. If no review ran, run one now. If the PR already merged,
 review the merged diff and send each finding back as a new fix round.
+
+Review rounds on one PR must converge. After the second fix round, tell the
+worker that the next round is the last, and that every finding still open
+becomes a task in the same PR.
 
 A worker that ends its turn while its gate waits in the `heavy-run` queue
 shows as "completed", but its last line says it is waiting. That is not a

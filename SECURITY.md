@@ -52,6 +52,26 @@ It is public. The repo has a strict **no-leak** contract: no details of
 private internal infrastructure, no hardcoded secrets, and no private
 email identities may ever reach it.
 
+### Telemetry
+
+agentbrew sends anonymous performance numbers only after the user says yes to
+a question at install (Enter counts as yes). Never a path, file name, host
+name, user name, argument, message, or content. No IP-based location. No
+person profile. PostHog sees the IP address of each request, like any web
+server; the location lookup (GeoIP) is off, and no location is stored. `agentbrew telemetry off`, `--no-telemetry`,
+`AGENTBREW_TELEMETRY=0`, `DO_NOT_TRACK=1`, and `CI` each stop it. The code
+that enforces this is `src/core/events.ts` and `src/core/telemetry.ts`. The
+question, every field, and every off switch:
+[`docs/observability.md`](docs/observability.md#field-telemetry). Report a
+field that should not be sent as a vulnerability.
+
+An org overlay can route these events to a company log system with
+`~/.config/agentbrew/telemetry-sink.json`, and can switch on forwarding of
+agentbrew's own error log lines. Those lines are new content: they go only to
+that org sink, with URL credentials hidden and the home path shown as `~`,
+never to PostHog. The file's rules are in
+[`docs/observability.md`](docs/observability.md#org-log-sink).
+
 ### Contract
 
 Three independent leak categories are blocked:
@@ -74,7 +94,7 @@ Three independent leak categories are blocked:
 
 3. **Secret leaks** — hardcoded API keys, OAuth tokens, AWS keys,
    private keys. Caught by:
-   - GitHub secret scanning, and gitleaks in `.github/workflows/ci.yml`.
+   - GitHub secret scanning with push protection.
    - `~/apps/tooling/dotfiles/git-hooks/pre-commit` when `core.hooksPath`
      points at the dotfiles repo's hooks (recommended for any host that
      contributes).
@@ -83,15 +103,17 @@ Three independent leak categories are blocked:
 
 | Layer | Where | What it catches |
 |-------|-------|-----------------|
-| **L1** Secret scanning | GitHub secret scanning; gitleaks in `.github/workflows/ci.yml` | Secret-shaped tokens |
+| **L1** Secret scanning | GitHub secret scanning with push protection | Secret-shaped tokens |
 | **L2** Pre-commit hook | `~/apps/tooling/dotfiles/git-hooks/pre-commit` (global) | Content + secret + author-email on staged files (when wired) |
 | **L3** Pre-push hook | `~/apps/tooling/dotfiles/git-hooks/pre-push` (global) | Blocks a push to `github.com/fyodoriv/agentbrew` when any author or committer email matches the private-email pattern |
-| **L4** CI (GitHub Actions) | `.github/workflows/oss-readiness.yml` | Runs the no-internal-refs test and a private-email check on every PR |
+| **L4** CI (GitHub Actions) | `.github/workflows/oss-readiness.yml` | Runs the no-internal-refs test and a private-email check on every PR. A hosted runner has no private-pattern file, so there the test has no private pattern to match and the email check skips; the local L2/L3 gates stay the authority |
 
-GitHub Actions is disabled on `fyodoriv/agentbrew` today. The CI layers do
-not run. `npm run verify` is the local gate: it runs the no-internal-refs
-test, `scripts/lint-security.sh`, and the full test suite. Run it before
-every push.
+Hosted CI ([`docs/ci.md`](docs/ci.md)) runs `npm run verify` on every pull
+request. It cannot run the private-pattern gate: that pattern file lives
+only on the owner's machine and is never uploaded. So the leak
+check in [`docs/editing-rules.md`](docs/editing-rules.md) and the pre-push
+hook on your machine stay the authority for leaks. Run that leak check
+before every push.
 
 ### Private emails are blocked, never rewritten
 

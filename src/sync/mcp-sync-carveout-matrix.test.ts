@@ -86,7 +86,11 @@ const CARVEOUT_MATRIX: CarveoutRow[] = [
     // mcpConfig from the loaded def, it's the resolved path, not the
     // flag. The matrix pins the resolved path so a future change to
     // the VS Code settings location surfaces here.
-    expectedMcpConfig: "~/Library/Application Support/Code/User/settings.json",
+    // Linux keeps VS Code settings under ~/.config.
+    expectedMcpConfig:
+      process.platform === "darwin"
+        ? "~/Library/Application Support/Code/User/settings.json"
+        : "~/.config/Code/User/settings.json",
     expectedMcpKey: undefined, // default mcpServers
     expectedMcpFormat: undefined, // default JSON
   },

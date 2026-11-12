@@ -58,7 +58,7 @@ run_hook() { # $1 input json; prints stdout, sets RC file
 }
 
 # Session "long": an old slow turn, then a 6m40s turn.
-row long "old step" 900000
+row long "old step SYNTHETIC_PRIVATE_CANARY" 900000
 turn long
 row long "npm run verify" 240000
 row long "bats <path>" 130000
@@ -73,6 +73,8 @@ check "Test 1a (exit 0)" "$([ "$(cat "$TMP/rc")" = 0 ] && echo 0 || echo 1)"
 check "Test 1b (decision block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null && echo 0 || echo 1)"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
 check "Test 1c (reason lists steps and time)" "$(case "$REASON" in (*"6m40s in tools"*"npm run verify 4m0s, bats <path> 2m10s, git push 30s"*"Time review"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 1 action (fix and task policy)" "$(case "$REASON" in (*"Fix unblocked in-scope"*"user and repository task policy"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 1 privacy (no old canary)" "$(case "$REASON" in (*"SYNTHETIC_PRIVATE_CANARY"*) echo 1 ;; (*) echo 0 ;; esac)"
 check "Test 1d (reason ignores the previous turn)" "$(case "$REASON" in (*"old step"*) echo 1 ;; (*) echo 0 ;; esac)"
 
 # Test 2: stop_hook_active → silent (the loop guard).
@@ -111,6 +113,7 @@ OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"blocked","stop_hook_act
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
 check "Test 6a (3 blocked → block: $OUT)" "$(printf '%s' "$OUT" | jq -e '.decision=="block"' >/dev/null 2>&1 && echo 0 || echo 1)"
 check "Test 6b (reason lists blocked calls)" "$(case "$REASON" in (*"3 tool calls never ran"*"cd <path> 2x, Edit:ts 1x"*"split"*) echo 0 ;; (*) echo 1 ;; esac)"
+check "Test 6 action (fix and task policy)" "$(case "$REASON" in (*"Fix unblocked in-scope"*"user and repository task policy"*) echo 0 ;; (*) echo 1 ;; esac)"
 check "Test 6c (the call that ran is not listed)" "$(case "$REASON" in (*"npm test"*) echo 1 ;; (*) echo 0 ;; esac)"
 
 # Test 7: 2 blocked calls → silent; MIN_BLOCKED=2 → block.
@@ -125,6 +128,7 @@ attempt long "cd <path>" v2
 attempt long "cd <path>" v3
 OUT="$(run_hook '{"hook_event_name":"Stop","session_id":"long","stop_hook_active":false}')"
 REASON="$(printf '%s' "$OUT" | jq -r '.reason // ""')"
+check "Test 8 action (fix and task policy)" "$(case "$REASON" in (*"Fix unblocked in-scope"*"user and repository task policy"*) echo 0 ;; (*) echo 1 ;; esac)"
 check "Test 8 (time + blocked in one reason)" "$(case "$REASON" in (*"6m40s in tools"*"3 tool calls never ran"*) echo 0 ;; (*) echo 1 ;; esac)"
 
 # Session "dispatch": 4 background Agent launches (no completion row) and 1 denied call.

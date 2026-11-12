@@ -11,7 +11,7 @@
 # When it passes, it prints a verdict:
 # - "merge-ready": the diff touches only skill docs, evals, docs, rule
 #   templates, root *.md files, or the task queue. No full gate is needed.
-# - "run full npm run verify before merge": a hook, a skill script, or another
+# - "the hosted check must pass npm run verify before merge": a hook, a skill script, or another
 #   code path changed.
 #
 # Usage: bash scripts/verify-changed.sh [base-ref] [--dry-run]
@@ -63,7 +63,7 @@ verdict() {
   if [[ -z "$needs_full" ]]; then
     echo "verify:changed: merge-ready. The diff touches only skill, eval, docs, rules, or task-queue paths; no full gate is needed."
   else
-    echo "verify:changed passed. These code paths changed, so run full npm run verify before merge:"
+    echo "verify:changed passed. These code paths changed, so the hosted check must pass npm run verify before merge (run it here only when Actions is off):"
     sed 's/^/  /' <<<"$needs_full"
   fi
 }
@@ -217,6 +217,9 @@ if [[ "${#code_files[@]}" -gt 0 ]]; then
 else
   step npx vitest run "${unique_tests[@]}"
 fi
+
+# Tracked commands may not get slower (it skips a diff with no runtime path).
+step env PERF_GATE_BASE="$base_ref" node scripts/perf-gate.mjs
 
 # The install playbook drives the one-step install e2e (no-op for other paths).
 step bash scripts/install-e2e-if-needed.sh "$base_ref"

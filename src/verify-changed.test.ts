@@ -92,6 +92,8 @@ function executionRepo(): string {
   for (const name of ["lint-repo-artifacts", "install-e2e-if-needed"]) {
     writeFileSync(join(root, "scripts", `${name}.sh`), "#!/bin/sh\nexit 0\n");
   }
+  // The speed gate has its own tests (src/scripts/perf-gate.test.ts).
+  writeFileSync(join(root, "scripts", "perf-gate.mjs"), "");
   const npx = join(root, ".fixture-bin", "npx");
   writeFileSync(
     npx,
@@ -197,7 +199,7 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).toContain("  npx tsc --noEmit\n");
     expect(result.stdout).toContain("  env LINT_CHANGED_BASE=main bash scripts/lint-changed.sh\n");
     expect(result.stdout).toMatch(/^ {2}npx vitest related --run --passWithNoTests src\/feature\.ts /m);
-    expect(result.stdout).toContain("run full npm run verify before merge");
+    expect(result.stdout).toContain("the hosted check must pass npm run verify before merge");
   });
 
   it("runs neither the typecheck nor Biome for a shell script change", () => {
@@ -208,7 +210,7 @@ describe("verify-changed.sh", () => {
     expect(result.stdout).not.toContain("tsc --noEmit");
     expect(result.stdout).not.toContain("lint-changed.sh");
     expect(result.stdout).toMatch(/^ {2}npx vitest run /m);
-    expect(result.stdout).toContain("run full npm run verify before merge");
+    expect(result.stdout).toContain("the hosted check must pass npm run verify before merge");
   });
 
   it("calls a skill, eval, docs, and task-queue diff merge-ready", () => {
@@ -220,7 +222,7 @@ describe("verify-changed.sh", () => {
     const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("merge-ready");
-    expect(result.stdout).not.toContain("run full npm run verify before merge");
+    expect(result.stdout).not.toContain("the hosted check must pass npm run verify before merge");
   });
 
   it("asks for the full gate before merge when a hook or skill script changes", () => {
@@ -228,7 +230,7 @@ describe("verify-changed.sh", () => {
       const root = repoWithChange(file);
       const result = spawnSync("bash", [SCRIPT, "main", "--dry-run"], { cwd: root, encoding: "utf8" });
       expect(result.status, result.stderr).toBe(0);
-      expect(result.stdout, file).toContain("run full npm run verify before merge");
+      expect(result.stdout, file).toContain("the hosted check must pass npm run verify before merge");
       expect(result.stdout, file).toContain(file);
       expect(result.stdout, file).not.toContain("merge-ready");
     }

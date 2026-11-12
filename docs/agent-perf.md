@@ -13,11 +13,13 @@ agents can see which steps are slow and which slow steps repeat.
 | Hook `perf-record-attempt` (PreToolUse, all tools) | Appends an attempt row before each tool call, so a call that never runs still counts. |
 | Hook `perf-record-denied` (PermissionDenied) | Appends a denied row when the auto mode classifier denies a call. |
 | `~/.config/agentbrew/scripts/agent-perf.mjs` | Reads the log: `report`, `brief`, `statusline`, `turn`. |
-| Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief as context. |
+| Hook `perf-brief` (SessionStart) | Gives the agent the project's 7-day brief and a safe iteration hint when data exists. |
 | Hook `perf-task-review` (Stop, opt-in) | Asks for a "Time review" after a long turn. Enable it in the hooks overlay `enabled:` list. |
 | Hook `poll-loop-hint` (PreToolUse Bash, opt-in) | Hints at a background run or a blocking wait when a command polls with a `sleep` loop. Enable it in the hooks overlay `enabled:` list. |
 | Claude Code `statusLine` | Shows session time, tool time, and the slowest step. |
 | Skill `perf-review` | Tells an agent how to read the report and when to file a speedup task. |
+
+The reviewer checks a fresh, input-bound required-gate result independently. If evidence or external inputs cannot be verified, the reviewer re-executes affected steps without that cache or reports blocked. A qualified pass need not be repeated unless the user or project requires an independent or uncached run.
 
 The hooks are on by default for Claude Code. They run with `async: true`, so
 Claude Code does not wait for them. They never block and never print. The
@@ -261,8 +263,8 @@ Both hooks are on by default for Claude Code and need `node` on the hook
   steps (long turn) and the blocked calls by step key (blocked turn). A
   blocked call wastes a model round trip, so the reason suggests splitting
   compound Bash commands and meeting hook gates first. It asks for a Time review of at most 5 lines: what took longest, one
-  concrete speedup, and a task when a speedup saves a minute or more and
-  recurs. The next stop has `stop_hook_active: true`, so the hook stays
+  concrete speedup, and whether it recurs. Fix unblocked in-scope speedups;
+  follow user and repository task policy for remaining work. The next stop has `stop_hook_active: true`, so the hook stays
   silent and cannot loop. Bypass: `HOOK_BYPASS_PERF_TASK_REVIEW=1`;
   `MINSKY_PIPELINE=1` also skips it.
 
@@ -367,8 +369,9 @@ showed why: most of its time went to code diffs, where it ran the whole
 | Code (`src/`, `scripts/`, `real-e2e/`, `templates/`) | The same, plus `npx tsc --noEmit` and `npm run lint:changed` when source files changed, and `vitest related` on the changed source files instead of the whole suite. |
 | Package files, `tsconfig`, vitest, Biome, or knip config | The full `npm run verify`. |
 
-A code diff ends with "run full npm run verify before merge": run the full
-gate once, before merge, not in the loop. `npm test` runs `vitest related` on
+A code diff ends with "the hosted check must pass npm run verify before
+merge": the hosted check runs the full gate on the pull request, not you in
+the loop. `npm test` runs `vitest related` on
 the diff alone; prefer it to a whole folder (`npx vitest run src/`).
 
 ### Test selection

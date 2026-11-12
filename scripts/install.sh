@@ -16,10 +16,11 @@
 #   --no-shell-hook    Do not add the project-detection line to your shell rc file
 #   --keep-claude-permissions
 #                      Keep Claude Code permission prompts on (config set claudePermissions keep)
+#   --no-telemetry     Record "no" to the telemetry question without asking it
 #   --yes              Required: confirms the user agreed to the plan
 #
 # Phases of `run`: preflight -> backup -> build -> link -> setup -> heal ->
-# verify. If build, link, setup, or verify fails, the installer restores the
+# verify -> telemetry question. If build, link, setup, or verify fails, the installer restores the
 # backup by itself and exits 1. Heal problems are reported, not fatal.
 set -uo pipefail
 
@@ -45,7 +46,7 @@ LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 say() { printf '%s\n' "$*"; }
 step() { printf '\n== %s\n' "$*"; }
 
-usage() { sed -n '3,23p' "$0" | sed -E 's/^# ?//'; }
+usage() { sed -n '3,24p' "$0" | sed -E 's/^# ?//'; }
 
 node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
 
@@ -173,6 +174,8 @@ cmd_plan() {
   say "       (agentbrew config set claudePermissions keep)."
   say "  5. Heal: 'agentbrew status --fix' repairs any drift it finds."
   say "  6. Verify: 'agentbrew lint', then the doctor 'agentbrew status --ci'."
+  say "  7. Ask one question, only when this build has a project key: share anonymous"
+  say "     performance numbers? With no key, nothing is asked or printed (see Your choices)."
   step "If something goes wrong"
   say "  A critical error in steps 2-4 or 6 restores the backup automatically."
   say "  You can also undo by hand any time: bash $REPO_DIR/scripts/install.sh restore"
@@ -181,6 +184,11 @@ cmd_plan() {
   say "  - Install the background repair job? (default yes)"
   say "  - Add the project-detection hook to your shell rc file? (default yes)"
   say "  - Keep Claude Code permission prompts on? (default no: prompts off)"
+  say "  - Share anonymous performance numbers? Asked last, in your terminal, with an"
+  say "    example event and the privacy promise. Nothing is sent unless you say yes"
+  say "    (Enter counts as yes). --no-telemetry answers no without the question."
+  say "    Asked only when this build has a project key; with none, nothing can be sent,"
+  say "    nobody is asked, and the installer prints nothing about telemetry."
 }
 
 # Backup ids are timestamps, so the glob's sort order is oldest first.
@@ -305,7 +313,9 @@ receipt_begin() {
   mkdir -p "$dir" 2>/dev/null || return 0
   RECEIPT_STARTED_AT="$(_receipt_now)"
   RECEIPT_START_S="$(date +%s)"
-  [ -s "$dir/install-before.json" ] && return 0
+  # A machine with a "before" record was installed earlier: this run is a re-run.
+  RECEIPT_FIRST_RUN=1
+  [ -s "$dir/install-before.json" ] && RECEIPT_FIRST_RUN=0 && return 0
   printf '{"taken_at":"%s","launchagents":%s,"claude_skills":%s,"claude_hooks":%s,"claude_md_bytes":%s,"claude_permissions":"%s"}\n' \
     "$RECEIPT_STARTED_AT" "$(measure_launchagents)" "$(measure_claude_skills)" "$(measure_claude_hooks)" \
     "$(measure_claude_md_bytes)" "$(measure_claude_permissions)" >"$dir/install-before.json" 2>/dev/null || true
@@ -374,7 +384,7 @@ critical() {
 }
 
 cmd_run() {
-  local yes=0 recommended=1 auto_repair=1 shell_hook=1 keep_perms=0 init_args=()
+  local yes=0 recommended=1 auto_repair=1 shell_hook=1 keep_perms=0 telemetry=1 init_args=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --yes) yes=1 ;;
@@ -382,11 +392,14 @@ cmd_run() {
       --no-auto-repair) auto_repair=0 ;;
       --no-shell-hook) shell_hook=0 ;;
       --keep-claude-permissions) keep_perms=1 ;;
+      --no-telemetry) telemetry=0 ;;
       *) say "Unknown flag: $1"; usage; exit 2 ;;
     esac
     shift
   done
   [ "$yes" -eq 1 ] || { say "Show the plan first (install.sh plan), then rerun with --yes."; exit 2; }
+  # The installer asks the telemetry question itself, as its last step; its own commands must not.
+  export AGENTBREW_TELEMETRY_ASK=0
   # Before anything changes: the "before" half of the install receipt.
   receipt_begin
 
@@ -440,7 +453,30 @@ cmd_run() {
 
   step "7/7 Verify"
   "$AGENTBREW_CMD" lint || critical "verification (agentbrew lint)"
-  "$AGENTBREW_CMD" status --ci || say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."
+  # The install event: how long the install took to reach a clean status check. The
+  # clean check is this run, so no second status run is needed. Seconds, as the receipt counts them.
+  local status_clean=1 clean_at_s
+  "$AGENTBREW_CMD" status --ci || { status_clean=0; say "  ! The doctor (agentbrew status --ci) found drift; each line above names its fix."; }
+  clean_at_s="$(date +%s)"
+
+  # The telemetry question, loud and last, so it is never lost in build output.
+  # In a terminal it asks [Y/n]. With no terminal it asks nothing and the answer
+  # stays unset. A stored answer is kept: a re-install never asks again.
+  # With no project key (a fork that empties the key file) nothing can be sent:
+  # the command then asks nothing and prints nothing.
+  [ "$telemetry" -eq 1 ] || export AGENTBREW_TELEMETRY=0
+  "$AGENTBREW_CMD" telemetry ask || say "  ! Could not save the answer. Nothing is sent. Answer later: agentbrew telemetry on | off"
+
+  # One install event, after the question: a yes covers only later events. It holds a
+  # number (ms) and a boolean (a clean status check), never a path or a name. It is
+  # written to the local log whatever the answer; only a yes sends it. Only the first
+  # install of a machine counts: a re-run is fast and would pull the median down. With
+  # no start time (the receipt folder could not be made) there is no number to record.
+  if [ -n "${RECEIPT_START_S:-}" ] && [ "${RECEIPT_FIRST_RUN:-0}" -eq 1 ]; then
+    local event_args=(--ms "$(((clean_at_s - RECEIPT_START_S) * 1000))")
+    [ "$status_clean" -eq 1 ] && event_args+=(--ok)
+    "$AGENTBREW_CMD" telemetry record-install "${event_args[@]}" 2>/dev/null || true
+  fi
 
   receipt_finish true
   step "Done"

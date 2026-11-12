@@ -48,6 +48,7 @@ Pending work lives in the repo-declared backend. Detect it from `Agentfile.yaml`
 
 - Use the declared issue/task CLI for `task_backend: github-issues`; do not recreate `TASKS.md`.
 - For `TASKS.md`, keep the tasks.md shape and validate it with the repo's task linter. Remove completed blocks.
+- Every task carries its measurement: `Hypothesis`, `Measurement`, `Success`, `Pivot`, `Anchor`, at every priority. A user-facing change also names the event, tile, or metrics command that shows its effect in use. Details: shared-rules **## Task queues**.
 - If `.minsky/repo.yaml` exists, keep its required P0/P1 evidence fields.
 
 ## Critical rules
@@ -86,6 +87,10 @@ Aim past the literal task on three axes. **Altitude**: ask for the goal
 beyond the goal. **Depth**: use an expert's raw data, tools, and methods.
 **Range**: borrow methods from other fields. Prove results with an outside
 judge, not self-review. Details: shared-rules **## Ambition with models**.
+
+### Fast, safe iterations
+
+During each iteration, measure recurring slow steps and use affected checks or a validated cache when they give the needed signal. Key reuse to all relevant effective inputs, including external state, without exposing values or guessable hashes; verify invalidation. Unknown inputs require the full check. Keep the required final gate, and fix in-scope recurring delays when unblocked.
 
 ### Reuse before implementation
 

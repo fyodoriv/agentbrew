@@ -28,6 +28,12 @@ describe("fresh-reader review", () => {
     );
   });
 
+  it("fails a draft whose recommended option is not first", () => {
+    expect(rule).toMatch(
+      /When the artifact lists options, also return FAIL if the recommended option is not first or not labeled "Recommended"/,
+    );
+  });
+
   it("rechecks each revision and holds unreviewed work", () => {
     expect(rule).toMatch(/Revise and judge again until the exact artifact gets PASS/);
     expect(rule).toMatch(/If a fresh subagent is unavailable or the artifact still fails, hold the artifact/);

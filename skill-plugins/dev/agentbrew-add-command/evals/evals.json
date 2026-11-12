@@ -44,6 +44,17 @@
         "Suggests referencing an environment variable or secret manager instead of embedding the value",
         "Still uses the canonical `~/.config/agentbrew/commands/<name>.md` source for any non-secret command text"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add `/kimi-usage` so I can see remaining Kimi subscription quota. The plan has no weekly limit, but reports 5-hour and monthly windows. The key must not appear in command files, output, or curl arguments.",
+      "expected_output": "Creates one canonical command that calls a read-only CLI, shows the actual 5-hour and monthly quotas and says no weekly limit is reported, passes the credential through curl config on stdin, and includes portable shared-memory acceptance and behavior evals before deploying through AgentBrew.",
+      "expectations": [
+        "Uses one canonical command source and AgentBrew deployment rather than per-agent copies",
+        "Does not invent a weekly total or put credentials in the command file",
+        "Keeps credentials out of output and curl process arguments",
+        "Includes weekly and no-weekly behavior plus portable memory acceptance in evals"
+      ]
     }
   ]
 }

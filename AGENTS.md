@@ -22,15 +22,16 @@ Run every command from the repo root.
 | Tests for the diff (not a folder) | `npm test` (`vitest related`) |
 | All tests | `npm run test:all` |
 | Typecheck / lint changed files | `npx tsc --noEmit` / `npm run lint:changed` |
-| Rule lints (Minsky rules; skipped without `AGENTBREW_MINSKY_DIR` or `~/apps/tooling/minsky`) | `npm run lint:rules` |
+| Rule lints (Minsky rules; skipped without a Minsky checkout) | `npm run lint:rules` |
 | Task queue lint | `node scripts/lint-tasks-stability.mjs TASKS.md` |
 | Hook fixtures | `bash scripts/run-hook-fixtures.sh` |
 | Inner-loop gate (what the diff can break); may say `merge-ready` | `npm run verify:changed` |
-| Full gate (shared source-only cache, `NO_CACHE=1` runs all) | `npm run verify` — run once in background |
-| Repo checkup (doctor, gate, metrics, speed review, audit) | `npm run checkup` |
-| Install e2e (real `scripts/install.sh`, scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
+| Full gate (hosted CI runs it per PR; `NO_CACHE=1` runs all) | `npm run verify` — in background |
+| Repo checkup (doctor, gate, metrics, speed, audit) | `npm run checkup` |
+| Install e2e (scratch HOME) | `npm run test:install-e2e` (gates run it on install paths) |
 | Build | `npm run build` ([native receipts](docs/plans/source-build-prebuilt-764.md)) |
 | Metrics with goal and pivot | `bash scripts/metrics.sh` |
+| Speed gate | `npm run perf:gate` |
 
 ## Where to change what
 
@@ -69,11 +70,12 @@ maps each rule to its check. Other files cite these numbers.
 8b. Career-data features belong to careerbrew; agentbrew only deploys their commands from careerbrew's source. Never hand-copy a repo-owned command.
 9. Keep the CLI small. Add a visible command only for a distinct user problem.
 10. Write tasks as outcomes ("users can do X"), with the why.
-11. Scout while you work: record bugs, stale docs, and gaps you see as new tasks in the same PR.
+11. Scout while you work: record bugs, stale docs, and gaps as new tasks in the same PR.
 12. A ticket key is optional. Never invent one.
 13. Commits use conventional headers (`type: description`, <= 72 chars). Never bypass the hook.
 14. Publishing outside `fyodoriv/agentbrew` (npm, releases, other repos, Slack, Jira) needs explicit approval in the current session.
 15. Never mock `expandHome` as identity in a test that writes files.
+16. Performance is a gate: `npm run perf:gate` must pass; new hot-path commands join `scripts/perf-budget.tsv`. [Details](docs/observability.md#performance-gate).
 
 Also: no counts of agents, skills, tests, or files in docs or comments.
 Windsurf and Devin were removed; Augment is frozen (keep it, never fix it).
@@ -85,10 +87,10 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Test rule [rewrite/removal order](docs/plans/trusted-rule-rewrite-provenance.md).
 - [Hosts](docs/support-matrix.md), [owners](docs/skill-directories.md), [headless](docs/shared-memory-research.md#headless-session-save).
 
-- CI `npm run verify` (Actions off) [Perf limits](docs/agent-perf.md).
+- [CI](docs/ci.md); [perf limits](docs/agent-perf.md).
 - Develop in a worktree under `~/apps/tooling/wt/` (not `.wt/`: vitest skips it).
   A symlinked `node_modules` breaks `src/cli.test.ts`.
-- `src/cli.test.ts` can time out under load; re-run it first.
+- `src/cli.test.ts` can time out under load; re-run it.
 - A test that writes this repo's `TASKS.md` fails (`vitest.tasks-guard.ts`); stub writers such as `writeFollowups`.
 - Each test file gets a scratch `HOME` and scrubbed `AGENTBREW_*`/`NO_CACHE` env (`vitest.isolated-home.ts`). It fails on writes to the real `~/.config/agentbrew` or `~/.claude`, and on new repo files. Instructions sync writes `context/*.md` under `AGENTBREW_DIR`, so never point it at the repo root in a test; use a scratch copy (`scratchRepoRoot()` in `src/integration.test.ts`).
 - Git: `GIT_CONFIG_GLOBAL=/dev/null` avoids owner's `TASKS.md` ignore. Use `*.template.md`; [HOME](docs/plans/rust-source-inventory.md).
@@ -102,27 +104,27 @@ Keep removed agents out. See the [retirement note](README.md#supported-agents).
 - Hook scripts run under macOS `/bin/bash` 3.2 (no `${var,,}`). Put long jq programs in `hooks/lib/*.jq`. Write a JSON default as `"${INPUT:-{\}}"`; `scripts/lint-security.sh` rejects `"${INPUT:-{}}"`.
 - Install e2e is scratch-only (`sandbox-exec`). Register new install paths in `scripts/install-e2e-if-needed.sh`.
 - `.agents/requirements.yaml` maps each new-project area to the files that meet it. Change a mapped file, keep the map true.
-- `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins (#693). Tests stub `gh` on `PATH`.
+- `gh auth token` returns an env `GITHUB_TOKEN`/`GH_TOKEN` before its keyring; `resolveEnvVar` strips both so the keyring wins. Tests stub `gh` on `PATH`.
 - Tests run with `AGENTBREW_EVENTS=0`. A new event field must pass `sanitizeEvent` ([`docs/observability.md`](docs/observability.md)).
 - Name a real-e2e scenario after its stories (`usNN-usMM-...`) and list it in `real-e2e/SCENARIO_MAP.md`.
-- opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json when the schema changes.
-- Fast gate: `git diff --check "$base"`, then `npx --yes @tasks-md/lint@0.10.2 --require-prereg TASKS.md`, before later checks. Fix schema, whitespace and conflict errors first.
+- opencode.json rejects unknown keys; `src/mcp/fixtures/opencode-config-schema.trimmed.json` pins the bootstrap shape. Refresh it from https://opencode.ai/config.json.
+- Fast gate order: `git diff --check "$base"`, then the `@tasks-md/lint` check. Fix schema, whitespace and conflict errors first.
 
 ## Delivery
 
 1. Branch `type/short-description` from `main`, in a worktree.
 2. Make the change, with its tests and its docs.
-3. Iterate with `npm run verify:changed`. Unless it says `merge-ready`, run the full `npm run verify` once before merge.
+3. Iterate with `npm run verify:changed`. The hosted check runs the full `npm run verify`; run it here only when Actions is off.
    Then run the leak check:
    `bash -c 'source ~/.config/oss-readiness/oss-readiness.env; git diff origin/main | grep -icE -- "$OSS_READINESS_INTERNAL_PATTERN"'` must print `0`.
 4. Commit with a conventional header and the pre-registered hypothesis in the body.
 5. Push and open a PR. The body has `## Summary`, `## Details`, `## Docs`, a hypothesis block, and `## Visual proof` (a pasted terminal transcript).
-6. When the gate is green, squash-merge. Remove the worktree and the branch.
+6. When every hosted check is green, squash-merge. Remove the worktree and branch.
 
 ## Docs upkeep
 
-- Every behavior change updates its docs in the same PR. The routing table above names the doc.
-- A gotcha that cost you time goes into `## Gotchas` in the same PR, or becomes a test or lint if a machine can check it.
+- Every behavior change updates its docs in the same PR. The routing table names the doc.
+- A gotcha that cost you time goes into `## Gotchas` in the same PR, or becomes a test or lint.
 - Every PR body has a `## Docs` section: the docs you changed, or `Docs: none — <reason>`. The opt-in hook `gh-pr-body-requires-docs` enforces it.
 - A new top-level `docs/*.md` file needs a row in [`docs/README.md`](docs/README.md). `src/docs/agent-guide-contract.test.ts` checks it, this file, and the README opening.
 - Repos outside agentbrew: follow [`docs/agent-guide-baseline.md`](docs/agent-guide-baseline.md).

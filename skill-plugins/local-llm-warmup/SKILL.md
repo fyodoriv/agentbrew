@@ -62,7 +62,14 @@ generation from ~5 s to ~1 s.
 | **LM Studio MLX** | Personal Mac where GUI apps are fine | ~30 % faster eval; rejected by some corporate IT |
 | **mlx-lm direct** | Last resort if both above are blocked | Has an open kernel-panic bug ([mlx-lm#883](https://github.com/ml-explore/mlx-lm/issues/883)) on long unattended contexts; mitigate with `--max-context-len` cap + watchdog |
 
-For most users: Ollama. For maximum perf on a personal Mac: LM Studio.
+Use **one engine: Ollama.** A second engine keeps a second copy of every
+model on disk (LM Studio held 11 GB of duplicates on one Mac, 2026-11-07).
+Each repo that needs a local model reserves it in `.agents/local-models`
+(one tag per line). dotfiles `local-models ensure` pulls reserved models on
+demand, and its 6-hour prune removes models no repo reserves. When you add
+a local model to an app, add its tag to that file in the same PR. Many repos
+ignore `.agents/`: run `git check-ignore -v .agents/local-models` and, if it
+is ignored, allow just that file in `.gitignore`, or `git add` skips it.
 
 ## opencode.json — the production template
 

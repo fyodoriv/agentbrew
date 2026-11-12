@@ -9,7 +9,7 @@ const SCRIPT = join(import.meta.dirname, "..", "scripts", "install.sh");
 const roots: string[] = [];
 
 /** Temp HOME with existing agent settings, plus stub CLI and launchctl. */
-function sandbox(failOn?: "init" | "lint" | "config set claudePermissions keep") {
+function sandbox(failOn?: "init" | "lint" | "status --ci" | "config set claudePermissions keep") {
   const root = mkdtempSync(join(tmpdir(), "agentbrew-install-"));
   roots.push(root);
   const home = join(root, "home");
@@ -24,7 +24,8 @@ function sandbox(failOn?: "init" | "lint" | "config set claudePermissions keep")
   writeFileSync(
     join(stubs, "agentbrew"),
     `#!/bin/bash
-echo "$* AUTO_SYNC=\${AGENTBREW_NO_AUTO_SYNC:-} HOOK=\${AGENTBREW_NO_SHELL_HOOK:-}" >> "${log}"
+echo "$* AUTO_SYNC=\${AGENTBREW_NO_AUTO_SYNC:-} HOOK=\${AGENTBREW_NO_SHELL_HOOK:-} TELEMETRY=\${AGENTBREW_TELEMETRY:-}" >> "${log}"
+[ "$*" = "telemetry ask" ] && echo "STUB CONSENT QUESTION"
 if [ "$1" = init ]; then
   { echo "--- state.yaml at init:"; cat "$HOME/.config/agentbrew/state.yaml" 2>/dev/null; } >> "${log}"
   echo '{"user":"changed"}' > "$HOME/.claude/settings.json"
@@ -227,14 +228,57 @@ esac
     expect(calls.indexOf("config set autoRepair off")).toBeLessThan(calls.indexOf("init --skip-install"));
     expect(calls).toContain("status --fix");
     expect(calls).toContain("lint");
-    // The run ends with the doctor, after lint.
-    expect(calls.trim().split("\n").at(-1)).toMatch(/^status --ci /);
+    // The doctor runs after lint; the telemetry question follows, then the one install event.
+    const tail = calls.trim().split("\n");
+    expect(tail.at(-3)).toMatch(/^status --ci /);
+    expect(tail.at(-2)).toMatch(/^telemetry ask .*TELEMETRY=$/);
+    expect(tail.at(-1)).toMatch(/^telemetry record-install --ms \d+ --ok /);
+    expect(calls.match(/record-install/g)).toHaveLength(1);
+    // The installer adds no heading of its own: with no project key the CLI prints nothing, and so does the installer.
+    expect(result.stdout).toMatch(/STUB CONSENT QUESTION\n\n== Done/);
+    expect(result.stdout).not.toMatch(/One question|performance numbers/i);
     expect(result.stdout).toContain("agentbrew contribute");
     expect(result.stdout).toContain("add a test and update the docs");
     const backups = spawnSync("ls", [join(home, ".local", "state", "agentbrew", "install-backups")], {
       encoding: "utf-8",
     });
     expect(backups.stdout.trim()).toMatch(/^\d{8}-\d{6}$/);
+  });
+
+  it("--no-telemetry answers no through the CLI without a question; a failed install asks nothing", () => {
+    const { log, run } = sandbox();
+    const result = run("run", "--yes", "--no-telemetry");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    // The question call carries the opt-out in its env; the install event has no number but ms and the ok flag.
+    const tail = readFileSync(log, "utf-8").trim().split("\n");
+    expect(tail.at(-2)).toMatch(/^telemetry ask .*TELEMETRY=0$/);
+    expect(tail.at(-1)).toMatch(/^telemetry record-install --ms \d+ --ok /);
+    const failed = sandbox("lint");
+    expect(failed.run("run", "--yes").status).toBe(1);
+    expect(readFileSync(failed.log, "utf-8")).not.toContain("telemetry ask");
+    expect(readFileSync(failed.log, "utf-8")).not.toContain("record-install");
+    const plan = run("plan").stdout;
+    expect(plan).toContain("Share anonymous performance numbers?");
+    expect(plan).toContain("--no-telemetry");
+    expect(plan).toContain("Nothing is sent unless you say yes");
+  });
+
+  it("an install whose final status check finds drift records the event without --ok", () => {
+    const { log, run } = sandbox("status --ci");
+    const result = run("run", "--yes");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    const last = readFileSync(log, "utf-8").trim().split("\n").at(-1);
+    expect(last).toMatch(/^telemetry record-install --ms \d+ /);
+    expect(last).not.toContain("--ok");
+  });
+
+  it("a re-run of the installer on the same machine records no second install event", () => {
+    const { log, run } = sandbox();
+    expect(run("run", "--yes").status).toBe(0);
+    const second = run("run", "--yes");
+    expect(second.status, second.stdout + second.stderr).toBe(0);
+    // The time of a re-run is not a first-install time: it would pull the median down.
+    expect(readFileSync(log, "utf-8").match(/record-install/g)).toHaveLength(1);
   });
 
   it("a yes to the repair job saves autoRepair on before init, undoing an earlier no", () => {

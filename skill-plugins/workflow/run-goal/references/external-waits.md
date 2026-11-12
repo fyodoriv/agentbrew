@@ -58,6 +58,17 @@ Do not invent a goal-update tool, edit host storage, or spoof user origin.
    the same current head and run attempt; a replaced head makes the old
    result stale. Keep original review, merge and installed-state requirements.
 
+### Local gates that end in a push
+
+A local full gate can pause for minutes or hours (a load or memory guard
+such as `heavy-run`). Never start a bare gate and plan to push "when it
+ends": the push then waits for your next turn. Start one background job
+that gates HEAD, checks both HEAD and the fetched PR base did not move,
+then pushes and opens the PR only on exit 0. Stop any older gate on a stale
+commit or base first, so the guard's queue frees resources. If the base moved,
+integrate it and rerun the gate instead of publishing the old result. Run at most two full gates at once; hold
+worktree agents beyond that. Merge stays a separate step after review.
+
 ### Host routes
 
 **Claude Code:** registered native background shell/subagent work defers goal
@@ -106,3 +117,22 @@ using them; an SDK type or host-only API is not proof of session access.
 
 Fixture guards and forward evaluations test guidance and decisions. They do
 not measure live evaluator invocations or establish unsupported host behavior.
+
+## Liftable pauses
+
+A pause the user can lift (an agent-usage guard, a rate limit with a reset
+time) is a wait, not "impossible". Do not retry a refused agent spawn: each
+retry counts as another refusal and can extend the pause. Ask once for the
+lift command (for example `/agent-guard allow`), arm one background timer
+for the stated reset time, and do every part that needs no agents meanwhile
+(gate, PR, review prep). A button reply such as "Lifted, continue" is not
+the command: check that the tool really runs before you report progress.
+A refused pre-merge review spawn holds the merge too: a self-review does not
+replace the fresh-context review, and a standing merge approval does not skip
+it. Push and open the PR, then merge only after the review runs.
+A guard cutoff is not the plan limit. In the same message as the first
+refusal, tell the user the cutoff, the plan's real use from the refusal text (for example "guard
+stops agents at 80%; Claude is at 84% of 100%"), and the lift command, and put
+that command in the "Needed from you" line. Never write "Needed from you:
+nothing" while the queue waits on a lift. A silent wait at 84% held 7 merges
+for 8 hours (2026-11-08) while the user expected only Claude's own limit.

@@ -50,7 +50,7 @@
     },
     {
       "path": "scripts/native-build-tools.mjs",
-      "sha256": "6aa4c0739c78693d409db888fbcc6deb884815ae86a5c2927c405245498ca5d4"
+      "sha256": "49e359d802ffaf9e91fed7eeb508506729559d3125b1d78095ce0fc59d8ce41e"
     }
   ],
   "toolchain": {

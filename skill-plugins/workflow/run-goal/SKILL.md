@@ -106,7 +106,7 @@ So:
    question round. If not, schedule it last. A ticket-gated PR check needs
    ticket fields (priority, estimate): ask for them in the first round.
    Classify tasks by their Details (who must act), not only the Blocked flag.
-   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority.
+   Probe the actual owner, writable source/config and valid submission route for each criterion before promising changes. Keep unknown ownership or route unverified; access alone is not change authority. Check each Git host: [host authentication intake](references/goal-intake.md#host-authentication-intake).
    Before a write to a live store (migration, sync, move), list the target
    read-only and compare it with the goal's stated state. A mismatch changes
    the plan, not the facts: 20 "unmoved" items were already in the list.
@@ -115,7 +115,7 @@ So:
    credential or connector, not a session-only one). Check it where its consumer
    runs: a GUI app reads the launchd env and PATH, not your shell; a needed app
    restart is a user step, not "met". To rate a tool, check it
-   runs here and find its usage data; with none, rate only the design.
+   runs here and find its usage data; with none, rate only the design. [§ Probes](references/execution.md#hardware-connectors-and-demo-video). Before a criterion promises real data, check this machine holds each proof input: [§ Proof inputs](references/execution.md#proof-inputs-and-decided-measurements). For a proof read through a signed-in tab or connector, read it back as soon as the data exists: [§ Borrowed sessions](references/execution.md#borrowed-sessions-and-guards-the-gate-skips).
 8. Look for the same work already in flight. In each repo the goal will
    change, list open PRs by any author (other sessions share the account),
    drafts included, and unmerged branches and worktrees (`wrap-up`'s
@@ -265,7 +265,7 @@ Then write a **BLOCKED** report: what is blocked, the evidence, what you
 tried, and the exact action you need from the user. Explain each blocker in
 full, so the user can answer without other context: what the thing is in
 plain words, why it is blocked, the options, and what each option changes
-for the user. End it with
+for the user. A liftable pause is a wait, not this: [§ Liftable pauses](references/external-waits.md#liftable-pauses). End it with
 `Goal status: impossible without <X>.`
 
 ## Phase 5 — Verify
@@ -280,7 +280,7 @@ exist. Run the repo's own gate and required PR-body validators locally;
 require exit 0 and name the environment.
 Do not poll a host that does not run checks or add CI without a request.
 With no workflows and no checks, the same local-gate rule applies. Missing
-checks on this PR alone do not prove CI is absent.
+checks on this PR alone do not prove CI is absent. Hosted checks that exist are the gate; never merge on a pending or red one: [§ Hosted checks](references/execution.md#hosted-checks).
 
 Read the gate's own exit status, never a wrapper's line or a pipe's, and gate a
 count check on exactly 0: the exact command lines are in
@@ -368,16 +368,16 @@ with actuals and update the estimation method as described in
    for a standing approval for retro skill updates. With one, make the
    change in a worktree of that repo and ship it by its rules. Without one,
    park it and ask at the end with the exact diff.
-   When the skill source is read-only for this user (their rules or the
-   sandbox), do not edit it: record the update as a task, with the exact
-   proposed change, in a repo the user can write, and cite its id.
+   A note that says a source is read-only is a claim: try the write. Only
+   when it fails, file a task with the exact change in a writable repo and
+   cite `task <id>, write failed: <error>`; a bare task id does not pass. A host-served skill (no local `SKILL.md`): `<skill>: host-served, no source`.
 5. **Save the retro**: in Claude Code with agentbrew, write the Skills
    updated list to the retro file the `/goal` hook names (pre-approved).
    One line per skill used, each with its commit SHA, PR, or task id. The
    `goal-retro-before-stop` hook keeps the session from ending until every
    skill used has such a line (it gives up after three tries). Ship each
-   writable change in this session (gate, PR, merge, cite the PR); when the
-   sandbox blocks the repo, cite a task instead and never bypass it.
+   writable change in this session (gate, PR, merge, cite the PR); when a
+   tried write is refused, cite the task with its error; never bypass it.
 6. **Remember**: store reusable lessons in memory, if the agent has memory.
 7. **Goals dashboard**: put `Goal result: <met|partly met|blocked> (N/M met)`
    in the retro file, run `scripts/export-goals.py`, and refresh the one

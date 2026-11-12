@@ -199,6 +199,8 @@
 
 - name: opencode
   skillsDir: ~/.config/opencode/skills
+  # Global rules: OpenCode (CLI and Desktop) reads ~/.config/opencode/AGENTS.md.
+  rulesFile: ~/.config/opencode/AGENTS.md
   mcpConfig: ~/.config/opencode/opencode.json
   mcpKey: mcp
   # opencode 1.14+ rejects the old stdio shape ({command, args}) — it requires

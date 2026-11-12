@@ -216,7 +216,7 @@ describe("Feature-presence stays declared in agents.yaml (drift guard)", () => {
     { name: "codex", surfaces: ["skills", "rules-file", "commands", "agents", "hooks", "mcp-config"] },
     { name: "augment", surfaces: ["skills", "rules-file"] },
     { name: "copilot", surfaces: ["skills", "rules-file"] }, // mcpConfigVscodeSettings tracked separately
-    { name: "opencode", surfaces: ["skills", "commands", "mcp-config"] },
+    { name: "opencode", surfaces: ["skills", "rules-file", "commands", "mcp-config"] },
   ] as const;
 
   it.each(EXPECTED_SURFACES)("$name has exactly the documented surfaces declared in agents.yaml", ({

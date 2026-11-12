@@ -5,7 +5,7 @@ description: >
   axe-core WCAG 2.2, the Vercel Web Interface Guidelines, target size, text and state contrast,
   keyboard, Reduce motion and dark scheme, readability, Nielsen's heuristics, task time (KLM),
   Lighthouse, performance at real scale, and a design panel that rates the look as ten design-award
-  sites would. Use for "rate my UI", "UX audit", "make it look modern", "iterate on the UI until it
+  sites would, plus a principal-engineer judge panel scored by issues. Use for "rate my UI", "judge this page", "UX audit", "make it look modern", "iterate on the UI until it
   scores N", before shipping a page, and before building or reshaping any UI (build to its comfort
   budget from the start). Don't use for one Lighthouse run alone (use web-quality-audit) or for
   creative direction from scratch (use hallmark).
@@ -69,6 +69,7 @@ The expert rankings have no script. Score them by hand and write the numbers dow
 | Task time (KLM) | K .28 s, P 1.1 s, B .1 s, M 1.35 s per step; time the 4 to 8 most common tasks; report the sum |
 | Scale | bytes and time a phone loads for the largest realistic data set (Playwright `response` sizes, or Lighthouse LCP and total byte weight) |
 | Design panel | three blind rater subagents, [references/design-panel.md](references/design-panel.md), from the `shots` screenshots; never self-scored |
+| Principal judges | ten blind lens judges list issues; `scripts/judge.mjs score` turns them into scores by a rubric and lists the issues two or more name ([references/design-judges.md](references/design-judges.md)); read [references/judge-learnings.md](references/judge-learnings.md) first and add a line after |
 | Preference vs before | one fresh agent gets before/after screenshots per view as A/B pairs in random order; the key stays in a folder it does not read; report "preferred on N of M screens" and fix the issues it names |
 
 ## 3. One round per ranking
@@ -83,7 +84,11 @@ Take the rankings worst first. Per round:
 4. Commit with the ranking, before → after, and what changed in the message.
 
 Stop when every measured ranking is at least 95 (target 100), Lighthouse accessibility is 100, the
-expert rankings meet their targets, and the design panel reaches its target (default 8.0).
+expert rankings meet their targets, the design panel reaches its target (default 8.0), and
+`judge.mjs score` exits 0 (every principal judge at 8 or more).
+
+After every judged run, add a dated line to `references/judge-learnings.md` (what moved the score,
+what did not). A learning that holds twice goes into `design-judges.md` or `judge.mjs` with a test.
 
 ## 4. Keep it
 

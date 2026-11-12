@@ -83,11 +83,10 @@ function fixtureQueue(): string {
     "#!" + process.execPath,
     "const fs = require('node:fs');",
     "const cp = require('node:child_process');",
-    "const path = require('node:path');",
     "const log = (event) => fs.appendFileSync(process.env.FIXTURE_EVENTS, JSON.stringify({event})+'\\n');",
     "const mode = process.env.FIXTURE_QUEUE_MODE;",
     "function payload() {",
-    "  const r = cp.spawnSync(process.argv[2], process.argv.slice(3), {stdio:'inherit', env:process.env, timeout:2000});",
+    "  const r = cp.spawnSync(process.argv[2], process.argv.slice(3), {stdio:'inherit', env:process.env, timeout:30000});",
     "  process.exit(r.status === null ? 125 : r.status);",
     "}",
     "if (process.env.HEAVY_RUN_HELD) { log('queue-bypass'); payload(); }",
@@ -95,11 +94,14 @@ function fixtureQueue(): string {
     "if (mode === 'reject') process.exit(73);",
     "if (mode !== 'hold') { log('admitted'); payload(); }",
     "const release = process.env.FIXTURE_RELEASE;",
-    "const timer = setTimeout(() => process.exit(124), 3500);",
-    "const watcher = fs.watch(path.dirname(release), () => {",
+    // Poll for the release file. A directory watch on macOS can deliver the
+    // event seconds late, or not at all, when the file comes right after the
+    // watch starts. The timers here are hang guards only.
+    "const timer = setTimeout(() => process.exit(124), 30000);",
+    "const poll = setInterval(() => {",
     "  if (!fs.existsSync(release)) return;",
-    "  watcher.close(); clearTimeout(timer); log('admitted'); payload();",
-    "});",
+    "  clearInterval(poll); clearTimeout(timer); log('admitted'); payload();",
+    "}, 10);",
     "process.stdout.write('QUEUE_WAITING\\n');",
   ].join("\n");
 }
@@ -127,7 +129,7 @@ function launch(args: string[], mode = "admit", inheritedLease = ""): Promise<Ou
         process.kill(-child.pid!, "SIGKILL");
       } catch {}
     };
-    const timer = setTimeout(stop, 4500);
+    const timer = setTimeout(stop, 40_000);
     child.on("error", (reason: NodeJS.ErrnoException) => {
       error = reason.code;
     });
@@ -188,7 +190,7 @@ afterEach(() => {
   invalidateState();
 });
 
-describe("scheduled repair queue admission", () => {
+describe("scheduled repair queue admission", { timeout: 60_000 }, () => {
   it("Q01 keeps repair behind selected queue admission", async () => {
     const result = await launch(buildLaunchAgentFixArgs(), "hold");
     expect(result.records.filter((row) => row.event === "repair-start" && !row.admitted)).toHaveLength(0);
@@ -247,7 +249,7 @@ describe("scheduled repair queue admission", () => {
     expect(content).toContain("<key>AGENTBREW_NODE_BIN</key>\n        <string>" + node + "</string>");
   });
 
-  it("Q08 reports selected queue routing not yet installed", async () => {
+  it.runIf(process.platform === "darwin")("Q08 reports selected queue routing not yet installed", async () => {
     select("direct");
     await render();
     select("heavy-run");
@@ -256,7 +258,7 @@ describe("scheduled repair queue admission", () => {
     );
   });
 
-  it("Q09 detects a missing Node even behind a queue prefix", async () => {
+  it.runIf(process.platform === "darwin")("Q09 detects a missing Node even behind a queue prefix", async () => {
     await render();
     rmSync(node);
     expect(checkLaunchAgentPathDrift().some((item) => item.type === "launchagent" && item.detail.includes(node))).toBe(

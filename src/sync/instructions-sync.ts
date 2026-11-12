@@ -13,7 +13,7 @@ import type { AgentConfig, SyncOptions } from "../types.js";
 import { AGENT_DEFINITIONS } from "../types.js";
 import { expandHome } from "../utils.js";
 import type { HelperScriptResult } from "./helper-scripts.js";
-import { syncHelperScripts } from "./helper-scripts.js";
+import { OPENCODE_PLUGIN_DIR, OPENCODE_PLUGIN_SOURCES, syncHelperScripts } from "./helper-scripts.js";
 import {
   DEFAULT_TOKEN_WARNING_THRESHOLD,
   estimateTokens,
@@ -339,6 +339,18 @@ function syncAndReportHelperScripts(
   options: HelperScriptReportOptions,
 ): { summaryParts: string[]; errors: number } {
   const results = syncHelperScripts({ projectRoot: resolveProjectRoot(), manifest, dryRun: options.dryRun });
+  // OpenCode installed: deploy its plugins (claude-hooks runs Claude Code hooks there).
+  if (existsSync(dirname(expandHome(OPENCODE_PLUGIN_DIR)))) {
+    results.push(
+      ...syncHelperScripts({
+        projectRoot: resolveProjectRoot(),
+        manifest,
+        dryRun: options.dryRun,
+        targetDir: expandHome(OPENCODE_PLUGIN_DIR),
+        sources: OPENCODE_PLUGIN_SOURCES,
+      }),
+    );
+  }
   for (const result of results) {
     const line = describeHelperScript(result, log, options);
     if (line && !options.quiet) log.log(line);

@@ -114,5 +114,17 @@
         "Allows proceed when user explicitly overrides after evidence recorded"
       ]
     }
+    ,
+    {
+      "id": 11,
+      "prompt": "Make OpenCode goal work faster. An existing `kimi-goal` CLI already supports a model override and Kimi highspeed. Do not create a new command or framework.",
+      "expected_output": "Reuse the existing CLI's default and override path to select highspeed only for goal work, preserve the ordinary local default, and avoid adding platform-specific commands.",
+      "expectations": [
+        "Chooses GET/reuse over new implementation",
+        "Changes only the existing CLI default while preserving explicit override",
+        "Does not create platform-specific command files",
+        "Verifies the supported highspeed route with before/after evidence"
+      ]
+    }
   ]
 }

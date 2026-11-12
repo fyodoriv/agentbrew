@@ -56,6 +56,8 @@ export default defineConfig({
     // the file no longer ships in agentbrew core.
     copyFileSync("src/sources.yaml", join(outDir, "sources.yaml"));
     copyFileSync("src/core/agents.yaml", join(outDir, "agents.yaml"));
+    // The default telemetry key (src/core/telemetry.ts reads it beside cli.js).
+    copyFileSync("src/core/telemetry-default-key.txt", join(outDir, "telemetry-default-key.txt"));
     cpSync("src/cli-commands", join(outDir, "cli-commands"), { recursive: true });
     cpSync("templates", join(outDir, "templates"), { recursive: true });
     // Built-in agent commands (/agentbrew); `agentbrew sync` deploys them (src/sync/command-sync.ts).

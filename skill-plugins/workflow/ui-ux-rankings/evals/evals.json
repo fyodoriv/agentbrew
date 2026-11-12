@@ -136,6 +136,72 @@
         "Measures chart lines against their panels at 3:1 or more in light and dark, with a planted low-contrast failure",
         "Keeps the host accent hue and clearly distinguishes fixture checks from real-host visual evidence"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "Build a local HTML report for an OpenCode tooling-readiness goal. Hosted model, MCP, browser and doctor checks pass, but the configured local default times out and a protected .gitconfig apply needs a person. Keep it private and readable on a phone.",
+      "expected_output": "A self-contained local report whose first view says the goal is partly met or blocked, names both unresolved items before the passing evidence, and offers only real next actions. It uses readable responsive text, measured contrast, reduced-motion-safe presentation, and no private absolute paths or credentials. Accessibility claims require an actual audit.",
+      "expectations": [
+        "Opens on the failed readiness criterion and required human decisions rather than a success banner",
+        "Keeps private machine paths and credentials out of the report",
+        "Uses at least 14 px text, 44 px interactive targets, and no sideways phone scroll",
+        "Separates verified passes, failures, pending checks, and next actions",
+        "Runs an accessibility audit before claiming one or reports it as not run"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Get our checkout page to pass 10 principal UI judges at 8 or more.",
+      "expected_output": "Reads judge-learnings.md, shoots phone/desktop x light/dark, writes context.txt and decisions.txt, runs ten blind lens judges from judge.mjs prompt, scores them with judge.mjs score, fixes consensus issues worst first, re-judges with new judges, and adds a judge-learnings line.",
+      "expectations": [
+        "Reads references/judge-learnings.md before the first round",
+        "Each judge gets only the judge.mjs prompt for its lens, never earlier scores or the target",
+        "Scores with scripts/judge.mjs score, not with free scores the judges invent",
+        "Fixes only issues that two or more judges name, unless a blocker it can see itself",
+        "Adds a dated line to references/judge-learnings.md after the run",
+        "Reports the target as met only when judge.mjs score exits 0 for that round"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Run the 10-lens principal judge panel on 40 screenshots.",
+      "expected_output": "Splits lenses across agents (5 or fewer each), tells each to write r/<lens>.txt right after each lens, time-boxes them, and arms a background watchdog on r/ with a cap; scores what exists on timeout.",
+      "expectations": [
+        "Gives each judge agent 5 lenses or fewer",
+        "Asks for r/<lens>.txt right after each lens",
+        "Arms a capped background watchdog on r/ and scores what exists on timeout"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "A judge agent returns 10 lens verdicts after reading 6 of the 40 screenshots.",
+      "expected_output": "Rejects those verdicts, moves the files aside, and reruns the agent with a brief that requires reading every screenshot first and reporting the count read.",
+      "expectations": [
+        "Does not score verdicts from a subset of shots",
+        "Reruns with a read-all-first rule",
+        "Asks the judge to report how many shots it read"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Three judge rounds in a row fixed every shared note, and the panel mean moved 8.12, 8.27, 8.16. The user asks whether to run another round.",
+      "expected_output": "Calls the movement noise, recommends stopping the judge rounds, and files the remaining notes as one checklist task with a numeric goal instead of another round.",
+      "expectations": [
+        "Does not call a 0.1-0.3 change a regression or a gain",
+        "Recommends stopping after three flat rounds",
+        "Turns the remaining notes into a task with a measurable target"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "A layout pilot passed its new tests (content covers 70% of the width, one filled button, adjacent tiles differ), but the judge panel mean fell from 7.15 to 7.07 and Week dropped 0.40. The desktop layout hides two sections the phone shows. Should we ship it and keep polishing?",
+      "expected_output": "Does not ship. Names the desktop/phone content gap as the cause, says the judge-worded tests were gamed, honors the pre-registered pivot, and calls further polish noise within ±0.3.",
+      "expectations": [
+        "Does not ship a layout that hides content on desktop that the phone shows",
+        "Says tests copied from judges' wording can pass while the user-visible state is wrong",
+        "Honors a pre-registered pivot instead of polishing more",
+        "Treats mean moves within ±0.3 over three rounds as noise and recommends stopping the rounds"
+      ]
     }
   ]
 }

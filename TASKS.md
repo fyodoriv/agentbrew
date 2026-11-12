@@ -137,6 +137,22 @@
 
 ## P0
 
+- [ ] An org overlay sends agentbrew's telemetry and error logs to the company Splunk
+  - **ID**: org-overlay-splunk-sink-agentbrew
+  - **Tags**: telemetry, org-sink, org-overlay
+  - **Blocked**: needs-org-machine — an agent on a company machine does this work in the company overlay repo (`agentbrew-<org>`). The personal Mac never touches that repo. Nothing in this public repo changes, except to delete this block when the work is done.
+  - **Details**: Read this block in full, then the "Org log sink" section of `docs/observability.md`. That section is the contract; this block is the work order. **Why**: on a company machine the opt-in telemetry must not go to the public analytics project. Since 2026-11-11 agentbrew reads one policy file, `~/.config/agentbrew/telemetry-sink.json`. With a valid org policy, every event goes to the company log system, no request goes to the public default, and the public key is never read. The base repo holds only the generic setting. Every company value (company name, Splunk host, index, token location) lives in the overlay repo and never in this repo, its tests, its pull requests, or its issues. **Before you start, get these from the owner; do not guess any of them**: (a) a written yes from the company security or IT contact for sending these numbers and error lines to the company Splunk; with no written yes, stop; (b) the Splunk HTTP Event Collector URL (`https`, normally port 8088, path `/services/collector/event`); (c) the Splunk index for developer-tool events; (d) a HEC token that may write to that index, and where it is kept; (e) consent mode: `managed` (send with no question; `agentbrew telemetry off` still stops it for one person) or `ask`; (f) error logs on or off. **Token rule**: never paste, print, log, or commit the token. The owner stores it; the policy names only the place. Preferred place: the macOS Keychain (`security add-generic-password -s org-telemetry -a hec_token -w`, typed by the owner, who is then asked for the value). Other places: a file that group and others cannot read, or an env var name. **Policy file to ship from the overlay** (replace only the example values): `{"version": 1, "kind": "splunk-hec", "consent": "managed", "error_logs": true, "url": "https://splunk.example.com:8088/services/collector/event", "token": {"keychain": {"service": "org-telemetry", "account": "hec_token"}}, "index": "devtools", "sourcetype": "agentbrew:telemetry", "source": "agentbrew"}`. Rules that make a policy invalid (then nothing is sent anywhere, and status says `sink policy invalid: <reason code>`): any unknown key, bad JSON, `version` other than 1, a URL that is not `https` or holds user info, a missing token source, `index`/`sourcetype`/`source` outside `[A-Za-z0-9_:.-]{1,64}`, or a policy file that group or others can write. So the overlay must write the file with mode 600 (or 644 at most; never group- or world-writable). **What Splunk receives**: one POST per batch with header `Authorization: Splunk <token>`; the body is one JSON object per event, joined by newlines: `{"time", "source", "sourcetype", "index", "event": {...}}`. `event` holds the event name, its properties, `install_id` (a random id, not a person), and `version`. Error lines arrive as event `agentbrew.error_log` with sourcetype `agentbrew:error_log` and fields `file` and `line`; URL credentials are hidden, the home folder shows as `~`, a line is cut at 2000 characters, and each send has a line cap (see the docs section). With error logs on, only these named files under `~/.local/share/agentbrew/logs/` are read: `launchagent.err`, `mcp-memory.err.log`, `mcp-memory-maintain.err.log`. The daily detached send runs under `managed` with no stored answer. **If the company uses a log forwarder and not HEC**: ship `kind: file` with `"path": "~/Library/Logs/org-telemetry/agentbrew.jsonl"` (no `url`, no `token`), and point the forwarder at that file; it holds one JSON line per event and rotates to `.1` at 10 MB. **Known limit**: the sink was tested against a fake receiver that follows Splunk's public HEC format, not a real Splunk server. If the real collector refuses a request, record the HTTP status, stop, and offer a safe upstream report (`agentbrew report`, see CONTRIBUTING.md); do not work around it.
+  - **Steps**: 1. Update this repo to a commit that holds the "Org log sink" docs section (`rg -c "Org log sink" docs/observability.md` prints 1 or more). 2. In the overlay repo, add the policy file as a managed file that lands at `~/.config/agentbrew/telemetry-sink.json`, with the values from the owner. If the overlay has no file-delivery step of its own, deliver the file through the dotfiles company overlay, next to the dotfiles policy (see task `org-overlay-splunk-sink-dotfiles` in the dotfiles repo). 3. Add an overlay test that fails when the shipped policy is invalid: run `agentbrew telemetry status` in a scratch HOME with the policy and assert that the output holds the sink line and no `sink policy invalid`. 4. Add an overlay doc page for employees: what is sent, where it goes, how to stop it (`agentbrew telemetry off`), and who approved it. 5. Apply on one company machine. 6. Run the Measurement commands and paste their output in the overlay pull request. 7. Find one `agentbrew:telemetry` event (and, with error logs on, wait for one `agentbrew:error_log` event) in Splunk with the search `index=<index> sourcetype=agentbrew:*`, and paste the event with host names removed. 8. Roll out to the other machines. 9. Delete this block from the public repo in a pull request that names no company detail.
+  - **Files**: overlay repo only: the managed policy file, one overlay test, one overlay doc page. This repo: `TASKS.md` (delete this block when done).
+  - **Output**: mixed
+  - **Acceptance**: on a company machine `agentbrew telemetry status` shows kind `splunk-hec`, the company host, `managed by org policy` (or the stored answer under `ask`), error logs on or off as chosen, and the token source kind, with no token value; `agentbrew telemetry send --dry-run` shows the company URL and `<token>` and no public address; one real `agentbrew telemetry send` exits 0; the event is found in Splunk; the leak check on this public repo still prints 0.
+  - **Hypothesis**: company machines whose agentbrew events reach the company Splunk, with 0 requests to the public default, go from 0 to every machine that has the overlay.
+  - **Measurement**: `agentbrew telemetry status && agentbrew telemetry send --dry-run && agentbrew telemetry send; echo "exit=$?"`, then the Splunk search `index=<index> sourcetype=agentbrew:* | stats count by host`.
+  - **Success**: the send exits 0, the dry run names no public address, and the Splunk search returns 1 or more events from each machine that has the overlay within 24 hours.
+  - **Pivot**: if the real collector refuses the HEC request shape (any 4xx that a correct token and index do not fix), switch the overlay to `kind: file` plus the company log forwarder, and report the refused shape upstream.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric); Splunk documentation, "Format events for HTTP Event Collector".
+
+
 
 <!-- Added 2026-07-06 from the agentic-tooling landscape review (canvas:
      canvases/agentic-tooling-vs-agentbrew.canvas.tsx). Four moves that push
@@ -161,7 +177,7 @@
   - **ID**: sync-selection-preflight
   - **Tags**: security, stability, sync, cli
   - **Mode**: AFK
-  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
+  - **Details**: Source review found additional preflight cases outside the explicit-pull correction. An empty selection currently falls through truthiness guards, and plain sync calls native plugin output before filtering its modules. Freeze synthetic empty-API, empty-pull, unknown-plain and selected-plain exclusion controls before changing these paths. The [continuation handoff](docs/plans/sync-selection-continuation-handoff-20261106.md) preserves current evidence and unapproved design; register and land bounded measurement infrastructure before capturing target cases. The [isolated binding pivot](docs/plans/sync-binding-exclusion-pivot.md) covers synthetic builder wiring only; CLI/update and real-output evidence remain. Preserve the explicit-pull guards and ordinary default behavior; do not use real plugin or credential data.
   - **Files**: `src/cli.ts`, `src/cli-helpers.ts`, `src/update.ts`, existing CLI/update/native-output tests, README and a registered preparation plan.
   - **Output**: code
   - **Acceptance**: Empty or unknown selections fail before state application, installation or publication. A valid selection excludes native plugin publication and live content preparation for every unselected module. An invocation without a selection retains normal configured behavior.
@@ -175,15 +191,51 @@
   - **ID**: source-lease-real-failure-classification
   - **Tags**: reliability, sync, measurement, privacy
   - **Mode**: AFK
-  - **Details**: Qualified instrumentation now distinguishes safe failure classes, but the original incident remains unexplained. After its separate delivery, run the [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort): at most ten sequential invocations of the unchanged exact cross-process case. Preserve every exit and log, stop on a classified failure, and never treat passing invocations as a fix or gate retry. Commit this cohort prediction before measurement. No product fix starts from an unclassified incident.
+  - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The [frozen diagnostic cohort](docs/plans/source-lease-failure-observation.md#bounded-real-failure-cohort) is closed at its ten-invocation cap. Every invocation passed; no real failure was classified. The original acceptance remains UNVERIFIED and the earlier cause UNKNOWN. Preserve that contract and every receipt; do not reopen or extend the cohort. The separate `source-lease-release-window-research` task studies controlled physical schedules and cannot satisfy this real-incident criterion.
+  - **Blocked**: closed-cohort-no-admission — all ten natural-cohort invocations are consumed without a classified failure. Acceptance remains UNVERIFIED; earlier cause UNKNOWN. No additional invocation is authorized by this handoff.
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
   - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-failure-observation.md`
   - **Output**: measurement
   - **Acceptance**: at least one actual failed invocation has its safe enum record; zero failures remain unclassified and zero private errors are disclosed. Every result belongs to the frozen source revision and keeps its actual exit. A current failure class does not establish the earlier incident's cause or authorize an unregistered product fix.
   - **Hypothesis**: the bounded cohort yields at least one classified real failed invocation from the current baseline of zero, with zero unclassified failures, private disclosures or changed failure semantics. If no failure recurs, the evidence remains unverified.
-  - **Measurement**: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`; follow the linked sequential stopping rules, preserve every admission, exit and log, and stop after a classified failure or ten invocations. This cohort has not run.
+  - **Measurement**: historical closed-cohort command: `JOBS=1 heavy-run npm exec -- vitest run src/sync/pull-source-caches.test.ts -t 'keeps copied bytes bound to the accepted revision across production updater processes' --maxWorkers=1 --reporter=default --silent=false`. The ten admitted invocations all passed with no classified real failure. This result is UNVERIFIED; do not run this cohort again.
+  - **Research**: 2026-11-06: source-equivalent observer revision `3558265` matched merged `c3331d9`; every admission retained its native handle, command, log and actual exit. Sequential admission timestamps and unchanged source hashes were verified. Classified real failures: zero. The bounded-cohort success criterion is not met. Controlled research has a separate committed-prediction requirement and never replaces this result.
   - **Success**: at least one real failed invocation classified by a valid kind/errno record; zero unclassified failures or private disclosures; no more than ten invocations; unchanged source, assertions, deadlines and retries; no claim that the new observation proves the earlier cause.
   - **Pivot**: ten passing invocations leave the criterion unverified and require separately registered controlled-race research. Any unclassified failure, disclosure, missing terminal evidence or changed source invalidates the cohort and stops it. Do not reset the denominator, repeat until green, raise a timeout or reinterpret an exception as success.
   - **Anchor**: Basili, Caldiera and Rombach (1994), Goal Question Metric; Munafò et al. (2017), preregistration; existing `SourceCheckoutLeaseRefusal` and exact cross-process fixture contracts.
+
+- [ ] Distinguish controlled source-lease release windows with physical evidence
+  - **ID**: source-lease-release-window-research
+  - **Tags**: reliability, sync, measurement, concurrency
+  - **Mode**: AFK
+  - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The [registered research](docs/plans/source-lease-release-window-research.md#executed-cohorts-and-failed-qualification) used all six permitted physical admissions. Initial and verification controls each matched their frozen matrix, but qualification is FALSE: the single full gate failed at an unchanged plugin lifecycle case with an unclassified timeout. Preserve source and every record. No physical admission or gate retry remains under this registration. The closed natural cohort remains UNVERIFIED and the earlier incident's cause UNKNOWN; controlled results cannot replace its criterion or authorize a product fix.
+  - **Blocked**: needs-plugin-boundary-diagnosis-and-new-qualification-registration — the six-admission cap is exhausted and the full gate failed. Diagnose the separately scouted plugin boundary without running these physical controls; any further physical qualification needs a new committed registration.
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
+  - **Files**: `src/sync/pull-source-caches.test.ts`, `docs/plans/source-lease-release-window-research.md`
+  - **Output**: measurement
+  - **Acceptance**: physical milestone receipts distinguish typed refusal, valid leased acquisition and the predicted raw ENOENT window. Every child is reaped, error output is enum-only, source and production lease settings stay unchanged, and no work enters without a verified lease. Unsupported scheduling capability, missing ordering evidence or a different outcome stays unverified.
+  - **Hypothesis**: the registered release-window control yields an actual filesystem ENOENT classified as other, while the held control yields typed refusal and the pre-released control acquires safely. Every control matches its same frozen class in both the initial and separately registered verification cohort, with zero unclassified outcomes, private-error disclosures or unlocked work.
+  - **Measurement**: completed commands and original thresholds remain frozen in the linked plan. Initial controls matched three of three; the single full verification matched three of three but exited one. The admission cap is closed. Do not run the physical describe block, related tests, verify:changed or another full gate from the experiment checkout containing the exhausted physical controls as a diagnostic retry.
+  - **Research**: 2026-11-06: source tree `bbe912a7d2930c96ba1e5527d4db37bc166c7fe3`, probe SHA256 `76b8fb17cc7f30aae8e556cfe122ca40a8c2c28369f22b18d62f6a24e460320e`; initial and verification milestones, safe enums, wrapper restoration and child reaping matched. Full gate: 6,422 passed, one failed, 33 skipped; actual exit one. Exact failure: `Error: Test timed out in 30000ms.` at `src/plugins/cli-plugin.test.ts:200:3`. Its cause remains UNKNOWN. This is not a successful research closeout.
+  - **Success**: each cohort matches three of three frozen physical controls; no more than six total physical admissions; zero unclassified outcomes, private disclosures, unlocked work or unowned cleanup; unchanged production source, retry policy and deadlines; the single qualifying full gate passes. This qualifies only the controlled research mechanism.
+  - **Pivot**: any different class, missing barrier proof, failed child cleanup, unsafe disclosure or unsupported seam stops the current cohort and prevents further admissions. No repeat, replacement admission or full-gate retry is permitted by this registration. Preserve evidence and separately register any next method. Keep the earlier incident UNKNOWN and the real-failure cohort UNVERIFIED.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; Musuvathi et al. (2008), deterministic concurrency testing; official Node built-in export guidance linked in the plan.
+
+- [ ] Observe the plugin lifecycle timeout boundary before choosing a repair
+  - **ID**: plugin-lifecycle-timeout-observation
+  - **Tags**: reliability, tests, measurement
+  - **Mode**: AFK
+  - **Details**: Published evidence is retained in [draft PR #805](https://github.com/fyodoriv/agentbrew/pull/805); keep it unmerged while qualification is false. The unchanged add/update/rollback/remove marketplace-copy case timed out at its existing 30,000 ms limit. The terminal report identifies the whole case, not the stalled action or cause. Follow [the diagnostic preparation](docs/plans/plugin-lifecycle-timeout-observation.md). Commit that prediction before adding safe test-owned stage records. Preserve original assertions, failure propagation and the time bound; land qualified observation before selecting a product fix. Use a separate clean checkout without the capped physical research probes for any normal full qualification. The [pure recorder pivot](docs/plans/lifecycle-recorder-no-writer-pivot.md) keeps nine synthetic health controls; the runner, external observation and real diagnostic remain unqualified.
+  - **PR**: https://github.com/fyodoriv/agentbrew/pull/805
+  - **Files**: `src/plugins/cli-plugin.test.ts`, `docs/plans/plugin-lifecycle-timeout-observation.md`
+  - **Output**: measurement
+  - **Acceptance**: safe stage records distinguish completed, incomplete and failed in-process lifecycle boundaries without logging arguments, keys, paths or raw errors. A real timeout is attributed only to an observed open boundary; source inspection or a later pass cannot establish the earlier cause. No product or timeout fix is included.
+  - **Hypothesis**: the registered observation controls reduce missing or false boundary classifications to zero, while incomplete operations remain incomplete, errors retain failure semantics and private-marker disclosures remain zero. The real timeout cause stays UNKNOWN until a diagnosed and reproduced boundary exists.
+  - **Measurement**: after the preparation prediction and proposed controls exist, run `rg -q 'plugin lifecycle observation' src/plugins/cli-plugin.test.ts && JOBS=1 heavy-run npm exec -- vitest run src/plugins/cli-plugin.test.ts -t 'plugin lifecycle observation' --maxWorkers=1 --reporter=default --silent=false`. The linked plan separately bounds one later exact-case diagnostic after instrumentation delivery; no such measurement has run at task creation.
+  - **Success**: all three observation controls classify their exact lifecycle state; zero false completion, swallowed failures or private-marker disclosures; unchanged original assertions and 30,000 ms case limit; required gates pass without executing the exhausted lease probes. A repair still requires separate diagnosed/reproduced-boundary evidence and a committed hypothesis.
+  - **Pivot**: any ambiguous boundary, missing record, altered timeout/assertion, disclosed payload or passing retry presented as a cause rejects the observation. Preserve the unknown and revise measurement; do not raise the timeout, replace real lifecycle work with a stub or run until green.
+  - **Anchor**: Basili, Caldiera and Rombach (1994), GQM; Munafò et al. (2017), preregistration; the actual terminal timeout and current in-process `Command.parseAsync` lifecycle fixture.
+
 
 - [ ] Build and install evidence rejects stale locked dependencies
   - **ID**: locked-install-evidence
@@ -261,87 +313,305 @@
   - **Next experiment**: after a full seven-day cohort, replay the exact first window with the pinned report clock. Keep the original thresholds and report unknown timing, mode, and correlation. Unavailable timeout-cause evidence cannot satisfy the no-rise guard.
   - **Blocked**: needs-field-window — wait for a full seven-day cohort. Fixture accuracy, metadata coverage, an absent alias, or a partial cohort cannot close the task.
 
-- [ ] Maintainers can replay concurrent eval-ID collisions before choosing prevention
-  - **ID**: eval-id-composition-observation
-  - **Details**: PR796 and PR797 selected242 independently. PR799 later occupied243 while the corrected PR797 candidate still selected243. Reuse the existing eval validator in a synthetic composition harness with two collision fixtures and two valid controls. Retain each input, composed IDs, duplicate diagnostic and object-preservation verdict. Exclude raw user prompts. The harness does not exist yet; this task registers measurement preparation, not prevention or an allocator. Preserve the exact upstream objects. Any later prevention needs its own committed prediction against this baseline.
-  - **Output**: measurement
-  - **Hypothesis**: The proposed harness detects both registered collisions (2/2), accepts both valid controls (2/2), and preserves every input object. It creates a repeatable baseline without changing production allocation.
-  - **Measurement**: `test -f src/skills/eval-id-composition-observation.test.ts && heavy-run npm exec -- vitest run src/skills/eval-id-composition-observation.test.ts --maxWorkers=1`; retain per-fixture decisions and existing validator diagnostics. A missing harness fails the guard and is not a passing measurement. This proposed command has not run.
-  - **Success**: 2/2 collision detections; 2/2 valid controls accepted; zero lost or altered objects; zero unknown outcomes reported as passes; all existing validator tests pass. Land instrumentation before separately registered prevention work.
-  - **Pivot**: Any missed collision, valid refusal, altered object or unknown outcome reported as a pass rejects the harness. If the collision cannot be represented without changing the validator contract, inspect that contract before selecting prevention.
-  - **Anchor**: Existing `src/skills/validate.ts` duplicate-ID contract; PR796, PR797 and PR799 provenance; Basili, Caldiera and Rombach (1994), Goal Question Metric.
-
 ## P2
 
-<!-- Rust migration requested 2026-11-01: preparation lands before production ports. -->
+- [ ] The telemetry file sink refuses a target whose parent folder is a symlink
+  - **ID**: telemetry-file-sink-symlinked-parent
+  - **Tags**: telemetry, security
+  - **Details**: The org log sink (`kind: file`) checks that the target file is not a symlink and that the path is inside the home folder. `parsePath` in `src/core/telemetry-sink.ts` uses `resolve`, not the real path, so a parent folder that is a symlink to a place outside home passes the check. The policy file comes from a trusted overlay, so the risk is low. Resolve the real path of the nearest existing parent and apply the inside-home check to it.
+  - **Files**: `src/core/telemetry-sink.ts`, `src/core/telemetry-sink.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: a policy whose `path` has a symlinked parent that leaves the home folder is invalid, and nothing is written.
+  - **Hypothesis**: file-sink path shapes that can write outside the home folder go from 1 known shape to 0.
+  - **Measurement**: `npx vitest run src/core/telemetry-sink.test.ts -t "symlinked parent"`
+  - **Success**: the new case passes, and it is red on the unchanged reader.
+  - **Pivot**: if the real-path check breaks a home folder that is itself a symlink, compare against the real path of home and keep the check; drop it only if both fail.
+  - **Anchor**: MITRE CWE-59 (improper link resolution before file access).
 
-- [ ] Account for every executable before migrating it
+- [ ] The health-check integration test passes when it runs alone
+  - **ID**: integration-health-clean-test-order-dependent
+  - **Tags**: tests, reliability
+  - **Details**: `npx vitest run src/integration.test.ts -t "reports clean when everything is in sync"` fails on unchanged `main` (916e35b8, 2026-11-10): expected `clean`, received a drift report for the commands at `src/integration.test.ts:813`. In the full file it passes, so it leans on state that an earlier test leaves (deployed commands). Under load the same test also hit its 15000 ms limit once in `verify:changed`. Make the test set up its own state.
+  - **Files**: `src/integration.test.ts`
+  - **Output**: code
+  - **Acceptance**: the filtered command above exits 0, and the full file still passes.
+  - **Hypothesis**: failures of this test when it runs alone go from every run to none in five runs.
+  - **Measurement**: `for i in 1 2 3 4 5; do npx vitest run src/integration.test.ts -t "reports clean when everything is in sync" || echo FAIL; done`
+  - **Success**: no FAIL line in the five runs.
+  - **Pivot**: if the test needs the whole earlier chain by design, merge it into that chain's test and delete the separate case.
+  - **Anchor**: Luo et al. 2014 (an empirical analysis of flaky tests: test order dependency).
+
+- [ ] The changed-files gate runs the task-queue guards when TASKS.md changes
+  - **ID**: verify-changed-runs-tasks-md-guards
+  - **Tags**: ci, tests, dx
+  - **Details**: On 2026-11-10 two pull requests passed `npm run verify:changed` and then failed the hosted check on a task-queue guard: `src/docs/tasks-md-output-cadence.test.ts` (an **Output** value outside the allowed list) and `src/docs/volatile-count-claims.test.ts`. The changed-files gate did not select these tests for a change to `TASKS.md` alone. Each miss cost one hosted round of about 20 minutes. Map `TASKS.md` and `docs/*.md` to the `src/docs/` guard tests in the changed-files selection.
+  - **Files**: `scripts/verify-changed.mjs`, `src/verify-changed.test.ts`
+  - **Output**: code
+  - **Acceptance**: a change to `TASKS.md` alone makes `npm run verify:changed` run the tests under `src/docs/`.
+  - **Hypothesis**: hosted failures on a task-queue guard that the local gate passed go from 2 in one day to 0 in the next 10 pull requests that change `TASKS.md`.
+  - **Measurement**: `npx vitest run src/verify-changed.test.ts`, with a new case that asserts the selection for a `TASKS.md`-only change holds `src/docs/tasks-md-output-cadence.test.ts`.
+  - **Success**: the new case passes, and it is red on the unchanged selection.
+  - **Pivot**: if the selection cannot map a doc file to tests, run the whole `src/docs/` folder on every changed-files gate and measure the added seconds; drop it above 20 seconds.
+  - **Anchor**: Gligoric, Eloussi, Marinov 2015 (practical regression test selection); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The task lint rejects a task with no Success line or no ID
+  - **ID**: task-lint-success-and-id-gaps
+  - **Tags**: tasks, lint, measurement
+  - **Details**: A review of the "measure every task" rule (2026-11-10) found two gaps in the lint step `npx @tasks-md/lint --require-prereg TASKS.md`. It accepts an **Acceptance** line in place of **Success**, and it skips a block that has no **ID**. So a task can pass the gate without a numeric keep line. Check both in this repo first (a small test over `TASKS.md`), then report the gap to the tasks.md repo.
+  - **Files**: `src/docs/`, `TASKS.md`, `docs/shared-rules.md`
+  - **Output**: code
+  - **Acceptance**: a task block with no **Success** line, or with no **ID**, fails a test in this repo.
+  - **Hypothesis**: task shapes that pass the gate without a Success line go from 2 known shapes to 0.
+  - **Measurement**: `npx vitest run src/docs/` with two new cases, one per shape, each built from a fixture block.
+  - **Success**: both cases pass, and each is red against a lint that accepts the shape.
+  - **Pivot**: if existing tasks fail in numbers above 10, backfill them in a first PR and turn the check on in a second.
+  - **Anchor**: Munafo et al. 2017 (pre-registration); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] Old agent worktrees are removed when their branch is merged
+  - **ID**: stale-worktrees-cleanup
+  - **Tags**: dx, disk, cleanup
+  - **Details**: On 2026-11-10 `git worktree list` in this repo showed about 100 worktrees, most from merged or closed work. Each holds a `node_modules` folder, so they cost disk space and slow file search. Add a safe prune: remove a worktree only when its branch is merged into `origin/main` and it has no uncommitted file and no unpushed commit; list the rest with the reason.
+  - **Files**: `scripts/`, `docs/agent-workflow.md`
+  - **Output**: code
+  - **Acceptance**: one command lists each worktree as removed or kept with its reason, and never removes one with uncommitted or unpushed work.
+  - **Hypothesis**: worktrees of merged branches go from about 100 to 0, with no lost work.
+  - **Measurement**: `git worktree list | wc -l` before and after, and a test with three fixture worktrees (merged and clean, dirty, unpushed).
+  - **Success**: the test passes; the count after is the number of kept worktrees the command names.
+  - **Pivot**: if the merged check cannot see squash merges, match on the pull request state through `gh` and keep any worktree it cannot match.
+  - **Anchor**: Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+
+- [ ] The updates-landed hook fixture passes when heavy-run pauses its slot
+  - **ID**: updates-landed-fixture-wall-clock-limit
+  - **Tags**: tests, flaky, hooks
+  - **Details**: Test 5 of the `updates-landed.sh` hook fixture ("hung script -> silent within 5s") checks a wall-clock limit. On 2026-11-10 it took 11 s and failed inside `heavy-run npm run verify`, on a branch that does not touch `hooks/`: heavy-run had paused the slot under memory pressure, and the pause counts as test time. A plain rerun passed. Judge the hook by what it does (it stops waiting for the hung script and prints nothing), not by the wall clock of the whole test, or measure only the hook's own timeout.
+  - **Files**: `hooks/checks/updates-landed.test.sh`, `hooks/checks/updates-landed.sh`
+  - **Output**: code
+  - **Acceptance**: the fixture passes when the test process is stopped for 10 s in the middle of Test 5 (`kill -STOP`, then `kill -CONT`), and still fails when the hook waits for the hung script without a limit.
+  - **Hypothesis**: a check that does not count paused time moves the failures of Test 5 under a 10 s pause from 1 of 1 to 0 of 10.
+  - **Measurement**: a test that runs the fixture 10 times with a 10 s `kill -STOP` pause in Test 5, plus one run with the hook's timeout removed.
+  - **Success**: 0 failures in 10 paused runs, and the run without the timeout fails.
+  - **Pivot**: if 1 or more of the 10 paused runs fails, drop the time check and assert only on the hook's output and exit code.
+  - **Anchor**: Luo et al. 2014 (An Empirical Analysis of Flaky Tests: async wait and time are top causes); Basili, Caldiera, Rombach 1994 (Goal Question Metric).
+
+- [ ] The perf gate's catch rate for small slowdowns under load is measured
+  - **ID**: perf-gate-marginal-slowdown-detection-under-load
+  - **Tags**: perf, tests
+  - **Details**: The 2026-11-10 measurement of the perf gate (`docs/observability.md`, "Performance gate") seeded a slowdown of 25% to 35% and ran the seeded runs at load 6.0 to 9.3. Two things are unknown. First: how often the gate catches a slowdown of 10% to 15% when the 1-minute load is 10 or more; the paired median must clear the same limit as the minimums, and noise can hide a small step. Second: a slowdown that hits only some runs (two modes, for example every third run takes 30% more) moves neither the minimum nor the median, so both rules miss it. Measure the first with `PERF_GATE_SAMPLES`. For the second, decide by measurement whether a high-quantile rule (for example the 90th percentile of the paired differences) catches it without new false alarms.
+  - **Files**: `scripts/perf-gate.mjs`, `src/scripts/perf-gate.test.ts`, `docs/observability.md`
+  - **Output**: code
+  - **Acceptance**: `docs/observability.md` has a dated table with the catch rate for a seeded +12% step at load 10 or more (20 runs) and the false alarms of 20 clean runs at the same load; and a test pins what the gate does with a two-mode slowdown (caught, or a documented limit).
+  - **Hypothesis**: at load 10 or more, the gate catches a seeded +12% slowdown in 18 or more of 20 in-gate runs, with 0 false alarms in 20 clean runs.
+  - **Measurement**: 20 clean and 20 seeded runs of `PERF_GATE_SAMPLES=<file> node scripts/perf-gate.mjs --force` in a normal heavy-run slot with a busy loop that holds the load at 10 or more; record the load per run.
+  - **Success**: 18 or more of 20 seeded runs caught, and 0 false alarms in 20.
+  - **Pivot**: if fewer than 18 are caught or any clean run fails, run the in-slot gate as a first pass only and take the verdict for marginal cases from a `heavy-run --exclusive` run outside the slot.
+  - **Anchor**: Mytkowicz et al. 2009 (Producing Wrong Data Without Doing Anything Obviously Wrong!); Chen and Revels 2016 (Robust benchmarking in noisy environments).
+  - **Status**: measured on 2026-11-10 (`docs/observability.md`, "Performance gate"): 13 of 20 seeded runs caught (the seed was +16% to +20%, not +12%), 0 false alarms in 40 clean runs, and a test pins the two-mode limit. That is under the success line, so the pivot applies. The second pass was then built on the unpushed local branch `feat/perf-gate-exclusive-confirm` (first pass in a slot, verdict from an exclusive run) and measured the same day. The measurement was stopped after 17 clean runs and 0 seeded runs: 1 first pass raised a false alarm at load 13.9, 9 first passes asked for an exclusive run (each of those said ok), and 7 passed at once. That is over the "0 false alarms" line, so first-pass timing in a slot is dropped. Still open: let a run inside a slot only read a saved exclusive verdict, and never time.
+
+- [ ] Decide whether pull requests must carry a Vision trace block
+  - **ID**: decide-pr-vision-trace-gate
+  - **Tags**: ci, docs, process
+  - **Mode**: HITL
+  - **Details**: `.github/workflows/pr-vision-trace.yml` failed every pull request that had no `Vision trace` block. No recent pull request body has one, so the workflow is parked: it starts only by hand. The owner decides: restore the `pull_request` trigger and add the block to the PR template and agent rules, or delete the workflow, its script and its test.
+  - **Files**: `.github/workflows/pr-vision-trace.yml`, `scripts/check-pr-vision-trace.mjs`, `.github/PULL_REQUEST_TEMPLATE.md`
+  - **Output**: mixed
+  - **Acceptance**: The workflow either runs on every pull request and passes on a body written from the template, or it is gone with its script and test.
+  - **Hypothesis**: one clear rule moves the share of merged pull requests that match the declared trace policy from 0 of the last 6 to 6 of the next 6.
+  - **Measurement**: `gh pr list --state merged -L 6 --json body --jq '[.[]|.body|test("Vision trace")]|map(select(.))|length'`
+  - **Success**: 6 of 6 when the gate is kept; the workflow file is absent when it is dropped.
+  - **Pivot**: fewer than 5 of 6 after the gate is restored means agents do not load the rule; drop the gate.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate: a gate that always fails is ignored; Basili, Caldiera and Rombach (1994), GQM.
+
+- [ ] Move the hosted Linux job back to ubuntu-latest when Playwright supports it
+  - **ID**: ci-ubuntu-latest-playwright
+  - **Tags**: ci, tests
+  - **Mode**: AFK
+  - **Details**: On 2026-11-10 the first hosted run of `.github/workflows/ci.yml` failed on `ubuntu-latest` at the `playwright-install` step: `Playwright does not support chromium on ubuntu26.04-x64`. The job now runs on `ubuntu-24.04`. GitHub removes old images over time, so check the installed Playwright version against the newest image and move the label back when Chromium installs there.
+  - **Files**: `.github/workflows/ci.yml`, `package.json`
+  - **Output**: code
+  - **Acceptance**: the `verify` job passes on `ubuntu-latest`, and the pin comment in `ci.yml` is gone.
+  - **Hypothesis**: a Playwright version with a Chromium build for the newest image moves `playwright-install` failures on `ubuntu-latest` from 1 of 1 to 0.
+  - **Measurement**: `gh workflow run ci.yml --ref <branch>` on a branch with `ubuntu-latest`, then `gh run view <id> --json jobs --jq '.jobs[].conclusion'`.
+  - **Success**: every job prints `success`.
+  - **Pivot**: if no Playwright release supports the image 60 days before GitHub retires `ubuntu-24.04`, run the browser tests in the Playwright container image instead.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Key the hosted step cache on the runner image and on more of each step's inputs
+  - **ID**: ci-step-cache-key-image-and-inputs
+  - **Tags**: ci, cache, perf
+  - **Mode**: AFK
+  - **Details**: The hosted job keeps the `scripts/verify.sh` step record with `actions/cache` under the key `gate-<matrix.os>-<run>`. Two gaps, found by the review of the pull request that turned hosted CI on. (1) The key has no runner image version. When `macos-latest` moves to a new image, a step record made with the older `jq` or `bash` is reused. Add the image name (`ImageOS`) and `RUNNER_ARCH` to the key through a step output. (2) On a pull request only the hook-fixture step is served from the record: the lint steps key on `origin/main` and every repo file, and the test step never caches. Give the lint steps listed inputs so a docs-only change skips them, and measure the saved time.
+  - **Files**: `.github/workflows/ci.yml`, `scripts/verify.sh`, `docs/ci.md`
+  - **Output**: code
+  - **Acceptance**: the cache key holds the image name, and a second hosted run of a docs-only change serves the lint steps from the record.
+  - **Hypothesis**: listed inputs for the lint steps move the cached share of a docs-only hosted run from 1 step to every lint step, with no stale pass after an image change.
+  - **Measurement**: the last gate line of the hosted job log (`verify: passed; N of M steps from cache`) on two runs of one docs-only branch.
+  - **Success**: N on the second run covers every lint step.
+  - **Pivot**: if a lint step cannot list its inputs without missing a real failure in a seeded test, leave it uncached and close the task with only the image key.
+  - **Anchor**: Mokhov, Mitchell and Peyton Jones (2018), Build Systems à la Carte.
+
+- [ ] Write rules natively when a native agent shares its file with a delegated agent and ai-rules is missing
+  - **ID**: rules-shared-file-native-fallback
+  - **Tags**: sync, rules
+  - **Mode**: AFK
+  - **Details**: Found on the first hosted run (2026-11-10), where the `ai-rules` CLI is not installed. `dedupeRulesWritesByResolvedPath` in `src/sync/rules-sync.ts` gives a shared rules file to the delegated agent. With no `ai-rules`, that write is skipped, so a natively synced agent on the same real file (seen with `opencode` in `src/integration.test.ts`, "sync → sync → status converges") keeps zero managed sections. The test now allows zero only for that shared-file case. Decide the behaviour: let the native agent write when the delegated write is skipped, or keep the skip and say so in the warning.
+  - **Files**: `src/sync/rules-sync.ts`, `src/integration.test.ts`, `src/sync/rules-sync.test.ts`
+  - **Output**: code
+  - **Acceptance**: with `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules`, the integration test asserts exactly one managed section for every native agent, with no shared-file exception.
+  - **Hypothesis**: a native fallback for a shared file moves native agents with zero managed sections on a machine without `ai-rules` from 1 to 0.
+  - **Measurement**: `AGENTBREW_AI_RULES_BIN=/nonexistent/ai-rules npx vitest run src/integration.test.ts`
+  - **Success**: every test in the file passes with the exception removed.
+  - **Pivot**: if a native write to the shared file breaks the delegated agent's content on the next sync with `ai-rules`, keep the skip and print the file in the warning instead.
+  - **Anchor**: Forsgren, Humble and Kim (2018), Accelerate (change failure rate).
+
+- [ ] Make the perf gate timing tests steady on hosted runners
+  - **ID**: perf-gate-tests-hosted-noise
+  - **Tags**: ci, tests, perf
+  - **Mode**: AFK
+  - **Details**: On the hosted macOS run of 2026-11-10 a few timing cases in `src/scripts/perf-gate.test.ts` failed on wall-clock noise (for example `expected 3.39 to be less than 0`, and `tool got slower: 46.3 ms -> 68.0 ms` for a head that sleeps less). A retry on every timing case did not help: the next run failed on other cases (`base 63.0 ms head 108.1 ms +71.5% slower` for an unchanged tool). The gate-spawning groups now skip on the hosted macOS runner only (`HOSTED_MAC` in the test file); they still run on hosted Linux and on a local Mac. Remove that skip when this task lands. A retry does not remove the cause: the fixtures compare sleeps 20 to 50 ms apart while the suite runs on 3 shared cores. Make the fixtures independent of the wall clock (wider gaps, or a fake clock passed to the gate).
+  - **Files**: `src/scripts/perf-gate.test.ts`, `scripts/perf-gate.mjs`
+  - **Output**: code
+  - **Acceptance**: the file passes 20 of 20 hosted macOS runs with `retry` set to 0.
+  - **Hypothesis**: fixtures that do not depend on the wall clock move hosted failures of this file from a failure in the first hosted run to none in 20 runs.
+  - **Measurement**: `gh run list -w ci.yml -L 20 --json conclusion --jq '[.[]|select(.conclusion=="failure")]|length'`, then read each failed log for `perf-gate.test.ts`.
+  - **Success**: 0 failures of this file in 20 runs.
+  - **Pivot**: if a fake clock needs a large change in the gate (more than a screen of code), run this file in its own serial step after the suite.
+  - **Anchor**: Luo et al. (2014), An Empirical Analysis of Flaky Tests.
+
+- [ ] Detect duplicate Ollama servers before they split the local prompt cache
+  - **ID**: ollama-single-server-readiness
+  - **Tags**: opencode, local-ai, reliability, readiness
+  - **Mode**: AFK
+  - **Details**: On 2026-11-09 the Ollama desktop app and `com.agentbrew.ollama` competed for port 11434. The managed server repeatedly logged `address already in use`; requests alternated between separate caches and runner settings, causing fresh-session smoke times to vary from 16 seconds to a 120-second timeout. The duplicate app was stopped and three runs then passed in 48, 26, and 16 seconds. Add a supported readiness check that identifies this ownership conflict without killing a user process.
+  - **Files**: `src/mcp/opencode-bootstrap.ts`, OpenCode/Ollama readiness checks and tests, `README.md`.
+  - **Output**: code
+  - **Acceptance**: the check reports duplicate Ollama listeners or server processes and names the managed endpoint; one managed server passes; no user process is stopped automatically.
+  - **Hypothesis**: an explicit duplicate-server check makes this cache-splitting failure visible before smoke tests, reducing undiagnosed competing-server states from one observed incident to zero in the final fixture and live check.
+  - **Measurement**: run the new check with one managed server and with an isolated duplicate-server fixture, then rerun the three no-override smoke tests.
+  - **Success**: the fixture reports the conflict, the live single-server check passes, and all three smoke runs finish within 120 seconds.
+  - **Pivot**: if listener inspection cannot attribute ownership reliably, report the endpoint and process evidence without automatic remediation instead of changing ports.
+  - **Anchor**: Ollama runner and `ollama serve` logs from 2026-11-09; Basili, Caldiera and Rombach 1994 (GQM).
+
+- [ ] Remind an agent to draft a review request after adding reviewers
+  - **ID**: review-ask-classifier-822
+  - **Tags**: agents, hooks, communication
+  - **Mode**: AFK
+  - **Details**: Issue #822 needs a reminder-only hook and a generic rule, without sending chat messages. The [classifier preparation](docs/plans/review-ask-classifier-822.md) and its [gate](docs/plans/review-ask-classifier-gate-822.md) cover bounded synthetic CLI inputs through `hooks/lib/review-request-classifier-test.py`, `hooks/checks/review-request-classifier.test.sh` and `hooks/checks/review-request-classifier-gate.test.sh`. The [report parser pivot](docs/plans/review-ask-report-pivot-822.md), [imported-report preparation](docs/plans/review-ask-imported-report-822.md) and their discovery plans prepare `hooks/lib/review_ask_report.py` and its synthetic gate controls. The [owned runner preparation](docs/plans/review-ask-inprocess-runner-822.md) and its [discovery follow-up](docs/plans/review-ask-runner-discovery-followup-822.md) add bounded synthetic event controls. They do not qualify a real event, MCP request or optional channel.
+  - **Output**: code
+  - **Acceptance**: Qualify actual event and command-success semantics before enabling a hook. Register separate real-agent and MCP controls before claiming support; keep all messages as drafts.
+  - **Hypothesis**: The pure classifier recognizes 2/2 supported synthetic reviewer forms and yields 0/8 false positives, without process or network calls.
+  - **Measurement**: Run the two wrapper commands and existing consumer suite in the registered classifier and gate plans.
+  - **Success**: Two positives, eight negatives and all six wrapper controls pass with zero output leaks or classifier process/network calls.
+  - **Pivot**: Any missed positive, false positive, disclosure, unexpected call or existing-consumer regression rejects the classifier approach.
+  - **Anchor**: Existing PR command parser; Claude hooks reference; Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
+- [ ] Measure whether a chat rule prevents duplicate follow-ups
+  - **ID**: chat-message-rule-decision-821
+  - **Tags**: agents, evaluation, communication
+  - **Mode**: AFK
+  - **Details**: Issue #821 needs a decision measurement before a rule change. The registered plan is [chat message rule](docs/plans/chat-message-rule-821.md); its first baseline stopped on an invalid response. The separate [schema pivot](docs/plans/chat-rule-schema-pivot-821.md) prepares `scripts/chat-rule-schema-protocol.mjs` and `scripts/run-chat-rule-schema-controls.sh` without a model call. The earlier preparation owns `scripts/eval-chat-message-rule-821.mjs`, `scripts/chat-rule-tap.mjs`, and `scripts/run-chat-rule-controls.sh`. None sends real messages or establishes model performance.
+  - **Output**: code
+  - **Acceptance**: Preserve the failed original baseline and its receipt. Before a new model attempt or candidate rule, register a distinct protocol, independently selected cases, exact measurement and numeric thresholds. Keep real chat untouched.
+  - **Hypothesis**: The original prediction was 4/4 correct decisions and at least one fewer error than its frozen baseline; that experiment stopped before a baseline was captured. A new decision prediction must be registered separately.
+  - **Measurement**: The original plan's baseline and candidate commands are historical and must not be rerun. Register new exact commands, model, cases, receipt and digest before a new attempt.
+  - **Success**: The original 4/4 and one-fewer-error threshold remains historical; a distinct experiment must set its own numeric decision threshold before measurement.
+  - **Pivot**: The original invalid response rejects that approach and its empty receipt stays reserved. A distinct approach must register its own pivot before measurement.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
+<!-- Rust migration requested 2026-11-01; re-planned 2026-11-10: measured hot paths first. Porting stays paused until the owner starts it. -->
+
+- [ ] Show how long the hooks of one agent Bash call take
+  - **ID**: rust-hook-chain-timing
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 1 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. The validation review measured about 8 hooks per Bash call, each 125-483 ms, but no command prints the time of the whole chain. Add a `hook-bash-chain` row to `scripts/perf-budget.tsv` that runs every PreToolUse Bash check for one `git status` payload. Add a sampled, content-free field event for the same chain (`duration_ms`, hook count, `runtime`) that passes `sanitizeEvent`; the local log line keeps `ms`. Prove an A/A run of the gate (base and head at the same commit). No check logic changes.
+  - **Output**: code
+  - **Acceptance**: The gate prints `hook-bash-chain` with `base_min`, `head_min` and `ratio`. An A/A run passes 20 of 20 times. The event carries no command text, path or argument. Docs: `docs/observability.md` and `docs/hook-protocol.md`.
+  - **Hypothesis**: A whole-chain row moves the hook cost of one agent Bash call from unmeasured to one number, with 0 false alarms in 20 A/A runs, so the dispatcher slice can register an absolute prediction.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` row), run 20 times at one commit.
+  - **Success**: The row prints in 20 of 20 runs; 0 A/A runs fail the gate; the new event passes the `sanitizeEvent` tests.
+  - **Pivot**: 2 or more of 20 A/A runs fail -> the chain is too noisy for the gate rule; time each check as its own row and sum the minimums, and drop the single chain row.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (A/A tests).
+
+- [ ] Cut the hook wait on every agent Bash call by half
+  - **ID**: rust-hook-dispatcher
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 2 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Each agent Bash call starts about 8 hook processes. Run the PreToolUse Bash checks through one dispatcher that reads the payload once. Weigh a single shell dispatcher first; build the Rust one only when the shell one misses the number. Deliver a Rust binary through the existing [prebuilt native path](docs/plans/source-build-prebuilt-764.md). Keep each check's verdict, exit code, bypass variable and opt-in state. Commit the absolute `hook-bash-chain` baseline from step 1 before any dispatcher code. The PR must not change the row's command path: the row keeps calling the same entry file, or the gate prints `ratio` `null`. If the PR adds Rust code, it also adds the cargo step to `scripts/verify.sh`, and that step must run only when `rust/` changed.
+  - **Output**: code
+  - **Blocked by**: rust-hook-chain-timing
+  - **Acceptance**: Gate G in the plan. `bash scripts/run-hook-fixtures.sh` passes with 0 changed verdicts. Hostile heredocs, substitutions, bad JSON, absent tools and timeouts keep their deny or unknown result. The old per-check path stays until rollback is proven.
+  - **Hypothesis**: One dispatcher that parses the payload once cuts the `hook-bash-chain` time by at least 50% against the merge-base, with 100% verdict parity and 0 new false permits.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (the `hook-bash-chain` `ratio`) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: `ratio` at most 0.50; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05; within 14 days the p50 of the chain event for the version after the switch is at most half of the version before it, on the owner's dashboard or by the plan's local-log fallback command.
+  - **Pivot**: `ratio` above 0.80 -> abandon the dispatcher, keep per-check scripts, and add the slice as a recorded exception row in the plan with its measured number. Any new false permit -> stop and change the parser boundary, never an allow rule.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Run the remaining hook families without an interpreter start per call
+  - **ID**: rust-hooks-and-generated-helpers
+  - **Tags**: migration, rust, performance
+  - **Mode**: AFK
+  - **Details**: Step 3 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. After the Bash dispatcher, the other hook families (Write and Edit checks, Stop and session hooks, `perf-record`, generated helper scripts) still start `jq`, Perl or Python per call. Move one family per PR into the dispatcher. Each family first adds its `hook-*` row to `scripts/perf-budget.tsv` in its own PR, so the row exists at the base, then registers its number. A port PR must not change the row's command path, or the gate prints `ratio` `null`. Keep protocol, opt-ins, safe unknown handling and ownership-aware deployment. Keep only necessary shell shims.
+  - **Output**: code
+  - **Blocked by**: rust-hook-dispatcher
+  - **Acceptance**: Gate G in the plan for each family. Permitted and denied controls keep their verdicts. Each family has a budget row before its port and a rollback receipt after it.
+  - **Hypothesis**: Moving a hook family into the dispatcher cuts its `hook-*` row by at least 30% against the merge-base, with 100% verdict parity and 0 new false permits or injection paths.
+  - **Measurement**: `npm run --silent perf:gate -- --force --json` (each ported `hook-*` row) and `bash scripts/run-hook-fixtures.sh`; for peak RSS, the peak RSS command in the plan's "Commands that run today" (median of 15 runs of `/usr/bin/time -l` on the row's command), once at the base and once at the head.
+  - **Success**: Each ported row has `ratio` at most 0.70; hook fixtures 100% green; R_M (candidate median peak RSS / baseline median) at most 1.10 after an A/A ratio from 0.95 to 1.05.
+  - **Pivot**: A family with `ratio` above 0.90 stays in shell and becomes a recorded exception in the plan. Any deny, unknown or injection regression -> stop and change the parser boundary.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+
+- [ ] Find out where sync, catalog, MCP and doctor time goes before any port
+  - **ID**: rust-cold-path-profile
+  - **Tags**: migration, rust, performance, measurement
+  - **Mode**: AFK
+  - **Details**: Step 4 of the [Rust migration](docs/plans/rust-migration.md). The validation review did not profile sync, catalog, MCP lifecycle or doctor probes. They are recorded exceptions until a profile shows owned code is the cost. Profile each command on synthetic fixtures in a scratch HOME. Split wall time into owned interpreter code, git, network and child tools. Put the result next to the event's local p50. Write the table into the plan. Port nothing.
+  - **Output**: measurement
+  - **Acceptance**: The plan has one row per profiled command: local p50, share of wall time in owned code, and the decision (stays an exception, or reopens with a number). Every reopened slice gets its own task block with the five pre-registration fields.
+  - **Hypothesis**: Owned interpreter code is under 50% of wall time in at least 80% of the profiled families, so those stay recorded exceptions and no port starts on a guess.
+  - **Measurement**: `jq -s '[.[] | select(.event == "sync") | .ms] | sort | .[length / 2 | floor]' ~/.local/share/agentbrew/logs/events.jsonl` per event name for the local p50 (it printed 1201 on 2026-11-10; it prints `null` for an event with no logged line), and `node --cpu-prof dist/cli.js <command>` on the registered fixture for the share.
+  - **Success**: 100% of the listed command families have a profile row and a decision in the plan.
+  - **Pivot**: If the profiler cannot separate child-tool time from owned time in 2 or more families -> switch to wall-clock spans around child calls and drop the CPU profile.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
+
+- [ ] Account for every executable with a small manifest and validator
   - **ID**: rust-source-inventory
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Create a reviewed component manifest and minimal Rust validator so embedded programs, extensionless entrypoints and generated executables cannot escape scope. Classify UI and necessary shell narrowly. Record frozen-support residue without adding work for it. Plan: [Rust migration](docs/plans/rust-migration.md). Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is under qualification and inventory acceptance remains pending. Reviewed-boundary plan: [source registry](docs/plans/rust-source-reviewed-registry.md). Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). It adds a bounded corpus without changing inventory acceptance. Run order: [staged measurement](docs/plans/rust-literal-staged-measurement-proposal-20261105.md). Separate decoder controls: [byte-literal supplement](docs/plans/rust-byte-literal-supplement-proposal-20261105.md). Observer preparation starts from [independent legacy capture](docs/plans/rust-legacy-baseline-capture-20261106.md); the three captured records do not qualify Rust discovery.
+  - **Details**: Step 5 of the [Rust migration](docs/plans/rust-migration.md). Porting stays paused until the owner starts it. Create a reviewed component manifest and a small Rust validator (`migration-check inventory --check`). No full harness. Each owned executable gets one of five states: `ported`, `exception` (with its row in the plan), `frozen`, `grandfathered` (the crates under `rust/` that shipped before gate G) or `out-of-scope` (UI presentation and shell that must stay shell). Embedded programs, extensionless entrypoints and generated executables must not escape. This step ports nothing, so only the behavior and safety clauses of gate G apply to it. Diagnostic preparation: [fixed transport reasons](docs/plans/rust-transport-diagnostic-reasons.md); the supporting Rust foundation is preserved in [draft PR #767](https://github.com/fyodoriv/agentbrew/pull/767) at checkpoint `6e32d628`; it remains unmerged. Supplemental literal-writer prediction: [registration](docs/plans/rust-literal-adapter-registration-proposal-20261105.md). Reviewed-boundary plan: [source registry](docs/plans/rust-source-reviewed-registry.md). Run order: [staged measurement](docs/plans/rust-literal-staged-measurement-proposal-20261105.md). Separate decoder controls: [byte-literal supplement](docs/plans/rust-byte-literal-supplement-proposal-20261105.md). Observer preparation: [legacy capture](docs/plans/rust-legacy-baseline-capture-20261106.md); its records do not qualify Rust discovery.
   - **Output**: code
-  - **Acceptance**: Each executable component has an owner, caller boundary, migration slice or justified exception. Planted omissions fail the validator. No production replacement occurs in this preparation task.
+  - **Acceptance**: Each executable component has an owner, a caller boundary and one of the five states. Planted omissions fail the validator. `rust/Cargo.toml` and the `migration-check` binary exist after this merges. No production replacement occurs in this task.
   - **Hypothesis**: Content and caller analysis makes executable-scope classification complete at 100%, with 0 unclassified owned components and 0 missed planted omissions.
-  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- inventory --check` — proposed command delivered by this task, not currently available.
-  - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected.
+  - **Measurement**: `heavy-run cargo build --locked --release --manifest-path rust/Cargo.toml --bin migration-check && heavy-run rust/target/release/migration-check inventory --check` — runnable after this task merges, not before.
+  - **Success**: 100% classification; 0 unclassified owned executable components; every planted omission is rejected; cold build at most 120 s.
   - **Pivot**: Any missed embedded or extensionless component -> abandon suffix-only discovery and use content/caller analysis. Missing evidence is not passing.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Measure compatibility and resource use before replacing runtime code
-  - **ID**: rust-measurement-harness
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Land the shared Rust measurement engine and versioned workload/receipt protocol as a preparation PR. Dotfiles consumes a pinned adapter to this owner implementation. Seal unchanged-source baselines; each later port commits actual numeric predictions before replacement code. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-source-inventory
-  - **Acceptance**: Capture exits, output, file bytes/permissions/side effects, child lifetime, cold/warm execution, CPU, peak RSS and install footprint in private sanitized receipts. Pin source, fixtures, toolchain, platform and cache. Reject planted semantic, privacy, cleanup, missing-sample and resource failures.
-  - **Hypothesis**: Registered differential workloads and sealed baselines make 100% of planted invalid receipts and behavior/resource violations fail before any production port can pass.
-  - **Measurement**: `heavy-run cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- harness-selftest` — proposed command delivered by this task; no baseline result is claimed.
-  - **Success**: 100% of registered planted violations rejected; 0 missing/contaminated measurements reported as passing; baseline replay meets its preregistered noise bound.
-  - **Pivot**: Any false pass or non-repeatable baseline -> stop ports and change instrumentation or workload design, not thresholds after results.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+- [ ] Rule on the default choices in the Rust re-plan
+  - **ID**: rust-owner-rules-on-replan-defaults
+  - **Tags**: migration, rust, decision
+  - **Mode**: HITL
+  - **Details**: The 2026-11-09 validation review said the final audit needs an owner decision. The re-plan shipped without a question round, so the [Decisions (2026-11-10)](docs/plans/rust-migration.md#decisions-2026-11-10) table holds defaults adopted on the reviewer's recommendation. The owner did not decide them. The owner reads the seven rows and writes "kept" or the changed choice beside each, in this plan and in the dotfiles plan. The two rows that most need a ruling: the five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`), and existing Rust code as `grandfathered`. Porting stays paused until the owner starts it; this ruling does not start it.
+  - **Output**: docs
+  - **Acceptance**: Each row of the Decisions table in both plans carries the owner's ruling and its date. A reversed default updates the matching plan step and task in the same PR.
+  - **Hypothesis**: One owner pass over the table moves the count of default choices with no owner ruling from 7 to 0 in both plans, so the final audit rests on a decision and not on a default.
+  - **Measurement**: `rg -c 'Owner ruling' docs/plans/rust-migration.md` in each repository after the ruling lands: one match per row of the table.
+  - **Success**: 7 rulings in each plan; 0 rows without one.
+  - **Pivot**: If the owner reverses the audit states (more than 2 of the five rejected), stop the audit task and re-plan the audit; do not patch the states one by one.
+  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration).
 
-- [ ] Run a native candidate beside the current CLI with proven rollback
-  - **ID**: rust-native-delivery
+- [ ] Prove every owned executable has one of the five audit states
+  - **ID**: rust-final-audit
   - **Tags**: migration, rust
   - **Mode**: AFK
-  - **Details**: Add locked Rust builds, asset resolution and per-slice candidate dispatch for scratch installs. Keep the live entrypoint until the slice passes G; prove atomic replacement and recovery first. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-measurement-harness
-  - **Acceptance**: Scratch install, missing assets, wrong architecture, interrupted update and rollback preserve approved configuration and executable ownership. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: Native dispatch succeeds in 100% of supported scratch cases and recovery in 100% of interruption cases, with 0 behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-native-delivery --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 100% supported scratch dispatch and rollback; 0 ownership errors.
-  - **Pivot**: Any rollback, asset or compatibility failure -> change dispatch before moving callers. An upper resource ratio above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Preserve exact text and file safety through native parsing
-  - **ID**: rust-text-and-file-primitives
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Move parsing, redaction, environment and filesystem leaves behind Rust interfaces. Preserve untouched bytes, encodings, symlink rules, modes and atomic writes. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-native-delivery
-  - **Acceptance**: Escaped JSON, CRLF, unknown keys, traversal, symlink swaps, malformed input and planted credentials preserve approved output and rejection behavior. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted leaf workloads run without an owned legacy interpreter, with 0 approved-behavior/safety regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-text-and-file-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 unintended byte changes, unexpected writes or missed planted secrets.
-  - **Pivot**: Any corruption, unexpected write or secret false negative -> change parser/I/O boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep child lifetimes and resource limits correct in native adapters
-  - **ID**: rust-process-primitives
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port safe argv, environment scrubbing, retries, scheduler calls, timeouts, signals and owned process-group cleanup. Consume machine-wide admission and worker budgets; separate queue wait from execution. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-native-delivery
-  - **Acceptance**: TERM/INT, timeout, wrapper death, failed probes, hostile environment and child escape controls leave no owned work alive or reservation released early. Keep per-slice before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted execution preserves approved behavior with 0 orphaned children, budget bypasses or secret disclosures, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-process-primitives --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 orphaned owned children, admission bypasses or unintended environment disclosures.
-  - **Pivot**: Any lifecycle/admission violation -> replace the process-ownership design before moving consumers. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
+  - **Details**: Step 6 of the [Rust migration](docs/plans/rust-migration.md). Reconcile the manifest, each ported slice's receipts, generated targets, installed source and docs. Delete only proven unused implementations. The five audit states (`ported`, `exception`, `frozen`, `grandfathered`, `out-of-scope`) are a default adopted on 2026-11-10; the owner rules on them in `rust-owner-rules-on-replan-defaults`. A slice that ended at its Pivot counts as `exception`. The audit claims "all measured hot paths ported". It never claims "all code is Rust".
+  - **Output**: measurement
+  - **Blocked by**: rust-hook-dispatcher, rust-hooks-and-generated-helpers, rust-cold-path-profile, rust-source-inventory, rust-owner-rules-on-replan-defaults
+  - **Acceptance**: Every owned component in the manifest has one of the five states; `ported` has receipts and `exception` has a plan row. Every ported slice still meets its number on the current tree. Installed artifacts agree with receipts.
+  - **Hypothesis**: Reconciling the manifest with the tree exposes every gap: 0 unrecorded owned components, and 100% of ported slices still at or under their registered `ratio`.
+  - **Measurement**: `heavy-run rust/target/release/migration-check inventory --check` (runnable after `rust-source-inventory` merges) and `npm run --silent perf:gate -- --force --json`.
+  - **Success**: 0 unrecorded components; 100% of ported rows pass the gate; 0 safety or behavior regressions in `heavy-run npm run verify`.
+  - **Pivot**: Any unrecorded component or failed ported row -> the migration stays open; fix that boundary. Do not change the goal to converted lines.
   - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
 
 - [ ] Validate the November skills-target delta in native runtimes
@@ -561,217 +831,35 @@
   - **Acceptance**: The owner runs `npm run publish:latest` in a real terminal (browser 2FA needs a TTY); afterwards the git tag, npm `latest`, and `package.json` version match. GitHub Actions stays off, so no workflow step is required.
   - **Blocked**: needs-owner-tty — npm publish needs the owner's browser 2FA in a real terminal; agents cannot run it.
 
-- [ ] Change configuration natively without losing ownership
-  - **ID**: rust-state-and-agentfile
-  - **Tags**: migration, rust
+- [ ] Classify upstream skill-to-plugin conversions during source refresh
+  - **ID**: classify-upstream-skill-plugin-conversions
+  - **Tags**: skills, sync, ownership, upstream
   - **Mode**: AFK
-  - **Details**: Migrate state/settings, Agentfile merge/mutation, manifests, paths and locks. Preserve schemas, layers, user text, transaction recovery and no-op behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
+  - **Details**: On 2026-11-08, `agentbrew sync --pull` printed `insecure-defaults not found in trailofbits/skills`. Upstream commit `82e8e0a` intentionally removed its `SKILL.md` and converted it to a plugin-only workflow. A refresh should distinguish this from a missing or broken source, preserve owner-modified installed content, and never silently prune it.
+  - **Files**: `src/update.ts`, source/skill discovery and removal tests, `README.md`
   - **Output**: code
-  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives
-  - **Acceptance**: Concurrent updates, failed writes, stale locks, relative paths, unknown fields and repeated no-ops preserve approved state and recovery. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted configuration workloads run natively with 0 lost updates, foreign-owner writes or approved-behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-state-and-agentfile --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 lost updates, unowned changes or persistent no-op mutations.
-  - **Pivot**: Any data loss/ownership mismatch -> change transaction and merge boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Install and update source content through native ownership-aware adapters
-  - **ID**: rust-catalog-and-sources
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port catalog/source registration, fetch/cache, skill tools, import/install/update/remove and pruning. Keep upstream delegation, provenance and user-kept targets. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Offline, changed-ref, deleted-source, duplicate-name, interrupted fetch and user-modified-target controls preserve approved outcomes and ownership. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted local source operations run natively with 0 unowned removals, provenance collisions or behavior regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-catalog-and-sources --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 unowned removals or provenance collisions; delegated upstream tools stay delegated.
-  - **Pivot**: Any provenance/removal defect -> change source/cache adapter, not a silent fallback. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Deploy skills and content natively with the same ownership rules
-  - **ID**: rust-sync-content
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port skills, rules, commands, agent definitions and instruction composition one engine per measured slice. Preserve source discovery, primary-host parity, owner edits and upstream delegation. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources
-  - **Acceptance**: Both primary hosts receive equivalent supported content. No-op, dry-run, rename, stale-owned-output, foreign-file and failed-write cases retain exact ownership behavior. Keep before/after and rollback receipts. Preserve selected-pull guards for pre-sync installation, live rule aliases and deferred staged-skill cleanup; use the CLI pull and source-skill-prune regressions as sealed migration controls.
-  - **Hypothesis**: 100% native converted sync cases preserve primary-host behavior with 0 foreign mutations and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-content --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% supported primary-host parity; 0 foreign-file writes or persistent no-op mutations.
-  - **Pivot**: Any primary-host gap or ownership loss -> change engine contract before the next engine. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Reconcile native agent settings without changing trust or opt-ins
-  - **ID**: rust-sync-configuration
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port MCP/model/hook/permission/statusline/helper reconciliation and watcher/repair scheduling by engine. Preserve routing, unknown keys, hook trust, opt-ins and scheduler environment. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile
-  - **Acceptance**: Dry-run writes nothing; reapply is a no-op; primary-host config, disabled features, owner-edited settings, restart and source-refresh cases preserve approved behavior. Keep before/after and rollback receipts. Selected pulls must not publish excluded Git MCP runtimes; retain the runtime and accepted source receipt controls from the pull-source-caches regression.
-  - **Hypothesis**: 100% native converted configuration sync preserves behavior with 0 unauthorized hook activations, re-enabled opt-outs or no-op mutations, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-sync-configuration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 trust/opt-in/ownership regressions and 0 persistent no-op mutations.
-  - **Pivot**: Any trust, opt-in or source-refresh regression -> revise configuration ownership. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Manage MCP lifecycle through bounded native adapters
-  - **ID**: rust-mcp-lifecycle
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port registry, entrypoint resolution, pin/build registration, setup, validation, probing and healing in measured slices. Baseline delivered re-pin fixes; preserve delegated and optional-model boundaries. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives, rust-catalog-and-sources
-  - **Acceptance**: Runnable directory/symlink entrypoints, refused pins, failed builds, bad schemas, offline registry and bounded probes preserve approved register-or-rollback behavior. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted lifecycle cases preserve behavior with 0 unverified build registrations or surviving probe children, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-mcp-lifecycle --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 invalid registrations or surviving probe children; unsupported/unknown outcomes remain honest.
-  - **Pivot**: Any invalid registration or cleanup failure -> change lifecycle boundary and retain the previous path. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep shared semantic memory private through native integration
-  - **ID**: rust-memory-integration
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned memory transport/readiness, pack/provenance ledgers, backup and lifecycle bridges. Delegate the service itself; preserve enablement, deduplication, retention and privacy choices. Keep native chat histories separate. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-sync-configuration, rust-process-primitives
-  - **Acceptance**: Synthetic enabled/disabled, stale-owner, changed-pack, corrupt-backup and unavailable-service cases preserve records and honest errors. No conversation history is imported or synchronized. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted integration cases preserve approved behavior with 0 private payload leaks, unauthorized record deletions or chat-history imports, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-memory-integration --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 privacy/retention/opt-in regressions, private payloads in receipts or native history imports.
-  - **Pivot**: Any privacy/retention/opt-in regression -> stop and change integration boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Keep signed plugins and public-write approvals intact in native flows
-  - **ID**: rust-plugin-trust-and-feedback
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port plugin signatures/scopes, overlay composition, contribution drafts, report sanitization and publication adapters. Preserve approvals and human-only allowances; use fake external writers. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-catalog-and-sources, rust-process-primitives
-  - **Acceptance**: Wrong/revoked signer, capability escalation, malformed overlay, private references and denied publication fail closed. Approved local drafts work; tests never post publicly. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted trust/draft cases preserve behavior with 0 new false permits, disclosures or real test publications, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-plugin-trust-and-feedback --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 trust bypasses, private-reference disclosures or real public writes from tests.
-  - **Pivot**: Any trust/publication bypass -> abandon the affected adapter design before rollout. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Detect and repair drift through native diagnostics
-  - **ID**: rust-diagnostics-and-repair
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port health snapshots, drift decisions/fixes, repair provenance, status/ops and next steps. Require post-fix verification; retain unknown/unsupported states, dry-run and changed-source detection. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle
-  - **Acceptance**: Planted drift, ineffective repairs, unavailable tools, concurrent source changes and empty evidence preserve severity, exits and repair ownership. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted diagnostics preserve behavior with 0 false healthy/fixed results or unowned repairs, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-diagnostics-and-repair --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 false healthy/fixed results and 0 repairs outside recorded ownership.
-  - **Pivot**: Any false success -> change evidence or repair boundary rather than weaken checks. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Measure the same operational outcomes through native collectors
-  - **ID**: rust-metrics-and-perf
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port event processing, context measurement, perf recording, usage/weekly metrics and report-data processing. Preserve histories, attribution limits, safe labels and time windows. Separate queue, external-tool and workload time. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-state-and-agentfile, rust-process-primitives
-  - **Acceptance**: Malformed events, missing data, clock skew, daylight-saving changes, unknown timeout causes and planted secrets preserve honest metric meaning and redaction. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted collectors preserve semantics with 0 payload disclosures or unknown-to-causal relabeling, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-metrics-and-perf --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 0 changed metric meanings, private payload disclosures or fabricated zeroes/causal claims.
-  - **Pivot**: Any semantic/privacy mismatch -> redesign receipt/aggregation boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Run every supported user action through the native CLI
-  - **ID**: rust-cli-and-actions
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port command orchestration by action family through one parser/action registry. Include bootstrap, completion, portable bundles, lint/audit and browser screenshot orchestration. Preserve argv, exits, prompts, confirmations and terminal-only reasons. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf
-  - **Acceptance**: Every discovered converted action has a native route; help, invalid input, noninteractive refusal and safe scratch actions preserve CLI/agent discovery and approval behavior. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted actions run natively with 0 missing discovery paths or consent regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-cli-and-actions --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% native routes for converted actions; 0 missing CLI/agent discovery paths or consent regressions.
-  - **Pivot**: Any missing action or consent regression -> change dispatch before another action family. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Enforce the same hook decisions with native executable helpers
-  - **ID**: rust-hooks-and-generated-helpers
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port hook checks, Python/Perl/jq helpers and generated executable logic by hook family. Preserve protocol, opt-ins, parsing, safe unknown handling, endpoint setup and ownership-aware deployment. Retain only necessary shell shims. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile
-  - **Acceptance**: Permitted/denied controls plus hostile heredocs, substitutions, bad JSON, absent tools and timeouts preserve verdicts and bounded execution. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% native converted hook cases preserve behavior with 0 new false permits, injection paths or hidden legacy business logic, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-hooks-and-generated-helpers --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G in the linked plan; 0 new false permits, injection paths or unexplained owned interpreted hook logic.
-  - **Pivot**: Any deny/unknown or injection regression -> change parser/protocol boundary, not an allow rule. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Run owned workflow utilities and generated projects natively
-  - **ID**: rust-workflow-tools-and-scaffolds
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port README/review/goal/watch/open-work/rankings utilities and executable project scaffolds in separate workflow slices. Retain prompts and declarative assets; UI presentation is narrow, while report-data and browser orchestration remain in scope. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-metrics-and-perf
-  - **Acceptance**: Scratch repositories/projects, cancelled watches, absent dashboards, denied public actions and interrupted scaffolds preserve outputs, approvals and cleanup. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% of converted workflow/generated non-UI logic runs natively with 0 behavior, approval or cleanup regressions, and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-workflow-tools-and-scaffolds --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% native converted workflows and generated non-UI logic; 0 real test publications or surviving owned children.
-  - **Pivot**: Any workflow/generated-project mismatch -> change wrapper/template boundary before deletion. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Retain independent defect detection while moving non-UI tests to Rust
-  - **ID**: rust-tests-and-evals
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned non-UI tests, fake services, eval providers, affected selection, fixtures and executable test configuration alongside completed production slices. Retain each old oracle until its Rust replacement detects the same planted defects. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-measurement-harness
-  - **Acceptance**: Old and Rust runners reject the same planted production, cleanup, redaction and approval defects. Test each production slice before retiring its oracle; fixture rewrites retain negative behavior. Keep only necessary shell-boundary fixtures and actual UI adapters.
-  - **Hypothesis**: Rust test/eval replacements retain 100% registered planted-defect detection with 0 omitted contracts and no resource regression beyond 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-tests-and-evals --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code; retain existing full gate.
-  - **Success**: 100% registered planted defects detected; 0 omitted behavior contracts; G for test-runner lifecycle/resources.
-  - **Pivot**: Any lost defect detection -> retain the old oracle and redesign the Rust fixture/test boundary. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Build and install the native tool without redundant project runtimes
-  - **ID**: rust-build-release-and-install
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Port owned verification, docs generators, lints, checkup, build/install/update/uninstall/release and CI executable steps. Produce locked native artifacts; preserve integrity and approval gates. No registry publication is needed to prove local behavior. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: code
-  - **Blocked by**: rust-cli-and-actions, rust-workflow-tools-and-scaffolds, rust-tests-and-evals
-  - **Acceptance**: Supported scratch clean install, no-op update, offline failure, wrong architecture, missing asset, interrupted replacement, uninstall and rollback meet registered contracts. Keep before/after and rollback receipts.
-  - **Hypothesis**: 100% supported converted install/update/recovery cases run without a project Node/Python/Perl runtime for owned non-UI logic, with 0 safety/behavior regressions and p95 time/peak RSS at most 1.10 times sealed B.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- compare --slice rust-build-release-and-install --samples 60` — proposed harness command; seal baseline and commit actual numeric predictions before code.
-  - **Success**: G; 100% supported install/update/rollback cases; 0 unverified artifact replacements or approval bypasses.
-  - **Pivot**: Any installation/recovery defect -> change packaging before native defaults. Resource upper bound above 1.10 -> change architecture; inconclusive is not passing.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
-
-- [ ] Prove all eligible code and deployed paths have migration evidence
-  - **ID**: rust-final-audit
-  - **Tags**: migration, rust
-  - **Mode**: AFK
-  - **Details**: Reconcile source inventory, every step's before/after receipts, generated targets, installed source, docs and remaining dependencies. Delete only proven unused implementations. Frozen residue remains an unresolved policy boundary, never false completion. Plan: [Rust migration](docs/plans/rust-migration.md).
-  - **Output**: measurement
-  - **Blocked by**: rust-source-inventory, rust-measurement-harness, rust-native-delivery, rust-text-and-file-primitives, rust-process-primitives, rust-state-and-agentfile, rust-catalog-and-sources, rust-sync-content, rust-sync-configuration, rust-mcp-lifecycle, rust-memory-integration, rust-plugin-trust-and-feedback, rust-diagnostics-and-repair, rust-metrics-and-perf, rust-cli-and-actions, rust-hooks-and-generated-helpers, rust-workflow-tools-and-scaffolds, rust-tests-and-evals, rust-build-release-and-install
-  - **Acceptance**: Every eligible owned component maps to tested Rust delivery; each exception has a narrow reason and test. No unsupported all-code or speed claim is made. Current whole-tool behavior and installed artifacts agree with receipts.
-  - **Hypothesis**: Complete source/caller and deployment reconciliation exposes all remaining gaps: 0 unclassified or unexplained eligible legacy components, complete valid per-step receipts, and 0 safety/behavior regressions.
-  - **Measurement**: `heavy-run --exclusive cargo run --locked --release --manifest-path rust/Cargo.toml --bin migration-check -- final-audit` — proposed harness command; run existing full gate and re-read installed-source evidence.
-  - **Success**: 0 unexplained eligible legacy components; 100% valid per-step receipts; G on declared whole-tool workflows; no unresolved policy conflict hidden as an exception.
-  - **Pivot**: Any unexplained residue, invalid receipt or unresolved frozen-support conflict -> keep migration incomplete and resolve the specific boundary; do not change the goal to converted lines.
-  - **Anchor**: Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017 (pre-registration); Kohavi, Tang and Xu 2020 (guard metrics).
+  - **Acceptance**: a synthetic upstream skill-to-plugin conversion produces an explicit classified result and supported migration guidance on repeated refreshes; owner edits and unmanaged copies survive; the status report does not keep calling the source missing.
+  - **Hypothesis**: source-aware conversion classification reduces unclassified `not found` refresh warnings for the fixture from 1 to 0 with 0 unowned removals.
+  - **Measurement**: `JOBS=1 heavy-run npx vitest run --maxWorkers=1 src/update.test.ts` with a conversion fixture and a repeated-refresh ownership control.
+  - **Success**: 0 unclassified conversion warnings and 0 unowned removals in the fixture and repeat control.
+  - **Pivot**: if plugin conversion cannot be detected generically, require an explicit recorded classification instead of adding layout guesses or automatic deletion.
+  - **Anchor**: VISION G1 and "Never destroy data you didn't create"; trailofbits/skills commit `82e8e0a` (2026-08-05).
 
 ## P3
+
+- [ ] Propose the guard start-budget note to the built-in workflow-authoring skill
+  - **ID**: workflow-authoring-guard-budget-upstream
+  - **Tags**: workflow, agents, third-party
+  - **Details**: `workflow-authoring` is Anthropic's built-in skill, so its text cannot change here. run-goal's `references/parallel-workers.md` now says to read the live agent-usage-guard start cap, count planned agent starts (reviewers, fixers, re-reviews) before a fan-out, group small PRs per reviewer, and stop the fan-out after the first refusal. Propose a short version of that note upstream through the `report-upstream` skill, with the 2026-11-08 goal-run data (2 refusals after a review plus fix fan-out).
+  - **Files**: none in this repo (upstream proposal); `skill-plugins/workflow/run-goal/references/parallel-workers.md` is the source text
+  - **Output**: docs
+  - **Acceptance**: the upstream issue is filed after the owner approves the exact text, or this task records why it was not filed.
+  - **Hypothesis**: with the note in workflow-authoring, a fresh agent that writes a fan-out workflow plans its agent starts under the guard cap in 3 of 3 trials.
+  - **Measurement**: three fresh-agent trials that load only workflow-authoring and plan a 12-PR review fan-out; count plans that state a start total under the live cap.
+  - **Success**: 3 of 3 plans stay under the cap.
+  - **Pivot**: if upstream declines, keep the note in run-goal only and close this task.
+  - **Anchor**: agent-usage-guard `core/agents.ts` rolling-start rule; Basili, Caldiera and Rombach (1994), GQM.
+  - **Blocked**: needs-owner-approval — 2026-11-08: filing on Anthropic's repo is a public post in another org. The owner must approve the exact issue text from the `report-upstream` skill first; agents do not post it on their own.
 
 - [ ] Propose the comfort budget to the third-party frontend-design skill
   - **ID**: frontend-design-comfort-budget
@@ -829,6 +917,118 @@
 
     2026-10-16 — re-checked: `neiii/bridle@master` (last push 2026-08-15, not archived) still joins singular `"command"` / `"skill"` at `opencode.rs` lines 43-45 / 75-77, and no issue on the topic exists. The staged draft is still accurate; the only step left is the approved `gh issue create`.
   - **Last-enriched**: 2026-10-16
+
+- [ ] Propose a local-model component-isolation eval to systematic-debugging
+  - **ID**: systematic-debugging-local-model-boundary
+  - **Tags**: skills, debugging, third-party, opencode
+  - **Details**: The third-party `systematic-debugging` skill (obra/superpowers) worked for the 2026-11-08 OpenCode/Ollama investigation, but has no eval for this boundary: raw Ollama answered with reasoning disabled while the full OpenCode default timed out. Propose an eval requiring component isolation, cancellation only of session-owned smoke requests, and no readiness claim when the configured default still fails. Do not edit the installed mirror.
+  - **Files**: none in this repo (upstream eval proposal); the scenario is retained in dotfiles `skills/update-tooling/evals/evals.json`
+  - **Output**: docs
+  - **Acceptance**: the exact eval proposal is filed upstream after owner approval, or this task records the maintainer/owner decision; a fresh-agent trial separates CLI, server, model, and reasoning-control evidence before a fix.
+  - **Hypothesis**: with this eval, a fresh agent identifies the failing component and avoids a false default-model readiness claim in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent simulated trials using the OpenCode hosted-pass/local-default-timeout scenario; count correct component isolation and readiness verdicts.
+  - **Success**: 3 of 3 trials keep the default unready, isolate the boundary, and preserve unrelated sessions.
+  - **Pivot**: if upstream declines, keep the scenario in the owned update-tooling eval and close this proposal.
+  - **Anchor**: systematic-debugging Phases 1–3; Ollama OpenAI compatibility `reasoning_effort` documentation (checked 2026-11-08).
+  - **Blocked**: needs-owner-approval — filing on obra/superpowers is a public post in another org and needs approval for the exact text.
+
+- [ ] Propose a readiness-evidence review eval to requesting-code-review
+  - **ID**: requesting-code-review-readiness-evidence
+  - **Tags**: skills, review, third-party, opencode
+  - **Details**: `requesting-code-review` (obra/superpowers) needs a case where tests and Agentbrew status are green but the configured OpenCode default model still times out. The reviewer must inspect that evidence and reject a full-readiness claim rather than approve from the diff alone.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires claim-by-claim review against live evidence and a `not ready` verdict when any required runtime probe fails.
+  - **Hypothesis**: the added case makes a fresh reviewer reject a false full-readiness claim in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-reviewer trials with green static checks and a failing default-model probe.
+  - **Success**: 3 of 3 reviews reject full readiness and name the failed probe.
+  - **Pivot**: if upstream declines, retain the case in run-goal's owned eval and close this proposal.
+  - **Anchor**: requesting-code-review plan-alignment and evidence rules; the 2026-11-08 OpenCode readiness run.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a live-state readiness eval to verification-before-completion
+  - **ID**: verification-before-completion-live-readiness
+  - **Tags**: skills, verification, third-party, opencode
+  - **Details**: `verification-before-completion` (obra/superpowers) needs a case where a sync or fix line says success but a later apply reverts it. Require fresh default-model, MCP, installed-file, and chezmoi-state reads before the final claim; never reuse an earlier hosted-model pass.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that rejects stale or substitute evidence and verifies the actual configured runtime and live applied state.
+  - **Hypothesis**: the added case prevents stale or wrong-model completion evidence in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials with an earlier hosted pass, a failed default probe, and drift after an apply.
+  - **Success**: 3 of 3 trials require fresh default-runtime and live-state evidence before any claim.
+  - **Pivot**: if upstream declines, retain the case in the owned update-tooling eval and close this proposal.
+  - **Anchor**: verification-before-completion's Iron Law; OpenCode served-output and Ollama evidence from 2026-11-08.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a guarded retro-delivery eval to finishing-a-development-branch
+  - **ID**: finishing-development-branch-guarded-retro
+  - **Tags**: skills, delivery, third-party
+  - **Details**: `finishing-a-development-branch` (obra/superpowers) needs a goal-retro case with pre-approved PR delivery, unrelated dirty work elsewhere, and a failing required runtime probe. Run the full gate and independent review before merging the eval-only change, never use the retro PR to hide the goal blocker, and never force-clean a worktree.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval covering the standing-approval path, green gate, independent review, honest blocked-goal report, and preservation of unowned work.
+  - **Hypothesis**: the added case makes fresh agents deliver an approved retro without false completion or unsafe cleanup in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials using the approved retro/green-gate/unrelated-dirty-work scenario.
+  - **Success**: 3 of 3 trials keep the runtime blocker visible and avoid unowned changes and forced cleanup.
+  - **Pivot**: if upstream declines, retain the case in run-goal's owned eval and close this proposal.
+  - **Anchor**: finishing-a-development-branch verification and cleanup rules; the 2026-11-08 tooling retro run.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a generated-config runtime-proof eval to test-driven-development
+  - **ID**: test-driven-development-runtime-config-proof
+  - **Tags**: skills, testing, third-party, opencode
+  - **Details**: `test-driven-development` (obra/superpowers) needs a case where unit contracts pass but generated OpenCode config still fails live. The 2026-11-08 fix required red/green cycles plus actual V2 smoke evidence for removing the legacy provider and implicit small model, and placing `reasoning_effort` on the selected model. Unit success alone was not enough.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires a failing contract before each production change and a real runtime probe of the generated artifact before completion.
+  - **Hypothesis**: the added case prevents unit-only false completion in 3 of 3 simulated generated-config trials.
+  - **Measurement**: three fresh-agent trials with valid unit contracts and a failing real V2 default-model probe; count trials that require live evidence before delivery.
+  - **Success**: 3 of 3 trials preserve red/green evidence and reject completion until the real generated config responds within the registered bound.
+  - **Pivot**: if upstream declines, retain the scenario in the owned OpenCode bootstrap tests and close this proposal.
+  - **Anchor**: test-driven-development's red/green and whole-suite rules; the 2026-11-08 OpenCode V2 bootstrap investigation.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a quota-read boundary eval to agent-browser
+  - **ID**: agent-browser-quota-read-boundary
+  - **Tags**: skills, browser, third-party, kimi
+  - **Details**: `agent-browser` (vercel-labs/agent-browser) needs an eval for quota reads where a supported CLI/API endpoint exists. Require using that endpoint with redacted credential handling, not browser automation or invented URLs. The no-weekly response should show actual 5-hour and monthly windows rather than a fabricated total.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires supported endpoint reuse, no credential in browser content or curl argv, and an explicit no-weekly fallback.
+  - **Hypothesis**: the added case keeps fresh agents on supported read-only quota paths with zero credential disclosures in 3 of 3 simulated trials.
+  - **Measurement**: three fresh-agent trials with weekly, no-weekly, and malformed-response fixtures; count correct endpoint, redaction, and fallback decisions.
+  - **Success**: 3 of 3 trials avoid invented endpoints and secrets while preserving the actual quota windows.
+  - **Pivot**: if upstream declines, keep the scenario in the owned add-command eval and close this proposal.
+  - **Anchor**: agent-browser trust-boundary and auth guidance; Kimi `GET /coding/v1/usages` contract.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a platform-command exclusion eval to spec-driven-development
+  - **ID**: spec-driven-development-platform-command-exclusion
+  - **Tags**: skills, specifications, third-party, opencode
+  - **Details**: `spec-driven-development` (obra/superpowers) needs an eval where the owner rejects platform-specific command files. The revised spec must remove them while retaining the measurable optimization outcome and local-default constraint.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval that requires scope revision before planning, with no hidden command files added.
+  - **Hypothesis**: the added case prevents platform-command scope creep in 3 of 3 simulated specification trials.
+  - **Measurement**: three fresh-agent specification trials with an owner rejection; count specs that preserve the outcome without adding commands.
+  - **Success**: Every revised spec excludes command files and retains measurable acceptance criteria.
+  - **Pivot**: if upstream declines, retain the case in the owned task-command-center eval and close this proposal.
+  - **Anchor**: spec-driven-development boundary and scope-check rules; the 2026-11-09 optimization spec revision.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
+
+- [ ] Propose a measured optimization eval to writing-plans
+  - **ID**: writing-plans-measured-optimization
+  - **Tags**: skills, planning, third-party, performance
+  - **Details**: `writing-plans` (obra/superpowers) needs an eval for a measured optimization that reuses an existing highspeed CLI instead of adding commands. Require baseline evidence, owner constraints, a fact/proposal ledger, and exact verification, not a performance guarantee from one sample.
+  - **Files**: none in this repo (upstream eval proposal)
+  - **Output**: docs
+  - **Acceptance**: after owner approval, propose an upstream eval covering baseline/after metrics, existing-tool reuse, local-default preservation, and no platform-specific commands.
+  - **Hypothesis**: the added case makes fresh plans evidence-bounded and reuse-first in 3 of 3 simulated optimization trials.
+  - **Measurement**: three fresh-plan trials with baseline latency and context snapshots; count plans with exact verification and no unsupported speedup claim.
+  - **Success**: Every plan uses existing tools, preserves constraints, and avoids new command files and guarantees.
+  - **Pivot**: if upstream declines, retain the case in the owned task-command-center eval and close this proposal.
+  - **Anchor**: writing-plans evidence and current-state requirements; the 2026-11-09 optimization baseline.
+  - **Blocked**: needs-owner-approval — an upstream public post requires approval for the exact text.
 
 <!-- P3 is intentionally blocked — see the "Priority semantics" comment at the top of this file
      for the full rule. /next-task MUST NOT claim P3 without explicit user permission. -->
@@ -936,3 +1136,23 @@
   - **Success**: all proposed fixtures reject false completion.
   - **Pivot**: any false completion remains after a prompt revision -> use a deterministic runtime check instead.
   - **Anchor**: Basili, Caldiera & Rombach 1994 (GQM).
+
+- [ ] Apply to open-source AI maintainer programs when agentbrew has traction
+  - **ID**: oss-ai-maintainer-programs
+  - **Tags**: funding, ai-cost, owner-action
+  - **Details**: Some vendors give open-source maintainers free AI. Research on 2026-11-10 found that agentbrew misses every published threshold, so applying now is a long shot. Recheck when the repo grows. Programs and rules as read on 2026-11-10 (reread each page before acting):
+    - Claude for Open Source (https://claude.com/contact-sales/claude-for-oss): 6 months of the top Claude plan, paid billing pauses. Any one of: 20 or more external contributors with merged PRs in 12 months, 200,000 or more monthly downloads, 500 or more dependent repos, OpenSSF criticality 0.4 or above. It also has a discretionary "apply anyway" track.
+    - OpenAI Codex for Open Source (https://developers.openai.com/codex/community/codex-for-oss): 6 months of ChatGPT Pro plus API credits. No numeric rule; it wants a "widely used public project".
+    - Greptile for open source (https://www.greptile.com/pricing/open-source): free AI review, automatic at 50 stars.
+    - Atlas Cloud OSS program (https://atlascloud.ai/docs/en/oss-program): monthly credits from about 100 stars.
+    - GitHub Copilot Pro for maintainers: automatic for a "popular" repo; check https://github.com/settings/copilot.
+    - No application needed on a public repo: CodeRabbit and Sourcery free AI review, Sentry for Open Source (includes Seer).
+    - **Hypothesis**: once agentbrew passes one threshold, one accepted application removes 6 months of AI subscription cost for the owner.
+    - **Measurement**: `gh api repos/fyodoriv/agentbrew -q .stargazers_count` and `gh api repos/fyodoriv/agentbrew/contributors -q length`
+    - **Success**: at least one program accepts and the benefit is active on the owner's account.
+    - **Pivot**: if two applications made after a threshold is met are both rejected, close this task and stop applying.
+    - **Anchor**: Anthropic Claude for Open Source program terms (https://www.anthropic.com/claude-for-oss-terms); Basili, Caldiera and Rombach (1994), GQM.
+  - **Files**: none (owner fills web forms); this task records the outcome
+  - **Output**: docs
+  - **Acceptance**: the owner has applied to each program whose threshold agentbrew meets, and this task records each answer, or records why no application was made.
+  - **Blocked**: needs-traction-and-owner-application — 2026-11-10: agentbrew is below every threshold. Agents never submit applications or forms; the owner applies. Unblock when the measurement shows 50 or more stars or 20 or more contributors, or when the owner chooses to try the discretionary tracks.

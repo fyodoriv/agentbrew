@@ -70,6 +70,19 @@ def target(command, words=None):
     return {"number": number, "repo": repo}
 
 
+def reviewer_request(command):
+    words = command_words(command)
+    if words is None or target(command, words) is None or words[2] != "edit":
+        return False
+    if len(words) == 6 and words[4] == "--add-reviewer":
+        value = words[5]
+    elif len(words) == 5 and words[4].startswith("--add-reviewer="):
+        value = words[4].partition("=")[2]
+    else:
+        return False
+    return bool(value.strip() and not value.startswith("-"))
+
+
 def main():
     latest = None
     activity = False

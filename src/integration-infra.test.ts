@@ -7,7 +7,7 @@ import { join } from "node:path";
  * prevent side effects during state-management tests. Here we test the
  * real implementations against a sandboxed home directory.
  */
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks that must be hoisted ──────────────────────────────────────────────
 
@@ -105,6 +105,10 @@ beforeEach(() => {
   mkdirSync(join(TEST_HOME, ".config", "agentbrew"), { recursive: true });
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 afterAll(() => {
   process.env.HOME = originalHome;
   rmSync(TEST_HOME, { recursive: true, force: true });
@@ -160,6 +164,8 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
   it("installShellHook creates hook script + appends to .zshrc → isShellHookInstalled returns true", () => {
     const zshrcPath = join(TEST_HOME, ".zshrc");
     writeFileSync(zshrcPath, "# test zshrc\n");
+    // The hook goes to the rc file of $SHELL. A hosted runner uses bash.
+    vi.stubEnv("SHELL", "/bin/zsh");
 
     installShellHook();
 
@@ -206,24 +212,27 @@ describe("completions + shell hooks + auto-sync (US21)", () => {
     expect(zshrc).toContain("export FOO=1");
   });
 
-  it("installAutoSync creates LaunchAgent plist → isAutoSyncInstalled returns true → uninstallAutoSync removes it", async () => {
-    // Create Library/LaunchAgents dir (normally exists on macOS)
-    mkdirSync(join(TEST_HOME, "Library", "LaunchAgents"), { recursive: true });
+  it.runIf(process.platform === "darwin")(
+    "installAutoSync creates LaunchAgent plist → isAutoSyncInstalled returns true → uninstallAutoSync removes it",
+    async () => {
+      // Create Library/LaunchAgents dir (normally exists on macOS)
+      mkdirSync(join(TEST_HOME, "Library", "LaunchAgents"), { recursive: true });
 
-    await installAutoSync();
+      await installAutoSync();
 
-    const plistPath = join(TEST_HOME, "Library", "LaunchAgents", "com.agentbrew.check.plist");
-    expect(existsSync(plistPath)).toBe(true);
+      const plistPath = join(TEST_HOME, "Library", "LaunchAgents", "com.agentbrew.check.plist");
+      expect(existsSync(plistPath)).toBe(true);
 
-    const content = readFileSync(plistPath, "utf-8");
-    expect(content).toContain("com.agentbrew.check");
-    expect(content).toContain("agentbrew");
-    expect(content).toContain("StartInterval");
+      const content = readFileSync(plistPath, "utf-8");
+      expect(content).toContain("com.agentbrew.check");
+      expect(content).toContain("agentbrew");
+      expect(content).toContain("StartInterval");
 
-    expect(isAutoSyncInstalled()).toBe(true);
+      expect(isAutoSyncInstalled()).toBe(true);
 
-    await uninstallAutoSync();
-    expect(existsSync(plistPath)).toBe(false);
-    expect(isAutoSyncInstalled()).toBe(false);
-  });
+      await uninstallAutoSync();
+      expect(existsSync(plistPath)).toBe(false);
+      expect(isAutoSyncInstalled()).toBe(false);
+    },
+  );
 });

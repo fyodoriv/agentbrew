@@ -14,8 +14,9 @@ if (nodeMajor < 20) {
 }
 
 import chalk from "chalk";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { registerCheckupRunCommand } from "./checkup-run-command.js";
+import { checkCliBuildDrift } from "./cli-build-health.js";
 import {
   filterSyncModules,
   formatGroupedCommandSections,
@@ -43,6 +44,7 @@ import { registerSkillsCommands } from "./commands/cli-skills.js";
 import { registerSyncSubcommands } from "./commands/cli-sync-subcommands.js";
 import { ConfigError, errorMessage } from "./core/errors.js";
 import { recordEvent, storyForCommand } from "./core/events.js";
+import { syncGain, targetedAgentCount } from "./core/gains.js";
 import { installOutputRedaction } from "./core/redact-output.js";
 import { printMotd } from "./motd.js";
 import { registerPluginCommands } from "./plugins/cli-plugin.js";
@@ -139,7 +141,9 @@ function configureProgramRoot(program: Command): void {
               (command) => command.name() === childToken || command.aliases().includes(childToken),
             )
           : undefined;
-      if (!isJson) printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      if (!isJson && subcommand.name() !== "sync") {
+        printMotd(subcommand.name(), nestedCommand?.name() === "sanitize" ? console.error : console.log);
+      }
     })
     .configureHelp({
       formatHelp(cmd, helper) {
@@ -216,13 +220,30 @@ interface SyncCommandOptions {
 async function handleSyncCommand(options: SyncCommandOptions): Promise<void> {
   const started = Date.now();
   let ok = false;
+  let deployed = false;
   try {
-    await runSyncCommand(options);
+    deployed = await runSyncCommand(options);
     ok = !process.exitCode;
   } finally {
-    if (!options.dryRun) recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started });
+    if (!options.dryRun) {
+      const gain = syncGain(ok, deployed ? await syncedAgentCount(options.only) : 0);
+      recordEvent({ event: "sync", story: syncStory(options), ok, ms: Date.now() - started, ...gain });
+    }
   }
-  if (!options.dryRun) await (await import("./core/telemetry.js")).sendDaily(version);
+}
+
+/** Agents detected on this machine that the sync targets: all of them, or those of the `--only` modules. */
+async function syncedAgentCount(only?: string): Promise<number> {
+  try {
+    const { loadState } = await import("./state.js");
+    const detected =
+      loadState()
+        ?.agents?.filter((agent) => agent.detected)
+        .map((agent) => agent.name) ?? [];
+    return targetedAgentCount(new Set(detected), only);
+  } catch {
+    return 0;
+  }
 }
 
 /** The user story a sync run serves, by its flags (docs/observability.md). */
@@ -234,14 +255,16 @@ function syncStory(options: SyncCommandOptions): string {
   return "US08";
 }
 
-async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
+/** Runs the sync. True when it reached a deploy step (a full sync or a pull), false when it stopped before one. */
+async function runSyncCommand(options: SyncCommandOptions): Promise<boolean> {
   if (options.pull) {
     const { readUpdateSkillRequests } = await import("./update-skill-policy.js");
-    if (!readUpdateSkillRequests(options)) return;
+    if (!readUpdateSkillRequests(options)) return false;
   }
   if (!options.rollback) await handleSyncWorkspaces(options);
-  if (await handleSyncEarlyExits(options)) return;
-  if (await refuseSyncOnLockDrift()) return;
+  const early = await handleSyncEarlyExits(options);
+  if (early) return early === "deployed";
+  if (await refuseSyncOnLockDrift()) return false;
   if (!options.dryRun) await emitNativePluginOutput();
 
   const syncOpts = {
@@ -257,7 +280,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   let modules = buildSyncModules(syncOpts);
   if (options.only) {
     const filtered = filterSyncModules(modules, options.only);
-    if (!filtered) return;
+    if (!filtered) return false;
     modules = filtered;
   }
 
@@ -279,6 +302,7 @@ async function runSyncCommand(options: SyncCommandOptions): Promise<void> {
   } else {
     await runSyncParallel(modules, runnerOpts);
   }
+  return true;
 }
 
 /** In workspace mode, swap the base Agentfile for one merged with every per-repo Agentfile. */
@@ -288,14 +312,15 @@ async function handleSyncWorkspaces(options: SyncCommandOptions): Promise<void> 
   if (merged) options.agentfile = merged;
 }
 
-async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolean> {
+/** "deployed": a pull ran its deploy step. "stopped": the run ended with no deploy (a rollback, an unknown `--only` name). */
+async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<"deployed" | "stopped" | undefined> {
   if (options.rollback) {
     const { rollbackAgentConfigs } = await import("./ops.js");
     await rollbackAgentConfigs();
-    return true;
+    return "stopped";
   }
   if (options.pull) {
-    if (options.only && !filterSyncModules(buildSyncModules({}), options.only)) return true;
+    if (options.only && !filterSyncModules(buildSyncModules({}), options.only)) return "stopped";
     // Apply the Agentfile to state first, so the pull sees corrected source URLs
     // and does not fetch (or fail on) entries the Agentfile already dropped.
     const applied = await applyAgentfileBeforePull(options);
@@ -307,9 +332,9 @@ async function handleSyncEarlyExits(options: SyncCommandOptions): Promise<boolea
       ...(options.only ? { only: options.only } : {}),
       ...(applied?.skillsToInstall.length ? { requestedSkills: applied.skillsToInstall } : {}),
     });
-    return true;
+    return "deployed";
   }
-  return false;
+  return undefined;
 }
 
 type AppliedAgentfile = ReturnType<typeof import("./agentfile.js").applyAgentfile>;
@@ -463,23 +488,39 @@ export function buildProgram(): Command {
     });
   program
     .command("telemetry")
-    .description("Anonymous usage counts to PostHog EU: status, on, off, or send (--dry-run shows what would go)")
-    .argument("<action>", "status | on | off | send")
-    .option("--dry-run", "print the batch and send nothing")
-    .action(async (action: string, options: { dryRun?: boolean }) => {
+    .description(
+      "Anonymous performance numbers to PostHog EU, only after you say yes: status, on, off, ask, or send (--dry-run shows what would go)",
+    )
+    .argument("<action>", "status | on | off | ask | send")
+    .option("--dry-run", "print the next request body and send nothing")
+    .addOption(new Option("--ms <n>", "record-install: time to a clean status check, in ms").hideHelp())
+    .addOption(new Option("--ok", "record-install: the status check was clean").hideHelp())
+    .addOption(new Option("--auto", "the daily send that a command starts: quiet, with a hard time limit").hideHelp())
+    .action(async (action: string, options: { dryRun?: boolean; auto?: boolean; ms?: string; ok?: boolean }) => {
       const t = await import("./core/telemetry.js");
-      if (action === "on" || action === "off") t.setEnabled(action === "on");
-      if (action === "send") {
-        console.log(JSON.stringify(await t.send(version, options), null, 2));
-        return;
-      }
-      if (!["status", "on", "off"].includes(action)) {
-        console.error(`unknown action ${action}: use status, on, off, or send`);
+      if (action === "record-install") return recordInstall(options);
+      if (!["status", "on", "off", "ask", "send"].includes(action)) {
+        console.error(`unknown action ${action}: use status, on, off, ask, or send`);
         process.exitCode = 2;
         return;
       }
-      const st = t.status();
-      console.log(`telemetry: ${st.on ? "on" : "off"} (${st.reason}), ${st.pending} event(s) pending`);
+      if (action === "send") {
+        await telemetrySend(t, options);
+        return;
+      }
+      if (action === "ask") {
+        // The installer's consent question. It never asks twice; only an opt-out (--no-telemetry)
+        // changes a stored answer. With no project key it prints nothing.
+        const { line } = await t.askConsent(version, { install: true });
+        if (line) console.log(line);
+        return;
+      }
+      if (action === "on") {
+        t.setConsent("yes");
+        console.log(t.consentText(version));
+      }
+      if (action === "off") t.setConsent("no");
+      console.log(telemetryStatusLine(t.status()));
     });
   registerActionsCommand(program);
   registerMcpCommands(program, autoSync);
@@ -503,18 +544,119 @@ export function buildProgram(): Command {
   return program;
 }
 
-/** One content-free `command` event per top-level command that serves a user story. */
-function recordCommandEvents(program: Command): void {
-  let started = 0;
-  program.hook("preAction", () => {
-    started = Date.now();
+/**
+ * The command that has started and has no `command` event yet. CLI-process
+ * scope: one per process, set before the action and cleared when its event is
+ * written. The exit guard reads it, so a run that throws or calls
+ * `process.exit` in its action still leaves one event.
+ */
+let openCommand: { command: string; leaf: string; started: number } | undefined;
+let exitGuardSet = false;
+
+/** Write the open command's event, at most once per run. */
+function closeCommandEvent(ok: boolean): void {
+  const open = openCommand;
+  if (!open) return;
+  openCommand = undefined;
+  recordEvent({
+    event: "command",
+    command: open.command,
+    story: storyForCommand(open.command),
+    ok,
+    ms: Date.now() - open.started,
   });
-  program.hook("postAction", (_root, action) => {
+}
+
+/**
+ * The process `exit` listener: a command that never reached the postAction
+ * hook (it threw, or its action called `process.exit`) gets its event here.
+ * It is synchronous, as an exit listener must be. Exported for tests.
+ */
+export function recordCommandEventAtExit(code: number): void {
+  // The watcher runs for hours and ends itself: its uptime is not a command duration.
+  if (openCommand?.command === "auto-sync" && openCommand.leaf === "watch") return;
+  closeCommandEvent(code === 0);
+}
+
+/**
+ * One content-free `command` event per command run: the top-level command
+ * name (never an argument), ok, and wall time. Every command passes through here.
+ */
+function recordCommandEvents(program: Command): void {
+  program.hook("preAction", (_root, action) => {
     let top = action;
     while (top.parent && top.parent !== program) top = top.parent;
-    const story = storyForCommand(top.name());
-    if (story) recordEvent({ event: "command", story, ok: !process.exitCode, ms: Date.now() - started });
+    if (top.name() === "sync") {
+      for (const item of checkCliBuildDrift()) console.warn(`⚠ ${item.detail}`);
+      if (!process.argv.includes("--json")) printMotd("sync");
+    }
+    if (!exitGuardSet) {
+      exitGuardSet = true;
+      process.on("exit", recordCommandEventAtExit);
+    }
+    openCommand = { command: top.name(), leaf: action.name(), started: Date.now() };
   });
+  program.hook("postAction", async (_root, action) => {
+    let top = action;
+    while (top.parent && top.parent !== program) top = top.parent;
+    const command = top.name();
+    closeCommandEvent(!process.exitCode);
+    // The daily send runs in a process of its own; the command does not wait for it.
+    (await import("./core/telemetry-auto.js")).startDailySend({ command, argv: process.argv.slice(2) });
+    // A person at a terminal who has not answered may get the telemetry question (never with --json, help, or completion).
+    if (process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY) {
+      const t = await import("./core/telemetry.js");
+      await t.askOnFirstRun(version, { command, argv: process.argv.slice(2) });
+    }
+  });
+}
+
+/** `telemetry record-install`, called by scripts/install.sh once per finished install. Numbers and a boolean only. */
+async function recordInstall(options: { ms?: string; ok?: boolean }): Promise<void> {
+  const events = await import("./core/events.js");
+  const ms = events.parseInstallMs(options.ms);
+  if (ms === null) {
+    console.error("record-install needs --ms <whole number of milliseconds>");
+    process.exitCode = 2;
+    return;
+  }
+  events.recordInstallEvent(ms, options.ok === true);
+}
+
+async function telemetrySend(
+  t: typeof import("./core/telemetry.js"),
+  options: { dryRun?: boolean; auto?: boolean },
+): Promise<void> {
+  // The detached process a command starts: quiet, and it ends itself.
+  if (options.auto) return (await import("./core/telemetry-auto.js")).runAutoSend(version);
+  console.log(JSON.stringify(await t.send(version, { dryRun: options.dryRun }), null, 2));
+}
+
+function telemetryStatusLine(st: {
+  on: boolean;
+  reason: string;
+  consent: string;
+  consentAt?: string;
+  keySource: string;
+  pending: number;
+  lastSend?: string;
+  sink?: { kind: string; target?: string; consentSource: string; errorLogs: boolean; tokenSource?: string };
+}): string {
+  const answered = st.consentAt ? ` (answered ${st.consentAt})` : "";
+  return (
+    `telemetry: ${st.on ? "on" : "off"} (${st.reason}); consent: ${st.consent}${answered}; key: ${st.keySource}; ` +
+    `${st.pending} event(s) pending; last send: ${st.lastSend ?? "never"}${sinkLine(st.sink)}`
+  );
+}
+
+/** The org sink part of the status line; empty without an org sink policy. Never the token or the URL path. */
+function sinkLine(sink: Parameters<typeof telemetryStatusLine>[0]["sink"]): string {
+  if (!sink) return "";
+  const token = sink.tokenSource ? `; token: ${sink.tokenSource}` : "";
+  return (
+    `\n  sink: ${sink.kind}${sink.target ? ` ${sink.target}` : ""}; consent source: ${sink.consentSource}; ` +
+    `error logs: ${sink.errorLogs ? "on" : "off"}${token}`
+  );
 }
 
 export function isCliEntrypoint(moduleUrl: string, argvPath = process.argv[1]): boolean {
@@ -545,5 +687,6 @@ if (isCliEntrypoint(import.meta.url)) {
     process.exit(1);
   });
 
-  buildProgram().parse();
+  // parseAsync waits for the async action and the async postAction hook.
+  void buildProgram().parseAsync();
 }

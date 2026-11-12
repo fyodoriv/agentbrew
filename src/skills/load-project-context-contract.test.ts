@@ -103,7 +103,7 @@ describe("load-project-context skill contract", () => {
 
   it("keeps eval metadata spec-valid and preserves the original scenarios", () => {
     expect(evals.skill_name).toBe("load-project-context");
-    expect(evals.evals).toHaveLength(8);
+    expect(evals.evals).toHaveLength(9);
     expect(new Set(evals.evals.map((skillEval) => skillEval.id)).size).toBe(evals.evals.length);
 
     for (const skillEval of evals.evals) {

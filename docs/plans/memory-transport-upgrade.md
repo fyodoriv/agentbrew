@@ -450,3 +450,9 @@ independently verified.
 - **Pivot:** If the marked turn writes or the control does not, do not rely on
   this hook for privacy until the cause is understood.
 - **Anchor:** [Upstream Codex hook tests](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/tests/memory-hook.test.js).
+
+The network-denied synthetic hook trial matched both predictions. The short
+unmarked correction produced no mock write, while the marked correction
+produced one. A marked skip turn produced no write, and its unmarked control
+produced one. This tests the hook with a mock HTTP client, not a live memory
+service or a real Codex session.

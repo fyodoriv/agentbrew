@@ -56,8 +56,11 @@ marker detector recognized the same ordinary `#skip` and `#remember` examples
 that the OpenCode detector missed. A separate synthetic parser test retained a
 user correction and final answer while excluding instruction, commentary, and
 reasoning records. Parsing is not capture: the hook defaults to a 300-character
-minimum, and a short synthetic correction failed its classifier without an
-override. It requires Codex hook trust and reads local transcripts.
+minimum. In a network-denied mock-client trial, a short unmarked correction
+produced no write and the same correction with `#remember` produced one. A
+synthetic `#skip` turn produced no write while its unmarked control did. This
+does not test a real server or Codex session. The hook requires Codex hook trust
+and reads local transcripts.
 Compatibility with this machine's existing hooks, privacy rules, and shared
 memory lifecycle is unverified; do not install it into the live setup yet.
 

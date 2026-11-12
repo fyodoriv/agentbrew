@@ -524,6 +524,7 @@ agentbrew sync                # keeps the daemon definition and every agent's MC
 
 The managed endpoint is `http://127.0.0.1:18765/mcp`.
 
+The backup command returns an error when its integrity check fails.
 Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
 `MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
 use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream

@@ -124,6 +124,19 @@ verify the job's effective environment before treating a backup as its database.
 The `memory fix` repair path can also kick-start the daemon when its MCP check
 fails. An upgrade safeguard must account for that path: a refused or failed
 upgrade must not let repair start the new version before the snapshot is safe.
+
+- **Guard hypothesis:** When the installed job's package pin differs from the
+  desired pin, automatic reconciliation and repair can fail closed before
+  replacing or starting the job. This is an intermediate guard, not an upgrade.
+- **Measurement:** Run synthetic LaunchAgent and repair tests with matching,
+  changed, missing, and unreadable package pins, and with failed MCP discovery.
+- **Success:** No tested changed or unknown existing pin causes a plist write,
+  unload, load, or kick-start; matching pins and fresh installs retain their
+  previous behavior. A refused upgrade is reported as a failure.
+- **Pivot:** If any route can restart a new pin without the protected backup,
+  leave the version unchanged and do not deploy the guard as upgrade support.
+- **Anchor:** `src/memory/launchagent.ts` and `src/commands/cli-memory.ts`.
+
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a
 writer already holding the lock prevented an early snapshot, and its commit

@@ -303,6 +303,12 @@ not establish the required restart safety.
 
 ## Backup collisions
 
+Upstream's [backup script](https://github.com/doobidoo/mcp-memory-service/blob/main/scripts/backup/backup_sqlite_vec.sh)
+copies the database and sidecars separately, suppresses copy errors, and derives
+the source from the base directory rather than the explicit SQLite path aliases.
+It does not verify a snapshot. Do not use it as proof of a recoverable live
+backup; retain the SQLite online backup and verification checks for this setup.
+
 - **Root cause hypothesis:** Backup names have one-second resolution, and the
   copy helper removes an existing destination before copying. Two backups in
   the same second could replace a valid restore point or leave it incomplete.

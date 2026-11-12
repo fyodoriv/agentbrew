@@ -10,15 +10,23 @@ const evals = JSON.parse(readFileSync(join(dir, "evals", "evals.json"), "utf-8")
   expectations: string[];
 }>;
 
+function hasPlanOrder(order: string): boolean {
+  const contract = order.indexOf("Print the goal contract");
+  const plan = order.indexOf("Create a plan Artifact");
+  const work = order.indexOf("Work, printing");
+  return contract >= 0 && contract < plan && plan < work;
+}
+
 describe("goal plan artifact", () => {
   it("creates the plan after the contract and before execution, then reuses it", () => {
     const order = skill.split("## Order of work")[1]?.split("## Why")[0] ?? "";
-    expect(order.indexOf("Print the goal contract")).toBeLessThan(order.indexOf("Create a plan Artifact"));
-    expect(order.indexOf("Create a plan Artifact")).toBeLessThan(order.indexOf("Work, printing"));
+    expect(hasPlanOrder(order)).toBe(true);
+    expect(hasPlanOrder(order.replace("Print the goal contract", ""))).toBe(false);
     expect(order).toMatch(/Update the same Artifact\s+at every milestone; on resume, find and reuse it/);
     expect(order).toMatch(/private fallback in the \[goal report\]/);
     expect(report).toMatch(/private local HTML report, give its path, and state the\s+output limitation/);
     expect(report).toMatch(/without claiming publication or blocking work/);
+    expect(report).toMatch(/same private report at every milestone and reuse it on resume/);
   });
 
   it.each([298, 299, 300])("includes scenario %i with observable expectations", (id) => {

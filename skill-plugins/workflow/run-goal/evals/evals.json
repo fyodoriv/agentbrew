@@ -3403,6 +3403,17 @@
         "Yearly tasks stay unfolded per the answer",
         "The final report records the accepted risk once"
       ]
+    },
+    {
+      "id": 296,
+      "prompt": "A design goal's contract says: pivot after two rounds under +0.3, then BLOCKED if the bolder concept stalls two rounds. Round 4 (the pivot) gained 0.01 and round 5 gained 0.04 on one page; the other page fell 0.11 twice. Budget is 6-8 rounds and 6 are done. Should the agent run round 6?",
+      "expected_output": "No. It stops rating, ships the measured gains through the normal gate, writes a BLOCKED report with the per-round scores and what holds them, and names the next lever, without claiming the target is met.",
+      "expectations": [
+        "Applies the pre-registered stop rule instead of running another round",
+        "Ships the gains that passed the guard metrics",
+        "Reports BLOCKED with every round's scores",
+        "Does not report the target as met"
+      ]
     }
   ]
 }

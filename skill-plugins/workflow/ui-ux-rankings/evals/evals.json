@@ -202,6 +202,17 @@
         "Honors a pre-registered pivot instead of polishing more",
         "Treats mean moves within ±0.3 over three rounds as noise and recommends stopping the rounds"
       ]
+    },
+    {
+      "id": 19,
+      "prompt": "Design round 3: the storyboard's Scroll stills look full, but all three raters, shown a motion strip of Page view for the first time, say each page fills only its top 60%. The catalogue raters ask for a verdict on every card, yet 156 of 215 takes in the fixture are unjudged because the judge run failed. What do you do next?",
+      "expected_output": "Fixes the page layout (row packing / panel shape) because every rater named it, rates every view mode from now on, and treats the missing verdicts as a fixture problem: rerun or repair the judge before redesigning the cards.",
+      "expectations": [
+        "Treats a flaw named by all three raters as the next fix",
+        "Rates every view mode (motion or stills of each), not only the default view",
+        "Names the unjudged fixture as the cause of the missing card verdicts",
+        "Does not redesign the cards before checking the fixture's pipeline ran"
+      ]
     }
   ]
 }

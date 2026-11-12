@@ -41,6 +41,13 @@ of the pinned marker detector returned false for ordinary `#skip` and
 the write path and privacy behavior are verified. The adapter tests do not prove
 end-to-end lifecycle behavior or correction capture.
 
+The same upstream release also provides [Codex memory hooks](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/README.md)
+for retrieval and session checkpoints. Its published tests include a user
+`#skip` turn and forced `#remember` capture; this is a different adapter from
+the OpenCode plugin. It requires Codex hook trust and reads local transcripts.
+Compatibility with this machine's existing hooks, privacy rules, and shared
+memory lifecycle is unverified; do not install it into the live setup yet.
+
 ## Security gate
 
 [Upstream advisory GHSA-8p26-g7wp-65jw](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw)

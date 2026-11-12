@@ -528,9 +528,9 @@ The current upstream version, 11.7.0, is affected by a
 [local-origin security advisory](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw).
 Avoid visiting untrusted pages while this daemon is running. A newer version
 needs a verified backup and migration test before it can replace this pin.
-If an existing managed job has a different or unreadable service pin, sync and
-memory repair refuse to replace or restart it. A protected upgrade workflow is
-still needed before that version can be changed automatically.
+If an existing managed job file or loaded job has a different or unreadable
+service pin, sync and memory repair refuse to replace or restart it. A protected
+upgrade workflow is still needed before that version can change automatically.
 
 The backup command returns an error when its integrity check fails.
 Each backup gets a unique name and is published without replacing an existing

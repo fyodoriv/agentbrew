@@ -5,13 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../core/launchctl.js", () => ({
   launchdTargetsThisHome: () => true,
+  probeLaunchctl: vi.fn(() => ({ status: 113, stdout: "" })),
   runLaunchctl: vi.fn((args: string[]) => {
     if (args[0] === "print") throw new Error("fixture job not loaded");
     return "";
   }),
 }));
 
-import { runLaunchctl } from "../core/launchctl.js";
+import { probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import { MEMORY_PINNED_SPEC } from "./constants.js";
 import { buildMemoryDaemonPlist, installMemoryLaunchAgents, MEMORY_AGENT_LABEL } from "./launchagent.js";
 
@@ -73,5 +74,36 @@ describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () 
     } finally {
       rmSync(plist, { recursive: true, force: true });
     }
+  });
+
+  it.each([
+    [
+      "different running pin",
+      { status: 0, stdout: "\targuments = {\n\t\t--from\n\t\tmcp-memory-service[sqlite]==0.0.1\n\t}\n" },
+    ],
+    ["unknown running pin", { status: 0, stdout: "\targuments = {\n\t\tunknown\n\t}\n" }],
+    ["failed launchd probe", undefined],
+  ])("does not restart when the %s cannot be trusted", (_label, probe) => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    writeFileSync(plist, buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx"));
+    vi.mocked(probeLaunchctl).mockReturnValueOnce(probe);
+
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("permits a loaded job whose pin matches the installed file", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    writeFileSync(plist, buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx"));
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: `\targuments = {\n\t\t--from\n\t\t${MEMORY_PINNED_SPEC}\n\t}\n`,
+    });
+
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: true });
   });
 });

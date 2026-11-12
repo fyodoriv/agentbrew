@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { sync as writeFileAtomicSync } from "write-file-atomic";
-import { launchdTargetsThisHome, runLaunchctl } from "../core/launchctl.js";
+import { launchdTargetsThisHome, probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
 import {
   buildLaunchAgentPath,
   LAUNCHAGENT_LANG,
@@ -284,6 +284,29 @@ export function memoryMaintenanceLaunchAgentStatus(): MemoryMaintenanceLaunchAge
   };
 }
 
+function loadedMemoryJobPinMatches(): boolean {
+  const job = probeLaunchctl(["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], 5_000);
+  if (!job) return false;
+  if (job.status === 113) return true;
+  if (job.status !== 0) return false;
+  const args = /^\targuments = \{\n([\s\S]*?)^\t\}/m.exec(job.stdout)?.[1] ?? "";
+  const values = args.split("\n").map((value) => value.trim());
+  const index = values.indexOf("--from");
+  return index >= 0 && index === values.lastIndexOf("--from") && values[index + 1] === MEMORY_PINNED_SPEC;
+}
+
+function installedMemoryJobPinMatches(plistPath: string): boolean {
+  if (!existsSync(plistPath)) return true;
+  try {
+    const contents = readFileSync(plistPath, "utf-8");
+    const args = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(contents)?.[1] ?? "";
+    const pins = [...args.matchAll(/<string>--from<\/string>\s*<string>([^<]*)<\/string>/gu)];
+    return pins.length === 1 && pins[0]?.[1] === MEMORY_PINNED_SPEC;
+  } catch {
+    return false;
+  }
+}
+
 export function installMemoryLaunchAgents(): {
   installed: boolean;
   upgradeBlocked?: boolean;
@@ -312,23 +335,19 @@ export function installMemoryLaunchAgents(): {
   }
 
   const daemonPlist = memoryPlistPath();
-  if (existsSync(daemonPlist)) {
-    let installedPin: string | undefined;
-    try {
-      const contents = readFileSync(daemonPlist, "utf-8");
-      const args = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(contents)?.[1] ?? "";
-      const pins = [...args.matchAll(/<string>--from<\/string>\s*<string>([^<]*)<\/string>/gu)];
-      if (pins.length === 1) installedPin = pins[0]?.[1];
-    } catch {
-      // An unreadable job definition cannot establish which database version is running.
-    }
-    if (installedPin !== MEMORY_PINNED_SPEC) {
-      return {
-        installed: false,
-        upgradeBlocked: true,
-        reason: "memory upgrade requires a protected backup and a verified restart",
-      };
-    }
+  if (!loadedMemoryJobPinMatches()) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory upgrade requires a protected backup and a verified running job",
+    };
+  }
+  if (!installedMemoryJobPinMatches(daemonPlist)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory upgrade requires a protected backup and a verified restart",
+    };
   }
   const daemon = reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin), {
     required: true,

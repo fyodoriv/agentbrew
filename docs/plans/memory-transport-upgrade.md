@@ -145,11 +145,11 @@ upgrade must not let repair start the new version before the snapshot is safe.
   leave the version unchanged and do not deploy the guard as upgrade support.
 - **Anchor:** `src/memory/launchagent.ts` and `src/commands/cli-memory.ts`.
 
-The draft guard blocks a changed or unreadable pin in an existing plist, and
-both sync and repair stop before kick-starting after a refusal. Its focused
-tests pass. This is not yet a safe upgrade path: a missing plist or an existing
-plist that does not reflect the running job can conceal the database's version.
-The effective launchd environment, shutdown, backup and restart still need a
+The draft guard blocks a changed or unreadable pin in an existing plist or a
+loaded job. Both sync and repair stop before kick-starting after a refusal. Its
+focused tests pass, including a failed launchd probe. This is not yet a safe
+upgrade path: a missing plist can conceal an existing database, and the
+effective launchd environment, shutdown, backup and restart still need a
 protected, tested sequence before changing the pin.
 
 - **Identity hypothesis:** Refusing to start a new managed job when a known

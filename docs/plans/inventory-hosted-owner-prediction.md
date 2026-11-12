@@ -39,3 +39,21 @@ Anchor: [GitHub-hosted runner lifecycle](https://docs.github.com/en/actions/how-
 [Apple setsid](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/setsid.2.html),
 issue #810, and Basili, Caldiera and Rombach 1994 (GQM); Munafò et al. 2017
 (preregistration).
+
+## Pre-implementation safety clarification
+
+The controls for interruption are synthetic, at fixed points. A real hard
+interruption or missing receipt is inconclusive and is not a passed control.
+The extra-membership requirement is an invariant to prove, not a claim that
+a snapshot of owned PIDs can enumerate every group member. Its proposed trust
+boundary is a fresh dedicated session, fixed no-fork fixture and closed spawn
+paths, no untrusted same-session admission, a supervisor outside the child
+group, and no competing reaper or automatic reaping. If independent review
+cannot establish that boundary, the pivot prevents the physical run.
+
+The worker may signal again during error cleanup and `Drop`. Review every
+signal boundary and all normal, timeout, error and `Drop` paths. An outer
+preflight alone does not establish the invariant at those later boundaries.
+The hosted VM teardown contains the job after it finishes; it does not prove
+that in-job cleanup completed. These clarifications precede implementation
+and observations; the earlier no-signal pivot and all migration gates remain.

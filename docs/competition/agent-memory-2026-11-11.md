@@ -49,6 +49,16 @@ to the existing store. Its local MCP exposes approved memory; it does not itself
 approve pending candidates. Do not install cloud forwarding or capture private
 traces for the comparison. Use synthetic data and a separate local store.
 
+## Published hosted pricing
+
+Prices below were checked November 11 and can change. They are not the cost of
+the local, open-source options or of any separately billed models.
+
+- [Beacon Cloud](https://beacon.sh/pricing) lists a free tier and Pro at $20 per month when billed annually. The pricing page lists agent memory save and recall over MCP under Pro.
+- [Mem0](https://mem0.ai/pricing) lists a free tier with request limits and a bring-your-own-model-key option, plus custom plans.
+- [Zep](https://www.getzep.com/pricing/) lists its Flex hosted plan at $125 per month billed monthly, with usage credits.
+- [Letta](https://docs.letta.com/pricing) lists a free individual plan with external model credentials and Pro at $20 per month.
+
 ## Compare outcomes, not claims
 
 The [VibeMemBench paper](https://arxiv.org/abs/2609.23570) reports that most

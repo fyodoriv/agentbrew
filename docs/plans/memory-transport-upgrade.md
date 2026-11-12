@@ -32,7 +32,8 @@ make a SQLite backup, read them with the new service, then restore the backup
 and read them with the old service. It first checks that its OS isolation blocks
 network and access outside scratch. It uses the upstream test-only hash
 embedding fallback. A pass would not validate the installed ONNX embedding
-model, the HTTP origin fix, or any real client.
+model, the HTTP origin fix, or any real client. Never enable this fallback on
+the live database: mixing hash vectors with real embeddings can damage recall.
 
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate

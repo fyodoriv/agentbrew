@@ -215,7 +215,8 @@ The draft now holds the reservation in the upgrade process during stop and
 snapshot. Focused tests verified competing-write rejection, backup, release on
 error, replaced-file detection, and refusal when the built-in module is absent.
 A scratch database produced by the upstream service accepted the reservation;
-an end-to-end snapshot check on that format is queued. Node 20 lacks this module
+an end-to-end snapshot check passed on a synthetic upstream-format database.
+Node 20 lacks this module
 and the draft fails closed there. The reservation now remains held through
 candidate registration and ends before the readiness check. This blocks
 competing SQLite writes during that interval, but does not stop another process

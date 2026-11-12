@@ -57,6 +57,16 @@ The candidate restricts browser origins and configures authentication
 separately. A successful origin check alone does not prove that local requests
 require a credential. Check both properties in the deployed configuration.
 
+The installed 11.7 package accepts `MCP_CORS_ORIGINS` for its preflight
+response. Source inspection indicates that an explicit allowlist can remove the
+wildcard for an unlisted origin. This was not tested as a deployed mitigation,
+and it does not validate the Host or Origin of non-preflight requests. The
+[advisory](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw)
+also identifies DNS rebinding, so a CORS setting alone is not a complete fix.
+The advisory excludes the alternative FastMCP entry point, but the 11.7 wheel
+exposes a different tool set there, without the required bootstrap or session
+legacy tools. It is not a proven replacement for the managed daemon.
+
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate
 declares each checked tool without removing fields or adding required fields

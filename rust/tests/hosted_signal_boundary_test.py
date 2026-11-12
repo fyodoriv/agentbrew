@@ -2,31 +2,11 @@
 """Static mutation controls for the non-runnable hosted signal boundary."""
 from pathlib import Path
 import unittest
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
-EXPECTED_SIGNAL = """    fn signal(&mut self, signal: Signal) -> Result<(), SignalFailure> {
-        if !self.reserved {
-            return Err(SignalFailure::Unreserved);
-        }
-        self.status()
-            .map_err(|_| SignalFailure::from_wait_error(self.last_error))?;
-        #[cfg(owner_hosted_experiment)]
-        let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))\n        {
-            Ok(result) => result,
-            Err(_) => return Err(SignalFailure::ExperimentGuardRefused),
-        };
-        #[cfg(not(owner_hosted_experiment))]
-        let result = kill_process_group(self.pid, signal);
-        match result {
-            Ok(()) | Err(Errno::SRCH) => Ok(()),
-            Err(error) => {
-                self.last_error = error.raw_os_error();
-                Err(SignalFailure::from_kill_error(error.raw_os_error()))
-            }
-        }
-    }
-"""
+EXPECTED_SIGNAL = '    fn signal(&mut self, signal: Signal) -> Result<(), SignalFailure> {\n        if !self.reserved {\n            return Err(SignalFailure::Unreserved);\n        }\n        self.status()\n            .map_err(|_| SignalFailure::from_wait_error(self.last_error))?;\n        #[cfg(owner_hosted_experiment)]\n        let attempt = if signal == Signal::TERM {\n            owner_hosted_receipt::Event::TermAttempt\n        } else if signal == Signal::KILL {\n            owner_hosted_receipt::Event::KillAttempt\n        } else {\n            return Err(SignalFailure::ExperimentGuardRefused);\n        };\n        #[cfg(owner_hosted_experiment)]\n        if !self.receipt.begin(attempt) {\n            return Err(SignalFailure::ExperimentGuardRefused);\n        }\n        #[cfg(owner_hosted_experiment)]\n        let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))\n        {\n            Ok(_) => {\n                self.receipt.invalidate();\n                return Err(SignalFailure::ExperimentGuardRefused);\n            }\n            Err(_) => {\n                let _ = self.receipt.refused();\n                return Err(SignalFailure::ExperimentGuardRefused);\n            }\n        };\n        #[cfg(not(owner_hosted_experiment))]\n        let result = kill_process_group(self.pid, signal);\n        match result {\n            Ok(()) | Err(Errno::SRCH) => Ok(()),\n            Err(error) => {\n                self.last_error = error.raw_os_error();\n                Err(SignalFailure::from_kill_error(error.raw_os_error()))\n            }\n        }\n    }\n'
 
 
 def valid_boundary(worker, transport, fixture):
@@ -40,9 +20,14 @@ def valid_boundary(worker, transport, fixture):
             and worker.count("kill_process_group(") == 2
             and '#[cfg(owner_hosted_experiment)]\n        let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))' in signal
             and '#[cfg(not(owner_hosted_experiment))]\n        let result = kill_process_group(self.pid, signal);' in signal
-            and 'Err(_) => return Err(SignalFailure::ExperimentGuardRefused)' in signal
+            and 'let _ = self.receipt.refused();' in signal
+            and 'self.receipt.invalidate();' in signal
+            and 'if !self.receipt.begin(attempt)' in signal
+            and '#[cfg(not(owner_hosted_experiment))]\nfn observe(' in worker
+            and '$leader.receipt.record(owner_hosted_receipt::Event::Observation)' in re.sub(r'\s+', '', worker)
+            and 'self.receipt.record(owner_hosted_receipt::Event::Drop)' in drop
             and 'self.signal(Signal::TERM)' in drop and 'self.signal(Signal::KILL)' in drop
-            and worker.count('Observation::ExperimentGuardRefused, 0') == 2
+            and re.sub(r'\s+', '', worker).count('Observation::ExperimentGuardRefused,0') == 2
             and '#[cfg(owner_hosted_experiment)]\n    ExperimentGuardRefused = 33' in transport
             and '#[cfg(owner_hosted_experiment)]\n            33 => Self::ExperimentGuardRefused' in transport
             and '#[cfg(not(owner_hosted_experiment))]\ncompile_error!' in fixture
@@ -67,6 +52,9 @@ class BoundaryTests(unittest.TestCase):
             (self.worker.replace('#[cfg(not(owner_hosted_experiment))]\n        let result', '        let result'), self.fixture),
             (self.worker, self.fixture.replace('#[cfg(not(owner_hosted_experiment))]\ncompile_error!', 'compile_error!')),
             (self.worker.replace('self.signal(Signal::KILL)', 'other_cleanup()'), self.fixture),
+            (self.worker.replace('if !self.receipt.begin(attempt)', 'if false'), self.fixture),
+            (self.worker.replace('self.receipt.record(owner_hosted_receipt::Event::Drop)', 'true'), self.fixture),
+            (self.worker.replace('#[cfg(not(owner_hosted_experiment))]\nfn observe(', 'fn observe('), self.fixture),
             (self.worker.replace('        self.status()\n', '        return Ok(());\n        self.status()\n', 1), self.fixture),
             (self.worker.replace('        #[cfg(owner_hosted_experiment)]\n        let result = match', '        // #[cfg(owner_hosted_experiment)]\n        let result = match', 1), self.fixture),
         ]

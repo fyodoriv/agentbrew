@@ -24,6 +24,9 @@ use std::time::Duration;
 #[cfg(owner_hosted_experiment)]
 #[path = "owner_guarded_dispatch.rs"]
 mod owner_guarded_dispatch;
+#[cfg(owner_hosted_experiment)]
+#[path = "owner_hosted_receipt.rs"]
+mod owner_hosted_receipt;
 
 const SECOND: u128 = 1_000_000_000;
 const TOTAL: u128 = 30 * SECOND;
@@ -139,6 +142,7 @@ enum Observation {
     Failed,
 }
 
+#[cfg(not(owner_hosted_experiment))]
 fn observe(receipt: &mut Option<File>, reason: Observation, value: i64) {
     if let Some(receipt) = receipt {
         let _ = writeln!(receipt, "{reason:?} {value}");
@@ -228,7 +232,11 @@ fn request(startup: Startup, flags: &AtomicUsize, policy: InputPolicy) -> Result
     }
 }
 
-struct Leader {
+struct Leader<'a> {
+    #[cfg(owner_hosted_experiment)]
+    receipt: &'a mut owner_hosted_receipt::Receipt<256>,
+    #[cfg(not(owner_hosted_experiment))]
+    receipt_scope: std::marker::PhantomData<&'a ()>,
     child: Child,
     pid: Pid,
     reserved: bool,
@@ -237,7 +245,7 @@ struct Leader {
     last_error: i32,
 }
 
-impl Leader {
+impl Leader<'_> {
     fn status(&mut self) -> Result<Option<rustix::process::WaitIdStatus>, ()> {
         match waitid(
             WaitId::Pid(self.pid),
@@ -260,10 +268,28 @@ impl Leader {
         self.status()
             .map_err(|_| SignalFailure::from_wait_error(self.last_error))?;
         #[cfg(owner_hosted_experiment)]
+        let attempt = if signal == Signal::TERM {
+            owner_hosted_receipt::Event::TermAttempt
+        } else if signal == Signal::KILL {
+            owner_hosted_receipt::Event::KillAttempt
+        } else {
+            return Err(SignalFailure::ExperimentGuardRefused);
+        };
+        #[cfg(owner_hosted_experiment)]
+        if !self.receipt.begin(attempt) {
+            return Err(SignalFailure::ExperimentGuardRefused);
+        }
+        #[cfg(owner_hosted_experiment)]
         let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))
         {
-            Ok(result) => result,
-            Err(_) => return Err(SignalFailure::ExperimentGuardRefused),
+            Ok(_) => {
+                self.receipt.invalidate();
+                return Err(SignalFailure::ExperimentGuardRefused);
+            }
+            Err(_) => {
+                let _ = self.receipt.refused();
+                return Err(SignalFailure::ExperimentGuardRefused);
+            }
         };
         #[cfg(not(owner_hosted_experiment))]
         let result = kill_process_group(self.pid, signal);
@@ -289,8 +315,10 @@ impl Leader {
     }
 }
 
-impl Drop for Leader {
+impl Drop for Leader<'_> {
     fn drop(&mut self) {
+        #[cfg(owner_hosted_experiment)]
+        let _ = self.receipt.record(owner_hosted_receipt::Event::Drop);
         if !self.reserved {
             return;
         }
@@ -317,17 +345,43 @@ pub(crate) fn supervise(
     limit: usize,
     policy: InputPolicy,
     mut receipt: Option<File>,
+    #[cfg(owner_hosted_experiment)] experiment_receipt: &mut owner_hosted_receipt::Receipt<256>,
 ) -> i32 {
+    macro_rules! observe_before {
+        ($receipt:expr, $experiment:expr, $reason:expr, $value:expr $(,)?) => {{
+            #[cfg(not(owner_hosted_experiment))]
+            observe($receipt, $reason, $value);
+            #[cfg(owner_hosted_experiment)]
+            {
+                let _ = $reason;
+                let _ = $experiment.record(owner_hosted_receipt::Event::Observation);
+            }
+        }};
+    }
+    #[cfg(owner_hosted_experiment)]
+    if receipt.is_some() {
+        return WorkerFailure::ExperimentGuardRefused.code();
+    }
     let Ok(flags) = worker_signals() else {
-        observe(&mut receipt, Observation::SignalSetup, -1);
+        observe_before!(
+            &mut receipt,
+            experiment_receipt,
+            Observation::SignalSetup,
+            -1
+        );
         return WorkerFailure::SignalSetup.code();
     };
     let Ok(input) = request(startup, &flags, policy) else {
-        observe(&mut receipt, Observation::Request, -1);
+        observe_before!(&mut receipt, experiment_receipt, Observation::Request, -1);
         return WorkerFailure::Request.code();
     };
     if cancelled(startup, &flags) || startup.deadline.work_done() {
-        observe(&mut receipt, Observation::StartupCancelled, -1);
+        observe_before!(
+            &mut receipt,
+            experiment_receipt,
+            Observation::StartupCancelled,
+            -1
+        );
         return WorkerFailure::StartupCancelled.code();
     }
     let Ok((child_input, child_request)) = UnixStream::pair() else {
@@ -346,6 +400,10 @@ pub(crate) fn supervise(
         return WorkerFailure::ChildPid.code();
     };
     let mut leader = Leader {
+        #[cfg(owner_hosted_experiment)]
+        receipt: experiment_receipt,
+        #[cfg(not(owner_hosted_experiment))]
+        receipt_scope: std::marker::PhantomData,
         child,
         pid,
         reserved: true,
@@ -353,6 +411,19 @@ pub(crate) fn supervise(
         cleanup: None,
         last_error: 0,
     };
+    macro_rules! observe_after {
+        ($leader:ident, $receipt:expr, $reason:expr, $value:expr $(,)?) => {{
+            #[cfg(not(owner_hosted_experiment))]
+            observe($receipt, $reason, $value);
+            #[cfg(owner_hosted_experiment)]
+            {
+                let _ = $reason;
+                let _ = $leader
+                    .receipt
+                    .record(owner_hosted_receipt::Event::Observation);
+            }
+        }};
+    }
     let Some(child_output) = leader.child.stdout.take() else {
         return WorkerFailure::ChildStdout.code();
     };
@@ -362,7 +433,7 @@ pub(crate) fn supervise(
         || nonblocking(&child_output).is_err()
         || nonblocking(&stdout).is_err()
     {
-        observe(&mut receipt, Observation::IoSetup, -1);
+        observe_after!(leader, &mut receipt, Observation::IoSetup, -1);
         return WorkerFailure::IoSetup.code();
     }
     let mut child_input = Some(child_input);
@@ -396,12 +467,14 @@ pub(crate) fn supervise(
             Ok(status) => {
                 if let Some(status) = &status {
                     if !reported_terminal {
-                        observe(
+                        observe_after!(
+                            leader,
                             &mut receipt,
                             Observation::TerminalCode,
                             status.exit_status().unwrap_or(-1) as i64,
                         );
-                        observe(
+                        observe_after!(
+                            leader,
                             &mut receipt,
                             Observation::TerminalSignal,
                             status.terminating_signal().unwrap_or(-1) as i64,
@@ -412,7 +485,8 @@ pub(crate) fn supervise(
                 status.is_some()
             }
             Err(_) => {
-                observe(
+                observe_after!(
+                    leader,
                     &mut receipt,
                     Observation::WaitError,
                     leader.last_error as i64,
@@ -421,7 +495,8 @@ pub(crate) fn supervise(
             }
         };
         if terminal && input_offset != input.len() {
-            observe(
+            observe_after!(
+                leader,
                 &mut receipt,
                 Observation::InputIncomplete,
                 (input.len() - input_offset) as i64,
@@ -435,18 +510,26 @@ pub(crate) fn supervise(
             );
         }
         if (cleanup.is_none() && (stopped || failed || terminal)) || (stopped && !reported_stop) {
-            observe(&mut receipt, Observation::ControlRead, control_result);
-            observe(
+            observe_after!(
+                leader,
+                &mut receipt,
+                Observation::ControlRead,
+                control_result
+            );
+            observe_after!(
+                leader,
                 &mut receipt,
                 Observation::SignalFlag,
                 flags.load(Ordering::Acquire) as i64,
             );
-            observe(
+            observe_after!(
+                leader,
                 &mut receipt,
                 Observation::ParentPresent,
                 i64::from(startup.parent_present()),
             );
-            observe(
+            observe_after!(
+                leader,
                 &mut receipt,
                 Observation::WorkDeadline,
                 i64::from(startup.deadline.work_done()),
@@ -457,7 +540,8 @@ pub(crate) fn supervise(
             cleanup = Some(startup.deadline.cleanup());
             leader.cleanup = cleanup;
             kill_at = now.0 + 20_000_000;
-            observe(
+            observe_after!(
+                leader,
                 &mut receipt,
                 Observation::SignalAttempt,
                 Signal::TERM.as_raw() as i64,
@@ -465,10 +549,11 @@ pub(crate) fn supervise(
             if let Err(reason) = leader.signal(Signal::TERM) {
                 #[cfg(owner_hosted_experiment)]
                 if reason == SignalFailure::ExperimentGuardRefused {
-                    observe(&mut receipt, Observation::ExperimentGuardRefused, 0);
+                    observe_after!(leader, &mut receipt, Observation::ExperimentGuardRefused, 0);
                     return reason.reason(false).code();
                 }
-                observe(
+                observe_after!(
+                    leader,
                     &mut receipt,
                     Observation::SignalError,
                     leader.last_error as i64,
@@ -481,7 +566,8 @@ pub(crate) fn supervise(
                 return WorkerFailure::CleanupDeadline.code();
             }
             if !killed && now.0 >= kill_at {
-                observe(
+                observe_after!(
+                    leader,
                     &mut receipt,
                     Observation::SignalAttempt,
                     Signal::KILL.as_raw() as i64,
@@ -489,10 +575,16 @@ pub(crate) fn supervise(
                 if let Err(reason) = leader.signal(Signal::KILL) {
                     #[cfg(owner_hosted_experiment)]
                     if reason == SignalFailure::ExperimentGuardRefused {
-                        observe(&mut receipt, Observation::ExperimentGuardRefused, 0);
+                        observe_after!(
+                            leader,
+                            &mut receipt,
+                            Observation::ExperimentGuardRefused,
+                            0
+                        );
                         return reason.reason(true).code();
                     }
-                    observe(
+                    observe_after!(
+                        leader,
                         &mut receipt,
                         Observation::SignalError,
                         leader.last_error as i64,
@@ -514,7 +606,8 @@ pub(crate) fn supervise(
                             std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
                         ) => {}
                     Err(error) => {
-                        observe(
+                        observe_after!(
+                            leader,
                             &mut receipt,
                             Observation::InputWrite,
                             error.raw_os_error().unwrap_or(-1) as i64,
@@ -532,7 +625,12 @@ pub(crate) fn supervise(
                     if total > limit {
                         failed = true;
                         limit_failed = true;
-                        observe(&mut receipt, Observation::OutputLimit, total as i64);
+                        observe_after!(
+                            leader,
+                            &mut receipt,
+                            Observation::OutputLimit,
+                            total as i64
+                        );
                     }
                     output.clear();
                     output.extend_from_slice(&buffer[..count]);
@@ -540,7 +638,8 @@ pub(crate) fn supervise(
                 }
                 Err(Errno::AGAIN | Errno::INTR) => {}
                 Err(error) => {
-                    observe(
+                    observe_after!(
+                        leader,
                         &mut receipt,
                         Observation::OutputRead,
                         error.raw_os_error() as i64,
@@ -558,7 +657,8 @@ pub(crate) fn supervise(
                     Ok(count) => offset += count,
                     Err(Errno::AGAIN | Errno::INTR) => {}
                     Err(error) => {
-                        observe(
+                        observe_after!(
+                            leader,
                             &mut receipt,
                             Observation::OutputWrite,
                             error.raw_os_error() as i64,
@@ -574,29 +674,33 @@ pub(crate) fn supervise(
                     let reaped = leader.reap();
                     match &reaped {
                         Ok(status) => {
-                            observe(
+                            observe_after!(
+                                leader,
                                 &mut receipt,
                                 Observation::ReapCode,
                                 status.code().unwrap_or(-1) as i64,
                             );
-                            observe(
+                            observe_after!(
+                                leader,
                                 &mut receipt,
                                 Observation::ReapSignal,
                                 status.signal().unwrap_or(-1) as i64,
                             );
                         }
-                        Err(_) => observe(
+                        Err(_) => observe_after!(
+                            leader,
                             &mut receipt,
                             Observation::ReapError,
                             leader.last_error as i64,
                         ),
                     }
-                    observe(&mut receipt, Observation::Failed, i64::from(failed));
+                    observe_after!(leader, &mut receipt, Observation::Failed, i64::from(failed));
                     return final_status(&reaped, failed, limit_failed, first_failure);
                 }
                 Ok(None) => {}
                 Err(_) => {
-                    observe(
+                    observe_after!(
+                        leader,
                         &mut receipt,
                         Observation::WaitError,
                         leader.last_error as i64,

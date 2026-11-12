@@ -10,6 +10,7 @@ This folder holds long-form, feature-by-feature comparisons between agentbrew an
 
 | Doc | Competitor | Verdict | Status |
 |---|---|---|---|
+| [agent-memory-2026-11-11.md](agent-memory-2026-11-11.md) | Beacon and shared-memory alternatives | **Evaluate** | Security upgrade and matched coding-task comparison pending. |
 | [vercel-skills-cli-vs-agentbrew.md](vercel-skills-cli-vs-agentbrew.md) | Vercel Labs `skills` CLI (`npx skills`) | **Contribute** | Delegation shipped (split: 51 exact-name agents + 3 rename pairs → `npx skills add`, 2 carve-outs → native). Hardware-bound sandbox/proxy/offline measurement passed 2026-05-02. |
 | [mcpm-sh-vs-agentbrew.md](mcpm-sh-vs-agentbrew.md) | Path Integral Institute `mcpm.sh` (`pipx install mcpm`) | **Contribute** | All 4 slices DONE 2026-04-27. Verdict: selective delegation (split-intersection model). 9 strict client-intersection delegate / 3 small adapters as upstream contribution candidates / 2 hard carve-outs. Delegation shipped 2026-04-27 (parent task `delegate-mcp-to-mcpm` removed from queue; mcpm PRs #326–329). |
 | [official-mcp-registry-vs-agentbrew.md](official-mcp-registry-vs-agentbrew.md) | Official MCP Registry (`registry.modelcontextprotocol.io`) | **Delegate** | Read-only resolver shipped behind `AGENTBREW_MCP_REGISTRY=1`; registry-first waits for the registry 1.0/GA. |

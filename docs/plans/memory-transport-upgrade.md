@@ -25,6 +25,7 @@ binary can safely open a database migrated by the newer version.
 
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate
-declares each checked tool without removing a top-level input field or adding a
-required top-level field. This is a static shape check only. It does not check
-types, nested schemas, returned data, permissions, or runtime compatibility.
+declares each checked tool without removing fields or adding required fields
+in the directly nested object and array schemas. The same check found no
+changes to their simple type, enum, and numeric or string bounds. It does not
+cover schema combinators, returned data, permissions, or runtime compatibility.

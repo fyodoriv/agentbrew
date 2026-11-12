@@ -14,6 +14,7 @@ import fs, {
 import { tmpdir, userInfo } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cargoProducer } from "./test-utils/cargo-producers.js";
 
 const source = resolve(import.meta.dirname, "..");
 const native = await import(new URL("../scripts/native-build-tools.mjs", import.meta.url).href);
@@ -64,9 +65,20 @@ function producerProbe(cargo: string, root: string, release: string) {
   };
 }
 
-function producerEntries(deps: string, diagnostic: () => object, emit: (text: string) => void) {
-  if (!existsSync(deps)) emit(`CARGO_PRODUCER_DIAGNOSTIC=${JSON.stringify(diagnostic())}`);
-  return fs.readdirSync(deps);
+function producerPath(
+  release: string,
+  original: Buffer,
+  root: string,
+  final: string | undefined,
+  diagnostic: () => object,
+  emit: (text: string) => void,
+) {
+  try {
+    return cargoProducer(release, original, root, final);
+  } catch (error) {
+    emit(`CARGO_PRODUCER_DIAGNOSTIC=${JSON.stringify(diagnostic())}`);
+    throw error;
+  }
 }
 
 describe("producer diagnostic", () => {
@@ -82,9 +94,8 @@ describe("producer diagnostic", () => {
   });
 
   it("keeps the original missing-directory failure when the safe probe fails", () => {
-    const release = mkdtempSync(join(tmpdir(), "cargo-diagnostic-"));
+    const release = realpathSync(mkdtempSync(join(tmpdir(), "cargo-diagnostic-")));
     roots.push(release);
-    const deps = join(release, "deps");
     const output: string[] = [];
     const diag = () =>
       producerDiagnostic("private-canary", { CARGO_TARGET_DIR: "private-canary" }, () => {
@@ -92,9 +103,9 @@ describe("producer diagnostic", () => {
       });
     expect.assertions(4);
     try {
-      producerEntries(deps, diag, (text) => output.push(text));
+      producerPath(release, Buffer.from("original"), release, undefined, diag, (text) => output.push(text));
     } catch (error) {
-      expect(error).toMatchObject({ code: "ENOENT", syscall: "scandir" });
+      expect(error).toMatchObject({ message: "expected exactly one matching producer" });
     }
     expect(output).toEqual(['CARGO_PRODUCER_DIAGNOSTIC={"available":false}']);
     expect(output.join()).not.toContain("private-canary");
@@ -564,6 +575,7 @@ describe("native capability trust boundary", () => {
           encoding: "utf8",
           timeout: 600_000,
         });
+      expect(existsSync(join(f.root, "rust/checkup-run/target"))).toBe(false);
       const first = spawnSync(
         cargo,
         [
@@ -586,28 +598,28 @@ describe("native capability trust boundary", () => {
       );
       expect(first.status, first.stderr).toBe(0);
       const path = join(f.root, "rust/checkup-run/target/aarch64-apple-darwin/release/checkup-run");
+      expect(fs.lstatSync(path).size).toBeLessThanOrEqual(64 * 1024 * 1024);
       const original = readFileSync(path);
       const substituted = readFileSync(join(f.directory, "publish-dist"));
       expect(native.sha256(original)).not.toBe(native.sha256(substituted));
       const targets = [path];
       if (variant === "producer cache") {
-        const deps = join(dirname(path), "deps");
-        const producers = producerEntries(
-          deps,
+        const producer = producerPath(
+          dirname(path),
+          original,
+          f.root,
+          path,
           () => producerDiagnostic(first.stderr, env, () => producerProbe(cargo, f.root, dirname(path))),
           (message) => console.error(message),
-        )
-          .filter((name) => /^checkup_run-[a-f0-9]+$/.test(name))
-          .map((name) => join(deps, name))
-          .filter((candidate) => native.sha256(readFileSync(candidate)) === native.sha256(original));
-        expect(producers.length, "actual recorder producer output must be observed").toBeGreaterThan(0);
-        targets.push(...producers);
+        );
+        targets.push(producer);
       }
       const future = new Date(Date.now() + 60_000);
       for (const target of targets) {
         writeFileSync(target, substituted);
         utimesSync(target, future, future);
       }
+      for (const target of targets) expect(readFileSync(target)).toEqual(substituted);
       const second = compile();
       expect(second.status, second.stderr).toBe(0);
       const verification = spawnSync(

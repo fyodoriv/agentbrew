@@ -20,7 +20,7 @@ export interface MemoryUpgradeResult {
   error?: string;
 }
 
-/** Sequence only. Callers must establish database identity and an exclusive handoff. */
+/** Callers must establish database identity and an exclusive launchd handoff. */
 export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): Promise<MemoryUpgradeResult> {
   const progress: { stage: "stop" | "backup" | "candidate" } = { stage: "stop" };
   let snapshot: string | undefined;

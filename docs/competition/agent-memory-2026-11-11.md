@@ -74,6 +74,9 @@ a candidate without the hosted evaluator, then approve it. Approved memory is
 project-scoped; its local MCP memory tools are read-only. This differs from the
 current agent workflow, which can write a shared memory directly. Local Beacon
 is therefore not yet shown to be a drop-in replacement for that workflow.
+On November 12, an isolated test with network access denied created and listed
+a candidate from a synthetic Claude Code trace. It did not test approval,
+retrieval, other clients, or the quality of the resulting memory.
 
 Supermemory is worth a separate local trial because its documented plugins
 cover the requested clients. Its [product page](https://supermemory.ai/product/)

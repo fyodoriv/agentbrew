@@ -29,3 +29,19 @@ worker safety, or a fix for issue #810 from this fixture.
 Anchor: issue #810, [owner receipt preparation](owner-success-receipt-810.md),
 [cleanup seam](inventory-cleanup-seam-prediction.md), and Basili, Caldiera and
 Rombach 1994 (GQM); Munafò et al. 2017 (preregistration).
+
+## Source-only safety review (2026-11-12)
+
+A candidate child could create its own session, send a bounded identity
+handshake, and exit on release, disconnect or its own deadline. The parent
+would hold the unreaped direct-child handle and compare each reported
+relationship before release. This would be evidence for that fixture only.
+
+Independent review found that this no-signal method cannot establish bounded
+termination on every failure path: a stopped child, scheduler starvation,
+kernel stall or parent death can leave cleanup unproved. A timeout cannot be
+reported as complete until the child is reaped. The registered pivot therefore
+applies to this design. No fixture was built or run, and no process was
+signaled. Reopen only with a separately reviewed containment and cleanup
+method; do not weaken the registered requirement or infer the historical
+permission error's cause.

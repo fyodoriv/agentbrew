@@ -140,6 +140,24 @@ not establish the required restart safety.
   an upgrade prerequisite.
 - **Anchor:** `src/commands/cli-memory.ts` and `src/memory/backup.ts`.
 
+## Backup collisions
+
+- **Root cause hypothesis:** Backup names have one-second resolution, and the
+  copy helper removes an existing destination before copying. Two backups in
+  the same second could replace a valid restore point or leave it incomplete.
+- **Hypothesis:** Giving each backup an exclusive destination preserves every
+  successful snapshot when backup requests overlap or share a timestamp.
+- **Measurement:** Create two synthetic backups with the same timestamp after
+  different database writes, then verify and read both snapshots. Exercise a
+  failed destination write without altering an existing backup.
+- **Success:** Both successful snapshots remain independently readable with
+  their original rows; a failed write preserves the existing backup in every
+  tested case. Existing backup discovery and rotation tests still pass.
+- **Pivot:** If exclusive creation cannot be guaranteed across processes or
+  filesystems, do not use the changed backup path for the upgrade.
+- **Anchor:** `src/memory/backup.ts` and SQLite's
+  [online backup documentation](https://www.sqlite.org/backup.html).
+
 ## OpenCode instruction gap
 
 The shared instruction template names Claude Code and Codex, but not OpenCode.

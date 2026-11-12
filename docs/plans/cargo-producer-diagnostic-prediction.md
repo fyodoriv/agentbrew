@@ -17,3 +17,8 @@ cause is unknown; do not change the trust check or weaken the assertion.
   cause known until a failing reproduction or direct evidence confirms it.
 - **Anchor:** `src/source-build-capability.test.ts:510`, hosted CI runs
   43318889450 and 43323151849, and the focused local two-case pass.
+
+Review narrowed the probe: it records only the lexical location of the Cargo
+path and fixed target-directory entry types. It does not run another command or
+identify the tool version. These facts may leave the cause unknown. Probe
+errors produce an unavailable category and retain the original failing scan.

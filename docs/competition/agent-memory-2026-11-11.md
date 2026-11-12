@@ -64,3 +64,9 @@ synthetic cross-client recall, stale-fact, isolation, and deletion checks.
 Compare equal tasks, models, context budgets, and a memory-off baseline. Record
 task success, recall, latency, local storage, costs, and data destinations.
 Do not name a winner until the compared configurations have actually run.
+
+The benchmark's published grid tests retrieval against a preloaded corpus; it
+does not test how products extract or persist memories. It is Claude-specific,
+and its authors also make a competing memory product. Beacon and the current
+service need reviewed adapters before a matched run. Treat the benchmark as one
+input, not proof of a complete cross-agent ranking.

@@ -51,6 +51,17 @@ Always pass the verified path explicitly: in the inspected 12.8 wheel,
 the storage backend uses that setting. A synthetic call to that resolver
 confirmed the mismatch. Otherwise a successful check could inspect a different
 database from the one the daemon uses.
+
+- **Maintenance hypothesis:** Passing Agentbrew's resolved database path to
+  upstream `check-db` makes its fallback honor a custom base directory.
+- **Measurement:** Exercise the maintenance fallback with a synthetic custom
+  base directory and inspect the `check-db` arguments.
+- **Success:** Every tested fallback passes the expected absolute database path;
+  a successful `maintain` does not invoke `check-db`.
+- **Pivot:** If the daemon path cannot be established, do not treat fallback
+  success as proof that the running daemon's database was checked.
+- **Anchor:** `src/memory/invoke.ts`, `src/memory/paths.ts`, and the inspected
+  upstream 12.8 `cli/main.py` resolver.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 

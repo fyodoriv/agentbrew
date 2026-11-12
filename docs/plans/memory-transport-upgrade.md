@@ -407,3 +407,16 @@ It did not measure automatic extraction, all client integrations, or quality.
 - **Pivot:** If no write occurs, inspect the handler and test setup before
   deciding whether automatic capture can be enabled. Do not test real data.
 - **Anchor:** [Upstream 12.8.0 plugin](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/opencode/memory-plugin.js).
+
+## Upstream Codex short correction
+
+- **Hypothesis:** Under default capture settings, an ordinary short correction
+  is not stored, while the same correction with `#remember` is stored.
+- **Measurement:** Run the pinned upstream hook with synthetic transcripts,
+  a mock HTTP client, isolated files, and network denied. Count writes for
+  each of the two cases.
+- **Success:** The unmarked correction produces zero writes and the marked
+  correction produces one write containing the synthetic correction.
+- **Pivot:** If either count differs, inspect the hook behavior and test setup
+  before recommending the default lifecycle.
+- **Anchor:** [Upstream 12.8.0 Codex hook](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/codex/memory-hook.js).

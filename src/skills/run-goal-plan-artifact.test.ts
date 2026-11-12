@@ -19,7 +19,7 @@ describe("goal plan artifact", () => {
     expect(order).toMatch(/Do not block work or claim publication/);
   });
 
-  it.each([296, 297, 298])("includes scenario %i with observable expectations", (id) => {
+  it.each([298, 299, 300])("includes scenario %i with observable expectations", (id) => {
     const matches = evals.filter((entry) => entry.id === id);
     expect(matches).toHaveLength(1);
     expect(matches[0]?.expectations.join(" ")).toMatch(/artifact|report/i);

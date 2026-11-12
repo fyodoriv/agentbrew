@@ -21,4 +21,5 @@ cause is unknown; do not change the trust check or weaken the assertion.
 Review narrowed the probe: it records only the lexical location of the Cargo
 path and fixed target-directory entry types. It does not run another command or
 identify the tool version. These facts may leave the cause unknown. Probe
-errors produce an unavailable category and retain the original failing scan.
+errors produce an unavailable category. The later dual-layout lookup still
+fails when it cannot identify exactly one matching producer.

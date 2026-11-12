@@ -93,7 +93,7 @@ describe("producer diagnostic", () => {
     expect(JSON.stringify(diagnostic)).not.toContain("Compiling checkup-run");
   });
 
-  it("keeps the original missing-directory failure when the safe probe fails", () => {
+  it("keeps the missing-producer failure when the safe probe fails", () => {
     const release = realpathSync(mkdtempSync(join(tmpdir(), "cargo-diagnostic-")));
     roots.push(release);
     const output: string[] = [];

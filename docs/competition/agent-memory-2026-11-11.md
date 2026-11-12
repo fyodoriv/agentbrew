@@ -6,6 +6,9 @@ patched version and comparing Beacon and Supermemory. None has yet won an
 equal, local coding-task evaluation. The current 11.7.0 pin needs a security
 upgrade before it can be recommended without qualification.
 
+On November 12, the latest published releases were [Beacon 1.3.60](https://github.com/Asymptote-Labs/agent-beacon/releases/tag/v1.3.60)
+and [MCP Memory Service 12.8.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.8.0).
+
 ## Current setup
 
 Agentbrew owns the local daemon, its configuration, backup checks, and client
@@ -105,8 +108,10 @@ a candidate without the hosted evaluator, then approve it. Approved memory is
 project-scoped; its local MCP memory tools are read-only. This differs from the
 current agent workflow, which can write a shared memory directly. Local Beacon
 is therefore not yet shown to be a drop-in replacement for that workflow.
-On November 12, isolated tests with network access denied created and approved
-a candidate from a synthetic Claude Code trace. Local MCP returned the lesson
+On November 12, isolated tests with network access denied used Beacon 1.3.60
+to create and approve a candidate from a synthetic Claude Code trace. The trial
+binary matched the release archive, whose checksum was verified. Local MCP
+returned the lesson
 for its project and no result for a second project. Other clients and memory
 quality were not tested.
 

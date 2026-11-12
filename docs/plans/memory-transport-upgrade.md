@@ -27,6 +27,13 @@ Static inspection of the wheel shows later migrations create tables or indexes,
 alter tables, and run an update. This is another reason to verify a restore,
 not a substitute for running the candidate against synthetic data.
 
+A scratch rehearsal is prepared to write harmless facts with the old service,
+make a SQLite backup, read them with the new service, then restore the backup
+and read them with the old service. It first checks that its OS isolation blocks
+network and access outside scratch. It uses the upstream test-only hash
+embedding fallback. A pass would not validate the installed ONNX embedding
+model, the HTTP origin fix, or any real client.
+
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate
 declares each checked tool without removing fields or adding required fields

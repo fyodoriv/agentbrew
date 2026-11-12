@@ -33,6 +33,9 @@ Version [12.8.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12
 is the latest release observed for this research. Its compatibility and
 database migrations must pass the isolated checks in the
 [upgrade prediction](../plans/memory-transport-upgrade.md) before deployment.
+An isolated HTTP rehearsal confirmed that the old version accepted an
+untrusted origin and the candidate rejected it; both accepted local MCP
+initialization. The test used synthetic stores and did not modify live data.
 On November 11, the upstream [published advisory list](https://github.com/doobidoo/mcp-memory-service/security/advisories)
 included multiple version ranges covering 11.7.0. None listed 12.8.0 as
 affected. Each advisory has its own configuration and exposure conditions;
@@ -70,6 +73,14 @@ binary comes from a non-public codebase. Treat the licensing claim as
 inconsistent until the vendor clarifies it. Do not install its plugins into
 live agent profiles or auto-capture existing sessions for a trial; start with
 synthetic data in an isolated store and check all network destinations.
+The 0.0.9 macOS release passed its published checksum and a version probe
+after isolation controls blocked outside files and the live memory socket.
+This is not a memory, model-provider, or cross-agent integration test.
+The [local-server configuration guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/configuration.mdx)
+says telemetry is collected unless disabled and documents switches to suppress
+the startup key, browser launch, and update check. Local embeddings are the
+default; memory extraction also needs a configured model. Test these settings
+and network traffic rather than assuming local storage means offline operation.
 
 ## Published hosted pricing
 

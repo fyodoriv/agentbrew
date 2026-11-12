@@ -35,9 +35,12 @@ embedding fallback. A pass would not validate the installed ONNX embedding
 model, the HTTP origin fix, or any real client. Never enable this fallback on
 the live database: mixing hash vectors with real embeddings can damage recall.
 
-A second rehearsal is queued with ONNX enabled and hash fallback disabled. It
-will verify the public model archive against the upstream checksum, then check
-exact and semantic recall across upgrade and backup restore. It has not run.
+A second rehearsal uses ONNX with hash fallback disabled and the public model
+archive verified against the upstream checksum. Its first run failed because
+CoreML could not create a working directory inside the isolation boundary. A
+CPU-only retry is queued. The hash-based rehearsal reached the restored-old
+service but timed out while the machine's shared work queue paused for memory
+pressure; it is also queued for another attempt. Neither run has passed.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 
@@ -45,7 +48,10 @@ A separate scratch HTTP rehearsal is prepared to reproduce the old origin
 behavior and check the patched version. It uses a temporary loopback port and a
 separate synthetic database for each version. Its isolation check must first
 prove that the temporary port works and the live memory port is unreachable.
-The test has not run yet.
+The isolated rehearsal passed on November 12: the old version returned 200
+to an untrusted-origin initialization and wildcard preflight; the candidate
+returned 403 and no wildcard. Both accepted local initialization. The live
+daemon has not been changed.
 
 The candidate restricts browser origins and configures authentication
 separately. A successful origin check alone does not prove that local requests
@@ -100,6 +106,15 @@ explicit and prove its recovery behavior; a fresh timestamp alone is not proof.
 Upstream also supports a base-directory setting and path aliases. Resolving the
 CLI environment alone does not prove that the launchd job uses the same path;
 verify the job's effective environment before treating a backup as its database.
+In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
+while a separate SQLite backup completed. A second check confirmed that a
+writer already holding the lock prevented an early snapshot, and its commit
+was visible after the lock became available. This does not test launchd,
+interrupted lock ownership, daemon shutdown, or rollback.
+An experimental subprocess lock also passed basic contention and backup tests,
+but checking the subprocess from its parent cannot make lock ownership atomic
+with a later launchd operation. It is not wired into the upgrade path and does
+not establish the required restart safety.
 
 ## Backup command verification status
 

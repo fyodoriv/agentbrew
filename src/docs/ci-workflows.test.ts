@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 // Pins the safety contract of the hosted workflows (docs/ci.md): a public
@@ -82,6 +83,88 @@ describe("hosted workflows", () => {
     const jobs = codeLines(text).filter((line) => /^\s+runs-on:/.test(line)).length;
     const limits = codeLines(text).filter((line) => /^\s+timeout-minutes:/.test(line)).length;
     expect(limits).toBe(jobs);
+  });
+
+  it("limits hosted inventory controls to the pure receipt target", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    const document = load(text) as {
+      permissions: { contents: string };
+      env: Record<string, string>;
+      defaults?: unknown;
+      jobs: Record<
+        string,
+        {
+          "runs-on": string;
+          "timeout-minutes": number;
+          strategy: { "fail-fast": boolean; matrix: { os: string[] } };
+          steps: Array<Record<string, unknown>>;
+        }
+      >;
+    };
+    const safe = (input: typeof document): boolean => {
+      const job = input.jobs["inventory-receipt"];
+      if (!job || JSON.stringify(input.permissions) !== JSON.stringify({ contents: "read" })) return false;
+      if (JSON.stringify(input.env) !== JSON.stringify({ DO_NOT_TRACK: "1", AGENTBREW_EVENTS: "0" })) return false;
+      if (input.defaults !== undefined || job["runs-on"] !== "${{ matrix.os }}") return false;
+      if (job["timeout-minutes"] !== 30 || job.strategy["fail-fast"] !== false) return false;
+      const keys = (value: object) => Object.keys(value).sort().join(",");
+      if (keys(job) !== "name,runs-on,steps,strategy,timeout-minutes") return false;
+      if (keys(job.strategy) !== "fail-fast,matrix" || keys(job.strategy.matrix) !== "os") return false;
+      if (JSON.stringify(job.strategy.matrix.os) !== JSON.stringify(["ubuntu-24.04", "macos-latest"])) return false;
+      const steps = job.steps;
+      if (steps.map(keys).join("|") !== "uses,with|name,run|name,run|name,run,shell") return false;
+      if (steps.length !== 4 || steps[0].uses !== "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1")
+        return false;
+      if (JSON.stringify(steps[0].with) !== JSON.stringify({ "persist-credentials": false })) return false;
+      if (steps[1].run !== "rustup toolchain install 1.97.0 --profile minimal") return false;
+      if (steps[2].run !== "cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml") return false;
+      if (steps[3].shell !== "bash" || typeof steps[3].run !== "string") return false;
+      const commands = steps[3].run
+        .trim()
+        .split("\n")
+        .map((line) => line.trim());
+      return (
+        JSON.stringify(commands) ===
+        JSON.stringify([
+          "set -euo pipefail",
+          'log="$RUNNER_TEMP/inventory-receipt-tests.log"',
+          'cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --test owner_success_receipt -- --test-threads=1 2>&1 | tee "$log"',
+          "names='complete_record_accepted missing_field_refused unknown_terminal_unqualified unknown_reservation_unqualified unknown_ownership_unqualified invalid_enum_refused private_fields_refused cleanup_outcome_unchanged eperm_success_conflict_unqualified'",
+          "for name in $names; do",
+          '[ "$(grep -Ec "^test $name \\.\\.\\. ok$" "$log")" -eq 1 ]',
+          "done",
+          "grep -Eq '^test result: ok\\. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' \"$log\"",
+        ])
+      );
+    };
+    expect(safe(document)).toBe(true);
+    const extra = structuredClone(document);
+    extra.jobs["inventory-receipt"].steps.push({ run: "cargo test --all-targets" });
+    expect(safe(extra)).toBe(false);
+    const target = structuredClone(document);
+    target.jobs["inventory-receipt"].steps[3].run = "cargo run --bin lifecycle-fixture";
+    expect(safe(target)).toBe(false);
+    const credentials = structuredClone(document);
+    credentials.jobs["inventory-receipt"].steps[0].with = { "persist-credentials": true };
+    expect(safe(credentials)).toBe(false);
+    const matrix = structuredClone(document);
+    matrix.jobs["inventory-receipt"].strategy.matrix.os = ["ubuntu-24.04"];
+    expect(safe(matrix)).toBe(false);
+    const runner = structuredClone(document);
+    runner.jobs["inventory-receipt"]["runs-on"] = "ubuntu-24.04";
+    expect(safe(runner)).toBe(false);
+    const injectedEnv = structuredClone(document);
+    injectedEnv.env.BASH_ENV = "/tmp/untrusted";
+    expect(safe(injectedEnv)).toBe(false);
+    const defaults = structuredClone(document);
+    defaults.defaults = { run: { shell: "untrusted" } };
+    expect(safe(defaults)).toBe(false);
+    const ignoredFailure = structuredClone(document);
+    ignoredFailure.jobs["inventory-receipt"].steps[3]["continue-on-error"] = true;
+    expect(safe(ignoredFailure)).toBe(false);
+    const skipped = structuredClone(document);
+    skipped.jobs["inventory-receipt"].steps[3].if = "false";
+    expect(safe(skipped)).toBe(false);
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

@@ -92,3 +92,31 @@ jobs:
 
       - name: Gate (npm run verify)
         run: npm run verify
+
+  inventory-receipt:
+    name: inventory receipt (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+      - name: Run pure receipt controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/inventory-receipt-tests.log"
+          cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --test owner_success_receipt -- --test-threads=1 2>&1 | tee "$log"
+          names='complete_record_accepted missing_field_refused unknown_terminal_unqualified unknown_reservation_unqualified unknown_ownership_unqualified invalid_enum_refused private_fields_refused cleanup_outcome_unchanged eperm_success_conflict_unqualified'
+          for name in $names; do
+            [ "$(grep -Ec "^test $name \.\.\. ok$" "$log")" -eq 1 ]
+          done
+          grep -Eq '^test result: ok\. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out' "$log"

@@ -57,3 +57,10 @@ This is a repo setting; the owner decides.
 
 - Off: `gh api -X PUT repos/fyodoriv/agentbrew/actions/permissions -F enabled=false`. `npm run verify` on your machine is then the only gate again.
 - On: `gh api -X PUT repos/fyodoriv/agentbrew/actions/permissions -F enabled=true -f allowed_actions=selected -F sha_pinning_required=true`, then `gh api -X PUT repos/fyodoriv/agentbrew/actions/permissions/selected-actions -F github_owned_allowed=true -F verified_allowed=false`.
+
+## Inventory receipt controls
+
+The hosted inventory receipt job runs the nine pure Rust receipt-format tests
+on Linux and macOS. It fetches the locked dependencies and runs the target
+offline. It does not run or qualify the inventory worker, process cleanup, or
+the complete executable inventory. See the [registered check](plans/inventory-hosted-receipt-controls.md).

@@ -269,6 +269,12 @@ exclusive control of the real daemon or prove upstream service readiness.
 - **Anchor:** The candidate's `server_impl.py` initialization order and
   [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html).
 
+The isolated candidate 12.8.0 trial met the success condition on a synthetic
+database, including MCP initialization and exact recall. Its temporary job
+was removed. The first harness attempts failed on nested sandbox execution and
+Python path access; the successful retry retained the outer network-denying
+sandbox. The real daemon and competing launchd controllers remain untested.
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

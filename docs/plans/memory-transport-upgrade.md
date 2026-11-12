@@ -13,3 +13,12 @@
 
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
+
+## Migration evidence
+
+The live database reported schema version 12 in a read-only query. The verified
+12.8.0 wheel contains later schema migrations through 022. Its migration runner
+has recovery logic for existing databases, but inspecting that code does not
+prove a safe upgrade or downgrade. Test with synthetic data first. A live
+rollback must restore a verified pre-upgrade backup; do not assume an older
+binary can safely open a database migrated by the newer version.

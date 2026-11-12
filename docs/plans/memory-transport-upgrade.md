@@ -393,3 +393,17 @@ endpoint alone does not prove that Kimi will recall or save memory.
 The isolated trial approved and retrieved the synthetic lesson for its own
 project and returned no result for a second project with network access denied.
 It did not measure automatic extraction, all client integrations, or quality.
+
+## Upstream OpenCode capture marker
+
+- **Hypothesis:** Since the pinned plugin's marker detector returns false for
+  an ordinary `#skip`, its capture handler will send a matching synthetic
+  assistant message to the memory API despite that marker.
+- **Measurement:** Feed one synthetic decision message to the pinned plugin's
+  event handler with a mock HTTP client and network access denied; count memory
+  writes and inspect only the synthetic request body.
+- **Success:** The mock sees one memory write containing the synthetic marker.
+  This confirms the consequence of the already-observed detector result.
+- **Pivot:** If no write occurs, inspect the handler and test setup before
+  deciding whether automatic capture can be enabled. Do not test real data.
+- **Anchor:** [Upstream 12.8.0 plugin](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/opencode/memory-plugin.js).

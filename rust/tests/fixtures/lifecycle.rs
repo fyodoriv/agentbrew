@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+#[cfg(owner_hosted_experiment)]
+compile_error!("owner_hosted_experiment is forbidden in the main package");
+
 mod model {
     pub use migration_check::model::Diagnostic;
 }

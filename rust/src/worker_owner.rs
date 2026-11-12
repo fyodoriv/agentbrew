@@ -21,6 +21,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+#[cfg(owner_hosted_experiment)]
+#[path = "owner_guarded_dispatch.rs"]
+mod owner_guarded_dispatch;
+
 const SECOND: u128 = 1_000_000_000;
 const TOTAL: u128 = 30 * SECOND;
 const CLEANUP: u128 = 2 * SECOND;
@@ -127,6 +131,8 @@ enum Observation {
     WaitError,
     SignalAttempt,
     SignalError,
+    #[cfg(owner_hosted_experiment)]
+    ExperimentGuardRefused,
     ReapCode,
     ReapSignal,
     ReapError,
@@ -253,7 +259,15 @@ impl Leader {
         }
         self.status()
             .map_err(|_| SignalFailure::from_wait_error(self.last_error))?;
-        match kill_process_group(self.pid, signal) {
+        #[cfg(owner_hosted_experiment)]
+        let result = match owner_guarded_dispatch::dispatch(|| kill_process_group(self.pid, signal))
+        {
+            Ok(result) => result,
+            Err(_) => return Err(SignalFailure::ExperimentGuardRefused),
+        };
+        #[cfg(not(owner_hosted_experiment))]
+        let result = kill_process_group(self.pid, signal);
+        match result {
             Ok(()) | Err(Errno::SRCH) => Ok(()),
             Err(error) => {
                 self.last_error = error.raw_os_error();
@@ -449,6 +463,11 @@ pub(crate) fn supervise(
                 Signal::TERM.as_raw() as i64,
             );
             if let Err(reason) = leader.signal(Signal::TERM) {
+                #[cfg(owner_hosted_experiment)]
+                if reason == SignalFailure::ExperimentGuardRefused {
+                    observe(&mut receipt, Observation::ExperimentGuardRefused, 0);
+                    return reason.reason(false).code();
+                }
                 observe(
                     &mut receipt,
                     Observation::SignalError,
@@ -468,6 +487,11 @@ pub(crate) fn supervise(
                     Signal::KILL.as_raw() as i64,
                 );
                 if let Err(reason) = leader.signal(Signal::KILL) {
+                    #[cfg(owner_hosted_experiment)]
+                    if reason == SignalFailure::ExperimentGuardRefused {
+                        observe(&mut receipt, Observation::ExperimentGuardRefused, 0);
+                        return reason.reason(true).code();
+                    }
                     observe(
                         &mut receipt,
                         Observation::SignalError,

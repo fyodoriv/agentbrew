@@ -90,6 +90,8 @@ pub enum WorkerFailure {
     InputWrite = 30,
     OutputRead = 31,
     OutputWrite = 32,
+    #[cfg(owner_hosted_experiment)]
+    ExperimentGuardRefused = 33,
 }
 
 impl WorkerFailure {
@@ -128,6 +130,8 @@ impl WorkerFailure {
             30 => Self::InputWrite,
             31 => Self::OutputRead,
             32 => Self::OutputWrite,
+            #[cfg(owner_hosted_experiment)]
+            33 => Self::ExperimentGuardRefused,
             _ => return None,
         })
     }
@@ -145,6 +149,8 @@ pub enum SignalFailure {
     Wait,
     KillPermission,
     KillOther,
+    #[cfg(owner_hosted_experiment)]
+    ExperimentGuardRefused,
 }
 
 impl SignalFailure {
@@ -162,6 +168,8 @@ impl SignalFailure {
 
     pub fn reason(self, kill: bool) -> WorkerFailure {
         match (kill, self) {
+            #[cfg(owner_hosted_experiment)]
+            (_, Self::ExperimentGuardRefused) => WorkerFailure::ExperimentGuardRefused,
             (false, Self::Unreserved) => WorkerFailure::TermUnreserved,
             (false, Self::Wait) => WorkerFailure::TermWait,
             (false, Self::KillPermission) => WorkerFailure::TermKillPermission,

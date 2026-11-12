@@ -1,3 +1,6 @@
+#[cfg(owner_hosted_experiment)]
+compile_error!("owner_hosted_experiment is forbidden in the main package");
+
 use std::path::PathBuf;
 
 use migration_check::check_repository;

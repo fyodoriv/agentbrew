@@ -46,3 +46,15 @@ package must still compile without the experiment cfg. A fixture build without
 the cfg must fail. No package-wide feature or inherited compiler flag may be
 used to activate the guard. No source, fixture or worker was executed to make
 this clarification.
+
+## Compile-only implementation
+
+The guarded fixture path-includes the worker and transport sources and uses a
+minimal diagnostic stub. Its admission function always refuses; it cannot
+authorize a signal. Normal package entry points reject the experiment cfg.
+The fixture package is compiled with a target-scoped cfg and has a separate
+lockfile. The source-wiring mutation checks and fake-syscall helper tests do
+not execute `Leader::signal`, `Drop`, the fixture or the worker. They do not
+prove ownership, cleanup, historical behavior or production binary identity.
+A proposed hosted macOS job will check the declared compile boundaries
+without running the fixture; its verification is pending. A physical run still needs the separate ownership review.

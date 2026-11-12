@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const dir = join(resolve(import.meta.dirname, "..", ".."), "skill-plugins", "workflow", "run-goal");
 const skill = readFileSync(join(dir, "SKILL.md"), "utf-8");
+const report = readFileSync(join(dir, "references", "goal-report.md"), "utf-8");
 const evals = JSON.parse(readFileSync(join(dir, "evals", "evals.json"), "utf-8")).evals as Array<{
   id: number;
   expectations: string[];
@@ -15,8 +16,9 @@ describe("goal plan artifact", () => {
     expect(order.indexOf("Print the goal contract")).toBeLessThan(order.indexOf("Create a plan Artifact"));
     expect(order.indexOf("Create a plan Artifact")).toBeLessThan(order.indexOf("Work, printing"));
     expect(order).toMatch(/Update the same Artifact\s+at every milestone; on resume, find and reuse it/);
-    expect(order).toMatch(/private local HTML report, share its path, and state the output limitation/);
-    expect(order).toMatch(/Do not block work or claim publication/);
+    expect(order).toMatch(/private fallback in the \[goal report\]/);
+    expect(report).toMatch(/private local HTML report, give its path, and state the\s+output limitation/);
+    expect(report).toMatch(/without claiming publication or blocking work/);
   });
 
   it.each([298, 299, 300])("includes scenario %i with observable expectations", (id) => {

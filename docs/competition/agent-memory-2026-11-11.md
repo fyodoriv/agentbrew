@@ -2,9 +2,9 @@
 
 The current shared memory already delegates storage and search to the
 open-source `mcp-memory-service`. Keep it as the baseline while testing a
-patched version and comparing Beacon. Neither has yet won an equal, local
-coding-task evaluation. The current 11.7.0 pin needs a security upgrade before
-it can be recommended without qualification.
+patched version and comparing Beacon and Supermemory. None has yet won an
+equal, local coding-task evaluation. The current 11.7.0 pin needs a security
+upgrade before it can be recommended without qualification.
 
 ## Current setup
 
@@ -33,6 +33,10 @@ Version [12.8.0](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12
 is the latest release observed for this research. Its compatibility and
 database migrations must pass the isolated checks in the
 [upgrade prediction](../plans/memory-transport-upgrade.md) before deployment.
+On November 11, the upstream [published advisory list](https://github.com/doobidoo/mcp-memory-service/security/advisories)
+included multiple version ranges covering 11.7.0. None listed 12.8.0 as
+affected. Each advisory has its own configuration and exposure conditions;
+the version comparison does not prove an exploit or rule out unknown issues.
 
 ## Candidates
 
@@ -40,6 +44,8 @@ database migrations must pass the isolated checks in the
 |---|---|---|
 | [Beacon](https://github.com/Asymptote-Labs/agent-beacon) | Captures activity across Claude Code, Codex, and OpenCode. Its [local MCP](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/mcp.mdx) serves reviewed project memory and local traces. | Its interactive setup preselects cloud forwarding. Trace capture can retain session content. Its [evaluation command](https://github.com/Asymptote-Labs/agent-beacon/blob/main/docs/cli/memory.mdx) defaults to a hosted evaluator. Local-only retrieval and end-to-end quality have not been measured here. |
 | [MCP Memory Service](https://github.com/doobidoo/mcp-memory-service) | Existing local SQLite and ONNX search, MCP and REST, backed by an upstream maintainer. | The installed pin predates security fixes. A newer release still needs migration and client tests. |
+| [Cognee](https://github.com/topoteretes/cognee) | Open-source graph memory, local-model Python setup, and an MCP server with remember, recall, and forget tools. | Its [MCP server defaults to a separate dataset per agent](https://github.com/topoteretes/cognee/blob/main/cognee-mcp/README.md); sharing needs explicit configuration. Its tool names differ from Agentbrew's lifecycle. The local MCP setup, migration, and all three clients need a matched test. |
+| [Supermemory](https://supermemory.ai/blog/opencode-memory/) | Vendor documents plugins for Claude Code, Codex, and OpenCode, including OpenCode 2, with shared project memory and a local server option. | Its [self-hosting guide](https://github.com/supermemoryai/supermemory/blob/main/apps/docs/self-hosting/overview.mdx) says the server binary is not open source, has a free-tier document limit, and does not include the hosted MCP server. Local model, telemetry, retention, migration, and cross-client behavior need testing. |
 | [Mem0](https://github.com/mem0ai/mem0) | Hosted and self-hosted memory APIs. | Its former self-hosted [OpenMemory MCP project is archived](https://github.com/mem0ai/openmemory/blob/main/openmemory-archive/README.md); current local coding-agent integration needs verification. |
 | [Graphiti](https://github.com/getzep/graphiti) | Temporal knowledge-graph retrieval. | Its MCP and REST servers are reference implementations, not production deployments; upstream says they omit authentication and authorization. |
 | [Letta](https://github.com/letta-ai/letta-code) | Persistent agent state and a [local backend](https://docs.letta.com/self-hosting/app-server). | It is an agent platform; its fit as a drop-in shared store for all existing clients has not been demonstrated. |
@@ -55,6 +61,14 @@ a candidate without the hosted evaluator, then approve it. Approved memory is
 project-scoped; its local MCP memory tools are read-only. This differs from the
 current agent workflow, which can write a shared memory directly. Local Beacon
 is therefore not yet shown to be a drop-in replacement for that workflow.
+
+Supermemory is worth a separate local trial because its documented plugins
+cover the requested clients. Its [product page](https://supermemory.ai/product/)
+calls the local binary open source, while its self-hosting guide says that
+binary comes from a non-public codebase. Treat the licensing claim as
+inconsistent until the vendor clarifies it. Do not install its plugins into
+live agent profiles or auto-capture existing sessions for a trial; start with
+synthetic data in an isolated store and check all network destinations.
 
 ## Published hosted pricing
 

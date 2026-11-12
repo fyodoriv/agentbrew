@@ -33,8 +33,27 @@ const [ranking, ...urls] = args;
 const SIZES = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 800 } };
 const VIEWS = urls.map((u) => [u.replace(/^https?:\/\/[^/]+\//, "") || "/", u]);
 
+// Wait until every picture on screen has loaded; a local test server can drop a request under load,
+// so a broken picture gets its src set again (up to 10 s). A shot of a half-loaded page rates a fake flaw.
+async function settleImages(p) {
+  for (let i = 0; i < 40; i++) {
+    const pending = await p.evaluate(() => {
+      let n = 0;
+      for (const img of document.images) {
+        const r = img.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > innerHeight * 2 || !img.currentSrc) continue;
+        if (img.complete && img.naturalWidth === 0) { const s = img.src; img.src = ""; img.src = s; n++; }
+        else if (!img.complete) n++;
+      }
+      return n;
+    });
+    if (!pending) return;
+    await p.waitForTimeout(250);
+  }
+}
+
 async function open(browser, url, size, scheme = "light", extra = {}) {
-  const ctx = await browser.newContext({ viewport: SIZES[size], colorScheme: scheme, ...extra });
+  const ctx = await browser.newContext({ viewport: SIZES[size], colorScheme: scheme, bypassCSP: true, ...extra });
   const p = await ctx.newPage();
   await p.goto(url);
   await p.evaluate(() => {
@@ -43,6 +62,7 @@ async function open(browser, url, size, scheme = "light", extra = {}) {
     } catch (_e) {}
   }); // each view from a clean start
   await p.goto(url);
+  await settleImages(p);
   await p.waitForTimeout(300);
   await p.evaluate(() => {
     for (const a of document.getAnimations()) a.finish(); // measure the resting page, not a fade-in frame
@@ -130,7 +150,7 @@ const rankings = {
         await p.addScriptTag({ content: COLOR });
         const r = await p.evaluate(() =>
           [...document.querySelectorAll("body *")]
-            .filter((e) => e.offsetParent && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim()))
+            .filter((e) => e.offsetParent && (!e.checkVisibility || e.checkVisibility()) && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim()))
             .filter((e) => {
               const st = getComputedStyle(e);
               return st.visibility !== "hidden" && +st.opacity !== 0;
@@ -196,7 +216,7 @@ const rankings = {
       const count = await p.evaluate(
         (sel) =>
           [...document.querySelectorAll(sel)]
-            .filter((e) => e.offsetParent !== null && !e.disabled && !e.closest("[inert]"))
+            .filter((e) => e.offsetParent !== null && (!e.checkVisibility || e.checkVisibility()) && !e.disabled && !e.closest("[inert]"))
             .map((e, i) => (e.dataset.kbk = i)).length,
         CONTROLS,
       );
@@ -276,7 +296,7 @@ const rankings = {
       const r = await p.evaluate(() =>
         [...document.querySelectorAll("body *")]
           .filter(
-            (e) => e.offsetParent && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim().length > 1),
+            (e) => e.offsetParent && (!e.checkVisibility || e.checkVisibility()) && [...e.childNodes].some((t) => t.nodeType === 3 && t.textContent.trim().length > 1),
           )
           .map((e) => {
             const fs = parseFloat(getComputedStyle(e).fontSize);

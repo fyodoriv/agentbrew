@@ -192,9 +192,9 @@ protected, tested sequence before changing the pin.
 The draft sequence has synthetic tests for a failed stop, backup verification,
 a restart observed during backup, candidate failure, and an unhealthy
 candidate. It leaves the database and snapshot separate after candidate start.
-It is not connected to sync or a CLI action. Database identity and an
-exclusive handoff between the last stopped check and candidate startup remain
-unproven; the draft sequence must not be used for a live upgrade yet.
+It is not connected to sync or a CLI action. Database identity and exclusive
+control of the launchd job remain unproven; the draft sequence must not be used
+for a live upgrade yet.
 
 - **Reservation hypothesis:** A SQLite writer reservation held by the upgrade
   process prevents another SQLite writer from changing the database while the
@@ -216,8 +216,10 @@ snapshot. Focused tests verified competing-write rejection, backup, release on
 error, replaced-file detection, and refusal when the built-in module is absent.
 A scratch database produced by the upstream service accepted the reservation;
 an end-to-end snapshot check on that format is queued. Node 20 lacks this module
-and the draft fails closed there. The reservation ends before candidate startup,
-so it does not yet close the launchd handoff gap.
+and the draft fails closed there. The reservation now remains held through
+candidate registration and ends before the readiness check. This blocks
+competing SQLite writes during that interval, but does not stop another process
+from replacing the launchd job. Actual registration and startup remain untested.
 
 - **Candidate-registration hypothesis:** Registering the candidate while the
   SQLite reservation is still held prevents competing database writes between

@@ -48,7 +48,11 @@ describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot 
         expect(
           execFileSync("sqlite3", [snapshot, "SELECT COUNT(*) FROM memories;"], { encoding: "utf-8" }).trim(),
         ).toBe("1");
-        execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
+        expect(() =>
+          execFileSync("sqlite3", ["-cmd", ".timeout 50", db, "INSERT INTO memories VALUES (98, NULL);"], {
+            stdio: "pipe",
+          }),
+        ).toThrow();
       });
       const result = await upgradeMemoryWithSnapshot({
         dbPath: db,
@@ -66,7 +70,10 @@ describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot 
           stopped = false;
         },
         startCandidate,
-        candidateHealthy: async () => true,
+        candidateHealthy: async () => {
+          execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
+          return true;
+        },
       });
       expect(result.ok).toBe(true);
       expect(startCandidate).toHaveBeenCalledTimes(1);
@@ -146,11 +153,11 @@ describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot 
         stopOld: async () => undefined,
         isOldStopped: async () => true,
         startOld,
-        startCandidate: async () => {
+        startCandidate: async () => undefined,
+        candidateHealthy: async () => {
           execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
           throw new Error("synthetic candidate failure");
         },
-        candidateHealthy: async () => false,
       });
       expect(result.ok).toBe(false);
       expect(startOld).not.toHaveBeenCalled();
@@ -185,6 +192,35 @@ describe.runIf(builtinModules.includes("node:sqlite"))("memory upgrade snapshot 
       expect(result).toMatchObject({ ok: false, stage: "candidate" });
       expect(startOld).not.toHaveBeenCalled();
       expect(result.snapshot && existsSync(result.snapshot)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not restart the old version when candidate registration fails", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "memory-upgrade-registration-"));
+    try {
+      const db = join(dir, "memory.db");
+      execFileSync("sqlite3", [
+        db,
+        "CREATE TABLE memories (id INTEGER, deleted_at TEXT); INSERT INTO memories VALUES (1, NULL);",
+      ]);
+      const startOld = vi.fn();
+      const result = await upgradeMemoryWithSnapshot({
+        dbPath: db,
+        backupsDir: join(dir, "backups"),
+        stopOld: async () => undefined,
+        isOldStopped: async () => true,
+        startOld,
+        startCandidate: async () => {
+          throw new Error("synthetic registration failure");
+        },
+        candidateHealthy: async () => true,
+      });
+      expect(result).toMatchObject({ ok: false, stage: "candidate" });
+      expect(startOld).not.toHaveBeenCalled();
+      expect(result.snapshot && existsSync(result.snapshot)).toBe(true);
+      execFileSync("sqlite3", [db, "INSERT INTO memories VALUES (2, NULL);"]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

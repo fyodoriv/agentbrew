@@ -8,6 +8,7 @@ export interface MemoryUpgradeOperations {
   stopOld: () => Promise<void>;
   isOldStopped: () => Promise<boolean>;
   startOld: () => Promise<void>;
+  /** Register the candidate without waiting for database initialization. */
   startCandidate: (snapshot: string) => Promise<void>;
   candidateHealthy: () => Promise<boolean>;
 }
@@ -21,7 +22,7 @@ export interface MemoryUpgradeResult {
 
 /** Sequence only. Callers must establish database identity and an exclusive handoff. */
 export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): Promise<MemoryUpgradeResult> {
-  const progress: { stage: "stop" | "backup" } = { stage: "stop" };
+  const progress: { stage: "stop" | "backup" | "candidate" } = { stage: "stop" };
   let snapshot: string | undefined;
   try {
     await withMemoryWriteReservation(ops.dbPath, async (assertHeld) => {
@@ -32,6 +33,9 @@ export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): P
       snapshot = writeMemoryBackup(ops.dbPath, ops.backupsDir);
       if (!verifySqliteBackup(snapshot).ok) throw new Error("memory backup failed verification");
       if (!(await ops.isOldStopped())) throw new Error("old memory daemon restarted during backup");
+      assertHeld();
+      progress.stage = "candidate";
+      await ops.startCandidate(snapshot);
       assertHeld();
     });
   } catch (error) {
@@ -51,7 +55,6 @@ export async function upgradeMemoryWithSnapshot(ops: MemoryUpgradeOperations): P
 
   try {
     if (!snapshot) throw new Error("verified memory snapshot is missing");
-    await ops.startCandidate(snapshot);
     if (!(await ops.candidateHealthy())) throw new Error("candidate memory daemon is not healthy");
     return { ok: true, stage: "complete", snapshot };
   } catch (error) {

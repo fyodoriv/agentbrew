@@ -97,6 +97,23 @@ finished upgrade until this boundary is addressed.
 An online snapshot taken while the old daemon accepts writes can miss writes
 made after that snapshot. The implementation must make the restart boundary
 explicit and prove its recovery behavior; a fresh timestamp alone is not proof.
+Upstream also supports a base-directory setting and path aliases. Resolving the
+CLI environment alone does not prove that the launchd job uses the same path;
+verify the job's effective environment before treating a backup as its database.
+
+## Backup command verification status
+
+- **Root cause:** `memory backup` calls the backup verifier but reports a
+  successful command even when verification returns `ok: false`.
+- **Hypothesis:** Returning a nonzero status for a failed verification makes
+  an unusable backup visible before an upgrade.
+- **Measurement:** Exercise the backup command with valid and invalid synthetic
+  verification results in text and JSON modes.
+- **Success:** Every invalid result returns nonzero and identifies the failed
+  verification; every valid result returns zero and retains its backup path.
+- **Pivot:** If the command cannot distinguish those outcomes, do not use it as
+  an upgrade prerequisite.
+- **Anchor:** `src/commands/cli-memory.ts` and `src/memory/backup.ts`.
 
 ## OpenCode instruction gap
 

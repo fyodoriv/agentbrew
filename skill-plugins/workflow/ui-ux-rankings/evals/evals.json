@@ -213,6 +213,18 @@
         "Names the unjudged fixture as the cause of the missing card verdicts",
         "Does not redesign the cards before checking the fixture's pipeline ran"
       ]
+    },
+    {
+      "id": 20,
+      "prompt": "Design round 22: last round all three catalogue raters asked to remove the 'No reason recorded' line, and you removed it. Now two of three raters ask to add it back, and one rater asks for heavier toolbar shadows while another asks for lighter ones. What do you do before the next round?",
+      "expected_output": "Keeps a decision ledger copied to every rater folder, declines the reversal and the opposite shadow asks and logs them, adds a fixture fact about missing reasons, sharpens the rater prompt so raters may not reverse a ledger decision without a named hard flaw, then builds only the remaining shared fixes and re-rates with new raters.",
+      "expectations": [
+        "Does not re-add the removed line just because two raters now ask for it",
+        "Writes or updates a DECISIONS.md ledger and gives it to the next raters",
+        "Declines the opposite-direction shadow asks and logs them as declined",
+        "Adds the missing reasons as a fixture fact or changes the rater prompt, so the judges are fixed before the next round",
+        "Keeps raters blind to earlier scores"
+      ]
     }
   ]
 }

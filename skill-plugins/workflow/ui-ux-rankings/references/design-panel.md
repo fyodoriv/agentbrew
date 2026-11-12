@@ -49,11 +49,34 @@ Rules:
   one that keeps the measured rankings true.
 - Keep scope: a look change adds no feature the product does not need.
 
+Raters never contradict the panel's earlier decisions:
+
+- Keep a **decision ledger** (`DECISIONS.md`) and copy it into every rater folder with the rubric. One
+  line per decision: the round, what was built or removed, and how many raters asked (for example
+  "R21: one failure tag per card; the extra 'No reason recorded' line removed (3 of 3)"). It holds
+  decisions, never scores, so raters stay blind to the numbers.
+- Add **fixture facts** to it: what the raters cannot change and keep asking about (for example "the
+  check names are the judge's own names; a take fails when any one check fails, whatever its total
+  score; the test fixture has no written reasons").
+- The rater prompt says: "Read DECISIONS.md. Do not ask to reverse a decision in it. You may name a
+  decision only when it causes a hard flaw (overlap, cut-off text, unreadable text, a broken phone
+  layout) and you name the screenshot and element. Do not mark the page down for a fixture fact."
+- **Fix the judges every round, before you build.** Check each top fix against the ledger and the
+  other raters. A fix that reverses a ledger line without a named hard flaw, or that two raters ask
+  for in opposite directions in the same round, is not built: log it in the ledger as "asked and
+  declined (reason)", and sharpen the prompt or the fixture facts so the next raters do not ask it.
+  A fix that asks only for different fixture content is a fixture fact, not a page change.
+- Then build the remaining fixes that two or more raters name, add each one to the ledger, re-shoot,
+  and rate with new raters. A round counts toward the stop rule only when it built its shared fixes.
+
 When the panel stalls:
 
 - Blind raters disagree by about half a point on the same screenshots, and a fix one round asks
   for can be called noise the next (an accent shadow on every card). Act only on fixes that two or
   more raters name in the same round; a single rater's taste is not a finding.
+- Without a ledger, raters flip at the plateau: in one 22-round run, round 21 asked to remove a
+  "No reason recorded" line and round 22 asked for it back, and the toolbar shadows were asked
+  heavier and lighter in turn. Nine rounds of built fixes stayed near 7.0. The ledger above stops that.
 - Stills cannot show motion, so The FWA and Godly stay near 5 to 6 for any static capture. When the
   page has motion, shoot a frame strip of each main transition (`rankings.cjs frames`, which pauses
   every animation at exact times), add a MOTION.txt that says what each strip shows, or report that

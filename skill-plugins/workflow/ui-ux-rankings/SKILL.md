@@ -68,7 +68,7 @@ The expert rankings have no script. Score them by hand and write the numbers dow
 | Nielsen's 10 heuristics | severity 0-4 per problem; report the total. A modal with no visible way out is a 3 |
 | Task time (KLM) | K .28 s, P 1.1 s, B .1 s, M 1.35 s per step; time the 4 to 8 most common tasks; report the sum |
 | Scale | bytes and time a phone loads for the largest realistic data set (Playwright `response` sizes, or Lighthouse LCP and total byte weight) |
-| Design panel | three blind rater subagents, [references/design-panel.md](references/design-panel.md), from the `shots` screenshots; never self-scored |
+| Design panel | three blind rater subagents, [references/design-panel.md](references/design-panel.md), from the `shots` screenshots; never self-scored; every rater reads the decision ledger, and each round fixes the judges (declines reversals and opposite asks) before it builds |
 | Principal judges | ten blind lens judges list issues; `scripts/judge.mjs score` turns them into scores by a rubric and lists the issues two or more name ([references/design-judges.md](references/design-judges.md)); read [references/judge-learnings.md](references/judge-learnings.md) first and add a line after |
 | Preference vs before | one fresh agent gets before/after screenshots per view as A/B pairs in random order; the key stays in a folder it does not read; report "preferred on N of M screens" and fix the issues it names |
 

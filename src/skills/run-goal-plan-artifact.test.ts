@@ -22,6 +22,7 @@ describe("goal plan artifact", () => {
   it.each([298, 299, 300])("includes scenario %i with observable expectations", (id) => {
     const matches = evals.filter((entry) => entry.id === id);
     expect(matches).toHaveLength(1);
+    expect(matches[0]?.expectations.length).toBeGreaterThanOrEqual(3);
     expect(matches[0]?.expectations.join(" ")).toMatch(/artifact|report/i);
     expect(matches[0]?.expectations.join(" ")).toMatch(/milestone/i);
   });

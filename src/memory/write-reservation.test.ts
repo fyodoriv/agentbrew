@@ -6,10 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 import { verifySqliteBackup, writeMemoryBackup } from "./backup.js";
 import { withMemoryWriteReservation } from "./write-reservation.js";
 
-const hasSqlite = await import("node:sqlite").then(() => true, () => false);
+const hasSqlite = await import("node:sqlite").then(
+  () => true,
+  () => false,
+);
 
 describe("memory SQLite write reservation", () => {
-
   it.runIf(hasSqlite)("blocks a second writer while a verified backup captures committed data", async () => {
     const dir = mkdtempSync(join(tmpdir(), "memory-reservation-"));
     try {

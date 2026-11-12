@@ -23,6 +23,10 @@ prove a safe upgrade or downgrade. Test with synthetic data first. A live
 rollback must restore a verified pre-upgrade backup; do not assume an older
 binary can safely open a database migrated by the newer version.
 
+Static inspection of the wheel shows later migrations create tables or indexes,
+alter tables, and run an update. This is another reason to verify a restore,
+not a substitute for running the candidate against synthetic data.
+
 The candidate's published tool registry and the live `tools/list` response
 were compared for the memory lifecycle tools Agentbrew calls. The candidate
 declares each checked tool without removing fields or adding required fields

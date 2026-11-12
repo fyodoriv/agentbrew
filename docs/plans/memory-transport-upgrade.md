@@ -46,6 +46,11 @@ migrations on that upgraded synthetic database. On the restored 11.7 snapshot,
 it returned nonzero and listed eight pending migrations. The command opens the
 specified database read-only. This check can help detect an incomplete upgrade,
 but it does not prove semantic recall or protect writes around a restart.
+Always pass the verified path explicitly: in the inspected 12.8 wheel,
+`check-db`'s automatic path resolver ignores `MCP_MEMORY_BASE_DIR`, although
+the storage backend uses that setting. A synthetic call to that resolver
+confirmed the mismatch. Otherwise a successful check could inspect a different
+database from the one the daemon uses.
 Both rehearsals use freshly resolved package dependencies; they do not prove
 that every dependency matches the installed daemon's environment.
 

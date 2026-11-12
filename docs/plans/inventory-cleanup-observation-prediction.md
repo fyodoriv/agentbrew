@@ -24,3 +24,10 @@ as evidence for the production RootPrefix route.
 
 Anchor: issue #810, draft PR #767, Basili, Caldiera and Rombach 1994 (GQM),
 and Munafò et al. 2017 (pre-registration).
+
+The fixture uses cleanup success to mean the desired absence was observed; a
+not-found signal is not treated as a sent signal. Consistent fields are not
+an ownership verdict. This pure `Value` fixture cannot detect duplicate JSON
+keys that a prior decoder discarded. Any future raw-input path must reject
+duplicates before validation. The standalone reducer tests supplement the
+nine named receipt tests; hosted CI must select tests explicitly.

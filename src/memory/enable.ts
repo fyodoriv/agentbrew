@@ -4,7 +4,7 @@ import { installMemoryLaunchAgents, memoryLaunchAgentSupported, uninstallMemoryL
 
 export interface MemoryEnableResult {
   enabled: boolean;
-  launchAgent: { installed: boolean; reason?: string };
+  launchAgent: { installed: boolean; upgradeBlocked?: boolean; reason?: string };
 }
 
 export function isMemoryEnabled(state: AgentBrewState): boolean {

@@ -137,6 +137,13 @@ upgrade must not let repair start the new version before the snapshot is safe.
   leave the version unchanged and do not deploy the guard as upgrade support.
 - **Anchor:** `src/memory/launchagent.ts` and `src/commands/cli-memory.ts`.
 
+The draft guard blocks a changed or unreadable pin in an existing plist, and
+both sync and repair stop before kick-starting after a refusal. Its focused
+tests pass. This is not yet a safe upgrade path: a missing plist or an existing
+plist that does not reflect the running job can conceal the database's version.
+The effective launchd environment, shutdown, backup and restart still need a
+protected, tested sequence before changing the pin.
+
 In a synthetic WAL-mode SQLite check, `BEGIN IMMEDIATE` blocked another writer
 while a separate SQLite backup completed. A second check confirmed that a
 writer already holding the lock prevented an early snapshot, and its commit

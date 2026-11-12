@@ -11,7 +11,7 @@ import { reconcileAllInstalledPacks } from "./pack-reconcile.js";
 
 export interface PrepareMemoryDeps {
   launchAgentSupported?: () => boolean;
-  installLaunchAgents?: () => { installed: boolean; changed?: boolean; reason?: string };
+  installLaunchAgents?: () => { installed: boolean; changed?: boolean; upgradeBlocked?: boolean; reason?: string };
   initializeHealthy?: () => Promise<boolean>;
   toolsListHealthy?: () => Promise<boolean>;
   readinessHealthy?: () => Promise<boolean>;
@@ -35,7 +35,10 @@ export async function prepareMemoryForMcpSync(state: AgentBrewState, deps: Prepa
   const waitUntilHealthy = deps.waitUntilHealthy ?? (() => waitForMemoryMcpHealthy());
   const kickstart = deps.kickstart ?? kickstartMemoryDaemon;
 
-  const launchAgent = supported ? install() : { installed: false, changed: false };
+  const launchAgent = supported ? install() : { installed: false, changed: false, upgradeBlocked: false };
+  if (launchAgent.upgradeBlocked) {
+    throw new Error(launchAgent.reason ?? "memory upgrade is blocked pending a protected backup");
+  }
   let healthy = launchAgent.changed ? await waitUntilHealthy() : await readinessHealthy();
   if (!healthy && supported) {
     kickstart();

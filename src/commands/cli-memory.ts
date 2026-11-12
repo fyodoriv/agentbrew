@@ -159,6 +159,7 @@ async function repairMemoryRuntime(): Promise<{
   bootstrapHealthy: boolean;
   launchAgent: {
     installed: boolean;
+    upgradeBlocked?: boolean;
     changed?: boolean;
     daemonRestarted?: boolean;
     daemonLoaded?: boolean;
@@ -174,7 +175,18 @@ async function repairMemoryRuntime(): Promise<{
   const supported = memoryLaunchAgentSupported();
   const launchAgent = supported
     ? installMemoryLaunchAgents()
-    : { installed: false, changed: false, reason: "no boot persistence on non-macOS" };
+    : { installed: false, changed: false, upgradeBlocked: false, reason: "no boot persistence on non-macOS" };
+  if (launchAgent.upgradeBlocked) {
+    return {
+      ok: false,
+      mcpHealthy: false,
+      bootstrapHealthy: false,
+      launchAgent,
+      maintainOk: false,
+      command: "",
+      failureMessage: launchAgent.reason,
+    };
+  }
   let mcpHealthy = launchAgent.changed ? await waitForMemoryMcpHealthy() : await mcpToolsListHealthy();
   if (!mcpHealthy && supported) {
     kickstartMemoryDaemon();
@@ -256,6 +268,7 @@ export function registerMemoryCommands(program: Command): void {
       if (!state) return;
       const result = enableMemory(state);
       saveState(state);
+      if (result.launchAgent.upgradeBlocked) process.exitCode = 1;
       if (options.json) {
         printJson({ ...result });
       } else {

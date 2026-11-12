@@ -9,7 +9,7 @@ import {
   resolveAgentBrewCliJsPath,
   resolveSchedulerNode,
 } from "../sync/scheduler-paths.js";
-import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_UVX_ARGS } from "./constants.js";
+import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
 import { resolveUvxBin } from "./invoke.js";
 import { memoryLaunchAgentLogDir } from "./paths.js";
 
@@ -286,6 +286,7 @@ export function memoryMaintenanceLaunchAgentStatus(): MemoryMaintenanceLaunchAge
 
 export function installMemoryLaunchAgents(): {
   installed: boolean;
+  upgradeBlocked?: boolean;
   changed?: boolean;
   daemonRestarted?: boolean;
   daemonLoaded?: boolean;
@@ -311,6 +312,24 @@ export function installMemoryLaunchAgents(): {
   }
 
   const daemonPlist = memoryPlistPath();
+  if (existsSync(daemonPlist)) {
+    let installedPin: string | undefined;
+    try {
+      const contents = readFileSync(daemonPlist, "utf-8");
+      const args = /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/u.exec(contents)?.[1] ?? "";
+      const pins = [...args.matchAll(/<string>--from<\/string>\s*<string>([^<]*)<\/string>/gu)];
+      if (pins.length === 1) installedPin = pins[0]?.[1];
+    } catch {
+      // An unreadable job definition cannot establish which database version is running.
+    }
+    if (installedPin !== MEMORY_PINNED_SPEC) {
+      return {
+        installed: false,
+        upgradeBlocked: true,
+        reason: "memory upgrade requires a protected backup and a verified restart",
+      };
+    }
+  }
   const daemon = reconcilePlist(daemonPlist, MEMORY_AGENT_LABEL, buildMemoryDaemonPlist(home, logDir, uvxBin), {
     required: true,
   });

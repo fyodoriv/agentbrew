@@ -235,6 +235,19 @@ from replacing the launchd job. Actual registration and startup remain untested.
 - **Anchor:** `src/memory/upgrade-sequence.ts` and upstream 12.8
   `server_impl.py` initialization order.
 
+- **launchd hypothesis:** Registering a uniquely named synthetic job returns
+  while its process is waiting for a SQLite writer reservation, and that
+  process can write after the reservation is released.
+- **Measurement:** Queue a macOS launchd trial with a temporary job and scratch
+  SQLite database; verify the job starts, cannot commit under the reservation,
+  commits after release, and is removed afterward.
+- **Success:** The synthetic job completes the post-release write and no test
+  job remains registered. No real memory database or daemon is opened.
+- **Pivot:** If registration waits for the blocked write, cleanup fails, or
+  another process can replace the real daemon during handoff, do not deploy.
+- **Anchor:** `src/memory/upgrade-sequence.ts` and
+  [SQLite transaction behavior](https://www.sqlite.org/lang_transaction.html).
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

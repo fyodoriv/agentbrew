@@ -48,7 +48,9 @@ the OpenCode plugin. In a network-denied scratch test, the Codex hook's shared
 marker detector recognized the same ordinary `#skip` and `#remember` examples
 that the OpenCode detector missed. A separate synthetic parser test retained a
 user correction and final answer while excluding instruction, commentary, and
-reasoning records. It requires Codex hook trust and reads local transcripts.
+reasoning records. Parsing is not capture: the hook defaults to a 300-character
+minimum, and a short synthetic correction failed its classifier without an
+override. It requires Codex hook trust and reads local transcripts.
 Compatibility with this machine's existing hooks, privacy rules, and shared
 memory lifecycle is unverified; do not install it into the live setup yet.
 

@@ -338,6 +338,16 @@ start it again after the edits; never report its result for the new code.
   note brings no fix, tell that session you take the blocker back, then read
   the log and reproduce the failure yourself. Tell that session what you
   fixed, so it does not open a second fix.
+- A job that fails before your tests start (a package install, a DNS error
+  such as `Temporary failure resolving`) is a runner outage, not your change.
+  The log proves it: quote the failing step and line. Start the failed job
+  again once. If it fails the same way, do not keep waiting: in the same pull
+  request, remove the need for the failing service (install the tool from
+  its source repo, or add a second registry as a fallback), and say so in
+  the body. One goal lost 90 minutes and five runs to a package-server DNS
+  outage before two small workflow edits made both gates pass.
+- A changed gate still has to pass: the merge waits for the green run of
+  the edited workflow. An outage never permits a merge on a red check.
 - Never push an empty commit to start a run again. Close and reopen the pull
   request, or push the real fix.
 - A test of one operating system's feature runs only there

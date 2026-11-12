@@ -4,7 +4,8 @@ Start the plan Artifact after the contract and before execution. Update that
 same Artifact at every milestone and on resume. Show evidence, blockers, and
 next actions. Verify it is visible in outputs. For private data or an unavailable
 Artifact tool, keep one private local HTML report, give its path, and state the
-output limitation without claiming publication or blocking work.
+output limitation without claiming publication or blocking work. Update that
+same private report at every milestone and reuse it on resume.
 
 ```markdown
 ## Goal result: met | partly met | blocked

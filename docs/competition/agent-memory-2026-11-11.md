@@ -31,6 +31,16 @@ says broader configuration can override a project policy and invalid rules
 can be dropped. Either is a possible explanation, not a confirmed cause. Use
 an external isolation boundary when testing untrusted tool behavior.
 
+The upstream memory service supplies an [OpenCode plugin](https://github.com/doobidoo/mcp-memory-service/blob/v12.8.0/opencode/README.md)
+that supports OpenCode 2 and may reduce custom integration work. Its pinned
+adapter passed its own unit tests in a network-denied scratch environment.
+Those tests show that its OpenCode 2 capture adapter reads assistant text only.
+The example enables automatic capture and session summaries. An isolated test
+of the pinned marker detector returned false for ordinary `#skip` and
+`#remember` inputs, so do not enable automatic capture on real sessions until
+the write path and privacy behavior are verified. The adapter tests do not prove
+end-to-end lifecycle behavior or correction capture.
+
 ## Security gate
 
 [Upstream advisory GHSA-8p26-g7wp-65jw](https://github.com/doobidoo/mcp-memory-service/security/advisories/GHSA-8p26-g7wp-65jw)

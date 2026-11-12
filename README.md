@@ -524,6 +524,12 @@ agentbrew sync                # keeps the daemon definition and every agent's MC
 
 The managed endpoint is `http://127.0.0.1:18765/mcp`.
 
+Memory backup and health checks honor `MCP_MEMORY_SQLITE_PATH` and the upstream
+`MCP_MEMORY_SQLITEVEC_PATH` alias, in that order. When neither is set, they
+use `MCP_MEMORY_BASE_DIR` if present. Backup directories also honor the upstream
+`mcpMemoryBackupsPath` alias after `MCP_MEMORY_BACKUPS_PATH`. Set the same paths
+for the daemon and the CLI, and use absolute paths for custom locations.
+
 Readiness performs the
 Streamable HTTP discovery contract in order — `initialize`,
 `notifications/initialized`, then `tools/list` — and requires a non-empty tool

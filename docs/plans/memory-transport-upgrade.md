@@ -47,3 +47,7 @@ declares each checked tool without removing fields or adding required fields
 in the directly nested object and array schemas. The same check found no
 changes to their simple type, enum, and numeric or string bounds. It does not
 cover schema combinators, returned data, permissions, or runtime compatibility.
+
+The pinned candidate package was installed by `uvx`, and `memory --version`
+reported 12.8.0 with exit code 0. This proves the CLI starts; it does not start
+the memory daemon or test a database.

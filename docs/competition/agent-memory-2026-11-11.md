@@ -26,7 +26,10 @@ intended to deny code-mode `execute`, but the recorded session shows completed
 `execute` calls. Those calls searched the memory tools and made a read-only
 query. The reason for the rule mismatch is unverified; do not rely on that
 scratch policy as an enforcement boundary. Bootstrap and session-save calls
-were not demonstrated in this trial.
+were not demonstrated in this trial. OpenCode's [policy documentation](https://opencode.ai/docs/policies/#precedence)
+says broader configuration can override a project policy and invalid rules
+can be dropped. Either is a possible explanation, not a confirmed cause. Use
+an external isolation boundary when testing untrusted tool behavior.
 
 ## Security gate
 

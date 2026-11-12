@@ -189,6 +189,13 @@ protected, tested sequence before changing the pin.
 - **Anchor:** `src/memory/backup.ts`, `src/memory/launchagent.ts`, and
   [SQLite online backups](https://www.sqlite.org/backup.html).
 
+The draft sequence has synthetic tests for a failed stop, backup verification,
+a restart observed during backup, candidate failure, and an unhealthy
+candidate. It leaves the database and snapshot separate after candidate start.
+It is not connected to sync or a CLI action. Database identity and an
+exclusive handoff between the last stopped check and candidate startup remain
+unproven; the draft sequence must not be used for a live upgrade yet.
+
 - **Identity hypothesis:** Refusing to start a new managed job when a known
   database already exists without a plist, or when a loaded job reports a
   different or unknown pin, closes those automatic-start gaps.

@@ -29,3 +29,14 @@ authority: nested module/include contexts, macros, attributes, aliases,
 Cargo workspace/dependency resolution and all other frozen cases remain
 separate obligations. An empty or passing screen is never permission to emit
 a writer or suppress a diagnostic. Parser state has one invocation scope.
+
+## Result (2026-11-13)
+
+The exact test passed: 1 passed, 0 failed, 158 filtered. Three frozen
+baselines passed; six frozen cases and six paired mutations refused. Both
+input limits, malformed inputs and invalid UTF-8 were checked. The existing
+observer and normal non-test library checks also passed. Independent review
+confirmed the test-only scope and controls. The hosted guard selects the exact
+test. This screen is not a complete Cargo or Rust namespace validator and
+does not qualify writer authority. Its input limits do not bound parser
+memory or time.

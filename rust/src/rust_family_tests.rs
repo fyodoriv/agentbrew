@@ -601,3 +601,7 @@ mod rust_span_probe;
 #[cfg(test)]
 #[path = "rust_syntax_slice.rs"]
 mod rust_syntax_slice;
+
+#[cfg(test)]
+#[path = "rust_namespace_screen.rs"]
+mod rust_namespace_screen;

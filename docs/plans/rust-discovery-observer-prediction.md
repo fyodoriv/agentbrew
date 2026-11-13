@@ -49,7 +49,11 @@ records and 65,536 total bytes of recorded path, body and API text; overflow
 makes its evidence inconclusive without changing the legacy report. An
 overflow fixture must compare the full observed and unobserved outputs.
 Within a closure round, retain only the last graph pass, not earlier passes
-over a smaller module set. Use only synthetic inputs. Review the cfg-only wiring and unchanged
+over a smaller module set. A synthetic generated-body case must prove at
+least two actual graph passes; a planted sequence through the same reset seam
+must prove a first-pass-only record is discarded. Compare complete observed
+and unobserved reports for both record-count and text-byte overflow. Use only
+synthetic inputs. Review the cfg-only wiring and unchanged
 public signature, and compile a normal non-test build. No source program, worker or
 process signal is run. Normal test compilation may run dependency build
 scripts. Passing this preparation does not qualify the six Rust positives,

@@ -133,7 +133,7 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   without changes. Never summarize while copying. Give the store a way to
   replace a bad copy, and name the rows copied by hand in the report.
 
-- **Outside judge out of quota:** when the outside judge tool stops (usage limit, sign-in), use another fresh-context reviewer for the same diff. Do not skip the review and do not grade the work yourself. One run's second reviewer found 3 blockers in a script that had 6 green tests and a green full gate.
+- **Outside judge out of quota:** when the outside judge tool stops (usage limit, sign-in), use another fresh-context reviewer for the same diff. Do not skip the review and do not grade the work yourself. One run's second reviewer found 3 blockers in a script whose own tests and full gate were green.
 - **Recount before a cutover:** right before a one-way write that copies a live list (issues, PRs, tasks), count the source again and compare it with your export. In one run 2 new issues arrived between the export and the cutover; the recount caught them and the numbering map was rebuilt.
 
 ## Skill discovery and command identity

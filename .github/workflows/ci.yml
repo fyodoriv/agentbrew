@@ -188,6 +188,9 @@ jobs:
             test "$(grep -Ec "^test discovery::tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-source-limit-tests.log")" -eq 1
             grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-source-limit-tests.log"
           done
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::rust_observer_tests::observer_preserves_legacy -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-observer-tests.log"
+          test "$(grep -Ec '^test rust_family_tests::rust_observer_tests::observer_preserves_legacy \.\.\. ok$' "$RUNNER_TEMP/inventory-observer-tests.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-observer-tests.log"
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'

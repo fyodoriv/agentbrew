@@ -589,3 +589,7 @@ frozen_case!(c02, "C02");
 
 #[path = "rust_legacy_baseline_tests.rs"]
 mod rust_legacy_baseline_tests;
+
+#[cfg(test)]
+#[path = "rust_observer_tests.rs"]
+mod rust_observer_tests;

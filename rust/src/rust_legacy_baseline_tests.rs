@@ -135,7 +135,7 @@ fn upstream(value: &Evidence) -> Value {
         "facts": facts.iter().map(fact).collect::<Vec<_>>(), "edges": edges })
 }
 
-fn discovery(value: &Discovery) -> Value {
+pub(super) fn discovery(value: &Discovery) -> Value {
     let Discovery {
         upstream: evidence,
         facts,
@@ -160,7 +160,7 @@ fn discovery(value: &Discovery) -> Value {
         "reviewed_producers": reviewed_producers.iter().map(producer_evidence).collect::<Vec<_>>() })
 }
 
-fn report(value: &CheckReport) -> Value {
+pub(super) fn report(value: &CheckReport) -> Value {
     let CheckReport { schema_version, checked_files, classified_components, checked_edges, unresolved_frozen, diagnostics } = value;
     json!({ "schema_version": schema_version, "checked_files": checked_files,
         "classified_components": classified_components, "checked_edges": checked_edges,
@@ -168,7 +168,7 @@ fn report(value: &CheckReport) -> Value {
         "diagnostics": diagnostics.iter().map(diagnostic).collect::<Vec<_>>() })
 }
 
-fn input_metadata(value: &Snapshot) -> Value {
+pub(super) fn input_metadata(value: &Snapshot) -> Value {
     let Snapshot { entries, untracked, ignored } = value;
     let entries = entries.iter().map(|(key, value)| {
         let Entry { path, mode, blob, bytes } = value;
@@ -183,7 +183,7 @@ fn input_metadata(value: &Snapshot) -> Value {
         "manifest_sha256": super::sha(&value.entries["rust/inventory.json"].bytes) })
 }
 
-fn canonical(value: Value) -> Value {
+pub(super) fn canonical(value: Value) -> Value {
     match value {
         Value::Object(fields) => {
             let ordered: BTreeMap<_, _> = fields.into_iter().collect();

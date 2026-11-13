@@ -98,4 +98,4 @@ input hashes, commit and attempt.
 This result covers that synthetic Linux case. It is not an independent count
 of every materialized input, a complete diagnostic set, a peak-memory or
 general runtime bound, a macOS result, or worker-ownership evidence. Ordinary
-jobs in the same workflow dispatch remain separate checks.
+jobs in the same workflow dispatch also passed; they remain separate checks.

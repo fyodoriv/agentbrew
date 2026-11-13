@@ -42,6 +42,71 @@ pub struct Discovery {
     pub reviewed_producers: Vec<crate::reviewed_producers::Evidence>,
 }
 
+#[cfg(test)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub(crate) struct HostObservation {
+    pub site: Site,
+    pub operation: crate::host_graph::Operation,
+    pub api: String,
+    pub uncertain: bool,
+}
+
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct DiscoveryObserver {
+    records: BTreeSet<HostObservation>,
+    text_bytes: usize,
+    passes: usize,
+    overflow: bool,
+    complete: bool,
+}
+
+#[cfg(test)]
+impl DiscoveryObserver {
+    pub(crate) fn begin_pass(&mut self) {
+        self.records.clear();
+        self.text_bytes = 0;
+        self.overflow = false;
+        self.complete = false;
+        self.passes = self.passes.saturating_add(1);
+    }
+
+    pub(crate) fn record(&mut self, record: HostObservation) {
+        if self.overflow || self.records.contains(&record) {
+            return;
+        }
+        let size = record
+            .site
+            .path
+            .len()
+            .checked_add(record.site.body.as_ref().map_or(0, String::len))
+            .and_then(|n| n.checked_add(record.api.len()))
+            .and_then(|n| self.text_bytes.checked_add(n));
+        if self.records.len() == 256 || size.is_none_or(|n| n > 65_536) {
+            self.overflow = true;
+            return;
+        }
+        self.text_bytes = size.expect("checked above");
+        self.records.insert(record);
+    }
+
+    pub(crate) fn records(&self) -> Option<&BTreeSet<HostObservation>> {
+        (self.complete && !self.overflow).then_some(&self.records)
+    }
+
+    pub(crate) fn overflowed(&self) -> bool {
+        self.overflow
+    }
+
+    pub(crate) fn passes(&self) -> usize {
+        self.passes
+    }
+
+    pub(crate) fn finish(&mut self) {
+        self.complete = true;
+    }
+}
+
 #[derive(Clone)]
 struct Source {
     path: String,
@@ -449,6 +514,30 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
 }
 
 fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Discovery {
+    #[cfg(test)]
+    {
+        discover_inner(snapshot, initial_limit, None)
+    }
+    #[cfg(not(test))]
+    {
+        discover_inner(snapshot, initial_limit)
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn discover_observed(
+    snapshot: &Snapshot,
+    observer: &mut DiscoveryObserver,
+) -> Discovery {
+    *observer = DiscoveryObserver::default();
+    discover_inner(snapshot, SOURCE_COUNT, Some(observer))
+}
+
+fn discover_inner(
+    snapshot: &Snapshot,
+    initial_limit: usize,
+    #[cfg(test)] mut observer: Option<&mut DiscoveryObserver>,
+) -> Discovery {
     let mut result = Discovery::default();
     match crate::upstream_ownership::inspect(snapshot) {
         Ok(evidence) => {
@@ -497,6 +586,8 @@ fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Dis
     // A new caller-promoted file restarts source closure. This prevents stale
     // unresolved module facts or changed body ordinals from surviving a round.
     for _ in 0..=snapshot.entries.len() {
+        #[cfg(test)]
+        let mut round_observer = DiscoveryObserver::default();
         let mut round = Discovery {
             upstream: result.upstream.clone(),
             facts: result.facts.clone(),
@@ -581,6 +672,23 @@ fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Dis
                 }
             }
             let mut graph = host_graph::analyze_with_registry_calls(&modules, &registry_calls);
+            #[cfg(test)]
+            if observer.is_some() {
+                round_observer.begin_pass();
+                for event in &graph.events {
+                    if round_observer.overflowed() {
+                        break;
+                    }
+                    let mut site = event.site.clone();
+                    project_site(&sources, &mut site);
+                    round_observer.record(HostObservation {
+                        site,
+                        operation: event.operation.clone(),
+                        api: event.api.clone(),
+                        uncertain: event.arguments.iter().any(observations::has_unknown),
+                    });
+                }
+            }
             for producer in &round.reviewed_producers {
                 if modules.contains_key(&producer.event.site.path) {
                     graph.diagnostics.push(Diagnostic::new(
@@ -640,6 +748,11 @@ fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Dis
             .filter(|(path, _)| !roots.contains_key(path))
             .collect();
         if new.is_empty() {
+            #[cfg(test)]
+            if let Some(target) = observer.as_deref_mut() {
+                round_observer.finish();
+                *target = round_observer;
+            }
             for (path, entry) in &snapshot.entries {
                 if entry.mode == 0o120000 {
                     if let Some(id) = indexed_target(snapshot, path)

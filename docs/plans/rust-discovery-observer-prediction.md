@@ -65,3 +65,20 @@ To reuse the B0 projector, only the visibility of its discovery, report,
 input-metadata and canonicalization helpers may become `pub(super)` in test
 code. Their logic and the original capture test remain unchanged; review that
 diff and repeat the retained-byte comparison before accepting the observer.
+
+Adding the test-only module changes the frozen harness file's hash. The single
+N02b run remains evidence for its recorded earlier commit, not automatically
+for this new test-build revision. Its manual workflow remains pinned to the
+old harness and must refuse this revision until a later experiment is reviewed
+and registered; do not silently update the pin or rerun the large case here.
+
+## Preparation result (2026-11-13)
+
+The exact observer test passed once: 1 passed, 0 failed, with 155 filtered.
+It compared the three complete retained reports and input metadata, exercised
+both overflow limits, and checked a source restart and generated-body passes.
+The workflow guard test passed 28 cases. A normal non-test library check passed.
+Independent source review found no new actionable defect. Its changing-record
+control uses the same pass-reset seam; the generated-body fixture proves
+multiple real passes, but does not independently show a changed event between
+those passes. These results qualify only this test-only host observer.

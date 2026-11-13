@@ -24,6 +24,12 @@ On November 11, a Codex-written research record was returned by Claude Code's
 `memory_search` tool. Together, these are targeted cross-client reads, not a
 measure of general retrieval quality or complete lifecycle compatibility.
 
+On November 12, a real OpenCode session with Kimi and the draft `oc` wrapper
+searched for a newly stored synthetic record. The tool evidence included
+`memory_search` and its test phrase; the final answer returned that phrase.
+The exact synthetic record was deleted and an exact search then returned no
+match. This is another shared read, not a test of bootstrap or session save.
+
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed
 `execute` calls. Those calls searched the memory tools and made a read-only

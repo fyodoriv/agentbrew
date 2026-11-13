@@ -36,3 +36,20 @@ On 2026-11-13, the managed goal workflow had one source claimant. Its staged
 tree exactly matched the locked historical source revision. The checked Codex
 and Claude links both pointed to that staged tree. These observations do not
 lock out concurrent writers and do not make replacement crash-safe.
+
+The first ownership check covers source records only. A separate check must
+cover local skill directories, plugins, and deployed links before any write.
+Malformed records, duplicate claims, and case aliases must refuse the refresh.
+The sync scanner catches unreadable-directory errors and returns partial or
+empty results. It cannot prove that no competing owner exists. A refresh needs
+a bounded, fail-closed inventory of the same effective source roots, including
+legacy and plugin roots, plus deployed targets. An unreadable or changing root
+is an unknown owner, not an empty one.
+The source-record selector does not validate remote identity. A future caller
+must verify the supported source and exact pinned tree independently; a unique
+source record alone never authorizes a write.
+The existing source checkout lease serializes checkout operations, but the
+install, prune, and clean paths also write the staging directory. A destination
+lock only protects the replacement if every such writer participates; adding
+a private lock to the new command alone is insufficient. Sync also changes
+deployed links and needs an explicit coordination boundary.

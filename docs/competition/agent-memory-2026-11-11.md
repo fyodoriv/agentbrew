@@ -42,7 +42,11 @@ In a separate scratch project with that test-only denial removed and the other
 restrictions retained, Kimi called the save tool. Exact search returned both
 the synthetic session and decision. Both records were deleted by exact hash,
 and a further exact search found no match. This proves one synthetic save and
-recall, not the bootstrap step or all save scenarios.
+recall, not all save scenarios. A separate Kimi session called
+`get_bootstrap_profile` against an empty scratch store and received a profile.
+The sandbox denied the live memory port and an outside file. This demonstrates
+the three lifecycle operations in separate targeted trials, not every client
+configuration or a full end-to-end session.
 
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed

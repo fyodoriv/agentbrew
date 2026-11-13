@@ -43,8 +43,10 @@ describe("primary-host story acceptance", () => {
     expect(missingStoryContracts([{ name: "future.md", content: acceptance }])).toEqual([]);
   });
 
-  it("requires the shared memory session lifecycle in the instructions deployed to both hosts", () => {
+  it("requires the shared memory session lifecycle in the shared instructions", () => {
     const template = readFileSync(join(root, "templates/AGENTS.md"), "utf-8");
+    const sharedMemory = template.split("## Shared memory")[1]?.split("\n## ")[0] ?? "";
+    expect(sharedMemory).toContain("OpenCode");
     for (const word of [
       "get_bootstrap_profile",
       "memory_search",

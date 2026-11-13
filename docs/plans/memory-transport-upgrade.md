@@ -919,3 +919,22 @@ unknown bodies. The draft now selects a versioned operation for those cases
 and records the returned ID; verified equal text keeps the metadata-only path.
 Focused tests pass. The actual SQLite round trip remains queued and must pass
 before treating content update compatibility as established.
+
+
+### Pack version retry prediction
+
+- **Root cause:** Versioned records can retain pack tags on both old and new
+  rows, while the current map chooses whichever row appears last. A missing
+  tagged row also makes the ledger fallback guess at its content.
+- **Hypothesis:** Selecting the ledger's ID from duplicate tagged rows and
+  verifying ledger-only content through upstream exact search preserves
+  repeat sync and allows safe matching-text tag repair.
+- **Measurement:** Run focused tests with old/new rows in both orders, matching
+  and missing ledger IDs, and missing-tag matching/unknown content.
+- **Success:** Both row orders choose the ledger's current ID; zero ambiguous
+  or unverified rows are mutated; a verified matching row repairs tags without
+  versioning; an isolated real-service second sync must also pass.
+- **Pivot:** If the service cannot return the ledger row or disclose matching
+  content, fail closed and leave the ledger unchanged.
+- **Anchor:** `src/memory/pack-reconcile.ts`, upstream 11.7 versioned-update
+  implementation, and `memory_search` exact mode.

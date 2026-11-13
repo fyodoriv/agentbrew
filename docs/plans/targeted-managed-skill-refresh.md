@@ -141,3 +141,10 @@ This control touches no real state, filesystem, subprocess or worker. It does
 not prove lock ownership, recovery, other writer cooperation, or atomicity
 across staging, links, manifest and state. A later real transaction must reload
 inside a shared ownership boundary or use a reviewed versioned merge.
+
+### Overlapping reload result (2026-11-13)
+
+Both focused tests passed. The new synthetic control showed the unrelated
+server edit lost after two overlapping fresh loads; the serialized control
+retained both edits. Independent review checked the order, cloned objects and
+assertions. This does not establish a live race or a transaction fix.

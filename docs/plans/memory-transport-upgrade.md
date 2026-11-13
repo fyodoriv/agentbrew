@@ -105,6 +105,15 @@ check; it does not establish recall or session-save parity on 12.9.0.
 - **Anchor:** The 12.9.0 bootstrap trial and the earlier synthetic Kimi
   session-save and recall trial recorded below.
 
+In one isolated Kimi session, the bootstrap result contained a behavioral
+profile, the session save reported `recorded`, and the exact-search result
+returned the unique synthetic phrase. OpenCode grouped the calls in its
+execution tool, so a first parser looking for direct tool events missed them.
+Inspection of the synthetic session's separate bootstrap, save, and search
+outputs confirmed the result. Outside-file and live-port access were denied,
+and the scratch server stopped. This does not verify the other clients or
+OpenRouter.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

@@ -114,6 +114,21 @@ outputs confirmed the result. Outside-file and live-port access were denied,
 and the scratch server stopped. This does not verify the other clients or
 OpenRouter.
 
+### Version 12.9.0 local-client read prediction
+
+- **Hypothesis:** Codex and Claude Code can discover the 12.9.0 scratch MCP
+  service and call its bootstrap tool with a local model and no live memory.
+- **Measurement:** Run each client in a separate synthetic home against the
+  scratch service and local model, with the live memory port and outside files
+  denied. Inspect tool output and cleanup, not private session data.
+- **Success:** Each client returns one bootstrap profile; isolation controls
+  pass and the scratch service stops. A client or local model failure leaves
+  that client unverified.
+- **Pivot:** Do not infer hosted-model behavior or write compatibility from a
+  local-model read. Stop if isolation, tool access, or cleanup fails.
+- **Anchor:** The 12.9.0 OpenCode bootstrap rehearsal and each client's MCP
+  configuration documentation.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

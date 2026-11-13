@@ -35,16 +35,24 @@ try:
  try:
   rpc(1,"initialize",{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"public-benchmark","version":"1"}})
   p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n");p.stdin.flush()
-  hits=0
-  for i,case in enumerate(cases):
-   out=rpc(100+i,"tools/call",{"name":"search_memory","arguments":{"q":case["query"],"project":str(project),"limit":5}})
+  def search_rows(i,arguments):
+   out=rpc(i,"tools/call",{"name":"search_memory","arguments":{"project":str(project),"limit":5,**arguments}})
    blocks=[json.loads(x["text"]) for x in out.get("content",[]) if x.get("type")=="text"]
    rows=[row for x in blocks for row in x.get("memories",[])]
    if len(rows)>5:raise RuntimeError("result exceeds limit")
-   rank=next((j+1 for j,row in enumerate(rows) if row.get("body")==case["content"]),None)
-   if rank:hits+=1
-   print(case["id"],"rank",rank,"entries",len(rows),flush=True)
-  print("recall_at_5:",hits,"/",len(cases),flush=True)
+   return rows
+  first=next(case for case in cases if case["id"]=="a01")
+  control=search_rows(10,{"q":"os.replace"})
+  if not any(row.get("body")==first["content"] for row in control):raise RuntimeError("known-word search control failed")
+  print("PASS known-word search control",flush=True)
+  for mode in ("q","task"):
+   hits=0
+   for i,case in enumerate(cases):
+    rows=search_rows((100 if mode=="q" else 200)+i,{mode:case["query"]})
+    rank=next((j+1 for j,row in enumerate(rows) if row.get("body")==case["content"]),None)
+    if rank:hits+=1
+    print(mode,case["id"],"rank",rank,"entries",len(rows),flush=True)
+   print(mode,"recall_at_5:",hits,"/",len(cases),flush=True)
  finally:
   p.terminate()
   try:p.wait(timeout=5)

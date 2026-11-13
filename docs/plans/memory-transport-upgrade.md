@@ -410,6 +410,12 @@ endpoint alone does not prove that Kimi will recall or save memory.
 - **Anchor:** `src/memory/constants.ts`, the upstream MCP tool schema, and
   OpenCode's [configuration documentation](https://opencode.ai/docs/config/).
 
+On November 12, the scratch server started and the controls confirmed that the
+client could reach scratch state but could not reach the live memory port or an
+outside file. Two client attempts timed out after 180 seconds each, including
+one with the scratch file watcher disabled. The scratch server stopped. No
+bootstrap result was observed, so the lifecycle instruction remains unchanged.
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

@@ -192,6 +192,16 @@ documents its Anthropic-compatible endpoint. Those documents do not prove this
 benchmark's Claude Code requests enforce the required routing or that this
 account qualifies. Verify the actual route and data policy before attesting;
 do not change account privacy settings for the trial.
+At benchmark revision `c1b15726f1153b02dda0490ca1936bb86a809514`, an
+[optional OpenRouter gateway](https://github.com/GiulioDER/agent-memory-bench/blob/c1b15726f1153b02dda0490ca1936bb86a809514/scripts/openrouter_anthropic_gateway.py)
+replaces the request's provider object with its own provider order and disabled
+fallbacks. A synthetic local call confirmed it removes supplied `zdr` and
+`data_collection` fields. This gateway is used by one additive launcher; it
+is not evidence that every benchmark route uses it. OpenRouter's
+[provider table](https://openrouter.ai/providers) lists its default provider,
+DeepInfra, as zero retention and no training, but OpenRouter says policies can
+vary by endpoint. The selected model endpoint, account logging, all other
+providers, and actual route still need verification.
 
 The [Agent Memory Leaderboard coding analysis](https://agentmemories.ai/blog?post=coding-leaderboard-analysis-20260915)
 reports a separate evaluation using historical tasks from 12 repositories and

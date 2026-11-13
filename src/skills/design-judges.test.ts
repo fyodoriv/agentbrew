@@ -116,9 +116,13 @@ describe("design judges", () => {
       { round: 4, reason: "stall" },
     ]);
     expect(sb.round + cat.round).toBe(10);
-    // the best score lost by stopping early stays within 0.25
+    // the best score lost by stopping early: storyboard ≤ 0.25, catalogue ≤ 0.5
     expect(Math.max(...storyboard) - Math.max(...storyboard.slice(0, sb.round + 1))).toBeLessThanOrEqual(0.25);
     expect(Math.max(...catalogue) - Math.max(...catalogue.slice(0, cat.round + 1))).toBeLessThanOrEqual(0.5);
+    // the budget holds on a structural round: rounds 6-7 flat, round 8 structural and not flat
+    expect(judge.stopRound([5, 5.5, 6, 6.5, 7, 7.5, 7.6, 7.7, 8.2, 8.3], 9)).toEqual({ round: 8, reason: "budget" });
+    // exactly 0.30 counts as noise, despite float error
+    expect(judge.stopRound([6.5, 6.8, 7.1, 7.4])).toEqual({ round: 3, reason: "stall" });
     expect(judge.stopRound([6, 6.5, 7, 7.5, 8.1], 8)).toEqual({ round: 4, reason: "target" });
     expect(judge.stopRound([5, 5.5, 6, 6.5, 7, 7.5, 8, 7.6, 7.2, 6.8], 9).reason).toBe("budget");
   });

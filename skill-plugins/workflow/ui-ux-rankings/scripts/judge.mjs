@@ -230,16 +230,18 @@ export const MAX_ROUNDS = 8;
 export function stopRound(means, target = Infinity) {
   let flat = 0;
   let structural = 0;
+  // a change of exactly 0.30 or less (rounded to 0.01) is noise
+  const flatStep = (r) => Math.round(Math.abs(means[r] - means[r - 1]) * 100) / 100 <= NOISE;
   for (let r = 1; r < means.length; r++) {
     if (means[r] >= target) return { round: r, reason: "target" };
     if (structural && r === structural) {
-      if (Math.abs(means[r] - means[r - 1]) < NOISE) return { round: r, reason: "stall" };
+      if (flatStep(r)) return { round: r, reason: "stall" };
       structural = 0;
       flat = 0;
-      continue;
+    } else {
+      flat = flatStep(r) ? flat + 1 : 0;
+      if (flat === 2) structural = r + 1;
     }
-    flat = Math.abs(means[r] - means[r - 1]) < NOISE ? flat + 1 : 0;
-    if (flat === 2) structural = r + 1;
     if (r >= MAX_ROUNDS) return { round: r, reason: "budget" };
   }
   return { round: means.length - 1, reason: structural ? "structural round next" : "continue" };

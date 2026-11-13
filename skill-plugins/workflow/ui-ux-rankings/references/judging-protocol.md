@@ -49,7 +49,8 @@ different stop rules. Published practice for LLM judges points the same way:
 6. **Target from a reference.** Before round 1, the same kind of blind judges rate one or two
    best-in-class pages of the same type. The target is that reference mean minus 0.3 (or the
    owner's number, if lower). A fixed 8.0 can ask for more than the best product gets.
-7. **One stop rule.** The noise band is ±0.3 on the panel mean.
+7. **One stop rule.** The noise band is ±0.3 on the panel mean: a change of 0.30 or less, rounded
+   to 0.01, is noise.
    - After two rounds in a row inside the band, stop polishing. Run one structural round instead:
      build two real alternatives (layout, main motif, motion) and let new judges compare them
      side by side (pairwise). Keep the winner.
@@ -59,7 +60,8 @@ different stop rules. Published practice for LLM judges points the same way:
    - Budget: 8 rounds per page, structural round included.
    - `node scripts/judge.mjs stop <baseline mean> <round 1 mean> ...` applies this rule and
      prints the round to stop at. Replayed on a recorded 30-round run, it stopped after 6 and 4
-     rounds (10 instead of 60). The best score it gave up was 0.24 and 0.48, all still
+     rounds (10 instead of 60). That run had no pairwise round: the replay treats rounds 6 and 4
+     as the structural rounds, so it is a simulation, not proof. The best score it gave up was 0.24 and 0.48, all still
      below the 8.0 target.
    - Never report a target as met unless this round's judges gave it.
 8. **Cheap rounds.** Look at every shot yourself before you pay for judges: a broken layout

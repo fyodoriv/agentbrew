@@ -52,7 +52,7 @@ skill. Keep the task open until the full acceptance criteria pass.
 
 ## Shared-file audit checkpoint
 
-A source search found state saves in source management, catalog installation,
+A source search at base `941226a27d973f0348250138517de4bb7fbb04d0` found state saves in source management, catalog installation,
 clean, memory, telemetry, MCP, settings and sync paths. Lock-file writes also
 come from source, catalog, plugin and update paths. Manifest saves come from
 clean and several sync engines. These are candidate call sites, not proof that

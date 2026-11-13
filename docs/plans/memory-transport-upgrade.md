@@ -871,3 +871,20 @@ report an update error as plain text. The draft now treats exact and semantic
 duplicate responses as unresolved without searching or mutating an existing
 memory. Pack reconciliation reports failure for that record. This follows the
 predicted pivot; an atomic upstream provenance merge remains unverified.
+
+
+### Memory update response prediction
+
+- **Root cause:** The client returns the input memory ID when `memory_update`
+  returns a plain-text error, so pack reconciliation can record a failed update.
+- **Hypothesis:** Requiring an explicit upstream success response prevents
+  failed or unrecognized updates from advancing the pack ledger.
+- **Measurement:** Run client and pack tests with upstream 11.7/12.9 success,
+  error, unrecognized, and MCP `isError` response fixtures.
+- **Success:** Zero failed or unrecognized responses advance the ledger; all
+  documented success fixtures return the correct ID.
+- **Pivot:** If success cannot be distinguished from partial application, fail
+  closed and investigate the upstream contract before delivery.
+- **Anchor:** upstream `server/handlers/memory.py` and
+  `src/memory/pack-reconcile.ts`. A metadata success does not itself prove a
+  requested content change took effect; test that separately.

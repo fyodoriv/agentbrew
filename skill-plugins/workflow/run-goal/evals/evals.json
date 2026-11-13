@@ -3477,6 +3477,17 @@
         "If the count changed, export again and rebuild the numbering map before any write",
         "Print the before and after counts as evidence"
       ]
+    },
+    {
+      "id": 303,
+      "prompt": "/goal update the judges so they become more efficient and never contradict each other. The skill has two judge docs with their own stop rules and ledgers.",
+      "expected_output": "Counts contradictory rule pairs across the docs as the metric (baseline N, target 0), moves shared rules into one protocol file that both docs link, adds a deterministic check with tests for the contradiction class (opposite asks), and gets a fresh-context review of the diff before merge even though tests are green.",
+      "expectations": [
+        "Metric is a count of contradicting rule pairs, with a baseline, not a vague 'better'",
+        "Shared rules live in one place that both docs link to",
+        "Adds an automated check with tests, not only prose",
+        "Asks a fresh-context reviewer to read the diff before merging a green PR"
+      ]
     }
   ]
 }

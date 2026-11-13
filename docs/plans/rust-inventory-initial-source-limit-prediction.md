@@ -43,3 +43,13 @@ A small test-only limit must
 be an invocation argument, never a process-global setting or runtime option.
 Compare unchanged behavior for admitted inputs and independently review the
 meaning of the new incomplete report before any full resource run.
+
+## Pivot: frozen source-count witness
+
+The proposed refusal passed eight small controls and preserved three retained
+reports, but source review found a conflicting frozen N02b assertion:
+`rust/src/rust_family_tests.rs` requires 100,001 program records. The proposed
+refusal creates none. The small controls therefore did not establish fidelity
+to that resource oracle. The code and its hosted test additions were reverted;
+N02b was not run. A later design must preserve the original witness and review
+the work and memory needed to construct it. Do not weaken the frozen assertion.

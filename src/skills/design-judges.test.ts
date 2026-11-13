@@ -99,6 +99,30 @@ describe("design judges", () => {
     expect(() => judge.roundConflicts(dir, join(dir, "missing.txt"))).toThrow();
   });
 
+  it("the stop rule ends the recorded 30-round comic-studio run after 10 rounds instead of 60", () => {
+    // blind panel means from the 2026-11-12 design-panel goal (round 0 = baseline)
+    const storyboard = [
+      6.13, 6.88, 6.63, 6.94, 6.83, 6.72, 6.95, 6.74, 6.75, 6.79, 6.97, 6.82, 7.01, 6.86, 6.93, 7.01, 6.97, 6.87, 7.1,
+      6.95, 6.9, 7.09, 6.82, 7.08, 7.03, 6.99, 7.12, 7.12, 7.12, 7.19, 7.06,
+    ];
+    const catalogue = [
+      5.13, 6.35, 6.56, 6.4, 6.41, 6.45, 6.76, 6.7, 6.74, 6.46, 6.48, 6.63, 6.64, 6.61, 6.48, 6.62, 6.68, 6.93, 6.64,
+      6.79, 6.9, 6.93, 6.91, 6.94, 6.98, 6.9, 7.03, 7.04, 7.02, 7.0, 6.94,
+    ];
+    const sb = judge.stopRound(storyboard);
+    const cat = judge.stopRound(catalogue);
+    expect([sb, cat]).toEqual([
+      { round: 6, reason: "stall" },
+      { round: 4, reason: "stall" },
+    ]);
+    expect(sb.round + cat.round).toBe(10);
+    // the best score lost by stopping early stays within 0.25
+    expect(Math.max(...storyboard) - Math.max(...storyboard.slice(0, sb.round + 1))).toBeLessThanOrEqual(0.25);
+    expect(Math.max(...catalogue) - Math.max(...catalogue.slice(0, cat.round + 1))).toBeLessThanOrEqual(0.5);
+    expect(judge.stopRound([6, 6.5, 7, 7.5, 8.1], 8)).toEqual({ round: 4, reason: "target" });
+    expect(judge.stopRound([5, 5.5, 6, 6.5, 7, 7.5, 8, 7.6, 7.2, 6.8], 9).reason).toBe("budget");
+  });
+
   it("the prompt asks for a direction verb and forbids reversing settled decisions", () => {
     const p = judge.prompt({ lens: "polish", shots: "/s" });
     expect(p).toMatch(/direction verb/);

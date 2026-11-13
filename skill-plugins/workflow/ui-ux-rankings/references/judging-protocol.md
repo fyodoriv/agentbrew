@@ -57,6 +57,10 @@ different stop rules. Published practice for LLM judges points the same way:
      ceiling, and the lever CSS cannot pull (content, motion, a new concept). File open notes as
      one task with a numeric goal.
    - Budget: 8 rounds per page, structural round included.
+   - `node scripts/judge.mjs stop <baseline mean> <round 1 mean> ...` applies this rule and
+     prints the round to stop at. Replayed on a recorded 30-round run, it stopped after 6 and 4
+     rounds (10 instead of 60). The best score it gave up was 0.24 and 0.48, all still
+     below the 8.0 target.
    - Never report a target as met unless this round's judges gave it.
 8. **Cheap rounds.** Look at every shot yourself before you pay for judges: a broken layout
    wastes a round. Re-run `rankings.cjs all` after each look change; fix any measured ranking

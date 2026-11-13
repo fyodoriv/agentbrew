@@ -6,6 +6,7 @@
 //                                                 print one blind judge's prompt
 //   node judge.mjs score <dir> [--json] [--target 8]
 //                                                 score every <dir>/*.txt judge reply by the rubric
+//   node judge.mjs stop <mean> <mean> ...          the round after which judging-protocol.md stops
 //   node judge.mjs conflicts <dir> [--decisions f] [--json]
 //                                                 list fixes that ask opposite things in one round
 //                                                 or reverse the ledger; exit 1 when any exist
@@ -218,6 +219,32 @@ const replies = (dir) =>
       return { judge: f.replace(/\.txt$/, ""), issues, score: scoreOf(issues) };
     });
 
+export const NOISE = 0.3; // judging-protocol.md rule 7: a smaller change of the panel mean is noise
+export const MAX_ROUNDS = 8;
+
+/**
+ * Rule 7 on a series of panel means (index 0 = the baseline before round 1): after two rounds in a
+ * row inside the noise band, one structural round; if that is inside the band too, stop.
+ * Returns the last round to run and why.
+ */
+export function stopRound(means, target = Infinity) {
+  let flat = 0;
+  let structural = 0;
+  for (let r = 1; r < means.length; r++) {
+    if (means[r] >= target) return { round: r, reason: "target" };
+    if (structural && r === structural) {
+      if (Math.abs(means[r] - means[r - 1]) < NOISE) return { round: r, reason: "stall" };
+      structural = 0;
+      flat = 0;
+      continue;
+    }
+    flat = Math.abs(means[r] - means[r - 1]) < NOISE ? flat + 1 : 0;
+    if (flat === 2) structural = r + 1;
+    if (r >= MAX_ROUNDS) return { round: r, reason: "budget" };
+  }
+  return { round: means.length - 1, reason: structural ? "structural round next" : "continue" };
+}
+
 /** Conflicts for a round folder; the ledger defaults to <dir>/decisions.txt (may be absent). */
 export function roundConflicts(dir, decisionsFile = "") {
   let ledger = "";
@@ -275,6 +302,19 @@ if (main) {
         console.log(`- [${c.judges} judges] ${c.element}: ${c.problem} -> ${c.fixes.join(" / ")}`);
     }
     process.exitCode = r.judges.length && r.min >= r.target ? 0 : 1;
+  } else if (cmd === "stop") {
+    const r = stopRound(
+      (
+        process.argv
+          .slice(3)
+          .join(" ")
+          .split("--")[0]
+          .match(/[\d.]+/g) ?? []
+      ).map(Number),
+      Number(arg("target", "Infinity")),
+    );
+    console.log(`round ${r.round}: ${r.reason}`);
+    process.exitCode = ["stall", "budget", "target"].includes(r.reason) ? 0 : 1;
   } else if (cmd === "conflicts") {
     const c = roundConflicts(process.argv[3], arg("decisions"));
     if (process.argv.includes("--json")) console.log(JSON.stringify(c, null, 2));

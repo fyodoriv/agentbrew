@@ -395,6 +395,21 @@ endpoint alone does not prove that Kimi will recall or save memory.
 - **Anchor:** `templates/AGENTS.md` and the OpenCode entry in
   `src/core/agents.yaml`.
 
+### Synthetic bootstrap isolation
+
+- **Hypothesis:** OpenCode with Kimi can call the existing service's bootstrap
+  tool against a separate empty store without reading the live memory service.
+- **Measurement:** Start the pinned upstream service with a scratch database;
+  run OpenCode with a scratch home and a project MCP endpoint pointing to the
+  scratch service. Verify a tool result from `get_bootstrap_profile` and
+  independently deny and probe access to the live memory port and user files.
+- **Success:** The isolation controls pass, the synthetic bootstrap tool call
+  succeeds, and both test processes stop cleanly. No live records are read.
+- **Pivot:** If isolation, endpoint selection, bootstrap, or cleanup is not
+  proven, stop the test and leave the OpenCode lifecycle instruction unchanged.
+- **Anchor:** `src/memory/constants.ts`, the upstream MCP tool schema, and
+  OpenCode's [configuration documentation](https://opencode.ai/docs/config/).
+
 ## Beacon local review and recall
 
 - **Hypothesis:** A synthetic candidate can be approved and retrieved through

@@ -26,6 +26,12 @@ one repeated scan, but it does not prevent that queue from being processed.
   `rust-inventory-membership-index-prediction.md`, frozen N02b, and Basili,
   Caldiera and Rombach (1994), Goal Question Metric.
 
+Focused command, registered before its first result:
+
+```sh
+CARGO_BUILD_JOBS=1 heavy-run cargo test --locked --offline --manifest-path rust/Cargo.toml --lib discovery::tests::initial_limit_ -- --test-threads=1
+```
+
 The check would run after existing initial source and package/registry
 collection and before the first source-closure round. It is not a bound on
 snapshot construction, the collection phase, or validation. Above the limit,

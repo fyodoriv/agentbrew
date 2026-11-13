@@ -133,6 +133,9 @@ Contents: During execution · Skill discovery and command identity · Gate exit 
   without changes. Never summarize while copying. Give the store a way to
   replace a bad copy, and name the rows copied by hand in the report.
 
+- **Outside judge out of quota:** when the outside judge tool stops (usage limit, sign-in), use another fresh-context reviewer for the same diff. Do not skip the review and do not grade the work yourself. One run's second reviewer found 3 blockers in a script that had 6 green tests and a green full gate.
+- **Recount before a cutover:** right before a one-way write that copies a live list (issues, PRs, tasks), count the source again and compare it with your export. In one run 2 new issues arrived between the export and the cutover; the recount caught them and the numbering map was rebuilt.
+
 ## Skill discovery and command identity
 
 After an install or refresh can change relevant skills, use only operations
@@ -175,6 +178,7 @@ commit and push only when it is 0:
 `log="$(mktemp "${TMPDIR:-/tmp}/gate-<name>.XXXXXX")"; gate > "$log" 2>&1; rc=$?; tail -20 "$log"; echo "gate rc=$rc"; [ "$rc" -eq 0 ] && git commit … && git push`.
 When the gate fails, the whole line also exits 1, so a background task reports the failure.
 One run piped a failing suite into `tail`, and its commit and push still ran.
+A subshell hides it the same way: `( gate > "$log"; echo "rc=$?"; tail "$log" ) && git push` pushes after a failed gate, because the subshell ends with `tail`. Keep `rc` outside the subshell and test it.
 A count check such as `grep -c` swaps the gate's 0 and 1: it exits 1 when
 the count is 0 (clean) and 0 when it finds a match; an error exits 2. So
 never put it in the gate slot above, and never chain the next step on it

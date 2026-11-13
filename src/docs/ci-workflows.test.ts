@@ -202,7 +202,7 @@ describe("hosted workflows", () => {
         return false;
       return (
         hash(steps[2].run) === "ad73e8930d5592b65a482b3495f86eda76a3a70851ce8a6c7f377443e436bb00" &&
-        hash(steps[3].run) === "9e70bcaa9cc154fe77d39dfd2201f1b53b3c49ce319f3eb1b822aff8143ed3ba"
+        hash(steps[3].run) === "491f29fd5e8c3a174555eb3e566835fe99b8e37acd0cd0ba7c0c7107f150d8c2"
       );
     };
     expect(safe(document)).toBe(true);
@@ -226,6 +226,113 @@ describe("hosted workflows", () => {
     const extra = structuredClone(document);
     extra.jobs["inventory-guard-compile"].steps.push({ run: "true" });
     expect(safe(extra)).toBe(false);
+  });
+
+  it("keeps the source-count experiment manual, pinned and isolated", () => {
+    const text = workflows.find((w) => w.name === "ci.yml")?.text ?? "";
+    const document = load(text) as {
+      on: { workflow_dispatch: { inputs: Record<string, Record<string, unknown>> } };
+      permissions: Record<string, string>;
+      env: Record<string, string>;
+      defaults?: unknown;
+      concurrency: Record<string, unknown>;
+      jobs: Record<
+        string,
+        { if: string; "runs-on": string; "timeout-minutes": number; steps: Array<Record<string, unknown>> }
+      >;
+    };
+    const safe = (input: typeof document): boolean => {
+      const job = input.jobs["inventory-n02b-experiment"];
+      const inputs = input.on.workflow_dispatch?.inputs;
+      const keys = (value: object) => Object.keys(value).sort().join(",");
+      const hash = (value: unknown) =>
+        typeof value === "string" ? createHash("sha256").update(value).digest("hex") : "";
+      if (!job || !inputs || keys(inputs) !== "expected_sha,run_n02b") return false;
+      if (
+        JSON.stringify(inputs.run_n02b) !==
+        JSON.stringify({
+          description: "Run the reviewed synthetic source-count experiment",
+          type: "boolean",
+          default: false,
+        })
+      )
+        return false;
+      if (
+        JSON.stringify(inputs.expected_sha) !==
+        JSON.stringify({
+          description: "Full reviewed commit SHA for the experiment",
+          type: "string",
+          required: false,
+          default: "",
+        })
+      )
+        return false;
+      if (JSON.stringify(input.permissions) !== JSON.stringify({ contents: "read" }) || input.defaults !== undefined)
+        return false;
+      if (JSON.stringify(input.env) !== JSON.stringify({ DO_NOT_TRACK: "1", AGENTBREW_EVENTS: "0" })) return false;
+      if (
+        input.concurrency.group !==
+        "ci-${{ github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || github.event.pull_request.number || github.ref }}"
+      )
+        return false;
+      if (input.concurrency["cancel-in-progress"] !== "${{ github.event_name == 'pull_request' }}") return false;
+      if (
+        keys(job) !== "if,name,runs-on,steps,timeout-minutes" ||
+        job.if !== "${{ github.event_name == 'workflow_dispatch' && inputs.run_n02b == true }}"
+      )
+        return false;
+      if (job["runs-on"] !== "ubuntu-24.04" || job["timeout-minutes"] !== 30) return false;
+      const steps = job.steps;
+      if (
+        steps.length !== 5 ||
+        steps.map(keys).join("|") !== "uses,with|env,name,run,shell|name,run|name,run|name,run,shell"
+      )
+        return false;
+      if (
+        steps[0].uses !== "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
+        JSON.stringify(steps[0].with) !== JSON.stringify({ "persist-credentials": false })
+      )
+        return false;
+      if (
+        steps[1].shell !== "bash" ||
+        JSON.stringify(steps[1].env) !== JSON.stringify({ EXPECTED_SHA: "${{ inputs.expected_sha }}" })
+      )
+        return false;
+      if (steps[2].run !== "rustup toolchain install 1.97.0 --profile minimal" || steps[4].shell !== "bash")
+        return false;
+      return (
+        hash(steps[1].run) === "bddd38c0403673d18e56a385c8ca8a9b0f92a82d41bcaa3e8b4482c80db87f61" &&
+        hash(steps[3].run) === "898a4653b346b0d087a638a2cb25a20513123780e010517cc357e9622b5014d3" &&
+        hash(steps[4].run) === "9df492e5732c2dd55df9551e745c0aec862e89c8775c4e22e67e5a43582e249f"
+      );
+    };
+    expect(safe(document)).toBe(true);
+    const enabled = structuredClone(document);
+    enabled.on.workflow_dispatch.inputs.run_n02b.default = true;
+    expect(safe(enabled)).toBe(false);
+    const omitted = structuredClone(document);
+    delete omitted.on.workflow_dispatch.inputs.run_n02b;
+    expect(safe(omitted)).toBe(false);
+    for (const trigger of ["push", "pull_request", "inputs.run_n02b"]) {
+      const changed = structuredClone(document);
+      changed.jobs["inventory-n02b-experiment"].if = trigger;
+      expect(safe(changed)).toBe(false);
+    }
+    const runner = structuredClone(document);
+    runner.jobs["inventory-n02b-experiment"]["runs-on"] = "self-hosted";
+    expect(safe(runner)).toBe(false);
+    const credentials = structuredClone(document);
+    credentials.jobs["inventory-n02b-experiment"].steps[0].with = { "persist-credentials": true };
+    expect(safe(credentials)).toBe(false);
+    const privileges = structuredClone(document);
+    privileges.permissions.contents = "write";
+    expect(safe(privileges)).toBe(false);
+    const target = structuredClone(document);
+    target.jobs["inventory-n02b-experiment"].steps[4].run = "cargo run --bin owner-hosted-fixture";
+    expect(safe(target)).toBe(false);
+    const concurrency = structuredClone(document);
+    concurrency.concurrency.group = "ci-${{ github.ref }}";
+    expect(safe(concurrency)).toBe(false);
   });
 
   it("ci.yml runs the same gate as a local checkout", () => {

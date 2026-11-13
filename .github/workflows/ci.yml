@@ -16,12 +16,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_n02b:
+        description: Run the reviewed synthetic source-count experiment
+        type: boolean
+        default: false
+      expected_sha:
+        description: Full reviewed commit SHA for the experiment
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -172,9 +182,50 @@ jobs:
             test "$(grep -Ec "^test validation::membership_tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-membership-tests.log")" -eq 1
             grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-membership-tests.log"
           done
+          names='initial_limit_preserves_empty_below_and_exact_reports initial_limit_refuses_one_over_with_root_facts initial_limit_skips_observable_closure_parsing initial_limit_preserves_prior_synthetic_evidence initial_limit_root_recording_preserves_collision_precedence initial_limit_keeps_existing_diagnostic initial_limit_counts_package_script_roots initial_limit_counts_registry_promoted_root initial_limit_does_not_count_non_source_data initial_limit_does_not_recheck_later_promoted_roots'
+          for name in $names; do
+            CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib "discovery::tests::$name" -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-source-limit-tests.log"
+            test "$(grep -Ec "^test discovery::tests::$name \\.\\.\\. ok$" "$RUNNER_TEMP/inventory-source-limit-tests.log")" -eq 1
+            grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-source-limit-tests.log"
+          done
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture > "$RUNNER_TEMP/fixture-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'requires target-scoped owner_hosted_experiment cfg' "$RUNNER_TEMP/fixture-refusal.log"
           cargo +1.97.0 rustc --locked --offline --manifest-path rust/owner-hosted-fixture/Cargo.toml --bin owner-hosted-fixture -- --cfg owner_hosted_experiment --check-cfg 'cfg(owner_hosted_experiment)'
           if cargo +1.97.0 rustc --locked --offline --manifest-path rust/Cargo.toml --lib -- --cfg owner_hosted_experiment > "$RUNNER_TEMP/main-refusal.log" 2>&1; then exit 1; fi
           grep -Fq 'owner_hosted_experiment is forbidden in the main package' "$RUNNER_TEMP/main-refusal.log"
           cargo +1.97.0 check --locked --offline --manifest-path rust/Cargo.toml --lib
+
+  inventory-n02b-experiment:
+    name: inventory source-count experiment
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_n02b == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check reviewed input identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$GITHUB_SHA" = "$EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo 'b500bf9c8ade0e5cbe7dc70e26c2ef019e5d230da04576af198fc018bf2dd527  docs/plans/rust-literal-adapter-corpus-proposal-20261105.md' | sha256sum -c -
+          echo '6c67033499c7b86031a864a2136c25ae8828c69dacc463e6625360639951e89d  rust/src/rust_family_tests.rs' | sha256sum -c -
+      - name: Install the declared Rust toolchain
+        run: rustup toolchain install 1.97.0 --profile minimal
+      - name: Fetch locked dependencies
+        run: cargo +1.97.0 fetch --locked --manifest-path rust/Cargo.toml
+      - name: Run the frozen source-count control
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset RUSTFLAGS CARGO_ENCODED_RUSTFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/inventory-n02b-target"
+          CARGO_BUILD_JOBS=1 cargo +1.97.0 test --locked --offline --manifest-path rust/Cargo.toml --lib rust_family_tests::n02b -- --exact --test-threads=1 | tee "$RUNNER_TEMP/inventory-n02b.log"
+          test "$(grep -Ec '^test rust_family_tests::n02b \.\.\. ok$' "$RUNNER_TEMP/inventory-n02b.log")" -eq 1
+          grep -Eq '^test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out' "$RUNNER_TEMP/inventory-n02b.log"

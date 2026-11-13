@@ -424,7 +424,31 @@ fn registry_sources(
     trusted_calls
 }
 
+fn initial_roots_exceed_limit(result: &mut Discovery, count: usize, limit: usize) -> bool {
+    if count <= limit {
+        return false;
+    }
+    result
+        .diagnostics
+        .push(Diagnostic::new("source-worklist-limit", None));
+    true
+}
+
+fn record_initial_roots(result: &mut Discovery, roots: &BTreeMap<String, Source>) {
+    for source in roots.values() {
+        let fact = program(source);
+        if source.body.is_none() {
+            result.programs.insert(source.path.clone(), fact.id.clone());
+        }
+        result.facts.insert(fact.id.clone(), fact);
+    }
+}
+
 pub fn discover(snapshot: &Snapshot) -> Discovery {
+    discover_with_initial_limit(snapshot, SOURCE_COUNT)
+}
+
+fn discover_with_initial_limit(snapshot: &Snapshot, initial_limit: usize) -> Discovery {
     let mut result = Discovery::default();
     match crate::upstream_ownership::inspect(snapshot) {
         Ok(evidence) => {
@@ -469,6 +493,7 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
     package_entries(snapshot, &mut roots, &mut result);
     metadata_sources(snapshot, &mut roots, &mut result);
     let registry_calls = registry_sources(snapshot, &mut roots, &mut result);
+    let initial_over_limit = roots.len() > initial_limit;
     // A new caller-promoted file restarts source closure. This prevents stale
     // unresolved module facts or changed body ordinals from surviving a round.
     for _ in 0..=snapshot.entries.len() {
@@ -483,19 +508,19 @@ pub fn discover(snapshot: &Snapshot) -> Discovery {
             reviewed_producers: result.reviewed_producers.clone(),
             ..Discovery::default()
         };
+        record_initial_roots(&mut round, &roots);
+        if initial_over_limit && initial_roots_exceed_limit(&mut round, roots.len(), initial_limit)
+        {
+            result.diagnostics.extend(round.diagnostics);
+            round.diagnostics = result.diagnostics;
+            return round;
+        }
         let mut sources = roots.clone();
         let mut queue: VecDeque<_> = roots.keys().cloned().collect();
         let mut parsed = BTreeSet::new();
         let mut modules = BTreeMap::new();
         let mut decoded = 0;
         let mut promoted = BTreeMap::new();
-        for source in roots.values() {
-            let fact = program(source);
-            if source.body.is_none() {
-                round.programs.insert(source.path.clone(), fact.id.clone());
-            }
-            round.facts.insert(fact.id.clone(), fact);
-        }
         while !queue.is_empty() {
             let mut shell_results = Vec::new();
             while let Some(key) = queue.pop_front() {
@@ -815,6 +840,279 @@ mod tests {
             untracked: Vec::new(),
             ignored: Vec::new(),
         }
+    }
+
+    fn report(snapshot: &Snapshot, discovery: Discovery) -> serde_json::Value {
+        let manifest: crate::model::Manifest = serde_json::from_value(serde_json::json!({
+            "schema_version": 1,
+            "owner": "fixture",
+            "reviewed_revision": "0000000000000000000000000000000000000000",
+            "slices": ["rust-fixture"],
+            "files": [], "components": [], "edges": []
+        }))
+        .unwrap();
+        serde_json::to_value(crate::validation::validate(
+            snapshot,
+            "rust/inventory.json",
+            &manifest,
+            discovery,
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn initial_limit_preserves_empty_below_and_exact_reports() {
+        for files in [
+            vec![],
+            vec![("one.rs", "// one\n")],
+            vec![("one.rs", "// one\n"), ("two.rs", "// two\n")],
+        ] {
+            let input = snapshot(&files);
+            assert_eq!(
+                report(&input, discover_with_initial_limit(&input, 2)),
+                report(&input, discover(&input))
+            );
+        }
+    }
+
+    #[test]
+    fn initial_limit_refuses_one_over_with_root_facts() {
+        let input = snapshot(&[
+            ("one.rs", "// one\n"),
+            ("two.rs", "// two\n"),
+            ("three.rs", "// three\n"),
+        ]);
+        let found = discover_with_initial_limit(&input, 2);
+        let old = discover(&input);
+        assert_eq!(found.programs, old.programs);
+        for (id, fact) in &found.facts {
+            let expected = &old.facts[id];
+            assert_eq!(
+                (
+                    &fact.path,
+                    &fact.language,
+                    &fact.form,
+                    fact.start,
+                    fact.end,
+                    &fact.parent
+                ),
+                (
+                    &expected.path,
+                    &expected.language,
+                    &expected.form,
+                    expected.start,
+                    expected.end,
+                    &expected.parent
+                )
+            );
+        }
+        assert_eq!(found.facts.len(), 3);
+        assert!(found.boundaries.is_empty());
+        assert!(found
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+        let checked = report(&input, found);
+        assert_eq!(checked["classified_components"], 0);
+        assert!(checked["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["code"] == "source-worklist-limit"));
+    }
+
+    #[test]
+    fn initial_limit_skips_observable_closure_parsing() {
+        let input = snapshot(&[
+            ("script.sh", "#!/bin/sh\npython3 -c 'print(1)'\n"),
+            ("one.rs", "// one\n"),
+            ("two.rs", "// two\n"),
+        ]);
+        let admitted = discover(&input);
+        assert!(!admitted.boundaries.is_empty());
+        let limited = discover_with_initial_limit(&input, 2);
+        assert_eq!(limited.programs, admitted.programs);
+        assert_eq!(limited.programs.len(), 3);
+        assert!(limited.boundaries.is_empty());
+        assert!(limited
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+    }
+
+    #[test]
+    fn initial_limit_preserves_prior_synthetic_evidence() {
+        let mut found = Discovery::default();
+        let prior = Fact {
+            id: "upstream:fixture".into(),
+            path: "upstream/fixture".into(),
+            language: "rust".into(),
+            form: "program".into(),
+            start: 1,
+            end: 1,
+            parent: None,
+        };
+        found.facts.insert(prior.id.clone(), prior.clone());
+        found.upstream.facts.push(prior);
+        found
+            .registry_edges
+            .push(("from".into(), "to".into(), "imports".into()));
+        found.package_entries.push(crate::package_entries::Entry {
+            id: "package:fixture".into(),
+            target: "tool".into(),
+        });
+        found
+            .diagnostics
+            .push(Diagnostic::new("prior-diagnostic", None));
+        assert!(initial_roots_exceed_limit(&mut found, 3, 2));
+        assert!(found.facts.contains_key("upstream:fixture"));
+        assert_eq!(found.upstream.facts.len(), 1);
+        assert_eq!(found.registry_edges.len(), 1);
+        assert_eq!(found.package_entries.len(), 1);
+        assert_eq!(
+            found
+                .diagnostics
+                .iter()
+                .map(|d| d.code.as_str())
+                .collect::<Vec<_>>(),
+            ["prior-diagnostic", "source-worklist-limit"]
+        );
+    }
+
+    #[test]
+    fn initial_limit_root_recording_preserves_collision_precedence() {
+        let source = |path: &str, body: Option<&str>| Source {
+            path: path.into(),
+            language: "sh".into(),
+            text: Arc::from(":"),
+            physical_start: 1,
+            physical_end: 1,
+            body: body.map(str::to_owned),
+            depth: 0,
+        };
+        let roots = BTreeMap::from([
+            ("a".into(), source("a", None)),
+            ("b".into(), source("b", Some("shared"))),
+            ("c".into(), source("c", Some("shared"))),
+        ]);
+        let mut found = Discovery::default();
+        found.facts.insert(
+            "program:a".into(),
+            Fact {
+                id: "program:a".into(),
+                path: "prior".into(),
+                language: "rust".into(),
+                form: "program".into(),
+                start: 1,
+                end: 1,
+                parent: None,
+            },
+        );
+        record_initial_roots(&mut found, &roots);
+        assert_eq!(
+            found.programs.get("a").map(String::as_str),
+            Some("program:a")
+        );
+        assert_eq!(found.facts["program:a"].path, "a");
+        assert_eq!(found.facts["shared"].path, "c");
+        assert_eq!(found.facts["shared"].form, "embedded-program");
+    }
+
+    #[test]
+    fn initial_limit_keeps_existing_diagnostic() {
+        let mut input = snapshot(&[
+            ("one.rs", "// one\n"),
+            ("two.rs", "// two\n"),
+            ("three.rs", "// three\n"),
+            ("invalid", "x"),
+        ]);
+        let invalid = input.entries.get_mut("invalid").unwrap();
+        invalid.mode = 0o100755;
+        invalid.bytes = vec![0xff];
+        let found = discover_with_initial_limit(&input, 2);
+        assert!(found
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "unsupported-executable"));
+        assert!(found
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+    }
+
+    #[test]
+    fn initial_limit_counts_package_script_roots() {
+        let input = snapshot(&[
+            ("one.rs", "// one\n"),
+            ("two.rs", "// two\n"),
+            ("package.json", r#"{"scripts":{"check":":"}}"#),
+        ]);
+        let found = discover_with_initial_limit(&input, 2);
+        assert!(found
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+        assert_eq!(found.programs.len(), 2);
+        assert!(found
+            .facts
+            .contains_key("package-script:package.json#/scripts/check"));
+    }
+
+    #[test]
+    fn initial_limit_counts_registry_promoted_root() {
+        let registry = "export const HELPER_SCRIPT_SOURCES={'guard.sh':'hooks/helpers.rules'};\n";
+        let input = snapshot(&[
+            ("src/sync/helper-scripts.ts", registry),
+            ("hooks/helpers.rules", "exit 0\n"),
+        ]);
+        let found = discover_with_initial_limit(&input, 1);
+        assert!(found
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+        let without_row = snapshot(&[
+            (
+                "src/sync/helper-scripts.ts",
+                "export const HELPER_SCRIPT_SOURCES={};\n",
+            ),
+            ("hooks/helpers.rules", "exit 0\n"),
+        ]);
+        let admitted = discover_with_initial_limit(&without_row, 1);
+        assert!(!admitted
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source-worklist-limit"));
+        assert_eq!(
+            report(&without_row, admitted),
+            report(&without_row, discover(&without_row))
+        );
+    }
+
+    #[test]
+    fn initial_limit_does_not_count_non_source_data() {
+        let input = snapshot(&[
+            ("one.rs", "// one\n"),
+            ("two.rs", "// two\n"),
+            ("notes.data", "text\n"),
+        ]);
+        assert_eq!(
+            report(&input, discover_with_initial_limit(&input, 2)),
+            report(&input, discover(&input))
+        );
+    }
+
+    #[test]
+    fn initial_limit_does_not_recheck_later_promoted_roots() {
+        let input = snapshot(&[
+            (
+                "scripts/start.sh",
+                "#!/bin/bash\nsource hooks/helpers.rules\n",
+            ),
+            ("hooks/helpers.rules", "python3 -c 'print(1)'\n"),
+        ]);
+        let limited = discover_with_initial_limit(&input, 1);
+        assert!(limited.programs.contains_key("hooks/helpers.rules"));
+        assert_eq!(report(&input, limited), report(&input, discover(&input)));
     }
 
     #[test]

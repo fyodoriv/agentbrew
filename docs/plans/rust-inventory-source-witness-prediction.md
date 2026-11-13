@@ -75,3 +75,12 @@ its actual commit, workflow and attempt independently before accepting it.
 An explicit second dispatch is still possible; the operator must not do so
 without diagnosis and a new decision. The existing workflow's ordinary jobs
 also run on dispatch. No job uses persisted checkout credentials or secrets.
+
+## Focused result
+
+Ten exact source-limit controls passed, including collision precedence and a
+shell input that proves closure parsing is skipped above the small test limit.
+The complete C01, P01 and N02a reports match the retained 3,328-byte baseline.
+Independent review checked the implementation and manual workflow boundaries.
+The workflow guard passed 28 focused checks. None of these results is the
+frozen N02b run or a measurement of its peak memory.

@@ -49,3 +49,20 @@ the user-facing refresh, independently review owner provenance, source
 identity, state updates, agent-link continuity, interrupted replacement and
 recovery. If these cannot be established, refuse without changing the staged
 skill. Keep the task open until the full acceptance criteria pass.
+
+## Shared-file audit checkpoint
+
+A source search found state saves in source management, catalog installation,
+clean, memory, telemetry, MCP, settings and sync paths. Lock-file writes also
+come from source, catalog, plugin and update paths. Manifest saves come from
+clean and several sync engines. These are candidate call sites, not proof that
+all indirect or external writers are known. `state.ts` uses atomic file
+replacement, but that alone does not serialize read-modify-write operations.
+`manifest.ts` logs save failures, so a caller cannot treat return from the
+current save as proof of persistence.
+
+Do not add a staging-only lock and call the refresh safe. First trace each
+shared-file writer, determine a common transaction or versioned merge
+boundary, and test different-name and unrelated-command interleavings. If that
+boundary cannot cover the operations without changing unrelated work, the
+registered pivot applies.

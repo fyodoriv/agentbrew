@@ -1001,3 +1001,9 @@ version tag differs; this does not establish a safe unchanged-text migration.
   atomic snapshot or rule out changes between or after the reads.
 - **Anchor:** upstream offset-based `memory_list` and
   `src/memory/mcp-client.ts`.
+
+A real isolated 12.9 list with 101 synthetic records returned the expected
+100/1 page sizes, consistent total and `has_more` values, and distinct IDs.
+The draft now compares two complete scans and rejects the synthetic same-total
+replacement case. This adds requests, does not provide a database snapshot,
+and does not rule out concurrent changes between or after the scans.

@@ -101,7 +101,9 @@ describe("pack reconciliation duplicate handling", () => {
           { status: 200 },
         ),
     });
-    vi.spyOn(client, "tagMatch").mockResolvedValue([]);
+    vi.spyOn(client, "tagMatch").mockResolvedValue([
+      { id: "mem-existing", content: "older synthetic content", tags: recordTags(pack, record) },
+    ]);
     await expect(reconcileInstalledPack(client, fixtureDir, { ledger })).rejects.toThrow("memory_update failed");
     expect(ledgers.get(pack.manifest.id)).toEqual(ledger);
   });
@@ -113,6 +115,28 @@ describe("pack reconciliation planning", () => {
     const actions = planPackReconcile(pack, new Map());
     expect(actions.every((a) => a.action === "store")).toBe(true);
     expect(actions).toHaveLength(pack.records.length);
+  });
+
+  it("fails closed when a version bump leaves one record unchanged", () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const first = pack.records[0];
+    const second = pack.records[1];
+    const existing = new Map([
+      [first.key, { id: "first", content: "older content", tags: recordTags(pack, first) }],
+      [second.key, { id: "second", content: second.content, tags: recordTags(pack, second) }],
+    ]);
+    pack.manifest.version = "2.0.0";
+    expect(() => planPackReconcile(pack, existing)).toThrow("cannot safely replace tags");
+  });
+
+  it("plans a versioned content update when only the managed pack version tag changes", () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const oldTags = recordTags(pack, record);
+    pack.manifest.version = "2.0.0";
+    const existing = new Map([[record.key, { id: "old", content: "older content", tags: oldTags }]]);
+    const action = planPackReconcile(pack, existing).find((item) => item.key === record.key);
+    expect(action).toMatchObject({ action: "update", memoryId: "old", versioned: true });
   });
 
   it("plans noop when body tags and ledger match", () => {
@@ -177,7 +201,7 @@ describe("reconcileInstalledPack", () => {
     expect(result.applied).toBe(true);
   });
 
-  it("uses a versioned update when ledger recovery cannot verify existing content", async () => {
+  it("does not mutate a ledger-only record whose content cannot be verified", async () => {
     const pack = loadMemoryPackFromDir(fixtureDir);
     const record = pack.records[0];
     const client = mockClient();
@@ -196,11 +220,113 @@ describe("reconcileInstalledPack", () => {
         },
       },
     };
-    await reconcileInstalledPack(client, fixtureDir, { ledger });
-    expect(client.memoryUpdate).toHaveBeenCalledWith("mem-old", record.content, expect.any(Array), { versioned: true });
+    await expect(reconcileInstalledPack(client, fixtureDir, { ledger })).rejects.toThrow("cannot verify");
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
   });
 
-  it("updates existing pack records in place while repairing tags", async () => {
+  it("does not replace tags after verifying a ledger-only record", async () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const client = mockClient();
+    const ledger = {
+      packId: pack.manifest.id,
+      version: pack.manifest.version,
+      fingerprint: pack.manifest.fingerprint,
+      packPath: fixtureDir,
+      installedAt: "2026-01-01T00:00:00.000Z",
+      records: {
+        [record.key]: {
+          memoryId: "mem-old",
+          revision: record.revision,
+          sourceFingerprint: record.sourceFingerprint,
+          contentFingerprint: "sha256:stale",
+        },
+      },
+    };
+    vi.mocked(client.memorySearch).mockResolvedValue([{ id: "mem-old", content: record.content, tags: [] }]);
+    await expect(reconcileInstalledPack(client, fixtureDir, { ledger })).rejects.toThrow("cannot safely replace tags");
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("selects the ledger version regardless of row order (reverse=%s)", async (reverse) => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const tags = recordTags(pack, record);
+    const rows = [
+      { id: "old", content: "older content", tags },
+      { id: "current", content: record.content, tags },
+    ];
+    const client = mockClient(reverse ? rows.reverse() : rows);
+    const ledger = {
+      packId: pack.manifest.id,
+      version: pack.manifest.version,
+      fingerprint: pack.manifest.fingerprint,
+      packPath: fixtureDir,
+      installedAt: "2026-01-01T00:00:00.000Z",
+      records: {
+        [record.key]: {
+          memoryId: "current",
+          revision: record.revision,
+          sourceFingerprint: record.sourceFingerprint,
+          contentFingerprint: contentFingerprint(record.content, tags),
+        },
+      },
+    };
+    const result = await reconcileInstalledPack(client, fixtureDir, { ledger });
+    expect(result.actions.find((action) => action.key === record.key)).toMatchObject({
+      action: "noop",
+      memoryId: "current",
+    });
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("adopts the matching version after an interrupted update (reverse=%s)", async (reverse) => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const tags = recordTags(pack, record);
+    const rows = [
+      { id: "old", content: "older content", tags },
+      { id: "current", content: record.content, tags },
+    ];
+    const client = mockClient(reverse ? rows.reverse() : rows);
+    const ledger = {
+      packId: pack.manifest.id,
+      version: pack.manifest.version,
+      fingerprint: pack.manifest.fingerprint,
+      packPath: fixtureDir,
+      installedAt: "2026-01-01T00:00:00.000Z",
+      records: {
+        [record.key]: {
+          memoryId: "old",
+          revision: record.revision,
+          sourceFingerprint: "sha256:old",
+          contentFingerprint: "sha256:old",
+        },
+      },
+    };
+    const result = await reconcileInstalledPack(client, fixtureDir, { ledger });
+    expect(result.actions.find((action) => action.key === record.key)).toMatchObject({
+      action: "noop",
+      memoryId: "current",
+    });
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
+    const saved = ledgers.get(pack.manifest.id) as { records: Record<string, { memoryId: string }> };
+    expect(saved.records[record.key].memoryId).toBe("current");
+  });
+
+  it("does not guess between multiple tagged versions without a ledger", async () => {
+    const pack = loadMemoryPackFromDir(fixtureDir);
+    const record = pack.records[0];
+    const tags = recordTags(pack, record);
+    const client = mockClient([
+      { id: "old", content: "older content", tags },
+      { id: "current", content: record.content, tags },
+    ]);
+    await expect(reconcileInstalledPack(client, fixtureDir)).rejects.toThrow("cannot verify");
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not replace incomplete tags on an existing pack record", async () => {
     const pack = loadMemoryPackFromDir(fixtureDir);
     const record = pack.records[0];
     const client = mockClient([
@@ -226,14 +352,7 @@ describe("reconcileInstalledPack", () => {
       },
     };
 
-    const result = await reconcileInstalledPack(client, fixtureDir, { ledger });
-
-    expect(result.actions.find((action) => action.key === record.key)?.action).toBe("update");
-    expect(client.memoryUpdate).toHaveBeenCalledWith(
-      "mem-existing",
-      record.content,
-      expect.arrayContaining([`pack:id:${pack.manifest.id}`]),
-      { versioned: false },
-    );
+    await expect(reconcileInstalledPack(client, fixtureDir, { ledger })).rejects.toThrow("cannot safely replace tags");
+    expect(client.memoryUpdate).not.toHaveBeenCalled();
   });
 });

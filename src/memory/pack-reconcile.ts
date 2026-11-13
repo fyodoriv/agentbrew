@@ -59,13 +59,9 @@ export function planPackReconcile(
   const actions: PackReconcileAction[] = [];
   for (const record of pack.records) {
     const tags = recordTags(pack, record);
-    const fp = contentFingerprint(record.content, tags);
     const ledgerState = ledger?.records[record.key];
-    // The ledger is the recovery path when an older client or manual edit
-    // removed pack tags. Trust its stable memory ID and repair the row in
-    // place instead of storing a duplicate pack record.
-    const remote =
-      existingByKey.get(record.key) ?? (ledgerState ? { id: ledgerState.memoryId, content: "", tags: [] } : undefined);
+    const remote = existingByKey.get(record.key);
+    if (!remote && ledgerState) throw new Error(`cannot verify memory for ${record.key}`);
 
     if (!remote) {
       actions.push({ key: record.key, action: "store" });
@@ -73,14 +69,17 @@ export function planPackReconcile(
     }
 
     const remoteTags = filterSupersededTags(remote.tags);
-    const remoteFp = contentFingerprint(remote.content, remoteTags);
-    const sameBody =
-      remote.content === record.content &&
-      remoteFp === fp &&
-      remoteTags.sort().join("|") === tags.sort().join("|") &&
-      ledgerState?.sourceFingerprint === record.sourceFingerprint;
+    const sameBody = remote.content === record.content;
+    const comparable = (values: string[]) =>
+      values
+        .filter((tag) => sameBody || !tag.startsWith("pack:version:"))
+        .sort()
+        .join("|");
+    if (comparable(remoteTags) !== comparable(tags)) {
+      throw new Error(`cannot safely replace tags for ${record.key}`);
+    }
 
-    if (sameBody && ledgerState?.memoryId === remote.id) {
+    if (sameBody) {
       actions.push({ key: record.key, action: "noop", memoryId: remote.id });
       continue;
     }
@@ -95,20 +94,60 @@ export function planPackReconcile(
   return actions;
 }
 
+function selectExistingPackRow(
+  key: string,
+  candidates: Array<{ id: string; content: string; tags: string[] }>,
+  pack: ParsedMemoryPack,
+  ledger?: PackInstallLedger,
+): { id: string; content: string; tags: string[] } {
+  const ledgerId = ledger?.records[key]?.memoryId;
+  const record = pack.records.find((item) => item.key === key);
+  const desiredTags = record ? recordTags(pack, record).sort().join("|") : "";
+  const desired =
+    ledgerId && record
+      ? candidates.filter((row) => row.content === record.content && [...row.tags].sort().join("|") === desiredTags)
+      : [];
+  const matching =
+    desired.length > 0 ? desired : ledgerId ? candidates.filter((row) => row.id === ledgerId) : candidates;
+  if (matching.length !== 1) throw new Error(`cannot verify memory for ${key}`);
+  return matching[0];
+}
+
 function indexExistingByRecordTag(
   rows: Array<{ id: string; content: string; tags: string[] }>,
-  packId: string,
+  pack: ParsedMemoryPack,
+  ledger?: PackInstallLedger,
 ): Map<string, { id: string; content: string; tags: string[] }> {
-  const map = new Map<string, { id: string; content: string; tags: string[] }>();
+  const grouped = new Map<string, Array<{ id: string; content: string; tags: string[] }>>();
   for (const row of rows) {
     const tags = filterSupersededTags(row.tags);
-    const recordTag = tags.find((t) => t.startsWith("pack:record:"));
-    const idTag = tags.find((t) => t === `pack:id:${packId}`);
-    if (!recordTag || !idTag) continue;
+    const recordTag = tags.find((tag) => tag.startsWith("pack:record:"));
+    if (!recordTag || !tags.includes(`pack:id:${pack.manifest.id}`)) continue;
     const key = recordTag.slice("pack:record:".length);
-    map.set(key, { id: row.id, content: row.content, tags });
+    grouped.set(key, [...(grouped.get(key) ?? []), { ...row, tags }]);
   }
-  return map;
+  const selected = new Map<string, { id: string; content: string; tags: string[] }>();
+  for (const [key, candidates] of grouped) {
+    selected.set(key, selectExistingPackRow(key, candidates, pack, ledger));
+  }
+  return selected;
+}
+
+async function verifyMissingLedgerRows(
+  client: MemoryMcpClient,
+  pack: ParsedMemoryPack,
+  ledger: PackInstallLedger | undefined,
+  existing: Map<string, { id: string; content: string; tags: string[] }>,
+): Promise<void> {
+  if (!ledger) return;
+  for (const record of pack.records) {
+    const prior = ledger.records[record.key];
+    if (!prior || existing.has(record.key)) continue;
+    const rows = await client.memorySearch(record.content, "exact");
+    const matches = rows.filter((row) => row.id === prior.memoryId && row.content === record.content);
+    if (matches.length !== 1) throw new Error(`cannot verify memory for ${record.key}`);
+    existing.set(record.key, matches[0]);
+  }
 }
 
 function buildPackLedgerRecord(
@@ -182,7 +221,8 @@ export async function reconcileInstalledPack(
   const pack = loadMemoryPackFromDir(packDir);
   const ledger = options.ledger ?? readPackLedger(pack.manifest.id);
   const existingRows = await fetchPackExistingRows(client, pack.manifest.id);
-  const existingByKey = indexExistingByRecordTag(existingRows, pack.manifest.id);
+  const existingByKey = indexExistingByRecordTag(existingRows, pack, ledger);
+  await verifyMissingLedgerRows(client, pack, ledger, existingByKey);
   const actions = planPackReconcile(pack, existingByKey, ledger);
 
   if (options.dryRun) {

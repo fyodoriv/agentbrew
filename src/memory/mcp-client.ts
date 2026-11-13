@@ -721,6 +721,74 @@ export function parseMemoryIngestResult(result: unknown, expectedFileCount?: num
   throw new Error("memory ingest returned an unrecognized result");
 }
 
+function parseTaggedMemoryPage(
+  result: unknown,
+  page: number,
+): { rows: MemoryMcpMemoryRow[]; total: number; hasMore: boolean } {
+  const envelope = result as { isError?: boolean; structuredContent?: unknown } | undefined;
+  if (envelope?.isError) throw new Error("memory list returned an error");
+  let value = envelope?.structuredContent;
+  if (!value) {
+    try {
+      value = JSON.parse(toolResultText(result));
+    } catch {
+      throw new Error("memory list response is not valid JSON");
+    }
+  }
+  if (!value || typeof value !== "object") throw new Error("memory list response is invalid");
+  const data = value as Record<string, unknown>;
+  const total = data.total;
+  const totalPages = data.total_pages;
+  const hasMore = data.has_more;
+  if (
+    data.page !== page ||
+    data.page_size !== 100 ||
+    typeof total !== "number" ||
+    !Number.isSafeInteger(total) ||
+    total < 0 ||
+    totalPages !== Math.ceil(total / 100) ||
+    typeof hasMore !== "boolean" ||
+    hasMore !== page * 100 < total ||
+    !Array.isArray(data.memories)
+  )
+    throw new Error("memory list pagination is invalid");
+  const rows = extractMemories(value);
+  if (rows.length !== Math.min(100, Math.max(0, total - (page - 1) * 100))) {
+    throw new Error("memory list page is incomplete");
+  }
+  return { rows, total, hasMore };
+}
+
+async function scanTaggedMemoryPages(fetchPage: (page: number) => Promise<unknown>): Promise<MemoryMcpMemoryRow[]> {
+  const rows: MemoryMcpMemoryRow[] = [];
+  const seen = new Set<string>();
+  let total: number | undefined;
+  for (let page = 1; ; page += 1) {
+    const parsed = parseTaggedMemoryPage(await fetchPage(page), page);
+    if (total !== undefined && total !== parsed.total) throw new Error("memory list changed during pagination");
+    total = parsed.total;
+    for (const row of parsed.rows) {
+      if (seen.has(row.id)) throw new Error("memory list repeated an ID during pagination");
+      seen.add(row.id);
+      rows.push(row);
+    }
+    if (!parsed.hasMore) return rows;
+  }
+}
+
+async function readTaggedMemoryPages(fetchPage: (page: number) => Promise<unknown>): Promise<MemoryMcpMemoryRow[]> {
+  const first = await scanTaggedMemoryPages(fetchPage);
+  const second = await scanTaggedMemoryPages(fetchPage);
+  const canonical = (rows: MemoryMcpMemoryRow[]) =>
+    JSON.stringify(
+      rows
+        .map((row) => ({ id: row.id, content: row.content, tags: [...row.tags].sort() }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    );
+  if (canonical(first) !== canonical(second)) throw new Error("memory list changed between scans");
+  return second;
+}
+
 function extractMemoryId(result: unknown): string | undefined {
   if (!result || typeof result !== "object") return undefined;
   const obj = result as Record<string, unknown>;
@@ -801,23 +869,12 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
       }
     },
     async tagMatch(tags, matchAll = true) {
-      const result = await post("tools/call", {
-        name: "memory_list",
-        arguments: { tags, tag_match: matchAll ? "all" : "any", page_size: 100 },
-      });
-      const toolResult = result as { content?: Array<{ text?: string }>; structuredContent?: unknown };
-      if (toolResult.structuredContent) {
-        return extractMemories(toolResult.structuredContent);
-      }
-      for (const block of toolResult.content ?? []) {
-        if (!block?.text) continue;
-        try {
-          return extractMemories(JSON.parse(block.text));
-        } catch {
-          // try next block
-        }
-      }
-      return extractMemories(result);
+      return readTaggedMemoryPages((page) =>
+        post("tools/call", {
+          name: "memory_list",
+          arguments: { tags, tag_match: matchAll ? "all" : "any", page_size: 100, page },
+        }),
+      );
     },
     async memorySearch(query, mode = "exact") {
       const result = await post("tools/call", {

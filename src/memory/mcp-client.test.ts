@@ -57,6 +57,82 @@ describe("memory MCP client response parsing", () => {
     expect(await client.memoryUpdate("0123456789abcdef", "updated", ["tag"])).toBe("abcdef0123456789");
   });
 
+  it("reads every page of a tagged memory list", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const requested: number[] = [];
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page?: number } } };
+        const page = request.params.arguments.page ?? 1;
+        requested.push(page);
+        const start = (page - 1) * 100;
+        const memories = Array.from({ length: page === 1 ? 100 : 1 }, (_, i) => ({
+          id: `id-${start + i}`,
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total: 101, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    expect(await client.tagMatch(["pack"])).toHaveLength(101);
+    expect(requested).toEqual([1, 2, 1, 2]);
+  });
+
+  it("rejects a same-total replacement between complete scans", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    let calls = 0;
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        calls += 1;
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page: number } } };
+        const page = request.params.arguments.page;
+        const start = (page - 1) * 100;
+        const memories = Array.from({ length: page === 1 ? 100 : 1 }, (_, i) => ({
+          id: calls > 2 && start + i === 100 ? "replacement" : `id-${start + i}`,
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total: 101, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow("changed");
+    expect(calls).toBe(4);
+  });
+
+  it.each(["duplicate", "changed-total"])("rejects %s across tagged-memory pages", async (problem) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async (_input, init) => {
+        const request = JSON.parse(String(init?.body)) as { params: { arguments: { page: number } } };
+        const page = request.params.arguments.page;
+        const count = page === 1 ? 100 : 1;
+        const memories = Array.from({ length: count }, (_, i) => ({
+          id: page === 1 ? `id-${i}` : problem === "duplicate" ? "id-0" : "id-100",
+          content: "synthetic",
+          tags: ["pack"],
+        }));
+        const total = page === 2 && problem === "changed-total" ? 102 : 101;
+        return successResponse(
+          JSON.stringify({ memories, page, page_size: 100, total, total_pages: 2, has_more: page === 1 }),
+        );
+      },
+    });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow();
+  });
+
+  it.each([
+    { memories: [], page: 1 },
+    { memories: [], page: 1, page_size: 100, total: 1, total_pages: 1, has_more: false },
+  ])("rejects incomplete or inconsistent tagged-memory pages", async (payload) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(JSON.stringify(payload)) });
+    await expect(client.tagMatch(["pack"])).rejects.toThrow();
+  });
+
   it("retains tags from the upstream numbered search result", async () => {
     const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
     const client = createFetchMemoryMcpClient({
@@ -92,11 +168,13 @@ describe("memory MCP client response parsing", () => {
         payloads.push(payload);
         const params = payload.params as { name?: string } | undefined;
         return successResponse(
-          params?.name === "memory_ingest"
-            ? "Files processed: 1/1; 1 new chunks"
-            : params?.name === "memory_update"
-              ? "Successfully updated memory metadata. Updated tags"
-              : "Memory stored successfully (hash: abcdef0123456789)",
+          params?.name === "memory_list"
+            ? JSON.stringify({ memories: [], page: 1, page_size: 100, total: 0, total_pages: 0, has_more: false })
+            : params?.name === "memory_ingest"
+              ? "Files processed: 1/1; 1 new chunks"
+              : params?.name === "memory_update"
+                ? "Successfully updated memory metadata. Updated tags"
+                : "Memory stored successfully (hash: abcdef0123456789)",
         );
       },
     });
@@ -122,7 +200,12 @@ describe("memory MCP client response parsing", () => {
           tags: ["repo-docs", "repo:example"],
           tag_match: "all",
           page_size: 100,
+          page: 1,
         },
+      },
+      {
+        name: "memory_list",
+        arguments: { tags: ["repo-docs", "repo:example"], tag_match: "all", page_size: 100, page: 1 },
       },
       {
         name: "memory_ingest",

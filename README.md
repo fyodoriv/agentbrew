@@ -588,8 +588,11 @@ install a pack; only an explicit `memory pack install` (or reconciliation of
 an existing install ledger) writes pack records. A duplicate store response
 is left unresolved rather than changing an existing memory's tags. A failed or
 unrecognized update response also leaves the pack ledger unchanged. Changed pack
-text uses the memory service's versioned update; a tag-only repair retains the
-existing memory ID.
+text uses the memory service's versioned update. If existing tags differ,
+reconciliation stops instead of replacing them. A pack version bump can stop
+when a record's text is unchanged, because its version tag also changes. Pack
+reconciliation reads the full matching memory list twice to detect some
+concurrent changes. This adds requests and is not an atomic snapshot.
 
 ### Claude project-memory bridge
 

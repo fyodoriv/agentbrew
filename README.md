@@ -529,11 +529,14 @@ The current upstream version, 11.7.0, is affected by a
 Avoid visiting untrusted pages while this daemon is running. A newer version
 needs a verified backup and migration test before it can replace this pin.
 If an existing managed job file or loaded job has a different or unreadable
-service pin, sync and memory repair refuse to replace or restart it. A protected
-upgrade workflow is still needed before that version can change automatically.
-When the job file is missing, setup also refuses to start if it finds the
-default database, relevant custom launchd settings, or an upstream home `.env`.
-These checks do not establish every possible upstream configuration source.
+service pin, sync and memory repair refuse to replace or restart it. They also
+refuse when the saved or running job has an unexpected database setting, home,
+working directory, or command. A protected upgrade workflow is still needed
+before that version can change automatically.
+Setup also refuses to reconcile when it finds relevant custom launchd settings
+or an upstream home `.env`. When the job file is missing, an existing default
+database also blocks setup. These checks do not establish every possible
+upstream configuration source.
 On refusal, the existing memory-enabled setting is preserved.
 
 The backup command returns an error when its integrity check fails.

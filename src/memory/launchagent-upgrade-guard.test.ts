@@ -13,7 +13,7 @@ vi.mock("../core/launchctl.js", () => ({
 }));
 
 import { probeLaunchctl, runLaunchctl } from "../core/launchctl.js";
-import { MEMORY_PINNED_SPEC } from "./constants.js";
+import { MEMORY_DAEMON_ENVIRONMENT, MEMORY_PINNED_SPEC, MEMORY_UVX_ARGS } from "./constants.js";
 import * as invoke from "./invoke.js";
 import { buildMemoryDaemonPlist, installMemoryLaunchAgents, MEMORY_AGENT_LABEL } from "./launchagent.js";
 import { defaultMemoryDbPath } from "./paths.js";
@@ -26,9 +26,27 @@ afterEach(() => {
   rmSync(defaultMemoryDbPath(), { force: true });
   rmSync(join(homedir(), ".env"), { force: true });
   vi.restoreAllMocks();
+  vi.mocked(probeLaunchctl).mockImplementation((args) => ({ status: args[0] === "getenv" ? 0 : 113, stdout: "" }));
   vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
+
+function loadedJobOutput(plist: string, extraEnvironment = "", extraArgs = "", inherited = ""): string {
+  const args = [
+    "/fixture/uvx",
+    ...MEMORY_UVX_ARGS,
+    "server",
+    "--streamable-http",
+    "--sse-host",
+    "127.0.0.1",
+    "--sse-port",
+    "18765",
+  ];
+  const env = Object.entries(MEMORY_DAEMON_ENVIRONMENT)
+    .map(([key, value]) => `\t\t${key} => ${value}\n`)
+    .join("");
+  return `\tpath = ${plist}\n\tworking directory = ${homedir()}\n\targuments = {\n${args.map((arg) => `\t\t${arg}\n`).join("")}${extraArgs}\t}\n\tenvironment = {\n\t\tHOME => ${homedir()}\n${env}${extraEnvironment}\t}\n\tinherited environment = {\n${inherited}\t}\n\tdefault environment = {\n\t}\n`;
+}
 
 describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () => {
   it.each([
@@ -74,6 +92,51 @@ describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () 
     ).rejects.toThrow("uvx not found");
     expect(kickstart).not.toHaveBeenCalled();
     expect(readFileSync(plist, "utf-8")).toBe(oldPlist);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it.each([
+    [
+      "custom database",
+      (value: string) =>
+        value.replace(
+          "<key>EnvironmentVariables</key>\n  <dict>",
+          "<key>EnvironmentVariables</key>\n  <dict>\n    <key>MCP_MEMORY_SQLITE_PATH</key>\n    <string>/fixture/custom.db</string>",
+        ),
+    ],
+    [
+      "foreign working directory",
+      (value: string) =>
+        value.replace(
+          `<key>WorkingDirectory</key>\n  <string>${homedir()}</string>`,
+          "<key>WorkingDirectory</key>\n  <string>/fixture/other</string>",
+        ),
+    ],
+  ])("does not reconcile a same-pin job with %s", (_label, mutate) => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = mutate(buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx"));
+    writeFileSync(plist, old);
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not reconcile a same-pin job loaded from a foreign home", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: `\tpath = /fixture/foreign.plist\n\tworking directory = /fixture/foreign\n\targuments = {\n\t\t--from\n\t\t${MEMORY_PINNED_SPEC}\n\t}\n\tenvironment = {\n\t\tHOME => /fixture/foreign\n\t}\n`,
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
     expect(
       vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
     ).toEqual([]);
@@ -174,13 +237,114 @@ describe.runIf(process.platform === "darwin")("memory daemon upgrade guard", () 
     ).toEqual([]);
   });
 
+  it("does not reconcile a loaded same-pin job with a custom database environment", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: loadedJobOutput(plist, "\t\tMCP_MEMORY_SQLITE_PATH => /fixture/custom.db\n"),
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not reconcile a loaded job with additional arguments", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: loadedJobOutput(plist, "", "\t\t--extra\n"),
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+  });
+
+  it("does not reconcile a job with an inherited custom database", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: loadedJobOutput(plist, "", "", "\t\tMCP_MEMORY_SQLITE_PATH => /fixture/custom.db\n"),
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+  });
+
+  it("does not reconcile a job with an explicit XDG data directory", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockReturnValueOnce({
+      status: 0,
+      stdout: loadedJobOutput(plist, "\t\tXDG_DATA_HOME => /fixture/other\n"),
+    });
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+  });
+
+  it("does not load a stopped job with a custom launchd database path", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockImplementation((args) => ({
+      status: args[0] === "getenv" ? 0 : 113,
+      stdout: args[1] === "MCP_MEMORY_SQLITE_PATH" ? "/fixture/custom.db" : "",
+    }));
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not restart a loaded job after launchd gains a custom database path", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    vi.mocked(probeLaunchctl).mockImplementation((args) =>
+      args[0] === "print"
+        ? { status: 0, stdout: loadedJobOutput(plist) }
+        : { status: 0, stdout: args[1] === "MCP_MEMORY_SQLITE_PATH" ? "/fixture/custom.db" : "" },
+    );
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
+  it("does not reconcile an existing job when an upstream dotenv file exists", () => {
+    vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
+    mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
+    const old = buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx");
+    writeFileSync(plist, old);
+    writeFileSync(join(homedir(), ".env"), "MCP_MEMORY_SQLITE_PATH=/fixture/custom.db\n");
+    expect(installMemoryLaunchAgents()).toMatchObject({ installed: false, upgradeBlocked: true });
+    expect(readFileSync(plist, "utf-8")).toBe(old);
+    expect(
+      vi.mocked(runLaunchctl).mock.calls.filter(([args]) => ["load", "unload", "kickstart"].includes(args[0])),
+    ).toEqual([]);
+  });
+
   it("permits a loaded job whose pin matches the installed file", () => {
     vi.stubEnv("AGENTBREW_UVX_BIN", "/fixture/uvx");
     mkdirSync(join(homedir(), "Library/LaunchAgents"), { recursive: true });
     writeFileSync(plist, buildMemoryDaemonPlist(homedir(), "/old/logs", "/fixture/uvx"));
     vi.mocked(probeLaunchctl).mockReturnValueOnce({
       status: 0,
-      stdout: `\targuments = {\n\t\t--from\n\t\t${MEMORY_PINNED_SPEC}\n\t}\n`,
+      stdout: loadedJobOutput(plist),
     });
 
     expect(installMemoryLaunchAgents()).toMatchObject({ installed: true });

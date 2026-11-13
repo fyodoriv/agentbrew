@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
@@ -284,15 +285,106 @@ export function memoryMaintenanceLaunchAgentStatus(): MemoryMaintenanceLaunchAge
   };
 }
 
+interface MemoryDaemonPlist {
+  WorkingDirectory?: unknown;
+  EnvironmentVariables?: unknown;
+  ProgramArguments?: unknown;
+}
+
+function readMemoryDaemonPlist(plistPath: string): MemoryDaemonPlist | undefined {
+  const result = spawnSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", "--", plistPath], {
+    encoding: "utf-8",
+    timeout: 5_000,
+  });
+  if (result.error || result.status !== 0) return undefined;
+  try {
+    return JSON.parse(result.stdout) as MemoryDaemonPlist;
+  } catch {
+    return undefined;
+  }
+}
+
+function loadedMemoryEnvironmentMatches(output: string, home: string): boolean {
+  const block = /^\tenvironment = \{\n([\s\S]*?)^\t\}/m.exec(output)?.[1];
+  if (!block) return false;
+  const entries = [...block.matchAll(/^\t\t([^\n]+?) => (.*)$/gm)];
+  const env = Object.fromEntries(entries.map((entry) => [entry[1], entry[2]]));
+  const expected: Record<string, string> = { HOME: home, ...MEMORY_DAEMON_ENVIRONMENT };
+  if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
+  if (
+    !Object.entries(env).every(([key, value]) => {
+      if (/^(XDG_DATA_HOME|XDG_CONFIG_HOME|PYTHONPATH|PYTHONHOME|VIRTUAL_ENV)$/.test(key)) return false;
+      return !key.startsWith("MCP_") || expected[key] === value;
+    })
+  )
+    return false;
+  for (const name of ["inherited environment", "default environment"]) {
+    const inherited = new RegExp(`^\\t${name} = \\{\\n([\\s\\S]*?)^\\t\\}`, "m").exec(output)?.[1];
+    if (
+      inherited === undefined ||
+      /^\t\t(?:MCP_|XDG_DATA_HOME|XDG_CONFIG_HOME|PYTHONPATH|PYTHONHOME|VIRTUAL_ENV)/m.test(inherited)
+    )
+      return false;
+  }
+  return true;
+}
+
 function loadedMemoryJobPinMatches(): boolean {
   const job = probeLaunchctl(["print", `gui/${userInfo().uid}/${MEMORY_AGENT_LABEL}`], 5_000);
   if (!job) return false;
+  if (job.status !== 0 && job.status !== 113) return false;
+  if (!noCustomLaunchdMemoryEnvironment()) return false;
   if (job.status === 113) return true;
-  if (job.status !== 0) return false;
+  const identity = parseLaunchctlJobIdentity(job.stdout);
+  const workingDirectory = /^\tworking directory = (.+)$/m.exec(job.stdout)?.[1]?.trim();
+  if (identity.path !== memoryPlistPath() || identity.home !== homedir() || workingDirectory !== homedir())
+    return false;
+  if (!loadedMemoryEnvironmentMatches(job.stdout, homedir())) return false;
   const args = /^\targuments = \{\n([\s\S]*?)^\t\}/m.exec(job.stdout)?.[1] ?? "";
-  const values = args.split("\n").map((value) => value.trim());
-  const index = values.indexOf("--from");
-  return index >= 0 && index === values.lastIndexOf("--from") && values[index + 1] === MEMORY_PINNED_SPEC;
+  const values = args
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const savedArgs = readMemoryDaemonPlist(memoryPlistPath())?.ProgramArguments;
+  return Array.isArray(savedArgs) && JSON.stringify(values) === JSON.stringify(savedArgs);
+}
+
+function installedMemoryJobIdentityMatches(plistPath: string, home: string): boolean {
+  if (!existsSync(plistPath)) return true;
+  try {
+    const plist = readMemoryDaemonPlist(plistPath);
+    if (!plist) return false;
+    if (
+      plist.WorkingDirectory !== home ||
+      !plist.EnvironmentVariables ||
+      typeof plist.EnvironmentVariables !== "object"
+    )
+      return false;
+    const env = plist.EnvironmentVariables as Record<string, unknown>;
+    const expected: Record<string, string> = { HOME: home, ...MEMORY_DAEMON_ENVIRONMENT };
+    for (const [key, value] of Object.entries(env)) {
+      if (key === "PATH" || key === "LANG") continue;
+      if (!(key in expected) || expected[key] !== value) return false;
+    }
+    if (Object.entries(expected).some(([key, value]) => env[key] !== value)) return false;
+    const args = plist.ProgramArguments;
+    const expectedArgs = [
+      ...MEMORY_UVX_ARGS,
+      "server",
+      "--streamable-http",
+      "--sse-host",
+      "127.0.0.1",
+      "--sse-port",
+      "18765",
+    ];
+    return (
+      Array.isArray(args) &&
+      typeof args[0] === "string" &&
+      JSON.stringify(args.slice(1)) === JSON.stringify(expectedArgs)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function installedMemoryJobPinMatches(plistPath: string): boolean {
@@ -319,11 +411,20 @@ function knownPathAbsent(path: string): boolean {
 function noKnownPriorMemory(home: string): boolean {
   const paths = [defaultMemoryDbPath(home), join(home, ".env"), join(home, ".mcp-memory", ".env")];
   if (!paths.every(knownPathAbsent)) return false;
+  return noCustomLaunchdMemoryEnvironment();
+}
+
+function noCustomLaunchdMemoryEnvironment(): boolean {
   for (const name of [
     "MCP_MEMORY_SQLITE_PATH",
     "MCP_MEMORY_SQLITEVEC_PATH",
     "MCP_MEMORY_BASE_DIR",
     "MCP_MEMORY_STORAGE_BACKEND",
+    "XDG_DATA_HOME",
+    "XDG_CONFIG_HOME",
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "VIRTUAL_ENV",
   ]) {
     if (process.env[name]) return false;
     const value = probeLaunchctl(["getenv", name], 5_000);
@@ -371,6 +472,13 @@ export function installMemoryLaunchAgents(): {
       reason: "memory setup requires a protected backup and a verified database path",
     };
   }
+  if (![join(home, ".env"), join(home, ".mcp-memory", ".env")].every(knownPathAbsent)) {
+    return {
+      installed: false,
+      upgradeBlocked: true,
+      reason: "memory setup requires a verified database path when upstream dotenv files exist",
+    };
+  }
   if (!loadedMemoryJobPinMatches()) {
     return {
       installed: false,
@@ -378,7 +486,7 @@ export function installMemoryLaunchAgents(): {
       reason: "memory upgrade requires a protected backup and a verified running job",
     };
   }
-  if (!installedMemoryJobPinMatches(daemonPlist)) {
+  if (!installedMemoryJobIdentityMatches(daemonPlist, home) || !installedMemoryJobPinMatches(daemonPlist)) {
     return {
       installed: false,
       upgradeBlocked: true,

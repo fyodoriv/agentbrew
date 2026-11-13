@@ -585,7 +585,8 @@ memory rows, pack ledgers, and stable server metadata.
 `memoryPacks` declarations from base and overlay Agentfiles are merged and
 resolved relative to the file that declares each path. Discovery does not
 install a pack; only an explicit `memory pack install` (or reconciliation of
-an existing install ledger) writes pack records.
+an existing install ledger) writes pack records. A duplicate store response
+is left unresolved rather than changing an existing memory's tags.
 
 ### Claude project-memory bridge
 

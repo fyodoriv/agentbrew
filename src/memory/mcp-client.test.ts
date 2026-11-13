@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 function successResponse(text: string): Response {
   return new Response(
@@ -19,6 +19,32 @@ describe("memory MCP client response parsing", () => {
     });
     const id = await client.memoryStore("hello", ["pack:test"]);
     expect(id).toBe("abcdef0123456789");
+  });
+
+  it("retains tags from the upstream numbered search result", async () => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        successResponse(
+          "Found 1 memories\n\n1. synthetic memory\n   Hash: abcdef0123456789\n   Created: 2026-11-13 [old-tag, project:old]",
+        ),
+    });
+    expect(await client.memorySearch("synthetic memory", "exact")).toMatchObject([
+      { content: "synthetic memory", tags: ["old-tag", "project:old"] },
+    ]);
+  });
+
+  it.each([
+    "Duplicate content detected (exact match)",
+    "Duplicate content detected (semantically similar to abcdef0123456789)",
+  ])("does not mutate or claim an unverified duplicate", async (message) => {
+    const { createFetchMemoryMcpClient } = await import("./mcp-client.js");
+    const client = createFetchMemoryMcpClient({ fetchImpl: async () => successResponse(message) });
+    const search = vi.spyOn(client, "memorySearch");
+    const update = vi.spyOn(client, "memoryUpdate");
+    expect(await client.memoryStore("requested memory", ["new"])).toBeUndefined();
+    expect(search).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("uses the mcp-memory-service 11.7 request schemas", async () => {

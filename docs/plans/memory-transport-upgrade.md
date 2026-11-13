@@ -864,3 +864,10 @@ retrievable. The draft keeps such a folder stale; it does not yet prove that
 the existing memory has that folder's provenance. Upstream reports at most
 five error details, so duplicate text alone is not enough to mark an entire
 folder current.
+
+The initial proposed tag merge was rejected in review: another writer could
+add tags between the search and the replacement update, and the service can
+report an update error as plain text. The draft now treats exact and semantic
+duplicate responses as unresolved without searching or mutating an existing
+memory. Pack reconciliation reports failure for that record. This follows the
+predicted pivot; an atomic upstream provenance merge remains unverified.

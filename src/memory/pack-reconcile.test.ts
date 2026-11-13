@@ -13,7 +13,7 @@ vi.mock("./pack-ledger.js", () => ({
   listInstalledPackLedgers: vi.fn(() => [...ledgers.values()]),
 }));
 
-import type { MemoryMcpClient } from "./mcp-client.js";
+import { createFetchMemoryMcpClient, type MemoryMcpClient } from "./mcp-client.js";
 import { loadMemoryPackFromDir } from "./pack-contract.js";
 import { contentFingerprint, planPackReconcile, reconcileInstalledPack, recordTags } from "./pack-reconcile.js";
 
@@ -51,6 +51,27 @@ function mockClient(rows: Array<{ id: string; content: string; tags: string[] }>
     }),
   };
 }
+
+describe("pack reconciliation duplicate handling", () => {
+  it("does not advance the ledger or update an existing memory on a duplicate response", async () => {
+    const client = createFetchMemoryMcpClient({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { content: [{ type: "text", text: "Duplicate content detected (exact match)" }] },
+          }),
+          { status: 200 },
+        ),
+    });
+    vi.spyOn(client, "tagMatch").mockResolvedValue([]);
+    const update = vi.spyOn(client, "memoryUpdate");
+    await expect(reconcileInstalledPack(client, fixtureDir)).rejects.toThrow("memory_store failed");
+    expect(ledgers.size).toBe(0);
+    expect(update).not.toHaveBeenCalled();
+  });
+});
 
 describe("pack reconciliation planning", () => {
   it("plans store for missing records", () => {

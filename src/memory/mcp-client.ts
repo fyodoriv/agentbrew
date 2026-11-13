@@ -644,7 +644,10 @@ function parseMemorySearchResults(text: string): MemoryMcpMemoryRow[] {
   for (const block of blocks) {
     const hashMatch = block.match(/Hash: ([a-f0-9]+)/i);
     if (!hashMatch) continue;
-    const tagLine = block.match(/\nTags:\s*(.+)$/m) ?? block.match(/\n\s*\[(.+?)\]\s*$/m);
+    const tagLine =
+      block.match(/\nTags:\s*(.+)$/m) ??
+      block.match(/\n\s*Created:[^\n]*?\s\[([^\]\n]+)\](?:\s*\(via [^\n]*\))?\s*$/m) ??
+      block.match(/\n\s*\[(.+?)\]\s*$/m);
     const tags = tagLine?.[1]
       ? tagLine[1]
           .split(",")
@@ -848,18 +851,8 @@ export function createFetchMemoryMcpClient(options: FetchMemoryMcpClientOptions 
         name: "memory_store",
         arguments: argumentsPayload,
       });
-      const memoryId = extractMemoryId(result);
-      if (memoryId) return memoryId;
-      const text = toolResultText(result);
-      if (/duplicate content detected/i.test(text)) {
-        const rows = await this.memorySearch(content.slice(0, 180), "exact");
-        const exact = rows.find((row) => row.content.trim() === content.trim()) ?? rows[0];
-        if (exact?.id) {
-          await this.memoryUpdate(exact.id, content, tags, { versioned: false });
-          return exact.id;
-        }
-      }
-      return undefined;
+      if (/duplicate content detected/i.test(toolResultText(result))) return undefined;
+      return extractMemoryId(result);
     },
     async memoryUpdate(id, content, tags, options = {}) {
       const result = await post("tools/call", {

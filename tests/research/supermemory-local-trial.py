@@ -10,6 +10,11 @@ except PermissionError:
     pass
 with open(os.path.join(root, 'inside-control'), 'w') as handle:
     handle.write('synthetic control')
+try:
+    os.kill(os.getppid(), 0)
+    raise AssertionError('outside parent was signalable')
+except PermissionError:
+    pass
 
 def connect(port):
     try:
@@ -45,7 +50,7 @@ try:
 except OSError: pass
 assert not connect(port), 'trial port already in use'
 print('PASS isolation: live service and external network denied; local model reachable',flush=True)
-env={'HOME':root,'TMPDIR':root,'PATH':'/usr/bin:/bin','SUPERMEMORY_DATA_DIR':root+'/trial-data','SUPERMEMORY_HOST':'127.0.0.1','SUPERMEMORY_PORT':str(port),'SUPERMEMORY_DISABLE_TELEMETRY':'1','SUPERMEMORY_NO_UPDATE_CHECK':'1','SUPERMEMORY_NO_OPEN':'1','OPENAI_BASE_URL':'http://127.0.0.1:11434/v1','OPENAI_API_KEY':'local-model','OPENAI_MODEL':'qwen3:0.6b','SUPERMEMORY_EMBEDDING_PROVIDER':'openai-compatible','SUPERMEMORY_EMBEDDING_BASE_URL':'http://127.0.0.1:11434/v1','SUPERMEMORY_EMBEDDING_MODEL':'qwen3:0.6b','SUPERMEMORY_EMBEDDING_DIMENSIONS':'1024'}
+env={'HOME':root,'TMPDIR':root,'PATH':'/usr/bin:/bin','SUPERMEMORY_DATA_DIR':root+'/trial-data','SUPERMEMORY_HOST':'127.0.0.1','SUPERMEMORY_PORT':str(port),'SUPERMEMORY_DISABLE_TELEMETRY':'1','SUPERMEMORY_NO_UPDATE_CHECK':'1','SUPERMEMORY_NO_OPEN':'1','OPENAI_BASE_URL':'http://127.0.0.1:11434/v1','OPENAI_API_KEY':'local-model','OPENAI_MODEL':'qwen3:0.6b','SUPERMEMORY_EMBEDDING_PROVIDER':'openai-compatible','SUPERMEMORY_EMBEDDING_BASE_URL':'http://127.0.0.1:11434/v1','SUPERMEMORY_EMBEDDING_MODEL':'all-minilm:latest','SUPERMEMORY_EMBEDDING_DIMENSIONS':'384'}
 proc=subprocess.Popen([root+'/supermemory-server'],env=env,cwd=root,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 buf=[]
 def drain():

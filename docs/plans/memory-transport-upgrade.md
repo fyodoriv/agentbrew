@@ -87,6 +87,24 @@ client parity or an exclusive daemon handoff.
 - **Anchor:** The earlier isolated OpenCode bootstrap trial and the upstream
   [12.9.0 release](https://github.com/doobidoo/mcp-memory-service/releases/tag/v12.9.0).
 
+The isolated Kimi session called the bootstrap tool and received a behavioral
+profile from the 12.9.0 scratch service. The outside-file and live-port
+controls denied access, and the scratch server stopped. This is one bootstrap
+check; it does not establish recall or session-save parity on 12.9.0.
+
+### Version 12.9.0 OpenCode save and recall prediction
+
+- **Hypothesis:** OpenCode with the configured Kimi provider can save a
+  synthetic session and recall its unique phrase from a 12.9.0 scratch store.
+- **Measurement:** Run an isolated Kimi session that calls the bootstrap,
+  session-save, and exact-search tools; inspect only synthetic tool evidence.
+- **Success:** All three tool calls occur, exact recall returns the phrase,
+  outside-file and live-port access are denied, and the scratch server stops.
+- **Pivot:** If any call, recall, isolation control, or cleanup fails, do not
+  count the lifecycle as verified for this version.
+- **Anchor:** The 12.9.0 bootstrap trial and the earlier synthetic Kimi
+  session-save and recall trial recorded below.
+
 The user has asked for the best maintained setup. This security test is a
 required gate, not evidence that this provider is best at memory retrieval.
 

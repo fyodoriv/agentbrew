@@ -41,7 +41,7 @@ different stop rules. Published practice for LLM judges points the same way:
    not a new decision.
 4. **Check conflicts before you build.** Save each reply as `<round>/<judge>.txt`, then run
    `node scripts/judge.mjs conflicts <round>`. It exits 1 and lists every pair of opposite asks
-   on one element in the round, and every ask that reverses a ledger line. Build none of them.
+   on one element in the round, and every ask that reverses a ledger line, and every fix that offers two changes ("X or Y"). Build none of them.
    Settle each one with a ledger line ("asked and declined: darken toolbar shadow; R24 split 1:1").
    Reverse a ledger line only for a hard flaw (overlap, cut-off or unreadable text, a broken phone
    layout) that you can see in the named screenshot yourself, and write a superseding line.

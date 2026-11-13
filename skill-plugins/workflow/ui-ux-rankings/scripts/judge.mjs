@@ -194,6 +194,9 @@ export function conflicts(byJudge, decisions = "") {
     issues.map((i) => ({ judge, element: i.element, fix: i.fix, d: direction(i.fix), w: words(i.element) })),
   );
   const out = [];
+  // one fix per issue: "X or Y" leaves the builder to choose, so settle it first
+  for (const f of fixes)
+    if (/\bor\b/i.test(f.fix)) out.push({ kind: "ambiguous", element: f.element, asks: [`${f.judge}: ${f.fix}`] });
   for (let a = 0; a < fixes.length; a++)
     for (let b = a + 1; b < fixes.length; b++) {
       const [x, y] = [fixes[a], fixes[b]];

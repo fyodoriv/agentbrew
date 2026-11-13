@@ -46,7 +46,9 @@ recall, not all save scenarios. A separate Kimi session called
 `get_bootstrap_profile` against an empty scratch store and received a profile.
 The sandbox denied the live memory port and an outside file. This demonstrates
 the three lifecycle operations in separate targeted trials, not every client
-configuration or a full end-to-end session.
+configuration or a full end-to-end session. Those trials used OpenCode's
+`kimi-code-plan-global` provider, not OpenRouter; the OpenRouter route remains
+unverified.
 
 The OpenCode trial used a scratch project. Its configuration included a rule
 intended to deny code-mode `execute`, but the recorded session shows completed

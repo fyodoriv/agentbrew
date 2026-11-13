@@ -213,6 +213,30 @@
         "Names the unjudged fixture as the cause of the missing card verdicts",
         "Does not redesign the cards before checking the fixture's pipeline ran"
       ]
+    },
+    {
+      "id": 20,
+      "prompt": "Design round 22: last round all three catalogue raters asked to remove the 'No reason recorded' line, and you removed it. Now two of three raters ask to add it back, and one rater asks for heavier toolbar shadows while another asks for lighter ones. What do you do before the next round?",
+      "expected_output": "Keeps a decision ledger copied to every rater folder, declines the reversal and the opposite shadow asks and logs them, adds a fixture fact about missing reasons, sharpens the rater prompt so raters may not reverse a ledger decision without a named hard flaw, then builds only the remaining shared fixes and re-rates with new raters.",
+      "expectations": [
+        "Does not re-add the removed line just because two raters now ask for it",
+        "Writes or updates a DECISIONS.md ledger and gives it to the next raters",
+        "Declines the opposite-direction shadow asks and logs them as declined",
+        "Adds the missing reasons as a fixture fact or changes the rater prompt, so the judges are fixed before the next round",
+        "Keeps raters blind to earlier scores"
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Rate a storyboard editor and a review catalogue (work tools, not marketing pages) with the design panel; the owner says 'until it passes 8.0'. Plan the panel and the stop rule.",
+      "expected_output": "Swaps spectacle judges (The FWA, Godly, CSS Winner) for app judges (Apple Design Awards, Nielsen heuristics, Material/HIG fit), rates a best-in-class reference of the same page type first and sets the target at its blind mean minus 0.3, caps fixes at one per element class per round, runs a structural A/B round after three rounds that each gain under 0.15, and budgets about 10 rounds.",
+      "expectations": [
+        "Does not use The FWA and Godly unchanged for a work-tool page",
+        "Rates a best-in-class reference page with the same blind raters before round 1",
+        "Sets the target from the reference mean, not a fixed 8.0, and tells the owner why",
+        "Plans a structural A/B round when CSS rounds go flat",
+        "States a round budget"
+      ]
     }
   ]
 }

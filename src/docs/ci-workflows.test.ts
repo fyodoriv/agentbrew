@@ -61,6 +61,7 @@ describe("hosted workflows", () => {
       "oss-readiness.yml": ["pull_request", "push", "workflow_dispatch"],
       "pr-vision-trace.yml": ["workflow_dispatch"],
       "publish.yml": ["push"],
+      "supermemory-local-trial.yml": ["pull_request", "workflow_dispatch"],
     };
     for (const { name, text } of workflows) {
       const code = codeLines(text).join("\n");

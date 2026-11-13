@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createStateManager, CURRENT_SCHEMA_VERSION, type StateIO } from "../core/state-manager.js";
+import { CURRENT_SCHEMA_VERSION, createStateManager, type StateIO } from "../core/state-manager.js";
 import type { AgentBrewState } from "../types.js";
 
 function sharedStore() {
@@ -12,7 +12,9 @@ function sharedStore() {
   } as AgentBrewState;
   const io: StateIO = {
     read: () => structuredClone(state),
-    write: (value) => { state = structuredClone(value); },
+    write: (value) => {
+      state = structuredClone(value);
+    },
   };
   return { io, read: () => structuredClone(state) };
 }

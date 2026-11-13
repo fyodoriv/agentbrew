@@ -70,6 +70,7 @@ New top-level `docs/*.md` file? Add a row here in the same PR.
 | [`plans/rust-literal-adapter-registration-proposal-20261105.md`](plans/rust-literal-adapter-registration-proposal-20261105.md) | Which supplemental Rust writer experiment is registered before implementation? | agent |
 | [`plans/rust-literal-adapter-corpus-proposal-20261105.md`](plans/rust-literal-adapter-corpus-proposal-20261105.md) | What exact source, manifest and receipt controls define that experiment? | agent |
 | [`plans/rust-literal-staged-measurement-proposal-20261105.md`](plans/rust-literal-staged-measurement-proposal-20261105.md) | How do setup checks and a bounded unchanged-API baseline precede the full corpus? | agent |
+| [`plans/rust-inventory-membership-index-prediction.md`](plans/rust-inventory-membership-index-prediction.md) | How will membership indexing preserve validation results? | agent |
 | [`plans/rust-byte-literal-supplement-proposal-20261105.md`](plans/rust-byte-literal-supplement-proposal-20261105.md) | Which separate byte-literal controls qualify strict decoding? | agent |
 | [`plans/rust-legacy-baseline-capture-20261106.md`](plans/rust-legacy-baseline-capture-20261106.md) | What independent legacy output must observer instrumentation preserve? | agent |
 | [`audits/`](audits/) | Drafts and audits for upstream contributions. | agent |

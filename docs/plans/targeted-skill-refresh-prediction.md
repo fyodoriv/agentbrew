@@ -53,3 +53,11 @@ install, prune, and clean paths also write the staging directory. A destination
 lock only protects the replacement if every such writer participates; adding
 a private lock to the new command alone is insufficient. Sync also changes
 deployed links and needs an explicit coordination boundary.
+
+## Current state
+
+Another session refreshed the managed goal workflow. Its files now match the
+source and the existing agent links point to that managed copy. This task no
+longer needs a custom refresh. The unused source-claim preparation is removed;
+the general scoped-refresh improvement is tracked separately. The earlier
+stale observation remains historical, not a claim about the current copy.

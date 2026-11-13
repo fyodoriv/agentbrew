@@ -484,3 +484,6 @@ The same synthetic trial may run on a disposable hosted macOS runner. Download
 the pinned server and local model before isolation; the trial itself must
 restrict network access to its own listener and the local model. Its result is
 independent evidence, not proof of the installed Mac or any agent integration.
+The separately running Ollama server is outside that sandbox, so the policy
+does not prove that requests made indirectly through Ollama cannot leave the
+runner. Use only synthetic text and no user credentials for that trial.

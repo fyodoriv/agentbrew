@@ -1,0 +1,66 @@
+name: Synthetic Supermemory trial
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/supermemory-local-trial.yml
+      - tests/research/supermemory-local-trial.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-memory:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the local model runner
+        shell: bash
+        run: |
+          brew install ollama
+      - name: Download the pinned server
+        shell: bash
+        run: |
+          case "$(uname -m)" in
+            arm64) asset=darwin-arm64; digest=b908080270df6d2eb5712637cb833ebd4fc99a6ee15771d38a555084961332e8 ;;
+            x86_64) asset=darwin-x64; digest=c1e6f60ddcee243dece33d8888f49c3daf3401429e89f16b9d1b0cdd2bf403a3 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/supermemory-trial"
+          curl --fail --silent --show-error --location "https://github.com/supermemoryai/supermemory/releases/download/server-v0.0.9/supermemory-server-$asset" -o "$RUNNER_TEMP/supermemory-trial/supermemory-server"
+          echo "$digest  $RUNNER_TEMP/supermemory-trial/supermemory-server" | shasum -a 256 -c
+          chmod 700 "$RUNNER_TEMP/supermemory-trial/supermemory-server"
+      - name: Run the isolated synthetic trial
+        shell: bash
+        run: |
+          root="$(cd "$RUNNER_TEMP/supermemory-trial" && pwd -P)"
+          cp tests/research/supermemory-local-trial.py "$root/trial.py"
+          printf 'synthetic outside control\n' > "$RUNNER_TEMP/supermemory-outside-control"
+          OLLAMA_MODELS="$RUNNER_TEMP/models" ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          ollama_pid=$!
+          python3 -m http.server 18765 --bind 127.0.0.1 > /dev/null 2>&1 &
+          control_pid=$!
+          trap 'kill "$control_pid" "$ollama_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..60}; do
+            curl --silent --fail http://127.0.0.1:11434/api/tags > /dev/null && break
+            sleep 1
+          done
+          ollama pull qwen3:0.6b
+          ollama list | grep -q '359d7dd4bcda'
+          for attempt in {1..50}; do
+            nc -z -w 1 127.0.0.1 18765 >/dev/null 2>&1 && break
+            sleep 0.1
+          done
+          nc -z -w 1 127.0.0.1 18765
+          parents=""
+          dir="$(dirname "$root")"
+          while [ "$dir" != / ]; do
+            parents="$parents (literal \"$dir\")"
+            dir="$(dirname "$dir")"
+          done
+          profile="(version 1)(deny default)(allow process*)(allow sysctl-read)(allow file-read* (literal \"/\") $parents (subpath \"$root\") (subpath \"/usr\") (subpath \"/bin\") (subpath \"/System\") (subpath \"/Library/Developer\") (subpath \"/dev\"))(allow file-write* (subpath \"$root\") (literal \"/dev/null\"))(allow network-bind (local ip \"localhost:49412\"))(allow network-inbound (local ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:11434\"))"
+          HOME="$root" TMPDIR="$root" SUPERMEMORY_TRIAL_ROOT="$root" SUPERMEMORY_OUTSIDE_SENTINEL="$RUNNER_TEMP/supermemory-outside-control" /usr/bin/sandbox-exec -p "$profile" /usr/bin/python3 "$root/trial.py"

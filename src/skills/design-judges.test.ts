@@ -92,6 +92,16 @@ describe("design judges", () => {
     expect(judge.conflicts(nav)).toHaveLength(1);
   });
 
+  it("flags a fix that offers two changes ('X or Y') so it is settled, not built", () => {
+    const ask = (fix: string) => [{ judge: "a", issues: [{ element: "header", fix }] }];
+    const c = judge.conflicts(ask("reduce the header by moving the tabs onto the logo row or into the bottom bar"));
+    expect(c).toHaveLength(1);
+    expect(c[0].kind).toBe("ambiguous");
+    expect(judge.conflicts(ask("reduce the header padding to 8px"))).toHaveLength(0);
+    // "or" inside a word or as "border"/"color" is not a second change
+    expect(judge.conflicts(ask("change the border color to the ink token"))).toHaveLength(0);
+  });
+
   it("a named ledger that cannot be read fails instead of passing", () => {
     const dir = mkdtempSync(join(tmpdir(), "judges-"));
     writeFileSync(join(dir, "a.txt"), "NONE\n");

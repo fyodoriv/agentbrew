@@ -33,10 +33,10 @@ INPUT="$(read_hook_stdin)"
 [ "$(json_get "$INPUT" '.tool_input.run_in_background')" = "true" ] || verdict_allow "$HOOK_ID" "foreground"
 CMD="$(json_get "$INPUT" '.tool_input.command')"
 
-if ! printf '%s' "$CMD" | grep -qE '(^|[^[:alnum:]_-])(pytest|vitest|jest|bats)([^[:alnum:]_-]|$)|(npm|pnpm|yarn) (run )?test|cargo (nextest|test)'; then
+if ! grep -qE '(^|[^[:alnum:]_-])(pytest|vitest|jest|bats)([^[:alnum:]_-]|$)|(npm|pnpm|yarn) (run )?test|cargo (nextest|test)' <<<"$CMD"; then
   verdict_allow "$HOOK_ID" "no test suite"
 fi
-if printf '%s' "$CMD" | grep -qE -- '--maxfail|(^|[[:space:]])-x([[:space:]]|$)|--exitfirst|--bail|--fail-fast|--max-failures|[A-Z_]*(FAIL_FAST|STORM)[A-Z_]*='; then
+if grep -qE -- '--maxfail|(^|[[:space:]])-x([[:space:]]|$)|--exitfirst|--bail|--fail-fast|--max-failures|[A-Z_]*(FAIL_FAST|STORM)[A-Z_]*=' <<<"$CMD"; then
   verdict_allow "$HOOK_ID" "has a fail-fast limit"
 fi
 verdict_block "$HOOK_ID" "a background test suite needs a fail-fast limit, or a broken setup fails every test for hours unseen — add --maxfail=50 (pytest), --bail=50 (vitest/jest) or the repo's early-stop env var, then run it again."

@@ -491,3 +491,8 @@ The first hosted attempt stopped before isolation or server startup because
 the trial specified the local 4B model's digest for the 0.6B model. A local
 model-list check reproduced that mismatch. The trial now checks both the
 correct model name and its published digest.
+The next hosted attempt downloaded the correct model but the system Python
+shim could not resolve Xcode inside the sandbox. The same error reproduced in
+a restricted local `xcrun` probe. Resolving Python before entering the sandbox
+and allowing its developer-tool files let a local Python probe start; the full
+hosted trial still needs to run.

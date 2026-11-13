@@ -62,5 +62,6 @@ jobs:
             parents="$parents (literal \"$dir\")"
             dir="$(dirname "$dir")"
           done
-          profile="(version 1)(deny default)(allow process*)(allow sysctl-read)(allow file-read* (literal \"/\") $parents (subpath \"$root\") (subpath \"/usr\") (subpath \"/bin\") (subpath \"/System\") (subpath \"/Library/Developer\") (subpath \"/dev\"))(allow file-write* (subpath \"$root\") (literal \"/dev/null\"))(allow network-bind (local ip \"localhost:49412\"))(allow network-inbound (local ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:11434\"))"
-          HOME="$root" TMPDIR="$root" SUPERMEMORY_TRIAL_ROOT="$root" SUPERMEMORY_OUTSIDE_SENTINEL="$RUNNER_TEMP/supermemory-outside-control" /usr/bin/sandbox-exec -p "$profile" /usr/bin/python3 "$root/trial.py"
+          python_bin="$(/usr/bin/xcrun --find python3)"
+          profile="(version 1)(deny default)(allow process*)(allow sysctl-read)(allow file-read* (literal \"/\") $parents (subpath \"$root\") (subpath \"/usr\") (subpath \"/bin\") (subpath \"/System\") (subpath \"/Applications\") (subpath \"/Library/Developer\") (subpath \"/Library/Frameworks\") (subpath \"/dev\"))(allow file-write* (subpath \"$root\") (literal \"/dev/null\"))(allow network-bind (local ip \"localhost:49412\"))(allow network-inbound (local ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:49412\"))(allow network-outbound (remote ip \"localhost:11434\"))"
+          HOME="$root" TMPDIR="$root" SUPERMEMORY_TRIAL_ROOT="$root" SUPERMEMORY_OUTSIDE_SENTINEL="$RUNNER_TEMP/supermemory-outside-control" /usr/bin/sandbox-exec -p "$profile" "$python_bin" "$root/trial.py"
